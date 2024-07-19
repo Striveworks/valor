@@ -60,6 +60,7 @@ def test_EvaluationParameters(llm_api_params):
         task_type=enums.TaskType.TEXT_GENERATION,
         metrics_to_return=[
             MetricType.AnswerRelevance,
+            MetricType.Bias,
             MetricType.BLEU,
             MetricType.Coherence,
             MetricType.ROUGE,
@@ -72,6 +73,7 @@ def test_EvaluationParameters(llm_api_params):
         task_type=enums.TaskType.TEXT_GENERATION,
         metrics_to_return=[
             MetricType.AnswerRelevance,
+            MetricType.Bias,
             MetricType.BLEU,
             MetricType.Coherence,
             MetricType.ROUGE,
@@ -137,6 +139,7 @@ def test_EvaluationParameters(llm_api_params):
             task_type=enums.TaskType.TEXT_GENERATION,
             metrics_to_return=[
                 MetricType.AnswerRelevance,
+                MetricType.Bias,
                 MetricType.BLEU,
                 MetricType.Coherence,
                 MetricType.ROUGE,
@@ -149,6 +152,7 @@ def test_EvaluationParameters(llm_api_params):
             task_type=enums.TaskType.TEXT_GENERATION,
             metrics_to_return=[
                 MetricType.AnswerRelevance,
+                MetricType.Bias,
                 MetricType.BLEU,
                 MetricType.Coherence,
                 MetricType.ROUGE,
@@ -163,6 +167,7 @@ def test_EvaluationParameters(llm_api_params):
             task_type=enums.TaskType.TEXT_GENERATION,
             metrics_to_return=[
                 MetricType.AnswerRelevance,
+                MetricType.Bias,
                 MetricType.BLEU,
                 MetricType.Coherence,
                 MetricType.ROUGE,

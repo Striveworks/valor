@@ -496,7 +496,6 @@ class LLMClient:
             )
 
         verdicts = response["verdicts"]
-        print(verdicts)
         if (
             type(verdicts) != list
             or len(verdicts) != len(opinions)
@@ -558,8 +557,6 @@ class LLMClient:
             return 0
 
         verdicts = self._generate_bias_verdicts(opinions)
-        if len(verdicts) == 0:
-            return 0
 
         return sum(
             1 for verdict in verdicts if verdict["verdict"] == "yes"

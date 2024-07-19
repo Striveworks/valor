@@ -52,6 +52,36 @@ ANSWER_RELEVANCE_VALID_VERDICTS = """```json
     ]
 }```"""
 
+BIAS_VALID_OPINIONS = """```json
+{
+    "opinions": [
+        "opinion 1",
+        "opinion 2",
+        "opinion 3",
+        "opinion 4"
+    ]
+}```"""
+
+BIAS_VALID_VERDICTS = """```json
+{
+    "verdicts": [
+        {
+            "verdict": "yes",
+            "reason": "This opinion demonstrates gender bias."
+        },
+        {
+            "verdict": "no"
+        },
+        {
+            "verdict": "yes",
+            "reason": "This opinion demonstrates political bias."
+        },
+        {
+            "verdict": "no"
+        }
+    ]
+}```"""
+
 
 def test_LLMClient(monkeypatch):
     """Check that this parent class mostly throws NotImplementedErrors, since its methods are intended to be overridden by its children."""
@@ -145,11 +175,106 @@ def test_LLMClient(monkeypatch):
         else:
             raise ValueError
 
-    def _return_invalid2_coherence_response(*args, **kwargs):
-        return "0"
+    def _return_valid1_bias_response(*args, **kwargs):
+        if "please generate a list of OPINIONS" in args[1][1]["content"]:
+            return BIAS_VALID_OPINIONS
+        elif (
+            "generate a list of JSON objects to indicate whether EACH opinion is biased"
+            in args[1][1]["content"]
+        ):
+            return BIAS_VALID_VERDICTS
+        else:
+            raise ValueError
+
+    def _return_valid2_bias_response(*args, **kwargs):
+        return """```json
+{
+    "opinions": []
+}```"""
+
+    def _return_invalid1_bias_response(*args, **kwargs):
+        return """```json
+{
+    "verdicts": [
+        "opinion 1",
+        "verdict 2",
+        "these should not be verdicts, these should be opinions",
+        "the key above should be 'opinions' not 'verdicts'"
+    ]
+}```"""
+
+    def _return_invalid2_bias_response(*args, **kwargs):
+        return """```json
+{
+    "opinions": [
+        ["a list of opinions"],
+        "opinion 2",
+        "opinion 3",
+        "opinion 4"
+    ]
+}```"""
+
+    def _return_invalid3_bias_response(*args, **kwargs):
+        if "please generate a list of OPINIONS" in args[1][1]["content"]:
+            return BIAS_VALID_OPINIONS
+        elif (
+            "generate a list of JSON objects to indicate whether EACH opinion is biased"
+            in args[1][1]["content"]
+        ):
+            return """```json
+[
+    {
+        "verdict": "yes",
+        "reason": "This opinion demonstrates gender bias."
+    },
+    {
+        "verdict": "no"
+    },
+    {
+        "verdict": "yes",
+        "reason": "This opinion demonstrates political bias."
+    },
+    {
+        "verdict": "no"
+    }
+]```"""
+        else:
+            raise ValueError
+
+    def _return_invalid4_bias_response(*args, **kwargs):
+        if "please generate a list of OPINIONS" in args[1][1]["content"]:
+            return BIAS_VALID_OPINIONS
+        elif (
+            "generate a list of JSON objects to indicate whether EACH opinion is biased"
+            in args[1][1]["content"]
+        ):
+            return """```json
+{
+    "verdicts": [
+        {
+            "verdict": "yes",
+            "reason": "This opinion demonstrates gender bias."
+        },
+        {
+            "verdict": "idk"
+        },
+        {
+            "verdict": "yes",
+            "reason": "This opinion demonstrates political bias."
+        },
+        {
+            "verdict": "no"
+        }
+    ]
+}```"""
+        else:
+            raise ValueError
 
     def _return_valid_coherence_response(*args, **kwargs):
         return "5"
+
+    def _return_invalid2_coherence_response(*args, **kwargs):
+        return "0"
 
     def _return_invalid_response(*args, **kwargs):
         return "some bad response"
@@ -209,6 +334,52 @@ def test_LLMClient(monkeypatch):
     )
     with pytest.raises(InvalidLLMResponseError):
         client.answer_relevance("some query", "some text")
+
+    # Patch __call__ with a valid response.
+    monkeypatch.setattr(
+        "valor_api.backend.core.llm_clients.LLMClient.__call__",
+        _return_valid1_bias_response,
+    )
+    assert 0.5 == client.bias("some text")
+
+    # No opinions found, so no bias should be reported.
+    monkeypatch.setattr(
+        "valor_api.backend.core.llm_clients.LLMClient.__call__",
+        _return_valid2_bias_response,
+    )
+    assert 0.0 == client.bias("some text")
+
+    # Key 'verdicts' is returned but the key should be 'opinions'.
+    monkeypatch.setattr(
+        "valor_api.backend.core.llm_clients.LLMClient.__call__",
+        _return_invalid1_bias_response,
+    )
+    with pytest.raises(InvalidLLMResponseError):
+        client.bias("some text")
+
+    # Opinions must be strings.
+    monkeypatch.setattr(
+        "valor_api.backend.core.llm_clients.LLMClient.__call__",
+        _return_invalid2_bias_response,
+    )
+    with pytest.raises(InvalidLLMResponseError):
+        client.bias("some text")
+
+    # Response is a list but should be a dictionary.
+    monkeypatch.setattr(
+        "valor_api.backend.core.llm_clients.LLMClient.__call__",
+        _return_invalid3_bias_response,
+    )
+    with pytest.raises(InvalidLLMResponseError):
+        client.bias("some text")
+
+    # 'idk' is not a valid bias verdict.
+    monkeypatch.setattr(
+        "valor_api.backend.core.llm_clients.LLMClient.__call__",
+        _return_invalid4_bias_response,
+    )
+    with pytest.raises(InvalidLLMResponseError):
+        client.bias("some text")
 
     # Patch __call__ with a valid response.
     monkeypatch.setattr(
@@ -330,8 +501,14 @@ def test_WrappedOpenAIClient():
     # Check that the WrappedOpenAIClient does not alter the messages.
     assert fake_message == client._process_messages(fake_message)
 
+    # OpenAI only allows the roles of system, user and assistant.
+    invalid_message = [{"role": "invalid", "content": "Some content."}]
+    with pytest.raises(ValueError):
+        client._process_messages(invalid_message)
+
     # The OpenAI Client should be able to connect if the API key is set as the environment variable.
     client = WrappedOpenAIClient(model_name="model_name")
+    client.connect()
 
     client.client = MagicMock()
 
@@ -445,6 +622,7 @@ def test_WrappedMistralAIClient():
 
     # The Mistral Client should be able to connect if the API key is set as the environment variable.
     client = WrappedMistralAIClient(model_name="model_name")
+    client.connect()
 
     client.client = MagicMock()
 

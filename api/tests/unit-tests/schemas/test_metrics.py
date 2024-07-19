@@ -428,6 +428,50 @@ def test_AnswerRelevanceMetric():
     )
 
 
+def test_BiasMetric():
+    metric = schemas.BiasMetric(
+        value=0.4,
+        parameters={
+            "dataset_uid": "01",
+            "dataset_name": "test_dataset",
+            "prediction": "some prediction",
+        },
+    )
+
+    with pytest.raises(ValidationError):
+        schemas.BiasMetric(
+            value=None,  # type: ignore
+            parameters={
+                "dataset_uid": "01",
+                "dataset_name": "test_dataset",
+                "prediction": "some prediction",
+            },
+        )
+
+    with pytest.raises(ValidationError):
+        schemas.BiasMetric(
+            value={"key": 0.6},  # type: ignore
+            parameters={
+                "dataset_uid": "01",
+                "dataset_name": "test_dataset",
+                "prediction": "some prediction",
+            },
+        )
+
+    with pytest.raises(ValidationError):
+        schemas.BiasMetric(
+            value=0.45,  # type: ignore
+            parameters="not a valid parameter",  # type: ignore
+        )
+
+    assert all(
+        [
+            key in ["value", "type", "evaluation_id", "parameters"]
+            for key in metric.db_mapping(evaluation_id=1)
+        ]
+    )
+
+
 def test_BLEUMetric():
     metric = schemas.BLEUMetric(
         value=0.421,
