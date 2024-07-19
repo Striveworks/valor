@@ -257,8 +257,8 @@ if __name__ == "__main__":
     print()
 
     number_of_datums_trials = [1, 10, 100, 1000, 10000]
-    number_of_label_keys_trials = [25]
-    number_of_label_values_trials = [4]
+    number_of_label_keys_trials = [1, 10]
+    number_of_label_values_trials = [10, 100]
     number_of_trials = 1
 
     for n_datums in number_of_datums_trials:
@@ -278,4 +278,5 @@ if __name__ == "__main__":
                         n_label_keys=n_label_keys,
                         n_label_values=n_label_values,
                     )
+
                 print(benchmark.results)

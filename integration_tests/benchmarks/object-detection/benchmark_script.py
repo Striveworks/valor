@@ -16,7 +16,6 @@ from valor import (
     Prediction,
     connect,
 )
-from valor.enums import MetricType
 from valor.schemas import MultiPolygon, Polygon, Raster
 
 connect("http://0.0.0.0:8000")
@@ -191,7 +190,7 @@ def ingest_groundtruths_and_predictions(
 def run_base_evaluation(dset: Dataset, model: Model):
     """Run a base evaluation (with no PR curves)."""
     evaluation = model.evaluate_detection(dset)
-    evaluation.wait_for_completion(timeout=30)
+    evaluation.wait_for_completion(timeout=300)
     return evaluation
 
 
@@ -200,13 +199,13 @@ def run_pr_curve_evaluation(dset: Dataset, model: Model):
     evaluation = model.evaluate_detection(
         dset,
         metrics_to_return=[
-            MetricType.AP,
-            MetricType.AR,
-            MetricType.mAP,
-            MetricType.APAveragedOverIOUs,
-            MetricType.mAR,
-            MetricType.mAPAveragedOverIOUs,
-            MetricType.PrecisionRecallCurve,
+            "AP",
+            "AR",
+            "mAP",
+            "APAveragedOverIOUs",
+            "mAR",
+            "mAPAveragedOverIOUs",
+            "PrecisionRecallCurve",
         ],
     )
     evaluation.wait_for_completion()
@@ -219,14 +218,14 @@ def run_detailed_pr_curve_evaluation(dset: Dataset, model: Model):
     evaluation = model.evaluate_detection(
         dset,
         metrics_to_return=[
-            MetricType.AP,
-            MetricType.AR,
-            MetricType.mAP,
-            MetricType.APAveragedOverIOUs,
-            MetricType.mAR,
-            MetricType.mAPAveragedOverIOUs,
-            MetricType.PrecisionRecallCurve,
-            MetricType.DetailedPrecisionRecallCurve,
+            "AP",
+            "AR",
+            "mAP",
+            "APAveragedOverIOUs",
+            "mAR",
+            "mAPAveragedOverIOUs",
+            "PrecisionRecallCurve",
+            "DetailedPrecisionRecallCurve",
         ],
     )
     evaluation.wait_for_completion()
@@ -234,13 +233,14 @@ def run_detailed_pr_curve_evaluation(dset: Dataset, model: Model):
 
 
 def run_benchmarking_analysis(
-    limits_to_test: list[int] = [3, 3],
+    limits_to_test: list[int] = [3, 7, 10, 15, 20, 45, 60],
     results_file: str = "results.json",
     data_file: str = "data.json",
 ):
     """Time various function calls and export the results."""
     current_directory = os.path.dirname(os.path.realpath(__file__))
     write_path = f"{current_directory}/{results_file}"
+
     data_path = f"{current_directory}/{data_file}"
 
     download_data_if_not_exists(
@@ -266,16 +266,16 @@ def run_benchmarking_analysis(
         )
         ingest_time = time() - start_time
 
-        try:
-            eval_ = run_base_evaluation(dset=dset, model=model)
-        except TimeoutError:
-            raise TimeoutError(
-                f"Evaluation timed out when processing {limit} datums."
-            )
+        # try:
+        eval_ = run_base_evaluation(dset=dset, model=model)
+        # except TimeoutError:
+        #     raise TimeoutError(
+        #         f"Evaluation timed out when processing {limit} datums."
+        #     )
 
         start = time()
-        client.delete_dataset(dset.name, timeout=30)
-        client.delete_model(model.name, timeout=30)
+        client.delete_dataset(dset.name, timeout=300)
+        client.delete_model(model.name, timeout=300)
         deletion_time = time() - start
 
         results = {
@@ -287,6 +287,9 @@ def run_benchmarking_analysis(
             "del_runtime": f"{(deletion_time):.1f} seconds",
         }
         write_results_to_file(write_path=write_path, result_dict=results)
+
+        # client.delete_dataset(dset.name, timeout=300)
+        # client.delete_model(model.name, timeout=300)
 
 
 if __name__ == "__main__":

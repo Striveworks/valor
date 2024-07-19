@@ -4,7 +4,7 @@ from collections import defaultdict
 import numpy as np
 from sqlalchemy import CTE, ColumnElement, Integer, literal
 from sqlalchemy.orm import Session
-from sqlalchemy.sql import and_, func, not_, or_, select
+from sqlalchemy.sql import and_, func, or_, select
 
 from valor_api import enums, schemas
 from valor_api.backend import core, models
@@ -14,7 +14,6 @@ from valor_api.backend.metrics.metric_utils import (
     log_evaluation_duration,
     log_evaluation_item_counts,
     prepare_filter_for_evaluation,
-    profiler,
     validate_computation,
 )
 from valor_api.backend.query import generate_select
@@ -22,7 +21,6 @@ from valor_api.backend.query import generate_select
 LabelMapType = list[list[list[str]]]
 
 
-@profiler
 def _compute_curves(
     db: Session,
     predictions: CTE,
@@ -101,14 +99,45 @@ def _compute_curves(
             base_query.c.key,
             base_query.c.value,
             thresholds_cte.c.threshold,
-            (groundtruths.c.key.isnot(None)).label("gt_exists"),
-            (predictions.c.key.isnot(None)).label("pd_exists"),
-            (predictions.c.score >= thresholds_cte.c.threshold).label(
-                "is_positive"
-            ),
-            (base_query.c.high_score >= thresholds_cte.c.threshold).label(
-                "positive_exists"
-            ),
+            and_(
+                groundtruths.c.key.isnot(None),
+                predictions.c.key.isnot(None),
+                predictions.c.score >= thresholds_cte.c.threshold,
+            ).label("tp"),
+            and_(
+                groundtruths.c.key.is_(None),
+                predictions.c.key.isnot(None),
+                predictions.c.score >= thresholds_cte.c.threshold,
+            ).label("fp"),
+            and_(
+                groundtruths.c.key.is_(None),
+                or_(
+                    predictions.c.key.is_(None),
+                    predictions.c.score < thresholds_cte.c.threshold,
+                ),
+            ).label("tn"),
+            and_(
+                groundtruths.c.key.isnot(None),
+                or_(
+                    and_(
+                        predictions.c.key.isnot(None),
+                        predictions.c.score < thresholds_cte.c.threshold,
+                    ),
+                    predictions.c.key.is_(None),
+                ),
+                base_query.c.high_score >= thresholds_cte.c.threshold,
+            ).label("fn_misclf"),
+            and_(
+                groundtruths.c.key.isnot(None),
+                or_(
+                    and_(
+                        predictions.c.key.isnot(None),
+                        predictions.c.score < thresholds_cte.c.threshold,
+                    ),
+                    predictions.c.key.is_(None),
+                ),
+                base_query.c.high_score < thresholds_cte.c.threshold,
+            ).label("fn_misprd"),
         )
         .select_from(base_query)
         .join(
@@ -135,7 +164,7 @@ def _compute_curves(
             base_query.c.value,
             base_query.c.datum_id,
         )
-        .subquery()
+        .cte()
     )
 
     # define pr curve query
@@ -145,40 +174,12 @@ def _compute_curves(
             joint_query.c.key,
             joint_query.c.value,
             joint_query.c.threshold,
-            func.sum(
-                and_(
-                    joint_query.c.gt_exists,
-                    joint_query.c.pd_exists,
-                    joint_query.c.is_positive,
-                ).cast(Integer)
-            ).label("tp"),
-            func.sum(
-                and_(
-                    not_(joint_query.c.gt_exists),
-                    joint_query.c.pd_exists,
-                    joint_query.c.is_positive,
-                ).cast(Integer)
-            ).label("fp"),
-            func.sum(
-                and_(
-                    not_(joint_query.c.gt_exists),
-                    or_(
-                        not_(joint_query.c.pd_exists),
-                        not_(joint_query.c.is_positive),
-                    ),
-                ).cast(Integer)
-            ).label("tn"),
-            func.sum(
-                and_(
-                    joint_query.c.gt_exists,
-                    or_(
-                        and_(
-                            joint_query.c.pd_exists,
-                            not_(joint_query.c.is_positive),
-                        ),
-                        not_(joint_query.c.pd_exists),
-                    ),
-                ).cast(Integer)
+            func.sum(joint_query.c.tp.cast(Integer)).label("tp"),
+            func.sum(joint_query.c.fp.cast(Integer)).label("fp"),
+            func.sum(joint_query.c.tn.cast(Integer)).label("tn"),
+            (
+                func.sum(joint_query.c.fn_misclf.cast(Integer))
+                + func.sum(joint_query.c.fn_misprd.cast(Integer))
             ).label("fn"),
         )
         .select_from(joint_query)
@@ -192,72 +193,19 @@ def _compute_curves(
 
     # define detailed pr curve query
 
-    detailed_pr_datums = (
-        select(
-            joint_query.c.datum_id,
-            joint_query.c.key,
-            joint_query.c.value,
-            joint_query.c.threshold,
-            and_(
-                joint_query.c.gt_exists,
-                joint_query.c.pd_exists,
-                joint_query.c.is_positive,
-            ).label("tp"),
-            and_(
-                not_(joint_query.c.gt_exists),
-                joint_query.c.pd_exists,
-                joint_query.c.is_positive,
-            ).label("fp"),
-            and_(
-                not_(joint_query.c.gt_exists),
-                or_(
-                    not_(joint_query.c.pd_exists),
-                    not_(joint_query.c.is_positive),
-                ),
-            ).label("tn"),
-            and_(
-                joint_query.c.gt_exists,
-                or_(
-                    and_(
-                        joint_query.c.pd_exists,
-                        not_(joint_query.c.is_positive),
-                    ),
-                    not_(joint_query.c.pd_exists),
-                ),
-                joint_query.c.positive_exists,
-            ).label("fn_misclf"),
-            and_(
-                joint_query.c.gt_exists,
-                or_(
-                    and_(
-                        joint_query.c.pd_exists,
-                        not_(joint_query.c.is_positive),
-                    ),
-                    not_(joint_query.c.pd_exists),
-                ),
-                or_(
-                    not_(joint_query.c.is_positive),
-                    not_(joint_query.c.positive_exists),
-                ),
-            ).label("fn_misprd"),
-        )
-        .select_from(joint_query)
-        .cte()
-    )
-
     def search_datums(condition: ColumnElement[bool]):
         search_datums = (
             select(
-                detailed_pr_datums.c.datum_id,
-                detailed_pr_datums.c.key,
-                detailed_pr_datums.c.value,
-                detailed_pr_datums.c.threshold,
+                joint_query.c.datum_id,
+                joint_query.c.key,
+                joint_query.c.value,
+                joint_query.c.threshold,
                 func.row_number()
                 .over(
                     partition_by=[
-                        detailed_pr_datums.c.key,
-                        detailed_pr_datums.c.value,
-                        detailed_pr_datums.c.threshold,
+                        joint_query.c.key,
+                        joint_query.c.value,
+                        joint_query.c.threshold,
                     ],
                     order_by=func.random(),
                 )
@@ -286,26 +234,22 @@ def _compute_curves(
             .cte()
         )
 
-    tp_examples = search_datums(detailed_pr_datums.c.tp)
-    fp_examples = search_datums(detailed_pr_datums.c.fp)
-    tn_examples = search_datums(detailed_pr_datums.c.tn)
-    fn_misclassification_examples = search_datums(
-        detailed_pr_datums.c.fn_misclf
-    )
-    fn_missing_prediction_examples = search_datums(
-        detailed_pr_datums.c.fn_misprd
-    )
+    tp_examples = search_datums(joint_query.c.tp)
+    fp_examples = search_datums(joint_query.c.fp)
+    tn_examples = search_datums(joint_query.c.tn)
+    fn_misclassification_examples = search_datums(joint_query.c.fn_misclf)
+    fn_missing_prediction_examples = search_datums(joint_query.c.fn_misprd)
 
     detailed_pr_counts = (
         select(
-            detailed_pr_datums.c.key,
-            detailed_pr_datums.c.value,
-            detailed_pr_datums.c.threshold,
-            func.sum(detailed_pr_datums.c.tp.cast(Integer)),
-            func.sum(detailed_pr_datums.c.fp.cast(Integer)),
-            func.sum(detailed_pr_datums.c.tn.cast(Integer)),
-            func.sum(detailed_pr_datums.c.fn_misclf.cast(Integer)),
-            func.sum(detailed_pr_datums.c.fn_misprd.cast(Integer)),
+            joint_query.c.key,
+            joint_query.c.value,
+            joint_query.c.threshold,
+            func.sum(joint_query.c.tp.cast(Integer)),
+            func.sum(joint_query.c.fp.cast(Integer)),
+            func.sum(joint_query.c.tn.cast(Integer)),
+            func.sum(joint_query.c.fn_misclf.cast(Integer)),
+            func.sum(joint_query.c.fn_misprd.cast(Integer)),
             tp_examples.c.datum_ids.label("tp_examples"),
             fp_examples.c.datum_ids.label("fp_examples"),
             tn_examples.c.datum_ids.label("tn_examples"),
@@ -316,79 +260,70 @@ def _compute_curves(
                 "fn_misprd_examples"
             ),
         )
-        .select_from(detailed_pr_datums)
+        .select_from(joint_query)
         .join(
             tp_examples,
             and_(
-                tp_examples.c.key == detailed_pr_datums.c.key,
-                tp_examples.c.value == detailed_pr_datums.c.value,
-                tp_examples.c.threshold == detailed_pr_datums.c.threshold,
+                tp_examples.c.key == joint_query.c.key,
+                tp_examples.c.value == joint_query.c.value,
+                tp_examples.c.threshold == joint_query.c.threshold,
             ),
             isouter=True,
         )
         .join(
             fp_examples,
             and_(
-                fp_examples.c.key == detailed_pr_datums.c.key,
-                fp_examples.c.value == detailed_pr_datums.c.value,
-                fp_examples.c.threshold == detailed_pr_datums.c.threshold,
+                fp_examples.c.key == joint_query.c.key,
+                fp_examples.c.value == joint_query.c.value,
+                fp_examples.c.threshold == joint_query.c.threshold,
             ),
             isouter=True,
         )
         .join(
             tn_examples,
             and_(
-                tn_examples.c.key == detailed_pr_datums.c.key,
-                tn_examples.c.value == detailed_pr_datums.c.value,
-                tn_examples.c.threshold == detailed_pr_datums.c.threshold,
+                tn_examples.c.key == joint_query.c.key,
+                tn_examples.c.value == joint_query.c.value,
+                tn_examples.c.threshold == joint_query.c.threshold,
             ),
             isouter=True,
         )
         .join(
             fn_misclassification_examples,
             and_(
-                fn_misclassification_examples.c.key
-                == detailed_pr_datums.c.key,
-                fn_misclassification_examples.c.value
-                == detailed_pr_datums.c.value,
+                fn_misclassification_examples.c.key == joint_query.c.key,
+                fn_misclassification_examples.c.value == joint_query.c.value,
                 fn_misclassification_examples.c.threshold
-                == detailed_pr_datums.c.threshold,
+                == joint_query.c.threshold,
             ),
             isouter=True,
         )
         .join(
             fn_missing_prediction_examples,
             and_(
-                fn_missing_prediction_examples.c.key
-                == detailed_pr_datums.c.key,
-                fn_missing_prediction_examples.c.value
-                == detailed_pr_datums.c.value,
+                fn_missing_prediction_examples.c.key == joint_query.c.key,
+                fn_missing_prediction_examples.c.value == joint_query.c.value,
                 fn_missing_prediction_examples.c.threshold
-                == detailed_pr_datums.c.threshold,
+                == joint_query.c.threshold,
             ),
             isouter=True,
         )
         .group_by(
-            detailed_pr_datums.c.key,
-            detailed_pr_datums.c.value,
-            detailed_pr_datums.c.threshold,
+            joint_query.c.key,
+            joint_query.c.value,
+            joint_query.c.threshold,
             tp_examples.c.datum_ids,
             fp_examples.c.datum_ids,
             tn_examples.c.datum_ids,
             fn_misclassification_examples.c.datum_ids,
             fn_missing_prediction_examples.c.datum_ids,
         )
-        .order_by(detailed_pr_datums.c.threshold)
+        .order_by(joint_query.c.threshold)
         .subquery()
     )
 
     label_to_results = defaultdict(lambda: defaultdict(dict))
     if enums.MetricType.DetailedPrecisionRecallCurve in metrics_to_return:
-
-        def res_():
-            return db.query(detailed_pr_counts).all()
-
-        res = profiler(res_)()
         for (
             label_key,
             label_value,
@@ -403,7 +338,7 @@ def _compute_curves(
             tn,
             fn_misclf_examples,
             fn_misprd_examples,
-        ) in res:
+        ) in db.query(detailed_pr_counts).all():
             label_to_results[label_key][label_value][float(threshold)] = (
                 tp_cnt,
                 fp_cnt,
@@ -418,11 +353,6 @@ def _compute_curves(
             )
 
     else:
-
-        def res_():
-            return db.query(pr_counts).all()
-
-        res = profiler(res_)()
         for (
             label_key,
             label_value,
@@ -431,7 +361,7 @@ def _compute_curves(
             fp_cnt,
             tn_cnt,
             fn_cnt,
-        ) in res:
+        ) in db.query(pr_counts).all():
             label_to_results[label_key][label_value][float(threshold)] = (
                 tp_cnt,
                 fp_cnt,
@@ -648,7 +578,6 @@ def _compute_curves(
     return pr_curves + detailed_pr_curves
 
 
-@profiler
 def _compute_roc_auc(
     db: Session,
     groundtruths: CTE,
@@ -877,7 +806,6 @@ def _compute_roc_auc(
     ]
 
 
-@profiler
 def _compute_confusion_matrices(
     db: Session,
     predictions: CTE,
@@ -1005,7 +933,6 @@ def _compute_confusion_matrices(
     }
 
 
-@profiler
 def _compute_accuracy_from_cm(cm: schemas.ConfusionMatrix) -> float:
     """
     Computes the accuracy score from a confusion matrix.
@@ -1023,7 +950,6 @@ def _compute_accuracy_from_cm(cm: schemas.ConfusionMatrix) -> float:
     return cm.matrix.trace() / cm.matrix.sum()
 
 
-@profiler
 def _compute_precision_and_recall_f1_from_confusion_matrix(
     cm: schemas.ConfusionMatrix,
     label_value: str,
@@ -1064,7 +990,6 @@ def _compute_precision_and_recall_f1_from_confusion_matrix(
     return prec, recall, f1
 
 
-@profiler
 def _compute_confusion_matrices_and_metrics(
     db: Session,
     groundtruths: CTE,
@@ -1236,7 +1161,6 @@ def _compute_confusion_matrices_and_metrics(
     ], metrics
 
 
-@profiler
 def _aggregate_data(
     db: Session,
     groundtruth_filter: schemas.Filter,
@@ -1381,7 +1305,6 @@ def _aggregate_data(
     return (groundtruths_cte, predictions_cte, labels)
 
 
-@profiler
 def _compute_clf_metrics(
     db: Session,
     groundtruth_filter: schemas.Filter,

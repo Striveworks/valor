@@ -1,4 +1,3 @@
-import time
 from collections import defaultdict
 from typing import Callable, Sequence
 
@@ -14,14 +13,15 @@ from valor_api.backend.query import generate_select
 LabelMapType = list[list[list[str]]]
 
 
-def profiler(fn):
+def profiler(fn: Callable):
     def wrapper(*args, **kwargs):
-        print("===== entering", fn.__name__, "=====")
+        import time
+
+        print(f">>>> {fn.__name__}")
         start = time.time()
-        results = fn(*args, **kwargs)
-        elapsed_time = round(time.time() - start, 1)
-        print("^^^^^ exiting", fn.__name__, elapsed_time, "^^^^^")
-        return results
+        result = fn(*args, **kwargs)
+        print(f"<<<< {fn.__name__} - {round(time.time() - start, 2)}")
+        return result
 
     return wrapper
 
@@ -371,7 +371,7 @@ def validate_computation(fn: Callable) -> Callable:
             db, evaluation_id, enums.EvaluationStatus.RUNNING
         )
         try:
-            result = profiler(fn)(*args, **kwargs)
+            result = fn(*args, **kwargs)
         except Exception as e:
             core.set_evaluation_status(
                 db, evaluation_id, enums.EvaluationStatus.FAILED

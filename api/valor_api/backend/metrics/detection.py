@@ -19,6 +19,7 @@ from valor_api.backend.metrics.metric_utils import (
     log_evaluation_duration,
     log_evaluation_item_counts,
     prepare_filter_for_evaluation,
+    profiler,
     validate_computation,
 )
 from valor_api.backend.query import generate_query, generate_select
@@ -38,6 +39,7 @@ class RankedPair:
     is_match: bool
 
 
+@profiler
 def _calculate_101_pt_interp(precisions, recalls) -> float:
     """Use the 101 point interpolation method (following torchmetrics)"""
 
@@ -65,6 +67,7 @@ def _calculate_101_pt_interp(precisions, recalls) -> float:
     return ret / 101
 
 
+@profiler
 def _calculate_ap_and_ar(
     sorted_ranked_pairs: dict[int, list[RankedPair]],
     labels: dict[int, tuple[str, str]],
@@ -211,6 +214,7 @@ def _calculate_ap_and_ar(
     return ap_metrics, ar_metrics
 
 
+@profiler
 def _compute_curves(
     sorted_ranked_pairs: dict[int, list[RankedPair]],
     labels: dict[int, tuple[str, str]],
@@ -327,6 +331,7 @@ def _compute_curves(
     ]
 
 
+@profiler
 def _compute_detailed_curves(
     sorted_ranked_pairs: dict[int, list[RankedPair]],
     labels: dict[int, tuple[str, str]],
@@ -632,6 +637,7 @@ def _compute_detailed_curves(
     return output
 
 
+@profiler
 def _compute_detection_metrics_averaged_over_ious_from_aps(
     ap_scores: Sequence[schemas.APMetric],
 ) -> Sequence[schemas.APMetricAveragedOverIOUs]:
@@ -660,6 +666,7 @@ def _compute_detection_metrics_averaged_over_ious_from_aps(
     return ret
 
 
+@profiler
 def _average_ignore_minus_one(a):
     """Average a list of metrics, ignoring values of -1"""
     num, denom = 0.0, 0.0
@@ -672,6 +679,7 @@ def _average_ignore_minus_one(a):
     return -1 if div0_flag else num / denom
 
 
+@profiler
 def _compute_mean_ar_metrics(
     ar_metrics: Sequence[schemas.ARMetric],
 ) -> list[schemas.mARMetric]:
@@ -700,6 +708,7 @@ def _compute_mean_ar_metrics(
     return mean_metrics
 
 
+@profiler
 def _compute_mean_detection_metrics_from_aps(
     ap_scores: Sequence[schemas.APMetric | schemas.APMetricAveragedOverIOUs],
 ) -> Sequence[schemas.mAPMetric | schemas.mAPMetricAveragedOverIOUs]:
@@ -744,6 +753,7 @@ def _compute_mean_detection_metrics_from_aps(
     return mean_detection_metrics
 
 
+@profiler
 def _convert_annotations_to_common_type(
     db: Session,
     datasets: list[models.Dataset],
@@ -809,6 +819,7 @@ def _convert_annotations_to_common_type(
     return target_type
 
 
+@profiler
 def _annotation_type_to_geojson(
     annotation_type: AnnotationType,
     table,
@@ -825,6 +836,7 @@ def _annotation_type_to_geojson(
     return gfunc.ST_AsGeoJSON(box)
 
 
+@profiler
 def _aggregate_data(
     db: Session,
     groundtruth_filter: schemas.Filter,
@@ -962,6 +974,7 @@ def _aggregate_data(
     return (groundtruths_cte, predictions_cte, labels)
 
 
+@profiler
 def _compute_detection_metrics(
     db: Session,
     parameters: schemas.EvaluationParameters,
@@ -1041,33 +1054,6 @@ def _compute_detection_metrics(
         label_map=parameters.label_map,
     )
 
-    joint = (
-        select(
-            func.coalesce(pd.c.dataset_name, gt.c.dataset_name).label(
-                "dataset_name"
-            ),
-            gt.c.datum_uid.label("gt_datum_uid"),
-            pd.c.datum_uid.label("pd_datum_uid"),
-            gt.c.geojson.label("gt_geojson"),
-            gt.c.groundtruth_id.label("gt_id"),
-            pd.c.prediction_id.label("pd_id"),
-            gt.c.label_id.label("gt_label_id"),
-            pd.c.label_id.label("pd_label_id"),
-            gt.c.annotation_id.label("gt_ann_id"),
-            pd.c.annotation_id.label("pd_ann_id"),
-            pd.c.score.label("score"),
-        )
-        .select_from(pd)
-        .outerjoin(
-            gt,
-            and_(
-                pd.c.datum_id == gt.c.datum_id,
-                pd.c.label_id == gt.c.label_id,
-            ),
-        )
-        .subquery()
-    )
-
     # Alias the annotation table (required for joining twice)
     gt_annotation = aliased(models.Annotation)
     pd_annotation = aliased(models.Annotation)
@@ -1081,12 +1067,140 @@ def _compute_detection_metrics(
         gunion_pd = gfunc.ST_Count(pd_annotation.raster)
         gunion = gunion_gt + gunion_pd - gintersection
         iou_computation = gintersection / gunion
+
+        gt_counts = (
+            select(
+                gt.c.annotation_id,
+                gfunc.ST_Count(models.Annotation.raster).label("count"),
+            )
+            .join(
+                models.Annotation, models.Annotation.id == gt.c.annotation_id
+            )
+            .subquery()
+        )
+
+        pd_counts = (
+            select(
+                pd.c.annotation_id,
+                gfunc.ST_Count(models.Annotation.raster).label("count"),
+            )
+            .join(
+                models.Annotation, models.Annotation.id == pd.c.annotation_id
+            )
+            .subquery()
+        )
+
+        gt_pd_counts = (
+            select(
+                gt.c.annotation_id.label("gt_annotation_id"),
+                pd.c.annotation_id.label("pd_annotation_id"),
+                gt_counts.c.count.label("gt_count"),
+                pd_counts.c.count.label("pd_count"),
+                func.coalesce(
+                    gfunc.ST_Count(
+                        gfunc.ST_Intersection(
+                            gt_annotation.raster, pd_annotation.raster
+                        )
+                    ),
+                    0,
+                ).label("intersection"),
+            )
+            .select_from(pd)
+            .join(
+                gt,
+                and_(
+                    pd.c.datum_id == gt.c.datum_id,
+                    pd.c.label_id == gt.c.label_id,
+                ),
+                full=True,
+            )
+            .join(gt_annotation, gt_annotation.id == gt.c.annotation_id)
+            .join(pd_annotation, pd_annotation.id == pd.c.annotation_id)
+            .join(gt_counts, gt_counts.c.annotation_id == gt.c.annotation_id)
+            .join(pd_counts, pd_counts.c.annotation_id == pd.c.annotation_id)
+            .cte()
+        )
+
+        joint = (
+            select(
+                func.coalesce(pd.c.dataset_name, gt.c.dataset_name).label(
+                    "dataset_name"
+                ),
+                gt.c.datum_uid.label("gt_datum_uid"),
+                pd.c.datum_uid.label("pd_datum_uid"),
+                gt.c.geojson.label("gt_geojson"),
+                gt.c.groundtruth_id.label("gt_id"),
+                pd.c.prediction_id.label("pd_id"),
+                gt.c.label_id.label("gt_label_id"),
+                pd.c.label_id.label("pd_label_id"),
+                gt.c.annotation_id.label("gt_ann_id"),
+                pd.c.annotation_id.label("pd_ann_id"),
+                pd.c.score.label("score"),
+                func.coalesce(
+                    gt_pd_counts.c.intersection
+                    / (
+                        gt_pd_counts.c.gt_count
+                        + gt_pd_counts.c.pd_count
+                        - gt_pd_counts.c.intersection
+                    ),
+                    0,
+                ).label("iou"),
+            )
+            .select_from(pd)
+            .outerjoin(
+                gt,
+                and_(
+                    pd.c.datum_id == gt.c.datum_id,
+                    pd.c.label_id == gt.c.label_id,
+                ),
+            )
+            .join(
+                gt_pd_counts,
+                and_(
+                    gt_pd_counts.c.gt_annotation_id == gt.c.annotation_id,
+                    gt_pd_counts.c.pd_annotation_id == pd.c.annotation_id,
+                ),
+                isouter=True,
+            )
+            .cte()
+        )
+
     else:
         gt_geom = _annotation_type_to_column(target_type, gt_annotation)
         pd_geom = _annotation_type_to_column(target_type, pd_annotation)
         gintersection = gfunc.ST_Intersection(gt_geom, pd_geom)
         gunion = gfunc.ST_Union(gt_geom, pd_geom)
         iou_computation = gfunc.ST_Area(gintersection) / gfunc.ST_Area(gunion)
+
+        joint = (
+            select(
+                func.coalesce(pd.c.dataset_name, gt.c.dataset_name).label(
+                    "dataset_name"
+                ),
+                gt.c.datum_uid.label("gt_datum_uid"),
+                pd.c.datum_uid.label("pd_datum_uid"),
+                gt.c.geojson.label("gt_geojson"),
+                gt.c.groundtruth_id.label("gt_id"),
+                pd.c.prediction_id.label("pd_id"),
+                gt.c.label_id.label("gt_label_id"),
+                pd.c.label_id.label("pd_label_id"),
+                gt.c.annotation_id.label("gt_ann_id"),
+                pd.c.annotation_id.label("pd_ann_id"),
+                pd.c.score.label("score"),
+                func.coalesce(iou_computation, 0).label("iou"),
+            )
+            .select_from(pd)
+            .outerjoin(
+                gt,
+                and_(
+                    pd.c.datum_id == gt.c.datum_id,
+                    pd.c.label_id == gt.c.label_id,
+                ),
+            )
+            .join(gt_annotation, gt_annotation.id == gt.c.annotation_id)
+            .join(pd_annotation, pd_annotation.id == pd.c.annotation_id)
+            .cte()
+        )
 
     ious = (
         select(
@@ -1097,18 +1211,22 @@ def _compute_detection_metrics(
             joint.c.pd_id.label("pd_id"),
             joint.c.gt_label_id,
             joint.c.score,
-            func.coalesce(iou_computation, 0).label("iou"),
+            joint.c.iou,
             joint.c.gt_geojson,
         )
         .select_from(joint)
-        .join(gt_annotation, gt_annotation.id == joint.c.gt_ann_id)
-        .join(pd_annotation, pd_annotation.id == joint.c.pd_ann_id)
         .subquery()
     )
 
-    ordered_ious = (
-        db.query(ious).order_by(-ious.c.score, -ious.c.iou, ious.c.gt_id).all()
-    )
+    @profiler
+    def ordered_ious_():
+        return (
+            db.query(ious)
+            .order_by(-ious.c.score, -ious.c.iou, ious.c.gt_id)
+            .all()
+        )
+
+    ordered_ious = ordered_ious_()
 
     matched_pd_set = set()
     matched_sorted_ranked_pairs = defaultdict(list)
@@ -1268,6 +1386,7 @@ def _compute_detection_metrics(
     return ap_ar_output + pr_curves
 
 
+@profiler
 def _compute_detection_metrics_with_detailed_precision_recall_curve(
     db: Session,
     parameters: schemas.EvaluationParameters,
