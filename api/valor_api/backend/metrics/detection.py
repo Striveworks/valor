@@ -1260,24 +1260,36 @@ def _compute_detection_metrics_with_detailed_precision_recall_curve(
     # IOU Computation Block
     if target_type == AnnotationType.RASTER:
 
+        distinct_gt_annotations = (
+            select(gt.c.annotation_id).distinct().subquery()
+        )
+
+        distinct_pd_annotations = (
+            select(pd.c.annotation_id).distinct().subquery()
+        )
+
         gt_counts = (
             select(
-                gt.c.annotation_id,
+                distinct_gt_annotations.c.annotation_id,
                 gfunc.ST_Count(models.Annotation.raster).label("count"),
             )
             .join(
-                models.Annotation, models.Annotation.id == gt.c.annotation_id
+                models.Annotation,
+                models.Annotation.id
+                == distinct_gt_annotations.c.annotation_id,
             )
             .subquery()
         )
 
         pd_counts = (
             select(
-                pd.c.annotation_id,
+                distinct_pd_annotations.c.annotation_id,
                 gfunc.ST_Count(models.Annotation.raster).label("count"),
             )
             .join(
-                models.Annotation, models.Annotation.id == pd.c.annotation_id
+                models.Annotation,
+                models.Annotation.id
+                == distinct_pd_annotations.c.annotation_id,
             )
             .subquery()
         )
