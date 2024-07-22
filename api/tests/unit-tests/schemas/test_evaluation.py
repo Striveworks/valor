@@ -71,6 +71,13 @@ def test_EvaluationParameters():
         schemas.EvaluationParameters(
             task_type=enums.TaskType.OBJECT_DETECTION,
             iou_thresholds_to_compute=None,
+            iou_thresholds_to_return=[0.1],
+        )
+
+    with pytest.raises(ValidationError):
+        schemas.EvaluationParameters(
+            task_type=enums.TaskType.OBJECT_DETECTION,
+            iou_thresholds_to_compute=None,
             iou_thresholds_to_return=0.2,  # type: ignore - purposefully throwing error,
         )
 
