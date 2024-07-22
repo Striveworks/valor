@@ -1058,8 +1058,6 @@ def _compute_detection_metrics(
     gt_annotation = aliased(models.Annotation)
     pd_annotation = aliased(models.Annotation)
 
-    print("Target Type", target_type)
-
     # Get distinct annotations
     gt_pd_pairs = (
         select(
@@ -1209,7 +1207,10 @@ def _compute_detection_metrics(
             gt.c.label_id.label("gt_label_id"),
             pd.c.label_id.label("pd_label_id"),
             pd.c.score.label("score"),
-            gt_pd_ious.c.iou,
+            func.coalesce(
+                gt_pd_ious.c.iou,
+                0,
+            ).label("iou"),
             gt.c.geojson.label("gt_geojson"),
         )
         .select_from(pd)
@@ -1494,8 +1495,8 @@ def _compute_detection_metrics_with_detailed_precision_recall_curve(
         .join(
             gt,
             and_(
-                pd.c.datum_id == gt.c.datum_id,
-                pd.c.label_id == gt.c.label_id,
+                gt.c.datum_id == pd.c.datum_id,
+                gt.c.key == pd.c.key,
             ),
         )
         .distinct()
@@ -1505,13 +1506,13 @@ def _compute_detection_metrics_with_detailed_precision_recall_curve(
     gt_distinct = (
         select(gt_pd_pairs.c.gt_annotation_id.label("annotation_id"))
         .distinct()
-        .cte()
+        .subquery()
     )
 
     pd_distinct = (
         select(gt_pd_pairs.c.pd_annotation_id.label("annotation_id"))
         .distinct()
-        .cte()
+        .subquery()
     )
 
     # IOU Computation Block
@@ -1527,7 +1528,7 @@ def _compute_detection_metrics_with_detailed_precision_recall_curve(
                 models.Annotation,
                 models.Annotation.id == gt_distinct.c.annotation_id,
             )
-            .cte()
+            .subquery()
         )
 
         pd_counts = (
@@ -1540,7 +1541,7 @@ def _compute_detection_metrics_with_detailed_precision_recall_curve(
                 models.Annotation,
                 models.Annotation.id == pd_distinct.c.annotation_id,
             )
-            .cte()
+            .subquery()
         )
 
         gt_pd_counts = (
@@ -1575,13 +1576,13 @@ def _compute_detection_metrics_with_detailed_precision_recall_curve(
                 pd_counts,
                 pd_counts.c.annotation_id == gt_pd_pairs.c.pd_annotation_id,
             )
-            .cte()
+            .subquery()
         )
 
         gt_pd_ious = (
             select(
-                gt_pd_pairs.c.gt_annotation_id,
-                gt_pd_pairs.c.pd_annotation_id,
+                gt_pd_counts.c.gt_annotation_id,
+                gt_pd_counts.c.pd_annotation_id,
                 func.coalesce(
                     gt_pd_counts.c.intersection
                     / (
@@ -1592,17 +1593,8 @@ def _compute_detection_metrics_with_detailed_precision_recall_curve(
                     0,
                 ).label("iou"),
             )
-            .select_from(gt_pd_pairs)
-            .outerjoin(
-                gt_pd_counts,
-                and_(
-                    gt_pd_counts.c.gt_annotation_id
-                    == gt_pd_pairs.c.gt_annotation_id,
-                    gt_pd_counts.c.pd_annotation_id
-                    == gt_pd_pairs.c.pd_annotation_id,
-                ),
-            )
-            .cte()
+            .select_from(gt_pd_counts)
+            .subquery()
         )
 
     else:
@@ -1642,7 +1634,10 @@ def _compute_detection_metrics_with_detailed_precision_recall_curve(
             gt.c.label_id.label("gt_label_id"),
             pd.c.label_id.label("pd_label_id"),
             pd.c.score.label("score"),
-            gt_pd_ious.c.iou,
+            func.coalesce(
+                gt_pd_ious.c.iou,
+                0,
+            ).label("iou"),
             gt.c.geojson.label("gt_geojson"),
             (gt.c.label_id == pd.c.label_id).label("is_match"),
         )
@@ -1650,8 +1645,8 @@ def _compute_detection_metrics_with_detailed_precision_recall_curve(
         .outerjoin(
             gt,
             and_(
-                pd.c.datum_id == gt.c.datum_id,
-                pd.c.label_id == gt.c.label_id,
+                gt.c.datum_id == pd.c.datum_id,
+                gt.c.key == pd.c.key,
             ),
         )
         .outerjoin(
