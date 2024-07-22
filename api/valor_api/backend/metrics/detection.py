@@ -833,7 +833,10 @@ def _aggregate_data(
     label_map: LabelMapType | None = None,
 ) -> tuple[CTE, CTE, dict[int, tuple[str, str]]]:
     """
-    Aggregates annotations.
+    Aggregates data for an object detection task.
+
+    This function returns a tuple containing CTE's used to gather groundtruths, predictions and a
+    dictionary that maps label_id to a key-value pair.
 
     Parameters
     ----------
@@ -843,15 +846,15 @@ def _aggregate_data(
         The filter to be used to query groundtruths.
     prediction_filter : schemas.Filter
         The filter to be used to query predictions.
-    target_type: enums.AnnotationType
-        The annotation type to compute metrics for.
+    target_type : enums.AnnotationType
+        The annotation type used by the object detection evaluation.
     label_map: LabelMapType, optional
         Optional mapping of individual labels to a grouper label. Useful when you need to evaluate performance using labels that differ across datasets and models.
 
     Returns
     ----------
-    tuple[CTE, CTE, dict[int, tuple[str, str]]]
-        Returns a tuple of (ground truths, predictions, labels).
+    tuple[CTE, CTE, dict[int, tuple[str, str]]]:
+        A tuple with form (groundtruths, predictions, labels).
     """
     labels = core.fetch_union_of_labels(
         db=db,

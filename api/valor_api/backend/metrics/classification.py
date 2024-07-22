@@ -1168,7 +1168,10 @@ def _aggregate_data(
     label_map: LabelMapType | None = None,
 ) -> tuple[CTE, CTE, dict[int, tuple[str, str]]]:
     """
-    Compute classification metrics.
+    Aggregates data for a classification task.
+
+    This function returns a tuple containing CTE's used to gather groundtruths, predictions and a
+    dictionary that maps label_id to a key-value pair.
 
     Parameters
     ----------
@@ -1183,8 +1186,8 @@ def _aggregate_data(
 
     Returns
     ----------
-    list[ConfusionMatrix, Metric]
-        A list of confusion matrices and metrics.
+    tuple[CTE, CTE, dict[int, tuple[str, str]]]:
+        A tuple with form (groundtruths, predictions, labels).
     """
     labels = core.fetch_union_of_labels(
         db=db,
