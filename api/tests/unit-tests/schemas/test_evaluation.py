@@ -50,9 +50,21 @@ def test_EvaluationParameters():
 
     with pytest.raises(ValidationError):
         schemas.EvaluationParameters(
-            task_type=enums.TaskType.OBJECT_DETECTION,
-            iou_thresholds_to_compute=None,
-            iou_thresholds_to_return=[0.2],
+            task_type=enums.TaskType.SEMANTIC_SEGMENTATION,
+            iou_thresholds_to_compute=[0.2, 0.6],
+            iou_thresholds_to_return=[],
+        )
+
+    with pytest.raises(ValidationError):
+        schemas.EvaluationParameters(
+            task_type=enums.TaskType.CLASSIFICATION,
+            convert_annotations_to_type=enums.AnnotationType.BOX,
+        )
+
+    with pytest.raises(ValidationError):
+        schemas.EvaluationParameters(
+            task_type=enums.TaskType.SEMANTIC_SEGMENTATION,
+            convert_annotations_to_type=enums.AnnotationType.BOX,
         )
 
     with pytest.raises(ValidationError):
@@ -75,6 +87,12 @@ def test_EvaluationParameters():
             iou_thresholds_to_compute=[0.2, "test"],  # type: ignore - purposefully throwing error
             iou_thresholds_to_return=[],
             label_map={"not a": "valid grouper"},  # type: ignore - purposefully throwing error
+        )
+
+    with pytest.raises(ValidationError):
+        schemas.EvaluationParameters(
+            task_type=enums.TaskType.OBJECT_DETECTION,
+            pr_curve_iou_threshold=20.0,
         )
 
 
