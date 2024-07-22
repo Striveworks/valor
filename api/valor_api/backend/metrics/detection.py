@@ -1168,15 +1168,9 @@ def _compute_detection_metrics(
                     0,
                 ).label("iou"),
             )
-            .select_from(gt_pd_pairs)
+            .select_from(gt_pd_counts)
             .subquery()
         )
-
-        @profiler
-        def gt_pd_ious_():
-            db.query(gt_pd_ious).all()
-
-        gt_pd_ious_()
 
     else:
         gt_geom = _annotation_type_to_column(target_type, gt_annotation)

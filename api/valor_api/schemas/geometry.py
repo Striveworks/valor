@@ -1038,7 +1038,7 @@ class Raster(BaseModel):
                     0,  # skewy
                     0,  # srid
                 ),
-                "8BUI",
+                "1BB",
             )
             geom_raster = ST_AsRaster(
                 ST_SnapToGrid(
@@ -1047,7 +1047,7 @@ class Raster(BaseModel):
                 ),
                 1.0,  # scalex
                 1.0,  # scaley
-                "8BUI",  # pixeltype
+                "1BB",  # pixeltype
                 1,  # value
                 0,  # nodataval
             )
@@ -1056,7 +1056,7 @@ class Raster(BaseModel):
                     empty_raster,
                     geom_raster,
                     "[rast2]",
-                    "8BUI",
+                    "1BB",
                     "UNION",
                 )
             ).scalar_subquery()
