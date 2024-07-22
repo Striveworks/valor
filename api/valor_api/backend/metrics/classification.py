@@ -1,23 +1,22 @@
 import random
 from collections import defaultdict
-from typing import Sequence
 
 import numpy as np
-from sqlalchemy import CTE, Integer, alias
-from sqlalchemy.orm import Bundle, Session
-from sqlalchemy.sql import and_, case, func, or_, select
+from sqlalchemy import CTE, ColumnElement, Integer, literal
+from sqlalchemy.orm import Session
+from sqlalchemy.sql import and_, func, or_, select
 
 from valor_api import enums, schemas
 from valor_api.backend import core, models
 from valor_api.backend.metrics.metric_utils import (
     commit_results,
-    create_grouper_mappings,
+    create_label_mapping,
     log_evaluation_duration,
     log_evaluation_item_counts,
     prepare_filter_for_evaluation,
     validate_computation,
 )
-from valor_api.backend.query import generate_query, generate_select
+from valor_api.backend.query import generate_select
 
 LabelMapType = list[list[list[str]]]
 
@@ -26,9 +25,8 @@ def _compute_curves(
     db: Session,
     predictions: CTE,
     groundtruths: CTE,
-    grouper_key: str,
-    grouper_mappings: dict[str, dict[str, dict]],
-    unique_datums: dict[str, tuple[str, str]],
+    labels: dict[int, tuple[str, str]],
+    unique_datums: dict[int, tuple[str, str]],
     pr_curve_max_examples: int,
     metrics_to_return: list[enums.MetricType],
 ) -> list[schemas.PrecisionRecallCurve | schemas.DetailedPrecisionRecallCurve]:
@@ -43,11 +41,7 @@ def _compute_curves(
         A CTE defining a set of predictions.
     groundtruths: CTE
         A CTE defining a set of ground truths.
-    grouper_key: str
-        The key of the grouper used to calculate the PR curves.
-    grouper_mappings: dict[str, dict[str, dict]]
-        A dictionary of mappings that connect groupers to their related labels.
-    unique_datums: dict[str, tuple[str, str]]
+    unique_datums: dict[int, tuple[str, str]]
         All of the unique datums associated with the ground truth and prediction filters.
     pr_curve_max_examples: int
         The maximum number of datum examples to store per true positive, false negative, etc.
@@ -60,140 +54,371 @@ def _compute_curves(
         The PrecisionRecallCurve and/or DetailedPrecisionRecallCurve metrics.
     """
 
-    pr_output = defaultdict(lambda: defaultdict(dict))
-    detailed_pr_output = defaultdict(lambda: defaultdict(dict))
-
-    label_keys = grouper_mappings["grouper_key_to_label_keys_mapping"][
-        grouper_key
-    ]
-
-    # create sets of all datums for which there is a prediction / groundtruth
-    # used when separating misclassifications/no_predictions
-    pd_datum_ids_to_high_score = {
-        datum_id: high_score
-        for datum_id, high_score in db.query(
-            select(predictions.c.datum_id, func.max(predictions.c.score))
-            .select_from(predictions)
-            .join(models.Datum, models.Datum.id == predictions.c.datum_id)
-            .join(
-                models.Label,
-                and_(
-                    models.Label.id == predictions.c.label_id,
-                    models.Label.key.in_(label_keys),
-                ),
-            )
-            .group_by(predictions.c.datum_id)
-            .subquery()
-        ).all()
-    }
-
-    groundtruth_labels = alias(models.Label)
-    prediction_labels = alias(models.Label)
-
-    total_query = (
+    high_score_subquery = (
         select(
-            case(
-                grouper_mappings["label_value_to_grouper_value"],
-                value=groundtruth_labels.c.value,
-                else_=None,
-            ).label("gt_label_value"),
-            groundtruths.c.datum_id,
-            case(
-                grouper_mappings["label_value_to_grouper_value"],
-                value=prediction_labels.c.value,
-                else_=None,
-            ).label("pd_label_value"),
+            predictions.c.key,
             predictions.c.datum_id,
-            groundtruths.c.dataset_name,
-            models.Datum.uid.label("datum_uid"),
-            predictions.c.score,
+            func.max(predictions.c.score).label("score"),
         )
-        .select_from(groundtruths)
-        .join(
-            predictions,
-            predictions.c.datum_id == groundtruths.c.datum_id,
-            full=True,
-        )
-        .join(
-            models.Datum,
-            or_(
-                models.Datum.id == groundtruths.c.datum_id,
-                models.Datum.id == predictions.c.datum_id,
-            ),
-        )
-        .join(
-            groundtruth_labels,
-            and_(
-                groundtruth_labels.c.id == groundtruths.c.label_id,
-                groundtruth_labels.c.key.in_(label_keys),
-            ),
-        )
-        .join(
-            prediction_labels,
-            and_(
-                prediction_labels.c.id == predictions.c.label_id,
-                prediction_labels.c.key.in_(label_keys),
-            ),
+        .select_from(predictions)
+        .group_by(
+            predictions.c.key,
+            predictions.c.datum_id,
         )
         .subquery()
     )
 
-    sorted_query = select(total_query).order_by(
-        total_query.c.gt_label_value != total_query.c.pd_label_value,
-        -total_query.c.score,
+    base_query = (
+        select(
+            models.Datum.id.label("datum_id"),
+            models.Label.key,
+            models.Label.value,
+            high_score_subquery.c.score.label("high_score"),
+        )
+        .select_from(models.Datum)
+        .join(models.Label, models.Label.id.in_(labels.keys()), full=True)
+        .join(
+            high_score_subquery,
+            and_(
+                high_score_subquery.c.datum_id == models.Datum.id,
+                high_score_subquery.c.key == models.Label.key,
+            ),
+            isouter=True,
+        )
+        .where(models.Datum.id.in_(unique_datums.keys()))
+        .subquery()
     )
-    res = db.query(sorted_query.subquery()).all()
 
-    for threshold in [x / 100 for x in range(5, 100, 5)]:
+    thresholds_cte = select(
+        func.generate_series(0.95, 0.05, -0.05).label("threshold")
+    ).subquery()
 
-        for grouper_value in grouper_mappings["grouper_key_to_labels_mapping"][
-            grouper_key
-        ].keys():
-            tp, tn, fp, fn = set(), set(), defaultdict(set), defaultdict(set)
-            seen_datum_ids = set()
+    joint_query = (
+        select(
+            base_query.c.datum_id,
+            base_query.c.key,
+            base_query.c.value,
+            thresholds_cte.c.threshold,
+            and_(
+                groundtruths.c.key.isnot(None),
+                predictions.c.key.isnot(None),
+                predictions.c.score >= thresholds_cte.c.threshold,
+            ).label("tp"),
+            and_(
+                groundtruths.c.key.is_(None),
+                predictions.c.key.isnot(None),
+                predictions.c.score >= thresholds_cte.c.threshold,
+            ).label("fp"),
+            and_(
+                groundtruths.c.key.is_(None),
+                or_(
+                    predictions.c.key.is_(None),
+                    predictions.c.score < thresholds_cte.c.threshold,
+                ),
+            ).label("tn"),
+            and_(
+                groundtruths.c.key.isnot(None),
+                or_(
+                    and_(
+                        predictions.c.key.isnot(None),
+                        predictions.c.score < thresholds_cte.c.threshold,
+                    ),
+                    predictions.c.key.is_(None),
+                ),
+                base_query.c.high_score >= thresholds_cte.c.threshold,
+            ).label("fn_misclf"),
+            and_(
+                groundtruths.c.key.isnot(None),
+                or_(
+                    and_(
+                        predictions.c.key.isnot(None),
+                        predictions.c.score < thresholds_cte.c.threshold,
+                    ),
+                    predictions.c.key.is_(None),
+                ),
+                base_query.c.high_score < thresholds_cte.c.threshold,
+            ).label("fn_misprd"),
+        )
+        .select_from(base_query)
+        .join(
+            groundtruths,
+            and_(
+                groundtruths.c.datum_id == base_query.c.datum_id,
+                groundtruths.c.key == base_query.c.key,
+                groundtruths.c.value == base_query.c.value,
+            ),
+            isouter=True,
+        )
+        .join(
+            predictions,
+            and_(
+                predictions.c.datum_id == base_query.c.datum_id,
+                predictions.c.key == base_query.c.key,
+                predictions.c.value == base_query.c.value,
+            ),
+            isouter=True,
+        )
+        .join(thresholds_cte, literal(True))
+        .order_by(
+            base_query.c.key,
+            base_query.c.value,
+            base_query.c.datum_id,
+        )
+        .cte()
+    )
 
-            for row in res:
-                (
-                    groundtruth_label,
-                    gt_datum_id,
-                    predicted_label,
-                    pd_datum_id,
-                    score,
-                ) = (row[0], row[1], row[2], row[3], row[6])
+    # define pr curve query
 
-                if (
-                    groundtruth_label == grouper_value
-                    and predicted_label == grouper_value
-                    and score >= threshold
-                ):
-                    tp.add(pd_datum_id)
-                    seen_datum_ids.add(pd_datum_id)
-                elif predicted_label == grouper_value and score >= threshold:
-                    # if there was a groundtruth for a given datum, then it was a misclassification
-                    fp["misclassifications"].add(pd_datum_id)
-                    seen_datum_ids.add(pd_datum_id)
-                elif (
-                    groundtruth_label == grouper_value
-                    and gt_datum_id not in seen_datum_ids
-                ):
-                    # if there was a prediction for a given datum, then it was a misclassification
-                    if (
-                        gt_datum_id in pd_datum_ids_to_high_score
-                        and pd_datum_ids_to_high_score[gt_datum_id]
-                        >= threshold
-                    ):
-                        fn["misclassifications"].add(gt_datum_id)
-                    else:
-                        fn["no_predictions"].add(gt_datum_id)
-                    seen_datum_ids.add(gt_datum_id)
+    pr_counts = (
+        select(
+            joint_query.c.key,
+            joint_query.c.value,
+            joint_query.c.threshold,
+            func.sum(joint_query.c.tp.cast(Integer)).label("tp"),
+            func.sum(joint_query.c.fp.cast(Integer)).label("fp"),
+            func.sum(joint_query.c.tn.cast(Integer)).label("tn"),
+            (
+                func.sum(joint_query.c.fn_misclf.cast(Integer))
+                + func.sum(joint_query.c.fn_misprd.cast(Integer))
+            ).label("fn"),
+        )
+        .select_from(joint_query)
+        .group_by(
+            joint_query.c.key,
+            joint_query.c.value,
+            joint_query.c.threshold,
+        )
+        .subquery()
+    )
 
-            tn = set(unique_datums.keys()) - seen_datum_ids
-            tp_cnt, fp_cnt, fn_cnt, tn_cnt = (
-                len(tp),
-                len(fp["misclassifications"]),
-                len(fn["no_predictions"]) + len(fn["misclassifications"]),
-                len(tn),
+    # define detailed pr curve query
+
+    def search_datums(condition: ColumnElement[bool]):
+        search_datums = (
+            select(
+                joint_query.c.datum_id,
+                joint_query.c.key,
+                joint_query.c.value,
+                joint_query.c.threshold,
+                func.row_number()
+                .over(
+                    partition_by=[
+                        joint_query.c.key,
+                        joint_query.c.value,
+                        joint_query.c.threshold,
+                    ],
+                    order_by=func.random(),
+                )
+                .label("row_number"),
             )
+            .where(condition.is_(True))
+            .subquery()
+        )
+        return (
+            select(
+                search_datums.c.key,
+                search_datums.c.value,
+                search_datums.c.threshold,
+                func.array_agg(search_datums.c.datum_id)
+                .over(
+                    partition_by=[
+                        search_datums.c.key,
+                        search_datums.c.value,
+                        search_datums.c.threshold,
+                    ]
+                )
+                .label("datum_ids"),
+            )
+            .where(search_datums.c.row_number <= pr_curve_max_examples)
+            .distinct()
+            .cte()
+        )
+
+    tp_examples = search_datums(joint_query.c.tp)
+    fp_examples = search_datums(joint_query.c.fp)
+    tn_examples = search_datums(joint_query.c.tn)
+    fn_misclassification_examples = search_datums(joint_query.c.fn_misclf)
+    fn_missing_prediction_examples = search_datums(joint_query.c.fn_misprd)
+
+    detailed_pr_counts = (
+        select(
+            joint_query.c.key,
+            joint_query.c.value,
+            joint_query.c.threshold,
+            func.sum(joint_query.c.tp.cast(Integer)),
+            func.sum(joint_query.c.fp.cast(Integer)),
+            func.sum(joint_query.c.tn.cast(Integer)),
+            func.sum(joint_query.c.fn_misclf.cast(Integer)),
+            func.sum(joint_query.c.fn_misprd.cast(Integer)),
+            tp_examples.c.datum_ids.label("tp_examples"),
+            fp_examples.c.datum_ids.label("fp_examples"),
+            tn_examples.c.datum_ids.label("tn_examples"),
+            fn_misclassification_examples.c.datum_ids.label(
+                "fn_misclf_examples"
+            ),
+            fn_missing_prediction_examples.c.datum_ids.label(
+                "fn_misprd_examples"
+            ),
+        )
+        .select_from(joint_query)
+        .join(
+            tp_examples,
+            and_(
+                tp_examples.c.key == joint_query.c.key,
+                tp_examples.c.value == joint_query.c.value,
+                tp_examples.c.threshold == joint_query.c.threshold,
+            ),
+            isouter=True,
+        )
+        .join(
+            fp_examples,
+            and_(
+                fp_examples.c.key == joint_query.c.key,
+                fp_examples.c.value == joint_query.c.value,
+                fp_examples.c.threshold == joint_query.c.threshold,
+            ),
+            isouter=True,
+        )
+        .join(
+            tn_examples,
+            and_(
+                tn_examples.c.key == joint_query.c.key,
+                tn_examples.c.value == joint_query.c.value,
+                tn_examples.c.threshold == joint_query.c.threshold,
+            ),
+            isouter=True,
+        )
+        .join(
+            fn_misclassification_examples,
+            and_(
+                fn_misclassification_examples.c.key == joint_query.c.key,
+                fn_misclassification_examples.c.value == joint_query.c.value,
+                fn_misclassification_examples.c.threshold
+                == joint_query.c.threshold,
+            ),
+            isouter=True,
+        )
+        .join(
+            fn_missing_prediction_examples,
+            and_(
+                fn_missing_prediction_examples.c.key == joint_query.c.key,
+                fn_missing_prediction_examples.c.value == joint_query.c.value,
+                fn_missing_prediction_examples.c.threshold
+                == joint_query.c.threshold,
+            ),
+            isouter=True,
+        )
+        .group_by(
+            joint_query.c.key,
+            joint_query.c.value,
+            joint_query.c.threshold,
+            tp_examples.c.datum_ids,
+            fp_examples.c.datum_ids,
+            tn_examples.c.datum_ids,
+            fn_misclassification_examples.c.datum_ids,
+            fn_missing_prediction_examples.c.datum_ids,
+        )
+        .order_by(joint_query.c.threshold)
+        .subquery()
+    )
+
+    label_to_results = defaultdict(lambda: defaultdict(dict))
+    if enums.MetricType.DetailedPrecisionRecallCurve in metrics_to_return:
+        for (
+            label_key,
+            label_value,
+            threshold,
+            tp_cnt,
+            fp_cnt,
+            tn_cnt,
+            fn_misclf_cnt,
+            fn_misprd_cnt,
+            tp,
+            fp,
+            tn,
+            fn_misclf_examples,
+            fn_misprd_examples,
+        ) in db.query(detailed_pr_counts).all():
+            label_to_results[label_key][label_value][float(threshold)] = (
+                tp_cnt,
+                fp_cnt,
+                tn_cnt,
+                fn_misclf_cnt,
+                fn_misprd_cnt,
+                tp,
+                fp,
+                tn,
+                fn_misclf_examples,
+                fn_misprd_examples,
+            )
+
+    else:
+        for (
+            label_key,
+            label_value,
+            threshold,
+            tp_cnt,
+            fp_cnt,
+            tn_cnt,
+            fn_cnt,
+        ) in db.query(pr_counts).all():
+            label_to_results[label_key][label_value][float(threshold)] = (
+                tp_cnt,
+                fp_cnt,
+                tn_cnt,
+                fn_cnt,
+                0,
+                None,
+                None,
+                None,
+                None,
+                None,
+            )
+
+    pr_output = defaultdict(lambda: defaultdict((lambda: defaultdict(dict))))
+    detailed_pr_output = defaultdict(
+        lambda: defaultdict((lambda: defaultdict(dict)))
+    )
+
+    for key, value in labels.values():
+        for threshold in [x / 100 for x in range(5, 100, 5)]:
+            if (
+                key not in label_to_results
+                or value not in label_to_results[key]
+                or threshold not in label_to_results[key][value]
+            ):
+                (
+                    tp_cnt,
+                    fp_cnt,
+                    tn_cnt,
+                    fn_misclf_cnt,
+                    fn_misprd_cnt,
+                    tp,
+                    fp,
+                    tn,
+                    fn_misclf_examples,
+                    fn_misprd_examples,
+                ) = (0, 0, 0, 0, 0, None, None, None, None, None)
+            else:
+                (
+                    tp_cnt,
+                    fp_cnt,
+                    tn_cnt,
+                    fn_misclf_cnt,
+                    fn_misprd_cnt,
+                    tp,
+                    fp,
+                    tn,
+                    fn_misclf_examples,
+                    fn_misprd_examples,
+                ) = label_to_results[key][value][threshold]
+                tp_cnt = tp_cnt if tp_cnt else 0
+                fp_cnt = fp_cnt if fp_cnt else 0
+                tn_cnt = tn_cnt if tn_cnt else 0
+                fn_misclf_cnt = fn_misclf_cnt if fn_misclf_cnt else 0
+                fn_misprd_cnt = fn_misprd_cnt if fn_misprd_cnt else 0
+
+            fn_cnt = fn_misclf_cnt + fn_misprd_cnt
 
             precision = (
                 (tp_cnt) / (tp_cnt + fp_cnt) if (tp_cnt + fp_cnt) > 0 else -1
@@ -212,7 +437,7 @@ def _compute_curves(
                 else -1
             )
 
-            pr_output[grouper_value][threshold] = {
+            pr_output[key][value][float(threshold)] = {
                 "tp": tp_cnt,
                 "fp": fp_cnt,
                 "fn": fn_cnt,
@@ -227,18 +452,39 @@ def _compute_curves(
                 enums.MetricType.DetailedPrecisionRecallCurve
                 in metrics_to_return
             ):
-                tp = [unique_datums[datum_id] for datum_id in tp]
+                tp = (
+                    [unique_datums[datum_id] for datum_id in tp]
+                    if tp
+                    else list()
+                )
                 fp = {
-                    key: [unique_datums[datum_id] for datum_id in fp[key]]
-                    for key in fp
+                    "misclassifications": [
+                        unique_datums[datum_id] for datum_id in fp
+                    ]
+                    if fp
+                    else list()
                 }
-                tn = [unique_datums[datum_id] for datum_id in tn]
+                tn = (
+                    [unique_datums[datum_id] for datum_id in tn]
+                    if tn
+                    else list()
+                )
                 fn = {
-                    key: [unique_datums[datum_id] for datum_id in fn[key]]
-                    for key in fn
+                    "misclassifications": [
+                        unique_datums[datum_id]
+                        for datum_id in fn_misclf_examples
+                    ]
+                    if fn_misclf_examples
+                    else list(),
+                    "no_predictions": [
+                        unique_datums[datum_id]
+                        for datum_id in fn_misprd_examples
+                    ]
+                    if fn_misprd_examples
+                    else list(),
                 }
 
-                detailed_pr_output[grouper_value][threshold] = {
+                detailed_pr_output[key][value][float(threshold)] = {
                     "tp": {
                         "total": tp_cnt,
                         "observations": {
@@ -246,7 +492,7 @@ def _compute_curves(
                                 "count": tp_cnt,
                                 "examples": (
                                     random.sample(tp, pr_curve_max_examples)
-                                    if len(tp) >= pr_curve_max_examples
+                                    if len(tp) > pr_curve_max_examples
                                     else tp
                                 ),
                             }
@@ -259,7 +505,7 @@ def _compute_curves(
                                 "count": tn_cnt,
                                 "examples": (
                                     random.sample(tn, pr_curve_max_examples)
-                                    if len(tn) >= pr_curve_max_examples
+                                    if len(tn) > pr_curve_max_examples
                                     else tn
                                 ),
                             }
@@ -269,26 +515,26 @@ def _compute_curves(
                         "total": fn_cnt,
                         "observations": {
                             "misclassifications": {
-                                "count": len(fn["misclassifications"]),
+                                "count": fn_misclf_cnt,
                                 "examples": (
                                     random.sample(
                                         fn["misclassifications"],
                                         pr_curve_max_examples,
                                     )
                                     if len(fn["misclassifications"])
-                                    >= pr_curve_max_examples
+                                    > pr_curve_max_examples
                                     else fn["misclassifications"]
                                 ),
                             },
                             "no_predictions": {
-                                "count": len(fn["no_predictions"]),
+                                "count": fn_misprd_cnt,
                                 "examples": (
                                     random.sample(
                                         fn["no_predictions"],
                                         pr_curve_max_examples,
                                     )
                                     if len(fn["no_predictions"])
-                                    >= pr_curve_max_examples
+                                    > pr_curve_max_examples
                                     else fn["no_predictions"]
                                 ),
                             },
@@ -298,7 +544,7 @@ def _compute_curves(
                         "total": fp_cnt,
                         "observations": {
                             "misclassifications": {
-                                "count": len(fp["misclassifications"]),
+                                "count": fp_cnt,
                                 "examples": (
                                     random.sample(
                                         fp["misclassifications"],
@@ -313,31 +559,31 @@ def _compute_curves(
                     },
                 }
 
-    output = []
-
-    output.append(
+    pr_curves = [
         schemas.PrecisionRecallCurve(
-            label_key=grouper_key, value=dict(pr_output)
-        ),
-    )
+            label_key=label_key,
+            value=dict(value),
+        )
+        for label_key, value in pr_output.items()
+    ]
 
-    if enums.MetricType.DetailedPrecisionRecallCurve in metrics_to_return:
-        output += [
-            schemas.DetailedPrecisionRecallCurve(
-                label_key=grouper_key, value=dict(detailed_pr_output)
-            )
-        ]
+    detailed_pr_curves = [
+        schemas.DetailedPrecisionRecallCurve(
+            label_key=label_key,
+            value=dict(value),
+        )
+        for label_key, value in detailed_pr_output.items()
+    ]
 
-    return output
+    return pr_curves + detailed_pr_curves
 
 
 def _compute_roc_auc(
     db: Session,
     groundtruths: CTE,
     predictions: CTE,
-    grouper_key: str,
-    grouper_mappings: dict[str, dict[str, dict]],
-) -> float | None:
+    labels: set[tuple[str, str]],
+) -> list[schemas.ROCAUCMetric]:
     """
     Computes the area under the ROC curve. Note that for the multi-class setting
     this does one-vs-rest AUC for each class and then averages those scores. This should give
@@ -351,39 +597,38 @@ def _compute_roc_auc(
         A cte returning ground truths.
     predictions : CTE
         A cte returning predictions.
-    grouper_key : str
-        The key of the grouper to calculate the ROCAUC for.
-    grouper_mappings: dict[str, dict[str, dict]]
-        A dictionary of mappings that connect groupers to their related labels.
 
     Returns
     -------
-    float | None
+    list[schemas.ROCAUCMetric]
         The ROC AUC. Returns None if no labels exist for that label_key.
     """
 
+    predictions_label_keys = {
+        key for key in (db.scalars(select(predictions.c.key).distinct()).all())
+    }
+
     groundtruths_per_label_kv_query = (
         select(
-            models.Label.key,
-            models.Label.value,
-            func.count(groundtruths.c.id).label("gt_counts_per_label"),
+            groundtruths.c.key,
+            groundtruths.c.value,
+            func.count().label("gt_counts_per_label"),
         )
-        .select_from(models.Label)
-        .join(groundtruths, groundtruths.c.label_id == models.Label.id)
+        .select_from(groundtruths)
         .group_by(
-            models.Label.key,
-            models.Label.value,
+            groundtruths.c.key,
+            groundtruths.c.value,
         )
         .cte("gt_counts")
     )
 
     label_key_to_count = defaultdict(int)
     label_to_count = dict()
-    filtered_label_set = set()
+    groundtruth_labels = set()
     for key, value, count in db.query(groundtruths_per_label_kv_query).all():
         label_key_to_count[key] += count
-        label_to_count[schemas.Label(key=key, value=value)] = count
-        filtered_label_set.add(schemas.Label(key=key, value=value))
+        label_to_count[(key, value)] = count
+        groundtruth_labels.add((key, value))
 
     groundtruths_per_label_key_query = (
         select(
@@ -396,35 +641,25 @@ def _compute_roc_auc(
         .subquery()
     )
 
-    groundtruth_labels = alias(models.Label)
-    prediction_labels = alias(models.Label)
-
     basic_counts_query = (
         select(
-            predictions.c.score,
-            (groundtruth_labels.c.value == prediction_labels.c.value)
+            (groundtruths.c.value == predictions.c.value)
             .cast(Integer)
             .label("is_true_positive"),
-            (groundtruth_labels.c.value != prediction_labels.c.value)
+            (groundtruths.c.value != predictions.c.value)
             .cast(Integer)
             .label("is_false_positive"),
-            groundtruth_labels.c.key.label("label_key"),
-            prediction_labels.c.value.label("prediction_label_value"),
+            predictions.c.key.label("label_key"),
+            predictions.c.value.label("prediction_label_value"),
+            predictions.c.datum_id,
+            predictions.c.score,
         )
         .select_from(predictions)
         .join(
             groundtruths,
-            groundtruths.c.datum_id == predictions.c.datum_id,
-        )
-        .join(
-            groundtruth_labels,
-            groundtruth_labels.c.id == groundtruths.c.label_id,
-        )
-        .join(
-            prediction_labels,
             and_(
-                prediction_labels.c.id == predictions.c.label_id,
-                prediction_labels.c.key == groundtruth_labels.c.key,
+                groundtruths.c.datum_id == predictions.c.datum_id,
+                groundtruths.c.key == predictions.c.key,
             ),
         )
         .subquery("basic_counts")
@@ -447,16 +682,15 @@ def _compute_roc_auc(
     )
 
     tpr_fpr_cumulative = select(
-        basic_counts_query.c.score,
         cumulative_tp.label("cumulative_tp"),
         cumulative_fp.label("cumulative_fp"),
         basic_counts_query.c.label_key,
         basic_counts_query.c.prediction_label_value,
+        basic_counts_query.c.score,
     ).subquery("tpr_fpr_cumulative")
 
     tpr_fpr_rates = (
         select(
-            tpr_fpr_cumulative.c.score,
             (
                 tpr_fpr_cumulative.c.cumulative_tp
                 / groundtruths_per_label_kv_query.c.gt_counts_per_label
@@ -470,6 +704,7 @@ def _compute_roc_auc(
             ).label("fpr"),
             tpr_fpr_cumulative.c.label_key,
             tpr_fpr_cumulative.c.prediction_label_value,
+            tpr_fpr_cumulative.c.score,
         )
         .join(
             groundtruths_per_label_key_query,
@@ -521,7 +756,7 @@ def _compute_roc_auc(
     ).subquery()
 
     results = (
-        select(
+        db.query(
             trap_areas.c.label_key,
             trap_areas.c.prediction_label_value,
             func.sum(trap_areas.c.trap_area),
@@ -530,59 +765,53 @@ def _compute_roc_auc(
             trap_areas.c.label_key,
             trap_areas.c.prediction_label_value,
         )
-        .subquery()
+        .all()
     )
-    map_label_to_result = {
-        schemas.Label(key=key, value=value): rocauc
-        for key, value, rocauc in db.query(results).all()
+
+    map_label_to_rocauc = {
+        (key, value): rocauc
+        for key, value, rocauc in results
+        if rocauc is not None
     }
 
-    # get all of the labels associated with the grouper
-    value_to_labels_mapping = grouper_mappings[
-        "grouper_key_to_labels_mapping"
-    ][grouper_key]
+    label_key_to_rocauc = defaultdict(list)
+    for key, value in labels:
+        label = (key, value)
+        if label not in groundtruth_labels:
+            continue
+        elif label_to_count[label] == 0:
+            label_key_to_rocauc[key].append(0.0)
+        elif label_key_to_count[key] - label_to_count[label] == 0:
+            label_key_to_rocauc[key].append(1.0)
+        else:
+            rocauc = map_label_to_rocauc.get(label, np.nan)
+            label_key_to_rocauc[key].append(float(rocauc))
 
-    sum_roc_aucs = 0
-    label_count = 0
-    for _, label_rows in value_to_labels_mapping.items():
-        for label_row in label_rows:
-
-            label = schemas.Label(key=label_row.key, value=label_row.value)
-
-            # some labels in the "labels" argument may be out-of-scope given our groundtruth_filter, so we fetch all labels that are within scope of the groundtruth_filter to make sure we don't calculate ROCAUC for inappropriate labels
-            if label not in filtered_label_set:
-                continue
-            elif (
-                label not in label_to_count
-                or label.key not in label_key_to_count
-            ):
-                raise RuntimeError(
-                    f"ROC AUC computation failed as the label `{label}` could not be found."
-                )
-
-            if label_to_count[label] == 0:
-                ret = 0.0
-            elif (
-                label_key_to_count[label_row.key] - label_to_count[label] == 0
-            ):
-                ret = 1.0
-            else:
-                ret = map_label_to_result.get(label, np.nan)
-
-            if ret is not None:
-                sum_roc_aucs += float(ret)
-                label_count += 1
-
-    return sum_roc_aucs / label_count if label_count else None
+    label_keys = {key for key, _ in labels}
+    return [
+        schemas.ROCAUCMetric(
+            label_key=key,
+            value=(
+                float(np.mean(label_key_to_rocauc[key]))
+                if len(label_key_to_rocauc[key]) >= 1
+                else None
+            ),
+        )
+        if (key in label_key_to_rocauc and key in predictions_label_keys)
+        else schemas.ROCAUCMetric(
+            label_key=key,
+            value=0.0,
+        )
+        for key in label_keys
+    ]
 
 
-def _compute_confusion_matrix_at_grouper_key(
+def _compute_confusion_matrices(
     db: Session,
     predictions: CTE,
     groundtruths: CTE,
-    grouper_key: str,
-    grouper_mappings: dict[str, dict[str, dict]],
-) -> schemas.ConfusionMatrix | None:
+    labels: dict[int, tuple[str, str]],
+) -> dict[str, schemas.ConfusionMatrix | None]:
     """
     Computes the confusion matrix at a label_key.
 
@@ -594,10 +823,6 @@ def _compute_confusion_matrix_at_grouper_key(
         A CTE defining a set of predictions.
     groundtruths: CTE
         A CTE defining a set of ground truths.
-    grouper_key: str
-        The key of the grouper used to calculate the confusion matrix.
-    grouper_mappings: dict[str, dict[str, dict]]
-        A dictionary of mappings that connect groupers to their related labels.
 
     Returns
     -------
@@ -610,14 +835,14 @@ def _compute_confusion_matrix_at_grouper_key(
     # 1. Get the max prediction scores by datum
     max_scores_by_datum_id = (
         select(
+            predictions.c.datum_id,
+            predictions.c.key,
             func.max(predictions.c.score).label("max_score"),
-            models.Annotation.datum_id.label("datum_id"),
         )
-        .join(
-            models.Annotation,
-            models.Annotation.id == predictions.c.annotation_id,
+        .group_by(
+            predictions.c.key,
+            predictions.c.datum_id,
         )
-        .group_by(models.Annotation.datum_id)
         .subquery()
     )
 
@@ -626,87 +851,86 @@ def _compute_confusion_matrix_at_grouper_key(
     # the result of this query is all of the hard predictions
     min_id_query = (
         select(
-            func.min(predictions.c.id).label("min_id"),
-            models.Annotation.datum_id.label("datum_id"),
+            func.min(predictions.c.prediction_id).label("min_id"),
+            predictions.c.datum_id,
+            predictions.c.key,
         )
         .select_from(predictions)
         .join(
-            models.Annotation,
-            models.Annotation.id == predictions.c.annotation_id,
-        )
-        .join(
             max_scores_by_datum_id,
             and_(
-                models.Annotation.datum_id
-                == max_scores_by_datum_id.c.datum_id,
+                predictions.c.datum_id == max_scores_by_datum_id.c.datum_id,
+                predictions.c.key == max_scores_by_datum_id.c.key,
                 predictions.c.score == max_scores_by_datum_id.c.max_score,
             ),
         )
-        .group_by(models.Annotation.datum_id)
+        .group_by(predictions.c.key, predictions.c.datum_id)
         .subquery()
     )
 
     # 3. Get labels for hard predictions, organize per datum
     hard_preds_query = (
         select(
-            models.Label.value.label("pd_label_value"),
-            min_id_query.c.datum_id.label("datum_id"),
+            predictions.c.key,
+            predictions.c.value,
+            predictions.c.datum_id,
         )
-        .select_from(min_id_query)
+        .select_from(predictions)
         .join(
-            models.Prediction,
-            models.Prediction.id == min_id_query.c.min_id,
-        )
-        .join(
-            models.Label,
-            models.Label.id == models.Prediction.label_id,
+            min_id_query,
+            and_(
+                min_id_query.c.min_id == predictions.c.prediction_id,
+                min_id_query.c.key == predictions.c.key,
+            ),
         )
         .subquery()
     )
 
-    # 4. Link each label value to its corresponding grouper value
-    b = Bundle(
-        "cols",
-        case(
-            grouper_mappings["label_value_to_grouper_value"],
-            value=hard_preds_query.c.pd_label_value,
-        ),
-        case(
-            grouper_mappings["label_value_to_grouper_value"],
-            value=models.Label.value,
-        ),
-    )
-
-    # 5. Generate confusion matrix
+    # 4. Generate confusion matrix
     total_query = (
-        select(b, func.count())
+        db.query(
+            groundtruths.c.key,
+            groundtruths.c.value,
+            hard_preds_query.c.value,
+            func.count(),
+        )
         .select_from(hard_preds_query)
         .join(
             groundtruths,
-            groundtruths.c.datum_id == hard_preds_query.c.datum_id,
+            and_(
+                groundtruths.c.datum_id == hard_preds_query.c.datum_id,
+                groundtruths.c.key == hard_preds_query.c.key,
+            ),
         )
-        .join(
-            models.Label,
-            models.Label.id == groundtruths.c.label_id,
+        .group_by(
+            groundtruths.c.key,
+            groundtruths.c.value,
+            hard_preds_query.c.value,
         )
-        .group_by(b)  # type: ignore - SQLAlchemy Bundle typing issue
+        .all()
     )
 
-    res = db.execute(total_query).all()
-    if len(res) == 0:
-        # this means there's no predictions and groundtruths with the label key
-        # for the same image
-        return None
+    # 5. Unpack results.
+    confusion_mapping = defaultdict(list)
+    for label_key, gt_value, pd_value, count in total_query:
+        confusion_mapping[label_key].append((gt_value, pd_value, count))
 
-    return schemas.ConfusionMatrix(
-        label_key=grouper_key,
-        entries=[
-            schemas.ConfusionMatrixEntry(
-                prediction=r[0][0], groundtruth=r[0][1], count=r[1]
+    return {
+        key: (
+            schemas.ConfusionMatrix(
+                label_key=key,
+                entries=[
+                    schemas.ConfusionMatrixEntry(
+                        prediction=pd, groundtruth=gt, count=count
+                    )
+                    for gt, pd, count in confusion_mapping[key]
+                ],
             )
-            for r in res
-        ],
-    )
+            if key in confusion_mapping
+            else None
+        )
+        for key, _ in labels.values()
+    }
 
 
 def _compute_accuracy_from_cm(cm: schemas.ConfusionMatrix) -> float:
@@ -766,23 +990,24 @@ def _compute_precision_and_recall_f1_from_confusion_matrix(
     return prec, recall, f1
 
 
-def _compute_confusion_matrix_and_metrics_at_grouper_key(
+def _compute_confusion_matrices_and_metrics(
     db: Session,
-    prediction_filter: schemas.Filter,
-    groundtruth_filter: schemas.Filter,
-    grouper_key: str,
-    grouper_mappings: dict[str, dict[str, dict]],
+    groundtruths: CTE,
+    predictions: CTE,
+    labels: dict[int, tuple[str, str]],
     pr_curve_max_examples: int,
     metrics_to_return: list[enums.MetricType],
 ) -> (
     tuple[
-        schemas.ConfusionMatrix | None,
+        list[schemas.ConfusionMatrix],
         list[
             schemas.AccuracyMetric
             | schemas.ROCAUCMetric
             | schemas.PrecisionMetric
             | schemas.RecallMetric
             | schemas.F1Metric
+            | schemas.PrecisionRecallCurve
+            | schemas.DetailedPrecisionRecallCurve
         ],
     ]
 ):
@@ -793,12 +1018,12 @@ def _compute_confusion_matrix_and_metrics_at_grouper_key(
     ----------
     db : Session
         The database Session to query against.
-    prediction_filter : schemas.Filter
-        The filter to be used to query predictions.
-    groundtruth_filter : schemas.Filter
-        The filter to be used to query groundtruths.
-    grouper_mappings: dict[str, dict[str, dict]]
-        A dictionary of mappings that connect groupers to their related labels.
+    predictions: CTE
+        A CTE defining a set of predictions.
+    groundtruths: CTE
+        A CTE defining a set of ground truths.
+    labels: set[tuple[str, str]]
+        Labels referenced by groundtruths and predictions.
     pr_curve_max_examples: int
         The maximum number of datum examples to store per true positive, false negative, etc.
     metrics_to_return: list[MetricType]
@@ -813,93 +1038,42 @@ def _compute_confusion_matrix_and_metrics_at_grouper_key(
         matrix and the second a list of all metrics (accuracy, ROC AUC, precisions, recalls, and f1s).
     """
 
-    label_keys = list(
-        grouper_mappings["grouper_key_to_label_keys_mapping"][grouper_key]
-    )
+    metrics: list[
+        schemas.AccuracyMetric
+        | schemas.ROCAUCMetric
+        | schemas.PrecisionMetric
+        | schemas.RecallMetric
+        | schemas.F1Metric
+        | schemas.PrecisionRecallCurve
+        | schemas.DetailedPrecisionRecallCurve
+    ] = list()
 
-    # groundtruths filter
-    gFilter = groundtruth_filter.model_copy()
-    gFilter.labels = schemas.LogicalFunction.and_(
-        gFilter.labels,
-        schemas.LogicalFunction.or_(
-            *[
-                schemas.Condition(
-                    lhs=schemas.Symbol(name=schemas.SupportedSymbol.LABEL_KEY),
-                    rhs=schemas.Value.infer(key),
-                    op=schemas.FilterOperator.EQ,
-                )
-                for key in label_keys
-            ]
-        ),
-    )
-
-    # predictions filter
-    pFilter = prediction_filter.model_copy()
-    pFilter.labels = schemas.LogicalFunction.and_(
-        pFilter.labels,
-        schemas.LogicalFunction.or_(
-            *[
-                schemas.Condition(
-                    lhs=schemas.Symbol(name=schemas.SupportedSymbol.LABEL_KEY),
-                    rhs=schemas.Value.infer(key),
-                    op=schemas.FilterOperator.EQ,
-                )
-                for key in label_keys
-            ]
-        ),
-    )
-
-    groundtruths = generate_select(
-        models.GroundTruth,
-        models.Annotation.datum_id.label("datum_id"),
-        models.Dataset.name.label("dataset_name"),
-        filters=gFilter,
-        label_source=models.GroundTruth,
-    ).cte()
-
-    predictions = generate_select(
-        models.Prediction,
-        models.Annotation.datum_id.label("datum_id"),
-        models.Dataset.name.label("dataset_name"),
-        filters=pFilter,
-        label_source=models.Prediction,
-    ).cte()
-
-    confusion_matrix = _compute_confusion_matrix_at_grouper_key(
+    #
+    confusion_matrices = _compute_confusion_matrices(
         db=db,
         groundtruths=groundtruths,
         predictions=predictions,
-        grouper_key=grouper_key,
-        grouper_mappings=grouper_mappings,
-    )
-    accuracy = (
-        _compute_accuracy_from_cm(confusion_matrix)
-        if confusion_matrix
-        else 0.0
-    )
-    rocauc = (
-        _compute_roc_auc(
-            db=db,
-            groundtruths=groundtruths,
-            predictions=predictions,
-            grouper_key=grouper_key,
-            grouper_mappings=grouper_mappings,
-        )
-        if confusion_matrix
-        else 0.0
+        labels=labels,
     )
 
     # aggregate metrics (over all label values)
-    output = [
+    metrics += [
         schemas.AccuracyMetric(
-            label_key=grouper_key,
-            value=accuracy,
-        ),
-        schemas.ROCAUCMetric(
-            label_key=grouper_key,
-            value=rocauc,
-        ),
+            label_key=label_key,
+            value=(
+                _compute_accuracy_from_cm(confusion_matrix)
+                if confusion_matrix
+                else 0.0
+            ),
+        )
+        for label_key, confusion_matrix in confusion_matrices.items()
     ]
+    metrics += _compute_roc_auc(
+        db=db,
+        groundtruths=groundtruths,
+        predictions=predictions,
+        labels=set(labels.values()),
+    )
 
     if (
         enums.MetricType.PrecisionRecallCurve in metrics_to_return
@@ -907,22 +1081,25 @@ def _compute_confusion_matrix_and_metrics_at_grouper_key(
     ):
         # calculate the number of unique datums
         # used to determine the number of true negatives
-        gt_datums = generate_query(
-            models.Datum.id,
-            models.Dataset.name,
-            models.Datum.uid,
-            db=db,
-            filters=groundtruth_filter,
-            label_source=models.GroundTruth,
-        ).all()
-        pd_datums = generate_query(
-            models.Datum.id,
-            models.Dataset.name,
-            models.Datum.uid,
-            db=db,
-            filters=prediction_filter,
-            label_source=models.Prediction,
-        ).all()
+        gt_datums = (
+            db.query(
+                groundtruths.c.datum_id,
+                groundtruths.c.dataset_name,
+                groundtruths.c.datum_uid,
+            )
+            .distinct()
+            .all()
+        )
+        pd_datums = (
+            db.query(
+                predictions.c.datum_id,
+                predictions.c.dataset_name,
+                predictions.c.datum_uid,
+            )
+            .distinct()
+            .all()
+        )
+
         unique_datums = {
             datum_id: (dataset_name, datum_uid)
             for datum_id, dataset_name, datum_uid in gt_datums
@@ -934,39 +1111,35 @@ def _compute_confusion_matrix_and_metrics_at_grouper_key(
             }
         )
 
-        pr_curves = _compute_curves(
+        metrics += _compute_curves(
             db=db,
             groundtruths=groundtruths,
             predictions=predictions,
-            grouper_key=grouper_key,
-            grouper_mappings=grouper_mappings,
+            labels=labels,
             unique_datums=unique_datums,
             pr_curve_max_examples=pr_curve_max_examples,
             metrics_to_return=metrics_to_return,
         )
-        output += pr_curves
 
     # metrics that are per label
-    grouper_label_values = grouper_mappings["grouper_key_to_labels_mapping"][
-        grouper_key
-    ].keys()
-    for grouper_value in grouper_label_values:
+    for key, value in labels.values():
+        confusion_matrix = confusion_matrices.get(key, None)
         if confusion_matrix:
             (
                 precision,
                 recall,
                 f1,
             ) = _compute_precision_and_recall_f1_from_confusion_matrix(
-                confusion_matrix, grouper_value
+                confusion_matrix, value
             )
         else:
             precision = 0.0
             recall = 0.0
             f1 = 0.0
 
-        pydantic_label = schemas.Label(key=grouper_key, value=grouper_value)
+        pydantic_label = schemas.Label(key=key, value=value)
 
-        output += [
+        metrics += [
             schemas.PrecisionMetric(
                 label=pydantic_label,
                 value=precision,
@@ -981,26 +1154,173 @@ def _compute_confusion_matrix_and_metrics_at_grouper_key(
             ),
         ]
 
-    return confusion_matrix, output
+    return [
+        confusion_matrix
+        for confusion_matrix in confusion_matrices.values()
+        if confusion_matrix
+    ], metrics
+
+
+def _aggregate_data(
+    db: Session,
+    groundtruth_filter: schemas.Filter,
+    prediction_filter: schemas.Filter,
+    label_map: LabelMapType | None = None,
+) -> tuple[CTE, CTE, dict[int, tuple[str, str]]]:
+    """
+    Compute classification metrics.
+
+    Parameters
+    ----------
+    db : Session
+        The database Session to query against.
+    groundtruth_filter : schemas.Filter
+        The filter to be used to query groundtruths.
+    prediction_filter : schemas.Filter
+        The filter to be used to query predictions.
+    label_map: LabelMapType, optional
+        Optional mapping of individual labels to a grouper label. Useful when you need to evaluate performance using labels that differ across datasets and models.
+
+    Returns
+    ----------
+    list[ConfusionMatrix, Metric]
+        A list of confusion matrices and metrics.
+    """
+    labels = core.fetch_union_of_labels(
+        db=db,
+        lhs=groundtruth_filter,
+        rhs=prediction_filter,
+    )
+
+    label_mapping = create_label_mapping(
+        db=db,
+        labels=labels,
+        label_map=label_map,
+    )
+
+    groundtruths_subquery = generate_select(
+        models.Datum.id.label("datum_id"),
+        models.Datum.uid.label("datum_uid"),
+        models.Dataset.name.label("dataset_name"),
+        models.Label.id,
+        label_mapping,
+        filters=groundtruth_filter,
+        label_source=models.GroundTruth,
+    ).subquery()
+    groundtruths_cte = (
+        select(
+            groundtruths_subquery.c.datum_id,
+            groundtruths_subquery.c.datum_uid,
+            groundtruths_subquery.c.dataset_name,
+            models.Label.id.label("label_id"),
+            models.Label.key,
+            models.Label.value,
+        )
+        .select_from(groundtruths_subquery)
+        .join(
+            models.Label,
+            models.Label.id == groundtruths_subquery.c.label_id,
+        )
+        .distinct()
+        .cte()
+    )
+
+    predictions_subquery = generate_select(
+        models.Datum.id.label("datum_id"),
+        models.Datum.uid.label("datum_uid"),
+        models.Dataset.name.label("dataset_name"),
+        models.Model.name.label("model_name"),
+        models.Prediction.id.label("prediction_id"),
+        models.Prediction.score,
+        models.Label.id,
+        label_mapping,
+        filters=prediction_filter,
+        label_source=models.Prediction,
+    ).subquery()
+    predictions_cte = (
+        select(
+            predictions_subquery.c.dataset_name,
+            predictions_subquery.c.model_name,
+            predictions_subquery.c.datum_id,
+            predictions_subquery.c.datum_uid,
+            models.Label.id.label("label_id"),
+            models.Label.key,
+            models.Label.value,
+            func.min(predictions_subquery.c.prediction_id).label(
+                "prediction_id"
+            ),
+            func.max(predictions_subquery.c.score).label("score"),
+        )
+        .select_from(predictions_subquery)
+        .join(
+            models.Label,
+            models.Label.id == predictions_subquery.c.label_id,
+        )
+        .group_by(
+            predictions_subquery.c.dataset_name,
+            predictions_subquery.c.model_name,
+            predictions_subquery.c.datum_id,
+            predictions_subquery.c.datum_uid,
+            models.Label.id,
+            models.Label.key,
+            models.Label.value,
+        )
+        .cte()
+    )
+
+    def groundtruth_label_query():
+        return (
+            db.query(
+                groundtruths_cte.c.label_id,
+                groundtruths_cte.c.key,
+                groundtruths_cte.c.value,
+            )
+            .distinct()
+            .all()
+        )
+
+    def prediction_label_query():
+        return (
+            db.query(
+                predictions_cte.c.label_id,
+                predictions_cte.c.key,
+                predictions_cte.c.value,
+            )
+            .distinct()
+            .all()
+        )
+
+    # get all labels
+    groundtruth_labels = {
+        label_id: (key, value)
+        for label_id, key, value in groundtruth_label_query()
+    }
+    prediction_labels = {
+        label_id: (key, value)
+        for label_id, key, value in prediction_label_query()
+    }
+    labels = groundtruth_labels
+    labels.update(prediction_labels)
+
+    return (groundtruths_cte, predictions_cte, labels)
 
 
 def _compute_clf_metrics(
     db: Session,
-    prediction_filter: schemas.Filter,
     groundtruth_filter: schemas.Filter,
+    prediction_filter: schemas.Filter,
     pr_curve_max_examples: int,
     metrics_to_return: list[enums.MetricType],
     label_map: LabelMapType | None = None,
-) -> tuple[
-    list[schemas.ConfusionMatrix],
-    Sequence[
-        schemas.ConfusionMatrix
-        | schemas.AccuracyMetric
-        | schemas.ROCAUCMetric
-        | schemas.PrecisionMetric
-        | schemas.RecallMetric
-        | schemas.F1Metric
-    ],
+) -> list[
+    schemas.ConfusionMatrix
+    | schemas.AccuracyMetric
+    | schemas.ROCAUCMetric
+    | schemas.PrecisionMetric
+    | schemas.RecallMetric
+    | schemas.F1Metric
+    | schemas.PrecisionRecallCurve
+    | schemas.DetailedPrecisionRecallCurve
 ]:
     """
     Compute classification metrics.
@@ -1009,10 +1329,10 @@ def _compute_clf_metrics(
     ----------
     db : Session
         The database Session to query against.
-    prediction_filter : schemas.Filter
-        The filter to be used to query predictions.
     groundtruth_filter : schemas.Filter
         The filter to be used to query groundtruths.
+    prediction_filter : schemas.Filter
+        The filter to be used to query predictions.
     metrics_to_return: list[MetricType]
         The list of metrics to compute, store, and return to the user.
     label_map: LabelMapType, optional
@@ -1020,45 +1340,30 @@ def _compute_clf_metrics(
     pr_curve_max_examples: int
         The maximum number of datum examples to store per true positive, false negative, etc.
 
-
     Returns
     ----------
-    Tuple[List[schemas.ConfusionMatrix], List[schemas.ConfusionMatrix | schemas.AccuracyMetric | schemas.ROCAUCMetric| schemas.PrecisionMetric | schemas.RecallMetric | schemas.F1Metric]]
-        A tuple of confusion matrices and metrics.
+    list[ConfusionMatrix, Metric]
+        A list of confusion matrices and metrics.
     """
 
-    labels = core.fetch_union_of_labels(
+    groundtruths, predictions, labels = _aggregate_data(
         db=db,
-        lhs=groundtruth_filter,
-        rhs=prediction_filter,
-    )
-
-    grouper_mappings = create_grouper_mappings(
-        db=db,
-        labels=labels,
+        groundtruth_filter=groundtruth_filter,
+        prediction_filter=prediction_filter,
         label_map=label_map,
-        evaluation_type=enums.TaskType.CLASSIFICATION,
     )
 
     # compute metrics and confusion matrix for each grouper id
-    confusion_matrices, metrics_to_output = [], []
-    for grouper_key in grouper_mappings[
-        "grouper_key_to_labels_mapping"
-    ].keys():
-        cm, metrics = _compute_confusion_matrix_and_metrics_at_grouper_key(
-            db=db,
-            prediction_filter=prediction_filter,
-            groundtruth_filter=groundtruth_filter,
-            grouper_key=grouper_key,
-            grouper_mappings=grouper_mappings,
-            pr_curve_max_examples=pr_curve_max_examples,
-            metrics_to_return=metrics_to_return,
-        )
-        if cm is not None:
-            confusion_matrices.append(cm)
-        metrics_to_output.extend(metrics)
+    confusion_matrices, metrics = _compute_confusion_matrices_and_metrics(
+        db=db,
+        groundtruths=groundtruths,
+        predictions=predictions,
+        labels=labels,
+        pr_curve_max_examples=pr_curve_max_examples,
+        metrics_to_return=metrics_to_return,
+    )
 
-    return confusion_matrices, metrics_to_output
+    return confusion_matrices + metrics
 
 
 @validate_computation
@@ -1105,7 +1410,7 @@ def compute_clf_metrics(
     if parameters.metrics_to_return is None:
         raise RuntimeError("Metrics to return should always be defined here.")
 
-    confusion_matrices, metrics = _compute_clf_metrics(
+    metrics = _compute_clf_metrics(
         db=db,
         prediction_filter=prediction_filter,
         groundtruth_filter=groundtruth_filter,
@@ -1116,13 +1421,6 @@ def compute_clf_metrics(
             else 0
         ),
         metrics_to_return=parameters.metrics_to_return,
-    )
-
-    # add confusion matrices to database
-    commit_results(
-        db=db,
-        metrics=confusion_matrices,
-        evaluation_id=evaluation.id,
     )
 
     # add metrics to database

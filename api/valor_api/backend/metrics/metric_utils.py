@@ -1,7 +1,7 @@
 from collections import defaultdict
 from typing import Callable, Sequence
 
-from sqlalchemy import and_, or_, select
+from sqlalchemy import ColumnElement, Label, and_, case, or_, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 from sqlalchemy.sql import func
@@ -13,170 +13,80 @@ from valor_api.backend.query import generate_select
 LabelMapType = list[list[list[str]]]
 
 
-def _create_detection_grouper_mappings(
-    mapping_dict: dict[tuple[str, ...], tuple[str, ...]],
-    labels: list[models.Label],
-) -> dict[str, dict]:
-    """Create grouper mappings for use when evaluating detections."""
-
-    label_id_to_grouper_id_mapping = {}
-    label_id_to_grouper_key_mapping = {}
-    grouper_id_to_grouper_label_mapping = {}
-    grouper_id_to_label_ids_mapping = defaultdict(list)
-
-    for label in labels:
-        mapped_key, mapped_value = mapping_dict.get(
-            (label.key, label.value), (label.key, label.value)
-        )
-        # create an integer to track each group by
-        grouper_id = hash((mapped_key, mapped_value))
-        # create a separate grouper_key_id which is used to cross-join labels that share a given key
-        # when computing IOUs for PrecisionRecallCurve
-        grouper_key_id = mapped_key
-
-        label_id_to_grouper_id_mapping[label.id] = grouper_id
-        label_id_to_grouper_key_mapping[label.id] = grouper_key_id
-        grouper_id_to_grouper_label_mapping[grouper_id] = schemas.Label(
-            key=mapped_key, value=mapped_value
-        )
-        grouper_id_to_label_ids_mapping[grouper_id].append(label.id)
-
-    return {
-        "label_id_to_grouper_id_mapping": label_id_to_grouper_id_mapping,
-        "label_id_to_grouper_key_mapping": label_id_to_grouper_key_mapping,
-        "grouper_id_to_label_ids_mapping": grouper_id_to_label_ids_mapping,
-        "grouper_id_to_grouper_label_mapping": grouper_id_to_grouper_label_mapping,
-    }
-
-
-def _create_segmentation_grouper_mappings(
-    mapping_dict: dict[tuple[str, ...], tuple[str, ...]],
-    labels: list[models.Label],
-) -> dict[str, dict]:
-    """Create grouper mappings for use when evaluating segmentations."""
-
-    grouper_id_to_grouper_label_mapping = {}
-    grouper_id_to_label_ids_mapping = defaultdict(list)
-
-    for label in labels:
-        mapped_key, mapped_value = mapping_dict.get(
-            (label.key, label.value), (label.key, label.value)
-        )
-        # create an integer to track each group by
-        grouper_id = hash((mapped_key, mapped_value))
-
-        grouper_id_to_grouper_label_mapping[grouper_id] = schemas.Label(
-            key=mapped_key, value=mapped_value
-        )
-        grouper_id_to_label_ids_mapping[grouper_id].append(label.id)
-
-    return {
-        "grouper_id_to_label_ids_mapping": grouper_id_to_label_ids_mapping,
-        "grouper_id_to_grouper_label_mapping": grouper_id_to_grouper_label_mapping,
-    }
-
-
-def _create_classification_grouper_mappings(
-    mapping_dict: dict[tuple[str, ...], tuple[str, ...]],
-    labels: list[models.Label],
-) -> dict[str, dict]:
-    """Create grouper mappings for use when evaluating classifications."""
-
-    # define mappers to connect groupers with labels
-    label_value_to_grouper_value = dict()
-    grouper_key_to_labels_mapping = defaultdict(lambda: defaultdict(set))
-    grouper_key_to_label_keys_mapping = defaultdict(set)
-
-    for label in labels:
-        # the grouper should equal the (label.key, label.value) if it wasn't mapped by the user
-        grouper_key, grouper_value = mapping_dict.get(
-            (label.key, label.value), (label.key, label.value)
-        )
-
-        label_value_to_grouper_value[label.value] = grouper_value
-        grouper_key_to_label_keys_mapping[grouper_key].add(label.key)
-        grouper_key_to_labels_mapping[grouper_key][grouper_value].add(label)
-
-    return {
-        "label_value_to_grouper_value": label_value_to_grouper_value,
-        "grouper_key_to_labels_mapping": grouper_key_to_labels_mapping,
-        "grouper_key_to_label_keys_mapping": grouper_key_to_label_keys_mapping,
-    }
-
-
-def create_grouper_mappings(
+def create_label_mapping(
     db: Session,
-    labels: list,
+    labels: list[models.Label],
     label_map: LabelMapType | None,
-    evaluation_type: enums.TaskType,
-) -> dict[str, dict]:
+) -> ColumnElement[bool] | Label[int]:
     """
     Creates a dictionary of mappings that connect each label with a "grouper" (i.e., a unique ID-key-value combination that can represent one or more labels).
     These mappings enable Valor to group multiple labels together using the label_map argument in each evaluation function.
 
     Parameters
     ----------
-    labels : list
-        A list of all labels.
+    db : Session
+        The database session.
+    labels : list[models.Label]
+        A list of labels that exist for this evaluation job.
     label_map: LabelMapType, optional
         An optional label map to use when grouping labels. If None is passed, this function will still create the appropriate mappings using individual labels.
-    evaluation_type : str
-        The type of evaluation to create mappings for.
 
     Returns
     ----------
-    dict[str, dict[str | int, any]]
-        A dictionary of mappings that are used at evaluation time to group multiple labels together.
+    ColumnElement[bool] | Label[int]
+        A label id statement.
     """
 
-    mapping_functions = {
-        enums.TaskType.CLASSIFICATION: _create_classification_grouper_mappings,
-        enums.TaskType.OBJECT_DETECTION: _create_detection_grouper_mappings,
-        enums.TaskType.SEMANTIC_SEGMENTATION: _create_segmentation_grouper_mappings,
-    }
-    if evaluation_type not in mapping_functions.keys():
-        raise KeyError(
-            f"evaluation_type must be one of {mapping_functions.keys()}"
-        )
-
-    # create a map of labels to groupers; will be empty if the user didn't pass a label_map
-    grouper_key_to_value = defaultdict(list)
-    mapping_dict = dict()
     if label_map:
-        for label, grouper in label_map:
-            mapping_dict[tuple(label)] = tuple(grouper)
-            grouper_key_to_value[grouper[0]].append(grouper[1])
-
         # add grouper labels to database (if they don't exist)
-        grouper_labels = set(mapping_dict.values())
-        existing_labels = {
-            (row.key, row.value)
-            for row in (
-                db.query(models.Label)
-                .where(
-                    or_(
-                        *[
-                            and_(
-                                models.Label.key == key,
-                                models.Label.value.in_(values),
-                            )
-                            for key, values in grouper_key_to_value.items()
-                        ]
-                    )
-                )
-                .all()
-            )
+        existing_labels = {(label.key, label.value) for label in labels}
+        mapping_dict = {
+            tuple(label): tuple(grouper) for label, grouper in label_map
         }
-        labels_to_create = list(grouper_labels - existing_labels)
+        grouper_labels = set(mapping_dict.values())
+        missing_grouper_labels = grouper_labels - existing_labels
         core.create_labels(
             db=db,
             labels=[
                 schemas.Label(key=key, value=value)
-                for key, value in labels_to_create
+                for key, value in missing_grouper_labels
             ],
         )
 
-    return mapping_functions[evaluation_type](mapping_dict, labels)
+        # cache label ids
+        all_labels = grouper_labels.union(existing_labels)
+        map_label_to_id = {
+            (label.key, label.value): label.id
+            for label in db.query(models.Label)
+            .where(
+                or_(
+                    *[
+                        and_(
+                            models.Label.key == label[0],
+                            models.Label.value == label[1],
+                        )
+                        for label in all_labels
+                    ]
+                )
+            )
+            .all()
+        }
+
+        # create label id mapping
+        label_mapping = [
+            (
+                models.Label.id == map_label_to_id[label],  # type: ignore - pyright doesnt see tuple[str, str]
+                map_label_to_id[grouper],  # type: ignore - pyright doesnt see tuple[str, str]
+            )
+            for label, grouper in mapping_dict.items()
+        ]
+
+        return case(
+            *label_mapping,
+            else_=models.Label.id,
+        ).label("label_id")
+    else:
+        return models.Label.id.label("label_id")
 
 
 def commit_results(
