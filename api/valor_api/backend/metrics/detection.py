@@ -1250,6 +1250,7 @@ def _compute_detection_metrics(
                     pd_label_id,
                 )
             )
+            continue
 
         if pd_id not in matched_pd_set:
             matched_pd_set.add(pd_id)
@@ -1410,7 +1411,6 @@ def _compute_detection_metrics_with_detailed_precision_recall_curve(
         The filter to be used to query groundtruths.
     target_type: enums.AnnotationType
         The annotation type to compute metrics for.
-
 
     Returns
     ----------
@@ -1620,7 +1620,7 @@ def _compute_detection_metrics_with_detailed_precision_recall_curve(
             (gt.c.label_id == pd.c.label_id).label("is_match"),
         )
         .select_from(pd)
-        .join(
+        .outerjoin(
             gt,
             and_(
                 gt.c.datum_id == pd.c.datum_id,
@@ -1666,7 +1666,7 @@ def _compute_detection_metrics_with_detailed_precision_recall_curve(
             is_match,
         ) = row
 
-        if gt_id is None:
+        if gt_label_id is None:
             predictions_not_in_sorted_ranked_pairs.append(
                 (
                     pd_id,
@@ -1676,6 +1676,7 @@ def _compute_detection_metrics_with_detailed_precision_recall_curve(
                     pd_label_id,
                 )
             )
+            continue
 
         if pd_id not in pd_set:
             # sorted_ranked_pairs will include all groundtruth-prediction pairs that meet filter criteria
