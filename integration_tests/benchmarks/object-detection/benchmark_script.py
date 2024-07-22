@@ -16,7 +16,7 @@ from valor import (
     Prediction,
     connect,
 )
-from valor.schemas import MultiPolygon, Polygon, Raster
+from valor.schemas import MultiPolygon, Polygon, Raster, Box
 
 connect("http://0.0.0.0:8000")
 client = Client()
@@ -37,6 +37,21 @@ def _convert_wkt_to_coordinates(wkt: str) -> list[list[tuple]]:
     return [
         [tuple(float(y) for y in x) for x in json.loads(wkt)["coordinates"][0]]
     ]
+
+
+def _convert_wkt_to_box(wkt: str) -> Box:
+    """Convert a WKT string into a nested list of coordinates."""
+    coords = [
+        [tuple(float(y) for y in x) for x in json.loads(wkt)["coordinates"][0]]
+    ][0]
+    xcoords = [x for x, _ in coords]
+    ycoords = [y for _, y in coords]
+    return Box.from_extrema(
+        xmin=min(xcoords),
+        xmax=max(xcoords),
+        ymin=min(ycoords),
+        ymax=max(ycoords),
+    )
 
 
 def write_results_to_file(write_path: str, result_dict: dict):
@@ -74,7 +89,6 @@ def ingest_groundtruths_and_predictions(
                 annotations=list(
                     [
                         Annotation(
-                            is_instance=ann["is_instance"],
                             labels=list(
                                 [
                                     Label(
@@ -84,39 +98,11 @@ def ingest_groundtruths_and_predictions(
                                     for label in ann["labels"]
                                 ]
                             ),
-                            bounding_box=(
-                                _convert_wkt_to_coordinates(ann["box"])
-                                if ann["box"]
-                                else None
-                            ),
-                            raster=(
-                                Raster.from_geometry(
-                                    geometry=MultiPolygon(
-                                        [
-                                            _convert_wkt_to_coordinates(
-                                                ann["raster"]
-                                            )
-                                        ]
-                                    ),
-                                    height=data["datum_metadata"]["height"],
-                                    width=data["datum_metadata"]["width"],
-                                )
-                                if ann["raster"]
-                                else None
-                            ),
-                            polygon=(
-                                (
-                                    Polygon(
-                                        _convert_wkt_to_coordinates(
-                                            ann["polygon"]
-                                        )
-                                    )
-                                )
-                                if ann["polygon"]
-                                else None
-                            ),
+                            bounding_box=_convert_wkt_to_box(ann["raster"]),
+                            is_instance=True,
                         )
                         for ann in data["groundtruth_annotations"]
+                        if ann["raster"] is not None
                     ]
                 ),
             )
@@ -128,7 +114,6 @@ def ingest_groundtruths_and_predictions(
                 annotations=list(
                     [
                         Annotation(
-                            is_instance=ann["is_instance"],
                             labels=list(
                                 [
                                     Label(
@@ -139,39 +124,11 @@ def ingest_groundtruths_and_predictions(
                                     for label in ann["labels"]
                                 ]
                             ),
-                            bounding_box=(
-                                _convert_wkt_to_coordinates(ann["box"])
-                                if ann["box"]
-                                else None
-                            ),
-                            raster=(
-                                Raster.from_geometry(
-                                    geometry=MultiPolygon(
-                                        [
-                                            _convert_wkt_to_coordinates(
-                                                ann["raster"]
-                                            )
-                                        ]
-                                    ),
-                                    height=data["datum_metadata"]["height"],
-                                    width=data["datum_metadata"]["width"],
-                                )
-                                if ann["raster"]
-                                else None
-                            ),
-                            polygon=(
-                                (
-                                    Polygon(
-                                        _convert_wkt_to_coordinates(
-                                            ann["polygon"]
-                                        )
-                                    )
-                                )
-                                if ann["polygon"]
-                                else None
-                            ),
+                            bounding_box=_convert_wkt_to_box(ann["raster"]),
+                            is_instance=True,
                         )
                         for ann in data["prediction_annotations"]
+                        if ann["raster"] is not None
                     ]
                 ),
             )
@@ -233,7 +190,7 @@ def run_detailed_pr_curve_evaluation(dset: Dataset, model: Model):
 
 
 def run_benchmarking_analysis(
-    limits_to_test: list[int] = [3, 3],
+    limits_to_test: list[int] = [10, 100, 1000],
     results_file: str = "results.json",
     data_file: str = "data.json",
 ):
