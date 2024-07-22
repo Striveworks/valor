@@ -16,7 +16,7 @@ from valor import (
     Prediction,
     connect,
 )
-from valor.schemas import MultiPolygon, Polygon, Raster, Box
+from valor.schemas import Box, MultiPolygon, Polygon, Raster
 
 connect("http://0.0.0.0:8000")
 client = Client()
