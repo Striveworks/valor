@@ -7,7 +7,7 @@ from dataclasses import dataclass
 from typing import Sequence, Tuple
 
 from geoalchemy2 import functions as gfunc
-from sqlalchemy import CTE, and_, func, or_, select
+from sqlalchemy import CTE, and_, func, select
 from sqlalchemy.orm import Session, aliased
 
 from valor_api import enums, schemas
@@ -858,7 +858,6 @@ def _aggregate_data(
     tuple[CTE, CTE, dict[int, tuple[str, str]]]:
         A tuple with form (groundtruths, predictions, labels).
     """
-
     labels = core.fetch_union_of_labels(
         db=db,
         lhs=groundtruth_filter,
@@ -1247,7 +1246,6 @@ def _compute_detection_metrics(
 
     matched_pd_set = set()
     matched_sorted_ranked_pairs = defaultdict(list)
-    predictions_not_in_sorted_ranked_pairs = list()
     false_positive_entries = list()
 
     for row in ordered_ious:
