@@ -915,7 +915,7 @@ class Raster(BaseModel):
                 f"Expecting a binary mask (i.e. of dtype bool) but got dtype {mask.dtype}"
             )
         f = io.BytesIO()
-        PIL.Image.fromarray(mask).save(f, format="PNG")
+        PIL.Image.fromarray(mask).save(f, format="PNG", mode="1")
         f.seek(0)
         mask_bytes = f.read()
         f.close()

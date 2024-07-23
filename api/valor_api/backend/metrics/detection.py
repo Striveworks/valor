@@ -637,7 +637,6 @@ def _compute_detailed_curves(
     return output
 
 
-@profiler
 def _compute_detection_metrics_averaged_over_ious_from_aps(
     ap_scores: Sequence[schemas.APMetric],
 ) -> Sequence[schemas.APMetricAveragedOverIOUs]:
@@ -819,7 +818,6 @@ def _convert_annotations_to_common_type(
     return target_type
 
 
-@profiler
 def _annotation_type_to_geojson(
     annotation_type: AnnotationType,
     table,
@@ -836,7 +834,6 @@ def _annotation_type_to_geojson(
     return gfunc.ST_AsGeoJSON(box)
 
 
-@profiler
 def _aggregate_data(
     db: Session,
     groundtruth_filter: schemas.Filter,
@@ -845,7 +842,10 @@ def _aggregate_data(
     label_map: LabelMapType | None = None,
 ) -> tuple[CTE, CTE, dict[int, tuple[str, str]]]:
     """
-    Aggregates annotations.
+    Aggregates data for an object detection task.
+
+    This function returns a tuple containing CTE's used to gather groundtruths, predictions and a
+    dictionary that maps label_id to a key-value pair.
 
     Parameters
     ----------
@@ -855,15 +855,15 @@ def _aggregate_data(
         The filter to be used to query groundtruths.
     prediction_filter : schemas.Filter
         The filter to be used to query predictions.
-    target_type: enums.AnnotationType
-        The annotation type to compute metrics for.
+    target_type : enums.AnnotationType
+        The annotation type used by the object detection evaluation.
     label_map: LabelMapType, optional
         Optional mapping of individual labels to a grouper label. Useful when you need to evaluate performance using labels that differ across datasets and models.
 
     Returns
     ----------
-    tuple[CTE, CTE, dict[int, tuple[str, str]]]
-        Returns a tuple of (ground truths, predictions, labels).
+    tuple[CTE, CTE, dict[int, tuple[str, str]]]:
+        A tuple with form (groundtruths, predictions, labels).
     """
     labels = core.fetch_union_of_labels(
         db=db,
@@ -974,7 +974,6 @@ def _aggregate_data(
     return (groundtruths_cte, predictions_cte, labels)
 
 
-@profiler
 def _compute_detection_metrics(
     db: Session,
     parameters: schemas.EvaluationParameters,
@@ -1231,18 +1230,13 @@ def _compute_detection_metrics(
         .subquery()
     )
 
-    @profiler
-    def ordered_ious_():
-        return (
-            db.query(ious)
-            .order_by(-ious.c.score, -ious.c.iou, ious.c.gt_id)
-            .all()
-        )
-
-    ordered_ious = ordered_ious_()
+    ordered_ious = (
+        db.query(ious).order_by(-ious.c.score, -ious.c.iou, ious.c.gt_id).all()
+    )
 
     matched_pd_set = set()
     matched_sorted_ranked_pairs = defaultdict(list)
+    predictions_not_in_sorted_ranked_pairs = list()
 
     for row in ordered_ious:
         (
@@ -1252,11 +1246,23 @@ def _compute_detection_metrics(
             gt_id,
             pd_id,
             gt_label_id,
-            _,
+            pd_label_id,
             score,
             iou,
             gt_geojson,
         ) = row
+
+        if gt_id is None:
+            predictions_not_in_sorted_ranked_pairs.append(
+                (
+                    pd_id,
+                    score,
+                    dataset_name,
+                    pd_datum_uid,
+                    pd_label_id,
+                )
+            )
+            continue
 
         if pd_id not in matched_pd_set:
             matched_pd_set.add(pd_id)
@@ -1273,20 +1279,6 @@ def _compute_detection_metrics(
                     is_match=True,  # we're joining on grouper IDs, so only matches are included in matched_sorted_ranked_pairs
                 )
             )
-
-    # get predictions that didn't make it into matched_sorted_ranked_pairs
-    # because they didn't have a corresponding groundtruth to pair with
-    predictions_not_in_sorted_ranked_pairs = (
-        db.query(
-            pd.c.prediction_id,
-            pd.c.score,
-            pd.c.dataset_name,
-            pd.c.datum_uid,
-            pd.c.label_id,
-        )
-        .filter(pd.c.prediction_id.notin_(matched_pd_set))
-        .all()
-    )
 
     for (
         pd_id,
@@ -1400,7 +1392,6 @@ def _compute_detection_metrics(
     return ap_ar_output + pr_curves
 
 
-@profiler
 def _compute_detection_metrics_with_detailed_precision_recall_curve(
     db: Session,
     parameters: schemas.EvaluationParameters,
@@ -1432,7 +1423,6 @@ def _compute_detection_metrics_with_detailed_precision_recall_curve(
         The filter to be used to query groundtruths.
     target_type: enums.AnnotationType
         The annotation type to compute metrics for.
-
 
     Returns
     ----------
@@ -1671,6 +1661,7 @@ def _compute_detection_metrics_with_detailed_precision_recall_curve(
     matched_pd_set = set()
     sorted_ranked_pairs = defaultdict(list)
     matched_sorted_ranked_pairs = defaultdict(list)
+    predictions_not_in_sorted_ranked_pairs = list()
 
     for row in ordered_ious:
         (
@@ -1686,6 +1677,18 @@ def _compute_detection_metrics_with_detailed_precision_recall_curve(
             gt_geojson,
             is_match,
         ) = row
+
+        if gt_label_id is None:
+            predictions_not_in_sorted_ranked_pairs.append(
+                (
+                    pd_id,
+                    score,
+                    dataset_name,
+                    pd_datum_uid,
+                    pd_label_id,
+                )
+            )
+            continue
 
         if pd_id not in pd_set:
             # sorted_ranked_pairs will include all groundtruth-prediction pairs that meet filter criteria
@@ -1733,20 +1736,6 @@ def _compute_detection_metrics_with_detailed_precision_recall_curve(
                     is_match=True,
                 )
             )
-
-    # get predictions that didn't make it into matched_sorted_ranked_pairs
-    # because they didn't have a corresponding groundtruth to pair with
-    predictions_not_in_sorted_ranked_pairs = (
-        db.query(
-            pd.c.prediction_id,
-            pd.c.score,
-            pd.c.dataset_name,
-            pd.c.datum_uid,
-            pd.c.label_id,
-        )
-        .filter(pd.c.prediction_id.notin_(matched_pd_set))
-        .all()
-    )
 
     for (
         pd_id,

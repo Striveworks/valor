@@ -1168,7 +1168,10 @@ def _aggregate_data(
     label_map: LabelMapType | None = None,
 ) -> tuple[CTE, CTE, dict[int, tuple[str, str]]]:
     """
-    Compute classification metrics.
+    Aggregates data for a classification task.
+
+    This function returns a tuple containing CTE's used to gather groundtruths, predictions and a
+    dictionary that maps label_id to a key-value pair.
 
     Parameters
     ----------
@@ -1183,8 +1186,8 @@ def _aggregate_data(
 
     Returns
     ----------
-    list[ConfusionMatrix, Metric]
-        A list of confusion matrices and metrics.
+    tuple[CTE, CTE, dict[int, tuple[str, str]]]:
+        A tuple with form (groundtruths, predictions, labels).
     """
     labels = core.fetch_union_of_labels(
         db=db,
@@ -1268,36 +1271,34 @@ def _aggregate_data(
         .cte()
     )
 
-    def groundtruth_label_query():
-        return (
-            db.query(
-                groundtruths_cte.c.label_id,
-                groundtruths_cte.c.key,
-                groundtruths_cte.c.value,
-            )
-            .distinct()
-            .all()
+    groundtruth_label_query = (
+        db.query(
+            groundtruths_cte.c.label_id,
+            groundtruths_cte.c.key,
+            groundtruths_cte.c.value,
         )
+        .distinct()
+        .all()
+    )
 
-    def prediction_label_query():
-        return (
-            db.query(
-                predictions_cte.c.label_id,
-                predictions_cte.c.key,
-                predictions_cte.c.value,
-            )
-            .distinct()
-            .all()
+    prediction_label_query = (
+        db.query(
+            predictions_cte.c.label_id,
+            predictions_cte.c.key,
+            predictions_cte.c.value,
         )
+        .distinct()
+        .all()
+    )
 
     # get all labels
     groundtruth_labels = {
         label_id: (key, value)
-        for label_id, key, value in groundtruth_label_query()
+        for label_id, key, value in groundtruth_label_query
     }
     prediction_labels = {
         label_id: (key, value)
-        for label_id, key, value in prediction_label_query()
+        for label_id, key, value in prediction_label_query
     }
     labels = groundtruth_labels
     labels.update(prediction_labels)
