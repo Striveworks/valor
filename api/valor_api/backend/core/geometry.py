@@ -374,11 +374,11 @@ def _raster_to_png_b64(
     raster_numpy = raster_numpy.reshape((height, width))
 
     # Convert to Pillow Image
-    image = Image.fromarray(raster_numpy)
+    raster_image = Image.fromarray(raster_numpy)
 
     # b64 encode PNG to mask str
     f = io.BytesIO()
-    image.save(f, format="PNG")
+    raster_image.save(f, format="PNG")
     f.seek(0)
     mask_bytes = f.read()
     return b64encode(mask_bytes).decode()
