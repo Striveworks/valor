@@ -5,7 +5,6 @@ from sqlalchemy.orm import Session
 from valor_api import crud, enums, schemas
 from valor_api.backend.metrics.detection import (
     RankedPair,
-    _aggregate_data,
     _compute_detailed_curves,
     _compute_detection_metrics,
     _compute_detection_metrics_with_detailed_precision_recall_curve,
@@ -1108,53 +1107,6 @@ def test__compute_detection(
         _round_dict(m, 3)
         return m
 
-    prediction_filter = schemas.Filter(
-        predictions=schemas.LogicalFunction(
-            args=[
-                schemas.Condition(
-                    lhs=schemas.Symbol(
-                        name=schemas.SupportedSymbol.MODEL_NAME
-                    ),
-                    rhs=schemas.Value.infer("test_model"),
-                    op=schemas.FilterOperator.EQ,
-                ),
-                schemas.Condition(
-                    lhs=schemas.Symbol(name=schemas.SupportedSymbol.LABEL_KEY),
-                    rhs=schemas.Value.infer("class"),
-                    op=schemas.FilterOperator.EQ,
-                ),
-            ],
-            op=schemas.LogicalOperator.AND,
-        )
-    )
-    groundtruth_filter = schemas.Filter(
-        groundtruths=schemas.LogicalFunction(
-            args=[
-                schemas.Condition(
-                    lhs=schemas.Symbol(
-                        name=schemas.SupportedSymbol.DATASET_NAME
-                    ),
-                    rhs=schemas.Value.infer("test_dataset"),
-                    op=schemas.FilterOperator.EQ,
-                ),
-                schemas.Condition(
-                    lhs=schemas.Symbol(name=schemas.SupportedSymbol.LABEL_KEY),
-                    rhs=schemas.Value.infer("class"),
-                    op=schemas.FilterOperator.EQ,
-                ),
-            ],
-            op=schemas.LogicalOperator.AND,
-        )
-    )
-
-    gt, pd, labels = _aggregate_data(
-        db=db,
-        groundtruth_filter=groundtruth_filter,
-        prediction_filter=prediction_filter,
-        label_map=None,
-        target_type=enums.AnnotationType.BOX,
-    )
-
     metrics = _compute_detection_metrics(
         db=db,
         parameters=schemas.EvaluationParameters(
@@ -1172,9 +1124,48 @@ def test__compute_detection(
                 enums.MetricType.PrecisionRecallCurve,
             ],
         ),
-        groundtruths=gt,
-        predictions=pd,
-        labels=labels,
+        prediction_filter=schemas.Filter(
+            predictions=schemas.LogicalFunction(
+                args=[
+                    schemas.Condition(
+                        lhs=schemas.Symbol(
+                            name=schemas.SupportedSymbol.MODEL_NAME
+                        ),
+                        rhs=schemas.Value.infer("test_model"),
+                        op=schemas.FilterOperator.EQ,
+                    ),
+                    schemas.Condition(
+                        lhs=schemas.Symbol(
+                            name=schemas.SupportedSymbol.LABEL_KEY
+                        ),
+                        rhs=schemas.Value.infer("class"),
+                        op=schemas.FilterOperator.EQ,
+                    ),
+                ],
+                op=schemas.LogicalOperator.AND,
+            )
+        ),
+        groundtruth_filter=schemas.Filter(
+            groundtruths=schemas.LogicalFunction(
+                args=[
+                    schemas.Condition(
+                        lhs=schemas.Symbol(
+                            name=schemas.SupportedSymbol.DATASET_NAME
+                        ),
+                        rhs=schemas.Value.infer("test_dataset"),
+                        op=schemas.FilterOperator.EQ,
+                    ),
+                    schemas.Condition(
+                        lhs=schemas.Symbol(
+                            name=schemas.SupportedSymbol.LABEL_KEY
+                        ),
+                        rhs=schemas.Value.infer("class"),
+                        op=schemas.FilterOperator.EQ,
+                    ),
+                ],
+                op=schemas.LogicalOperator.AND,
+            )
+        ),
         target_type=enums.AnnotationType.BOX,
     )
 
@@ -1351,53 +1342,6 @@ def test__compute_detection(
         metric,
     ), expected_value in pr_expected_answers.items():
         assert pr_metrics["value"][value][threshold][metric] == expected_value
-
-    prediction_filter = schemas.Filter(
-        predictions=schemas.LogicalFunction(
-            args=[
-                schemas.Condition(
-                    lhs=schemas.Symbol(
-                        name=schemas.SupportedSymbol.MODEL_NAME
-                    ),
-                    rhs=schemas.Value.infer("test_model"),
-                    op=schemas.FilterOperator.EQ,
-                ),
-                schemas.Condition(
-                    lhs=schemas.Symbol(name=schemas.SupportedSymbol.LABEL_KEY),
-                    rhs=schemas.Value.infer("class"),
-                    op=schemas.FilterOperator.EQ,
-                ),
-            ],
-            op=schemas.LogicalOperator.AND,
-        )
-    )
-    groundtruth_filter = schemas.Filter(
-        groundtruths=schemas.LogicalFunction(
-            args=[
-                schemas.Condition(
-                    lhs=schemas.Symbol(
-                        name=schemas.SupportedSymbol.DATASET_NAME
-                    ),
-                    rhs=schemas.Value.infer("test_dataset"),
-                    op=schemas.FilterOperator.EQ,
-                ),
-                schemas.Condition(
-                    lhs=schemas.Symbol(name=schemas.SupportedSymbol.LABEL_KEY),
-                    rhs=schemas.Value.infer("class"),
-                    op=schemas.FilterOperator.EQ,
-                ),
-            ],
-            op=schemas.LogicalOperator.AND,
-        )
-    )
-
-    gt, pd, labels = _aggregate_data(
-        db=db,
-        groundtruth_filter=groundtruth_filter,
-        prediction_filter=prediction_filter,
-        label_map=None,
-        target_type=enums.AnnotationType.BOX,
-    )
 
     # now add PrecisionRecallCurve
     metrics = _compute_detection_metrics(
@@ -1417,9 +1361,48 @@ def test__compute_detection(
                 enums.MetricType.PrecisionRecallCurve,
             ],
         ),
-        groundtruths=gt,
-        predictions=pd,
-        labels=labels,
+        prediction_filter=schemas.Filter(
+            predictions=schemas.LogicalFunction(
+                args=[
+                    schemas.Condition(
+                        lhs=schemas.Symbol(
+                            name=schemas.SupportedSymbol.MODEL_NAME
+                        ),
+                        rhs=schemas.Value.infer("test_model"),
+                        op=schemas.FilterOperator.EQ,
+                    ),
+                    schemas.Condition(
+                        lhs=schemas.Symbol(
+                            name=schemas.SupportedSymbol.LABEL_KEY
+                        ),
+                        rhs=schemas.Value.infer("class"),
+                        op=schemas.FilterOperator.EQ,
+                    ),
+                ],
+                op=schemas.LogicalOperator.AND,
+            )
+        ),
+        groundtruth_filter=schemas.Filter(
+            groundtruths=schemas.LogicalFunction(
+                args=[
+                    schemas.Condition(
+                        lhs=schemas.Symbol(
+                            name=schemas.SupportedSymbol.DATASET_NAME
+                        ),
+                        rhs=schemas.Value.infer("test_dataset"),
+                        op=schemas.FilterOperator.EQ,
+                    ),
+                    schemas.Condition(
+                        lhs=schemas.Symbol(
+                            name=schemas.SupportedSymbol.LABEL_KEY
+                        ),
+                        rhs=schemas.Value.infer("class"),
+                        op=schemas.FilterOperator.EQ,
+                    ),
+                ],
+                op=schemas.LogicalOperator.AND,
+            )
+        ),
         target_type=enums.AnnotationType.BOX,
     )
 
@@ -1597,53 +1580,6 @@ def test__compute_detection(
     ), expected_value in pr_expected_answers.items():
         assert pr_metrics["value"][value][threshold][metric] == expected_value
 
-    prediction_filter = schemas.Filter(
-        predictions=schemas.LogicalFunction(
-            args=[
-                schemas.Condition(
-                    lhs=schemas.Symbol(
-                        name=schemas.SupportedSymbol.MODEL_NAME
-                    ),
-                    rhs=schemas.Value.infer("test_model"),
-                    op=schemas.FilterOperator.EQ,
-                ),
-                schemas.Condition(
-                    lhs=schemas.Symbol(name=schemas.SupportedSymbol.LABEL_KEY),
-                    rhs=schemas.Value.infer("class"),
-                    op=schemas.FilterOperator.EQ,
-                ),
-            ],
-            op=schemas.LogicalOperator.AND,
-        )
-    )
-    groundtruth_filter = schemas.Filter(
-        groundtruths=schemas.LogicalFunction(
-            args=[
-                schemas.Condition(
-                    lhs=schemas.Symbol(
-                        name=schemas.SupportedSymbol.DATASET_NAME
-                    ),
-                    rhs=schemas.Value.infer("test_dataset"),
-                    op=schemas.FilterOperator.EQ,
-                ),
-                schemas.Condition(
-                    lhs=schemas.Symbol(name=schemas.SupportedSymbol.LABEL_KEY),
-                    rhs=schemas.Value.infer("class"),
-                    op=schemas.FilterOperator.EQ,
-                ),
-            ],
-            op=schemas.LogicalOperator.AND,
-        )
-    )
-
-    gt, pd, labels = _aggregate_data(
-        db=db,
-        groundtruth_filter=groundtruth_filter,
-        prediction_filter=prediction_filter,
-        label_map=None,
-        target_type=enums.AnnotationType.BOX,
-    )
-
     # finally, test the DetailedPrecisionRecallCurve version
     metrics = _compute_detection_metrics_with_detailed_precision_recall_curve(
         db=db,
@@ -1662,9 +1598,48 @@ def test__compute_detection(
                 enums.MetricType.PrecisionRecallCurve,
             ],
         ),
-        groundtruths=gt,
-        predictions=pd,
-        labels=labels,
+        prediction_filter=schemas.Filter(
+            predictions=schemas.LogicalFunction(
+                args=[
+                    schemas.Condition(
+                        lhs=schemas.Symbol(
+                            name=schemas.SupportedSymbol.MODEL_NAME
+                        ),
+                        rhs=schemas.Value.infer("test_model"),
+                        op=schemas.FilterOperator.EQ,
+                    ),
+                    schemas.Condition(
+                        lhs=schemas.Symbol(
+                            name=schemas.SupportedSymbol.LABEL_KEY
+                        ),
+                        rhs=schemas.Value.infer("class"),
+                        op=schemas.FilterOperator.EQ,
+                    ),
+                ],
+                op=schemas.LogicalOperator.AND,
+            )
+        ),
+        groundtruth_filter=schemas.Filter(
+            groundtruths=schemas.LogicalFunction(
+                args=[
+                    schemas.Condition(
+                        lhs=schemas.Symbol(
+                            name=schemas.SupportedSymbol.DATASET_NAME
+                        ),
+                        rhs=schemas.Value.infer("test_dataset"),
+                        op=schemas.FilterOperator.EQ,
+                    ),
+                    schemas.Condition(
+                        lhs=schemas.Symbol(
+                            name=schemas.SupportedSymbol.LABEL_KEY
+                        ),
+                        rhs=schemas.Value.infer("class"),
+                        op=schemas.FilterOperator.EQ,
+                    ),
+                ],
+                op=schemas.LogicalOperator.AND,
+            )
+        ),
         target_type=enums.AnnotationType.BOX,
     )
 
@@ -1848,54 +1823,6 @@ def test__compute_detection_metrics_with_rasters(
     groundtruths_with_rasters: list[list[GroundTruth]],
     predictions_with_rasters: list[list[Prediction]],
 ):
-
-    groundtruth_filter = schemas.Filter(
-        groundtruths=schemas.LogicalFunction(
-            args=[
-                schemas.Condition(
-                    lhs=schemas.Symbol(
-                        name=schemas.SupportedSymbol.DATASET_NAME
-                    ),
-                    rhs=schemas.Value.infer("test_dataset"),
-                    op=schemas.FilterOperator.EQ,
-                ),
-                schemas.Condition(
-                    lhs=schemas.Symbol(name=schemas.SupportedSymbol.LABEL_KEY),
-                    rhs=schemas.Value.infer("class"),
-                    op=schemas.FilterOperator.EQ,
-                ),
-            ],
-            op=schemas.LogicalOperator.AND,
-        )
-    )
-    prediction_filter = schemas.Filter(
-        predictions=schemas.LogicalFunction(
-            args=[
-                schemas.Condition(
-                    lhs=schemas.Symbol(
-                        name=schemas.SupportedSymbol.MODEL_NAME
-                    ),
-                    rhs=schemas.Value.infer("test_model"),
-                    op=schemas.FilterOperator.EQ,
-                ),
-                schemas.Condition(
-                    lhs=schemas.Symbol(name=schemas.SupportedSymbol.LABEL_KEY),
-                    rhs=schemas.Value.infer("class"),
-                    op=schemas.FilterOperator.EQ,
-                ),
-            ],
-            op=schemas.LogicalOperator.AND,
-        )
-    )
-
-    gt, pd, labels = _aggregate_data(
-        db=db,
-        groundtruth_filter=groundtruth_filter,
-        prediction_filter=prediction_filter,
-        label_map=None,
-        target_type=enums.AnnotationType.RASTER,
-    )
-
     iou_thresholds = set([round(0.5 + 0.05 * i, 2) for i in range(10)])
     metrics = _compute_detection_metrics(
         db=db,
@@ -1914,9 +1841,48 @@ def test__compute_detection_metrics_with_rasters(
                 enums.MetricType.PrecisionRecallCurve,
             ],
         ),
-        groundtruths=gt,
-        predictions=pd,
-        labels=labels,
+        prediction_filter=schemas.Filter(
+            predictions=schemas.LogicalFunction(
+                args=[
+                    schemas.Condition(
+                        lhs=schemas.Symbol(
+                            name=schemas.SupportedSymbol.MODEL_NAME
+                        ),
+                        rhs=schemas.Value.infer("test_model"),
+                        op=schemas.FilterOperator.EQ,
+                    ),
+                    schemas.Condition(
+                        lhs=schemas.Symbol(
+                            name=schemas.SupportedSymbol.LABEL_KEY
+                        ),
+                        rhs=schemas.Value.infer("class"),
+                        op=schemas.FilterOperator.EQ,
+                    ),
+                ],
+                op=schemas.LogicalOperator.AND,
+            )
+        ),
+        groundtruth_filter=schemas.Filter(
+            groundtruths=schemas.LogicalFunction(
+                args=[
+                    schemas.Condition(
+                        lhs=schemas.Symbol(
+                            name=schemas.SupportedSymbol.DATASET_NAME
+                        ),
+                        rhs=schemas.Value.infer("test_dataset"),
+                        op=schemas.FilterOperator.EQ,
+                    ),
+                    schemas.Condition(
+                        lhs=schemas.Symbol(
+                            name=schemas.SupportedSymbol.LABEL_KEY
+                        ),
+                        rhs=schemas.Value.infer("class"),
+                        op=schemas.FilterOperator.EQ,
+                    ),
+                ],
+                op=schemas.LogicalOperator.AND,
+            )
+        ),
         target_type=enums.AnnotationType.RASTER,
     )
 
@@ -2031,53 +1997,6 @@ def test__compute_detection_metrics_with_rasters(
     ), expected_value in pr_expected_answers.items():
         assert pr_metrics["value"][value][threshold][metric] == expected_value
 
-    prediction_filter = schemas.Filter(
-        predictions=schemas.LogicalFunction(
-            args=[
-                schemas.Condition(
-                    lhs=schemas.Symbol(
-                        name=schemas.SupportedSymbol.MODEL_NAME
-                    ),
-                    rhs=schemas.Value.infer("test_model"),
-                    op=schemas.FilterOperator.EQ,
-                ),
-                schemas.Condition(
-                    lhs=schemas.Symbol(name=schemas.SupportedSymbol.LABEL_KEY),
-                    rhs=schemas.Value.infer("class"),
-                    op=schemas.FilterOperator.EQ,
-                ),
-            ],
-            op=schemas.LogicalOperator.AND,
-        )
-    )
-    groundtruth_filter = schemas.Filter(
-        groundtruths=schemas.LogicalFunction(
-            args=[
-                schemas.Condition(
-                    lhs=schemas.Symbol(
-                        name=schemas.SupportedSymbol.DATASET_NAME
-                    ),
-                    rhs=schemas.Value.infer("test_dataset"),
-                    op=schemas.FilterOperator.EQ,
-                ),
-                schemas.Condition(
-                    lhs=schemas.Symbol(name=schemas.SupportedSymbol.LABEL_KEY),
-                    rhs=schemas.Value.infer("class"),
-                    op=schemas.FilterOperator.EQ,
-                ),
-            ],
-            op=schemas.LogicalOperator.AND,
-        )
-    )
-
-    gt, pd, labels = _aggregate_data(
-        db=db,
-        groundtruth_filter=groundtruth_filter,
-        prediction_filter=prediction_filter,
-        label_map=None,
-        target_type=enums.AnnotationType.RASTER,
-    )
-
     # test DetailedPrecisionRecallCurve version
     metrics = _compute_detection_metrics_with_detailed_precision_recall_curve(
         db=db,
@@ -2096,9 +2015,48 @@ def test__compute_detection_metrics_with_rasters(
                 enums.MetricType.PrecisionRecallCurve,
             ],
         ),
-        groundtruths=gt,
-        predictions=pd,
-        labels=labels,
+        prediction_filter=schemas.Filter(
+            predictions=schemas.LogicalFunction(
+                args=[
+                    schemas.Condition(
+                        lhs=schemas.Symbol(
+                            name=schemas.SupportedSymbol.MODEL_NAME
+                        ),
+                        rhs=schemas.Value.infer("test_model"),
+                        op=schemas.FilterOperator.EQ,
+                    ),
+                    schemas.Condition(
+                        lhs=schemas.Symbol(
+                            name=schemas.SupportedSymbol.LABEL_KEY
+                        ),
+                        rhs=schemas.Value.infer("class"),
+                        op=schemas.FilterOperator.EQ,
+                    ),
+                ],
+                op=schemas.LogicalOperator.AND,
+            )
+        ),
+        groundtruth_filter=schemas.Filter(
+            groundtruths=schemas.LogicalFunction(
+                args=[
+                    schemas.Condition(
+                        lhs=schemas.Symbol(
+                            name=schemas.SupportedSymbol.DATASET_NAME
+                        ),
+                        rhs=schemas.Value.infer("test_dataset"),
+                        op=schemas.FilterOperator.EQ,
+                    ),
+                    schemas.Condition(
+                        lhs=schemas.Symbol(
+                            name=schemas.SupportedSymbol.LABEL_KEY
+                        ),
+                        rhs=schemas.Value.infer("class"),
+                        op=schemas.FilterOperator.EQ,
+                    ),
+                ],
+                op=schemas.LogicalOperator.AND,
+            )
+        ),
         target_type=enums.AnnotationType.RASTER,
     )
 

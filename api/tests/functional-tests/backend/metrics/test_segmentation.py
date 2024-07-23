@@ -515,20 +515,14 @@ def test__compute_segmentation_metrics(
         )
     )
 
-    gt, pd, labels = _aggregate_data(
-        db=db,
-        groundtruth_filter=groundtruth_filter,
-        prediction_filter=prediction_filter,
-        label_map=None,
-    )
-
     metrics = _compute_segmentation_metrics(
         db,
-        groundtruths=gt,
-        predictions=pd,
-        labels=labels,
+        parameters=schemas.EvaluationParameters(
+            task_type=enums.TaskType.SEMANTIC_SEGMENTATION, label_map=None
+        ),
+        prediction_filter=prediction_filter,
+        groundtruth_filter=groundtruth_filter,
     )
-
     # should have seven metrics
     # (one IOU for each of the four labels from the groundtruth set, and three mIOUs for each included label key)
     assert len(metrics) == 7

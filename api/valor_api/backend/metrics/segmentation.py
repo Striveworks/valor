@@ -80,6 +80,78 @@ def _count_predictions(
     )
 
 
+def _compute_iou(
+    db: Session,
+    groundtruths: CTE,
+    predictions: CTE,
+    labels: dict[int, tuple[str, str]],
+) -> list[schemas.IOUMetric | schemas.mIOUMetric]:
+    """Computes the pixelwise intersection over union for the given dataset, model, and label"""
+
+    tp_count = _count_true_positives(
+        groundtruths=groundtruths, predictions=predictions
+    )
+    gt_count = _count_groundtruths(groundtruths=groundtruths)
+    pd_count = _count_predictions(predictions=predictions)
+
+    ious = (
+        db.query(
+            gt_count.c.label_id,
+            case(
+                (gt_count.c.count == 0, None),
+                (pd_count.c.count == 0, 0.0),
+                else_=(
+                    tp_count.c.count
+                    / (gt_count.c.count + pd_count.c.count - tp_count.c.count)
+                ),
+            ).label("iou"),
+        )
+        .select_from(gt_count)
+        .join(pd_count, pd_count.c.label_id == gt_count.c.label_id)
+        .join(tp_count, tp_count.c.label_id == gt_count.c.label_id)
+        .all()
+    )
+    label_id_to_iou = {label_id: iou for label_id, iou in ious}
+
+    groundtruth_label_ids = db.scalars(
+        select(groundtruths.c.label_id).distinct()
+    ).all()
+
+    metrics = list()
+    ious_per_key = defaultdict(list)
+    for label_id in groundtruth_label_ids:
+
+        label_key, label_value = labels[label_id]
+        label = schemas.Label(key=label_key, value=label_value)
+
+        iou = label_id_to_iou.get(label_id, 0.0)
+
+        if iou is None:
+            continue
+
+        metrics.append(
+            IOUMetric(
+                label=label,
+                value=float(iou),
+            )
+        )
+        ious_per_key[label_key].append(float(iou))
+
+    for label_key, iou_values in ious_per_key.items():
+        metrics.append(
+            mIOUMetric(
+                value=(
+                    sum(iou_values) / len(iou_values)
+                    if len(iou_values) != 0
+                    else -1
+                ),
+                label_key=label_key,
+            )
+        )
+
+    return metrics
+
+
 def _aggregate_data(
     db: Session,
     groundtruth_filter: schemas.Filter,
@@ -236,74 +308,43 @@ def _aggregate_data(
 
 def _compute_segmentation_metrics(
     db: Session,
-    groundtruths: CTE,
-    predictions: CTE,
-    labels: dict[int, tuple[str, str]],
-) -> list[schemas.IOUMetric | schemas.mIOUMetric]:
-    """Computes the pixelwise intersection over union for the given dataset, model, and label"""
+    parameters: schemas.EvaluationParameters,
+    prediction_filter: schemas.Filter,
+    groundtruth_filter: schemas.Filter,
+) -> list[IOUMetric | mIOUMetric]:
+    """
+    Computes segmentation metrics.
 
-    tp_count = _count_true_positives(
-        groundtruths=groundtruths, predictions=predictions
+    Parameters
+    ----------
+    db : Session
+        The database Session to query against.
+    parameters : schemas.EvaluationParameters
+        Any user-defined parameters.
+    prediction_filter : schemas.Filter
+        The filter to be used to query predictions.
+    groundtruth_filter : schemas.Filter
+        The filter to be used to query groundtruths.
+
+    Returns
+    ----------
+    List[schemas.IOUMetric | mIOUMetric]
+        A list containing one `IOUMetric` for each label in ground truth and one `mIOUMetric` for the mean _compute_IOU over all labels.
+    """
+
+    groundtruths, predictions, labels = _aggregate_data(
+        db=db,
+        groundtruth_filter=groundtruth_filter,
+        prediction_filter=prediction_filter,
+        label_map=parameters.label_map,
     )
-    gt_count = _count_groundtruths(groundtruths=groundtruths)
-    pd_count = _count_predictions(predictions=predictions)
 
-    ious = (
-        db.query(
-            gt_count.c.label_id,
-            case(
-                (gt_count.c.count == 0, None),
-                (pd_count.c.count == 0, 0.0),
-                else_=(
-                    tp_count.c.count
-                    / (gt_count.c.count + pd_count.c.count - tp_count.c.count)
-                ),
-            ).label("iou"),
-        )
-        .select_from(gt_count)
-        .join(pd_count, pd_count.c.label_id == gt_count.c.label_id)
-        .join(tp_count, tp_count.c.label_id == gt_count.c.label_id)
-        .all()
+    return _compute_iou(
+        db,
+        groundtruths=groundtruths,
+        predictions=predictions,
+        labels=labels,
     )
-    label_id_to_iou = {label_id: iou for label_id, iou in ious}
-
-    groundtruth_label_ids = db.scalars(
-        select(groundtruths.c.label_id).distinct()
-    ).all()
-
-    metrics = list()
-    ious_per_key = defaultdict(list)
-    for label_id in groundtruth_label_ids:
-
-        label_key, label_value = labels[label_id]
-        label = schemas.Label(key=label_key, value=label_value)
-
-        iou = label_id_to_iou.get(label_id, 0.0)
-
-        if iou is None:
-            continue
-
-        metrics.append(
-            IOUMetric(
-                label=label,
-                value=float(iou),
-            )
-        )
-        ious_per_key[label_key].append(float(iou))
-
-    for label_key, iou_values in ious_per_key.items():
-        metrics.append(
-            mIOUMetric(
-                value=(
-                    sum(iou_values) / len(iou_values)
-                    if len(iou_values) != 0
-                    else -1
-                ),
-                label_key=label_key,
-            )
-        )
-
-    return metrics
 
 
 @validate_computation
@@ -335,26 +376,18 @@ def compute_semantic_segmentation_metrics(
         task_type=parameters.task_type,
     )
 
-    groundtruths, predictions, labels = _aggregate_data(
-        db=db,
-        groundtruth_filter=groundtruth_filter,
-        prediction_filter=prediction_filter,
-        label_map=parameters.label_map,
-    )
-
     log_evaluation_item_counts(
         db=db,
         evaluation=evaluation,
-        groundtruths=groundtruths,
-        predictions=predictions,
-        labels=labels,
+        prediction_filter=prediction_filter,
+        groundtruth_filter=groundtruth_filter,
     )
 
     metrics = _compute_segmentation_metrics(
         db=db,
-        groundtruths=groundtruths,
-        predictions=predictions,
-        labels=labels,
+        parameters=parameters,
+        prediction_filter=prediction_filter,
+        groundtruth_filter=groundtruth_filter,
     )
 
     # add metrics to database

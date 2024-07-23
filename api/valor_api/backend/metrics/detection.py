@@ -968,9 +968,8 @@ def _aggregate_data(
 def _compute_detection_metrics(
     db: Session,
     parameters: schemas.EvaluationParameters,
-    groundtruths: CTE,
-    predictions: CTE,
-    labels: dict[int, tuple[str, str]],
+    prediction_filter: schemas.Filter,
+    groundtruth_filter: schemas.Filter,
     target_type: enums.AnnotationType,
 ) -> Sequence[
     schemas.APMetric
@@ -1037,6 +1036,14 @@ def _compute_detection_metrics(
             "recall_score_threshold should exist in the range 0 <= threshold <= 1."
         )
 
+    gt, pd, labels = _aggregate_data(
+        db=db,
+        groundtruth_filter=groundtruth_filter,
+        prediction_filter=prediction_filter,
+        target_type=target_type,
+        label_map=parameters.label_map,
+    )
+
     # Alias the annotation table (required for joining twice)
     gt_annotation = aliased(models.Annotation)
     pd_annotation = aliased(models.Annotation)
@@ -1044,15 +1051,15 @@ def _compute_detection_metrics(
     # Get distinct annotations
     gt_pd_pairs = (
         select(
-            groundtruths.c.annotation_id.label("gt_annotation_id"),
-            predictions.c.annotation_id.label("pd_annotation_id"),
+            gt.c.annotation_id.label("gt_annotation_id"),
+            pd.c.annotation_id.label("pd_annotation_id"),
         )
-        .select_from(predictions)
+        .select_from(pd)
         .join(
-            groundtruths,
+            gt,
             and_(
-                groundtruths.c.datum_id == predictions.c.datum_id,
-                groundtruths.c.label_id == predictions.c.label_id,
+                pd.c.datum_id == gt.c.datum_id,
+                pd.c.label_id == gt.c.label_id,
             ),
         )
         .distinct()
@@ -1180,35 +1187,35 @@ def _compute_detection_metrics(
 
     ious = (
         select(
-            func.coalesce(
-                predictions.c.dataset_name, groundtruths.c.dataset_name
-            ).label("dataset_name"),
-            predictions.c.datum_uid.label("pd_datum_uid"),
-            groundtruths.c.datum_uid.label("gt_datum_uid"),
-            groundtruths.c.groundtruth_id.label("gt_id"),
-            predictions.c.prediction_id.label("pd_id"),
-            groundtruths.c.label_id.label("gt_label_id"),
-            predictions.c.label_id.label("pd_label_id"),
-            predictions.c.score.label("score"),
+            func.coalesce(pd.c.dataset_name, gt.c.dataset_name).label(
+                "dataset_name"
+            ),
+            pd.c.datum_uid.label("pd_datum_uid"),
+            gt.c.datum_uid.label("gt_datum_uid"),
+            gt.c.groundtruth_id.label("gt_id"),
+            pd.c.prediction_id.label("pd_id"),
+            gt.c.label_id.label("gt_label_id"),
+            pd.c.label_id.label("pd_label_id"),
+            pd.c.score.label("score"),
             func.coalesce(
                 gt_pd_ious.c.iou,
                 0,
             ).label("iou"),
-            groundtruths.c.geojson.label("gt_geojson"),
+            gt.c.geojson.label("gt_geojson"),
         )
-        .select_from(predictions)
+        .select_from(pd)
         .outerjoin(
-            groundtruths,
+            gt,
             and_(
-                groundtruths.c.datum_id == predictions.c.datum_id,
-                groundtruths.c.label_id == predictions.c.label_id,
+                pd.c.datum_id == gt.c.datum_id,
+                pd.c.label_id == gt.c.label_id,
             ),
         )
         .outerjoin(
             gt_pd_ious,
             and_(
-                gt_pd_ious.c.gt_annotation_id == groundtruths.c.annotation_id,
-                gt_pd_ious.c.pd_annotation_id == predictions.c.annotation_id,
+                gt_pd_ious.c.gt_annotation_id == gt.c.annotation_id,
+                gt_pd_ious.c.pd_annotation_id == pd.c.annotation_id,
             ),
         )
         .subquery()
@@ -1295,10 +1302,7 @@ def _compute_detection_metrics(
     groundtruths_per_label = defaultdict(list)
     number_of_groundtruths_per_label = defaultdict(int)
     for label_id, dataset_name, datum_uid, groundtruth_id in db.query(
-        groundtruths.c.label_id,
-        groundtruths.c.dataset_name,
-        groundtruths.c.datum_uid,
-        groundtruths.c.groundtruth_id,
+        gt.c.label_id, gt.c.dataset_name, gt.c.datum_uid, gt.c.groundtruth_id
     ).all():
         groundtruths_per_label[label_id].append(
             (dataset_name, datum_uid, groundtruth_id)
@@ -1382,9 +1386,8 @@ def _compute_detection_metrics(
 def _compute_detection_metrics_with_detailed_precision_recall_curve(
     db: Session,
     parameters: schemas.EvaluationParameters,
-    groundtruths: CTE,
-    predictions: CTE,
-    labels: dict[int, tuple[str, str]],
+    prediction_filter: schemas.Filter,
+    groundtruth_filter: schemas.Filter,
     target_type: enums.AnnotationType,
 ) -> Sequence[
     schemas.APMetric
@@ -1451,6 +1454,14 @@ def _compute_detection_metrics_with_detailed_precision_recall_curve(
             "recall_score_threshold should exist in the range 0 <= threshold <= 1."
         )
 
+    gt, pd, labels = _aggregate_data(
+        db=db,
+        groundtruth_filter=groundtruth_filter,
+        prediction_filter=prediction_filter,
+        target_type=target_type,
+        label_map=parameters.label_map,
+    )
+
     # Alias the annotation table (required for joining twice)
     gt_annotation = aliased(models.Annotation)
     pd_annotation = aliased(models.Annotation)
@@ -1458,15 +1469,15 @@ def _compute_detection_metrics_with_detailed_precision_recall_curve(
     # Get distinct annotations
     gt_pd_pairs = (
         select(
-            groundtruths.c.annotation_id.label("gt_annotation_id"),
-            predictions.c.annotation_id.label("pd_annotation_id"),
+            gt.c.annotation_id.label("gt_annotation_id"),
+            pd.c.annotation_id.label("pd_annotation_id"),
         )
-        .select_from(predictions)
+        .select_from(pd)
         .join(
-            groundtruths,
+            gt,
             and_(
-                groundtruths.c.datum_id == predictions.c.datum_id,
-                groundtruths.c.key == predictions.c.key,
+                gt.c.datum_id == pd.c.datum_id,
+                gt.c.key == pd.c.key,
             ),
         )
         .distinct()
@@ -1594,38 +1605,36 @@ def _compute_detection_metrics_with_detailed_precision_recall_curve(
 
     ious = (
         select(
-            func.coalesce(
-                predictions.c.dataset_name, groundtruths.c.dataset_name
-            ).label("dataset_name"),
-            predictions.c.datum_uid.label("pd_datum_uid"),
-            groundtruths.c.datum_uid.label("gt_datum_uid"),
-            groundtruths.c.groundtruth_id.label("gt_id"),
-            predictions.c.prediction_id.label("pd_id"),
-            groundtruths.c.label_id.label("gt_label_id"),
-            predictions.c.label_id.label("pd_label_id"),
-            predictions.c.score.label("score"),
+            func.coalesce(pd.c.dataset_name, gt.c.dataset_name).label(
+                "dataset_name"
+            ),
+            pd.c.datum_uid.label("pd_datum_uid"),
+            gt.c.datum_uid.label("gt_datum_uid"),
+            gt.c.groundtruth_id.label("gt_id"),
+            pd.c.prediction_id.label("pd_id"),
+            gt.c.label_id.label("gt_label_id"),
+            pd.c.label_id.label("pd_label_id"),
+            pd.c.score.label("score"),
             func.coalesce(
                 gt_pd_ious.c.iou,
                 0,
             ).label("iou"),
-            groundtruths.c.geojson.label("gt_geojson"),
-            (groundtruths.c.label_id == predictions.c.label_id).label(
-                "is_match"
-            ),
+            gt.c.geojson.label("gt_geojson"),
+            (gt.c.label_id == pd.c.label_id).label("is_match"),
         )
-        .select_from(predictions)
+        .select_from(pd)
         .outerjoin(
-            groundtruths,
+            gt,
             and_(
-                groundtruths.c.datum_id == predictions.c.datum_id,
-                groundtruths.c.key == predictions.c.key,
+                gt.c.datum_id == pd.c.datum_id,
+                gt.c.key == pd.c.key,
             ),
         )
         .outerjoin(
             gt_pd_ious,
             and_(
-                gt_pd_ious.c.gt_annotation_id == groundtruths.c.annotation_id,
-                gt_pd_ious.c.pd_annotation_id == predictions.c.annotation_id,
+                gt_pd_ious.c.gt_annotation_id == gt.c.annotation_id,
+                gt_pd_ious.c.pd_annotation_id == pd.c.annotation_id,
             ),
         )
         .subquery()
@@ -1764,30 +1773,30 @@ def _compute_detection_metrics_with_detailed_precision_recall_curve(
     predictions_per_label = defaultdict(list)
     number_of_groundtruths_per_label = defaultdict(int)
 
-    groundtruth_rows = db.query(
-        groundtruths.c.groundtruth_id,
-        groundtruths.c.label_id,
-        groundtruths.c.datum_uid,
-        groundtruths.c.dataset_name,
-        groundtruths.c.geojson,
-    ).all()
+    groundtruths = db.query(
+        gt.c.groundtruth_id,
+        gt.c.label_id,
+        gt.c.datum_uid,
+        gt.c.dataset_name,
+        gt.c.geojson,
+    )
 
-    prediction_rows = db.query(
-        predictions.c.prediction_id,
-        predictions.c.label_id,
-        predictions.c.datum_uid,
-        predictions.c.dataset_name,
-        predictions.c.geojson,
-    ).all()
+    predictions = db.query(
+        pd.c.prediction_id,
+        pd.c.label_id,
+        pd.c.datum_uid,
+        pd.c.dataset_name,
+        pd.c.geojson,
+    )
 
-    for gt_id, label_id, datum_uid, dset_name, gt_geojson in groundtruth_rows:
+    for gt_id, label_id, datum_uid, dset_name, gt_geojson in groundtruths:
         # we're ok with adding duplicates here since they indicate multiple groundtruths for a given dataset/datum_id
         groundtruths_per_label[label_id].append(
             (dset_name, datum_uid, gt_id, gt_geojson)
         )
         number_of_groundtruths_per_label[label_id] += 1
 
-    for pd_id, label_id, datum_uid, dset_name, pd_geojson in prediction_rows:
+    for pd_id, label_id, datum_uid, dset_name, pd_geojson in predictions:
         predictions_per_label[label_id].append(
             (dset_name, datum_uid, pd_id, pd_geojson)
         )
@@ -1872,6 +1881,13 @@ def compute_detection_metrics(*_, db: Session, evaluation_id: int):
         task_type=parameters.task_type,
     )
 
+    log_evaluation_item_counts(
+        db=db,
+        evaluation=evaluation,
+        prediction_filter=prediction_filter,
+        groundtruth_filter=groundtruth_filter,
+    )
+
     # fetch model and datasets
     datasets = (
         generate_query(
@@ -1946,22 +1962,6 @@ def compute_detection_metrics(*_, db: Session, evaluation_id: int):
         ),
     )
 
-    groundtruths, predictions, labels = _aggregate_data(
-        db=db,
-        groundtruth_filter=groundtruth_filter,
-        prediction_filter=prediction_filter,
-        target_type=target_type,
-        label_map=parameters.label_map,
-    )
-
-    log_evaluation_item_counts(
-        db=db,
-        evaluation=evaluation,
-        groundtruths=groundtruths,
-        predictions=predictions,
-        labels=labels,
-    )
-
     if (
         parameters.metrics_to_return
         and enums.MetricType.DetailedPrecisionRecallCurve
@@ -1972,9 +1972,8 @@ def compute_detection_metrics(*_, db: Session, evaluation_id: int):
             _compute_detection_metrics_with_detailed_precision_recall_curve(
                 db=db,
                 parameters=parameters,
-                groundtruths=groundtruths,
-                predictions=predictions,
-                labels=labels,
+                prediction_filter=prediction_filter,
+                groundtruth_filter=groundtruth_filter,
                 target_type=target_type,
             )
         )
@@ -1983,9 +1982,8 @@ def compute_detection_metrics(*_, db: Session, evaluation_id: int):
         metrics = _compute_detection_metrics(
             db=db,
             parameters=parameters,
-            groundtruths=groundtruths,
-            predictions=predictions,
-            labels=labels,
+            prediction_filter=prediction_filter,
+            groundtruth_filter=groundtruth_filter,
             target_type=target_type,
         )
 

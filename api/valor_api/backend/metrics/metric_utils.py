@@ -1,13 +1,14 @@
 from collections import defaultdict
 from typing import Callable, Sequence
 
-from sqlalchemy import CTE, ColumnElement, Label, and_, case, or_, select
+from sqlalchemy import ColumnElement, Label, and_, case, or_, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 from sqlalchemy.sql import func
 
 from valor_api import enums, logger, schemas
 from valor_api.backend import core, models
+from valor_api.backend.query import generate_select
 
 LabelMapType = list[list[list[str]]]
 
@@ -25,7 +26,6 @@ def profiler(fn: Callable):
     return wrapper
 
 
-@profiler
 def create_label_mapping(
     db: Session,
     labels: list[models.Label],
@@ -102,7 +102,6 @@ def create_label_mapping(
         return models.Label.id.label("label_id")
 
 
-@profiler
 def commit_results(
     db: Session,
     metrics: Sequence[
@@ -218,7 +217,6 @@ def commit_results(
         raise e
 
 
-@profiler
 def log_evaluation_duration(
     db: Session,
     evaluation: models.Evaluation,
@@ -251,13 +249,11 @@ def log_evaluation_duration(
         raise e
 
 
-@profiler
 def log_evaluation_item_counts(
     db: Session,
     evaluation: models.Evaluation,
-    groundtruths: CTE,
-    predictions: CTE,
-    labels: dict[int, tuple[str, str]],
+    prediction_filter: schemas.Filter,
+    groundtruth_filter: schemas.Filter,
 ):
     """
     Store analytics regarding the number of elements processed by the evaluation in the metadata field of the evaluation table.
@@ -268,51 +264,61 @@ def log_evaluation_item_counts(
         The database Session to query against.
     evaluation : models.Evaluation
         The evaluation to log to.
-    groundtruths : CTE
-        A CTE containing all the ground truths for an evaluation.
-    predictions : CTE
-        A CTE containing all the predictions for an evaluation.
-    labels : dict[int, tuple[str, str]]
-        A dictionary containing all labels for an evaluation.
+    prediction_filter : schemas.Filter
+        The filter to be used to query predictions.
+    groundtruth_filter : schemas.Filter
+        The filter to be used to query groundtruths.
     """
+    # get ground truth, prediction, annotation, and label counts
+    gt_subquery = generate_select(
+        models.Datum.id.label("datum_id"),
+        models.GroundTruth,
+        filters=groundtruth_filter,
+        label_source=models.GroundTruth,
+    ).alias()
 
-    gt_distinct_datums = select(groundtruths.c.datum_id).distinct().subquery()
+    gts = db.execute(
+        select(
+            gt_subquery.c.datum_id,
+            gt_subquery.c.annotation_id,
+            gt_subquery.c.label_id,
+        ).select_from(gt_subquery)
+    ).all()
 
-    pd_distinct_datums = select(predictions.c.datum_id).distinct().subquery()
+    # handle edge case where no gts come back
+    if not gts:
+        gt_datums, gt_annotation_id, gt_label_id = set(), set(), set()
+    else:
+        gt_datums, gt_annotation_id, gt_label_id = map(set, zip(*gts))
 
-    number_distinct_datums = db.scalar(
-        select(func.count())
-        .select_from(gt_distinct_datums)
-        .join(
-            pd_distinct_datums,
-            pd_distinct_datums.c.datum_id == gt_distinct_datums.c.datum_id,
-            full=True,
-        )
-    )
+    pd_subquery = generate_select(
+        models.Datum.id.label("datum_id"),
+        models.Prediction,
+        filters=prediction_filter,
+        label_source=models.Prediction,
+    ).alias()
 
-    gt_distinct_annotations = (
-        select(groundtruths.c.annotation_id).distinct().subquery()
-    )
+    pds = db.execute(
+        select(
+            pd_subquery.c.datum_id,
+            pd_subquery.c.annotation_id,
+            pd_subquery.c.label_id,
+        ).select_from(pd_subquery)
+    ).all()
 
-    pd_distinct_annotations = (
-        select(predictions.c.annotation_id).distinct().subquery()
-    )
+    if not pds:
+        pd_datums, pd_annotation_id, pd_label_id = set(), set(), set()
+    else:
+        pd_datums, pd_annotation_id, pd_label_id = map(set, zip(*pds))
 
-    number_distinct_annotations = db.scalar(
-        select(func.count())
-        .select_from(gt_distinct_annotations)
-        .join(
-            pd_distinct_annotations,
-            pd_distinct_annotations.c.annotation_id
-            == gt_distinct_annotations.c.annotation_id,
-            full=True,
-        )
-    )
+    datum_cnt = len(gt_datums | pd_datums)
+    annotation_cnt = len(gt_annotation_id | pd_annotation_id)
+    label_cnt = len(gt_label_id | pd_label_id)
 
     output = {
-        "annotations": number_distinct_annotations,
-        "labels": len(labels),
-        "datums": number_distinct_datums,
+        "annotations": annotation_cnt,
+        "labels": label_cnt,
+        "datums": datum_cnt,
     }
 
     try:
@@ -380,7 +386,6 @@ def validate_computation(fn: Callable) -> Callable:
     return wrapper
 
 
-@profiler
 def prepare_filter_for_evaluation(
     filters: schemas.Filter,
     dataset_names: list[str],

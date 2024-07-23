@@ -779,18 +779,11 @@ def test_compute_classification(
         )
     )
 
-    gt, pd, labels = _aggregate_data(
-        db=db,
-        groundtruth_filter=groundtruth_filter,
-        prediction_filter=prediction_filter,
-        label_map=None,
-    )
-
     metrics = _compute_clf_metrics(
         db,
-        groundtruths=gt,
-        predictions=pd,
-        labels=labels,
+        prediction_filter=prediction_filter,
+        groundtruth_filter=groundtruth_filter,
+        label_map=None,
         pr_curve_max_examples=0,
         metrics_to_return=[
             enums.MetricType.Precision,
