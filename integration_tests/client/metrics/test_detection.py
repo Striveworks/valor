@@ -1324,7 +1324,6 @@ def test_evaluate_detection_with_label_maps(
         threshold,
         metric,
     ), expected_value in pr_expected_answers.items():
-        print(key, value, threshold, metric)
         assert (
             pr_metrics[index]["value"][value][threshold][metric]
             == expected_value
