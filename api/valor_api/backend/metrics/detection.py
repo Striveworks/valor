@@ -1149,12 +1149,13 @@ def _compute_iou(
             groundtruths.c.geojson.label("gt_geojson"),
         )
         .select_from(predictions)
-        .outerjoin(
+        .join(
             groundtruths,
             and_(
                 groundtruths.c.datum_id == predictions.c.datum_id,
                 groundtruths.c.label_id == predictions.c.label_id,
             ),
+            full=True,
         )
         .outerjoin(
             gt_pd_ious,
@@ -1280,17 +1281,18 @@ def _compute_detection_metrics(
                 )
             )
 
-        if gt_id is None:
-            predictions_not_in_sorted_ranked_pairs.append(
-                (
-                    pd_id,
-                    score,
-                    dataset_name,
-                    pd_datum_uid,
-                    pd_label_id,
-                )
-            )
-            continue
+        # if gt_id is None:
+        #     RankedPair(
+        #         dataset_name=dataset_name,
+        #         pd_datum_uid=pd_datum_uid,
+        #         gt_datum_uid=None,
+        #         gt_geojson=None,
+        #         gt_id=None,
+        #         pd_id=pd_id,
+        #         score=score,
+        #         iou=0,
+        #         is_match=False,
+        #     )
 
         if pd_id not in matched_pd_set:
             matched_pd_set.add(pd_id)
@@ -1304,36 +1306,8 @@ def _compute_detection_metrics(
                     pd_id=pd_id,
                     score=score,
                     iou=iou,
-                    is_match=True,  # we're joining on grouper IDs, so only matches are included in matched_sorted_ranked_pairs
+                    is_match=(gt_id is not None),
                 )
-            )
-
-    for (
-        pd_id,
-        score,
-        dataset_name,
-        pd_datum_uid,
-        label_id,
-    ) in predictions_not_in_sorted_ranked_pairs:
-        if (
-            label_id in matched_sorted_ranked_pairs
-            and pd_id not in matched_pd_set
-        ):
-            # add to sorted_ranked_pairs in sorted order
-            bisect.insort(  # type: ignore - bisect type issue
-                matched_sorted_ranked_pairs[label_id],
-                RankedPair(
-                    dataset_name=dataset_name,
-                    pd_datum_uid=pd_datum_uid,
-                    gt_datum_uid=None,
-                    gt_geojson=None,
-                    gt_id=None,
-                    pd_id=pd_id,
-                    score=score,
-                    iou=0,
-                    is_match=False,
-                ),
-                key=lambda rp: -rp.score,  # bisect assumes decreasing order
             )
 
     groundtruths_per_label = defaultdict(list)
