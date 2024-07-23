@@ -32,6 +32,7 @@ LLM_GUIDED_METRICS = {
     "AnswerRelevance",
     "Bias",
     "Coherence",
+    "ContextRelevance",
     "Toxicity",
 }
 
@@ -257,6 +258,7 @@ def _compute_text_generation_metrics(
     | schemas.BiasMetric
     | schemas.BLEUMetric
     | schemas.CoherenceMetric
+    | schemas.ContextRelevanceMetric
     | schemas.ROUGEMetric
     | schemas.ToxicityMetric
 ]:
@@ -282,7 +284,7 @@ def _compute_text_generation_metrics(
 
     Returns
     ----------
-    Sequence[schemas.AnswerRelevanceMetric | schemas.BiasMetric | schemas.BLEUMetric | schemas.CoherenceMetric | schemas.ROUGEMetric | schemas.ToxicityMetric]
+    Sequence[schemas.AnswerRelevanceMetric | schemas.BiasMetric | schemas.BLEUMetric | schemas.CoherenceMetric | schemas.ContextRelevanceMetric | schemas.ROUGEMetric | schemas.ToxicityMetric]
         A list of computed metrics.
     """
     prediction_subquery = generate_query(
@@ -456,9 +458,16 @@ def _compute_text_generation_metrics(
         is_AnswerRelevance_enabled = "AnswerRelevance" in metrics_to_return
         is_Bias_enabled = "Bias" in metrics_to_return
         is_Coherence_enabled = "Coherence" in metrics_to_return
+        is_ContextRelevance_enabled = "ContextRelevance" in metrics_to_return
         is_Toxicity_enabled = "Toxicity" in metrics_to_return
 
-        for datum_uid, dataset_name, datum_text, prediction_text, _ in results:
+        for (
+            datum_uid,
+            dataset_name,
+            datum_text,
+            prediction_text,
+            prediction_context,
+        ) in results:
             if is_AnswerRelevance_enabled:
                 score = client.answer_relevance(
                     query=datum_text, text=prediction_text
@@ -495,6 +504,21 @@ def _compute_text_generation_metrics(
                             "dataset": dataset_name,
                             "datum_uid": datum_uid,
                             "prediction": prediction_text,
+                        },
+                    )
+                ]
+
+            if is_ContextRelevance_enabled:
+                score = client.context_relevance(
+                    query=datum_text, context=prediction_context
+                )
+                output += [
+                    schemas.ContextRelevanceMetric(
+                        value=score,
+                        parameters={
+                            "dataset": dataset_name,
+                            "datum_uid": datum_uid,
+                            "context": prediction_context,
                         },
                     )
                 ]

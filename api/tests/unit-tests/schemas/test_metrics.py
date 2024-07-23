@@ -585,6 +585,50 @@ def test_CoherenceMetric():
     )
 
 
+def test_ContextRelevanceMetric():
+    metric = schemas.ContextRelevanceMetric(
+        value=0.5,
+        parameters={
+            "dataset_uid": "01",
+            "dataset_name": "test_dataset",
+            "context": ["context1", "context2"],
+        },
+    )
+
+    with pytest.raises(ValidationError):
+        schemas.ContextRelevanceMetric(
+            value=None,  # type: ignore
+            parameters={
+                "dataset_uid": "01",
+                "dataset_name": "test_dataset",
+                "context": ["context1", "context2"],
+            },
+        )
+
+    with pytest.raises(ValidationError):
+        schemas.ContextRelevanceMetric(
+            value={"key": 0.5},  # type: ignore
+            parameters={
+                "dataset_uid": "01",
+                "dataset_name": "test_dataset",
+                "context": ["context1", "context2"],
+            },
+        )
+
+    with pytest.raises(ValidationError):
+        schemas.ContextRelevanceMetric(
+            value=0.5,  # type: ignore
+            parameters="not a valid parameter",  # type: ignore
+        )
+
+    assert all(
+        [
+            key in ["value", "type", "evaluation_id", "parameters"]
+            for key in metric.db_mapping(evaluation_id=1)
+        ]
+    )
+
+
 def test_ROUGEMetric():
     metric = schemas.ROUGEMetric(
         value={

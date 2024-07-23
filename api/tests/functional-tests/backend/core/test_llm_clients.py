@@ -83,6 +83,23 @@ BIAS_VALID_VERDICTS = """```json
     ]
 }```"""
 
+CONTEXT_RELEVANCE_VALID_VERDICTS = """```json
+{
+    "verdicts": [
+        {
+            "verdict": "no",
+            "reason": "This context does not relate to the query."
+        },
+        {
+            "verdict": "yes"
+        },
+        {
+            "verdict": "no",
+            "reason": "This context is not useful for answering the query."
+        }
+    ]
+}```"""
+
 TOXICITY_VALID_VERDICTS = """```json
 {
     "verdicts": [
@@ -288,6 +305,19 @@ def test_LLMClient(monkeypatch):
 
     def _return_invalid2_coherence_response(*args, **kwargs):
         return "0"
+
+    def _return_valid_context_relevance_response(*args, **kwargs):
+        return CONTEXT_RELEVANCE_VALID_VERDICTS
+
+    def _return_invalid1_context_relevance_response(*args, **kwargs):
+        return """```json
+{
+    "all_verdicts": [
+        "verdict 1",
+        "verdict 2",
+        "verdict 3"
+    ]
+}```"""
 
     def _return_valid1_toxicity_response(*args, **kwargs):
         if "please generate a list of OPINIONS" in args[1][1]["content"]:
@@ -503,6 +533,43 @@ def test_LLMClient(monkeypatch):
     )
     with pytest.raises(InvalidLLMResponseError):
         client.coherence("some text")
+
+    # Patch __call__ with a valid response.
+    monkeypatch.setattr(
+        "valor_api.backend.core.llm_clients.LLMClient.__call__",
+        _return_valid_context_relevance_response,
+    )
+    assert 0.3333333333333333 == client.context_relevance(
+        "some query", ["context 1", "context 2", "context 3"]
+    )
+
+    # Context relevance doesn't make sense if no context is provided.
+    monkeypatch.setattr(
+        "valor_api.backend.core.llm_clients.LLMClient.__call__",
+        _return_valid_context_relevance_response,
+    )
+    with pytest.raises(ValueError):
+        client.context_relevance("some query", [])
+
+    # Only 1 piece of context provided but 3 verdicts were returned.
+    monkeypatch.setattr(
+        "valor_api.backend.core.llm_clients.LLMClient.__call__",
+        _return_valid_context_relevance_response,
+    )
+    with pytest.raises(InvalidLLMResponseError):
+        client.context_relevance(
+            "some query", ["number of context does not match LLM's response"]
+        )
+
+    # Key 'all_verdicts' is returned but the key should be 'verdicts'.
+    monkeypatch.setattr(
+        "valor_api.backend.core.llm_clients.LLMClient.__call__",
+        _return_invalid1_context_relevance_response,
+    )
+    with pytest.raises(InvalidLLMResponseError):
+        client.context_relevance(
+            "some query", ["context 1", "context 2", "context 3"]
+        )
 
     # Patch __call__ with a valid response.
     monkeypatch.setattr(

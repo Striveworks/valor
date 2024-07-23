@@ -204,6 +204,7 @@ def commit_results(
         | schemas.BiasMetric
         | schemas.BLEUMetric
         | schemas.CoherenceMetric
+        | schemas.ContextRelevanceMetric
         | schemas.ROUGEMetric
         | schemas.ToxicityMetric
     ],

@@ -377,6 +377,18 @@ Answer relevance is the proportion of statements in the answer that are relevant
 
 Our implementation closely follows [DeepEval's implementation](https://github.com/confident-ai/deepeval/tree/main/deepeval/metrics/answer_relevancy). We use the same two step prompting strategy and the same instructions.
 
+## RAG Metrics
+
+### Context Relevance
+
+Context relevance is the proportion of pieces of retrieved context that are relevant to the query. A piece of context is considered relevant to the query if any part of the context is relevant to answering the query. For example, a piece of context might be a paragraph of text, so if the answer or part of the answer to a query is contained somewhere in that paragraph, then that piece of context is considered relevant.
+
+Context relevance is useful for evaluating the retrieval mechanism of a RAG model. This metric does not considered the generated answer or any groundtruth answers to the query, only the retrieved context.
+
+The metric is computed by considering the list of retrieved context and evaluating whether each piece of context is relevant to the query using an LLM. Then the score is computed as the number of relevant pieces of context divided by the total number of pieces of context.
+
+Our implementation closely follows [DeepEval's implementation](https://github.com/confident-ai/deepeval/tree/main/deepeval/metrics/context_relevancy). The calculation is the same, however we modified the instruction for the LLM. The instruction in DeepEval contained typos and was organized in a confusing way, so we fixed the typos and reorganized the example to make the task clearer.
+
 ## Text Comparison Metrics
 
 ### ROUGE

@@ -265,6 +265,60 @@ def _get_coherence_instruction(text: str) -> str:
     """
 
 
+def _generate_context_relevance_verdicts(
+    query: str,
+    context: list[str],
+) -> str:
+    """
+    Instruction template was copied from DeepEval's codebase https://github.com/confident-ai/deepeval/blob/main/deepeval/metrics/context_relevancy/template.py.
+
+    Multiple modifications were made to the DeepEval instruction. A typo was corrected. The term 'text' was changed to 'query', to make it more explicit that the text is the query. The example was reordered and reworked to better demonstrate the task.
+
+    Parameters
+    ----------
+    query: str
+        The query to evaluate the context against.
+    context: list[str]
+        The context to evaluate the relevance of.
+
+    Returns
+    -------
+    str
+        The instruction for the llm.
+    """
+    return f"""Based on the query and context, please generate a JSON object to indicate whether the context is relevant to the provided query. The JSON will have 1 mandatory field: 'verdict', and 1 optional field: 'reason'.
+The 'verdict' key should STRICTLY be either 'yes' or 'no', and states whether the context is relevant to the query.
+Provide a 'reason' ONLY IF verdict is no. You MUST quote the irrelevant parts of the context to back up your reason.
+
+**
+IMPORTANT: Please make sure to only return in JSON format.
+Example Query: "What were some of Einstein's achievements?"
+Example Context: ["Einstein won the Nobel Prize for his discovery of the photoelectric effect. He won the Nobel Prize in 1968. He had a cat.", "Einstein was born in 1879 in Germany."]
+
+Example:
+{{
+    "verdicts": [
+        {{
+            "verdict": "yes"
+        }},
+        {{
+            "verdict": "no",
+            "reason": "The year and country of Einstein's birth is irrelevant to the question."
+        }},
+    ]
+}}
+**
+
+Query:
+{query}
+
+Context:
+{context}
+
+JSON:
+"""
+
+
 def _generate_toxicity_verdicts_instruction(opinions: list[str]) -> str:
     """
     Instruction template was copied from DeepEval's codebase https://github.com/confident-ai/deepeval/blob/main/deepeval/metrics/toxicity/template.py.
@@ -598,6 +652,102 @@ class LLMClient:
 
         return verdicts
 
+    def _coherence(
+        self,
+        text: str,
+    ) -> int:
+        """
+        Compute coherence, the collective quality of all sentences, for a single piece of text.
+
+        Parameters
+        ----------
+        text: str
+            The text to be evaluated.
+
+        Returns
+        -------
+        int
+            The coherence score will be evaluated as an integer, with 1 indicating the lowest coherence and 5 the highest coherence.
+        """
+        messages = [
+            {"role": "system", "content": DEFAULT_SYSTEM_PROMPT},
+            {"role": "user", "content": _get_coherence_instruction(text)},
+        ]
+
+        response = self(messages)
+
+        try:
+            # Valid responses: "5", "\n5", "5\n", "5.", " 5", "5 {explanation}", etc.
+            ret = int(response.strip()[0])
+        except Exception:
+            raise InvalidLLMResponseError(
+                f"LLM response was not a valid coherence score: {response}"
+            )
+
+        if ret not in {1, 2, 3, 4, 5}:
+            raise InvalidLLMResponseError(
+                f"Coherence score was not an integer between 1 and 5: {ret}"
+            )
+
+        return ret
+
+    def _generate_context_relevance_verdicts(
+        self,
+        query: str,
+        context: list[str],
+    ) -> list[dict[str, str]]:
+        """
+        Generates a list of context relevance verdicts for a list of context, using a call to the LLM API.
+
+        Parameters
+        ----------
+        query: str
+            The query to evaluate the context against.
+        context: list[str]
+            The ordered list of context to evaluate the relevance of.
+
+        Returns
+        -------
+        list[dict[str,str]]
+            The list of verdicts for each context. Each verdict is a dictionary with the "verdict" and optionally a "reason".
+        """
+        if len(context) == 0:
+            raise ValueError(
+                "Context relevance is meaningless if no context is provided."
+            )
+
+        messages = [
+            {"role": "system", "content": DEFAULT_SYSTEM_PROMPT},
+            {
+                "role": "user",
+                "content": _generate_context_relevance_verdicts(
+                    query,
+                    context,
+                ),
+            },
+        ]
+
+        response = self(messages)
+        response = trim_and_load_json(response)
+        if type(response) != dict or "verdicts" not in response:
+            raise InvalidLLMResponseError(
+                f"LLM response was not a list of valid verdicts: {response}"
+            )
+
+        verdicts = response["verdicts"]
+        if (
+            type(verdicts) != list
+            or len(verdicts) != len(context)
+            or not all(
+                verdict["verdict"] in ["yes", "no"] for verdict in verdicts
+            )
+        ):
+            raise InvalidLLMResponseError(
+                f"LLM response was not a list of valid verdicts: {response}"
+            )
+
+        return verdicts
+
     def _generate_toxicity_verdicts(
         self,
         opinions: list[str],
@@ -716,27 +866,38 @@ class LLMClient:
         int
             The coherence score will be evaluated as an integer, with 1 indicating the lowest coherence and 5 the highest coherence.
         """
-        messages = [
-            {"role": "system", "content": DEFAULT_SYSTEM_PROMPT},
-            {"role": "user", "content": _get_coherence_instruction(text)},
-        ]
+        return self._coherence(text)
 
-        response = self(messages)
+    def context_relevance(
+        self,
+        query: str,
+        context: list[str],
+    ) -> float:
+        """
+        Compute context relevance, the proportion of retrieved context that is relevant to the query.
 
-        try:
-            # Valid responses: "5", "\n5", "5\n", "5.", " 5", "5 {explanation}", etc.
-            ret = int(response.strip()[0])
-        except Exception:
-            raise InvalidLLMResponseError(
-                f"LLM response was not a valid coherence score: {response}"
+        Parameters
+        ----------
+        query: str
+            The query to evaluate the context against.
+        context: list[str]
+            The list of context to evaluate the relevance of.
+
+        Returns
+        -------
+        float
+            The context relevance score will be evaluated as a float between 0 and 1, with 0 indicating that none of the context is relevant and 1 indicating that all of the context is relevant.
+        """
+        if len(context) == 0:
+            raise ValueError(
+                "Context relevance is meaningless if no context is provided."
             )
 
-        if ret not in {1, 2, 3, 4, 5}:
-            raise InvalidLLMResponseError(
-                f"Coherence score was not an integer between 1 and 5: {ret}"
-            )
+        verdicts = self._generate_context_relevance_verdicts(query, context)
 
-        return ret
+        return sum(
+            1 for verdict in verdicts if verdict["verdict"] == "yes"
+        ) / len(verdicts)
 
     def toxicity(
         self,
@@ -1146,6 +1307,30 @@ class MockLLMClient(LLMClient):
                 in processed_messages[1]["content"]
             ):
                 return "4"
+
+            # Context relevance verdicts
+            elif (
+                "generate a JSON object to indicate whether the context is relevant to the provided query"
+                in processed_messages[1]["content"]
+            ):
+                return """```json
+    {
+        "verdicts": [
+            {
+                "verdict": "yes"
+            },
+            {
+                "verdict": "yes"
+            },
+            {
+                "verdict": "no",
+                "reason": "This context has no relevance to the query"
+            },
+            {
+                "verdict": "yes"
+            }
+        ]
+    }```"""
 
             # Toxicity verdicts
             elif (

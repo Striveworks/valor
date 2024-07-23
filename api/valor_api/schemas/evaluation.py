@@ -144,6 +144,7 @@ class EvaluationParameters(BaseModel):
                         "AnswerRelevance",
                         "Bias",
                         "Coherence",
+                        "ContextRelevance",
                         "Toxicity",
                     ]
                 )

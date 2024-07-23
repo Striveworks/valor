@@ -38,6 +38,7 @@ from .metrics import (
     ConfusionMatrix,
     ConfusionMatrixEntry,
     ConfusionMatrixResponse,
+    ContextRelevanceMetric,
     DetailedPrecisionRecallCurve,
     F1Metric,
     IOUMetric,
@@ -126,6 +127,7 @@ __all__ = [
     "BiasMetric",
     "BLEUMetric",
     "CoherenceMetric",
+    "ContextRelevanceMetric",
     "ROUGEMetric",
     "ToxicityMetric",
 ]

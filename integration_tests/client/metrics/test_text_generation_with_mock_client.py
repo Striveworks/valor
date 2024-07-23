@@ -165,6 +165,7 @@ def test_llm_evaluation_rag_with_mock_client(
         MetricType.Bias,
         MetricType.BLEU,
         MetricType.Coherence,
+        MetricType.ContextRelevance,
         MetricType.ROUGE,
         MetricType.Toxicity,
     ]
@@ -210,6 +211,7 @@ def test_llm_evaluation_rag_with_mock_client(
             "Bias": 0.5,
             "BLEU": 0.3502270395690205,
             "Coherence": 4,
+            "ContextRelevance": 0.75,
             "ROUGE": {
                 "rouge1": 0.5925925925925926,
                 "rouge2": 0.5569620253164557,
@@ -223,6 +225,7 @@ def test_llm_evaluation_rag_with_mock_client(
             "Bias": 0.5,
             "BLEU": 1.0,
             "Coherence": 4,
+            "ContextRelevance": 0.75,
             "ROUGE": {
                 "rouge1": 1.0,
                 "rouge2": 1.0,
@@ -236,6 +239,7 @@ def test_llm_evaluation_rag_with_mock_client(
             "Bias": 0.5,
             "BLEU": 0.05434912989707719,
             "Coherence": 4,
+            "ContextRelevance": 0.75,
             "ROUGE": {
                 "rouge1": 0.18666666666666668,
                 "rouge2": 0.0821917808219178,
@@ -248,7 +252,13 @@ def test_llm_evaluation_rag_with_mock_client(
 
     # Check that the returned metrics have the right format.
     for m in metrics:
-        if m["type"] in ["AnswerRelevance", "Bias", "BLEU", "Toxicity"]:
+        if m["type"] in [
+            "AnswerRelevance",
+            "Bias",
+            "BLEU",
+            "ContextRelevance",
+            "Toxicity",
+        ]:
             assert 0 <= m["value"] <= 1
         if m["type"] == "Coherence":
             assert m["value"] in [1, 2, 3, 4, 5]
