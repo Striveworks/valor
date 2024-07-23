@@ -16,6 +16,7 @@ from valor import (
     Prediction,
     connect,
 )
+from valor.enums import MetricType
 
 connect("http://0.0.0.0:8000")
 client = Client()
@@ -124,12 +125,12 @@ def run_pr_curve_evaluation(dset: Dataset, model: Model):
     evaluation = model.evaluate_classification(
         dset,
         metrics_to_return=[
-            "Accuracy",
-            "Precision",
-            "Recall",
-            "F1",
-            "ROCAUC",
-            "PrecisionRecallCurve",
+            MetricType.Accuracy,
+            MetricType.Precision,
+            MetricType.Recall,
+            MetricType.F1,
+            MetricType.ROCAUC,
+            MetricType.PrecisionRecallCurve,
         ],
     )
     evaluation.wait_for_completion()
@@ -142,13 +143,13 @@ def run_detailed_pr_curve_evaluation(dset: Dataset, model: Model):
     evaluation = model.evaluate_classification(
         dset,
         metrics_to_return=[
-            "Accuracy",
-            "Precision",
-            "Recall",
-            "F1",
-            "ROCAUC",
-            "PrecisionRecallCurve",
-            "DetailedPrecisionRecallCurve",
+            MetricType.Accuracy,
+            MetricType.Precision,
+            MetricType.Recall,
+            MetricType.F1,
+            MetricType.ROCAUC,
+            MetricType.PrecisionRecallCurve,
+            MetricType.DetailedPrecisionRecallCurve,
         ],
     )
     evaluation.wait_for_completion()
