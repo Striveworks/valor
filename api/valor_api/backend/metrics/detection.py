@@ -1044,21 +1044,164 @@ def _compute_detection_metrics(
         label_map=parameters.label_map,
     )
 
-    joint = (
+    # Alias the annotation table (required for joining twice)
+    gt_annotation = aliased(models.Annotation)
+    pd_annotation = aliased(models.Annotation)
+
+    # Get distinct annotations
+    gt_pd_pairs = (
+        select(
+            gt.c.annotation_id.label("gt_annotation_id"),
+            pd.c.annotation_id.label("pd_annotation_id"),
+        )
+        .select_from(pd)
+        .join(
+            gt,
+            and_(
+                pd.c.datum_id == gt.c.datum_id,
+                pd.c.label_id == gt.c.label_id,
+            ),
+        )
+        .distinct()
+        .cte()
+    )
+
+    gt_distinct = (
+        select(gt_pd_pairs.c.gt_annotation_id.label("annotation_id"))
+        .distinct()
+        .subquery()
+    )
+
+    pd_distinct = (
+        select(gt_pd_pairs.c.pd_annotation_id.label("annotation_id"))
+        .distinct()
+        .subquery()
+    )
+
+    # IOU Computation Block
+    if target_type == AnnotationType.RASTER:
+
+        gt_counts = (
+            select(
+                gt_distinct.c.annotation_id,
+                gfunc.ST_Count(models.Annotation.raster).label("count"),
+            )
+            .select_from(gt_distinct)
+            .join(
+                models.Annotation,
+                models.Annotation.id == gt_distinct.c.annotation_id,
+            )
+            .subquery()
+        )
+
+        pd_counts = (
+            select(
+                pd_distinct.c.annotation_id,
+                gfunc.ST_Count(models.Annotation.raster).label("count"),
+            )
+            .select_from(pd_distinct)
+            .join(
+                models.Annotation,
+                models.Annotation.id == pd_distinct.c.annotation_id,
+            )
+            .subquery()
+        )
+
+        gt_pd_counts = (
+            select(
+                gt_pd_pairs.c.gt_annotation_id,
+                gt_pd_pairs.c.pd_annotation_id,
+                gt_counts.c.count.label("gt_count"),
+                pd_counts.c.count.label("pd_count"),
+                func.coalesce(
+                    gfunc.ST_Count(
+                        gfunc.ST_Intersection(
+                            gt_annotation.raster, pd_annotation.raster
+                        )
+                    ),
+                    0,
+                ).label("intersection"),
+            )
+            .select_from(gt_pd_pairs)
+            .join(
+                gt_annotation,
+                gt_annotation.id == gt_pd_pairs.c.gt_annotation_id,
+            )
+            .join(
+                pd_annotation,
+                pd_annotation.id == gt_pd_pairs.c.pd_annotation_id,
+            )
+            .join(
+                gt_counts,
+                gt_counts.c.annotation_id == gt_pd_pairs.c.gt_annotation_id,
+            )
+            .join(
+                pd_counts,
+                pd_counts.c.annotation_id == gt_pd_pairs.c.pd_annotation_id,
+            )
+            .subquery()
+        )
+
+        gt_pd_ious = (
+            select(
+                gt_pd_counts.c.gt_annotation_id,
+                gt_pd_counts.c.pd_annotation_id,
+                func.coalesce(
+                    gt_pd_counts.c.intersection
+                    / (
+                        gt_pd_counts.c.gt_count
+                        + gt_pd_counts.c.pd_count
+                        - gt_pd_counts.c.intersection
+                    ),
+                    0,
+                ).label("iou"),
+            )
+            .select_from(gt_pd_counts)
+            .subquery()
+        )
+
+    else:
+        gt_geom = _annotation_type_to_column(target_type, gt_annotation)
+        pd_geom = _annotation_type_to_column(target_type, pd_annotation)
+        gintersection = gfunc.ST_Intersection(gt_geom, pd_geom)
+        gunion = gfunc.ST_Union(gt_geom, pd_geom)
+        iou_computation = gfunc.ST_Area(gintersection) / gfunc.ST_Area(gunion)
+
+        gt_pd_ious = (
+            select(
+                gt_pd_pairs.c.gt_annotation_id,
+                gt_pd_pairs.c.pd_annotation_id,
+                iou_computation.label("iou"),
+            )
+            .select_from(gt_pd_pairs)
+            .join(
+                gt_annotation,
+                gt_annotation.id == gt_pd_pairs.c.gt_annotation_id,
+            )
+            .join(
+                pd_annotation,
+                pd_annotation.id == gt_pd_pairs.c.pd_annotation_id,
+            )
+            .cte()
+        )
+
+    ious = (
         select(
             func.coalesce(pd.c.dataset_name, gt.c.dataset_name).label(
                 "dataset_name"
             ),
-            gt.c.datum_uid.label("gt_datum_uid"),
             pd.c.datum_uid.label("pd_datum_uid"),
-            gt.c.geojson.label("gt_geojson"),
+            gt.c.datum_uid.label("gt_datum_uid"),
             gt.c.groundtruth_id.label("gt_id"),
             pd.c.prediction_id.label("pd_id"),
             gt.c.label_id.label("gt_label_id"),
             pd.c.label_id.label("pd_label_id"),
-            gt.c.annotation_id.label("gt_ann_id"),
-            pd.c.annotation_id.label("pd_ann_id"),
             pd.c.score.label("score"),
+            func.coalesce(
+                gt_pd_ious.c.iou,
+                0,
+            ).label("iou"),
+            gt.c.geojson.label("gt_geojson"),
         )
         .select_from(pd)
         .outerjoin(
@@ -1068,44 +1211,13 @@ def _compute_detection_metrics(
                 pd.c.label_id == gt.c.label_id,
             ),
         )
-        .subquery()
-    )
-
-    # Alias the annotation table (required for joining twice)
-    gt_annotation = aliased(models.Annotation)
-    pd_annotation = aliased(models.Annotation)
-
-    # IOU Computation Block
-    if target_type == AnnotationType.RASTER:
-        gintersection = gfunc.ST_Count(
-            gfunc.ST_Intersection(gt_annotation.raster, pd_annotation.raster)
+        .outerjoin(
+            gt_pd_ious,
+            and_(
+                gt_pd_ious.c.gt_annotation_id == gt.c.annotation_id,
+                gt_pd_ious.c.pd_annotation_id == pd.c.annotation_id,
+            ),
         )
-        gunion_gt = gfunc.ST_Count(gt_annotation.raster)
-        gunion_pd = gfunc.ST_Count(pd_annotation.raster)
-        gunion = gunion_gt + gunion_pd - gintersection
-        iou_computation = gintersection / gunion
-    else:
-        gt_geom = _annotation_type_to_column(target_type, gt_annotation)
-        pd_geom = _annotation_type_to_column(target_type, pd_annotation)
-        gintersection = gfunc.ST_Intersection(gt_geom, pd_geom)
-        gunion = gfunc.ST_Union(gt_geom, pd_geom)
-        iou_computation = gfunc.ST_Area(gintersection) / gfunc.ST_Area(gunion)
-
-    ious = (
-        select(
-            joint.c.dataset_name,
-            joint.c.pd_datum_uid,
-            joint.c.gt_datum_uid,
-            joint.c.gt_id.label("gt_id"),
-            joint.c.pd_id.label("pd_id"),
-            joint.c.gt_label_id,
-            joint.c.score,
-            func.coalesce(iou_computation, 0).label("iou"),
-            joint.c.gt_geojson,
-        )
-        .select_from(joint)
-        .join(gt_annotation, gt_annotation.id == joint.c.gt_ann_id)
-        .join(pd_annotation, pd_annotation.id == joint.c.pd_ann_id)
         .subquery()
     )
 
@@ -1115,6 +1227,7 @@ def _compute_detection_metrics(
 
     matched_pd_set = set()
     matched_sorted_ranked_pairs = defaultdict(list)
+    predictions_not_in_sorted_ranked_pairs = list()
 
     for row in ordered_ious:
         (
@@ -1124,10 +1237,23 @@ def _compute_detection_metrics(
             gt_id,
             pd_id,
             gt_label_id,
+            pd_label_id,
             score,
             iou,
             gt_geojson,
         ) = row
+
+        if gt_id is None:
+            predictions_not_in_sorted_ranked_pairs.append(
+                (
+                    pd_id,
+                    score,
+                    dataset_name,
+                    pd_datum_uid,
+                    pd_label_id,
+                )
+            )
+            continue
 
         if pd_id not in matched_pd_set:
             matched_pd_set.add(pd_id)
@@ -1144,20 +1270,6 @@ def _compute_detection_metrics(
                     is_match=True,  # we're joining on grouper IDs, so only matches are included in matched_sorted_ranked_pairs
                 )
             )
-
-    # get predictions that didn't make it into matched_sorted_ranked_pairs
-    # because they didn't have a corresponding groundtruth to pair with
-    predictions_not_in_sorted_ranked_pairs = (
-        db.query(
-            pd.c.prediction_id,
-            pd.c.score,
-            pd.c.dataset_name,
-            pd.c.datum_uid,
-            pd.c.label_id,
-        )
-        .filter(pd.c.prediction_id.notin_(matched_pd_set))
-        .all()
-    )
 
     for (
         pd_id,
@@ -1204,18 +1316,18 @@ def _compute_detection_metrics(
     ):
         false_positive_entries = db.query(
             select(
-                joint.c.dataset_name,
-                joint.c.gt_datum_uid,
-                joint.c.pd_datum_uid,
-                joint.c.gt_label_id,
-                joint.c.pd_label_id,
-                joint.c.score.label("score"),
+                ious.c.dataset_name,
+                ious.c.gt_datum_uid,
+                ious.c.pd_datum_uid,
+                ious.c.gt_label_id,
+                ious.c.pd_label_id,
+                ious.c.score.label("score"),
             )
-            .select_from(joint)
+            .select_from(ious)
             .where(
                 or_(
-                    joint.c.gt_id.is_(None),
-                    joint.c.pd_id.is_(None),
+                    ious.c.gt_id.is_(None),
+                    ious.c.pd_id.is_(None),
                 )
             )
             .subquery()
@@ -1303,7 +1415,6 @@ def _compute_detection_metrics_with_detailed_precision_recall_curve(
     target_type: enums.AnnotationType
         The annotation type to compute metrics for.
 
-
     Returns
     ----------
     List[schemas.APMetric | schemas.ARMetric | schemas.APMetricAveragedOverIOUs | schemas.mAPMetric | schemas.mARMetric | schemas.mAPMetricAveragedOverIOUs | schemas.PrecisionRecallCurve | schemas.DetailedPrecisionRecallCurve]
@@ -1351,47 +1462,122 @@ def _compute_detection_metrics_with_detailed_precision_recall_curve(
         label_map=parameters.label_map,
     )
 
-    joint = (
-        select(
-            func.coalesce(pd.c.dataset_name, gt.c.dataset_name).label(
-                "dataset_name"
-            ),
-            gt.c.datum_uid.label("gt_datum_uid"),
-            pd.c.datum_uid.label("pd_datum_uid"),
-            gt.c.geojson.label("gt_geojson"),
-            gt.c.groundtruth_id.label("gt_id"),
-            pd.c.prediction_id.label("pd_id"),
-            gt.c.label_id.label("gt_label_id"),
-            pd.c.label_id.label("pd_label_id"),
-            gt.c.key.label("gt_label_key"),
-            pd.c.key.label("pd_label_key"),
-            gt.c.annotation_id.label("gt_ann_id"),
-            pd.c.annotation_id.label("pd_ann_id"),
-            pd.c.score.label("score"),
-        )
-        .select_from(pd)
-        .outerjoin(
-            gt,
-            and_(
-                pd.c.datum_id == gt.c.datum_id,
-                pd.c.key == gt.c.key,
-            ),
-        )
-        .subquery()
-    )
-
+    # Alias the annotation table (required for joining twice)
     gt_annotation = aliased(models.Annotation)
     pd_annotation = aliased(models.Annotation)
 
+    # Get distinct annotations
+    gt_pd_pairs = (
+        select(
+            gt.c.annotation_id.label("gt_annotation_id"),
+            pd.c.annotation_id.label("pd_annotation_id"),
+        )
+        .select_from(pd)
+        .join(
+            gt,
+            and_(
+                gt.c.datum_id == pd.c.datum_id,
+                gt.c.key == pd.c.key,
+            ),
+        )
+        .distinct()
+        .cte()
+    )
+
+    gt_distinct = (
+        select(gt_pd_pairs.c.gt_annotation_id.label("annotation_id"))
+        .distinct()
+        .subquery()
+    )
+
+    pd_distinct = (
+        select(gt_pd_pairs.c.pd_annotation_id.label("annotation_id"))
+        .distinct()
+        .subquery()
+    )
+
     # IOU Computation Block
     if target_type == AnnotationType.RASTER:
-        gintersection = gfunc.ST_Count(
-            gfunc.ST_Intersection(gt_annotation.raster, pd_annotation.raster)
+
+        gt_counts = (
+            select(
+                gt_distinct.c.annotation_id,
+                gfunc.ST_Count(models.Annotation.raster).label("count"),
+            )
+            .select_from(gt_distinct)
+            .join(
+                models.Annotation,
+                models.Annotation.id == gt_distinct.c.annotation_id,
+            )
+            .subquery()
         )
-        gunion_gt = gfunc.ST_Count(gt_annotation.raster)
-        gunion_pd = gfunc.ST_Count(pd_annotation.raster)
-        gunion = gunion_gt + gunion_pd - gintersection
-        iou_computation = gintersection / gunion
+
+        pd_counts = (
+            select(
+                pd_distinct.c.annotation_id,
+                gfunc.ST_Count(models.Annotation.raster).label("count"),
+            )
+            .select_from(pd_distinct)
+            .join(
+                models.Annotation,
+                models.Annotation.id == pd_distinct.c.annotation_id,
+            )
+            .subquery()
+        )
+
+        gt_pd_counts = (
+            select(
+                gt_pd_pairs.c.gt_annotation_id,
+                gt_pd_pairs.c.pd_annotation_id,
+                gt_counts.c.count.label("gt_count"),
+                pd_counts.c.count.label("pd_count"),
+                func.coalesce(
+                    gfunc.ST_Count(
+                        gfunc.ST_Intersection(
+                            gt_annotation.raster, pd_annotation.raster
+                        )
+                    ),
+                    0,
+                ).label("intersection"),
+            )
+            .select_from(gt_pd_pairs)
+            .join(
+                gt_annotation,
+                gt_annotation.id == gt_pd_pairs.c.gt_annotation_id,
+            )
+            .join(
+                pd_annotation,
+                pd_annotation.id == gt_pd_pairs.c.pd_annotation_id,
+            )
+            .join(
+                gt_counts,
+                gt_counts.c.annotation_id == gt_pd_pairs.c.gt_annotation_id,
+            )
+            .join(
+                pd_counts,
+                pd_counts.c.annotation_id == gt_pd_pairs.c.pd_annotation_id,
+            )
+            .subquery()
+        )
+
+        gt_pd_ious = (
+            select(
+                gt_pd_counts.c.gt_annotation_id,
+                gt_pd_counts.c.pd_annotation_id,
+                func.coalesce(
+                    gt_pd_counts.c.intersection
+                    / (
+                        gt_pd_counts.c.gt_count
+                        + gt_pd_counts.c.pd_count
+                        - gt_pd_counts.c.intersection
+                    ),
+                    0,
+                ).label("iou"),
+            )
+            .select_from(gt_pd_counts)
+            .subquery()
+        )
+
     else:
         gt_geom = _annotation_type_to_column(target_type, gt_annotation)
         pd_geom = _annotation_type_to_column(target_type, pd_annotation)
@@ -1399,23 +1585,58 @@ def _compute_detection_metrics_with_detailed_precision_recall_curve(
         gunion = gfunc.ST_Union(gt_geom, pd_geom)
         iou_computation = gfunc.ST_Area(gintersection) / gfunc.ST_Area(gunion)
 
+        gt_pd_ious = (
+            select(
+                gt_pd_pairs.c.gt_annotation_id,
+                gt_pd_pairs.c.pd_annotation_id,
+                iou_computation.label("iou"),
+            )
+            .select_from(gt_pd_pairs)
+            .join(
+                gt_annotation,
+                gt_annotation.id == gt_pd_pairs.c.gt_annotation_id,
+            )
+            .join(
+                pd_annotation,
+                pd_annotation.id == gt_pd_pairs.c.pd_annotation_id,
+            )
+            .cte()
+        )
+
     ious = (
         select(
-            joint.c.dataset_name,
-            joint.c.pd_datum_uid,
-            joint.c.gt_datum_uid,
-            joint.c.gt_id.label("gt_id"),
-            joint.c.pd_id.label("pd_id"),
-            joint.c.gt_label_id,
-            joint.c.pd_label_id,
-            joint.c.score.label("score"),
-            func.coalesce(iou_computation, 0).label("iou"),
-            joint.c.gt_geojson,
-            (joint.c.gt_label_id == joint.c.pd_label_id).label("is_match"),
+            func.coalesce(pd.c.dataset_name, gt.c.dataset_name).label(
+                "dataset_name"
+            ),
+            pd.c.datum_uid.label("pd_datum_uid"),
+            gt.c.datum_uid.label("gt_datum_uid"),
+            gt.c.groundtruth_id.label("gt_id"),
+            pd.c.prediction_id.label("pd_id"),
+            gt.c.label_id.label("gt_label_id"),
+            pd.c.label_id.label("pd_label_id"),
+            pd.c.score.label("score"),
+            func.coalesce(
+                gt_pd_ious.c.iou,
+                0,
+            ).label("iou"),
+            gt.c.geojson.label("gt_geojson"),
+            (gt.c.label_id == pd.c.label_id).label("is_match"),
         )
-        .select_from(joint)
-        .join(gt_annotation, gt_annotation.id == joint.c.gt_ann_id)
-        .join(pd_annotation, pd_annotation.id == joint.c.pd_ann_id)
+        .select_from(pd)
+        .outerjoin(
+            gt,
+            and_(
+                gt.c.datum_id == pd.c.datum_id,
+                gt.c.key == pd.c.key,
+            ),
+        )
+        .outerjoin(
+            gt_pd_ious,
+            and_(
+                gt_pd_ious.c.gt_annotation_id == gt.c.annotation_id,
+                gt_pd_ious.c.pd_annotation_id == pd.c.annotation_id,
+            ),
+        )
         .subquery()
     )
 
@@ -1431,6 +1652,7 @@ def _compute_detection_metrics_with_detailed_precision_recall_curve(
     matched_pd_set = set()
     sorted_ranked_pairs = defaultdict(list)
     matched_sorted_ranked_pairs = defaultdict(list)
+    predictions_not_in_sorted_ranked_pairs = list()
 
     for row in ordered_ious:
         (
@@ -1446,6 +1668,18 @@ def _compute_detection_metrics_with_detailed_precision_recall_curve(
             gt_geojson,
             is_match,
         ) = row
+
+        if gt_label_id is None:
+            predictions_not_in_sorted_ranked_pairs.append(
+                (
+                    pd_id,
+                    score,
+                    dataset_name,
+                    pd_datum_uid,
+                    pd_label_id,
+                )
+            )
+            continue
 
         if pd_id not in pd_set:
             # sorted_ranked_pairs will include all groundtruth-prediction pairs that meet filter criteria
@@ -1493,20 +1727,6 @@ def _compute_detection_metrics_with_detailed_precision_recall_curve(
                     is_match=True,
                 )
             )
-
-    # get predictions that didn't make it into matched_sorted_ranked_pairs
-    # because they didn't have a corresponding groundtruth to pair with
-    predictions_not_in_sorted_ranked_pairs = (
-        db.query(
-            pd.c.prediction_id,
-            pd.c.score,
-            pd.c.dataset_name,
-            pd.c.datum_uid,
-            pd.c.label_id,
-        )
-        .filter(pd.c.prediction_id.notin_(matched_pd_set))
-        .all()
-    )
 
     for (
         pd_id,
