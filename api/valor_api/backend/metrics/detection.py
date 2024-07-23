@@ -277,9 +277,6 @@ def _compute_curves(
 
             fp_cnt = 0
             for (
-                _,
-                _,
-                _,
                 gt_label_id,
                 pd_label_id,
                 pd_score,
@@ -1148,13 +1145,12 @@ def _compute_iou(
             groundtruths.c.geojson.label("gt_geojson"),
         )
         .select_from(predictions)
-        .join(
+        .outerjoin(
             groundtruths,
             and_(
                 groundtruths.c.datum_id == predictions.c.datum_id,
                 groundtruths.c.label_id == predictions.c.label_id,
             ),
-            full=True,
         )
         .outerjoin(
             gt_pd_ious,
@@ -1270,31 +1266,17 @@ def _compute_detection_metrics(
         ):
             false_positive_entries.append(
                 (
-                    dataset_name,
-                    gt_datum_uid,
-                    pd_datum_uid,
                     gt_label_id,
                     pd_label_id,
                     score,
                 )
             )
 
-        # if gt_id is None:
-        #     RankedPair(
-        #         dataset_name=dataset_name,
-        #         pd_datum_uid=pd_datum_uid,
-        #         gt_datum_uid=None,
-        #         gt_geojson=None,
-        #         gt_id=None,
-        #         pd_id=pd_id,
-        #         score=score,
-        #         iou=0,
-        #         is_match=False,
-        #     )
-
         if pd_id not in matched_pd_set:
             matched_pd_set.add(pd_id)
-            matched_sorted_ranked_pairs[gt_label_id].append(
+            label_id = gt_label_id if gt_label_id else pd_label_id
+            is_match = gt_label_id is not None
+            matched_sorted_ranked_pairs[label_id].append(
                 RankedPair(
                     dataset_name=dataset_name,
                     pd_datum_uid=pd_datum_uid,
@@ -1304,14 +1286,17 @@ def _compute_detection_metrics(
                     pd_id=pd_id,
                     score=score,
                     iou=iou,
-                    is_match=(gt_id is not None),
+                    is_match=is_match,
                 )
             )
 
     groundtruths_per_label = defaultdict(list)
     number_of_groundtruths_per_label = defaultdict(int)
     for label_id, dataset_name, datum_uid, groundtruth_id in db.query(
-        gt.c.label_id, gt.c.dataset_name, gt.c.datum_uid, gt.c.groundtruth_id
+        gt.c.label_id,
+        gt.c.dataset_name,
+        gt.c.datum_uid,
+        gt.c.groundtruth_id,
     ).all():
         groundtruths_per_label[label_id].append(
             (dataset_name, datum_uid, groundtruth_id)
