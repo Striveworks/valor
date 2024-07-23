@@ -41,6 +41,7 @@ from .metrics import (
     ContextRelevanceMetric,
     DetailedPrecisionRecallCurve,
     F1Metric,
+    HallucinationMetric,
     IOUMetric,
     Metric,
     PrecisionMetric,
@@ -128,6 +129,7 @@ __all__ = [
     "BLEUMetric",
     "CoherenceMetric",
     "ContextRelevanceMetric",
+    "HallucinationMetric",
     "ROUGEMetric",
     "ToxicityMetric",
 ]

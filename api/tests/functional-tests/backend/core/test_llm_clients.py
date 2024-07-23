@@ -100,6 +100,24 @@ CONTEXT_RELEVANCE_VALID_VERDICTS = """```json
     ]
 }```"""
 
+HALLUCINATION_AGREEMENT_VERDICTS = """```json
+{
+    "verdicts": [
+        {
+            "verdict": "yes"
+        },
+
+        {
+            "verdict": "no",
+            "reason": "The text and context mention disagree on when Abraham Lincoln was born."
+        },
+        {
+            "verdict": "no",
+            "reason": "The text says that Abraham Lincoln lost the election of 1860, but the context says that Abraham Lincoln won the election of 1860."
+        }
+    ]
+}```"""
+
 TOXICITY_VALID_VERDICTS = """```json
 {
     "verdicts": [
@@ -313,6 +331,19 @@ def test_LLMClient(monkeypatch):
         return """```json
 {
     "all_verdicts": [
+        "verdict 1",
+        "verdict 2",
+        "verdict 3"
+    ]
+}```"""
+
+    def _return_valid_hallucination_response(*args, **kwargs):
+        return HALLUCINATION_AGREEMENT_VERDICTS
+
+    def _return_invalid1_hallucination_response(*args, **kwargs):
+        return """```json
+{
+    "bad key": [
         "verdict 1",
         "verdict 2",
         "verdict 3"
@@ -568,6 +599,43 @@ def test_LLMClient(monkeypatch):
     )
     with pytest.raises(InvalidLLMResponseError):
         client.context_relevance(
+            "some query", ["context 1", "context 2", "context 3"]
+        )
+
+    # Patch __call__ with a valid response.
+    monkeypatch.setattr(
+        "valor_api.backend.core.llm_clients.LLMClient.__call__",
+        _return_valid_hallucination_response,
+    )
+    assert 0.6666666666666666 == client.hallucination(
+        "some answer", ["context 1", "context 2", "context 3"]
+    )
+
+    # Context relevance doesn't make sense if no context is provided.
+    monkeypatch.setattr(
+        "valor_api.backend.core.llm_clients.LLMClient.__call__",
+        _return_valid_hallucination_response,
+    )
+    with pytest.raises(ValueError):
+        client.hallucination("some query", [])
+
+    # Only 1 piece of context provided but 3 verdicts were returned.
+    monkeypatch.setattr(
+        "valor_api.backend.core.llm_clients.LLMClient.__call__",
+        _return_valid_hallucination_response,
+    )
+    with pytest.raises(InvalidLLMResponseError):
+        client.hallucination(
+            "some query", ["number of context does not match LLM's response"]
+        )
+
+    # Key 'all_verdicts' is returned but the key should be 'verdicts'.
+    monkeypatch.setattr(
+        "valor_api.backend.core.llm_clients.LLMClient.__call__",
+        _return_invalid1_hallucination_response,
+    )
+    with pytest.raises(InvalidLLMResponseError):
+        client.hallucination(
             "some query", ["context 1", "context 2", "context 3"]
         )
 

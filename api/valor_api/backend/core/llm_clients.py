@@ -319,6 +319,62 @@ JSON:
 """
 
 
+def _generate_hallucination_verdicts(
+    text: str,
+    contexts: list[str],
+) -> str:
+    """
+    Instruction template was copied from DeepEval's codebase https://github.com/confident-ai/deepeval/blob/main/deepeval/metrics/hallucination/template.py.
+
+    Parameters
+    ----------
+    text: str
+        The text to evaluate for hallucination.
+    contexts: list[str]
+        The list of context to compare against.
+
+    Returns
+    -------
+    str
+        The instruction for the llm.
+    """
+    return f"""For each context in contexts, which is a list of strings, please generate a list of JSON objects to indicate whether the given 'actual output' agrees with EACH context. The JSON will have 2 fields: 'verdict' and 'reason'.
+The 'verdict' key should STRICTLY be either 'yes' or 'no', and states whether the given text agrees with the context.
+The 'reason' is the reason for the verdict. When the answer is 'no', try to provide a correction in the reason.
+
+**
+IMPORTANT: Please make sure to only return in JSON format, with the 'verdicts' key as a list of JSON objects.
+Example contexts: ["Einstein won the Nobel Prize for his discovery of the photoelectric effect.", "Einstein won the Nobel Prize in 1968."]
+Example actual output: "Einstein won the Nobel Prize in 1969 for his discovery of the photoelectric effect."
+
+Example:
+{{
+    "verdicts": [
+        {{
+            "verdict": "yes",
+            "reason": "The actual output agrees with the provided context which states that Einstein won the Nobel Prize for his discovery of the photoelectric effect."
+        }},
+        {{
+            "verdict": "no",
+            "reason": "The actual output contradicts the provided context which states that Einstein won the Nobel Prize in 1968, not 1969."
+        }}
+    ]
+}}
+
+You should NOT incorporate any prior knowledge you have and take each context at face value. Since you are going to generate a verdict for each context, the number of 'verdicts' SHOULD BE STRICTLY EQUAL to the number of contexts.
+You should FORGIVE cases where the actual output is lacking in detail, you should ONLY provide a 'no' answer if IT IS A CONTRADICTION.
+**
+
+Contexts:
+{contexts}
+
+Actual Output:
+{text}
+
+JSON:
+"""
+
+
 def _generate_toxicity_verdicts_instruction(opinions: list[str]) -> str:
     """
     Instruction template was copied from DeepEval's codebase https://github.com/confident-ai/deepeval/blob/main/deepeval/metrics/toxicity/template.py.
@@ -748,6 +804,65 @@ class LLMClient:
 
         return verdicts
 
+    def _generate_agreement_verdicts(
+        self,
+        text: str,
+        contexts: list[str],
+    ) -> list[dict[str, str]]:
+        """
+        Generates a list of agreement verdicts for a list of context, using a call to the LLM API.
+
+        The verdict for a piece of context should be yes if the text agrees with the piece of context. The verdict should be no only if the text contradicts the context.
+
+        Parameters
+        ----------
+        text: str
+            The text to evaluate for hallucination.
+        contexts: list[str]
+            The list of context to compare against.
+
+        Returns
+        -------
+        list[dict[str,str]]
+            The list of verdicts for each context. Each verdict is a dictionary with the "verdict" and optionally a "reason".
+        """
+        if len(contexts) == 0:
+            raise ValueError(
+                "Hallucination is meaningless if no context is provided."
+            )
+
+        messages = [
+            {"role": "system", "content": DEFAULT_SYSTEM_PROMPT},
+            {
+                "role": "user",
+                "content": _generate_hallucination_verdicts(
+                    text,
+                    contexts,
+                ),
+            },
+        ]
+
+        response = self(messages)
+        response = trim_and_load_json(response)
+        if type(response) != dict or "verdicts" not in response:
+            raise InvalidLLMResponseError(
+                f"LLM response was not a list of valid verdicts: {response}"
+            )
+
+        verdicts = response["verdicts"]
+        if (
+            type(verdicts) != list
+            or len(verdicts) != len(contexts)
+            or not all(
+                verdict["verdict"] in ["yes", "no"] for verdict in verdicts
+            )
+        ):
+            raise InvalidLLMResponseError(
+                f"LLM response was not a list of valid verdicts: {response}"
+            )
+
+        return verdicts
+
     def _generate_toxicity_verdicts(
         self,
         opinions: list[str],
@@ -898,6 +1013,32 @@ class LLMClient:
         return sum(
             1 for verdict in verdicts if verdict["verdict"] == "yes"
         ) / len(verdicts)
+
+    def hallucination(
+        self,
+        text: str,
+        context: list[str],
+    ) -> float:
+        """
+        Compute the hallucination score, the proportion of context that is contradicted by the text.
+
+        Parameters
+        ----------
+        text: str
+            The text to evaluate for hallucination.
+        contexts: list[str]
+            The list of context to compare against.
+
+        Returns
+        -------
+        float
+            The hallucination score will be evaluated as a float between 0 and 1, with 1 indicating that all context is contradicted by the text.
+        """
+        agreement_verdicts = self._generate_agreement_verdicts(text, context)
+
+        return sum(
+            1 for verdict in agreement_verdicts if verdict["verdict"] == "no"
+        ) / len(agreement_verdicts)
 
     def toxicity(
         self,
@@ -1325,6 +1466,30 @@ class MockLLMClient(LLMClient):
             {
                 "verdict": "no",
                 "reason": "This context has no relevance to the query"
+            },
+            {
+                "verdict": "yes"
+            }
+        ]
+    }```"""
+
+            # Hallucination verdicts
+            elif (
+                "generate a list of JSON objects to indicate whether the given 'actual output' agrees with EACH context"
+                in processed_messages[1]["content"]
+            ):
+                return """```json
+    {
+        "verdicts": [
+            {
+                "verdict": "yes"
+            },
+            {
+                "verdict": "yes"
+            },
+            {
+                "verdict": "no",
+                "reason": "The text contradicts this context."
             },
             {
                 "verdict": "yes"

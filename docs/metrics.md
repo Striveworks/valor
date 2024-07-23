@@ -379,15 +379,25 @@ Our implementation closely follows [DeepEval's implementation](https://github.co
 
 ## RAG Metrics
 
+Note that RAG is a form of Q&A, so any Q&A metric can also be used to evaluate RAG models. The metrics in this section however should not be used for all Q&A tasks. RAG specific metrics use retrieved context, so should not be used to evaluate models that don't use context.
+
 ### Context Relevance
 
 Context relevance is the proportion of pieces of retrieved context that are relevant to the query. A piece of context is considered relevant to the query if any part of the context is relevant to answering the query. For example, a piece of context might be a paragraph of text, so if the answer or part of the answer to a query is contained somewhere in that paragraph, then that piece of context is considered relevant.
 
 Context relevance is useful for evaluating the retrieval mechanism of a RAG model. This metric does not considered the generated answer or any groundtruth answers to the query, only the retrieved context.
 
-The metric is computed by considering the list of retrieved context and evaluating whether each piece of context is relevant to the query using an LLM. Then the score is computed as the number of relevant pieces of context divided by the total number of pieces of context.
+Given the query and the list of context, an LLM is prompted to determine if each piece of context is relevant to the query. Then the score is computed as the number of relevant pieces of context divided by the total number of pieces of context.
 
 Our implementation closely follows [DeepEval's implementation](https://github.com/confident-ai/deepeval/tree/main/deepeval/metrics/context_relevancy). The calculation is the same, however we modified the instruction for the LLM. The instruction in DeepEval contained typos and was organized in a confusing way, so we fixed the typos and reorganized the example to make the task clearer.
+
+### Hallucination
+
+Hallucination is the proportion of pieces of context that are contradicted by the predicted text. If the predicted text does not contradict any of the retrieved context, then it should receive a hallucination score of 0. The hallucination score is computed as the number of pieces of context contradicted by the predicted text divided by the total number of pieces of context.
+
+Given the list of context and the predicted text, an LLM is prompted to determine if the text agrees or contradicts with each piece of context. The LLM is instructed to only indicate contradiction if the text directly contradicts the context, and otherwise indicates agreement.
+
+Our implementation closely follows [DeepEval's implementation](https://github.com/confident-ai/deepeval/tree/main/deepeval/metrics/hallucination). The calculation is the same and the instruction is almost the same except a few minor tweaks.
 
 ## Text Comparison Metrics
 
