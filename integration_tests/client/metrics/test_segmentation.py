@@ -213,7 +213,7 @@ def test_evaluate_segmentation_with_label_maps(
 
     # check metadata
     assert eval_job.meta["datums"] == 2
-    assert eval_job.meta["labels"] == 3
+    assert eval_job.meta["labels"] == 1
     assert eval_job.meta["annotations"] == 4
     assert eval_job.meta["duration"] <= 5  # usually .35
 

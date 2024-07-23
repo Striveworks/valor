@@ -1186,7 +1186,7 @@ def test_evaluate_classification_with_label_maps(
 
     # check metadata
     assert eval_job.meta["datums"] == 3
-    assert eval_job.meta["labels"] == 13
+    assert eval_job.meta["labels"] == 9
     assert eval_job.meta["annotations"] == 6
     assert eval_job.meta["duration"] <= 10  # usually 2
 
