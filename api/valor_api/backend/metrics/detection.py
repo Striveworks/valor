@@ -1145,12 +1145,13 @@ def _compute_iou(
             groundtruths.c.geojson.label("gt_geojson"),
         )
         .select_from(predictions)
-        .outerjoin(
+        .join(
             groundtruths,
             and_(
                 groundtruths.c.datum_id == predictions.c.datum_id,
                 groundtruths.c.label_id == predictions.c.label_id,
             ),
+            full=True,
         )
         .outerjoin(
             gt_pd_ious,
@@ -1240,40 +1241,35 @@ def _compute_detection_metrics(
         is_detailed=False,
     )
 
-    matched_pd_set = set()
+    visited_gt_set = set()
+    visited_pd_set = set()
+    groundtruths_per_label = defaultdict(list)
+    number_of_groundtruths_per_label = defaultdict(int)
     matched_sorted_ranked_pairs = defaultdict(list)
     false_positive_entries = list()
 
-    for row in ordered_ious:
-        (
-            dataset_name,
-            pd_datum_uid,
-            gt_datum_uid,
-            gt_id,
-            pd_id,
-            gt_label_id,
-            pd_label_id,
-            score,
-            iou,
-            gt_geojson,
-        ) = row
+    for (
+        dataset_name,
+        pd_datum_uid,
+        gt_datum_uid,
+        gt_id,
+        pd_id,
+        gt_label_id,
+        pd_label_id,
+        score,
+        iou,
+        gt_geojson,
+    ) in ordered_ious:
 
-        if (
-            parameters.metrics_to_return
-            and enums.MetricType.PrecisionRecallCurve
-            in parameters.metrics_to_return
-            and (gt_id is None or pd_id is None)
-        ):
-            false_positive_entries.append(
-                (
-                    gt_label_id,
-                    pd_label_id,
-                    score,
-                )
+        if gt_id and gt_id not in visited_gt_set:
+            visited_gt_set.add(gt_id)
+            groundtruths_per_label[gt_label_id].append(
+                (dataset_name, gt_datum_uid, gt_id)
             )
+            number_of_groundtruths_per_label[gt_label_id] += 1
 
-        if pd_id not in matched_pd_set:
-            matched_pd_set.add(pd_id)
+        if pd_id and pd_id not in visited_pd_set:
+            visited_pd_set.add(pd_id)
             label_id = gt_label_id if gt_label_id else pd_label_id
             is_match = gt_label_id is not None
             matched_sorted_ranked_pairs[label_id].append(
@@ -1290,18 +1286,20 @@ def _compute_detection_metrics(
                 )
             )
 
-    groundtruths_per_label = defaultdict(list)
-    number_of_groundtruths_per_label = defaultdict(int)
-    for label_id, dataset_name, datum_uid, groundtruth_id in db.query(
-        gt.c.label_id,
-        gt.c.dataset_name,
-        gt.c.datum_uid,
-        gt.c.groundtruth_id,
-    ).all():
-        groundtruths_per_label[label_id].append(
-            (dataset_name, datum_uid, groundtruth_id)
-        )
-        number_of_groundtruths_per_label[label_id] += 1
+        if (
+            gt_id is None
+            and pd_id is not None
+            and parameters.metrics_to_return
+            and enums.MetricType.PrecisionRecallCurve
+            in parameters.metrics_to_return
+        ):
+            false_positive_entries.append(
+                (
+                    gt_label_id,
+                    pd_label_id,
+                    score,
+                )
+            )
 
     if (
         parameters.metrics_to_return
