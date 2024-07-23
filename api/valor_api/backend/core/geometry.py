@@ -1,8 +1,9 @@
 import io
+import struct
 from base64 import b64encode
 
-from geoalchemy2 import Geometry
-from geoalchemy2.functions import ST_AsPNG
+import numpy as np
+from geoalchemy2 import Geometry, RasterElement
 from geoalchemy2.types import CompositeType
 from PIL import Image
 from sqlalchemy import (
@@ -313,7 +314,7 @@ def convert_geometry(
 
 def _raster_to_png_b64(
     db: Session,
-    raster: Image.Image,
+    raster: RasterElement,
 ) -> str:
     """
     Convert a raster to a png.
@@ -330,16 +331,54 @@ def _raster_to_png_b64(
     str
         The encoded raster.
     """
-    raster = Image.open(io.BytesIO(db.scalar(ST_AsPNG((raster))).tobytes()))
-    if raster.mode != "L":
-        raise RuntimeError
+    # Ensure raster_wkb is a bytes-like object
+    raster_wkb = bytes.fromhex(raster.data)
 
-    # mask is greyscale with values 0 and 1. to convert to binary
-    # we first need to map 1 to 255
-    raster = raster.point(lambda x: 255 if x == 1 else 0).convert("1")
+    # Unpack header to get width and height
+    # reference: https://postgis.net/docs/manual-dev/RT_reference.html
+    header_format = "<BHHddddddiHH"
+    header_size = struct.calcsize(header_format)
+    (
+        ndr,
+        version,
+        num_bands,
+        scale_x,
+        scale_y,
+        ip_x,
+        ip_y,
+        skew_x,
+        skew_y,
+        srid,
+        width,
+        height,
+    ) = struct.unpack(header_format, raster_wkb[:header_size])
 
+    # Check if the raster has a single band
+    if num_bands != 1:
+        raise ValueError("This function only supports single-band rasters.")
+
+    # Calculate the number of bytes needed for the pixel data
+    # Each byte represents 1 pixel
+    num_pixels = width * height
+    num_bytes = num_pixels
+
+    # Convert the byte data to a binary array
+    pixel_format = "B"
+    pixel_data = struct.unpack(
+        f"{width * height}{pixel_format}",
+        raster_wkb[header_size + 2 : header_size + 2 + num_bytes],
+    )
+
+    # Convert pixel data to numpy array
+    raster_numpy = np.array(pixel_data, dtype=bool)
+    raster_numpy = raster_numpy.reshape((height, width))
+
+    # Convert to Pillow Image
+    image = Image.fromarray(raster_numpy)
+
+    # b64 encode PNG to mask str
     f = io.BytesIO()
-    raster.save(f, format="PNG")
+    image.save(f, format="PNG")
     f.seek(0)
     mask_bytes = f.read()
     return b64encode(mask_bytes).decode()
