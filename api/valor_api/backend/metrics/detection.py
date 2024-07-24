@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from typing import Sequence, Tuple
 
 from geoalchemy2 import functions as gfunc
-from sqlalchemy import CTE, and_, func, literal, select
+from sqlalchemy import CTE, Integer, and_, func, literal, not_, select
 from sqlalchemy.dialects.postgresql import array, insert
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, aliased
@@ -269,19 +269,14 @@ def _calculate_ap_and_ar(
         .subquery()
     )
 
-    total_query = (
+    positive_query = (
         select(
             joint.c.groundtruth_id,
             joint.c.label_id,
             joint.c.threshold,
-            func.coalesce(
-                first_recall_groundtruths.c.tp,
-                literal(False),
-            ).label("recall_tp"),
-            func.coalesce(
-                first_precision_groundtruth.c.tp,
-                literal(False),
-            ).label("precision_tp"),
+            first_recall_groundtruths.c.tp.isnot(None).label("recall_tp"),
+            first_precision_groundtruth.c.tp.isnot(None).label("precision_tp"),
+            joint.c.row_number,
         )
         .select_from(joint)
         .outerjoin(
@@ -302,24 +297,156 @@ def _calculate_ap_and_ar(
                 == joint.c.groundtruth_id,
             ),
         )
-        .order_by(joint.c.row_number)
+        .cte()
+    )
+
+    # Calculate tp counts for AR
+
+    recall_tp_cnt = (
+        select(
+            positive_query.c.label_id,
+            positive_query.c.threshold,
+            func.sum(positive_query.c.recall_tp.cast(Integer)).label("count"),
+        )
+        .group_by(
+            positive_query.c.label_id,
+            positive_query.c.threshold,
+        )
         .subquery()
     )
 
-    components = defaultdict(lambda: defaultdict(list))
-    for (
-        gt_id,
-        label_id,
-        threshold,
-        recall_tp,
-        precision_tp,
-    ) in db.query(total_query).all():
-        components[label_id][float(threshold)].append(
-            (
-                gt_id,
-                precision_tp,
-                recall_tp,
+    # Accumulate tp and fp counts for AP
+
+    lagging_tp_cnt = func.coalesce(
+        func.lag(positive_query.c.precision_tp.cast(Integer)).over(
+            partition_by=[
+                positive_query.c.label_id,
+                positive_query.c.threshold,
+            ],
+            order_by=positive_query.c.row_number,
+        ),
+        positive_query.c.precision_tp.cast(Integer),
+    )
+
+    lagging_fp_cnt = func.coalesce(
+        func.lag(not_(positive_query.c.precision_tp).cast(Integer)).over(
+            partition_by=[
+                positive_query.c.label_id,
+                positive_query.c.threshold,
+            ],
+            order_by=positive_query.c.row_number,
+        ),
+        not_(positive_query.c.precision_tp).cast(Integer),
+    )
+
+    precision_counts = (
+        select(
+            positive_query.c.label_id,
+            positive_query.c.threshold,
+            positive_query.c.row_number,
+            lagging_tp_cnt.label("precision_cnt_tp"),
+            lagging_fp_cnt.label("precision_cnt_fp"),
+        )
+        .select_from(positive_query)
+        .subquery()
+    )
+
+    # calculate precision and recall for AP
+
+    number_of_groundtruths_per_label_id = (
+        select(groundtruths.c.label_id, func.count().label("count"))
+        .group_by(groundtruths.c.label_id)
+        .subquery()
+    )
+
+    precision = func.coalesce(
+        (
+            precision_counts.c.precision_cnt_tp
+            / (
+                precision_counts.c.precision_cnt_tp
+                + precision_counts.c.precision_cnt_fp
             )
+        ),
+        0,
+    )
+
+    recall = func.coalesce(
+        (
+            precision_counts.c.precision_cnt_tp
+            / number_of_groundtruths_per_label_id.c.count
+        ),
+        0,
+    )
+
+    precision_recall_for_ap = (
+        select(
+            precision_counts.c.label_id,
+            precision_counts.c.threshold,
+            precision_counts.c.row_number,
+            precision.label("precision"),
+            recall.label("recall"),
+        )
+        .select_from(precision_counts)
+        .outerjoin(
+            number_of_groundtruths_per_label_id,
+            number_of_groundtruths_per_label_id.c.label_id
+            == precision_counts.c.label_id,
+        )
+        .subquery()
+    )
+
+    # combine ap and ar components
+
+    aggregate_precision = func.array_agg(
+        precision_recall_for_ap.c.precision
+    ).over(
+        partition_by=[
+            precision_recall_for_ap.c.label_id,
+            precision_recall_for_ap.c.threshold,
+        ],
+        order_by=precision_recall_for_ap.c.row_number,
+    )
+
+    aggregate_recall = func.array_agg(precision_recall_for_ap.c.recall).over(
+        partition_by=[
+            precision_recall_for_ap.c.label_id,
+            precision_recall_for_ap.c.threshold,
+        ],
+        order_by=precision_recall_for_ap.c.row_number,
+    )
+
+    results = (
+        select(
+            precision_recall_for_ap.c.label_id,
+            precision_recall_for_ap.c.threshold,
+            precision_recall_for_ap.c.row_number,
+            aggregate_precision.label("precisions"),
+            aggregate_recall.label("recalls"),
+            func.coalesce(
+                recall_tp_cnt.c.count,
+                0,
+            ).label("recall_tp_cnt"),
+        )
+        .select_from(precision_recall_for_ap)
+        .join(
+            recall_tp_cnt,
+            and_(
+                recall_tp_cnt.c.label_id == precision_recall_for_ap.c.label_id,
+                recall_tp_cnt.c.threshold
+                == precision_recall_for_ap.c.threshold,
+            ),
+        )
+        .subquery()
+    )
+
+    components = defaultdict(lambda: defaultdict(tuple))
+    for (label_id, threshold, _, precisions, recalls, recall_tp_cnt,) in (
+        db.query(results).order_by(results.c.row_number).all()
+    ):
+        components[label_id][float(threshold)] = (
+            precisions,
+            recalls,
+            recall_tp_cnt,
         )
 
     ap_metrics = []
@@ -337,55 +464,22 @@ def _calculate_ap_and_ar(
             recalls = []
             # recall true positives require a confidence score above recall_score_threshold, while precision
             # true positives only require a confidence score above 0
-            recall_cnt_tp = 0
-            recall_cnt_fp = 0
-            recall_cnt_fn = 0
-            precision_cnt_tp = 0
-            precision_cnt_fp = 0
 
             if (
                 label_id in components
                 and iou_threshold in components[label_id]
             ):
-                for (gt_id, precision_tp, recall_tp,) in components[
-                    label_id
-                ][iou_threshold]:
-
-                    if recall_tp:
-                        recall_cnt_tp += 1
-                    else:
-                        recall_cnt_fp += 1
-
-                    if precision_tp:
-                        precision_cnt_tp += 1
-                    else:
-                        precision_cnt_fp += 1
-
-                    precision_cnt_fn = (
-                        number_of_groundtruths_per_label[label_id]
-                        - precision_cnt_tp
-                    )
-
-                    precisions.append(
-                        precision_cnt_tp
-                        / (precision_cnt_tp + precision_cnt_fp)
-                        if (precision_cnt_tp + precision_cnt_fp)
-                        else 0
-                    )
-                    recalls.append(
-                        precision_cnt_tp
-                        / (precision_cnt_tp + precision_cnt_fn)
-                        if (precision_cnt_tp + precision_cnt_fn)
-                        else 0
-                    )
+                precisions, recalls, recall_tp_cnt = components[label_id][
+                    iou_threshold
+                ]
 
                 recall_cnt_fn = (
-                    number_of_groundtruths_per_label[label_id] - recall_cnt_tp
+                    number_of_groundtruths_per_label[label_id] - recall_tp_cnt
                 )
 
                 recalls_across_thresholds.append(
-                    recall_cnt_tp / (recall_cnt_tp + recall_cnt_fn)
-                    if (recall_cnt_tp + recall_cnt_fn)
+                    recall_tp_cnt / (recall_tp_cnt + recall_cnt_fn)
+                    if (recall_tp_cnt + recall_cnt_fn)
                     else 0
                 )
             else:
