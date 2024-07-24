@@ -1478,7 +1478,7 @@ def test_evaluate_detection_with_label_maps(
         {
             "type": "AR",
             "parameters": {"ious": [0.1, 0.6]},
-            "value": 0.3333333333333333,  #
+            "value": 0.3333333333333333,
             "label": {"key": "class", "value": "cat"},
         },
         {
@@ -3223,5 +3223,3 @@ def test_evaluate_detection_model_with_no_predictions(
 
     for m in computed_metrics:
         assert m in expected_metrics
-    # assert all([metric in computed_metrics for metric in expected_metrics])
-    # assert all([metric in expected_metrics for metric in computed_metrics])

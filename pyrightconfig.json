@@ -1,5 +1,5 @@
 {
   "include": ["client/valor", "api"],
-  "exclude": ["examples", "**/pandas"],
+  "exclude": ["examples"],
   "reportMissingImports": "warning"
 }
