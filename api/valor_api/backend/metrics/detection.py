@@ -7,7 +7,9 @@ from dataclasses import dataclass
 from typing import Sequence, Tuple
 
 from geoalchemy2 import functions as gfunc
-from sqlalchemy import CTE, and_, func, select
+from sqlalchemy import CTE, and_, func, literal, select
+from sqlalchemy.dialects.postgresql import insert
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, aliased
 
 from valor_api import enums, schemas
@@ -66,9 +68,21 @@ def _calculate_101_pt_interp(precisions, recalls) -> float:
     return ret / 101
 
 
+def _average_ignore_minus_one(a):
+    """Average a list of metrics, ignoring values of -1"""
+    num, denom = 0.0, 0.0
+    div0_flag = True
+    for x in a:
+        if x != -1:
+            div0_flag = False
+            num += x
+            denom += 1
+    return -1 if div0_flag else num / denom
+
+
 @profiler
 def _calculate_ap_and_ar(
-    sorted_ranked_pairs: dict[int, list[RankedPair]],
+    sorted_ranked_pairs: dict[int, list[tuple[int, float, float]]],
     labels: dict[int, tuple[str, str]],
     number_of_groundtruths_per_label: dict[int, int],
     iou_thresholds: list[float],
@@ -112,38 +126,38 @@ def _calculate_ap_and_ar(
             if label_id in sorted_ranked_pairs:
                 matched_gts_for_precision = set()
                 matched_gts_for_recall = set()
-                for row in sorted_ranked_pairs[label_id]:
+                for gt_id, score, iou in sorted_ranked_pairs[label_id]:
 
-                    precision_score_conditional = row.score > 0
+                    precision_score_conditional = score > 0
 
                     recall_score_conditional = (
-                        row.score > recall_score_threshold
+                        score > recall_score_threshold
                         or (
-                            math.isclose(row.score, recall_score_threshold)
+                            math.isclose(score, recall_score_threshold)
                             and recall_score_threshold > 0
                         )
                     )
 
                     iou_conditional = (
-                        row.iou >= iou_threshold and iou_threshold > 0
+                        iou >= iou_threshold and iou_threshold > 0
                     )
 
                     if (
                         recall_score_conditional
                         and iou_conditional
-                        and row.gt_id not in matched_gts_for_recall
+                        and gt_id not in matched_gts_for_recall
                     ):
                         recall_cnt_tp += 1
-                        matched_gts_for_recall.add(row.gt_id)
+                        matched_gts_for_recall.add(gt_id)
                     else:
                         recall_cnt_fp += 1
 
                     if (
                         precision_score_conditional
                         and iou_conditional
-                        and row.gt_id not in matched_gts_for_precision
+                        and gt_id not in matched_gts_for_precision
                     ):
-                        matched_gts_for_precision.add(row.gt_id)
+                        matched_gts_for_precision.add(gt_id)
                         precision_cnt_tp += 1
                     else:
                         precision_cnt_fp += 1
@@ -663,19 +677,6 @@ def _compute_detection_metrics_averaged_over_ious_from_aps(
 
 
 @profiler
-def _average_ignore_minus_one(a):
-    """Average a list of metrics, ignoring values of -1"""
-    num, denom = 0.0, 0.0
-    div0_flag = True
-    for x in a:
-        if x != -1:
-            div0_flag = False
-            num += x
-            denom += 1
-    return -1 if div0_flag else num / denom
-
-
-@profiler
 def _compute_mean_ar_metrics(
     ar_metrics: Sequence[schemas.ARMetric],
 ) -> list[schemas.mARMetric]:
@@ -976,13 +977,39 @@ def _aggregate_data(
 
 
 @profiler
-def _compute_iou(
+def _compute_and_cache_ious(
     db: Session,
     groundtruths: CTE,
     predictions: CTE,
     target_type: enums.AnnotationType,
     is_detailed: bool = False,
 ):
+    """
+    Computes and caches IoUs for the current evaluation.
+
+    These IoUs are limited to the current filter but are reusable if present in other data slices.
+
+    Parameters
+    ----------
+    db : Session
+        The database session.
+    groundtruths : CTE
+        A CTE containing all groundtruths for the current evaluation.
+    predictions : CTE
+        A CTE containing all predictions for the current evaluation.
+    target_type : AnnotationType
+        The data type being used to annotate. This determines which method to compute IoU with.
+    is_detailed : bool, default=False
+        Sets whether groundtruths and predictions are joined by label key (True) or label key-value (False).
+    """
+
+    # set detail level
+    label_condition = (
+        groundtruths.c.key == predictions.c.key
+        if is_detailed
+        else groundtruths.c.label_id == predictions.c.label_id
+    )
+
     def _annotation_type_to_column(
         annotation_type: AnnotationType,
         table,
@@ -1012,7 +1039,7 @@ def _compute_iou(
             groundtruths,
             and_(
                 groundtruths.c.datum_id == predictions.c.datum_id,
-                groundtruths.c.label_id == predictions.c.label_id,
+                label_condition,
             ),
         )
         .distinct()
@@ -1108,6 +1135,7 @@ def _compute_iou(
                     ),
                     0,
                 ).label("iou"),
+                literal(f"'{target_type.value}'").label("type"),
             )
             .select_from(gt_pd_counts)
             .cte()
@@ -1125,6 +1153,7 @@ def _compute_iou(
                 gt_pd_pairs.c.gt_annotation_id,
                 gt_pd_pairs.c.pd_annotation_id,
                 iou_computation.label("iou"),
+                literal(f"'{target_type.value}'").label("type"),
             )
             .select_from(gt_pd_pairs)
             .join(
@@ -1138,23 +1167,69 @@ def _compute_iou(
             .cte()
         )
 
-    ious = (
-        select(
+    create_and_cache_ious = (
+        insert(models.IoU)
+        .from_select(
+            [
+                "groundtruth_annotation_id",
+                "prediction_annotation_id",
+                "iou",
+                "type",
+            ],
+            gt_pd_ious,
+        )
+        .on_conflict_do_nothing(
+            index_elements=[
+                "groundtruth_annotation_id",
+                "prediction_annotation_id",
+                "type",
+            ]
+        )
+    )
+
+    try:
+        db.execute(create_and_cache_ious)
+        db.commit()
+    except IntegrityError as e:
+        db.rollback()
+        raise e
+
+
+@profiler
+def _rank_pairs(
+    db: Session,
+    groundtruths: CTE,
+    predictions: CTE,
+):
+    row_number = func.row_number().over(
+        partition_by=[
             func.coalesce(
-                predictions.c.dataset_name, groundtruths.c.dataset_name
-            ).label("dataset_name"),
-            predictions.c.datum_uid.label("pd_datum_uid"),
-            groundtruths.c.datum_uid.label("gt_datum_uid"),
-            groundtruths.c.groundtruth_id.label("gt_id"),
-            predictions.c.prediction_id.label("pd_id"),
+                groundtruths.c.label_id,
+                predictions.c.label_id,
+            )
+        ],
+        order_by=[
+            -predictions.c.score,
+            -func.coalesce(
+                models.IoU.iou,
+                0,
+            ),
+            groundtruths.c.groundtruth_id,
+        ],
+    )
+
+    ordered_pairs = (
+        select(
+            groundtruths.c.groundtruth_id,
+            predictions.c.prediction_id,
             groundtruths.c.label_id.label("gt_label_id"),
             predictions.c.label_id.label("pd_label_id"),
-            predictions.c.score.label("score"),
+            predictions.c.score,
             func.coalesce(
-                gt_pd_ious.c.iou,
+                models.IoU.iou,
                 0,
             ).label("iou"),
-            groundtruths.c.geojson.label("gt_geojson"),
+            row_number.label("row_number"),
         )
         .select_from(predictions)
         .join(
@@ -1166,18 +1241,69 @@ def _compute_iou(
             full=True,
         )
         .outerjoin(
-            gt_pd_ious,
+            models.IoU,
             and_(
-                gt_pd_ious.c.gt_annotation_id == groundtruths.c.annotation_id,
-                gt_pd_ious.c.pd_annotation_id == predictions.c.annotation_id,
+                models.IoU.groundtruth_annotation_id
+                == groundtruths.c.annotation_id,
+                models.IoU.prediction_annotation_id
+                == predictions.c.annotation_id,
             ),
+        )
+        .cte()
+    )
+
+    filtered_predictions = (
+        select(
+            ordered_pairs.c.prediction_id,
+            func.min(ordered_pairs.c.row_number).label("row_number"),
+        )
+        .select_from(ordered_pairs)
+        .group_by(
+            ordered_pairs.c.prediction_id,
         )
         .subquery()
     )
 
-    return (
-        db.query(ious).order_by(-ious.c.score, -ious.c.iou, ious.c.gt_id).all()
+    filtered_ordered_pairs = (
+        select(
+            ordered_pairs.c.groundtruth_id,
+            ordered_pairs.c.gt_label_id,
+            ordered_pairs.c.pd_label_id,
+            ordered_pairs.c.score,
+            ordered_pairs.c.iou,
+        )
+        .select_from(ordered_pairs)
+        .join(
+            filtered_predictions,
+            and_(
+                filtered_predictions.c.prediction_id
+                == ordered_pairs.c.prediction_id,
+                filtered_predictions.c.row_number
+                == ordered_pairs.c.row_number,
+            ),
+        )
+        .order_by(ordered_pairs.c.row_number)
+        .subquery()
     )
+
+    sorted_ranked_pairs = defaultdict(list)
+    for (
+        gt_id,
+        gt_label_id,
+        pd_label_id,
+        score,
+        iou,
+    ) in db.query(filtered_ordered_pairs).all():
+        sorted_ranked_pairs[
+            (gt_label_id if gt_label_id else pd_label_id)
+        ].append(
+            (
+                gt_id,
+                score,
+                iou,
+            )
+        )
+    return sorted_ranked_pairs
 
 
 @profiler
@@ -1246,7 +1372,7 @@ def _compute_detection_metrics(
         label_map=parameters.label_map,
     )
 
-    ordered_ious = _compute_iou(
+    _compute_and_cache_ious(
         db=db,
         groundtruths=gt,
         predictions=pd,
@@ -1254,71 +1380,52 @@ def _compute_detection_metrics(
         is_detailed=False,
     )
 
-    visited_gt_set = set()
-    visited_pd_set = set()
-    groundtruths_per_label = defaultdict(list)
-    number_of_groundtruths_per_label = defaultdict(int)
-    matched_sorted_ranked_pairs = defaultdict(list)
-    false_positive_entries = list()
+    matched_sorted_ranked_pairs = _rank_pairs(
+        db=db,
+        groundtruths=gt,
+        predictions=pd,
+    )
 
-    for (
-        dataset_name,
-        pd_datum_uid,
-        gt_datum_uid,
-        gt_id,
-        pd_id,
-        gt_label_id,
-        pd_label_id,
-        score,
-        iou,
-        gt_geojson,
-    ) in ordered_ious:
-
-        if gt_id and gt_id not in visited_gt_set:
-            visited_gt_set.add(gt_id)
-            groundtruths_per_label[gt_label_id].append(
-                (dataset_name, gt_datum_uid, gt_id)
+    number_of_groundtruths_per_label = {
+        label_id: count
+        for label_id, count in (
+            db.query(
+                gt.c.label_id,
+                func.count(),
             )
-            number_of_groundtruths_per_label[gt_label_id] += 1
-
-        if pd_id and pd_id not in visited_pd_set:
-            visited_pd_set.add(pd_id)
-            label_id = gt_label_id if gt_label_id else pd_label_id
-            is_match = gt_label_id is not None
-            matched_sorted_ranked_pairs[label_id].append(
-                RankedPair(
-                    dataset_name=dataset_name,
-                    pd_datum_uid=pd_datum_uid,
-                    gt_datum_uid=gt_datum_uid,
-                    gt_geojson=gt_geojson,
-                    gt_id=gt_id,
-                    pd_id=pd_id,
-                    score=score,
-                    iou=iou,
-                    is_match=is_match,
-                )
-            )
-
-        if (
-            gt_id is None
-            and pd_id is not None
-            and parameters.metrics_to_return
-            and enums.MetricType.PrecisionRecallCurve
-            in parameters.metrics_to_return
-        ):
-            false_positive_entries.append(
-                (
-                    gt_label_id,
-                    pd_label_id,
-                    score,
-                )
-            )
+            .group_by(gt.c.label_id)
+            .all()
+        )
+    }
 
     if (
         parameters.metrics_to_return
         and enums.MetricType.PrecisionRecallCurve
         in parameters.metrics_to_return
     ):
+        groundtruths_per_label = defaultdict(list)
+        for gt_id, label_id in db.query(
+            select(
+                gt.c.groundtruth_id,
+                gt.c.label_id,
+            )
+            .select_from(gt)
+            .distinct()
+            .subquery()
+        ).all():
+            groundtruths_per_label[label_id].append(gt_id)
+
+        false_positive_entries = [
+            (
+                None,
+                label_id,
+                score,
+            )
+            for label_id, pairs in matched_sorted_ranked_pairs.items()
+            for gt_id, score, iou in pairs
+            if gt_id is None
+        ]
+
         pr_curves = _compute_curves(
             sorted_ranked_pairs=matched_sorted_ranked_pairs,
             labels=labels,
@@ -1447,6 +1554,14 @@ def _compute_detection_metrics_with_detailed_precision_recall_curve(
         prediction_filter=prediction_filter,
         target_type=target_type,
         label_map=parameters.label_map,
+    )
+
+    _compute_and_cache_ious(
+        db=db,
+        groundtruths=gt,
+        predictions=pd,
+        target_type=target_type,
+        is_detailed=True,
     )
 
     # Alias the annotation table (required for joining twice)
@@ -1806,7 +1921,9 @@ def _compute_detection_metrics_with_detailed_precision_recall_curve(
     ap_ar_output = []
 
     ap_metrics, ar_metrics = _calculate_ap_and_ar(
-        sorted_ranked_pairs=matched_sorted_ranked_pairs,
+        db=db,
+        groundtruths=gt,
+        predictions=pd,
         labels=labels,
         number_of_groundtruths_per_label=number_of_groundtruths_per_label,
         iou_thresholds=parameters.iou_thresholds_to_compute,
