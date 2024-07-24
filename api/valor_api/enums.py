@@ -137,6 +137,7 @@ class MetricType(str, Enum):
     BLEU = "BLEU"
     Coherence = "Coherence"
     ContextRelevance = "ContextRelevance"
+    Faithfulness = "Faithfulness"
     Hallucination = "Hallucination"
     ROUGE = "ROUGE"
     Toxicity = "Toxicity"

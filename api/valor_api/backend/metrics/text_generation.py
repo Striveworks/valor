@@ -33,6 +33,7 @@ LLM_GUIDED_METRICS = {
     "Bias",
     "Coherence",
     "ContextRelevance",
+    "Faithfulness",
     "Hallucination",
     "Toxicity",
 }
@@ -260,6 +261,7 @@ def _compute_text_generation_metrics(
     | schemas.BLEUMetric
     | schemas.CoherenceMetric
     | schemas.ContextRelevanceMetric
+    | schemas.FaithfulnessMetric
     | schemas.HallucinationMetric
     | schemas.ROUGEMetric
     | schemas.ToxicityMetric
@@ -286,7 +288,7 @@ def _compute_text_generation_metrics(
 
     Returns
     ----------
-    Sequence[schemas.AnswerRelevanceMetric | schemas.BiasMetric | schemas.BLEUMetric | schemas.CoherenceMetric | schemas.ContextRelevanceMetric | schemas.HallucinationMetric | schemas.ROUGEMetric | schemas.ToxicityMetric]
+    Sequence[schemas.AnswerRelevanceMetric | schemas.BiasMetric | schemas.BLEUMetric | schemas.CoherenceMetric | schemas.ContextRelevanceMetric | schemas.FaithfulnessMetric | schemas.HallucinationMetric | schemas.ROUGEMetric | schemas.ToxicityMetric]
         A list of computed metrics.
     """
     prediction_subquery = generate_query(
@@ -461,6 +463,7 @@ def _compute_text_generation_metrics(
         is_Bias_enabled = "Bias" in metrics_to_return
         is_Coherence_enabled = "Coherence" in metrics_to_return
         is_ContextRelevance_enabled = "ContextRelevance" in metrics_to_return
+        is_Faithfulness_enabled = "Faithfulness" in metrics_to_return
         is_Hallucination_enabled = "Hallucination" in metrics_to_return
         is_Toxicity_enabled = "Toxicity" in metrics_to_return
 
@@ -521,6 +524,22 @@ def _compute_text_generation_metrics(
                         parameters={
                             "dataset": dataset_name,
                             "datum_uid": datum_uid,
+                            "context": prediction_context,
+                        },
+                    )
+                ]
+
+            if is_Faithfulness_enabled:
+                score = client.faithfulness(
+                    text=prediction_text, context=prediction_context
+                )
+                output += [
+                    schemas.FaithfulnessMetric(
+                        value=score,
+                        parameters={
+                            "dataset": dataset_name,
+                            "datum_uid": datum_uid,
+                            "prediction": prediction_text,
                             "context": prediction_context,
                         },
                     )

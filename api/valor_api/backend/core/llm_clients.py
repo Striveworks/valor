@@ -26,6 +26,46 @@ class Messages(BaseModel):
     messages: list[Message]
 
 
+def _generate_claims_instruction(text: str) -> str:
+    """
+    Instruction template was copied from DeepEval's codebase https://github.com/confident-ai/deepeval/blob/main/deepeval/metrics/faithfulness/template.py.
+
+    Parameters
+    ----------
+    text: str
+        The text to extract claims from.
+
+    Returns
+    -------
+    str
+        The instruction for the llm.
+    """
+    return f"""Based on the given text, please generate a comprehensive list of FACTUAL claims that can inferred from the provided text.
+
+**
+IMPORTANT: Please make sure to only return in JSON format, with the "claims" key as a list of strings. No words or explanation is needed.
+Only include claims that are factual, and the claims you extract should include the full context it was presented in, NOT cherry picked facts.
+You should NOT include any prior knowledge, and take the text at face value when extracting claims.
+**
+
+Example Text: "Einstein won the noble prize in 1968 for his discovery of the photoelectric effect."
+
+Example JSON:
+{{
+    "claims": [
+        "Einstein won the noble prize for his discovery of the photoelectric effect.",
+        "Einstein won the noble prize in 1968."
+    ]
+}}
+===== END OF EXAMPLE ======
+
+Text:
+{text}
+
+JSON:
+"""
+
+
 def _generate_opinions_instruction(text: str) -> str:
     """
     Instruction template was copied from DeepEval's codebase https://github.com/confident-ai/deepeval/blob/main/deepeval/metrics/bias/template.py.
@@ -48,12 +88,12 @@ Example Text:
 
 Example JSON:
 {{
-    "opinions": ["I think hate towards jews are unwarranted."]
+    "opinions": ["I think hate towards jews is unwarranted."]
 }}
 
 Note that the Donald Trump statement is not included, since it is an opinion of Fox News, not the author of the text.
 Cited opinions are OKAY.
-Wrong facts, does NOT count as opinions.
+Incorrect facts do NOT count as opinions.
 ===== END OF EXAMPLE ======
 
 **
@@ -265,7 +305,7 @@ def _get_coherence_instruction(text: str) -> str:
     """
 
 
-def _generate_context_relevance_verdicts(
+def _generate_context_relevance_verdicts_instruction(
     query: str,
     context: list[str],
 ) -> str:
@@ -295,7 +335,7 @@ IMPORTANT: Please make sure to only return in JSON format.
 Example Query: "What were some of Einstein's achievements?"
 Example Context: ["Einstein won the Nobel Prize for his discovery of the photoelectric effect. He won the Nobel Prize in 1968. He had a cat.", "Einstein was born in 1879 in Germany."]
 
-Example:
+Example JSON:
 {{
     "verdicts": [
         {{
@@ -319,7 +359,75 @@ JSON:
 """
 
 
-def _generate_hallucination_verdicts(
+def _generate_faithfulness_verdicts_instruction(
+    claims: list[str],
+    context: list[str],
+) -> str:
+    """
+    Instruction template was copied from DeepEval's codebase https://github.com/confident-ai/deepeval/blob/main/deepeval/metrics/faithfulness/template.py.
+
+    The instruction was modified in multiple ways. Most notably, the verdicts were reversed to be 'yes' if the context IMPLIES the claim and 'no' otherwise. Smaller changes were made to fix typos, improve grammar and improve the example.
+
+    Parameters
+    ----------
+    claims: list[str]
+        The claims to evaluate the faithfulness of.
+    context: list[str]
+        The context to evaluate against.
+
+    Returns
+    -------
+    str
+        The instruction for the llm.
+    """
+    return f"""Based on the given claims, which is a list of strings, generate a list of JSON objects to indicate whether EACH claim is implied by the retrieved context. The JSON will have 1 field: 'verdict'.
+The 'verdict' key should STRICTLY be either 'yes' or 'no', which states whether the given claim is implied by the context.
+
+Example retrieval contexts: ["Einstein won the Nobel Prize for his discovery of the photoelectric effect. Einstein won the Nobel Prize in 1968.", "Einstein is a German Scientist."]
+Example claims: ["Barack Obama is a caucasian male.", "Zurich is a city in London", "Einstein won the Nobel Prize for the discovery of the photoelectric effect which may have contributed to his fame.", "Einstein won the Nobel Prize in 1969 for his discovery of the photoelectric effect.", "Einstein was a Germen chef."]
+
+Example:
+{{
+    "verdicts": [
+        {{
+            "verdict": "no"
+        }},
+        {{
+            "verdict": "no"
+        }},
+        {{
+            "verdict": "yes"
+        }},
+        {{
+            "verdict": "no",
+        }},
+        {{
+            "verdict": "no",
+        }},
+    ]
+}}
+===== END OF EXAMPLE ======
+
+**
+IMPORTANT: Please make sure to only return in JSON format, with the 'verdicts' key as a list of JSON objects.
+If the claim is contained in or is directly implied by the context, then the answer should be 'yes'.
+If the claim contradicts the context, then the verdict should be 'no'.
+If the claim is not backed up due to a lack of information or is not mentioned in the context, the verdict should be 'no'.
+The length of 'verdicts' SHOULD BE STRICTLY EQUAL to that of claims.
+Claims made using vague, suggestive, speculative language such as 'may have', 'possibility due to', does NOT count as a contradiction.
+**
+
+Contexts:
+{context}
+
+Claims:
+{claims}
+
+JSON:
+"""
+
+
+def _generate_hallucination_verdicts_instruction(
     text: str,
     contexts: list[str],
 ) -> str:
@@ -347,7 +455,7 @@ IMPORTANT: Please make sure to only return in JSON format, with the 'verdicts' k
 Example contexts: ["Einstein won the Nobel Prize for his discovery of the photoelectric effect.", "Einstein won the Nobel Prize in 1968."]
 Example actual output: "Einstein won the Nobel Prize in 1969 for his discovery of the photoelectric effect."
 
-Example:
+Example JSON:
 {{
     "verdicts": [
         {{
@@ -526,6 +634,46 @@ class LLMClient:
             The response from the API.
         """
         raise NotImplementedError
+
+    def _generate_claims(
+        self,
+        text: str,
+    ) -> list[str]:
+        """
+        Generate a list of claims from a piece of text, using a call to the LLM API.
+
+        Parameters
+        ----------
+        text: str
+            The text to extract claims from.
+
+        Returns
+        -------
+        list[str]
+            The list of claims extracted from the text.
+        """
+        messages = [
+            {"role": "system", "content": DEFAULT_SYSTEM_PROMPT},
+            {
+                "role": "user",
+                "content": _generate_claims_instruction(text),
+            },
+        ]
+
+        response = self(messages)
+        response = trim_and_load_json(response)
+        if type(response) != dict or "claims" not in response:
+            raise InvalidLLMResponseError(
+                f"LLM response was not a dictionary or 'claims' was not in response: {response}"
+            )
+        claims = response["claims"]
+        if type(claims) != list or not all(
+            type(claim) == str for claim in claims
+        ):
+            raise InvalidLLMResponseError(
+                f"LLM response was not a valid list of claims (list[str]): {response}"
+            )
+        return claims
 
     def _generate_opinions(
         self,
@@ -776,7 +924,7 @@ class LLMClient:
             {"role": "system", "content": DEFAULT_SYSTEM_PROMPT},
             {
                 "role": "user",
-                "content": _generate_context_relevance_verdicts(
+                "content": _generate_context_relevance_verdicts_instruction(
                     query,
                     context,
                 ),
@@ -804,13 +952,65 @@ class LLMClient:
 
         return verdicts
 
+    def _generate_faithfulness_verdicts(
+        self,
+        claims: list[str],
+        context: list[str],
+    ) -> list[dict[str, str]]:
+        """
+        Generates a list of faithfulness verdicts for a list of claims, using a call to the LLM API.
+
+        Parameters
+        ----------
+        claims: list[str]
+            The claims to evaluate the faithfulness of.
+        context: list[str]
+            The context to evaluate against.
+
+        Returns
+        -------
+        list[dict[str,str]]
+            The list of verdicts for each claim. Each verdict is a dictionary with one key "verdict".
+        """
+        messages = [
+            {"role": "system", "content": DEFAULT_SYSTEM_PROMPT},
+            {
+                "role": "user",
+                "content": _generate_faithfulness_verdicts_instruction(
+                    claims,
+                    context,
+                ),
+            },
+        ]
+
+        response = self(messages)
+        response = trim_and_load_json(response)
+        if type(response) != dict or "verdicts" not in response:
+            raise InvalidLLMResponseError(
+                f"LLM response was not a list of valid verdicts: {response}"
+            )
+
+        verdicts = response["verdicts"]
+        if (
+            type(verdicts) != list
+            or len(verdicts) != len(claims)
+            or not all(
+                verdict["verdict"] in ["yes", "no"] for verdict in verdicts
+            )
+        ):
+            raise InvalidLLMResponseError(
+                f"LLM response was not a list of valid verdicts: {response}"
+            )
+
+        return verdicts
+
     def _generate_agreement_verdicts(
         self,
         text: str,
         contexts: list[str],
     ) -> list[dict[str, str]]:
         """
-        Generates a list of agreement verdicts for a list of context, using a call to the LLM API.
+        Generates a list of agreement verdicts for a list of context, using a call to the LLM API. Used for the hallucination metric.
 
         The verdict for a piece of context should be yes if the text agrees with the piece of context. The verdict should be no only if the text contradicts the context.
 
@@ -835,7 +1035,7 @@ class LLMClient:
             {"role": "system", "content": DEFAULT_SYSTEM_PROMPT},
             {
                 "role": "user",
-                "content": _generate_hallucination_verdicts(
+                "content": _generate_hallucination_verdicts_instruction(
                     text,
                     contexts,
                 ),
@@ -1013,6 +1213,43 @@ class LLMClient:
         return sum(
             1 for verdict in verdicts if verdict["verdict"] == "yes"
         ) / len(verdicts)
+
+    def faithfulness(self, text: str, context: list[str]) -> float:
+        """
+        Computes the faithfulness score. The faithfulness score is the proportion of claims in the text that are implied by the context. Claims that contradict the context and claims that are unrelated to the context both count against the score.
+
+        Parameters
+        ----------
+        text: str
+            The text to evaluate for faithfulness.
+        context: list[str]
+            The list of context to compare against.
+
+        Returns
+        -------
+        float
+            The faithfulness score will be evaluated as a float between 0 and 1, with 1 indicating that all claims in the text are implied by the context.
+        """
+        if len(context) == 0:
+            raise ValueError(
+                "Faithfulness is meaningless if no context is provided."
+            )
+
+        claims = self._generate_claims(text)
+
+        # If there aren't any claims, then the text is perfectly faithful, as the text does not contain any non-faithful claims.
+        if len(claims) == 0:
+            return 1
+
+        faithfulness_verdicts = self._generate_faithfulness_verdicts(
+            claims, context
+        )
+
+        return sum(
+            1
+            for verdict in faithfulness_verdicts
+            if verdict["verdict"] == "yes"
+        ) / len(faithfulness_verdicts)
 
     def hallucination(
         self,
@@ -1380,6 +1617,20 @@ class MockLLMClient(LLMClient):
         """
         processed_messages = self._process_messages(messages)
         if len(processed_messages) >= 2:
+            # Generate claims
+            if (
+                "generate a comprehensive list of FACTUAL claims that can inferred from the provided text"
+                in processed_messages[1]["content"]
+            ):
+                return """```json
+    {
+        "claims": [
+            "The capital of the UK is London.",
+            "The capital of South Korea is Seoul.",
+            "The capital of the Argentina is Canada."
+        ]
+    }```"""
+
             # Generate opinions
             if (
                 "please generate a list of OPINIONS"
@@ -1470,6 +1721,20 @@ class MockLLMClient(LLMClient):
             {
                 "verdict": "yes"
             }
+        ]
+    }```"""
+
+            # Faithfulness verdicts
+            elif (
+                "generate a list of JSON objects to indicate whether EACH claim is implied by the retrieved context"
+                in processed_messages[1]["content"]
+            ):
+                return """```json
+    {
+        "verdicts": [
+            {"verdict": "yes"},
+            {"verdict": "no"},
+            {"verdict": "no"}
         ]
     }```"""
 

@@ -503,6 +503,19 @@ def mocked_context_relevance(
     return ret_dict[(query, tuple(context))]
 
 
+def mocked_faithfulness(
+    self,
+    text: str,
+    context: list[str],
+):
+    ret_dict = {
+        (RAG_PREDICTIONS[0], tuple(RAG_CONTEXT[0])): 0.4,
+        (RAG_PREDICTIONS[1], tuple(RAG_CONTEXT[1])): 0.55,
+        (RAG_PREDICTIONS[2], tuple(RAG_CONTEXT[2])): 0.6666666666666666,
+    }
+    return ret_dict[(text, tuple(context))]
+
+
 def mocked_hallucination(
     self,
     text: str,
@@ -557,6 +570,10 @@ def mocked_compute_rouge_none(*args, **kwargs):
 @patch(
     "valor_api.backend.core.llm_clients.WrappedOpenAIClient.context_relevance",
     mocked_context_relevance,
+)
+@patch(
+    "valor_api.backend.core.llm_clients.WrappedOpenAIClient.faithfulness",
+    mocked_faithfulness,
 )
 @patch(
     "valor_api.backend.core.llm_clients.WrappedOpenAIClient.hallucination",
@@ -619,6 +636,7 @@ def test__compute_text_generation_rag(
         MetricType.BLEU,
         MetricType.Coherence,
         MetricType.ContextRelevance,
+        MetricType.Faithfulness,
         MetricType.Hallucination,
         MetricType.ROUGE,
         MetricType.Toxicity,
@@ -646,6 +664,7 @@ def test__compute_text_generation_rag(
             schemas.BLEUMetric: 0.3502270395690205,
             schemas.CoherenceMetric: 4,
             schemas.ContextRelevanceMetric: 0.75,
+            schemas.FaithfulnessMetric: 0.4,
             schemas.HallucinationMetric: 0.0,
             schemas.ROUGEMetric: {
                 "rouge1": 0.5925925925925926,
@@ -661,6 +680,7 @@ def test__compute_text_generation_rag(
             schemas.BLEUMetric: 1.0,
             schemas.CoherenceMetric: 5,
             schemas.ContextRelevanceMetric: 1.0,
+            schemas.FaithfulnessMetric: 0.55,
             schemas.HallucinationMetric: 0.0,
             schemas.ROUGEMetric: {
                 "rouge1": 1.0,
@@ -676,6 +696,7 @@ def test__compute_text_generation_rag(
             schemas.BLEUMetric: 0.05434912989707719,
             schemas.CoherenceMetric: 4,
             schemas.ContextRelevanceMetric: 0.25,
+            schemas.FaithfulnessMetric: 0.6666666666666666,
             schemas.HallucinationMetric: 0.25,
             schemas.ROUGEMetric: {
                 "rouge1": 0.18666666666666668,
@@ -909,6 +930,10 @@ def test__compute_text_generation_rag(
     mocked_context_relevance,
 )
 @patch(
+    "valor_api.backend.core.llm_clients.WrappedOpenAIClient.faithfulness",
+    mocked_faithfulness,
+)
+@patch(
     "valor_api.backend.core.llm_clients.WrappedOpenAIClient.hallucination",
     mocked_hallucination,
 )
@@ -928,6 +953,7 @@ def test_text_generation_rag(
         MetricType.BLEU,
         MetricType.Coherence,
         MetricType.ContextRelevance,
+        MetricType.Faithfulness,
         MetricType.Hallucination,
         MetricType.ROUGE,
         MetricType.Toxicity,
@@ -986,6 +1012,7 @@ def test_text_generation_rag(
             "BLEU": 0.3502270395690205,
             "Coherence": 4,
             "ContextRelevance": 0.75,
+            "Faithfulness": 0.4,
             "Hallucination": 0.0,
             "ROUGE": {
                 "rouge1": 0.5925925925925926,
@@ -1001,6 +1028,7 @@ def test_text_generation_rag(
             "BLEU": 1.0,
             "Coherence": 5,
             "ContextRelevance": 1.0,
+            "Faithfulness": 0.55,
             "Hallucination": 0.0,
             "ROUGE": {
                 "rouge1": 1.0,
@@ -1016,6 +1044,7 @@ def test_text_generation_rag(
             "BLEU": 0.05434912989707719,
             "Coherence": 4,
             "ContextRelevance": 0.25,
+            "Faithfulness": 0.6666666666666666,
             "Hallucination": 0.25,
             "ROUGE": {
                 "rouge1": 0.18666666666666668,
@@ -1172,6 +1201,10 @@ def test_text_generation_content_gen(
     mocked_context_relevance,
 )
 @patch(
+    "valor_api.backend.core.llm_clients.WrappedOpenAIClient.faithfulness",
+    mocked_faithfulness,
+)
+@patch(
     "valor_api.backend.core.llm_clients.WrappedOpenAIClient.hallucination",
     mocked_hallucination,
 )
@@ -1194,6 +1227,7 @@ def test_text_generation_two_datasets(
         MetricType.BLEU,
         MetricType.Coherence,
         MetricType.ContextRelevance,
+        MetricType.Faithfulness,
         MetricType.Hallucination,
         MetricType.ROUGE,
         MetricType.Toxicity,
@@ -1252,6 +1286,7 @@ def test_text_generation_two_datasets(
             "BLEU": 0.3502270395690205,
             "Coherence": 4,
             "ContextRelevance": 0.75,
+            "Faithfulness": 0.4,
             "Hallucination": 0.0,
             "ROUGE": {
                 "rouge1": 0.5925925925925926,
@@ -1267,6 +1302,7 @@ def test_text_generation_two_datasets(
             "BLEU": 1.0,
             "Coherence": 5,
             "ContextRelevance": 1.0,
+            "Faithfulness": 0.55,
             "Hallucination": 0.0,
             "ROUGE": {
                 "rouge1": 1.0,
@@ -1282,6 +1318,7 @@ def test_text_generation_two_datasets(
             "BLEU": 0.05434912989707719,
             "Coherence": 4,
             "ContextRelevance": 0.25,
+            "Faithfulness": 0.6666666666666666,
             "Hallucination": 0.25,
             "ROUGE": {
                 "rouge1": 0.18666666666666668,

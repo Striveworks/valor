@@ -927,6 +927,42 @@ class ContextRelevanceMetric(BaseModel):
         }
 
 
+class FaithfulnessMetric(BaseModel):
+    """
+    Describes a faithfulness metric.
+
+    Attributes
+    ----------
+    value : float
+        The faithfulness score for a datum. This is a float between 0 and 1, with 1 indicating that all claims in the text are implied by the context.
+    parameters : dict
+        Any parameters associated with the metric, as well as any datum or prediction parameters that are relevant to the metric.
+    """
+
+    value: float
+    parameters: dict
+
+    def db_mapping(self, evaluation_id: int) -> dict:
+        """
+        Creates a mapping for use when uploading the metric to the database.
+
+        Parameters
+        ----------
+        evaluation_id : int
+            The evaluation id.
+
+        Returns
+        ----------
+        A mapping dictionary.
+        """
+        return {
+            "value": self.value,
+            "parameters": self.parameters,
+            "type": "Faithfulness",
+            "evaluation_id": evaluation_id,
+        }
+
+
 class HallucinationMetric(BaseModel):
     """
     Describes a hallucination metric.

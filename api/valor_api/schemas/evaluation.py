@@ -145,6 +145,7 @@ class EvaluationParameters(BaseModel):
                         "Bias",
                         "Coherence",
                         "ContextRelevance",
+                        "Faithfulness",
                         "Hallucination",
                         "Toxicity",
                     ]

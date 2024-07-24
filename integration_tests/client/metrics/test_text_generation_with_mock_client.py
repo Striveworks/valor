@@ -166,6 +166,7 @@ def test_llm_evaluation_rag_with_mock_client(
         MetricType.BLEU,
         MetricType.Coherence,
         MetricType.ContextRelevance,
+        MetricType.Faithfulness,
         MetricType.Hallucination,
         MetricType.ROUGE,
         MetricType.Toxicity,
@@ -213,6 +214,7 @@ def test_llm_evaluation_rag_with_mock_client(
             "BLEU": 0.3502270395690205,
             "Coherence": 4,
             "ContextRelevance": 0.75,
+            "Faithfulness": 0.3333333333333333,
             "Hallucination": 0.25,
             "ROUGE": {
                 "rouge1": 0.5925925925925926,
@@ -228,6 +230,7 @@ def test_llm_evaluation_rag_with_mock_client(
             "BLEU": 1.0,
             "Coherence": 4,
             "ContextRelevance": 0.75,
+            "Faithfulness": 0.3333333333333333,
             "Hallucination": 0.25,
             "ROUGE": {
                 "rouge1": 1.0,
@@ -243,6 +246,7 @@ def test_llm_evaluation_rag_with_mock_client(
             "BLEU": 0.05434912989707719,
             "Coherence": 4,
             "ContextRelevance": 0.75,
+            "Faithfulness": 0.3333333333333333,
             "Hallucination": 0.25,
             "ROUGE": {
                 "rouge1": 0.18666666666666668,

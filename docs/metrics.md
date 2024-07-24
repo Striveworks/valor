@@ -391,6 +391,16 @@ Given the query and the list of context, an LLM is prompted to determine if each
 
 Our implementation closely follows [DeepEval's implementation](https://github.com/confident-ai/deepeval/tree/main/deepeval/metrics/context_relevancy). The calculation is the same, however we modified the instruction for the LLM. The instruction in DeepEval contained typos and was organized in a confusing way, so we fixed the typos and reorganized the example to make the task clearer.
 
+### Faithfulness
+
+Faithfulness is the proportion of claims from the predicted text that are implied by the retrieved context.
+
+First, an LLM is prompted to extract a list of claims from the predicted text. Then, the LLM is prompted again with the list of claims and the list of context and is asked if each claim is implied / can be verified from the context. If the claim contradicts the context or if the claim is unrelated to the context, the LLM is instructed to indicate that the claim is not implied by the context. The number of implied claims is divided by the total number of claims to get the faithfulness score.
+
+Our implementation loosely follows and combines the strategies of [DeepEval](https://docs.confident-ai.com/docs/metrics-faithfulness) and [RAGAS](https://docs.ragas.io/en/latest/concepts/metrics/faithfulness.html), however it is notable that DeepEval and RAGAS's definitions of faithfulness are not equivalent. The difference is that, if a claim is unrelated to the context (is not implied by the context but also does not contradict the context), then DeepEval counts this claim positively towards the faithfulness score, however RAGAS counts this claim against the faithfulness score. Valor follows the same definition as RAGAS, as we believe that a claim that is unrelated to the context should not be counted positively towards the faithfulness score. If a predicted text makes many claims that are unrelated and unverifiable from the context, then how can we consider that text faithful to the context?
+
+We follow [DeepEval's prompting strategy](https://github.com/confident-ai/deepeval/blob/main/deepeval/metrics/faithfulness/template.py) as this strategy is closer to the other prompting strategies in Valor, however we heavily modify the instructions. Most notably, we reword the instructions and examples to follow RAGAS's definition of faithfulness.
+
 ### Hallucination
 
 Hallucination is the proportion of pieces of context that are contradicted by the predicted text. If the predicted text does not contradict any of the retrieved context, then it should receive a hallucination score of 0. The hallucination score is computed as the number of pieces of context contradicted by the predicted text divided by the total number of pieces of context.

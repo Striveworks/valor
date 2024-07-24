@@ -24,6 +24,27 @@ from valor_api.backend.core.llm_clients import (
 )
 from valor_api.exceptions import InvalidLLMResponseError
 
+VALID_CLAIMS = """```json
+{
+    "claims": [
+        "claim 1",
+        "claim 2",
+        "claim 3",
+        "claim 4",
+        "claim 5"
+    ]
+}```"""
+
+VALID_OPINIONS = """```json
+{
+    "opinions": [
+        "opinion 1",
+        "opinion 2",
+        "opinion 3",
+        "opinion 4"
+    ]
+}```"""
+
 ANSWER_RELEVANCE_VALID_STATEMENTS = """```json
 {
     "statements": [
@@ -50,16 +71,6 @@ ANSWER_RELEVANCE_VALID_VERDICTS = """```json
         {
             "verdict": "yes"
         }
-    ]
-}```"""
-
-VALID_OPINIONS = """```json
-{
-    "opinions": [
-        "opinion 1",
-        "opinion 2",
-        "opinion 3",
-        "opinion 4"
     ]
 }```"""
 
@@ -100,7 +111,18 @@ CONTEXT_RELEVANCE_VALID_VERDICTS = """```json
     ]
 }```"""
 
-HALLUCINATION_AGREEMENT_VERDICTS = """```json
+FAITHFULNESS_VALID_VERDICTS = """```json
+{
+    "verdicts": [
+        {"verdict": "no"},
+        {"verdict": "yes"},
+        {"verdict": "yes"},
+        {"verdict": "yes"},
+        {"verdict": "no"}
+    ]
+}```"""
+
+HALLUCINATION_AGREEMENT_VALID_VERDICTS = """```json
 {
     "verdicts": [
         {
@@ -337,16 +359,128 @@ def test_LLMClient(monkeypatch):
     ]
 }```"""
 
+    def _return_valid1_faithfulness_response(*args, **kwargs):
+        if (
+            "generate a comprehensive list of FACTUAL claims that can inferred from the provided text"
+            in args[1][1]["content"]
+        ):
+            return VALID_CLAIMS
+        elif (
+            "generate a list of JSON objects to indicate whether EACH claim is implied by the retrieved context"
+            in args[1][1]["content"]
+        ):
+            return FAITHFULNESS_VALID_VERDICTS
+        else:
+            raise ValueError
+
+    def _return_valid2_faithfulness_response(*args, **kwargs):
+        return """```json
+{
+    "claims": []
+}```"""
+
+    def _return_invalid1_faithfulness_response(*args, **kwargs):
+        return """```json
+{
+    "list": [
+        "claim 1",
+        "claim 2",
+        "claim 3",
+        "claim 4",
+        "claim 5"
+    ]
+}```"""
+
+    def _return_invalid2_faithfulness_response(*args, **kwargs):
+        return """```json
+{
+    "claims": [
+        "claim 1",
+        2,
+        "claim 3",
+        "claim 4",
+        "claim 5"
+    ]
+}```"""
+
+    def _return_invalid3_faithfulness_response(*args, **kwargs):
+        if (
+            "generate a comprehensive list of FACTUAL claims that can inferred from the provided text"
+            in args[1][1]["content"]
+        ):
+            return VALID_CLAIMS
+        elif (
+            "generate a list of JSON objects to indicate whether EACH claim is implied by the retrieved context"
+            in args[1][1]["content"]
+        ):
+            return """```json
+{
+    "bad key": [
+        {"verdict": "no"},
+        {"verdict": "yes"},
+        {"verdict": "yes"},
+        {"verdict": "yes"},
+        {"verdict": "no"},
+    ]
+}```"""
+        else:
+            raise ValueError
+
+    def _return_invalid4_faithfulness_response(*args, **kwargs):
+        if (
+            "generate a comprehensive list of FACTUAL claims that can inferred from the provided text"
+            in args[1][1]["content"]
+        ):
+            return VALID_CLAIMS
+        elif (
+            "generate a list of JSON objects to indicate whether EACH claim is implied by the retrieved context"
+            in args[1][1]["content"]
+        ):
+            return """```json
+{
+    "verdicts": [
+        {"verdict": "no"},
+        {"verdict": "yes"},
+        {"verdict": "yes"},
+        {"verdict": "yes"},
+    ]
+}```"""
+        else:
+            raise ValueError
+
+    def _return_invalid5_faithfulness_response(*args, **kwargs):
+        if (
+            "generate a comprehensive list of FACTUAL claims that can inferred from the provided text"
+            in args[1][1]["content"]
+        ):
+            return VALID_CLAIMS
+        elif (
+            "generate a list of JSON objects to indicate whether EACH claim is implied by the retrieved context"
+            in args[1][1]["content"]
+        ):
+            return """```json
+{
+    "verdicts": [
+        {"verdict": "idk"},
+        {"verdict": "yes"},
+        {"verdict": "yes"},
+        {"verdict": "idk"},
+        {"verdict": "no"},
+    ]
+}```"""
+        else:
+            raise ValueError
+
     def _return_valid_hallucination_response(*args, **kwargs):
-        return HALLUCINATION_AGREEMENT_VERDICTS
+        return HALLUCINATION_AGREEMENT_VALID_VERDICTS
 
     def _return_invalid1_hallucination_response(*args, **kwargs):
         return """```json
 {
     "bad key": [
-        "verdict 1",
-        "verdict 2",
-        "verdict 3"
+        {"verdict": "yes"},
+        {"verdict": "no"},
+        {"verdict": "yes"}
     ]
 }```"""
 
@@ -601,6 +735,68 @@ def test_LLMClient(monkeypatch):
         client.context_relevance(
             "some query", ["context 1", "context 2", "context 3"]
         )
+
+    # Patch __call__ with a valid response.
+    monkeypatch.setattr(
+        "valor_api.backend.core.llm_clients.LLMClient.__call__",
+        _return_valid1_faithfulness_response,
+    )
+    assert 0.6 == client.faithfulness("some text", ["context 1", "context 2"])
+
+    # If no claims are found in the text, then the text should have a faithfulness score of 1.
+    monkeypatch.setattr(
+        "valor_api.backend.core.llm_clients.LLMClient.__call__",
+        _return_valid2_faithfulness_response,
+    )
+    assert 1.0 == client.faithfulness("some text", ["context 1", "context 2"])
+
+    # Faithfulness is meaningless if no context is provided, so should throw a ValueError.
+    monkeypatch.setattr(
+        "valor_api.backend.core.llm_clients.LLMClient.__call__",
+        _return_valid1_faithfulness_response,
+    )
+    with pytest.raises(ValueError):
+        client.faithfulness("some text", [])
+
+    # Bad key in the response.
+    monkeypatch.setattr(
+        "valor_api.backend.core.llm_clients.LLMClient.__call__",
+        _return_invalid1_faithfulness_response,
+    )
+    with pytest.raises(InvalidLLMResponseError):
+        client.faithfulness("some text", ["context 1", "context 2"])
+
+    # Invalid claim value.
+    monkeypatch.setattr(
+        "valor_api.backend.core.llm_clients.LLMClient.__call__",
+        _return_invalid2_faithfulness_response,
+    )
+    with pytest.raises(InvalidLLMResponseError):
+        client.faithfulness("some text", ["context 1", "context 2"])
+
+    # Bad key in the response.
+    monkeypatch.setattr(
+        "valor_api.backend.core.llm_clients.LLMClient.__call__",
+        _return_invalid3_faithfulness_response,
+    )
+    with pytest.raises(InvalidLLMResponseError):
+        client.faithfulness("some text", ["context 1", "context 2"])
+
+    # Number of verdicts does not match the number of claims.
+    monkeypatch.setattr(
+        "valor_api.backend.core.llm_clients.LLMClient.__call__",
+        _return_invalid4_faithfulness_response,
+    )
+    with pytest.raises(InvalidLLMResponseError):
+        client.faithfulness("some text", ["context 1", "context 2"])
+
+    # 'idk' is not a valid verdict for faithfulness.
+    monkeypatch.setattr(
+        "valor_api.backend.core.llm_clients.LLMClient.__call__",
+        _return_invalid5_faithfulness_response,
+    )
+    with pytest.raises(InvalidLLMResponseError):
+        client.faithfulness("some text", ["context 1", "context 2"])
 
     # Patch __call__ with a valid response.
     monkeypatch.setattr(
