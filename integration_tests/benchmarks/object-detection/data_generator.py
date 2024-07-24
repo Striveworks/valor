@@ -269,8 +269,8 @@ def run(
     prediction_deletion_time = time.time() - start
 
     benchmark.number_of_datums = n_datums
-    benchmark.number_of_annotations = eval_base.meta["annotations"]
-    benchmark.number_of_unique_labels = eval_base.meta["labels"]
+    benchmark.number_of_annotations = 0  # eval_base.meta["annotations"]
+    benchmark.number_of_unique_labels = 0  # eval_base.meta["labels"]
 
     benchmark.groundtruth_ingestion.append(groundtruth_ingestion)
     benchmark.prediction_ingestion.append(prediction_ingestion)
