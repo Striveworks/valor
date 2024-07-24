@@ -212,26 +212,98 @@ def _calculate_ap_and_ar(
     )
 
     joint = (
-        db.query(
+        select(
             ordered_pairs.c.groundtruth_id,
             func.coalesce(
                 ordered_pairs.c.gt_label_id,
                 ordered_pairs.c.pd_label_id,
             ).label("label_id"),
-            # ordered_pairs.c.score,
-            # ordered_pairs.c.iou,
-            # ordered_pairs.c.row_number,
             iou_threshold_series.c.threshold,
-            (ordered_pairs.c.score > 0).label("precision_score_conditional"),
-            recall_score_conditional.label("recall_score_conditional"),
-            (ordered_pairs.c.iou >= iou_threshold_series.c.threshold).label(
-                "iou_conditional"
-            ),
+            and_(
+                ordered_pairs.c.score > 0,
+                ordered_pairs.c.iou >= iou_threshold_series.c.threshold,
+            ).label("precision_conditional"),
+            and_(
+                recall_score_conditional,
+                ordered_pairs.c.iou >= iou_threshold_series.c.threshold,
+            ).label("recall_conditional"),
+            ordered_pairs.c.row_number,
         )
         .select_from(ordered_pairs)
         .join(iou_threshold_series, literal(True), full=True)
         .order_by(ordered_pairs.c.row_number)
-        .all()
+        .cte()
+    )
+
+    first_recall_groundtruths = (
+        select(
+            joint.c.label_id,
+            joint.c.threshold,
+            joint.c.groundtruth_id,
+            func.min(joint.c.row_number).label("row_number"),
+            literal(True).label("tp"),
+        )
+        .where(joint.c.recall_conditional)
+        .group_by(
+            joint.c.label_id,
+            joint.c.threshold,
+            joint.c.groundtruth_id,
+        )
+        .subquery()
+    )
+
+    first_precision_groundtruth = (
+        select(
+            joint.c.label_id,
+            joint.c.threshold,
+            joint.c.groundtruth_id,
+            func.min(joint.c.row_number).label("row_number"),
+            literal(True).label("tp"),
+        )
+        .where(joint.c.precision_conditional)
+        .group_by(
+            joint.c.label_id,
+            joint.c.threshold,
+            joint.c.groundtruth_id,
+        )
+        .subquery()
+    )
+
+    total_query = (
+        select(
+            joint.c.groundtruth_id,
+            joint.c.label_id,
+            joint.c.threshold,
+            func.coalesce(
+                first_recall_groundtruths.c.tp,
+                literal(False),
+            ).label("recall_tp"),
+            func.coalesce(
+                first_precision_groundtruth.c.tp,
+                literal(False),
+            ).label("precision_tp"),
+        )
+        .select_from(joint)
+        .outerjoin(
+            first_recall_groundtruths,
+            and_(
+                first_recall_groundtruths.c.label_id == joint.c.label_id,
+                first_recall_groundtruths.c.threshold == joint.c.threshold,
+                first_recall_groundtruths.c.groundtruth_id
+                == joint.c.groundtruth_id,
+            ),
+        )
+        .outerjoin(
+            first_precision_groundtruth,
+            and_(
+                first_precision_groundtruth.c.label_id == joint.c.label_id,
+                first_precision_groundtruth.c.threshold == joint.c.threshold,
+                first_precision_groundtruth.c.groundtruth_id
+                == joint.c.groundtruth_id,
+            ),
+        )
+        .order_by(joint.c.row_number)
+        .subquery()
     )
 
     components = defaultdict(lambda: defaultdict(list))
@@ -239,21 +311,16 @@ def _calculate_ap_and_ar(
         gt_id,
         label_id,
         threshold,
-        precision_score_conditional,
-        recall_score_conditional,
-        iou_conditional,
-    ) in joint:
+        recall_tp,
+        precision_tp,
+    ) in db.query(total_query).all():
         components[label_id][float(threshold)].append(
             (
                 gt_id,
-                precision_score_conditional,
-                recall_score_conditional,
-                iou_conditional,
+                precision_tp,
+                recall_tp,
             )
         )
-
-    print(components)
-    print(labels)
 
     ap_metrics = []
     ar_metrics = []
@@ -280,33 +347,16 @@ def _calculate_ap_and_ar(
                 label_id in components
                 and iou_threshold in components[label_id]
             ):
-                matched_gts_for_precision = set()
-                matched_gts_for_recall = set()
-                for (
-                    gt_id,
-                    precision_score_conditional,
-                    recall_score_conditional,
-                    iou_conditional,
-                ) in components[label_id][iou_threshold]:
+                for (gt_id, precision_tp, recall_tp,) in components[
+                    label_id
+                ][iou_threshold]:
 
-                    print(components[label_id][iou_threshold])
-
-                    if (
-                        recall_score_conditional
-                        and iou_conditional
-                        and gt_id not in matched_gts_for_recall
-                    ):
+                    if recall_tp:
                         recall_cnt_tp += 1
-                        matched_gts_for_recall.add(gt_id)
                     else:
                         recall_cnt_fp += 1
 
-                    if (
-                        precision_score_conditional
-                        and iou_conditional
-                        and gt_id not in matched_gts_for_precision
-                    ):
-                        matched_gts_for_precision.add(gt_id)
+                    if precision_tp:
                         precision_cnt_tp += 1
                     else:
                         precision_cnt_fp += 1
