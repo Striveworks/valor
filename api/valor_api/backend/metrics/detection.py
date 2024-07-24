@@ -361,11 +361,6 @@ def _calculate_ap_and_ar(
                     else:
                         precision_cnt_fp += 1
 
-                    recall_cnt_fn = (
-                        number_of_groundtruths_per_label[label_id]
-                        - recall_cnt_tp
-                    )
-
                     precision_cnt_fn = (
                         number_of_groundtruths_per_label[label_id]
                         - precision_cnt_tp
@@ -383,6 +378,10 @@ def _calculate_ap_and_ar(
                         if (precision_cnt_tp + precision_cnt_fn)
                         else 0
                     )
+
+                recall_cnt_fn = (
+                    number_of_groundtruths_per_label[label_id] - recall_cnt_tp
+                )
 
                 recalls_across_thresholds.append(
                     recall_cnt_tp / (recall_cnt_tp + recall_cnt_fn)
