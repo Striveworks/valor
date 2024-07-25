@@ -22,7 +22,7 @@ from valor_api.backend.metrics.metric_utils import (
     prepare_filter_for_evaluation,
     validate_computation,
 )
-from valor_api.backend.query import generate_query
+from valor_api.backend.query import generate_select
 from valor_api.enums import MetricType, ROUGEType
 
 LabelMapType = list[list[list[str]]]
@@ -291,14 +291,19 @@ def _compute_text_generation_metrics(
     Sequence[schemas.AnswerRelevanceMetric | schemas.BiasMetric | schemas.BLEUMetric | schemas.CoherenceMetric | schemas.ContextRelevanceMetric | schemas.FaithfulnessMetric | schemas.HallucinationMetric | schemas.ROUGEMetric | schemas.ToxicityMetric]
         A list of computed metrics.
     """
-    prediction_subquery = generate_query(
-        models.Annotation.datum_id.label("datum_id"),
-        models.Annotation.text.label("prediction_text"),
-        models.Annotation.context.label("prediction_context"),
-        db=db,
-        label_source=models.Prediction,
-        filters=prediction_filter,
-    ).subquery()
+    prediction_subquery = (
+        generate_select(
+            models.Annotation.datum_id.label("datum_id"),
+            models.Annotation.text.label("prediction_text"),
+            models.Annotation.context.label("prediction_context"),
+            label_source=models.Annotation,
+            filters=prediction_filter,
+        )
+        .where(models.Annotation.model_id.isnot(None))
+        .subquery()
+    )
+
+    print("PREDS", len(db.query(prediction_subquery).all()))
 
     output = []
     if any(
@@ -307,23 +312,21 @@ def _compute_text_generation_metrics(
         # get reference text to compare against from groundtruths
         # use array_agg since there can be multiple references for a given datum_uid
         groundtruth_subquery = (
-            generate_query(
-                models.GroundTruth.id,
+            generate_select(
                 models.Datum.id.label("datum_id"),
                 models.Datum.uid.label("datum_uid"),
                 models.Dataset.name.label("dataset_name"),
                 functions.array_agg(models.Annotation.text).label(
                     "groundtruth_text"
                 ),
-                db=db,
-                label_source=models.GroundTruth,
+                label_source=models.Annotation,
                 filters=groundtruth_filter,
             )
+            .where(models.Annotation.model_id.is_(None))
             .group_by(
-                models.GroundTruth.id,
-                models.Datum.id,
-                models.Datum.uid,
-                models.Dataset.name,
+                models.Datum.id.label("datum_id"),
+                models.Datum.uid.label("datum_uid"),
+                models.Dataset.name.label("dataset_name"),
             )
             .subquery()
         )
@@ -428,12 +431,11 @@ def _compute_text_generation_metrics(
         client = _setup_llm_client(llm_api_params)
 
         datum_subquery = (
-            generate_query(
+            generate_select(
                 models.Datum.id.label("datum_id"),
                 models.Datum.uid.label("datum_uid"),
                 models.Dataset.name.label("dataset_name"),
                 models.Datum.text.label("datum_text"),
-                db=db,
                 label_source=models.Annotation,
                 filters=datum_filter,
             )
@@ -604,11 +606,7 @@ def compute_text_generation_metrics(
 
     # unpack filters and params
     parameters = schemas.EvaluationParameters(**evaluation.parameters)
-    (
-        datum_filter,
-        groundtruth_filter,
-        prediction_filter,
-    ) = prepare_filter_for_evaluation(
+    (groundtruth_filter, prediction_filter,) = prepare_filter_for_evaluation(
         filters=schemas.Filter(**evaluation.filters),
         dataset_names=evaluation.dataset_names,
         model_name=evaluation.model_name,
@@ -644,7 +642,7 @@ def compute_text_generation_metrics(
 
     metrics = _compute_text_generation_metrics(
         db=db,
-        datum_filter=datum_filter,
+        datum_filter=groundtruth_filter,
         groundtruth_filter=groundtruth_filter,
         prediction_filter=prediction_filter,
         metrics_to_return=parameters.metrics_to_return,

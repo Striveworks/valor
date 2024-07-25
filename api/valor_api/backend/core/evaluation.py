@@ -242,7 +242,7 @@ def _validate_evaluation_filter(
     parameters = schemas.EvaluationParameters(**evaluation.parameters)
 
     # generate filters
-    _, groundtruth_filter, prediction_filter = prepare_filter_for_evaluation(
+    groundtruth_filter, prediction_filter = prepare_filter_for_evaluation(
         filters=filters,
         dataset_names=evaluation.dataset_names,
         model_name=evaluation.model_name,
@@ -255,7 +255,7 @@ def _validate_evaluation_filter(
                 models.Dataset.name,
                 db=db,
                 filters=groundtruth_filter,
-                label_source=models.Prediction,
+                label_source=models.Annotation,
             )
             .distinct()
             .all()

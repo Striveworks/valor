@@ -167,14 +167,7 @@ def create_predictions(
                             score=label.score,
                         )
                     )
-            else:
-                prediction_mappings.append(
-                    models.Prediction(
-                        annotation_id=annotation_ids_per_prediction[i],
-                        label_id=None,
-                        score=None,
-                    )
-                )
+
     try:
         db.add_all(prediction_mappings)
         db.commit()

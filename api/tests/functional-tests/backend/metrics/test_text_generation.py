@@ -181,13 +181,28 @@ def rag_data(
         db=db, dataset_name=rag_dataset_name, model_name=rag_model_name
     )
 
+    # 3 groundtruths with 3 annotations, 3 predictions with 1 annotation
     assert len(db.query(models.Datum).all()) == 3
+    assert len(db.query(models.Annotation).all()) == 12
     assert (
-        len(db.query(models.Annotation).all()) == 12
-    )  # 3 groundtruths with 3 annotations, 3 predictions with 1 annotation
+        len(
+            db.query(models.Annotation)
+            .where(models.Annotation.model_id.is_(None))
+            .all()
+        )
+        == 9
+    )
+    assert (
+        len(
+            db.query(models.Annotation)
+            .where(models.Annotation.model_id.isnot(None))
+            .all()
+        )
+        == 3
+    )
+    assert len(db.query(models.GroundTruth).all()) == 0
+    assert len(db.query(models.Prediction).all()) == 0
     assert len(db.query(models.Label).all()) == 0
-    assert len(db.query(models.GroundTruth).all()) == 9
-    assert len(db.query(models.Prediction).all()) == 3
 
 
 @pytest.fixture
@@ -298,9 +313,25 @@ def content_gen_data(
 
     assert len(db.query(models.Datum).all()) == 3
     assert len(db.query(models.Annotation).all()) == 6
+    assert (
+        len(
+            db.query(models.Annotation)
+            .where(models.Annotation.model_id.is_(None))
+            .all()
+        )
+        == 3
+    )
+    assert (
+        len(
+            db.query(models.Annotation)
+            .where(models.Annotation.model_id.isnot(None))
+            .all()
+        )
+        == 3
+    )
+    assert len(db.query(models.GroundTruth).all()) == 0
+    assert len(db.query(models.Prediction).all()) == 0
     assert len(db.query(models.Label).all()) == 0
-    assert len(db.query(models.GroundTruth).all()) == 3
-    assert len(db.query(models.Prediction).all()) == 3
 
 
 @pytest.fixture
@@ -438,9 +469,25 @@ def two_text_generation_datasets(
 
     assert len(db.query(models.Datum).all()) == 6
     assert len(db.query(models.Annotation).all()) == 18
+    assert (
+        len(
+            db.query(models.Annotation)
+            .where(models.Annotation.model_id.is_(None))
+            .all()
+        )
+        == 12
+    )
+    assert (
+        len(
+            db.query(models.Annotation)
+            .where(models.Annotation.model_id.isnot(None))
+            .all()
+        )
+        == 6
+    )
+    assert len(db.query(models.GroundTruth).all()) == 0
+    assert len(db.query(models.Prediction).all()) == 0
     assert len(db.query(models.Label).all()) == 0
-    assert len(db.query(models.GroundTruth).all()) == 12
-    assert len(db.query(models.Prediction).all()) == 6
 
 
 def mocked_connection(self):
@@ -628,6 +675,7 @@ def test__compute_text_generation_rag(
         ),
     )
     groundtruth_filter = datum_filter.model_copy()
+    groundtruth_filter.models = None
     prediction_filter = datum_filter.model_copy()
 
     metrics_to_return = [

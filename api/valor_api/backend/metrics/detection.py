@@ -1874,7 +1874,7 @@ def compute_detection_metrics(*_, db: Session, evaluation_id: int):
 
     # unpack filters and params
     parameters = schemas.EvaluationParameters(**evaluation.parameters)
-    _, groundtruth_filter, prediction_filter = prepare_filter_for_evaluation(
+    groundtruth_filter, prediction_filter = prepare_filter_for_evaluation(
         filters=schemas.Filter(**evaluation.filters),
         dataset_names=evaluation.dataset_names,
         model_name=evaluation.model_name,

@@ -74,7 +74,7 @@ class GroundTruth(Base):
     )
     label_id: Mapped[int] = mapped_column(
         ForeignKey("label.id"),
-        nullable=True,
+        nullable=False,
     )
     created_at: Mapped[datetime.datetime] = mapped_column(default=func.now())
 
@@ -101,7 +101,7 @@ class Prediction(Base):
     )
     label_id: Mapped[int] = mapped_column(
         ForeignKey("label.id"),
-        nullable=True,
+        nullable=False,
     )
     score: Mapped[float] = mapped_column(nullable=True)
     created_at: Mapped[datetime.datetime] = mapped_column(default=func.now())

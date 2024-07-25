@@ -389,7 +389,7 @@ def prepare_filter_for_evaluation(
     dataset_names: list[str],
     model_name: str,
     task_type: enums.TaskType,
-) -> tuple[schemas.Filter, schemas.Filter, schemas.Filter]:
+) -> tuple[schemas.Filter, schemas.Filter]:
     """
     Prepares the filter for use by an evaluation method.
 
@@ -445,56 +445,63 @@ def prepare_filter_for_evaluation(
         schemas.LogicalFunction.and_(
             filters.annotations,
             task_type_condition,
+            dataset_conditions,
         )
         if filters.annotations
         else task_type_condition
     )
 
-    # create new datums filter
-    filters.datums = (
-        schemas.LogicalFunction.and_(
-            filters.datums,
-            dataset_conditions,
+    if task_type == enums.TaskType.TEXT_GENERATION:
+
+        filters.groundtruths = None
+        filters.predictions = None
+
+        # create new annotations filter
+        groundtruth_filter = filters.model_copy()
+
+        predictions_filter = filters.model_copy()
+        predictions_filter.annotations = (
+            schemas.LogicalFunction.and_(
+                predictions_filter.annotations,
+                model_condition,
+            )
+            if predictions_filter.annotations
+            else model_condition
         )
-        if filters.datums
-        else dataset_conditions
-    )
 
-    # create new groundtruth filter
-    filters.groundtruths = (
-        schemas.LogicalFunction.and_(
-            filters.groundtruths,
-            dataset_conditions,
+    else:
+
+        # create new groundtruth filter
+        filters.groundtruths = (
+            schemas.LogicalFunction.and_(
+                filters.groundtruths,
+                dataset_conditions,
+            )
+            if filters.groundtruths
+            else dataset_conditions
         )
-        if filters.groundtruths
-        else dataset_conditions
-    )
 
-    # create new prediction filter
-    filters.predictions = (
-        schemas.LogicalFunction.and_(
-            filters.predictions,
-            dataset_conditions,
-            model_condition,
+        # create new prediction filter
+        filters.predictions = (
+            schemas.LogicalFunction.and_(
+                filters.predictions,
+                dataset_conditions,
+                model_condition,
+            )
+            if filters.predictions
+            else schemas.LogicalFunction.and_(
+                dataset_conditions,
+                model_condition,
+            )
         )
-        if filters.predictions
-        else schemas.LogicalFunction.and_(
-            dataset_conditions,
-            model_condition,
-        )
-    )
 
-    datum_filter = filters.model_copy()
-    datum_filter.groundtruths = None
-    datum_filter.predictions = None
+        groundtruth_filter = filters.model_copy()
+        groundtruth_filter.predictions = None
 
-    groundtruth_filter = filters.model_copy()
-    groundtruth_filter.predictions = None
+        predictions_filter = filters.model_copy()
+        predictions_filter.groundtruths = None
 
-    predictions_filter = filters.model_copy()
-    predictions_filter.groundtruths = None
-
-    return (datum_filter, groundtruth_filter, predictions_filter)
+    return (groundtruth_filter, predictions_filter)
 
 
 def trim_and_load_json(input_string: str) -> Any:

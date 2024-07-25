@@ -99,13 +99,6 @@ def create_groundtruths(
                             label_id=label_dict[(label.key, label.value)],
                         )
                     )
-            else:
-                groundtruth_rows.append(
-                    models.GroundTruth(
-                        annotation_id=annotation_ids_per_groundtruth[i],
-                        label_id=None,
-                    )
-                )
     try:
         db.add_all(groundtruth_rows)
         db.commit()
