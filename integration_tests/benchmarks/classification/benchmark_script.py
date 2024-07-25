@@ -200,14 +200,14 @@ def run_benchmarking_analysis(
                 f"PR Evaluation timed out when processing {limit} datums."
             )
 
-        # try:
-        eval_pr_detail = run_detailed_pr_curve_evaluation(
-            dset=dset, model=model
-        )
-        # except TimeoutError:
-        #     raise TimeoutError(
-        #         f"Detailed PR Evaluation timed out when processing {limit} datums."
-        #     )
+        try:
+            eval_pr_detail = run_detailed_pr_curve_evaluation(
+                dset=dset, model=model
+            )
+        except TimeoutError:
+            raise TimeoutError(
+                f"Detailed PR Evaluation timed out when processing {limit} datums."
+            )
 
         start = time.time()
         client.delete_dataset(dset.name, timeout=30)

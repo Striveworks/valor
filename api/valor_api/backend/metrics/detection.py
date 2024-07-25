@@ -1441,10 +1441,10 @@ def _calculate_detailed_pr_metrics(
             on=["confidence_threshold"],
             how="left",
         )
-        detailed_pr_calc_df[
-            "misclassification_fp_pd_ids"
-        ] = detailed_pr_calc_df["misclassification_fp_pd_ids"].map(
-            lambda x: x if isinstance(x, np.ndarray) else []
+        detailed_pr_calc_df["misclassification_fp_pd_ids"] = (
+            detailed_pr_calc_df["misclassification_fp_pd_ids"].map(
+                lambda x: x if isinstance(x, np.ndarray) else []
+            )
         )
         id_pd_in_set = detailed_pr_calc_df.apply(
             lambda row: (row["id_pd"] in row["misclassification_fp_pd_ids"]),
@@ -1465,15 +1465,22 @@ def _calculate_detailed_pr_metrics(
         .groupby(["confidence_threshold"], as_index=False)["id_gt"]
         .unique()
     )
-    fn_gt_ids.columns = ["confidence_threshold", "false_negative_ids"]
 
-    detailed_pr_calc_df = detailed_pr_calc_df.merge(
-        fn_gt_ids, on=["confidence_threshold"], how="left"
-    )
+    if not fn_gt_ids.empty:
+        fn_gt_ids.columns = ["confidence_threshold", "fn_gt_ids"]
 
-    detailed_pr_calc_df["false_negative_flag"] = detailed_pr_calc_df.apply(
-        lambda row: row["id_gt"] in row["false_negative_ids"], axis=1
-    )
+        detailed_pr_calc_df = detailed_pr_calc_df.merge(
+            fn_gt_ids, on=["confidence_threshold"], how="left"
+        )
+        detailed_pr_calc_df["fn_gt_ids"] = detailed_pr_calc_df[
+            "fn_gt_ids"
+        ].map(lambda x: x if isinstance(x, np.ndarray) else [])
+
+        detailed_pr_calc_df["false_negative_flag"] = detailed_pr_calc_df.apply(
+            lambda row: row["id_gt"] in row["fn_gt_ids"], axis=1
+        )
+    else:
+        detailed_pr_calc_df["false_negative_flag"] = False
 
     # it's a misclassification if there is a corresponding misclassification false positive
     detailed_pr_calc_df["misclassification_false_negative_flag"] = (
@@ -1490,22 +1497,29 @@ def _calculate_detailed_pr_metrics(
         .groupby(["confidence_threshold"], as_index=False)["id_gt"]
         .unique()
     )
-    no_predictions_fn_gt_ids.columns = [
-        "confidence_threshold",
-        "no_predictions_fn_gt_ids",
-    ]
 
-    detailed_pr_calc_df = detailed_pr_calc_df.merge(
-        no_predictions_fn_gt_ids, on=["confidence_threshold"], how="left"
-    )
+    if not no_predictions_fn_gt_ids.empty:
+        no_predictions_fn_gt_ids.columns = [
+            "confidence_threshold",
+            "no_predictions_fn_gt_ids",
+        ]
 
-    detailed_pr_calc_df[
-        "no_predictions_false_negative_flag"
-    ] = detailed_pr_calc_df.apply(
-        lambda row: (row["false_negative_flag"])
-        & (row["id_gt"] in row["no_predictions_fn_gt_ids"]),
-        axis=1,
-    )
+        detailed_pr_calc_df = detailed_pr_calc_df.merge(
+            no_predictions_fn_gt_ids, on=["confidence_threshold"], how="left"
+        )
+        detailed_pr_calc_df["no_predictions_fn_gt_ids"] = detailed_pr_calc_df[
+            "no_predictions_fn_gt_ids"
+        ].map(lambda x: x if isinstance(x, np.ndarray) else [])
+
+        detailed_pr_calc_df["no_predictions_false_negative_flag"] = (
+            detailed_pr_calc_df.apply(
+                lambda row: (row["false_negative_flag"])
+                & (row["id_gt"] in row["no_predictions_fn_gt_ids"]),
+                axis=1,
+            )
+        )
+    else:
+        detailed_pr_calc_df["no_predictions_false_negative_flag"] = False
 
     # next, we sum up the occurences of each classification and merge them together into one dataframe
     true_positives = (

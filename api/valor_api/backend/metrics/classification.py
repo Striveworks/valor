@@ -1531,15 +1531,22 @@ def _calculate_pr_curves(
         .groupby(["confidence_threshold"], as_index=False)["id_gt"]
         .unique()
     )
-    fn_gt_ids.columns = ["confidence_threshold", "false_negative_ids"]
 
-    pr_calc_df = pr_calc_df.merge(
-        fn_gt_ids, on=["confidence_threshold"], how="left"
-    )
+    if not fn_gt_ids.empty:
+        fn_gt_ids.columns = ["confidence_threshold", "fn_gt_ids"]
 
-    pr_calc_df["false_negative_flag"] = pr_calc_df.apply(
-        lambda row: row["id_gt"] in row["false_negative_ids"], axis=1
-    )
+        pr_calc_df = pr_calc_df.merge(
+            fn_gt_ids, on=["confidence_threshold"], how="left"
+        )
+        pr_calc_df["fn_gt_ids"] = pr_calc_df["fn_gt_ids"].map(
+            lambda x: x if isinstance(x, np.ndarray) else []
+        )
+
+        pr_calc_df["false_negative_flag"] = pr_calc_df.apply(
+            lambda row: row["id_gt"] in row["fn_gt_ids"], axis=1
+        )
+    else:
+        pr_calc_df["false_negative_flag"] = False
 
     # it's a misclassification if there is a corresponding misclassification false positive
     pr_calc_df["misclassification_false_negative_flag"] = (
@@ -1562,6 +1569,9 @@ def _calculate_pr_curves(
     pr_calc_df = pr_calc_df.merge(
         no_predictions_fn_gt_ids, on=["confidence_threshold"], how="left"
     )
+    pr_calc_df["no_predictions_fn_gt_ids"] = pr_calc_df[
+        "no_predictions_fn_gt_ids"
+    ].map(lambda x: x if isinstance(x, np.ndarray) else [])
 
     pr_calc_df["no_predictions_false_negative_flag"] = pr_calc_df.apply(
         lambda row: (row["false_negative_flag"])

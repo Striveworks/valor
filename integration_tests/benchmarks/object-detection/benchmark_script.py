@@ -266,12 +266,28 @@ def run_benchmarking_analysis(
         )
         ingest_time = time() - start_time
 
-        # try:
-        eval_ = run_base_evaluation(dset=dset, model=model)
-        # except TimeoutError:
-        #     raise TimeoutError(
-        #         f"Evaluation timed out when processing {limit} datums."
-        #     )
+        try:
+            eval_ = run_base_evaluation(dset=dset, model=model)
+        except TimeoutError:
+            raise TimeoutError(
+                f"Evaluation timed out when processing {limit} datums."
+            )
+
+        try:
+            eval_pr = run_pr_curve_evaluation(dset=dset, model=model)
+        except TimeoutError:
+            raise TimeoutError(
+                f"PR Evaluation timed out when processing {limit} datums."
+            )
+
+        try:
+            eval_pr_detail = run_detailed_pr_curve_evaluation(
+                dset=dset, model=model
+            )
+        except TimeoutError:
+            raise TimeoutError(
+                f"Detailed PR Evaluation timed out when processing {limit} datums."
+            )
 
         start = time()
         client.delete_dataset(dset.name, timeout=300)
@@ -284,6 +300,8 @@ def run_benchmarking_analysis(
             "number_of_annotations": eval_.meta["annotations"],
             "ingest_runtime": f"{(ingest_time):.1f} seconds",
             "eval_runtime": f"{(eval_.meta['duration']):.1f} seconds",
+            "eval_pr_runtime": f"{(eval_pr.meta['duration']):.1f} seconds",
+            "eval_detailed_pr_runtime": f"{(eval_pr_detail.meta['duration']):.1f} seconds",
             "del_runtime": f"{(deletion_time):.1f} seconds",
         }
         write_results_to_file(write_path=write_path, result_dict=results)
