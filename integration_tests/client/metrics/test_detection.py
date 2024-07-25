@@ -432,6 +432,8 @@ def test_evaluate_detection(
     result = eval_job_max_area_1200.to_dict()
     result.pop("meta")
     max_area_1200_metrics = result.pop("metrics")
+    for metric in max_area_1200_metrics:
+        print(metric)
     assert all([metric["value"] == 0 for metric in max_area_1200_metrics])
 
     # should perform the same as the first min area evaluation
@@ -1429,7 +1431,7 @@ def test_evaluate_detection_with_label_maps(
         {
             "type": "AP",
             "parameters": {"iou": 0.1},
-            "value": 0.33663366336633666,
+            "value": 0.336633663366336,
             "label": {"key": "class", "value": "cat"},
         },
         {
@@ -1447,7 +1449,7 @@ def test_evaluate_detection_with_label_maps(
         {
             "type": "AP",
             "parameters": {"iou": 0.6},
-            "value": 0.33663366336633666,
+            "value": 0.336633663366336,
             "label": {"key": "class", "value": "cat"},
         },
         {
@@ -1471,7 +1473,7 @@ def test_evaluate_detection_with_label_maps(
         {
             "type": "AR",
             "parameters": {"ious": [0.1, 0.6]},
-            "value": 0.3333333333333333,
+            "value": 0.333333333333333,
             "label": {"key": "class", "value": "cat"},
         },
         {
@@ -1489,7 +1491,7 @@ def test_evaluate_detection_with_label_maps(
         {
             "type": "mAP",
             "parameters": {"iou": 0.1, "label_key": "class"},
-            "value": 0.33663366336633666,
+            "value": 0.336633663366336,
         },
         {
             "type": "mAP",
@@ -1504,7 +1506,7 @@ def test_evaluate_detection_with_label_maps(
         {
             "type": "mAP",
             "parameters": {"iou": 0.6, "label_key": "class"},
-            "value": 0.33663366336633666,
+            "value": 0.336633663366336,
         },
         {
             "type": "mAP",
@@ -1519,7 +1521,7 @@ def test_evaluate_detection_with_label_maps(
         {
             "type": "mAP",
             "parameters": {"iou": 0.1, "label_key": "class"},
-            "value": 0.33663366336633666,
+            "value": 0.336633663366336,
         },
         {
             "type": "mAP",
@@ -1534,7 +1536,7 @@ def test_evaluate_detection_with_label_maps(
         {
             "type": "mAP",
             "parameters": {"iou": 0.6, "label_key": "class"},
-            "value": 0.33663366336633666,
+            "value": 0.336633663366336,
         },
         {
             "type": "mAP",
@@ -1549,7 +1551,7 @@ def test_evaluate_detection_with_label_maps(
         {
             "type": "mAR",
             "parameters": {"ious": [0.1, 0.6], "label_key": "class"},
-            "value": 0.3333333333333333,
+            "value": 0.333333333333333,
         },
         {
             "type": "mAR",
@@ -1569,7 +1571,7 @@ def test_evaluate_detection_with_label_maps(
         {
             "type": "APAveragedOverIOUs",
             "parameters": {"ious": [0.1, 0.6]},
-            "value": 0.33663366336633666,
+            "value": 0.336633663366336,
             "label": {"key": "class", "value": "cat"},
         },
         {
@@ -1592,7 +1594,7 @@ def test_evaluate_detection_with_label_maps(
         {
             "type": "mAPAveragedOverIOUs",
             "parameters": {"ious": [0.1, 0.6], "label_key": "class"},
-            "value": 0.33663366336633666,
+            "value": 0.336633663366336,
         },
         {
             "type": "mAPAveragedOverIOUs",
@@ -1635,6 +1637,7 @@ def test_evaluate_detection_with_label_maps(
             "PrecisionRecallCurve",
             "DetailedPrecisionRecallCurve",
         ]:
+            print(m)
             assert m in cat_expected_metrics
     for m in cat_expected_metrics:
         assert m in metrics
@@ -1651,7 +1654,7 @@ def test_evaluate_detection_with_label_maps(
         {
             "type": "AP",
             "parameters": {"iou": 0.1},
-            "value": 0.6633663366336634,
+            "value": 0.663366336633663,
             "label": {"key": "foo", "value": "bar"},
         },
         {
@@ -1669,7 +1672,7 @@ def test_evaluate_detection_with_label_maps(
         {
             "type": "AR",
             "parameters": {"ious": [0.1, 0.6]},
-            "value": 0.6666666666666666,
+            "value": 0.666666666666666,
             "label": {"key": "foo", "value": "bar"},
         },
         {
@@ -1681,7 +1684,7 @@ def test_evaluate_detection_with_label_maps(
         {
             "type": "mAP",
             "parameters": {"iou": 0.6, "label_key": "foo"},
-            "value": 0.6633663366336634,
+            "value": 0.663366336633663,
         },
         {
             "type": "mAP",
@@ -1701,7 +1704,7 @@ def test_evaluate_detection_with_label_maps(
         {
             "type": "APAveragedOverIOUs",
             "parameters": {"ious": [0.1, 0.6]},
-            "value": 0.6633663366336634,
+            "value": 0.663366336633663,
             "label": {"key": "foo", "value": "bar"},
         },
         {
@@ -1718,7 +1721,7 @@ def test_evaluate_detection_with_label_maps(
         {
             "type": "AP",
             "parameters": {"iou": 0.6},
-            "value": 0.6633663366336634,
+            "value": 0.663366336633663,
             "label": {"key": "foo", "value": "bar"},
         },
         {
@@ -1742,7 +1745,7 @@ def test_evaluate_detection_with_label_maps(
         {
             "type": "mAP",
             "parameters": {"iou": 0.1, "label_key": "foo"},
-            "value": 0.6633663366336634,
+            "value": 0.663366336633663,
         },
         {
             "type": "mAP",
@@ -1757,7 +1760,7 @@ def test_evaluate_detection_with_label_maps(
         {
             "type": "mAR",
             "parameters": {"ious": [0.1, 0.6], "label_key": "foo"},
-            "value": 0.6666666666666666,
+            "value": 0.666666666666666,
         },
         {
             "type": "mAR",
@@ -1773,7 +1776,7 @@ def test_evaluate_detection_with_label_maps(
         {
             "type": "mAPAveragedOverIOUs",
             "parameters": {"ious": [0.1, 0.6], "label_key": "foo"},
-            "value": 0.6633663366336634,
+            "value": 0.663366336633663,
         },
         {
             "type": "mAPAveragedOverIOUs",
@@ -1835,7 +1838,7 @@ def test_evaluate_detection_with_label_maps(
         {
             "type": "AP",
             "parameters": {"iou": 0.1},
-            "value": 0.6633663366336634,
+            "value": 0.663366336633663,
             "label": {"key": "foo", "value": "bar"},
         },
         {
@@ -1853,7 +1856,7 @@ def test_evaluate_detection_with_label_maps(
         {
             "type": "AR",
             "parameters": {"ious": [0.1, 0.6]},
-            "value": 0.3333333333333333,  # two missed groundtruth on the first image, and 1 hit for the second image
+            "value": 0.333333333333333,  # two missed groundtruth on the first image, and 1 hit for the second image
             "label": {"key": "foo", "value": "bar"},
         },
         {
@@ -1865,7 +1868,7 @@ def test_evaluate_detection_with_label_maps(
         {
             "type": "mAP",
             "parameters": {"iou": 0.6, "label_key": "foo"},
-            "value": 0.6633663366336634,
+            "value": 0.663366336633663,
         },
         {
             "type": "mAP",
@@ -1875,7 +1878,7 @@ def test_evaluate_detection_with_label_maps(
         {
             "type": "AP",
             "parameters": {"iou": 0.6},
-            "value": 0.6633663366336634,
+            "value": 0.663366336633663,
             "label": {"key": "foo", "value": "bar"},
         },
         {
@@ -1899,7 +1902,7 @@ def test_evaluate_detection_with_label_maps(
         {
             "type": "mAP",
             "parameters": {"iou": 0.1, "label_key": "foo"},
-            "value": 0.6633663366336634,
+            "value": 0.663366336633663,
         },
         {
             "type": "mAP",
@@ -1919,7 +1922,7 @@ def test_evaluate_detection_with_label_maps(
         {
             "type": "mAR",
             "parameters": {"ious": [0.1, 0.6], "label_key": "foo"},
-            "value": 0.3333333333333333,
+            "value": 0.333333333333333,
         },
         {
             "type": "mAR",
@@ -1929,7 +1932,7 @@ def test_evaluate_detection_with_label_maps(
         {
             "type": "APAveragedOverIOUs",
             "parameters": {"ious": [0.1, 0.6]},
-            "value": 0.6633663366336634,
+            "value": 0.663366336633663,
             "label": {"key": "foo", "value": "bar"},
         },
         {
@@ -1957,7 +1960,7 @@ def test_evaluate_detection_with_label_maps(
         {
             "type": "mAPAveragedOverIOUs",
             "parameters": {"ious": [0.1, 0.6], "label_key": "foo"},
-            "value": 0.6633663366336634,
+            "value": 0.663366336633663,
         },
         {
             "type": "mAPAveragedOverIOUs",

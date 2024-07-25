@@ -296,10 +296,10 @@ if __name__ == "__main__":
     print("=== Data Generation Benchmark ===")
     print()
 
-    number_of_datums_trials = [1, 10, 100]
+    number_of_datums_trials = [100]  # [1, 10, 100]
     number_of_annotations_per_datum = [10]
-    number_of_label_keys_trials = [1, 10]
-    number_of_label_values_trials = [10, 100]
+    number_of_label_keys_trials = [10]
+    number_of_label_values_trials = [100]
     number_of_trials = 1
 
     for n_datums in number_of_datums_trials:

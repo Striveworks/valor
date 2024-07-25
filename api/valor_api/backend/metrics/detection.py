@@ -1,12 +1,24 @@
 import bisect
+import decimal
 import heapq
 import random
 from collections import defaultdict
 from dataclasses import dataclass
-from typing import Sequence, Tuple
+from typing import Any, Sequence, Tuple
 
+import numpy as np
 from geoalchemy2 import functions as gfunc
-from sqlalchemy import CTE, Integer, and_, func, literal, not_, select
+from sqlalchemy import (
+    CTE,
+    DECIMAL,
+    Integer,
+    Subquery,
+    and_,
+    func,
+    literal,
+    not_,
+    select,
+)
 from sqlalchemy.dialects.postgresql import array, insert
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, aliased
@@ -79,7 +91,6 @@ def _average_ignore_minus_one(a):
     return -1 if div0_flag else num / denom
 
 
-@profiler
 def _rank_pairs(
     groundtruths: CTE,
     predictions: CTE,
@@ -173,6 +184,536 @@ def _rank_pairs(
 
 
 @profiler
+def _compute_ap(
+    db: Session,
+    groundtruths: CTE,
+    predictions: CTE,
+    iou_thresholds: list[float],
+) -> dict[int, dict[float, float]]:
+    # Accumulate tp and fp counts for AP
+
+    row_number = func.row_number().over(
+        partition_by=[
+            func.coalesce(
+                groundtruths.c.label_id,
+                predictions.c.label_id,
+            )
+        ],
+        order_by=[
+            -predictions.c.score,
+            -func.coalesce(
+                models.IoU.iou,
+                0,
+            ),
+            groundtruths.c.groundtruth_id,
+        ],
+    )
+
+    ordered_pairs = (
+        select(
+            groundtruths.c.groundtruth_id,
+            predictions.c.prediction_id,
+            func.coalesce(
+                groundtruths.c.label_id,
+                predictions.c.label_id,
+            ).label("label_id"),
+            predictions.c.score,
+            func.coalesce(
+                models.IoU.iou,
+                0,
+            ).label("iou"),
+            row_number.label("row_number"),
+        )
+        .select_from(predictions)
+        .join(
+            groundtruths,
+            and_(
+                groundtruths.c.datum_id == predictions.c.datum_id,
+                groundtruths.c.label_id == predictions.c.label_id,
+            ),
+            full=True,
+        )
+        .outerjoin(
+            models.IoU,
+            and_(
+                models.IoU.groundtruth_annotation_id
+                == groundtruths.c.annotation_id,
+                models.IoU.prediction_annotation_id
+                == predictions.c.annotation_id,
+            ),
+        )
+        .cte()
+    )
+
+    filtered_predictions = (
+        select(
+            ordered_pairs.c.prediction_id,
+            func.min(ordered_pairs.c.row_number).label("row_number"),
+        )
+        .select_from(ordered_pairs)
+        .group_by(
+            ordered_pairs.c.prediction_id,
+        )
+        .subquery()
+    )
+
+    iou_threshold_series = select(
+        func.unnest(array(iou_thresholds)).label("threshold")
+    ).cte()
+
+    joint = (
+        select(
+            ordered_pairs.c.label_id,
+            iou_threshold_series.c.threshold,
+            ordered_pairs.c.groundtruth_id,
+            ordered_pairs.c.row_number,
+            and_(
+                ordered_pairs.c.score > 0,
+                ordered_pairs.c.iou >= iou_threshold_series.c.threshold,
+            ).label("precision_conditional"),
+        )
+        .select_from(ordered_pairs)
+        .join(
+            filtered_predictions,
+            and_(
+                filtered_predictions.c.prediction_id
+                == ordered_pairs.c.prediction_id,
+                filtered_predictions.c.row_number
+                == ordered_pairs.c.row_number,
+            ),
+        )
+        .join(iou_threshold_series, literal(True), full=True)
+        .order_by(ordered_pairs.c.row_number)
+        .cte()
+    )
+
+    first_groundtruth = (
+        select(
+            joint.c.label_id,
+            joint.c.threshold,
+            joint.c.groundtruth_id,
+            func.min(joint.c.row_number).label("row_number"),
+            literal(True).label("tp"),
+        )
+        .where(joint.c.precision_conditional)
+        .group_by(
+            joint.c.label_id,
+            joint.c.threshold,
+            joint.c.groundtruth_id,
+        )
+        .subquery()
+    )
+
+    base_query = (
+        select(
+            joint.c.groundtruth_id,
+            joint.c.label_id,
+            joint.c.threshold,
+            joint.c.row_number,
+            first_groundtruth.c.tp.isnot(None)
+            .cast(Integer)
+            .label("precision_tp"),
+            first_groundtruth.c.tp.is_(None)
+            .cast(Integer)
+            .label("precision_fp"),
+        )
+        .select_from(joint)
+        .outerjoin(
+            first_groundtruth,
+            and_(
+                first_groundtruth.c.label_id == joint.c.label_id,
+                first_groundtruth.c.threshold == joint.c.threshold,
+                first_groundtruth.c.groundtruth_id == joint.c.groundtruth_id,
+            ),
+        )
+        .cte()
+    )
+
+    lagging_tp_cnt = func.coalesce(
+        func.lag(base_query.c.precision_tp).over(
+            partition_by=[
+                base_query.c.label_id,
+                base_query.c.threshold,
+            ],
+            order_by=base_query.c.row_number,
+        ),
+        0,
+    )
+
+    lagging_fp_cnt = func.coalesce(
+        func.lag(base_query.c.precision_fp).over(
+            partition_by=[
+                base_query.c.label_id,
+                base_query.c.threshold,
+            ],
+            order_by=base_query.c.row_number,
+        ),
+        0,
+    )
+
+    precision_counts = (
+        select(
+            base_query.c.label_id,
+            base_query.c.threshold,
+            base_query.c.row_number,
+            (base_query.c.precision_tp + lagging_tp_cnt).label(
+                "precision_cnt_tp"
+            ),
+            (base_query.c.precision_fp + lagging_fp_cnt).label(
+                "precision_cnt_fp"
+            ),
+        )
+        .select_from(base_query)
+        .subquery()
+    )
+
+    print("precision_counts", db.query(precision_counts).all())
+
+    # calculate precision and recall for AP
+
+    precision = func.coalesce(
+        (
+            precision_counts.c.precision_cnt_tp
+            / (
+                precision_counts.c.precision_cnt_tp
+                + precision_counts.c.precision_cnt_fp
+            )
+        ),
+        0,
+    )
+
+    number_of_ground_truths_per_label = (
+        select(groundtruths.c.label_id, func.count().label("count"))
+        .group_by(groundtruths.c.label_id)
+        .subquery()
+    )
+
+    recall = func.coalesce(
+        (
+            precision_counts.c.precision_cnt_tp
+            / number_of_ground_truths_per_label.c.count
+        ),
+        0,
+    )
+
+    precision_recall_for_ap = (
+        select(
+            precision_counts.c.label_id,
+            precision_counts.c.threshold,
+            precision.label("precision"),
+            func.trunc(recall, 2).label("recall"),
+        )
+        .select_from(precision_counts)
+        .outerjoin(
+            number_of_ground_truths_per_label,
+            number_of_ground_truths_per_label.c.label_id
+            == precision_counts.c.label_id,
+        )
+        .subquery()
+    )
+
+    # print("\nprecision_recall_for_ap", db.query(precision_recall_for_ap).all())
+
+    # calculate ap using 101-point interpolation
+
+    recall_thresholds = select(
+        func.generate_series(0.0, 1.0, 0.01).label("recall")
+    ).subquery()
+
+    recalls = (
+        select(
+            precision_recall_for_ap.c.label_id,
+            precision_recall_for_ap.c.threshold,
+            recall_thresholds.c.recall,
+        )
+        .select_from(precision_recall_for_ap)
+        .join(recall_thresholds, literal(True), full=True)
+        .subquery()
+    )
+
+    # print("\n recall_thresholds", db.query(recall_thresholds).all())
+
+    interpolated_pr_curve = (
+        select(
+            recalls.c.label_id,
+            recalls.c.threshold,
+            recalls.c.recall,
+            func.coalesce(
+                func.max(precision_recall_for_ap.c.precision),
+                0,
+            ).label("precision"),
+        )
+        .select_from(recalls)
+        .outerjoin(
+            precision_recall_for_ap,
+            and_(
+                precision_recall_for_ap.c.label_id == recalls.c.label_id,
+                precision_recall_for_ap.c.threshold == recalls.c.threshold,
+                precision_recall_for_ap.c.recall >= recalls.c.recall,
+            ),
+        )
+        .group_by(
+            recalls.c.label_id,
+            recalls.c.threshold,
+            recalls.c.recall,
+        )
+        .order_by(recalls.c.recall)
+        .subquery()
+    )
+
+    # running_max = (
+    #     select(
+
+    #     )
+    # )
+
+    # print("\n interpolated_pr_curve")
+    # for x in db.query(interpolated_pr_curve).all():
+    #     print(x)
+
+    average_precision_per_label_and_iou = (
+        select(
+            interpolated_pr_curve.c.label_id,
+            interpolated_pr_curve.c.threshold.label("iou"),
+            func.sum(interpolated_pr_curve.c.precision / literal(101.0)).label(
+                "ap"
+            ),
+        )
+        .group_by(
+            interpolated_pr_curve.c.label_id,
+            interpolated_pr_curve.c.threshold,
+        )
+        .subquery()
+    )
+
+    # truncated_average_precision_per_label_and_iou = (
+    #     db.query(
+    #         average_precision_per_label_and_iou.c.label_id,
+    #         average_precision_per_label_and_iou.c.iou,
+    #         func.trunc(average_precision_per_label_and_iou.c.ap, 15).label("iou"),
+    #     ).all()
+    # )
+
+    # print()
+
+    results = defaultdict(dict)
+    for label_id, iou, ap in db.query(
+        average_precision_per_label_and_iou
+    ).all():
+        # print(label_id, iou, ap)
+        results[label_id][float(iou)] = float(ap)
+
+    return results
+
+
+@profiler
+def _compute_ar(
+    db: Session,
+    groundtruths: CTE,
+    predictions: CTE,
+    iou_thresholds: list[float],
+    recall_score_threshold: float,
+) -> dict[int, float]:
+
+    row_number = func.row_number().over(
+        partition_by=[
+            func.coalesce(
+                groundtruths.c.label_id,
+                predictions.c.label_id,
+            )
+        ],
+        order_by=[
+            -predictions.c.score,
+            -func.coalesce(
+                models.IoU.iou,
+                0,
+            ),
+            groundtruths.c.groundtruth_id,
+        ],
+    )
+
+    ordered_pairs = (
+        select(
+            groundtruths.c.groundtruth_id,
+            predictions.c.prediction_id,
+            func.coalesce(
+                predictions.c.label_id,
+                groundtruths.c.label_id,
+            ).label("label_id"),
+            predictions.c.score,
+            func.coalesce(
+                models.IoU.iou,
+                0,
+            ).label("iou"),
+            row_number.label("row_number"),
+        )
+        .select_from(groundtruths)
+        .outerjoin(
+            predictions,
+            and_(
+                predictions.c.datum_id == groundtruths.c.datum_id,
+                predictions.c.label_id == groundtruths.c.label_id,
+            ),
+        )
+        .outerjoin(
+            models.IoU,
+            and_(
+                models.IoU.groundtruth_annotation_id
+                == groundtruths.c.annotation_id,
+                models.IoU.prediction_annotation_id
+                == predictions.c.annotation_id,
+            ),
+        )
+        .cte()
+    )
+
+    filtered_predictions = (
+        select(
+            ordered_pairs.c.prediction_id,
+            func.min(ordered_pairs.c.row_number).label("row_number"),
+        )
+        .select_from(ordered_pairs)
+        .group_by(
+            ordered_pairs.c.prediction_id,
+        )
+        .subquery()
+    )
+
+    iou_threshold_series = select(
+        func.unnest(array(iou_thresholds)).label("threshold")
+    ).cte()
+
+    recall_score_conditional = (
+        (ordered_pairs.c.score >= recall_score_threshold)
+        if recall_score_threshold > 0
+        else (ordered_pairs.c.score > recall_score_threshold)
+    )
+
+    joint = (
+        select(
+            ordered_pairs.c.groundtruth_id,
+            ordered_pairs.c.label_id,
+            iou_threshold_series.c.threshold,
+            ordered_pairs.c.row_number,
+            func.coalesce(
+                and_(
+                    recall_score_conditional,
+                    ordered_pairs.c.iou >= iou_threshold_series.c.threshold,
+                ),
+                literal(False),
+            ).label("recall_conditional"),
+        )
+        .select_from(ordered_pairs)
+        .join(
+            filtered_predictions,
+            and_(
+                filtered_predictions.c.prediction_id
+                == ordered_pairs.c.prediction_id,
+                filtered_predictions.c.row_number
+                == ordered_pairs.c.row_number,
+            ),
+        )
+        .join(iou_threshold_series, literal(True), full=True)
+        .order_by(ordered_pairs.c.row_number)
+        .cte()
+    )
+
+    first_recall_groundtruths = (
+        select(
+            joint.c.label_id,
+            joint.c.threshold,
+            joint.c.groundtruth_id,
+            func.min(joint.c.row_number).label("row_number"),
+            literal(True).label("tp"),
+        )
+        .where(joint.c.recall_conditional)
+        .group_by(
+            joint.c.label_id,
+            joint.c.threshold,
+            joint.c.groundtruth_id,
+        )
+        .subquery()
+    )
+
+    base_query = (
+        select(
+            joint.c.groundtruth_id,
+            joint.c.label_id,
+            joint.c.threshold,
+            first_recall_groundtruths.c.tp.isnot(None).label("recall_tp"),
+            joint.c.row_number,
+        )
+        .select_from(joint)
+        .outerjoin(
+            first_recall_groundtruths,
+            and_(
+                first_recall_groundtruths.c.label_id == joint.c.label_id,
+                first_recall_groundtruths.c.threshold == joint.c.threshold,
+                first_recall_groundtruths.c.groundtruth_id
+                == joint.c.groundtruth_id,
+            ),
+        )
+        .cte()
+    )
+
+    number_of_ground_truths_per_label = (
+        select(groundtruths.c.label_id, func.count().label("count"))
+        .group_by(groundtruths.c.label_id)
+        .cte()
+    )
+
+    recall_tp_count = (
+        select(
+            base_query.c.label_id,
+            base_query.c.threshold,
+            func.coalesce(
+                func.sum(base_query.c.recall_tp.cast(Integer)),
+                0,
+            ).label("count"),
+        )
+        .select_from(base_query)
+        .group_by(
+            base_query.c.label_id,
+            base_query.c.threshold,
+        )
+        .subquery()
+    )
+
+    average_recall_component = (
+        select(
+            recall_tp_count.c.label_id,
+            recall_tp_count.c.threshold,
+            func.coalesce(
+                recall_tp_count.c.count
+                / number_of_ground_truths_per_label.c.count,
+                0,
+            ).label("recall"),
+        )
+        .select_from(recall_tp_count)
+        .outerjoin(
+            number_of_ground_truths_per_label,
+            number_of_ground_truths_per_label.c.label_id
+            == recall_tp_count.c.label_id,
+        )
+        .subquery()
+    )
+
+    average_recall_per_label = (
+        db.query(
+            average_recall_component.c.label_id,
+            func.avg(average_recall_component.c.recall).label("ar"),
+        )
+        .select_from(average_recall_component)
+        .group_by(average_recall_component.c.label_id)
+        .all()
+    )
+
+    return {
+        label_id: float(value) for label_id, value in average_recall_per_label
+    }
+
+
+@profiler
 def _calculate_ap_and_ar(
     db: Session,
     groundtruths: CTE,
@@ -197,302 +738,59 @@ def _calculate_ap_and_ar(
             "IOU thresholds should exist in the range 0 < threshold <= 1."
         )
 
-    iou_threshold_series = select(
-        func.unnest(array(iou_thresholds)).label("threshold")
-    ).cte()
-
-    ordered_pairs = _rank_pairs(
-        groundtruths=groundtruths, predictions=predictions
+    # calculate AP per label and iou
+    average_precision = _compute_ap(
+        db=db,
+        groundtruths=groundtruths,
+        predictions=predictions,
+        iou_thresholds=iou_thresholds,
     )
 
-    recall_score_conditional = (
-        (ordered_pairs.c.score >= recall_score_threshold)
-        if recall_score_threshold > 0
-        else (ordered_pairs.c.score > recall_score_threshold)
+    print("AVERAGE PRECISION", average_precision)
+
+    # calculate AR per label
+    average_recall = _compute_ar(
+        db=db,
+        groundtruths=groundtruths,
+        predictions=predictions,
+        iou_thresholds=iou_thresholds,
+        recall_score_threshold=recall_score_threshold,
     )
 
-    joint = (
-        select(
-            ordered_pairs.c.groundtruth_id,
-            func.coalesce(
-                ordered_pairs.c.gt_label_id,
-                ordered_pairs.c.pd_label_id,
-            ).label("label_id"),
-            iou_threshold_series.c.threshold,
-            and_(
-                ordered_pairs.c.score > 0,
-                ordered_pairs.c.iou >= iou_threshold_series.c.threshold,
-            ).label("precision_conditional"),
-            and_(
-                recall_score_conditional,
-                ordered_pairs.c.iou >= iou_threshold_series.c.threshold,
-            ).label("recall_conditional"),
-            ordered_pairs.c.row_number,
-        )
-        .select_from(ordered_pairs)
-        .join(iou_threshold_series, literal(True), full=True)
-        .order_by(ordered_pairs.c.row_number)
-        .cte()
-    )
-
-    first_recall_groundtruths = (
-        select(
-            joint.c.label_id,
-            joint.c.threshold,
-            joint.c.groundtruth_id,
-            func.min(joint.c.row_number).label("row_number"),
-            literal(True).label("tp"),
-        )
-        .where(joint.c.recall_conditional)
-        .group_by(
-            joint.c.label_id,
-            joint.c.threshold,
-            joint.c.groundtruth_id,
-        )
-        .subquery()
-    )
-
-    first_precision_groundtruth = (
-        select(
-            joint.c.label_id,
-            joint.c.threshold,
-            joint.c.groundtruth_id,
-            func.min(joint.c.row_number).label("row_number"),
-            literal(True).label("tp"),
-        )
-        .where(joint.c.precision_conditional)
-        .group_by(
-            joint.c.label_id,
-            joint.c.threshold,
-            joint.c.groundtruth_id,
-        )
-        .subquery()
-    )
-
-    positive_query = (
-        select(
-            joint.c.groundtruth_id,
-            joint.c.label_id,
-            joint.c.threshold,
-            first_recall_groundtruths.c.tp.isnot(None).label("recall_tp"),
-            first_precision_groundtruth.c.tp.isnot(None).label("precision_tp"),
-            joint.c.row_number,
-        )
-        .select_from(joint)
-        .outerjoin(
-            first_recall_groundtruths,
-            and_(
-                first_recall_groundtruths.c.label_id == joint.c.label_id,
-                first_recall_groundtruths.c.threshold == joint.c.threshold,
-                first_recall_groundtruths.c.groundtruth_id
-                == joint.c.groundtruth_id,
-            ),
-        )
-        .outerjoin(
-            first_precision_groundtruth,
-            and_(
-                first_precision_groundtruth.c.label_id == joint.c.label_id,
-                first_precision_groundtruth.c.threshold == joint.c.threshold,
-                first_precision_groundtruth.c.groundtruth_id
-                == joint.c.groundtruth_id,
-            ),
-        )
-        .cte()
-    )
-
-    # Calculate tp counts for AR
-
-    recall_tp_cnt = (
-        select(
-            positive_query.c.label_id,
-            positive_query.c.threshold,
-            func.sum(positive_query.c.recall_tp.cast(Integer)).label("count"),
-        )
-        .group_by(
-            positive_query.c.label_id,
-            positive_query.c.threshold,
-        )
-        .subquery()
-    )
-
-    # Accumulate tp and fp counts for AP
-
-    lagging_tp_cnt = func.coalesce(
-        func.lag(positive_query.c.precision_tp.cast(Integer)).over(
-            partition_by=[
-                positive_query.c.label_id,
-                positive_query.c.threshold,
-            ],
-            order_by=positive_query.c.row_number,
-        ),
-        positive_query.c.precision_tp.cast(Integer),
-    )
-
-    lagging_fp_cnt = func.coalesce(
-        func.lag(not_(positive_query.c.precision_tp).cast(Integer)).over(
-            partition_by=[
-                positive_query.c.label_id,
-                positive_query.c.threshold,
-            ],
-            order_by=positive_query.c.row_number,
-        ),
-        not_(positive_query.c.precision_tp).cast(Integer),
-    )
-
-    precision_counts = (
-        select(
-            positive_query.c.label_id,
-            positive_query.c.threshold,
-            positive_query.c.row_number,
-            lagging_tp_cnt.label("precision_cnt_tp"),
-            lagging_fp_cnt.label("precision_cnt_fp"),
-        )
-        .select_from(positive_query)
-        .subquery()
-    )
-
-    # calculate precision and recall for AP
-
-    number_of_groundtruths_per_label_id = (
-        select(groundtruths.c.label_id, func.count().label("count"))
-        .group_by(groundtruths.c.label_id)
-        .subquery()
-    )
-
-    precision = func.coalesce(
-        (
-            precision_counts.c.precision_cnt_tp
-            / (
-                precision_counts.c.precision_cnt_tp
-                + precision_counts.c.precision_cnt_fp
-            )
-        ),
-        0,
-    )
-
-    recall = func.coalesce(
-        (
-            precision_counts.c.precision_cnt_tp
-            / number_of_groundtruths_per_label_id.c.count
-        ),
-        0,
-    )
-
-    precision_recall_for_ap = (
-        select(
-            precision_counts.c.label_id,
-            precision_counts.c.threshold,
-            precision_counts.c.row_number,
-            precision.label("precision"),
-            recall.label("recall"),
-        )
-        .select_from(precision_counts)
-        .outerjoin(
-            number_of_groundtruths_per_label_id,
-            number_of_groundtruths_per_label_id.c.label_id
-            == precision_counts.c.label_id,
-        )
-        .subquery()
-    )
-
-    # combine ap and ar components
-
-    aggregate_precision = func.array_agg(
-        precision_recall_for_ap.c.precision
-    ).over(
-        partition_by=[
-            precision_recall_for_ap.c.label_id,
-            precision_recall_for_ap.c.threshold,
-        ],
-        order_by=precision_recall_for_ap.c.row_number,
-    )
-
-    aggregate_recall = func.array_agg(precision_recall_for_ap.c.recall).over(
-        partition_by=[
-            precision_recall_for_ap.c.label_id,
-            precision_recall_for_ap.c.threshold,
-        ],
-        order_by=precision_recall_for_ap.c.row_number,
-    )
-
-    results = (
-        select(
-            precision_recall_for_ap.c.label_id,
-            precision_recall_for_ap.c.threshold,
-            precision_recall_for_ap.c.row_number,
-            aggregate_precision.label("precisions"),
-            aggregate_recall.label("recalls"),
-            func.coalesce(
-                recall_tp_cnt.c.count,
-                0,
-            ).label("recall_tp_cnt"),
-        )
-        .select_from(precision_recall_for_ap)
-        .join(
-            recall_tp_cnt,
-            and_(
-                recall_tp_cnt.c.label_id == precision_recall_for_ap.c.label_id,
-                recall_tp_cnt.c.threshold
-                == precision_recall_for_ap.c.threshold,
-            ),
-        )
-        .subquery()
-    )
-
-    components = defaultdict(lambda: defaultdict(tuple))
-    for (label_id, threshold, _, precisions, recalls, recall_tp_cnt,) in (
-        db.query(results).order_by(results.c.row_number).all()
-    ):
-        components[label_id][float(threshold)] = (
-            precisions,
-            recalls,
-            recall_tp_cnt,
-        )
+    print("AVERAGE RECALL", average_recall)
 
     ap_metrics = []
     ar_metrics = []
 
+    def truncate(x: float):
+        if x <= 0:
+            return x
+        e = 0.0000000000000004
+        ret = round(x - e, 15)
+        return ret if ret > 0 else 0.0
+
     for label_id, (label_key, label_value) in labels.items():
-        recalls_across_thresholds = []
 
         for iou_threshold in iou_thresholds:
 
             if label_id not in number_of_groundtruths_per_label.keys():
                 continue
 
-            precisions = []
-            recalls = []
             # recall true positives require a confidence score above recall_score_threshold, while precision
             # true positives only require a confidence score above 0
 
             if (
-                label_id in components
-                and iou_threshold in components[label_id]
+                label_id in average_precision
+                and iou_threshold in average_precision[label_id]
             ):
-                precisions, recalls, recall_tp_cnt = components[label_id][
-                    iou_threshold
-                ]
-
-                recall_cnt_fn = (
-                    number_of_groundtruths_per_label[label_id] - recall_tp_cnt
-                )
-
-                recalls_across_thresholds.append(
-                    recall_tp_cnt / (recall_tp_cnt + recall_cnt_fn)
-                    if (recall_tp_cnt + recall_cnt_fn)
-                    else 0
-                )
+                ap = average_precision[label_id][iou_threshold]
             else:
-                precisions = [0]
-                recalls = [0]
-                recalls_across_thresholds.append(0)
+                ap = 0.0
 
             ap_metrics.append(
                 schemas.APMetric(
                     iou=iou_threshold,
-                    value=_calculate_101_pt_interp(
-                        precisions=precisions, recalls=recalls
-                    ),
+                    value=truncate(ap),
                     label=schemas.Label(
                         key=label_key,
                         value=label_value,
@@ -500,15 +798,17 @@ def _calculate_ap_and_ar(
                 )
             )
 
+        if label_id in average_recall:
+            ar = truncate(average_recall[label_id])
+        elif label_id in number_of_groundtruths_per_label:
+            ar = 0.0
+        else:
+            ar = -1.0
+
         ar_metrics.append(
             schemas.ARMetric(
                 ious=set(iou_thresholds),
-                value=(
-                    sum(recalls_across_thresholds)
-                    / len(recalls_across_thresholds)
-                    if recalls_across_thresholds
-                    else -1
-                ),
+                value=truncate(ar),
                 label=schemas.Label(
                     key=label_key,
                     value=label_value,
