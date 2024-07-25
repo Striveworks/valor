@@ -7,13 +7,13 @@ import random
 from collections import defaultdict
 from dataclasses import dataclass
 from typing import Sequence, Tuple
-from sqlalchemy.engine.base import Engine
 
 import numpy as np
 import pandas
 from geoalchemy2 import functions as gfunc
 from PIL import Image
 from sqlalchemy import and_, case, func, select
+from sqlalchemy.engine.base import Engine
 from sqlalchemy.orm import Session, aliased
 
 from valor_api import enums, schemas
@@ -1193,7 +1193,6 @@ def _calculate_pr_metrics(
         ascending=False,
     )
 
-    # TODO run code through GPT?
     pr_calculation_df["true_positive_flag"] = (
         (pr_calculation_df["iou_"] >= parameters.pr_curve_iou_threshold)
         & (
@@ -1294,16 +1293,21 @@ def _calculate_pr_metrics(
 def _get_geojson_samples(
     detailed_pr_calc_df: pandas.DataFrame,
     parameters: schemas.EvaluationParameters,
-    column: str,
+    flag_column: str,
     label_key: str,
+    label_value: str,
     confidence_threshold: float,
     suffix: str = "_gt",
 ) -> list:
     """Sample a dataframe to get geojsons based on input criteria."""
     samples = detailed_pr_calc_df[
-        ((detailed_pr_calc_df["label_key_grouper"] == label_key))
+        (detailed_pr_calc_df["label_key_grouper"] == label_key)
+        & (
+            (detailed_pr_calc_df["label_value_gt"] == label_value)
+            | (detailed_pr_calc_df["label_value_pd"] == label_value)
+        )
         & (detailed_pr_calc_df["confidence_threshold"] == confidence_threshold)
-        & (detailed_pr_calc_df[column])
+        & (detailed_pr_calc_df[flag_column])
     ]
 
     if samples.empty:
@@ -1329,6 +1333,12 @@ def _calculate_detailed_pr_metrics(
     annotation_type: enums.AnnotationType,
 ) -> list[schemas.DetailedPrecisionRecallCurve]:
     """Calculates all DetailedPrecisionRecallCurve metrics."""
+    if not (
+        parameters.metrics_to_return
+        and enums.MetricType.DetailedPrecisionRecallCurve
+        in parameters.metrics_to_return
+    ):
+        return []
 
     detailed_pr_joint_df = pandas.merge(
         gt_df,
@@ -1431,17 +1441,17 @@ def _calculate_detailed_pr_metrics(
             on=["confidence_threshold"],
             how="left",
         )
-        detailed_pr_calc_df["misclassification_fp_pd_ids"] = (
-            detailed_pr_calc_df["misclassification_fp_pd_ids"].map(
-                lambda x: x if isinstance(x, np.ndarray) else []
-            )
+        detailed_pr_calc_df[
+            "misclassification_fp_pd_ids"
+        ] = detailed_pr_calc_df["misclassification_fp_pd_ids"].map(
+            lambda x: x if isinstance(x, np.ndarray) else []
         )
-        id_pd_is_classification = detailed_pr_calc_df.apply(
+        id_pd_in_set = detailed_pr_calc_df.apply(
             lambda row: (row["id_pd"] in row["misclassification_fp_pd_ids"]),
             axis=1,
         )
         detailed_pr_calc_df.loc[
-            (id_pd_is_classification)
+            (id_pd_in_set)
             & (detailed_pr_calc_df["hallucination_false_positive_flag"]),
             "hallucination_false_positive_flag",
         ] = False
@@ -1489,12 +1499,12 @@ def _calculate_detailed_pr_metrics(
         no_predictions_fn_gt_ids, on=["confidence_threshold"], how="left"
     )
 
-    detailed_pr_calc_df["no_predictions_false_negative_flag"] = (
-        detailed_pr_calc_df.apply(
-            lambda row: (row["false_negative_flag"])
-            & (row["id_gt"] in row["no_predictions_fn_gt_ids"]),
-            axis=1,
-        )
+    detailed_pr_calc_df[
+        "no_predictions_false_negative_flag"
+    ] = detailed_pr_calc_df.apply(
+        lambda row: (row["false_negative_flag"])
+        & (row["id_gt"] in row["no_predictions_fn_gt_ids"]),
+        axis=1,
     )
 
     # next, we sum up the occurences of each classification and merge them together into one dataframe
@@ -1644,42 +1654,46 @@ def _calculate_detailed_pr_metrics(
         tp_samples = _get_geojson_samples(
             detailed_pr_calc_df=detailed_pr_calc_df,
             parameters=parameters,
-            column="true_positive_flag",
+            flag_column="true_positive_flag",
             suffix="_gt",
             label_key=label_key,
+            label_value=label_value,
             confidence_threshold=confidence_threshold,
         )
         misclassifications_fn_samples = _get_geojson_samples(
             detailed_pr_calc_df=detailed_pr_calc_df,
             parameters=parameters,
-            column="misclassification_false_negative_flag",
+            flag_column="misclassification_false_negative_flag",
             suffix="_gt",
             label_key=label_key,
+            label_value=label_value,
             confidence_threshold=confidence_threshold,
         )
         no_predictions_fn_samples = _get_geojson_samples(
             detailed_pr_calc_df=detailed_pr_calc_df,
             parameters=parameters,
-            column="no_predictions_false_negative_flag",
+            flag_column="no_predictions_false_negative_flag",
             suffix="_gt",
             label_key=label_key,
+            label_value=label_value,
             confidence_threshold=confidence_threshold,
         )
         misclassifications_fp_samples = _get_geojson_samples(
             detailed_pr_calc_df=detailed_pr_calc_df,
             parameters=parameters,
-            column="misclassification_false_positive_flag",
+            flag_column="misclassification_false_positive_flag",
             suffix="_pd",
             label_key=label_key,
+            label_value=label_value,
             confidence_threshold=confidence_threshold,
         )
-        # TODO this won't work
         hallucinations_fp_samples = _get_geojson_samples(
             detailed_pr_calc_df=detailed_pr_calc_df,
             parameters=parameters,
-            column="hallucination_false_positive_flag",
+            flag_column="hallucination_false_positive_flag",
             suffix="_pd",
             label_key=label_key,
+            label_value=label_value,
             confidence_threshold=confidence_threshold,
         )
 
@@ -1886,30 +1900,19 @@ def _compute_detection_metrics(
         parameters=parameters,
     )
 
-    assert parameters.metrics_to_return
+    pr_metrics = _calculate_pr_metrics(
+        joint_df=joint_df,
+        grouper_mappings=grouper_mappings,
+        parameters=parameters,
+    )
 
-    if enums.MetricType.PrecisionRecallCurve in parameters.metrics_to_return:
-        pr_metrics = _calculate_pr_metrics(
-            joint_df=joint_df,
-            grouper_mappings=grouper_mappings,
-            parameters=parameters,
-        )
-    else:
-        pr_metrics = []
-
-    if (
-        enums.MetricType.DetailedPrecisionRecallCurve
-        in parameters.metrics_to_return
-    ):
-        detailed_pr_metrics = _calculate_detailed_pr_metrics(
-            gt_df=gt_df,
-            pd_df=pd_df,
-            grouper_mappings=grouper_mappings,
-            parameters=parameters,
-            annotation_type=target_type,
-        )
-    else:
-        detailed_pr_metrics = []
+    detailed_pr_metrics = _calculate_detailed_pr_metrics(
+        gt_df=gt_df,
+        pd_df=pd_df,
+        grouper_mappings=grouper_mappings,
+        parameters=parameters,
+        annotation_type=target_type,
+    )
 
     return ar_metrics + ap_metrics + pr_metrics + detailed_pr_metrics
 

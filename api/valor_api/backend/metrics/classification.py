@@ -20,7 +20,7 @@ from valor_api.backend.metrics.metric_utils import (
     prepare_filter_for_evaluation,
     validate_computation,
 )
-from valor_api.backend.query import generate_query, generate_select
+from valor_api.backend.query import generate_select
 
 LabelMapType = list[list[list[str]]]
 
@@ -1383,6 +1383,481 @@ def _calculate_rocauc(
     ]
 
 
+def _get_datum_samples(
+    pr_calc_df: pd.DataFrame,
+    pr_curve_max_examples: int,
+    flag_column: str,
+    grouper_key: str,
+    grouper_value: str,
+    confidence_threshold: float,
+) -> list:
+    """Sample a dataframe to get geojsons based on input criteria."""
+    samples = pr_calc_df[
+        (pr_calc_df["grouper_key"] == grouper_key)
+        & (
+            (pr_calc_df["grouper_value_gt"] == grouper_value)
+            | (pr_calc_df["grouper_value_pd"] == grouper_value)
+        )
+        & (pr_calc_df["confidence_threshold"] == confidence_threshold)
+        & (pr_calc_df[flag_column])
+    ]
+
+    if samples.empty:
+        samples = []
+    else:
+        samples = list(
+            samples.sample(min(pr_curve_max_examples, len(samples)))[
+                [
+                    "dataset_name",
+                    "datum_uid",
+                ]
+            ].itertuples(index=False, name=None)
+        )
+    return samples
+
+
+def _calculate_pr_curves(
+    pd_df: pd.DataFrame,
+    gt_df: pd.DataFrame,
+    metrics_to_return: list,
+    pr_curve_max_examples: int,
+):
+
+    if not (
+        enums.MetricType.PrecisionRecallCurve in metrics_to_return
+        or enums.MetricType.DetailedPrecisionRecallCurve in metrics_to_return
+    ):
+        return []
+
+    joint_df = (
+        pd.merge(
+            gt_df,
+            pd_df,
+            on=["dataset_name", "datum_id", "datum_uid", "grouper_key"],
+            how="outer",
+            suffixes=("_gt", "_pd"),
+        )
+        .assign(
+            is_label_match=lambda chain_df: (
+                (chain_df["grouper_value_pd"] == chain_df["grouper_value_gt"])
+            )
+        )
+        .drop(
+            columns=[
+                "annotation_id_gt",
+                "created_at_gt",
+                "label_key_gt",
+                "label_value_gt",
+                "label_gt",
+                "label_id_gt",
+                "annotation_id_pd",
+                "created_at_pd",
+                "label_key_pd",
+                "label_value_pd",
+                "label_pd",
+                "label_id_pd",
+            ]
+        )
+    )
+
+    # add confidence_threshold to the dataframe and sort
+    pr_calc_df = pd.concat(
+        [
+            joint_df.assign(confidence_threshold=threshold)
+            for threshold in [x / 100 for x in range(5, 100, 5)]
+        ],
+        ignore_index=True,
+    ).sort_values(
+        by=[
+            "grouper_key",
+            "grouper_value_pd",
+            "confidence_threshold",
+            "score",
+        ],
+        ascending=False,
+    )
+
+    # create flags where the predictions meet criteria
+    pr_calc_df["true_positive_flag"] = (
+        pr_calc_df["score"] >= pr_calc_df["confidence_threshold"]
+    ) & pr_calc_df["is_label_match"]
+
+    # for all the false positives, we consider them to be a misclassification if they share a key but not a value with a gt
+    pr_calc_df["misclassification_false_positive_flag"] = (
+        pr_calc_df["score"] >= pr_calc_df["confidence_threshold"]
+    ) & ~pr_calc_df["is_label_match"]
+
+    # any prediction IDs that aren't true positives or misclassification false positives are hallucination false positives
+    pr_calc_df["hallucination_false_positive_flag"] = (
+        pr_calc_df["score"] >= pr_calc_df["confidence_threshold"]
+    )
+
+    predictions_associated_with_tps_or_misclassification_fps = (
+        pr_calc_df.groupby(["confidence_threshold", "id_pd"], as_index=False)
+        .filter(
+            lambda x: x["true_positive_flag"].any()
+            or x["misclassification_false_positive_flag"].any()
+        )
+        .groupby(["confidence_threshold"], as_index=False)["id_pd"]
+        .unique()
+    )
+    if not predictions_associated_with_tps_or_misclassification_fps.empty:
+        predictions_associated_with_tps_or_misclassification_fps.columns = [
+            "confidence_threshold",
+            "misclassification_fp_pd_ids",
+        ]
+        pr_calc_df = pr_calc_df.merge(
+            predictions_associated_with_tps_or_misclassification_fps,
+            on=["confidence_threshold"],
+            how="left",
+        )
+        pr_calc_df["misclassification_fp_pd_ids"] = pr_calc_df[
+            "misclassification_fp_pd_ids"
+        ].map(lambda x: x if isinstance(x, np.ndarray) else [])
+
+        id_pd_in_set = pr_calc_df.apply(
+            lambda row: (row["id_pd"] in row["misclassification_fp_pd_ids"]),
+            axis=1,
+        )
+        pr_calc_df.loc[
+            (id_pd_in_set) & (pr_calc_df["hallucination_false_positive_flag"]),
+            "hallucination_false_positive_flag",
+        ] = False
+
+    # next, we flag false negatives by declaring any groundtruth that isn't associated with a true positive to be a false negative
+    fn_gt_ids = (
+        pr_calc_df.groupby(["confidence_threshold", "id_gt"], as_index=False)
+        .filter(lambda x: ~x["true_positive_flag"].any())
+        .groupby(["confidence_threshold"], as_index=False)["id_gt"]
+        .unique()
+    )
+    fn_gt_ids.columns = ["confidence_threshold", "false_negative_ids"]
+
+    pr_calc_df = pr_calc_df.merge(
+        fn_gt_ids, on=["confidence_threshold"], how="left"
+    )
+
+    pr_calc_df["false_negative_flag"] = pr_calc_df.apply(
+        lambda row: row["id_gt"] in row["false_negative_ids"], axis=1
+    )
+
+    # it's a misclassification if there is a corresponding misclassification false positive
+    pr_calc_df["misclassification_false_negative_flag"] = (
+        pr_calc_df["misclassification_false_positive_flag"]
+        & pr_calc_df["false_negative_flag"]
+    )
+
+    # assign all id_gts that aren't misclassifications but are false negatives to be no_predictions
+    no_predictions_fn_gt_ids = (
+        pr_calc_df.groupby(["confidence_threshold", "id_gt"], as_index=False)
+        .filter(lambda x: ~x["misclassification_false_negative_flag"].any())
+        .groupby(["confidence_threshold"], as_index=False)["id_gt"]
+        .unique()
+    )
+    no_predictions_fn_gt_ids.columns = [
+        "confidence_threshold",
+        "no_predictions_fn_gt_ids",
+    ]
+
+    pr_calc_df = pr_calc_df.merge(
+        no_predictions_fn_gt_ids, on=["confidence_threshold"], how="left"
+    )
+
+    pr_calc_df["no_predictions_false_negative_flag"] = pr_calc_df.apply(
+        lambda row: (row["false_negative_flag"])
+        & (row["id_gt"] in row["no_predictions_fn_gt_ids"]),
+        axis=1,
+    )
+
+    # true negatives are any rows which don't have another flag
+    pr_calc_df["true_negative_flag"] = (
+        ~pr_calc_df["true_positive_flag"]
+        & ~pr_calc_df["false_negative_flag"]
+        & ~pr_calc_df["misclassification_false_positive_flag"]
+        & ~pr_calc_df["hallucination_false_positive_flag"]
+    )
+
+    # next, we sum up the occurences of each classification and merge them together into one dataframe
+    true_positives = (
+        pr_calc_df[pr_calc_df["true_positive_flag"]]
+        .groupby(["grouper_key", "grouper_value_pd", "confidence_threshold"])[
+            "id_pd"
+        ]
+        .nunique()
+    )
+    true_positives.name = "true_positives"
+
+    hallucination_false_positives = (
+        pr_calc_df[pr_calc_df["hallucination_false_positive_flag"]]
+        .groupby(["grouper_key", "grouper_value_pd", "confidence_threshold"])[
+            "id_pd"
+        ]
+        .nunique()
+    )
+    hallucination_false_positives.name = "hallucinations_false_positives"
+
+    misclassification_false_positives = (
+        pr_calc_df[pr_calc_df["misclassification_false_positive_flag"]]
+        .groupby(["grouper_key", "grouper_value_pd", "confidence_threshold"])[
+            "id_pd"
+        ]
+        .nunique()
+    )
+    misclassification_false_positives.name = (
+        "misclassification_false_positives"
+    )
+
+    misclassification_false_negatives = (
+        pr_calc_df[pr_calc_df["misclassification_false_negative_flag"]]
+        .groupby(["grouper_key", "grouper_value_gt", "confidence_threshold"])[
+            "id_gt"
+        ]
+        .nunique()
+    )
+    misclassification_false_negatives.name = (
+        "misclassification_false_negatives"
+    )
+
+    no_predictions_false_negatives = (
+        pr_calc_df[pr_calc_df["no_predictions_false_negative_flag"]]
+        .groupby(["grouper_key", "grouper_value_gt", "confidence_threshold"])[
+            "id_gt"
+        ]
+        .nunique()
+    )
+    no_predictions_false_negatives.name = "no_predictions_false_negatives"
+
+    # combine these outputs
+    pr_curve_counts_df = (
+        pd.concat(
+            [
+                pr_calc_df.loc[
+                    ~pr_calc_df["grouper_value_pd"].isnull(),
+                    [
+                        "grouper_key",
+                        "grouper_value_pd",
+                        "confidence_threshold",
+                    ],
+                ].rename(columns={"grouper_value_pd": "grouper_value"}),
+                pr_calc_df.loc[
+                    ~pr_calc_df["grouper_value_gt"].isnull(),
+                    [
+                        "grouper_key",
+                        "grouper_value_gt",
+                        "confidence_threshold",
+                    ],
+                ].rename(columns={"grouper_value_gt": "grouper_value"}),
+            ],
+            axis=0,
+        )
+        .drop_duplicates()
+        .merge(
+            true_positives,
+            left_on=[
+                "grouper_key",
+                "grouper_value",
+                "confidence_threshold",
+            ],
+            right_index=True,
+            how="outer",
+        )
+        .merge(
+            hallucination_false_positives,
+            left_on=[
+                "grouper_key",
+                "grouper_value",
+                "confidence_threshold",
+            ],
+            right_index=True,
+            how="outer",
+        )
+        .merge(
+            misclassification_false_positives,
+            left_on=[
+                "grouper_key",
+                "grouper_value",
+                "confidence_threshold",
+            ],
+            right_index=True,
+            how="outer",
+        )
+        .merge(
+            misclassification_false_negatives,
+            left_on=[
+                "grouper_key",
+                "grouper_value",
+                "confidence_threshold",
+            ],
+            right_index=True,
+            how="outer",
+        )
+        .merge(
+            no_predictions_false_negatives,
+            left_on=[
+                "grouper_key",
+                "grouper_value",
+                "confidence_threshold",
+            ],
+            right_index=True,
+            how="outer",
+        )
+    )
+
+    # we're doing an outer join, so any nulls should be zeroes
+    pr_curve_counts_df.fillna(0, inplace=True)
+
+    # find all unique datums for use when identifying true negatives
+    unique_datum_ids = set(pr_calc_df["datum_id"].unique())
+
+    # calculate additional metrics
+    pr_curve_counts_df["false_positives"] = (
+        pr_curve_counts_df["misclassification_false_positives"]
+        + pr_curve_counts_df["hallucinations_false_positives"]
+    )
+    pr_curve_counts_df["false_negatives"] = (
+        pr_curve_counts_df["misclassification_false_negatives"]
+        + pr_curve_counts_df["no_predictions_false_negatives"]
+    )
+    pr_curve_counts_df["true_negatives"] = len(unique_datum_ids) - (
+        pr_curve_counts_df["true_positives"]
+        + pr_curve_counts_df["false_positives"]
+        + pr_curve_counts_df["false_negatives"]
+    )
+    pr_curve_counts_df["precision"] = pr_curve_counts_df["true_positives"] / (
+        pr_curve_counts_df["true_positives"]
+        + pr_curve_counts_df["false_positives"]
+    )
+    pr_curve_counts_df["recall"] = pr_curve_counts_df["true_positives"] / (
+        pr_curve_counts_df["true_positives"]
+        + pr_curve_counts_df["false_negatives"]
+    )
+    pr_curve_counts_df["accuracy"] = (
+        pr_curve_counts_df["true_positives"]
+        + pr_curve_counts_df["true_negatives"]
+    ) / len(unique_datum_ids)
+    pr_curve_counts_df["f1_score"] = (
+        2 * pr_curve_counts_df["precision"] * pr_curve_counts_df["recall"]
+    ) / (pr_curve_counts_df["precision"] + pr_curve_counts_df["recall"])
+
+    # any NaNs that are left are from division by zero errors
+    pr_curve_counts_df.fillna(-1, inplace=True)
+
+    pr_output = defaultdict(lambda: defaultdict(dict))
+    detailed_pr_output = defaultdict(lambda: defaultdict(dict))
+
+    for _, row in pr_curve_counts_df.iterrows():
+        pr_output[row["grouper_key"]][row["grouper_value"]][
+            row["confidence_threshold"]
+        ] = {
+            "tp": row["true_positives"],
+            "fp": row["false_positives"],
+            "fn": row["false_negatives"],
+            "tn": row["true_negatives"],
+            "accuracy": row["accuracy"],
+            "precision": row["precision"],
+            "recall": row["recall"],
+            "f1_score": row["f1_score"],
+        }
+
+        detailed_pr_output[row["grouper_key"]][row["grouper_value"]][
+            row["confidence_threshold"]
+        ] = {
+            "tp": {
+                "total": row["true_positives"],
+                "observations": {
+                    "all": {
+                        "count": row["true_positives"],
+                        "examples": _get_datum_samples(
+                            pr_calc_df=pr_calc_df,
+                            pr_curve_max_examples=pr_curve_max_examples,
+                            flag_column="true_positive_flag",
+                            grouper_key=row["grouper_key"],
+                            grouper_value=row["grouper_value"],
+                            confidence_threshold=row["confidence_threshold"],
+                        ),
+                    }
+                },
+            },
+            "tn": {
+                "total": row["true_negatives"],
+                "observations": {
+                    "all": {
+                        "count": row["true_negatives"],
+                        "examples": _get_datum_samples(
+                            pr_calc_df=pr_calc_df,
+                            pr_curve_max_examples=pr_curve_max_examples,
+                            flag_column="true_negative_flag",
+                            grouper_key=row["grouper_key"],
+                            grouper_value=row["grouper_value"],
+                            confidence_threshold=row["confidence_threshold"],
+                        ),
+                    }
+                },
+            },
+            "fn": {
+                "total": row["false_negatives"],
+                "observations": {
+                    "misclassifications": {
+                        "count": row["misclassification_false_negatives"],
+                        "examples": _get_datum_samples(
+                            pr_calc_df=pr_calc_df,
+                            pr_curve_max_examples=pr_curve_max_examples,
+                            flag_column="misclassification_false_negative_flag",
+                            grouper_key=row["grouper_key"],
+                            grouper_value=row["grouper_value"],
+                            confidence_threshold=row["confidence_threshold"],
+                        ),
+                    },
+                    "no_predictions": {
+                        "count": row["no_predictions_false_negatives"],
+                        "examples": _get_datum_samples(
+                            pr_calc_df=pr_calc_df,
+                            pr_curve_max_examples=pr_curve_max_examples,
+                            flag_column="no_predictions_false_negative_flag",
+                            grouper_key=row["grouper_key"],
+                            grouper_value=row["grouper_value"],
+                            confidence_threshold=row["confidence_threshold"],
+                        ),
+                    },
+                },
+            },
+            "fp": {
+                "total": row["false_positives"],
+                "observations": {
+                    "misclassifications": {
+                        "count": row["misclassification_false_positives"],
+                        "examples": _get_datum_samples(
+                            pr_calc_df=pr_calc_df,
+                            pr_curve_max_examples=pr_curve_max_examples,
+                            flag_column="misclassification_false_positive_flag",
+                            grouper_key=row["grouper_key"],
+                            grouper_value=row["grouper_value"],
+                            confidence_threshold=row["confidence_threshold"],
+                        ),
+                    },
+                },
+            },
+        }
+
+    output = []
+
+    if enums.MetricType.PrecisionRecallCurve in metrics_to_return:
+        output += [
+            schemas.PrecisionRecallCurve(label_key=key, value=dict(value))
+            for key, value in pr_output.items()
+        ]
+
+    if enums.MetricType.DetailedPrecisionRecallCurve in metrics_to_return:
+        output += [
+            schemas.DetailedPrecisionRecallCurve(
+                label_key=key, value=dict(value)
+            )
+            for key, value in detailed_pr_output.items()
+        ]
+
+    return output
+
+
 def _compute_clf_metrics(
     db: Session,
     prediction_filter: schemas.Filter,
@@ -1447,6 +1922,7 @@ def _compute_clf_metrics(
         models.Label.key.label("label_key"),
         models.Label.value.label("label_value"),
         models.Annotation.datum_id,
+        models.Datum.uid.label("datum_uid"),
         filters=groundtruth_filter,
         label_source=models.GroundTruth,
     )
@@ -1457,6 +1933,7 @@ def _compute_clf_metrics(
         models.Label.key.label("label_key"),
         models.Label.value.label("label_value"),
         models.Annotation.datum_id,
+        models.Datum.uid.label("datum_uid"),
         filters=prediction_filter,
         label_source=models.Prediction,
     )
@@ -1491,55 +1968,12 @@ def _compute_clf_metrics(
 
     metrics_to_output += _calculate_rocauc(pd_df=pd_df, gt_df=gt_df)
 
-    for grouper_key in grouper_mappings[
-        "grouper_key_to_labels_mapping"
-    ].keys():
-
-        if (
-            enums.MetricType.PrecisionRecallCurve in metrics_to_return
-            or enums.MetricType.DetailedPrecisionRecallCurve
-            in metrics_to_return
-        ):
-            # calculate the number of unique datums
-            # used to determine the number of true negatives
-            gt_datums = generate_query(
-                models.Datum.id,
-                models.Dataset.name,
-                models.Datum.uid,
-                db=db,
-                filters=groundtruth_filter,
-                label_source=models.GroundTruth,
-            ).all()
-            pd_datums = generate_query(
-                models.Datum.id,
-                models.Dataset.name,
-                models.Datum.uid,
-                db=db,
-                filters=prediction_filter,
-                label_source=models.Prediction,
-            ).all()
-            unique_datums = {
-                datum_id: (dataset_name, datum_uid)
-                for datum_id, dataset_name, datum_uid in gt_datums
-            }
-            unique_datums.update(
-                {
-                    datum_id: (dataset_name, datum_uid)
-                    for datum_id, dataset_name, datum_uid in pd_datums
-                }
-            )
-
-            pr_curves = _compute_curves(
-                db=db,
-                groundtruths=groundtruths.cte(),
-                predictions=predictions.cte(),
-                grouper_key=grouper_key,
-                grouper_mappings=grouper_mappings,
-                unique_datums=unique_datums,
-                pr_curve_max_examples=pr_curve_max_examples,
-                metrics_to_return=metrics_to_return,
-            )
-            metrics_to_output += pr_curves
+    metrics_to_output += _calculate_pr_curves(
+        pd_df=pd_df,
+        gt_df=gt_df,
+        metrics_to_return=metrics_to_return,
+        pr_curve_max_examples=pr_curve_max_examples,
+    )
 
     return confusion_matrices, metrics_to_output
 
