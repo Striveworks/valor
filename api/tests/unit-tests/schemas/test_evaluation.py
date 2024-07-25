@@ -60,9 +60,14 @@ def test_EvaluationParameters(llm_api_params):
         task_type=enums.TaskType.TEXT_GENERATION,
         metrics_to_return=[
             MetricType.AnswerRelevance,
+            MetricType.Bias,
             MetricType.BLEU,
             MetricType.Coherence,
+            MetricType.ContextRelevance,
+            MetricType.Faithfulness,
+            MetricType.Hallucination,
             MetricType.ROUGE,
+            MetricType.Toxicity,
         ],
         llm_api_params=llm_api_params,
     )
@@ -72,9 +77,14 @@ def test_EvaluationParameters(llm_api_params):
         task_type=enums.TaskType.TEXT_GENERATION,
         metrics_to_return=[
             MetricType.AnswerRelevance,
+            MetricType.Bias,
             MetricType.BLEU,
             MetricType.Coherence,
+            MetricType.ContextRelevance,
+            MetricType.Faithfulness,
+            MetricType.Hallucination,
             MetricType.ROUGE,
+            MetricType.Toxicity,
         ],
         llm_api_params=llm_api_params,
         bleu_weights=[0.5, 0.25, 0.25, 0],
@@ -137,9 +147,14 @@ def test_EvaluationParameters(llm_api_params):
             task_type=enums.TaskType.TEXT_GENERATION,
             metrics_to_return=[
                 MetricType.AnswerRelevance,
+                MetricType.Bias,
                 MetricType.BLEU,
                 MetricType.Coherence,
+                MetricType.ContextRelevance,
+                MetricType.Faithfulness,
+                MetricType.Hallucination,
                 MetricType.ROUGE,
+                MetricType.Toxicity,
             ],
         )
 
@@ -148,10 +163,8 @@ def test_EvaluationParameters(llm_api_params):
         schemas.EvaluationParameters(
             task_type=enums.TaskType.TEXT_GENERATION,
             metrics_to_return=[
-                MetricType.AnswerRelevance,
+                MetricType.Bias,
                 MetricType.BLEU,
-                MetricType.Coherence,
-                MetricType.ROUGE,
             ],
             llm_api_params=llm_api_params,
             bleu_weights=[1.1, 0.3, -0.5, 0.1],
@@ -163,9 +176,14 @@ def test_EvaluationParameters(llm_api_params):
             task_type=enums.TaskType.TEXT_GENERATION,
             metrics_to_return=[
                 MetricType.AnswerRelevance,
+                MetricType.Bias,
                 MetricType.BLEU,
                 MetricType.Coherence,
+                MetricType.ContextRelevance,
+                MetricType.Faithfulness,
+                MetricType.Hallucination,
                 MetricType.ROUGE,
+                MetricType.Toxicity,
             ],
             llm_api_params=llm_api_params,
             bleu_weights=[0.5, 0.25, 0.25, 0.25],

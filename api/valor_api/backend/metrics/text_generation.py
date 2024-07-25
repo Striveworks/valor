@@ -30,7 +30,12 @@ LabelMapType = list[list[list[str]]]
 
 LLM_GUIDED_METRICS = {
     "AnswerRelevance",
+    "Bias",
     "Coherence",
+    "ContextRelevance",
+    "Faithfulness",
+    "Hallucination",
+    "Toxicity",
 }
 
 
@@ -252,9 +257,14 @@ def _compute_text_generation_metrics(
     metric_params: dict = {},
 ) -> Sequence[
     schemas.AnswerRelevanceMetric
+    | schemas.BiasMetric
     | schemas.BLEUMetric
     | schemas.CoherenceMetric
+    | schemas.ContextRelevanceMetric
+    | schemas.FaithfulnessMetric
+    | schemas.HallucinationMetric
     | schemas.ROUGEMetric
+    | schemas.ToxicityMetric
 ]:
     """
     Compute text generation metrics.
@@ -278,7 +288,7 @@ def _compute_text_generation_metrics(
 
     Returns
     ----------
-    Sequence[schemas.AnswerRelevanceMetric | schemas.BLEUMetric | schemas.CoherenceMetric | schemas.ROUGEMetric]
+    Sequence[schemas.AnswerRelevanceMetric | schemas.BiasMetric | schemas.BLEUMetric | schemas.CoherenceMetric | schemas.ContextRelevanceMetric | schemas.FaithfulnessMetric | schemas.HallucinationMetric | schemas.ROUGEMetric | schemas.ToxicityMetric]
         A list of computed metrics.
     """
     prediction_subquery = generate_query(
@@ -450,9 +460,20 @@ def _compute_text_generation_metrics(
 
         results = db.execute(joint_subquery).all()
         is_AnswerRelevance_enabled = "AnswerRelevance" in metrics_to_return
+        is_Bias_enabled = "Bias" in metrics_to_return
         is_Coherence_enabled = "Coherence" in metrics_to_return
+        is_ContextRelevance_enabled = "ContextRelevance" in metrics_to_return
+        is_Faithfulness_enabled = "Faithfulness" in metrics_to_return
+        is_Hallucination_enabled = "Hallucination" in metrics_to_return
+        is_Toxicity_enabled = "Toxicity" in metrics_to_return
 
-        for datum_uid, dataset_name, datum_text, prediction_text, _ in results:
+        for (
+            datum_uid,
+            dataset_name,
+            datum_text,
+            prediction_text,
+            prediction_context,
+        ) in results:
             if is_AnswerRelevance_enabled:
                 score = client.answer_relevance(
                     query=datum_text, text=prediction_text
@@ -467,11 +488,83 @@ def _compute_text_generation_metrics(
                         },
                     )
                 ]
+            if is_Bias_enabled:
+                score = client.bias(text=prediction_text)
+                output += [
+                    schemas.BiasMetric(
+                        value=score,
+                        parameters={
+                            "dataset": dataset_name,
+                            "datum_uid": datum_uid,
+                            "prediction": prediction_text,
+                        },
+                    )
+                ]
+
             if is_Coherence_enabled:
-                generated_text = prediction_text
-                score = client.coherence(text=generated_text)
+                score = client.coherence(text=prediction_text)
                 output += [
                     schemas.CoherenceMetric(
+                        value=score,
+                        parameters={
+                            "dataset": dataset_name,
+                            "datum_uid": datum_uid,
+                            "prediction": prediction_text,
+                        },
+                    )
+                ]
+
+            if is_ContextRelevance_enabled:
+                score = client.context_relevance(
+                    query=datum_text, context=prediction_context
+                )
+                output += [
+                    schemas.ContextRelevanceMetric(
+                        value=score,
+                        parameters={
+                            "dataset": dataset_name,
+                            "datum_uid": datum_uid,
+                            "context": prediction_context,
+                        },
+                    )
+                ]
+
+            if is_Faithfulness_enabled:
+                score = client.faithfulness(
+                    text=prediction_text, context=prediction_context
+                )
+                output += [
+                    schemas.FaithfulnessMetric(
+                        value=score,
+                        parameters={
+                            "dataset": dataset_name,
+                            "datum_uid": datum_uid,
+                            "prediction": prediction_text,
+                            "context": prediction_context,
+                        },
+                    )
+                ]
+
+            if is_Hallucination_enabled:
+                score = client.hallucination(
+                    text=prediction_text, context=prediction_context
+                )
+                output += [
+                    schemas.HallucinationMetric(
+                        value=score,
+                        parameters={
+                            "dataset": dataset_name,
+                            "datum_uid": datum_uid,
+                            "prediction": prediction_text,
+                            "context": prediction_context,
+                        },
+                    )
+                ]
+
+            if is_Toxicity_enabled:
+                score = client.toxicity(text=prediction_text)
+                output += [
+                    schemas.ToxicityMetric(
                         value=score,
                         parameters={
                             "dataset": dataset_name,

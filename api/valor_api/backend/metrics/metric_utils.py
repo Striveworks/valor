@@ -201,9 +201,14 @@ def commit_results(
         | schemas.PrecisionRecallCurve
         | schemas.DetailedPrecisionRecallCurve
         | schemas.AnswerRelevanceMetric
+        | schemas.BiasMetric
         | schemas.BLEUMetric
         | schemas.CoherenceMetric
+        | schemas.ContextRelevanceMetric
+        | schemas.FaithfulnessMetric
+        | schemas.HallucinationMetric
         | schemas.ROUGEMetric
+        | schemas.ToxicityMetric
     ],
     evaluation_id: int,
 ):

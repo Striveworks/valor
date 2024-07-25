@@ -162,9 +162,14 @@ def test_llm_evaluation_rag_with_mock_client(
 
     metrics_to_return = [
         MetricType.AnswerRelevance,
+        MetricType.Bias,
         MetricType.BLEU,
         MetricType.Coherence,
+        MetricType.ContextRelevance,
+        MetricType.Faithfulness,
+        MetricType.Hallucination,
         MetricType.ROUGE,
+        MetricType.Toxicity,
     ]
 
     eval_job = model.evaluate_text_generation(
@@ -205,42 +210,63 @@ def test_llm_evaluation_rag_with_mock_client(
     expected_metrics = {
         "uid0": {
             "AnswerRelevance": 0.5,
+            "Bias": 0.5,
             "BLEU": 0.3502270395690205,
             "Coherence": 4,
+            "ContextRelevance": 0.75,
+            "Faithfulness": 0.3333333333333333,
+            "Hallucination": 0.25,
             "ROUGE": {
                 "rouge1": 0.5925925925925926,
                 "rouge2": 0.5569620253164557,
                 "rougeL": 0.5925925925925926,
                 "rougeLsum": 0.5925925925925926,
             },
+            "Toxicity": 0.0,
         },
         "uid1": {
             "AnswerRelevance": 0.5,
+            "Bias": 0.5,
             "BLEU": 1.0,
             "Coherence": 4,
+            "ContextRelevance": 0.75,
+            "Faithfulness": 0.3333333333333333,
+            "Hallucination": 0.25,
             "ROUGE": {
                 "rouge1": 1.0,
                 "rouge2": 1.0,
                 "rougeL": 1.0,
                 "rougeLsum": 1.0,
             },
+            "Toxicity": 0.0,
         },
         "uid2": {
             "AnswerRelevance": 0.5,
+            "Bias": 0.5,
             "BLEU": 0.05434912989707719,
             "Coherence": 4,
+            "ContextRelevance": 0.75,
+            "Faithfulness": 0.3333333333333333,
+            "Hallucination": 0.25,
             "ROUGE": {
                 "rouge1": 0.18666666666666668,
                 "rouge2": 0.0821917808219178,
                 "rougeL": 0.18666666666666668,
                 "rougeLsum": 0.18666666666666668,
             },
+            "Toxicity": 0.0,
         },
     }
 
     # Check that the returned metrics have the right format.
     for m in metrics:
-        if m["type"] in ["AnswerRelevance", "BLEU"]:
+        if m["type"] in [
+            "AnswerRelevance",
+            "Bias",
+            "BLEU",
+            "ContextRelevance",
+            "Toxicity",
+        ]:
             assert 0 <= m["value"] <= 1
         if m["type"] == "Coherence":
             assert m["value"] in [1, 2, 3, 4, 5]

@@ -142,7 +142,12 @@ class EvaluationParameters(BaseModel):
                 llm_guided_metrics = set(
                     [
                         "AnswerRelevance",
+                        "Bias",
                         "Coherence",
+                        "ContextRelevance",
+                        "Faithfulness",
+                        "Hallucination",
+                        "Toxicity",
                     ]
                 )
                 allowed_metrics = text_comparison_metrics.union(
