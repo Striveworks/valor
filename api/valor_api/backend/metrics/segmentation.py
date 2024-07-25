@@ -2,14 +2,15 @@ from collections import defaultdict
 from typing import Any
 
 from geoalchemy2.functions import ST_Count, ST_MapAlgebra
-from sqlalchemy.orm import Session, aliased
-from sqlalchemy.sql import Subquery, func, select
+from sqlalchemy import CTE, Subquery, and_, case, func, select
+from sqlalchemy.orm import Session
 
-from valor_api import enums, schemas
+from valor_api import schemas
 from valor_api.backend import core, models
 from valor_api.backend.metrics.metric_utils import (
+    LabelMapType,
     commit_results,
-    create_grouper_mappings,
+    create_label_mapping,
     log_evaluation_duration,
     log_evaluation_item_counts,
     prepare_filter_for_evaluation,
@@ -19,129 +20,290 @@ from valor_api.backend.query import generate_select
 from valor_api.schemas.metrics import IOUMetric, mIOUMetric
 
 
-def _generate_groundtruth_query(
-    groundtruth_filter: schemas.Filter,
-) -> Subquery[Any]:
-    """Generate a sqlalchemy query to fetch a ground truth."""
-    return generate_select(
-        models.Annotation.id.label("annotation_id"),
-        models.Annotation.datum_id.label("datum_id"),
-        filters=groundtruth_filter,
-        label_source=models.GroundTruth,
-    ).subquery("gt")
-
-
-def _generate_prediction_query(
-    prediction_filter: schemas.Filter,
-) -> Subquery[Any]:
-    """Generate a sqlalchemy query to fetch a prediction."""
-
-    return generate_select(
-        models.Annotation.id.label("annotation_id"),
-        models.Annotation.datum_id.label("datum_id"),
-        filters=prediction_filter,
-        label_source=models.Prediction,
-    ).subquery("pd")
-
-
 def _count_true_positives(
-    db: Session,
-    groundtruth_subquery: Subquery[Any],
-    prediction_subquery: Subquery[Any],
-) -> int:
+    groundtruths: CTE,
+    predictions: CTE,
+) -> Subquery[Any]:
     """Computes the pixelwise true positives for the given dataset, model, and label"""
-    gt_annotation = aliased(models.Annotation)
-    pd_annotation = aliased(models.Annotation)
-    ret = db.scalar(
+    return (
         select(
+            groundtruths.c.label_id,
             func.sum(
                 ST_Count(
                     ST_MapAlgebra(
-                        gt_annotation.raster,
-                        pd_annotation.raster,
+                        groundtruths.c.raster,
+                        predictions.c.raster,
                         "[rast1]*[rast2]",  # https://postgis.net/docs/RT_ST_MapAlgebra_expr.html
                     )
                 )
-            )
+            ).label("count"),
         )
-        .select_from(groundtruth_subquery)
+        .select_from(groundtruths)
         .join(
-            prediction_subquery,
-            prediction_subquery.c.datum_id == groundtruth_subquery.c.datum_id,
+            predictions,
+            and_(
+                predictions.c.datum_id == groundtruths.c.datum_id,
+                predictions.c.label_id == groundtruths.c.label_id,
+            ),
         )
-        .join(
-            gt_annotation,
-            gt_annotation.id == groundtruth_subquery.c.annotation_id,
-        )
-        .join(
-            pd_annotation,
-            pd_annotation.id == prediction_subquery.c.annotation_id,
-        )
+        .group_by(groundtruths.c.label_id)
+        .subquery()
     )
-    if ret is None:
-        return 0
-    return int(ret)
 
 
 def _count_groundtruths(
-    db: Session, groundtruth_subquery: Subquery[Any]
-) -> int:
+    groundtruths: CTE,
+) -> Subquery[Any]:
     """Total number of ground truth pixels for the given dataset and label"""
-    ret = db.scalar(
-        select(func.sum(ST_Count(models.Annotation.raster)))
-        .select_from(groundtruth_subquery)
-        .join(
-            models.Annotation,
-            models.Annotation.id == groundtruth_subquery.c.annotation_id,
+    return (
+        select(
+            groundtruths.c.label_id,
+            func.sum(ST_Count(groundtruths.c.raster)).label("count"),
         )
+        .group_by(groundtruths.c.label_id)
+        .subquery()
     )
-    if ret is None:
-        return 0
-    return int(ret)
 
 
 def _count_predictions(
-    db: Session,
-    prediction_subquery: Subquery[Any],
-) -> int:
+    predictions: CTE,
+) -> Subquery[Any]:
     """Total number of predicted pixels for the given dataset, model, and label"""
-    ret = db.scalar(
-        select(func.sum(ST_Count(models.Annotation.raster)))
-        .select_from(prediction_subquery)
-        .join(
-            models.Annotation,
-            models.Annotation.id == prediction_subquery.c.annotation_id,
+    return (
+        select(
+            predictions.c.label_id,
+            func.sum(ST_Count(predictions.c.raster)).label("count"),
         )
+        .select_from(predictions)
+        .group_by(predictions.c.label_id)
+        .subquery()
     )
-    if ret is None:
-        return 0
-    return int(ret)
 
 
 def _compute_iou(
     db: Session,
-    groundtruth_filter: schemas.Filter,
-    prediction_filter: schemas.Filter,
-) -> float | None:
+    groundtruths: CTE,
+    predictions: CTE,
+    labels: dict[int, tuple[str, str]],
+) -> list[schemas.IOUMetric | schemas.mIOUMetric]:
     """Computes the pixelwise intersection over union for the given dataset, model, and label"""
 
-    groundtruth_subquery = _generate_groundtruth_query(groundtruth_filter)
-    prediction_subquery = _generate_prediction_query(prediction_filter)
-
     tp_count = _count_true_positives(
-        db, groundtruth_subquery, prediction_subquery
+        groundtruths=groundtruths, predictions=predictions
     )
-    gt_count = _count_groundtruths(
-        db,
-        groundtruth_subquery=groundtruth_subquery,
-    )
-    pd_count = _count_predictions(db, prediction_subquery)
+    gt_count = _count_groundtruths(groundtruths=groundtruths)
+    pd_count = _count_predictions(predictions=predictions)
 
-    if gt_count == 0:
-        return None
-    elif pd_count == 0:
-        return 0
-    return tp_count / (gt_count + pd_count - tp_count)
+    ious = (
+        db.query(
+            gt_count.c.label_id,
+            case(
+                (gt_count.c.count == 0, None),
+                (pd_count.c.count == 0, 0.0),
+                else_=(
+                    tp_count.c.count
+                    / (gt_count.c.count + pd_count.c.count - tp_count.c.count)
+                ),
+            ).label("iou"),
+        )
+        .select_from(gt_count)
+        .join(pd_count, pd_count.c.label_id == gt_count.c.label_id)
+        .join(tp_count, tp_count.c.label_id == gt_count.c.label_id)
+        .all()
+    )
+    label_id_to_iou = {label_id: iou for label_id, iou in ious}
+
+    groundtruth_label_ids = db.scalars(
+        select(groundtruths.c.label_id).distinct()
+    ).all()
+
+    metrics = list()
+    ious_per_key = defaultdict(list)
+    for label_id in groundtruth_label_ids:
+
+        label_key, label_value = labels[label_id]
+        label = schemas.Label(key=label_key, value=label_value)
+
+        iou = label_id_to_iou.get(label_id, 0.0)
+
+        if iou is None:
+            continue
+
+        metrics.append(
+            IOUMetric(
+                label=label,
+                value=float(iou),
+            )
+        )
+        ious_per_key[label_key].append(float(iou))
+
+    for label_key, iou_values in ious_per_key.items():
+        metrics.append(
+            mIOUMetric(
+                value=(
+                    sum(iou_values) / len(iou_values)
+                    if len(iou_values) != 0
+                    else -1
+                ),
+                label_key=label_key,
+            )
+        )
+
+    return metrics
+
+
+def _aggregate_data(
+    db: Session,
+    groundtruth_filter: schemas.Filter,
+    prediction_filter: schemas.Filter,
+    label_map: LabelMapType | None = None,
+) -> tuple[CTE, CTE, dict[int, tuple[str, str]]]:
+    """
+    Aggregates data for a semantic segmentation task.
+
+    This function returns a tuple containing CTE's used to gather groundtruths, predictions and a
+    dictionary that maps label_id to a key-value pair.
+
+    Parameters
+    ----------
+    db : Session
+        The database Session to query against.
+    groundtruth_filter : schemas.Filter
+        The filter to be used to query groundtruths.
+    prediction_filter : schemas.Filter
+        The filter to be used to query predictions.
+    label_map: LabelMapType, optional
+        Optional mapping of individual labels to a grouper label. Useful when you need to evaluate performance using labels that differ across datasets and models.
+
+    Returns
+    ----------
+    tuple[CTE, CTE, dict[int, tuple[str, str]]]:
+        A tuple with form (groundtruths, predictions, labels).
+    """
+    labels = core.fetch_union_of_labels(
+        db=db,
+        lhs=groundtruth_filter,
+        rhs=prediction_filter,
+    )
+
+    label_mapping = create_label_mapping(
+        db=db,
+        labels=labels,
+        label_map=label_map,
+    )
+
+    groundtruths_subquery = generate_select(
+        models.Dataset.name.label("dataset_name"),
+        models.Datum.id.label("datum_id"),
+        models.Datum.uid.label("datum_uid"),
+        models.Annotation.id.label("annotation_id"),
+        models.Annotation.raster.label("raster"),
+        models.GroundTruth.id.label("groundtruth_id"),
+        models.Label.id,
+        label_mapping,
+        filters=groundtruth_filter,
+        label_source=models.GroundTruth,
+    ).subquery()
+    groundtruths_cte = (
+        select(
+            groundtruths_subquery.c.dataset_name,
+            groundtruths_subquery.c.datum_id,
+            groundtruths_subquery.c.datum_uid,
+            groundtruths_subquery.c.annotation_id,
+            groundtruths_subquery.c.groundtruth_id,
+            models.Label.id.label("label_id"),
+            models.Label.key,
+            models.Label.value,
+            func.ST_Union(groundtruths_subquery.c.raster).label("raster"),
+        )
+        .select_from(groundtruths_subquery)
+        .join(
+            models.Label,
+            models.Label.id == groundtruths_subquery.c.label_id,
+        )
+        .group_by(
+            groundtruths_subquery.c.dataset_name,
+            groundtruths_subquery.c.datum_id,
+            groundtruths_subquery.c.datum_uid,
+            groundtruths_subquery.c.annotation_id,
+            groundtruths_subquery.c.groundtruth_id,
+            models.Label.id.label("label_id"),
+            models.Label.key,
+            models.Label.value,
+        )
+        .cte()
+    )
+
+    predictions_subquery = generate_select(
+        models.Dataset.name.label("dataset_name"),
+        models.Datum.id.label("datum_id"),
+        models.Datum.uid.label("datum_uid"),
+        models.Annotation.id.label("annotation_id"),
+        models.Annotation.raster.label("raster"),
+        models.Prediction.id.label("prediction_id"),
+        models.Prediction.score.label("score"),
+        models.Label.id,
+        label_mapping,
+        filters=prediction_filter,
+        label_source=models.Prediction,
+    ).subquery()
+    predictions_cte = (
+        select(
+            predictions_subquery.c.datum_id,
+            predictions_subquery.c.datum_uid,
+            predictions_subquery.c.dataset_name,
+            predictions_subquery.c.annotation_id,
+            models.Label.id.label("label_id"),
+            models.Label.key,
+            models.Label.value,
+            func.min(predictions_subquery.c.prediction_id).label(
+                "prediction_id"
+            ),
+            func.max(predictions_subquery.c.score).label("score"),
+            func.ST_UNION(predictions_subquery.c.raster).label("raster"),
+        )
+        .select_from(predictions_subquery)
+        .join(
+            models.Label,
+            models.Label.id == predictions_subquery.c.label_id,
+        )
+        .group_by(
+            predictions_subquery.c.datum_id,
+            predictions_subquery.c.datum_uid,
+            predictions_subquery.c.dataset_name,
+            predictions_subquery.c.annotation_id,
+            models.Label.id.label("label_id"),
+            models.Label.key,
+            models.Label.value,
+        )
+        .cte()
+    )
+
+    # get all labels
+    groundtruth_labels = {
+        (key, value, label_id)
+        for label_id, key, value in db.query(
+            groundtruths_cte.c.label_id,
+            groundtruths_cte.c.key,
+            groundtruths_cte.c.value,
+        )
+        .distinct()
+        .all()
+    }
+    prediction_labels = {
+        (key, value, label_id)
+        for label_id, key, value in db.query(
+            predictions_cte.c.label_id,
+            predictions_cte.c.key,
+            predictions_cte.c.value,
+        )
+        .distinct()
+        .all()
+    }
+    labels = groundtruth_labels.union(prediction_labels)
+    labels = {label_id: (key, value) for key, value, label_id in labels}
+
+    return (groundtruths_cte, predictions_cte, labels)
 
 
 def _compute_segmentation_metrics(
@@ -170,83 +332,19 @@ def _compute_segmentation_metrics(
         A list containing one `IOUMetric` for each label in ground truth and one `mIOUMetric` for the mean _compute_IOU over all labels.
     """
 
-    labels = core.fetch_union_of_labels(
+    groundtruths, predictions, labels = _aggregate_data(
         db=db,
-        rhs=prediction_filter,
-        lhs=groundtruth_filter,
-    )
-
-    grouper_mappings = create_grouper_mappings(
-        db=db,
-        labels=labels,
+        groundtruth_filter=groundtruth_filter,
+        prediction_filter=prediction_filter,
         label_map=parameters.label_map,
-        evaluation_type=enums.TaskType.SEMANTIC_SEGMENTATION,
     )
 
-    ret = []
-    ious_per_grouper_key = defaultdict(list)
-    for grouper_id, label_ids in grouper_mappings[
-        "grouper_id_to_label_ids_mapping"
-    ].items():
-        # set filter
-        groundtruth_filter.labels = schemas.LogicalFunction.or_(
-            *[
-                schemas.Condition(
-                    lhs=schemas.Symbol(name=schemas.SupportedSymbol.LABEL_ID),
-                    rhs=schemas.Value.infer(label_id),
-                    op=schemas.FilterOperator.EQ,
-                )
-                for label_id in label_ids
-            ]
-        )
-        prediction_filter.labels = schemas.LogicalFunction.or_(
-            *[
-                schemas.Condition(
-                    lhs=schemas.Symbol(name=schemas.SupportedSymbol.LABEL_ID),
-                    rhs=schemas.Value.infer(label_id),
-                    op=schemas.FilterOperator.EQ,
-                )
-                for label_id in label_ids
-            ]
-        )
-
-        computed_iou_score = _compute_iou(
-            db,
-            groundtruth_filter,
-            prediction_filter,
-        )
-
-        # only add an IOUMetric if the label ids associated with the grouper id have at least one gt raster
-        if computed_iou_score is None:
-            continue
-
-        grouper_label = grouper_mappings[
-            "grouper_id_to_grouper_label_mapping"
-        ][grouper_id]
-
-        ret += [
-            IOUMetric(
-                label=grouper_label,
-                value=computed_iou_score,
-            )
-        ]
-
-        ious_per_grouper_key[grouper_label.key].append(computed_iou_score)
-
-    # aggregate IOUs by key
-    ret += [
-        mIOUMetric(
-            value=(
-                sum(iou_values) / len(iou_values)
-                if len(iou_values) != 0
-                else -1
-            ),
-            label_key=grouper_key,
-        )
-        for grouper_key, iou_values in ious_per_grouper_key.items()
-    ]
-
-    return ret
+    return _compute_iou(
+        db,
+        groundtruths=groundtruths,
+        predictions=predictions,
+        labels=labels,
+    )
 
 
 @validate_computation

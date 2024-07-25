@@ -1321,13 +1321,7 @@ def test_evaluate_detection_with_label_maps(
 
     pr_expected_answers = {
         # class
-        (
-            0,
-            "class",
-            "cat",
-            "0.1",
-            "fp",
-        ): 1,
+        (0, "class", "cat", "0.1", "fp"): 1,
         (0, "class", "cat", "0.4", "fp"): 0,
         (0, "class", "siamese cat", "0.1", "fn"): 1,
         (0, "class", "british shorthair", "0.1", "fn"): 1,

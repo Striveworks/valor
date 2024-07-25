@@ -4,12 +4,11 @@ from sqlalchemy.orm import Session
 from valor_api import crud, enums, schemas
 from valor_api.backend.core import create_or_get_evaluations
 from valor_api.backend.metrics.segmentation import (
+    _aggregate_data,
     _compute_segmentation_metrics,
     _count_groundtruths,
     _count_predictions,
     _count_true_positives,
-    _generate_groundtruth_query,
-    _generate_prediction_query,
     compute_semantic_segmentation_metrics,
 )
 from valor_api.backend.models import Label
@@ -51,146 +50,6 @@ def _create_data(
             pred_semantic_segs_img2_create,
         ],
     )
-
-
-def test_query_generators(
-    db: Session,
-    dataset_name: str,
-    model_name: str,
-    gt_semantic_segs_create: list[schemas.GroundTruth],
-    pred_semantic_segs_img1_create: schemas.Prediction,
-    pred_semantic_segs_img2_create: schemas.Prediction,
-):
-    _create_data(
-        db=db,
-        dataset_name=dataset_name,
-        model_name=model_name,
-        gt_semantic_segs_create=gt_semantic_segs_create,
-        pred_semantic_segs_img1_create=pred_semantic_segs_img1_create,
-        pred_semantic_segs_img2_create=pred_semantic_segs_img2_create,
-    )
-
-    prediction_filter = schemas.Filter(
-        predictions=schemas.LogicalFunction(
-            args=[
-                schemas.Condition(
-                    lhs=schemas.Symbol(
-                        name=schemas.SupportedSymbol.MODEL_NAME
-                    ),
-                    rhs=schemas.Value.infer(model_name),
-                    op=schemas.FilterOperator.EQ,
-                ),
-                schemas.Condition(
-                    lhs=schemas.Symbol(
-                        name=schemas.SupportedSymbol.DATASET_NAME
-                    ),
-                    rhs=schemas.Value.infer(dataset_name),
-                    op=schemas.FilterOperator.EQ,
-                ),
-                schemas.Condition(
-                    lhs=schemas.Symbol(name=schemas.SupportedSymbol.TASK_TYPE),
-                    rhs=schemas.Value.infer(
-                        enums.TaskType.SEMANTIC_SEGMENTATION
-                    ),
-                    op=schemas.FilterOperator.CONTAINS,
-                ),
-                schemas.Condition(
-                    lhs=schemas.Symbol(name=schemas.SupportedSymbol.RASTER),
-                    op=schemas.FilterOperator.ISNOTNULL,
-                ),
-            ],
-            op=schemas.LogicalOperator.AND,
-        )
-    )
-    groundtruth_filter = schemas.Filter(
-        groundtruths=schemas.LogicalFunction(
-            args=[
-                schemas.Condition(
-                    lhs=schemas.Symbol(
-                        name=schemas.SupportedSymbol.DATASET_NAME
-                    ),
-                    rhs=schemas.Value.infer(dataset_name),
-                    op=schemas.FilterOperator.EQ,
-                ),
-                schemas.Condition(
-                    lhs=schemas.Symbol(name=schemas.SupportedSymbol.TASK_TYPE),
-                    rhs=schemas.Value.infer(
-                        enums.TaskType.SEMANTIC_SEGMENTATION
-                    ),
-                    op=schemas.FilterOperator.CONTAINS,
-                ),
-                schemas.Condition(
-                    lhs=schemas.Symbol(name=schemas.SupportedSymbol.RASTER),
-                    op=schemas.FilterOperator.ISNOTNULL,
-                ),
-            ],
-            op=schemas.LogicalOperator.AND,
-        )
-    )
-
-    for label_key, label_value, expected_number in [
-        ("k1", "v1", 2),
-        ("k1", "v2", 1),
-        ("k2", "v2", 1),
-        ("k3", "v3", 1),
-    ]:
-        label_id = db.scalar(
-            select(Label.id).where(
-                and_(Label.key == label_key, Label.value == label_value)
-            )
-        )
-
-        assert label_id is not None
-        groundtruth_filter.labels = schemas.Condition(
-            lhs=schemas.Symbol(name=schemas.SupportedSymbol.LABEL_ID),
-            rhs=schemas.Value.infer(label_id),
-            op=schemas.FilterOperator.EQ,
-        )
-
-        q = _generate_groundtruth_query(groundtruth_filter)
-        data = db.query(q).all()
-        assert len(data) == expected_number
-
-    groundtruth_filter.labels = schemas.Condition(
-        lhs=schemas.Symbol(name=schemas.SupportedSymbol.LABEL_ID),
-        rhs=schemas.Value.infer(10000000),
-        op=schemas.FilterOperator.EQ,
-    )
-    q = _generate_groundtruth_query(groundtruth_filter)
-    data = db.query(q).all()
-    assert len(data) == 0
-
-    for label_key, label_value, expected_number in [
-        ("k1", "v1", 2),
-        ("k1", "v2", 0),
-        ("k2", "v2", 1),
-        ("k2", "v3", 2),
-    ]:
-        label_id = db.scalar(
-            select(Label.id).where(
-                and_(Label.key == label_key, Label.value == label_value)
-            )
-        )
-        assert label_id is not None
-
-        prediction_filter.labels = schemas.Condition(
-            lhs=schemas.Symbol(name=schemas.SupportedSymbol.LABEL_ID),
-            rhs=schemas.Value.infer(label_id),
-            op=schemas.FilterOperator.EQ,
-        )
-
-        q = _generate_prediction_query(prediction_filter)
-        data = db.query(q).all()
-        assert len(data) == expected_number
-
-    prediction_filter.labels = schemas.Condition(
-        lhs=schemas.Symbol(name=schemas.SupportedSymbol.LABEL_ID),
-        rhs=schemas.Value.infer(10000000),
-        op=schemas.FilterOperator.EQ,
-    )
-    q = _generate_prediction_query(prediction_filter)
-    data = db.query(q).all()
-    assert len(data) == 0
 
 
 def _create_groundtruth_tuples(
@@ -354,15 +213,25 @@ def test__count_true_positives(
             op=schemas.FilterOperator.EQ,
         )
 
-        tps = _count_true_positives(
+        groundtruths, predictions, _ = _aggregate_data(
             db=db,
-            groundtruth_subquery=_generate_groundtruth_query(
-                groundtruth_filter
-            ),
-            prediction_subquery=_generate_prediction_query(prediction_filter),
+            groundtruth_filter=groundtruth_filter,
+            prediction_filter=prediction_filter,
+            label_map=None,
         )
 
-        assert expected == tps
+        tps = _count_true_positives(
+            groundtruths=groundtruths,
+            predictions=predictions,
+        )
+
+        tp_counts = db.query(tps).all()
+        if expected == 0:
+            assert len(tp_counts) == 0
+            continue
+        assert len(tp_counts) == 1
+        assert tp_counts[0][0] == label_id
+        assert int(tp_counts[0][1]) == expected
 
 
 def _help_count_groundtruths(
@@ -431,26 +300,34 @@ def test_count_groundtruths(
             rhs=schemas.Value.infer(label_id),
             op=schemas.FilterOperator.EQ,
         )
-        assert (
-            _count_groundtruths(
-                db,
-                _generate_groundtruth_query(groundtruth_filter),
-            )
-            == expected
+
+        groundtruths, _, _ = _aggregate_data(
+            db=db,
+            groundtruth_filter=groundtruth_filter,
+            prediction_filter=groundtruth_filter,
+            label_map=None,
         )
+
+        gt_counts = db.query(
+            _count_groundtruths(groundtruths=groundtruths)
+        ).all()
+        assert len(gt_counts) == 1
+        assert gt_counts[0][0] == label_id
+        assert int(gt_counts[0][1]) == expected
 
     groundtruth_filter.labels = schemas.Condition(
         lhs=schemas.Symbol(name=schemas.SupportedSymbol.LABEL_ID),
         rhs=schemas.Value.infer(1000000),
         op=schemas.FilterOperator.EQ,
     )
-    assert (
-        _count_groundtruths(
-            db,
-            _generate_groundtruth_query(groundtruth_filter),
-        )
-        == 0
+
+    groundtruths, _, _ = _aggregate_data(
+        db=db,
+        groundtruth_filter=groundtruth_filter,
+        prediction_filter=groundtruth_filter,
+        label_map=None,
     )
+    assert not db.query(_count_groundtruths(groundtruths=groundtruths)).all()
 
 
 def _help_count_predictions(
@@ -532,23 +409,35 @@ def test_count_predictions(
             rhs=schemas.Value.infer(label_id),
             op=schemas.FilterOperator.EQ,
         )
-        assert (
-            _count_predictions(
-                db,
-                _generate_prediction_query(prediction_filter),
-            )
-            == expected
+
+        _, predictions, _ = _aggregate_data(
+            db=db,
+            groundtruth_filter=prediction_filter,
+            prediction_filter=prediction_filter,
+            label_map=None,
         )
+
+        pd_counts = db.query(_count_predictions(predictions=predictions)).all()
+        if expected == 0:
+            assert len(pd_counts) == 0
+            continue
+        assert len(pd_counts) == 1
+        assert pd_counts[0][0] == label_id
+        assert int(pd_counts[0][1]) == expected
 
     prediction_filter.labels = schemas.Condition(
         lhs=schemas.Symbol(name=schemas.SupportedSymbol.LABEL_ID),
         rhs=schemas.Value.infer(1000000),
         op=schemas.FilterOperator.EQ,
     )
-    assert (
-        _count_predictions(db, _generate_prediction_query(prediction_filter))
-        == 0
+    _, predictions, _ = _aggregate_data(
+        db=db,
+        groundtruth_filter=prediction_filter,
+        prediction_filter=prediction_filter,
+        label_map=None,
     )
+
+    assert not db.query(_count_predictions(predictions=predictions)).all()
 
 
 def test__compute_segmentation_metrics(

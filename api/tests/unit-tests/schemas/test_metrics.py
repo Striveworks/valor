@@ -384,6 +384,56 @@ def test_mIOUMetric():
     )
 
 
+def test_PrecisionRecallCurve():
+
+    m = schemas.PrecisionRecallCurve(
+        label_key="k1",
+        pr_curve_iou_threshold=0.5,
+        value={"v1": {0.25: {"tp": 1}}},
+    )
+    assert m.db_mapping(1) == {
+        "evaluation_id": 1,
+        "parameters": {
+            "label_key": "k1",
+            "pr_curve_iou_threshold": 0.5,
+        },
+        "type": "PrecisionRecallCurve",
+        "value": {
+            "v1": {
+                0.25: {
+                    "tp": 1,
+                },
+            },
+        },
+    }
+
+
+def test_DetailedPrecisionRecallCurve():
+
+    m = schemas.DetailedPrecisionRecallCurve(
+        label_key="k1",
+        pr_curve_iou_threshold=0.5,
+        value={"v1": {0.25: {"tp": {"total": 3}}}},
+    )
+    assert m.db_mapping(1) == {
+        "evaluation_id": 1,
+        "parameters": {
+            "label_key": "k1",
+            "pr_curve_iou_threshold": 0.5,
+        },
+        "type": "DetailedPrecisionRecallCurve",
+        "value": {
+            "v1": {
+                0.25: {
+                    "tp": {
+                        "total": 3,
+                    },
+                },
+            },
+        },
+    }
+
+
 def test_AnswerRelevanceMetric():
     metric = schemas.AnswerRelevanceMetric(
         value=0.421,
