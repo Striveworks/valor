@@ -367,7 +367,7 @@ def _compute_ap(
         .subquery()
     )
 
-    print("precision_counts", db.query(precision_counts).all())
+    # print("precision_counts", db.query(precision_counts).all())
 
     # calculate precision and recall for AP
 
