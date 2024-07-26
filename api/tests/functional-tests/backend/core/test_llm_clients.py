@@ -131,7 +131,7 @@ HALLUCINATION_AGREEMENT_VALID_VERDICTS = """```json
 
         {
             "verdict": "no",
-            "reason": "The text and context disagree on when Abraham Lincoln was born."
+            "reason": "The text and context mention disagree on when Abraham Lincoln was born."
         },
         {
             "verdict": "no",
@@ -162,11 +162,7 @@ TOXICITY_VALID_VERDICTS = """```json
 
 
 def test_LLMClient(monkeypatch):
-    """
-    Check the metric computations for LLMClient. The client children inherit all of these metric computations.
-
-    Check that LLMClient throws NotImplementedErrors for connect and __call__.
-    """
+    """Check that this parent class mostly throws NotImplementedErrors, since its methods are intended to be overridden by its children."""
 
     def _return_valid_answer_relevance_response(*args, **kwargs):
         if "generate a list of statements" in args[1][1]["content"]:
@@ -306,7 +302,7 @@ def test_LLMClient(monkeypatch):
             return """```json
 {
     "opinions": [
-        "the key should be 'verdicts' not 'opinions'",
+        "opinion 1",
         "opinion 2",
         "opinion 3",
         "opinion 4"
@@ -347,9 +343,6 @@ def test_LLMClient(monkeypatch):
     def _return_valid_coherence_response(*args, **kwargs):
         return "5"
 
-    def _return_invalid1_coherence_response(*args, **kwargs):
-        return "The score is 5."
-
     def _return_invalid2_coherence_response(*args, **kwargs):
         return "0"
 
@@ -387,50 +380,28 @@ def test_LLMClient(monkeypatch):
 }```"""
 
     def _return_invalid1_faithfulness_response(*args, **kwargs):
-        if (
-            "generate a comprehensive list of FACTUAL claims that can inferred from the provided text"
-            in args[1][1]["content"]
-        ):
-            return VALID_CLAIMS
-        elif (
-            "generate a list of JSON objects to indicate whether EACH claim is implied by the retrieved context"
-            in args[1][1]["content"]
-        ):
-            return """```json
+        return """```json
 {
     "list": [
-        "verdict 1",
-        "verdict 2",
-        "verdict 3",
-        "verdict 4",
-        "verdict 5"
+        "claim 1",
+        "claim 2",
+        "claim 3",
+        "claim 4",
+        "claim 5"
     ]
 }```"""
-        else:
-            raise ValueError
 
     def _return_invalid2_faithfulness_response(*args, **kwargs):
-        if (
-            "generate a comprehensive list of FACTUAL claims that can inferred from the provided text"
-            in args[1][1]["content"]
-        ):
-            return VALID_CLAIMS
-        elif (
-            "generate a list of JSON objects to indicate whether EACH claim is implied by the retrieved context"
-            in args[1][1]["content"]
-        ):
-            return """```json
+        return """```json
 {
     "claims": [
-        "verdict 1",
+        "claim 1",
         2,
-        "verdict 3",
-        "verdict 4",
-        "verdict 5"
+        "claim 3",
+        "claim 4",
+        "claim 5"
     ]
 }```"""
-        else:
-            raise ValueError
 
     def _return_invalid3_faithfulness_response(*args, **kwargs):
         if (
@@ -600,16 +571,23 @@ def test_LLMClient(monkeypatch):
         else:
             raise ValueError
 
+    def _return_invalid_response(*args, **kwargs):
+        return "some bad response"
+
     client = LLMClient(api_key=None, model_name="model_name")
 
-    # connect(), _process_messages() and __call__() are not implemented for the parent class.
+    # connect() is not implemented for the parent class.
     fake_message = [
         {"role": "system", "content": "You are a helpful assistant."}
     ]
     with pytest.raises(NotImplementedError):
         client.connect()
+
+    # _process_messages() is not implemented for the parent class.
     with pytest.raises(NotImplementedError):
         client._process_messages(fake_message)
+
+    # __call__() is not implemented for the parent class.
     with pytest.raises(NotImplementedError):
         client(fake_message)
 
@@ -708,7 +686,7 @@ def test_LLMClient(monkeypatch):
     # Coherence score is not an integer.
     monkeypatch.setattr(
         "valor_api.backend.core.llm_clients.LLMClient.__call__",
-        _return_invalid1_coherence_response,
+        _return_invalid_response,
     )
     with pytest.raises(InvalidLLMResponseError):
         client.coherence("some text")

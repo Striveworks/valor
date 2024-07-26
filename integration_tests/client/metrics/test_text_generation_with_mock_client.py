@@ -288,7 +288,7 @@ def test_llm_evaluation_rag_with_mock_client(
             datasets=dataset,
             metrics_to_return=[MetricType.IOU],
             llm_api_params={
-                "client": "openai",
+                "client": "mock",
                 "data": {
                     "model": "model",
                 },
@@ -326,7 +326,7 @@ def test_llm_evaluation_rag_with_mock_client(
             datasets=dataset,
             metrics_to_return=[MetricType.ROUGE],
             llm_api_params={
-                "client": "mistral",
+                "client": "mock",
                 "data": {
                     "model": "model",
                 },
