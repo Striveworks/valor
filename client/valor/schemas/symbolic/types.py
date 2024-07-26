@@ -2124,3 +2124,36 @@ def get_type_by_name(
         return List[type_]
     else:
         raise NotImplementedError(name)
+
+
+class Context(Equatable):
+    """
+    Implementation of context as a Variable.
+    The context is a list of strings. None is a valid value.
+
+    Parameters
+    ----------
+    value : List[str], optional
+        A list of context strings.
+
+    Examples
+    --------
+    >>> Context(["Republican speakers focused first on...", "Lincoln received 1,866,452 votes...", ...])
+    >>> Context(None)
+    """
+
+    def __init__(self, value: typing.List[str]):
+        super().__init__(value=value)
+
+    @classmethod
+    def __validate__(cls, value: typing.Any):
+        if (value is not None) and not isinstance(value, list):
+            raise TypeError(
+                f"Expected type 'List[str]' received type '{type(value)}'"
+            )
+        if isinstance(value, list):
+            for v in value:
+                if not isinstance(v, str):
+                    raise TypeError(
+                        f"Expected type 'List[str]' received type '{type(value)}', not all elements are strings."
+                    )

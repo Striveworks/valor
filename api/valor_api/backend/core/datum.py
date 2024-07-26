@@ -39,6 +39,7 @@ def create_datums(
     values = [
         {
             "uid": datum.uid,
+            "text": datum.text,
             "dataset_id": dataset.id,
             "meta": datum.metadata,
         }
@@ -122,6 +123,7 @@ def create_datum(
     try:
         row = models.Datum(
             uid=datum.uid,
+            text=datum.text,
             dataset_id=dataset.id,
             meta=datum.metadata,
         )
@@ -236,6 +238,7 @@ def get_paginated_datums(
     content = [
         schemas.Datum(
             uid=datum.uid,
+            text=datum.text,
             metadata=datum.meta,
         )
         for datum in datums

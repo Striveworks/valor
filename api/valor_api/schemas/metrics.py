@@ -745,3 +745,327 @@ class mIOUMetric(BaseModel):
             "evaluation_id": evaluation_id,
             "parameters": {"label_key": self.label_key},
         }
+
+
+class AnswerRelevanceMetric(BaseModel):
+    """
+    Describes an answer relevance metric.
+
+    Attributes
+    ----------
+    value : float
+        The number of statements in the answer that are relevant to the query divided by the total number of statements in the answer.
+    parameters : dict
+        Any parameters associated with the metric, as well as any datum or prediction parameters that are relevant to the metric.
+    """
+
+    value: float
+    parameters: dict
+
+    def db_mapping(self, evaluation_id: int) -> dict:
+        """
+        Creates a mapping for use when uploading the metric to the database.
+
+        Parameters
+        ----------
+        evaluation_id : int
+            The evaluation id.
+
+        Returns
+        ----------
+        A mapping dictionary.
+        """
+        return {
+            "value": self.value,
+            "parameters": self.parameters,
+            "type": "AnswerRelevance",
+            "evaluation_id": evaluation_id,
+        }
+
+
+class BLEUMetric(BaseModel):
+    """
+    Describes a BLEU metric.
+
+    Attributes
+    ----------
+    value : float
+        The BLEU score for an individual datapoint, which is a JSON containing individual ROUGE scores calculated in different ways.
+    parameters : dict[str, str | list[int | float]]
+        The parameters associated with the metric.
+    """
+
+    value: float
+    parameters: dict[str, str | list[int | float]]
+
+    def db_mapping(self, evaluation_id: int) -> dict:
+        """
+        Creates a mapping for use when uploading the metric to the database.
+
+        Parameters
+        ----------
+        evaluation_id : int
+            The evaluation id.
+
+        Returns
+        ----------
+        A mapping dictionary.
+        """
+        return {
+            "value": self.value,
+            "parameters": self.parameters,
+            "type": "BLEU",
+            "evaluation_id": evaluation_id,
+        }
+
+
+class BiasMetric(BaseModel):
+    """
+    Describes a bias metric.
+
+    Attributes
+    ----------
+    value : float
+        The bias score for a datum. This is a float between 0 and 1, with 1 indicating that all opinions in the datum text are biased and 0 indicating that there is no bias.
+    parameters : dict
+        Any parameters associated with the metric, as well as any datum or prediction parameters that are relevant to the metric.
+    """
+
+    value: float
+    parameters: dict
+
+    def db_mapping(self, evaluation_id: int) -> dict:
+        """
+        Creates a mapping for use when uploading the metric to the database.
+
+        Parameters
+        ----------
+        evaluation_id : int
+            The evaluation id.
+
+        Returns
+        ----------
+        A mapping dictionary.
+        """
+        return {
+            "value": self.value,
+            "parameters": self.parameters,
+            "type": "Bias",
+            "evaluation_id": evaluation_id,
+        }
+
+
+class CoherenceMetric(BaseModel):
+    """
+    Describes a coherence metric.
+
+    Attributes
+    ----------
+    value : int
+        The coherence score for a datum. This is an integer with 1 being the lowest coherence and 5 the highest coherence.
+    parameters : dict
+        Any parameters associated with the metric, as well as any datum or prediction parameters that are relevant to the metric.
+    """
+
+    value: int
+    parameters: dict
+
+    def db_mapping(self, evaluation_id: int) -> dict:
+        """
+        Creates a mapping for use when uploading the metric to the database.
+
+        Parameters
+        ----------
+        evaluation_id : int
+            The evaluation id.
+
+        Returns
+        ----------
+        A mapping dictionary.
+        """
+        return {
+            "value": self.value,
+            "parameters": self.parameters,
+            "type": "Coherence",
+            "evaluation_id": evaluation_id,
+        }
+
+
+class ContextRelevanceMetric(BaseModel):
+    """
+    Describes a context relevance metric.
+
+    Attributes
+    ----------
+    value : float
+        The context relevance score for a datum. This is a float between 0 and 1, with 0 indicating that none of the context is relevant and 1 indicating that all of the context is relevant.
+    parameters : dict
+        Any parameters associated with the metric, as well as any datum or prediction parameters that are relevant to the metric.
+    """
+
+    value: float
+    parameters: dict
+
+    def db_mapping(self, evaluation_id: int) -> dict:
+        """
+        Creates a mapping for use when uploading the metric to the database.
+
+        Parameters
+        ----------
+        evaluation_id : int
+            The evaluation id.
+
+        Returns
+        ----------
+        A mapping dictionary.
+        """
+        return {
+            "value": self.value,
+            "parameters": self.parameters,
+            "type": "ContextRelevance",
+            "evaluation_id": evaluation_id,
+        }
+
+
+class FaithfulnessMetric(BaseModel):
+    """
+    Describes a faithfulness metric.
+
+    Attributes
+    ----------
+    value : float
+        The faithfulness score for a datum. This is a float between 0 and 1, with 1 indicating that all claims in the text are implied by the context.
+    parameters : dict
+        Any parameters associated with the metric, as well as any datum or prediction parameters that are relevant to the metric.
+    """
+
+    value: float
+    parameters: dict
+
+    def db_mapping(self, evaluation_id: int) -> dict:
+        """
+        Creates a mapping for use when uploading the metric to the database.
+
+        Parameters
+        ----------
+        evaluation_id : int
+            The evaluation id.
+
+        Returns
+        ----------
+        A mapping dictionary.
+        """
+        return {
+            "value": self.value,
+            "parameters": self.parameters,
+            "type": "Faithfulness",
+            "evaluation_id": evaluation_id,
+        }
+
+
+class HallucinationMetric(BaseModel):
+    """
+    Describes a hallucination metric.
+
+    Attributes
+    ----------
+    value : float
+        The hallucination score for a datum. This is a float between 0 and 1, with 1 indicating that all context is contradicted by the text.
+    parameters : dict
+        Any parameters associated with the metric, as well as any datum or prediction parameters that are relevant to the metric.
+    """
+
+    value: float
+    parameters: dict
+
+    def db_mapping(self, evaluation_id: int) -> dict:
+        """
+        Creates a mapping for use when uploading the metric to the database.
+
+        Parameters
+        ----------
+        evaluation_id : int
+            The evaluation id.
+
+        Returns
+        ----------
+        A mapping dictionary.
+        """
+        return {
+            "value": self.value,
+            "parameters": self.parameters,
+            "type": "Hallucination",
+            "evaluation_id": evaluation_id,
+        }
+
+
+class ROUGEMetric(BaseModel):
+    """
+    Describes a ROUGE metric.
+
+    Attributes
+    ----------
+    value : dict[str, float]
+        A JSON containing individual ROUGE scores calculated in different ways. `rouge1` is unigram-based scoring, `rouge2` is bigram-based scoring, `rougeL` is scoring based on sentences (i.e., splitting on "." and ignoring "\n"), and `rougeLsum` is scoring based on splitting the text using "\n".
+    parameters : dict[str, str | bool | list[str]]
+        The parameters associated with the metric.
+    """
+
+    value: dict[str, float]
+    parameters: dict[str, str | bool | list[str]]
+
+    def db_mapping(self, evaluation_id: int) -> dict:
+        """
+        Creates a mapping for use when uploading the metric to the database.
+
+        Parameters
+        ----------
+        evaluation_id : int
+            The evaluation id.
+
+        Returns
+        ----------
+        A mapping dictionary.
+        """
+        return {
+            "value": self.value,
+            "parameters": self.parameters,
+            "type": "ROUGE",
+            "evaluation_id": evaluation_id,
+        }
+
+
+class ToxicityMetric(BaseModel):
+    """
+    Describes a toxicity metric.
+
+    Attributes
+    ----------
+    value : float
+        The toxicity score for a datum. This is a float between 0 and 1, with 1 indicating that all opinions in the datum text are toxic and 0 indicating that there is no toxicity.
+    parameters : dict
+        Any parameters associated with the metric, as well as any datum or prediction parameters that are relevant to the metric.
+    """
+
+    value: float
+    parameters: dict
+
+    def db_mapping(self, evaluation_id: int) -> dict:
+        """
+        Creates a mapping for use when uploading the metric to the database.
+
+        Parameters
+        ----------
+        evaluation_id : int
+            The evaluation id.
+
+        Returns
+        ----------
+        A mapping dictionary.
+        """
+        return {
+            "value": self.value,
+            "parameters": self.parameters,
+            "type": "Toxicity",
+            "evaluation_id": evaluation_id,
+        }
