@@ -915,11 +915,6 @@ class LLMClient:
         list[dict[str,str]]
             The list of verdicts for each context. Each verdict is a dictionary with the "verdict" and optionally a "reason".
         """
-        if len(context) == 0:
-            raise ValueError(
-                "Context relevance is meaningless if no context is provided."
-            )
-
         messages = [
             {"role": "system", "content": DEFAULT_SYSTEM_PROMPT},
             {
@@ -1007,7 +1002,7 @@ class LLMClient:
     def _generate_agreement_verdicts(
         self,
         text: str,
-        contexts: list[str],
+        context: list[str],
     ) -> list[dict[str, str]]:
         """
         Generates a list of agreement verdicts for a list of context, using a call to the LLM API. Used for the hallucination metric.
@@ -1018,7 +1013,7 @@ class LLMClient:
         ----------
         text: str
             The text to evaluate for hallucination.
-        contexts: list[str]
+        context: list[str]
             The list of context to compare against.
 
         Returns
@@ -1026,18 +1021,13 @@ class LLMClient:
         list[dict[str,str]]
             The list of verdicts for each context. Each verdict is a dictionary with the "verdict" and optionally a "reason".
         """
-        if len(contexts) == 0:
-            raise ValueError(
-                "Hallucination is meaningless if no context is provided."
-            )
-
         messages = [
             {"role": "system", "content": DEFAULT_SYSTEM_PROMPT},
             {
                 "role": "user",
                 "content": _generate_hallucination_verdicts_instruction(
                     text,
-                    contexts,
+                    context,
                 ),
             },
         ]
@@ -1052,7 +1042,7 @@ class LLMClient:
         verdicts = response["verdicts"]
         if (
             type(verdicts) != list
-            or len(verdicts) != len(contexts)
+            or len(verdicts) != len(context)
             or not all(
                 verdict["verdict"] in ["yes", "no"] for verdict in verdicts
             )
@@ -1271,6 +1261,11 @@ class LLMClient:
         float
             The hallucination score will be evaluated as a float between 0 and 1, with 1 indicating that all context is contradicted by the text.
         """
+        if len(context) == 0:
+            raise ValueError(
+                "Hallucination is meaningless if no context is provided."
+            )
+
         agreement_verdicts = self._generate_agreement_verdicts(text, context)
 
         return sum(
