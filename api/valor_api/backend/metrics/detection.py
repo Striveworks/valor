@@ -397,26 +397,6 @@ def _compute_ap(
         .subquery()
     )
 
-    ngtpl = {
-        label_id: count
-        for label_id, count in db.query(
-            number_of_ground_truths_per_label
-        ).all()
-    }
-
-    print()
-    print("PR")
-    for label_id, threshold, row_number, ptp, pfp in (
-        db.query(precision_recall_for_ap)
-        .order_by(
-            precision_recall_for_ap.c.label_id,
-            precision_recall_for_ap.c.threshold,
-            precision_recall_for_ap.c.row_number,
-        )
-        .all()
-    ):
-        print(labels[label_id], threshold, ptp, pfp, ngtpl.get(label_id, 0))
-
     # calculate ap using 101-point interpolation
 
     recall_thresholds = select(
@@ -433,8 +413,6 @@ def _compute_ap(
         .join(recall_thresholds, literal(True), full=True)
         .subquery()
     )
-
-    # print("\n recall_thresholds", db.query(recall_thresholds).all())
 
     interpolated_pr_curve = (
         select(
@@ -464,36 +442,6 @@ def _compute_ap(
         .subquery()
     )
 
-    print()
-    print("interpolated_pr_curve")
-    for label_id, threshold, recall, precision in (
-        db.query(interpolated_pr_curve)
-        .order_by(
-            interpolated_pr_curve.c.label_id,
-            interpolated_pr_curve.c.threshold,
-            interpolated_pr_curve.c.recall,
-        )
-        .all()
-    ):
-        if labels[label_id] == ("class", "49") and threshold in [0.5, 0.75]:
-            print(
-                labels[label_id],
-                threshold,
-                precision,
-                recall,
-                ngtpl.get(label_id, 0),
-            )
-
-    # running_max = (
-    #     select(
-
-    #     )
-    # )
-
-    # print("\n interpolated_pr_curve")
-    # for x in db.query(interpolated_pr_curve).all():
-    #     print(x)
-
     average_precision_per_label_and_iou = (
         select(
             interpolated_pr_curve.c.label_id,
@@ -509,21 +457,10 @@ def _compute_ap(
         .subquery()
     )
 
-    # truncated_average_precision_per_label_and_iou = (
-    #     db.query(
-    #         average_precision_per_label_and_iou.c.label_id,
-    #         average_precision_per_label_and_iou.c.iou,
-    #         func.trunc(average_precision_per_label_and_iou.c.ap, 15).label("iou"),
-    #     ).all()
-    # )
-
-    # print()
-
     results = defaultdict(dict)
     for label_id, iou, ap in db.query(
         average_precision_per_label_and_iou
     ).all():
-        # print(label_id, iou, ap)
         results[label_id][float(iou)] = float(ap)
 
     return results
@@ -674,6 +611,7 @@ def _compute_ar(
                 first_recall_groundtruths.c.threshold == joint.c.threshold,
                 first_recall_groundtruths.c.groundtruth_id
                 == joint.c.groundtruth_id,
+                first_recall_groundtruths.c.row_number == joint.c.row_number,
             ),
         )
         .cte()
@@ -770,8 +708,6 @@ def _calculate_ap_and_ar(
         iou_thresholds=iou_thresholds,
     )
 
-    print("AVERAGE PRECISION", average_precision)
-
     # calculate AR per label
     average_recall = _compute_ar(
         db=db,
@@ -780,8 +716,6 @@ def _calculate_ap_and_ar(
         iou_thresholds=iou_thresholds,
         recall_score_threshold=recall_score_threshold,
     )
-
-    print("AVERAGE RECALL", average_recall)
 
     ap_metrics = []
     ar_metrics = []
