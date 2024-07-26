@@ -739,7 +739,7 @@ def _get_groundtruth_and_prediction_df(
         case(
             grouper_mappings["label_id_to_grouper_key_mapping"],
             value=models.GroundTruth.label_id,
-        ).label("label_key_grouper"),
+        ).label("grouper_key"),
         _annotation_type_to_geojson(annotation_type, models.Annotation).label(
             "geojson"
         ),
@@ -762,7 +762,7 @@ def _get_groundtruth_and_prediction_df(
         case(
             grouper_mappings["label_id_to_grouper_key_mapping"],
             value=models.Prediction.label_id,
-        ).label("label_key_grouper"),
+        ).label("grouper_key"),
         _annotation_type_to_geojson(annotation_type, models.Annotation).label(
             "geojson"
         ),
@@ -827,7 +827,7 @@ def _calculate_iou(
         ]
 
         # convert the raster into a numpy array
-        joint_df[["raster_pd", "raster_gt"]] = (
+        joint_df.loc[:, ["raster_pd", "raster_gt"]] = (
             joint_df[["raster_pd", "raster_gt"]]
             .map(io.BytesIO)  # type: ignore pandas typing error
             .map(Image.open)
@@ -1290,39 +1290,85 @@ def _calculate_pr_metrics(
     ]
 
 
-def _get_geojson_samples(
+def _add_samples_to_dataframe(
+    detailed_pr_curve_counts_df: pandas.DataFrame,
     detailed_pr_calc_df: pandas.DataFrame,
-    parameters: schemas.EvaluationParameters,
+    max_examples: int,
     flag_column: str,
-    label_key: str,
-    label_value: str,
-    confidence_threshold: float,
-    suffix: str = "_gt",
-) -> list:
-    """Sample a dataframe to get geojsons based on input criteria."""
-    samples = detailed_pr_calc_df[
-        (detailed_pr_calc_df["label_key_grouper"] == label_key)
-        & (
-            (detailed_pr_calc_df["label_value_gt"] == label_value)
-            | (detailed_pr_calc_df["label_value_pd"] == label_value)
-        )
-        & (detailed_pr_calc_df["confidence_threshold"] == confidence_threshold)
-        & (detailed_pr_calc_df[flag_column])
-    ]
-
-    if samples.empty:
-        samples = []
-    else:
-        samples = list(
-            samples.sample(parameters.pr_curve_max_examples)[
+):
+    """Efficienctly gather samples for a given flag."""
+    # TODO merge on dataset before this?
+    sample_df = pandas.concat(
+        [
+            detailed_pr_calc_df[detailed_pr_calc_df[flag_column]]
+            .groupby(
                 [
-                    f"dataset_name{suffix}",
-                    f"datum_uid{suffix}",
-                    f"geojson{suffix}",
-                ]
-            ].itertuples(index=False, name=None)
+                    "grouper_key",
+                    "grouper_value_gt",
+                    "confidence_threshold",
+                ],
+                as_index=False,
+            )[["dataset_name_gt", "datum_uid_gt", "geojson_gt"]]
+            .agg(lambda x: tuple(x.head(max_examples)))
+            .rename(
+                columns={
+                    "dataset_name_gt": "dataset_name",
+                    "datum_uid_gt": "datum_uid",
+                    "grouper_value_gt": "grouper_value",
+                    "geojson_gt": "geojson",
+                }
+            ),
+            detailed_pr_calc_df[detailed_pr_calc_df[flag_column]]
+            .groupby(
+                [
+                    "grouper_key",
+                    "grouper_value_pd",
+                    "confidence_threshold",
+                ],
+                as_index=False,
+            )[["dataset_name_pd", "datum_uid_pd", "geojson_pd"]]
+            .agg(lambda x: (tuple(x.head(max_examples))))
+            .rename(
+                columns={
+                    "dataset_name_pd": "dataset_name",
+                    "datum_uid_pd": "datum_uid",
+                    "grouper_value_pd": "grouper_value",
+                    "geojson_pd": "geojson",
+                }
+            ),
+        ],
+        axis=0,
+    ).drop_duplicates()
+
+    if not sample_df.empty:
+        sample_df[f"{flag_column}_samples"] = sample_df.apply(
+            lambda row: set(zip(*row[["dataset_name", "datum_uid", "geojson"]])),  # type: ignore - pandas typing error
+            axis=1,
         )
-    return samples
+
+        detailed_pr_curve_counts_df = detailed_pr_curve_counts_df.merge(
+            sample_df[
+                [
+                    "grouper_key",
+                    "grouper_value",
+                    "confidence_threshold",
+                    f"{flag_column}_samples",
+                ]
+            ],
+            on=["grouper_key", "grouper_value", "confidence_threshold"],
+            how="outer",
+        )
+        detailed_pr_curve_counts_df[
+            f"{flag_column}_samples"
+        ] = detailed_pr_curve_counts_df[f"{flag_column}_samples"].map(
+            lambda x: list(x) if isinstance(x, set) else list()
+        )
+    else:
+        detailed_pr_curve_counts_df[f"{flag_column}_samples"] = [
+            list() for _ in range(len(detailed_pr_curve_counts_df))
+        ]
+
+    return detailed_pr_curve_counts_df
 
 
 def _calculate_detailed_pr_metrics(
@@ -1333,6 +1379,7 @@ def _calculate_detailed_pr_metrics(
     annotation_type: enums.AnnotationType,
 ) -> list[schemas.DetailedPrecisionRecallCurve]:
     """Calculates all DetailedPrecisionRecallCurve metrics."""
+
     if not (
         parameters.metrics_to_return
         and enums.MetricType.DetailedPrecisionRecallCurve
@@ -1343,7 +1390,7 @@ def _calculate_detailed_pr_metrics(
     detailed_pr_joint_df = pandas.merge(
         gt_df,
         pd_df,
-        on=["datum_id", "label_key_grouper"],
+        on=["datum_id", "grouper_key"],
         how="outer",
         suffixes=("_gt", "_pd"),
     ).assign(
@@ -1366,10 +1413,10 @@ def _calculate_detailed_pr_metrics(
             grouper_mappings["grouper_id_to_grouper_label_mapping"]
         )
     )
-    detailed_pr_joint_df["label_value_gt"] = detailed_pr_joint_df[
+    detailed_pr_joint_df["grouper_value_gt"] = detailed_pr_joint_df[
         "label_gt"
     ].map(lambda x: x.value if isinstance(x, schemas.Label) else None)
-    detailed_pr_joint_df["label_value_pd"] = detailed_pr_joint_df[
+    detailed_pr_joint_df["grouper_value_pd"] = detailed_pr_joint_df[
         "label_pd"
     ].map(lambda x: x.value if isinstance(x, schemas.Label) else None)
 
@@ -1421,64 +1468,67 @@ def _calculate_detailed_pr_metrics(
 
     # any prediction that is considered a misclassification shouldn't be counted as a hallucination, so we go back and remove these flags
     predictions_associated_with_tps_or_misclassification_fps = (
-        detailed_pr_calc_df.groupby(
-            ["confidence_threshold", "id_pd"], as_index=False
-        )
-        .filter(
-            lambda x: x["true_positive_flag"].any()
-            or x["misclassification_false_positive_flag"].any()
-        )
+        detailed_pr_calc_df[
+            detailed_pr_calc_df["true_positive_flag"]
+            | detailed_pr_calc_df["misclassification_false_positive_flag"]
+        ]
         .groupby(["confidence_threshold"], as_index=False)["id_pd"]
         .unique()
     )
+
     if not predictions_associated_with_tps_or_misclassification_fps.empty:
         predictions_associated_with_tps_or_misclassification_fps.columns = [
             "confidence_threshold",
-            "misclassification_fp_pd_ids",
+            "predictions_associated_with_tps_or_misclassification_fps",
         ]
         detailed_pr_calc_df = detailed_pr_calc_df.merge(
             predictions_associated_with_tps_or_misclassification_fps,
             on=["confidence_threshold"],
             how="left",
         )
-        detailed_pr_calc_df["misclassification_fp_pd_ids"] = (
-            detailed_pr_calc_df["misclassification_fp_pd_ids"].map(
-                lambda x: x if isinstance(x, np.ndarray) else []
-            )
-        )
-        id_pd_in_set = detailed_pr_calc_df.apply(
-            lambda row: (row["id_pd"] in row["misclassification_fp_pd_ids"]),
-            axis=1,
+        misclassification_id_pds = detailed_pr_calc_df[
+            "predictions_associated_with_tps_or_misclassification_fps"
+        ].map(lambda x: set(x) if isinstance(x, np.ndarray) else [])
+        misclassification_id_pds = np.array(
+            [
+                id_pd in misclassification_id_pds[i]
+                for i, id_pd in enumerate(detailed_pr_calc_df["id_pd"].values)
+            ]
         )
         detailed_pr_calc_df.loc[
-            (id_pd_in_set)
+            (misclassification_id_pds)
             & (detailed_pr_calc_df["hallucination_false_positive_flag"]),
             "hallucination_false_positive_flag",
         ] = False
 
     # next, we flag false negatives by declaring any groundtruth that isn't associated with a true positive to be a false negative
-    fn_gt_ids = (
-        detailed_pr_calc_df.groupby(
-            ["confidence_threshold", "id_gt"], as_index=False
-        )
-        .filter(lambda x: ~x["true_positive_flag"].any())
+    groundtruths_associated_with_true_positives = (
+        detailed_pr_calc_df[detailed_pr_calc_df["true_positive_flag"]]
         .groupby(["confidence_threshold"], as_index=False)["id_gt"]
         .unique()
     )
 
-    if not fn_gt_ids.empty:
-        fn_gt_ids.columns = ["confidence_threshold", "fn_gt_ids"]
-
+    if not groundtruths_associated_with_true_positives.empty:
+        groundtruths_associated_with_true_positives.columns = [
+            "confidence_threshold",
+            "groundtruths_associated_with_true_positives",
+        ]
         detailed_pr_calc_df = detailed_pr_calc_df.merge(
-            fn_gt_ids, on=["confidence_threshold"], how="left"
+            groundtruths_associated_with_true_positives,
+            on=["confidence_threshold"],
+            how="left",
         )
-        detailed_pr_calc_df["fn_gt_ids"] = detailed_pr_calc_df[
-            "fn_gt_ids"
-        ].map(lambda x: x if isinstance(x, np.ndarray) else [])
+        true_positive_sets = detailed_pr_calc_df[
+            "groundtruths_associated_with_true_positives"
+        ].map(lambda x: set(x) if isinstance(x, np.ndarray) else set())
 
-        detailed_pr_calc_df["false_negative_flag"] = detailed_pr_calc_df.apply(
-            lambda row: row["id_gt"] in row["fn_gt_ids"], axis=1
+        detailed_pr_calc_df["false_negative_flag"] = np.array(
+            [
+                id_gt not in true_positive_sets[i]
+                for i, id_gt in enumerate(detailed_pr_calc_df["id_gt"].values)
+            ]
         )
+
     else:
         detailed_pr_calc_df["false_negative_flag"] = False
 
@@ -1489,44 +1539,55 @@ def _calculate_detailed_pr_metrics(
     )
 
     # assign all id_gts that aren't misclassifications but are false negatives to be no_predictions
-    no_predictions_fn_gt_ids = (
-        detailed_pr_calc_df.groupby(
-            ["confidence_threshold", "id_gt"], as_index=False
-        )
-        .filter(lambda x: ~x["misclassification_false_negative_flag"].any())
+    groundtruths_associated_with_misclassification_false_negatives = (
+        detailed_pr_calc_df[
+            detailed_pr_calc_df["misclassification_false_negative_flag"]
+        ]
         .groupby(["confidence_threshold"], as_index=False)["id_gt"]
         .unique()
     )
 
-    if not no_predictions_fn_gt_ids.empty:
-        no_predictions_fn_gt_ids.columns = [
+    if (
+        not groundtruths_associated_with_misclassification_false_negatives.empty
+    ):
+        groundtruths_associated_with_misclassification_false_negatives.columns = [
             "confidence_threshold",
-            "no_predictions_fn_gt_ids",
+            "groundtruths_associated_with_misclassification_false_negatives",
         ]
-
         detailed_pr_calc_df = detailed_pr_calc_df.merge(
-            no_predictions_fn_gt_ids, on=["confidence_threshold"], how="left"
+            groundtruths_associated_with_misclassification_false_negatives,
+            on=["confidence_threshold"],
+            how="left",
         )
-        detailed_pr_calc_df["no_predictions_fn_gt_ids"] = detailed_pr_calc_df[
-            "no_predictions_fn_gt_ids"
-        ].map(lambda x: x if isinstance(x, np.ndarray) else [])
-
+        misclassification_sets = (
+            detailed_pr_calc_df[
+                "groundtruths_associated_with_misclassification_false_negatives"
+            ]
+            .map(lambda x: set(x) if isinstance(x, np.ndarray) else set())
+            .values
+        )
         detailed_pr_calc_df["no_predictions_false_negative_flag"] = (
-            detailed_pr_calc_df.apply(
-                lambda row: (row["false_negative_flag"])
-                & (row["id_gt"] in row["no_predictions_fn_gt_ids"]),
-                axis=1,
+            np.array(
+                [
+                    id_gt not in misclassification_sets[i]
+                    for i, id_gt in enumerate(
+                        detailed_pr_calc_df["id_gt"].values
+                    )
+                ]
             )
+            & detailed_pr_calc_df["false_negative_flag"]
         )
     else:
-        detailed_pr_calc_df["no_predictions_false_negative_flag"] = False
+        detailed_pr_calc_df[
+            "no_predictions_false_negative_flag"
+        ] = detailed_pr_calc_df["false_negative_flag"]
 
     # next, we sum up the occurences of each classification and merge them together into one dataframe
     true_positives = (
         detailed_pr_calc_df[detailed_pr_calc_df["true_positive_flag"]]
-        .groupby(
-            ["label_key_grouper", "label_value_pd", "confidence_threshold"]
-        )["id_pd"]
+        .groupby(["grouper_key", "grouper_value_pd", "confidence_threshold"])[
+            "id_pd"
+        ]
         .nunique()
     )
     true_positives.name = "true_positives"
@@ -1535,9 +1596,9 @@ def _calculate_detailed_pr_metrics(
         detailed_pr_calc_df[
             detailed_pr_calc_df["hallucination_false_positive_flag"]
         ]
-        .groupby(
-            ["label_key_grouper", "label_value_pd", "confidence_threshold"]
-        )["id_pd"]
+        .groupby(["grouper_key", "grouper_value_pd", "confidence_threshold"])[
+            "id_pd"
+        ]
         .nunique()
     )
     hallucination_false_positives.name = "hallucinations_false_positives"
@@ -1546,9 +1607,9 @@ def _calculate_detailed_pr_metrics(
         detailed_pr_calc_df[
             detailed_pr_calc_df["misclassification_false_positive_flag"]
         ]
-        .groupby(
-            ["label_key_grouper", "label_value_pd", "confidence_threshold"]
-        )["id_pd"]
+        .groupby(["grouper_key", "grouper_value_pd", "confidence_threshold"])[
+            "id_pd"
+        ]
         .nunique()
     )
     misclassification_false_positives.name = (
@@ -1559,9 +1620,9 @@ def _calculate_detailed_pr_metrics(
         detailed_pr_calc_df[
             detailed_pr_calc_df["misclassification_false_negative_flag"]
         ]
-        .groupby(
-            ["label_key_grouper", "label_value_gt", "confidence_threshold"]
-        )["id_gt"]
+        .groupby(["grouper_key", "grouper_value_gt", "confidence_threshold"])[
+            "id_gt"
+        ]
         .nunique()
     )
     misclassification_false_negatives.name = (
@@ -1572,9 +1633,9 @@ def _calculate_detailed_pr_metrics(
         detailed_pr_calc_df[
             detailed_pr_calc_df["no_predictions_false_negative_flag"]
         ]
-        .groupby(
-            ["label_key_grouper", "label_value_gt", "confidence_threshold"]
-        )["id_gt"]
+        .groupby(["grouper_key", "grouper_value_gt", "confidence_threshold"])[
+            "id_gt"
+        ]
         .nunique()
     )
     no_predictions_false_negatives.name = "no_predictions_false_negatives"
@@ -1584,21 +1645,21 @@ def _calculate_detailed_pr_metrics(
         pandas.concat(
             [
                 detailed_pr_calc_df.loc[
-                    ~detailed_pr_calc_df["label_value_pd"].isnull(),
+                    ~detailed_pr_calc_df["grouper_value_pd"].isnull(),
                     [
-                        "label_key_grouper",
-                        "label_value_pd",
+                        "grouper_key",
+                        "grouper_value_pd",
                         "confidence_threshold",
                     ],
-                ].rename(columns={"label_value_pd": "label_value"}),
+                ].rename(columns={"grouper_value_pd": "grouper_value"}),
                 detailed_pr_calc_df.loc[
-                    ~detailed_pr_calc_df["label_value_gt"].isnull(),
+                    ~detailed_pr_calc_df["grouper_value_gt"].isnull(),
                     [
-                        "label_key_grouper",
-                        "label_value_gt",
+                        "grouper_key",
+                        "grouper_value_gt",
                         "confidence_threshold",
                     ],
-                ].rename(columns={"label_value_gt": "label_value"}),
+                ].rename(columns={"grouper_value_gt": "grouper_value"}),
             ],
             axis=0,
         )
@@ -1606,8 +1667,8 @@ def _calculate_detailed_pr_metrics(
         .merge(
             true_positives,
             left_on=[
-                "label_key_grouper",
-                "label_value",
+                "grouper_key",
+                "grouper_value",
                 "confidence_threshold",
             ],
             right_index=True,
@@ -1616,8 +1677,8 @@ def _calculate_detailed_pr_metrics(
         .merge(
             hallucination_false_positives,
             left_on=[
-                "label_key_grouper",
-                "label_value",
+                "grouper_key",
+                "grouper_value",
                 "confidence_threshold",
             ],
             right_index=True,
@@ -1626,8 +1687,8 @@ def _calculate_detailed_pr_metrics(
         .merge(
             misclassification_false_positives,
             left_on=[
-                "label_key_grouper",
-                "label_value",
+                "grouper_key",
+                "grouper_value",
                 "confidence_threshold",
             ],
             right_index=True,
@@ -1636,8 +1697,8 @@ def _calculate_detailed_pr_metrics(
         .merge(
             misclassification_false_negatives,
             left_on=[
-                "label_key_grouper",
-                "label_value",
+                "grouper_key",
+                "grouper_value",
                 "confidence_threshold",
             ],
             right_index=True,
@@ -1646,8 +1707,8 @@ def _calculate_detailed_pr_metrics(
         .merge(
             no_predictions_false_negatives,
             left_on=[
-                "label_key_grouper",
-                "label_value",
+                "grouper_key",
+                "grouper_value",
                 "confidence_threshold",
             ],
             right_index=True,
@@ -1658,94 +1719,73 @@ def _calculate_detailed_pr_metrics(
     # we're doing an outer join, so any nulls should be zeroes
     detailed_pr_curve_counts_df.fillna(0, inplace=True)
 
+    # add samples to the dataframe for DetailedPrecisionRecallCurves
+    for flag in [
+        "true_positive_flag",
+        "misclassification_false_negative_flag",
+        "no_predictions_false_negative_flag",
+        "misclassification_false_positive_flag",
+        "hallucination_false_positive_flag",
+    ]:
+        detailed_pr_curve_counts_df = _add_samples_to_dataframe(
+            detailed_pr_calc_df=detailed_pr_calc_df,
+            detailed_pr_curve_counts_df=detailed_pr_curve_counts_df,
+            max_examples=parameters.pr_curve_max_examples,
+            flag_column=flag,
+        )
+
     # create output
     detailed_pr_curves = defaultdict(lambda: defaultdict(dict))
-    for _, values in detailed_pr_curve_counts_df.iterrows():
-        label_key = values["label_key_grouper"]
-        label_value = values["label_value"]
-        confidence_threshold = values["confidence_threshold"]
+    for _, row in detailed_pr_curve_counts_df.iterrows():
+        grouper_key = row["grouper_key"]
+        grouper_value = row["grouper_value"]
+        confidence_threshold = row["confidence_threshold"]
 
-        tp_samples = _get_geojson_samples(
-            detailed_pr_calc_df=detailed_pr_calc_df,
-            parameters=parameters,
-            flag_column="true_positive_flag",
-            suffix="_gt",
-            label_key=label_key,
-            label_value=label_value,
-            confidence_threshold=confidence_threshold,
-        )
-        misclassifications_fn_samples = _get_geojson_samples(
-            detailed_pr_calc_df=detailed_pr_calc_df,
-            parameters=parameters,
-            flag_column="misclassification_false_negative_flag",
-            suffix="_gt",
-            label_key=label_key,
-            label_value=label_value,
-            confidence_threshold=confidence_threshold,
-        )
-        no_predictions_fn_samples = _get_geojson_samples(
-            detailed_pr_calc_df=detailed_pr_calc_df,
-            parameters=parameters,
-            flag_column="no_predictions_false_negative_flag",
-            suffix="_gt",
-            label_key=label_key,
-            label_value=label_value,
-            confidence_threshold=confidence_threshold,
-        )
-        misclassifications_fp_samples = _get_geojson_samples(
-            detailed_pr_calc_df=detailed_pr_calc_df,
-            parameters=parameters,
-            flag_column="misclassification_false_positive_flag",
-            suffix="_pd",
-            label_key=label_key,
-            label_value=label_value,
-            confidence_threshold=confidence_threshold,
-        )
-        hallucinations_fp_samples = _get_geojson_samples(
-            detailed_pr_calc_df=detailed_pr_calc_df,
-            parameters=parameters,
-            flag_column="hallucination_false_positive_flag",
-            suffix="_pd",
-            label_key=label_key,
-            label_value=label_value,
-            confidence_threshold=confidence_threshold,
-        )
-
-        detailed_pr_curves[label_key][label_value][confidence_threshold] = {
+        detailed_pr_curves[grouper_key][grouper_value][
+            confidence_threshold
+        ] = {
             "tp": {
-                "total": values["true_positives"],
+                "total": row["true_positives"],
                 "observations": {
                     "all": {
-                        "count": values["true_positives"],
-                        "examples": tp_samples,
+                        "count": row["true_positives"],
+                        "examples": row["true_positive_flag_samples"],
                     }
                 },
             },
             "fn": {
-                "total": values["misclassification_false_negatives"]
-                + values["no_predictions_false_negatives"],
+                "total": row["misclassification_false_negatives"]
+                + row["no_predictions_false_negatives"],
                 "observations": {
                     "misclassifications": {
-                        "count": values["misclassification_false_negatives"],
-                        "examples": misclassifications_fn_samples,
+                        "count": row["misclassification_false_negatives"],
+                        "examples": row[
+                            "misclassification_false_negative_flag_samples"
+                        ],
                     },
                     "no_predictions": {
-                        "count": values["no_predictions_false_negatives"],
-                        "examples": no_predictions_fn_samples,
+                        "count": row["no_predictions_false_negatives"],
+                        "examples": row[
+                            "no_predictions_false_negative_flag_samples"
+                        ],
                     },
                 },
             },
             "fp": {
-                "total": values["misclassification_false_positives"]
-                + values["hallucinations_false_positives"],
+                "total": row["misclassification_false_positives"]
+                + row["hallucinations_false_positives"],
                 "observations": {
                     "misclassifications": {
-                        "count": values["misclassification_false_positives"],
-                        "examples": misclassifications_fp_samples,
+                        "count": row["misclassification_false_positives"],
+                        "examples": row[
+                            "misclassification_false_positive_flag_samples"
+                        ],
                     },
                     "hallucinations": {
-                        "count": values["hallucinations_false_positives"],
-                        "examples": hallucinations_fp_samples,
+                        "count": row["hallucinations_false_positives"],
+                        "examples": row[
+                            "hallucination_false_positive_flag_samples"
+                        ],
                     },
                 },
             },
