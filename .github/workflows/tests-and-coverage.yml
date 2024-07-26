@@ -69,7 +69,7 @@ jobs:
         run: coverage run --source="api/valor_api,client/valor" -m pytest -v integration_tests/client/*
       - name: run external integration tests
         run: |
-          if ${{ github.ref == 'refs/heads/main' }}; then
+          if ${{ github.ref == 'refs/heads/add_remaining_RAG_metrics' }}; then
             coverage run --source="api/valor_api,client/valor" -m pytest -v integration_tests/external/*
           fi
         env:
