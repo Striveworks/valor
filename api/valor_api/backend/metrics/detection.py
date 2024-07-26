@@ -1,24 +1,12 @@
 import bisect
-import decimal
 import heapq
 import random
 from collections import defaultdict
 from dataclasses import dataclass
-from typing import Any, Sequence, Tuple
+from typing import Sequence, Tuple
 
-import numpy as np
 from geoalchemy2 import functions as gfunc
-from sqlalchemy import (
-    CTE,
-    DECIMAL,
-    Integer,
-    Subquery,
-    and_,
-    func,
-    literal,
-    not_,
-    select,
-)
+from sqlalchemy import CTE, Integer, and_, func, literal, select
 from sqlalchemy.dialects.postgresql import array, insert
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, aliased
@@ -188,6 +176,7 @@ def _compute_ap(
     db: Session,
     groundtruths: CTE,
     predictions: CTE,
+    labels: dict[int, tuple[str, str]],
     iou_thresholds: list[float],
 ) -> dict[int, dict[float, float]]:
     # Accumulate tp and fp counts for AP
@@ -324,13 +313,19 @@ def _compute_ap(
                 first_groundtruth.c.label_id == joint.c.label_id,
                 first_groundtruth.c.threshold == joint.c.threshold,
                 first_groundtruth.c.groundtruth_id == joint.c.groundtruth_id,
+                first_groundtruth.c.row_number == joint.c.row_number,
             ),
         )
         .cte()
     )
 
-    lagging_tp_cnt = func.coalesce(
-        func.lag(base_query.c.precision_tp).over(
+    # print()
+    # for gt_id, label_id, threshold, row_number, ptp, pfp in db.query(base_query).order_by(base_query.c.label_id, base_query.c.threshold, base_query.c.row_number).all():
+    #     print(labels[label_id], threshold, ptp, pfp)
+    # print()
+
+    cumulative_tp_cnt = func.coalesce(
+        func.sum(base_query.c.precision_tp).over(
             partition_by=[
                 base_query.c.label_id,
                 base_query.c.threshold,
@@ -340,8 +335,8 @@ def _compute_ap(
         0,
     )
 
-    lagging_fp_cnt = func.coalesce(
-        func.lag(base_query.c.precision_fp).over(
+    cumulative_fp_cnt = func.coalesce(
+        func.sum(base_query.c.precision_fp).over(
             partition_by=[
                 base_query.c.label_id,
                 base_query.c.threshold,
@@ -356,18 +351,24 @@ def _compute_ap(
             base_query.c.label_id,
             base_query.c.threshold,
             base_query.c.row_number,
-            (base_query.c.precision_tp + lagging_tp_cnt).label(
-                "precision_cnt_tp"
-            ),
-            (base_query.c.precision_fp + lagging_fp_cnt).label(
-                "precision_cnt_fp"
-            ),
+            cumulative_tp_cnt.label("precision_cnt_tp"),
+            cumulative_fp_cnt.label("precision_cnt_fp"),
         )
         .select_from(base_query)
         .subquery()
     )
 
-    # print("precision_counts", db.query(precision_counts).all())
+    print()
+    for label_id, threshold, row_number, ptp, pfp in (
+        db.query(precision_counts)
+        .order_by(
+            precision_counts.c.label_id,
+            precision_counts.c.threshold,
+            precision_counts.c.row_number,
+        )
+        .all()
+    ):
+        print(labels[label_id], threshold, ptp, pfp)
 
     # calculate precision and recall for AP
 
@@ -400,8 +401,9 @@ def _compute_ap(
         select(
             precision_counts.c.label_id,
             precision_counts.c.threshold,
+            precision_counts.c.row_number,
             precision.label("precision"),
-            func.trunc(recall, 2).label("recall"),
+            recall.label("recall"),
         )
         .select_from(precision_counts)
         .outerjoin(
@@ -411,6 +413,27 @@ def _compute_ap(
         )
         .subquery()
     )
+
+    ngtpl = {
+        label_id: count
+        for label_id, count in db.query(
+            number_of_ground_truths_per_label
+        ).all()
+    }
+
+    print()
+    print("PR")
+    for label_id, threshold, row_number, ptp, pfp in (
+        db.query(precision_recall_for_ap)
+        .order_by(
+            precision_recall_for_ap.c.label_id,
+            precision_recall_for_ap.c.threshold,
+            precision_recall_for_ap.c.row_number,
+        )
+        .all()
+    ):
+
+        print(labels[label_id], threshold, ptp, pfp, ngtpl.get(label_id, 0))
 
     # print("\nprecision_recall_for_ap", db.query(precision_recall_for_ap).all())
 
@@ -743,6 +766,7 @@ def _calculate_ap_and_ar(
         db=db,
         groundtruths=groundtruths,
         predictions=predictions,
+        labels=labels,
         iou_thresholds=iou_thresholds,
     )
 
