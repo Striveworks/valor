@@ -319,11 +319,6 @@ def _compute_ap(
         .cte()
     )
 
-    # print()
-    # for gt_id, label_id, threshold, row_number, ptp, pfp in db.query(base_query).order_by(base_query.c.label_id, base_query.c.threshold, base_query.c.row_number).all():
-    #     print(labels[label_id], threshold, ptp, pfp)
-    # print()
-
     cumulative_tp_cnt = func.coalesce(
         func.sum(base_query.c.precision_tp).over(
             partition_by=[
@@ -357,18 +352,6 @@ def _compute_ap(
         .select_from(base_query)
         .subquery()
     )
-
-    print()
-    for label_id, threshold, row_number, ptp, pfp in (
-        db.query(precision_counts)
-        .order_by(
-            precision_counts.c.label_id,
-            precision_counts.c.threshold,
-            precision_counts.c.row_number,
-        )
-        .all()
-    ):
-        print(labels[label_id], threshold, ptp, pfp)
 
     # calculate precision and recall for AP
 
@@ -432,10 +415,7 @@ def _compute_ap(
         )
         .all()
     ):
-
         print(labels[label_id], threshold, ptp, pfp, ngtpl.get(label_id, 0))
-
-    # print("\nprecision_recall_for_ap", db.query(precision_recall_for_ap).all())
 
     # calculate ap using 101-point interpolation
 
@@ -483,6 +463,26 @@ def _compute_ap(
         .order_by(recalls.c.recall)
         .subquery()
     )
+
+    print()
+    print("interpolated_pr_curve")
+    for label_id, threshold, recall, precision in (
+        db.query(interpolated_pr_curve)
+        .order_by(
+            interpolated_pr_curve.c.label_id,
+            interpolated_pr_curve.c.threshold,
+            interpolated_pr_curve.c.recall,
+        )
+        .all()
+    ):
+        if labels[label_id] == ("class", "49") and threshold in [0.5, 0.75]:
+            print(
+                labels[label_id],
+                threshold,
+                precision,
+                recall,
+                ngtpl.get(label_id, 0),
+            )
 
     # running_max = (
     #     select(
