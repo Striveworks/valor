@@ -66,11 +66,11 @@ jobs:
         run: pip install -e ".[test]"
         working-directory: ./client
       - name: run integration tests
-        run: coverage run --source="api/valor_api,client/valor" -m pytest -v integration_tests/client/*
+        run: coverage run -a --source="api/valor_api,client/valor" -m pytest -v integration_tests/client/*
       - name: run external integration tests
         run: |
-          if ${{ github.ref == 'refs/heads/add_remaining_RAG_metrics' }}; then
-            coverage run --source="api/valor_api,client/valor" -m pytest -v integration_tests/external/*
+          if ${{ github.ref == 'refs/heads/fix_code_coverage_with_external_tests' }}; then
+            coverage run -a --source="api/valor_api,client/valor" -m pytest -v integration_tests/external/*
           fi
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
