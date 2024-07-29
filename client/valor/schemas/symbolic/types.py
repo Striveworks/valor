@@ -1325,6 +1325,23 @@ class MultiPolygon(Spatial):
         """
         return [Polygon(poly) for poly in self.get_value()]
 
+    @classmethod
+    def from_polygons(self, polygons: typing.List[Polygon]) -> "MultiPolygon":
+        """
+        Converts a list of Polygon instances to a MultiPolygon.
+
+        Parameters
+        ----------
+        polygons : List[Polygon]
+            A list of Polygon instances.
+
+        Returns
+        -------
+        MultiPolygon
+            A MultiPolygon instance.
+        """
+        return MultiPolygon([poly.get_value() for poly in polygons])
+
 
 T = typing.TypeVar("T", bound=Variable)
 
