@@ -6,6 +6,7 @@ from collections import defaultdict
 from dataclasses import dataclass
 from typing import Sequence, Tuple
 
+import numpy as np
 from geoalchemy2 import functions as gfunc
 from sqlalchemy import CTE, and_, func, or_, select
 from sqlalchemy.orm import Session, aliased
@@ -45,23 +46,38 @@ def _calculate_101_pt_interp(precisions, recalls) -> float:
     if len(precisions) == 0:
         return 0
 
-    data = list(zip(precisions, recalls))
-    data.sort(key=lambda x: x[1])
-    # negative is because we want a max heap
-    prec_heap = [[-precision, i] for i, (precision, _) in enumerate(data)]
-    heapq.heapify(prec_heap)
+    data = list(zip(recalls, precisions))
+    data.sort(key=lambda x: -x[0])
+
+    print(data)
+
+    max_precision = np.array([p for _, p in data])
+    max_precision = np.maximum.accumulate(max_precision)
+
+    print(max_precision)
+
+    # # negative is because we want a max heap
+    # prec_heap = [[-precision, i] for i, (precision, _) in enumerate(data)]
+    # heapq.heapify(prec_heap)
 
     cutoff_idx = 0
     ret = 0
     for r in [0.01 * i for i in range(101)]:
         while cutoff_idx < len(data) and data[cutoff_idx][1] < r:
             cutoff_idx += 1
-        while prec_heap and prec_heap[0][1] < cutoff_idx:
-            heapq.heappop(prec_heap)
         if cutoff_idx >= len(data):
             continue
-        ret -= prec_heap[0][0]
+        ret += max_precision[len(data) - cutoff_idx - 1]
 
+        # while cutoff_idx < len(data) and data[cutoff_idx][1] < r:
+        #     cutoff_idx += 1
+        # while prec_heap and prec_heap[0][1] < cutoff_idx:
+        #     heapq.heappop(prec_heap)
+        # if cutoff_idx >= len(data):
+        #     continue
+        # ret -= prec_heap[0][0]
+
+    print(ret / 101)
     return ret / 101
 
 
