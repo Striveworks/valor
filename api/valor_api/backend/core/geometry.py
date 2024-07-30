@@ -312,53 +312,6 @@ def convert_geometry(
         db.rollback()
 
 
-def _raster_to_numpy(
-    db: Session,
-    raster: RasterElement,
-) -> np.ndarray:
-    # Ensure raster_wkb is a bytes-like object
-    raster_wkb = bytes.fromhex(raster.data)
-
-    # Unpack header to get width and height
-    # reference: https://postgis.net/docs/manual-dev/RT_reference.html
-    header_format = "<BHHddddddiHH"
-    header_size = struct.calcsize(header_format)
-    (
-        ndr,
-        version,
-        num_bands,
-        scale_x,
-        scale_y,
-        ip_x,
-        ip_y,
-        skew_x,
-        skew_y,
-        srid,
-        width,
-        height,
-    ) = struct.unpack(header_format, raster_wkb[:header_size])
-
-    # Check if the raster has a single band
-    if num_bands != 1:
-        raise ValueError("This function only supports single-band rasters.")
-
-    # Calculate the number of bytes needed for the pixel data
-    # Each byte represents 1 pixel
-    num_pixels = width * height
-    num_bytes = num_pixels
-
-    # Convert the byte data to a binary array
-    pixel_format = "B"
-    pixel_data = struct.unpack(
-        f"{width * height}{pixel_format}",
-        raster_wkb[header_size + 2 : header_size + 2 + num_bytes],
-    )
-
-    # Convert pixel data to numpy array
-    raster_numpy = np.array(pixel_data, dtype=bool)
-    return raster_numpy.reshape((height, width))
-
-
 def _raster_to_png_b64(
     db: Session,
     raster: RasterElement,

@@ -39,7 +39,6 @@ jobs:
       - name: print classification profiling
         run: |
           cat profiler_log.txt
-          rm profiler_log.txt
         working-directory: ./
       - name: run object detection benchmarks
         run: python benchmark_script.py
@@ -53,6 +52,5 @@ jobs:
       - name: print object detection profiling
         run: |
           cat profiler_log.txt
-          rm profiler_log.txt
         working-directory: ./
       - run: make stop-env

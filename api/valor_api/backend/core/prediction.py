@@ -6,62 +6,6 @@ from sqlalchemy.orm import Session
 
 from valor_api import enums, exceptions, schemas
 from valor_api.backend import core, models
-from valor_api.backend.core.geometry import _raster_to_numpy
-
-
-def compute_iou(
-    db: Session,
-    datum_ids: list[int],
-):
-    gts = (
-        db.query(
-            models.Annotation.id,
-            models.Annotation.datum_id,
-            models.Annotation.raster,
-        )
-        .where(
-            models.Annotation.datum_id.in_(datum_ids),
-            models.Annotation.raster.isnot(None),
-            models.Annotation.model_id.is_(None),
-        )
-        .all()
-    )
-    groundtruths = defaultdict(list)
-    for annotation_id, datum_id, raster in gts:
-        groundtruths[datum_id].append(
-            (annotation_id, _raster_to_numpy(db, raster))
-        )
-
-    pds = (
-        db.query(
-            models.Annotation.id,
-            models.Annotation.datum_id,
-            models.Annotation.raster,
-        )
-        .where(
-            models.Annotation.datum_id.in_(datum_ids),
-            models.Annotation.raster.isnot(None),
-            models.Annotation.model_id.isnot(None),
-        )
-        .all()
-    )
-    predictions = defaultdict(list)
-    for annotation_id, datum_id, raster in pds:
-        predictions[datum_id].append(
-            (annotation_id, _raster_to_numpy(db, raster))
-        )
-
-    ious = list()
-    for datum_id in datum_ids:
-        if datum_id not in groundtruths or datum_id not in predictions:
-            continue
-
-        for gt_annotation_id, gt_raster in groundtruths[datum_id]:
-            for pd_annotation_id, pd_raster in predictions[datum_id]:
-                intersection = gt_raster * pd_raster
-                union = gt_raster + pd_raster
-                iou = intersection.sum() / float(union.sum())
-                ious.append((gt_annotation_id, pd_annotation_id, iou))
 
 
 def create_predictions(
