@@ -2143,10 +2143,10 @@ def get_type_by_name(
         raise NotImplementedError(name)
 
 
-class Context(Equatable):
+class Contexts(Equatable):
     """
-    Implementation of context as a Variable.
-    The context is a list of strings. None is a valid value.
+    Implementation of contexts as a Variable.
+    The contexts is a list of context. Each context is a string. None is a valid value.
 
     Parameters
     ----------
@@ -2155,8 +2155,8 @@ class Context(Equatable):
 
     Examples
     --------
-    >>> Context(["Republican speakers focused first on...", "Lincoln received 1,866,452 votes...", ...])
-    >>> Context(None)
+    >>> Contexts(["Republican speakers focused first on...", "Lincoln received 1,866,452 votes...", ...])
+    >>> Contexts(None)
     """
 
     def __init__(self, value: typing.List[str]):

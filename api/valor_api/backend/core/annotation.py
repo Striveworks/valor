@@ -55,14 +55,6 @@ def _create_embedding(
     return row.id
 
 
-def _format_context(
-    context: str | list[str] | None,
-) -> list[str] | None:
-    if isinstance(context, str):
-        context = [context]
-    return context
-
-
 def create_annotations(
     db: Session,
     annotations: list[list[schemas.Annotation]],
@@ -116,7 +108,7 @@ def create_annotations(
                 db=db, value=annotation.embedding
             ),
             "text": annotation.text,
-            "context": _format_context(annotation.context),
+            "contexts": annotation.contexts,
             "is_instance": annotation.is_instance,
             "implied_task_types": annotation.implied_task_types,
         }
@@ -176,7 +168,7 @@ def create_skipped_annotations(
             raster=None,
             embedding_id=None,
             text=None,
-            context=None,
+            contexts=None,
             is_instance=False,
             implied_task_types=[TaskType.EMPTY],
         )
@@ -283,7 +275,7 @@ def get_annotation(
         raster=raster,
         embedding=embedding,
         text=annotation.text,
-        context=annotation.context,
+        contexts=annotation.contexts,
         is_instance=annotation.is_instance,
         implied_task_types=annotation.implied_task_types,
     )

@@ -295,7 +295,7 @@ def _compute_text_generation_metrics(
         generate_select(
             models.Annotation.datum_id.label("datum_id"),
             models.Annotation.text.label("prediction_text"),
-            models.Annotation.context.label("prediction_context"),
+            models.Annotation.contexts.label("prediction_context"),
             label_source=models.Annotation,
             filters=prediction_filter,
         )
@@ -518,7 +518,7 @@ def _compute_text_generation_metrics(
 
             if is_ContextRelevance_enabled:
                 score = client.context_relevance(
-                    query=datum_text, context=prediction_context
+                    query=datum_text, contexts=prediction_context
                 )
                 output += [
                     schemas.ContextRelevanceMetric(
@@ -526,14 +526,14 @@ def _compute_text_generation_metrics(
                         parameters={
                             "dataset": dataset_name,
                             "datum_uid": datum_uid,
-                            "context": prediction_context,
+                            "contexts": prediction_context,
                         },
                     )
                 ]
 
             if is_Faithfulness_enabled:
                 score = client.faithfulness(
-                    text=prediction_text, context=prediction_context
+                    text=prediction_text, contexts=prediction_context
                 )
                 output += [
                     schemas.FaithfulnessMetric(
@@ -542,14 +542,14 @@ def _compute_text_generation_metrics(
                             "dataset": dataset_name,
                             "datum_uid": datum_uid,
                             "prediction": prediction_text,
-                            "context": prediction_context,
+                            "contexts": prediction_context,
                         },
                     )
                 ]
 
             if is_Hallucination_enabled:
                 score = client.hallucination(
-                    text=prediction_text, context=prediction_context
+                    text=prediction_text, contexts=prediction_context
                 )
                 output += [
                     schemas.HallucinationMetric(
@@ -558,7 +558,7 @@ def _compute_text_generation_metrics(
                             "dataset": dataset_name,
                             "datum_uid": datum_uid,
                             "prediction": prediction_text,
-                            "context": prediction_context,
+                            "contexts": prediction_context,
                         },
                     )
                 ]

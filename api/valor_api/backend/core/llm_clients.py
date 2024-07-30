@@ -307,7 +307,7 @@ def _get_coherence_instruction(text: str) -> str:
 
 def _generate_context_relevance_verdicts_instruction(
     query: str,
-    context: list[str],
+    contexts: list[str],
 ) -> str:
     """
     Instruction template was copied from DeepEval's codebase https://github.com/confident-ai/deepeval/blob/main/deepeval/metrics/context_relevancy/template.py.
@@ -317,23 +317,23 @@ def _generate_context_relevance_verdicts_instruction(
     Parameters
     ----------
     query: str
-        The query to evaluate the context against.
-    context: list[str]
-        The context to evaluate the relevance of.
+        The query to evaluate each context against.
+    contexts: list[str]
+        The list of context to evaluate the relevance of.
 
     Returns
     -------
     str
         The instruction for the llm.
     """
-    return f"""Based on the query and context, please generate a JSON object to indicate whether the context is relevant to the provided query. The JSON will have 1 mandatory field: 'verdict', and 1 optional field: 'reason'.
-The 'verdict' key should STRICTLY be either 'yes' or 'no', and states whether the context is relevant to the query.
+    return f"""Based on the query and each context, please generate a JSON object to indicate whether each context is relevant to the provided query. The JSON will have 1 mandatory field: 'verdict', and 1 optional field: 'reason'.
+The 'verdict' key should STRICTLY be either 'yes' or 'no', and states whether each context is relevant to the query.
 Provide a 'reason' ONLY IF verdict is no. You MUST quote the irrelevant parts of the context to back up your reason.
 
 **
 IMPORTANT: Please make sure to only return in JSON format.
 Example Query: "What were some of Einstein's achievements?"
-Example Context: ["Einstein won the Nobel Prize for his discovery of the photoelectric effect. He won the Nobel Prize in 1968. He had a cat.", "Einstein was born in 1879 in Germany."]
+Example Contexts: ["Einstein won the Nobel Prize for his discovery of the photoelectric effect. He won the Nobel Prize in 1968. He had a cat.", "Einstein was born in 1879 in Germany."]
 
 Example JSON:
 {{
@@ -352,8 +352,8 @@ Example JSON:
 Query:
 {query}
 
-Context:
-{context}
+Contexts:
+{contexts}
 
 JSON:
 """
@@ -361,27 +361,27 @@ JSON:
 
 def _generate_faithfulness_verdicts_instruction(
     claims: list[str],
-    context: list[str],
+    contexts: list[str],
 ) -> str:
     """
     Instruction template was copied from DeepEval's codebase https://github.com/confident-ai/deepeval/blob/main/deepeval/metrics/faithfulness/template.py.
 
-    The instruction was modified in multiple ways. Most notably, the verdicts were reversed to be 'yes' if the context IMPLIES the claim and 'no' otherwise. Smaller changes were made to fix typos, improve grammar and improve the example.
+    The instruction was modified in multiple ways. Most notably, the verdicts were reversed to be 'yes' if the contexts IMPLIES the claim and 'no' otherwise. Smaller changes were made to fix typos, improve grammar and improve the example.
 
     Parameters
     ----------
     claims: list[str]
         The claims to evaluate the faithfulness of.
-    context: list[str]
-        The context to evaluate against.
+    contexts: list[str]
+        The list of context to evaluate against.
 
     Returns
     -------
     str
         The instruction for the llm.
     """
-    return f"""Based on the given claims, which is a list of strings, generate a list of JSON objects to indicate whether EACH claim is implied by the retrieved context. The JSON will have 1 field: 'verdict'.
-The 'verdict' key should STRICTLY be either 'yes' or 'no', which states whether the given claim is implied by the context.
+    return f"""Based on the given claims, which is a list of strings, generate a list of JSON objects to indicate whether EACH claim is implied by the retrieved contexts. The JSON will have 1 field: 'verdict'.
+The 'verdict' key should STRICTLY be either 'yes' or 'no', which states whether the given claim is implied by the contexts.
 
 Example retrieval contexts: ["Einstein won the Nobel Prize for his discovery of the photoelectric effect. Einstein won the Nobel Prize in 1968.", "Einstein is a German Scientist."]
 Example claims: ["Barack Obama is a caucasian male.", "Zurich is a city in London", "Einstein won the Nobel Prize for the discovery of the photoelectric effect which may have contributed to his fame.", "Einstein won the Nobel Prize in 1969 for his discovery of the photoelectric effect.", "Einstein was a Germen chef."]
@@ -410,15 +410,15 @@ Example:
 
 **
 IMPORTANT: Please make sure to only return in JSON format, with the 'verdicts' key as a list of JSON objects.
-If the claim is contained in or is directly implied by the context, then the answer should be 'yes'.
-If the claim contradicts the context, then the verdict should be 'no'.
-If the claim is not backed up due to a lack of information or is not mentioned in the context, the verdict should be 'no'.
+If the claim is contained in or is directly implied by the contexts, then the answer should be 'yes'.
+If the claim contradicts the contexts, then the verdict should be 'no'.
+If the claim is not backed up due to a lack of information or is not mentioned in the contexts, the verdict should be 'no'.
 The length of 'verdicts' SHOULD BE STRICTLY EQUAL to that of claims.
 Claims made using vague, suggestive, speculative language such as 'may have', 'possibility due to', does NOT count as a contradiction.
 **
 
 Contexts:
-{context}
+{contexts}
 
 Claims:
 {claims}
@@ -460,11 +460,11 @@ Example JSON:
     "verdicts": [
         {{
             "verdict": "yes",
-            "reason": "The actual output agrees with the provided context which states that Einstein won the Nobel Prize for his discovery of the photoelectric effect."
+            "reason": "The actual output agrees with the first context which states that Einstein won the Nobel Prize for his discovery of the photoelectric effect."
         }},
         {{
             "verdict": "no",
-            "reason": "The actual output contradicts the provided context which states that Einstein won the Nobel Prize in 1968, not 1969."
+            "reason": "The actual output contradicts the second context which states that Einstein won the Nobel Prize in 1968, not 1969."
         }}
     ]
 }}
@@ -898,7 +898,7 @@ class LLMClient:
     def _generate_context_relevance_verdicts(
         self,
         query: str,
-        context: list[str],
+        contexts: list[str],
     ) -> list[dict[str, str]]:
         """
         Generates a list of context relevance verdicts for a list of context, using a call to the LLM API.
@@ -906,8 +906,8 @@ class LLMClient:
         Parameters
         ----------
         query: str
-            The query to evaluate the context against.
-        context: list[str]
+            The query to evaluate each context against.
+        contexts: list[str]
             The ordered list of context to evaluate the relevance of.
 
         Returns
@@ -915,18 +915,13 @@ class LLMClient:
         list[dict[str,str]]
             The list of verdicts for each context. Each verdict is a dictionary with the "verdict" and optionally a "reason".
         """
-        if len(context) == 0:
-            raise ValueError(
-                "Context relevance is meaningless if no context is provided."
-            )
-
         messages = [
             {"role": "system", "content": DEFAULT_SYSTEM_PROMPT},
             {
                 "role": "user",
                 "content": _generate_context_relevance_verdicts_instruction(
                     query,
-                    context,
+                    contexts,
                 ),
             },
         ]
@@ -941,7 +936,7 @@ class LLMClient:
         verdicts = response["verdicts"]
         if (
             type(verdicts) != list
-            or len(verdicts) != len(context)
+            or len(verdicts) != len(contexts)
             or not all(
                 verdict["verdict"] in ["yes", "no"] for verdict in verdicts
             )
@@ -955,7 +950,7 @@ class LLMClient:
     def _generate_faithfulness_verdicts(
         self,
         claims: list[str],
-        context: list[str],
+        contexts: list[str],
     ) -> list[dict[str, str]]:
         """
         Generates a list of faithfulness verdicts for a list of claims, using a call to the LLM API.
@@ -964,8 +959,8 @@ class LLMClient:
         ----------
         claims: list[str]
             The claims to evaluate the faithfulness of.
-        context: list[str]
-            The context to evaluate against.
+        contexts: list[str]
+            The list of context to evaluate against.
 
         Returns
         -------
@@ -978,7 +973,7 @@ class LLMClient:
                 "role": "user",
                 "content": _generate_faithfulness_verdicts_instruction(
                     claims,
-                    context,
+                    contexts,
                 ),
             },
         ]
@@ -1012,7 +1007,7 @@ class LLMClient:
         """
         Generates a list of agreement verdicts for a list of context, using a call to the LLM API. Used for the hallucination metric.
 
-        The verdict for a piece of context should be yes if the text agrees with the piece of context. The verdict should be no only if the text contradicts the context.
+        The verdict for each context should be no if the text contradicts that context. The verdict should be yes otherwise.
 
         Parameters
         ----------
@@ -1026,11 +1021,6 @@ class LLMClient:
         list[dict[str,str]]
             The list of verdicts for each context. Each verdict is a dictionary with the "verdict" and optionally a "reason".
         """
-        if len(contexts) == 0:
-            raise ValueError(
-                "Hallucination is meaningless if no context is provided."
-            )
-
         messages = [
             {"role": "system", "content": DEFAULT_SYSTEM_PROMPT},
             {
@@ -1186,43 +1176,43 @@ class LLMClient:
     def context_relevance(
         self,
         query: str,
-        context: list[str],
+        contexts: list[str],
     ) -> float:
         """
-        Compute context relevance, the proportion of retrieved context that is relevant to the query.
+        Compute context relevance, the proportion of retrieved contexts that is relevant to the query.
 
         Parameters
         ----------
         query: str
-            The query to evaluate the context against.
-        context: list[str]
+            The query to evaluate each context against.
+        contexts: list[str]
             The list of context to evaluate the relevance of.
 
         Returns
         -------
         float
-            The context relevance score will be evaluated as a float between 0 and 1, with 0 indicating that none of the context is relevant and 1 indicating that all of the context is relevant.
+            The context relevance score will be evaluated as a float between 0 and 1, with 0 indicating that none of the contexts are relevant and 1 indicating that all of the contexts are relevant.
         """
-        if len(context) == 0:
+        if len(contexts) == 0:
             raise ValueError(
-                "Context relevance is meaningless if no context is provided."
+                "Context relevance is meaningless if no contexts are provided."
             )
 
-        verdicts = self._generate_context_relevance_verdicts(query, context)
+        verdicts = self._generate_context_relevance_verdicts(query, contexts)
 
         return sum(
             1 for verdict in verdicts if verdict["verdict"] == "yes"
         ) / len(verdicts)
 
-    def faithfulness(self, text: str, context: list[str]) -> float:
+    def faithfulness(self, text: str, contexts: list[str]) -> float:
         """
-        Computes the faithfulness score. The faithfulness score is the proportion of claims in the text that are implied by the context. Claims that contradict the context and claims that are unrelated to the context both count against the score.
+        Computes the faithfulness score. The faithfulness score is the proportion of claims in the text that are implied by the contexts. Claims that contradict the contexts and claims that are unrelated to the contexts both count against the score.
 
         Parameters
         ----------
         text: str
             The text to evaluate for faithfulness.
-        context: list[str]
+        contexts: list[str]
             The list of context to compare against.
 
         Returns
@@ -1230,9 +1220,9 @@ class LLMClient:
         float
             The faithfulness score will be evaluated as a float between 0 and 1, with 1 indicating that all claims in the text are implied by the context.
         """
-        if len(context) == 0:
+        if len(contexts) == 0:
             raise ValueError(
-                "Faithfulness is meaningless if no context is provided."
+                "Faithfulness is meaningless if no contexts are provided."
             )
 
         claims = self._generate_claims(text)
@@ -1242,7 +1232,7 @@ class LLMClient:
             return 1
 
         faithfulness_verdicts = self._generate_faithfulness_verdicts(
-            claims, context
+            claims, contexts
         )
 
         return sum(
@@ -1254,10 +1244,10 @@ class LLMClient:
     def hallucination(
         self,
         text: str,
-        context: list[str],
+        contexts: list[str],
     ) -> float:
         """
-        Compute the hallucination score, the proportion of context that is contradicted by the text.
+        Compute the hallucination score, the proportion of contexts that are contradicted by the text.
 
         Parameters
         ----------
@@ -1269,9 +1259,14 @@ class LLMClient:
         Returns
         -------
         float
-            The hallucination score will be evaluated as a float between 0 and 1, with 1 indicating that all context is contradicted by the text.
+            The hallucination score will be evaluated as a float between 0 and 1, with 1 indicating that all contexts are contradicted by the text.
         """
-        agreement_verdicts = self._generate_agreement_verdicts(text, context)
+        if len(contexts) == 0:
+            raise ValueError(
+                "Hallucination is meaningless if no contexts are provided."
+            )
+
+        agreement_verdicts = self._generate_agreement_verdicts(text, contexts)
 
         return sum(
             1 for verdict in agreement_verdicts if verdict["verdict"] == "no"
@@ -1619,7 +1614,7 @@ class MockLLMClient(LLMClient):
         if len(processed_messages) >= 2:
             # Generate claims
             if (
-                "generate a comprehensive list of FACTUAL claims that can inferred from the provided text"
+                "generate a comprehensive list of FACTUAL claims"
                 in processed_messages[1]["content"]
             ):
                 return """```json
@@ -1702,7 +1697,7 @@ class MockLLMClient(LLMClient):
 
             # Context relevance verdicts
             elif (
-                "generate a JSON object to indicate whether the context is relevant to the provided query"
+                "generate a JSON object to indicate whether each context is relevant to the provided query"
                 in processed_messages[1]["content"]
             ):
                 return """```json
@@ -1726,7 +1721,7 @@ class MockLLMClient(LLMClient):
 
             # Faithfulness verdicts
             elif (
-                "generate a list of JSON objects to indicate whether EACH claim is implied by the retrieved context"
+                "generate a list of JSON objects to indicate whether EACH claim is implied by the retrieved contexts"
                 in processed_messages[1]["content"]
             ):
                 return """```json

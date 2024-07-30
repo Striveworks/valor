@@ -77,7 +77,7 @@ def rag_predictions() -> list[str]:
 
 
 @pytest.fixture
-def rag_context() -> list[list[str]]:
+def rag_contexts() -> list[list[str]]:
     return [
         [
             """Although aware of Hamilton\'s influence, Adams was convinced that their retention ensured a smoother succession. Adams maintained the economic programs of Hamilton, who regularly consulted with key cabinet members, especially the powerful Treasury Secretary, Oliver Wolcott Jr. Adams was in other respects quite independent of his cabinet, often making decisions despite opposition from it. Hamilton had grown accustomed to being regularly consulted by Washington. Shortly after Adams was inaugurated, Hamilton sent him a detailed letter with policy suggestions. Adams dismissively ignored it.\n\nFailed peace commission and XYZ affair\nHistorian Joseph Ellis writes that "[t]he Adams presidency was destined to be dominated by a single question of American policy to an extent seldom if ever encountered by any succeeding occupant of the office." That question was whether to make war with France or find peace. Britain and France were at war as a result of the French Revolution. Hamilton and the Federalists strongly favored the British monarchy against what they denounced as the political radicalism and anti-religious frenzy of the French Revolution. Jefferson and the Republicans, with their firm opposition to monarchy, strongly supported the French overthrowing their king. The French had supported Jefferson for president in 1796 and became belligerent at his loss.""",
@@ -123,16 +123,16 @@ def rag_gt_questions(
 def rag_pred_answers(
     rag_datums: list[Datum],
     rag_predictions: list[str],
-    rag_context: list[list[str]],
+    rag_contexts: list[list[str]],
 ) -> list[GroundTruth]:
-    assert len(rag_datums) == len(rag_predictions) == len(rag_context)
+    assert len(rag_datums) == len(rag_predictions) == len(rag_contexts)
     return [
         Prediction(
             datum=rag_datums[i],
             annotations=[
                 Annotation(
                     text=rag_predictions[i],
-                    context=rag_context[i],
+                    contexts=rag_contexts[i],
                 )
             ],
         )

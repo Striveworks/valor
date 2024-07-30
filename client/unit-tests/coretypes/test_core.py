@@ -185,7 +185,7 @@ def test_prediction():
     string = str(pred)
     assert (
         string
-        == "{'datum': {'uid': 'somefile', 'text': None, 'metadata': {}}, 'annotations': [{'metadata': {}, 'labels': [{'key': 'test', 'value': 'value', 'score': 1.0}], 'bounding_box': None, 'polygon': None, 'raster': None, 'embedding': None, 'text': None, 'context': None, 'is_instance': None, 'implied_task_types': None}, {'metadata': {}, 'labels': [{'key': 'test', 'value': 'value', 'score': 1.0}], 'bounding_box': None, 'polygon': None, 'raster': None, 'embedding': None, 'text': None, 'context': None, 'is_instance': None, 'implied_task_types': None}]}"
+        == "{'datum': {'uid': 'somefile', 'text': None, 'metadata': {}}, 'annotations': [{'metadata': {}, 'labels': [{'key': 'test', 'value': 'value', 'score': 1.0}], 'bounding_box': None, 'polygon': None, 'raster': None, 'embedding': None, 'text': None, 'contexts': None, 'is_instance': None, 'implied_task_types': None}, {'metadata': {}, 'labels': [{'key': 'test', 'value': 'value', 'score': 1.0}], 'bounding_box': None, 'polygon': None, 'raster': None, 'embedding': None, 'text': None, 'contexts': None, 'is_instance': None, 'implied_task_types': None}]}"
     )
     assert "dataset_name" not in string
 
