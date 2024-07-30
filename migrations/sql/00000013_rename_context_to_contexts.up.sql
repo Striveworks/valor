@@ -1,2 +1,2 @@
 ALTER TABLE annotation
-RENAME COLUMN context TO contexts;
+RENAME COLUMN context TO context_list;

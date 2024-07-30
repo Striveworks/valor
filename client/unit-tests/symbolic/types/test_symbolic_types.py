@@ -13,7 +13,7 @@ from valor.schemas.symbolic.operators import (
 )
 from valor.schemas.symbolic.types import (
     Boolean,
-    Contexts,
+    ContextList,
     Date,
     DateTime,
     Duration,
@@ -1145,7 +1145,7 @@ def test_nullable():
 
 def test_context():
     with pytest.raises(TypeError):
-        Contexts(5)  # type: ignore
+        ContextList(5)  # type: ignore
 
     with pytest.raises(TypeError):
-        Contexts([5])  # type: ignore
+        ContextList([5])  # type: ignore

@@ -145,7 +145,7 @@ def rag_data(
                 annotations=[
                     schemas.Annotation(
                         text=RAG_PREDICTIONS[i],
-                        contexts=RAG_CONTEXT[i],
+                        context_list=RAG_CONTEXT[i],
                     )
                 ],
             )
@@ -376,7 +376,7 @@ def two_text_generation_datasets(
                 annotations=[
                     schemas.Annotation(
                         text=RAG_PREDICTIONS[i],
-                        contexts=RAG_CONTEXT[i],
+                        context_list=RAG_CONTEXT[i],
                     )
                 ],
             )
@@ -540,40 +540,40 @@ def mocked_coherence(
 def mocked_context_relevance(
     self,
     query: str,
-    contexts: list[str],
+    context_list: list[str],
 ):
     ret_dict = {
         (RAG_QUERIES[0], tuple(RAG_CONTEXT[0])): 0.75,
         (RAG_QUERIES[1], tuple(RAG_CONTEXT[1])): 1.0,
         (RAG_QUERIES[2], tuple(RAG_CONTEXT[2])): 0.25,
     }
-    return ret_dict[(query, tuple(contexts))]
+    return ret_dict[(query, tuple(context_list))]
 
 
 def mocked_faithfulness(
     self,
     text: str,
-    contexts: list[str],
+    context_list: list[str],
 ):
     ret_dict = {
         (RAG_PREDICTIONS[0], tuple(RAG_CONTEXT[0])): 0.4,
         (RAG_PREDICTIONS[1], tuple(RAG_CONTEXT[1])): 0.55,
         (RAG_PREDICTIONS[2], tuple(RAG_CONTEXT[2])): 0.6666666666666666,
     }
-    return ret_dict[(text, tuple(contexts))]
+    return ret_dict[(text, tuple(context_list))]
 
 
 def mocked_hallucination(
     self,
     text: str,
-    contexts: list[str],
+    context_list: list[str],
 ):
     ret_dict = {
         (RAG_PREDICTIONS[0], tuple(RAG_CONTEXT[0])): 0.0,
         (RAG_PREDICTIONS[1], tuple(RAG_CONTEXT[1])): 0.0,
         (RAG_PREDICTIONS[2], tuple(RAG_CONTEXT[2])): 0.25,
     }
-    return ret_dict[(text, tuple(contexts))]
+    return ret_dict[(text, tuple(context_list))]
 
 
 def mocked_toxicity(
