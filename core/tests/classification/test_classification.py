@@ -1,8 +1,11 @@
 import pandas as pd
 from valor_core.classification import evaluate_classification
+from valor_core import enums, schemas
+import random
 
 
 def test_evaluate_image_clf():
+    # TODO delete all the superfluous fields in here
     groundtruth_df = [
         {
             "id": 9052,
@@ -125,12 +128,215 @@ def test_evaluate_image_clf():
         },
     ]
 
-    eval_ = evaluate_classification(
-        groundtruth_df=pd.DataFrame(groundtruth_df),
-        prediction_df=pd.DataFrame(prediction_df),
+    groundtruth_df = pd.DataFrame(groundtruth_df)
+    prediction_df = pd.DataFrame(prediction_df)
+
+    eval_job = evaluate_classification(
+        groundtruth_df=groundtruth_df,
+        prediction_df=prediction_df,
     )
 
-    assert True == False
+    metrics = eval_job.metrics
+
+    expected_metrics = [
+        {"type": "Accuracy", "parameters": {"label_key": "k4"}, "value": 0.5},
+        {
+            "type": "ROCAUC",
+            "parameters": {"label_key": "k4"},
+            "value": 1.0,
+        },
+        {
+            "type": "Precision",
+            "value": 1.0,  # no false predictions
+            "label": {"key": "k4", "value": "v4"},
+        },
+        {
+            "type": "Recall",
+            "value": 0.5,  # img5 had the correct prediction, but not img6
+            "label": {"key": "k4", "value": "v4"},
+        },
+        {
+            "type": "F1",
+            "value": 0.6666666666666666,
+            "label": {"key": "k4", "value": "v4"},
+        },
+        {
+            "type": "Precision",
+            "value": 0.0,
+            "label": {"key": "k4", "value": "v8"},
+        },
+        {
+            "type": "Recall",
+            "value": 0.0,
+            "label": {"key": "k4", "value": "v8"},
+        },
+        {"type": "F1", "value": 0.0, "label": {"key": "k4", "value": "v8"}},
+        {
+            "type": "Precision",
+            "value": -1.0,
+            "label": {"key": "k4", "value": "v5"},
+        },
+        {
+            "type": "Recall",
+            "value": -1.0,
+            "label": {"key": "k4", "value": "v5"},
+        },
+        {"type": "F1", "value": -1.0, "label": {"key": "k4", "value": "v5"}},
+        {
+            "type": "Precision",
+            "value": -1.0,  # this value is -1 (not 0) because this label is never used anywhere; (k4, v8) has the higher score for img5, so it's chosen over (k4, v1)
+            "label": {"key": "k4", "value": "v1"},
+        },
+        {
+            "type": "Recall",
+            "value": -1.0,
+            "label": {"key": "k4", "value": "v1"},
+        },
+        {"type": "F1", "value": -1.0, "label": {"key": "k4", "value": "v1"}},
+        {"type": "Accuracy", "parameters": {"label_key": "k5"}, "value": 0.0},
+        {
+            "type": "ROCAUC",
+            "parameters": {"label_key": "k5"},
+            "value": 1.0,
+        },
+        {
+            "type": "Precision",
+            "value": 0.0,
+            "label": {"key": "k5", "value": "v1"},
+        },
+        {
+            "type": "Recall",
+            "value": 0.0,
+            "label": {"key": "k5", "value": "v1"},
+        },
+        {"type": "F1", "value": 0.0, "label": {"key": "k5", "value": "v1"}},
+        {
+            "type": "Precision",
+            "value": 0.0,
+            "label": {"key": "k5", "value": "v5"},
+        },
+        {
+            "type": "Recall",
+            "value": 0.0,
+            "label": {"key": "k5", "value": "v5"},
+        },
+        {"type": "F1", "value": 0.0, "label": {"key": "k5", "value": "v5"}},
+        {"type": "Accuracy", "parameters": {"label_key": "k3"}, "value": 0.0},
+        {"type": "ROCAUC", "parameters": {"label_key": "k3"}, "value": 1.0},
+        {
+            "type": "Precision",
+            "value": 0.0,
+            "label": {"key": "k3", "value": "v1"},
+        },
+        {
+            "type": "Recall",
+            "value": 0.0,
+            "label": {"key": "k3", "value": "v1"},
+        },
+        {"type": "F1", "value": 0.0, "label": {"key": "k3", "value": "v1"}},
+        {
+            "type": "Precision",
+            "value": 0.0,
+            "label": {"key": "k3", "value": "v3"},
+        },
+        {
+            "type": "Recall",
+            "value": 0.0,
+            "label": {"key": "k3", "value": "v3"},
+        },
+        {"type": "F1", "value": 0.0, "label": {"key": "k3", "value": "v3"}},
+    ]
+
+    expected_confusion_matrices = [
+        {
+            "label_key": "k5",
+            "entries": [{"prediction": "v1", "groundtruth": "v5", "count": 1}],
+        },
+        {
+            "label_key": "k4",
+            "entries": [
+                {"prediction": "v4", "groundtruth": "v4", "count": 1},
+                {"prediction": "v8", "groundtruth": "v4", "count": 1},
+            ],
+        },
+        {
+            "label_key": "k3",
+            "entries": [{"prediction": "v1", "groundtruth": "v3", "count": 1}],
+        },
+    ]
+
+    for m in metrics:
+        if m["type"] not in [
+            "PrecisionRecallCurve",
+            "DetailedPrecisionRecallCurve",
+        ]:
+            assert m in expected_metrics
+    for m in expected_metrics:
+        assert m in metrics
+
+    confusion_matrices = eval_job.confusion_matrices
+    for m in confusion_matrices:
+        assert m in expected_confusion_matrices
+    for m in expected_confusion_matrices:
+        assert m in confusion_matrices
+
+    # test evaluation metadata
+    expected_metadata = {
+        "datums": 3,
+        "labels": 8,
+        "annotations": 6,
+    }
+
+    for key, value in expected_metadata.items():
+        assert eval_job.meta[key] == value  # type: ignore - issue #605
+
+    # eval should definitely take less than 5 seconds, usually around .4
+    assert eval_job.meta["duration"] <= 5  # type: ignore - issue #605
+
+    # check that metrics arg works correctly
+    selected_metrics = random.sample(
+        [
+            enums.MetricType.Accuracy,
+            enums.MetricType.ROCAUC,
+            enums.MetricType.Precision,
+            enums.MetricType.F1,
+            enums.MetricType.Recall,
+            enums.MetricType.PrecisionRecallCurve,
+        ],
+        2,
+    )
+
+    eval_job = evaluate_classification(
+        groundtruth_df=groundtruth_df,
+        prediction_df=prediction_df,
+        parameters=schemas.EvaluationParameters(
+            metrics_to_return=selected_metrics,
+        ),
+    )
+
+    assert set([metric["type"] for metric in eval_job.metrics]) == set(
+        selected_metrics
+    )
+
+    # check that passing None to metrics returns the assumed list of default metrics
+    default_metrics = [
+        enums.MetricType.Precision,
+        enums.MetricType.Recall,
+        enums.MetricType.F1,
+        enums.MetricType.Accuracy,
+        enums.MetricType.ROCAUC,
+        enums.MetricType.PrecisionRecallCurve,
+    ]
+    eval_job = evaluate_classification(
+        groundtruth_df=groundtruth_df,
+        prediction_df=prediction_df,
+        parameters=schemas.EvaluationParameters(
+            metrics_to_return=None,
+        ),
+    )
+    assert set([metric["type"] for metric in eval_job.metrics]) == set(
+        default_metrics
+    )
 
 
 def test_evaluate_tabular_clf():

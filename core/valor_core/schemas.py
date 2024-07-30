@@ -99,8 +99,8 @@ class EvaluationParameters:
         The maximum number of datum examples to store when calculating PR curves.
     """
 
-    label_map: List[List[List[str]]]
-    metrics_to_return: List[enums.MetricType]
+    label_map: Optional[List[List[List[str]]]] = None
+    metrics_to_return: Optional[List[enums.MetricType]] = None
     convert_annotations_to_type: Optional[enums.AnnotationType] = None
     iou_thresholds_to_compute: Optional[List[float]] = None
     iou_thresholds_to_return: Optional[List[float]] = None
@@ -115,7 +115,7 @@ class Evaluation:
     parameters: EvaluationParameters
     metrics: List[Dict]
     confusion_matrices: List[Dict]
-    meta: Optional[Dict[str, Union[str, float, dict]]] = None
+    meta: Optional[Dict] = None
 
     def __str__(self) -> str:
         """Dumps the object into a JSON formatted string."""
@@ -142,7 +142,7 @@ class _LabelMetricBase:
     def to_dict(self):
         """Converts a metric object into a dictionary."""
         return {
-            "label": self.label,
+            "label": {"key": self.label.key, "value": self.label.value},
             "value": self.value,
             "type": self.__type__,
         }
@@ -168,7 +168,7 @@ class _LabelKeyMetricBase:
     def to_dict(self):
         """Converts a metric object into a dictionary."""
         return {
-            "label": self.label_key,
+            "parameters": {"label_key": self.label_key},
             "value": self.value,
             "type": self.__type__,
         }
@@ -269,7 +269,7 @@ class _BasePrecisionRecallCurve:
     def to_dict(self):
         """Converts a metric object into a dictionary."""
         return {
-            "label": self.label_key,
+            "parameters": {"label_key": self.label_key},
             "value": self.value,
             "type": self.__type__,
         }
@@ -365,6 +365,14 @@ class ConfusionMatrixEntry:
     groundtruth: str
     count: int
 
+    def to_dict(self):
+        """Converts a ConfusionMatrixEntry object into a dictionary."""
+        return {
+            "prediction": self.prediction,
+            "groundtruth": self.groundtruth,
+            "count": self.count,
+        }
+
 
 @dataclass
 class _BaseConfusionMatrix:
@@ -381,6 +389,13 @@ class _BaseConfusionMatrix:
 
     label_key: str
     entries: List[ConfusionMatrixEntry]
+
+    def to_dict(self):
+        """Converts a ConfusionMatrix object into a dictionary."""
+        return {
+            "label_key": self.label_key,
+            "entries": [entry.to_dict() for entry in self.entries],
+        }
 
 
 class ConfusionMatrix(_BaseConfusionMatrix):

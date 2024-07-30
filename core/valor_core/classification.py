@@ -1,6 +1,7 @@
 from collections import defaultdict
-from typing import Dict, List, Tuple, Union
+from typing import Dict, List, Tuple, Union, Optional
 
+import time
 import numpy as np
 import pandas as pd
 from valor_core import enums, schemas, utilities
@@ -10,7 +11,7 @@ LabelMapType = Union[List[List[List[str]]], List]
 
 
 def _create_classification_grouper_mappings(
-    label_map: LabelMapType,
+    label_map: Optional[LabelMapType],
     labels: list,
 ) -> Dict[str, dict]:
     """Create grouper mappings for use when evaluating classifications."""
@@ -1132,8 +1133,12 @@ def _compute_clf_metrics(
     prediction_df: pd.DataFrame,
     pr_curve_max_examples: int,
     metrics_to_return: List[enums.MetricType],
-    label_map: LabelMapType,
-) -> Tuple[List[dict], List[dict],]:
+    label_map: Optional[LabelMapType],
+    unique_labels: list,
+) -> Tuple[
+    List[dict],
+    List[dict],
+]:
     """
     Compute classification metrics.
 
@@ -1159,11 +1164,6 @@ def _compute_clf_metrics(
     Tuple[List[schemas.ConfusionMatrix], List[schemas.ConfusionMatrix | schemas.AccuracyMetric | schemas.ROCAUCMetric| schemas.PrecisionMetric | schemas.RecallMetric | schemas.F1Metric]]
         A tuple of confusion matrices and metrics.
     """
-
-    unique_labels = list(
-        set(zip(groundtruth_df["label_key"], groundtruth_df["label_value"]))
-        | set(zip(prediction_df["label_key"], prediction_df["label_value"]))
-    )
 
     grouper_mappings = _create_classification_grouper_mappings(
         label_map=label_map,
@@ -1208,7 +1208,13 @@ def _compute_clf_metrics(
         pr_curve_max_examples=pr_curve_max_examples,
     )
 
-    metrics_to_output = [m.to_dict() for m in metrics_to_output]
+    # convert objects to dictionaries
+    metrics_to_output = [
+        m.to_dict()
+        for m in metrics_to_output
+        if m.to_dict()["type"] in metrics_to_return
+    ]
+    confusion_matrices = [cm.to_dict() for cm in confusion_matrices]
 
     return confusion_matrices, metrics_to_output
 
@@ -1232,14 +1238,32 @@ def evaluate_classification(
     Create classification metrics. This function is intended to be run using FastAPI's `BackgroundTasks`.
     # TODO
     """
+    start_time = time.time()
 
-    utilities._validate_parameters(parameters)
+    # TODO move this into some shared function
+    parameters = utilities._validate_parameters(
+        parameters, task_type=enums.TaskType.CLASSIFICATION
+    )
     utilities._validate_prediction_dataframe(
         prediction_df, task_type=enums.TaskType.CLASSIFICATION
     )
     utilities._validate_groundtruth_dataframe(
         groundtruth_df, task_type=enums.TaskType.CLASSIFICATION
     )
+    unique_labels = list(
+        set(zip(groundtruth_df["label_key"], groundtruth_df["label_value"]))
+        | set(zip(prediction_df["label_key"], prediction_df["label_value"]))
+    )
+    unique_datums_cnt = len(
+        set(groundtruth_df["datum_uid"]) | set(prediction_df["datum_uid"])
+    )
+    unique_annotations_cnt = len(
+        set(groundtruth_df["annotation_id"])
+        | set(prediction_df["annotation_id"])
+    )
+
+    # handle type errors
+    assert parameters.metrics_to_return
 
     confusion_matrices, metrics = _compute_clf_metrics(
         groundtruth_df=groundtruth_df,
@@ -1247,10 +1271,17 @@ def evaluate_classification(
         pr_curve_max_examples=parameters.pr_curve_max_examples,
         metrics_to_return=parameters.metrics_to_return,
         label_map=parameters.label_map,
+        unique_labels=unique_labels,
     )
 
     return schemas.Evaluation(
         parameters=parameters,
         metrics=metrics,
         confusion_matrices=confusion_matrices,
+        meta={
+            "labels": len(unique_labels),
+            "datums": unique_datums_cnt,
+            "annotations": unique_annotations_cnt,
+            "duration": time.time() - start_time,
+        },
     )
