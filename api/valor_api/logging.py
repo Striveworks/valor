@@ -74,15 +74,15 @@ async def handle_unhandled_exception(
 def profiler(fn: Callable):
     def wrapper(*args, **kwargs):
         with open("profiler_log.txt", "a") as f:
-            f.write(f">>> {fn.__name__}\n")
+            # f.write(f"\n>>> {fn.__name__}")
             start = time.time()
             try:
                 result = fn(*args, **kwargs)
             except Exception as e:
-                f.write(f"<<< {fn.__name__} raised {str(e)}\n")
+                f.write(f"\n{fn.__name__} raised {str(e)}")
                 raise e
             f.write(
-                f"<<< {fn.__name__} - {round(time.time() - start, 1)} seconds\n"
+                f"\n{fn.__name__} - {round(time.time() - start, 1)} seconds"
             )
         return result
 

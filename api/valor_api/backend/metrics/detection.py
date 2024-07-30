@@ -216,6 +216,7 @@ def _calculate_ap_and_ar(
     return ap_metrics, ar_metrics
 
 
+@profiler
 def _compute_curves(
     sorted_ranked_pairs: dict[int, list[RankedPair]],
     labels: dict[int, tuple[str, str]],
@@ -332,6 +333,7 @@ def _compute_curves(
     ]
 
 
+@profiler
 def _compute_detailed_curves(
     sorted_ranked_pairs: dict[int, list[RankedPair]],
     labels: dict[int, tuple[str, str]],
@@ -637,6 +639,7 @@ def _compute_detailed_curves(
     return output
 
 
+@profiler
 def _compute_detection_metrics_averaged_over_ious_from_aps(
     ap_scores: Sequence[schemas.APMetric],
 ) -> Sequence[schemas.APMetricAveragedOverIOUs]:
