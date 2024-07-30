@@ -1076,53 +1076,53 @@ def _compute_detection_metrics(
         .cte()
     )
 
-    gt_distinct = (
-        select(gt_pd_pairs.c.gt_annotation_id.label("annotation_id"))
-        .distinct()
-        .subquery()
-    )
+    # gt_distinct = (
+    #     select(gt_pd_pairs.c.gt_annotation_id.label("annotation_id"))
+    #     .distinct()
+    #     .subquery()
+    # )
 
-    pd_distinct = (
-        select(gt_pd_pairs.c.pd_annotation_id.label("annotation_id"))
-        .distinct()
-        .subquery()
-    )
+    # pd_distinct = (
+    #     select(gt_pd_pairs.c.pd_annotation_id.label("annotation_id"))
+    #     .distinct()
+    #     .subquery()
+    # )
 
     # IOU Computation Block
     if target_type == AnnotationType.RASTER:
 
-        gt_counts = (
-            select(
-                gt_distinct.c.annotation_id,
-                gfunc.ST_Count(models.Annotation.raster).label("count"),
-            )
-            .select_from(gt_distinct)
-            .join(
-                models.Annotation,
-                models.Annotation.id == gt_distinct.c.annotation_id,
-            )
-            .subquery()
-        )
+        # gt_counts = (
+        #     select(
+        #         gt_distinct.c.annotation_id,
+        #         gfunc.ST_Count(models.Annotation.raster).label("count"),
+        #     )
+        #     .select_from(gt_distinct)
+        #     .join(
+        #         models.Annotation,
+        #         models.Annotation.id == gt_distinct.c.annotation_id,
+        #     )
+        #     .cte()
+        # )
 
-        pd_counts = (
-            select(
-                pd_distinct.c.annotation_id,
-                gfunc.ST_Count(models.Annotation.raster).label("count"),
-            )
-            .select_from(pd_distinct)
-            .join(
-                models.Annotation,
-                models.Annotation.id == pd_distinct.c.annotation_id,
-            )
-            .subquery()
-        )
+        # pd_counts = (
+        #     select(
+        #         pd_distinct.c.annotation_id,
+        #         gfunc.ST_Count(models.Annotation.raster).label("count"),
+        #     )
+        #     .select_from(pd_distinct)
+        #     .join(
+        #         models.Annotation,
+        #         models.Annotation.id == pd_distinct.c.annotation_id,
+        #     )
+        #     .cte()
+        # )
 
         gt_pd_counts = (
             select(
                 gt_pd_pairs.c.gt_annotation_id,
                 gt_pd_pairs.c.pd_annotation_id,
-                gt_counts.c.count.label("gt_count"),
-                pd_counts.c.count.label("pd_count"),
+                gfunc.ST_Count(gt_annotation.raster).label("gt_count"),
+                gfunc.ST_Count(pd_annotation.raster).label("pd_count"),
                 func.coalesce(
                     gfunc.ST_Count(
                         gfunc.ST_Intersection(
@@ -1140,14 +1140,6 @@ def _compute_detection_metrics(
             .join(
                 pd_annotation,
                 pd_annotation.id == gt_pd_pairs.c.pd_annotation_id,
-            )
-            .join(
-                gt_counts,
-                gt_counts.c.annotation_id == gt_pd_pairs.c.gt_annotation_id,
-            )
-            .join(
-                pd_counts,
-                pd_counts.c.annotation_id == gt_pd_pairs.c.pd_annotation_id,
             )
             .subquery()
         )
@@ -1207,10 +1199,7 @@ def _compute_detection_metrics(
             gt.c.label_id.label("gt_label_id"),
             pd.c.label_id.label("pd_label_id"),
             pd.c.score.label("score"),
-            func.coalesce(
-                gt_pd_ious.c.iou,
-                0,
-            ).label("iou"),
+            gt_pd_ious.c.iou,
             gt.c.geojson.label("gt_geojson"),
         )
         .select_from(pd)
