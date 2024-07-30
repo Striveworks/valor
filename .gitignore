@@ -31,3 +31,5 @@ runs
 *.pt
 *.png
 *.jpg
+
+profiler_log.txt

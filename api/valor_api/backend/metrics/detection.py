@@ -1167,7 +1167,7 @@ def _compute_detection_metrics(
                 ).label("iou"),
             )
             .select_from(gt_pd_counts)
-            .subquery()
+            .cte()
         )
 
     else:
@@ -1231,9 +1231,15 @@ def _compute_detection_metrics(
         .subquery()
     )
 
-    ordered_ious = (
-        db.query(ious).order_by(-ious.c.score, -ious.c.iou, ious.c.gt_id).all()
-    )
+    @profiler
+    def _ordered_ious():
+        return (
+            db.query(ious)
+            .order_by(-ious.c.score, -ious.c.iou, ious.c.gt_id)
+            .all()
+        )
+
+    ordered_ious = _ordered_ious()
 
     matched_pd_set = set()
     matched_sorted_ranked_pairs = defaultdict(list)

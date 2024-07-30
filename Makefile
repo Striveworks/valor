@@ -15,6 +15,20 @@ start-postgres-docker:
 	docker build -t pgvalor ./database
 	docker run -p 5432:5432 -e POSTGRES_PASSWORD=password -e POSTGRES_DB=valor -d pgvalor
 
+start-constrained-postgres-docker:
+	docker build -t pgvalor ./database
+	docker run \
+		--cpus="1" \
+		--memory 4G \
+		--memory-swap -1 \
+		-p 5432:5432 \
+		-e POSTGRES_PASSWORD=password \
+		-e POSTGRES_DB=valor -d pgvalor
+
+		# --device-read-bps /dev/sdb:20mb \
+		# --device-write-bps /dev/sdb:40mb \
+
+
 run-migrations:
 ifeq ($(shell uname -s),Darwin)
 	docker build -f=migrations/Dockerfile ./migrations -t migrations && \
@@ -32,6 +46,3 @@ start-server:
 
 integration-tests:
 	python -m pytest -v ./integration_tests/client
-
-external-integration-tests:
-	python -m pytest -v ./integration_tests/external
