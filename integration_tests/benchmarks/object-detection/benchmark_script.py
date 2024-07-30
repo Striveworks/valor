@@ -190,8 +190,10 @@ def ingest_groundtruths_and_predictions(
 def run_base_evaluation(dset: Dataset, model: Model):
     """Run a base evaluation (with no PR curves)."""
     evaluation = model.evaluate_detection(dset)
-    evaluation.wait_for_completion(timeout=90)
-    return evaluation
+    eval_dict = evaluation.wait_for_completion_with_timing(timeout=90)
+    approx_pending_time = eval_dict["approx_pending_time"]
+    approx_running_time = eval_dict["approx_running_time"]
+    return evaluation, approx_pending_time, approx_running_time
 
 
 def run_pr_curve_evaluation(dset: Dataset, model: Model):
@@ -266,10 +268,14 @@ def run_benchmarking_analysis(
         ingest_time = time() - start_time
 
         try:
-            eval_ = run_base_evaluation(dset=dset, model=model)
-        except TimeoutError:
+            (
+                eval_,
+                approx_pending_time,
+                approx_running_time,
+            ) = run_base_evaluation(dset=dset, model=model)
+        except TimeoutError as e:
             raise TimeoutError(
-                f"Evaluation timed out when processing {limit} datums."
+                f"Evaluation timed out when processing {limit} datums. {e}"
             )
 
         start = time()
@@ -283,6 +289,8 @@ def run_benchmarking_analysis(
             "number_of_annotations": eval_.meta["annotations"],
             "ingest_runtime": f"{(ingest_time):.1f} seconds",
             "eval_runtime": f"{(eval_.meta['duration']):.1f} seconds",
+            "approx_pending_time": f"{(approx_pending_time):.1f} seconds",
+            "approx_running_time": f"{(approx_running_time):.1f} seconds",
             "del_runtime": f"{(deletion_time):.1f} seconds",
         }
         write_results_to_file(write_path=write_path, result_dict=results)

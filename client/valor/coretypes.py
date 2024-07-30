@@ -264,6 +264,46 @@ class Evaluation:
                 raise TimeoutError
         return self.status
 
+    def wait_for_completion_with_timing(
+        self,
+        *,
+        timeout: Optional[int] = None,
+        interval: float = 1.0,
+    ) -> dict[str, EvaluationStatus | float]:
+        """
+        Blocking function that waits for evaluation to finish.
+
+        Parameters
+        ----------
+        timeout : int, optional
+            Length of timeout in seconds.
+        interval : float, default=1.0
+            Polling interval in seconds.
+        """
+        t_start = time.time()
+        approx_pending_time = 0.0
+        approx_running_time = 0.0
+        while self.poll() not in [
+            EvaluationStatus.DONE,
+            EvaluationStatus.FAILED,
+        ]:
+            time.sleep(interval)
+            if timeout and time.time() - t_start > timeout:
+                raise TimeoutError(
+                    f"Timings at timeout:\nApprox pending time: {approx_pending_time}.\nApprox running time: {approx_running_time}."
+                )
+
+            if self.poll() == EvaluationStatus.PENDING:
+                approx_pending_time += interval
+            elif self.poll() == EvaluationStatus.RUNNING:
+                approx_running_time += interval
+
+        return {
+            "status": self.status,
+            "approx_pending_time": approx_pending_time,
+            "approx_running_time": approx_running_time,
+        }
+
     def __str__(self) -> str:
         """Dumps the object into a JSON formatted string."""
         return json.dumps(self.to_dict(), indent=4)
