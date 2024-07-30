@@ -829,6 +829,21 @@ def _annotation_type_to_geojson(
     return gfunc.ST_AsGeoJSON(box)
 
 
+def _annotation_type_to_column(
+    annotation_type: AnnotationType,
+    table,
+):
+    match annotation_type:
+        case AnnotationType.BOX:
+            return table.box
+        case AnnotationType.POLYGON:
+            return table.polygon
+        case AnnotationType.RASTER:
+            return table.raster
+        case _:
+            raise RuntimeError
+
+
 def _aggregate_data(
     db: Session,
     groundtruth_filter: schemas.Filter,
@@ -872,20 +887,28 @@ def _aggregate_data(
         label_map=label_map,
     )
 
-    groundtruths_subquery = generate_select(
-        models.Annotation.datum_id.label("datum_id"),
-        models.Datum.uid.label("datum_uid"),
-        models.Dataset.name.label("dataset_name"),
-        models.GroundTruth.annotation_id.label("annotation_id"),
-        models.GroundTruth.id.label("groundtruth_id"),
-        models.Label.id,
-        label_mapping,
-        _annotation_type_to_geojson(target_type, models.Annotation).label(
-            "geojson"
-        ),
-        filters=groundtruth_filter,
-        label_source=models.GroundTruth,
-    ).subquery()
+    groundtruths_subquery = (
+        generate_select(
+            models.Annotation.datum_id.label("datum_id"),
+            models.Datum.uid.label("datum_uid"),
+            models.Dataset.name.label("dataset_name"),
+            models.GroundTruth.annotation_id.label("annotation_id"),
+            models.GroundTruth.id.label("groundtruth_id"),
+            models.Label.id,
+            label_mapping,
+            _annotation_type_to_geojson(target_type, models.Annotation).label(
+                "geojson"
+            ),
+            filters=groundtruth_filter,
+            label_source=models.GroundTruth,
+        )
+        .where(
+            _annotation_type_to_column(target_type, models.Annotation).isnot(
+                None
+            )
+        )
+        .subquery()
+    )
     groundtruths_cte = (
         select(
             groundtruths_subquery.c.datum_id,
@@ -906,21 +929,29 @@ def _aggregate_data(
         .cte()
     )
 
-    predictions_subquery = generate_select(
-        models.Annotation.datum_id.label("datum_id"),
-        models.Datum.uid.label("datum_uid"),
-        models.Dataset.name.label("dataset_name"),
-        models.Prediction.annotation_id.label("annotation_id"),
-        models.Prediction.id.label("prediction_id"),
-        models.Prediction.score.label("score"),
-        models.Label.id,
-        label_mapping,
-        _annotation_type_to_geojson(target_type, models.Annotation).label(
-            "geojson"
-        ),
-        filters=prediction_filter,
-        label_source=models.Prediction,
-    ).subquery()
+    predictions_subquery = (
+        generate_select(
+            models.Annotation.datum_id.label("datum_id"),
+            models.Datum.uid.label("datum_uid"),
+            models.Dataset.name.label("dataset_name"),
+            models.Prediction.annotation_id.label("annotation_id"),
+            models.Prediction.id.label("prediction_id"),
+            models.Prediction.score.label("score"),
+            models.Label.id,
+            label_mapping,
+            _annotation_type_to_geojson(target_type, models.Annotation).label(
+                "geojson"
+            ),
+            filters=prediction_filter,
+            label_source=models.Prediction,
+        )
+        .where(
+            _annotation_type_to_column(target_type, models.Annotation).isnot(
+                None
+            )
+        )
+        .subquery()
+    )
     predictions_cte = (
         select(
             predictions_subquery.c.datum_id,
@@ -1007,20 +1038,6 @@ def _compute_detection_metrics(
         A list of metrics to return to the user.
 
     """
-
-    def _annotation_type_to_column(
-        annotation_type: AnnotationType,
-        table,
-    ):
-        match annotation_type:
-            case AnnotationType.BOX:
-                return table.box
-            case AnnotationType.POLYGON:
-                return table.polygon
-            case AnnotationType.RASTER:
-                return table.raster
-            case _:
-                raise RuntimeError
 
     if (
         parameters.iou_thresholds_to_return is None
