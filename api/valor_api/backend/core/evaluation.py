@@ -26,6 +26,7 @@ from valor_api.backend.metrics.metric_utils import (
     prepare_filter_for_evaluation,
 )
 from valor_api.backend.query import generate_query
+from valor_api.logging import profiler
 from valor_api.schemas import migrations
 
 
@@ -508,6 +509,7 @@ def _split_request(
     ]
 
 
+@profiler
 def create_or_get_evaluations(
     db: Session,
     job_request: schemas.EvaluationRequest,
@@ -629,6 +631,7 @@ def fetch_evaluation_from_id(
     return evaluation
 
 
+@profiler
 def get_paginated_evaluations(
     db: Session,
     evaluation_ids: list[int] | None = None,

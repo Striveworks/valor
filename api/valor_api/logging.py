@@ -69,3 +69,17 @@ async def handle_unhandled_exception(
         content={"status": 500, "detail": "Internal Server Error"},
         status_code=500,
     )
+
+
+def profiler(fn: Callable):
+    def wrapper(*args, **kwargs):
+        print(">>>", fn.__name__)
+        start = time.time()
+        try:
+            result = fn(*args, **kwargs)
+        except Exception as e:
+            raise e
+        print(f"<<< {fn.__name__} - {round(time.time() - start, 1)} seconds")
+        return result
+
+    return wrapper

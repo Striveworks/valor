@@ -23,6 +23,7 @@ from valor_api.backend.metrics.metric_utils import (
 )
 from valor_api.backend.query import generate_query, generate_select
 from valor_api.enums import AnnotationType
+from valor_api.logging import profiler
 
 
 @dataclass
@@ -829,6 +830,7 @@ def _annotation_type_to_geojson(
     return gfunc.ST_AsGeoJSON(box)
 
 
+@profiler
 def _aggregate_data(
     db: Session,
     groundtruth_filter: schemas.Filter,
@@ -969,6 +971,7 @@ def _aggregate_data(
     return (groundtruths_cte, predictions_cte, labels)
 
 
+@profiler
 def _compute_detection_metrics(
     db: Session,
     parameters: schemas.EvaluationParameters,
@@ -1387,6 +1390,7 @@ def _compute_detection_metrics(
     return ap_ar_output + pr_curves
 
 
+@profiler
 def _compute_detection_metrics_with_detailed_precision_recall_curve(
     db: Session,
     parameters: schemas.EvaluationParameters,
