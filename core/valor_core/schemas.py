@@ -1,10 +1,326 @@
 import json
 import math
 from dataclasses import dataclass
-from typing import Dict, List, Optional, Tuple, Union
+from typing import Dict, List, Optional, Tuple, Union, Any
 
 import numpy as np
 from valor_core import enums
+
+
+@dataclass
+class Point:
+    """
+    Represents a point in 2D space.
+
+    Follows the GeoJSON specification (RFC 7946).
+
+    Parameters
+    ----------
+    value : Tuple[float, float], optional
+        A point.
+
+    Examples
+    --------
+    >>> Point((1,2))
+    """
+
+    @classmethod
+    def __validate__(cls, value: Any):
+        if not isinstance(value, tuple):
+            raise TypeError(
+                f"Expected type 'Tuple[float, float]' received type '{type(value).__name__}'"
+            )
+        elif len(value) != 2:
+            raise ValueError("")
+        for item in value:
+            if not isinstance(item, (int, float, np.floating)):
+                raise TypeError(
+                    f"Expected type '{float.__name__}' received type '{type(item).__name__}'"
+                )
+
+
+@dataclass
+class MultiPoint:
+    """
+    Represents a list of points.
+
+    Follows the GeoJSON specification (RFC 7946).
+
+    Parameters
+    ----------
+    value : List[Tuple[float, float]], optional
+        A multipoint.
+
+    Examples
+    --------
+    >>> MultiPoint([(0,0), (0,1), (1,1)])
+    """
+
+    @classmethod
+    def __validate__(cls, value: Any):
+        if not isinstance(value, list):
+            raise TypeError(
+                f"Expected 'List[Tuple[float, float]]' received type '{type(value).__name__}'"
+            )
+        for point in value:
+            Point.__validate__(point)
+
+
+@dataclass
+class LineString:
+    """
+    Represents a line.
+
+    Follows the GeoJSON specification (RFC 7946).
+
+    Parameters
+    ----------
+    value : List[Tuple[float, float]], optional
+        A linestring.
+
+    Methods
+    -------
+    colorspace(c='rgb')
+        Represent the photo in the given colorspace.
+    gamma(n=1.0)
+        Change the photo's gamma exposure.
+
+    Examples
+    --------
+    Create a line.
+    >>> LineString([(0,0), (0,1), (1,1)])
+    """
+
+    @classmethod
+    def __validate__(cls, value: Any):
+        MultiPoint.__validate__(value)
+        if len(value) < 2:
+            raise ValueError(
+                "At least two points are required to make a line."
+            )
+
+
+@dataclass
+class MultiLineString:
+    """
+    Represents a list of lines.
+
+    Follows the GeoJSON specification (RFC 7946).
+
+    Parameters
+    ----------
+    value : List[List[Tuple[float, float]]], optional
+        A multilinestring.
+
+    Examples
+    --------
+    Create a single line.
+    >>> MultiLineString([[(0,0), (0,1), (1,1), (0,0)]])
+
+    Create 3 lines.
+    >>> MultiLineString(
+    ...     [
+    ...         [(0,0), (0,1), (1,1)],
+    ...         [(0.1, 0.1), (0.1, 0.2), (0.2, 0.2)],
+    ...         [(0.6, 0.6), (0.6, 0.7), (0.7, 0.7)],
+    ...     ]
+    ... )
+    """
+
+    @classmethod
+    def __validate__(cls, value: Any):
+        if not isinstance(value, list):
+            raise TypeError(
+                f"Expected type 'List[List[Tuple[float, float]]]' received type '{type(value).__name__}'"
+            )
+        for line in value:
+            LineString.__validate__(line)
+
+
+@dataclass
+class Polygon:
+    """
+    Represents a polygon with a boundary and optional holes.
+
+    Follows the GeoJSON specification (RFC 7946).
+
+    Parameters
+    ----------
+    value : List[List[Tuple[float, float]]], optional
+        A polygon.
+
+    Attributes
+    ----------
+    area
+    boundary
+    holes
+    xmin
+    xmax
+    ymin
+    ymax
+
+    Examples
+    --------
+    Create a polygon without any holes.
+    >>> Polygon([[(0,0), (0,1), (1,1), (0,0)]])
+
+    Create a polygon with 2 holes.
+    >>> Polygon(
+    ...     [
+    ...         [(0,0), (0,1), (1,1), (0,0)],
+    ...         [(0.1, 0.1), (0.1, 0.2), (0.2, 0.2), (0.1, 0.1)],
+    ...         [(0.6, 0.6), (0.6, 0.7), (0.7, 0.7), (0.6, 0.6)],
+    ...     ]
+    ... )
+    """
+
+    @classmethod
+    def __validate__(cls, value: Any):
+        MultiLineString.__validate__(value)
+        for line in value:
+            if not (len(line) >= 4 and line[0] == line[-1]):
+                raise ValueError(
+                    "Polygons are defined by at least 4 points with the first point being repeated at the end."
+                )
+
+
+@dataclass
+class Box(Polygon):
+    """
+    A Box is a polygon that is constrained to 4 unique points.
+
+    Note that this does not need to be axis-aligned.
+
+    Parameters
+    ----------
+    value : List[List[Tuple[float, float]]], optional
+        An polygon value representing a box.
+
+    Attributes
+    ----------
+    area
+    polygon
+    boundary
+    holes
+    xmin
+    xmax
+    ymin
+    ymax
+
+    Examples
+    --------
+    >>> Box([[(0,0), (0,1), (1,1), (1,0), (0,0)]])
+
+    Create a Box using extrema.
+    >>> Box.from_extrema(
+    ...     xmin=0, xmax=1,
+    ...     ymin=0, ymax=1,
+    ... )
+    """
+
+    value: Optional[List[List[Tuple[float, float]]]] = None
+
+    @classmethod
+    def __validate__(cls, value: Any):
+        """
+        Validates
+
+        Parameters
+        ----------
+        value : Any
+            The value to validate.
+
+        Raises
+        ------
+        TypeError
+            If the value type is not supported.
+        """
+        Polygon.__validate__(value)
+        if len(value) != 1:
+            raise ValueError("Box should not contain holes.")
+        elif len(value[0]) != 5:
+            raise ValueError("Box should consist of four unique points.")
+
+    @classmethod
+    def from_extrema(
+        cls,
+        xmin: float,
+        xmax: float,
+        ymin: float,
+        ymax: float,
+    ):
+        """
+        Create a Box from extrema values.
+
+        Parameters
+        ----------
+        xmin : float
+            Minimum x-coordinate of the bounding box.
+        xmax : float
+            Maximum x-coordinate of the bounding box.
+        ymin : float
+            Minimum y-coordinate of the bounding box.
+        ymax : float
+            Maximum y-coordinate of the bounding box.
+
+        Returns
+        -------
+        Box
+            A Box created from the provided extrema values.
+        """
+        points = [
+            [
+                (xmin, ymin),
+                (xmax, ymin),
+                (xmax, ymax),
+                (xmin, ymax),
+                (xmin, ymin),
+            ]
+        ]
+        return cls(value=points)
+
+
+@dataclass
+class MultiPolygon:
+    """
+    Represents a collection of polygons.
+
+    Follows the GeoJSON specification (RFC 7946).
+
+    Parameters
+    ----------
+    value : List[List[List[Tuple[float, float]]]], optional
+        A list of polygons.
+
+    Attributes
+    ----------
+    area
+    polygons
+
+    Examples
+    --------
+    >>> MultiPolygon(
+    ...     [
+    ...         [
+    ...             [(0,0), (0,1), (1,1), (0,0)]
+    ...         ],
+    ...         [
+    ...             [(0,0), (0,1), (1,1), (0,0)],
+    ...             [(0.1, 0.1), (0.1, 0.2), (0.2, 0.2), (0.1, 0.1)],
+    ...             [(0.6, 0.6), (0.6, 0.7), (0.7, 0.7), (0.6, 0.6)],
+    ...         ],
+    ...     ]
+    ... )
+    """
+
+    @classmethod
+    def __validate__(cls, value: Any):
+        if not isinstance(value, list):
+            raise TypeError(
+                f"Expected type 'List[List[List[Tuple[float, float]]]]' received type '{type(value).__name__}'"
+            )
+        for poly in value:
+            Polygon.__validate__(poly)
 
 
 @dataclass
@@ -74,6 +390,222 @@ class Label:
         return hash(f"key:{self.key},value:{self.value},score:{self.score}")
 
 
+class Raster:
+    """
+    Represents a binary mask.
+
+    Parameters
+    ----------
+    value : Dict[str, Union[np.ndarray, str, None]], optional
+        An raster value.
+
+    Attributes
+    ----------
+    area
+    array
+    geometry
+    height
+    width
+
+    Raises
+    ------
+    TypeError
+        If `encoding` is not a string.
+
+    Examples
+    --------
+    Generate a random mask.
+    >>> import numpy.random
+    >>> height = 640
+    >>> width = 480
+    >>> array = numpy.random.rand(height, width)
+
+    Convert to binary mask.
+    >>> mask = (array > 0.5)
+
+    Create Raster.
+    >>> Raster.from_numpy(mask)
+    """
+
+    value: Optional[
+        Dict[str, Union[np.ndarray, Box, Polygon, MultiPolygon, None]]
+    ] = None
+
+    @classmethod
+    def __validate__(cls, value: Any):
+        """
+        Validates
+
+        Parameters
+        ----------
+        value : Any
+            The value to validate.
+
+        Raises
+        ------
+        TypeError
+            If the value type is not supported.
+        """
+        if not isinstance(value, dict):
+            raise TypeError(
+                "Raster should contain a dictionary describing a mask and optionally a geometry."
+            )
+        elif set(value.keys()) != {"mask", "geometry"}:
+            raise ValueError(
+                "Raster should be described by a dictionary with keys 'mask' and 'geometry'"
+            )
+        elif not isinstance(value["mask"], np.ndarray):
+            raise TypeError(
+                f"Expected mask to have type '{np.ndarray}' receieved type '{value['mask']}'"
+            )
+        elif len(value["mask"].shape) != 2:
+            raise ValueError("raster only supports 2d arrays")
+        elif value["mask"].dtype != bool:
+            raise ValueError(
+                f"Expecting a binary mask (i.e. of dtype bool) but got dtype {value['mask'].dtype}"
+            )
+
+
+@dataclass
+class Embedding:
+    """
+    Represents a model embedding.
+
+    Parameters
+    ----------
+    value : List[float], optional
+        An embedding value.
+    """
+
+    value: Optional[Union[List[int], List[float]]] = None
+
+    @classmethod
+    def __validate__(cls, value: Any):
+        """
+        Validates
+
+        Parameters
+        ----------
+        value : Any
+            The value to validate.
+
+        Raises
+        ------
+        TypeError
+            If the value type is not supported.
+        """
+        if not isinstance(value, list):
+            raise TypeError(
+                f"Expected type 'Optional[List[float]]' received type '{type(value)}'"
+            )
+        elif len(value) < 1:
+            raise ValueError("embedding should have at least one dimension")
+
+
+@dataclass
+class Annotation:
+    """
+    A class used to annotate `GroundTruths` and `Predictions`.
+
+    Attributes
+    ----------
+    metadata: Dictionary
+        A dictionary of metadata that describes the `Annotation`.
+    labels: List[Label], optional
+        A list of labels to use for the `Annotation`.
+    bounding_box: Box
+        A bounding box to assign to the `Annotation`.
+    polygon: BoundingPolygon
+        A polygon to assign to the `Annotation`.
+    raster: Raster
+        A raster to assign to the `Annotation`.
+    embedding: List[float]
+        An embedding, described by a list of values with type float and a maximum length of 16,000.
+    is_instance: bool, optional
+        A boolean describing whether we should treat the Raster attached to an annotation as an instance segmentation or not. If set to true, then the Annotation will be validated for use in object detection tasks. If set to false, then the Annotation will be validated for use in semantic segmentation tasks.
+    implied_task_types: list[str], optional
+        The validated task types that are applicable to each Annotation. Doesn't need to bet set by the user.
+
+    Examples
+    --------
+
+    Classification
+    >>> Annotation.create(
+    ...     labels=[
+    ...         Label(key="class", value="dog"),
+    ...         Label(key="category", value="animal"),
+    ...     ]
+    ... )
+
+    Object-Detection Box
+    >>> annotation = Annotation(
+    ...     labels=[Label(key="k1", value="v1")],
+    ...     bounding_box=box2,
+    ... )
+
+    Object-Detection Polygon
+    >>> annotation = Annotation(
+    ...     labels=[Label(key="k1", value="v1")],
+    ...     polygon=BoundingPolygon(...),
+    ... )
+
+     Raster
+    >>> annotation = Annotation(
+    ...     labels=[Label(key="k1", value="v1")],
+    ...     raster=Raster(...),
+    ...     is_instance=True
+    ... )
+
+    Object-Detection with all supported Geometries defined.
+    >>> Annotation(
+    ...     labels=[Label(key="k1", value="v1")],
+    ...     bounding_box=Box(...),
+    ...     polygon=BoundingPolygon(...),
+    ...     raster=Raster(...),
+    ...     is_instance=True,
+    ... )
+
+    Semantic-Segmentation Raster
+    >>> annotation = Annotation(
+    ...     labels=[Label(key="k1", value="v1")],
+    ...     raster=Raster(...),
+    ...     is_instance=False # or None
+    ... )
+    """
+
+    labels: List[Label]
+    metadata: Optional[dict] = None
+    bounding_box: Optional[Box] = None
+    polygon: Optional[Polygon] = None
+    raster: Optional[Raster] = None
+    embedding: Optional[Embedding] = None
+    is_instance: Optional[bool] = None
+    implied_task_types: Optional[List[str]] = None
+
+
+@dataclass
+class Datum:
+    """
+    A class used to store information about a datum for either a 'GroundTruth' or a 'Prediction'.
+
+    Attributes
+    ----------
+    uid : String
+        The UID of the datum.
+    metadata : Dictionary
+        A dictionary of metadata that describes the datum.
+
+    Examples
+    --------
+    >>> Datum(uid="uid1")
+    >>> Datum(uid="uid1", metadata={})
+    >>> Datum(uid="uid1", metadata={"foo": "bar", "pi": 3.14})
+    """
+
+    uid: Optional[str] = None
+    metadata: Optional[dict] = None
+
+
 @dataclass
 class EvaluationParameters:
     """
@@ -120,6 +652,87 @@ class Evaluation:
     def __str__(self) -> str:
         """Dumps the object into a JSON formatted string."""
         return json.dumps(self.__dict__, indent=4)
+
+
+@dataclass
+class GroundTruth:
+    """
+    An object describing a ground truth (e.g., a human-drawn bounding box on an image).
+
+    Attributes
+    ----------
+    datum : Datum
+        The datum associated with the groundtruth.
+    annotations : List[Annotation]
+        The list of annotations associated with the groundtruth.
+
+    Examples
+    --------
+    >>> GroundTruth(
+    ...     datum=Datum(uid="uid1"),
+    ...     annotations=[
+    ...         Annotation(
+    ...             labels=[Label(key="k1", value="v1")],
+    ...         )
+    ...     ]
+    ... )
+    """
+
+    datum: Datum
+    annotations: list[Annotation]
+
+    def __post_init__(
+        self,
+    ):
+        """
+        Creates a ground truth.
+
+        Parameters
+        ----------
+        datum : Datum
+            The datum that the ground truth is operating over.
+        annotations : List[Annotation]
+            The list of ground truth annotations.
+        """
+
+        for annotation in self.annotations:
+            if annotation.labels:
+                for label in annotation.labels:
+                    if label.score is not None:
+                        raise ValueError(
+                            "GroundTruth labels should not have scores."
+                        )
+
+
+@dataclass
+class Prediction:
+    """
+    An object describing a prediction (e.g., a machine-drawn bounding box on an image).
+
+    Attributes
+    ----------
+    datum : Datum
+        The datum associated with the prediction.
+    annotations : List[Annotation]
+        The list of annotations associated with the prediction.
+
+    Examples
+    --------
+    >>> Prediction(
+    ...     datum=Datum(uid="uid1"),
+    ...     annotations=[
+    ...         Annotation(
+    ...             labels=[
+    ...                 Label(key="k1", value="v1", score=0.9),
+    ...                 Label(key="k1", value="v1", score=0.1)
+    ...             ],
+    ...         )
+    ...     ]
+    ... )
+    """
+
+    datum: Datum
+    annotations: list[Annotation]
 
 
 @dataclass

@@ -4,136 +4,13 @@ from valor_core import enums, schemas
 import random
 
 
-def test_evaluate_image_clf():
-    # TODO delete all the superfluous fields in here
-    groundtruth_df = [
-        {
-            "id": 9052,
-            "annotation_id": 11394,
-            "label_id": 8071,
-            "created_at": pd.Timestamp("2024-07-29 16:01:29.517175"),
-            "dataset_name": "test_dataset",
-            "label_key": "k4",
-            "label_value": "v4",
-            "datum_id": 833,
-            "datum_uid": "uid6",
-        },
-        {
-            "id": 9050,
-            "annotation_id": 11393,
-            "label_id": 8071,
-            "created_at": pd.Timestamp("2024-07-29 16:01:29.467651"),
-            "dataset_name": "test_dataset",
-            "label_key": "k4",
-            "label_value": "v4",
-            "datum_id": 832,
-            "datum_uid": "uid5",
-        },
-        {
-            "id": 9051,
-            "annotation_id": 11393,
-            "label_id": 8072,
-            "created_at": pd.Timestamp("2024-07-29 16:01:29.467651"),
-            "dataset_name": "test_dataset",
-            "label_key": "k5",
-            "label_value": "v5",
-            "datum_id": 832,
-            "datum_uid": "uid5",
-        },
-        {
-            "id": 9053,
-            "annotation_id": 11395,
-            "label_id": 8074,
-            "created_at": pd.Timestamp("2024-07-29 16:01:29.577011"),
-            "dataset_name": "test_dataset",
-            "label_key": "k3",
-            "label_value": "v3",
-            "datum_id": 834,
-            "datum_uid": "uid8",
-        },
-    ]
-
-    prediction_df = [
-        {
-            "id": 4627,
-            "annotation_id": 11398,
-            "label_id": 8080,
-            "score": 1.0,
-            "created_at": pd.Timestamp("2024-07-29 16:01:29.894764"),
-            "dataset_name": "test_dataset",
-            "label_key": "k3",
-            "label_value": "v1",
-            "datum_id": 834,
-            "datum_uid": "uid8",
-        },
-        {
-            "id": 4622,
-            "annotation_id": 11396,
-            "label_id": 8077,
-            "score": 0.47,
-            "created_at": pd.Timestamp("2024-07-29 16:01:29.767704"),
-            "dataset_name": "test_dataset",
-            "label_key": "k4",
-            "label_value": "v1",
-            "datum_id": 832,
-            "datum_uid": "uid5",
-        },
-        {
-            "id": 4623,
-            "annotation_id": 11396,
-            "label_id": 8076,
-            "score": 0.53,
-            "created_at": pd.Timestamp("2024-07-29 16:01:29.767704"),
-            "dataset_name": "test_dataset",
-            "label_key": "k4",
-            "label_value": "v8",
-            "datum_id": 832,
-            "datum_uid": "uid5",
-        },
-        {
-            "id": 4624,
-            "annotation_id": 11396,
-            "label_id": 8075,
-            "score": 1.0,
-            "created_at": pd.Timestamp("2024-07-29 16:01:29.767704"),
-            "dataset_name": "test_dataset",
-            "label_key": "k5",
-            "label_value": "v1",
-            "datum_id": 832,
-            "datum_uid": "uid5",
-        },
-        {
-            "id": 4625,
-            "annotation_id": 11397,
-            "label_id": 8071,
-            "score": 0.71,
-            "created_at": pd.Timestamp("2024-07-29 16:01:29.819552"),
-            "dataset_name": "test_dataset",
-            "label_key": "k4",
-            "label_value": "v4",
-            "datum_id": 833,
-            "datum_uid": "uid6",
-        },
-        {
-            "id": 4626,
-            "annotation_id": 11397,
-            "label_id": 8079,
-            "score": 0.29,
-            "created_at": pd.Timestamp("2024-07-29 16:01:29.819552"),
-            "dataset_name": "test_dataset",
-            "label_key": "k4",
-            "label_value": "v5",
-            "datum_id": 833,
-            "datum_uid": "uid6",
-        },
-    ]
-
-    groundtruth_df = pd.DataFrame(groundtruth_df)
-    prediction_df = pd.DataFrame(prediction_df)
+def test_evaluate_image_clf(
+    evaluate_image_clf_groundtruths, evaluate_image_clf_predictions
+):
 
     eval_job = evaluate_classification(
-        groundtruth_df=groundtruth_df,
-        prediction_df=prediction_df,
+        groundtruths=evaluate_image_clf_groundtruths,
+        predictions=evaluate_image_clf_predictions,
     )
 
     metrics = eval_job.metrics
@@ -307,8 +184,8 @@ def test_evaluate_image_clf():
     )
 
     eval_job = evaluate_classification(
-        groundtruth_df=groundtruth_df,
-        prediction_df=prediction_df,
+        groundtruths=evaluate_image_clf_groundtruths,
+        predictions=evaluate_image_clf_predictions,
         parameters=schemas.EvaluationParameters(
             metrics_to_return=selected_metrics,
         ),
@@ -328,8 +205,8 @@ def test_evaluate_image_clf():
         enums.MetricType.PrecisionRecallCurve,
     ]
     eval_job = evaluate_classification(
-        groundtruth_df=groundtruth_df,
-        prediction_df=prediction_df,
+        groundtruths=evaluate_image_clf_groundtruths,
+        predictions=evaluate_image_clf_predictions,
         parameters=schemas.EvaluationParameters(
             metrics_to_return=None,
         ),
@@ -340,119 +217,121 @@ def test_evaluate_image_clf():
 
 
 def test_evaluate_tabular_clf():
-    groundtruth_df = [
-        {
-            "id": 9040,
-            "annotation_id": 11373,
-            "label_id": 8031,
-            "created_at": 1722267392923,
-            "dataset_name": "test_dataset",
-            "label_key": "class",
-            "label_value": "1",
-            "datum_id": 822,
-            "datum_uid": "uid0",
-        },
-        {
-            "id": 9041,
-            "annotation_id": 11374,
-            "label_id": 8031,
-            "created_at": 1722267392967,
-            "dataset_name": "test_dataset",
-            "label_key": "class",
-            "label_value": "1",
-            "datum_id": 823,
-            "datum_uid": "uid1",
-        },
-        {
-            "id": 9042,
-            "annotation_id": 11375,
-            "label_id": 8033,
-            "created_at": 1722267393007,
-            "dataset_name": "test_dataset",
-            "label_key": "class",
-            "label_value": "2",
-            "datum_id": 824,
-            "datum_uid": "uid2",
-        },
-        {
-            "id": 9043,
-            "annotation_id": 11376,
-            "label_id": 8034,
-            "created_at": 1722267393047,
-            "dataset_name": "test_dataset",
-            "label_key": "class",
-            "label_value": "0",
-            "datum_id": 825,
-            "datum_uid": "uid3",
-        },
-        {
-            "id": 9044,
-            "annotation_id": 11377,
-            "label_id": 8034,
-            "created_at": 1722267393088,
-            "dataset_name": "test_dataset",
-            "label_key": "class",
-            "label_value": "0",
-            "datum_id": 826,
-            "datum_uid": "uid4",
-        },
-        {
-            "id": 9045,
-            "annotation_id": 11378,
-            "label_id": 8034,
-            "created_at": 1722267393125,
-            "dataset_name": "test_dataset",
-            "label_key": "class",
-            "label_value": "0",
-            "datum_id": 827,
-            "datum_uid": "uid5",
-        },
-        {
-            "id": 9046,
-            "annotation_id": 11379,
-            "label_id": 8031,
-            "created_at": 1722267393166,
-            "dataset_name": "test_dataset",
-            "label_key": "class",
-            "label_value": "1",
-            "datum_id": 828,
-            "datum_uid": "uid6",
-        },
-        {
-            "id": 9047,
-            "annotation_id": 11380,
-            "label_id": 8031,
-            "created_at": 1722267393215,
-            "dataset_name": "test_dataset",
-            "label_key": "class",
-            "label_value": "1",
-            "datum_id": 829,
-            "datum_uid": "uid7",
-        },
-        {
-            "id": 9048,
-            "annotation_id": 11381,
-            "label_id": 8031,
-            "created_at": 1722267393263,
-            "dataset_name": "test_dataset",
-            "label_key": "class",
-            "label_value": "1",
-            "datum_id": 830,
-            "datum_uid": "uid8",
-        },
-        {
-            "id": 9049,
-            "annotation_id": 11382,
-            "label_id": 8031,
-            "created_at": 1722267393306,
-            "dataset_name": "test_dataset",
-            "label_key": "class",
-            "label_value": "1",
-            "datum_id": 831,
-            "datum_uid": "uid9",
-        },
-    ]
-    prediction_df = [
+    groundtruth_df = pd.DataFrame(
+        [
+            {
+                "id": 9040,
+                "annotation_id": 11373,
+                "label_id": 8031,
+                "created_at": 1722267392923,
+                "dataset_name": "test_dataset",
+                "label_key": "class",
+                "label_value": "1",
+                "datum_id": 822,
+                "datum_uid": "uid0",
+            },
+            {
+                "id": 9041,
+                "annotation_id": 11374,
+                "label_id": 8031,
+                "created_at": 1722267392967,
+                "dataset_name": "test_dataset",
+                "label_key": "class",
+                "label_value": "1",
+                "datum_id": 823,
+                "datum_uid": "uid1",
+            },
+            {
+                "id": 9042,
+                "annotation_id": 11375,
+                "label_id": 8033,
+                "created_at": 1722267393007,
+                "dataset_name": "test_dataset",
+                "label_key": "class",
+                "label_value": "2",
+                "datum_id": 824,
+                "datum_uid": "uid2",
+            },
+            {
+                "id": 9043,
+                "annotation_id": 11376,
+                "label_id": 8034,
+                "created_at": 1722267393047,
+                "dataset_name": "test_dataset",
+                "label_key": "class",
+                "label_value": "0",
+                "datum_id": 825,
+                "datum_uid": "uid3",
+            },
+            {
+                "id": 9044,
+                "annotation_id": 11377,
+                "label_id": 8034,
+                "created_at": 1722267393088,
+                "dataset_name": "test_dataset",
+                "label_key": "class",
+                "label_value": "0",
+                "datum_id": 826,
+                "datum_uid": "uid4",
+            },
+            {
+                "id": 9045,
+                "annotation_id": 11378,
+                "label_id": 8034,
+                "created_at": 1722267393125,
+                "dataset_name": "test_dataset",
+                "label_key": "class",
+                "label_value": "0",
+                "datum_id": 827,
+                "datum_uid": "uid5",
+            },
+            {
+                "id": 9046,
+                "annotation_id": 11379,
+                "label_id": 8031,
+                "created_at": 1722267393166,
+                "dataset_name": "test_dataset",
+                "label_key": "class",
+                "label_value": "1",
+                "datum_id": 828,
+                "datum_uid": "uid6",
+            },
+            {
+                "id": 9047,
+                "annotation_id": 11380,
+                "label_id": 8031,
+                "created_at": 1722267393215,
+                "dataset_name": "test_dataset",
+                "label_key": "class",
+                "label_value": "1",
+                "datum_id": 829,
+                "datum_uid": "uid7",
+            },
+            {
+                "id": 9048,
+                "annotation_id": 11381,
+                "label_id": 8031,
+                "created_at": 1722267393263,
+                "dataset_name": "test_dataset",
+                "label_key": "class",
+                "label_value": "1",
+                "datum_id": 830,
+                "datum_uid": "uid8",
+            },
+            {
+                "id": 9049,
+                "annotation_id": 11382,
+                "label_id": 8031,
+                "created_at": 1722267393306,
+                "dataset_name": "test_dataset",
+                "label_key": "class",
+                "label_value": "1",
+                "datum_id": 831,
+                "datum_uid": "uid9",
+            },
+        ]
+    )
+    prediction_df = pd.DataFrame(
         [
             {
                 "id": 4600,
@@ -815,4 +694,116 @@ def test_evaluate_tabular_clf():
                 "datum_uid": "uid1",
             },
         ]
+    )
+
+    eval_job = evaluate_classification(
+        groundtruths=groundtruth_df,
+        predictions=prediction_df,
+    )
+
+    metrics = eval_job.metrics
+
+    expected_metrics = [
+        {
+            "type": "Accuracy",
+            "parameters": {"label_key": "class"},
+            "value": 0.5,
+        },
+        {
+            "type": "ROCAUC",
+            "parameters": {"label_key": "class"},
+            "value": 0.7685185185185185,
+        },
+        {
+            "type": "Precision",
+            "value": 0.6666666666666666,
+            "label": {"key": "class", "value": "1"},
+        },
+        {
+            "type": "Recall",
+            "value": 0.3333333333333333,
+            "label": {"key": "class", "value": "1"},
+        },
+        {
+            "type": "F1",
+            "value": 0.4444444444444444,
+            "label": {"key": "class", "value": "1"},
+        },
+        {
+            "type": "Precision",
+            "value": 0.0,
+            "label": {"key": "class", "value": "2"},
+        },
+        {
+            "type": "Recall",
+            "value": 0.0,
+            "label": {"key": "class", "value": "2"},
+        },
+        {"type": "F1", "value": 0.0, "label": {"key": "class", "value": "2"}},
+        {
+            "type": "Precision",
+            "value": 0.5,
+            "label": {"key": "class", "value": "0"},
+        },
+        {
+            "type": "Recall",
+            "value": 1.0,
+            "label": {"key": "class", "value": "0"},
+        },
+        {
+            "type": "F1",
+            "value": 0.6666666666666666,
+            "label": {"key": "class", "value": "0"},
+        },
     ]
+    for m in metrics:
+        if m["type"] not in [
+            "PrecisionRecallCurve",
+            "DetailedPrecisionRecallCurve",
+        ]:
+            assert m in expected_metrics
+    for m in expected_metrics:
+        assert m in metrics
+
+    confusion_matrices = eval_job.confusion_matrices
+
+    expected_confusion_matrix = {
+        "label_key": "class",
+        "entries": [
+            {"prediction": "0", "groundtruth": "0", "count": 3},
+            {"prediction": "0", "groundtruth": "1", "count": 3},
+            {"prediction": "1", "groundtruth": "1", "count": 2},
+            {"prediction": "1", "groundtruth": "2", "count": 1},
+            {"prediction": "2", "groundtruth": "1", "count": 1},
+        ],
+    }
+
+    # validate return schema
+    assert len(confusion_matrices) == 1
+    confusion_matrix = confusion_matrices[0]
+    assert "label_key" in confusion_matrix
+    assert "entries" in confusion_matrix
+
+    # validate values
+    assert (
+        confusion_matrix["label_key"] == expected_confusion_matrix["label_key"]
+    )
+    for entry in confusion_matrix["entries"]:
+        assert entry in expected_confusion_matrix["entries"]
+    for entry in expected_confusion_matrix["entries"]:
+        assert entry in confusion_matrix["entries"]
+
+    # validate return schema
+    assert len(confusion_matrices) == 1
+    confusion_matrix = confusion_matrices[0]
+    assert "label_key" in confusion_matrix
+    assert "entries" in confusion_matrix
+
+    # validate values
+    assert (
+        confusion_matrix["label_key"] == expected_confusion_matrix["label_key"]
+    )
+    for entry in confusion_matrix["entries"]:
+        assert entry in expected_confusion_matrix["entries"]
+    for entry in expected_confusion_matrix["entries"]:
+        assert entry in confusion_matrix["entries"]

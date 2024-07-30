@@ -763,7 +763,8 @@ def _calculate_pr_curves(
                 "label_value_pd",
                 "label_pd",
                 "label_id_pd",
-            ]
+            ],
+            errors="ignore",
         )
     )
 
@@ -1220,8 +1221,8 @@ def _compute_clf_metrics(
 
 
 def evaluate_classification(
-    groundtruth_df: pd.DataFrame,
-    prediction_df: pd.DataFrame,
+    groundtruths: Union[pd.DataFrame, List[schemas.GroundTruth]],
+    predictions: Union[pd.DataFrame, List[schemas.Prediction]],
     parameters: schemas.EvaluationParameters = schemas.EvaluationParameters(
         label_map=[],
         metrics_to_return=[
@@ -1244,12 +1245,13 @@ def evaluate_classification(
     parameters = utilities._validate_parameters(
         parameters, task_type=enums.TaskType.CLASSIFICATION
     )
-    utilities._validate_prediction_dataframe(
-        prediction_df, task_type=enums.TaskType.CLASSIFICATION
+    prediction_df = utilities.validate_prediction_dataframe(
+        predictions, task_type=enums.TaskType.CLASSIFICATION
     )
-    utilities._validate_groundtruth_dataframe(
-        groundtruth_df, task_type=enums.TaskType.CLASSIFICATION
+    groundtruth_df = utilities.validate_groundtruth_dataframe(
+        groundtruths, task_type=enums.TaskType.CLASSIFICATION
     )
+
     unique_labels = list(
         set(zip(groundtruth_df["label_key"], groundtruth_df["label_value"]))
         | set(zip(prediction_df["label_key"], prediction_df["label_value"]))
