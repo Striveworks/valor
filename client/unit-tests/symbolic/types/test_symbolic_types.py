@@ -13,6 +13,7 @@ from valor.schemas.symbolic.operators import (
 )
 from valor.schemas.symbolic.types import (
     Boolean,
+    Contexts,
     Date,
     DateTime,
     Duration,
@@ -1140,3 +1141,11 @@ def test_nullable():
         "type": "float",
         "value": None,
     }
+
+
+def test_context():
+    with pytest.raises(TypeError):
+        Contexts(5)  # type: ignore
+
+    with pytest.raises(TypeError):
+        Contexts([5])  # type: ignore
