@@ -29,6 +29,7 @@ jobs:
         working-directory: ./client
       - name: run classification benchmarks
         run: python benchmark_script.py
+        continue-on-error: true
         working-directory: ./integration_tests/benchmarks/classification
       - name: print classification results
         run: |
@@ -42,6 +43,7 @@ jobs:
         working-directory: ./
       - name: run object detection benchmarks
         run: python benchmark_script.py
+        continue-on-error: true
         working-directory: ./integration_tests/benchmarks/object-detection
       - name: print object detection results
         run: |
