@@ -35,6 +35,11 @@ jobs:
           export BENCHMARK_RESULTS=$(python -c "import os;import json;print(json.dumps(json.load(open('results.json', 'r')), indent=4));")
           echo "$BENCHMARK_RESULTS"
         working-directory: ./integration_tests/benchmarks/classification
+      - name: print classification profiling
+        run: |
+          cat profiler_log.txt
+          rm profiler_log.txt
+        working-directory: ./api/valor_api
       - name: run object detection benchmarks
         run: python benchmark_script.py
         working-directory: ./integration_tests/benchmarks/object-detection
@@ -43,4 +48,9 @@ jobs:
           export BENCHMARK_RESULTS=$(python -c "import os;import json;print(json.dumps(json.load(open('results.json', 'r')), indent=4));")
           echo "$BENCHMARK_RESULTS"
         working-directory: ./integration_tests/benchmarks/object-detection
+      - name: print object detection profiling
+        run: |
+          cat profiler_log.txt
+          rm profiler_log.txt
+        working-directory: ./api/valor_api
       - run: make stop-env
