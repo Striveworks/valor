@@ -2,8 +2,10 @@ from fastapi import BackgroundTasks
 from sqlalchemy.orm import Session
 
 from valor_api import backend, enums, schemas
+from valor_api.logging import profiler
 
 
+@profiler
 def create_dataset(
     *,
     db: Session,
@@ -27,6 +29,7 @@ def create_dataset(
     backend.create_dataset(db, dataset)
 
 
+@profiler
 def create_model(
     *,
     db: Session,
@@ -50,6 +53,7 @@ def create_model(
     backend.create_model(db, model)
 
 
+@profiler
 def create_groundtruths(
     *,
     db: Session,
@@ -73,6 +77,7 @@ def create_groundtruths(
     )
 
 
+@profiler
 def create_predictions(
     *,
     db: Session,
