@@ -39,7 +39,7 @@ jobs:
         run: |
           cat profiler_log.txt
           rm profiler_log.txt
-        working-directory: ./api/valor_api
+        working-directory: ./
       - name: run object detection benchmarks
         run: python benchmark_script.py
         working-directory: ./integration_tests/benchmarks/object-detection
@@ -52,5 +52,5 @@ jobs:
         run: |
           cat profiler_log.txt
           rm profiler_log.txt
-        working-directory: ./api/valor_api
+        working-directory: ./
       - run: make stop-env

@@ -82,7 +82,7 @@ def profiler(fn: Callable):
                 f.write(f"<<< {fn.__name__} raised {str(e)}\n")
                 raise e
             f.write(
-                f"<<< {fn.__name__} - {round(time.time() - start, 1)} seconds"
+                f"<<< {fn.__name__} - {round(time.time() - start, 1)} seconds\n"
             )
         return result
 
