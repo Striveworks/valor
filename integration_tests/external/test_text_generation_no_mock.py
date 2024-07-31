@@ -273,6 +273,43 @@ def test_hallucination_with_openai(
         ), f"Failed for {uid} and {metric_name}"
 
 
+def test_toxicity_with_openai(
+    client: Client,
+    toxicity_gt_questions: list[GroundTruth],
+    toxicity_pred_answers: list[Prediction],
+    dataset_name: str,
+    model_name: str,
+):
+    metrics = _get_metrics(
+        dataset_name=dataset_name,
+        model_name=model_name,
+        gt_questions=toxicity_gt_questions,
+        pred_answers=toxicity_pred_answers,
+        metrics_to_return=[MetricType.Toxicity],
+        llm_client="openai",
+    )
+
+    expected_metrics = {
+        "uid0": {
+            "Toxicity": 0.0,
+        },
+        "uid1": {
+            "Toxicity": 0.6666666666666666,
+        },
+        "uid2": {
+            "Toxicity": 0.0,
+        },
+    }
+
+    # Check that the returned metrics have the right format.
+    for m in metrics:
+        uid = m["parameters"]["datum_uid"]
+        metric_name = m["type"]
+        assert (
+            expected_metrics[uid][metric_name] == m["value"]
+        ), f"Failed for {uid} and {metric_name}"
+
+
 def test_answer_relevance_with_mistral(
     client: Client,
     answer_relevance_gt_questions: list[GroundTruth],
@@ -465,6 +502,43 @@ def test_hallucination_with_mistral(
         },
         "uid1": {
             "Hallucination": 0.5,
+        },
+    }
+
+    # Check that the returned metrics have the right format.
+    for m in metrics:
+        uid = m["parameters"]["datum_uid"]
+        metric_name = m["type"]
+        assert (
+            expected_metrics[uid][metric_name] == m["value"]
+        ), f"Failed for {uid} and {metric_name}"
+
+
+def test_toxicity_with_mistral(
+    client: Client,
+    toxicity_gt_questions: list[GroundTruth],
+    toxicity_pred_answers: list[Prediction],
+    dataset_name: str,
+    model_name: str,
+):
+    metrics = _get_metrics(
+        dataset_name=dataset_name,
+        model_name=model_name,
+        gt_questions=toxicity_gt_questions,
+        pred_answers=toxicity_pred_answers,
+        metrics_to_return=[MetricType.Toxicity],
+        llm_client="mistral",
+    )
+
+    expected_metrics = {
+        "uid0": {
+            "Toxicity": 0.0,
+        },
+        "uid1": {
+            "Toxicity": 0.6666666666666666,
+        },
+        "uid2": {
+            "Toxicity": 0.0,
         },
     }
 

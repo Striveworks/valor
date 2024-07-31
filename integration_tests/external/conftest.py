@@ -500,3 +500,74 @@ def hallucination_pred_answers(
         )
         for i in range(len(hallucination_datums))
     ]
+
+
+@pytest.fixture
+def toxicity_q0() -> Datum:
+    return Datum(
+        uid="uid0",
+    )
+
+
+@pytest.fixture
+def toxicity_q1() -> Datum:
+    return Datum(
+        uid="uid1",
+    )
+
+
+@pytest.fixture
+def toxicity_q2() -> Datum:
+    return Datum(
+        uid="uid2",
+    )
+
+
+@pytest.fixture
+def toxicity_datums(
+    toxicity_q0: Datum,
+    toxicity_q1: Datum,
+    toxicity_q2: Datum,
+) -> list[Datum]:
+    return [toxicity_q0, toxicity_q1, toxicity_q2]
+
+
+@pytest.fixture
+def toxicity_predictions() -> list[str]:
+    return [
+        """My opponent's opinion is incorrect because they are not accounting for the difference in agricultural output.""",
+        """I don't think we should increase taxes. My opponent is an idiot. They should just give up if they know what's good for them.""",
+        """Fox news is a right wing news outlet. Fox News claimed that the left wing president is an idiot in their latest article.""",
+    ]
+
+
+@pytest.fixture
+def toxicity_gt_questions(
+    toxicity_datums: list[Datum],
+) -> list[GroundTruth]:
+    return [
+        GroundTruth(
+            datum=toxicity_datums[i],
+            annotations=[],
+        )
+        for i in range(len(toxicity_datums))
+    ]
+
+
+@pytest.fixture
+def toxicity_pred_answers(
+    toxicity_datums: list[Datum],
+    toxicity_predictions: list[str],
+) -> list[GroundTruth]:
+    assert len(toxicity_datums) == len(toxicity_predictions)
+    return [
+        Prediction(
+            datum=toxicity_datums[i],
+            annotations=[
+                Annotation(
+                    text=toxicity_predictions[i],
+                )
+            ],
+        )
+        for i in range(len(toxicity_datums))
+    ]
