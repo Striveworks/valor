@@ -303,8 +303,6 @@ def _compute_text_generation_metrics(
         .subquery()
     )
 
-    print("PREDS", len(db.query(prediction_subquery).all()))
-
     output = []
     if any(
         [metric in TEXT_COMPARISON_METRICS for metric in metrics_to_return]

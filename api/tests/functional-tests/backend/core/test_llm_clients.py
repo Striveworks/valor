@@ -125,19 +125,19 @@ FAITHFULNESS_VALID_VERDICTS = """```json
     ]
 }```"""
 
-HALLUCINATION_AGREEMENT_VALID_VERDICTS = """```json
+HALLUCINATION_VALID_VERDICTS = """```json
 {
     "verdicts": [
         {
-            "verdict": "yes"
+            "verdict": "no"
         },
 
         {
-            "verdict": "no",
+            "verdict": "yes",
             "reason": "The text and context disagree on when Abraham Lincoln was born."
         },
         {
-            "verdict": "no",
+            "verdict": "yes",
             "reason": "The text says that Abraham Lincoln lost the election of 1860, but the context says that Abraham Lincoln won the election of 1860."
         }
     ]
@@ -504,7 +504,7 @@ def test_LLMClient(monkeypatch):
             raise BadTestLLMClientsValueError
 
     def _return_valid_hallucination_response(*args, **kwargs):
-        return HALLUCINATION_AGREEMENT_VALID_VERDICTS
+        return HALLUCINATION_VALID_VERDICTS
 
     def _return_invalid1_hallucination_response(*args, **kwargs):
         return """```json

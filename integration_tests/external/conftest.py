@@ -458,7 +458,7 @@ def hallucination_context_list() -> list[list[str]]:
         [
             """George Washington's favorite color was yellow.""",
             """John Adams's favorite color was blue.""",
-            """Thomas Jefferson's favorite color was green.""",
+            """James Madison's favorite color was green.""",
             """All 18 species of penguins are flightless birds.""",
         ],
     ]

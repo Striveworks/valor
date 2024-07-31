@@ -1773,24 +1773,24 @@ class MockLLMClient(LLMClient):
 
             # Hallucination agreement verdicts
             elif (
-                "generate a list of verdicts to indicate whether the given text agrees with EACH context"
+                "generate a list of verdicts to indicate whether the given text contradicts EACH context"
                 in processed_messages[1]["content"]
             ):
                 return """```json
     {
         "verdicts": [
             {
-                "verdict": "yes"
+                "verdict": "no"
             },
             {
-                "verdict": "yes"
+                "verdict": "no"
             },
             {
-                "verdict": "no",
+                "verdict": "yes",
                 "reason": "The text contradicts this context."
             },
             {
-                "verdict": "yes"
+                "verdict": "no"
             }
         ]
     }```"""

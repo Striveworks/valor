@@ -260,7 +260,7 @@ def test_hallucination_with_openai(
             "Hallucination": 0.3333333333333333,
         },
         "uid1": {
-            "Hallucination": 0.5,
+            "Hallucination": 0.25,
         },
     }
 
@@ -501,7 +501,7 @@ def test_hallucination_with_mistral(
             "Hallucination": 0.3333333333333333,
         },
         "uid1": {
-            "Hallucination": 0.5,
+            "Hallucination": 0.25,
         },
     }
 
