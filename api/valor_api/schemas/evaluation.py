@@ -98,6 +98,9 @@ class EvaluationParameters(BaseModel):
                     values.metrics_to_return = [
                         MetricType.IOU,
                         MetricType.mIOU,
+                        MetricType.Precision,
+                        MetricType.Recall,
+                        MetricType.F1,
                     ]
                 case TaskType.TEXT_GENERATION:
                     raise ValueError(
