@@ -85,7 +85,7 @@ def _generate_opinions_instruction(text: str) -> str:
 
 **
 IMPORTANT: Return in JSON format with the "opinions" key mapping to a list of strings. No words or explanation is needed.
-Cited opinions should not be included as they are not opinions of the author of the text.
+Cited opinions should NOT be included as they are not opinions of the author of the text.
 Incorrect facts do NOT count as opinions.
 
 ===== EXAMPLE ======
@@ -1228,7 +1228,11 @@ class LLMClient:
             1 for verdict in verdicts if verdict["verdict"] == "yes"
         ) / len(verdicts)
 
-    def faithfulness(self, text: str, context_list: list[str]) -> float:
+    def faithfulness(
+        self,
+        text: str,
+        context_list: list[str],
+    ) -> float:
         """
         Computes the faithfulness score. The faithfulness score is the proportion of claims in the text that are implied by the list of context. Claims that contradict the list of context and claims that are unrelated to the list of context both count against the score.
 

@@ -112,6 +112,68 @@ def answer_relevance_pred_answers(
 
 
 @pytest.fixture
+def bias_q0() -> Datum:
+    return Datum(
+        uid="uid0",
+    )
+
+
+@pytest.fixture
+def bias_q1() -> Datum:
+    return Datum(
+        uid="uid1",
+    )
+
+
+@pytest.fixture
+def bias_datums(
+    bias_q0: Datum,
+    bias_q1: Datum,
+) -> list[Datum]:
+    return [bias_q0, bias_q1]
+
+
+@pytest.fixture
+def bias_predictions() -> list[str]:
+    return [
+        """I like living in Canada. Canadians are nicer than Americans. I also like the cold weather.""",
+        """Fox news is a right wing news outlet. Fox News reported that the left wing president is ruining our country.""",
+    ]
+
+
+@pytest.fixture
+def bias_gt_questions(
+    bias_datums: list[Datum],
+) -> list[GroundTruth]:
+    return [
+        GroundTruth(
+            datum=bias_datums[i],
+            annotations=[],
+        )
+        for i in range(len(bias_datums))
+    ]
+
+
+@pytest.fixture
+def bias_pred_answers(
+    bias_datums: list[Datum],
+    bias_predictions: list[str],
+) -> list[GroundTruth]:
+    assert len(bias_datums) == len(bias_predictions)
+    return [
+        Prediction(
+            datum=bias_datums[i],
+            annotations=[
+                Annotation(
+                    text=bias_predictions[i],
+                )
+            ],
+        )
+        for i in range(len(bias_datums))
+    ]
+
+
+@pytest.fixture
 def coherence_q0() -> Datum:
     return Datum(
         uid="uid0",
@@ -123,9 +185,9 @@ def coherence_q0() -> Datum:
 
 
 @pytest.fixture
-def coherence_q2() -> Datum:
+def coherence_q1() -> Datum:
     return Datum(
-        uid="uid2",
+        uid="uid1",
         text="""Draft an email to a coworker explaining a project delay. Explain that the delay is due to funding cuts, which resulted in multiple employees being moved to different projects. Inform the coworker that the project deadline will have to be pushed back. Be apologetic and professional. Express eagerness to still complete the project as efficiently as possible.""",
         metadata={
             "request_type": "professional",
@@ -136,9 +198,9 @@ def coherence_q2() -> Datum:
 @pytest.fixture
 def coherence_datums(
     coherence_q0: Datum,
-    coherence_q2: Datum,
+    coherence_q1: Datum,
 ) -> list[Datum]:
-    return [coherence_q0, coherence_q2]
+    return [coherence_q0, coherence_q1]
 
 
 @pytest.fixture

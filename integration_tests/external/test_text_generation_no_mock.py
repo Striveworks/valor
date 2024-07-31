@@ -29,6 +29,7 @@ def _get_metrics(
     pred_answers: list[Prediction],
     metrics_to_return: list[MetricType],
     llm_client: str,
+    timeout: int = 60,
 ):
     dataset = Dataset.create(dataset_name)
     model = Model.create(model_name)
@@ -49,7 +50,16 @@ def _get_metrics(
         llm_api_params=LLM_API_PARAMS[llm_client],
     )
     assert eval_job.id
-    assert eval_job.wait_for_completion(timeout=90) == EvaluationStatus.DONE
+    try:
+        eval_status = eval_job.wait_for_completion(timeout=timeout)
+        if eval_status != EvaluationStatus.DONE:
+            raise Exception(
+                f"Evaluation was not successful for {llm_client} and {metrics_to_return} with status {eval_status}."
+            )
+    except TimeoutError as e:
+        raise Exception(
+            f"Evaluation timed out for {llm_client} and {metrics_to_return}.\nTimeoutError: {e}"
+        )
 
     # Check that the right number of metrics are returned.
     assert len(eval_job.metrics) == (
@@ -93,6 +103,40 @@ def test_answer_relevance_with_openai(
         ), f"Failed for {uid} and {metric_name}"
 
 
+def test_llm_evaluation_bias_with_openai(
+    client: Client,
+    bias_gt_questions: list[GroundTruth],
+    bias_pred_answers: list[Prediction],
+    dataset_name: str,
+    model_name: str,
+):
+    metrics = _get_metrics(
+        dataset_name=dataset_name,
+        model_name=model_name,
+        gt_questions=bias_gt_questions,
+        pred_answers=bias_pred_answers,
+        metrics_to_return=[MetricType.Bias],
+        llm_client="openai",
+    )
+
+    expected_metrics = {
+        "uid0": {
+            "Bias": 0.3333333333333333,
+        },
+        "uid1": {
+            "Bias": 0.0,
+        },
+    }
+
+    # Check that the returned metrics have the right format.
+    for m in metrics:
+        uid = m["parameters"]["datum_uid"]
+        metric_name = m["type"]
+        assert (
+            expected_metrics[uid][metric_name] == m["value"]
+        ), f"Failed for {uid} and {metric_name}"
+
+
 def test_llm_evaluation_coherence_with_openai(
     client: Client,
     coherence_gt_questions: list[GroundTruth],
@@ -113,7 +157,7 @@ def test_llm_evaluation_coherence_with_openai(
         "uid0": {
             "Coherence": 1,
         },
-        "uid2": {
+        "uid1": {
             "Coherence": 5,
         },
     }
@@ -161,6 +205,40 @@ def test_llm_evaluation_answer_relevance_with_mistral(
         ), f"Failed for {uid} and {metric_name}"
 
 
+def test_llm_evaluation_bias_with_mistral(
+    client: Client,
+    bias_gt_questions: list[GroundTruth],
+    bias_pred_answers: list[Prediction],
+    dataset_name: str,
+    model_name: str,
+):
+    metrics = _get_metrics(
+        dataset_name=dataset_name,
+        model_name=model_name,
+        gt_questions=bias_gt_questions,
+        pred_answers=bias_pred_answers,
+        metrics_to_return=[MetricType.Bias],
+        llm_client="mistral",
+    )
+
+    expected_metrics = {
+        "uid0": {
+            "Bias": 0.3333333333333333,
+        },
+        "uid1": {
+            "Bias": 0.0,
+        },
+    }
+
+    # Check that the returned metrics have the right format.
+    for m in metrics:
+        uid = m["parameters"]["datum_uid"]
+        metric_name = m["type"]
+        assert (
+            expected_metrics[uid][metric_name] == m["value"]
+        ), f"Failed for {uid} and {metric_name}"
+
+
 def test_llm_evaluation_coherence_with_mistral(
     client: Client,
     coherence_gt_questions: list[GroundTruth],
@@ -181,7 +259,7 @@ def test_llm_evaluation_coherence_with_mistral(
         "uid0": {
             "Coherence": 1,
         },
-        "uid2": {
+        "uid1": {
             "Coherence": 5,
         },
     }
