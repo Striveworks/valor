@@ -443,12 +443,14 @@ JSON:
 """
 
 
-def _generate_hallucination_agreement_verdicts_instruction(
+def _generate_hallucination_verdicts_instruction(
     text: str,
     context_list: list[str],
 ) -> str:
     """
     Instruction template was copied from DeepEval's codebase https://github.com/confident-ai/deepeval/blob/main/deepeval/metrics/hallucination/template.py.
+
+    The instruction was modified so that verdicts are hallucination verdicts, not agreement verdicts.
 
     Parameters
     ----------
@@ -462,31 +464,36 @@ def _generate_hallucination_agreement_verdicts_instruction(
     str
         The instruction for the llm.
     """
-    return f"""Based on the context list and the text, generate a list of verdicts to indicate whether the given text agrees with EACH context. Each verdict should have one mandatory field: 'verdict', and one optional field: 'reason'.
+    return f"""Based on the context list and the text, generate a list of verdicts to indicate whether the given text contradicts EACH context. Each verdict should have one mandatory field: 'verdict', and one optional field: 'reason'.
 
 **
 IMPORTANT: Return in JSON format with the 'verdicts' key mapping to a list of verdicts.
 Since you will generate a verdict evaluating the text against each context, the number of verdicts SHOULD BE STRICTLY EQUAL to the length of the context list.
-The 'verdict' key should STRICTLY be either 'yes' or 'no', and states whether the given text agrees with the context.
-The 'reason' is the reason for the verdict. Provide a 'reason' ONLY if the verdict is 'no'. When the answer is 'no', try to provide a correction in the reason.
-You should NOT incorporate any prior knowledge you have and take each context at face value. Since you are going to generate a verdict for each context, the number of 'verdicts' SHOULD BE STRICTLY EQUAL to the length of the context list.
-You should FORGIVE cases where the actual output is lacking in detail, you should ONLY provide a 'no' answer if IT IS A CONTRADICTION.
+The 'verdict' key should STRICTLY be either 'yes' or 'no', and states whether or not the text contradicts the context.
+The 'verdict' should be 'yes' if the text contradicts the context.
+The 'verdict' should be 'no' if the text agrees with the context or is unrelated to the context.
+The 'reason' is the reason for the verdict. Provide a 'reason' ONLY if the verdict is 'yes'. When the answer is 'yes', try to provide a correction in the reason.
+You should NOT incorporate any prior knowledge you have and take each context at face value.
 
 ===== EXAMPLE ======
-Example Context List: ["Einstein won the Nobel Prize for his discovery of the photoelectric effect.", "Einstein won the Nobel Prize in 1968."]
+Example Context List: ["Einstein won the Nobel Prize for his discovery of the photoelectric effect.", "Einstein won the Nobel Prize in 1921.", "Einstein immigrated to the United States in 1933."]
 
-Example Text: "Einstein won the Nobel Prize in 1969 for his discovery of the photoelectric effect."
+Example Text: "Einstein won the Nobel Prize in 1922 for his discovery of the photoelectric effect."
 
 Example JSON:
 {{
     "verdicts": [
         {{
+            "verdict": "no",
+            "reason": "Both the text and the context agree that Einstein won the Nobel Prize for his discovery of the photoelectric effect."
+        }},
+        {{
             "verdict": "yes",
-            "reason": "The actual output agrees with the first context which states that Einstein won the Nobel Prize for his discovery of the photoelectric effect."
+            "reason": "The text contradicts this context as the context states that Einstein won the Nobel Prize in 1921, but the text claims Einstein won the Nobel Prize in 1922."
         }},
         {{
             "verdict": "no",
-            "reason": "The actual output contradicts the second context which states that Einstein won the Nobel Prize in 1968, not 1969."
+            "reason": "The text is unrelated to Einstein immigrating to the U.S., so the text does not contradict this context."
         }}
     ]
 }}
@@ -1021,15 +1028,15 @@ class LLMClient:
 
         return verdicts
 
-    def _generate_agreement_verdicts(
+    def _generate_hallucination_verdicts(
         self,
         text: str,
         context_list: list[str],
     ) -> list[dict[str, str]]:
         """
-        Generates a list of agreement verdicts for a list of context, using a call to the LLM API. Used for the hallucination metric.
+        Generates a list of hallucination verdicts for a list of context, using a call to the LLM API.
 
-        The verdict for each context should be no if the text contradicts that context. The verdict should be yes otherwise.
+        The verdict for each context should be 'yes' if the text contradicts that context. The verdict should be 'no' otherwise.
 
         Parameters
         ----------
@@ -1047,7 +1054,7 @@ class LLMClient:
             {"role": "system", "content": DEFAULT_SYSTEM_PROMPT},
             {
                 "role": "user",
-                "content": _generate_hallucination_agreement_verdicts_instruction(
+                "content": _generate_hallucination_verdicts_instruction(
                     text,
                     context_list,
                 ),
@@ -1294,13 +1301,14 @@ class LLMClient:
                 "Hallucination is meaningless if no contexts are provided."
             )
 
-        agreement_verdicts = self._generate_agreement_verdicts(
-            text, context_list
+        verdicts = self._generate_hallucination_verdicts(
+            text,
+            context_list,
         )
 
         return sum(
-            1 for verdict in agreement_verdicts if verdict["verdict"] == "no"
-        ) / len(agreement_verdicts)
+            1 for verdict in verdicts if verdict["verdict"] == "yes"
+        ) / len(verdicts)
 
     def toxicity(
         self,

@@ -415,3 +415,88 @@ def faithfulness_pred_answers(
         )
         for i in range(len(faithfulness_datums))
     ]
+
+
+@pytest.fixture
+def hallucination_q0() -> Datum:
+    return Datum(
+        uid="uid0",
+    )
+
+
+@pytest.fixture
+def hallucination_q1() -> Datum:
+    return Datum(
+        uid="uid1",
+    )
+
+
+@pytest.fixture
+def hallucination_datums(
+    hallucination_q0: Datum,
+    hallucination_q1: Datum,
+) -> list[Datum]:
+    return [hallucination_q0, hallucination_q1]
+
+
+@pytest.fixture
+def hallucination_predictions() -> list[str]:
+    return [
+        """Lewis Hamilton likes spicy wings. Lewis Hamilton also likes soup.""",
+        """George Washington's favorite color was red. John Adams' favorite color was blue. Thomas Jefferson's favorite color was green.""",
+    ]
+
+
+@pytest.fixture
+def hallucination_context_list() -> list[list[str]]:
+    return [
+        [
+            """Lewis Hamilton is an F1 driver.""",
+            """Lewis Hamilton likes spicy wings.""",
+            """Lewis Hamilton hates soup.""",
+        ],
+        [
+            """George Washington's favorite color was yellow.""",
+            """John Adams's favorite color was blue.""",
+            """Thomas Jefferson's favorite color was green.""",
+            """All 18 species of penguins are flightless birds.""",
+        ],
+    ]
+
+
+@pytest.fixture
+def hallucination_gt_questions(
+    hallucination_datums: list[Datum],
+) -> list[GroundTruth]:
+    return [
+        GroundTruth(
+            datum=hallucination_datums[i],
+            annotations=[],
+        )
+        for i in range(len(hallucination_datums))
+    ]
+
+
+@pytest.fixture
+def hallucination_pred_answers(
+    hallucination_datums: list[Datum],
+    hallucination_predictions: list[str],
+    hallucination_context_list: list[list[str]],
+) -> list[GroundTruth]:
+    assert (
+        len(hallucination_datums)
+        == len(hallucination_predictions)
+        == len(hallucination_context_list)
+    )
+    return [
+        Prediction(
+            datum=hallucination_datums[i],
+            annotations=[
+                Annotation(
+                    text=hallucination_predictions[i],
+                    context_list=hallucination_context_list[i],
+                )
+            ],
+        )
+        for i in range(len(hallucination_datums))
+    ]

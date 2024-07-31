@@ -239,6 +239,40 @@ def test_faithfulness_with_openai(
         ), f"Failed for {uid} and {metric_name}"
 
 
+def test_hallucination_with_openai(
+    client: Client,
+    hallucination_gt_questions: list[GroundTruth],
+    hallucination_pred_answers: list[Prediction],
+    dataset_name: str,
+    model_name: str,
+):
+    metrics = _get_metrics(
+        dataset_name=dataset_name,
+        model_name=model_name,
+        gt_questions=hallucination_gt_questions,
+        pred_answers=hallucination_pred_answers,
+        metrics_to_return=[MetricType.Hallucination],
+        llm_client="openai",
+    )
+
+    expected_metrics = {
+        "uid0": {
+            "Hallucination": 0.3333333333333333,
+        },
+        "uid1": {
+            "Hallucination": 0.5,
+        },
+    }
+
+    # Check that the returned metrics have the right format.
+    for m in metrics:
+        uid = m["parameters"]["datum_uid"]
+        metric_name = m["type"]
+        assert (
+            expected_metrics[uid][metric_name] == m["value"]
+        ), f"Failed for {uid} and {metric_name}"
+
+
 def test_answer_relevance_with_mistral(
     client: Client,
     answer_relevance_gt_questions: list[GroundTruth],
@@ -397,6 +431,40 @@ def test_faithfulness_with_mistral(
         },
         "uid1": {
             "Faithfulness": 0.6666666666666666,
+        },
+    }
+
+    # Check that the returned metrics have the right format.
+    for m in metrics:
+        uid = m["parameters"]["datum_uid"]
+        metric_name = m["type"]
+        assert (
+            expected_metrics[uid][metric_name] == m["value"]
+        ), f"Failed for {uid} and {metric_name}"
+
+
+def test_hallucination_with_mistral(
+    client: Client,
+    hallucination_gt_questions: list[GroundTruth],
+    hallucination_pred_answers: list[Prediction],
+    dataset_name: str,
+    model_name: str,
+):
+    metrics = _get_metrics(
+        dataset_name=dataset_name,
+        model_name=model_name,
+        gt_questions=hallucination_gt_questions,
+        pred_answers=hallucination_pred_answers,
+        metrics_to_return=[MetricType.Hallucination],
+        llm_client="mistral",
+    )
+
+    expected_metrics = {
+        "uid0": {
+            "Hallucination": 0.3333333333333333,
+        },
+        "uid1": {
+            "Hallucination": 0.5,
         },
     }
 
