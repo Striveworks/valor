@@ -1,3 +1,4 @@
+import numpy as np
 from sqlalchemy import and_, select
 from sqlalchemy.orm import Session
 
@@ -523,14 +524,78 @@ def test__compute_segmentation_metrics(
         prediction_filter=prediction_filter,
         groundtruth_filter=groundtruth_filter,
     )
-    # should have seven metrics
-    # (one IOU for each of the four labels from the groundtruth set, and three mIOUs for each included label key)
-    assert len(metrics) == 7
+    # should have one IOU, precision, recall, and F1 for each of the four labels from the groundtruth set,
+    # and three mIOUs for each included label key
+    assert len(metrics) == 4 * 4 + 3
     for metric in metrics[:-3]:
-        assert isinstance(metric, schemas.IOUMetric)
+        assert isinstance(
+            metric,
+            (
+                schemas.IOUMetric,
+                schemas.PrecisionMetric,
+                schemas.RecallMetric,
+                schemas.F1Metric,
+            ),
+        )
         assert metric.value < 1.0
     assert all([isinstance(m, schemas.mIOUMetric) for m in metrics[-3:]])
     assert all([m.value < 1.0 for m in metrics[-3:]])
+
+
+def _get_k1_v1_gt_and_pred_masks(
+    gt_semantic_segs_create,
+    pred_semantic_segs_img1_create,
+    pred_semantic_segs_img2_create,
+) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+    """For label k1, v1, returns
+    (the groundtruth mask for img1, the groundtruth mask for img2,
+    the prediction mask for img1, the prediction mask for img2)
+    """
+    img1_k1_v1_gt = [
+        ann.raster.array
+        for gt in gt_semantic_segs_create
+        for ann in gt.annotations
+        if gt.datum.uid == "uid1"
+        and any(
+            label.key == "k1" and label.value == "v1" for label in ann.labels
+        )
+    ]
+    assert len(img1_k1_v1_gt) == 1
+    img1_k1_v1_gt = img1_k1_v1_gt[0]
+
+    img2_k1_v1_gt = [
+        ann.raster.array
+        for gt in gt_semantic_segs_create
+        for ann in gt.annotations
+        if gt.datum.uid == "uid2"
+        and any(
+            label.key == "k1" and label.value == "v1" for label in ann.labels
+        )
+    ]
+    assert len(img2_k1_v1_gt) == 1
+    img2_k1_v1_gt = img2_k1_v1_gt[0]
+
+    img1_k1_v1_pred = [
+        ann.raster.array
+        for ann in pred_semantic_segs_img1_create.annotations
+        if any(
+            label.key == "k1" and label.value == "v1" for label in ann.labels
+        )
+    ]
+    assert len(img1_k1_v1_pred) == 1
+    img1_k1_v1_pred = img1_k1_v1_pred[0]
+
+    img2_k1_v1_pred = [
+        ann.raster.array
+        for ann in pred_semantic_segs_img2_create.annotations
+        if any(
+            label.key == "k1" and label.value == "v1" for label in ann.labels
+        )
+    ]
+    assert len(img2_k1_v1_pred) == 1
+    img2_k1_v1_pred = img2_k1_v1_pred[0]
+
+    return img1_k1_v1_gt, img2_k1_v1_gt, img1_k1_v1_pred, img2_k1_v1_pred
 
 
 def test_compute_semantic_segmentation_metrics(
@@ -575,28 +640,63 @@ def test_compute_semantic_segmentation_metrics(
 
     metrics = evaluations[0].metrics
 
-    expected_metrics = {
-        # none of these three labels have a predicted label
-        schemas.Label(key="k1", value="v2", score=None): 0,
-        schemas.Label(key="k2", value="v2", score=None): 0,
-        schemas.Label(key="k3", value="v3", score=None): 0,
-        # this last metric value should round to .33
-        schemas.Label(key="k1", value="v1", score=None): 0.33,
-    }
+    (
+        img1_k1_v1_gt,
+        img2_k1_v1_gt,
+        img1_k1_v1_pred,
+        img2_k1_v1_pred,
+    ) = _get_k1_v1_gt_and_pred_masks(
+        gt_semantic_segs_create,
+        pred_semantic_segs_img1_create,
+        pred_semantic_segs_img2_create,
+    )
 
-    expected_mIOU_metrics = {"k1": (0.33 + 0) / 2, "k2": 0, "k3": 0}
+    # compute metrics for k1, v1 using numpy and compare
+    tp = np.sum(img1_k1_v1_gt * img1_k1_v1_pred) + np.sum(
+        img2_k1_v1_gt * img2_k1_v1_pred
+    )
+    gt = np.sum(img1_k1_v1_gt) + np.sum(img2_k1_v1_gt)
+    fp = np.sum(img1_k1_v1_pred) + np.sum(img2_k1_v1_pred) - tp
 
-    assert metrics
+    # tolerance
+    eps = 1e-10
+
+    k1_v1_iou = tp / (gt + fp)
+    assert abs(k1_v1_iou - 0.3360515275) < eps
+    k1_v1_precision = tp / (tp + fp)
+    assert abs(k1_v1_precision - 0.500792532581) < eps
+    k1_v1_recall = tp / gt
+    assert abs(k1_v1_recall - 0.5053314377110361) < eps
+    k1_v1_f1 = (
+        2 * k1_v1_precision * k1_v1_recall / (k1_v1_precision + k1_v1_recall)
+    )
+    assert abs(k1_v1_f1 - 0.5030517470145954) < eps
+
+    # should have one IOU, precision, recall, and F1 for each of the four labels from the groundtruth set,
+    # and three mIOUs for each included label key
+    assert metrics is not None
+    assert len(metrics) == 4 * 4 + 3
     for metric in metrics:
         assert isinstance(metric.value, float)
         if metric.type == "mIOU":
             assert metric.parameters
             assert metric.parameters["label_key"]
-            assert (
-                metric.value
-                - expected_mIOU_metrics[metric.parameters["label_key"]]
-            ) <= 0.01
+            if metric.parameters["label_key"] == "k1":
+                assert abs(metric.value - (k1_v1_iou + 0) / 2) < eps
+            else:
+                assert metric.value == 0
         else:
-            # the IOU value for (k1, v1) is bound between .327 and .336
             assert metric.label
-            assert (metric.value - expected_metrics[metric.label]) <= 0.01
+            if metric.label.key != "k1" or metric.label.value != "v1":
+                assert metric.value == 0
+            else:
+                if metric.type == "IOU":
+                    assert abs(metric.value - k1_v1_iou) < eps
+                elif metric.type == "Precision":
+                    assert abs(metric.value - k1_v1_precision) < eps
+                elif metric.type == "Recall":
+                    assert abs(metric.value - k1_v1_recall) < eps
+                elif metric.type == "F1":
+                    assert abs(metric.value - k1_v1_f1) < eps
+                else:
+                    raise ValueError(f"Unexpected metric type: {metric.type}")
