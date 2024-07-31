@@ -7,7 +7,9 @@ from dataclasses import dataclass
 from typing import Sequence, Tuple
 
 from geoalchemy2 import functions as gfunc
-from sqlalchemy import CTE, and_, func, or_, select
+from sqlalchemy import CTE, and_, func, literal, or_, select
+from sqlalchemy.dialects.postgresql import insert
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, aliased
 
 from valor_api import enums, schemas
@@ -23,6 +25,19 @@ from valor_api.backend.metrics.metric_utils import (
 )
 from valor_api.backend.query import generate_query, generate_select
 from valor_api.enums import AnnotationType
+
+
+def profiler(fn):
+    def wrapper(*args, **kwargs):
+        import time
+
+        print(f">>>> {fn.__name__}")
+        start = time.time()
+        result = fn(*args, **kwargs)
+        print(f"<<<< {fn.__name__} - {round(time.time() - start, 2)}")
+        return result
+
+    return wrapper
 
 
 @dataclass
@@ -1000,71 +1015,13 @@ def _aggregate_data(
     return (groundtruths_cte, predictions_cte, labels)
 
 
-def _compute_detection_metrics(
+@profiler
+def _compute_ious(
     db: Session,
-    parameters: schemas.EvaluationParameters,
-    prediction_filter: schemas.Filter,
-    groundtruth_filter: schemas.Filter,
-    target_type: enums.AnnotationType,
-) -> Sequence[
-    schemas.APMetric
-    | schemas.ARMetric
-    | schemas.APMetricAveragedOverIOUs
-    | schemas.mAPMetric
-    | schemas.mARMetric
-    | schemas.mAPMetricAveragedOverIOUs
-    | schemas.PrecisionRecallCurve
-]:
-    """
-    Compute detection metrics. This version of _compute_detection_metrics only does IOU calculations for every groundtruth-prediction pair that shares a common grouper id. It also runs _compute_curves to calculate the PrecisionRecallCurve.
-
-    Parameters
-    ----------
-    db : Session
-        The database Session to query against.
-    parameters : schemas.EvaluationParameters
-        Any user-defined parameters.
-    prediction_filter : schemas.Filter
-        The filter to be used to query predictions.
-    groundtruth_filter : schemas.Filter
-        The filter to be used to query groundtruths.
-    target_type: enums.AnnotationType
-        The annotation type to compute metrics for.
-
-
-    Returns
-    ----------
-    List[schemas.APMetric | schemas.ARMetric | schemas.APMetricAveragedOverIOUs | schemas.mAPMetric | schemas.mARMetric | schemas.mAPMetricAveragedOverIOUs | schemas.PrecisionRecallCurve]
-        A list of metrics to return to the user.
-
-    """
-
-    if (
-        parameters.iou_thresholds_to_return is None
-        or parameters.iou_thresholds_to_compute is None
-        or parameters.recall_score_threshold is None
-        or parameters.pr_curve_iou_threshold is None
-    ):
-        raise ValueError(
-            "iou_thresholds_to_return, iou_thresholds_to_compute, recall_score_threshold, and pr_curve_iou_threshold are required attributes of EvaluationParameters when evaluating detections."
-        )
-
-    if (
-        parameters.recall_score_threshold > 1
-        or parameters.recall_score_threshold < 0
-    ):
-        raise ValueError(
-            "recall_score_threshold should exist in the range 0 <= threshold <= 1."
-        )
-
-    gt, pd, labels = _aggregate_data(
-        db=db,
-        groundtruth_filter=groundtruth_filter,
-        prediction_filter=prediction_filter,
-        target_type=target_type,
-        label_map=parameters.label_map,
-    )
-
+    gt: CTE,
+    pd: CTE,
+    target_type: AnnotationType,
+):
     # Alias the annotation table (required for joining twice)
     gt_annotation = aliased(models.Annotation)
     pd_annotation = aliased(models.Annotation)
@@ -1083,24 +1040,32 @@ def _compute_detection_metrics(
                 pd.c.label_id == gt.c.label_id,
             ),
         )
+        .outerjoin(
+            models.IoU,
+            and_(
+                models.IoU.groundtruth_annotation_id == gt.c.annotation_id,
+                models.IoU.prediction_annotation_id == pd.c.annotation_id,
+            ),
+        )
+        .where(models.IoU.iou.is_(None))
         .distinct()
         .cte()
     )
 
-    gt_distinct = (
-        select(gt_pd_pairs.c.gt_annotation_id.label("annotation_id"))
-        .distinct()
-        .subquery()
-    )
-
-    pd_distinct = (
-        select(gt_pd_pairs.c.pd_annotation_id.label("annotation_id"))
-        .distinct()
-        .subquery()
-    )
-
     # IOU Computation Block
     if target_type == AnnotationType.RASTER:
+
+        gt_distinct = (
+            select(gt_pd_pairs.c.gt_annotation_id.label("annotation_id"))
+            .distinct()
+            .subquery()
+        )
+
+        pd_distinct = (
+            select(gt_pd_pairs.c.pd_annotation_id.label("annotation_id"))
+            .distinct()
+            .subquery()
+        )
 
         gt_counts = (
             select(
@@ -1175,10 +1140,11 @@ def _compute_detection_metrics(
                         - gt_pd_counts.c.intersection
                     ),
                     0,
-                ).label("iou"),
+                ),
+                literal(target_type.value),
             )
             .select_from(gt_pd_counts)
-            .subquery()
+            .cte()
         )
 
     else:
@@ -1192,7 +1158,8 @@ def _compute_detection_metrics(
             select(
                 gt_pd_pairs.c.gt_annotation_id,
                 gt_pd_pairs.c.pd_annotation_id,
-                iou_computation.label("iou"),
+                iou_computation,
+                literal(target_type.value),
             )
             .select_from(gt_pd_pairs)
             .join(
@@ -1205,6 +1172,95 @@ def _compute_detection_metrics(
             )
             .cte()
         )
+
+    insert_ious = insert(models.IoU).from_select(
+        [
+            "groundtruth_annotation_id",
+            "prediction_annotation_id",
+            "iou",
+            "type",
+        ],
+        gt_pd_ious,
+    )
+    try:
+        db.execute(insert_ious)
+        db.commit()
+    except IntegrityError as e:
+        db.rollback()
+        raise e
+
+
+def _compute_detection_metrics(
+    db: Session,
+    parameters: schemas.EvaluationParameters,
+    prediction_filter: schemas.Filter,
+    groundtruth_filter: schemas.Filter,
+    target_type: enums.AnnotationType,
+) -> Sequence[
+    schemas.APMetric
+    | schemas.ARMetric
+    | schemas.APMetricAveragedOverIOUs
+    | schemas.mAPMetric
+    | schemas.mARMetric
+    | schemas.mAPMetricAveragedOverIOUs
+    | schemas.PrecisionRecallCurve
+]:
+    """
+    Compute detection metrics. This version of _compute_detection_metrics only does IOU calculations for every groundtruth-prediction pair that shares a common grouper id. It also runs _compute_curves to calculate the PrecisionRecallCurve.
+
+    Parameters
+    ----------
+    db : Session
+        The database Session to query against.
+    parameters : schemas.EvaluationParameters
+        Any user-defined parameters.
+    prediction_filter : schemas.Filter
+        The filter to be used to query predictions.
+    groundtruth_filter : schemas.Filter
+        The filter to be used to query groundtruths.
+    target_type: enums.AnnotationType
+        The annotation type to compute metrics for.
+
+
+    Returns
+    ----------
+    List[schemas.APMetric | schemas.ARMetric | schemas.APMetricAveragedOverIOUs | schemas.mAPMetric | schemas.mARMetric | schemas.mAPMetricAveragedOverIOUs | schemas.PrecisionRecallCurve]
+        A list of metrics to return to the user.
+
+    """
+
+    if (
+        parameters.iou_thresholds_to_return is None
+        or parameters.iou_thresholds_to_compute is None
+        or parameters.recall_score_threshold is None
+        or parameters.pr_curve_iou_threshold is None
+    ):
+        raise ValueError(
+            "iou_thresholds_to_return, iou_thresholds_to_compute, recall_score_threshold, and pr_curve_iou_threshold are required attributes of EvaluationParameters when evaluating detections."
+        )
+
+    if (
+        parameters.recall_score_threshold > 1
+        or parameters.recall_score_threshold < 0
+    ):
+        raise ValueError(
+            "recall_score_threshold should exist in the range 0 <= threshold <= 1."
+        )
+
+    gt, pd, labels = _aggregate_data(
+        db=db,
+        groundtruth_filter=groundtruth_filter,
+        prediction_filter=prediction_filter,
+        target_type=target_type,
+        label_map=parameters.label_map,
+    )
+
+    _compute_ious(
+        db=db,
+        gt=gt,
+        pd=pd,
+        target_type=target_type,
+    )
 
     ious = (
         select(
@@ -1219,7 +1275,7 @@ def _compute_detection_metrics(
             pd.c.label_id.label("pd_label_id"),
             pd.c.score.label("score"),
             func.coalesce(
-                gt_pd_ious.c.iou,
+                models.IoU.iou,
                 0,
             ).label("iou"),
             gt.c.geojson.label("gt_geojson"),
@@ -1233,18 +1289,24 @@ def _compute_detection_metrics(
             ),
         )
         .outerjoin(
-            gt_pd_ious,
+            models.IoU,
             and_(
-                gt_pd_ious.c.gt_annotation_id == gt.c.annotation_id,
-                gt_pd_ious.c.pd_annotation_id == pd.c.annotation_id,
+                models.IoU.groundtruth_annotation_id == gt.c.annotation_id,
+                models.IoU.prediction_annotation_id == pd.c.annotation_id,
             ),
         )
         .subquery()
     )
 
-    ordered_ious = (
-        db.query(ious).order_by(-ious.c.score, -ious.c.iou, ious.c.gt_id).all()
-    )
+    @profiler
+    def _ordered_ious():
+        return (
+            db.query(ious)
+            .order_by(-ious.c.score, -ious.c.iou, ious.c.gt_id)
+            .all()
+        )
+
+    ordered_ious = _ordered_ious()
 
     matched_pd_set = set()
     matched_sorted_ranked_pairs = defaultdict(list)
