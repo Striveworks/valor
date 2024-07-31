@@ -296,6 +296,7 @@ class IoU(Base):
     )
     iou: Mapped[float] = mapped_column(nullable=False)
     type: Mapped[str] = mapped_column(nullable=False)
+    created_at: Mapped[datetime.datetime] = mapped_column(default=func.now())
 
     # relationships
     groundtruth = relationship(

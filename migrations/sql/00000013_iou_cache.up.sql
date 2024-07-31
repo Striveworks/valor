@@ -6,6 +6,7 @@ create table iou
     type varchar not null,
     iou double precision not null,
     unique (groundtruth_annotation_id, prediction_annotation_id, type)
+    created_at timestamp not null,
 );
 
 create index ix_iou_id
