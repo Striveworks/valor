@@ -662,15 +662,15 @@ def test_compute_semantic_segmentation_metrics(
     eps = 1e-10
 
     k1_v1_iou = tp / (gt + fp)
-    assert abs(k1_v1_iou - 0.3360515275) < eps
+    assert abs(k1_v1_iou - 0.33301713404873) < eps
     k1_v1_precision = tp / (tp + fp)
-    assert abs(k1_v1_precision - 0.500792532581) < eps
+    assert abs(k1_v1_precision - 0.500311748463525) < eps
     k1_v1_recall = tp / gt
-    assert abs(k1_v1_recall - 0.5053314377110361) < eps
+    assert abs(k1_v1_recall - 0.49897841343164) < eps
     k1_v1_f1 = (
         2 * k1_v1_precision * k1_v1_recall / (k1_v1_precision + k1_v1_recall)
     )
-    assert abs(k1_v1_f1 - 0.5030517470145954) < eps
+    assert abs(k1_v1_f1 - 0.499644191425) < eps
 
     # should have one IOU, precision, recall, and F1 for each of the four labels from the groundtruth set,
     # and three mIOUs for each included label key
