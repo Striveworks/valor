@@ -47,7 +47,8 @@ def test_evaluate_segmentation(
 
     metrics = eval_job.metrics
 
-    assert len(metrics) == 4
+    # iou, precision, recall, f1 for each of the two labels and one mIOU for each label
+    assert len(metrics) == 4 * 2 + 2
     assert set(
         [
             (m["label"]["key"], m["label"]["value"])
@@ -55,7 +56,13 @@ def test_evaluate_segmentation(
             if "label" in m
         ]
     ) == {("k2", "v2"), ("k3", "v3")}
-    assert set([m["type"] for m in metrics]) == {"IOU", "mIOU"}
+    assert set([m["type"] for m in metrics]) == {
+        "IOU",
+        "mIOU",
+        "Precision",
+        "Recall",
+        "F1",
+    }
 
     # check metadata
     assert eval_job.meta["datums"] == 2
@@ -79,7 +86,13 @@ def test_evaluate_segmentation(
     ) == set(selected_metrics)
 
     # check that passing None to metrics returns the assumed list of default metrics
-    default_metrics = ["IOU", "mIOU"]
+    default_metrics = [
+        "IOU",
+        "mIOU",
+        "Precision",
+        "Recall",
+        "F1",
+    ]
 
     eval_job = model.evaluate_segmentation(dataset, metrics_to_return=None)
     assert eval_job.wait_for_completion(timeout=30) == EvaluationStatus.DONE
@@ -125,7 +138,7 @@ def test_evaluate_segmentation_with_filter(
 
     metrics = eval_job.metrics
 
-    assert len(metrics) == 2
+    assert len(metrics) == 5
     assert set(
         [
             (m["label"]["key"], m["label"]["value"])
@@ -133,7 +146,13 @@ def test_evaluate_segmentation_with_filter(
             if "label" in m
         ]
     ) == {("k2", "v2")}
-    assert set([m["type"] for m in metrics]) == {"IOU", "mIOU"}
+    assert set([m["type"] for m in metrics]) == {
+        "IOU",
+        "mIOU",
+        "Precision",
+        "Recall",
+        "F1",
+    }
 
 
 def test_evaluate_segmentation_with_label_maps(
@@ -174,7 +193,7 @@ def test_evaluate_segmentation_with_label_maps(
 
     metrics = eval_job.metrics
 
-    assert len(metrics) == 4
+    assert len(metrics) == 10
     assert set(
         [
             (m["label"]["key"], m["label"]["value"])
@@ -182,7 +201,13 @@ def test_evaluate_segmentation_with_label_maps(
             if "label" in m
         ]
     ) == {("k2", "v2"), ("k3", "v3")}
-    assert set([m["type"] for m in metrics]) == {"IOU", "mIOU"}
+    assert set([m["type"] for m in metrics]) == {
+        "IOU",
+        "mIOU",
+        "Precision",
+        "Recall",
+        "F1",
+    }
 
     # now do the same thing, but with a label map
     eval_job = model.evaluate_segmentation(
@@ -201,7 +226,7 @@ def test_evaluate_segmentation_with_label_maps(
     metrics = eval_job.metrics
 
     # there's now only two metrics, since all three (k, v) combinations have been mapped to (foo, bar)
-    assert len(metrics) == 2
+    assert len(metrics) == 5
     assert set(
         [
             (m["label"]["key"], m["label"]["value"])
@@ -209,7 +234,13 @@ def test_evaluate_segmentation_with_label_maps(
             if "label" in m
         ]
     ) == {("foo", "bar"), ("foo", "bar")}
-    assert set([m["type"] for m in metrics]) == {"IOU", "mIOU"}
+    assert set([m["type"] for m in metrics]) == {
+        "IOU",
+        "mIOU",
+        "Precision",
+        "Recall",
+        "F1",
+    }
 
     # check metadata
     assert eval_job.meta["datums"] == 2
@@ -264,6 +295,28 @@ def test_evaluate_segmentation_model_with_no_predictions(
     expected_metrics = [
         {"type": "IOU", "value": 0.0, "label": {"key": "k2", "value": "v2"}},
         {"type": "IOU", "value": 0.0, "label": {"key": "k3", "value": "v3"}},
+        {
+            "type": "Precision",
+            "value": 0.0,
+            "label": {"key": "k2", "value": "v2"},
+        },
+        {
+            "type": "Precision",
+            "value": 0.0,
+            "label": {"key": "k3", "value": "v3"},
+        },
+        {
+            "type": "Recall",
+            "value": 0.0,
+            "label": {"key": "k2", "value": "v2"},
+        },
+        {
+            "type": "Recall",
+            "value": 0.0,
+            "label": {"key": "k3", "value": "v3"},
+        },
+        {"type": "F1", "value": 0.0, "label": {"key": "k2", "value": "v2"}},
+        {"type": "F1", "value": 0.0, "label": {"key": "k3", "value": "v3"}},
         {"type": "mIOU", "parameters": {"label_key": "k2"}, "value": 0.0},
         {"type": "mIOU", "parameters": {"label_key": "k3"}, "value": 0.0},
     ]
