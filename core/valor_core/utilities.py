@@ -1,6 +1,23 @@
+from typing import Dict, List, Optional, Union
+
 import pandas as pd
-from valor_core import schemas, enums
-from typing import Union, List
+from valor_core import enums, schemas
+
+
+def _validate_label_map(
+    label_map: Optional[Dict[schemas.Label, schemas.Label]],
+) -> Union[List[List[List[str]]], None]:
+    """Validate the label mapping if necessary."""
+
+    if not isinstance(label_map, dict) or not all(
+        [
+            isinstance(key, schemas.Label) and isinstance(value, schemas.Label)
+            for key, value in label_map.items()
+        ]
+    ):
+        raise TypeError(
+            "label_map should be a dictionary with valid Labels for both the key and value."
+        )
 
 
 # TODO these shouldn't be private
@@ -15,7 +32,6 @@ def _validate_parameters(
                 enums.MetricType.F1,
                 enums.MetricType.Accuracy,
                 enums.MetricType.ROCAUC,
-                enums.MetricType.PrecisionRecallCurve,
             ],
             enums.TaskType.OBJECT_DETECTION: [
                 enums.MetricType.AP,
@@ -24,9 +40,11 @@ def _validate_parameters(
                 enums.MetricType.APAveragedOverIOUs,
                 enums.MetricType.mAR,
                 enums.MetricType.mAPAveragedOverIOUs,
-                enums.MetricType.PrecisionRecallCurve,
             ],
         }[task_type]
+
+    if parameters.label_map:
+        _validate_label_map(parameters.label_map)
 
     return parameters
 
@@ -104,7 +122,31 @@ def convert_groundtruth_or_prediction_to_dataframe(
                         }
                     )
 
-    return pd.DataFrame(output)
+    return (
+        pd.DataFrame(output)
+        if output
+        else pd.DataFrame(
+            [],
+            columns=[
+                "dataset_name",
+                "datum_uid",
+                "datum_id",
+                "datum_metadata",
+                "annotation_id",
+                "annotation_metadata",
+                "bounding_box",
+                "raster",
+                "embedding",
+                "polygon",
+                "is_instance",
+                "label_key",
+                "label_value",
+                "score",
+                "label_id",
+                "id",
+            ],
+        )
+    )
 
 
 def validate_groundtruth_dataframe(
@@ -142,4 +184,75 @@ def validate_prediction_dataframe(
     else:
         raise ValueError(
             "Could not validate object as it's neither a dataframe nor a list of Valor objects."
+        )
+
+
+def validate_matching_label_keys(
+    groundtruths: pd.DataFrame,
+    predictions: pd.DataFrame,
+    label_map,
+) -> None:
+    """
+    # TODO
+    Validates that every datum has the same set of label keys for both ground truths and predictions. This check is only needed for classification tasks.
+
+    Parameters
+    ----------
+    db : Session
+        The database Session to query against.
+    prediction_filter : schemas.Filter
+        The filter to be used to query predictions.
+    groundtruth_filter : schemas.Filter
+        The filter to be used to query groundtruths.
+    label_map: LabelMapType, optional
+        Optional mapping of individual labels to a grouper label. Useful when you need to evaluate performance using labels that differ across datasets and models.
+
+
+    Raises
+    -------
+    ValueError
+        If the distinct ground truth label keys don't match the distinct prediction label keys for any datum.
+    """
+    # allow for case where our predictions don't have any labels
+    if len(predictions) == 0:
+        return
+
+    if not label_map:
+        label_map = dict()
+
+    # get the label keys per datum
+    groundtruths["mapped_groundtruth_label_keys"] = groundtruths.apply(
+        lambda row: label_map.get(
+            schemas.Label(key=row["label_key"], value=row["label_value"]),
+            schemas.Label(key=row["label_key"], value=row["label_value"]),
+        ).key,
+        axis=1,
+    )
+
+    predictions["mapped_prediction_label_keys"] = predictions.apply(
+        lambda row: label_map.get(
+            schemas.Label(key=row["label_key"], value=row["label_value"]),
+            schemas.Label(key=row["label_key"], value=row["label_value"]),
+        ).key,
+        axis=1,
+    )
+
+    gt_label_keys_per_datum = groundtruths.groupby(
+        ["datum_id"], as_index=False
+    )["mapped_groundtruth_label_keys"].unique()
+
+    pd_label_keys_per_datum = predictions.groupby(
+        ["datum_id"], as_index=False
+    )["mapped_prediction_label_keys"].unique()
+
+    joined = gt_label_keys_per_datum.merge(
+        pd_label_keys_per_datum,
+        on=["datum_id"],
+    )
+
+    if not joined["mapped_groundtruth_label_keys"].equals(
+        joined["mapped_prediction_label_keys"]
+    ):
+        raise ValueError(
+            "Ground truth label keys must match prediction label keys for classification tasks."
         )

@@ -1,13 +1,13 @@
-from collections import defaultdict
-from typing import Dict, List, Tuple, Union, Optional
-
 import time
+from collections import defaultdict
+from typing import Dict, List, Optional, Tuple, Union
+
 import numpy as np
 import pandas as pd
 from valor_core import enums, schemas, utilities
 
 # TODO move this out
-LabelMapType = Union[List[List[List[str]]], List]
+LabelMapType = Dict[schemas.Label, schemas.Label]
 
 
 def _create_classification_grouper_mappings(
@@ -17,8 +17,11 @@ def _create_classification_grouper_mappings(
     """Create grouper mappings for use when evaluating classifications."""
     mapping_dict = dict()
     if label_map:
-        for label, grouper in label_map:
-            mapping_dict[tuple(label)] = tuple(grouper)
+        for label, grouper in label_map.items():
+            mapping_dict[(label.key, label.value)] = (
+                grouper.key,
+                grouper.value,
+            )
 
     # define mappers to connect groupers with labels
     label_value_to_grouper_value = dict()
@@ -1136,10 +1139,7 @@ def _compute_clf_metrics(
     metrics_to_return: List[enums.MetricType],
     label_map: Optional[LabelMapType],
     unique_labels: list,
-) -> Tuple[
-    List[dict],
-    List[dict],
-]:
+) -> Tuple[List[dict], List[dict],]:
     """
     Compute classification metrics.
 
@@ -1223,17 +1223,7 @@ def _compute_clf_metrics(
 def evaluate_classification(
     groundtruths: Union[pd.DataFrame, List[schemas.GroundTruth]],
     predictions: Union[pd.DataFrame, List[schemas.Prediction]],
-    parameters: schemas.EvaluationParameters = schemas.EvaluationParameters(
-        label_map=[],
-        metrics_to_return=[
-            enums.MetricType.Precision,
-            enums.MetricType.Recall,
-            enums.MetricType.F1,
-            enums.MetricType.Accuracy,
-            enums.MetricType.ROCAUC,
-            enums.MetricType.PrecisionRecallCurve,
-        ],
-    ),
+    parameters: schemas.EvaluationParameters = schemas.EvaluationParameters(),
 ) -> schemas.Evaluation:
     """
     Create classification metrics. This function is intended to be run using FastAPI's `BackgroundTasks`.
@@ -1250,6 +1240,12 @@ def evaluate_classification(
     )
     groundtruth_df = utilities.validate_groundtruth_dataframe(
         groundtruths, task_type=enums.TaskType.CLASSIFICATION
+    )
+
+    utilities.validate_matching_label_keys(
+        groundtruths=groundtruth_df,
+        predictions=prediction_df,
+        label_map=parameters.label_map,
     )
 
     unique_labels = list(

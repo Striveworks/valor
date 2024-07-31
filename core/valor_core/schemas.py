@@ -1,7 +1,7 @@
 import json
 import math
 from dataclasses import dataclass
-from typing import Dict, List, Optional, Tuple, Union, Any
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 import numpy as np
 from valor_core import enums
@@ -631,7 +631,7 @@ class EvaluationParameters:
         The maximum number of datum examples to store when calculating PR curves.
     """
 
-    label_map: Optional[List[List[List[str]]]] = None
+    label_map: Optional[Dict[Label, Label]] = None
     metrics_to_return: Optional[List[enums.MetricType]] = None
     convert_annotations_to_type: Optional[enums.AnnotationType] = None
     iou_thresholds_to_compute: Optional[List[float]] = None
