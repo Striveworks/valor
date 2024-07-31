@@ -103,7 +103,7 @@ def test_answer_relevance_with_openai(
         ), f"Failed for {uid} and {metric_name}"
 
 
-def test_llm_evaluation_bias_with_openai(
+def test_bias_with_openai(
     client: Client,
     bias_gt_questions: list[GroundTruth],
     bias_pred_answers: list[Prediction],
@@ -137,7 +137,7 @@ def test_llm_evaluation_bias_with_openai(
         ), f"Failed for {uid} and {metric_name}"
 
 
-def test_llm_evaluation_coherence_with_openai(
+def test_coherence_with_openai(
     client: Client,
     coherence_gt_questions: list[GroundTruth],
     coherence_pred_answers: list[Prediction],
@@ -171,7 +171,75 @@ def test_llm_evaluation_coherence_with_openai(
         ), f"Failed for {uid} and {metric_name}"
 
 
-def test_llm_evaluation_answer_relevance_with_mistral(
+def test_context_relevance_with_openai(
+    client: Client,
+    context_relevance_gt_questions: list[GroundTruth],
+    context_relevance_pred_answers: list[Prediction],
+    dataset_name: str,
+    model_name: str,
+):
+    metrics = _get_metrics(
+        dataset_name=dataset_name,
+        model_name=model_name,
+        gt_questions=context_relevance_gt_questions,
+        pred_answers=context_relevance_pred_answers,
+        metrics_to_return=[MetricType.ContextRelevance],
+        llm_client="openai",
+    )
+
+    expected_metrics = {
+        "uid0": {
+            "ContextRelevance": 0.25,
+        },
+        "uid1": {
+            "ContextRelevance": 0.75,
+        },
+    }
+
+    # Check that the returned metrics have the right format.
+    for m in metrics:
+        uid = m["parameters"]["datum_uid"]
+        metric_name = m["type"]
+        assert (
+            expected_metrics[uid][metric_name] == m["value"]
+        ), f"Failed for {uid} and {metric_name}"
+
+
+def test_faithfulness_with_openai(
+    client: Client,
+    faithfulness_gt_questions: list[GroundTruth],
+    faithfulness_pred_answers: list[Prediction],
+    dataset_name: str,
+    model_name: str,
+):
+    metrics = _get_metrics(
+        dataset_name=dataset_name,
+        model_name=model_name,
+        gt_questions=faithfulness_gt_questions,
+        pred_answers=faithfulness_pred_answers,
+        metrics_to_return=[MetricType.Faithfulness],
+        llm_client="openai",
+    )
+
+    expected_metrics = {
+        "uid0": {
+            "Faithfulness": 0.5,
+        },
+        "uid1": {
+            "Faithfulness": 0.6666666666666666,
+        },
+    }
+
+    # Check that the returned metrics have the right format.
+    for m in metrics:
+        uid = m["parameters"]["datum_uid"]
+        metric_name = m["type"]
+        assert (
+            expected_metrics[uid][metric_name] == m["value"]
+        ), f"Failed for {uid} and {metric_name}"
+
+
+def test_answer_relevance_with_mistral(
     client: Client,
     answer_relevance_gt_questions: list[GroundTruth],
     answer_relevance_pred_answers: list[Prediction],
@@ -205,7 +273,7 @@ def test_llm_evaluation_answer_relevance_with_mistral(
         ), f"Failed for {uid} and {metric_name}"
 
 
-def test_llm_evaluation_bias_with_mistral(
+def test_bias_with_mistral(
     client: Client,
     bias_gt_questions: list[GroundTruth],
     bias_pred_answers: list[Prediction],
@@ -239,7 +307,7 @@ def test_llm_evaluation_bias_with_mistral(
         ), f"Failed for {uid} and {metric_name}"
 
 
-def test_llm_evaluation_coherence_with_mistral(
+def test_coherence_with_mistral(
     client: Client,
     coherence_gt_questions: list[GroundTruth],
     coherence_pred_answers: list[Prediction],
@@ -261,6 +329,74 @@ def test_llm_evaluation_coherence_with_mistral(
         },
         "uid1": {
             "Coherence": 5,
+        },
+    }
+
+    # Check that the returned metrics have the right format.
+    for m in metrics:
+        uid = m["parameters"]["datum_uid"]
+        metric_name = m["type"]
+        assert (
+            expected_metrics[uid][metric_name] == m["value"]
+        ), f"Failed for {uid} and {metric_name}"
+
+
+def test_context_relevance_with_mistral(
+    client: Client,
+    context_relevance_gt_questions: list[GroundTruth],
+    context_relevance_pred_answers: list[Prediction],
+    dataset_name: str,
+    model_name: str,
+):
+    metrics = _get_metrics(
+        dataset_name=dataset_name,
+        model_name=model_name,
+        gt_questions=context_relevance_gt_questions,
+        pred_answers=context_relevance_pred_answers,
+        metrics_to_return=[MetricType.ContextRelevance],
+        llm_client="mistral",
+    )
+
+    expected_metrics = {
+        "uid0": {
+            "ContextRelevance": 0.25,
+        },
+        "uid1": {
+            "ContextRelevance": 0.75,
+        },
+    }
+
+    # Check that the returned metrics have the right format.
+    for m in metrics:
+        uid = m["parameters"]["datum_uid"]
+        metric_name = m["type"]
+        assert (
+            expected_metrics[uid][metric_name] == m["value"]
+        ), f"Failed for {uid} and {metric_name}"
+
+
+def test_faithfulness_with_mistral(
+    client: Client,
+    faithfulness_gt_questions: list[GroundTruth],
+    faithfulness_pred_answers: list[Prediction],
+    dataset_name: str,
+    model_name: str,
+):
+    metrics = _get_metrics(
+        dataset_name=dataset_name,
+        model_name=model_name,
+        gt_questions=faithfulness_gt_questions,
+        pred_answers=faithfulness_pred_answers,
+        metrics_to_return=[MetricType.Faithfulness],
+        llm_client="mistral",
+    )
+
+    expected_metrics = {
+        "uid0": {
+            "Faithfulness": 0.5,
+        },
+        "uid1": {
+            "Faithfulness": 0.6666666666666666,
         },
     }
 

@@ -33,12 +33,12 @@ def answer_relevance_datums(
     return [answer_relevance_q0, answer_relevance_q1]
 
 
-@pytest.fixture
-def answer_relevance_references() -> list[str]:
-    return [
-        """John Adams and Alexander Hamilton did not get along.""",  # same as the prediction
-        """Yes, Lincoln won the election of 1860.""",  # very different from the prediction
-    ]
+# @pytest.fixture
+# def answer_relevance_references() -> list[str]:
+#     return [
+#         """John Adams and Alexander Hamilton did not get along.""",  # same as the prediction
+#         """Yes, Lincoln won the election of 1860.""",  # very different from the prediction
+#     ]
 
 
 @pytest.fixture
@@ -70,16 +70,16 @@ def answer_relevance_context_list() -> list[list[str]]:
 @pytest.fixture
 def answer_relevance_gt_questions(
     answer_relevance_datums: list[Datum],
-    answer_relevance_references: list[str],
+    # answer_relevance_references: list[str],
 ) -> list[GroundTruth]:
-    assert len(answer_relevance_datums) == len(answer_relevance_references)
+    # assert len(answer_relevance_datums) == len(answer_relevance_references)
     return [
         GroundTruth(
             datum=answer_relevance_datums[i],
             annotations=[
-                Annotation(text=answer_relevance_references[i]),
-                Annotation(text="some other text"),
-                Annotation(text="some final text"),
+                # Annotation(text=answer_relevance_references[i]),
+                # Annotation(text="some other text"),
+                # Annotation(text="some final text"),
             ],
         )
         for i in range(len(answer_relevance_datums))
@@ -240,4 +240,178 @@ def coherence_pred_answers(
             ],
         )
         for i in range(len(coherence_datums))
+    ]
+
+
+@pytest.fixture
+def context_relevance_q0() -> Datum:
+    return Datum(
+        uid="uid0",
+        text="""What are some foods that Lewis Hamilton likes?""",
+    )
+
+
+@pytest.fixture
+def context_relevance_q1() -> Datum:
+    return Datum(
+        uid="uid1",
+        text="""Name the first three United States presidents.""",
+    )
+
+
+@pytest.fixture
+def context_relevance_datums(
+    context_relevance_q0: Datum,
+    context_relevance_q1: Datum,
+) -> list[Datum]:
+    return [context_relevance_q0, context_relevance_q1]
+
+
+@pytest.fixture
+def context_relevance_predictions() -> list[str]:
+    return [
+        """prediction 0""",
+        """prediction 1""",
+    ]
+
+
+@pytest.fixture
+def context_relevance_context_list() -> list[list[str]]:
+    return [
+        [
+            """Lewis Hamilton is an F1 driver.""",
+            """Lewis Hamilton likes spicy wings.""",
+            """The F1 driver with the most wins of all time is Lewis Hamilton.""",
+            """Taylor Swift likes chicken tendors.""",
+        ],
+        [
+            """The first president of the United States was George Washington.""",
+            """The second president of the United States was John Adams.""",
+            """The third president of the United States was Thomas Jefferson.""",
+            """The fourth president of the United States was James Madison.""",
+        ],
+    ]
+
+
+@pytest.fixture
+def context_relevance_gt_questions(
+    context_relevance_datums: list[Datum],
+) -> list[GroundTruth]:
+    return [
+        GroundTruth(
+            datum=context_relevance_datums[i],
+            annotations=[],
+        )
+        for i in range(len(context_relevance_datums))
+    ]
+
+
+@pytest.fixture
+def context_relevance_pred_answers(
+    context_relevance_datums: list[Datum],
+    context_relevance_predictions: list[str],
+    context_relevance_context_list: list[list[str]],
+) -> list[GroundTruth]:
+    assert (
+        len(context_relevance_datums)
+        == len(context_relevance_predictions)
+        == len(context_relevance_context_list)
+    )
+    return [
+        Prediction(
+            datum=context_relevance_datums[i],
+            annotations=[
+                Annotation(
+                    text=context_relevance_predictions[i],
+                    context_list=context_relevance_context_list[i],
+                )
+            ],
+        )
+        for i in range(len(context_relevance_datums))
+    ]
+
+
+@pytest.fixture
+def faithfulness_q0() -> Datum:
+    return Datum(
+        uid="uid0",
+    )
+
+
+@pytest.fixture
+def faithfulness_q1() -> Datum:
+    return Datum(
+        uid="uid1",
+    )
+
+
+@pytest.fixture
+def faithfulness_datums(
+    faithfulness_q0: Datum,
+    faithfulness_q1: Datum,
+) -> list[Datum]:
+    return [faithfulness_q0, faithfulness_q1]
+
+
+@pytest.fixture
+def faithfulness_predictions() -> list[str]:
+    return [
+        """Lewis Hamilton likes spicy wings. Lewis Hamilton also likes soup.""",
+        """George Washington's favorite color was yellow. John Adams' favorite color was blue. Thomas Jefferson's favorite color was purple.""",
+    ]
+
+
+@pytest.fixture
+def faithfulness_context_list() -> list[list[str]]:
+    return [
+        [
+            """Lewis Hamilton is an F1 driver.""",
+            """Lewis Hamilton likes spicy wings.""",
+            """The F1 driver with the most wins of all time is Lewis Hamilton.""",
+            """Taylor Swift likes chicken tendors.""",
+        ],
+        [
+            """George Washington's favorite color was yellow.""",
+            """John Adams's favorite color was blue.""",
+            """Thomas Jefferson's favorite color was green.""",
+            """James Madison's favorite color was purple.""",
+        ],
+    ]
+
+
+@pytest.fixture
+def faithfulness_gt_questions(
+    faithfulness_datums: list[Datum],
+) -> list[GroundTruth]:
+    return [
+        GroundTruth(
+            datum=faithfulness_datums[i],
+            annotations=[],
+        )
+        for i in range(len(faithfulness_datums))
+    ]
+
+
+@pytest.fixture
+def faithfulness_pred_answers(
+    faithfulness_datums: list[Datum],
+    faithfulness_predictions: list[str],
+    faithfulness_context_list: list[list[str]],
+) -> list[GroundTruth]:
+    assert (
+        len(faithfulness_datums)
+        == len(faithfulness_predictions)
+        == len(faithfulness_context_list)
+    )
+    return [
+        Prediction(
+            datum=faithfulness_datums[i],
+            annotations=[
+                Annotation(
+                    text=faithfulness_predictions[i],
+                    context_list=faithfulness_context_list[i],
+                )
+            ],
+        )
+        for i in range(len(faithfulness_datums))
     ]
