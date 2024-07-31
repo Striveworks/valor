@@ -1114,6 +1114,18 @@ def test_multipolygon():
     with pytest.raises(ValueError):
         objcls(permutations[0][0]).area
 
+    # test `from_polygons` class method
+
+    poly1_boundary = [(0, 0), (1, 1), (0, 1), (0, 0)]
+    poly2_boundary = [(0, 10), (5, 5), (0, 5), (0, 10)]
+    poly2_hole = [(0.1, 0.1), (0.9, 0.9), (0.1, 0.9), (0.1, 0.1)]
+    polys = [Polygon([poly1_boundary]), Polygon([poly2_boundary, poly2_hole])]
+    multi_poly = MultiPolygon.from_polygons(polys)
+    assert multi_poly.get_value() == [
+        [poly1_boundary],
+        [poly2_boundary, poly2_hole],
+    ]
+
 
 def test_nullable():
 

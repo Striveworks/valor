@@ -1,5 +1,4 @@
 import bisect
-import heapq
 import random
 from collections import defaultdict
 from dataclasses import dataclass
@@ -38,33 +37,6 @@ class RankedPair:
     score: float
     iou: float
     is_match: bool
-
-
-def _calculate_101_pt_interp(precisions, recalls) -> float:
-    """Use the 101 point interpolation method (following torchmetrics)"""
-
-    assert len(precisions) == len(recalls)
-    if len(precisions) == 0:
-        return 0
-
-    data = list(zip(precisions, recalls))
-    data.sort(key=lambda x: x[1])
-    # negative is because we want a max heap
-    prec_heap = [[-precision, i] for i, (precision, _) in enumerate(data)]
-    heapq.heapify(prec_heap)
-
-    cutoff_idx = 0
-    ret = 0
-    for r in [0.01 * i for i in range(101)]:
-        while cutoff_idx < len(data) and data[cutoff_idx][1] < r:
-            cutoff_idx += 1
-        while prec_heap and prec_heap[0][1] < cutoff_idx:
-            heapq.heappop(prec_heap)
-        if cutoff_idx >= len(data):
-            continue
-        ret -= prec_heap[0][0]
-
-    return ret / 101
 
 
 def _average_ignore_minus_one(a):

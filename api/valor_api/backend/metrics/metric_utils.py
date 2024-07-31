@@ -1,5 +1,6 @@
+import json
 from collections import defaultdict
-from typing import Callable, Sequence
+from typing import Any, Callable, Sequence
 
 from sqlalchemy import ColumnElement, Label, and_, case, or_, select
 from sqlalchemy.exc import IntegrityError
@@ -9,6 +10,7 @@ from sqlalchemy.sql import func
 from valor_api import enums, logger, schemas
 from valor_api.backend import core, models
 from valor_api.backend.query import generate_select
+from valor_api.exceptions import InvalidLLMResponseError
 
 LabelMapType = list[list[list[str]]]
 
@@ -123,6 +125,15 @@ def commit_results(
         | schemas.mIOUMetric
         | schemas.PrecisionRecallCurve
         | schemas.DetailedPrecisionRecallCurve
+        | schemas.AnswerRelevanceMetric
+        | schemas.BiasMetric
+        | schemas.BLEUMetric
+        | schemas.CoherenceMetric
+        | schemas.ContextRelevanceMetric
+        | schemas.FaithfulnessMetric
+        | schemas.HallucinationMetric
+        | schemas.ROUGEMetric
+        | schemas.ToxicityMetric
     ],
     evaluation_id: int,
 ):
@@ -452,39 +463,92 @@ def prepare_filter_for_evaluation(
         schemas.LogicalFunction.and_(
             filters.annotations,
             task_type_condition,
+            dataset_conditions,
         )
         if filters.annotations
         else task_type_condition
     )
 
-    # create new groundtruth filter
-    filters.groundtruths = (
-        schemas.LogicalFunction.and_(
-            filters.groundtruths,
-            dataset_conditions,
-        )
-        if filters.groundtruths
-        else dataset_conditions
-    )
+    if task_type == enums.TaskType.TEXT_GENERATION:
 
-    # create new prediction filter
-    filters.predictions = (
-        schemas.LogicalFunction.and_(
-            filters.predictions,
-            dataset_conditions,
-            model_condition,
-        )
-        if filters.predictions
-        else schemas.LogicalFunction.and_(
-            dataset_conditions,
-            model_condition,
-        )
-    )
+        filters.groundtruths = None
+        filters.predictions = None
 
-    groundtruth_filter = filters.model_copy()
-    groundtruth_filter.predictions = None
+        # create new annotations filter
+        groundtruth_filter = filters.model_copy()
 
-    predictions_filter = filters.model_copy()
-    predictions_filter.groundtruths = None
+        predictions_filter = filters.model_copy()
+        predictions_filter.annotations = (
+            schemas.LogicalFunction.and_(
+                predictions_filter.annotations,
+                model_condition,
+            )
+            if predictions_filter.annotations
+            else model_condition
+        )
+
+    else:
+
+        # create new groundtruth filter
+        filters.groundtruths = (
+            schemas.LogicalFunction.and_(
+                filters.groundtruths,
+                dataset_conditions,
+            )
+            if filters.groundtruths
+            else dataset_conditions
+        )
+
+        # create new prediction filter
+        filters.predictions = (
+            schemas.LogicalFunction.and_(
+                filters.predictions,
+                dataset_conditions,
+                model_condition,
+            )
+            if filters.predictions
+            else schemas.LogicalFunction.and_(
+                dataset_conditions,
+                model_condition,
+            )
+        )
+
+        groundtruth_filter = filters.model_copy()
+        groundtruth_filter.predictions = None
+
+        predictions_filter = filters.model_copy()
+        predictions_filter.groundtruths = None
 
     return (groundtruth_filter, predictions_filter)
+
+
+def trim_and_load_json(input_string: str) -> Any:
+    """
+    Trims and loads input_string as a json. Adapted from DeepEval https://github.com/confident-ai/deepeval/blob/dc117a5ea2160dbb61909c537908a41f7da4dfe7/deepeval/metrics/utils.py#L50
+
+    Parameters
+    ----------
+    input_string : str
+        The input string to trim and load as a json.
+
+    Returns
+    -------
+    Any
+        The json object.
+    """
+    start = input_string.find("{")
+    end = input_string.rfind("}") + 1
+
+    if end == 0 and start != -1:
+        input_string = input_string + "}"
+        end = len(input_string)
+
+    jsonStr = input_string[start:end] if start != -1 and end != 0 else ""
+
+    try:
+        return json.loads(jsonStr)
+    except json.JSONDecodeError as e:
+        raise InvalidLLMResponseError(
+            "Evaluation LLM outputted an invalid JSON. Please use a better evaluation model. JSONDecodeError: "
+            + str(e)
+        )

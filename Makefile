@@ -46,3 +46,6 @@ start-server:
 
 integration-tests:
 	python -m pytest -v ./integration_tests/client
+
+external-integration-tests:
+	python -m pytest -v ./integration_tests/external

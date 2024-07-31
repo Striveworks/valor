@@ -249,16 +249,28 @@ def _validate_evaluation_filter(
         task_type=parameters.task_type,
     )
 
-    datasets = (
-        generate_query(
-            models.Dataset.name,
-            db=db,
-            filters=groundtruth_filter,
-            label_source=models.GroundTruth,
+    if parameters.task_type == enums.TaskType.TEXT_GENERATION:
+        datasets = (
+            generate_query(
+                models.Dataset.name,
+                db=db,
+                filters=groundtruth_filter,
+                label_source=models.Annotation,
+            )
+            .distinct()
+            .all()
         )
-        .distinct()
-        .all()
-    )
+    else:
+        datasets = (
+            generate_query(
+                models.Dataset.name,
+                db=db,
+                filters=groundtruth_filter,
+                label_source=models.GroundTruth,
+            )
+            .distinct()
+            .all()
+        )
 
     # verify datasets have data for this evaluation
     if not datasets:
@@ -404,6 +416,8 @@ def _create_responses(
                         "missing_pred_labels": missing_pred_labels,
                         "ignored_pred_labels": ignored_pred_labels,
                     }
+                case enums.TaskType.TEXT_GENERATION:
+                    kwargs = {}
                 case _:
                     raise NotImplementedError
         except ValidationError as e:

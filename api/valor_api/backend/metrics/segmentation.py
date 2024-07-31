@@ -17,7 +17,13 @@ from valor_api.backend.metrics.metric_utils import (
     validate_computation,
 )
 from valor_api.backend.query import generate_select
-from valor_api.schemas.metrics import IOUMetric, mIOUMetric
+from valor_api.schemas.metrics import (
+    F1Metric,
+    IOUMetric,
+    PrecisionMetric,
+    RecallMetric,
+    mIOUMetric,
+)
 
 
 def _count_true_positives(
@@ -94,7 +100,7 @@ def _compute_iou(
     gt_count = _count_groundtruths(groundtruths=groundtruths)
     pd_count = _count_predictions(predictions=predictions)
 
-    ious = (
+    ious_precisions_recalls = (
         db.query(
             gt_count.c.label_id,
             case(
@@ -105,13 +111,26 @@ def _compute_iou(
                     / (gt_count.c.count + pd_count.c.count - tp_count.c.count)
                 ),
             ).label("iou"),
+            case(
+                (gt_count.c.count == 0, None),
+                (pd_count.c.count == 0, 0.0),
+                else_=tp_count.c.count / pd_count.c.count,
+            ).label("precision"),
+            case(
+                (gt_count.c.count == 0, None),
+                (pd_count.c.count == 0, 0.0),
+                else_=tp_count.c.count / gt_count.c.count,
+            ).label("recall"),
         )
         .select_from(gt_count)
         .join(pd_count, pd_count.c.label_id == gt_count.c.label_id)
         .join(tp_count, tp_count.c.label_id == gt_count.c.label_id)
         .all()
     )
-    label_id_to_iou = {label_id: iou for label_id, iou in ious}
+    label_id_to_iou_precision_recall = {
+        label_id: (iou, p, r)
+        for label_id, iou, p, r in ious_precisions_recalls
+    }
 
     groundtruth_label_ids = db.scalars(
         select(groundtruths.c.label_id).distinct()
@@ -124,16 +143,30 @@ def _compute_iou(
         label_key, label_value = labels[label_id]
         label = schemas.Label(key=label_key, value=label_value)
 
-        iou = label_id_to_iou.get(label_id, 0.0)
+        iou, precision, recall = label_id_to_iou_precision_recall.get(
+            label_id, (0.0, 0.0, 0.0)
+        )
 
         if iou is None:
             continue
 
-        metrics.append(
-            IOUMetric(
-                label=label,
-                value=float(iou),
-            )
+        metrics.extend(
+            [
+                IOUMetric(
+                    label=label,
+                    value=float(iou),
+                ),
+                RecallMetric(label=label, value=float(recall)),
+                PrecisionMetric(label=label, value=float(precision)),
+                F1Metric(
+                    label=label,
+                    value=(
+                        2 * (precision * recall) / (precision + recall)
+                        if precision + recall != 0
+                        else 0.0
+                    ),
+                ),
+            ]
         )
         ious_per_key[label_key].append(float(iou))
 
@@ -328,7 +361,7 @@ def _compute_segmentation_metrics(
 
     Returns
     ----------
-    List[schemas.IOUMetric | mIOUMetric]
+    List[schemas.IOUMetric | mIOUMetric | PrecisionMetric | RecallMetric | F1Metric | AccuracyMetric]:
         A list containing one `IOUMetric` for each label in ground truth and one `mIOUMetric` for the mean _compute_IOU over all labels.
     """
 

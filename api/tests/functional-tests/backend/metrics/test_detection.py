@@ -1222,7 +1222,7 @@ def test__compute_detection(
         },
         {
             "ious": iou_thresholds,
-            "value": 0.556,  # note COCO had 0.556
+            "value": 0.556,
             "label": {"key": "class", "value": "49"},
         },
         {
@@ -1459,7 +1459,7 @@ def test__compute_detection(
         },
         {
             "ious": iou_thresholds,
-            "value": 0.556,  # note COCO had 0.556
+            "value": 0.556,
             "label": {"key": "class", "value": "49"},
         },
         {
@@ -1696,7 +1696,7 @@ def test__compute_detection(
         },
         {
             "ious": iou_thresholds,
-            "value": 0.556,  # note COCO had 0.556
+            "value": 0.556,
             "label": {"key": "class", "value": "49"},
         },
         {
