@@ -14,6 +14,7 @@ from mistralai.models.common import UsageInfo
 from openai import OpenAIError
 from openai.types.chat import ChatCompletionMessage
 from openai.types.chat.chat_completion import ChatCompletion, Choice
+from openai.types.completion_usage import CompletionUsage
 from pydantic import ValidationError
 
 from valor_api.backend.core.llm_clients import (
@@ -930,6 +931,9 @@ def test_WrappedOpenAIClient():
                     ),
                 )
             ],
+            usage=CompletionUsage(
+                completion_tokens=1, prompt_tokens=2, total_tokens=3
+            ),
             created=int(datetime.datetime.now().timestamp()),
         )
 
@@ -950,6 +954,9 @@ def test_WrappedOpenAIClient():
                     ),
                 )
             ],
+            usage=CompletionUsage(
+                completion_tokens=1, prompt_tokens=2, total_tokens=3
+            ),
             created=int(datetime.datetime.now().timestamp()),
         )
 
@@ -968,6 +975,9 @@ def test_WrappedOpenAIClient():
                     ),
                 )
             ],
+            usage=CompletionUsage(
+                completion_tokens=1, prompt_tokens=2, total_tokens=3
+            ),
             created=int(datetime.datetime.now().timestamp()),
         )
 
@@ -988,6 +998,9 @@ def test_WrappedOpenAIClient():
                     ),
                 )
             ],
+            usage=CompletionUsage(
+                completion_tokens=1, prompt_tokens=2, total_tokens=3
+            ),
             created=int(datetime.datetime.now().timestamp()),
         )
 

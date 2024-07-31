@@ -214,18 +214,16 @@ def _setup_llm_client(
     if "client" in llm_api_params and "api_url" in llm_api_params:
         raise ValueError("Cannot specify both client and api_url.")
 
-    client = llm_api_params.get("client")
-    if client is not None:
-        if client == "openai":
+    client_name = llm_api_params.get("client")
+    if client_name is not None:
+        if client_name == "openai":
             client_cls = WrappedOpenAIClient
-        elif client == "mistral":
+        elif client_name == "mistral":
             client_cls = WrappedMistralAIClient
-        elif client == "mock":
+        elif client_name == "mock":
             client_cls = MockLLMClient
         else:
-            raise ValueError(
-                f"Client {llm_api_params['client']} is not supported."
-            )
+            raise ValueError(f"Client {client_name} is not supported.")
     else:
         raise NotImplementedError(
             "Support has not been implemented for api_url."
