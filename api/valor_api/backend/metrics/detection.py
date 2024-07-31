@@ -27,19 +27,6 @@ from valor_api.backend.query import generate_query, generate_select
 from valor_api.enums import AnnotationType
 
 
-def profiler(fn):
-    def wrapper(*args, **kwargs):
-        import time
-
-        print(f">>>> {fn.__name__}")
-        start = time.time()
-        result = fn(*args, **kwargs)
-        print(f"<<<< {fn.__name__} - {round(time.time() - start, 2)}")
-        return result
-
-    return wrapper
-
-
 @dataclass
 class RankedPair:
     dataset_name: str
@@ -1015,13 +1002,16 @@ def _aggregate_data(
     return (groundtruths_cte, predictions_cte, labels)
 
 
-@profiler
 def _compute_ious(
     db: Session,
     gt: CTE,
     pd: CTE,
     target_type: AnnotationType,
 ):
+    """
+    Computes and caches IoU's.
+    """
+
     # Alias the annotation table (required for joining twice)
     gt_annotation = aliased(models.Annotation)
     pd_annotation = aliased(models.Annotation)
@@ -1297,16 +1287,9 @@ def _compute_detection_metrics(
         )
         .subquery()
     )
-
-    @profiler
-    def _ordered_ious():
-        return (
-            db.query(ious)
-            .order_by(-ious.c.score, -ious.c.iou, ious.c.gt_id)
-            .all()
-        )
-
-    ordered_ious = _ordered_ious()
+    ordered_ious = (
+        db.query(ious).order_by(-ious.c.score, -ious.c.iou, ious.c.gt_id).all()
+    )
 
     matched_pd_set = set()
     matched_sorted_ranked_pairs = defaultdict(list)
