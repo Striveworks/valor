@@ -27,6 +27,8 @@ jobs:
       - name: install client
         run: pip install -e ".[test]"
         working-directory: ./client
+      - name: sleep
+        run: sleep 30
       # - name: run classification benchmarks
       #   run: python benchmark_script.py
       #   working-directory: ./integration_tests/benchmarks/classification
