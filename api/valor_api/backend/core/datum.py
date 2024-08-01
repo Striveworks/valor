@@ -39,7 +39,7 @@ def create_datums(
     values = [
         {
             "uid": datum.uid,
-            "text": None,
+            "textblob": None,
             "dataset_id": dataset.id,
             "meta": datum.metadata,
         }
@@ -123,7 +123,7 @@ def create_datum(
     try:
         row = models.Datum(
             uid=datum.uid,
-            text=None,
+            textblob=None,
             dataset_id=dataset.id,
             meta=datum.metadata,
         )
