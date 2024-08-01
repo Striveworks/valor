@@ -55,6 +55,14 @@ def _create_embedding(
     return row.id
 
 
+def _format_context(
+    context: str | list[str] | None,
+) -> list[str] | None:
+    if isinstance(context, str):
+        context = [context]
+    return context
+
+
 def create_annotations(
     db: Session,
     annotations: list[list[schemas.Annotation]],
@@ -107,6 +115,8 @@ def create_annotations(
             "embedding_id": _create_embedding(
                 db=db, value=annotation.embedding
             ),
+            "text": None,
+            "context": None,
             "is_instance": annotation.is_instance,
             "implied_task_types": annotation.implied_task_types,
         }
@@ -165,6 +175,8 @@ def create_skipped_annotations(
             polygon=None,
             raster=None,
             embedding_id=None,
+            text=None,
+            context=None,
             is_instance=False,
             implied_task_types=[TaskType.EMPTY],
         )
