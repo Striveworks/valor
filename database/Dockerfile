@@ -1,7 +1,7 @@
 ARG BASE_IMAGE_TAG=latest
 FROM bitnami/postgresql:$BASE_IMAGE_TAG as base-image
 ARG PG_MAJOR=16
-ARG PG_VECTOR=0.6.2
+ARG PG_VECTOR=0.7.3
 USER 0
 RUN apt-get update && \
 		apt-mark hold locales && \
