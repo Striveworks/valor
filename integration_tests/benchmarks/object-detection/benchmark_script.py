@@ -1,7 +1,7 @@
 import json
 import os
+import time
 from datetime import datetime
-from time import time
 
 import requests
 
@@ -84,18 +84,16 @@ def ingest_groundtruths_and_predictions(
                                     for label in ann["labels"]
                                 ]
                             ),
-                            raster=(
-                                Raster.from_geometry(
-                                    geometry=MultiPolygon(
-                                        [
-                                            _convert_wkt_to_coordinates(
-                                                ann["raster"]
-                                            )
-                                        ]
-                                    ),
-                                    height=data["datum_metadata"]["height"],
-                                    width=data["datum_metadata"]["width"],
-                                )
+                            raster=Raster.from_geometry(
+                                geometry=MultiPolygon(
+                                    [
+                                        _convert_wkt_to_coordinates(
+                                            ann["raster"]
+                                        )
+                                    ]
+                                ),
+                                height=data["datum_metadata"]["height"],
+                                width=data["datum_metadata"]["width"],
                             ),
                         )
                         for ann in data["groundtruth_annotations"]
@@ -122,20 +120,16 @@ def ingest_groundtruths_and_predictions(
                                     for label in ann["labels"]
                                 ]
                             ),
-                            raster=(
-                                Raster.from_geometry(
-                                    geometry=MultiPolygon(
-                                        [
-                                            _convert_wkt_to_coordinates(
-                                                ann["raster"]
-                                            )
-                                        ]
-                                    ),
-                                    height=data["datum_metadata"]["height"],
-                                    width=data["datum_metadata"]["width"],
-                                )
-                                if ann["raster"]
-                                else None
+                            raster=Raster.from_geometry(
+                                geometry=MultiPolygon(
+                                    [
+                                        _convert_wkt_to_coordinates(
+                                            ann["raster"]
+                                        )
+                                    ]
+                                ),
+                                height=data["datum_metadata"]["height"],
+                                width=data["datum_metadata"]["width"],
                             ),
                         )
                         for ann in data["prediction_annotations"]
@@ -226,12 +220,14 @@ def run_benchmarking_analysis(
         # convert dict into list of tuples so we can slice it
         raw_data_tuple = [(key, value) for key, value in raw_data.items()]
 
-        start_time = time()
+        start_time = time.time()
 
         ingest_groundtruths_and_predictions(
             dset=dset, model=model, raw=raw_data_tuple, pair_limit=limit
         )
-        ingest_time = time() - start_time
+        ingest_time = time.time() - start_time
+
+        time.sleep(30)
 
         try:
             eval_ = run_base_evaluation(dset=dset, model=model)
@@ -240,10 +236,10 @@ def run_benchmarking_analysis(
                 f"Evaluation timed out when processing {limit} datums."
             )
 
-        start = time()
+        start = time.time()
         client.delete_dataset(dset.name, timeout=30)
         client.delete_model(model.name, timeout=30)
-        deletion_time = time() - start
+        deletion_time = time.time() - start
 
         results = {
             "number_of_datums": limit,
