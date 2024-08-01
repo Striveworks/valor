@@ -73,8 +73,7 @@ class GroundTruth(Base):
         ForeignKey("annotation.id"), nullable=True
     )
     label_id: Mapped[int] = mapped_column(
-        ForeignKey("label.id"),
-        nullable=False,
+        ForeignKey("label.id"), nullable=False
     )
     created_at: Mapped[datetime.datetime] = mapped_column(default=func.now())
 
@@ -100,8 +99,7 @@ class Prediction(Base):
         ForeignKey("annotation.id"), nullable=True
     )
     label_id: Mapped[int] = mapped_column(
-        ForeignKey("label.id"),
-        nullable=False,
+        ForeignKey("label.id"), nullable=False
     )
     score: Mapped[float] = mapped_column(nullable=True)
     created_at: Mapped[datetime.datetime] = mapped_column(default=func.now())
@@ -124,8 +122,6 @@ class Annotation(Base):
     model_id: Mapped[int] = mapped_column(
         ForeignKey("model.id"), nullable=True, index=True
     )
-    context = mapped_column(JSONB)
-
     meta = mapped_column(JSONB)
     created_at: Mapped[datetime.datetime] = mapped_column(default=func.now())
 
@@ -159,7 +155,6 @@ class Datum(Base):
         ForeignKey("dataset.id"), nullable=False
     )
     uid: Mapped[str] = mapped_column(nullable=False)
-    textblob: Mapped[str] = mapped_column(nullable=True)
     meta = mapped_column(JSONB)
     created_at: Mapped[datetime.datetime] = mapped_column(default=func.now())
 
