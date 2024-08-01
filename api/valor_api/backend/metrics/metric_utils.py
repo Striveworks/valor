@@ -1,7 +1,7 @@
 from collections import defaultdict
 from typing import Callable, Sequence
 
-from sqlalchemy import select
+from sqlalchemy import ColumnElement, Label, and_, case, or_, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 from sqlalchemy.sql import func
@@ -13,190 +13,83 @@ from valor_api.backend.query import generate_select
 LabelMapType = list[list[list[str]]]
 
 
-def _create_detection_grouper_mappings(
-    mapping_dict: dict[tuple[str, ...], tuple[str, ...]],
+def create_label_mapping(
+    db: Session,
     labels: list[models.Label],
-) -> dict[str, dict]:
-    """Create grouper mappings for use when evaluating detections."""
-
-    label_id_to_grouper_id_mapping = {}
-    label_id_to_grouper_key_mapping = {}
-    grouper_id_to_grouper_label_mapping = {}
-    grouper_id_to_label_ids_mapping = defaultdict(list)
-
-    for label in labels:
-        mapped_key, mapped_value = mapping_dict.get(
-            (label.key, label.value), (label.key, label.value)
-        )
-        # create an integer to track each group by
-        grouper_id = hash((mapped_key, mapped_value))
-        # create a separate grouper_key_id which is used to cross-join labels that share a given key
-        # when computing IOUs for PrecisionRecallCurve
-        grouper_key_id = mapped_key
-
-        label_id_to_grouper_id_mapping[label.id] = grouper_id
-        label_id_to_grouper_key_mapping[label.id] = grouper_key_id
-        grouper_id_to_grouper_label_mapping[grouper_id] = schemas.Label(
-            key=mapped_key, value=mapped_value
-        )
-        grouper_id_to_label_ids_mapping[grouper_id].append(label.id)
-
-    return {
-        "label_id_to_grouper_id_mapping": label_id_to_grouper_id_mapping,
-        "label_id_to_grouper_key_mapping": label_id_to_grouper_key_mapping,
-        "grouper_id_to_label_ids_mapping": grouper_id_to_label_ids_mapping,
-        "grouper_id_to_grouper_label_mapping": grouper_id_to_grouper_label_mapping,
-    }
-
-
-def _create_segmentation_grouper_mappings(
-    mapping_dict: dict[tuple[str, ...], tuple[str, ...]],
-    labels: list[models.Label],
-) -> dict[str, dict]:
-    """Create grouper mappings for use when evaluating segmentations."""
-
-    grouper_id_to_grouper_label_mapping = {}
-    grouper_id_to_label_ids_mapping = defaultdict(list)
-
-    for label in labels:
-        mapped_key, mapped_value = mapping_dict.get(
-            (label.key, label.value), (label.key, label.value)
-        )
-        # create an integer to track each group by
-        grouper_id = hash((mapped_key, mapped_value))
-
-        grouper_id_to_grouper_label_mapping[grouper_id] = schemas.Label(
-            key=mapped_key, value=mapped_value
-        )
-        grouper_id_to_label_ids_mapping[grouper_id].append(label.id)
-
-    return {
-        "grouper_id_to_label_ids_mapping": grouper_id_to_label_ids_mapping,
-        "grouper_id_to_grouper_label_mapping": grouper_id_to_grouper_label_mapping,
-    }
-
-
-def _create_classification_grouper_mappings(
-    mapping_dict: dict[tuple[str, ...], tuple[str, ...]],
-    labels: list[models.Label],
-) -> dict[str, dict]:
-    """Create grouper mappings for use when evaluating classifications."""
-
-    # define mappers to connect groupers with labels
-    label_value_to_grouper_value = dict()
-    grouper_key_to_labels_mapping = defaultdict(lambda: defaultdict(set))
-    grouper_key_to_label_keys_mapping = defaultdict(set)
-
-    for label in labels:
-        # the grouper should equal the (label.key, label.value) if it wasn't mapped by the user
-        grouper_key, grouper_value = mapping_dict.get(
-            (label.key, label.value), (label.key, label.value)
-        )
-
-        label_value_to_grouper_value[label.value] = grouper_value
-        grouper_key_to_label_keys_mapping[grouper_key].add(label.key)
-        grouper_key_to_labels_mapping[grouper_key][grouper_value].add(label)
-
-    return {
-        "label_value_to_grouper_value": label_value_to_grouper_value,
-        "grouper_key_to_labels_mapping": grouper_key_to_labels_mapping,
-        "grouper_key_to_label_keys_mapping": grouper_key_to_label_keys_mapping,
-    }
-
-
-def create_grouper_mappings(
-    labels: list,
     label_map: LabelMapType | None,
-    evaluation_type: enums.TaskType,
-) -> dict[str, dict]:
+) -> ColumnElement[bool] | Label[int]:
     """
     Creates a dictionary of mappings that connect each label with a "grouper" (i.e., a unique ID-key-value combination that can represent one or more labels).
     These mappings enable Valor to group multiple labels together using the label_map argument in each evaluation function.
 
     Parameters
     ----------
-    labels : list
-        A list of all labels.
+    db : Session
+        The database session.
+    labels : list[models.Label]
+        A list of labels that exist for this evaluation job.
     label_map: LabelMapType, optional
         An optional label map to use when grouping labels. If None is passed, this function will still create the appropriate mappings using individual labels.
-    evaluation_type : str
-        The type of evaluation to create mappings for.
 
     Returns
     ----------
-    dict[str, dict[str | int, any]]
-        A dictionary of mappings that are used at evaluation time to group multiple labels together.
+    ColumnElement[bool] | Label[int]
+        A label id statement.
     """
 
-    mapping_functions = {
-        enums.TaskType.CLASSIFICATION: _create_classification_grouper_mappings,
-        enums.TaskType.OBJECT_DETECTION: _create_detection_grouper_mappings,
-        enums.TaskType.SEMANTIC_SEGMENTATION: _create_segmentation_grouper_mappings,
-    }
-    if evaluation_type not in mapping_functions.keys():
-        raise KeyError(
-            f"evaluation_type must be one of {mapping_functions.keys()}"
+    if label_map:
+        # add grouper labels to database (if they don't exist)
+        existing_labels = {(label.key, label.value) for label in labels}
+        mapping_dict = {
+            tuple(label): tuple(grouper) for label, grouper in label_map
+        }
+        grouper_labels = set(mapping_dict.values())
+        missing_grouper_labels = grouper_labels - existing_labels
+        core.create_labels(
+            db=db,
+            labels=[
+                schemas.Label(key=key, value=value)
+                for key, value in missing_grouper_labels
+            ],
         )
 
-    # create a map of labels to groupers; will be empty if the user didn't pass a label_map
-    mapping_dict = (
-        {tuple(label): tuple(grouper) for label, grouper in label_map}
-        if label_map
-        else {}
-    )
+        # cache label ids
+        all_labels = grouper_labels.union(existing_labels)
+        map_label_to_id = {
+            (label.key, label.value): label.id
+            for label in db.query(models.Label)
+            .where(
+                or_(
+                    *[
+                        and_(
+                            models.Label.key == label[0],
+                            models.Label.value == label[1],
+                        )
+                        for label in all_labels
+                    ]
+                )
+            )
+            .all()
+        }
 
-    return mapping_functions[evaluation_type](mapping_dict, labels)
+        # create label id mapping
+        label_mapping = [
+            (
+                models.Label.id == map_label_to_id[label],  # type: ignore - pyright doesnt see tuple[str, str]
+                map_label_to_id[grouper],  # type: ignore - pyright doesnt see tuple[str, str]
+            )
+            for label, grouper in mapping_dict.items()
+        ]
 
-
-def get_or_create_row(
-    db: Session,
-    model_class: type,
-    mapping: dict,
-    columns_to_ignore: list[str] | None = None,
-):
-    """
-    Tries to get the row defined by mapping. If that exists then its mapped object is returned. Otherwise a row is created by `mapping` and the newly created object is returned.
-
-    Parameters
-    ----------
-    db : Session
-        The database Session to query against.
-    model_class : type
-        The type of model.
-    mapping : dict
-        The mapping to use when creating the row.
-    columns_to_ignore : List[str]
-        Specifies any columns to ignore in forming the WHERE expression. This can be used for numerical columns that might slightly differ but are essentially the same.
-
-    Returns
-    ----------
-    any
-        A model class object.
-    """
-    columns_to_ignore = columns_to_ignore or []
-
-    # create the query from the mapping
-    where_expressions = [
-        (getattr(model_class, k) == v)
-        for k, v in mapping.items()
-        if k not in columns_to_ignore
-    ]
-    where_expression = where_expressions[0]
-    for exp in where_expressions[1:]:
-        where_expression = where_expression & exp
-
-    db_element = db.scalar(select(model_class).where(where_expression))
-
-    if not db_element:
-        db_element = model_class(**mapping)
-        db.add(db_element)
-        db.flush()
-        db.commit()
-
-    return db_element
+        return case(
+            *label_mapping,
+            else_=models.Label.id,
+        ).label("label_id")
+    else:
+        return models.Label.id.label("label_id")
 
 
-def create_metric_mappings(
+def commit_results(
     db: Session,
     metrics: Sequence[
         schemas.APMetric
@@ -217,7 +110,7 @@ def create_metric_mappings(
         | schemas.DetailedPrecisionRecallCurve
     ],
     evaluation_id: int,
-) -> list[dict]:
+):
     """
     Create metric mappings from a list of metrics.
 
@@ -229,13 +122,10 @@ def create_metric_mappings(
         A list of metrics to create mappings for.
     evaluation_id : int
         The id of the evaluation job.
-
-    Returns
-    ----------
-    List[Dict]
-        A list of metric mappings.
     """
-    ret = []
+
+    # cache labels for metrics that use them
+    cached_labels = defaultdict(list)
     for metric in metrics:
         if isinstance(
             metric,
@@ -249,29 +139,69 @@ def create_metric_mappings(
                 schemas.IOUMetric,
             ),
         ):
-            label = core.fetch_label(
-                db=db,
-                label=metric.label,
+            cached_labels[metric.label.key].append(metric.label.value)
+    cached_label_to_id = {
+        schemas.Label(key=row.key, value=row.value): row.id
+        for row in (
+            db.query(models.Label)
+            .where(
+                or_(
+                    *[
+                        and_(
+                            models.Label.key == key,
+                            models.Label.value.in_(values),
+                        )
+                        for key, values in cached_labels.items()
+                    ]
+                )
             )
+            .all()
+        )
+    }
 
-            # create the label in the database if it doesn't exist
-            # this is useful if the user maps existing labels to a non-existant grouping label
-            if not label:
-                label_map = core.create_labels(db=db, labels=[metric.label])
-                label_id = list(label_map.values())[0]
-            else:
-                label_id = label.id
-
-            ret.append(
-                metric.db_mapping(
-                    label_id=label_id,
-                    evaluation_id=evaluation_id,
+    metric_rows = []
+    confusion_rows = []
+    for metric in metrics:
+        if isinstance(
+            metric,
+            (
+                schemas.APMetric,
+                schemas.ARMetric,
+                schemas.APMetricAveragedOverIOUs,
+                schemas.PrecisionMetric,
+                schemas.RecallMetric,
+                schemas.F1Metric,
+                schemas.IOUMetric,
+            ),
+        ):
+            metric_rows.append(
+                models.Metric(
+                    **metric.db_mapping(
+                        label_id=cached_label_to_id[metric.label],
+                        evaluation_id=evaluation_id,
+                    )
+                )
+            )
+        elif isinstance(metric, schemas.ConfusionMatrix):
+            confusion_rows.append(
+                models.ConfusionMatrix(
+                    **metric.db_mapping(evaluation_id=evaluation_id)
                 )
             )
         else:
-            ret.append(metric.db_mapping(evaluation_id=evaluation_id))
+            metric_rows.append(
+                models.Metric(**metric.db_mapping(evaluation_id=evaluation_id))
+            )
 
-    return ret
+    try:
+        if metric_rows:
+            db.add_all(metric_rows)
+        if confusion_rows:
+            db.add_all(confusion_rows)
+        db.commit()
+    except IntegrityError as e:
+        db.rollback()
+        raise e
 
 
 def log_evaluation_duration(
@@ -444,12 +374,10 @@ def validate_computation(fn: Callable) -> Callable:
 
 
 def prepare_filter_for_evaluation(
-    db: Session,
     filters: schemas.Filter,
     dataset_names: list[str],
     model_name: str,
     task_type: enums.TaskType,
-    label_map: LabelMapType | None = None,
 ) -> tuple[schemas.Filter, schemas.Filter]:
     """
     Prepares the filter for use by an evaluation method.
@@ -458,8 +386,6 @@ def prepare_filter_for_evaluation(
 
     Parameters
     ----------
-    db : Session
-        The database session.
     filters : Filter
         The data filter.
     dataset_names : list[str]
@@ -468,8 +394,6 @@ def prepare_filter_for_evaluation(
         A model name to filter by.
     task_type : TaskType
         A task type to filter by.
-    label_map : LabelMapType, optional
-        An optional label mapping.
 
     Returns
     -------
