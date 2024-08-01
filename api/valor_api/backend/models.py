@@ -124,7 +124,7 @@ class Annotation(Base):
     model_id: Mapped[int] = mapped_column(
         ForeignKey("model.id"), nullable=True, index=True
     )
-    text: Mapped[str] = mapped_column(nullable=True)
+    textblob: Mapped[str] = mapped_column(nullable=True)
     context = mapped_column(JSONB)
 
     meta = mapped_column(JSONB)
@@ -160,7 +160,7 @@ class Datum(Base):
         ForeignKey("dataset.id"), nullable=False
     )
     uid: Mapped[str] = mapped_column(nullable=False)
-    text: Mapped[str] = mapped_column(nullable=True)
+    textblob: Mapped[str] = mapped_column(nullable=True)
     meta = mapped_column(JSONB)
     created_at: Mapped[datetime.datetime] = mapped_column(default=func.now())
 
