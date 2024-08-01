@@ -39,7 +39,7 @@ def create_datums(
     values = [
         {
             "uid": datum.uid,
-            "textblob": None,
+            # "textblob": None,
             "dataset_id": dataset.id,
             "meta": datum.metadata,
         }
