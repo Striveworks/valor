@@ -160,7 +160,6 @@ class Datum(Base):
         ForeignKey("dataset.id"), nullable=False
     )
     uid: Mapped[str] = mapped_column(nullable=False)
-    textblob: Mapped[str] = mapped_column(nullable=True)
     meta = mapped_column(JSONB)
     created_at: Mapped[datetime.datetime] = mapped_column(default=func.now())
 
