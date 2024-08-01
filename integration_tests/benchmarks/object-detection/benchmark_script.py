@@ -84,11 +84,6 @@ def ingest_groundtruths_and_predictions(
                                     for label in ann["labels"]
                                 ]
                             ),
-                            bounding_box=(
-                                _convert_wkt_to_coordinates(ann["box"])
-                                if ann["box"]
-                                else None
-                            ),
                             raster=(
                                 Raster.from_geometry(
                                     geometry=MultiPolygon(
@@ -101,22 +96,10 @@ def ingest_groundtruths_and_predictions(
                                     height=data["datum_metadata"]["height"],
                                     width=data["datum_metadata"]["width"],
                                 )
-                                if ann["raster"]
-                                else None
-                            ),
-                            polygon=(
-                                (
-                                    Polygon(
-                                        _convert_wkt_to_coordinates(
-                                            ann["polygon"]
-                                        )
-                                    )
-                                )
-                                if ann["polygon"]
-                                else None
                             ),
                         )
                         for ann in data["groundtruth_annotations"]
+                        if ann["raster"]
                     ]
                 ),
             )
@@ -139,11 +122,6 @@ def ingest_groundtruths_and_predictions(
                                     for label in ann["labels"]
                                 ]
                             ),
-                            bounding_box=(
-                                _convert_wkt_to_coordinates(ann["box"])
-                                if ann["box"]
-                                else None
-                            ),
                             raster=(
                                 Raster.from_geometry(
                                     geometry=MultiPolygon(
@@ -159,19 +137,9 @@ def ingest_groundtruths_and_predictions(
                                 if ann["raster"]
                                 else None
                             ),
-                            polygon=(
-                                (
-                                    Polygon(
-                                        _convert_wkt_to_coordinates(
-                                            ann["polygon"]
-                                        )
-                                    )
-                                )
-                                if ann["polygon"]
-                                else None
-                            ),
                         )
                         for ann in data["prediction_annotations"]
+                        if ann["raster"]
                     ]
                 ),
             )
