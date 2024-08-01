@@ -58,12 +58,12 @@ def convert_groundtruth_or_prediction_to_dataframe(
     dataset_name = "delete later"
     # TODO dataset and model number don't really do anything in this framework?
 
-    for obj in list_of_objects:
+    for i, obj in enumerate(list_of_objects):
         datum_uid = obj.datum.uid
         datum_id = hash(obj.datum.uid)
         datum_metadata = obj.datum.metadata
 
-        for ann in obj.annotations:
+        for j, ann in enumerate(obj.annotations):
             ann_id = hash(str(datum_uid) + str(ann))
             ann_metadata = ann.metadata
             ann_bbox = ann.bounding_box
@@ -72,8 +72,10 @@ def convert_groundtruth_or_prediction_to_dataframe(
             ann_polygon = ann.polygon
             ann_is_instance = ann.is_instance
 
-            for label in ann.labels:
-                id_ = hash(str(ann_id) + str(label))
+            for k, label in enumerate(ann.labels):
+                id_ = (
+                    str(i) + str(j) + str(k)
+                )  # we use indices here, rather than a hash() so that the IDs are sequential. this prevents randomness when two predictions share the same score
                 label_key = label.key
                 label_value = label.value
                 label_score = label.score
