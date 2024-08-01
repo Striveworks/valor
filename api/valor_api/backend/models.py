@@ -125,7 +125,7 @@ class Annotation(Base):
         ForeignKey("model.id"), nullable=True, index=True
     )
     textblob: Mapped[str] = mapped_column(nullable=True)
-    context = mapped_column(JSONB)
+    # context = mapped_column(JSONB)
 
     meta = mapped_column(JSONB)
     created_at: Mapped[datetime.datetime] = mapped_column(default=func.now())

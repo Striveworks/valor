@@ -116,7 +116,6 @@ def create_annotations(
                 db=db, value=annotation.embedding
             ),
             "textblob": None,
-            "context": None,
             "is_instance": annotation.is_instance,
             "implied_task_types": annotation.implied_task_types,
         }
@@ -176,7 +175,7 @@ def create_skipped_annotations(
             raster=None,
             embedding_id=None,
             textblob=None,
-            context=None,
+            # context=None,
             is_instance=False,
             implied_task_types=[TaskType.EMPTY],
         )
