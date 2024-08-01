@@ -2,8 +2,6 @@
 that is no auth
 """
 
-import random
-
 from valor import (
     Client,
     Dataset,
@@ -70,10 +68,7 @@ def test_evaluate_segmentation(
     assert eval_job.meta["duration"] <= 5  # usually ~.25
 
     # check that metrics arg works correctly
-    selected_metrics = random.sample(
-        [MetricType.IOU, MetricType.mIOU],
-        1,
-    )
+    selected_metrics = [MetricType.IOU, MetricType.Precision, MetricType.F1]
     eval_job_random_metrics = model.evaluate_segmentation(
         dataset, metrics_to_return=selected_metrics
     )
