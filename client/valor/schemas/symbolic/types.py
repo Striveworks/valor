@@ -2146,12 +2146,12 @@ def get_type_by_name(
 class ContextList(Equatable):
     """
     Implementation of a context list as a Variable.
-    ContextList is a list of context. Each context is a string. None is a valid value.
+    ContextList is a list of contexts. Each context is a string. None is a valid value.
 
     Parameters
     ----------
     value : List[str], optional
-        A list of context strings.
+        A list of contexts.
 
     Examples
     --------

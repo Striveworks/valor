@@ -898,7 +898,7 @@ class ContextRelevanceMetric(BaseModel):
     Attributes
     ----------
     value : float
-        The context relevance score for a datum. This is a float between 0 and 1, with 0 indicating that none of the context is relevant and 1 indicating that all of the context is relevant.
+        The context relevance score for a datum. This is a float between 0 and 1, with 0 indicating that none of the contexts are relevant and 1 indicating that all of the contexts are relevant.
     parameters : dict
         Any parameters associated with the metric, as well as any datum or prediction parameters that are relevant to the metric.
     """
@@ -934,7 +934,7 @@ class FaithfulnessMetric(BaseModel):
     Attributes
     ----------
     value : float
-        The faithfulness score for a datum. This is a float between 0 and 1, with 1 indicating that all claims in the text are implied by the context.
+        The faithfulness score for a datum. This is a float between 0 and 1, with 1 indicating that all claims in the text are implied by the contexts.
     parameters : dict
         Any parameters associated with the metric, as well as any datum or prediction parameters that are relevant to the metric.
     """
@@ -970,7 +970,7 @@ class HallucinationMetric(BaseModel):
     Attributes
     ----------
     value : float
-        The hallucination score for a datum. This is a float between 0 and 1, with 1 indicating that all context is contradicted by the text.
+        The hallucination score for a datum. This is a float between 0 and 1, with 1 indicating that all contexts are contradicted by the text.
     parameters : dict
         Any parameters associated with the metric, as well as any datum or prediction parameters that are relevant to the metric.
     """

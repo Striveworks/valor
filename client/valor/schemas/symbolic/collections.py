@@ -266,7 +266,7 @@ class Annotation(StaticCollection):
     text: str, optional
         A piece of text to assign to the `Annotation`.
     context_list: List[str], optional
-        A list of context strings associated with an `Annotation`.
+        A list of contexts associated with an `Annotation`.
     is_instance: bool, optional
         A boolean describing whether we should treat the Raster attached to an annotation as an instance segmentation or not. If set to true, then the Annotation will be validated for use in object detection tasks. If set to false, then the Annotation will be validated for use in semantic segmentation tasks.
     implied_task_types: list[str], optional
@@ -382,7 +382,7 @@ class Annotation(StaticCollection):
         text: str, optional
             A text annotation.
         context_list: List[str], optional
-            A list of context associated to the annotation text. Not all text annotations will have context_list.
+            A list of contexts associated to the annotation text. Not all text annotations will have context_list.
         is_instance: bool, optional
             A boolean describing whether we should treat the Raster attached to an annotation as an instance segmentation or not. If set to true, then the Annotation will be validated for use in object detection tasks. If set to false, then the Annotation will be validated for use in semantic segmentation tasks.
         implied_task_types: list[str], optional

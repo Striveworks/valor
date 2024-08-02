@@ -734,7 +734,7 @@ def test_LLMClient(monkeypatch):
         "some query", ["context 1", "context 2", "context 3"]
     )
 
-    # Context relevance doesn't make sense if no contexts are provided.
+    # Context relevance is meaningless if context_list is empty.
     monkeypatch.setattr(
         "valor_api.backend.core.llm_clients.LLMClient.__call__",
         _return_valid_context_relevance_response,
@@ -777,7 +777,7 @@ def test_LLMClient(monkeypatch):
     )
     assert 1.0 == client.faithfulness("some text", ["context 1", "context 2"])
 
-    # Faithfulness is meaningless if no contexts are provided, so should throw a ValueError.
+    # Faithfulness is meaningless if context_list is empty.
     monkeypatch.setattr(
         "valor_api.backend.core.llm_clients.LLMClient.__call__",
         _return_valid1_faithfulness_response,
@@ -834,7 +834,7 @@ def test_LLMClient(monkeypatch):
         "some answer", ["context 1", "context 2", "context 3"]
     )
 
-    # Context relevance doesn't make sense if no contexts are provided.
+    # Context relevance is meaningless if context_list is empty.
     monkeypatch.setattr(
         "valor_api.backend.core.llm_clients.LLMClient.__call__",
         _return_valid_hallucination_response,

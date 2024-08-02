@@ -674,7 +674,7 @@ class LLMClient:
         """
         if len(context_list) == 0:
             raise ValueError(
-                "Context relevance is meaningless if no contexts are provided."
+                "Context relevance is meaningless if context_list is empty."
             )
 
         verdicts = self._generate_context_relevance_verdicts(
@@ -707,7 +707,7 @@ class LLMClient:
         """
         if len(context_list) == 0:
             raise ValueError(
-                "Faithfulness is meaningless if no contexts are provided."
+                "Faithfulness is meaningless if context_list is empty."
             )
 
         claims = self._generate_claims(text)
@@ -748,7 +748,7 @@ class LLMClient:
         """
         if len(context_list) == 0:
             raise ValueError(
-                "Hallucination is meaningless if no contexts are provided."
+                "Hallucination is meaningless if context_list is empty."
             )
 
         verdicts = self._generate_hallucination_verdicts(

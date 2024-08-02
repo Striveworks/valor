@@ -311,7 +311,7 @@ class Annotation(BaseModel):
     text: str, optional
         A piece of text to assign to the 'Annotation'.
     context_list: list[str], optional
-        A list of context to assign to the 'Annotation'.
+        A list of contexts to assign to the 'Annotation'.
 
     """
 
