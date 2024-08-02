@@ -100,9 +100,6 @@ class MetricType(str, Enum):
         return {
             cls.IOU,
             cls.mIOU,
-            cls.Precision,
-            cls.Recall,
-            cls.F1,
         }
 
     @classmethod

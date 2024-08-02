@@ -15,6 +15,20 @@ from valor_api.exceptions import InvalidLLMResponseError
 LabelMapType = list[list[list[str]]]
 
 
+def profiler(fn: Callable):
+    def wrapper(*args, **kwargs):
+        import time
+
+        print(f">>>> {fn.__name__}")
+        start = time.time()
+        result = fn(*args, **kwargs)
+        print(f"<<<< {fn.__name__} - {round(time.time() - start, 2)}")
+        return result
+
+    return wrapper
+
+
+@profiler
 def create_label_mapping(
     db: Session,
     labels: list[models.Label],
@@ -91,6 +105,7 @@ def create_label_mapping(
         return models.Label.id.label("label_id")
 
 
+@profiler
 def commit_results(
     db: Session,
     metrics: Sequence[
@@ -215,6 +230,7 @@ def commit_results(
         raise e
 
 
+@profiler
 def log_evaluation_duration(
     db: Session,
     evaluation: models.Evaluation,
@@ -247,6 +263,7 @@ def log_evaluation_duration(
         raise e
 
 
+@profiler
 def log_evaluation_item_counts(
     db: Session,
     evaluation: models.Evaluation,
@@ -384,6 +401,7 @@ def validate_computation(fn: Callable) -> Callable:
     return wrapper
 
 
+@profiler
 def prepare_filter_for_evaluation(
     filters: schemas.Filter,
     dataset_names: list[str],
