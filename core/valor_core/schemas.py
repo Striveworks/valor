@@ -4,323 +4,7 @@ from dataclasses import dataclass
 from typing import Any, Dict, List, Optional, Tuple, Union
 
 import numpy as np
-from valor_core import enums
-
-
-@dataclass
-class Point:
-    """
-    Represents a point in 2D space.
-
-    Follows the GeoJSON specification (RFC 7946).
-
-    Parameters
-    ----------
-    value : Tuple[float, float], optional
-        A point.
-
-    Examples
-    --------
-    >>> Point((1,2))
-    """
-
-    @classmethod
-    def __validate__(cls, value: Any):
-        if not isinstance(value, tuple):
-            raise TypeError(
-                f"Expected type 'Tuple[float, float]' received type '{type(value).__name__}'"
-            )
-        elif len(value) != 2:
-            raise ValueError("")
-        for item in value:
-            if not isinstance(item, (int, float, np.floating)):
-                raise TypeError(
-                    f"Expected type '{float.__name__}' received type '{type(item).__name__}'"
-                )
-
-
-@dataclass
-class MultiPoint:
-    """
-    Represents a list of points.
-
-    Follows the GeoJSON specification (RFC 7946).
-
-    Parameters
-    ----------
-    value : List[Tuple[float, float]], optional
-        A multipoint.
-
-    Examples
-    --------
-    >>> MultiPoint([(0,0), (0,1), (1,1)])
-    """
-
-    @classmethod
-    def __validate__(cls, value: Any):
-        if not isinstance(value, list):
-            raise TypeError(
-                f"Expected 'List[Tuple[float, float]]' received type '{type(value).__name__}'"
-            )
-        for point in value:
-            Point.__validate__(point)
-
-
-@dataclass
-class LineString:
-    """
-    Represents a line.
-
-    Follows the GeoJSON specification (RFC 7946).
-
-    Parameters
-    ----------
-    value : List[Tuple[float, float]], optional
-        A linestring.
-
-    Methods
-    -------
-    colorspace(c='rgb')
-        Represent the photo in the given colorspace.
-    gamma(n=1.0)
-        Change the photo's gamma exposure.
-
-    Examples
-    --------
-    Create a line.
-    >>> LineString([(0,0), (0,1), (1,1)])
-    """
-
-    @classmethod
-    def __validate__(cls, value: Any):
-        MultiPoint.__validate__(value)
-        if len(value) < 2:
-            raise ValueError(
-                "At least two points are required to make a line."
-            )
-
-
-@dataclass
-class MultiLineString:
-    """
-    Represents a list of lines.
-
-    Follows the GeoJSON specification (RFC 7946).
-
-    Parameters
-    ----------
-    value : List[List[Tuple[float, float]]], optional
-        A multilinestring.
-
-    Examples
-    --------
-    Create a single line.
-    >>> MultiLineString([[(0,0), (0,1), (1,1), (0,0)]])
-
-    Create 3 lines.
-    >>> MultiLineString(
-    ...     [
-    ...         [(0,0), (0,1), (1,1)],
-    ...         [(0.1, 0.1), (0.1, 0.2), (0.2, 0.2)],
-    ...         [(0.6, 0.6), (0.6, 0.7), (0.7, 0.7)],
-    ...     ]
-    ... )
-    """
-
-    @classmethod
-    def __validate__(cls, value: Any):
-        if not isinstance(value, list):
-            raise TypeError(
-                f"Expected type 'List[List[Tuple[float, float]]]' received type '{type(value).__name__}'"
-            )
-        for line in value:
-            LineString.__validate__(line)
-
-
-@dataclass
-class Polygon:
-    """
-    Represents a polygon with a boundary and optional holes.
-
-    Follows the GeoJSON specification (RFC 7946).
-
-    Parameters
-    ----------
-    value : List[List[Tuple[float, float]]], optional
-        A polygon.
-
-    Attributes
-    ----------
-    area
-    boundary
-    holes
-    xmin
-    xmax
-    ymin
-    ymax
-
-    Examples
-    --------
-    Create a polygon without any holes.
-    >>> Polygon([[(0,0), (0,1), (1,1), (0,0)]])
-
-    Create a polygon with 2 holes.
-    >>> Polygon(
-    ...     [
-    ...         [(0,0), (0,1), (1,1), (0,0)],
-    ...         [(0.1, 0.1), (0.1, 0.2), (0.2, 0.2), (0.1, 0.1)],
-    ...         [(0.6, 0.6), (0.6, 0.7), (0.7, 0.7), (0.6, 0.6)],
-    ...     ]
-    ... )
-    """
-
-    @classmethod
-    def __validate__(cls, value: Any):
-        MultiLineString.__validate__(value)
-        for line in value:
-            if not (len(line) >= 4 and line[0] == line[-1]):
-                raise ValueError(
-                    "Polygons are defined by at least 4 points with the first point being repeated at the end."
-                )
-
-
-@dataclass
-class Box(Polygon):
-    """
-    A Box is a polygon that is constrained to 4 unique points.
-
-    Note that this does not need to be axis-aligned.
-
-    Parameters
-    ----------
-    value : List[List[Tuple[float, float]]], optional
-        An polygon value representing a box.
-
-    Attributes
-    ----------
-    area
-    polygon
-    boundary
-    holes
-    xmin
-    xmax
-    ymin
-    ymax
-
-    Examples
-    --------
-    >>> Box([[(0,0), (0,1), (1,1), (1,0), (0,0)]])
-
-    Create a Box using extrema.
-    >>> Box.from_extrema(
-    ...     xmin=0, xmax=1,
-    ...     ymin=0, ymax=1,
-    ... )
-    """
-
-    value: Optional[List[List[Tuple[float, float]]]] = None
-
-    @classmethod
-    def __validate__(cls, value: Any):
-        """
-        Validates
-
-        Parameters
-        ----------
-        value : Any
-            The value to validate.
-
-        Raises
-        ------
-        TypeError
-            If the value type is not supported.
-        """
-        Polygon.__validate__(value)
-        if len(value) != 1:
-            raise ValueError("Box should not contain holes.")
-        elif len(value[0]) != 5:
-            raise ValueError("Box should consist of four unique points.")
-
-    @classmethod
-    def from_extrema(
-        cls,
-        xmin: float,
-        xmax: float,
-        ymin: float,
-        ymax: float,
-    ):
-        """
-        Create a Box from extrema values.
-
-        Parameters
-        ----------
-        xmin : float
-            Minimum x-coordinate of the bounding box.
-        xmax : float
-            Maximum x-coordinate of the bounding box.
-        ymin : float
-            Minimum y-coordinate of the bounding box.
-        ymax : float
-            Maximum y-coordinate of the bounding box.
-
-        Returns
-        -------
-        Box
-            A Box created from the provided extrema values.
-        """
-        points = [
-            [
-                (xmin, ymin),
-                (xmax, ymin),
-                (xmax, ymax),
-                (xmin, ymax),
-                (xmin, ymin),
-            ]
-        ]
-        return cls(value=points)
-
-
-@dataclass
-class MultiPolygon:
-    """
-    Represents a collection of polygons.
-
-    Follows the GeoJSON specification (RFC 7946).
-
-    Parameters
-    ----------
-    value : List[List[List[Tuple[float, float]]]], optional
-        A list of polygons.
-
-    Attributes
-    ----------
-    area
-    polygons
-
-    Examples
-    --------
-    >>> MultiPolygon(
-    ...     [
-    ...         [
-    ...             [(0,0), (0,1), (1,1), (0,0)]
-    ...         ],
-    ...         [
-    ...             [(0,0), (0,1), (1,1), (0,0)],
-    ...             [(0.1, 0.1), (0.1, 0.2), (0.2, 0.2), (0.1, 0.1)],
-    ...             [(0.6, 0.6), (0.6, 0.7), (0.7, 0.7), (0.6, 0.6)],
-    ...         ],
-    ...     ]
-    ... )
-    """
-
-    @classmethod
-    def __validate__(cls, value: Any):
-        if not isinstance(value, list):
-            raise TypeError(
-                f"Expected type 'List[List[List[Tuple[float, float]]]]' received type '{type(value).__name__}'"
-            )
-        for poly in value:
-            Polygon.__validate__(poly)
+from valor_core import enums, geometry
 
 
 @dataclass
@@ -428,7 +112,16 @@ class Raster:
     """
 
     value: Optional[
-        Dict[str, Union[np.ndarray, Box, Polygon, MultiPolygon, None]]
+        Dict[
+            str,
+            Union[
+                np.ndarray,
+                geometry.Box,
+                geometry.Polygon,
+                geometry.MultiPolygon,
+                None,
+            ],
+        ]
     ] = None
 
     @classmethod
@@ -513,7 +206,7 @@ class Annotation:
         A dictionary of metadata that describes the `Annotation`.
     labels: List[Label], optional
         A list of labels to use for the `Annotation`.
-    bounding_box: Box
+    bounding_box: geometry.Box
         A bounding box to assign to the `Annotation`.
     polygon: BoundingPolygon
         A polygon to assign to the `Annotation`.
@@ -537,13 +230,13 @@ class Annotation:
     ...     ]
     ... )
 
-    Object-Detection Box
+    Object-Detection geometry.Box
     >>> annotation = Annotation(
     ...     labels=[Label(key="k1", value="v1")],
     ...     bounding_box=box2,
     ... )
 
-    Object-Detection Polygon
+    Object-Detection geometry.Polygon
     >>> annotation = Annotation(
     ...     labels=[Label(key="k1", value="v1")],
     ...     polygon=BoundingPolygon(...),
@@ -559,7 +252,7 @@ class Annotation:
     Object-Detection with all supported Geometries defined.
     >>> Annotation(
     ...     labels=[Label(key="k1", value="v1")],
-    ...     bounding_box=Box(...),
+    ...     bounding_box=geometry.Box(...),
     ...     polygon=BoundingPolygon(...),
     ...     raster=Raster(...),
     ...     is_instance=True,
@@ -575,8 +268,8 @@ class Annotation:
 
     labels: List[Label]
     metadata: Optional[dict] = None
-    bounding_box: Optional[Box] = None
-    polygon: Optional[Polygon] = None
+    bounding_box: Optional[geometry.Box] = None
+    polygon: Optional[geometry.Polygon] = None
     raster: Optional[Raster] = None
     embedding: Optional[Embedding] = None
     is_instance: Optional[bool] = None
@@ -629,6 +322,7 @@ class EvaluationParameters:
             The IOU threshold to use when calculating precision-recall curves for object detection tasks. Defaults to 0.5.
     pr_curve_max_examples: int
         The maximum number of datum examples to store when calculating PR curves.
+        # TODO
     """
 
     label_map: Optional[Dict[Label, Label]] = None
@@ -636,7 +330,7 @@ class EvaluationParameters:
     convert_annotations_to_type: Optional[enums.AnnotationType] = None
     iou_thresholds_to_compute: Optional[List[float]] = None
     iou_thresholds_to_return: Optional[List[float]] = None
-    recall_score_threshold: float = 0
+    recall_score_threshold: float = 0.0
     pr_curve_iou_threshold: float = 0.5
     pr_curve_max_examples: int = 1
 
@@ -646,12 +340,33 @@ class Evaluation:
     # TODO docstring
     parameters: EvaluationParameters
     metrics: List[Dict]
-    confusion_matrices: List[Dict]
+    confusion_matrices: Optional[List[Dict]]
+    ignored_pred_labels: Optional[List[Label]]
+    missing_pred_labels: Optional[List[Label]]
     meta: Optional[Dict] = None
 
     def __str__(self) -> str:
         """Dumps the object into a JSON formatted string."""
         return json.dumps(self.__dict__, indent=4)
+
+    def to_dict(self) -> dict:
+        """
+        Defines how a `valor.Evaluation` object is serialized into a dictionary.
+
+        Returns
+        ----------
+        dict
+            A dictionary describing an evaluation.
+        """
+        return {
+            "parameters": self.parameters.__dict__,
+            "metrics": self.metrics,
+            "confusion_matrices": self.confusion_matrices,
+            # TODO make sure these two get tested at some point
+            "ignored_pred_labels": self.ignored_pred_labels,
+            "missing_pred_labels": self.missing_pred_labels,
+            "meta": self.meta,
+        }
 
 
 @dataclass
@@ -787,6 +502,180 @@ class _LabelKeyMetricBase:
         }
 
 
+@dataclass
+class ARMetric(_LabelMetricBase):
+    """
+    # TODO
+    An AR metric response from the API.
+
+    Attributes
+    ----------
+    ious : set[float]
+        A set of intersect-over-union (IOU) values.
+    value : float
+        The value of the metric.
+    label : Label
+        The `Label` for the metric.
+    """
+
+    ious: set[float]
+    __type__ = "AR"
+
+    def to_dict(self):
+        """Converts a metric object into a dictionary."""
+        return {
+            "label": {"key": self.label.key, "value": self.label.value},
+            "parameters": {"ious": list(self.ious)},
+            "value": self.value,
+            "type": self.__type__,
+        }
+
+
+@dataclass
+class APMetric(_LabelMetricBase):
+    """
+    # TODO
+    An AP metric response from the API.
+
+    Attributes
+    ----------
+    ious : set[float]
+        A set of intersect-over-union (IOU) values.
+    value : float
+        The value of the metric.
+    label : Label
+        The `Label` for the metric.
+    """
+
+    iou: float
+    __type__ = "AP"
+
+    def to_dict(self):
+        """Converts a metric object into a dictionary."""
+        return {
+            "label": {"key": self.label.key, "value": self.label.value},
+            "parameters": {"iou": self.iou},
+            "value": self.value,
+            "type": self.__type__,
+        }
+
+
+@dataclass
+class APMetricAveragedOverIOUs(_LabelMetricBase):
+    """
+    # TODO
+    An AR metric response from the API.
+
+    Attributes
+    ----------
+    ious : set[float]
+        A set of intersect-over-union (IOU) values.
+    value : float
+        The value of the metric.
+    label : Label
+        The `Label` for the metric.
+    """
+
+    ious: set[float]
+    __type__ = "APAveragedOverIOUs"
+
+    def to_dict(self):
+        """Converts a metric object into a dictionary."""
+        return {
+            "label": {"key": self.label.key, "value": self.label.value},
+            "parameters": {"ious": list(self.ious)},
+            "value": self.value,
+            "type": self.__type__,
+        }
+
+
+@dataclass
+class mARMetric(_LabelKeyMetricBase):
+    """
+    An mAR metric response from the API.
+
+    Attributes
+    ----------
+    ious : set[float]
+        A set of intersect-over-union (IOU) values.
+    value : float
+        The value of the metric.
+    label_key : str
+        The label key associated with the metric.
+    """
+
+    ious: set[float]
+    __type__ = "mAR"
+
+    def to_dict(self):
+        """Converts a metric object into a dictionary."""
+        return {
+            "parameters": {
+                "label_key": self.label_key,
+                "ious": list(self.ious),
+            },
+            "value": self.value,
+            "type": self.__type__,
+        }
+
+
+@dataclass
+class mAPMetric(_LabelKeyMetricBase):
+    """
+    An mAR metric response from the API.
+
+    Attributes
+    ----------
+    ious : set[float]
+        A set of intersect-over-union (IOU) values.
+    value : float
+        The value of the metric.
+    label_key : str
+        The label key associated with the metric.
+    """
+
+    iou: float
+    __type__ = "mAP"
+
+    def to_dict(self):
+        """Converts a metric object into a dictionary."""
+        return {
+            "parameters": {"label_key": self.label_key, "iou": self.iou},
+            "value": self.value,
+            "type": self.__type__,
+        }
+
+
+@dataclass
+class mAPMetricAveragedOverIOUs(_LabelKeyMetricBase):
+    """
+    An mAR metric response from the API.
+
+    Attributes
+    ----------
+    ious : set[float]
+        A set of intersect-over-union (IOU) values.
+    value : float
+        The value of the metric.
+    label_key : str
+        The label key associated with the metric.
+    """
+
+    ious: set[float]
+    __type__ = "mAPAveragedOverIOUs"
+
+    def to_dict(self):
+        """Converts a metric object into a dictionary."""
+        return {
+            "parameters": {
+                "label_key": self.label_key,
+                "ious": list(self.ious),
+            },
+            "value": self.value,
+            "type": self.__type__,
+        }
+
+
 class PrecisionMetric(_LabelMetricBase):
     """
     Describes a precision metric.
@@ -877,6 +766,7 @@ class _BasePrecisionRecallCurve:
 
     label_key: str
     value: dict
+    pr_curve_iou_threshold: Optional[float]
     __type__ = "BaseClass"
 
     def to_dict(self):

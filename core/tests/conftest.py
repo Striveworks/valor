@@ -1,8 +1,240 @@
 import pandas as pd
 import pytest
-from valor_core import schemas
+from valor_core import geometry, schemas
 
 
+@pytest.fixture
+def rect1() -> list[tuple[float, float]]:
+    """Box with area = 1500."""
+    return [
+        (10, 10),
+        (60, 10),
+        (60, 40),
+        (10, 40),
+        (10, 10),
+    ]
+
+
+@pytest.fixture
+def rect2() -> list[tuple[float, float]]:
+    """Box with area = 1100."""
+    return [
+        (15, 0),
+        (70, 0),
+        (70, 20),
+        (15, 20),
+        (15, 0),
+    ]
+
+
+@pytest.fixture
+def rect3() -> list[tuple[float, float]]:
+    """Box with area = 57,510."""
+    return [
+        (87, 10),
+        (158, 10),
+        (158, 820),
+        (87, 820),
+        (87, 10),
+    ]
+
+
+@pytest.fixture
+def rect4() -> list[tuple[float, float]]:
+    """Box with area = 90."""
+    return [
+        (1, 10),
+        (10, 10),
+        (10, 20),
+        (1, 20),
+        (1, 10),
+    ]
+
+
+@pytest.fixture
+def rect5() -> list[tuple[float, float]]:
+    """Box with partial overlap to rect3."""
+    return [
+        (87, 10),
+        (158, 10),
+        (158, 400),
+        (87, 400),
+        (87, 10),
+    ]
+
+
+@pytest.fixture
+def evaluate_detection_groundtruths(
+    rect1: list[tuple[float, float]],
+    rect2: list[tuple[float, float]],
+    rect3: list[tuple[float, float]],
+    img1: schemas.Datum,
+    img2: schemas.Datum,
+) -> list[schemas.GroundTruth]:
+    return [
+        schemas.GroundTruth(
+            datum=img1,
+            annotations=[
+                schemas.Annotation(
+                    is_instance=True,
+                    labels=[schemas.Label(key="k1", value="v1")],
+                    bounding_box=geometry.Box([rect1]),
+                ),
+                schemas.Annotation(
+                    is_instance=True,
+                    labels=[schemas.Label(key="k2", value="v2")],
+                    bounding_box=geometry.Box([rect3]),
+                ),
+            ],
+        ),
+        schemas.GroundTruth(
+            datum=img2,
+            annotations=[
+                schemas.Annotation(
+                    is_instance=True,
+                    labels=[schemas.Label(key="k1", value="v1")],
+                    bounding_box=geometry.Box([rect2]),
+                )
+            ],
+        ),
+    ]
+
+
+@pytest.fixture
+def evaluate_detection_predictions(
+    rect1: list[tuple[float, float]],
+    rect2: list[tuple[float, float]],
+    img1: schemas.Datum,
+    img2: schemas.Datum,
+) -> list[schemas.Prediction]:
+    return [
+        schemas.Prediction(
+            datum=img1,
+            annotations=[
+                schemas.Annotation(
+                    is_instance=True,
+                    labels=[schemas.Label(key="k1", value="v1", score=0.3)],
+                    bounding_box=geometry.Box([rect1]),
+                )
+            ],
+        ),
+        schemas.Prediction(
+            datum=img2,
+            annotations=[
+                schemas.Annotation(
+                    is_instance=True,
+                    labels=[schemas.Label(key="k2", value="v2", score=0.98)],
+                    bounding_box=geometry.Box([rect2]),
+                )
+            ],
+        ),
+    ]
+
+
+@pytest.fixture
+def evaluate_detection_groundtruths_with_label_maps(
+    rect1: list[tuple[float, float]],
+    rect2: list[tuple[float, float]],
+    rect3: list[tuple[float, float]],
+    img1: schemas.Datum,
+    img2: schemas.Datum,
+) -> list[schemas.GroundTruth]:
+    return [
+        schemas.GroundTruth(
+            datum=img1,
+            annotations=[
+                schemas.Annotation(
+                    is_instance=True,
+                    labels=[
+                        schemas.Label(key="class_name", value="maine coon cat")
+                    ],
+                    bounding_box=geometry.Box([rect1]),
+                ),
+                schemas.Annotation(
+                    is_instance=True,
+                    labels=[
+                        schemas.Label(key="class", value="british shorthair")
+                    ],
+                    bounding_box=geometry.Box([rect3]),
+                ),
+                schemas.Annotation(
+                    is_instance=True,
+                    labels=[schemas.Label(key="k1", value="v1")],
+                    bounding_box=geometry.Box([rect1]),
+                ),
+                schemas.Annotation(
+                    is_instance=True,
+                    labels=[schemas.Label(key="k2", value="v2")],
+                    bounding_box=geometry.Box([rect3]),
+                ),
+            ],
+        ),
+        schemas.GroundTruth(
+            datum=img2,
+            annotations=[
+                schemas.Annotation(
+                    is_instance=True,
+                    labels=[schemas.Label(key="class", value="siamese cat")],
+                    bounding_box=geometry.Box([rect2]),
+                ),
+                schemas.Annotation(
+                    is_instance=True,
+                    labels=[schemas.Label(key="k1", value="v1")],
+                    bounding_box=geometry.Box([rect2]),
+                ),
+            ],
+        ),
+    ]
+
+
+@pytest.fixture
+def evaluate_detection_predictions_with_label_maps(
+    rect1: list[tuple[float, float]],
+    rect2: list[tuple[float, float]],
+    img1: schemas.Datum,
+    img2: schemas.Datum,
+) -> list[schemas.Prediction]:
+    return [
+        schemas.Prediction(
+            datum=img1,
+            annotations=[
+                schemas.Annotation(
+                    is_instance=True,
+                    labels=[
+                        schemas.Label(key="class", value="cat", score=0.3)
+                    ],
+                    bounding_box=geometry.Box([rect1]),
+                ),
+                schemas.Annotation(
+                    is_instance=True,
+                    labels=[schemas.Label(key="k1", value="v1", score=0.3)],
+                    bounding_box=geometry.Box([rect1]),
+                ),
+            ],
+        ),
+        schemas.Prediction(
+            datum=img2,
+            annotations=[
+                schemas.Annotation(
+                    is_instance=True,
+                    labels=[
+                        schemas.Label(
+                            key="class_name", value="cat", score=0.98
+                        )
+                    ],
+                    bounding_box=geometry.Box([rect2]),
+                ),
+                schemas.Annotation(
+                    is_instance=True,
+                    labels=[schemas.Label(key="k2", value="v2", score=0.98)],
+                    bounding_box=geometry.Box([rect2]),
+                ),
+            ],
+        ),
+    ]
+
+
+# TODO separate the classification vs. object-detection data?
 @pytest.fixture
 def evaluate_tabular_clf_groundtruths():
     return pd.DataFrame(
@@ -628,6 +860,50 @@ def image_height():
 @pytest.fixture
 def image_width():
     return 300
+
+
+@pytest.fixture
+def img1(
+    image_height: int,
+    image_width: int,
+) -> schemas.Datum:
+    coordinates = [
+        [
+            (125.2750725, 38.760525),
+            (125.3902365, 38.775069),
+            (125.5054005, 38.789613),
+            (125.5051935, 38.71402425),
+            (125.5049865, 38.6384355),
+            (125.3902005, 38.6244225),
+            (125.2754145, 38.6104095),
+            (125.2752435, 38.68546725),
+            (125.2750725, 38.760525),
+        ]
+    ]
+    return schemas.Datum(
+        uid="uid1",
+        metadata={
+            "geospatial": geometry.Polygon(coordinates),
+            "height": image_height,
+            "width": image_width,
+        },
+    )
+
+
+@pytest.fixture
+def img2(
+    image_height: int,
+    image_width: int,
+) -> schemas.Datum:
+    coordinates = (44.1, 22.4)
+    return schemas.Datum(
+        uid="uid2",
+        metadata={
+            "geospatial": geometry.Point(coordinates),
+            "height": image_height,
+            "width": image_width,
+        },
+    )
 
 
 @pytest.fixture

@@ -1117,14 +1117,16 @@ def _calculate_pr_curves(
 
     if enums.MetricType.PrecisionRecallCurve in metrics_to_return:
         output += [
-            schemas.PrecisionRecallCurve(label_key=key, value=dict(value))
+            schemas.PrecisionRecallCurve(
+                label_key=key, value=dict(value), pr_curve_iou_threshold=None
+            )
             for key, value in pr_output.items()
         ]
 
     if enums.MetricType.DetailedPrecisionRecallCurve in metrics_to_return:
         output += [
             schemas.DetailedPrecisionRecallCurve(
-                label_key=key, value=dict(value)
+                label_key=key, value=dict(value), pr_curve_iou_threshold=None
             )
             for key, value in detailed_pr_output.items()
         ]
@@ -1209,7 +1211,7 @@ def _compute_clf_metrics(
         pr_curve_max_examples=pr_curve_max_examples,
     )
 
-    # convert objects to dictionaries
+    # convert objects to dictionaries and only return what was asked for
     metrics_to_output = [
         m.to_dict()
         for m in metrics_to_output
@@ -1226,13 +1228,13 @@ def evaluate_classification(
     parameters: schemas.EvaluationParameters = schemas.EvaluationParameters(),
 ) -> schemas.Evaluation:
     """
-    Create classification metrics. This function is intended to be run using FastAPI's `BackgroundTasks`.
+    Create classification metrics.
     # TODO
     """
     start_time = time.time()
 
     # TODO move this into some shared function
-    parameters = utilities._validate_parameters(
+    parameters = utilities.validate_parameters(
         parameters, task_type=enums.TaskType.CLASSIFICATION
     )
     prediction_df = utilities.validate_prediction_dataframe(
@@ -1282,4 +1284,6 @@ def evaluate_classification(
             "annotations": unique_annotations_cnt,
             "duration": time.time() - start_time,
         },
+        ignored_pred_labels=[],
+        missing_pred_labels=[],
     )
