@@ -1,5 +1,5 @@
 from geoalchemy2.functions import ST_AsGeoJSON
-from sqlalchemy import ScalarSelect, and_, delete, insert, select
+from sqlalchemy import ScalarSelect, and_, delete, insert, or_, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -364,6 +364,17 @@ def delete_dataset_annotations(
             .where(models.Datum.dataset_id == dataset.id)
             .subquery()
         )
+
+        db.execute(
+            delete(models.IoU).where(
+                or_(
+                    models.IoU.groundtruth_annotation_id
+                    == annotations_to_delete.c.id,
+                    models.IoU.prediction_annotation_id
+                    == annotations_to_delete.c.id,
+                )
+            )
+        )
         db.execute(
             delete(models.Annotation).where(
                 models.Annotation.id == annotations_to_delete.c.id
@@ -417,6 +428,16 @@ def delete_model_annotations(
             select(models.Annotation)
             .where(models.Annotation.model_id == model.id)
             .subquery()
+        )
+        db.execute(
+            delete(models.IoU).where(
+                or_(
+                    models.IoU.groundtruth_annotation_id
+                    == annotations_to_delete.c.id,
+                    models.IoU.prediction_annotation_id
+                    == annotations_to_delete.c.id,
+                )
+            )
         )
         db.execute(
             delete(models.Annotation).where(

@@ -188,7 +188,7 @@ def run_benchmarking_analysis(
         ingest_time = time.time() - start_time
 
         try:
-            eval_ = run_base_evaluation(dset=dset, model=model)
+            eval_base = run_base_evaluation(dset=dset, model=model)
         except TimeoutError:
             raise TimeoutError(
                 f"Evaluation timed out when processing {limit} datums."
@@ -217,10 +217,10 @@ def run_benchmarking_analysis(
 
         results = {
             "number_of_datums": limit,
-            "number_of_unique_labels": eval_.meta["labels"],
-            "number_of_annotations": eval_.meta["annotations"],
+            "number_of_unique_labels": eval_base.meta["labels"],
+            "number_of_annotations": eval_base.meta["annotations"],
             "ingest_runtime": f"{(ingest_time):.1f} seconds",
-            "eval_runtime": f"{(eval_.meta['duration']):.1f} seconds",
+            "eval_runtime": f"{(eval_base.meta['duration']):.1f} seconds",
             "eval_pr_runtime": f"{(eval_pr.meta['duration']):.1f} seconds",
             "eval_detailed_pr_runtime": f"{(eval_pr_detail.meta['duration']):.1f} seconds",
             "del_runtime": f"{(deletion_time):.1f} seconds",

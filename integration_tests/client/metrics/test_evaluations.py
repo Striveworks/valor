@@ -415,12 +415,12 @@ def test_get_sorted_evaluations(
         {
             "type": "mAPAveragedOverIOUs",
             "parameters": {"ious": [0.1, 0.6], "label_key": "class"},
-            "value": 0.6633663366336634,
+            "value": 0.663366336633663,
         },
         {
             "type": "mAPAveragedOverIOUs",
             "parameters": {"ious": [0.1, 0.6], "label_key": "class"},
-            "value": 0.33663366336633666,
+            "value": 0.336633663366336,
         },
         {
             "type": "mAPAveragedOverIOUs",
