@@ -74,91 +74,6 @@ class Label:
         return hash(f"key:{self.key},value:{self.value},score:{self.score}")
 
 
-class Raster:
-    """
-    Represents a binary mask.
-
-    Parameters
-    ----------
-    value : Dict[str, Union[np.ndarray, str, None]], optional
-        An raster value.
-
-    Attributes
-    ----------
-    area
-    array
-    geometry
-    height
-    width
-
-    Raises
-    ------
-    TypeError
-        If `encoding` is not a string.
-
-    Examples
-    --------
-    Generate a random mask.
-    >>> import numpy.random
-    >>> height = 640
-    >>> width = 480
-    >>> array = numpy.random.rand(height, width)
-
-    Convert to binary mask.
-    >>> mask = (array > 0.5)
-
-    Create Raster.
-    >>> Raster.from_numpy(mask)
-    """
-
-    value: Optional[
-        Dict[
-            str,
-            Union[
-                np.ndarray,
-                geometry.Box,
-                geometry.Polygon,
-                geometry.MultiPolygon,
-                None,
-            ],
-        ]
-    ] = None
-
-    @classmethod
-    def __validate__(cls, value: Any):
-        """
-        Validates
-
-        Parameters
-        ----------
-        value : Any
-            The value to validate.
-
-        Raises
-        ------
-        TypeError
-            If the value type is not supported.
-        """
-        if not isinstance(value, dict):
-            raise TypeError(
-                "Raster should contain a dictionary describing a mask and optionally a geometry."
-            )
-        elif set(value.keys()) != {"mask", "geometry"}:
-            raise ValueError(
-                "Raster should be described by a dictionary with keys 'mask' and 'geometry'"
-            )
-        elif not isinstance(value["mask"], np.ndarray):
-            raise TypeError(
-                f"Expected mask to have type '{np.ndarray}' receieved type '{value['mask']}'"
-            )
-        elif len(value["mask"].shape) != 2:
-            raise ValueError("raster only supports 2d arrays")
-        elif value["mask"].dtype != bool:
-            raise ValueError(
-                f"Expecting a binary mask (i.e. of dtype bool) but got dtype {value['mask'].dtype}"
-            )
-
-
 @dataclass
 class Embedding:
     """
@@ -270,7 +185,7 @@ class Annotation:
     metadata: Optional[dict] = None
     bounding_box: Optional[geometry.Box] = None
     polygon: Optional[geometry.Polygon] = None
-    raster: Optional[Raster] = None
+    raster: Optional[geometry.Raster] = None
     embedding: Optional[Embedding] = None
     is_instance: Optional[bool] = None
     implied_task_types: Optional[List[str]] = None

@@ -98,13 +98,19 @@ def _add_geojson_column(df: pd.DataFrame) -> pd.DataFrame:
             "Each Annotation must contain either a bounding_box, polygon, raster, or an embedding. One Annotation cannot have multiple of these attributes (for example, one Annotation can't contain both a raster and a bounding box)."
         )
 
-    # get the geojson for each object in a column called geojson
-    df["geojson"] = (
-        df[["bounding_box", "polygon", "raster"]]
-        .bfill(axis=1)
-        .iloc[:, 0]
-        .map(lambda x: x.to_dict())
-    )
+    # if the user wants to use rasters, then we don't care about converting to geojson format
+    if df["raster"].notna().any():
+        df["raster"] = df["raster"].map(lambda x: x.to_numpy())
+        df["geojson"] = None
+
+    else:
+        # get the geojson for each object in a column called geojson
+        df["geojson"] = (
+            df[["bounding_box", "polygon"]]
+            .bfill(axis=1)
+            .iloc[:, 0]
+            .map(lambda x: x.to_dict())
+        )
 
     return df
 

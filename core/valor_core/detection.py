@@ -111,12 +111,12 @@ def _calculate_iou(joint_df: pd.DataFrame):
         ]
 
         # convert the raster into a numpy array
-        joint_df.loc[:, ["raster_pd", "raster_gt"]] = (
-            joint_df[["raster_pd", "raster_gt"]]
-            .map(io.BytesIO)  # type: ignore pd typing error
-            .map(Image.open)
-            .map(np.array)
-        )
+        # joint_df.loc[:, ["raster_pd", "raster_gt"]] = (
+        #     joint_df[["raster_pd", "raster_gt"]]
+        #     .map(io.BytesIO)  # type: ignore pd typing error
+        #     .map(Image.open)
+        #     .map(np.array)
+        # )
 
         iou_calculation_df = (
             joint_df.assign(

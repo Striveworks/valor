@@ -2656,10 +2656,889 @@ def test_evaluate_detection_model_with_no_predictions(
     computed_metrics = eval_job.metrics
 
     assert all([metric["value"] == 0 for metric in computed_metrics])
-    blah = [m for m in expected_metrics if m not in computed_metrics]
-    blah1 = [m for m in computed_metrics if m not in expected_metrics]
+
     for m in expected_metrics:
         assert m in computed_metrics
 
     for m in computed_metrics:
         assert m in expected_metrics
+
+
+def test_evaluate_detection_functional_test(
+    evaluate_detection_functional_test_groundtruths,
+    evaluate_detection_functional_test_predictions,
+):
+
+    eval_job = evaluate_detection(
+        groundtruths=evaluate_detection_functional_test_groundtruths,
+        predictions=evaluate_detection_functional_test_predictions,
+        parameters=schemas.EvaluationParameters(
+            metrics_to_return=[
+                enums.MetricType.AP,
+                enums.MetricType.AR,
+                enums.MetricType.mAP,
+                enums.MetricType.APAveragedOverIOUs,
+                enums.MetricType.mAR,
+                enums.MetricType.mAPAveragedOverIOUs,
+                enums.MetricType.PrecisionRecallCurve,
+                enums.MetricType.DetailedPrecisionRecallCurve,
+            ],
+            pr_curve_iou_threshold=0.5,
+            pr_curve_max_examples=1,
+        ),
+    )
+
+    metrics = [
+        m
+        for m in eval_job.metrics
+        if m["type"]
+        not in ["PrecisionRecallCurve", "DetailedPrecisionRecallCurve"]
+    ]
+
+    # round all metrics to the third decimal place
+    for i, m in enumerate(metrics):
+        metrics[i]["value"] = round(m["value"], 3)
+
+    pr_metrics = [
+        m for m in eval_job.metrics if m["type"] == "PrecisionRecallCurve"
+    ]
+    detailed_pr_metrics = [
+        m
+        for m in eval_job.metrics
+        if m["type"] == "DetailedPrecisionRecallCurve"
+    ]
+
+    # cf with torch metrics/pycocotools results listed here:
+    # https://github.com/Lightning-AI/metrics/blob/107dbfd5fb158b7ae6d76281df44bd94c836bfce/tests/unittests/detection/test_map.py#L231
+    expected_metrics = [
+        {
+            "label": {"key": "class", "value": "0"},
+            "parameters": {"iou": 0.5},
+            "value": 1.0,
+            "type": "AP",
+        },
+        {
+            "label": {"key": "class", "value": "0"},
+            "parameters": {"iou": 0.75},
+            "value": 0.723,
+            "type": "AP",
+        },
+        {
+            "label": {"key": "class", "value": "2"},
+            "parameters": {"iou": 0.5},
+            "value": 0.505,
+            "type": "AP",
+        },
+        {
+            "label": {"key": "class", "value": "2"},
+            "parameters": {"iou": 0.75},
+            "value": 0.505,
+            "type": "AP",
+        },
+        {
+            "label": {"key": "class", "value": "49"},
+            "parameters": {"iou": 0.5},
+            "value": 0.79,
+            "type": "AP",
+        },
+        {
+            "label": {"key": "class", "value": "49"},
+            "parameters": {"iou": 0.75},
+            "value": 0.576,
+            "type": "AP",
+        },
+        {
+            "label": {"key": "class", "value": "1"},
+            "parameters": {"iou": 0.5},
+            "value": 1.0,
+            "type": "AP",
+        },
+        {
+            "label": {"key": "class", "value": "1"},
+            "parameters": {"iou": 0.75},
+            "value": 1.0,
+            "type": "AP",
+        },
+        {
+            "label": {"key": "class", "value": "4"},
+            "parameters": {"iou": 0.5},
+            "value": 1.0,
+            "type": "AP",
+        },
+        {
+            "label": {"key": "class", "value": "4"},
+            "parameters": {"iou": 0.75},
+            "value": 1.0,
+            "type": "AP",
+        },
+        {
+            "parameters": {"label_key": "class", "iou": 0.5},
+            "value": 0.859,
+            "type": "mAP",
+        },
+        {
+            "parameters": {"label_key": "class", "iou": 0.75},
+            "value": 0.761,
+            "type": "mAP",
+        },
+        {
+            "label": {"key": "class", "value": "0"},
+            "parameters": {
+                "ious": [0.5, 0.55, 0.6, 0.65, 0.7, 0.75, 0.8, 0.85, 0.9, 0.95]
+            },
+            "value": 0.725,
+            "type": "APAveragedOverIOUs",
+        },
+        {
+            "label": {"key": "class", "value": "2"},
+            "parameters": {
+                "ious": [0.5, 0.55, 0.6, 0.65, 0.7, 0.75, 0.8, 0.85, 0.9, 0.95]
+            },
+            "value": 0.454,
+            "type": "APAveragedOverIOUs",
+        },
+        {
+            "label": {"key": "class", "value": "49"},
+            "parameters": {
+                "ious": [0.5, 0.55, 0.6, 0.65, 0.7, 0.75, 0.8, 0.85, 0.9, 0.95]
+            },
+            "value": 0.555,
+            "type": "APAveragedOverIOUs",
+        },
+        {
+            "label": {"key": "class", "value": "1"},
+            "parameters": {
+                "ious": [0.5, 0.55, 0.6, 0.65, 0.7, 0.75, 0.8, 0.85, 0.9, 0.95]
+            },
+            "value": 0.8,
+            "type": "APAveragedOverIOUs",
+        },
+        {
+            "label": {"key": "class", "value": "4"},
+            "parameters": {
+                "ious": [0.5, 0.55, 0.6, 0.65, 0.7, 0.75, 0.8, 0.85, 0.9, 0.95]
+            },
+            "value": 0.65,
+            "type": "APAveragedOverIOUs",
+        },
+        {
+            "parameters": {
+                "label_key": "class",
+                "ious": [
+                    0.5,
+                    0.55,
+                    0.6,
+                    0.65,
+                    0.7,
+                    0.75,
+                    0.8,
+                    0.85,
+                    0.9,
+                    0.95,
+                ],
+            },
+            "value": 0.637,
+            "type": "mAPAveragedOverIOUs",
+        },
+        {
+            "label": {"key": "class", "value": "0"},
+            "parameters": {
+                "ious": [0.5, 0.55, 0.6, 0.65, 0.7, 0.75, 0.8, 0.85, 0.9, 0.95]
+            },
+            "value": 0.78,
+            "type": "AR",
+        },
+        {
+            "label": {"key": "class", "value": "2"},
+            "parameters": {
+                "ious": [0.5, 0.55, 0.6, 0.65, 0.7, 0.75, 0.8, 0.85, 0.9, 0.95]
+            },
+            "value": 0.45,
+            "type": "AR",
+        },
+        {
+            "label": {"key": "class", "value": "49"},
+            "parameters": {
+                "ious": [0.5, 0.55, 0.6, 0.65, 0.7, 0.75, 0.8, 0.85, 0.9, 0.95]
+            },
+            "value": 0.58,
+            "type": "AR",
+        },
+        {
+            "label": {"key": "class", "value": "3"},
+            "parameters": {
+                "ious": [0.5, 0.55, 0.6, 0.65, 0.7, 0.75, 0.8, 0.85, 0.9, 0.95]
+            },
+            "value": -1.0,
+            "type": "AR",
+        },
+        {
+            "label": {"key": "class", "value": "1"},
+            "parameters": {
+                "ious": [0.5, 0.55, 0.6, 0.65, 0.7, 0.75, 0.8, 0.85, 0.9, 0.95]
+            },
+            "value": 0.8,
+            "type": "AR",
+        },
+        {
+            "label": {"key": "class", "value": "4"},
+            "parameters": {
+                "ious": [0.5, 0.55, 0.6, 0.65, 0.7, 0.75, 0.8, 0.85, 0.9, 0.95]
+            },
+            "value": 0.65,
+            "type": "AR",
+        },
+        {
+            "parameters": {
+                "label_key": "class",
+                "ious": [
+                    0.5,
+                    0.55,
+                    0.6,
+                    0.65,
+                    0.7,
+                    0.75,
+                    0.8,
+                    0.85,
+                    0.9,
+                    0.95,
+                ],
+            },
+            "value": 0.652,
+            "type": "mAR",
+        },
+    ]
+
+    pr_expected_answers = {
+        # (class, 4)
+        ("class", "4", 0.05, "tp"): 2,
+        ("class", "4", 0.05, "fn"): 0,
+        ("class", "4", 0.25, "tp"): 1,
+        ("class", "4", 0.25, "fn"): 1,
+        ("class", "4", 0.55, "tp"): 0,
+        ("class", "4", 0.55, "fn"): 2,
+        # (class, 2)
+        ("class", "2", 0.05, "tp"): 1,
+        ("class", "2", 0.05, "fn"): 1,
+        ("class", "2", 0.75, "tp"): 0,
+        ("class", "2", 0.75, "fn"): 2,
+        # (class, 49)
+        ("class", "49", 0.05, "tp"): 8,
+        ("class", "49", 0.3, "tp"): 5,
+        ("class", "49", 0.5, "tp"): 4,
+        ("class", "49", 0.85, "tp"): 1,
+        # (class, 3)
+        ("class", "3", 0.05, "tp"): 0,
+        ("class", "3", 0.05, "fp"): 1,
+        # (class, 1)
+        ("class", "1", 0.05, "tp"): 1,
+        ("class", "1", 0.35, "tp"): 0,
+        # (class, 0)
+        ("class", "0", 0.05, "tp"): 5,
+        ("class", "0", 0.5, "tp"): 3,
+        ("class", "0", 0.95, "tp"): 1,
+        ("class", "0", 0.95, "fn"): 4,
+    }
+
+    detailed_pr_expected_answers = {
+        # (class, 4)
+        ("4", 0.05, "tp"): {"all": 2, "total": 2},
+        ("4", 0.05, "fn"): {
+            "no_predictions": 0,
+            "misclassifications": 0,
+            "total": 0,
+        },
+        # (class, 2)
+        ("2", 0.05, "tp"): {"all": 1, "total": 1},
+        ("2", 0.05, "fn"): {
+            "no_predictions": 0,
+            "misclassifications": 1,
+            "total": 1,
+        },
+        ("2", 0.75, "tp"): {"all": 0, "total": 0},
+        ("2", 0.75, "fn"): {
+            "no_predictions": 2,
+            "misclassifications": 0,
+            "total": 2,
+        },
+        # (class, 49)
+        ("49", 0.05, "tp"): {"all": 9, "total": 9},
+        # (class, 3)
+        ("3", 0.05, "tp"): {"all": 0, "total": 0},
+        ("3", 0.05, "fp"): {
+            "hallucinations": 0,
+            "misclassifications": 1,
+            "total": 1,
+        },
+        # (class, 1)
+        ("1", 0.05, "tp"): {"all": 1, "total": 1},
+        ("1", 0.8, "fn"): {
+            "no_predictions": 1,
+            "misclassifications": 0,
+            "total": 1,
+        },
+        # (class, 0)
+        ("0", 0.05, "tp"): {"all": 5, "total": 5},
+        ("0", 0.95, "fn"): {
+            "no_predictions": 4,
+            "misclassifications": 0,
+            "total": 4,
+        },
+    }
+
+    # TODO search for "blah"
+    for m in metrics:
+        assert m in expected_metrics
+    for m in metrics:
+        assert m in eval_job.metrics
+
+    for (
+        _,
+        value,
+        threshold,
+        metric,
+    ), expected_value in pr_expected_answers.items():
+        assert (
+            pr_metrics[0]["value"][value][threshold][metric] == expected_value
+        )
+
+    for (
+        value,
+        threshold,
+        metric,
+    ), expected_output in detailed_pr_expected_answers.items():
+        model_output = detailed_pr_metrics[0]["value"][value][threshold][
+            metric
+        ]
+        assert isinstance(model_output, dict)
+        assert model_output["total"] == expected_output["total"]
+        assert all(
+            [
+                model_output["observations"][key]["count"]  # type: ignore - we know this element is a dict
+                == expected_output[key]
+                for key in [
+                    key
+                    for key in expected_output.keys()
+                    if key not in ["total"]
+                ]
+            ]
+        )
+
+    # spot check number of examples
+    assert (
+        len(
+            detailed_pr_metrics[0]["value"]["0"][0.95]["fn"]["observations"]["no_predictions"][  # type: ignore - we know this element is a dict
+                "examples"
+            ]
+        )
+        == 1
+    )
+    assert (
+        len(
+            detailed_pr_metrics[0]["value"]["49"][0.05]["tp"]["observations"]["all"][  # type: ignore - we know this element is a dict
+                "examples"
+            ]
+        )
+        == 1
+    )
+
+    # raise the iou threshold
+    eval_job_higher_threshold = evaluate_detection(
+        groundtruths=evaluate_detection_functional_test_groundtruths,
+        predictions=evaluate_detection_functional_test_predictions,
+        parameters=schemas.EvaluationParameters(
+            metrics_to_return=[
+                enums.MetricType.PrecisionRecallCurve,
+                enums.MetricType.DetailedPrecisionRecallCurve,
+            ],
+            pr_curve_iou_threshold=0.9,
+            pr_curve_max_examples=1,
+        ),
+    )
+
+    pr_metrics = [
+        m
+        for m in eval_job_higher_threshold.metrics
+        if m["type"] == "PrecisionRecallCurve"
+    ]
+    detailed_pr_metrics = [
+        m
+        for m in eval_job_higher_threshold.metrics
+        if m["type"] == "DetailedPrecisionRecallCurve"
+    ]
+
+    pr_expected_answers = {
+        # (class, 4)
+        ("class", "4", 0.05, "tp"): 0,
+        ("class", "4", 0.05, "fn"): 2,
+        # (class, 2)
+        ("class", "2", 0.05, "tp"): 1,
+        ("class", "2", 0.05, "fn"): 1,
+        ("class", "2", 0.75, "tp"): 0,
+        ("class", "2", 0.75, "fn"): 2,
+        # (class, 49)
+        ("class", "49", 0.05, "tp"): 2,
+        ("class", "49", 0.3, "tp"): 2,
+        ("class", "49", 0.5, "tp"): 2,
+        ("class", "49", 0.85, "tp"): 1,
+        # (class, 3)
+        ("class", "3", 0.05, "tp"): 0,
+        ("class", "3", 0.05, "fp"): 1,
+        # (class, 1)
+        ("class", "1", 0.05, "tp"): 0,
+        ("class", "1", 0.05, "fn"): 1,
+        # (class, 0)
+        ("class", "0", 0.05, "tp"): 1,
+        ("class", "0", 0.5, "tp"): 0,
+        ("class", "0", 0.95, "fn"): 5,
+    }
+
+    detailed_pr_expected_answers = {
+        # (class, 4)
+        ("4", 0.05, "tp"): {"all": 0, "total": 0},
+        ("4", 0.05, "fn"): {
+            "no_predictions": 2,  # below IOU threshold of .9
+            "misclassifications": 0,
+            "total": 2,
+        },
+        # (class, 2)
+        ("2", 0.05, "tp"): {"all": 1, "total": 1},
+        ("2", 0.05, "fn"): {
+            "no_predictions": 1,
+            "misclassifications": 0,
+            "total": 1,
+        },
+        ("2", 0.75, "tp"): {"all": 0, "total": 0},
+        ("2", 0.75, "fn"): {
+            "no_predictions": 2,
+            "misclassifications": 0,
+            "total": 2,
+        },
+        # (class, 49)
+        ("49", 0.05, "tp"): {"all": 2, "total": 2},
+        # (class, 3)
+        ("3", 0.05, "tp"): {"all": 0, "total": 0},
+        ("3", 0.05, "fp"): {
+            "hallucinations": 1,
+            "misclassifications": 0,
+            "total": 1,
+        },
+        # (class, 1)
+        ("1", 0.05, "tp"): {"all": 0, "total": 0},
+        ("1", 0.8, "fn"): {
+            "no_predictions": 1,
+            "misclassifications": 0,
+            "total": 1,
+        },
+        # (class, 0)
+        ("0", 0.05, "tp"): {"all": 1, "total": 1},
+        ("0", 0.95, "fn"): {
+            "no_predictions": 5,
+            "misclassifications": 0,
+            "total": 5,
+        },
+    }
+
+    for (
+        key,
+        value,
+        threshold,
+        metric,
+    ), expected_count in pr_expected_answers.items():
+        actual_count = pr_metrics[0]["value"][value][threshold][metric]
+        assert actual_count == expected_count
+
+    for (
+        value,
+        threshold,
+        metric,
+    ), expected_output in detailed_pr_expected_answers.items():
+        model_output = detailed_pr_metrics[0]["value"][value][threshold][
+            metric
+        ]
+        assert isinstance(model_output, dict)
+        assert model_output["total"] == expected_output["total"]
+        assert all(
+            [
+                model_output["observations"][key]["count"]  # type: ignore - we know this element is a dict
+                == expected_output[key]
+                for key in [
+                    key
+                    for key in expected_output.keys()
+                    if key not in ["total"]
+                ]
+            ]
+        )
+
+    assert (
+        len(
+            detailed_pr_metrics[0]["value"]["0"][0.95]["fn"]["observations"]["no_predictions"][  # type: ignore - we know this element is a dict
+                "examples"
+            ]
+        )
+        == 1
+    )
+    assert (
+        len(
+            detailed_pr_metrics[0]["value"]["49"][0.05]["tp"]["observations"]["all"][  # type: ignore - we know this element is a dict
+                "examples"
+            ]
+        )
+        == 1
+    )
+
+    # repeat the above, but with a higher pr_max_curves_example
+    eval_job_higher_threshold = evaluate_detection(
+        groundtruths=evaluate_detection_functional_test_groundtruths,
+        predictions=evaluate_detection_functional_test_predictions,
+        parameters=schemas.EvaluationParameters(
+            metrics_to_return=[
+                enums.MetricType.PrecisionRecallCurve,
+                enums.MetricType.DetailedPrecisionRecallCurve,
+            ],
+            pr_curve_iou_threshold=0.9,
+            pr_curve_max_examples=3,
+        ),
+    )
+
+    pr_metrics = [
+        m
+        for m in eval_job_higher_threshold.metrics
+        if m["type"] == "PrecisionRecallCurve"
+    ]
+    detailed_pr_metrics = [
+        m
+        for m in eval_job_higher_threshold.metrics
+        if m["type"] == "DetailedPrecisionRecallCurve"
+    ]
+
+    for (
+        key,
+        value,
+        threshold,
+        metric,
+    ), expected_count in pr_expected_answers.items():
+        actual_count = pr_metrics[0]["value"][value][threshold][metric]
+        assert actual_count == expected_count
+
+    for (
+        value,
+        threshold,
+        metric,
+    ), expected_output in detailed_pr_expected_answers.items():
+        model_output = detailed_pr_metrics[0]["value"][value][threshold][
+            metric
+        ]
+        assert isinstance(model_output, dict)
+        assert model_output["total"] == expected_output["total"]
+        assert all(
+            [
+                model_output["observations"][key]["count"]  # type: ignore - we know this element is a dict
+                == expected_output[key]
+                for key in [
+                    key
+                    for key in expected_output.keys()
+                    if key not in ["total"]
+                ]
+            ]
+        )
+
+    assert (
+        len(
+            detailed_pr_metrics[0]["value"]["0"][0.95]["fn"]["observations"]["no_predictions"][  # type: ignore - we know this element is a dict
+                "examples"
+            ]
+        )
+        == 3
+    )
+    assert (
+        len(
+            detailed_pr_metrics[0]["value"]["49"][0.05]["tp"]["observations"]["all"][  # type: ignore - we know this element is a dict
+                "examples"
+            ]
+        )
+        == 2
+    )
+
+    # test behavior if pr_curve_max_examples == 0
+    eval_job_higher_threshold = evaluate_detection(
+        groundtruths=evaluate_detection_functional_test_groundtruths,
+        predictions=evaluate_detection_functional_test_predictions,
+        parameters=schemas.EvaluationParameters(
+            metrics_to_return=[
+                enums.MetricType.PrecisionRecallCurve,
+                enums.MetricType.DetailedPrecisionRecallCurve,
+            ],
+            pr_curve_iou_threshold=0.9,
+            pr_curve_max_examples=0,
+        ),
+    )
+
+    pr_metrics = [
+        m
+        for m in eval_job_higher_threshold.metrics
+        if m["type"] == "PrecisionRecallCurve"
+    ]
+    detailed_pr_metrics = [
+        m
+        for m in eval_job_higher_threshold.metrics
+        if m["type"] == "DetailedPrecisionRecallCurve"
+    ]
+
+    for (
+        key,
+        value,
+        threshold,
+        metric,
+    ), expected_count in pr_expected_answers.items():
+        actual_count = pr_metrics[0]["value"][value][threshold][metric]
+        assert actual_count == expected_count
+
+    for (
+        value,
+        threshold,
+        metric,
+    ), expected_output in detailed_pr_expected_answers.items():
+        model_output = detailed_pr_metrics[0]["value"][value][threshold][
+            metric
+        ]
+        assert isinstance(model_output, dict)
+        assert model_output["total"] == expected_output["total"]
+        assert all(
+            [
+                model_output["observations"][key]["count"]  # type: ignore - we know this element is a dict
+                == expected_output[key]
+                for key in [
+                    key
+                    for key in expected_output.keys()
+                    if key not in ["total"]
+                ]
+            ]
+        )
+
+    # spot check number of examples
+    assert (
+        len(
+            detailed_pr_metrics[0]["value"]["0"][0.95]["fn"]["observations"]["no_predictions"][  # type: ignore - we know this element is a dict
+                "examples"
+            ]
+        )
+        == 0
+    )
+    assert (
+        len(
+            detailed_pr_metrics[0]["value"]["49"][0.05]["tp"]["observations"]["all"][  # type: ignore - we know this element is a dict
+                "examples"
+            ]
+        )
+        == 0
+    )
+
+
+def test_evaluate_detection_functional_test_with_rasters(
+    evaluate_detection_functional_test_groundtruths_with_rasters,
+    evaluate_detection_functional_test_predictions_with_rasters,
+):
+    eval_job = evaluate_detection(
+        groundtruths=evaluate_detection_functional_test_groundtruths_with_rasters,
+        predictions=evaluate_detection_functional_test_predictions_with_rasters,
+        parameters=schemas.EvaluationParameters(
+            metrics_to_return=[
+                enums.MetricType.AP,
+                enums.MetricType.AR,
+                enums.MetricType.mAP,
+                enums.MetricType.APAveragedOverIOUs,
+                enums.MetricType.mAR,
+                enums.MetricType.mAPAveragedOverIOUs,
+                enums.MetricType.PrecisionRecallCurve,
+            ],
+            pr_curve_iou_threshold=0.5,
+            pr_curve_max_examples=1,
+        ),
+    )
+
+    metrics = [
+        m
+        for m in eval_job.metrics
+        if m["type"]
+        not in ["PrecisionRecallCurve", "DetailedPrecisionRecallCurve"]
+    ]
+
+    # round all metrics to the third decimal place
+    for i, m in enumerate(metrics):
+        metrics[i]["value"] = round(m["value"], 3)
+
+    pr_metrics = [
+        m for m in eval_job.metrics if m["type"] == "PrecisionRecallCurve"
+    ]
+
+    expected_metrics = [
+        {
+            "label": {"key": "class", "value": "label1"},
+            "parameters": {"iou": 0.5},
+            "value": 1.0,
+            "type": "AP",
+        },
+        {
+            "label": {"key": "class", "value": "label1"},
+            "parameters": {"iou": 0.75},
+            "value": 1.0,
+            "type": "AP",
+        },
+        {
+            "label": {"key": "class", "value": "label2"},
+            "parameters": {"iou": 0.5},
+            "value": 1.0,
+            "type": "AP",
+        },
+        {
+            "label": {"key": "class", "value": "label2"},
+            "parameters": {"iou": 0.75},
+            "value": 1.0,
+            "type": "AP",
+        },
+        {
+            "label": {"key": "class", "value": "label3"},
+            "parameters": {"iou": 0.5},
+            "value": 0.0,
+            "type": "AP",
+        },
+        {
+            "label": {"key": "class", "value": "label3"},
+            "parameters": {"iou": 0.75},
+            "value": 0.0,
+            "type": "AP",
+        },
+        {
+            "parameters": {"label_key": "class", "iou": 0.5},
+            "value": 0.667,
+            "type": "mAP",
+        },
+        {
+            "parameters": {"label_key": "class", "iou": 0.75},
+            "value": 0.667,
+            "type": "mAP",
+        },
+        {
+            "label": {"key": "class", "value": "label1"},
+            "parameters": {
+                "ious": [0.5, 0.55, 0.6, 0.65, 0.7, 0.75, 0.8, 0.85, 0.9, 0.95]
+            },
+            "value": 1.0,
+            "type": "APAveragedOverIOUs",
+        },
+        {
+            "label": {"key": "class", "value": "label2"},
+            "parameters": {
+                "ious": [0.5, 0.55, 0.6, 0.65, 0.7, 0.75, 0.8, 0.85, 0.9, 0.95]
+            },
+            "value": 1.0,
+            "type": "APAveragedOverIOUs",
+        },
+        {
+            "label": {"key": "class", "value": "label3"},
+            "parameters": {
+                "ious": [0.5, 0.55, 0.6, 0.65, 0.7, 0.75, 0.8, 0.85, 0.9, 0.95]
+            },
+            "value": 0.0,
+            "type": "APAveragedOverIOUs",
+        },
+        {
+            "parameters": {
+                "label_key": "class",
+                "ious": [
+                    0.5,
+                    0.55,
+                    0.6,
+                    0.65,
+                    0.7,
+                    0.75,
+                    0.8,
+                    0.85,
+                    0.9,
+                    0.95,
+                ],
+            },
+            "value": 0.667,
+            "type": "mAPAveragedOverIOUs",
+        },
+        {
+            "label": {"key": "class", "value": "label1"},
+            "parameters": {
+                "ious": [0.5, 0.55, 0.6, 0.65, 0.7, 0.75, 0.8, 0.85, 0.9, 0.95]
+            },
+            "value": 1.0,
+            "type": "AR",
+        },
+        {
+            "label": {"key": "class", "value": "label4"},
+            "parameters": {
+                "ious": [0.5, 0.55, 0.6, 0.65, 0.7, 0.75, 0.8, 0.85, 0.9, 0.95]
+            },
+            "value": -1.0,
+            "type": "AR",
+        },
+        {
+            "label": {"key": "class", "value": "label2"},
+            "parameters": {
+                "ious": [0.5, 0.55, 0.6, 0.65, 0.7, 0.75, 0.8, 0.85, 0.9, 0.95]
+            },
+            "value": 1.0,
+            "type": "AR",
+        },
+        {
+            "label": {"key": "class", "value": "label3"},
+            "parameters": {
+                "ious": [0.5, 0.55, 0.6, 0.65, 0.7, 0.75, 0.8, 0.85, 0.9, 0.95]
+            },
+            "value": 0.0,
+            "type": "AR",
+        },
+        {
+            "parameters": {
+                "label_key": "class",
+                "ious": [
+                    0.5,
+                    0.55,
+                    0.6,
+                    0.65,
+                    0.7,
+                    0.75,
+                    0.8,
+                    0.85,
+                    0.9,
+                    0.95,
+                ],
+            },
+            "value": 0.667,
+            "type": "mAR",
+        },
+    ]
+
+    for m in metrics:
+        assert m in expected_metrics
+
+    for m in expected_metrics:
+        assert m in metrics
+
+    pr_expected_answers = {
+        ("class", "label1", 0.05, "tp"): 1,
+        ("class", "label1", 0.35, "tp"): 0,
+        ("class", "label2", 0.05, "tp"): 1,
+        ("class", "label2", 0.05, "fp"): 0,
+        ("class", "label2", 0.95, "fp"): 0,
+        ("class", "label3", 0.05, "tp"): 0,
+        ("class", "label3", 0.05, "fn"): 1,
+        ("class", "label4", 0.05, "tp"): 0,
+        ("class", "label4", 0.05, "fp"): 1,
+    }
+
+    for (
+        _,
+        value,
+        threshold,
+        metric,
+    ), expected_value in pr_expected_answers.items():
+        assert (
+            pr_metrics[0]["value"][value][threshold][metric] == expected_value
+        )
