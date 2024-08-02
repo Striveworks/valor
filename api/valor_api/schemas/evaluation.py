@@ -6,6 +6,7 @@ from valor_api.enums import (
     AnnotationType,
     EvaluationStatus,
     MetricType,
+    ROUGEType,
     TaskType,
 )
 from valor_api.schemas.filters import Filter
@@ -26,8 +27,10 @@ class EvaluationParameters(BaseModel):
         The task type of a given evaluation.
     label_map: Optional[List[List[List[str]]]]
         Optional mapping of individual labels to a grouper label. Useful when you need to evaluate performance using labels that differ across datasets and models.
-    metrics_to_return: List[str], optional
+    metrics_to_return: List[MetricType], optional
         The list of metrics to compute, store, and return to the user.
+    llm_api_params: dict[str, str | dict], optional
+        A dictionary of parameters for the LLM API.
     convert_annotations_to_type: AnnotationType | None = None
         The type to convert all annotations to.
     iou_thresholds_to_compute: List[float], optional
@@ -37,14 +40,21 @@ class EvaluationParameters(BaseModel):
     recall_score_threshold: float, default=0
         The confidence score threshold for use when determining whether to count a prediction as a true positive or not while calculating Average Recall.
     pr_curve_iou_threshold: float, optional
-            The IOU threshold to use when calculating precision-recall curves for object detection tasks. Defaults to 0.5.
+          The IOU threshold to use when calculating precision-recall curves for object detection tasks. Defaults to 0.5.
     pr_curve_max_examples: int
         The maximum number of datum examples to store when calculating PR curves.
+    bleu_weights: list[float], optional
+        The weights to use when calculating BLEU scores.
+    rouge_types: list[ROUGEType]
+        A list of rouge types to calculate. Options are ['rouge1', 'rouge2', 'rougeL', 'rougeLsum'], where `rouge1` is unigram-based scoring, `rouge2` is bigram-based scoring, `rougeL` is scoring based on sentences (i.e., splitting on "." and ignoring "\n"), and `rougeLsum` is scoring based on splitting the text using "\n".
+    rouge_use_stemmer: bool
+        If True, uses Porter stemmer to strip word suffixes.
     """
 
     task_type: TaskType
     metrics_to_return: list[MetricType] | None = None
     label_map: LabelMapType | None = None
+    llm_api_params: dict[str, str | dict] | None = None
 
     convert_annotations_to_type: AnnotationType | None = None
     iou_thresholds_to_compute: list[float] | None = None
@@ -52,6 +62,9 @@ class EvaluationParameters(BaseModel):
     recall_score_threshold: float | None = 0
     pr_curve_iou_threshold: float = 0.5
     pr_curve_max_examples: int = 1
+    bleu_weights: list[float] | None = None
+    rouge_types: list[ROUGEType] | None = None
+    rouge_use_stemmer: bool | None = None
 
     # pydantic setting
     model_config = ConfigDict(extra="forbid")
@@ -85,7 +98,18 @@ class EvaluationParameters(BaseModel):
                     values.metrics_to_return = [
                         MetricType.IOU,
                         MetricType.mIOU,
+                        MetricType.Precision,
+                        MetricType.Recall,
+                        MetricType.F1,
                     ]
+                case TaskType.TEXT_GENERATION:
+                    raise ValueError(
+                        "Text generation does not have default metrics. Please specify metrics_to_return."
+                    )
+                case _:
+                    raise NotImplementedError(
+                        f"Task type `{values.task_type}` is unsupported."
+                    )
 
         match values.task_type:
             case TaskType.CLASSIFICATION | TaskType.SEMANTIC_SEGMENTATION:
@@ -116,6 +140,50 @@ class EvaluationParameters(BaseModel):
                             raise ValueError(
                                 "`iou_thresholds_to_return` must be a subset of `iou_thresholds_to_compute`"
                             )
+            case TaskType.TEXT_GENERATION:
+                text_comparison_metrics = set(["ROUGE", "BLEU"])
+                llm_guided_metrics = set(
+                    [
+                        "AnswerRelevance",
+                        "Bias",
+                        "Coherence",
+                        "ContextRelevance",
+                        "Faithfulness",
+                        "Hallucination",
+                        "Toxicity",
+                    ]
+                )
+                allowed_metrics = text_comparison_metrics.union(
+                    llm_guided_metrics
+                )
+
+                if values.metrics_to_return is None or not all(
+                    metric in allowed_metrics
+                    for metric in values.metrics_to_return
+                ):
+                    raise ValueError(
+                        f"`metrics_to_return` must be a list of metrics from {allowed_metrics}."
+                    )
+                if any(
+                    metric in llm_guided_metrics
+                    for metric in values.metrics_to_return
+                ):
+                    if values.llm_api_params is None:
+                        raise ValueError(
+                            "`llm_api_params` must be provided for LLM guided evaluations."
+                        )
+
+                if values.bleu_weights is not None:
+                    if not all(
+                        isinstance(weight, (int, float)) and 0 <= weight
+                        for weight in values.bleu_weights
+                    ):
+                        raise ValueError(
+                            "BLEU metric weights must be a list of non-negative integers or floats."
+                        )
+                    if sum(values.bleu_weights) != 1:
+                        raise ValueError("BLEU metric weights must sum to 1.")
+
             case _:
                 raise NotImplementedError(
                     f"Task type `{values.task_type}` is unsupported."

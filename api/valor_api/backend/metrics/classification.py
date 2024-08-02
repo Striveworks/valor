@@ -46,7 +46,7 @@ def _compute_curves(
     pr_curve_max_examples: int
         The maximum number of datum examples to store per true positive, false negative, etc.
     metrics_to_return: list[enums.MetricType]
-        The list of metrics requested by the user.
+        The list of metrics to compute, store, and return to the user.
 
     Returns
     -------

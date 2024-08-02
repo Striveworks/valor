@@ -54,7 +54,11 @@ def _calculate_101_pt_interp(precisions, recalls) -> float:
     cutoff_idx = 0
     ret = 0
     for r in [0.01 * i for i in range(101)]:
-        while cutoff_idx < len(data) and data[cutoff_idx][1] < r:
+        while (
+            cutoff_idx < len(data)
+            and data[cutoff_idx][1] < r
+            and not math.isclose(data[cutoff_idx][1], r)
+        ):
             cutoff_idx += 1
         while prec_heap and prec_heap[0][1] < cutoff_idx:
             heapq.heappop(prec_heap)

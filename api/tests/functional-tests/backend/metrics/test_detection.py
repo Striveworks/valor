@@ -1197,7 +1197,7 @@ def test__compute_detection(
     expected_ap_metrics = [
         {"iou": 0.5, "value": 0.505, "label": {"key": "class", "value": "2"}},
         {"iou": 0.75, "value": 0.505, "label": {"key": "class", "value": "2"}},
-        {"iou": 0.5, "value": 0.79, "label": {"key": "class", "value": "49"}},
+        {"iou": 0.5, "value": 0.791, "label": {"key": "class", "value": "49"}},
         {
             "iou": 0.75,
             "value": 0.576,
@@ -1222,7 +1222,7 @@ def test__compute_detection(
         },
         {
             "ious": iou_thresholds,
-            "value": 0.555,  # note COCO had 0.556
+            "value": 0.556,
             "label": {"key": "class", "value": "49"},
         },
         {
@@ -1434,7 +1434,7 @@ def test__compute_detection(
     expected_ap_metrics = [
         {"iou": 0.5, "value": 0.505, "label": {"key": "class", "value": "2"}},
         {"iou": 0.75, "value": 0.505, "label": {"key": "class", "value": "2"}},
-        {"iou": 0.5, "value": 0.79, "label": {"key": "class", "value": "49"}},
+        {"iou": 0.5, "value": 0.791, "label": {"key": "class", "value": "49"}},
         {
             "iou": 0.75,
             "value": 0.576,
@@ -1459,7 +1459,7 @@ def test__compute_detection(
         },
         {
             "ious": iou_thresholds,
-            "value": 0.555,  # note COCO had 0.556
+            "value": 0.556,
             "label": {"key": "class", "value": "49"},
         },
         {
@@ -1671,7 +1671,7 @@ def test__compute_detection(
     expected_ap_metrics = [
         {"iou": 0.5, "value": 0.505, "label": {"key": "class", "value": "2"}},
         {"iou": 0.75, "value": 0.505, "label": {"key": "class", "value": "2"}},
-        {"iou": 0.5, "value": 0.79, "label": {"key": "class", "value": "49"}},
+        {"iou": 0.5, "value": 0.791, "label": {"key": "class", "value": "49"}},
         {
             "iou": 0.75,
             "value": 0.576,
@@ -1696,7 +1696,7 @@ def test__compute_detection(
         },
         {
             "ious": iou_thresholds,
-            "value": 0.555,  # note COCO had 0.556
+            "value": 0.556,
             "label": {"key": "class", "value": "49"},
         },
         {
