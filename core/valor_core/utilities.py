@@ -130,7 +130,7 @@ def validate_groundtruth_dataframe(
         return df
     else:
         raise ValueError(
-            "Could not validate object as it's neither a dataframe nor a list of Valor objects."
+            f"Could not validate object as it's neither a dataframe nor a list of Valor objects. Object is of type {type(obj)}."
         )
 
 

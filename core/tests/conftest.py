@@ -234,6 +234,103 @@ def evaluate_detection_predictions_with_label_maps(
     ]
 
 
+@pytest.fixture
+def evaluate_detection_detailed_pr_curve_groundtruths(
+    img1,
+    img2,
+    rect1,
+    rect2,
+    rect3,
+    rect4,
+    rect5,
+):
+    return [
+        schemas.GroundTruth(
+            datum=img1,
+            annotations=[
+                schemas.Annotation(
+                    is_instance=True,
+                    labels=[schemas.Label(key="k1", value="v1")],
+                    bounding_box=geometry.Box([rect1]),
+                ),
+                schemas.Annotation(
+                    is_instance=True,
+                    labels=[schemas.Label(key="k1", value="missed_detection")],
+                    bounding_box=geometry.Box([rect2]),
+                ),
+                schemas.Annotation(
+                    is_instance=True,
+                    labels=[schemas.Label(key="k1", value="v2")],
+                    bounding_box=geometry.Box([rect3]),
+                ),
+            ],
+        ),
+        schemas.GroundTruth(
+            datum=img2,
+            annotations=[
+                schemas.Annotation(
+                    is_instance=True,
+                    labels=[schemas.Label(key="k1", value="low_iou")],
+                    bounding_box=geometry.Box([rect1]),
+                ),
+            ],
+        ),
+    ]
+
+
+@pytest.fixture
+def evaluate_detection_detailed_pr_curve_predictions(
+    img1,
+    img2,
+    rect1,
+    rect2,
+    rect3,
+    rect4,
+    rect5,
+):
+    return [
+        schemas.Prediction(
+            datum=img1,
+            annotations=[
+                schemas.Annotation(
+                    is_instance=True,
+                    labels=[schemas.Label(key="k1", value="v1", score=0.5)],
+                    bounding_box=geometry.Box([rect1]),
+                ),
+                schemas.Annotation(
+                    is_instance=True,
+                    labels=[
+                        schemas.Label(key="k1", value="not_v2", score=0.3)
+                    ],
+                    bounding_box=geometry.Box([rect5]),
+                ),
+                schemas.Annotation(
+                    is_instance=True,
+                    labels=[
+                        schemas.Label(
+                            key="k1", value="hallucination", score=0.1
+                        )
+                    ],
+                    bounding_box=geometry.Box([rect4]),
+                ),
+            ],
+        ),
+        # prediction for img2 has the wrong bounding box, so it should count as a hallucination
+        schemas.Prediction(
+            datum=img2,
+            annotations=[
+                schemas.Annotation(
+                    is_instance=True,
+                    labels=[
+                        schemas.Label(key="k1", value="low_iou", score=0.5)
+                    ],
+                    bounding_box=geometry.Box([rect2]),
+                ),
+            ],
+        ),
+    ]
+
+
 # TODO separate the classification vs. object-detection data?
 @pytest.fixture
 def evaluate_tabular_clf_groundtruths():

@@ -525,7 +525,7 @@ class ARMetric(_LabelMetricBase):
         """Converts a metric object into a dictionary."""
         return {
             "label": {"key": self.label.key, "value": self.label.value},
-            "parameters": {"ious": list(self.ious)},
+            "parameters": {"ious": sorted(list(self.ious))},
             "value": self.value,
             "type": self.__type__,
         }
@@ -583,7 +583,7 @@ class APMetricAveragedOverIOUs(_LabelMetricBase):
         """Converts a metric object into a dictionary."""
         return {
             "label": {"key": self.label.key, "value": self.label.value},
-            "parameters": {"ious": list(self.ious)},
+            "parameters": {"ious": sorted(list(self.ious))},
             "value": self.value,
             "type": self.__type__,
         }
@@ -612,7 +612,7 @@ class mARMetric(_LabelKeyMetricBase):
         return {
             "parameters": {
                 "label_key": self.label_key,
-                "ious": list(self.ious),
+                "ious": sorted(list(self.ious)),
             },
             "value": self.value,
             "type": self.__type__,
@@ -669,7 +669,7 @@ class mAPMetricAveragedOverIOUs(_LabelKeyMetricBase):
         return {
             "parameters": {
                 "label_key": self.label_key,
-                "ious": list(self.ious),
+                "ious": sorted(list(self.ious)),
             },
             "value": self.value,
             "type": self.__type__,

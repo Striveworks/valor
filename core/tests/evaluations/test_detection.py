@@ -2,7 +2,7 @@ import random
 
 import pandas as pd
 import pytest
-from valor_core import enums, schemas
+from valor_core import enums, geometry, schemas
 from valor_core.detection import evaluate_detection
 
 
@@ -1607,1150 +1607,1059 @@ def test_evaluate_detection_with_label_maps(
     }
 
 
-# def test_evaluate_detection_false_negatives_single_image_baseline(
-#     db: Session, dataset_name: str, model_name: str, client: Client
-# ):
-#     """This is the baseline for the below test. In this case there are two predictions and
-#     one groundtruth, but the highest confident prediction overlaps sufficiently with the groundtruth
-#     so there is not a penalty for the false negative so the AP is 1
-#     """
-#     dset = Dataset.create(dataset_name)
-#     dset.add_groundtruth(
-#         GroundTruth(
-#             datum=Datum(uid="uid1"),
-#             annotations=[
-#                 Annotation(
-#                     bounding_box=Box.from_extrema(
-#                         xmin=10, xmax=20, ymin=10, ymax=20
-#                     ),
-#                     labels=[Label(key="key", value="value")],
-#                     is_instance=True,
-#                 )
-#             ],
-#         )
-#     )
-#     dset.finalize()
+def test_evaluate_detection_false_negatives_single_image_baseline():
+    """This is the baseline for the below test. In this case there are two predictions and
+    one groundtruth, but the highest confident prediction overlaps sufficiently with the groundtruth
+    so there is not a penalty for the false negative so the AP is 1
+    """
+    groundtruths = [
+        schemas.GroundTruth(
+            datum=schemas.Datum(uid="uid1"),
+            annotations=[
+                schemas.Annotation(
+                    bounding_box=geometry.Box.from_extrema(
+                        xmin=10, xmax=20, ymin=10, ymax=20
+                    ),
+                    labels=[schemas.Label(key="key", value="value")],
+                    is_instance=True,
+                )
+            ],
+        )
+    ]
 
-#     model = Model.create(model_name)
-#     model.add_prediction(
-#         dset,
-#         Prediction(
-#             datum=Datum(uid="uid1"),
-#             annotations=[
-#                 Annotation(
-#                     bounding_box=Box.from_extrema(
-#                         xmin=10, xmax=20, ymin=10, ymax=20
-#                     ),
-#                     labels=[Label(key="key", value="value", score=0.8)],
-#                     is_instance=True,
-#                 ),
-#                 Annotation(
-#                     bounding_box=Box.from_extrema(
-#                         xmin=100, xmax=110, ymin=100, ymax=200
-#                     ),
-#                     labels=[Label(key="key", value="value", score=0.7)],
-#                     is_instance=True,
-#                 ),
-#             ],
-#         ),
-#     )
+    predictions = [
+        schemas.Prediction(
+            datum=schemas.Datum(uid="uid1"),
+            annotations=[
+                schemas.Annotation(
+                    bounding_box=geometry.Box.from_extrema(
+                        xmin=10, xmax=20, ymin=10, ymax=20
+                    ),
+                    labels=[
+                        schemas.Label(key="key", value="value", score=0.8)
+                    ],
+                    is_instance=True,
+                ),
+                schemas.Annotation(
+                    bounding_box=geometry.Box.from_extrema(
+                        xmin=100, xmax=110, ymin=100, ymax=200
+                    ),
+                    labels=[
+                        schemas.Label(key="key", value="value", score=0.7)
+                    ],
+                    is_instance=True,
+                ),
+            ],
+        ),
+    ]
 
-#     evaluation = model.evaluate_detection(
-#         dset, iou_thresholds_to_compute=[0.5], iou_thresholds_to_return=[0.5]
-#     )
-#     evaluation.wait_for_completion(timeout=30)
-#     ap_metric = [m for m in evaluation.metrics if m["type"] == "AP"][0]
-#     assert ap_metric == {
-#         "type": "AP",
-#         "parameters": {"iou": 0.5},
-#         "value": 1,
-#         "label": {"key": "key", "value": "value"},
-#     }
+    eval_job = evaluate_detection(
+        groundtruths=groundtruths,
+        predictions=predictions,
+        parameters=schemas.EvaluationParameters(
+            iou_thresholds_to_compute=[0.5],
+            iou_thresholds_to_return=[0.5],
+        ),
+    )
 
-
-# def test_evaluate_detection_false_negatives_single_image(
-#     db: Session, dataset_name: str, model_name: str, client: Client
-# ):
-#     """Tests fix for a bug where high confidence false negative was not being penalized. The
-#     difference between this test and the above is that here the prediction with higher confidence
-#     does not sufficiently overlap the groundtruth and so is penalized and we get an AP of 0.5
-#     """
-#     dset = Dataset.create(dataset_name)
-#     dset.add_groundtruth(
-#         GroundTruth(
-#             datum=Datum(uid="uid1"),
-#             annotations=[
-#                 Annotation(
-#                     bounding_box=Box.from_extrema(
-#                         xmin=10, xmax=20, ymin=10, ymax=20
-#                     ),
-#                     labels=[Label(key="key", value="value")],
-#                     is_instance=True,
-#                 )
-#             ],
-#         )
-#     )
-#     dset.finalize()
-
-#     model = Model.create(model_name)
-#     model.add_prediction(
-#         dset,
-#         Prediction(
-#             datum=Datum(uid="uid1"),
-#             annotations=[
-#                 Annotation(
-#                     bounding_box=Box.from_extrema(
-#                         xmin=10, xmax=20, ymin=10, ymax=20
-#                     ),
-#                     labels=[Label(key="key", value="value", score=0.8)],
-#                     is_instance=True,
-#                 ),
-#                 Annotation(
-#                     bounding_box=Box.from_extrema(
-#                         xmin=100, xmax=110, ymin=100, ymax=200
-#                     ),
-#                     labels=[Label(key="key", value="value", score=0.9)],
-#                     is_instance=True,
-#                 ),
-#             ],
-#         ),
-#     )
-
-#     evaluation = model.evaluate_detection(
-#         dset, iou_thresholds_to_compute=[0.5], iou_thresholds_to_return=[0.5]
-#     )
-#     evaluation.wait_for_completion(timeout=30)
-
-#     ap_metric = [m for m in evaluation.metrics if m["type"] == "AP"][0]
-#     assert ap_metric == {
-#         "type": "AP",
-#         "parameters": {"iou": 0.5},
-#         "value": 0.5,
-#         "label": {"key": "key", "value": "value"},
-#     }
+    ap_metric = [m for m in eval_job.metrics if m["type"] == "AP"][0]
+    assert ap_metric == {
+        "type": "AP",
+        "parameters": {"iou": 0.5},
+        "value": 1,
+        "label": {"key": "key", "value": "value"},
+    }
 
 
-# def test_evaluate_detection_false_negatives_two_images_one_empty_low_confidence_of_fp(
-#     db: Session, dataset_name: str, model_name: str, client: Client
-# ):
-#     """In this test we have
-#         1. An image with a matching groundtruth and prediction (same class and high IOU)
-#         2. A second image with empty groundtruth annotation but a prediction with lower confidence
-#         then the prediction on the first image.
+def test_evaluate_detection_false_negatives_single_image():
+    """Tests fix for a bug where high confidence false negative was not being penalized. The
+    difference between this test and the above is that here the prediction with higher confidence
+    does not sufficiently overlap the groundtruth and so is penalized and we get an AP of 0.5
+    """
+    groundtruths = [
+        schemas.GroundTruth(
+            datum=schemas.Datum(uid="uid1"),
+            annotations=[
+                schemas.Annotation(
+                    bounding_box=geometry.Box.from_extrema(
+                        xmin=10, xmax=20, ymin=10, ymax=20
+                    ),
+                    labels=[schemas.Label(key="key", value="value")],
+                    is_instance=True,
+                )
+            ],
+        )
+    ]
+    predictions = [
+        schemas.Prediction(
+            datum=schemas.Datum(uid="uid1"),
+            annotations=[
+                schemas.Annotation(
+                    bounding_box=geometry.Box.from_extrema(
+                        xmin=10, xmax=20, ymin=10, ymax=20
+                    ),
+                    labels=[
+                        schemas.Label(key="key", value="value", score=0.8)
+                    ],
+                    is_instance=True,
+                ),
+                schemas.Annotation(
+                    bounding_box=geometry.Box.from_extrema(
+                        xmin=100, xmax=110, ymin=100, ymax=200
+                    ),
+                    labels=[
+                        schemas.Label(key="key", value="value", score=0.9)
+                    ],
+                    is_instance=True,
+                ),
+            ],
+        ),
+    ]
 
-#     In this case, the AP should be 1.0 since the false positive has lower confidence than the true positive
+    eval_job = evaluate_detection(
+        groundtruths=groundtruths,
+        predictions=predictions,
+        parameters=schemas.EvaluationParameters(
+            iou_thresholds_to_compute=[0.5],
+            iou_thresholds_to_return=[0.5],
+        ),
+    )
 
-#     """
-#     dset = Dataset.create(dataset_name)
-#     dset.add_groundtruths(
-#         [
-#             GroundTruth(
-#                 datum=Datum(uid="uid1"),
-#                 annotations=[
-#                     Annotation(
-#                         bounding_box=Box.from_extrema(
-#                             xmin=10, xmax=20, ymin=10, ymax=20
-#                         ),
-#                         labels=[Label(key="key", value="value")],
-#                         is_instance=True,
-#                     )
-#                 ],
-#             ),
-#             GroundTruth(
-#                 datum=Datum(uid="uid2"),
-#                 annotations=[Annotation()],
-#             ),
-#         ]
-#     )
-#     dset.finalize()
-
-#     model = Model.create(model_name)
-#     model.add_predictions(
-#         dset,
-#         [
-#             Prediction(
-#                 datum=Datum(uid="uid1"),
-#                 annotations=[
-#                     Annotation(
-#                         bounding_box=Box.from_extrema(
-#                             xmin=10, xmax=20, ymin=10, ymax=20
-#                         ),
-#                         labels=[Label(key="key", value="value", score=0.8)],
-#                         is_instance=True,
-#                     ),
-#                 ],
-#             ),
-#             Prediction(
-#                 datum=Datum(uid="uid2"),
-#                 annotations=[
-#                     Annotation(
-#                         bounding_box=Box.from_extrema(
-#                             xmin=10, xmax=20, ymin=10, ymax=20
-#                         ),
-#                         labels=[Label(key="key", value="value", score=0.7)],
-#                         is_instance=True,
-#                     ),
-#                 ],
-#             ),
-#         ],
-#     )
-
-#     evaluation = model.evaluate_detection(
-#         dset, iou_thresholds_to_compute=[0.5], iou_thresholds_to_return=[0.5]
-#     )
-#     evaluation.wait_for_completion(timeout=30)
-#     ap_metric = [m for m in evaluation.metrics if m["type"] == "AP"][0]
-#     assert ap_metric == {
-#         "type": "AP",
-#         "parameters": {"iou": 0.5},
-#         "value": 1.0,
-#         "label": {"key": "key", "value": "value"},
-#     }
+    ap_metric = [m for m in eval_job.metrics if m["type"] == "AP"][0]
+    assert ap_metric == {
+        "type": "AP",
+        "parameters": {"iou": 0.5},
+        "value": 0.5,
+        "label": {"key": "key", "value": "value"},
+    }
 
 
-# def test_evaluate_detection_false_negatives_two_images_one_empty_high_confidence_of_fp(
-#     db: Session, dataset_name: str, model_name: str, client: Client
-# ):
-#     """In this test we have
-#         1. An image with a matching groundtruth and prediction (same class and high IOU)
-#         2. A second image with empty groundtruth annotation and a prediction with higher confidence
-#         then the prediction on the first image.
+def test_evaluate_detection_false_negatives_two_images_one_empty_low_confidence_of_fp():
+    """In this test we have
+        1. An image with a matching groundtruth and prediction (same class and high IOU)
+        2. A second image with empty groundtruth annotation but a prediction with lower confidence
+        then the prediction on the first image.
 
-#     In this case, the AP should be 0.5 since the false positive has higher confidence than the true positive
-#     """
-#     dset = Dataset.create(dataset_name)
-#     dset.add_groundtruths(
-#         [
-#             GroundTruth(
-#                 datum=Datum(uid="uid1"),
-#                 annotations=[
-#                     Annotation(
-#                         bounding_box=Box.from_extrema(
-#                             xmin=10, xmax=20, ymin=10, ymax=20
-#                         ),
-#                         labels=[Label(key="key", value="value")],
-#                         is_instance=True,
-#                     )
-#                 ],
-#             ),
-#             GroundTruth(
-#                 datum=Datum(uid="uid2"),
-#                 annotations=[Annotation()],
-#             ),
-#         ]
-#     )
-#     dset.finalize()
+    In this case, the AP should be 1.0 since the false positive has lower confidence than the true positive
 
-#     model = Model.create(model_name)
-#     model.add_predictions(
-#         dset,
-#         [
-#             Prediction(
-#                 datum=Datum(uid="uid1"),
-#                 annotations=[
-#                     Annotation(
-#                         bounding_box=Box.from_extrema(
-#                             xmin=10, xmax=20, ymin=10, ymax=20
-#                         ),
-#                         labels=[Label(key="key", value="value", score=0.8)],
-#                         is_instance=True,
-#                     ),
-#                 ],
-#             ),
-#             Prediction(
-#                 datum=Datum(uid="uid2"),
-#                 annotations=[
-#                     Annotation(
-#                         bounding_box=Box.from_extrema(
-#                             xmin=10, xmax=20, ymin=10, ymax=20
-#                         ),
-#                         labels=[Label(key="key", value="value", score=0.9)],
-#                         is_instance=True,
-#                     ),
-#                 ],
-#             ),
-#         ],
-#     )
+    """
 
-#     evaluation = model.evaluate_detection(
-#         dset, iou_thresholds_to_compute=[0.5], iou_thresholds_to_return=[0.5]
-#     )
-#     evaluation.wait_for_completion(timeout=30)
-#     ap_metric = [m for m in evaluation.metrics if m["type"] == "AP"][0]
-#     assert ap_metric == {
-#         "type": "AP",
-#         "parameters": {"iou": 0.5},
-#         "value": 0.5,
-#         "label": {"key": "key", "value": "value"},
-#     }
+    groundtruths = [
+        schemas.GroundTruth(
+            datum=schemas.Datum(uid="uid1"),
+            annotations=[
+                schemas.Annotation(
+                    bounding_box=geometry.Box.from_extrema(
+                        xmin=10, xmax=20, ymin=10, ymax=20
+                    ),
+                    labels=[schemas.Label(key="key", value="value")],
+                    is_instance=True,
+                )
+            ],
+        ),
+        schemas.GroundTruth(
+            datum=schemas.Datum(uid="uid2"),
+            annotations=[schemas.Annotation(labels=[])],
+        ),
+    ]
 
+    predictions = [
+        schemas.Prediction(
+            datum=schemas.Datum(uid="uid1"),
+            annotations=[
+                schemas.Annotation(
+                    bounding_box=geometry.Box.from_extrema(
+                        xmin=10, xmax=20, ymin=10, ymax=20
+                    ),
+                    labels=[
+                        schemas.Label(key="key", value="value", score=0.8)
+                    ],
+                    is_instance=True,
+                ),
+            ],
+        ),
+        schemas.Prediction(
+            datum=schemas.Datum(uid="uid2"),
+            annotations=[
+                schemas.Annotation(
+                    bounding_box=geometry.Box.from_extrema(
+                        xmin=10, xmax=20, ymin=10, ymax=20
+                    ),
+                    labels=[
+                        schemas.Label(key="key", value="value", score=0.7)
+                    ],
+                    is_instance=True,
+                ),
+            ],
+        ),
+    ]
 
-# def test_evaluate_detection_false_negatives_two_images_one_only_with_different_class_low_confidence_of_fp(
-#     db: Session, dataset_name: str, model_name: str, client: Client
-# ):
-#     """In this test we have
-#         1. An image with a matching groundtruth and prediction (same class, `"value"`, and high IOU)
-#         2. A second image with a groundtruth annotation with class `"other value"` and a prediction with lower confidence
-#         then the prediction on the first image.
+    eval_job = evaluate_detection(
+        groundtruths=groundtruths,
+        predictions=predictions,
+        parameters=schemas.EvaluationParameters(
+            iou_thresholds_to_compute=[0.5],
+            iou_thresholds_to_return=[0.5],
+        ),
+    )
 
-#     In this case, the AP for class `"value"` should be 1 since the false positive has lower confidence than the true positive.
-#     AP for class `"other value"` should be 0 since there is no prediction for the `"other value"` groundtruth
-#     """
-#     dset = Dataset.create(dataset_name)
-#     dset.add_groundtruths(
-#         [
-#             GroundTruth(
-#                 datum=Datum(uid="uid1"),
-#                 annotations=[
-#                     Annotation(
-#                         bounding_box=Box.from_extrema(
-#                             xmin=10, xmax=20, ymin=10, ymax=20
-#                         ),
-#                         labels=[Label(key="key", value="value")],
-#                         is_instance=True,
-#                     )
-#                 ],
-#             ),
-#             GroundTruth(
-#                 datum=Datum(uid="uid2"),
-#                 annotations=[
-#                     Annotation(
-#                         bounding_box=Box.from_extrema(
-#                             xmin=10, xmax=20, ymin=10, ymax=20
-#                         ),
-#                         labels=[Label(key="key", value="other value")],
-#                         is_instance=True,
-#                     )
-#                 ],
-#             ),
-#         ]
-#     )
-#     dset.finalize()
-
-#     model = Model.create(model_name)
-#     model.add_predictions(
-#         dset,
-#         [
-#             Prediction(
-#                 datum=Datum(uid="uid1"),
-#                 annotations=[
-#                     Annotation(
-#                         bounding_box=Box.from_extrema(
-#                             xmin=10, xmax=20, ymin=10, ymax=20
-#                         ),
-#                         labels=[Label(key="key", value="value", score=0.8)],
-#                         is_instance=True,
-#                     ),
-#                 ],
-#             ),
-#             Prediction(
-#                 datum=Datum(uid="uid2"),
-#                 annotations=[
-#                     Annotation(
-#                         bounding_box=Box.from_extrema(
-#                             xmin=10, xmax=20, ymin=10, ymax=20
-#                         ),
-#                         labels=[Label(key="key", value="value", score=0.7)],
-#                         is_instance=True,
-#                     ),
-#                 ],
-#             ),
-#         ],
-#     )
-
-#     evaluation = model.evaluate_detection(
-#         dset, iou_thresholds_to_compute=[0.5], iou_thresholds_to_return=[0.5]
-#     )
-#     evaluation.wait_for_completion(timeout=30)
-#     ap_metric1 = [
-#         m
-#         for m in evaluation.metrics
-#         if m["type"] == "AP" and m["label"] == {"key": "key", "value": "value"}
-#     ][0]
-#     assert ap_metric1 == {
-#         "type": "AP",
-#         "parameters": {"iou": 0.5},
-#         "value": 1.0,
-#         "label": {"key": "key", "value": "value"},
-#     }
-
-#     # label `"other value"` is not in the predictions so we should get an AP of 0
-#     ap_metric2 = [
-#         m
-#         for m in evaluation.metrics
-#         if m["type"] == "AP"
-#         and m["label"] == {"key": "key", "value": "other value"}
-#     ][0]
-#     assert ap_metric2 == {
-#         "type": "AP",
-#         "parameters": {"iou": 0.5},
-#         "value": 0,
-#         "label": {"key": "key", "value": "other value"},
-#     }
+    ap_metric = [m for m in eval_job.metrics if m["type"] == "AP"][0]
+    assert ap_metric == {
+        "type": "AP",
+        "parameters": {"iou": 0.5},
+        "value": 1.0,
+        "label": {"key": "key", "value": "value"},
+    }
 
 
-# def test_evaluate_detection_false_negatives_two_images_one_only_with_different_class_high_confidence_of_fp(
-#     db: Session, dataset_name: str, model_name: str, client: Client
-# ):
-#     """In this test we have
-#         1. An image with a matching groundtruth and prediction (same class, `"value"`, and high IOU)
-#         2. A second image with a groundtruth annotation with clas `"other value"` and a prediction with higher confidence
-#         then the prediction on the first image.
+def test_evaluate_detection_false_negatives_two_images_one_empty_high_confidence_of_fp():
+    """In this test we have
+        1. An image with a matching groundtruth and prediction (same class and high IOU)
+        2. A second image with empty groundtruth annotation and a prediction with higher confidence
+        then the prediction on the first image.
 
-#     In this case, the AP for class `"value"` should be 0.5 since the false positive has higher confidence than the true positive.
-#     AP for class `"other value"` should be 0 since there is no prediction for the `"other value"` groundtruth
-#     """
-#     dset = Dataset.create(dataset_name)
-#     dset.add_groundtruths(
-#         [
-#             GroundTruth(
-#                 datum=Datum(uid="uid1"),
-#                 annotations=[
-#                     Annotation(
-#                         bounding_box=Box.from_extrema(
-#                             xmin=10, xmax=20, ymin=10, ymax=20
-#                         ),
-#                         labels=[Label(key="key", value="value")],
-#                         is_instance=True,
-#                     )
-#                 ],
-#             ),
-#             GroundTruth(
-#                 datum=Datum(uid="uid2"),
-#                 annotations=[
-#                     Annotation(
-#                         bounding_box=Box.from_extrema(
-#                             xmin=10, xmax=20, ymin=10, ymax=20
-#                         ),
-#                         labels=[Label(key="key", value="other value")],
-#                         is_instance=True,
-#                     )
-#                 ],
-#             ),
-#         ]
-#     )
-#     dset.finalize()
+    In this case, the AP should be 0.5 since the false positive has higher confidence than the true positive
+    """
+    groundtruths = [
+        schemas.GroundTruth(
+            datum=schemas.Datum(uid="uid1"),
+            annotations=[
+                schemas.Annotation(
+                    bounding_box=geometry.Box.from_extrema(
+                        xmin=10, xmax=20, ymin=10, ymax=20
+                    ),
+                    labels=[schemas.Label(key="key", value="value")],
+                    is_instance=True,
+                )
+            ],
+        ),
+        schemas.GroundTruth(
+            datum=schemas.Datum(uid="uid2"),
+            annotations=[schemas.Annotation(labels=[])],
+        ),
+    ]
 
-#     model = Model.create(model_name)
-#     model.add_predictions(
-#         dset,
-#         [
-#             Prediction(
-#                 datum=Datum(uid="uid1"),
-#                 annotations=[
-#                     Annotation(
-#                         bounding_box=Box.from_extrema(
-#                             xmin=10, xmax=20, ymin=10, ymax=20
-#                         ),
-#                         labels=[Label(key="key", value="value", score=0.8)],
-#                         is_instance=True,
-#                     ),
-#                 ],
-#             ),
-#             Prediction(
-#                 datum=Datum(uid="uid2"),
-#                 annotations=[
-#                     Annotation(
-#                         bounding_box=Box.from_extrema(
-#                             xmin=10, xmax=20, ymin=10, ymax=20
-#                         ),
-#                         labels=[Label(key="key", value="value", score=0.9)],
-#                         is_instance=True,
-#                     ),
-#                 ],
-#             ),
-#         ],
-#     )
+    predictions = [
+        schemas.Prediction(
+            datum=schemas.Datum(uid="uid1"),
+            annotations=[
+                schemas.Annotation(
+                    bounding_box=geometry.Box.from_extrema(
+                        xmin=10, xmax=20, ymin=10, ymax=20
+                    ),
+                    labels=[
+                        schemas.Label(key="key", value="value", score=0.8)
+                    ],
+                    is_instance=True,
+                ),
+            ],
+        ),
+        schemas.Prediction(
+            datum=schemas.Datum(uid="uid2"),
+            annotations=[
+                schemas.Annotation(
+                    bounding_box=geometry.Box.from_extrema(
+                        xmin=10, xmax=20, ymin=10, ymax=20
+                    ),
+                    labels=[
+                        schemas.Label(key="key", value="value", score=0.9)
+                    ],
+                    is_instance=True,
+                ),
+            ],
+        ),
+    ]
 
-#     evaluation = model.evaluate_detection(
-#         dset, iou_thresholds_to_compute=[0.5], iou_thresholds_to_return=[0.5]
-#     )
-#     evaluation.wait_for_completion(timeout=30)
-#     ap_metric1 = [
-#         m
-#         for m in evaluation.metrics
-#         if m["type"] == "AP" and m["label"] == {"key": "key", "value": "value"}
-#     ][0]
-#     assert ap_metric1 == {
-#         "type": "AP",
-#         "parameters": {"iou": 0.5},
-#         "value": 0.5,
-#         "label": {"key": "key", "value": "value"},
-#     }
+    eval_job = evaluate_detection(
+        groundtruths=groundtruths,
+        predictions=predictions,
+        parameters=schemas.EvaluationParameters(
+            iou_thresholds_to_compute=[0.5],
+            iou_thresholds_to_return=[0.5],
+        ),
+    )
 
-#     # label `"other value"` is not in the predictions so we should get an AP of 0
-#     ap_metric2 = [
-#         m
-#         for m in evaluation.metrics
-#         if m["type"] == "AP"
-#         and m["label"] == {"key": "key", "value": "other value"}
-#     ][0]
-#     assert ap_metric2 == {
-#         "type": "AP",
-#         "parameters": {"iou": 0.5},
-#         "value": 0,
-#         "label": {"key": "key", "value": "other value"},
-#     }
+    ap_metric = [m for m in eval_job.metrics if m["type"] == "AP"][0]
+    assert ap_metric == {
+        "type": "AP",
+        "parameters": {"iou": 0.5},
+        "value": 0.5,
+        "label": {"key": "key", "value": "value"},
+    }
 
 
-# def test_detailed_precision_recall_curve(
-#     db: Session,
-#     model_name,
-#     dataset_name,
-#     img1,
-#     img2,
-#     rect1,
-#     rect2,
-#     rect3,
-#     rect4,
-#     rect5,
-# ):
-#     gts = [
-#         GroundTruth(
-#             datum=img1,
-#             annotations=[
-#                 Annotation(
-#                     is_instance=True,
-#                     labels=[Label(key="k1", value="v1")],
-#                     bounding_box=Box([rect1]),
-#                 ),
-#                 Annotation(
-#                     is_instance=True,
-#                     labels=[Label(key="k1", value="missed_detection")],
-#                     bounding_box=Box([rect2]),
-#                 ),
-#                 Annotation(
-#                     is_instance=True,
-#                     labels=[Label(key="k1", value="v2")],
-#                     bounding_box=Box([rect3]),
-#                 ),
-#             ],
-#         ),
-#         GroundTruth(
-#             datum=img2,
-#             annotations=[
-#                 Annotation(
-#                     is_instance=True,
-#                     labels=[Label(key="k1", value="low_iou")],
-#                     bounding_box=Box([rect1]),
-#                 ),
-#             ],
-#         ),
-#     ]
+def test_evaluate_detection_false_negatives_two_images_one_only_with_different_class_low_confidence_of_fp():
+    """In this test we have
+        1. An image with a matching groundtruth and prediction (same class, `"value"`, and high IOU)
+        2. A second image with a groundtruth annotation with class `"other value"` and a prediction with lower confidence
+        then the prediction on the first image.
 
-#     pds = [
-#         Prediction(
-#             datum=img1,
-#             annotations=[
-#                 Annotation(
-#                     is_instance=True,
-#                     labels=[Label(key="k1", value="v1", score=0.5)],
-#                     bounding_box=Box([rect1]),
-#                 ),
-#                 Annotation(
-#                     is_instance=True,
-#                     labels=[Label(key="k1", value="not_v2", score=0.3)],
-#                     bounding_box=Box([rect5]),
-#                 ),
-#                 Annotation(
-#                     is_instance=True,
-#                     labels=[Label(key="k1", value="hallucination", score=0.1)],
-#                     bounding_box=Box([rect4]),
-#                 ),
-#             ],
-#         ),
-#         # prediction for img2 has the wrong bounding box, so it should count as a hallucination
-#         Prediction(
-#             datum=img2,
-#             annotations=[
-#                 Annotation(
-#                     is_instance=True,
-#                     labels=[Label(key="k1", value="low_iou", score=0.5)],
-#                     bounding_box=Box([rect2]),
-#                 ),
-#             ],
-#         ),
-#     ]
+    In this case, the AP for class `"value"` should be 1 since the false positive has lower confidence than the true positive.
+    AP for class `"other value"` should be 0 since there is no prediction for the `"other value"` groundtruth
+    """
+    groundtruths = [
+        schemas.GroundTruth(
+            datum=schemas.Datum(uid="uid1"),
+            annotations=[
+                schemas.Annotation(
+                    bounding_box=geometry.Box.from_extrema(
+                        xmin=10, xmax=20, ymin=10, ymax=20
+                    ),
+                    labels=[schemas.Label(key="key", value="value")],
+                    is_instance=True,
+                )
+            ],
+        ),
+        schemas.GroundTruth(
+            datum=schemas.Datum(uid="uid2"),
+            annotations=[
+                schemas.Annotation(
+                    bounding_box=geometry.Box.from_extrema(
+                        xmin=10, xmax=20, ymin=10, ymax=20
+                    ),
+                    labels=[schemas.Label(key="key", value="other value")],
+                    is_instance=True,
+                )
+            ],
+        ),
+    ]
 
-#     dataset = Dataset.create(dataset_name)
+    predictions = [
+        schemas.Prediction(
+            datum=schemas.Datum(uid="uid1"),
+            annotations=[
+                schemas.Annotation(
+                    bounding_box=geometry.Box.from_extrema(
+                        xmin=10, xmax=20, ymin=10, ymax=20
+                    ),
+                    labels=[
+                        schemas.Label(key="key", value="value", score=0.8)
+                    ],
+                    is_instance=True,
+                ),
+            ],
+        ),
+        schemas.Prediction(
+            datum=schemas.Datum(uid="uid2"),
+            annotations=[
+                schemas.Annotation(
+                    bounding_box=geometry.Box.from_extrema(
+                        xmin=10, xmax=20, ymin=10, ymax=20
+                    ),
+                    labels=[
+                        schemas.Label(key="key", value="value", score=0.7)
+                    ],
+                    is_instance=True,
+                ),
+            ],
+        ),
+    ]
 
-#     for gt in gts:
-#         dataset.add_groundtruth(gt)
+    eval_job = evaluate_detection(
+        groundtruths=groundtruths,
+        predictions=predictions,
+        parameters=schemas.EvaluationParameters(
+            iou_thresholds_to_compute=[0.5],
+            iou_thresholds_to_return=[0.5],
+        ),
+    )
 
-#     dataset.finalize()
+    ap_metric1 = [
+        m
+        for m in eval_job.metrics
+        if m["type"] == "AP" and m["label"] == {"key": "key", "value": "value"}
+    ][0]
+    assert ap_metric1 == {
+        "type": "AP",
+        "parameters": {"iou": 0.5},
+        "value": 1.0,
+        "label": {"key": "key", "value": "value"},
+    }
 
-#     model = Model.create(model_name)
-
-#     for pd in pds:
-#         model.add_prediction(dataset, pd)
-
-#     model.finalize_inferences(dataset)
-
-#     eval_job = model.evaluate_detection(
-#         dataset,
-#         pr_curve_max_examples=1,
-#         metrics_to_return=[
-#             MetricType.DetailedPrecisionRecallCurve,
-#         ],
-#     )
-#     eval_job.wait_for_completion(timeout=30)
-
-#     # one true positive that becomes a false negative when score > .5
-#     assert eval_job.metrics[0]["value"]["v1"]["0.3"]["tp"]["total"] == 1
-#     assert eval_job.metrics[0]["value"]["v1"]["0.55"]["tp"]["total"] == 0
-#     assert eval_job.metrics[0]["value"]["v1"]["0.55"]["fn"]["total"] == 1
-#     assert (
-#         eval_job.metrics[0]["value"]["v1"]["0.55"]["fn"]["observations"][
-#             "no_predictions"
-#         ]["count"]
-#         == 1
-#     )
-#     assert eval_job.metrics[0]["value"]["v1"]["0.05"]["fn"]["total"] == 0
-#     assert eval_job.metrics[0]["value"]["v1"]["0.05"]["fp"]["total"] == 0
-
-#     # one missed detection that never changes
-#     assert (
-#         eval_job.metrics[0]["value"]["missed_detection"]["0.05"]["fn"][
-#             "observations"
-#         ]["no_predictions"]["count"]
-#         == 1
-#     )
-#     assert (
-#         eval_job.metrics[0]["value"]["missed_detection"]["0.95"]["fn"][
-#             "observations"
-#         ]["no_predictions"]["count"]
-#         == 1
-#     )
-#     assert (
-#         eval_job.metrics[0]["value"]["missed_detection"]["0.05"]["tp"]["total"]
-#         == 0
-#     )
-#     assert (
-#         eval_job.metrics[0]["value"]["missed_detection"]["0.05"]["fp"]["total"]
-#         == 0
-#     )
-
-#     # one fn missed_dection that becomes a misclassification when pr_curve_iou_threshold <= .48 and score threshold <= .3
-#     assert (
-#         eval_job.metrics[0]["value"]["v2"]["0.3"]["fn"]["observations"][
-#             "no_predictions"
-#         ]["count"]
-#         == 1
-#     )
-#     assert (
-#         eval_job.metrics[0]["value"]["v2"]["0.35"]["fn"]["observations"][
-#             "no_predictions"
-#         ]["count"]
-#         == 1
-#     )
-#     assert eval_job.metrics[0]["value"]["v2"]["0.05"]["tp"]["total"] == 0
-#     assert eval_job.metrics[0]["value"]["v2"]["0.05"]["fp"]["total"] == 0
-
-#     # one fp hallucination that becomes a misclassification when pr_curve_iou_threshold <= .48 and score threshold <= .3
-#     assert (
-#         eval_job.metrics[0]["value"]["not_v2"]["0.05"]["fp"]["observations"][
-#             "hallucinations"
-#         ]["count"]
-#         == 1
-#     )
-#     assert (
-#         eval_job.metrics[0]["value"]["not_v2"]["0.05"]["fp"]["observations"][
-#             "misclassifications"
-#         ]["count"]
-#         == 0
-#     )
-#     assert eval_job.metrics[0]["value"]["not_v2"]["0.05"]["tp"]["total"] == 0
-#     assert eval_job.metrics[0]["value"]["not_v2"]["0.05"]["fn"]["total"] == 0
-
-#     # one fp hallucination that disappears when score threshold >.15
-#     assert (
-#         eval_job.metrics[0]["value"]["hallucination"]["0.05"]["fp"][
-#             "observations"
-#         ]["hallucinations"]["count"]
-#         == 1
-#     )
-#     assert (
-#         eval_job.metrics[0]["value"]["hallucination"]["0.35"]["fp"][
-#             "observations"
-#         ]["hallucinations"]["count"]
-#         == 0
-#     )
-#     assert (
-#         eval_job.metrics[0]["value"]["hallucination"]["0.05"]["tp"]["total"]
-#         == 0
-#     )
-#     assert (
-#         eval_job.metrics[0]["value"]["hallucination"]["0.05"]["fn"]["total"]
-#         == 0
-#     )
-
-#     # one missed detection and one hallucination due to low iou overlap
-#     assert (
-#         eval_job.metrics[0]["value"]["low_iou"]["0.3"]["fn"]["observations"][
-#             "no_predictions"
-#         ]["count"]
-#         == 1
-#     )
-#     assert (
-#         eval_job.metrics[0]["value"]["low_iou"]["0.95"]["fn"]["observations"][
-#             "no_predictions"
-#         ]["count"]
-#         == 1
-#     )
-#     assert (
-#         eval_job.metrics[0]["value"]["low_iou"]["0.3"]["fp"]["observations"][
-#             "hallucinations"
-#         ]["count"]
-#         == 1
-#     )
-#     assert (
-#         eval_job.metrics[0]["value"]["low_iou"]["0.55"]["fp"]["observations"][
-#             "hallucinations"
-#         ]["count"]
-#         == 0
-#     )
-
-#     # repeat tests using a lower IOU threshold
-#     eval_job_low_iou_threshold = model.evaluate_detection(
-#         dataset,
-#         pr_curve_max_examples=1,
-#         metrics_to_return=[
-#             MetricType.DetailedPrecisionRecallCurve,
-#         ],
-#         pr_curve_iou_threshold=0.45,  # actual IOU is .481
-#     )
-#     eval_job_low_iou_threshold.wait_for_completion(timeout=30)
-
-#     # one true positive that becomes a false negative when score > .5
-#     assert eval_job.metrics[0]["value"]["v1"]["0.3"]["tp"]["total"] == 1
-#     assert eval_job.metrics[0]["value"]["v1"]["0.55"]["tp"]["total"] == 0
-#     assert eval_job.metrics[0]["value"]["v1"]["0.55"]["fn"]["total"] == 1
-#     assert (
-#         eval_job.metrics[0]["value"]["v1"]["0.55"]["fn"]["observations"][
-#             "no_predictions"
-#         ]["count"]
-#         == 1
-#     )
-#     assert eval_job.metrics[0]["value"]["v1"]["0.05"]["fn"]["total"] == 0
-#     assert eval_job.metrics[0]["value"]["v1"]["0.05"]["fp"]["total"] == 0
-
-#     # one missed detection that never changes
-#     assert (
-#         eval_job.metrics[0]["value"]["missed_detection"]["0.05"]["fn"][
-#             "observations"
-#         ]["no_predictions"]["count"]
-#         == 1
-#     )
-#     assert (
-#         eval_job.metrics[0]["value"]["missed_detection"]["0.95"]["fn"][
-#             "observations"
-#         ]["no_predictions"]["count"]
-#         == 1
-#     )
-#     assert (
-#         eval_job.metrics[0]["value"]["missed_detection"]["0.05"]["tp"]["total"]
-#         == 0
-#     )
-#     assert (
-#         eval_job.metrics[0]["value"]["missed_detection"]["0.05"]["fp"]["total"]
-#         == 0
-#     )
-
-#     # one fn missed_dection that becomes a misclassification when pr_curve_iou_threshold <= .48 and score threshold <= .3
-#     assert (
-#         eval_job_low_iou_threshold.metrics[0]["value"]["v2"]["0.3"]["fn"][
-#             "observations"
-#         ]["misclassifications"]["count"]
-#         == 1
-#     )
-#     assert (
-#         eval_job_low_iou_threshold.metrics[0]["value"]["v2"]["0.3"]["fn"][
-#             "observations"
-#         ]["no_predictions"]["count"]
-#         == 0
-#     )
-#     assert (
-#         eval_job_low_iou_threshold.metrics[0]["value"]["v2"]["0.35"]["fn"][
-#             "observations"
-#         ]["misclassifications"]["count"]
-#         == 0
-#     )
-#     assert (
-#         eval_job_low_iou_threshold.metrics[0]["value"]["v2"]["0.35"]["fn"][
-#             "observations"
-#         ]["no_predictions"]["count"]
-#         == 1
-#     )
-#     assert (
-#         eval_job_low_iou_threshold.metrics[0]["value"]["v2"]["0.05"]["tp"][
-#             "total"
-#         ]
-#         == 0
-#     )
-#     assert (
-#         eval_job_low_iou_threshold.metrics[0]["value"]["v2"]["0.05"]["fp"][
-#             "total"
-#         ]
-#         == 0
-#     )
-
-#     # one fp hallucination that becomes a misclassification when pr_curve_iou_threshold <= .48 and score threshold <= .3
-#     assert (
-#         eval_job_low_iou_threshold.metrics[0]["value"]["not_v2"]["0.05"]["fp"][
-#             "observations"
-#         ]["hallucinations"]["count"]
-#         == 0
-#     )
-#     assert (
-#         eval_job_low_iou_threshold.metrics[0]["value"]["not_v2"]["0.05"]["fp"][
-#             "observations"
-#         ]["misclassifications"]["count"]
-#         == 1
-#     )
-#     assert (
-#         eval_job_low_iou_threshold.metrics[0]["value"]["not_v2"]["0.05"]["tp"][
-#             "total"
-#         ]
-#         == 0
-#     )
-#     assert (
-#         eval_job_low_iou_threshold.metrics[0]["value"]["not_v2"]["0.05"]["fn"][
-#             "total"
-#         ]
-#         == 0
-#     )
-
-#     # one fp hallucination that disappears when score threshold >.15
-#     assert (
-#         eval_job.metrics[0]["value"]["hallucination"]["0.05"]["fp"][
-#             "observations"
-#         ]["hallucinations"]["count"]
-#         == 1
-#     )
-#     assert (
-#         eval_job.metrics[0]["value"]["hallucination"]["0.35"]["fp"][
-#             "observations"
-#         ]["hallucinations"]["count"]
-#         == 0
-#     )
-#     assert (
-#         eval_job.metrics[0]["value"]["hallucination"]["0.05"]["tp"]["total"]
-#         == 0
-#     )
-#     assert (
-#         eval_job.metrics[0]["value"]["hallucination"]["0.05"]["fn"]["total"]
-#         == 0
-#     )
-
-#     # one missed detection and one hallucination due to low iou overlap
-#     assert (
-#         eval_job.metrics[0]["value"]["low_iou"]["0.3"]["fn"]["observations"][
-#             "no_predictions"
-#         ]["count"]
-#         == 1
-#     )
-#     assert (
-#         eval_job.metrics[0]["value"]["low_iou"]["0.95"]["fn"]["observations"][
-#             "no_predictions"
-#         ]["count"]
-#         == 1
-#     )
-#     assert (
-#         eval_job.metrics[0]["value"]["low_iou"]["0.3"]["fp"]["observations"][
-#             "hallucinations"
-#         ]["count"]
-#         == 1
-#     )
-#     assert (
-#         eval_job.metrics[0]["value"]["low_iou"]["0.55"]["fp"]["observations"][
-#             "hallucinations"
-#         ]["count"]
-#         == 0
-#     )
+    # label `"other value"` is not in the predictions so we should get an AP of 0
+    ap_metric2 = [
+        m
+        for m in eval_job.metrics
+        if m["type"] == "AP"
+        and m["label"] == {"key": "key", "value": "other value"}
+    ][0]
+    assert ap_metric2 == {
+        "type": "AP",
+        "parameters": {"iou": 0.5},
+        "value": 0,
+        "label": {"key": "key", "value": "other value"},
+    }
 
 
-# def test_evaluate_detection_model_with_no_predictions(
-#     db: Session,
-#     client: Client,
-#     dataset_name: str,
-#     model_name: str,
-#     gt_dets1: list[GroundTruth],
-#     pred_dets: list[Prediction],
-# ):
-#     """
-#     Test detection evaluations when the model outputs nothing.
+def test_evaluate_detection_false_negatives_two_images_one_only_with_different_class_high_confidence_of_fp():
+    """In this test we have
+        1. An image with a matching groundtruth and prediction (same class, `"value"`, and high IOU)
+        2. A second image with a groundtruth annotation with clas `"other value"` and a prediction with higher confidence
+        then the prediction on the first image.
 
-#     gt_dets1
-#         datum 1
-#             - Label (k1, v1) with Annotation area = 1500
-#             - Label (k2, v2) with Annotation area = 57,510
-#         datum2
-#             - Label (k1, v1) with Annotation area = 1100
-#     """
-#     dataset = Dataset.create(dataset_name)
-#     for gt in gt_dets1:
-#         dataset.add_groundtruth(gt)
-#     dataset.finalize()
+    In this case, the AP for class `"value"` should be 0.5 since the false positive has higher confidence than the true positive.
+    AP for class `"other value"` should be 0 since there is no prediction for the `"other value"` groundtruth
+    """
+    groundtruths = [
+        schemas.GroundTruth(
+            datum=schemas.Datum(uid="uid1"),
+            annotations=[
+                schemas.Annotation(
+                    bounding_box=geometry.Box.from_extrema(
+                        xmin=10, xmax=20, ymin=10, ymax=20
+                    ),
+                    labels=[schemas.Label(key="key", value="value")],
+                    is_instance=True,
+                )
+            ],
+        ),
+        schemas.GroundTruth(
+            datum=schemas.Datum(uid="uid2"),
+            annotations=[
+                schemas.Annotation(
+                    bounding_box=geometry.Box.from_extrema(
+                        xmin=10, xmax=20, ymin=10, ymax=20
+                    ),
+                    labels=[schemas.Label(key="key", value="other value")],
+                    is_instance=True,
+                )
+            ],
+        ),
+    ]
 
-#     model = Model.create(model_name)
-#     for gt in gt_dets1:
-#         pd = Prediction(
-#             datum=gt.datum,
-#             annotations=[],
-#         )
-#         model.add_prediction(dataset, pd)
-#     model.finalize_inferences(dataset)
+    predictions = [
+        schemas.Prediction(
+            datum=schemas.Datum(uid="uid1"),
+            annotations=[
+                schemas.Annotation(
+                    bounding_box=geometry.Box.from_extrema(
+                        xmin=10, xmax=20, ymin=10, ymax=20
+                    ),
+                    labels=[
+                        schemas.Label(key="key", value="value", score=0.8)
+                    ],
+                    is_instance=True,
+                ),
+            ],
+        ),
+        schemas.Prediction(
+            datum=schemas.Datum(uid="uid2"),
+            annotations=[
+                schemas.Annotation(
+                    bounding_box=geometry.Box.from_extrema(
+                        xmin=10, xmax=20, ymin=10, ymax=20
+                    ),
+                    labels=[
+                        schemas.Label(key="key", value="value", score=0.9)
+                    ],
+                    is_instance=True,
+                ),
+            ],
+        ),
+    ]
 
-#     expected_metrics = [
-#         {
-#             "label": {
-#                 "key": "k2",
-#                 "value": "v2",
-#             },
-#             "parameters": {
-#                 "iou": 0.5,
-#             },
-#             "type": "AP",
-#             "value": 0.0,
-#         },
-#         {
-#             "label": {
-#                 "key": "k2",
-#                 "value": "v2",
-#             },
-#             "parameters": {
-#                 "iou": 0.75,
-#             },
-#             "type": "AP",
-#             "value": 0.0,
-#         },
-#         {
-#             "label": {
-#                 "key": "k1",
-#                 "value": "v1",
-#             },
-#             "parameters": {
-#                 "iou": 0.5,
-#             },
-#             "type": "AP",
-#             "value": 0.0,
-#         },
-#         {
-#             "label": {
-#                 "key": "k1",
-#                 "value": "v1",
-#             },
-#             "parameters": {
-#                 "iou": 0.75,
-#             },
-#             "type": "AP",
-#             "value": 0.0,
-#         },
-#         {
-#             "label": {
-#                 "key": "k2",
-#                 "value": "v2",
-#             },
-#             "parameters": {
-#                 "ious": [
-#                     0.5,
-#                     0.55,
-#                     0.6,
-#                     0.65,
-#                     0.7,
-#                     0.75,
-#                     0.8,
-#                     0.85,
-#                     0.9,
-#                     0.95,
-#                 ],
-#             },
-#             "type": "AR",
-#             "value": 0.0,
-#         },
-#         {
-#             "label": {
-#                 "key": "k1",
-#                 "value": "v1",
-#             },
-#             "parameters": {
-#                 "ious": [
-#                     0.5,
-#                     0.55,
-#                     0.6,
-#                     0.65,
-#                     0.7,
-#                     0.75,
-#                     0.8,
-#                     0.85,
-#                     0.9,
-#                     0.95,
-#                 ],
-#             },
-#             "type": "AR",
-#             "value": 0.0,
-#         },
-#         {
-#             "parameters": {
-#                 "iou": 0.5,
-#                 "label_key": "k2",
-#             },
-#             "type": "mAP",
-#             "value": 0.0,
-#         },
-#         {
-#             "parameters": {
-#                 "iou": 0.75,
-#                 "label_key": "k2",
-#             },
-#             "type": "mAP",
-#             "value": 0.0,
-#         },
-#         {
-#             "parameters": {
-#                 "iou": 0.5,
-#                 "label_key": "k1",
-#             },
-#             "type": "mAP",
-#             "value": 0.0,
-#         },
-#         {
-#             "parameters": {
-#                 "iou": 0.75,
-#                 "label_key": "k1",
-#             },
-#             "type": "mAP",
-#             "value": 0.0,
-#         },
-#         {
-#             "parameters": {
-#                 "ious": [
-#                     0.5,
-#                     0.55,
-#                     0.6,
-#                     0.65,
-#                     0.7,
-#                     0.75,
-#                     0.8,
-#                     0.85,
-#                     0.9,
-#                     0.95,
-#                 ],
-#                 "label_key": "k2",
-#             },
-#             "type": "mAR",
-#             "value": 0.0,
-#         },
-#         {
-#             "parameters": {
-#                 "ious": [
-#                     0.5,
-#                     0.55,
-#                     0.6,
-#                     0.65,
-#                     0.7,
-#                     0.75,
-#                     0.8,
-#                     0.85,
-#                     0.9,
-#                     0.95,
-#                 ],
-#                 "label_key": "k1",
-#             },
-#             "type": "mAR",
-#             "value": 0.0,
-#         },
-#         {
-#             "label": {
-#                 "key": "k2",
-#                 "value": "v2",
-#             },
-#             "parameters": {
-#                 "ious": [
-#                     0.5,
-#                     0.55,
-#                     0.6,
-#                     0.65,
-#                     0.7,
-#                     0.75,
-#                     0.8,
-#                     0.85,
-#                     0.9,
-#                     0.95,
-#                 ],
-#             },
-#             "type": "APAveragedOverIOUs",
-#             "value": 0.0,
-#         },
-#         {
-#             "label": {
-#                 "key": "k1",
-#                 "value": "v1",
-#             },
-#             "parameters": {
-#                 "ious": [
-#                     0.5,
-#                     0.55,
-#                     0.6,
-#                     0.65,
-#                     0.7,
-#                     0.75,
-#                     0.8,
-#                     0.85,
-#                     0.9,
-#                     0.95,
-#                 ],
-#             },
-#             "type": "APAveragedOverIOUs",
-#             "value": 0.0,
-#         },
-#         {
-#             "parameters": {
-#                 "ious": [
-#                     0.5,
-#                     0.55,
-#                     0.6,
-#                     0.65,
-#                     0.7,
-#                     0.75,
-#                     0.8,
-#                     0.85,
-#                     0.9,
-#                     0.95,
-#                 ],
-#                 "label_key": "k2",
-#             },
-#             "type": "mAPAveragedOverIOUs",
-#             "value": 0.0,
-#         },
-#         {
-#             "parameters": {
-#                 "ious": [
-#                     0.5,
-#                     0.55,
-#                     0.6,
-#                     0.65,
-#                     0.7,
-#                     0.75,
-#                     0.8,
-#                     0.85,
-#                     0.9,
-#                     0.95,
-#                 ],
-#                 "label_key": "k1",
-#             },
-#             "type": "mAPAveragedOverIOUs",
-#             "value": 0.0,
-#         },
-#     ]
+    eval_job = evaluate_detection(
+        groundtruths=groundtruths,
+        predictions=predictions,
+        parameters=schemas.EvaluationParameters(
+            iou_thresholds_to_compute=[0.5],
+            iou_thresholds_to_return=[0.5],
+        ),
+    )
 
-#     evaluation = model.evaluate_detection(dataset)
-#     assert evaluation.wait_for_completion(timeout=30) == EvaluationStatus.DONE
-#     computed_metrics = evaluation.metrics
+    ap_metric1 = [
+        m
+        for m in eval_job.metrics
+        if m["type"] == "AP" and m["label"] == {"key": "key", "value": "value"}
+    ][0]
+    assert ap_metric1 == {
+        "type": "AP",
+        "parameters": {"iou": 0.5},
+        "value": 0.5,
+        "label": {"key": "key", "value": "value"},
+    }
 
-#     assert all([metric["value"] == 0 for metric in computed_metrics])
-#     for m in expected_metrics:
-#         assert m in computed_metrics
+    # label `"other value"` is not in the predictions so we should get an AP of 0
+    ap_metric2 = [
+        m
+        for m in eval_job.metrics
+        if m["type"] == "AP"
+        and m["label"] == {"key": "key", "value": "other value"}
+    ][0]
+    assert ap_metric2 == {
+        "type": "AP",
+        "parameters": {"iou": 0.5},
+        "value": 0,
+        "label": {"key": "key", "value": "other value"},
+    }
 
-#     for m in computed_metrics:
-#         assert m in expected_metrics
+
+@pytest.fixture
+def test_detailed_precision_recall_curve(
+    evaluate_detection_detailed_pr_curve_groundtruths,
+    evaluate_detection_detailed_pr_curve_predictions,
+):
+
+    eval_job = evaluate_detection(
+        groundtruths=evaluate_detection_detailed_pr_curve_groundtruths,
+        predictions=evaluate_detection_detailed_pr_curve_predictions,
+        parameters=schemas.EvaluationParameters(
+            metrics_to_return=[enums.MetricType.DetailedPrecisionRecallCurve]
+        ),
+    )
+
+    eval_job.wait_for_completion(timeout=30)
+
+    # one true positive that becomes a false negative when score > .5
+    assert eval_job.metrics[0]["value"]["v1"]["0.3"]["tp"]["total"] == 1
+    assert eval_job.metrics[0]["value"]["v1"]["0.55"]["tp"]["total"] == 0
+    assert eval_job.metrics[0]["value"]["v1"]["0.55"]["fn"]["total"] == 1
+    assert (
+        eval_job.metrics[0]["value"]["v1"]["0.55"]["fn"]["observations"][
+            "no_predictions"
+        ]["count"]
+        == 1
+    )
+    assert eval_job.metrics[0]["value"]["v1"]["0.05"]["fn"]["total"] == 0
+    assert eval_job.metrics[0]["value"]["v1"]["0.05"]["fp"]["total"] == 0
+
+    # one missed detection that never changes
+    assert (
+        eval_job.metrics[0]["value"]["missed_detection"]["0.05"]["fn"][
+            "observations"
+        ]["no_predictions"]["count"]
+        == 1
+    )
+    assert (
+        eval_job.metrics[0]["value"]["missed_detection"]["0.95"]["fn"][
+            "observations"
+        ]["no_predictions"]["count"]
+        == 1
+    )
+    assert (
+        eval_job.metrics[0]["value"]["missed_detection"]["0.05"]["tp"]["total"]
+        == 0
+    )
+    assert (
+        eval_job.metrics[0]["value"]["missed_detection"]["0.05"]["fp"]["total"]
+        == 0
+    )
+
+    # one fn missed_dection that becomes a misclassification when pr_curve_iou_threshold <= .48 and score threshold <= .3
+    assert (
+        eval_job.metrics[0]["value"]["v2"]["0.3"]["fn"]["observations"][
+            "no_predictions"
+        ]["count"]
+        == 1
+    )
+    assert (
+        eval_job.metrics[0]["value"]["v2"]["0.35"]["fn"]["observations"][
+            "no_predictions"
+        ]["count"]
+        == 1
+    )
+    assert eval_job.metrics[0]["value"]["v2"]["0.05"]["tp"]["total"] == 0
+    assert eval_job.metrics[0]["value"]["v2"]["0.05"]["fp"]["total"] == 0
+
+    # one fp hallucination that becomes a misclassification when pr_curve_iou_threshold <= .48 and score threshold <= .3
+    assert (
+        eval_job.metrics[0]["value"]["not_v2"]["0.05"]["fp"]["observations"][
+            "hallucinations"
+        ]["count"]
+        == 1
+    )
+    assert (
+        eval_job.metrics[0]["value"]["not_v2"]["0.05"]["fp"]["observations"][
+            "misclassifications"
+        ]["count"]
+        == 0
+    )
+    assert eval_job.metrics[0]["value"]["not_v2"]["0.05"]["tp"]["total"] == 0
+    assert eval_job.metrics[0]["value"]["not_v2"]["0.05"]["fn"]["total"] == 0
+
+    # one fp hallucination that disappears when score threshold >.15
+    assert (
+        eval_job.metrics[0]["value"]["hallucination"]["0.05"]["fp"][
+            "observations"
+        ]["hallucinations"]["count"]
+        == 1
+    )
+    assert (
+        eval_job.metrics[0]["value"]["hallucination"]["0.35"]["fp"][
+            "observations"
+        ]["hallucinations"]["count"]
+        == 0
+    )
+    assert (
+        eval_job.metrics[0]["value"]["hallucination"]["0.05"]["tp"]["total"]
+        == 0
+    )
+    assert (
+        eval_job.metrics[0]["value"]["hallucination"]["0.05"]["fn"]["total"]
+        == 0
+    )
+
+    # one missed detection and one hallucination due to low iou overlap
+    assert (
+        eval_job.metrics[0]["value"]["low_iou"]["0.3"]["fn"]["observations"][
+            "no_predictions"
+        ]["count"]
+        == 1
+    )
+    assert (
+        eval_job.metrics[0]["value"]["low_iou"]["0.95"]["fn"]["observations"][
+            "no_predictions"
+        ]["count"]
+        == 1
+    )
+    assert (
+        eval_job.metrics[0]["value"]["low_iou"]["0.3"]["fp"]["observations"][
+            "hallucinations"
+        ]["count"]
+        == 1
+    )
+    assert (
+        eval_job.metrics[0]["value"]["low_iou"]["0.55"]["fp"]["observations"][
+            "hallucinations"
+        ]["count"]
+        == 0
+    )
+
+    # repeat tests using a lower IOU threshold
+    eval_job_low_iou_threshold = evaluate_detection(
+        groundtruths=evaluate_detection_detailed_pr_curve_groundtruths,
+        predictions=evaluate_detection_detailed_pr_curve_predictions,
+        parameters=schemas.EvaluationParameters(
+            metrics_to_return=[enums.MetricType.DetailedPrecisionRecallCurve],
+            pr_curve_iou_threshold=0.45,
+        ),
+    )
+
+    # one true positive that becomes a false negative when score > .5
+    assert eval_job.metrics[0]["value"]["v1"]["0.3"]["tp"]["total"] == 1
+    assert eval_job.metrics[0]["value"]["v1"]["0.55"]["tp"]["total"] == 0
+    assert eval_job.metrics[0]["value"]["v1"]["0.55"]["fn"]["total"] == 1
+    assert (
+        eval_job.metrics[0]["value"]["v1"]["0.55"]["fn"]["observations"][
+            "no_predictions"
+        ]["count"]
+        == 1
+    )
+    assert eval_job.metrics[0]["value"]["v1"]["0.05"]["fn"]["total"] == 0
+    assert eval_job.metrics[0]["value"]["v1"]["0.05"]["fp"]["total"] == 0
+
+    # one missed detection that never changes
+    assert (
+        eval_job.metrics[0]["value"]["missed_detection"]["0.05"]["fn"][
+            "observations"
+        ]["no_predictions"]["count"]
+        == 1
+    )
+    assert (
+        eval_job.metrics[0]["value"]["missed_detection"]["0.95"]["fn"][
+            "observations"
+        ]["no_predictions"]["count"]
+        == 1
+    )
+    assert (
+        eval_job.metrics[0]["value"]["missed_detection"]["0.05"]["tp"]["total"]
+        == 0
+    )
+    assert (
+        eval_job.metrics[0]["value"]["missed_detection"]["0.05"]["fp"]["total"]
+        == 0
+    )
+
+    # one fn missed_dection that becomes a misclassification when pr_curve_iou_threshold <= .48 and score threshold <= .3
+    assert (
+        eval_job_low_iou_threshold.metrics[0]["value"]["v2"]["0.3"]["fn"][
+            "observations"
+        ]["misclassifications"]["count"]
+        == 1
+    )
+    assert (
+        eval_job_low_iou_threshold.metrics[0]["value"]["v2"]["0.3"]["fn"][
+            "observations"
+        ]["no_predictions"]["count"]
+        == 0
+    )
+    assert (
+        eval_job_low_iou_threshold.metrics[0]["value"]["v2"]["0.35"]["fn"][
+            "observations"
+        ]["misclassifications"]["count"]
+        == 0
+    )
+    assert (
+        eval_job_low_iou_threshold.metrics[0]["value"]["v2"]["0.35"]["fn"][
+            "observations"
+        ]["no_predictions"]["count"]
+        == 1
+    )
+    assert (
+        eval_job_low_iou_threshold.metrics[0]["value"]["v2"]["0.05"]["tp"][
+            "total"
+        ]
+        == 0
+    )
+    assert (
+        eval_job_low_iou_threshold.metrics[0]["value"]["v2"]["0.05"]["fp"][
+            "total"
+        ]
+        == 0
+    )
+
+    # one fp hallucination that becomes a misclassification when pr_curve_iou_threshold <= .48 and score threshold <= .3
+    assert (
+        eval_job_low_iou_threshold.metrics[0]["value"]["not_v2"]["0.05"]["fp"][
+            "observations"
+        ]["hallucinations"]["count"]
+        == 0
+    )
+    assert (
+        eval_job_low_iou_threshold.metrics[0]["value"]["not_v2"]["0.05"]["fp"][
+            "observations"
+        ]["misclassifications"]["count"]
+        == 1
+    )
+    assert (
+        eval_job_low_iou_threshold.metrics[0]["value"]["not_v2"]["0.05"]["tp"][
+            "total"
+        ]
+        == 0
+    )
+    assert (
+        eval_job_low_iou_threshold.metrics[0]["value"]["not_v2"]["0.05"]["fn"][
+            "total"
+        ]
+        == 0
+    )
+
+    # one fp hallucination that disappears when score threshold >.15
+    assert (
+        eval_job.metrics[0]["value"]["hallucination"]["0.05"]["fp"][
+            "observations"
+        ]["hallucinations"]["count"]
+        == 1
+    )
+    assert (
+        eval_job.metrics[0]["value"]["hallucination"]["0.35"]["fp"][
+            "observations"
+        ]["hallucinations"]["count"]
+        == 0
+    )
+    assert (
+        eval_job.metrics[0]["value"]["hallucination"]["0.05"]["tp"]["total"]
+        == 0
+    )
+    assert (
+        eval_job.metrics[0]["value"]["hallucination"]["0.05"]["fn"]["total"]
+        == 0
+    )
+
+    # one missed detection and one hallucination due to low iou overlap
+    assert (
+        eval_job.metrics[0]["value"]["low_iou"]["0.3"]["fn"]["observations"][
+            "no_predictions"
+        ]["count"]
+        == 1
+    )
+    assert (
+        eval_job.metrics[0]["value"]["low_iou"]["0.95"]["fn"]["observations"][
+            "no_predictions"
+        ]["count"]
+        == 1
+    )
+    assert (
+        eval_job.metrics[0]["value"]["low_iou"]["0.3"]["fp"]["observations"][
+            "hallucinations"
+        ]["count"]
+        == 1
+    )
+    assert (
+        eval_job.metrics[0]["value"]["low_iou"]["0.55"]["fp"]["observations"][
+            "hallucinations"
+        ]["count"]
+        == 0
+    )
+
+
+def test_evaluate_detection_model_with_no_predictions(
+    evaluate_detection_groundtruths,
+):
+    """
+    Test detection evaluations when the model outputs nothing.
+
+    gt_dets1
+        datum 1
+            - Label (k1, v1) with Annotation area = 1500
+            - Label (k2, v2) with Annotation area = 57,510
+        datum2
+            - Label (k1, v1) with Annotation area = 1100
+    """
+    predictions = []
+    for gt in evaluate_detection_groundtruths:
+        predictions.append(
+            schemas.Prediction(
+                datum=gt.datum,
+                annotations=[],
+            )
+        )
+
+    expected_metrics = [
+        {
+            "label": {
+                "key": "k2",
+                "value": "v2",
+            },
+            "parameters": {
+                "iou": 0.5,
+            },
+            "type": "AP",
+            "value": 0.0,
+        },
+        {
+            "label": {
+                "key": "k2",
+                "value": "v2",
+            },
+            "parameters": {
+                "iou": 0.75,
+            },
+            "type": "AP",
+            "value": 0.0,
+        },
+        {
+            "label": {
+                "key": "k1",
+                "value": "v1",
+            },
+            "parameters": {
+                "iou": 0.5,
+            },
+            "type": "AP",
+            "value": 0.0,
+        },
+        {
+            "label": {
+                "key": "k1",
+                "value": "v1",
+            },
+            "parameters": {
+                "iou": 0.75,
+            },
+            "type": "AP",
+            "value": 0.0,
+        },
+        {
+            "label": {
+                "key": "k2",
+                "value": "v2",
+            },
+            "parameters": {
+                "ious": [
+                    0.5,
+                    0.55,
+                    0.6,
+                    0.65,
+                    0.7,
+                    0.75,
+                    0.8,
+                    0.85,
+                    0.9,
+                    0.95,
+                ],
+            },
+            "type": "AR",
+            "value": 0.0,
+        },
+        {
+            "label": {
+                "key": "k1",
+                "value": "v1",
+            },
+            "parameters": {
+                "ious": [
+                    0.5,
+                    0.55,
+                    0.6,
+                    0.65,
+                    0.7,
+                    0.75,
+                    0.8,
+                    0.85,
+                    0.9,
+                    0.95,
+                ],
+            },
+            "type": "AR",
+            "value": 0.0,
+        },
+        {
+            "parameters": {
+                "iou": 0.5,
+                "label_key": "k2",
+            },
+            "type": "mAP",
+            "value": 0.0,
+        },
+        {
+            "parameters": {
+                "iou": 0.75,
+                "label_key": "k2",
+            },
+            "type": "mAP",
+            "value": 0.0,
+        },
+        {
+            "parameters": {
+                "iou": 0.5,
+                "label_key": "k1",
+            },
+            "type": "mAP",
+            "value": 0.0,
+        },
+        {
+            "parameters": {
+                "iou": 0.75,
+                "label_key": "k1",
+            },
+            "type": "mAP",
+            "value": 0.0,
+        },
+        {
+            "parameters": {
+                "ious": [
+                    0.5,
+                    0.55,
+                    0.6,
+                    0.65,
+                    0.7,
+                    0.75,
+                    0.8,
+                    0.85,
+                    0.9,
+                    0.95,
+                ],
+                "label_key": "k2",
+            },
+            "type": "mAR",
+            "value": 0.0,
+        },
+        {
+            "parameters": {
+                "ious": [
+                    0.5,
+                    0.55,
+                    0.6,
+                    0.65,
+                    0.7,
+                    0.75,
+                    0.8,
+                    0.85,
+                    0.9,
+                    0.95,
+                ],
+                "label_key": "k1",
+            },
+            "type": "mAR",
+            "value": 0.0,
+        },
+        {
+            "label": {
+                "key": "k2",
+                "value": "v2",
+            },
+            "parameters": {
+                "ious": [
+                    0.5,
+                    0.55,
+                    0.6,
+                    0.65,
+                    0.7,
+                    0.75,
+                    0.8,
+                    0.85,
+                    0.9,
+                    0.95,
+                ],
+            },
+            "type": "APAveragedOverIOUs",
+            "value": 0.0,
+        },
+        {
+            "label": {
+                "key": "k1",
+                "value": "v1",
+            },
+            "parameters": {
+                "ious": [
+                    0.5,
+                    0.55,
+                    0.6,
+                    0.65,
+                    0.7,
+                    0.75,
+                    0.8,
+                    0.85,
+                    0.9,
+                    0.95,
+                ],
+            },
+            "type": "APAveragedOverIOUs",
+            "value": 0.0,
+        },
+        {
+            "parameters": {
+                "ious": [
+                    0.5,
+                    0.55,
+                    0.6,
+                    0.65,
+                    0.7,
+                    0.75,
+                    0.8,
+                    0.85,
+                    0.9,
+                    0.95,
+                ],
+                "label_key": "k2",
+            },
+            "type": "mAPAveragedOverIOUs",
+            "value": 0.0,
+        },
+        {
+            "parameters": {
+                "ious": [
+                    0.5,
+                    0.55,
+                    0.6,
+                    0.65,
+                    0.7,
+                    0.75,
+                    0.8,
+                    0.85,
+                    0.9,
+                    0.95,
+                ],
+                "label_key": "k1",
+            },
+            "type": "mAPAveragedOverIOUs",
+            "value": 0.0,
+        },
+    ]
+
+    eval_job = evaluate_detection(
+        groundtruths=evaluate_detection_groundtruths,
+        predictions=predictions,
+    )
+
+    computed_metrics = eval_job.metrics
+
+    assert all([metric["value"] == 0 for metric in computed_metrics])
+    blah = [m for m in expected_metrics if m not in computed_metrics]
+    blah1 = [m for m in computed_metrics if m not in expected_metrics]
+    for m in expected_metrics:
+        assert m in computed_metrics
+
+    for m in computed_metrics:
+        assert m in expected_metrics
