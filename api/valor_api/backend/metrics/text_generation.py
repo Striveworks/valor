@@ -602,7 +602,7 @@ def compute_text_generation_metrics(
 
     # unpack filters and params
     parameters = schemas.EvaluationParameters(**evaluation.parameters)
-    (groundtruth_filter, prediction_filter,) = prepare_filter_for_evaluation(
+    groundtruth_filter, prediction_filter = prepare_filter_for_evaluation(
         filters=schemas.Filter(**evaluation.filters),
         dataset_names=evaluation.dataset_names,
         model_name=evaluation.model_name,

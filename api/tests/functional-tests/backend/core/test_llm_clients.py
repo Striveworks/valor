@@ -176,7 +176,7 @@ def test_LLMClient(monkeypatch):
         if "generate a list of STATEMENTS" in args[1][1]["content"]:
             return VALID_STATEMENTS
         elif (
-            "generate a list of verdicts that indicate whether each statement is relevant to address the input"
+            "generate a list of verdicts that indicate whether each statement is relevant to address the query"
             in args[1][1]["content"]
         ):
             return ANSWER_RELEVANCE_VALID_VERDICTS
@@ -209,7 +209,7 @@ def test_LLMClient(monkeypatch):
         if "generate a list of STATEMENTS" in args[1][1]["content"]:
             return VALID_STATEMENTS
         elif (
-            "generate a list of verdicts that indicate whether each statement is relevant to address the input"
+            "generate a list of verdicts that indicate whether each statement is relevant to address the query"
             in args[1][1]["content"]
         ):
             return """```json
@@ -237,7 +237,7 @@ def test_LLMClient(monkeypatch):
         if "generate a list of STATEMENTS" in args[1][1]["content"]:
             return VALID_STATEMENTS
         elif (
-            "generate a list of verdicts that indicate whether each statement is relevant to address the input"
+            "generate a list of verdicts that indicate whether each statement is relevant to address the query"
             in args[1][1]["content"]
         ):
             return """```json
