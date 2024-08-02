@@ -439,7 +439,7 @@ class LLMClient:
         claims: list[str]
             The claims to evaluate the faithfulness of.
         context_list: list[str]
-            The list of context to evaluate against.
+            The list of contexts to evaluate against.
 
         Returns
         -------
@@ -493,7 +493,7 @@ class LLMClient:
         text: str
             The text to evaluate for hallucination.
         context_list: list[str]
-            The list of context to compare against.
+            The list of contexts to compare against.
 
         Returns
         -------
@@ -665,7 +665,7 @@ class LLMClient:
         query: str
             The query to evaluate each context against.
         context_list: list[str]
-            The list of context to evaluate the relevance of.
+            The list of contexts to evaluate the relevance of.
 
         Returns
         -------
@@ -698,7 +698,7 @@ class LLMClient:
         text: str
             The text to evaluate for faithfulness.
         context_list: list[str]
-            The list of context to compare against.
+            The list of contexts to compare against.
 
         Returns
         -------
@@ -739,7 +739,7 @@ class LLMClient:
         text: str
             The text to evaluate for hallucination.
         context_list: list[str]
-            The list of context to compare against.
+            The list of contexts to compare against.
 
         Returns
         -------

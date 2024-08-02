@@ -307,7 +307,7 @@ def _generate_context_relevance_verdicts_instruction(
     query: str
         The query to evaluate each context against.
     context_list: list[str]
-        The list of context to evaluate the relevance of.
+        The list of contexts to evaluate the relevance of.
 
     Returns
     -------
@@ -368,7 +368,7 @@ def _generate_faithfulness_verdicts_instruction(
     claims: list[str]
         The claims to evaluate the faithfulness of.
     context_list: list[str]
-        The list of context to evaluate against.
+        The list of contexts to evaluate against.
 
     Returns
     -------
@@ -445,7 +445,7 @@ def _generate_hallucination_verdicts_instruction(
     text: str
         The text to evaluate for hallucination.
     context_list: list[str]
-        The list of context to compare against.
+        The list of contexts to compare against.
 
     Returns
     -------
