@@ -1,0 +1,59 @@
+query,prediction
+Write about a haunted house from the perspective of the ghost.,"As a ghost haunting the old, decrepit house on Elm Street, I am trapped in a state of perpetual torment and longing. I drift through the dusty halls, my translucent figure flickering in and out of existence as I relive the memories of my past life.
+
+My presence is felt by those who dare to enter the house, their hairs standing on end as they sense the chill in the air and the whispers that echo through the rooms. I watch as fear grips their hearts, knowing that I am the reason for their unease.
+
+I am bound to this house by unfinished business, a deep-rooted need for closure that eludes me even in death. I long to reach out to the living, to make them understand the pain and sorrow that consume me, but my ethereal form cannot touch them.
+
+Yet, despite the fear and dread that my presence evokes, there is a part of me that yearns for connection, for someone to see beyond the horror and recognize the lost soul that I am. But until that day comes, I remain a ghost trapped within the walls of the haunted house on Elm Street, my existence a haunting reminder of the past that refuses to fade away."
+Explain to an elementary school student how to do long multiplication with the example 43 times 22. The resulting answer should be 946.,"Sure! To multiply 43 by 22, you need to follow these steps:
+
+1. Write down the numbers vertically, with one on top of the other:
+
+   ```
+      43
+   x 22
+   -----
+   ```
+
+2. Start by multiplying the rightmost digit of the bottom number (2) by each digit in the top number. Write down each result below the line, leaving a space for the next step:
+
+   ```
+      43
+   x 22
+   -----
+      86
+   ```
+
+3. Next, move to the left and multiply the left digit of the bottom number (2) by each digit in the top number. Write down each result with one position shifted to the left from the previous step. Add any results from previous steps that overlap:
+
+   ```
+      43
+   x 22
+   -----
+     86
+   +86
+   -----
+    946
+   ```
+
+So, 43 times 22 is equal to 946."
+"Draft an email to a coworker explaining a project delay. Explain that the delay is due to funding cuts, which resulted in multiple employees being moved to different projects. Inform the coworker that the project deadline will have to be pushed back. Be apologetic and professional. Express eagerness to still complete the project as efficiently as possible.","Subject: Project Delay Due to Funding Cuts
+
+Dear [Coworker's Name],
+
+I hope this message finds you well. I am writing to update you on the status of our project and unfortunately, convey some disappointing news.
+
+Due to recent funding cuts within our department, we have had to make some adjustments to project assignments. As a result, multiple employees, including key team members for our current project, have been moved to different projects to accommodate the changes. This unexpected shift has impacted our project timeline.
+
+I regret to inform you that our project deadline will need to be pushed back in light of these developments. I understand the inconvenience this may cause and I sincerely apologize for any disruption this may cause to your schedule or other commitments.
+
+Please rest assured that despite these unforeseen circumstances, I am fully committed to completing the project efficiently and effectively. I will work closely with the team to develop a revised timeline and ensure that we deliver quality work that meets our objectives.
+
+Thank you for your understanding and continued support during this challenging period. I value your collaboration and look forward to working together to overcome this setback and achieve our project goals.
+
+If you have any questions or concerns, please feel free to reach out to me. I appreciate your patience as we navigate through this situation together.
+
+Best regards,
+
+[Your Name]"

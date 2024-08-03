@@ -4,9 +4,21 @@ import pytest
 from pydantic import ValidationError
 
 from valor_api import enums, schemas
+from valor_api.enums import MetricType, ROUGEType
 
 
-def test_EvaluationParameters():
+@pytest.fixture
+def llm_api_params():
+    return {
+        "client": "openai",
+        "data": {
+            "seed": 2024,
+            "model": "gpt-4o-2024-05-13",
+        },
+    }
+
+
+def test_EvaluationParameters(llm_api_params):
     schemas.EvaluationParameters(
         task_type=enums.TaskType.CLASSIFICATION,
     )
@@ -34,6 +46,52 @@ def test_EvaluationParameters():
         ],
     )
 
+    # If no llm-guided metrics are requested, then llm_api_params is not required.
+    schemas.EvaluationParameters(
+        task_type=enums.TaskType.TEXT_GENERATION,
+        metrics_to_return=[
+            MetricType.BLEU,
+            MetricType.ROUGE,
+        ],
+    )
+
+    # If llm-guided metrics are requested, then llm_api_params is required.
+    schemas.EvaluationParameters(
+        task_type=enums.TaskType.TEXT_GENERATION,
+        metrics_to_return=[
+            MetricType.AnswerRelevance,
+            MetricType.Bias,
+            MetricType.BLEU,
+            MetricType.Coherence,
+            MetricType.ContextRelevance,
+            MetricType.Faithfulness,
+            MetricType.Hallucination,
+            MetricType.ROUGE,
+            MetricType.Toxicity,
+        ],
+        llm_api_params=llm_api_params,
+    )
+
+    # Test with metric parameters
+    schemas.EvaluationParameters(
+        task_type=enums.TaskType.TEXT_GENERATION,
+        metrics_to_return=[
+            MetricType.AnswerRelevance,
+            MetricType.Bias,
+            MetricType.BLEU,
+            MetricType.Coherence,
+            MetricType.ContextRelevance,
+            MetricType.Faithfulness,
+            MetricType.Hallucination,
+            MetricType.ROUGE,
+            MetricType.Toxicity,
+        ],
+        llm_api_params=llm_api_params,
+        bleu_weights=[0.5, 0.25, 0.25, 0],
+        rouge_types=[ROUGEType.ROUGE1, ROUGEType.ROUGELSUM],
+        rouge_use_stemmer=True,
+    )
+
     with pytest.raises(ValidationError):
         schemas.EvaluationParameters(
             task_type=enums.TaskType.CLASSIFICATION,
@@ -50,9 +108,28 @@ def test_EvaluationParameters():
 
     with pytest.raises(ValidationError):
         schemas.EvaluationParameters(
+            task_type=enums.TaskType.SEMANTIC_SEGMENTATION,
+            iou_thresholds_to_compute=[0.2, 0.6],
+            iou_thresholds_to_return=[],
+        )
+
+    with pytest.raises(ValidationError):
+        schemas.EvaluationParameters(
+            task_type=enums.TaskType.CLASSIFICATION,
+            convert_annotations_to_type=enums.AnnotationType.BOX,
+        )
+
+    with pytest.raises(ValidationError):
+        schemas.EvaluationParameters(
+            task_type=enums.TaskType.SEMANTIC_SEGMENTATION,
+            convert_annotations_to_type=enums.AnnotationType.BOX,
+        )
+
+    with pytest.raises(ValidationError):
+        schemas.EvaluationParameters(
             task_type=enums.TaskType.OBJECT_DETECTION,
             iou_thresholds_to_compute=None,
-            iou_thresholds_to_return=[0.2],
+            iou_thresholds_to_return=[0.1],
         )
 
     with pytest.raises(ValidationError):
@@ -75,6 +152,66 @@ def test_EvaluationParameters():
             iou_thresholds_to_compute=[0.2, "test"],  # type: ignore - purposefully throwing error
             iou_thresholds_to_return=[],
             label_map={"not a": "valid grouper"},  # type: ignore - purposefully throwing error
+        )
+
+    with pytest.raises(ValidationError):
+        schemas.EvaluationParameters(
+            task_type=enums.TaskType.OBJECT_DETECTION,
+            pr_curve_iou_threshold=20.0,
+        )
+
+    # For TaskType.TEXT_GENERATION, metrics_to_return must be provided.
+    with pytest.raises(ValidationError):
+        schemas.EvaluationParameters(
+            task_type=enums.TaskType.TEXT_GENERATION,
+        )
+
+    # If any llm-guided metrics are requested, then llm_api_params must be provided.
+    with pytest.raises(ValidationError):
+        schemas.EvaluationParameters(
+            task_type=enums.TaskType.TEXT_GENERATION,
+            metrics_to_return=[
+                MetricType.AnswerRelevance,
+                MetricType.Bias,
+                MetricType.BLEU,
+                MetricType.Coherence,
+                MetricType.ContextRelevance,
+                MetricType.Faithfulness,
+                MetricType.Hallucination,
+                MetricType.ROUGE,
+                MetricType.Toxicity,
+            ],
+        )
+
+    # BLEU weights must be 0 <= weight <= 1.
+    with pytest.raises(ValidationError):
+        schemas.EvaluationParameters(
+            task_type=enums.TaskType.TEXT_GENERATION,
+            metrics_to_return=[
+                MetricType.Bias,
+                MetricType.BLEU,
+            ],
+            llm_api_params=llm_api_params,
+            bleu_weights=[1.1, 0.3, -0.5, 0.1],
+        )
+
+    # BLEU weights must sum to 1.
+    with pytest.raises(ValidationError):
+        schemas.EvaluationParameters(
+            task_type=enums.TaskType.TEXT_GENERATION,
+            metrics_to_return=[
+                MetricType.AnswerRelevance,
+                MetricType.Bias,
+                MetricType.BLEU,
+                MetricType.Coherence,
+                MetricType.ContextRelevance,
+                MetricType.Faithfulness,
+                MetricType.Hallucination,
+                MetricType.ROUGE,
+                MetricType.Toxicity,
+            ],
+            llm_api_params=llm_api_params,
+            bleu_weights=[0.5, 0.25, 0.25, 0.25],
         )
 
 

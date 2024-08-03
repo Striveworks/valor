@@ -55,6 +55,7 @@ class TaskType(str, Enum):
     OBJECT_DETECTION = "object-detection"
     SEMANTIC_SEGMENTATION = "semantic-segmentation"
     EMBEDDING = "embedding"
+    TEXT_GENERATION = "text-generation"
 
 
 class TableStatus(str, Enum):
@@ -101,22 +102,24 @@ class EvaluationStatus(str, Enum):
         """
         Returns the set of valid next states based on the current state.
         """
-        if self == self.PENDING:
-            return {self.PENDING, self.RUNNING, self.FAILED}
-        elif self == self.RUNNING:
-            return {self.RUNNING, self.DONE, self.FAILED}
-        elif self == self.FAILED:
-            return {self.FAILED, self.RUNNING, self.DELETING}
-        elif self == self.DONE:
-            return {self.DONE, self.DELETING}
-        elif self == self.DELETING:
-            return {self.DELETING}
-        else:
-            raise NotImplementedError("State hasn't been implemented.")
+        match (self):
+            case EvaluationStatus.PENDING:
+                return {self.PENDING, self.RUNNING, self.FAILED}
+            case EvaluationStatus.RUNNING:
+                return {self.RUNNING, self.DONE, self.FAILED}
+            case EvaluationStatus.FAILED:
+                return {self.FAILED, self.RUNNING, self.DELETING}
+            case EvaluationStatus.DONE:
+                return {self.DONE, self.DELETING}
+            case EvaluationStatus.DELETING:
+                return {self.DELETING}
+            case _:
+                raise NotImplementedError(
+                    f"'{self}' is not a valid evaluation status."
+                )
 
 
 class MetricType(str, Enum):
-
     Accuracy = ("Accuracy",)
     Precision = ("Precision",)
     Recall = ("Recall",)
@@ -132,3 +135,19 @@ class MetricType(str, Enum):
     mIOU = "mIOU"
     PrecisionRecallCurve = "PrecisionRecallCurve"
     DetailedPrecisionRecallCurve = "DetailedPrecisionRecallCurve"
+    AnswerRelevance = "AnswerRelevance"
+    Bias = "Bias"
+    BLEU = "BLEU"
+    Coherence = "Coherence"
+    ContextRelevance = "ContextRelevance"
+    Faithfulness = "Faithfulness"
+    Hallucination = "Hallucination"
+    ROUGE = "ROUGE"
+    Toxicity = "Toxicity"
+
+
+class ROUGEType(str, Enum):
+    ROUGE1 = "rouge1"
+    ROUGE2 = "rouge2"
+    ROUGEL = "rougeL"
+    ROUGELSUM = "rougeLsum"

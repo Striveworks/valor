@@ -465,53 +465,15 @@ def test__compute_detailed_curves(db: Session):
         ],
     }
 
-    grouper_mappings = {
-        "label_id_to_grouper_id_mapping": {
-            512: 1591437737079826217,
-            513: 7683992730431173493,
-            519: -6111942735542320034,
-            515: -487256420494681688,
-            514: 3262893736873277849,
-            517: 8850376905924579852,
-        },
-        "label_id_to_grouper_key_mapping": {
-            512: "class",
-            513: "class",
-            519: "class",
-            515: "class",
-            514: "class",
-            517: "class",
-        },
-        "grouper_id_to_label_ids_mapping": {
-            1591437737079826217: [512],
-            7683992730431173493: [513],
-            -6111942735542320034: [519],
-            -487256420494681688: [515],
-            3262893736873277849: [514],
-            8850376905924579852: [517],
-        },
-        "grouper_id_to_grouper_label_mapping": {
-            1591437737079826217: schemas.Label(
-                key="class", value="4", score=None
-            ),
-            7683992730431173493: schemas.Label(
-                key="class", value="2", score=None
-            ),
-            -6111942735542320034: schemas.Label(
-                key="class", value="3", score=None
-            ),
-            -487256420494681688: schemas.Label(
-                key="class", value="1", score=None
-            ),
-            3262893736873277849: schemas.Label(
-                key="class", value="0", score=None
-            ),
-            8850376905924579852: schemas.Label(
-                key="class", value="49", score=None
-            ),
-        },
+    labels = {
+        1591437737079826217: ("class", "4"),
+        7683992730431173493: ("class", "2"),
+        -6111942735542320034: ("class", "3"),
+        -487256420494681688: ("class", "1"),
+        3262893736873277849: ("class", "0"),
+        8850376905924579852: ("class", "49"),
     }
-    groundtruths_per_grouper = {
+    groundtruths_per_label = {
         1591437737079826217: [
             (
                 "test_dataset",
@@ -643,7 +605,7 @@ def test__compute_detailed_curves(db: Session):
             ),
         ],
     }
-    predictions_per_grouper = {
+    predictions_per_label = {
         1591437737079826217: [
             (
                 "test_dataset",
@@ -774,9 +736,9 @@ def test__compute_detailed_curves(db: Session):
 
     output = _compute_detailed_curves(
         sorted_ranked_pairs=sorted_ranked_pairs,
-        grouper_mappings=grouper_mappings,
-        groundtruths_per_grouper=groundtruths_per_grouper,
-        predictions_per_grouper=predictions_per_grouper,
+        labels=labels,
+        groundtruths_per_label=groundtruths_per_label,
+        predictions_per_label=predictions_per_label,
         pr_curve_iou_threshold=0.5,
         pr_curve_max_examples=1,
     )
@@ -909,9 +871,9 @@ def test__compute_detailed_curves(db: Session):
     # do a second test with a much higher iou_threshold
     second_output = _compute_detailed_curves(
         sorted_ranked_pairs=sorted_ranked_pairs,
-        grouper_mappings=grouper_mappings,
-        groundtruths_per_grouper=groundtruths_per_grouper,
-        predictions_per_grouper=predictions_per_grouper,
+        labels=labels,
+        groundtruths_per_label=groundtruths_per_label,
+        predictions_per_label=predictions_per_label,
         pr_curve_iou_threshold=0.9,
         pr_curve_max_examples=1,
     )
@@ -1039,9 +1001,9 @@ def test__compute_detailed_curves(db: Session):
     # repeat the above, but with a higher pr_max_curves_example
     second_output = _compute_detailed_curves(
         sorted_ranked_pairs=sorted_ranked_pairs,
-        grouper_mappings=grouper_mappings,
-        groundtruths_per_grouper=groundtruths_per_grouper,
-        predictions_per_grouper=predictions_per_grouper,
+        labels=labels,
+        groundtruths_per_label=groundtruths_per_label,
+        predictions_per_label=predictions_per_label,
         pr_curve_iou_threshold=0.9,
         pr_curve_max_examples=3,
     )
@@ -1087,9 +1049,9 @@ def test__compute_detailed_curves(db: Session):
     # test behavior if pr_curve_max_examples == 0
     second_output = _compute_detailed_curves(
         sorted_ranked_pairs=sorted_ranked_pairs,
-        grouper_mappings=grouper_mappings,
-        groundtruths_per_grouper=groundtruths_per_grouper,
-        predictions_per_grouper=predictions_per_grouper,
+        labels=labels,
+        groundtruths_per_label=groundtruths_per_label,
+        predictions_per_label=predictions_per_label,
         pr_curve_iou_threshold=0.9,
         pr_curve_max_examples=0,
     )
@@ -1235,7 +1197,7 @@ def test__compute_detection(
     expected_ap_metrics = [
         {"iou": 0.5, "value": 0.505, "label": {"key": "class", "value": "2"}},
         {"iou": 0.75, "value": 0.505, "label": {"key": "class", "value": "2"}},
-        {"iou": 0.5, "value": 0.79, "label": {"key": "class", "value": "49"}},
+        {"iou": 0.5, "value": 0.791, "label": {"key": "class", "value": "49"}},
         {
             "iou": 0.75,
             "value": 0.576,
@@ -1260,7 +1222,7 @@ def test__compute_detection(
         },
         {
             "ious": iou_thresholds,
-            "value": 0.555,  # note COCO had 0.556
+            "value": 0.556,
             "label": {"key": "class", "value": "49"},
         },
         {
@@ -1472,7 +1434,7 @@ def test__compute_detection(
     expected_ap_metrics = [
         {"iou": 0.5, "value": 0.505, "label": {"key": "class", "value": "2"}},
         {"iou": 0.75, "value": 0.505, "label": {"key": "class", "value": "2"}},
-        {"iou": 0.5, "value": 0.79, "label": {"key": "class", "value": "49"}},
+        {"iou": 0.5, "value": 0.791, "label": {"key": "class", "value": "49"}},
         {
             "iou": 0.75,
             "value": 0.576,
@@ -1497,7 +1459,7 @@ def test__compute_detection(
         },
         {
             "ious": iou_thresholds,
-            "value": 0.555,  # note COCO had 0.556
+            "value": 0.556,
             "label": {"key": "class", "value": "49"},
         },
         {
@@ -1709,7 +1671,7 @@ def test__compute_detection(
     expected_ap_metrics = [
         {"iou": 0.5, "value": 0.505, "label": {"key": "class", "value": "2"}},
         {"iou": 0.75, "value": 0.505, "label": {"key": "class", "value": "2"}},
-        {"iou": 0.5, "value": 0.79, "label": {"key": "class", "value": "49"}},
+        {"iou": 0.5, "value": 0.791, "label": {"key": "class", "value": "49"}},
         {
             "iou": 0.75,
             "value": 0.576,
@@ -1734,7 +1696,7 @@ def test__compute_detection(
         },
         {
             "ious": iou_thresholds,
-            "value": 0.555,  # note COCO had 0.556
+            "value": 0.556,
             "label": {"key": "class", "value": "49"},
         },
         {

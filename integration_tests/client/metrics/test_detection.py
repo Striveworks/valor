@@ -167,6 +167,10 @@ def test_evaluate_detection(
             ],
             "pr_curve_iou_threshold": 0.5,
             "pr_curve_max_examples": 1,
+            "bleu_weights": None,
+            "rouge_types": None,
+            "rouge_use_stemmer": None,
+            "llm_api_params": None,
         },
         "status": EvaluationStatus.DONE.value,
         "confusion_matrices": [],
@@ -326,6 +330,10 @@ def test_evaluate_detection(
             ],
             "pr_curve_iou_threshold": 0.5,
             "pr_curve_max_examples": 1,
+            "bleu_weights": None,
+            "rouge_types": None,
+            "rouge_use_stemmer": None,
+            "llm_api_params": None,
         },
         "status": EvaluationStatus.DONE.value,
         "confusion_matrices": [],
@@ -404,6 +412,10 @@ def test_evaluate_detection(
             ],
             "pr_curve_iou_threshold": 0.5,
             "pr_curve_max_examples": 1,
+            "bleu_weights": None,
+            "rouge_types": None,
+            "rouge_use_stemmer": None,
+            "llm_api_params": None,
         },
         # check metrics below
         "status": EvaluationStatus.DONE.value,
@@ -514,6 +526,10 @@ def test_evaluate_detection(
             ],
             "pr_curve_iou_threshold": 0.5,
             "pr_curve_max_examples": 1,
+            "bleu_weights": None,
+            "rouge_types": None,
+            "rouge_use_stemmer": None,
+            "llm_api_params": None,
         },
         # check metrics below
         "status": EvaluationStatus.DONE.value,
@@ -738,6 +754,10 @@ def test_evaluate_detection_with_json_filters(
             ],
             "pr_curve_iou_threshold": 0.5,
             "pr_curve_max_examples": 1,
+            "bleu_weights": None,
+            "rouge_types": None,
+            "rouge_use_stemmer": None,
+            "llm_api_params": None,
         },
         # check metrics below
         "status": EvaluationStatus.DONE.value,
@@ -1302,13 +1322,7 @@ def test_evaluate_detection_with_label_maps(
 
     pr_expected_answers = {
         # class
-        (
-            0,
-            "class",
-            "cat",
-            "0.1",
-            "fp",
-        ): 1,
+        (0, "class", "cat", "0.1", "fp"): 1,
         (0, "class", "cat", "0.4", "fp"): 0,
         (0, "class", "siamese cat", "0.1", "fn"): 1,
         (0, "class", "british shorthair", "0.1", "fn"): 1,
@@ -2022,6 +2036,10 @@ def test_evaluate_detection_with_label_maps(
         ],
         "pr_curve_iou_threshold": 0.5,
         "pr_curve_max_examples": 1,
+        "bleu_weights": None,
+        "rouge_types": None,
+        "rouge_use_stemmer": None,
+        "llm_api_params": None,
     }
 
     metrics = eval_job.metrics

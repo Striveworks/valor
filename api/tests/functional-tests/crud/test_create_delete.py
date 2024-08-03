@@ -1423,6 +1423,7 @@ def test_create_clf_metrics(
         "F1",
         "ROCAUC",
     }
+
     # should have two accuracy metrics and ROC AUC scores (for label keys "k1" and "k2")
     # and four recall, precision, and f1, for the labels ("k1", "v1"), ("k2", "v2"),
     # ("k2", "v3"), ("k1", "v2")
@@ -1474,14 +1475,16 @@ def test_create_clf_metrics(
         )
     ]
     assert cms[1].label_key == "k2"
-    assert cms[1].entries == [
-        schemas.ConfusionMatrixEntry(
-            prediction="v2", groundtruth="v3", count=1
-        ),
-        schemas.ConfusionMatrixEntry(
-            prediction="v4", groundtruth="v2", count=1
-        ),
-    ]
+    assert set(cms[1].entries) == set(
+        [
+            schemas.ConfusionMatrixEntry(
+                prediction="v2", groundtruth="v3", count=1
+            ),
+            schemas.ConfusionMatrixEntry(
+                prediction="v4", groundtruth="v2", count=1
+            ),
+        ]
+    )
 
     # attempting to run again should just return the existing job id
     resp = crud.create_or_get_evaluations(

@@ -1,15 +1,15 @@
+import numpy as np
 from sqlalchemy import and_, select
 from sqlalchemy.orm import Session
 
 from valor_api import crud, enums, schemas
 from valor_api.backend.core import create_or_get_evaluations
 from valor_api.backend.metrics.segmentation import (
+    _aggregate_data,
     _compute_segmentation_metrics,
     _count_groundtruths,
     _count_predictions,
     _count_true_positives,
-    _generate_groundtruth_query,
-    _generate_prediction_query,
     compute_semantic_segmentation_metrics,
 )
 from valor_api.backend.models import Label
@@ -51,146 +51,6 @@ def _create_data(
             pred_semantic_segs_img2_create,
         ],
     )
-
-
-def test_query_generators(
-    db: Session,
-    dataset_name: str,
-    model_name: str,
-    gt_semantic_segs_create: list[schemas.GroundTruth],
-    pred_semantic_segs_img1_create: schemas.Prediction,
-    pred_semantic_segs_img2_create: schemas.Prediction,
-):
-    _create_data(
-        db=db,
-        dataset_name=dataset_name,
-        model_name=model_name,
-        gt_semantic_segs_create=gt_semantic_segs_create,
-        pred_semantic_segs_img1_create=pred_semantic_segs_img1_create,
-        pred_semantic_segs_img2_create=pred_semantic_segs_img2_create,
-    )
-
-    prediction_filter = schemas.Filter(
-        predictions=schemas.LogicalFunction(
-            args=[
-                schemas.Condition(
-                    lhs=schemas.Symbol(
-                        name=schemas.SupportedSymbol.MODEL_NAME
-                    ),
-                    rhs=schemas.Value.infer(model_name),
-                    op=schemas.FilterOperator.EQ,
-                ),
-                schemas.Condition(
-                    lhs=schemas.Symbol(
-                        name=schemas.SupportedSymbol.DATASET_NAME
-                    ),
-                    rhs=schemas.Value.infer(dataset_name),
-                    op=schemas.FilterOperator.EQ,
-                ),
-                schemas.Condition(
-                    lhs=schemas.Symbol(name=schemas.SupportedSymbol.TASK_TYPE),
-                    rhs=schemas.Value.infer(
-                        enums.TaskType.SEMANTIC_SEGMENTATION
-                    ),
-                    op=schemas.FilterOperator.CONTAINS,
-                ),
-                schemas.Condition(
-                    lhs=schemas.Symbol(name=schemas.SupportedSymbol.RASTER),
-                    op=schemas.FilterOperator.ISNOTNULL,
-                ),
-            ],
-            op=schemas.LogicalOperator.AND,
-        )
-    )
-    groundtruth_filter = schemas.Filter(
-        groundtruths=schemas.LogicalFunction(
-            args=[
-                schemas.Condition(
-                    lhs=schemas.Symbol(
-                        name=schemas.SupportedSymbol.DATASET_NAME
-                    ),
-                    rhs=schemas.Value.infer(dataset_name),
-                    op=schemas.FilterOperator.EQ,
-                ),
-                schemas.Condition(
-                    lhs=schemas.Symbol(name=schemas.SupportedSymbol.TASK_TYPE),
-                    rhs=schemas.Value.infer(
-                        enums.TaskType.SEMANTIC_SEGMENTATION
-                    ),
-                    op=schemas.FilterOperator.CONTAINS,
-                ),
-                schemas.Condition(
-                    lhs=schemas.Symbol(name=schemas.SupportedSymbol.RASTER),
-                    op=schemas.FilterOperator.ISNOTNULL,
-                ),
-            ],
-            op=schemas.LogicalOperator.AND,
-        )
-    )
-
-    for label_key, label_value, expected_number in [
-        ("k1", "v1", 2),
-        ("k1", "v2", 1),
-        ("k2", "v2", 1),
-        ("k3", "v3", 1),
-    ]:
-        label_id = db.scalar(
-            select(Label.id).where(
-                and_(Label.key == label_key, Label.value == label_value)
-            )
-        )
-
-        assert label_id is not None
-        groundtruth_filter.labels = schemas.Condition(
-            lhs=schemas.Symbol(name=schemas.SupportedSymbol.LABEL_ID),
-            rhs=schemas.Value.infer(label_id),
-            op=schemas.FilterOperator.EQ,
-        )
-
-        q = _generate_groundtruth_query(groundtruth_filter)
-        data = db.query(q).all()
-        assert len(data) == expected_number
-
-    groundtruth_filter.labels = schemas.Condition(
-        lhs=schemas.Symbol(name=schemas.SupportedSymbol.LABEL_ID),
-        rhs=schemas.Value.infer(10000000),
-        op=schemas.FilterOperator.EQ,
-    )
-    q = _generate_groundtruth_query(groundtruth_filter)
-    data = db.query(q).all()
-    assert len(data) == 0
-
-    for label_key, label_value, expected_number in [
-        ("k1", "v1", 2),
-        ("k1", "v2", 0),
-        ("k2", "v2", 1),
-        ("k2", "v3", 2),
-    ]:
-        label_id = db.scalar(
-            select(Label.id).where(
-                and_(Label.key == label_key, Label.value == label_value)
-            )
-        )
-        assert label_id is not None
-
-        prediction_filter.labels = schemas.Condition(
-            lhs=schemas.Symbol(name=schemas.SupportedSymbol.LABEL_ID),
-            rhs=schemas.Value.infer(label_id),
-            op=schemas.FilterOperator.EQ,
-        )
-
-        q = _generate_prediction_query(prediction_filter)
-        data = db.query(q).all()
-        assert len(data) == expected_number
-
-    prediction_filter.labels = schemas.Condition(
-        lhs=schemas.Symbol(name=schemas.SupportedSymbol.LABEL_ID),
-        rhs=schemas.Value.infer(10000000),
-        op=schemas.FilterOperator.EQ,
-    )
-    q = _generate_prediction_query(prediction_filter)
-    data = db.query(q).all()
-    assert len(data) == 0
 
 
 def _create_groundtruth_tuples(
@@ -354,15 +214,25 @@ def test__count_true_positives(
             op=schemas.FilterOperator.EQ,
         )
 
-        tps = _count_true_positives(
+        groundtruths, predictions, _ = _aggregate_data(
             db=db,
-            groundtruth_subquery=_generate_groundtruth_query(
-                groundtruth_filter
-            ),
-            prediction_subquery=_generate_prediction_query(prediction_filter),
+            groundtruth_filter=groundtruth_filter,
+            prediction_filter=prediction_filter,
+            label_map=None,
         )
 
-        assert expected == tps
+        tps = _count_true_positives(
+            groundtruths=groundtruths,
+            predictions=predictions,
+        )
+
+        tp_counts = db.query(tps).all()
+        if expected == 0:
+            assert len(tp_counts) == 0
+            continue
+        assert len(tp_counts) == 1
+        assert tp_counts[0][0] == label_id
+        assert int(tp_counts[0][1]) == expected
 
 
 def _help_count_groundtruths(
@@ -431,26 +301,34 @@ def test_count_groundtruths(
             rhs=schemas.Value.infer(label_id),
             op=schemas.FilterOperator.EQ,
         )
-        assert (
-            _count_groundtruths(
-                db,
-                _generate_groundtruth_query(groundtruth_filter),
-            )
-            == expected
+
+        groundtruths, _, _ = _aggregate_data(
+            db=db,
+            groundtruth_filter=groundtruth_filter,
+            prediction_filter=groundtruth_filter,
+            label_map=None,
         )
+
+        gt_counts = db.query(
+            _count_groundtruths(groundtruths=groundtruths)
+        ).all()
+        assert len(gt_counts) == 1
+        assert gt_counts[0][0] == label_id
+        assert int(gt_counts[0][1]) == expected
 
     groundtruth_filter.labels = schemas.Condition(
         lhs=schemas.Symbol(name=schemas.SupportedSymbol.LABEL_ID),
         rhs=schemas.Value.infer(1000000),
         op=schemas.FilterOperator.EQ,
     )
-    assert (
-        _count_groundtruths(
-            db,
-            _generate_groundtruth_query(groundtruth_filter),
-        )
-        == 0
+
+    groundtruths, _, _ = _aggregate_data(
+        db=db,
+        groundtruth_filter=groundtruth_filter,
+        prediction_filter=groundtruth_filter,
+        label_map=None,
     )
+    assert not db.query(_count_groundtruths(groundtruths=groundtruths)).all()
 
 
 def _help_count_predictions(
@@ -532,23 +410,35 @@ def test_count_predictions(
             rhs=schemas.Value.infer(label_id),
             op=schemas.FilterOperator.EQ,
         )
-        assert (
-            _count_predictions(
-                db,
-                _generate_prediction_query(prediction_filter),
-            )
-            == expected
+
+        _, predictions, _ = _aggregate_data(
+            db=db,
+            groundtruth_filter=prediction_filter,
+            prediction_filter=prediction_filter,
+            label_map=None,
         )
+
+        pd_counts = db.query(_count_predictions(predictions=predictions)).all()
+        if expected == 0:
+            assert len(pd_counts) == 0
+            continue
+        assert len(pd_counts) == 1
+        assert pd_counts[0][0] == label_id
+        assert int(pd_counts[0][1]) == expected
 
     prediction_filter.labels = schemas.Condition(
         lhs=schemas.Symbol(name=schemas.SupportedSymbol.LABEL_ID),
         rhs=schemas.Value.infer(1000000),
         op=schemas.FilterOperator.EQ,
     )
-    assert (
-        _count_predictions(db, _generate_prediction_query(prediction_filter))
-        == 0
+    _, predictions, _ = _aggregate_data(
+        db=db,
+        groundtruth_filter=prediction_filter,
+        prediction_filter=prediction_filter,
+        label_map=None,
     )
+
+    assert not db.query(_count_predictions(predictions=predictions)).all()
 
 
 def test__compute_segmentation_metrics(
@@ -634,14 +524,78 @@ def test__compute_segmentation_metrics(
         prediction_filter=prediction_filter,
         groundtruth_filter=groundtruth_filter,
     )
-    # should have seven metrics
-    # (one IOU for each of the four labels from the groundtruth set, and three mIOUs for each included label key)
-    assert len(metrics) == 7
+    # should have one IOU, precision, recall, and F1 for each of the four labels from the groundtruth set,
+    # and three mIOUs for each included label key
+    assert len(metrics) == 4 * 4 + 3
     for metric in metrics[:-3]:
-        assert isinstance(metric, schemas.IOUMetric)
+        assert isinstance(
+            metric,
+            (
+                schemas.IOUMetric,
+                schemas.PrecisionMetric,
+                schemas.RecallMetric,
+                schemas.F1Metric,
+            ),
+        )
         assert metric.value < 1.0
     assert all([isinstance(m, schemas.mIOUMetric) for m in metrics[-3:]])
     assert all([m.value < 1.0 for m in metrics[-3:]])
+
+
+def _get_k1_v1_gt_and_pred_masks(
+    gt_semantic_segs_create,
+    pred_semantic_segs_img1_create,
+    pred_semantic_segs_img2_create,
+) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+    """For label k1, v1, returns
+    (the groundtruth mask for img1, the groundtruth mask for img2,
+    the prediction mask for img1, the prediction mask for img2)
+    """
+    img1_k1_v1_gt = [
+        ann.raster.array
+        for gt in gt_semantic_segs_create
+        for ann in gt.annotations
+        if gt.datum.uid == "uid1"
+        and any(
+            label.key == "k1" and label.value == "v1" for label in ann.labels
+        )
+    ]
+    assert len(img1_k1_v1_gt) == 1
+    img1_k1_v1_gt = img1_k1_v1_gt[0]
+
+    img2_k1_v1_gt = [
+        ann.raster.array
+        for gt in gt_semantic_segs_create
+        for ann in gt.annotations
+        if gt.datum.uid == "uid2"
+        and any(
+            label.key == "k1" and label.value == "v1" for label in ann.labels
+        )
+    ]
+    assert len(img2_k1_v1_gt) == 1
+    img2_k1_v1_gt = img2_k1_v1_gt[0]
+
+    img1_k1_v1_pred = [
+        ann.raster.array
+        for ann in pred_semantic_segs_img1_create.annotations
+        if any(
+            label.key == "k1" and label.value == "v1" for label in ann.labels
+        )
+    ]
+    assert len(img1_k1_v1_pred) == 1
+    img1_k1_v1_pred = img1_k1_v1_pred[0]
+
+    img2_k1_v1_pred = [
+        ann.raster.array
+        for ann in pred_semantic_segs_img2_create.annotations
+        if any(
+            label.key == "k1" and label.value == "v1" for label in ann.labels
+        )
+    ]
+    assert len(img2_k1_v1_pred) == 1
+    img2_k1_v1_pred = img2_k1_v1_pred[0]
+
+    return img1_k1_v1_gt, img2_k1_v1_gt, img1_k1_v1_pred, img2_k1_v1_pred
 
 
 def test_compute_semantic_segmentation_metrics(
@@ -686,28 +640,63 @@ def test_compute_semantic_segmentation_metrics(
 
     metrics = evaluations[0].metrics
 
-    expected_metrics = {
-        # none of these three labels have a predicted label
-        schemas.Label(key="k1", value="v2", score=None): 0,
-        schemas.Label(key="k2", value="v2", score=None): 0,
-        schemas.Label(key="k3", value="v3", score=None): 0,
-        # this last metric value should round to .33
-        schemas.Label(key="k1", value="v1", score=None): 0.33,
-    }
+    (
+        img1_k1_v1_gt,
+        img2_k1_v1_gt,
+        img1_k1_v1_pred,
+        img2_k1_v1_pred,
+    ) = _get_k1_v1_gt_and_pred_masks(
+        gt_semantic_segs_create,
+        pred_semantic_segs_img1_create,
+        pred_semantic_segs_img2_create,
+    )
 
-    expected_mIOU_metrics = {"k1": (0.33 + 0) / 2, "k2": 0, "k3": 0}
+    # compute metrics for k1, v1 using numpy and compare
+    tp = np.sum(img1_k1_v1_gt * img1_k1_v1_pred) + np.sum(
+        img2_k1_v1_gt * img2_k1_v1_pred
+    )
+    gt = np.sum(img1_k1_v1_gt) + np.sum(img2_k1_v1_gt)
+    fp = np.sum(img1_k1_v1_pred) + np.sum(img2_k1_v1_pred) - tp
 
-    assert metrics
+    # tolerance
+    eps = 1e-10
+
+    k1_v1_iou = tp / (gt + fp)
+    assert abs(k1_v1_iou - 0.33301713404873) < eps
+    k1_v1_precision = tp / (tp + fp)
+    assert abs(k1_v1_precision - 0.500311748463525) < eps
+    k1_v1_recall = tp / gt
+    assert abs(k1_v1_recall - 0.49897841343164) < eps
+    k1_v1_f1 = (
+        2 * k1_v1_precision * k1_v1_recall / (k1_v1_precision + k1_v1_recall)
+    )
+    assert abs(k1_v1_f1 - 0.499644191425) < eps
+
+    # should have one IOU, precision, recall, and F1 for each of the four labels from the groundtruth set,
+    # and three mIOUs for each included label key
+    assert metrics is not None
+    assert len(metrics) == 4 * 4 + 3
     for metric in metrics:
         assert isinstance(metric.value, float)
         if metric.type == "mIOU":
             assert metric.parameters
             assert metric.parameters["label_key"]
-            assert (
-                metric.value
-                - expected_mIOU_metrics[metric.parameters["label_key"]]
-            ) <= 0.01
+            if metric.parameters["label_key"] == "k1":
+                assert abs(metric.value - (k1_v1_iou + 0) / 2) < eps
+            else:
+                assert metric.value == 0
         else:
-            # the IOU value for (k1, v1) is bound between .327 and .336
             assert metric.label
-            assert (metric.value - expected_metrics[metric.label]) <= 0.01
+            if metric.label.key != "k1" or metric.label.value != "v1":
+                assert metric.value == 0
+            else:
+                if metric.type == "IOU":
+                    assert abs(metric.value - k1_v1_iou) < eps
+                elif metric.type == "Precision":
+                    assert abs(metric.value - k1_v1_precision) < eps
+                elif metric.type == "Recall":
+                    assert abs(metric.value - k1_v1_recall) < eps
+                elif metric.type == "F1":
+                    assert abs(metric.value - k1_v1_f1) < eps
+                else:
+                    raise ValueError(f"Unexpected metric type: {metric.type}")

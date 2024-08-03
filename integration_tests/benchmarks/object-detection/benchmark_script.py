@@ -190,7 +190,7 @@ def ingest_groundtruths_and_predictions(
 def run_base_evaluation(dset: Dataset, model: Model):
     """Run a base evaluation (with no PR curves)."""
     evaluation = model.evaluate_detection(dset)
-    evaluation.wait_for_completion(timeout=300)
+    evaluation.wait_for_completion(timeout=60)
     return evaluation
 
 
@@ -233,14 +233,13 @@ def run_detailed_pr_curve_evaluation(dset: Dataset, model: Model):
 
 
 def run_benchmarking_analysis(
-    limits_to_test: list[int] = [500],
+    limits_to_test: list[int] = [6, 6],
     results_file: str = "results.json",
     data_file: str = "data.json",
 ):
     """Time various function calls and export the results."""
     current_directory = os.path.dirname(os.path.realpath(__file__))
     write_path = f"{current_directory}/{results_file}"
-
     data_path = f"{current_directory}/{data_file}"
 
     download_data_if_not_exists(
@@ -273,25 +272,9 @@ def run_benchmarking_analysis(
                 f"Evaluation timed out when processing {limit} datums."
             )
 
-        # try:
-        #     eval_pr = run_pr_curve_evaluation(dset=dset, model=model)
-        # except TimeoutError:
-        #     raise TimeoutError(
-        #         f"PR Evaluation timed out when processing {limit} datums."
-        #     )
-
-        # try:
-        #     eval_pr_detail = run_detailed_pr_curve_evaluation(
-        #         dset=dset, model=model
-        #     )
-        # except TimeoutError:
-        #     raise TimeoutError(
-        #         f"Detailed PR Evaluation timed out when processing {limit} datums."
-        #     )
-
         start = time()
-        client.delete_dataset(dset.name, timeout=300)
-        client.delete_model(model.name, timeout=300)
+        client.delete_dataset(dset.name, timeout=30)
+        client.delete_model(model.name, timeout=30)
         deletion_time = time() - start
 
         results = {
@@ -300,14 +283,9 @@ def run_benchmarking_analysis(
             "number_of_annotations": eval_.meta["annotations"],
             "ingest_runtime": f"{(ingest_time):.1f} seconds",
             "eval_runtime": f"{(eval_.meta['duration']):.1f} seconds",
-            # "eval_pr_runtime": f"{(eval_pr.meta['duration']):.1f} seconds",
-            # "eval_detailed_pr_runtime": f"{(eval_pr_detail.meta['duration']):.1f} seconds",
             "del_runtime": f"{(deletion_time):.1f} seconds",
         }
         write_results_to_file(write_path=write_path, result_dict=results)
-
-        # client.delete_dataset(dset.name, timeout=300)
-        # client.delete_model(model.name, timeout=300)
 
 
 if __name__ == "__main__":

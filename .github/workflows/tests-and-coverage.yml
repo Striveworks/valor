@@ -65,7 +65,16 @@ jobs:
       - name: install client
         run: pip install -e ".[test]"
         working-directory: ./client
-      - run: coverage run --source="api/valor_api,client/valor" -m pytest -v integration_tests/client/*
+      - name: run integration tests
+        run: coverage run -a --source="api/valor_api,client/valor" -m pytest -v integration_tests/client/*
+      - name: run external integration tests
+        run: |
+          if ${{ github.ref == 'refs/heads/main' }}; then
+            coverage run -a --source="api/valor_api,client/valor" -m pytest -v integration_tests/external/*
+          fi
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          MISTRAL_API_KEY: ${{ secrets.MISTRAL_API_KEY }}
       - run: coverage report
       - name: upload coverage report as artifact
         uses: actions/upload-artifact@v3

@@ -764,9 +764,7 @@ def finalize_dataset(
 
     """
     try:
-        crud.finalize(
-            db=db, dataset_name=dataset_name, task_handler=background_tasks
-        )
+        crud.finalize(db=db, dataset_name=dataset_name, task_handler=None)
     except Exception as e:
         raise exceptions.create_http_error(e)
 
@@ -1280,7 +1278,7 @@ def finalize_inferences(
             db=db,
             model_name=model_name,
             dataset_name=dataset_name,
-            task_handler=background_tasks,
+            task_handler=None,
         )
     except Exception as e:
         raise exceptions.create_http_error(e)
