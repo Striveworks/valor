@@ -397,7 +397,7 @@ class InvalidLLMResponseError(Exception):
     pass
 
 
-class BadTestLLMClientsValueError(Exception):
+class BadValueInTestLLMClientsError(Exception):
     """
     Raised when a mock function in test_llm_clients.py receives a bad value.
     """

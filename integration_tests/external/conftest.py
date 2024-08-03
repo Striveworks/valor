@@ -33,14 +33,6 @@ def answer_relevance_datums(
     return [answer_relevance_q0, answer_relevance_q1]
 
 
-# @pytest.fixture
-# def answer_relevance_references() -> list[str]:
-#     return [
-#         """John Adams and Alexander Hamilton did not get along.""",  # same as the prediction
-#         """Yes, Lincoln won the election of 1860.""",  # very different from the prediction
-#     ]
-
-
 @pytest.fixture
 def answer_relevance_predictions() -> list[str]:
     return [

@@ -240,7 +240,7 @@ class LLMClient:
         statements: list[str],
     ) -> list[dict[str, str]]:
         """
-        Generates a list of answer relevance verdicts for a list of statements, using a call to the LLM API.
+        Generate a list of answer relevance verdicts for a list of statements, using a call to the LLM API.
 
         Parameters
         ----------
@@ -292,7 +292,7 @@ class LLMClient:
         opinions: list[str],
     ) -> list[dict[str, str]]:
         """
-        Generates a list of bias verdicts for a list of opinions, using a call to the LLM API.
+        Generate a list of bias verdicts for a list of opinions, using a call to the LLM API.
 
         Parameters
         ----------
@@ -380,14 +380,14 @@ class LLMClient:
         context_list: list[str],
     ) -> list[dict[str, str]]:
         """
-        Generates a list of context relevance verdicts for a list of context, using a call to the LLM API.
+        Generate a list of context relevance verdicts for a list of contexts, using a call to the LLM API.
 
         Parameters
         ----------
         query: str
             The query to evaluate each context against.
         context_list: list[str]
-            The ordered list of context to evaluate the relevance of.
+            The ordered list of contexts to evaluate the relevance of.
 
         Returns
         -------
@@ -432,7 +432,7 @@ class LLMClient:
         context_list: list[str],
     ) -> list[dict[str, str]]:
         """
-        Generates a list of faithfulness verdicts for a list of claims, using a call to the LLM API.
+        Generate a list of faithfulness verdicts for a list of claims, using a call to the LLM API.
 
         Parameters
         ----------
@@ -484,7 +484,7 @@ class LLMClient:
         context_list: list[str],
     ) -> list[dict[str, str]]:
         """
-        Generates a list of hallucination verdicts for a list of context, using a call to the LLM API.
+        Generate a list of hallucination verdicts for a list of contexts, using a call to the LLM API.
 
         The verdict for each context should be 'yes' if the text contradicts that context. The verdict should be 'no' otherwise.
 
@@ -537,7 +537,7 @@ class LLMClient:
         opinions: list[str],
     ) -> list[dict[str, str]]:
         """
-        Generates a list of toxicity verdicts for a list of opinions, using a call to the LLM API.
+        Generate a list of toxicity verdicts for a list of opinions, using a call to the LLM API.
 
         Parameters
         ----------
@@ -658,7 +658,7 @@ class LLMClient:
         context_list: list[str],
     ) -> float:
         """
-        Compute context relevance, the proportion of contexts in the context list that is relevant to the query.
+        Compute context relevance, the proportion of contexts in the context list that are relevant to the query.
 
         Parameters
         ----------
@@ -691,7 +691,7 @@ class LLMClient:
         context_list: list[str],
     ) -> float:
         """
-        Computes the faithfulness score. The faithfulness score is the proportion of claims in the text that are implied by the list of context. Claims that contradict the list of context and claims that are unrelated to the list of context both count against the score.
+        Compute the faithfulness score. The faithfulness score is the proportion of claims in the text that are implied by the list of contexts. Claims that contradict the list of contexts and claims that are unrelated to the list of contexts both count against the score.
 
         Parameters
         ----------
@@ -703,7 +703,7 @@ class LLMClient:
         Returns
         -------
         float
-            The faithfulness score will be evaluated as a float between 0 and 1, with 1 indicating that all claims in the text are implied by the list of context.
+            The faithfulness score will be evaluated as a float between 0 and 1, with 1 indicating that all claims in the text are implied by the list of contexts.
         """
         if len(context_list) == 0:
             raise ValueError(
@@ -1053,7 +1053,7 @@ class MockLLMClient(LLMClient):
         **kwargs,
     ):
         """
-        Neither the api_key nor model_name are required for the mock client.
+        Neither the api_key nor the model_name are required for the mock client.
         """
         pass
 

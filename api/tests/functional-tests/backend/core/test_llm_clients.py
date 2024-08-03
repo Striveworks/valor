@@ -24,7 +24,7 @@ from valor_api.backend.core.llm_clients import (
     WrappedOpenAIClient,
 )
 from valor_api.exceptions import (
-    BadTestLLMClientsValueError,
+    BadValueInTestLLMClientsError,
     InvalidLLMResponseError,
 )
 
@@ -181,7 +181,7 @@ def test_LLMClient(monkeypatch):
         ):
             return ANSWER_RELEVANCE_VALID_VERDICTS
         else:
-            raise BadTestLLMClientsValueError
+            raise BadValueInTestLLMClientsError
 
     def _return_invalid1_answer_relevance_response(*args, **kwargs):
         return """```json
@@ -231,7 +231,7 @@ def test_LLMClient(monkeypatch):
     ]
 }```"""
         else:
-            raise BadTestLLMClientsValueError
+            raise BadValueInTestLLMClientsError
 
     def _return_invalid4_answer_relevance_response(*args, **kwargs):
         if "generate a list of STATEMENTS" in args[1][1]["content"]:
@@ -259,7 +259,7 @@ def test_LLMClient(monkeypatch):
     ]
 }```"""
         else:
-            raise BadTestLLMClientsValueError
+            raise BadValueInTestLLMClientsError
 
     def _return_valid1_bias_response(*args, **kwargs):
         if "generate a list of OPINIONS" in args[1][1]["content"]:
@@ -270,7 +270,7 @@ def test_LLMClient(monkeypatch):
         ):
             return BIAS_VALID_VERDICTS
         else:
-            raise BadTestLLMClientsValueError
+            raise BadValueInTestLLMClientsError
 
     def _return_valid2_bias_response(*args, **kwargs):
         return """```json
@@ -317,7 +317,7 @@ def test_LLMClient(monkeypatch):
     ]
 }```"""
         else:
-            raise BadTestLLMClientsValueError
+            raise BadValueInTestLLMClientsError
 
     def _return_invalid4_bias_response(*args, **kwargs):
         if "generate a list of OPINIONS" in args[1][1]["content"]:
@@ -346,7 +346,7 @@ def test_LLMClient(monkeypatch):
     ]
 }```"""
         else:
-            raise BadTestLLMClientsValueError
+            raise BadValueInTestLLMClientsError
 
     def _return_valid_coherence_response(*args, **kwargs):
         return "5"
@@ -382,7 +382,7 @@ def test_LLMClient(monkeypatch):
         ):
             return FAITHFULNESS_VALID_VERDICTS
         else:
-            raise BadTestLLMClientsValueError
+            raise BadValueInTestLLMClientsError
 
     def _return_valid2_faithfulness_response(*args, **kwargs):
         return """```json
@@ -411,7 +411,7 @@ def test_LLMClient(monkeypatch):
     ]
 }```"""
         else:
-            raise BadTestLLMClientsValueError
+            raise BadValueInTestLLMClientsError
 
     def _return_invalid2_faithfulness_response(*args, **kwargs):
         if (
@@ -434,7 +434,7 @@ def test_LLMClient(monkeypatch):
     ]
 }```"""
         else:
-            raise BadTestLLMClientsValueError
+            raise BadValueInTestLLMClientsError
 
     def _return_invalid3_faithfulness_response(*args, **kwargs):
         if (
@@ -457,7 +457,7 @@ def test_LLMClient(monkeypatch):
     ]
 }```"""
         else:
-            raise BadTestLLMClientsValueError
+            raise BadValueInTestLLMClientsError
 
     def _return_invalid4_faithfulness_response(*args, **kwargs):
         if (
@@ -479,7 +479,7 @@ def test_LLMClient(monkeypatch):
     ]
 }```"""
         else:
-            raise BadTestLLMClientsValueError
+            raise BadValueInTestLLMClientsError
 
     def _return_invalid5_faithfulness_response(*args, **kwargs):
         if (
@@ -502,7 +502,7 @@ def test_LLMClient(monkeypatch):
     ]
 }```"""
         else:
-            raise BadTestLLMClientsValueError
+            raise BadValueInTestLLMClientsError
 
     def _return_valid_hallucination_response(*args, **kwargs):
         return HALLUCINATION_VALID_VERDICTS
@@ -526,7 +526,7 @@ def test_LLMClient(monkeypatch):
         ):
             return TOXICITY_VALID_VERDICTS
         else:
-            raise BadTestLLMClientsValueError
+            raise BadValueInTestLLMClientsError
 
     def _return_valid2_toxicity_response(*args, **kwargs):
         return """```json
@@ -573,7 +573,7 @@ def test_LLMClient(monkeypatch):
     ]
 }```"""
         else:
-            raise BadTestLLMClientsValueError
+            raise BadValueInTestLLMClientsError
 
     def _return_invalid4_toxicity_response(*args, **kwargs):
         if "generate a list of OPINIONS" in args[1][1]["content"]:
@@ -602,7 +602,7 @@ def test_LLMClient(monkeypatch):
     ]
 }```"""
         else:
-            raise BadTestLLMClientsValueError
+            raise BadValueInTestLLMClientsError
 
     client = LLMClient(api_key=None, model_name="model_name")
 

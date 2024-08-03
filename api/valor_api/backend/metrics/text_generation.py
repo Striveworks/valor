@@ -293,7 +293,7 @@ def _compute_text_generation_metrics(
         generate_select(
             models.Annotation.datum_id.label("datum_id"),
             models.Annotation.text.label("prediction_text"),
-            models.Annotation.context_list.label("prediction_context"),
+            models.Annotation.context_list.label("prediction_context_list"),
             label_source=models.Annotation,
             filters=prediction_filter,
         )
@@ -445,8 +445,8 @@ def _compute_text_generation_metrics(
                 datum_subquery.c.dataset_name.label("dataset_name"),
                 datum_subquery.c.datum_text.label("datum_text"),
                 prediction_subquery.c.prediction_text.label("prediction_text"),
-                prediction_subquery.c.prediction_context.label(
-                    "prediction_context"
+                prediction_subquery.c.prediction_context_list.label(
+                    "prediction_context_list"
                 ),
             )
             .select_from(datum_subquery)
@@ -470,7 +470,7 @@ def _compute_text_generation_metrics(
             dataset_name,
             datum_text,
             prediction_text,
-            prediction_context,
+            prediction_context_list,
         ) in results:
             if is_AnswerRelevance_enabled:
                 score = client.answer_relevance(
@@ -514,7 +514,7 @@ def _compute_text_generation_metrics(
 
             if is_ContextRelevance_enabled:
                 score = client.context_relevance(
-                    query=datum_text, context_list=prediction_context
+                    query=datum_text, context_list=prediction_context_list
                 )
                 output += [
                     schemas.ContextRelevanceMetric(
@@ -522,14 +522,14 @@ def _compute_text_generation_metrics(
                         parameters={
                             "dataset": dataset_name,
                             "datum_uid": datum_uid,
-                            "context_list": prediction_context,
+                            "context_list": prediction_context_list,
                         },
                     )
                 ]
 
             if is_Faithfulness_enabled:
                 score = client.faithfulness(
-                    text=prediction_text, context_list=prediction_context
+                    text=prediction_text, context_list=prediction_context_list
                 )
                 output += [
                     schemas.FaithfulnessMetric(
@@ -538,14 +538,14 @@ def _compute_text_generation_metrics(
                             "dataset": dataset_name,
                             "datum_uid": datum_uid,
                             "prediction": prediction_text,
-                            "context_list": prediction_context,
+                            "context_list": prediction_context_list,
                         },
                     )
                 ]
 
             if is_Hallucination_enabled:
                 score = client.hallucination(
-                    text=prediction_text, context_list=prediction_context
+                    text=prediction_text, context_list=prediction_context_list
                 )
                 output += [
                     schemas.HallucinationMetric(
@@ -554,7 +554,7 @@ def _compute_text_generation_metrics(
                             "dataset": dataset_name,
                             "datum_uid": datum_uid,
                             "prediction": prediction_text,
-                            "context_list": prediction_context,
+                            "context_list": prediction_context_list,
                         },
                     )
                 ]
