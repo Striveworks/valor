@@ -661,7 +661,6 @@ def test_compute_roc_auc_with_label_map(
     assert score == 0.7777777777777778
 
     """
-
     prediction_filter = schemas.Filter(
         predictions=schemas.LogicalFunction(
             args=[

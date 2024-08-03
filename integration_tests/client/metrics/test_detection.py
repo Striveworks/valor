@@ -1020,11 +1020,10 @@ def test_get_evaluations(
     assert both_evaluations_from_evaluation_ids[0].metrics[-2]["value"] == 0
 
     # with sorting, the evaluation with the higher mAPAveragedOverIOUs is returned first
-    assert [
-        m
-        for m in both_evaluations_from_evaluation_ids_sorted[0].metrics
-        if m["type"] == "mAPAveragedOverIOUs"
-    ][0]["value"] == 0.504950495049505
+    assert (
+        both_evaluations_from_evaluation_ids_sorted[0].metrics[-1]["value"]
+        == 0.504950495049505
+    )
 
     # test bad metrics_to_sort_by list
     with pytest.raises(ClientException):
@@ -3115,8 +3114,8 @@ def test_evaluate_detection_model_with_no_predictions(
                     0.5,
                     0.55,
                     0.6,
-                    0.65,
                     0.7,
+                    0.65,
                     0.75,
                     0.8,
                     0.85,
@@ -3134,8 +3133,8 @@ def test_evaluate_detection_model_with_no_predictions(
                     0.5,
                     0.55,
                     0.6,
-                    0.65,
                     0.7,
+                    0.65,
                     0.75,
                     0.8,
                     0.85,
@@ -3197,8 +3196,8 @@ def test_evaluate_detection_model_with_no_predictions(
                     0.5,
                     0.55,
                     0.6,
-                    0.65,
                     0.7,
+                    0.65,
                     0.75,
                     0.8,
                     0.85,
@@ -3216,8 +3215,8 @@ def test_evaluate_detection_model_with_no_predictions(
                     0.5,
                     0.55,
                     0.6,
-                    0.65,
                     0.7,
+                    0.65,
                     0.75,
                     0.8,
                     0.85,
@@ -3236,8 +3235,5 @@ def test_evaluate_detection_model_with_no_predictions(
     computed_metrics = evaluation.metrics
 
     assert all([metric["value"] == 0 for metric in computed_metrics])
-    for m in expected_metrics:
-        assert m in computed_metrics
-
-    for m in computed_metrics:
-        assert m in expected_metrics
+    assert all([metric in computed_metrics for metric in expected_metrics])
+    assert all([metric in expected_metrics for metric in computed_metrics])

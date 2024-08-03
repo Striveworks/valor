@@ -49,11 +49,7 @@ def test_evaluate_image_clf(
 
     expected_metrics = [
         {"type": "Accuracy", "parameters": {"label_key": "k4"}, "value": 0.5},
-        {
-            "type": "ROCAUC",
-            "parameters": {"label_key": "k4"},
-            "value": 1.0,
-        },
+        {"type": "ROCAUC", "parameters": {"label_key": "k4"}, "value": 1.0},
         {
             "type": "Precision",
             "value": 1.0,  # no false predictions
@@ -103,11 +99,7 @@ def test_evaluate_image_clf(
         },
         {"type": "F1", "value": -1.0, "label": {"key": "k4", "value": "v1"}},
         {"type": "Accuracy", "parameters": {"label_key": "k5"}, "value": 0.0},
-        {
-            "type": "ROCAUC",
-            "parameters": {"label_key": "k5"},
-            "value": 1.0,
-        },
+        {"type": "ROCAUC", "parameters": {"label_key": "k5"}, "value": 1.0},
         {
             "type": "Precision",
             "value": 0.0,

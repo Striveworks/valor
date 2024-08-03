@@ -106,8 +106,8 @@ def ingest_groundtruths_and_predictions(
             )
         )
 
-    dset.add_groundtruths(groundtruths, timeout=300)
-    model.add_predictions(dset, predictions, timeout=300)
+    dset.add_groundtruths(groundtruths, timeout=150)
+    model.add_predictions(dset, predictions, timeout=150)
 
     dset.finalize()
     model.finalize_inferences(dataset=dset)
@@ -157,7 +157,7 @@ def run_detailed_pr_curve_evaluation(dset: Dataset, model: Model):
 
 
 def run_benchmarking_analysis(
-    limits_to_test: list[int] = [5000, 5000, 5000],
+    limits_to_test: list[int] = [5000, 5000],
     results_file: str = "results.json",
     data_file: str = "data.json",
 ):
@@ -226,9 +226,6 @@ def run_benchmarking_analysis(
             "del_runtime": f"{(deletion_time):.1f} seconds",
         }
         write_results_to_file(write_path=write_path, result_dict=results)
-
-        # client.delete_dataset(dset.name, timeout=300)
-        # client.delete_model(model.name, timeout=300)
 
 
 if __name__ == "__main__":
