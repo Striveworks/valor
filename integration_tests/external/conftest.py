@@ -62,17 +62,11 @@ def answer_relevance_context_list() -> list[list[str]]:
 @pytest.fixture
 def answer_relevance_gt_questions(
     answer_relevance_datums: list[Datum],
-    # answer_relevance_references: list[str],
 ) -> list[GroundTruth]:
-    # assert len(answer_relevance_datums) == len(answer_relevance_references)
     return [
         GroundTruth(
             datum=answer_relevance_datums[i],
-            annotations=[
-                # Annotation(text=answer_relevance_references[i]),
-                # Annotation(text="some other text"),
-                # Annotation(text="some final text"),
-            ],
+            annotations=[],
         )
         for i in range(len(answer_relevance_datums))
     ]
