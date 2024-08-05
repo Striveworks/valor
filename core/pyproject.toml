@@ -9,7 +9,9 @@ dependencies = [
     "Pillow >= 9.1.0",
     "numpy",
     "pandas",
-    "pytest"
+    "pytest",
+    "requests",
+    "coverage",
 ]
 
 [project.urls]
