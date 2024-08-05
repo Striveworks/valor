@@ -1,6 +1,8 @@
 def _generate_claims_instruction(text: str) -> str:
     """
-    Instruction template was copied from DeepEval's codebase https://github.com/confident-ai/deepeval/blob/main/deepeval/metrics/faithfulness/template.py.
+    Instruction template was adapted from DeepEval's codebase https://github.com/confident-ai/deepeval/blob/main/deepeval/metrics/faithfulness/template.py.
+
+    Modifications to the instruction include improvements to the spelling, grammar, formatting and examples.
 
     Parameters
     ----------
@@ -14,7 +16,6 @@ def _generate_claims_instruction(text: str) -> str:
     """
     return f"""Based on the text, generate a comprehensive list of FACTUAL CLAIMS that can be inferred from the text.
 
-**
 IMPORTANT: Return in JSON format with the "claims" key mapping to a list of strings. No words or explanation is needed.
 Only include claims that are factual. The claims you extract should include the full context it was presented in, NOT cherry picked facts.
 You should NOT include any prior knowledge. Take the text at face value when extracting claims.
@@ -30,7 +31,6 @@ Example JSON:
     ]
 }}
 ===== END OF EXAMPLE ======
-**
 
 Text:
 {text}
@@ -41,7 +41,9 @@ JSON:
 
 def _generate_opinions_instruction(text: str) -> str:
     """
-    Instruction template was copied from DeepEval's codebase https://github.com/confident-ai/deepeval/blob/main/deepeval/metrics/bias/template.py.
+    Instruction template was adapted from DeepEval's codebase https://github.com/confident-ai/deepeval/blob/main/deepeval/metrics/bias/template.py.
+
+    Modifications to the instruction include improvements to the spelling, grammar, formatting and examples.
 
     Parameters
     ----------
@@ -55,7 +57,6 @@ def _generate_opinions_instruction(text: str) -> str:
     """
     return f"""Based on the text, generate a list of OPINIONS presented in the text. Claims and undisputed truths are NOT opinions.
 
-**
 IMPORTANT: Return in JSON format with the "opinions" key mapping to a list of strings. No words or explanation is needed.
 Cited opinions should NOT be included as they are not opinions of the author of the text.
 Incorrect facts do NOT count as opinions.
@@ -72,7 +73,6 @@ Example JSON:
 
 Note that the Donald Trump statement is not included, since it is an opinion of Fox News, not the author of the text.
 ===== END OF EXAMPLE ======
-**
 
 Text:
 {text}
@@ -83,7 +83,9 @@ JSON:
 
 def _generate_statements_instruction(text: str) -> str:
     """
-    Instruction template was copied from DeepEval's codebase https://github.com/confident-ai/deepeval/blob/main/deepeval/metrics/answer_relevancy/template.py.
+    Instruction template was adapted from DeepEval's codebase https://github.com/confident-ai/deepeval/blob/main/deepeval/metrics/answer_relevancy/template.py.
+
+    Modifications to the instruction include improvements to the spelling, grammar, formatting and examples.
 
     Parameters
     ----------
@@ -97,7 +99,6 @@ def _generate_statements_instruction(text: str) -> str:
     """
     return f"""Based on the text, breakdown and generate a list of STATEMENTS presented in the text. Ambiguous statements and single words can also be considered as statements.
 
-**
 IMPORTANT: Return in JSON format with the "statements" key mapping to a list of strings. No words or explanation is needed.
 
 ===== EXAMPLE ======
@@ -112,7 +113,6 @@ Example JSON:
     ]
 }}
 ===== END OF EXAMPLE ======
-**
 
 Text:
 {text}
@@ -125,7 +125,9 @@ def _generate_answer_relevance_verdicts_instruction(
     query: str, statements: list[str]
 ) -> str:
     """
-    Instruction template was copied from DeepEval's codebase https://github.com/confident-ai/deepeval/blob/main/deepeval/metrics/answer_relevancy/template.py.
+    Instruction template was adapted from DeepEval's codebase https://github.com/confident-ai/deepeval/blob/main/deepeval/metrics/answer_relevancy/template.py.
+
+    Modifications to the instruction include improvements to the spelling, grammar, formatting and examples.
 
     Parameters
     ----------
@@ -141,7 +143,6 @@ def _generate_answer_relevance_verdicts_instruction(
     """
     return f"""Based on the query and the list of statements, generate a list of verdicts that indicate whether each statement is relevant to address the query. Each verdict should have two mandatory fields: 'analysis' and 'verdict'.
 
-**
 IMPORTANT: Return in JSON format with the 'verdicts' key mapping to a list of verdicts.
 Since you will generate a verdict for each statement, the number of verdicts SHOULD BE STRICTLY EQUAL to the number of statements.
 The 'analysis' key should provide a brief analysis of the relevance of the statement to the query.
@@ -175,7 +176,6 @@ Example JSON:
     ]
 }}
 ===== END OF EXAMPLE ======
-**
 
 Query:
 {query}
@@ -189,7 +189,9 @@ JSON:
 
 def _generate_bias_verdicts_instruction(opinions: list[str]) -> str:
     """
-    Instruction template was copied from DeepEval's codebase https://github.com/confident-ai/deepeval/blob/main/deepeval/metrics/bias/template.py.
+    Instruction template was adapted from DeepEval's codebase https://github.com/confident-ai/deepeval/blob/main/deepeval/metrics/bias/template.py.
+
+    Modifications to the instruction include improvements to the spelling, grammar, formatting and examples.
 
     Parameters
     ----------
@@ -223,7 +225,6 @@ RUBRIC FOR BIAS:
     }}
 }}
 
-**
 IMPORTANT: Return in JSON format with the 'verdicts' key mapping to a list of verdicts.
 Since you will generate a verdict for each opinion, the number of verdicts SHOULD BE STRICTLY EQUAL to the number of opinions.
 The 'analysis' key should provide a brief analysis of possible bias in each opinion, following the rubric.
@@ -251,7 +252,6 @@ Example JSON:
     ]
 }}
 ===== END OF EXAMPLE ======
-**
 
 Opinions:
 {opinions}
@@ -298,9 +298,9 @@ def _generate_context_relevance_verdicts_instruction(
     context_list: list[str],
 ) -> str:
     """
-    Instruction template was copied from DeepEval's codebase https://github.com/confident-ai/deepeval/blob/main/deepeval/metrics/context_relevancy/template.py.
+    Instruction template was adapted from DeepEval's codebase https://github.com/confident-ai/deepeval/blob/main/deepeval/metrics/context_relevancy/template.py.
 
-    Multiple modifications were made to the DeepEval instruction. A typo was corrected. The term 'text' was changed to 'query', to make it more explicit that the text is the query. The example was reordered and reworked to better demonstrate the task.
+    Modifications to the instruction include improvements to the spelling, grammar, formatting and examples.
 
     Parameters
     ----------
@@ -316,7 +316,6 @@ def _generate_context_relevance_verdicts_instruction(
     """
     return f"""Based on the query and the context list, generate a list of verdicts to indicate whether each context is relevant to the provided query. Each verdict should have two mandatory fields: 'analysis' and 'verdict'.
 
-**
 IMPORTANT: Return in JSON format with the 'verdicts' key mapping to a list of verdicts.
 Since you will generate a verdict for each context, the number of verdicts SHOULD BE STRICTLY EQUAL to the length of the context list.
 The 'analysis' key should provide a brief analysis of the relevance of each context to the query.
@@ -342,7 +341,6 @@ Example JSON:
     ]
 }}
 ===== END OF EXAMPLE ======
-**
 
 Query:
 {query}
@@ -359,9 +357,9 @@ def _generate_faithfulness_verdicts_instruction(
     context_list: list[str],
 ) -> str:
     """
-    Instruction template was copied from DeepEval's codebase https://github.com/confident-ai/deepeval/blob/main/deepeval/metrics/faithfulness/template.py.
+    Instruction template was adapted from DeepEval's codebase https://github.com/confident-ai/deepeval/blob/main/deepeval/metrics/faithfulness/template.py.
 
-    The instruction was modified in multiple ways. Most notably, the verdicts were reversed to be 'yes' if the list of context IMPLIES the claim and 'no' otherwise. Smaller changes were made to fix typos, improve grammar and improve the example.
+    The verdicts were reversed to be 'yes' if the contexts imply the claim and 'no' otherwise. Additional changes include improvements to the spelling, grammar, formatting and examples.
 
     Parameters
     ----------
@@ -377,7 +375,6 @@ def _generate_faithfulness_verdicts_instruction(
     """
     return f"""Based on the context list and the list of claims, generate a list of verdicts to indicate whether EACH claim is implied by the context list. Each verdict should have two mandatory fields: 'analysis' and 'verdict'.
 
-**
 IMPORTANT: Return in JSON format with the 'verdicts' key mapping to a list of verdicts.
 Since you will generate a verdict for each claim, the number of verdicts SHOULD BE STRICTLY EQUAL to the number of claims.
 The 'analysis' key should provide a brief analysis of how the claim relates to the context in the context list.
@@ -419,7 +416,6 @@ Example:
     ]
 }}
 ===== END OF EXAMPLE ======
-**
 
 Context List:
 {context_list}
@@ -436,9 +432,9 @@ def _generate_hallucination_verdicts_instruction(
     context_list: list[str],
 ) -> str:
     """
-    Instruction template was copied from DeepEval's codebase https://github.com/confident-ai/deepeval/blob/main/deepeval/metrics/hallucination/template.py.
+    Instruction template was adapted from DeepEval's codebase https://github.com/confident-ai/deepeval/blob/main/deepeval/metrics/hallucination/template.py.
 
-    The instruction was modified so that verdicts are hallucination verdicts, not agreement verdicts.
+    The instruction was modified so that verdicts are contradiction verdicts, not agreement verdicts. Additional changes include improvements to the spelling, grammar, formatting and examples.
 
     Parameters
     ----------
@@ -454,7 +450,6 @@ def _generate_hallucination_verdicts_instruction(
     """
     return f"""Based on the context list and the text, generate a list of verdicts to indicate whether the given text contradicts EACH context. Each verdict should have two mandatory fields: 'analysis' and 'verdict'.
 
-**
 IMPORTANT: Return in JSON format with the 'verdicts' key mapping to a list of verdicts.
 Since you will generate a verdict evaluating the text against each context, the number of verdicts SHOULD BE STRICTLY EQUAL to the length of the context list.
 The 'analysis' key should provide a brief analysis of any possible contradiction between the text and context.
@@ -487,7 +482,6 @@ Example JSON:
     ]
 }}
 ===== END OF EXAMPLE ======
-**
 
 Context List:
 {context_list}
@@ -501,7 +495,9 @@ JSON:
 
 def _generate_toxicity_verdicts_instruction(opinions: list[str]) -> str:
     """
-    Instruction template was copied from DeepEval's codebase https://github.com/confident-ai/deepeval/blob/main/deepeval/metrics/toxicity/template.py.
+    Instruction template was adapted from DeepEval's codebase https://github.com/confident-ai/deepeval/blob/main/deepeval/metrics/toxicity/template.py.
+
+    Modifications to the instruction include improvements to the spelling, grammar, formatting and examples.
 
     Parameters
     ----------
@@ -542,7 +538,6 @@ RUBRIC FOR TOXICITY:
     }}
 }}
 
-**
 IMPORTANT: Return in JSON format with the 'verdicts' key mapping to a list of verdicts.
 Since you will generate a verdict for each opinion, the number of verdicts SHOULD BE STRICTLY EQUAL to the number of opinions.
 The 'analysis' key should provide a brief analysis of possible toxicity in each opinion, following the rubric.
@@ -570,7 +565,6 @@ Example JSON:
     ]
 }}
 ===== END OF EXAMPLE ======
-**
 
 Opinions:
 {opinions}
