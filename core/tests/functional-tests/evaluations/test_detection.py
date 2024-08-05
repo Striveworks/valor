@@ -2984,7 +2984,6 @@ def test_evaluate_detection_functional_test(
         },
     }
 
-    # TODO search for "blah"
     for m in metrics:
         assert m in expected_metrics
     for m in metrics:

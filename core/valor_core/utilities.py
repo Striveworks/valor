@@ -20,7 +20,6 @@ def _validate_label_map(
         )
 
 
-# TODO these shouldn't be private
 def validate_parameters(
     parameters: schemas.EvaluationParameters, task_type: enums.TaskType
 ) -> schemas.EvaluationParameters:
@@ -128,7 +127,7 @@ def validate_groundtruth_dataframe(
         and isinstance(obj, list)
         and isinstance(obj[0], schemas.GroundTruth)
     ):
-        df = convert_groundtruth_or_prediction_to_dataframe(obj)
+        df = _convert_groundtruth_or_prediction_to_dataframe(obj)
 
         if task_type == enums.TaskType.OBJECT_DETECTION:
             df = _add_geojson_column(df)
@@ -152,7 +151,7 @@ def validate_prediction_dataframe(
         and isinstance(obj, list)
         and isinstance(obj[0], schemas.Prediction)
     ):
-        df = convert_groundtruth_or_prediction_to_dataframe(obj)
+        df = _convert_groundtruth_or_prediction_to_dataframe(obj)
 
         if task_type == enums.TaskType.OBJECT_DETECTION:
             df = _add_geojson_column(df)
@@ -235,7 +234,7 @@ def validate_matching_label_keys(
         )
 
 
-def convert_groundtruth_or_prediction_to_dataframe(
+def _convert_groundtruth_or_prediction_to_dataframe(
     list_of_objects: Union[List[schemas.GroundTruth], List[schemas.Prediction]]
 ) -> pd.DataFrame:
 

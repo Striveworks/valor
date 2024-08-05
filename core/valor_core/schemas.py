@@ -277,7 +277,6 @@ class Evaluation:
             "parameters": self.parameters.__dict__,
             "metrics": self.metrics,
             "confusion_matrices": self.confusion_matrices,
-            # TODO make sure these two get tested at some point
             "ignored_pred_labels": self.ignored_pred_labels,
             "missing_pred_labels": self.missing_pred_labels,
             "meta": self.meta,
@@ -853,3 +852,6 @@ class ConfusionMatrix(_BaseConfusionMatrix):
             ] = entry.count
 
         self.matrix = matrix
+
+
+LabelMapType = Dict[Label, Label]

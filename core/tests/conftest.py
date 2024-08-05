@@ -589,7 +589,6 @@ def evaluate_detection_detailed_pr_curve_predictions(
     ]
 
 
-# TODO separate the classification vs. object-detection data?
 @pytest.fixture
 def evaluate_tabular_clf_groundtruths():
     return pd.DataFrame(
@@ -1500,7 +1499,6 @@ def gt_clfs(
     ]
 
 
-# TODO handle warnings?
 @pytest.fixture
 def classification_functional_test_data():
     animal_gts = ["bird", "dog", "bird", "bird", "cat", "dog"]

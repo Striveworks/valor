@@ -6,12 +6,9 @@ import numpy as np
 import pandas as pd
 from valor_core import enums, schemas, utilities
 
-# TODO move this out
-LabelMapType = Dict[schemas.Label, schemas.Label]
-
 
 def _create_classification_grouper_mappings(
-    label_map: Optional[LabelMapType],
+    label_map: Optional[schemas.LabelMapType],
     labels: list,
 ) -> Dict[str, dict]:
     """Create grouper mappings for use when evaluating classifications."""
@@ -1144,9 +1141,7 @@ def _calculate_pr_curves(
 def _compute_clf_metrics(
     groundtruth_df: pd.DataFrame,
     prediction_df: pd.DataFrame,
-    pr_curve_max_examples: int,
-    metrics_to_return: List[enums.MetricType],
-    label_map: Optional[LabelMapType],
+    parameters: schemas.EvaluationParameters,
     unique_labels: list,
 ) -> Tuple[List[dict], List[dict]]:
     """
@@ -1163,7 +1158,7 @@ def _compute_clf_metrics(
         The filter to be used to query groundtruths.
     metrics_to_return: list[MetricType]
         The list of metrics to compute, store, and return to the user.
-    label_map: LabelMapType, optional
+    label_map: schemas.LabelMapType, optional
         Optional mapping of individual labels to a grouper label. Useful when you need to evaluate performance using labels that differ across datasets and models.
     pr_curve_max_examples: int
         The maximum number of datum examples to store per true positive, false negative, etc.
@@ -1174,9 +1169,8 @@ def _compute_clf_metrics(
     Tuple[List[schemas.ConfusionMatrix], List[schemas.ConfusionMatrix | schemas.AccuracyMetric | schemas.ROCAUCMetric| schemas.PrecisionMetric | schemas.RecallMetric | schemas.F1Metric]]
         A tuple of confusion matrices and metrics.
     """
-
     grouper_mappings = _create_classification_grouper_mappings(
-        label_map=label_map,
+        label_map=parameters.label_map,
         labels=unique_labels,
     )
 
@@ -1211,18 +1205,21 @@ def _compute_clf_metrics(
         prediction_df=prediction_df, groundtruth_df=groundtruth_df
     )
 
+    # handle type error
+    assert parameters.metrics_to_return
+
     metrics_to_output += _calculate_pr_curves(
         prediction_df=prediction_df,
         groundtruth_df=groundtruth_df,
-        metrics_to_return=metrics_to_return,
-        pr_curve_max_examples=pr_curve_max_examples,
+        metrics_to_return=parameters.metrics_to_return,
+        pr_curve_max_examples=parameters.pr_curve_max_examples,
     )
 
     # convert objects to dictionaries and only return what was asked for
     metrics_to_output = [
         m.to_dict()
         for m in metrics_to_output
-        if m.to_dict()["type"] in metrics_to_return
+        if m.to_dict()["type"] in parameters.metrics_to_return
     ]
     confusion_matrices = [cm.to_dict() for cm in confusion_matrices]
 
@@ -1240,7 +1237,6 @@ def evaluate_classification(
     """
     start_time = time.time()
 
-    # TODO move this into some shared function
     parameters = utilities.validate_parameters(
         parameters, task_type=enums.TaskType.CLASSIFICATION
     )
@@ -1275,9 +1271,7 @@ def evaluate_classification(
     confusion_matrices, metrics = _compute_clf_metrics(
         groundtruth_df=groundtruth_df,
         prediction_df=prediction_df,
-        pr_curve_max_examples=parameters.pr_curve_max_examples,
-        metrics_to_return=parameters.metrics_to_return,
-        label_map=parameters.label_map,
+        parameters=parameters,
         unique_labels=unique_labels,
     )
 

@@ -8,9 +8,6 @@ import numpy as np
 import pandas as pd
 from valor_core import enums, schemas, utilities
 
-# TODO move this out
-LabelMapType = Dict[schemas.Label, schemas.Label]
-
 
 def _convert_wkt_to_array(wkt_data) -> np.ndarray:
     """Convert a WKT string to an array of coordinates."""
@@ -607,7 +604,6 @@ def _add_samples_to_dataframe(
     flag_column: str,
 ):
     """Efficienctly gather samples for a given flag."""
-    # TODO merge on dataset before this?
 
     sample_df = pd.concat(
         [
@@ -1115,7 +1111,7 @@ def _calculate_detailed_pr_metrics(
 
 
 def _create_detection_grouper_mappings(
-    label_map: Optional[LabelMapType],
+    label_map: Optional[schemas.LabelMapType],
     labels: list,
 ) -> Dict[str, dict]:
     """Create grouper mappings for use when evaluating classifications."""
