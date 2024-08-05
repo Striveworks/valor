@@ -1121,11 +1121,9 @@ def test_create_detection_metrics(
             dataset_names=["test_dataset"],
             model_names=["test_model"],
             filters=schemas.Filter(
-                annotations=(
-                    schemas.LogicalFunction.and_(*conditions)
-                    if conditions
-                    else None
-                ),
+                annotations=schemas.LogicalFunction.and_(*conditions)
+                if conditions
+                else None,
                 labels=schemas.Condition(
                     lhs=schemas.Symbol(name=schemas.SupportedSymbol.LABEL_KEY),
                     rhs=schemas.Value.infer(label_key),

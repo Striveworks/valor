@@ -458,11 +458,11 @@ def _compute_curves(
                     else list()
                 )
                 fp = {
-                    "misclassifications": (
-                        [unique_datums[datum_id] for datum_id in fp]
-                        if fp
-                        else list()
-                    )
+                    "misclassifications": [
+                        unique_datums[datum_id] for datum_id in fp
+                    ]
+                    if fp
+                    else list()
                 }
                 tn = (
                     [unique_datums[datum_id] for datum_id in tn]
@@ -470,22 +470,18 @@ def _compute_curves(
                     else list()
                 )
                 fn = {
-                    "misclassifications": (
-                        [
-                            unique_datums[datum_id]
-                            for datum_id in fn_misclf_examples
-                        ]
-                        if fn_misclf_examples
-                        else list()
-                    ),
-                    "no_predictions": (
-                        [
-                            unique_datums[datum_id]
-                            for datum_id in fn_misprd_examples
-                        ]
-                        if fn_misprd_examples
-                        else list()
-                    ),
+                    "misclassifications": [
+                        unique_datums[datum_id]
+                        for datum_id in fn_misclf_examples
+                    ]
+                    if fn_misclf_examples
+                    else list(),
+                    "no_predictions": [
+                        unique_datums[datum_id]
+                        for datum_id in fn_misprd_examples
+                    ]
+                    if fn_misprd_examples
+                    else list(),
                 }
 
                 detailed_pr_output[key][value][float(threshold)] = {
@@ -793,20 +789,18 @@ def _compute_roc_auc(
 
     label_keys = {key for key, _ in labels}
     return [
-        (
-            schemas.ROCAUCMetric(
-                label_key=key,
-                value=(
-                    float(np.mean(label_key_to_rocauc[key]))
-                    if len(label_key_to_rocauc[key]) >= 1
-                    else None
-                ),
-            )
-            if (key in label_key_to_rocauc and key in predictions_label_keys)
-            else schemas.ROCAUCMetric(
-                label_key=key,
-                value=0.0,
-            )
+        schemas.ROCAUCMetric(
+            label_key=key,
+            value=(
+                float(np.mean(label_key_to_rocauc[key]))
+                if len(label_key_to_rocauc[key]) >= 1
+                else None
+            ),
+        )
+        if (key in label_key_to_rocauc and key in predictions_label_keys)
+        else schemas.ROCAUCMetric(
+            label_key=key,
+            value=0.0,
         )
         for key in label_keys
     ]
@@ -1003,18 +997,20 @@ def _compute_confusion_matrices_and_metrics(
     labels: dict[int, tuple[str, str]],
     pr_curve_max_examples: int,
     metrics_to_return: list[enums.MetricType],
-) -> tuple[
-    list[schemas.ConfusionMatrix],
-    list[
-        schemas.AccuracyMetric
-        | schemas.ROCAUCMetric
-        | schemas.PrecisionMetric
-        | schemas.RecallMetric
-        | schemas.F1Metric
-        | schemas.PrecisionRecallCurve
-        | schemas.DetailedPrecisionRecallCurve
-    ],
-]:
+) -> (
+    tuple[
+        list[schemas.ConfusionMatrix],
+        list[
+            schemas.AccuracyMetric
+            | schemas.ROCAUCMetric
+            | schemas.PrecisionMetric
+            | schemas.RecallMetric
+            | schemas.F1Metric
+            | schemas.PrecisionRecallCurve
+            | schemas.DetailedPrecisionRecallCurve
+        ],
+    ]
+):
     """
     Computes the confusion matrix and all metrics for a given label key.
 
