@@ -21,7 +21,7 @@ jobs:
           python-version: "3.10"
       - name: run tests and report coverage
         run: |
-          pip install .
+          pip install -e ".[test]"
           python -m coverage run -m pytest -v tests/functional-tests
           python -m coverage run -m pytest -v tests/unit-tests
           python -m coverage combine

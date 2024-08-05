@@ -8,10 +8,9 @@ license = { file = "LICENSE" }
 dependencies = [
     "Pillow >= 9.1.0",
     "numpy",
+    "importlib_metadata; python_version < '3.8'",
     "pandas",
-    "pytest",
     "requests",
-    "coverage",
 ]
 
 [project.urls]
