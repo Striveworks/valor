@@ -22,11 +22,11 @@ jobs:
       - name: run tests and report coverage
         run: |
           pip install .
-          coverage run -m pytest -v tests/functional-tests
-          coverage run -m pytest -v tests/unit-tests
-          coverage combine
-          coverage report -m
-          coverage json
+          python -m coverage run -m pytest -v tests/functional-tests
+          python -m coverage run -m pytest -v tests/unit-tests
+          python -m coverage combine
+          python -m coverage report -m
+          python -m coverage json
           export TOTAL=$(python -c "import json;print(json.load(open('coverage.json'))['totals']['percent_covered_display'])")
           echo "total=$TOTAL" >> $GITHUB_ENV
           if (( $TOTAL < 90 )); then
