@@ -1,7 +1,6 @@
 -- this migration goes  through dataset names and model names and replaces commas with underscores
 -- if the resulting name happens to exist, it adds underscores until it gets a name that doesn't
 -- this will update the following tables: Model, Dataset, Evaluation
-BEGIN;
 
 -- Function to get a unique name by adding underscores
 CREATE OR REPLACE FUNCTION get_unique_name(base_name TEXT, table_name TEXT)
@@ -62,5 +61,3 @@ END;
 $$;
 
 DROP FUNCTION get_unique_name;
-
-COMMIT;
