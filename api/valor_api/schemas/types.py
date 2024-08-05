@@ -551,6 +551,14 @@ class Dataset(BaseModel):
         validate_metadata(v)
         return v
 
+    @field_validator("name")
+    @classmethod
+    def validate_name_no_commans(cls, v: str) -> str:
+        """Validates the 'name' field has no commas in it."""
+        if "," in v:
+            raise ValueError("Dataset names cannot contain commas.")
+        return v
+
 
 class Model(BaseModel):
     """
@@ -573,6 +581,14 @@ class Model(BaseModel):
     def validate_name(cls, v: str) -> str:
         """Validates the 'name' field."""
         validate_type_string(v)
+        return v
+
+    @field_validator("name")
+    @classmethod
+    def validate_name_no_commans(cls, v: str) -> str:
+        """Validates the 'name' field has no commas in it."""
+        if "," in v:
+            raise ValueError("Model names cannot contain commas.")
         return v
 
     @field_validator("metadata")

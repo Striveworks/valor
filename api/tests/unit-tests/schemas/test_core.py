@@ -66,6 +66,10 @@ def test_dataset(metadata):
             metadata=[{123: 12434}, "123"],  # type: ignore - purposefully throwing error
         )
 
+    with pytest.raises(ValidationError) as exc_info:
+        schemas.Dataset(name="name,with,commas")
+    assert "cannot contain commas" in str(exc_info)
+
 
 def test_model(metadata):
     # valid
@@ -110,6 +114,10 @@ def test_model(metadata):
             name="123",
             metadata=[{123: 12434}, "123"],  # type: ignore - purposefully throwing error
         )
+
+    with pytest.raises(ValidationError) as exc_info:
+        schemas.Model(name="name,with,commas")
+    assert "cannot contain commas" in str(exc_info)
 
 
 def test_datum(metadata):
