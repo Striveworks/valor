@@ -757,6 +757,7 @@ def test__compute_text_generation_rag(
     }
 
     assert metrics
+    assert len(metrics) == len(metrics_to_return) * len(expected_values)
     for metric in metrics:
         assert isinstance(metric.parameters, dict)
         assert isinstance(metric.parameters["datum_uid"], str)
@@ -1105,6 +1106,7 @@ def test_text_generation_rag(
     }
 
     assert metrics
+    assert len(metrics) == len(metrics_to_return) * len(expected_values)
     for metric in metrics:
         assert isinstance(metric.parameters, dict)
         assert (
@@ -1220,6 +1222,7 @@ def test_text_generation_content_gen(
     }
 
     assert metrics
+    assert len(metrics) == len(metrics_to_return) * len(expected_values)
     for metric in metrics:
         assert isinstance(metric.parameters, dict)
         assert (
@@ -1379,6 +1382,7 @@ def test_text_generation_two_datasets(
     }
 
     assert metrics
+    assert len(metrics) == len(metrics_to_return) * len(expected_values)
     for metric in metrics:
         assert isinstance(metric.parameters, dict)
         assert (
@@ -1450,6 +1454,7 @@ def test_text_generation_two_datasets(
     }
 
     assert metrics
+    assert len(metrics) == len(metrics_to_return) * len(expected_values)
     for metric in metrics:
         assert isinstance(metric.parameters, dict)
         assert (
