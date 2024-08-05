@@ -1,4 +1,4 @@
-name: Run benchmarks on pre-existing data
+name: Run API + client benchmarks
 
 on:
   push:

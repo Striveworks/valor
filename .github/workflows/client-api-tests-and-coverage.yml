@@ -1,4 +1,4 @@
-name: Unit, functional, integration tests and code coverage
+name: Run API + client code coverage report
 
 on:
   push:

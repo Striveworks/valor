@@ -1,4 +1,4 @@
-name: Run benchmarks on pre-existing data
+name: Run core benchmarks
 
 on:
   push:
