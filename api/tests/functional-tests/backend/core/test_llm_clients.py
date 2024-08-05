@@ -23,10 +23,7 @@ from valor_api.backend.core.llm_clients import (
     WrappedMistralAIClient,
     WrappedOpenAIClient,
 )
-from valor_api.exceptions import (
-    BadValueInTestLLMClientsError,
-    InvalidLLMResponseError,
-)
+from valor_api.exceptions import InvalidLLMResponseError
 
 VALID_CLAIMS = """```json
 {
@@ -163,6 +160,14 @@ TOXICITY_VALID_VERDICTS = """```json
         }
     ]
 }```"""
+
+
+class BadValueInTestLLMClientsError(Exception):
+    """
+    Raised when a mock function in test_llm_clients.py receives a bad value.
+    """
+
+    pass
 
 
 def test_LLMClient(monkeypatch):
