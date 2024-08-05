@@ -33,4 +33,4 @@ jobs:
             echo "Coverage is below 90%"
             exit 1
           fi
-        working-directory: ./api
+        working-directory: ./core
