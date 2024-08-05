@@ -4,7 +4,7 @@ from typing import Dict, List, Optional, Tuple, Union
 
 import numpy as np
 import pandas as pd
-from valor_core import enums, schemas, utilities
+from valor_core import enums, metrics, schemas, utilities
 
 
 def _create_classification_grouper_mappings(
@@ -158,10 +158,10 @@ def _calculate_confusion_matrix_df(
             (cm_counts_df["grouper_key"] == grouper_key)
             & cm_counts_df["gt_grouper_value"].notnull()
         ]
-        relevant_confusion_matrices = schemas.ConfusionMatrix(
+        relevant_confusion_matrices = metrics.ConfusionMatrix(
             label_key=grouper_key,
             entries=[
-                schemas.ConfusionMatrixEntry(
+                metrics.ConfusionMatrixEntry(
                     prediction=row["pd_grouper_value"],
                     groundtruth=row["gt_grouper_value"],
                     count=row["size"],
@@ -302,7 +302,7 @@ def _calculate_metrics_at_grouper_value_level(
 def _calculate_precision_recall_f1_metrics(
     metrics_per_grouper_key_and_grouper_value_df: pd.DataFrame,
 ) -> List[
-    Union[schemas.PrecisionMetric, schemas.RecallMetric, schemas.F1Metric]
+    Union[metrics.PrecisionMetric, metrics.RecallMetric, metrics.F1Metric]
 ]:
     # create metric objects
     output = []
@@ -318,15 +318,15 @@ def _calculate_precision_recall_f1_metrics(
         )
 
         output += [
-            schemas.PrecisionMetric(
+            metrics.PrecisionMetric(
                 label=pydantic_label,
                 value=row["precision"],
             ),
-            schemas.RecallMetric(
+            metrics.RecallMetric(
                 label=pydantic_label,
                 value=row["recall"],
             ),
-            schemas.F1Metric(
+            metrics.F1Metric(
                 label=pydantic_label,
                 value=row["f1"],
             ),
@@ -336,7 +336,7 @@ def _calculate_precision_recall_f1_metrics(
 
 def _calculate_accuracy_metrics(
     cm_counts_df: pd.DataFrame,
-) -> List[schemas.AccuracyMetric]:
+) -> List[metrics.AccuracyMetric]:
 
     accuracy_calculations = (
         cm_counts_df.loc[
@@ -373,7 +373,7 @@ def _calculate_accuracy_metrics(
     ].fillna(value=0)
 
     return [
-        schemas.AccuracyMetric(
+        metrics.AccuracyMetric(
             label_key=values["grouper_key"], value=values["accuracy"]
         )
         for _, values in accuracy_calculations.iterrows()
@@ -489,12 +489,12 @@ def _get_merged_dataframe(
 
 def _calculate_rocauc(
     prediction_df: pd.DataFrame, groundtruth_df: pd.DataFrame
-) -> List[schemas.ROCAUCMetric]:
+) -> List[metrics.ROCAUCMetric]:
 
     # if there are no predictions, then ROCAUC should be 0 for all groundtruth grouper keys
     if prediction_df.empty:
         return [
-            schemas.ROCAUCMetric(label_key=grouper_key, value=0)
+            metrics.ROCAUCMetric(label_key=grouper_key, value=0)
             for grouper_key in groundtruth_df["grouper_key"].unique()
         ]
 
@@ -658,7 +658,7 @@ def _calculate_rocauc(
     )["trap_area"].mean()
 
     return [
-        schemas.ROCAUCMetric(
+        metrics.ROCAUCMetric(
             label_key=values["grouper_key"], value=values["trap_area"]
         )
         for _, values in average_across_grouper_keys.iterrows()
@@ -1121,7 +1121,7 @@ def _calculate_pr_curves(
 
     if enums.MetricType.PrecisionRecallCurve in metrics_to_return:
         output += [
-            schemas.PrecisionRecallCurve(
+            metrics.PrecisionRecallCurve(
                 label_key=key, value=dict(value), pr_curve_iou_threshold=None
             )
             for key, value in pr_output.items()
@@ -1129,7 +1129,7 @@ def _calculate_pr_curves(
 
     if enums.MetricType.DetailedPrecisionRecallCurve in metrics_to_return:
         output += [
-            schemas.DetailedPrecisionRecallCurve(
+            metrics.DetailedPrecisionRecallCurve(
                 label_key=key, value=dict(value), pr_curve_iou_threshold=None
             )
             for key, value in detailed_pr_output.items()
@@ -1166,7 +1166,7 @@ def _compute_clf_metrics(
 
     Returns
     ----------
-    Tuple[List[schemas.ConfusionMatrix], List[schemas.ConfusionMatrix | schemas.AccuracyMetric | schemas.ROCAUCMetric| schemas.PrecisionMetric | schemas.RecallMetric | schemas.F1Metric]]
+    Tuple[List[metrics.ConfusionMatrix], List[metrics.ConfusionMatrix | metrics.AccuracyMetric | metrics.ROCAUCMetric| metrics.PrecisionMetric | metrics.RecallMetric | metrics.F1Metric]]
         A tuple of confusion matrices and metrics.
     """
     grouper_mappings = _create_classification_grouper_mappings(

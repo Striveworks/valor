@@ -17,7 +17,7 @@ def test_evaluate_image_clf(
         predictions=evaluate_image_clf_predictions,
     )
 
-    metrics = eval_job.metrics
+    eval_job_metrics = eval_job.metrics
 
     expected_metrics = [
         {"type": "Accuracy", "parameters": {"label_key": "k4"}, "value": 0.5},
@@ -146,14 +146,14 @@ def test_evaluate_image_clf(
         },
     ]
 
-    for m in metrics:
+    for m in eval_job_metrics:
         if m["type"] not in [
             "PrecisionRecallCurve",
             "DetailedPrecisionRecallCurve",
         ]:
             assert m in expected_metrics
     for m in expected_metrics:
-        assert m in metrics
+        assert m in eval_job_metrics
 
     confusion_matrices = eval_job.confusion_matrices
     assert confusion_matrices
@@ -228,7 +228,7 @@ def test_evaluate_tabular_clf(
         predictions=evaluate_tabular_clf_predictions,
     )
 
-    metrics = eval_job.metrics
+    eval_job_metrics = eval_job.metrics
 
     expected_metrics = [
         {
@@ -283,14 +283,14 @@ def test_evaluate_tabular_clf(
             "label": {"key": "class", "value": "0"},
         },
     ]
-    for m in metrics:
+    for m in eval_job_metrics:
         if m["type"] not in [
             "PrecisionRecallCurve",
             "DetailedPrecisionRecallCurve",
         ]:
             assert m in expected_metrics
     for m in expected_metrics:
-        assert m in metrics
+        assert m in eval_job_metrics
 
     confusion_matrices = eval_job.confusion_matrices
 
@@ -719,11 +719,9 @@ def test_evaluate_classification_with_label_maps(
         (3, "special_class", "cat_type1", "0.95", "tp"): 3,
     }
 
-    metrics = eval_job.metrics
-
     pr_metrics = []
     detailed_pr_metrics = []
-    for m in metrics:
+    for m in eval_job.metrics:
         if m["type"] == "PrecisionRecallCurve":
             pr_metrics.append(m)
         elif m["type"] == "DetailedPrecisionRecallCurve":
@@ -732,7 +730,7 @@ def test_evaluate_classification_with_label_maps(
             assert m in cat_expected_metrics
 
     for m in cat_expected_metrics:
-        assert m in metrics
+        assert m in eval_job.metrics
 
     pr_metrics.sort(key=lambda x: x["parameters"]["label_key"])
     detailed_pr_metrics.sort(key=lambda x: x["parameters"]["label_key"])
@@ -1013,23 +1011,36 @@ def test_rocauc_with_label_map(
 
     """
 
-    metrics = _calculate_rocauc(
-        prediction_df=classification_functional_test_prediction_df,
-        groundtruth_df=classification_functional_test_groundtruth_df,
-    )
-
-    expected_metrics = [
-        schemas.ROCAUCMetric(label_key="class", value=0.5972222222222222),
-        schemas.ROCAUCMetric(label_key="color", value=0.43125),
-        schemas.ROCAUCMetric(
-            label_key="other_class", value=0.7777777777777779
-        ),
+    computed_metrics = [
+        m.to_dict()
+        for m in _calculate_rocauc(
+            prediction_df=classification_functional_test_prediction_df,
+            groundtruth_df=classification_functional_test_groundtruth_df,
+        )
     ]
 
-    for entry in metrics:
+    expected_metrics = [
+        {
+            "parameters": {"label_key": "class"},
+            "value": 0.5972222222222222,
+            "type": "ROCAUC",
+        },
+        {
+            "parameters": {"label_key": "color"},
+            "value": 0.43125,
+            "type": "ROCAUC",
+        },
+        {
+            "parameters": {"label_key": "other_class"},
+            "value": 0.7777777777777779,
+            "type": "ROCAUC",
+        },
+    ]
+
+    for entry in computed_metrics:
         assert entry in expected_metrics
     for entry in expected_metrics:
-        assert entry in metrics
+        assert entry in computed_metrics
 
 
 def test_compute_classification(
@@ -1056,7 +1067,7 @@ def test_compute_classification(
         ),
     )
 
-    metrics = [
+    computed_metrics = [
         m
         for m in eval_job.metrics
         if m["type"]
@@ -1299,7 +1310,7 @@ def test_compute_classification(
 
     # assert base metrics
     for actual, expected in [
-        (metrics, expected_metrics),
+        (computed_metrics, expected_metrics),
         (confusion_matrices, expected_cm),
     ]:
         for entry in actual:

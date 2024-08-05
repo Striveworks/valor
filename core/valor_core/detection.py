@@ -6,7 +6,7 @@ from typing import Dict, List, Optional, Union
 
 import numpy as np
 import pandas as pd
-from valor_core import enums, schemas, utilities
+from valor_core import enums, metrics, schemas, utilities
 
 
 def _convert_wkt_to_array(wkt_data) -> np.ndarray:
@@ -305,10 +305,10 @@ def _calculate_ap_metrics(
     grouper_mappings: dict,
     parameters: schemas.EvaluationParameters,
 ) -> list[
-    schemas.APMetric
-    | schemas.APMetricAveragedOverIOUs
-    | schemas.mAPMetric
-    | schemas.mAPMetricAveragedOverIOUs
+    metrics.APMetric
+    | metrics.APMetricAveragedOverIOUs
+    | metrics.mAPMetric
+    | metrics.mAPMetricAveragedOverIOUs
 ]:
     """Calculates all AP metrics, including aggregated metrics like mAP."""
 
@@ -344,7 +344,7 @@ def _calculate_ap_metrics(
     )
 
     ap_metrics = [
-        schemas.APMetric(
+        metrics.APMetric(
             iou=row["iou_threshold"],
             value=row["calculated_precision"],
             label=row["label"],
@@ -370,7 +370,7 @@ def _calculate_ap_metrics(
     assert parameters.iou_thresholds_to_return
 
     ap_over_ious = [
-        schemas.APMetricAveragedOverIOUs(
+        metrics.APMetricAveragedOverIOUs(
             ious=set(parameters.iou_thresholds_to_compute),
             value=row["calculated_precision"],
             label=row["label"],
@@ -383,7 +383,7 @@ def _calculate_ap_metrics(
     )["calculated_precision"].apply(_mean_ignoring_negative_one)
 
     map_metrics = [
-        schemas.mAPMetric(
+        metrics.mAPMetric(
             iou=row["iou_threshold"],
             value=row["calculated_precision"],
             label_key=row["label_key"],
@@ -396,7 +396,7 @@ def _calculate_ap_metrics(
     ].apply(_mean_ignoring_negative_one)
 
     map_over_ious = [
-        schemas.mAPMetricAveragedOverIOUs(
+        metrics.mAPMetricAveragedOverIOUs(
             ious=set(parameters.iou_thresholds_to_compute),
             value=row["calculated_precision"],
             label_key=row["label_key"],
@@ -420,7 +420,7 @@ def _calculate_ar_metrics(
     calculation_df: pd.DataFrame,
     grouper_mappings: dict,
     parameters: schemas.EvaluationParameters,
-) -> list[schemas.ARMetric | schemas.mARMetric]:
+) -> list[metrics.ARMetric | metrics.mARMetric]:
     """Calculates all AR metrics, including aggregated metrics like mAR."""
 
     # get the max recall_for_AR for each threshold, then take the mean across thresholds
@@ -443,7 +443,7 @@ def _calculate_ar_metrics(
 
     ious_ = set(parameters.iou_thresholds_to_compute)
     ar_metrics = [
-        schemas.ARMetric(
+        metrics.ARMetric(
             ious=ious_,
             value=row["recall_for_AR"],
             label=row["label"],
@@ -458,7 +458,7 @@ def _calculate_ar_metrics(
     ].apply(_mean_ignoring_negative_one)
 
     mar_metrics = [
-        schemas.mARMetric(
+        metrics.mARMetric(
             ious=ious_,
             value=row["recall_for_AR"],
             label_key=row["label_key"],
@@ -473,7 +473,7 @@ def _calculate_pr_metrics(
     joint_df: pd.DataFrame,
     grouper_mappings: dict,
     parameters: schemas.EvaluationParameters,
-) -> list[schemas.PrecisionRecallCurve]:
+) -> list[metrics.PrecisionRecallCurve]:
     """Calculates all PrecisionRecallCurve metrics."""
 
     if not (
@@ -588,7 +588,7 @@ def _calculate_pr_metrics(
         }
 
     return [
-        schemas.PrecisionRecallCurve(
+        metrics.PrecisionRecallCurve(
             label_key=key,
             value=value,  # type: ignore - defaultdict doesn't have strict typing
             pr_curve_iou_threshold=parameters.pr_curve_iou_threshold,
@@ -686,7 +686,7 @@ def _calculate_detailed_pr_metrics(
     prediction_df: pd.DataFrame,
     grouper_mappings: dict,
     parameters: schemas.EvaluationParameters,
-) -> list[schemas.DetailedPrecisionRecallCurve]:
+) -> list[metrics.DetailedPrecisionRecallCurve]:
     """Calculates all DetailedPrecisionRecallCurve metrics."""
 
     if not (
@@ -1099,7 +1099,7 @@ def _calculate_detailed_pr_metrics(
         }
 
     detailed_pr_metrics = [
-        schemas.DetailedPrecisionRecallCurve(
+        metrics.DetailedPrecisionRecallCurve(
             label_key=key,
             value=dict(value),
             pr_curve_iou_threshold=parameters.pr_curve_iou_threshold,

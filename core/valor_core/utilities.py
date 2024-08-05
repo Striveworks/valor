@@ -99,7 +99,9 @@ def _add_geojson_column(df: pd.DataFrame) -> pd.DataFrame:
 
     # if the user wants to use rasters, then we don't care about converting to geojson format
     if df["raster"].notna().any():
-        df["raster"] = df["raster"].map(lambda x: x.to_numpy())
+        df["raster"] = df["raster"].apply(
+            lambda x: x.to_numpy() if x else None
+        )
         df["geojson"] = None
 
     else:
