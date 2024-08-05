@@ -1,5 +1,4 @@
 import heapq
-import io
 import json
 import time
 from collections import defaultdict
@@ -7,7 +6,6 @@ from typing import Dict, List, Optional, Union
 
 import numpy as np
 import pandas as pd
-from PIL import Image
 from valor_core import enums, schemas, utilities
 
 # TODO move this out
@@ -109,14 +107,6 @@ def _calculate_iou(joint_df: pd.DataFrame):
             ~joint_df["raster_pd"].isnull() & ~joint_df["raster_gt"].isnull(),
             :,
         ]
-
-        # convert the raster into a numpy array
-        # joint_df.loc[:, ["raster_pd", "raster_gt"]] = (
-        #     joint_df[["raster_pd", "raster_gt"]]
-        #     .map(io.BytesIO)  # type: ignore pd typing error
-        #     .map(Image.open)
-        #     .map(np.array)
-        # )
 
         iou_calculation_df = (
             joint_df.assign(
@@ -346,7 +336,8 @@ def _calculate_ap_metrics(
                         x["recall_for_AP"].tolist(),
                     )
                 }
-            )
+            ),
+            include_groups=False,
         )
     )
 
@@ -683,7 +674,7 @@ def _add_samples_to_dataframe(
         )
         detailed_pr_curve_counts_df[
             f"{flag_column}_samples"
-        ] = detailed_pr_curve_counts_df[f"{flag_column}_samples"].map(
+        ] = detailed_pr_curve_counts_df[f"{flag_column}_samples"].apply(
             lambda x: list(x) if isinstance(x, set) else list()
         )
     else:
@@ -735,10 +726,10 @@ def _calculate_detailed_pr_metrics(
     )
     detailed_pr_joint_df["grouper_value_gt"] = detailed_pr_joint_df[
         "label_gt"
-    ].map(lambda x: x.value if isinstance(x, schemas.Label) else None)
+    ].apply(lambda x: x.value if isinstance(x, schemas.Label) else None)
     detailed_pr_joint_df["grouper_value_pd"] = detailed_pr_joint_df[
         "label_pd"
-    ].map(lambda x: x.value if isinstance(x, schemas.Label) else None)
+    ].apply(lambda x: x.value if isinstance(x, schemas.Label) else None)
 
     # add confidence_threshold to the dataframe and sort
     detailed_pr_calc_df = pd.concat(
@@ -808,7 +799,7 @@ def _calculate_detailed_pr_metrics(
         )
         misclassification_id_pds = detailed_pr_calc_df[
             "predictions_associated_with_tps_or_misclassification_fps"
-        ].map(lambda x: set(x) if isinstance(x, np.ndarray) else [])
+        ].apply(lambda x: set(x) if isinstance(x, np.ndarray) else [])
         misclassification_id_pds = np.array(
             [
                 id_pd in misclassification_id_pds[i]
@@ -840,7 +831,7 @@ def _calculate_detailed_pr_metrics(
         )
         true_positive_sets = detailed_pr_calc_df[
             "groundtruths_associated_with_true_positives"
-        ].map(lambda x: set(x) if isinstance(x, np.ndarray) else set())
+        ].apply(lambda x: set(x) if isinstance(x, np.ndarray) else set())
 
         detailed_pr_calc_df["false_negative_flag"] = np.array(
             [
@@ -883,7 +874,7 @@ def _calculate_detailed_pr_metrics(
             detailed_pr_calc_df[
                 "groundtruths_associated_with_misclassification_false_negatives"
             ]
-            .map(lambda x: set(x) if isinstance(x, np.ndarray) else set())
+            .apply(lambda x: set(x) if isinstance(x, np.ndarray) else set())
             .values
         )
         detailed_pr_calc_df["no_predictions_false_negative_flag"] = (

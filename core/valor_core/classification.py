@@ -470,15 +470,21 @@ def _get_merged_dataframe(
         )
     )
 
-    merged_groundtruths_and_predictions_df = pd.concat(
-        [
-            merged_groundtruths_and_predictions_df,
-            pd.DataFrame(
-                missing_grouper_labels_from_predictions,
-                columns=merged_groundtruths_and_predictions_df.columns,
-            ),
-        ],
-        ignore_index=True,
+    missing_label_df = pd.DataFrame(
+        missing_grouper_labels_from_predictions,
+        columns=merged_groundtruths_and_predictions_df.columns,
+    )
+
+    merged_groundtruths_and_predictions_df = (
+        merged_groundtruths_and_predictions_df.copy()
+        if missing_label_df.empty
+        else pd.concat(
+            [
+                merged_groundtruths_and_predictions_df,
+                missing_label_df,
+            ],
+            ignore_index=True,
+        )
     )
 
     return merged_groundtruths_and_predictions_df
@@ -718,7 +724,8 @@ def _add_samples_to_dataframe(
         )
         pr_curve_counts_df[f"{flag_column}_samples"] = pr_curve_counts_df[
             f"{flag_column}_samples"
-        ].map(lambda x: list(x) if isinstance(x, set) else list())
+        ].apply(lambda x: list(x) if isinstance(x, set) else list())
+
     else:
         pr_curve_counts_df[f"{flag_column}_samples"] = [
             list() for _ in range(len(pr_curve_counts_df))
@@ -817,7 +824,7 @@ def _calculate_pr_curves(
         )
         true_positive_sets = pr_calc_df[
             "groundtruths_associated_with_true_positives"
-        ].map(lambda x: set(x) if isinstance(x, np.ndarray) else set())
+        ].apply(lambda x: set(x) if isinstance(x, np.ndarray) else set())
 
         pr_calc_df["false_negative_flag"] = np.array(
             [
@@ -858,7 +865,7 @@ def _calculate_pr_curves(
             pr_calc_df[
                 "groundtruths_associated_with_misclassification_false_negatives"
             ]
-            .map(lambda x: set(x) if isinstance(x, np.ndarray) else set())
+            .apply(lambda x: set(x) if isinstance(x, np.ndarray) else set())
             .values
         )
         pr_calc_df["no_predictions_false_negative_flag"] = (
@@ -1141,7 +1148,7 @@ def _compute_clf_metrics(
     metrics_to_return: List[enums.MetricType],
     label_map: Optional[LabelMapType],
     unique_labels: list,
-) -> Tuple[List[dict], List[dict],]:
+) -> Tuple[List[dict], List[dict]]:
     """
     Compute classification metrics.
 

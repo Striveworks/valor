@@ -156,6 +156,7 @@ def test_evaluate_image_clf(
         assert m in metrics
 
     confusion_matrices = eval_job.confusion_matrices
+    assert confusion_matrices
     for m in confusion_matrices:
         assert m in expected_confusion_matrices
     for m in expected_confusion_matrices:
@@ -305,6 +306,7 @@ def test_evaluate_tabular_clf(
     }
 
     # validate return schema
+    assert confusion_matrices
     assert len(confusion_matrices) == 1
     confusion_matrix = confusion_matrices[0]
     assert "label_key" in confusion_matrix
@@ -814,6 +816,7 @@ def test_evaluate_classification_with_label_maps(
     # check confusion matrix
     confusion_matrix = eval_job.confusion_matrices
 
+    assert confusion_matrix
     for row in confusion_matrix:
         if row["label_key"] == "special_class":
             for entry in cat_expected_cm[0]["entries"]:

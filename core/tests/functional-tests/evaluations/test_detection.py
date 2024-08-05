@@ -2108,8 +2108,6 @@ def test_detailed_precision_recall_curve(
         ),
     )
 
-    eval_job.wait_for_completion(timeout=30)
-
     # one true positive that becomes a false negative when score > .5
     assert eval_job.metrics[0]["value"]["v1"]["0.3"]["tp"]["total"] == 1
     assert eval_job.metrics[0]["value"]["v1"]["0.55"]["tp"]["total"] == 0
