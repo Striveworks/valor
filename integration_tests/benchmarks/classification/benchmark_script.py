@@ -157,7 +157,7 @@ def run_detailed_pr_curve_evaluation(dset: Dataset, model: Model):
 
 
 def run_benchmarking_analysis(
-    limits_to_test: list[int] = [5000, 5000],
+    limits_to_test: list[int] = [500, 500],
     results_file: str = "results.json",
     data_file: str = "data.json",
 ):
@@ -214,6 +214,11 @@ def run_benchmarking_analysis(
         client.delete_dataset(dset.name, timeout=30)
         client.delete_model(model.name, timeout=30)
         deletion_time = time.time() - start
+
+        write_results_to_file(
+            write_path=f"{current_directory}/blah_{results_file}",
+            result_dict=eval_.metrics,
+        )
 
         results = {
             "number_of_datums": limit,

@@ -287,6 +287,12 @@ def run_benchmarking_analysis(
         }
         write_results_to_file(write_path=write_path, result_dict=results)
 
+        # TODO delete
+        # write_results_to_file(
+        #     write_path=f"{current_directory}/blah_{results_file}",
+        #     result_dict=eval_.metrics,
+        # )
+
 
 if __name__ == "__main__":
     run_benchmarking_analysis()

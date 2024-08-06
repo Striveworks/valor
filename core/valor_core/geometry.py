@@ -1248,6 +1248,7 @@ class Raster:
             A 2D binary array representing the mask if it exists.
         """
         value = self.value
+        # TODO check this logic
         if value["geometry"] is not None:
             warnings.warn(
                 "Raster array does not contain bitmask as this is a geometry-defined raster.",

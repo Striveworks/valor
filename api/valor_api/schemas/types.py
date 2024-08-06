@@ -123,6 +123,7 @@ def _match_annotation_to_implied_task_type(
     return implied_type
 
 
+# TODO make sure these validation checks are included and tested
 def _validate_groundtruth_annotations(annotations: list["Annotation"]) -> None:
     """
     Validate all of the annotations that are passed into a Groundtruth constructor.

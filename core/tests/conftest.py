@@ -211,6 +211,7 @@ def evaluate_detection_functional_test_groundtruths_with_rasters(
                 schemas.Annotation(
                     labels=[schemas.Label(key="class", value=class_label)],
                     raster=geometry.Raster.from_numpy(raster),
+                    is_instance=True,
                 )
                 for raster, class_label in zip(gts["rasters"], gts["labels"])
             ],

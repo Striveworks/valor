@@ -97,11 +97,17 @@ def _get_joint_df(
 
 def _calculate_iou(joint_df: pd.DataFrame):
     """Calculate the IOUs between predictions and groundtruths in a joint dataframe"""
-    if joint_df["raster_pd"].notnull().any():
+
+    if (
+        joint_df["converted_geometry_pd"]
+        .apply(lambda x: isinstance(x, np.ndarray))
+        .any()
+    ):  # if we're dealing with rasters...
 
         # filter out rows with null rasters
         joint_df = joint_df.loc[
-            ~joint_df["raster_pd"].isnull() & ~joint_df["raster_gt"].isnull(),
+            ~joint_df["converted_geometry_pd"].isnull()
+            & ~joint_df["converted_geometry_gt"].isnull(),
             :,
         ]
 
@@ -109,14 +115,17 @@ def _calculate_iou(joint_df: pd.DataFrame):
             joint_df.assign(
                 intersection=lambda chain_df: chain_df.apply(
                     lambda row: np.logical_and(
-                        row["raster_pd"], row["raster_gt"]
+                        row["converted_geometry_pd"],
+                        row["converted_geometry_gt"],
                     ).sum(),
                     axis=1,
                 )
             )
             .assign(
-                union_=lambda chain_df: chain_df["raster_gt"].apply(np.sum)
-                + chain_df["raster_pd"].apply(np.sum)
+                union_=lambda chain_df: chain_df[
+                    "converted_geometry_gt"
+                ].apply(np.sum)
+                + chain_df["converted_geometry_pd"].apply(np.sum)
                 - chain_df["intersection"]
             )
             .assign(
@@ -128,16 +137,17 @@ def _calculate_iou(joint_df: pd.DataFrame):
         joint_df = joint_df.join(iou_calculation_df["iou_"])
 
     else:
+
         iou_calculation_df = (
             joint_df.loc[
-                ~joint_df["geojson_gt"].isnull()
-                & ~joint_df["geojson_pd"].isnull(),
-                ["geojson_gt", "geojson_pd"],
+                ~joint_df["converted_geometry_gt"].isnull()
+                & ~joint_df["converted_geometry_pd"].isnull(),
+                ["converted_geometry_gt", "converted_geometry_pd"],
             ]
             .map(_convert_wkt_to_array)
             .apply(
                 lambda row: _calculate_bbox_iou(
-                    row["geojson_gt"], row["geojson_pd"]
+                    row["converted_geometry_gt"], row["converted_geometry_pd"]
                 ),
                 axis=1,
             )
@@ -607,13 +617,13 @@ def _add_samples_to_dataframe(
                     "confidence_threshold",
                 ],
                 as_index=False,
-            )[["datum_uid_gt", "geojson_gt"]]
+            )[["datum_uid_gt", "converted_geometry_gt"]]
             .agg(lambda x: tuple(x.head(max_examples)))
             .rename(
                 columns={
                     "datum_uid_gt": "datum_uid",
                     "grouper_value_gt": "grouper_value",
-                    "geojson_gt": "geojson",
+                    "converted_geometry_gt": "converted_geometry",
                 }
             ),
             detailed_pr_calc_df[detailed_pr_calc_df[flag_column]]
@@ -624,25 +634,27 @@ def _add_samples_to_dataframe(
                     "confidence_threshold",
                 ],
                 as_index=False,
-            )[["datum_uid_pd", "geojson_pd"]]
+            )[["datum_uid_pd", "converted_geometry_pd"]]
             .agg(lambda x: (tuple(x.head(max_examples))))
             .rename(
                 columns={
                     "datum_uid_pd": "datum_uid",
                     "grouper_value_pd": "grouper_value",
-                    "geojson_pd": "geojson",
+                    "converted_geometry_pd": "converted_geometry",
                 }
             ),
         ],
         axis=0,
     )
 
-    sample_df["geojson"] = sample_df["geojson"].astype(str)
+    sample_df["converted_geometry"] = sample_df["converted_geometry"].astype(
+        str
+    )
     sample_df.drop_duplicates(inplace=True)
 
     if not sample_df.empty:
         sample_df[f"{flag_column}_samples"] = sample_df.apply(
-            lambda row: set(zip(*row[["datum_uid", "geojson"]])),  # type: ignore - pd typing error
+            lambda row: set(zip(*row[["datum_uid", "converted_geometry"]])),  # type: ignore - pd typing error
             axis=1,
         )
 
@@ -1307,6 +1319,9 @@ def evaluate_detection(
     predictions: Union[pd.DataFrame, List[schemas.Prediction]],
     label_map: Optional[Dict[schemas.Label, schemas.Label]] = None,
     metrics_to_return: Optional[List[enums.MetricType]] = None,
+    convert_annotations_to_type: Optional[
+        enums.AnnotationType
+    ] = None,  # TODO is this tested anywhere?
     iou_thresholds_to_compute: Optional[List[float]] = None,
     iou_thresholds_to_return: Optional[List[float]] = None,
     recall_score_threshold: float = 0.0,
@@ -1350,18 +1365,29 @@ def evaluate_detection(
         recall_score_threshold=recall_score_threshold,
     )
 
-    prediction_df = utilities.validate_prediction_dataframe(
-        predictions, task_type=enums.TaskType.OBJECT_DETECTION
-    )
     groundtruth_df = utilities.validate_groundtruth_dataframe(
         groundtruths, task_type=enums.TaskType.OBJECT_DETECTION
+    )
+    prediction_df = utilities.validate_prediction_dataframe(
+        predictions, task_type=enums.TaskType.OBJECT_DETECTION
     )
 
-    prediction_df = utilities.validate_prediction_dataframe(
-        predictions, task_type=enums.TaskType.OBJECT_DETECTION
+    # filter dataframes to only include those rows with an applicable implied task type
+    groundtruth_df = utilities.filter_dataframe_based_on_task_type(
+        df=groundtruth_df, task_type=enums.TaskType.OBJECT_DETECTION
     )
-    groundtruth_df = utilities.validate_groundtruth_dataframe(
-        groundtruths, task_type=enums.TaskType.OBJECT_DETECTION
+    prediction_df = utilities.filter_dataframe_based_on_task_type(
+        df=prediction_df, task_type=enums.TaskType.OBJECT_DETECTION
+    )
+
+    # ensure that all annotations have a common type to operate over
+    (
+        groundtruth_df,
+        prediction_df,
+    ) = utilities.convert_annotations_to_common_type(
+        groundtruth_df=groundtruth_df,
+        prediction_df=prediction_df,
+        target_type=convert_annotations_to_type,
     )
 
     (

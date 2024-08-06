@@ -1,7 +1,8 @@
 from typing import Dict, List, Optional, Union
 
+import numpy as np
 import pandas as pd
-from valor_core import enums, schemas
+from valor_core import enums, geometry, schemas
 
 
 def validate_label_map(
@@ -72,13 +73,6 @@ def validate_parameters(
 
 
 def _add_geojson_column(df: pd.DataFrame) -> pd.DataFrame:
-    # TODO write test for this
-    if not (
-        df[["bounding_box", "polygon", "raster"]].notna().sum(axis=1) == 1
-    ).all():
-        raise ValueError(
-            "Each Annotation must contain either a bounding_box, polygon, raster, or an embedding. One Annotation cannot have multiple of these attributes (for example, one Annotation can't contain both a raster and a bounding box)."
-        )
 
     # if the user wants to use rasters, then we don't care about converting to geojson format
     if df["raster"].notna().any():
@@ -112,9 +106,6 @@ def validate_groundtruth_dataframe(
     ):
         df = _convert_groundtruth_or_prediction_to_dataframe(obj)
 
-        if task_type == enums.TaskType.OBJECT_DETECTION:
-            df = _add_geojson_column(df)
-
         return df
     else:
         raise ValueError(
@@ -135,9 +126,6 @@ def validate_prediction_dataframe(
         and isinstance(obj[0], schemas.Prediction)
     ):
         df = _convert_groundtruth_or_prediction_to_dataframe(obj)
-
-        if task_type == enums.TaskType.OBJECT_DETECTION:
-            df = _add_geojson_column(df)
 
         return df
     else:
@@ -368,3 +356,365 @@ def get_disjoint_labels(
     )
 
     return (groundtruth_unique, prediction_unique)
+
+
+def _identify_implied_task_types(
+    df: pd.DataFrame,
+) -> pd.Series:
+    """
+    Match an annotation to an implied task type based on the arguments that were passed to the Annotation constructor.
+
+    Parameters
+    ----------
+    annotation: Annotation
+        The annotation to validate.
+
+    Raises
+    ------
+    ValueError
+        If the contents of the annotation do not match an expected pattern.
+    """
+    # null series for use if the column doesn't exist
+    null_placeholder_column = pd.Series([None] * len(df))
+
+    # classification rows only have labels
+    classification_rows = df[
+        df.get("label_key", null_placeholder_column).notnull()
+        & df.get("label_value", null_placeholder_column).notnull()
+        & df.get("bounding_box", null_placeholder_column).isnull()
+        & df.get("polygon", null_placeholder_column).isnull()
+        & df.get("raster", null_placeholder_column).isnull()
+        & df.get("embedding", null_placeholder_column).isnull()
+    ].index
+
+    # object detection tasks have is_instance=True & one of (bounding_box, polygon, raster)
+    object_detection_rows = df[
+        df.get("label_key", null_placeholder_column).notnull()
+        & df.get("label_value", null_placeholder_column).notnull()
+        & (
+            df[
+                [
+                    col
+                    for col in ["bounding_box", "polygon", "raster"]
+                    if col in df.columns
+                ]
+            ]
+            .notna()
+            .sum(axis=1)
+            == 1
+        )
+        & df.get("is_instance", null_placeholder_column).isin([True])
+        & df.get("embedding", null_placeholder_column).isnull()
+    ].index
+
+    # semantic segmentation tasks only support rasters
+    semantic_segmentation_rows = df[
+        df.get("label_key", null_placeholder_column).notnull()
+        & df.get("label_value", null_placeholder_column).notnull()
+        & df.get("bounding_box", null_placeholder_column).isnull()
+        & df.get("polygon", null_placeholder_column).isnull()
+        & df.get("raster", null_placeholder_column).notnull()
+        & df.get("embedding", null_placeholder_column).isnull()
+        & df.get("is_instance", null_placeholder_column).isin([None, False])
+    ].index
+
+    # empty annotations shouldn't contain anything
+    empty_rows = df[
+        df.get("label_key", null_placeholder_column).isnull()
+        & df.get("label_value", null_placeholder_column).isnull()
+        & df.get("bounding_box", null_placeholder_column).isnull()
+        & df.get("polygon", null_placeholder_column).isnull()
+        & df.get("raster", null_placeholder_column).isnull()
+        & df.get("embedding", null_placeholder_column).isnull()
+    ].index
+
+    df.loc[
+        classification_rows, "implied_task_type"
+    ] = enums.TaskType.CLASSIFICATION
+    df.loc[
+        object_detection_rows, "implied_task_type"
+    ] = enums.TaskType.OBJECT_DETECTION
+    df.loc[
+        semantic_segmentation_rows, "implied_task_type"
+    ] = enums.TaskType.SEMANTIC_SEGMENTATION
+    df.loc[empty_rows, "implied_task_type"] = enums.TaskType.EMPTY
+
+    if df["implied_task_type"].isnull().any():
+        raise ValueError(
+            "Input didn't match any known patterns. Classification tasks should only contain labels. Object detection tasks should contain labels and polygons, bounding boxes, or rasters with is_instance == True. Segmentation tasks should contain labels and rasters with is_instance != True. Text generation tasks should only contain text and optionally context."
+        )
+
+    return df["implied_task_type"]
+
+
+def filter_dataframe_based_on_task_type(
+    df: pd.DataFrame, task_type: enums.TaskType
+):
+    """"""
+    if len(df) == 0:
+        return df
+
+    implied_task_types = _identify_implied_task_types(df=df)
+    return df[implied_task_types == task_type]
+
+
+def _convert_raster_to_box(raster: np.ndarray) -> geometry.Box:
+    rows = np.any(raster, axis=1)
+    cols = np.any(raster, axis=0)
+    if not np.any(rows) or not np.any(cols):
+        raise ValueError("Raster is empty, cannot create bounding box.")
+
+    ymin, ymax = np.where(rows)[0][[0, -1]]
+    xmin, xmax = np.where(cols)[0][[0, -1]]
+
+    return geometry.Box.from_extrema(xmin, xmax + 1, ymin, ymax + 1)
+
+
+def _convert_raster_to_polygon(raster: np.ndarray) -> geometry.Polygon:
+    if raster.ndim != 2:
+        raise ValueError("Raster must be a 2D array.")
+
+    mask = (raster > 0).astype(np.uint8)
+
+    contours = []
+    for y in range(mask.shape[0] - 1):
+        for x in range(mask.shape[1] - 1):
+            if mask[y, x] != mask[y + 1, x] or mask[y, x] != mask[y, x + 1]:
+                contours.append((x, y))
+
+    if not contours:
+        raise ValueError("Raster is empty, cannot create a polygon.")
+
+    contours = sorted(contours, key=lambda p: (p[1], p[0]))
+    polygons = [[tuple(point) for point in contours]]
+
+    return geometry.Polygon(value=polygons)
+
+
+def _convert_polygon_to_box(polygon: geometry.Polygon) -> geometry.Box:
+    """
+    Convert a Polygon to a Box.
+
+    Parameters
+    ----------
+    polygon : Polygon
+        The input Polygon to be converted.
+
+    Returns
+    -------
+    Box
+        The bounding Box that encompasses the Polygon.
+    """
+    boundary = polygon.boundary
+
+    xmin = min(point[0] for point in boundary)
+    xmax = max(point[0] for point in boundary)
+    ymin = min(point[1] for point in boundary)
+    ymax = max(point[1] for point in boundary)
+
+    return geometry.Box.from_extrema(xmin, xmax, ymin, ymax)
+
+
+def _identify_most_detailed_annotation_type(
+    df: pd.DataFrame,
+) -> enums.AnnotationType:
+    """
+    Fetch annotation type from psql.
+
+    Parameters
+    ----------
+    db : Session
+        The database Session you want to query against.
+    task_type: TaskType
+        The implied task type to filter on.
+    dataset : models.Dataset
+        The dataset associated with the annotation.
+    model : models.Model
+        The model associated with the annotation.
+
+    Returns
+    ----------
+    AnnotationType
+        The type of the annotation.
+    """
+
+    if df["raster"].notnull().any():
+        return enums.AnnotationType.RASTER
+
+    elif df["polygon"].notnull().any():
+        return enums.AnnotationType.POLYGON
+
+    elif df["bounding_box"].notnull().any():
+        return enums.AnnotationType.BOX
+
+    else:
+        return enums.AnnotationType.NONE
+
+
+def _identify_least_detailed_annotation_type(
+    df: pd.DataFrame,
+) -> enums.AnnotationType:
+    """
+    Fetch annotation type from psql.
+
+    Parameters
+    ----------
+    db : Session
+        The database Session you want to query against.
+    task_type: TaskType
+        The implied task type to filter on.
+    dataset : models.Dataset
+        The dataset associated with the annotation.
+    model : models.Model
+        The model associated with the annotation.
+
+    Returns
+    ----------
+    AnnotationType
+        The type of the annotation.
+    """
+
+    if df["bounding_box"].notnull().any():
+        return enums.AnnotationType.BOX
+
+    elif df["polygon"].notnull().any():
+        return enums.AnnotationType.POLYGON
+
+    elif df["raster"].notnull().any():
+        return enums.AnnotationType.RASTER
+
+    else:
+        return enums.AnnotationType.NONE
+
+
+def _add_converted_geometry_column(
+    df: pd.DataFrame,
+    target_type: enums.AnnotationType,
+) -> pd.DataFrame:
+    """
+    Converts geometry into some target type
+
+    Parameters
+    ----------
+    db : Session
+        The database Session you want to query against.
+    source_type: AnnotationType
+        The annotation type we have.
+    target_type: AnnotationType
+        The annotation type we wish to convert to.
+    dataset : models.Dataset
+        The dataset of the geometry.
+    model : models.Model, optional
+        The model of the geometry.
+    task_type: TaskType, optional
+        Optional task type to search by.
+    """
+    # TODO this code might be unreachable because of identify_implied_task_types
+    if not (
+        df[["bounding_box", "polygon", "raster"]].notna().sum(axis=1) == 1
+    ).all():
+        raise ValueError(
+            "Each Annotation must contain either a bounding_box, polygon, raster, or an embedding. One Annotation cannot have multiple of these attributes (for example, one Annotation can't contain both a raster and a bounding box)."
+        )
+
+    df["converted_geometry"] = (
+        df[["raster", "bounding_box", "polygon"]].bfill(axis=1).iloc[:, 0]
+    )
+
+    if target_type == enums.AnnotationType.RASTER:
+        df["converted_geometry"] = df["converted_geometry"].apply(
+            lambda x: x.array
+        )
+    elif target_type == enums.AnnotationType.POLYGON:
+        df["converted_geometry"] = df["converted_geometry"].apply(
+            lambda x: (
+                _convert_raster_to_polygon(x.array).to_dict()
+                if isinstance(x, geometry.Raster)
+                else x.to_dict()
+            )
+        )
+    elif target_type == enums.AnnotationType.BOX:
+        df["converted_geometry"] = df["converted_geometry"].apply(
+            lambda x: (
+                _convert_raster_to_box(x.array).to_dict()
+                if isinstance(x, geometry.Raster)
+                else (
+                    _convert_polygon_to_box(x).to_dict()
+                    if isinstance(x, geometry.Polygon)
+                    else x.to_dict()
+                )
+            )
+        )
+
+    return df
+
+
+# TODO add tests for this function
+def convert_annotations_to_common_type(
+    groundtruth_df: pd.DataFrame,
+    prediction_df: pd.DataFrame,
+    target_type: enums.AnnotationType | None = None,
+) -> tuple[pd.DataFrame, pd.DataFrame]:
+    """Convert all annotations to a common type."""
+
+    if target_type is None:
+        most_detailed_groundtruth_type = (
+            _identify_most_detailed_annotation_type(
+                df=groundtruth_df,
+            )
+        )
+        least_detailed_groundtruth_type = (
+            _identify_least_detailed_annotation_type(
+                df=groundtruth_df,
+            )
+        )
+        most_detailed_prediction_type = (
+            _identify_most_detailed_annotation_type(
+                df=prediction_df,
+            )
+        )
+        least_detailed_prediction_type = (
+            _identify_least_detailed_annotation_type(
+                df=prediction_df,
+            )
+        )
+
+        target_type = min(
+            [most_detailed_groundtruth_type, most_detailed_prediction_type]
+        )
+        source_type = min(
+            [
+                least_detailed_groundtruth_type,
+                least_detailed_prediction_type,
+            ]
+        )
+
+        # Check typing
+        valid_geometric_types = [
+            enums.AnnotationType.BOX,
+            enums.AnnotationType.POLYGON,
+            enums.AnnotationType.RASTER,
+        ]
+
+        # validate that we can convert geometries successfully
+        if source_type not in valid_geometric_types:
+            raise ValueError(
+                f"Annotation source with type `{source_type}` not supported."
+            )
+        if target_type not in valid_geometric_types:
+            raise ValueError(
+                f"Annotation target with type `{target_type}` not supported."
+            )
+        if source_type < target_type:
+            raise ValueError(
+                f"Source type `{source_type}` is not capable of being converted to target type `{target_type}`."
+            )
+
+    groundtruth_df = _add_converted_geometry_column(
+        df=groundtruth_df, target_type=target_type
+    )
+    prediction_df = _add_converted_geometry_column(
+        df=prediction_df, target_type=target_type
+    )
+
+    return (groundtruth_df, prediction_df)

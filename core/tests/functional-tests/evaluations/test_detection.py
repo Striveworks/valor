@@ -267,8 +267,16 @@ def test_evaluate_detection_via_pandas_df():
                 "label_value": "v1",
                 "is_instance": True,
                 "grouper_key": "k1",
-                "geojson": '{"type":"Polygon","coordinates":[[[10,10],[60,10],[60,40],[10,40],[10,10]]]}',
+                "polygon": geometry.Polygon.from_dict(
+                    {
+                        "type": "Polygon",
+                        "coordinates": [
+                            [[10, 10], [60, 10], [60, 40], [10, 40], [10, 10]]
+                        ],
+                    }
+                ),
                 "raster": None,
+                "bounding_box": None,
             },
             {
                 "datum_id": 1,
@@ -280,8 +288,22 @@ def test_evaluate_detection_via_pandas_df():
                 "label_value": "v2",
                 "is_instance": True,
                 "grouper_key": "k2",
-                "geojson": '{"type":"Polygon","coordinates":[[[87,10],[158,10],[158,820],[87,820],[87,10]]]}',
+                "polygon": geometry.Polygon.from_dict(
+                    {
+                        "type": "Polygon",
+                        "coordinates": [
+                            [
+                                [87, 10],
+                                [158, 10],
+                                [158, 820],
+                                [87, 820],
+                                [87, 10],
+                            ]
+                        ],
+                    }
+                ),
                 "raster": None,
+                "bounding_box": None,
             },
             {
                 "datum_id": 2,
@@ -293,8 +315,16 @@ def test_evaluate_detection_via_pandas_df():
                 "label_value": "v1",
                 "is_instance": True,
                 "grouper_key": "k1",
-                "geojson": '{"type":"Polygon","coordinates":[[[15,0],[70,0],[70,20],[15,20],[15,0]]]}',
+                "polygon": geometry.Polygon.from_dict(
+                    {
+                        "type": "Polygon",
+                        "coordinates": [
+                            [[15, 0], [70, 0], [70, 20], [15, 20], [15, 0]]
+                        ],
+                    }
+                ),
                 "raster": None,
+                "bounding_box": None,
             },
         ]
     )
@@ -311,8 +341,16 @@ def test_evaluate_detection_via_pandas_df():
                 "label_value": "v1",
                 "is_instance": True,
                 "grouper_key": "k1",
-                "geojson": '{"type":"Polygon","coordinates":[[[10,10],[60,10],[60,40],[10,40],[10,10]]]}',
+                "polygon": geometry.Polygon.from_dict(
+                    {
+                        "type": "Polygon",
+                        "coordinates": [
+                            [[10, 10], [60, 10], [60, 40], [10, 40], [10, 10]]
+                        ],
+                    }
+                ),
                 "raster": None,
+                "bounding_box": None,
             },
             {
                 "id": 2,
@@ -325,8 +363,16 @@ def test_evaluate_detection_via_pandas_df():
                 "label_value": "v2",
                 "is_instance": True,
                 "grouper_key": "k2",
-                "geojson": '{"type":"Polygon","coordinates":[[[15,0],[70,0],[70,20],[15,20],[15,0]]]}',
+                "polygon": geometry.Polygon.from_dict(
+                    {
+                        "type": "Polygon",
+                        "coordinates": [
+                            [[15, 0], [70, 0], [70, 20], [15, 20], [15, 0]]
+                        ],
+                    }
+                ),
                 "raster": None,
+                "bounding_box": None,
             },
         ]
     )

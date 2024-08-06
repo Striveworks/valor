@@ -468,7 +468,6 @@ class GroundTruth:
         annotations : List[Annotation]
             The list of ground truth annotations.
         """
-        print(self.datum, Datum)
         if not isinstance(self.datum, Datum):
             raise TypeError(
                 f"Expected 'datum' to be of type 'Datum', got {type(self.datum).__name__}"
