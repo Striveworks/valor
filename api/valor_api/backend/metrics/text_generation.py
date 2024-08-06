@@ -29,6 +29,7 @@ LabelMapType = list[list[list[str]]]
 
 
 LLM_GUIDED_METRICS = {
+    "AnswerCorrectness",
     "AnswerRelevance",
     "Bias",
     "Coherence",
@@ -39,7 +40,22 @@ LLM_GUIDED_METRICS = {
 }
 
 
-TEXT_COMPARISON_METRICS = {"BLEU", "ROUGE"}
+NO_GROUNDTRUTH_METRICS = {
+    "AnswerRelevance",
+    "Bias",
+    "Coherence",
+    "ContextRelevance",
+    "Faithfulness",
+    "Hallucination",
+    "Toxicity",
+}
+
+
+GROUNDTRUTH_METRICS = {
+    "AnswerCorrectness",
+    "BLEU",
+    "ROUGE",
+}
 
 
 def _calculate_rouge_scores(
@@ -102,7 +118,7 @@ def _calculate_rouge_scores(
         references=processed_references,
         rouge_types=rouge_types,
         use_stemmer=use_stemmer,
-        use_aggregator=False,  # aggregation gives us an average across all predicitons, which isn't what we want
+        use_aggregator=False,  # aggregation gives us an average across all predictions, which isn't what we want
     )
 
     if not metrics:
@@ -128,7 +144,7 @@ def _calculate_sentence_bleu(
     weights: list[float] = [0.25, 0.25, 0.25, 0.25],
 ) -> list[dict]:
     """
-    Calculate sentence BLEU scores for a set of prediction-groundtruth pairs.
+    Calculate sentence BLEU scores for a set of prediction - ground truth pairs.
 
     Parameters
     ----------
@@ -254,7 +270,8 @@ def _compute_text_generation_metrics(
     llm_api_params: dict[str, str | dict] | None = None,
     metric_params: dict = {},
 ) -> Sequence[
-    schemas.AnswerRelevanceMetric
+    schemas.AnswerCorrectnessMetric
+    | schemas.AnswerRelevanceMetric
     | schemas.BiasMetric
     | schemas.BLEUMetric
     | schemas.CoherenceMetric
@@ -274,7 +291,7 @@ def _compute_text_generation_metrics(
     datum_filter : schemas.Filter
         The filter to be used to query datums.
     groundtruth_filter : schemas.Filter
-        The filter to be used to query groundtruths.
+        The filter to be used to query ground truths.
     prediction_filter : schemas.Filter
         The filter to be used to query predictions.
     metrics_to_return: list[MetricType]
@@ -286,9 +303,28 @@ def _compute_text_generation_metrics(
 
     Returns
     ----------
-    Sequence[schemas.AnswerRelevanceMetric | schemas.BiasMetric | schemas.BLEUMetric | schemas.CoherenceMetric | schemas.ContextRelevanceMetric | schemas.FaithfulnessMetric | schemas.HallucinationMetric | schemas.ROUGEMetric | schemas.ToxicityMetric]
+    Sequence[schemas.AnswerCorrectnessMetric | schemas.AnswerRelevanceMetric | schemas.BiasMetric | schemas.BLEUMetric | schemas.CoherenceMetric | schemas.ContextRelevanceMetric | schemas.FaithfulnessMetric | schemas.HallucinationMetric | schemas.ROUGEMetric | schemas.ToxicityMetric]
         A list of computed metrics.
     """
+    is_AnswerCorrectness_enabled = "AnswerCorrectness" in metrics_to_return
+    is_AnswerRelevance_enabled = "AnswerRelevance" in metrics_to_return
+    is_Bias_enabled = "Bias" in metrics_to_return
+    is_BLEU_enabled = "BLEU" in metrics_to_return
+    is_Coherence_enabled = "Coherence" in metrics_to_return
+    is_ContextRelevance_enabled = "ContextRelevance" in metrics_to_return
+    is_Faithfulness_enabled = "Faithfulness" in metrics_to_return
+    is_Hallucination_enabled = "Hallucination" in metrics_to_return
+    is_ROUGE_enabled = "ROUGE" in metrics_to_return
+    is_Toxicity_enabled = "Toxicity" in metrics_to_return
+
+    client = None
+    if any([metric in metrics_to_return for metric in LLM_GUIDED_METRICS]):
+        if llm_api_params is None:
+            raise ValueError(
+                f"llm_api_params must be provided for the following metrics: {[metric for metric in metrics_to_return if metric in LLM_GUIDED_METRICS]}."
+            )
+        client = _setup_llm_client(llm_api_params)
+
     prediction_subquery = (
         generate_select(
             models.Annotation.datum_id.label("datum_id"),
@@ -302,15 +338,14 @@ def _compute_text_generation_metrics(
     )
 
     output = []
-    if any(
-        [metric in TEXT_COMPARISON_METRICS for metric in metrics_to_return]
-    ):
-        # get reference text to compare against from groundtruths
+    if any([metric in GROUNDTRUTH_METRICS for metric in metrics_to_return]):
+        # get reference text to compare against from ground truths
         # use array_agg since there can be multiple references for a given datum_uid
         groundtruth_subquery = (
             generate_select(
                 models.Datum.id.label("datum_id"),
                 models.Datum.uid.label("datum_uid"),
+                models.Datum.text.label("datum_text"),
                 models.Dataset.name.label("dataset_name"),
                 functions.array_agg(models.Annotation.text).label(
                     "groundtruth_text"
@@ -322,6 +357,7 @@ def _compute_text_generation_metrics(
             .group_by(
                 models.Datum.id.label("datum_id"),
                 models.Datum.uid.label("datum_uid"),
+                models.Datum.text.label("datum_text"),
                 models.Dataset.name.label("dataset_name"),
             )
             .subquery()
@@ -331,6 +367,7 @@ def _compute_text_generation_metrics(
             select(
                 groundtruth_subquery.c.datum_uid,
                 groundtruth_subquery.c.dataset_name,
+                groundtruth_subquery.c.datum_text,
                 functions.array_agg(
                     prediction_subquery.c.prediction_text
                 ).label("predictions"),
@@ -347,14 +384,45 @@ def _compute_text_generation_metrics(
             .group_by(
                 groundtruth_subquery.c.datum_uid,
                 groundtruth_subquery.c.dataset_name,
+                groundtruth_subquery.c.datum_text,
             )
         )
 
         results = db.execute(joint_subquery).all()
-        is_BLEU_enabled = "BLEU" in metrics_to_return
-        is_ROUGE_enabled = "ROUGE" in metrics_to_return
 
-        for datum_uid, dataset_name, predictions, references in results:
+        for (
+            datum_uid,
+            dataset_name,
+            datum_text,
+            predictions,
+            references,
+        ) in results:
+            if is_AnswerCorrectness_enabled:
+                assert client
+                for (prediction, groundtruth_list) in zip(
+                    predictions, references
+                ):
+                    score = 0
+                    for groundtruth in groundtruth_list:
+                        score = max(
+                            score,
+                            client.answer_correctness(
+                                query=datum_text,
+                                prediction=prediction,
+                                groundtruth=groundtruth,
+                            ),
+                        )
+                    output += [
+                        schemas.AnswerCorrectnessMetric(
+                            value=score,
+                            parameters={
+                                "dataset": dataset_name,
+                                "datum_uid": datum_uid,
+                                "prediction": predictions,
+                            },
+                        )
+                    ]
+
             if is_BLEU_enabled:
                 bleu_params = metric_params.get("BLEU", {})
                 if not isinstance(bleu_params, dict):
@@ -413,19 +481,13 @@ def _compute_text_generation_metrics(
                     for metric in rouge_metrics
                 ]
 
-    client = None
     if any(
         [
-            metric_name in LLM_GUIDED_METRICS
+            metric_name in NO_GROUNDTRUTH_METRICS
             for metric_name in metrics_to_return
         ]
     ):
-        if llm_api_params is None:
-            raise ValueError(
-                f"llm_api_params must be provided for the following metrics: {[metric for metric in metrics_to_return if metric in LLM_GUIDED_METRICS]}."
-            )
-        client = _setup_llm_client(llm_api_params)
-
+        assert client
         datum_subquery = (
             generate_select(
                 models.Datum.id.label("datum_id"),
@@ -457,13 +519,6 @@ def _compute_text_generation_metrics(
         )
 
         results = db.execute(joint_subquery).all()
-        is_AnswerRelevance_enabled = "AnswerRelevance" in metrics_to_return
-        is_Bias_enabled = "Bias" in metrics_to_return
-        is_Coherence_enabled = "Coherence" in metrics_to_return
-        is_ContextRelevance_enabled = "ContextRelevance" in metrics_to_return
-        is_Faithfulness_enabled = "Faithfulness" in metrics_to_return
-        is_Hallucination_enabled = "Hallucination" in metrics_to_return
-        is_Toxicity_enabled = "Toxicity" in metrics_to_return
 
         for (
             datum_uid,

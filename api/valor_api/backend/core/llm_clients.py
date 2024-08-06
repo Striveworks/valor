@@ -12,6 +12,7 @@ from openai.types.chat import (
 from pydantic import BaseModel
 
 from valor_api.backend.core.llm_instructions_analysis import (
+    _generate_answer_correctness_verdicts_instruction,
     _generate_answer_relevance_verdicts_instruction,
     _generate_bias_verdicts_instruction,
     _generate_claims_instruction,
@@ -233,6 +234,75 @@ class LLMClient:
                 f"LLM response was not a valid list of statements (list[str]): {response}"
             )
         return statements
+
+    def _generate_answer_correctness_verdicts(
+        self,
+        query: str,
+        prediction_statements: list[str],
+        groundtruth_statements: list[str],
+    ) -> dict[str, list[dict[str, str]]]:
+        """
+        Generate lists of true positives, false positives and false negatives, using a call to the LLM API.
+
+        Parameters
+        ----------
+        query: str
+            The query that both the prediction and ground truth should be answering.
+        prediction_statements: list[str]
+            The prediction statements to evaluate.
+        groundtruth_statements: list[str]
+            The ground truth statements to evaluate.
+
+        Returns
+        -------
+        dict[str, list[dict[str, str]]]
+            A dictionary of true positives, false positives and false negatives.
+        """
+        messages = [
+            {"role": "system", "content": DEFAULT_SYSTEM_PROMPT},
+            {
+                "role": "user",
+                "content": _generate_answer_correctness_verdicts_instruction(
+                    query=query,
+                    prediction_statements=prediction_statements,
+                    groundtruth_statements=groundtruth_statements,
+                ),
+            },
+        ]
+        response = self(messages)
+        response = trim_and_load_json(response)
+        if (
+            type(response) != dict
+            or "TP" not in response
+            or "FP" not in response
+            or "FN" not in response
+        ):
+            raise InvalidLLMResponseError(
+                f"LLM response was not a dictionary of true positives, false positives and false negatives: {response}"
+            )
+
+        if (
+            type(response["TP"]) != list
+            or type(response["FP"]) != list
+            or type(response["FN"]) != list
+        ):
+            raise InvalidLLMResponseError(
+                f"LLM response did not contain valid lists of true positives, false positives and false negatives: {response}"
+            )
+
+        if len(response["TP"]) + len(response["FP"]) != len(
+            prediction_statements
+        ):
+            raise InvalidLLMResponseError(
+                f"Number of true positives and false positives did not match the number of prediction statements: {response}"
+            )
+
+        if len(response["FN"]) > len(groundtruth_statements):
+            raise InvalidLLMResponseError(
+                f"Number of false negatives exceeded the number of ground truth statements: {response}"
+            )
+
+        return response
 
     def _generate_answer_relevance_verdicts(
         self,
@@ -579,6 +649,44 @@ class LLMClient:
             )
 
         return verdicts
+
+    def answer_correctness(
+        self,
+        query: str,
+        prediction: str,
+        groundtruth: str,
+    ) -> float:
+        """
+        Compute answer correctness. Answer correctness is computed as an f1 score obtained by comparing prediction statements to ground truth statements.
+
+        This metric was adapted from RAGAS. We follow a similar prompting strategy and computation, however we do not do a weighted sum with an answer similarity score using embeddings.
+
+        Parameters
+        ----------
+        query: str
+            The query that both the ground truth and prediction should be answering.
+        prediction: str
+            The prediction text to extract statements from.
+        groundtruth: str
+            The ground truth text to extract statements from.
+
+        Returns
+        -------
+        float
+            The answer correctness score between 0 and 1, with higher values indicating that the answer is more correct. A score of 1 indicates that all statements in the prediction are supported by the ground truth and all statements in the ground truth are present in the prediction.
+        """
+        groundtruth_statements = self._generate_statements(groundtruth)
+        prediction_statements = self._generate_statements(prediction)
+        verdicts = self._generate_answer_correctness_verdicts(
+            query, groundtruth_statements, prediction_statements
+        )
+
+        tp = len(verdicts["TP"])
+        fp = len(verdicts["FP"])
+        fn = len(verdicts["FN"])
+
+        f1_score = tp / (tp + 0.5 * (fp + fn)) if tp > 0 else 0
+        return f1_score
 
     def answer_relevance(
         self,
@@ -1147,6 +1255,24 @@ class MockLLMClient(LLMClient):
             "London is the largest city in the UK by population and GDP."
         ]
     }```"""
+
+            # Answer correctness verdicts
+            elif (
+                "Return in JSON format with three keys: 'TP', 'FP', and 'FN'"
+                in processed_messages[1]["content"]
+            ):
+                response = """```json
+{
+    "TP": [
+        "London is the largest city in the UK by GDP"
+    ],
+    "FP": [
+        "London is the largest city in the UK by population"
+    ],
+    "FN": [
+        "In 2021, financial services made up more than 20% of London's output"
+    ]
+}```"""
 
             # Answer relevance verdicts
             elif (

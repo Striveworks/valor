@@ -28,6 +28,7 @@ from .geometry import (
 from .info import APIVersion
 from .metrics import (
     AccuracyMetric,
+    AnswerCorrectnessMetric,
     AnswerRelevanceMetric,
     APMetric,
     APMetricAveragedOverIOUs,
@@ -125,6 +126,7 @@ __all__ = [
     "Health",
     "Readiness",
     "DatasetSummary",
+    "AnswerCorrectnessMetric",
     "AnswerRelevanceMetric",
     "BiasMetric",
     "BLEUMetric",

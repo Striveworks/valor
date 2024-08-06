@@ -254,8 +254,8 @@ The `DetailedPrecisionRecallOutput` also includes up to `n` examples of each typ
 # To retrieve more detailed examples for each `fn`, `fp`, and `tp`, look at the `DetailedPrecisionRecallCurve` metric
 detailed_evaluation = evaluate_detection(
     data=dataset,
-    pr_curve_max_examples=1 # The maximum number of examples to return for each obseration type (e.g., hallucinations, misclassifications, etc.)
-    metrics_to_return=[..., 'DetailedPrecisionRecallCurve'] # DetailedPrecisionRecallCurve isn't returned by default; the user must ask for it explicitely
+    pr_curve_max_examples=1 # The maximum number of examples to return for each observation type (e.g., hallucinations, misclassifications, etc.)
+    metrics_to_return=[..., 'DetailedPrecisionRecallCurve'] # DetailedPrecisionRecallCurve isn't returned by default; the user must ask for it explicitly
 )
 print(detailed_evaluation)
 
@@ -310,7 +310,7 @@ print(detailed_evaluation)
 
 ## General Text Generation Metrics
 
-The general text generation metrics apply to a broad set of text generation tasks. These metrics don't compare to any groundtruths and don't require any contexts. The metrics are evaluated purely based on the predicted text.
+The general text generation metrics apply to a broad set of text generation tasks. These metrics don't compare to any ground truths and don't require any contexts. The metrics are evaluated purely based on the predicted text.
 
 Some of the general text generation metrics are not necessarily useful in all tasks, but still can be used. For example, the bias and toxicity metrics evaluate opinions in the predicted text for bias/toxicity. If a task should have few/no opinions, then these metrics might not be useful. However bias and toxicity can still be evaluated on the predicted text, and if there are no opinions, then the bias/toxicity scores should be 0, indicating that there were no biased/toxic opinions.
 
@@ -377,6 +377,16 @@ In DeepEval, whether an opinion is toxic is defined according to the following r
 
 Question and Answering (Q&A) is a subcategory of text generation tasks in which the datum is a query/question, and the prediction is an answer to that query. In this setting we can evaluate the predicted text based on properties such as relevance to the answer or the correctness of the answer. These metrics will not apply to all text generation tasks. For example, not all text generation tasks have a single correct answer.
 
+### Answer Correctness
+
+Answer correctness is computed as a comparison between a ground truth text and a prediction text. First, statements are extracted from both the ground truth and prediction texts. Then, an LLM is prompted to determine if each statement in the prediction is supported by the ground truth and if each statement in the ground truth is present in the prediction. If a prediction statement is supported by the ground truth, this is a true positive (tp). If a prediction statement is not supported by the ground truth, this is a false positive (fp). If a ground truth statement is not present in the prediction, this is a false negative (fn).
+
+The answer correctness score is computed as an f1 score: tp / (tp + 0.5 * (fp + fn)). If there are no true positives, the score is 0. Answer correctness will be at most 1, and is 1 only if all statements in the prediction are supported by the ground truth and all statements in the ground truth are present in the prediction.
+
+If there are multiple ground truth answers for a datum, then to get the answer correctness score for a prediction, the answer correctness is computed for each ground truth answer and the maximum score is taken. Thus the answer correctness for a prediction is its highest answer correctness score across all ground truth answers.
+
+Our implementation was adapted from [RAGAS's implementation](https://github.com/explodinggradients/ragas/blob/main/src/ragas/metrics/_answer_correctness.py). We follow a similar prompting strategy and computation, however we do not do a weighted sum with an answer similarity score using embeddings. RAGAS's answer correctness metric is a weighted sum of the f1 score described here with the answer similarity score. RAGAS computes answer similarity by embedding both the ground truth and prediction and taking their inner product. They use default weights of 0.75 for the f1 score and 0.25 for the answer similarity score. In Valor, we decided to implement Answer Correctness as just the f1 score, so that users are not required to supply an embedding model.
+
 ### Answer Relevance
 
 Answer relevance is the proportion of statements in the answer that are relevant to the query. This metric is used to evaluate the overall relevance of the answer to the query. The answer relevance metric is particularly useful for evaluating question-answering tasks, but could also apply to some other text generation tasks. This metric is not recommended for more open ended tasks.
@@ -391,7 +401,7 @@ Note that RAG is a form of Q&A, so any Q&A metric can also be used to evaluate R
 
 Context relevance is the proportion of pieces of retrieved contexts that are relevant to the query. A piece of context is considered relevant to the query if any part of the context is relevant to answering the query. For example, a piece of context might be a paragraph of text, so if the answer or part of the answer to a query is contained somewhere in that paragraph, then that piece of context is considered relevant.
 
-Context relevance is useful for evaluating the retrieval mechanism of a RAG model. This metric does not considered the generated answer or any groundtruth answers to the query, only the retrieved contexts.
+Context relevance is useful for evaluating the retrieval mechanism of a RAG model. This metric does not considered the generated answer or any ground truth answers to the query, only the retrieved contexts.
 
 Given the query and the list of context, an LLM is prompted to determine if each piece of context is relevant to the query. Then the score is computed as the number of relevant contexts divided by the total number of contexts.
 
@@ -417,7 +427,7 @@ Our implementation closely follows [DeepEval's implementation](https://github.co
 
 ## Text Comparison Metrics
 
-This section contains non-llm guided metrics for comparing a predicted text to one or more groundtruth texts.
+This section contains non-llm guided metrics for comparing a predicted text to one or more ground truth texts.
 
 ### ROUGE
 

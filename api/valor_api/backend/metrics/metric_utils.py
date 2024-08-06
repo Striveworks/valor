@@ -110,6 +110,7 @@ def commit_results(
         | schemas.mIOUMetric
         | schemas.PrecisionRecallCurve
         | schemas.DetailedPrecisionRecallCurve
+        | schemas.AnswerCorrectnessMetric
         | schemas.AnswerRelevanceMetric
         | schemas.BiasMetric
         | schemas.BLEUMetric

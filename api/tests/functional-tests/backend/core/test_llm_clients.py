@@ -56,6 +56,32 @@ VALID_STATEMENTS = """```json
     ]
 }```"""
 
+GROUNDTRUTH_VALID_STATEMENTS = """```json
+{
+    "statements": [
+        "gt statement 1",
+        "gt statement 2",
+        "gt statement 3",
+        "gt statement 4"
+    ]
+}```"""
+
+ANSWER_CORRECTNESS_VALID_VERDICTS = """```json
+{
+    "TP": [
+        "statement 1",
+        "statement 2",
+        "statement 4"
+    ],
+    "FP": [
+        "statement 3"
+    ],
+    "FN": [
+        "gt statement 1",
+        "gt statement 4"
+    ]
+}```"""
+
 ANSWER_RELEVANCE_VALID_VERDICTS = """```json
 {
     "verdicts": [
@@ -176,6 +202,125 @@ def test_LLMClient(monkeypatch):
 
     Check the metric computations for LLMClient. The client children inherit all of these metric computations.
     """
+
+    def _return_valid_answer_correctness_response(*args, **kwargs):
+        if "prediction text" in args[1][1]["content"]:
+            return VALID_STATEMENTS
+        elif "ground truth text" in args[1][1]["content"]:
+            return GROUNDTRUTH_VALID_STATEMENTS
+        elif (
+            "Return in JSON format with three keys: 'TP', 'FP', and 'FN'"
+            in args[1][1]["content"]
+        ):
+            return ANSWER_CORRECTNESS_VALID_VERDICTS
+        else:
+            raise BadValueInTestLLMClientsError
+
+    def _return_invalid1_answer_correctness_response(*args, **kwargs):
+        return """```json
+{
+    "list": [
+        "statement 1",
+        "statement 2",
+        "statement 3",
+        "statement 4"
+    ]
+}```"""
+
+    def _return_invalid2_answer_correctness_response(*args, **kwargs):
+        if "prediction text" in args[1][1]["content"]:
+            return VALID_STATEMENTS
+        elif "ground truth text" in args[1][1]["content"]:
+            return """```json
+{
+    "statements": [
+        "statement 1",
+        4,
+        "statement 3",
+        "statement 4"
+    ]
+}```"""
+        else:
+            raise BadValueInTestLLMClientsError
+
+    def _return_invalid3_answer_correctness_response(*args, **kwargs):
+        if "prediction text" in args[1][1]["content"]:
+            return VALID_STATEMENTS
+        elif "ground truth text" in args[1][1]["content"]:
+            return GROUNDTRUTH_VALID_STATEMENTS
+        elif (
+            "Return in JSON format with three keys: 'TP', 'FP', and 'FN'"
+            in args[1][1]["content"]
+        ):
+            return """```json
+{
+    "TP": [
+        "statement 1",
+        "statement 2",
+        "statement 4"
+    ],
+    "FP": [
+        "statement 3"
+    ]
+}```"""
+        else:
+            raise BadValueInTestLLMClientsError
+
+    def _return_invalid4_answer_correctness_response(*args, **kwargs):
+        if "prediction text" in args[1][1]["content"]:
+            return VALID_STATEMENTS
+        elif "ground truth text" in args[1][1]["content"]:
+            return GROUNDTRUTH_VALID_STATEMENTS
+        elif (
+            "Return in JSON format with three keys: 'TP', 'FP', and 'FN'"
+            in args[1][1]["content"]
+        ):
+            return """```json
+{
+    "TP": [
+        "statement 1",
+        "statement 2"
+    ],
+    "FP": [
+        "statement 3"
+    ],
+    "FN": [
+        "gt statement 1",
+        "gt statement 4"
+    ]
+}```"""
+        else:
+            raise BadValueInTestLLMClientsError
+
+    def _return_invalid5_answer_correctness_response(*args, **kwargs):
+        if "prediction text" in args[1][1]["content"]:
+            return VALID_STATEMENTS
+        elif "ground truth text" in args[1][1]["content"]:
+            return GROUNDTRUTH_VALID_STATEMENTS
+        elif (
+            "Return in JSON format with three keys: 'TP', 'FP', and 'FN'"
+            in args[1][1]["content"]
+        ):
+            return """```json
+{
+    "TP": [
+        "statement 1",
+        "statement 2",
+        "statement 4"
+    ],
+    "FP": [
+        "statement 3"
+    ],
+    "FN": [
+        "gt statement 1",
+        "gt statement 2",
+        "gt statement 3",
+        "gt statement 4",
+        "too many statements in 'FN'"
+    ]
+}```"""
+        else:
+            raise BadValueInTestLLMClientsError
 
     def _return_valid_answer_relevance_response(*args, **kwargs):
         if "generate a list of STATEMENTS" in args[1][1]["content"]:
@@ -621,6 +766,65 @@ def test_LLMClient(monkeypatch):
         client._process_messages(fake_message)
     with pytest.raises(NotImplementedError):
         client(fake_message)
+
+    # Patch __call__ with a valid response.
+    monkeypatch.setattr(
+        "valor_api.backend.core.llm_clients.LLMClient.__call__",
+        _return_valid_answer_correctness_response,
+    )
+    assert 0.6666666666666666 == client.answer_correctness(
+        "some query", "prediction text", "ground truth text"
+    )
+
+    # Needs to have 'statements' key.
+    monkeypatch.setattr(
+        "valor_api.backend.core.llm_clients.LLMClient.__call__",
+        _return_invalid1_answer_correctness_response,
+    )
+    with pytest.raises(InvalidLLMResponseError):
+        client.answer_correctness(
+            "some query", "prediction text", "ground truth text"
+        )
+
+    # Should fail if ground truth statements are invalid even when prediction statements are valid
+    monkeypatch.setattr(
+        "valor_api.backend.core.llm_clients.LLMClient.__call__",
+        _return_invalid2_answer_correctness_response,
+    )
+    with pytest.raises(InvalidLLMResponseError):
+        client.answer_correctness(
+            "some query", "prediction text", "ground truth text"
+        )
+
+    # Missing 'FN' in dictionary
+    monkeypatch.setattr(
+        "valor_api.backend.core.llm_clients.LLMClient.__call__",
+        _return_invalid3_answer_correctness_response,
+    )
+    with pytest.raises(InvalidLLMResponseError):
+        client.answer_correctness(
+            "some query", "prediction text", "ground truth text"
+        )
+
+    # Number of TP + FP does not equal the number of prediction statements
+    monkeypatch.setattr(
+        "valor_api.backend.core.llm_clients.LLMClient.__call__",
+        _return_invalid4_answer_correctness_response,
+    )
+    with pytest.raises(InvalidLLMResponseError):
+        client.answer_correctness(
+            "some query", "prediction text", "ground truth text"
+        )
+
+    # The number of FN is more than the number of ground truth statements
+    monkeypatch.setattr(
+        "valor_api.backend.core.llm_clients.LLMClient.__call__",
+        _return_invalid5_answer_correctness_response,
+    )
+    with pytest.raises(InvalidLLMResponseError):
+        client.answer_correctness(
+            "some query", "prediction text", "ground truth text"
+        )
 
     # Patch __call__ with a valid response.
     monkeypatch.setattr(

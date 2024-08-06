@@ -747,6 +747,42 @@ class mIOUMetric(BaseModel):
         }
 
 
+class AnswerCorrectnessMetric(BaseModel):
+    """
+    Describes an answer correctness metric.
+
+    Attributes
+    ----------
+    value : float
+        The answer correctness score between 0 and 1, with higher values indicating that the answer is more correct. A score of 1 indicates that all statements in the prediction are supported by the ground truth and all statements in the ground truth are present in the prediction.
+    parameters : dict
+        Any parameters associated with the metric, as well as any datum or prediction parameters that are relevant to the metric.
+    """
+
+    value: float
+    parameters: dict
+
+    def db_mapping(self, evaluation_id: int) -> dict:
+        """
+        Creates a mapping for use when uploading the metric to the database.
+
+        Parameters
+        ----------
+        evaluation_id : int
+            The evaluation id.
+
+        Returns
+        ----------
+        A mapping dictionary.
+        """
+        return {
+            "value": self.value,
+            "parameters": self.parameters,
+            "type": "AnswerCorrectness",
+            "evaluation_id": evaluation_id,
+        }
+
+
 class AnswerRelevanceMetric(BaseModel):
     """
     Describes an answer relevance metric.
