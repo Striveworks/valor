@@ -1,9 +1,9 @@
-import datetime
 import io
 import json
+import warnings
 from base64 import b64decode, b64encode
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, Optional, TypedDict, Union
 
 import numpy as np
 import PIL.Image
@@ -15,186 +15,7 @@ def generate_type_error(received_value: Any, expected_type: str):
     )
 
 
-# TODO move validators somewhere else?
-def validate_type_bool(v: Any):
-    """
-    Validates boolean values.
-
-    Parameters
-    ----------
-    v : Any
-        The value to validate.
-
-    Raises
-    ------
-    TypeError
-        If the value is not of type 'bool'.
-    """
-    if not isinstance(v, bool):
-        raise generate_type_error(v, bool.__name__)
-
-
-def validate_type_integer(v: Any):
-    """
-    Validates integer values.
-
-    Parameters
-    ----------
-    v : Any
-        The value to validate.
-
-    Raises
-    ------
-    TypeError
-        If the value is not of type 'int'.
-    """
-    if not isinstance(v, int):
-        raise generate_type_error(v, int.__name__)
-
-
-def validate_type_float(v: Any):
-    """
-    Validates floating-point values.
-
-    Parameters
-    ----------
-    v : Any
-        The value to validate.
-
-    Raises
-    ------
-    TypeError
-        If the value is not of type 'float'.
-    """
-    if not isinstance(v, (int, float)):
-        raise generate_type_error(v, float.__name__)
-
-
-def validate_type_string(v: Any):
-    """
-    Validates string values.
-
-    Parameters
-    ----------
-    v : Any
-        The value to validate.
-
-    Raises
-    ------
-    TypeError
-        If the value is not of type 'str'.
-    ValueError
-        If the string contains forbidden characters.
-    """
-    if not isinstance(v, str):
-        raise generate_type_error(v, str.__name__)
-
-
-def validate_type_datetime(v: Any):
-    """
-    Validates ISO Formatted DateTime values.
-
-    Parameters
-    ----------
-    v : Any
-        The value to validate.
-
-    Raises
-    ------
-    TypeError
-        If the value is not of type 'str'.
-    ValueError
-        If the value is not formatted correctly.
-    """
-    if not isinstance(v, str):
-        raise generate_type_error(v, "ISO formatted datetime")
-    try:
-        datetime.datetime.fromisoformat(v)
-    except ValueError as e:
-        raise ValueError(
-            f"DateTime value not provided in correct format: {str(e)}"
-        )
-
-
-def validate_type_date(v: Any):
-    """
-    Validates ISO Formatted Date values.
-
-    Parameters
-    ----------
-    v : Any
-        The value to validate.
-
-    Raises
-    ------
-    TypeError
-        If the value is not of type 'str'.
-    ValueError
-        If the value is not formatted correctly.
-    """
-    if not isinstance(v, str):
-        raise generate_type_error(v, "ISO formatted date")
-    try:
-        datetime.date.fromisoformat(v)
-    except ValueError as e:
-        raise ValueError(
-            f"Date value not provided in correct format: {str(e)}"
-        )
-
-
-def validate_type_time(v: Any):
-    """
-    Validates ISO Formatted Time values.
-
-    Parameters
-    ----------
-    v : Any
-        The value to validate.
-
-    Raises
-    ------
-    TypeError
-        If the value is not of type 'str'.
-    ValueError
-        If the value is not formatted correctly.
-    """
-    if not isinstance(v, str):
-        raise generate_type_error(v, "ISO formatted time")
-    try:
-        datetime.time.fromisoformat(v)
-    except ValueError as e:
-        raise ValueError(
-            f"Time value not provided in correct format: {str(e)}"
-        )
-
-
-def validate_type_duration(v: Any):
-    """
-    Validates Duration values.
-
-    Parameters
-    ----------
-    v : Any
-        The value to validate.
-
-    Raises
-    ------
-    TypeError
-        If the value is not of type 'float'.
-    ValueError
-        If the value is not formatted correctly.
-    """
-    if not isinstance(v, float):
-        raise generate_type_error(v, float.__name__)
-    try:
-        datetime.timedelta(seconds=v)
-    except ValueError as e:
-        raise ValueError(
-            f"Duration value not provided in correct format: {str(e)}"
-        )
-
-
-def validate_type_point(v: Any):
+def _validate_type_point(v: Any):
     """
     Validates geometric point values.
 
@@ -222,7 +43,7 @@ def validate_type_point(v: Any):
         )
 
 
-def validate_type_multipoint(v: Any):
+def _validate_type_multipoint(v: Any):
     """
     Validates geometric multipoint values.
 
@@ -245,10 +66,10 @@ def validate_type_multipoint(v: Any):
     elif not v:
         raise ValueError("List cannot be empty.")
     for point in v:
-        validate_type_point(point)
+        _validate_type_point(point)
 
 
-def validate_type_linestring(v: Any):
+def _validate_type_linestring(v: Any):
     """
     Validates geometric linestring values.
 
@@ -264,14 +85,14 @@ def validate_type_linestring(v: Any):
     ValueError
         If the value does not conform to the linestring requirements.
     """
-    validate_type_multipoint(v)
+    _validate_type_multipoint(v)
     if len(v) < 2:
         raise ValueError(
             f"A line requires two or more points. Received '{v}'."
         )
 
 
-def validate_type_multilinestring(v: Any):
+def _validate_type_multilinestring(v: Any):
     """
     Validates geometric multilinestring values.
 
@@ -294,10 +115,10 @@ def validate_type_multilinestring(v: Any):
     elif not v:
         raise ValueError("List cannot be empty.")
     for line in v:
-        validate_type_linestring(line)
+        _validate_type_linestring(line)
 
 
-def validate_type_polygon(v: Any):
+def _validate_type_polygon(v: Any):
     """
     Validates geometric polygon values.
 
@@ -313,7 +134,7 @@ def validate_type_polygon(v: Any):
     ValueError
         If the value does not conform to the polygon requirements.
     """
-    validate_type_multilinestring(v)
+    _validate_type_multilinestring(v)
     for line in v:
         if not (len(line) >= 4 and line[0] == line[-1]):
             raise ValueError(
@@ -321,7 +142,7 @@ def validate_type_polygon(v: Any):
             )
 
 
-def validate_type_box(v: Any):
+def _validate_type_box(v: Any):
     """
     Validates geometric box values.
 
@@ -337,14 +158,14 @@ def validate_type_box(v: Any):
     ValueError
         If the value does not conform to the box requirements.
     """
-    validate_type_polygon(v)
+    _validate_type_polygon(v)
     if not (len(v) == 1 and len(v[0]) == 5 and v[0][0] == v[0][-1]):
         raise ValueError(
             "Boxes are defined by five points with the first and last being equal."
         )
 
 
-def validate_type_multipolygon(v: Any):
+def _validate_type_multipolygon(v: Any):
     """
     Validates geometric multipolygon values.
 
@@ -368,10 +189,10 @@ def validate_type_multipolygon(v: Any):
     elif not v:
         raise ValueError("List cannot be empty.")
     for polygon in v:
-        validate_type_polygon(polygon)
+        _validate_type_polygon(polygon)
 
 
-def validate_geojson(geojson: dict):
+def _validate_geojson(geojson: dict):
     """
     Validates that a dictionary conforms to the GeoJSON geometry specification.
 
@@ -389,12 +210,12 @@ def validate_geojson(geojson: dict):
         If the dictionary does not conform to the GeoJSON format.
     """
     map_str_to_geojson_validator = {
-        "point": validate_type_point,
-        "multipoint": validate_type_multipoint,
-        "linestring": validate_type_linestring,
-        "multilinestring": validate_type_multilinestring,
-        "polygon": validate_type_polygon,
-        "multipolygon": validate_type_multipolygon,
+        "point": _validate_type_point,
+        "multipoint": _validate_type_multipoint,
+        "linestring": _validate_type_linestring,
+        "multilinestring": _validate_type_multilinestring,
+        "polygon": _validate_type_polygon,
+        "multipolygon": _validate_type_multipolygon,
     }
     # validate geojson
     if not isinstance(geojson, dict):
@@ -426,75 +247,6 @@ def validate_geojson(geojson: dict):
         )
 
 
-def validate_metadata(dictionary: dict):
-    """
-    Validates that a dictionary conforms to Valor's metadata specification.
-
-    Parameters
-    ----------
-    dictionary: dict
-        The dictionary to validate.
-
-    Raises
-    ------
-    TypeError
-        If the passed in value is not a dictionary.
-        If the dictionary keys are not strings.
-        If a value type is not supported.
-    ValueError
-        If the dictionary does not conform to the Valor metadata format.
-        If a value is not properly formatted.
-    """
-    map_str_to_type_validator = {
-        "bool": validate_type_bool,
-        "integer": validate_type_integer,
-        "float": validate_type_float,
-        "string": validate_type_string,
-        "datetime": validate_type_datetime,
-        "date": validate_type_date,
-        "time": validate_type_time,
-        "duration": validate_type_duration,
-        "geojson": validate_geojson,
-    }
-    if not isinstance(dictionary, dict):
-        raise TypeError("Expected 'metadata' to be a dictionary.")
-    for key, value in dictionary.items():
-        # validate metadata structure
-        if not isinstance(key, str):
-            raise TypeError("Metadata keys must be of type 'str'.")
-        # atomic values don't require explicit typing.
-        elif isinstance(value, (bool, int, float, str)):
-            continue
-        # if a value is not atomic, explicit typing it required.
-        elif not isinstance(value, dict) or set(value.keys()) != {
-            "type",
-            "value",
-        }:
-            raise ValueError(
-                "Metadata values must be described using Valor's typing format."
-            )
-        # validate metadata type
-        type_str = value.get("type")
-        if (
-            not isinstance(type_str, str)
-            or type_str not in map_str_to_type_validator
-        ):
-            raise TypeError(
-                f"Metadata does not support values with type '{type_str}'. Received value '{value.get('value')}'."
-            )
-        # validate metadata value
-        value_ = value.get("value")
-        try:
-            map_str_to_type_validator[type_str](value_)
-        except (
-            TypeError,
-            ValueError,
-        ) as e:
-            raise ValueError(
-                f"Metadata value '{value_}' failed validation for type '{type_str}'. Validation error: {str(e)}"
-            )
-
-
 @dataclass
 class Point:
     """
@@ -514,7 +266,7 @@ class Point:
     value: tuple[int | float, int | float]
 
     def __post_init__(self):
-        validate_type_point(self.value)
+        _validate_type_point(self.value)
 
     @classmethod
     def from_dict(cls, geojson: dict) -> "Point":
@@ -576,6 +328,28 @@ class Point:
         """
         return f"POINT ({self.value[0]} {self.value[1]})"
 
+    def resize(
+        self,
+        og_img_h=10,
+        og_img_w=10,
+        new_img_h=100,
+        new_img_w=100,
+    ):
+        h_ratio = new_img_h / og_img_h
+        w_ratio = new_img_w / og_img_w
+        return Point((self.value[0] * h_ratio, self.value[1] * w_ratio))
+
+    @property
+    def x(self):
+        return self.value[0]
+
+    @property
+    def y(self):
+        return self.value[1]
+
+    def __hash__(self):
+        return hash(str([float(x) for x in self.value]))
+
 
 @dataclass
 class MultiPoint:
@@ -596,7 +370,7 @@ class MultiPoint:
     value: list[tuple[int | float, int | float]]
 
     def __post_init__(self):
-        validate_type_multipolygon(self.value)
+        _validate_type_multipoint(self.value)
 
     @classmethod
     def from_dict(cls, geojson: dict) -> "MultiPoint":
@@ -684,7 +458,7 @@ class LineString:
     value: list[tuple[int | float, int | float]]
 
     def __post_init__(self):
-        validate_type_linestring(self.value)
+        _validate_type_linestring(self.value)
 
     @classmethod
     def from_dict(cls, geojson: dict) -> "LineString":
@@ -770,7 +544,7 @@ class MultiLineString:
     value: list[list[tuple[int | float, int | float]]]
 
     def __post_init__(self):
-        validate_type_multilinestring(self.value)
+        _validate_type_multilinestring(self.value)
 
     @classmethod
     def from_dict(cls, geojson: dict) -> "MultiLineString":
@@ -863,7 +637,7 @@ class Polygon:
     value: list[list[tuple[int | float, int | float]]]
 
     def __post_init__(self):
-        validate_type_polygon(self.value)
+        _validate_type_polygon(self.value)
 
     @classmethod
     def from_dict(cls, geojson: dict) -> "Polygon":
@@ -937,6 +711,80 @@ class Polygon:
         )
         return f"POLYGON (({coords}))"
 
+    @property
+    def boundary(self):
+        """
+        The boundary of the polygon.
+
+        Returns
+        -------
+        List[Tuple(float, float)]
+            A list of points.
+        """
+        value = self.value
+        if value is None:
+            raise ValueError("Polygon is 'None'")
+        return value[0]
+
+    @property
+    def holes(self):
+        """
+        Any holes in the polygon.
+
+        Returns
+        -------
+        List[List[Tuple(float, float)]]
+            A list of holes.
+        """
+        value = self.value
+        if value is None:
+            raise ValueError("Polygon is 'None'")
+        return value[1:]
+
+    @property
+    def xmin(self) -> float:
+        """
+        Minimum x-value.
+
+        Returns
+        -------
+        float
+        """
+        return min([p[0] for p in self.boundary])
+
+    @property
+    def xmax(self) -> float:
+        """
+        Maximum x-value.
+
+        Returns
+        -------
+        float
+        """
+        return max([p[0] for p in self.boundary])
+
+    @property
+    def ymin(self) -> float:
+        """
+        Minimum y-value.
+
+        Returns
+        -------
+        float
+        """
+        return min([p[1] for p in self.boundary])
+
+    @property
+    def ymax(self) -> float:
+        """
+        Maximum y-value.
+
+        Returns
+        -------
+        float
+        """
+        return max([p[1] for p in self.boundary])
+
 
 @dataclass
 class Box:
@@ -957,7 +805,7 @@ class Box:
     value: list[list[tuple[int | float, int | float]]]
 
     def __post_init__(self):
-        validate_type_box(self.value)
+        _validate_type_box(self.value)
 
     @classmethod
     def from_extrema(
@@ -1092,7 +940,7 @@ class MultiPolygon:
     value: list[list[list[tuple[int | float, int | float]]]]
 
     def __post_init__(self):
-        validate_type_multipolygon(self.value)
+        _validate_type_multipolygon(self.value)
 
     @classmethod
     def from_dict(cls, geojson: dict) -> "MultiPolygon":
@@ -1188,6 +1036,9 @@ class GeoJSON:
         | list[list[list[list[float]]]]
     )
 
+    def __post_init__(self):
+        _validate_geojson({"type": self.type, "coordinates": self.coordinates})
+
     @property
     def geometry(
         self,
@@ -1221,166 +1072,242 @@ class GeoJSON:
         return self.geometry.to_wkt()
 
 
+class RasterData(TypedDict):
+    mask: np.ndarray
+    geometry: Optional[Union[Box, Polygon, MultiPolygon]]
+
+
 @dataclass
 class Raster:
     """
-    Describes a raster in geometric space.
+    Represents a binary mask.
+
+    Parameters
+    ----------
+    value : Dict[str, typing.Union[np.ndarray, str, None]], optional
+        An raster value.
 
     Attributes
     ----------
-    mask : str
-        The mask describing the raster.
-    geometry : Box | Polygon | MultiPolygon, optional
-        Option to define raster by a geometry. Overrides the bitmask.
+    area
+    array
+    geometry
+    height
+    width
 
     Raises
     ------
-    ValueError
-        If the image format is not PNG.
-        If the image mode is not binary.
+    TypeError
+        If `encoding` is not a string.
+
+    Examples
+    --------
+    Generate a random mask.
+    >>> import numpy.random
+    >>> height = 640
+    >>> width = 480
+    >>> array = numpy.random.rand(height, width)
+
+    Convert to binary mask.
+    >>> mask = (array > 0.5)
+
+    Create Raster.
+    >>> Raster.from_numpy(mask)
     """
 
-    mask: str
-    geometry: Box | Polygon | MultiPolygon | None = None
+    value: RasterData
 
     def __post_init__(self):
-        f = io.BytesIO(b64decode(self.mask))
-        img = PIL.Image.open(f)
-        f.close()
-        if img.format != "PNG":
-            raise ValueError(
-                f"Expected image format PNG but got {img.format}."
-            )
-        if img.mode != "1":
-            raise ValueError(
-                f"Expected image mode to be binary but got mode {img.mode}."
-            )
-
-    @classmethod
-    def from_numpy(cls, mask: np.ndarray) -> "Raster":
         """
-        Create a mask from a numpy array.
+        Validates typing.
 
         Parameters
         ----------
-        mask : np:ndarray
-            A numpy array.
-
-        Returns
-        ----------
-        Raster
-            The raster object.
+        value : Any
+            The value to validate.
 
         Raises
-        ----------
-        ValueError
-            If the array has more than two dimensions.
-            If the array contains non-boolean elements.
+        ------
+        TypeError
+            If the value type is not supported.
         """
-        if len(mask.shape) != 2:
-            raise ValueError("raster currently only supports 2d arrays")
-        if mask.dtype != bool:
-            raise ValueError(
-                f"Expecting a binary mask (i.e. of dtype bool) but got dtype {mask.dtype}"
+        if not isinstance(self.value, dict):
+            raise TypeError(
+                "Raster should contain a dictionary describing a mask and optionally a geometry."
             )
+        elif set(self.value.keys()) != {"mask", "geometry"}:
+            raise ValueError(
+                "Raster should be described by a dictionary with keys 'mask' and 'geometry'"
+            )
+        elif not isinstance(self.value["mask"], np.ndarray):
+            raise TypeError(
+                f"Expected mask to have type '{np.ndarray}' receieved type '{type(self.value['mask'])}'"
+            )
+        elif len(self.value["mask"].shape) != 2:
+            raise ValueError("raster only supports 2d arrays")
+        elif self.value["mask"].dtype != bool:
+            raise ValueError(
+                f"Expecting a binary mask (i.e. of dtype bool) but got dtype {self.value['mask'].dtype}"
+            )
+        elif self.value["geometry"] is not None and not isinstance(
+            self.value["geometry"], (Polygon, MultiPolygon)
+        ):
+            raise TypeError(
+                "Expected geometry to conform to either Polygon or MultiPolygon or be 'None'"
+            )
+
+    def encode_value(self) -> Any:
+        """Encode object to JSON compatible dictionary."""
+        value = self.value
+        if value is None:
+            return None
         f = io.BytesIO()
-        PIL.Image.fromarray(mask).save(f, format="PNG")
+        PIL.Image.fromarray(self.value["mask"]).save(f, format="PNG")
         f.seek(0)
         mask_bytes = f.read()
         f.close()
-        return cls(
-            mask=b64encode(mask_bytes).decode(),
-        )
+        return {
+            "mask": b64encode(mask_bytes).decode(),
+            "geometry": self.value["geometry"],
+        }
+
+    @classmethod
+    def decode_value(cls, value: Any):
+        """Decode object from JSON compatible dictionary."""
+        if not (
+            isinstance(value, dict)
+            and set(value.keys()) == {"mask", "geometry"}
+        ):
+            raise ValueError(
+                f"Improperly formatted raster encoding. Received '{value}'"
+            )
+        mask_bytes = b64decode(value["mask"])
+        with io.BytesIO(mask_bytes) as f:
+            img = PIL.Image.open(f)
+            value = {
+                "mask": np.array(img),
+                "geometry": value["geometry"],
+            }
+        return cls(value=value)
+
+    @classmethod
+    def from_numpy(cls, mask: np.ndarray):
+        """
+        Create a Raster object from a NumPy array.
+
+        Parameters
+        ----------
+        mask : np.ndarray
+            The 2D binary array representing the mask.
+
+        Returns
+        -------
+        Raster
+
+        Raises
+        ------
+        ValueError
+            If the input array is not 2D or not of dtype bool.
+        """
+        return cls(value={"mask": mask, "geometry": None})
 
     @classmethod
     def from_geometry(
         cls,
-        geometry: Box | Polygon | MultiPolygon,
-        height: int | float,
-        width: int | float,
-    ) -> "Raster":
+        geometry: Union[Box, Polygon, MultiPolygon],
+        height: int,
+        width: int,
+    ):
         """
-        Create a Raster object from a geometry.
+        Create a Raster object from a geometric mask.
 
         Parameters
         ----------
-        geometry : Box | Polygon | MultiPolygon
+        geometry : Union[Box, Polygon, MultiPolygon]
             Defines the bitmask as a geometry. Overrides any existing mask.
-        height : int | float
+        height : int
             The intended height of the binary mask.
-        width : int | float
+        width : int
             The intended width of the binary mask.
 
         Returns
         -------
-        schemas.Raster
+        Raster
         """
-        r = cls.from_numpy(np.full((int(height), int(width)), False))
-        r.geometry = geometry
-        return r
-
-    def to_numpy(self) -> np.ndarray:
-        """
-        Convert the mask into an array.
-
-        Returns
-        ----------
-        np.ndarray
-            An array representing a mask.
-        """
-        mask_bytes = b64decode(self.mask)
-        with io.BytesIO(mask_bytes) as f:
-            img = PIL.Image.open(f)
-            return np.array(img)
-
-    @property
-    def mask_bytes(self) -> bytes:
-        """
-        Serialize the mask into bytes.
-
-        Returns
-        ----------
-        bytes
-            A byte object.
-
-        """
-        if not hasattr(self, "_mask_bytes"):
-            self._mask_bytes = b64decode(self.mask)
-        return self._mask_bytes
+        bitmask = np.full((int(height), int(width)), False)
+        return cls(value={"mask": bitmask, "geometry": geometry})
 
     @property
     def array(self) -> np.ndarray:
         """
-        Convert the mask into an array.
-
-        Returns
-        ----------
-        np.ndarray
-            An array representing a mask.
-
-        """
-        return self.to_numpy()
-
-    @property
-    def height(self) -> int:
-        """
-        Get the height of the raster.
+        The bitmask as a numpy array.
 
         Returns
         -------
-        int
-            The height of the binary mask.
+        Optional[np.ndarray]
+            A 2D binary array representing the mask if it exists.
         """
+        value = self.value
+        if value["geometry"] is not None:
+            warnings.warn(
+                "Raster array does not contain bitmask as this is a geometry-defined raster.",
+                RuntimeWarning,
+            )
+        return value["mask"]
+
+    @property
+    def geometry(self) -> Union[Box, Polygon, MultiPolygon, None]:
+        """
+        The geometric mask if it exists.
+
+        Returns
+        -------
+        Box | Polygon | MultiPolygon | None
+            The geometry if it exists.
+        """
+        return self.value["geometry"]
+
+    @property
+    def height(self) -> int:
+        """Returns the height of the raster if it exists."""
         return self.array.shape[0]
 
     @property
     def width(self) -> int:
-        """
-        Get the width of the raster.
-
-        Returns
-        -------
-        int
-            The width of the binary mask.
-        """
+        """Returns the width of the raster if it exists."""
         return self.array.shape[1]
+
+
+@dataclass
+class Embedding:
+    """
+    Represents a model embedding.
+
+    Parameters
+    ----------
+    value : List[float], optional
+        An embedding value.
+    """
+
+    value: Optional[Union[list[int], list[float]]] = None
+
+    def __post_init__(self):
+        """
+        Validates
+
+        Parameters
+        ----------
+        value : Any
+            The value to validate.
+
+        Raises
+        ------
+        TypeError
+            If the value type is not supported.
+        """
+        if not isinstance(self.value, list):
+            raise TypeError(
+                f"Expected type 'Optional[List[float]]' received type '{type(self.value)}'"
+            )
+        elif len(self.value) < 1:
+            raise ValueError("embedding should have at least one dimension")

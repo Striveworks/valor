@@ -475,12 +475,16 @@ def _get_merged_dataframe(
     merged_groundtruths_and_predictions_df = (
         merged_groundtruths_and_predictions_df.copy()
         if missing_label_df.empty
-        else pd.concat(
-            [
-                merged_groundtruths_and_predictions_df,
-                missing_label_df,
-            ],
-            ignore_index=True,
+        else (
+            missing_label_df.copy()
+            if merged_groundtruths_and_predictions_df.empty
+            else pd.concat(
+                [
+                    merged_groundtruths_and_predictions_df,
+                    missing_label_df,
+                ],
+                ignore_index=True,
+            )
         )
     )
 
@@ -494,7 +498,7 @@ def _calculate_rocauc(
     # if there are no predictions, then ROCAUC should be 0 for all groundtruth grouper keys
     if prediction_df.empty:
         return [
-            metrics.ROCAUCMetric(label_key=grouper_key, value=0)
+            metrics.ROCAUCMetric(label_key=grouper_key, value=float(0))
             for grouper_key in groundtruth_df["grouper_key"].unique()
         ]
 

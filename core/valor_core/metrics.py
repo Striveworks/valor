@@ -22,6 +22,25 @@ class _LabelMetricBase:
     value: Optional[float]
     __type__ = "BaseClass"
 
+    def __post_init__(self):
+        """
+        Validates the types of the attributes.
+
+        Raises
+        ------
+        TypeError
+            If `label` is not an instance of schemas.Label.
+            If `value` is not a float or None.
+        """
+        if not isinstance(self.label, schemas.Label):
+            raise TypeError(
+                f"Expected label to be an instance of schemas.Label, got {type(self.label).__name__}"
+            )
+        if self.value is not None and not isinstance(self.value, float):
+            raise TypeError(
+                f"Expected value to be a float or None, got {type(self.value).__name__}"
+            )
+
     def to_dict(self):
         """Converts a metric object into a dictionary."""
         return {
@@ -47,6 +66,25 @@ class _LabelKeyMetricBase:
     label_key: str
     value: Optional[float]
     __type__ = "BaseClass"
+
+    def __post_init__(self):
+        """
+        Validates the types of the attributes.
+
+        Raises
+        ------
+        TypeError
+            If `label_key` is not a string.
+            If `value` is not a float or None.
+        """
+        if not isinstance(self.label_key, str):
+            raise TypeError(
+                f"Expected label_key to be a string, got {type(self.label_key).__name__}"
+            )
+        if self.value is not None and not isinstance(self.value, float):
+            raise TypeError(
+                f"Expected value to be a float or None, got {type(self.value).__name__}"
+            )
 
     def to_dict(self):
         """Converts a metric object into a dictionary."""
@@ -75,6 +113,14 @@ class ARMetric(_LabelMetricBase):
 
     ious: set[float]
     __type__ = "AR"
+
+    def __post_init__(self):
+        super().__post_init__()
+
+        if not isinstance(self.ious, set):
+            raise TypeError(
+                f"Expected ious to be a set, got {type(self.ious).__name__}"
+            )
 
     def to_dict(self):
         """Converts a metric object into a dictionary."""
@@ -105,6 +151,14 @@ class APMetric(_LabelMetricBase):
     iou: float
     __type__ = "AP"
 
+    def __post_init__(self):
+        super().__post_init__()
+
+        if not isinstance(self.iou, float):
+            raise TypeError(
+                f"Expected iou to be a float, got {type(self.iou).__name__}"
+            )
+
     def to_dict(self):
         """Converts a metric object into a dictionary."""
         return {
@@ -134,6 +188,14 @@ class APMetricAveragedOverIOUs(_LabelMetricBase):
     ious: set[float]
     __type__ = "APAveragedOverIOUs"
 
+    def __post_init__(self):
+        super().__post_init__()
+
+        if not isinstance(self.ious, set):
+            raise TypeError(
+                f"Expected ious to be a set, got {type(self.ious).__name__}"
+            )
+
     def to_dict(self):
         """Converts a metric object into a dictionary."""
         return {
@@ -161,6 +223,14 @@ class mARMetric(_LabelKeyMetricBase):
 
     ious: set[float]
     __type__ = "mAR"
+
+    def __post_init__(self):
+        super().__post_init__()
+
+        if not isinstance(self.ious, set):
+            raise TypeError(
+                f"Expected ious to be a set, got {type(self.ious).__name__}"
+            )
 
     def to_dict(self):
         """Converts a metric object into a dictionary."""
@@ -192,6 +262,14 @@ class mAPMetric(_LabelKeyMetricBase):
     iou: float
     __type__ = "mAP"
 
+    def __post_init__(self):
+        super().__post_init__()
+
+        if not isinstance(self.iou, float):
+            raise TypeError(
+                f"Expected iou to be a float, got {type(self.iou).__name__}"
+            )
+
     def to_dict(self):
         """Converts a metric object into a dictionary."""
         return {
@@ -219,6 +297,14 @@ class mAPMetricAveragedOverIOUs(_LabelKeyMetricBase):
     ious: set[float]
     __type__ = "mAPAveragedOverIOUs"
 
+    def __post_init__(self):
+        super().__post_init__()
+
+        if not isinstance(self.ious, set):
+            raise TypeError(
+                f"Expected ious to be a set, got {type(self.ious).__name__}"
+            )
+
     def to_dict(self):
         """Converts a metric object into a dictionary."""
         return {
@@ -245,6 +331,9 @@ class PrecisionMetric(_LabelMetricBase):
 
     __type__ = "Precision"
 
+    def __post_init__(self):
+        super().__post_init__()
+
 
 class RecallMetric(_LabelMetricBase):
     """
@@ -259,6 +348,9 @@ class RecallMetric(_LabelMetricBase):
     """
 
     __type__ = "Recall"
+
+    def __post_init__(self):
+        super().__post_init__()
 
 
 class F1Metric(_LabelMetricBase):
@@ -275,6 +367,9 @@ class F1Metric(_LabelMetricBase):
 
     __type__ = "F1"
 
+    def __post_init__(self):
+        super().__post_init__()
+
 
 class ROCAUCMetric(_LabelKeyMetricBase):
     """
@@ -290,6 +385,9 @@ class ROCAUCMetric(_LabelKeyMetricBase):
 
     __type__ = "ROCAUC"
 
+    def __post_init__(self):
+        super().__post_init__()
+
 
 class AccuracyMetric(_LabelKeyMetricBase):
     """
@@ -304,6 +402,9 @@ class AccuracyMetric(_LabelKeyMetricBase):
     """
 
     __type__ = "Accuracy"
+
+    def __post_init__(self):
+        super().__post_init__()
 
 
 @dataclass
@@ -323,6 +424,24 @@ class _BasePrecisionRecallCurve:
     value: dict
     pr_curve_iou_threshold: Optional[float]
     __type__ = "BaseClass"
+
+    def __post_init__(self):
+        if not isinstance(self.label_key, str):
+            raise TypeError(
+                f"Expected label_key to be a string, but got {type(self.label_key).__name__}."
+            )
+
+        if not isinstance(self.value, dict):
+            raise TypeError(
+                f"Expected value to be a dictionary, but got {type(self.value).__name__}."
+            )
+
+        if self.pr_curve_iou_threshold is not None and not isinstance(
+            self.pr_curve_iou_threshold, float
+        ):
+            raise TypeError(
+                f"Expected pr_curve_iou_threshold to be a float or None, but got {type(self.pr_curve_iou_threshold).__name__}."
+            )
 
     def to_dict(self):
         """Converts a metric object into a dictionary."""
@@ -355,6 +474,9 @@ class PrecisionRecallCurve(_BasePrecisionRecallCurve):
             Dict[str, Optional[Union[int, float]]],
         ],
     ]
+
+    def __post_init__(self):
+        super().__post_init__()
 
 
 class DetailedPrecisionRecallCurve(_BasePrecisionRecallCurve):
@@ -403,6 +525,9 @@ class DetailedPrecisionRecallCurve(_BasePrecisionRecallCurve):
         ],
     ]
 
+    def __post_init__(self):
+        super().__post_init__()
+
 
 @dataclass
 class ConfusionMatrixEntry:
@@ -422,6 +547,22 @@ class ConfusionMatrixEntry:
     prediction: str
     groundtruth: str
     count: int
+
+    def __post_init__(self):
+        if not isinstance(self.prediction, str):
+            raise TypeError(
+                f"Expected prediction to be a string, but got {type(self.prediction).__name__}."
+            )
+
+        if not isinstance(self.groundtruth, str):
+            raise TypeError(
+                f"Expected groundtruth to be a string, but got {type(self.groundtruth).__name__}."
+            )
+
+        if not isinstance(self.count, int):
+            raise TypeError(
+                f"Expected count to be an integer, but got {type(self.count).__name__}."
+            )
 
     def to_dict(self):
         """Converts a ConfusionMatrixEntry object into a dictionary."""
@@ -447,6 +588,23 @@ class _BaseConfusionMatrix:
 
     label_key: str
     entries: List[ConfusionMatrixEntry]
+
+    def __post_init__(self):
+        if not isinstance(self.label_key, str):
+            raise TypeError(
+                f"Expected label_key to be a string, but got {type(self.label_key).__name__}."
+            )
+
+        if not isinstance(self.entries, list):
+            raise TypeError(
+                f"Expected entries to be a list, but got {type(self.entries).__name__}."
+            )
+
+        for entry in self.entries:
+            if not isinstance(entry, ConfusionMatrixEntry):
+                raise TypeError(
+                    f"Expected entry to be of type ConfusionMatrixEntry, but got {type(entry).__name__}."
+                )
 
     def to_dict(self):
         """Converts a ConfusionMatrix object into a dictionary."""

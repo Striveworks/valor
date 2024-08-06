@@ -22,8 +22,8 @@ jobs:
       - name: run tests and report coverage
         run: |
           pip install -e ".[test]"
-          python -m coverage run -m pytest -v tests/functional-tests
-          python -m coverage run -m pytest -v tests/unit-tests
+          COVERAGE_FILE=.coverage.functional python -m coverage run --omit "tests/*"  -m pytest -v tests/functional-tests
+          COVERAGE_FILE=.coverage.unit python -m coverage run --omit "tests/*" -m pytest -v tests/unit-tests
           python -m coverage combine
           python -m coverage report -m
           python -m coverage json

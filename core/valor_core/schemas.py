@@ -1,9 +1,45 @@
 import json
 import math
 from dataclasses import dataclass
-from typing import Any, Dict, List, Optional, Union
+from typing import Dict, List, Optional, Union
 
 from valor_core import enums, geometry
+
+
+@dataclass
+class Datum:
+    """
+    A class used to store information about a datum for either a 'GroundTruth' or a 'Prediction'.
+
+    Attributes
+    ----------
+    uid : String
+        The UID of the datum.
+    metadata : Dictionary
+        A dictionary of metadata that describes the datum.
+
+    Examples
+    --------
+    >>> Datum(uid="uid1")
+    >>> Datum(uid="uid1", metadata={})
+    >>> Datum(uid="uid1", metadata={"foo": "bar", "pi": 3.14})
+    """
+
+    uid: Optional[str] = None
+    metadata: Optional[dict] = None
+
+    def __post_init__(
+        self,
+    ):
+
+        if not isinstance(self.uid, (str, type(None))):
+            raise TypeError(
+                f"Expected 'uid' to be of type 'str' or 'None', got {type(self.uid).__name__}"
+            )
+        if not isinstance(self.metadata, (dict, type(None))):
+            raise TypeError(
+                f"Expected 'metadata' to be of type 'dict' or 'None', got {type(self.metadata).__name__}"
+            )
 
 
 @dataclass
@@ -24,6 +60,32 @@ class Label:
     key: str
     value: str
     score: Optional[float] = None
+
+    def __post_init__(self):
+        if not isinstance(self.key, str):
+            raise TypeError(
+                f"Expected 'key' to be of type 'str', got {type(self.key).__name__}"
+            )
+
+        if not isinstance(self.value, str):
+            raise TypeError(
+                f"Expected 'value' to be of type 'str', got {type(self.value).__name__}"
+            )
+
+        if self.score is not None and not isinstance(
+            self.score,
+            (
+                float,
+                int,
+            ),
+        ):
+            raise TypeError(
+                f"Expected 'score' to be of type 'float' or 'int' or 'None', got {type(self.score).__name__}"
+            )
+
+        # Ensure score is a float if provided as int
+        if isinstance(self.score, int):
+            self.score = float(self.score)
 
     def __eq__(self, other):
         """
@@ -71,42 +133,6 @@ class Label:
             The hashed 'Label'.
         """
         return hash(f"key:{self.key},value:{self.value},score:{self.score}")
-
-
-@dataclass
-class Embedding:
-    """
-    Represents a model embedding.
-
-    Parameters
-    ----------
-    value : List[float], optional
-        An embedding value.
-    """
-
-    value: Optional[Union[List[int], List[float]]] = None
-
-    @classmethod
-    def __validate__(cls, value: Any):
-        """
-        Validates
-
-        Parameters
-        ----------
-        value : Any
-            The value to validate.
-
-        Raises
-        ------
-        TypeError
-            If the value type is not supported.
-        """
-        if not isinstance(value, list):
-            raise TypeError(
-                f"Expected type 'Optional[List[float]]' received type '{type(value)}'"
-            )
-        elif len(value) < 1:
-            raise ValueError("embedding should have at least one dimension")
 
 
 @dataclass
@@ -183,36 +209,65 @@ class Annotation:
     labels: List[Label]
     metadata: Optional[dict] = None
     bounding_box: Optional[geometry.Box] = None
-    polygon: Optional[geometry.Polygon] = None
+    polygon: Optional[Union[geometry.Polygon, geometry.Box]] = None
     raster: Optional[geometry.Raster] = None
-    embedding: Optional[Embedding] = None
+    embedding: Optional[geometry.Embedding] = None
     is_instance: Optional[bool] = None
     implied_task_types: Optional[List[str]] = None
 
+    def __post_init__(self):
+        if not isinstance(self.labels, list):
+            raise TypeError(
+                f"Expected 'labels' to be of type 'list', got {type(self.labels).__name__}"
+            )
+        if not all(isinstance(label, Label) for label in self.labels):
+            raise TypeError("All items in 'labels' must be of type 'Label'")
 
-@dataclass
-class Datum:
-    """
-    A class used to store information about a datum for either a 'GroundTruth' or a 'Prediction'.
+        if not isinstance(self.metadata, (dict, type(None))):
+            raise TypeError(
+                f"Expected 'metadata' to be of type 'dict' or 'None', got {type(self.metadata).__name__}"
+            )
 
-    Attributes
-    ----------
-    uid : String
-        The UID of the datum.
-    metadata : Dictionary
-        A dictionary of metadata that describes the datum.
+        if not isinstance(self.bounding_box, (geometry.Box, type(None))):
+            raise TypeError(
+                f"Expected 'bounding_box' to be of type 'geometry.Box' or 'None', got {type(self.bounding_box).__name__}"
+            )
 
-    Examples
-    --------
-    >>> Datum(uid="uid1")
-    >>> Datum(uid="uid1", metadata={})
-    >>> Datum(uid="uid1", metadata={"foo": "bar", "pi": 3.14})
-    """
+        if not isinstance(
+            self.polygon, (geometry.Polygon, geometry.Box, type(None))
+        ):
+            raise TypeError(
+                f"Expected 'polygon' to be of type 'geometry.Polygon' or 'None', got {type(self.polygon).__name__}"
+            )
 
-    uid: Optional[str] = None
-    metadata: Optional[dict] = None
+        if not isinstance(self.raster, (geometry.Raster, type(None))):
+            raise TypeError(
+                f"Expected 'raster' to be of type 'geometry.Raster' or 'None', got {type(self.raster).__name__}"
+            )
+
+        if not isinstance(self.embedding, (geometry.Embedding, type(None))):
+            raise TypeError(
+                f"Expected 'embedding' to be of type 'Embedding' or 'None', got {type(self.embedding).__name__}"
+            )
+
+        if not isinstance(self.is_instance, (bool, type(None))):
+            raise TypeError(
+                f"Expected 'is_instance' to be of type 'bool' or 'None', got {type(self.is_instance).__name__}"
+            )
+
+        if not isinstance(self.implied_task_types, (list, type(None))):
+            raise TypeError(
+                f"Expected 'implied_task_types' to be of type 'list' or 'None', got {type(self.implied_task_types).__name__}"
+            )
+        if self.implied_task_types is not None and not all(
+            isinstance(task_type, str) for task_type in self.implied_task_types
+        ):
+            raise TypeError(
+                "All items in 'implied_task_types' must be of type 'str'"
+            )
 
 
+# TODO delete this and move arguments into individual evaluation functions
 @dataclass
 class EvaluationParameters:
     """
@@ -249,6 +304,78 @@ class EvaluationParameters:
     pr_curve_max_examples: int = 1
 
 
+def __post_init__(self):
+    if not isinstance(self.label_map, (dict, type(None))):
+        raise TypeError(
+            f"Expected 'label_map' to be of type 'dict' or 'None', got {type(self.label_map).__name__}"
+        )
+    if self.label_map is not None and not all(
+        isinstance(k, Label) and isinstance(v, Label)
+        for k, v in self.label_map.items()
+    ):
+        raise TypeError(
+            "All keys and values in 'label_map' must be of type 'Label'"
+        )
+
+    if not isinstance(self.metrics_to_return, (list, type(None))):
+        raise TypeError(
+            f"Expected 'metrics_to_return' to be of type 'list' or 'None', got {type(self.metrics_to_return).__name__}"
+        )
+    if self.metrics_to_return is not None and not all(
+        isinstance(metric, enums.MetricType)
+        for metric in self.metrics_to_return
+    ):
+        raise TypeError(
+            "All items in 'metrics_to_return' must be of type 'enums.MetricType'"
+        )
+
+    if not isinstance(
+        self.convert_annotations_to_type, (enums.AnnotationType, type(None))
+    ):
+        raise TypeError(
+            f"Expected 'convert_annotations_to_type' to be of type 'enums.AnnotationType' or 'None', got {type(self.convert_annotations_to_type).__name__}"
+        )
+
+    if not isinstance(self.iou_thresholds_to_compute, (list, type(None))):
+        raise TypeError(
+            f"Expected 'iou_thresholds_to_compute' to be of type 'list' or 'None', got {type(self.iou_thresholds_to_compute).__name__}"
+        )
+    if self.iou_thresholds_to_compute is not None and not all(
+        isinstance(threshold, float)
+        for threshold in self.iou_thresholds_to_compute
+    ):
+        raise TypeError(
+            "All items in 'iou_thresholds_to_compute' must be of type 'float'"
+        )
+
+    if not isinstance(self.iou_thresholds_to_return, (list, type(None))):
+        raise TypeError(
+            f"Expected 'iou_thresholds_to_return' to be of type 'list' or 'None', got {type(self.iou_thresholds_to_return).__name__}"
+        )
+    if self.iou_thresholds_to_return is not None and not all(
+        isinstance(threshold, float)
+        for threshold in self.iou_thresholds_to_return
+    ):
+        raise TypeError(
+            "All items in 'iou_thresholds_to_return' must be of type 'float'"
+        )
+
+    if not isinstance(self.recall_score_threshold, float):
+        raise TypeError(
+            f"Expected 'recall_score_threshold' to be of type 'float', got {type(self.recall_score_threshold).__name__}"
+        )
+
+    if not isinstance(self.pr_curve_iou_threshold, float):
+        raise TypeError(
+            f"Expected 'pr_curve_iou_threshold' to be of type 'float', got {type(self.pr_curve_iou_threshold).__name__}"
+        )
+
+    if not isinstance(self.pr_curve_max_examples, int):
+        raise TypeError(
+            f"Expected 'pr_curve_max_examples' to be of type 'int', got {type(self.pr_curve_max_examples).__name__}"
+        )
+
+
 @dataclass
 class Evaluation:
     # TODO docstring
@@ -262,6 +389,35 @@ class Evaluation:
     def __str__(self) -> str:
         """Dumps the object into a JSON formatted string."""
         return json.dumps(self.__dict__, indent=4)
+
+    def __post_init__(self):
+        if not isinstance(self.parameters, EvaluationParameters):
+            raise TypeError(
+                f"Expected 'parameters' to be of type 'EvaluationParameters', got {type(self.parameters).__name__}"
+            )
+
+        if not isinstance(self.metrics, list):
+            raise TypeError(
+                f"Expected 'metrics' to be of type 'list', got {type(self.metrics).__name__}"
+            )
+        if not all(isinstance(metric, dict) for metric in self.metrics):
+            raise TypeError("All items in 'metrics' must be of type 'dict'")
+
+        if not isinstance(self.confusion_matrices, (list, type(None))):
+            raise TypeError(
+                f"Expected 'confusion_matrices' to be of type 'list' or 'None', got {type(self.confusion_matrices).__name__}"
+            )
+        if self.confusion_matrices is not None and not all(
+            isinstance(cm, dict) for cm in self.confusion_matrices
+        ):
+            raise TypeError(
+                "All items in 'confusion_matrices' must be of type 'dict'"
+            )
+
+        if not isinstance(self.meta, (dict, type(None))):
+            raise TypeError(
+                f"Expected 'meta' to be of type 'dict' or 'None', got {type(self.meta).__name__}"
+            )
 
     def to_dict(self) -> dict:
         """
@@ -322,6 +478,23 @@ class GroundTruth:
         annotations : List[Annotation]
             The list of ground truth annotations.
         """
+        print(self.datum, Datum)
+        if not isinstance(self.datum, Datum):
+            raise TypeError(
+                f"Expected 'datum' to be of type 'Datum', got {type(self.datum).__name__}"
+            )
+
+        if not isinstance(self.annotations, list):
+            raise TypeError(
+                f"Expected 'annotations' to be of type 'list', got {type(self.annotations).__name__}"
+            )
+        if not all(
+            isinstance(annotation, Annotation)
+            for annotation in self.annotations
+        ):
+            raise TypeError(
+                "All items in 'annotations' must be of type 'Annotation'"
+            )
 
         for annotation in self.annotations:
             if annotation.labels:
@@ -361,6 +534,24 @@ class Prediction:
 
     datum: Datum
     annotations: list[Annotation]
+
+    def __post_init__(self):
+        if not isinstance(self.datum, Datum):
+            raise TypeError(
+                f"Expected 'datum' to be of type 'Datum', got {type(self.datum).__name__}"
+            )
+
+        if not isinstance(self.annotations, list):
+            raise TypeError(
+                f"Expected 'annotations' to be of type 'list', got {type(self.annotations).__name__}"
+            )
+        if not all(
+            isinstance(annotation, Annotation)
+            for annotation in self.annotations
+        ):
+            raise TypeError(
+                "All items in 'annotations' must be of type 'Annotation'"
+            )
 
 
 LabelMapType = Dict[Label, Label]
