@@ -121,6 +121,79 @@ JSON:
 """
 
 
+def _generate_answer_correctness_verdicts_instruction(
+    query: str,
+    prediction_statements: list[str],
+    groundtruth_statements: list[str],
+) -> str:
+    """
+    Instruction template was adapted from RAGAS's codebase https://github.com/explodinggradients/ragas/blob/main/src/ragas/metrics/_answer_correctness.py.
+
+    The RAGAS instruction and example were modified to fit the format of the other Valor LLM-guided metric instructions.
+
+    Parameters
+    ----------
+    query: str
+        The query that both the prediction and ground truth should be answering.
+    prediction_statements: list[str]
+        The prediction statements to evaluate the validity of.
+    groundtruth_statements: list[str]
+        The ground truth statements to evaluate the validity of.
+
+    Returns
+    -------
+    str
+        The instruction for the llm.
+    """
+    return f"""Based on the query, the prediction statements and the ground truth statements, analyze each statement and classify them in one of the following categories:
+- TP (true positive): statements present in the prediction that are also directly supported by one or more statements in the ground truth,
+- FP (false positive): statements present in the prediction but not directly supported by any statement in ground truth,
+- FN (false negative): statements found in the ground truth but not present in the prediction.
+
+IMPORTANT: Return in JSON format with three keys: 'TP', 'FP', and 'FN', each mapping to a list of statements.
+Each statement can only belong to one of the categories.
+All prediction statements should either be in 'TP' or 'FP'.
+All ground truth statements should either be in 'FN' or not present in the JSON. A ground truth statement should only be in 'FN' if it does not support any of the prediction statements in 'TP'.
+
+===== EXAMPLE ======
+Example Query: What is the boiling point of water?
+
+Example Prediction Statements: [
+    "The boiling point of water is 100 degrees Celsius at sea level",
+    "The melting point of water is 0 degrees Celsius!"
+]
+
+Example Ground Truth Statements: [
+    "The boiling point of water is 100 degrees Celsius (212 degrees Fahrenheit) at sea level.",
+    "The boiling point of water can change with altitude."
+]
+
+Example JSON:
+{{
+    "TP": [
+        "The boiling point of water is 100 degrees Celsius at sea level"
+    ],
+    "FP": [
+        "The melting point of water is 0 degrees Celsius!"
+    ],
+    "FN": [
+        "The boiling point of water can change with altitude."
+    ]
+}}
+===== END OF EXAMPLE ======
+Query:
+{query}
+
+Prediction Statements:
+{prediction_statements}
+
+Ground Truth Statements:
+{groundtruth_statements}
+
+JSON:
+"""
+
+
 def _generate_answer_relevance_verdicts_instruction(
     query: str, statements: list[str]
 ) -> str:

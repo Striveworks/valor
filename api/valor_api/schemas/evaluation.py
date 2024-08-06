@@ -144,6 +144,7 @@ class EvaluationParameters(BaseModel):
                 text_comparison_metrics = set(["ROUGE", "BLEU"])
                 llm_guided_metrics = set(
                     [
+                        "AnswerCorrectness",
                         "AnswerRelevance",
                         "Bias",
                         "Coherence",

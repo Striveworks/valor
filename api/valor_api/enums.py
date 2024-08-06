@@ -135,6 +135,7 @@ class MetricType(str, Enum):
     mIOU = "mIOU"
     PrecisionRecallCurve = "PrecisionRecallCurve"
     DetailedPrecisionRecallCurve = "DetailedPrecisionRecallCurve"
+    AnswerCorrectness = "AnswerCorrectness"
     AnswerRelevance = "AnswerRelevance"
     Bias = "Bias"
     BLEU = "BLEU"

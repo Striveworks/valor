@@ -161,6 +161,7 @@ def test_llm_evaluation_rag_with_mock_client(
     model.finalize_inferences(dataset)
 
     metrics_to_return = [
+        MetricType.AnswerCorrectness,
         MetricType.AnswerRelevance,
         MetricType.Bias,
         MetricType.BLEU,
@@ -209,6 +210,7 @@ def test_llm_evaluation_rag_with_mock_client(
 
     expected_metrics = {
         "uid0": {
+            "AnswerCorrectness": 0.5,
             "AnswerRelevance": 0.5,
             "Bias": 0.5,
             "BLEU": 0.3502270395690205,
@@ -225,6 +227,7 @@ def test_llm_evaluation_rag_with_mock_client(
             "Toxicity": 0.0,
         },
         "uid1": {
+            "AnswerCorrectness": 0.5,
             "AnswerRelevance": 0.5,
             "Bias": 0.5,
             "BLEU": 1.0,
@@ -241,6 +244,7 @@ def test_llm_evaluation_rag_with_mock_client(
             "Toxicity": 0.0,
         },
         "uid2": {
+            "AnswerCorrectness": 0.5,
             "AnswerRelevance": 0.5,
             "Bias": 0.5,
             "BLEU": 0.05434912989707719,
@@ -261,6 +265,7 @@ def test_llm_evaluation_rag_with_mock_client(
     # Check that the returned metrics have the right format.
     for m in metrics:
         if m["type"] in [
+            "AnswerCorrectness",
             "AnswerRelevance",
             "Bias",
             "BLEU",

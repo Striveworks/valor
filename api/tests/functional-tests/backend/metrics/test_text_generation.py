@@ -28,6 +28,13 @@ RAG_PREDICTIONS = [
 ]
 
 
+RAG_REFERENCES = [
+    """John Adams and Alexander Hamilton did not get along. John Adams had grown independent of his cabinet, often making decisions despite opposition from it.\n""",  # same as prediction with some strings deleted
+    """Yes, Lincoln won the election of 1860. He received the highest number of votes and a majority in the Electoral College, making him the 16th President of the United States. However, it's important to note that he won entirely due to his support in the North and West, as he did not receive any votes in 10 of the 15 Southern slave states.""",  # same as prediction
+    """If kept warm, it would hatch a coyote.""",  # very different than prediction
+]
+
+
 RAG_CONTEXT = [
     [
         """Although aware of Hamilton\'s influence, Adams was convinced that their retention ensured a smoother succession. Adams maintained the economic programs of Hamilton, who regularly consulted with key cabinet members, especially the powerful Treasury Secretary, Oliver Wolcott Jr. Adams was in other respects quite independent of his cabinet, often making decisions despite opposition from it. Hamilton had grown accustomed to being regularly consulted by Washington. Shortly after Adams was inaugurated, Hamilton sent him a detailed letter with policy suggestions. Adams dismissively ignored it.\n\nFailed peace commission and XYZ affair\nHistorian Joseph Ellis writes that "[t]he Adams presidency was destined to be dominated by a single question of American policy to an extent seldom if ever encountered by any succeeding occupant of the office." That question was whether to make war with France or find peace. Britain and France were at war as a result of the French Revolution. Hamilton and the Federalists strongly favored the British monarchy against what they denounced as the political radicalism and anti-religious frenzy of the French Revolution. Jefferson and the Republicans, with their firm opposition to monarchy, strongly supported the French overthrowing their king. The French had supported Jefferson for president in 1796 and became belligerent at his loss.""",
@@ -101,15 +108,6 @@ def rag_q2() -> schemas.Datum:
 
 
 @pytest.fixture
-def rag_references():
-    return [
-        """John Adams and Alexander Hamilton did not get along. John Adams had grown independent of his cabinet, often making decisions despite opposition from it.\n""",  # same as prediction with some strings deleted
-        """Yes, Lincoln won the election of 1860. He received the highest number of votes and a majority in the Electoral College, making him the 16th President of the United States. However, it's important to note that he won entirely due to his support in the North and West, as he did not receive any votes in 10 of the 15 Southern slave states.""",  # same as prediction
-        """If kept warm, it would hatch a coyote.""",  # very different than prediction
-    ]
-
-
-@pytest.fixture
 def rag_data(
     db: Session,
     rag_dataset_name: str,
@@ -117,7 +115,6 @@ def rag_data(
     rag_q0: schemas.Datum,
     rag_q1: schemas.Datum,
     rag_q2: schemas.Datum,
-    rag_references: list[str],
 ):
     datums = [rag_q0, rag_q1, rag_q2]
 
@@ -128,7 +125,7 @@ def rag_data(
                 dataset_name=rag_dataset_name,
                 datum=datums[i],
                 annotations=[
-                    schemas.Annotation(text=rag_references[i]),
+                    schemas.Annotation(text=RAG_REFERENCES[i]),
                     schemas.Annotation(text="some other text"),
                     schemas.Annotation(text="some final text"),
                 ],
@@ -342,7 +339,6 @@ def two_text_generation_datasets(
     rag_q0: schemas.Datum,
     rag_q1: schemas.Datum,
     rag_q2: schemas.Datum,
-    rag_references: list[str],
     content_gen_dataset_name: str,
     content_gen_model_name: str,
     content_gen_q0: schemas.Datum,
@@ -359,7 +355,7 @@ def two_text_generation_datasets(
                 dataset_name=rag_dataset_name,
                 datum=datums[i],
                 annotations=[
-                    schemas.Annotation(text=rag_references[i]),
+                    schemas.Annotation(text=RAG_REFERENCES[i]),
                     schemas.Annotation(text="some other text"),
                     schemas.Annotation(text="some final text"),
                 ],
@@ -494,6 +490,22 @@ def mocked_connection(self):
     pass
 
 
+def mocked_answer_correctness(
+    self,
+    query: str,
+    prediction: str,
+    groundtruth: str,
+):
+    ret_dict = {
+        (RAG_PREDICTIONS[0], RAG_REFERENCES[0]): 0.8,
+        (RAG_PREDICTIONS[1], RAG_REFERENCES[1]): 1.0,
+        (RAG_PREDICTIONS[2], RAG_REFERENCES[2]): 0.0,
+    }
+    if (prediction, groundtruth) in ret_dict:
+        return ret_dict[(prediction, groundtruth)]
+    return 0.0
+
+
 def mocked_answer_relevance(
     self,
     query: str,
@@ -603,6 +615,10 @@ def mocked_compute_rouge_none(*args, **kwargs):
     mocked_connection,
 )
 @patch(
+    "valor_api.backend.core.llm_clients.WrappedOpenAIClient.answer_correctness",
+    mocked_answer_correctness,
+)
+@patch(
     "valor_api.backend.core.llm_clients.WrappedOpenAIClient.answer_relevance",
     mocked_answer_relevance,
 )
@@ -679,6 +695,7 @@ def test__compute_text_generation_rag(
     prediction_filter = datum_filter.model_copy()
 
     metrics_to_return = [
+        MetricType.AnswerCorrectness,
         MetricType.AnswerRelevance,
         MetricType.Bias,
         MetricType.BLEU,
@@ -707,6 +724,7 @@ def test__compute_text_generation_rag(
 
     expected_values = {
         "uid0": {
+            schemas.AnswerCorrectnessMetric: 0.8,
             schemas.AnswerRelevanceMetric: 0.6666666666666666,
             schemas.BiasMetric: 0.0,
             schemas.BLEUMetric: 0.3502270395690205,
@@ -723,6 +741,7 @@ def test__compute_text_generation_rag(
             schemas.ToxicityMetric: 0.0,
         },
         "uid1": {
+            schemas.AnswerCorrectnessMetric: 1.0,
             schemas.AnswerRelevanceMetric: 0.2,
             schemas.BiasMetric: 0.0,
             schemas.BLEUMetric: 1.0,
@@ -739,6 +758,7 @@ def test__compute_text_generation_rag(
             schemas.ToxicityMetric: 0.0,
         },
         "uid2": {
+            schemas.AnswerCorrectnessMetric: 0.0,
             schemas.AnswerRelevanceMetric: 0.2,
             schemas.BiasMetric: 0.0,
             schemas.BLEUMetric: 0.05434912989707719,
@@ -963,6 +983,10 @@ def test__compute_text_generation_rag(
     mocked_connection,
 )
 @patch(
+    "valor_api.backend.core.llm_clients.WrappedOpenAIClient.answer_correctness",
+    mocked_answer_correctness,
+)
+@patch(
     "valor_api.backend.core.llm_clients.WrappedOpenAIClient.answer_relevance",
     mocked_answer_relevance,
 )
@@ -997,6 +1021,7 @@ def test_text_generation_rag(
     rag_data,
 ):
     metrics_to_return = [
+        MetricType.AnswerCorrectness,
         MetricType.AnswerRelevance,
         MetricType.Bias,
         MetricType.BLEU,
@@ -1056,6 +1081,7 @@ def test_text_generation_rag(
 
     expected_values = {
         "uid0": {
+            "AnswerCorrectness": 0.8,
             "AnswerRelevance": 0.6666666666666666,
             "Bias": 0.0,
             "BLEU": 0.3502270395690205,
@@ -1072,6 +1098,7 @@ def test_text_generation_rag(
             "Toxicity": 0.0,
         },
         "uid1": {
+            "AnswerCorrectness": 1.0,
             "AnswerRelevance": 0.2,
             "Bias": 0.0,
             "BLEU": 1.0,
@@ -1088,6 +1115,7 @@ def test_text_generation_rag(
             "Toxicity": 0.0,
         },
         "uid2": {
+            "AnswerCorrectness": 0.0,
             "AnswerRelevance": 0.2,
             "Bias": 0.0,
             "BLEU": 0.05434912989707719,
@@ -1136,6 +1164,10 @@ def test_text_generation_rag(
 @patch(
     "valor_api.backend.core.llm_clients.WrappedOpenAIClient.connect",
     mocked_connection,
+)
+@patch(
+    "valor_api.backend.core.llm_clients.WrappedOpenAIClient.answer_correctness",
+    mocked_answer_correctness,
 )
 @patch(
     "valor_api.backend.core.llm_clients.WrappedOpenAIClient.answer_relevance",
@@ -1236,6 +1268,10 @@ def test_text_generation_content_gen(
     mocked_connection,
 )
 @patch(
+    "valor_api.backend.core.llm_clients.WrappedOpenAIClient.answer_correctness",
+    mocked_answer_correctness,
+)
+@patch(
     "valor_api.backend.core.llm_clients.WrappedOpenAIClient.answer_relevance",
     mocked_answer_relevance,
 )
@@ -1273,6 +1309,7 @@ def test_text_generation_two_datasets(
 ):
     # test with a RAG dataset
     metrics_to_return = [
+        MetricType.AnswerCorrectness,
         MetricType.AnswerRelevance,
         MetricType.Bias,
         MetricType.BLEU,
@@ -1332,6 +1369,7 @@ def test_text_generation_two_datasets(
 
     expected_values = {
         "uid0": {
+            "AnswerCorrectness": 0.8,
             "AnswerRelevance": 0.6666666666666666,
             "Bias": 0.0,
             "BLEU": 0.3502270395690205,
@@ -1348,6 +1386,7 @@ def test_text_generation_two_datasets(
             "Toxicity": 0.0,
         },
         "uid1": {
+            "AnswerCorrectness": 1.0,
             "AnswerRelevance": 0.2,
             "Bias": 0.0,
             "BLEU": 1.0,
@@ -1364,6 +1403,7 @@ def test_text_generation_two_datasets(
             "Toxicity": 0.0,
         },
         "uid2": {
+            "AnswerCorrectness": 0.0,
             "AnswerRelevance": 0.2,
             "Bias": 0.0,
             "BLEU": 0.05434912989707719,
