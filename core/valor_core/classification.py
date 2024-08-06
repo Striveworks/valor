@@ -687,7 +687,7 @@ def _add_samples_to_dataframe(
                     "confidence_threshold",
                 ],
                 as_index=False,
-            )[["dataset_name", "datum_uid"]]
+            )[["datum_uid"]]
             .agg(lambda x: tuple(x.head(max_examples)))
             .rename(columns={"grouper_value_gt": "grouper_value"}),
             pr_calc_df[pr_calc_df[flag_column]]
@@ -698,7 +698,7 @@ def _add_samples_to_dataframe(
                     "confidence_threshold",
                 ],
                 as_index=False,
-            )[["dataset_name", "datum_uid"]]
+            )[["datum_uid"]]
             .agg(lambda x: tuple(x.head(max_examples)))
             .rename(columns={"grouper_value_pd": "grouper_value"}),
         ],
@@ -707,7 +707,7 @@ def _add_samples_to_dataframe(
 
     if not sample_df.empty:
         sample_df[f"{flag_column}_samples"] = sample_df.apply(
-            lambda row: set(zip(*row[["dataset_name", "datum_uid"]])),  # type: ignore - pandas typing error
+            lambda row: set(zip(*row[["datum_uid"]])),  # type: ignore - pandas typing error
             axis=1,
         )
 
@@ -751,7 +751,7 @@ def _calculate_pr_curves(
         pd.merge(
             groundtruth_df,
             prediction_df,
-            on=["dataset_name", "datum_id", "datum_uid", "grouper_key"],
+            on=["datum_id", "datum_uid", "grouper_key"],
             how="outer",
             suffixes=("_gt", "_pd"),
         )

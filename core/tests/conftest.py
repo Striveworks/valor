@@ -598,7 +598,6 @@ def evaluate_tabular_clf_groundtruths():
                 "annotation_id": 11373,
                 "label_id": 8031,
                 "created_at": 1722267392923,
-                "dataset_name": "test_dataset",
                 "label_key": "class",
                 "label_value": "1",
                 "datum_id": 822,
@@ -609,7 +608,6 @@ def evaluate_tabular_clf_groundtruths():
                 "annotation_id": 11374,
                 "label_id": 8031,
                 "created_at": 1722267392967,
-                "dataset_name": "test_dataset",
                 "label_key": "class",
                 "label_value": "1",
                 "datum_id": 823,
@@ -620,7 +618,6 @@ def evaluate_tabular_clf_groundtruths():
                 "annotation_id": 11375,
                 "label_id": 8033,
                 "created_at": 1722267393007,
-                "dataset_name": "test_dataset",
                 "label_key": "class",
                 "label_value": "2",
                 "datum_id": 824,
@@ -631,7 +628,6 @@ def evaluate_tabular_clf_groundtruths():
                 "annotation_id": 11376,
                 "label_id": 8034,
                 "created_at": 1722267393047,
-                "dataset_name": "test_dataset",
                 "label_key": "class",
                 "label_value": "0",
                 "datum_id": 825,
@@ -642,7 +638,6 @@ def evaluate_tabular_clf_groundtruths():
                 "annotation_id": 11377,
                 "label_id": 8034,
                 "created_at": 1722267393088,
-                "dataset_name": "test_dataset",
                 "label_key": "class",
                 "label_value": "0",
                 "datum_id": 826,
@@ -653,7 +648,6 @@ def evaluate_tabular_clf_groundtruths():
                 "annotation_id": 11378,
                 "label_id": 8034,
                 "created_at": 1722267393125,
-                "dataset_name": "test_dataset",
                 "label_key": "class",
                 "label_value": "0",
                 "datum_id": 827,
@@ -664,7 +658,6 @@ def evaluate_tabular_clf_groundtruths():
                 "annotation_id": 11379,
                 "label_id": 8031,
                 "created_at": 1722267393166,
-                "dataset_name": "test_dataset",
                 "label_key": "class",
                 "label_value": "1",
                 "datum_id": 828,
@@ -675,7 +668,6 @@ def evaluate_tabular_clf_groundtruths():
                 "annotation_id": 11380,
                 "label_id": 8031,
                 "created_at": 1722267393215,
-                "dataset_name": "test_dataset",
                 "label_key": "class",
                 "label_value": "1",
                 "datum_id": 829,
@@ -686,7 +678,6 @@ def evaluate_tabular_clf_groundtruths():
                 "annotation_id": 11381,
                 "label_id": 8031,
                 "created_at": 1722267393263,
-                "dataset_name": "test_dataset",
                 "label_key": "class",
                 "label_value": "1",
                 "datum_id": 830,
@@ -697,7 +688,6 @@ def evaluate_tabular_clf_groundtruths():
                 "annotation_id": 11382,
                 "label_id": 8031,
                 "created_at": 1722267393306,
-                "dataset_name": "test_dataset",
                 "label_key": "class",
                 "label_value": "1",
                 "datum_id": 831,
@@ -717,7 +707,6 @@ def evaluate_tabular_clf_predictions():
                 "label_id": 8033,
                 "score": 0.09,
                 "created_at": pd.Timestamp("2024-07-29 15:36:33.502504"),
-                "dataset_name": "test_dataset",
                 "label_key": "class",
                 "label_value": "2",
                 "datum_id": 824,
@@ -729,7 +718,6 @@ def evaluate_tabular_clf_predictions():
                 "label_id": 8031,
                 "score": 0.88,
                 "created_at": pd.Timestamp("2024-07-29 15:36:33.502504"),
-                "dataset_name": "test_dataset",
                 "label_key": "class",
                 "label_value": "1",
                 "datum_id": 824,
@@ -741,7 +729,6 @@ def evaluate_tabular_clf_predictions():
                 "label_id": 8034,
                 "score": 0.03,
                 "created_at": pd.Timestamp("2024-07-29 15:36:33.502504"),
-                "dataset_name": "test_dataset",
                 "label_key": "class",
                 "label_value": "0",
                 "datum_id": 824,
@@ -753,7 +740,6 @@ def evaluate_tabular_clf_predictions():
                 "label_id": 8033,
                 "score": 0.0,
                 "created_at": pd.Timestamp("2024-07-29 15:36:33.546293"),
-                "dataset_name": "test_dataset",
                 "label_key": "class",
                 "label_value": "2",
                 "datum_id": 825,
@@ -765,7 +751,6 @@ def evaluate_tabular_clf_predictions():
                 "label_id": 8031,
                 "score": 0.03,
                 "created_at": pd.Timestamp("2024-07-29 15:36:33.546293"),
-                "dataset_name": "test_dataset",
                 "label_key": "class",
                 "label_value": "1",
                 "datum_id": 825,
@@ -777,7 +762,6 @@ def evaluate_tabular_clf_predictions():
                 "label_id": 8034,
                 "score": 0.97,
                 "created_at": pd.Timestamp("2024-07-29 15:36:33.546293"),
-                "dataset_name": "test_dataset",
                 "label_key": "class",
                 "label_value": "0",
                 "datum_id": 825,
@@ -789,7 +773,6 @@ def evaluate_tabular_clf_predictions():
                 "label_id": 8033,
                 "score": 0.0,
                 "created_at": pd.Timestamp("2024-07-29 15:36:33.586264"),
-                "dataset_name": "test_dataset",
                 "label_key": "class",
                 "label_value": "2",
                 "datum_id": 826,
@@ -801,7 +784,6 @@ def evaluate_tabular_clf_predictions():
                 "label_id": 8031,
                 "score": 0.0,
                 "created_at": pd.Timestamp("2024-07-29 15:36:33.586264"),
-                "dataset_name": "test_dataset",
                 "label_key": "class",
                 "label_value": "1",
                 "datum_id": 826,
@@ -813,7 +795,6 @@ def evaluate_tabular_clf_predictions():
                 "label_id": 8034,
                 "score": 1.0,
                 "created_at": pd.Timestamp("2024-07-29 15:36:33.586264"),
-                "dataset_name": "test_dataset",
                 "label_key": "class",
                 "label_value": "0",
                 "datum_id": 826,
@@ -825,7 +806,6 @@ def evaluate_tabular_clf_predictions():
                 "label_id": 8033,
                 "score": 0.0,
                 "created_at": pd.Timestamp("2024-07-29 15:36:33.631094"),
-                "dataset_name": "test_dataset",
                 "label_key": "class",
                 "label_value": "2",
                 "datum_id": 827,
@@ -837,7 +817,6 @@ def evaluate_tabular_clf_predictions():
                 "label_id": 8031,
                 "score": 0.0,
                 "created_at": pd.Timestamp("2024-07-29 15:36:33.631094"),
-                "dataset_name": "test_dataset",
                 "label_key": "class",
                 "label_value": "1",
                 "datum_id": 827,
@@ -849,7 +828,6 @@ def evaluate_tabular_clf_predictions():
                 "label_id": 8034,
                 "score": 1.0,
                 "created_at": pd.Timestamp("2024-07-29 15:36:33.631094"),
-                "dataset_name": "test_dataset",
                 "label_key": "class",
                 "label_value": "0",
                 "datum_id": 827,
@@ -861,7 +839,6 @@ def evaluate_tabular_clf_predictions():
                 "label_id": 8033,
                 "score": 0.03,
                 "created_at": pd.Timestamp("2024-07-29 15:36:33.673800"),
-                "dataset_name": "test_dataset",
                 "label_key": "class",
                 "label_value": "2",
                 "datum_id": 828,
@@ -873,7 +850,6 @@ def evaluate_tabular_clf_predictions():
                 "label_id": 8031,
                 "score": 0.96,
                 "created_at": pd.Timestamp("2024-07-29 15:36:33.673800"),
-                "dataset_name": "test_dataset",
                 "label_key": "class",
                 "label_value": "1",
                 "datum_id": 828,
@@ -885,7 +861,6 @@ def evaluate_tabular_clf_predictions():
                 "label_id": 8034,
                 "score": 0.01,
                 "created_at": pd.Timestamp("2024-07-29 15:36:33.673800"),
-                "dataset_name": "test_dataset",
                 "label_key": "class",
                 "label_value": "0",
                 "datum_id": 828,
@@ -897,7 +872,6 @@ def evaluate_tabular_clf_predictions():
                 "label_id": 8033,
                 "score": 0.7,
                 "created_at": pd.Timestamp("2024-07-29 15:36:33.709818"),
-                "dataset_name": "test_dataset",
                 "label_key": "class",
                 "label_value": "2",
                 "datum_id": 829,
@@ -909,7 +883,6 @@ def evaluate_tabular_clf_predictions():
                 "label_id": 8031,
                 "score": 0.02,
                 "created_at": pd.Timestamp("2024-07-29 15:36:33.709818"),
-                "dataset_name": "test_dataset",
                 "label_key": "class",
                 "label_value": "1",
                 "datum_id": 829,
@@ -921,7 +894,6 @@ def evaluate_tabular_clf_predictions():
                 "label_id": 8034,
                 "score": 0.28,
                 "created_at": pd.Timestamp("2024-07-29 15:36:33.709818"),
-                "dataset_name": "test_dataset",
                 "label_key": "class",
                 "label_value": "0",
                 "datum_id": 829,
@@ -933,7 +905,6 @@ def evaluate_tabular_clf_predictions():
                 "label_id": 8033,
                 "score": 0.01,
                 "created_at": pd.Timestamp("2024-07-29 15:36:33.745536"),
-                "dataset_name": "test_dataset",
                 "label_key": "class",
                 "label_value": "2",
                 "datum_id": 830,
@@ -945,7 +916,6 @@ def evaluate_tabular_clf_predictions():
                 "label_id": 8031,
                 "score": 0.21,
                 "created_at": pd.Timestamp("2024-07-29 15:36:33.745536"),
-                "dataset_name": "test_dataset",
                 "label_key": "class",
                 "label_value": "1",
                 "datum_id": 830,
@@ -957,7 +927,6 @@ def evaluate_tabular_clf_predictions():
                 "label_id": 8034,
                 "score": 0.78,
                 "created_at": pd.Timestamp("2024-07-29 15:36:33.745536"),
-                "dataset_name": "test_dataset",
                 "label_key": "class",
                 "label_value": "0",
                 "datum_id": 830,
@@ -969,7 +938,6 @@ def evaluate_tabular_clf_predictions():
                 "label_id": 8033,
                 "score": 0.44,
                 "created_at": pd.Timestamp("2024-07-29 15:36:33.797759"),
-                "dataset_name": "test_dataset",
                 "label_key": "class",
                 "label_value": "2",
                 "datum_id": 831,
@@ -981,7 +949,6 @@ def evaluate_tabular_clf_predictions():
                 "label_id": 8031,
                 "score": 0.11,
                 "created_at": pd.Timestamp("2024-07-29 15:36:33.797759"),
-                "dataset_name": "test_dataset",
                 "label_key": "class",
                 "label_value": "1",
                 "datum_id": 831,
@@ -993,7 +960,6 @@ def evaluate_tabular_clf_predictions():
                 "label_id": 8034,
                 "score": 0.45,
                 "created_at": pd.Timestamp("2024-07-29 15:36:33.797759"),
-                "dataset_name": "test_dataset",
                 "label_key": "class",
                 "label_value": "0",
                 "datum_id": 831,
@@ -1005,7 +971,6 @@ def evaluate_tabular_clf_predictions():
                 "label_id": 8033,
                 "score": 0.28,
                 "created_at": pd.Timestamp("2024-07-29 15:36:33.411278"),
-                "dataset_name": "test_dataset",
                 "label_key": "class",
                 "label_value": "2",
                 "datum_id": 822,
@@ -1017,7 +982,6 @@ def evaluate_tabular_clf_predictions():
                 "label_id": 8031,
                 "score": 0.35,
                 "created_at": pd.Timestamp("2024-07-29 15:36:33.411278"),
-                "dataset_name": "test_dataset",
                 "label_key": "class",
                 "label_value": "1",
                 "datum_id": 822,
@@ -1029,7 +993,6 @@ def evaluate_tabular_clf_predictions():
                 "label_id": 8034,
                 "score": 0.37,
                 "created_at": pd.Timestamp("2024-07-29 15:36:33.411278"),
-                "dataset_name": "test_dataset",
                 "label_key": "class",
                 "label_value": "0",
                 "datum_id": 822,
@@ -1041,7 +1004,6 @@ def evaluate_tabular_clf_predictions():
                 "label_id": 8033,
                 "score": 0.15,
                 "created_at": pd.Timestamp("2024-07-29 15:36:33.465625"),
-                "dataset_name": "test_dataset",
                 "label_key": "class",
                 "label_value": "2",
                 "datum_id": 823,
@@ -1053,7 +1015,6 @@ def evaluate_tabular_clf_predictions():
                 "label_id": 8031,
                 "score": 0.61,
                 "created_at": pd.Timestamp("2024-07-29 15:36:33.465625"),
-                "dataset_name": "test_dataset",
                 "label_key": "class",
                 "label_value": "1",
                 "datum_id": 823,
@@ -1065,7 +1026,6 @@ def evaluate_tabular_clf_predictions():
                 "label_id": 8034,
                 "score": 0.24,
                 "created_at": pd.Timestamp("2024-07-29 15:36:33.465625"),
-                "dataset_name": "test_dataset",
                 "label_key": "class",
                 "label_value": "0",
                 "datum_id": 823,
@@ -1575,7 +1535,6 @@ def classification_functional_test_groundtruth_df():
     return pd.DataFrame(
         [
             {
-                "dataset_name": "delete later",
                 "datum_uid": "uid0",
                 "datum_id": -5384017641951508119,
                 "datum_metadata": {
@@ -1601,7 +1560,6 @@ def classification_functional_test_groundtruth_df():
                 "grouper_value": "avian",
             },
             {
-                "dataset_name": "delete later",
                 "datum_uid": "uid0",
                 "datum_id": -5384017641951508119,
                 "datum_metadata": {
@@ -1627,7 +1585,6 @@ def classification_functional_test_groundtruth_df():
                 "grouper_value": "white",
             },
             {
-                "dataset_name": "delete later",
                 "datum_uid": "uid1",
                 "datum_id": -8510955155591861879,
                 "datum_metadata": {
@@ -1653,7 +1610,6 @@ def classification_functional_test_groundtruth_df():
                 "grouper_value": "mammal",
             },
             {
-                "dataset_name": "delete later",
                 "datum_uid": "uid1",
                 "datum_id": -8510955155591861879,
                 "datum_metadata": {
@@ -1679,7 +1635,6 @@ def classification_functional_test_groundtruth_df():
                 "grouper_value": "white",
             },
             {
-                "dataset_name": "delete later",
                 "datum_uid": "uid2",
                 "datum_id": -8411940843701065439,
                 "datum_metadata": {
@@ -1705,7 +1660,6 @@ def classification_functional_test_groundtruth_df():
                 "grouper_value": "avian",
             },
             {
-                "dataset_name": "delete later",
                 "datum_uid": "uid2",
                 "datum_id": -8411940843701065439,
                 "datum_metadata": {
@@ -1731,7 +1685,6 @@ def classification_functional_test_groundtruth_df():
                 "grouper_value": "red",
             },
             {
-                "dataset_name": "delete later",
                 "datum_uid": "uid3",
                 "datum_id": -2265528102457502931,
                 "datum_metadata": {
@@ -1757,7 +1710,6 @@ def classification_functional_test_groundtruth_df():
                 "grouper_value": "avian",
             },
             {
-                "dataset_name": "delete later",
                 "datum_uid": "uid3",
                 "datum_id": -2265528102457502931,
                 "datum_metadata": {
@@ -1783,7 +1735,6 @@ def classification_functional_test_groundtruth_df():
                 "grouper_value": "blue",
             },
             {
-                "dataset_name": "delete later",
                 "datum_uid": "uid4",
                 "datum_id": -4389124420839664731,
                 "datum_metadata": {
@@ -1809,7 +1760,6 @@ def classification_functional_test_groundtruth_df():
                 "grouper_value": "mammal",
             },
             {
-                "dataset_name": "delete later",
                 "datum_uid": "uid4",
                 "datum_id": -4389124420839664731,
                 "datum_metadata": {
@@ -1835,7 +1785,6 @@ def classification_functional_test_groundtruth_df():
                 "grouper_value": "black",
             },
             {
-                "dataset_name": "delete later",
                 "datum_uid": "uid5",
                 "datum_id": 5314927723853009775,
                 "datum_metadata": {
@@ -1861,7 +1810,6 @@ def classification_functional_test_groundtruth_df():
                 "grouper_value": "mammal",
             },
             {
-                "dataset_name": "delete later",
                 "datum_uid": "uid5",
                 "datum_id": 5314927723853009775,
                 "datum_metadata": {
@@ -1896,7 +1844,6 @@ def classification_functional_test_prediction_df():
     return pd.DataFrame(
         [
             {
-                "dataset_name": "delete later",
                 "datum_uid": "uid0",
                 "datum_id": -5384017641951508119,
                 "datum_metadata": {
@@ -1923,7 +1870,6 @@ def classification_functional_test_prediction_df():
                 "grouper_value": "avian",
             },
             {
-                "dataset_name": "delete later",
                 "datum_uid": "uid0",
                 "datum_id": -5384017641951508119,
                 "datum_metadata": {
@@ -1950,7 +1896,6 @@ def classification_functional_test_prediction_df():
                 "grouper_value": "mammal",
             },
             {
-                "dataset_name": "delete later",
                 "datum_uid": "uid0",
                 "datum_id": -5384017641951508119,
                 "datum_metadata": {
@@ -1977,7 +1922,6 @@ def classification_functional_test_prediction_df():
                 "grouper_value": "mammal",
             },
             {
-                "dataset_name": "delete later",
                 "datum_uid": "uid0",
                 "datum_id": -5384017641951508119,
                 "datum_metadata": {
@@ -2004,7 +1948,6 @@ def classification_functional_test_prediction_df():
                 "grouper_value": "white",
             },
             {
-                "dataset_name": "delete later",
                 "datum_uid": "uid0",
                 "datum_id": -5384017641951508119,
                 "datum_metadata": {
@@ -2031,7 +1974,6 @@ def classification_functional_test_prediction_df():
                 "grouper_value": "red",
             },
             {
-                "dataset_name": "delete later",
                 "datum_uid": "uid0",
                 "datum_id": -5384017641951508119,
                 "datum_metadata": {
@@ -2058,7 +2000,6 @@ def classification_functional_test_prediction_df():
                 "grouper_value": "blue",
             },
             {
-                "dataset_name": "delete later",
                 "datum_uid": "uid0",
                 "datum_id": -5384017641951508119,
                 "datum_metadata": {
@@ -2085,7 +2026,6 @@ def classification_functional_test_prediction_df():
                 "grouper_value": "black",
             },
             {
-                "dataset_name": "delete later",
                 "datum_uid": "uid1",
                 "datum_id": -8510955155591861879,
                 "datum_metadata": {
@@ -2112,7 +2052,6 @@ def classification_functional_test_prediction_df():
                 "grouper_value": "mammal",
             },
             {
-                "dataset_name": "delete later",
                 "datum_uid": "uid1",
                 "datum_id": -8510955155591861879,
                 "datum_metadata": {
@@ -2139,7 +2078,6 @@ def classification_functional_test_prediction_df():
                 "grouper_value": "mammal",
             },
             {
-                "dataset_name": "delete later",
                 "datum_uid": "uid1",
                 "datum_id": -8510955155591861879,
                 "datum_metadata": {
@@ -2166,7 +2104,6 @@ def classification_functional_test_prediction_df():
                 "grouper_value": "avian",
             },
             {
-                "dataset_name": "delete later",
                 "datum_uid": "uid1",
                 "datum_id": -8510955155591861879,
                 "datum_metadata": {
@@ -2193,7 +2130,6 @@ def classification_functional_test_prediction_df():
                 "grouper_value": "blue",
             },
             {
-                "dataset_name": "delete later",
                 "datum_uid": "uid1",
                 "datum_id": -8510955155591861879,
                 "datum_metadata": {
@@ -2220,7 +2156,6 @@ def classification_functional_test_prediction_df():
                 "grouper_value": "white",
             },
             {
-                "dataset_name": "delete later",
                 "datum_uid": "uid1",
                 "datum_id": -8510955155591861879,
                 "datum_metadata": {
@@ -2247,7 +2182,6 @@ def classification_functional_test_prediction_df():
                 "grouper_value": "red",
             },
             {
-                "dataset_name": "delete later",
                 "datum_uid": "uid1",
                 "datum_id": -8510955155591861879,
                 "datum_metadata": {
@@ -2274,7 +2208,6 @@ def classification_functional_test_prediction_df():
                 "grouper_value": "black",
             },
             {
-                "dataset_name": "delete later",
                 "datum_uid": "uid2",
                 "datum_id": -8411940843701065439,
                 "datum_metadata": {
@@ -2301,7 +2234,6 @@ def classification_functional_test_prediction_df():
                 "grouper_value": "mammal",
             },
             {
-                "dataset_name": "delete later",
                 "datum_uid": "uid2",
                 "datum_id": -8411940843701065439,
                 "datum_metadata": {
@@ -2328,7 +2260,6 @@ def classification_functional_test_prediction_df():
                 "grouper_value": "mammal",
             },
             {
-                "dataset_name": "delete later",
                 "datum_uid": "uid2",
                 "datum_id": -8411940843701065439,
                 "datum_metadata": {
@@ -2355,7 +2286,6 @@ def classification_functional_test_prediction_df():
                 "grouper_value": "avian",
             },
             {
-                "dataset_name": "delete later",
                 "datum_uid": "uid2",
                 "datum_id": -8411940843701065439,
                 "datum_metadata": {
@@ -2382,7 +2312,6 @@ def classification_functional_test_prediction_df():
                 "grouper_value": "red",
             },
             {
-                "dataset_name": "delete later",
                 "datum_uid": "uid2",
                 "datum_id": -8411940843701065439,
                 "datum_metadata": {
@@ -2409,7 +2338,6 @@ def classification_functional_test_prediction_df():
                 "grouper_value": "white",
             },
             {
-                "dataset_name": "delete later",
                 "datum_uid": "uid2",
                 "datum_id": -8411940843701065439,
                 "datum_metadata": {
@@ -2436,7 +2364,6 @@ def classification_functional_test_prediction_df():
                 "grouper_value": "blue",
             },
             {
-                "dataset_name": "delete later",
                 "datum_uid": "uid2",
                 "datum_id": -8411940843701065439,
                 "datum_metadata": {
@@ -2463,7 +2390,6 @@ def classification_functional_test_prediction_df():
                 "grouper_value": "black",
             },
             {
-                "dataset_name": "delete later",
                 "datum_uid": "uid3",
                 "datum_id": -2265528102457502931,
                 "datum_metadata": {
@@ -2490,7 +2416,6 @@ def classification_functional_test_prediction_df():
                 "grouper_value": "mammal",
             },
             {
-                "dataset_name": "delete later",
                 "datum_uid": "uid3",
                 "datum_id": -2265528102457502931,
                 "datum_metadata": {
@@ -2517,7 +2442,6 @@ def classification_functional_test_prediction_df():
                 "grouper_value": "mammal",
             },
             {
-                "dataset_name": "delete later",
                 "datum_uid": "uid3",
                 "datum_id": -2265528102457502931,
                 "datum_metadata": {
@@ -2544,7 +2468,6 @@ def classification_functional_test_prediction_df():
                 "grouper_value": "avian",
             },
             {
-                "dataset_name": "delete later",
                 "datum_uid": "uid3",
                 "datum_id": -2265528102457502931,
                 "datum_metadata": {
@@ -2571,7 +2494,6 @@ def classification_functional_test_prediction_df():
                 "grouper_value": "white",
             },
             {
-                "dataset_name": "delete later",
                 "datum_uid": "uid3",
                 "datum_id": -2265528102457502931,
                 "datum_metadata": {
@@ -2598,7 +2520,6 @@ def classification_functional_test_prediction_df():
                 "grouper_value": "red",
             },
             {
-                "dataset_name": "delete later",
                 "datum_uid": "uid3",
                 "datum_id": -2265528102457502931,
                 "datum_metadata": {
@@ -2625,7 +2546,6 @@ def classification_functional_test_prediction_df():
                 "grouper_value": "blue",
             },
             {
-                "dataset_name": "delete later",
                 "datum_uid": "uid3",
                 "datum_id": -2265528102457502931,
                 "datum_metadata": {
@@ -2652,7 +2572,6 @@ def classification_functional_test_prediction_df():
                 "grouper_value": "black",
             },
             {
-                "dataset_name": "delete later",
                 "datum_uid": "uid4",
                 "datum_id": -4389124420839664731,
                 "datum_metadata": {
@@ -2679,7 +2598,6 @@ def classification_functional_test_prediction_df():
                 "grouper_value": "mammal",
             },
             {
-                "dataset_name": "delete later",
                 "datum_uid": "uid4",
                 "datum_id": -4389124420839664731,
                 "datum_metadata": {
@@ -2706,7 +2624,6 @@ def classification_functional_test_prediction_df():
                 "grouper_value": "mammal",
             },
             {
-                "dataset_name": "delete later",
                 "datum_uid": "uid4",
                 "datum_id": -4389124420839664731,
                 "datum_metadata": {
@@ -2733,7 +2650,6 @@ def classification_functional_test_prediction_df():
                 "grouper_value": "avian",
             },
             {
-                "dataset_name": "delete later",
                 "datum_uid": "uid4",
                 "datum_id": -4389124420839664731,
                 "datum_metadata": {
@@ -2760,7 +2676,6 @@ def classification_functional_test_prediction_df():
                 "grouper_value": "red",
             },
             {
-                "dataset_name": "delete later",
                 "datum_uid": "uid4",
                 "datum_id": -4389124420839664731,
                 "datum_metadata": {
@@ -2787,7 +2702,6 @@ def classification_functional_test_prediction_df():
                 "grouper_value": "white",
             },
             {
-                "dataset_name": "delete later",
                 "datum_uid": "uid4",
                 "datum_id": -4389124420839664731,
                 "datum_metadata": {
@@ -2814,7 +2728,6 @@ def classification_functional_test_prediction_df():
                 "grouper_value": "blue",
             },
             {
-                "dataset_name": "delete later",
                 "datum_uid": "uid4",
                 "datum_id": -4389124420839664731,
                 "datum_metadata": {
@@ -2841,7 +2754,6 @@ def classification_functional_test_prediction_df():
                 "grouper_value": "black",
             },
             {
-                "dataset_name": "delete later",
                 "datum_uid": "uid5",
                 "datum_id": 5314927723853009775,
                 "datum_metadata": {
@@ -2868,7 +2780,6 @@ def classification_functional_test_prediction_df():
                 "grouper_value": "mammal",
             },
             {
-                "dataset_name": "delete later",
                 "datum_uid": "uid5",
                 "datum_id": 5314927723853009775,
                 "datum_metadata": {
@@ -2895,7 +2806,6 @@ def classification_functional_test_prediction_df():
                 "grouper_value": "mammal",
             },
             {
-                "dataset_name": "delete later",
                 "datum_uid": "uid5",
                 "datum_id": 5314927723853009775,
                 "datum_metadata": {
@@ -2922,7 +2832,6 @@ def classification_functional_test_prediction_df():
                 "grouper_value": "avian",
             },
             {
-                "dataset_name": "delete later",
                 "datum_uid": "uid5",
                 "datum_id": 5314927723853009775,
                 "datum_metadata": {
@@ -2949,7 +2858,6 @@ def classification_functional_test_prediction_df():
                 "grouper_value": "red",
             },
             {
-                "dataset_name": "delete later",
                 "datum_uid": "uid5",
                 "datum_id": 5314927723853009775,
                 "datum_metadata": {
@@ -2976,7 +2884,6 @@ def classification_functional_test_prediction_df():
                 "grouper_value": "white",
             },
             {
-                "dataset_name": "delete later",
                 "datum_uid": "uid5",
                 "datum_id": 5314927723853009775,
                 "datum_metadata": {
@@ -3003,7 +2910,6 @@ def classification_functional_test_prediction_df():
                 "grouper_value": "blue",
             },
             {
-                "dataset_name": "delete later",
                 "datum_uid": "uid5",
                 "datum_id": 5314927723853009775,
                 "datum_metadata": {

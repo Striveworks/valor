@@ -615,11 +615,10 @@ def _add_samples_to_dataframe(
                     "confidence_threshold",
                 ],
                 as_index=False,
-            )[["dataset_name_gt", "datum_uid_gt", "geojson_gt"]]
+            )[["datum_uid_gt", "geojson_gt"]]
             .agg(lambda x: tuple(x.head(max_examples)))
             .rename(
                 columns={
-                    "dataset_name_gt": "dataset_name",
                     "datum_uid_gt": "datum_uid",
                     "grouper_value_gt": "grouper_value",
                     "geojson_gt": "geojson",
@@ -633,11 +632,10 @@ def _add_samples_to_dataframe(
                     "confidence_threshold",
                 ],
                 as_index=False,
-            )[["dataset_name_pd", "datum_uid_pd", "geojson_pd"]]
+            )[["datum_uid_pd", "geojson_pd"]]
             .agg(lambda x: (tuple(x.head(max_examples))))
             .rename(
                 columns={
-                    "dataset_name_pd": "dataset_name",
                     "datum_uid_pd": "datum_uid",
                     "grouper_value_pd": "grouper_value",
                     "geojson_pd": "geojson",
@@ -652,7 +650,7 @@ def _add_samples_to_dataframe(
 
     if not sample_df.empty:
         sample_df[f"{flag_column}_samples"] = sample_df.apply(
-            lambda row: set(zip(*row[["dataset_name", "datum_uid", "geojson"]])),  # type: ignore - pd typing error
+            lambda row: set(zip(*row[["datum_uid", "geojson"]])),  # type: ignore - pd typing error
             axis=1,
         )
 

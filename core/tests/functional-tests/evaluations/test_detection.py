@@ -243,7 +243,6 @@ def test_evaluate_detection_via_pandas_df():
             {
                 "datum_id": 1,
                 "datum_uid": "uid1",
-                "dataset_name": "test_dataset",
                 "id": 1,
                 "annotation_id": 1,
                 "label_id": 1,
@@ -257,7 +256,6 @@ def test_evaluate_detection_via_pandas_df():
             {
                 "datum_id": 1,
                 "datum_uid": "uid1",
-                "dataset_name": "test_dataset",
                 "id": 2,
                 "annotation_id": 2,
                 "label_id": 2,
@@ -271,7 +269,6 @@ def test_evaluate_detection_via_pandas_df():
             {
                 "datum_id": 2,
                 "datum_uid": "uid2",
-                "dataset_name": "test_dataset",
                 "id": 3,
                 "annotation_id": 3,
                 "label_id": 1,
@@ -287,7 +284,6 @@ def test_evaluate_detection_via_pandas_df():
     prediction_df = pd.DataFrame(
         [
             {
-                "dataset_name": "test_dataset",
                 "id": 1,
                 "annotation_id": 4,
                 "score": 0.3,
@@ -302,7 +298,6 @@ def test_evaluate_detection_via_pandas_df():
                 "raster": None,
             },
             {
-                "dataset_name": "test_dataset",
                 "id": 2,
                 "annotation_id": 5,
                 "score": 0.98,

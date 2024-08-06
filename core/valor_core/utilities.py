@@ -240,9 +240,6 @@ def _convert_groundtruth_or_prediction_to_dataframe(
 
     output = []
 
-    dataset_name = "delete later"
-    # TODO dataset and model number don't really do anything in this framework?
-
     for i, obj in enumerate(list_of_objects):
         datum_uid = obj.datum.uid
         datum_id = hash(obj.datum.uid)
@@ -270,7 +267,6 @@ def _convert_groundtruth_or_prediction_to_dataframe(
                 if isinstance(obj, schemas.Prediction):
                     output.append(
                         {
-                            "dataset_name": dataset_name,
                             "datum_uid": datum_uid,
                             "datum_id": datum_id,
                             "datum_metadata": datum_metadata,
@@ -291,7 +287,6 @@ def _convert_groundtruth_or_prediction_to_dataframe(
                 else:
                     output.append(
                         {
-                            "dataset_name": dataset_name,
                             "datum_uid": datum_uid,
                             "datum_id": datum_id,
                             "datum_metadata": datum_metadata,
@@ -315,7 +310,6 @@ def _convert_groundtruth_or_prediction_to_dataframe(
         else pd.DataFrame(
             [],
             columns=[
-                "dataset_name",
                 "datum_uid",
                 "datum_id",
                 "datum_metadata",
