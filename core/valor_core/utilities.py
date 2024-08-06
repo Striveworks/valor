@@ -4,88 +4,71 @@ import pandas as pd
 from valor_core import enums, schemas
 
 
-def _validate_label_map(
+def validate_label_map(
     label_map: Optional[Dict[schemas.Label, schemas.Label]],
 ) -> Union[List[List[List[str]]], None]:
     """Validate the label mapping if necessary."""
 
-    if not isinstance(label_map, dict) or not all(
-        [
-            isinstance(key, schemas.Label) and isinstance(value, schemas.Label)
-            for key, value in label_map.items()
-        ]
+    if label_map and (
+        not isinstance(label_map, dict)
+        or not all(
+            [
+                isinstance(key, schemas.Label)
+                and isinstance(value, schemas.Label)
+                for key, value in label_map.items()
+            ]
+        )
     ):
         raise TypeError(
             "label_map should be a dictionary with valid Labels for both the key and value."
         )
 
 
-def validate_parameters(
-    parameters: schemas.EvaluationParameters, task_type: enums.TaskType
-) -> schemas.EvaluationParameters:
-    if parameters.metrics_to_return is None:
-        parameters.metrics_to_return = {
-            enums.TaskType.CLASSIFICATION: [
-                enums.MetricType.Precision,
-                enums.MetricType.Recall,
-                enums.MetricType.F1,
-                enums.MetricType.Accuracy,
-                enums.MetricType.ROCAUC,
-            ],
-            enums.TaskType.OBJECT_DETECTION: [
-                enums.MetricType.AP,
-                enums.MetricType.AR,
-                enums.MetricType.mAP,
-                enums.MetricType.APAveragedOverIOUs,
-                enums.MetricType.mAR,
-                enums.MetricType.mAPAveragedOverIOUs,
-            ],
-        }[task_type]
-
-    if parameters.label_map:
-        _validate_label_map(parameters.label_map)
+def validate_metrics_to_return(
+    task_type: enums.TaskType, metrics_to_return: List[enums.MetricType]
+):
 
     if task_type == enums.TaskType.CLASSIFICATION:
-        if not set(parameters.metrics_to_return).issubset(
+        if not set(metrics_to_return).issubset(
             enums.MetricType.classification()
         ):
             raise ValueError(
-                f"The following metrics are not supported for classification: '{set(parameters.metrics_to_return) - enums.MetricType.classification()}'"
+                f"The following metrics are not supported for classification: '{set(metrics_to_return) - enums.MetricType.classification()}'"
             )
 
     if task_type == enums.TaskType.OBJECT_DETECTION:
-
-        if not set(parameters.metrics_to_return).issubset(
+        if not set(metrics_to_return).issubset(
             enums.MetricType.object_detection()
         ):
             raise ValueError(
-                f"The following metrics are not supported for object detection: '{set(parameters.metrics_to_return) - enums.MetricType.object_detection()}'"
+                f"The following metrics are not supported for object detection: '{set(metrics_to_return) - enums.MetricType.object_detection()}'"
             )
 
-        if parameters.iou_thresholds_to_compute is None:
-            parameters.iou_thresholds_to_compute = [
-                round(0.5 + 0.05 * i, 2) for i in range(10)
-            ]
-        if parameters.iou_thresholds_to_return is None:
-            parameters.iou_thresholds_to_return = [0.5, 0.75]
 
-        if (
-            parameters.recall_score_threshold > 1
-            or parameters.recall_score_threshold < 0
-        ):
-            raise ValueError(
-                "recall_score_threshold should exist in the range 0 <= threshold <= 1."
-            )
+def validate_parameters(
+    recall_score_threshold: Optional[float] = None,
+    pr_curve_iou_threshold: Optional[float] = None,
+    pr_curve_max_examples: Optional[int] = None,
+):
 
-        if (
-            parameters.pr_curve_iou_threshold <= 0
-            or parameters.pr_curve_iou_threshold > 1.0
-        ):
-            raise ValueError(
-                "IOU thresholds should exist in the range 0 < threshold <= 1."
-            )
+    if recall_score_threshold and (
+        recall_score_threshold > 1 or recall_score_threshold < 0
+    ):
+        raise ValueError(
+            "recall_score_threshold should exist in the range 0 <= threshold <= 1."
+        )
 
-    return parameters
+    if pr_curve_iou_threshold and (
+        pr_curve_iou_threshold <= 0 or pr_curve_iou_threshold > 1.0
+    ):
+        raise ValueError(
+            "IOU thresholds should exist in the range 0 < threshold <= 1."
+        )
+
+    if pr_curve_max_examples and (pr_curve_max_examples < 0):
+        raise ValueError(
+            "pr_curve_max_examples should be an integer greater than or equal to zero."
+        )
 
 
 def _add_geojson_column(df: pd.DataFrame) -> pd.DataFrame:

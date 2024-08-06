@@ -1145,8 +1145,10 @@ def _calculate_pr_curves(
 def _compute_clf_metrics(
     groundtruth_df: pd.DataFrame,
     prediction_df: pd.DataFrame,
-    parameters: schemas.EvaluationParameters,
     unique_labels: list,
+    label_map: Optional[Dict[schemas.Label, schemas.Label]] = None,
+    metrics_to_return: Optional[List[enums.MetricType]] = None,
+    pr_curve_max_examples: int = 1,
 ) -> Tuple[List[dict], List[dict]]:
     """
     Compute classification metrics.
@@ -1174,7 +1176,7 @@ def _compute_clf_metrics(
         A tuple of confusion matrices and metrics.
     """
     grouper_mappings = _create_classification_grouper_mappings(
-        label_map=parameters.label_map,
+        label_map=label_map,
         labels=unique_labels,
     )
 
@@ -1210,20 +1212,20 @@ def _compute_clf_metrics(
     )
 
     # handle type error
-    assert parameters.metrics_to_return
+    assert metrics_to_return
 
     metrics_to_output += _calculate_pr_curves(
         prediction_df=prediction_df,
         groundtruth_df=groundtruth_df,
-        metrics_to_return=parameters.metrics_to_return,
-        pr_curve_max_examples=parameters.pr_curve_max_examples,
+        metrics_to_return=metrics_to_return,
+        pr_curve_max_examples=pr_curve_max_examples,
     )
 
     # convert objects to dictionaries and only return what was asked for
     metrics_to_output = [
         m.to_dict()
         for m in metrics_to_output
-        if m.to_dict()["type"] in parameters.metrics_to_return
+        if m.to_dict()["type"] in metrics_to_return
     ]
     confusion_matrices = [cm.to_dict() for cm in confusion_matrices]
 
@@ -1233,7 +1235,9 @@ def _compute_clf_metrics(
 def evaluate_classification(
     groundtruths: Union[pd.DataFrame, List[schemas.GroundTruth]],
     predictions: Union[pd.DataFrame, List[schemas.Prediction]],
-    parameters: schemas.EvaluationParameters = schemas.EvaluationParameters(),
+    label_map: Optional[Dict[schemas.Label, schemas.Label]] = None,
+    metrics_to_return: Optional[List[enums.MetricType]] = None,
+    pr_curve_max_examples: int = 1,
 ) -> schemas.Evaluation:
     """
     Create classification metrics.
@@ -1241,9 +1245,25 @@ def evaluate_classification(
     """
     start_time = time.time()
 
-    parameters = utilities.validate_parameters(
-        parameters, task_type=enums.TaskType.CLASSIFICATION
+    if not label_map:
+        label_map = {}
+
+    if metrics_to_return is None:
+        metrics_to_return = [
+            enums.MetricType.Precision,
+            enums.MetricType.Recall,
+            enums.MetricType.F1,
+            enums.MetricType.Accuracy,
+            enums.MetricType.ROCAUC,
+        ]
+
+    utilities.validate_label_map(label_map=label_map)
+    utilities.validate_metrics_to_return(
+        metrics_to_return=metrics_to_return,
+        task_type=enums.TaskType.CLASSIFICATION,
     )
+    utilities.validate_parameters(pr_curve_max_examples=pr_curve_max_examples)
+
     prediction_df = utilities.validate_prediction_dataframe(
         predictions, task_type=enums.TaskType.CLASSIFICATION
     )
@@ -1254,7 +1274,7 @@ def evaluate_classification(
     utilities.validate_matching_label_keys(
         groundtruths=groundtruth_df,
         predictions=prediction_df,
-        label_map=parameters.label_map,
+        label_map=label_map,
     )
 
     unique_labels = list(
@@ -1269,18 +1289,21 @@ def evaluate_classification(
         | set(prediction_df["annotation_id"])
     )
 
-    # handle type errors
-    assert parameters.metrics_to_return
-
     confusion_matrices, metrics = _compute_clf_metrics(
         groundtruth_df=groundtruth_df,
         prediction_df=prediction_df,
-        parameters=parameters,
+        label_map=label_map,
+        metrics_to_return=metrics_to_return,
+        pr_curve_max_examples=pr_curve_max_examples,
         unique_labels=unique_labels,
     )
 
     return schemas.Evaluation(
-        parameters=parameters,
+        parameters=schemas.EvaluationParameters(
+            metrics_to_return=metrics_to_return,
+            label_map=label_map,
+            pr_curve_max_examples=pr_curve_max_examples,
+        ),
         metrics=metrics,
         confusion_matrices=confusion_matrices,
         meta={

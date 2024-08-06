@@ -279,8 +279,6 @@ class EvaluationParameters:
         Optional mapping of individual labels to a grouper label. Useful when you need to evaluate performance using labels that differ across datasets and models.
     metrics: List[str], optional
         The list of metrics to compute, store, and return to the user.
-    convert_annotations_to_type: AnnotationType | None = None
-        The type to convert all annotations to.
     iou_thresholds_to_compute: List[float], optional
         A list of floats describing which Intersection over Unions (IoUs) to use when calculating metrics (i.e., mAP).
     iou_thresholds_to_return: List[float], optional
@@ -296,7 +294,6 @@ class EvaluationParameters:
 
     label_map: Optional[Dict[Label, Label]] = None
     metrics_to_return: Optional[List[enums.MetricType]] = None
-    convert_annotations_to_type: Optional[enums.AnnotationType] = None
     iou_thresholds_to_compute: Optional[List[float]] = None
     iou_thresholds_to_return: Optional[List[float]] = None
     recall_score_threshold: float = 0.0
@@ -327,13 +324,6 @@ def __post_init__(self):
     ):
         raise TypeError(
             "All items in 'metrics_to_return' must be of type 'enums.MetricType'"
-        )
-
-    if not isinstance(
-        self.convert_annotations_to_type, (enums.AnnotationType, type(None))
-    ):
-        raise TypeError(
-            f"Expected 'convert_annotations_to_type' to be of type 'enums.AnnotationType' or 'None', got {type(self.convert_annotations_to_type).__name__}"
         )
 
     if not isinstance(self.iou_thresholds_to_compute, (list, type(None))):

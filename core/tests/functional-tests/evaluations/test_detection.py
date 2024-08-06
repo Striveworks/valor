@@ -38,18 +38,16 @@ def test_evaluate_detection(
     eval_job = evaluate_detection(
         groundtruths=evaluate_detection_groundtruths,
         predictions=evaluate_detection_predictions,
-        parameters=schemas.EvaluationParameters(
-            iou_thresholds_to_compute=[0.1, 0.6],
-            iou_thresholds_to_return=[0.1, 0.6],
-            metrics_to_return=[
-                enums.MetricType.AP,
-                enums.MetricType.AR,
-                enums.MetricType.mAP,
-                enums.MetricType.APAveragedOverIOUs,
-                enums.MetricType.mAR,
-                enums.MetricType.mAPAveragedOverIOUs,
-            ],
-        ),
+        iou_thresholds_to_compute=[0.1, 0.6],
+        iou_thresholds_to_return=[0.1, 0.6],
+        metrics_to_return=[
+            enums.MetricType.AP,
+            enums.MetricType.AR,
+            enums.MetricType.mAP,
+            enums.MetricType.APAveragedOverIOUs,
+            enums.MetricType.mAR,
+            enums.MetricType.mAPAveragedOverIOUs,
+        ],
     )
 
     metrics = eval_job.metrics
@@ -170,11 +168,7 @@ def test_evaluate_detection(
 
     assert result_dict == {
         "parameters": {
-            "convert_annotations_to_type": None,
-            "iou_thresholds_to_compute": [0.1, 0.6],
-            "iou_thresholds_to_return": [0.1, 0.6],
-            "label_map": None,
-            "recall_score_threshold": 0.0,
+            "label_map": {},
             "metrics_to_return": [
                 enums.MetricType.AP,
                 enums.MetricType.AR,
@@ -183,13 +177,38 @@ def test_evaluate_detection(
                 enums.MetricType.mAR,
                 enums.MetricType.mAPAveragedOverIOUs,
             ],
+            "iou_thresholds_to_compute": [0.1, 0.6],
+            "iou_thresholds_to_return": [0.1, 0.6],
+            "recall_score_threshold": 0.0,
             "pr_curve_iou_threshold": 0.5,
             "pr_curve_max_examples": 1,
         },
         "confusion_matrices": [],
-        "missing_pred_labels": [],
         "ignored_pred_labels": [],
+        "missing_pred_labels": [],
     }
+
+    # {
+    #     "parameters": {
+    #         "iou_thresholds_to_compute": [0.1, 0.6],
+    #         "iou_thresholds_to_return": [0.1, 0.6],
+    #         "label_map": None,
+    #         "recall_score_threshold": 0.0,
+    #         "metrics_to_return": [
+    #             enums.MetricType.AP,
+    #             enums.MetricType.AR,
+    #             enums.MetricType.mAP,
+    #             enums.MetricType.APAveragedOverIOUs,
+    #             enums.MetricType.mAR,
+    #             enums.MetricType.mAPAveragedOverIOUs,
+    #         ],
+    #         "pr_curve_iou_threshold": 0.5,
+    #         "pr_curve_max_examples": 1,
+    #     },
+    #     "confusion_matrices": [],
+    #     "missing_pred_labels": [],
+    #     "ignored_pred_labels": [],
+    # }
 
     # # check that metrics arg works correctly
     selected_metrics = random.sample(
@@ -207,11 +226,9 @@ def test_evaluate_detection(
     eval_job = evaluate_detection(
         groundtruths=evaluate_detection_groundtruths,
         predictions=evaluate_detection_predictions,
-        parameters=schemas.EvaluationParameters(
-            iou_thresholds_to_compute=[0.1, 0.6],
-            iou_thresholds_to_return=[0.1, 0.6],
-            metrics_to_return=selected_metrics,
-        ),
+        iou_thresholds_to_compute=[0.1, 0.6],
+        iou_thresholds_to_return=[0.1, 0.6],
+        metrics_to_return=selected_metrics,
     )
 
     metrics = eval_job.metrics
@@ -317,18 +334,16 @@ def test_evaluate_detection_via_pandas_df():
     eval_job = evaluate_detection(
         groundtruths=groundtruth_df,
         predictions=prediction_df,
-        parameters=schemas.EvaluationParameters(
-            iou_thresholds_to_compute=[0.1, 0.6],
-            iou_thresholds_to_return=[0.1, 0.6],
-            metrics_to_return=[
-                enums.MetricType.AP,
-                enums.MetricType.AR,
-                enums.MetricType.mAP,
-                enums.MetricType.APAveragedOverIOUs,
-                enums.MetricType.mAR,
-                enums.MetricType.mAPAveragedOverIOUs,
-            ],
-        ),
+        iou_thresholds_to_compute=[0.1, 0.6],
+        iou_thresholds_to_return=[0.1, 0.6],
+        metrics_to_return=[
+            enums.MetricType.AP,
+            enums.MetricType.AR,
+            enums.MetricType.mAP,
+            enums.MetricType.APAveragedOverIOUs,
+            enums.MetricType.mAR,
+            enums.MetricType.mAPAveragedOverIOUs,
+        ],
     )
 
     metrics = eval_job.metrics
@@ -449,10 +464,9 @@ def test_evaluate_detection_via_pandas_df():
 
     assert result_dict == {
         "parameters": {
-            "convert_annotations_to_type": None,
             "iou_thresholds_to_compute": [0.1, 0.6],
             "iou_thresholds_to_return": [0.1, 0.6],
-            "label_map": None,
+            "label_map": {},
             "recall_score_threshold": 0.0,
             "metrics_to_return": [
                 enums.MetricType.AP,
@@ -486,11 +500,9 @@ def test_evaluate_detection_via_pandas_df():
     eval_job = evaluate_detection(
         groundtruths=groundtruth_df,
         predictions=prediction_df,
-        parameters=schemas.EvaluationParameters(
-            iou_thresholds_to_compute=[0.1, 0.6],
-            iou_thresholds_to_return=[0.1, 0.6],
-            metrics_to_return=selected_metrics,
-        ),
+        iou_thresholds_to_compute=[0.1, 0.6],
+        iou_thresholds_to_return=[0.1, 0.6],
+        metrics_to_return=selected_metrics,
     )
 
     metrics = eval_job.metrics
@@ -724,21 +736,19 @@ def test_evaluate_detection_with_label_maps(
     eval_job = evaluate_detection(
         groundtruths=evaluate_detection_groundtruths_with_label_maps,
         predictions=evaluate_detection_predictions_with_label_maps,
-        parameters=schemas.EvaluationParameters(
-            pr_curve_max_examples=1,
-            iou_thresholds_to_compute=[0.1, 0.6],
-            iou_thresholds_to_return=[0.1, 0.6],
-            metrics_to_return=[
-                enums.MetricType.AP,
-                enums.MetricType.AR,
-                enums.MetricType.mAP,
-                enums.MetricType.APAveragedOverIOUs,
-                enums.MetricType.mAR,
-                enums.MetricType.mAPAveragedOverIOUs,
-                enums.MetricType.PrecisionRecallCurve,
-                enums.MetricType.DetailedPrecisionRecallCurve,
-            ],
-        ),
+        pr_curve_max_examples=1,
+        iou_thresholds_to_compute=[0.1, 0.6],
+        iou_thresholds_to_return=[0.1, 0.6],
+        metrics_to_return=[
+            enums.MetricType.AP,
+            enums.MetricType.AR,
+            enums.MetricType.mAP,
+            enums.MetricType.APAveragedOverIOUs,
+            enums.MetricType.mAR,
+            enums.MetricType.mAPAveragedOverIOUs,
+            enums.MetricType.PrecisionRecallCurve,
+            enums.MetricType.DetailedPrecisionRecallCurve,
+        ],
     )
 
     assert (
@@ -1079,31 +1089,29 @@ def test_evaluate_detection_with_label_maps(
     eval_job = evaluate_detection(
         groundtruths=evaluate_detection_groundtruths_with_label_maps,
         predictions=evaluate_detection_predictions_with_label_maps,
-        parameters=schemas.EvaluationParameters(
-            label_map={
-                schemas.Label(
-                    key="class_name", value="maine coon cat"
-                ): schemas.Label(key="class", value="cat"),
-                schemas.Label(key="class", value="siamese cat"): schemas.Label(
-                    key="class", value="cat"
-                ),
-                schemas.Label(
-                    key="class", value="british shorthair"
-                ): schemas.Label(key="class", value="cat"),
-            },
-            iou_thresholds_to_compute=[0.1, 0.6],
-            iou_thresholds_to_return=[0.1, 0.6],
-            metrics_to_return=[
-                enums.MetricType.AP,
-                enums.MetricType.AR,
-                enums.MetricType.mAP,
-                enums.MetricType.APAveragedOverIOUs,
-                enums.MetricType.mAR,
-                enums.MetricType.mAPAveragedOverIOUs,
-                enums.MetricType.PrecisionRecallCurve,
-                enums.MetricType.DetailedPrecisionRecallCurve,
-            ],
-        ),
+        label_map={
+            schemas.Label(
+                key="class_name", value="maine coon cat"
+            ): schemas.Label(key="class", value="cat"),
+            schemas.Label(key="class", value="siamese cat"): schemas.Label(
+                key="class", value="cat"
+            ),
+            schemas.Label(
+                key="class", value="british shorthair"
+            ): schemas.Label(key="class", value="cat"),
+        },
+        iou_thresholds_to_compute=[0.1, 0.6],
+        iou_thresholds_to_return=[0.1, 0.6],
+        metrics_to_return=[
+            enums.MetricType.AP,
+            enums.MetricType.AR,
+            enums.MetricType.mAP,
+            enums.MetricType.APAveragedOverIOUs,
+            enums.MetricType.mAR,
+            enums.MetricType.mAPAveragedOverIOUs,
+            enums.MetricType.PrecisionRecallCurve,
+            enums.MetricType.DetailedPrecisionRecallCurve,
+        ],
     )
 
     assert eval_job.ignored_pred_labels is not None
@@ -1296,21 +1304,19 @@ def test_evaluate_detection_with_label_maps(
     eval_job = evaluate_detection(
         groundtruths=evaluate_detection_groundtruths_with_label_maps,
         predictions=evaluate_detection_predictions_with_label_maps,
-        parameters=schemas.EvaluationParameters(
-            label_map=label_mapping,
-            iou_thresholds_to_compute=[0.1, 0.6],
-            iou_thresholds_to_return=[0.1, 0.6],
-            metrics_to_return=[
-                enums.MetricType.AP,
-                enums.MetricType.AR,
-                enums.MetricType.mAP,
-                enums.MetricType.APAveragedOverIOUs,
-                enums.MetricType.mAR,
-                enums.MetricType.mAPAveragedOverIOUs,
-                enums.MetricType.PrecisionRecallCurve,
-                enums.MetricType.DetailedPrecisionRecallCurve,
-            ],
-        ),
+        label_map=label_mapping,
+        iou_thresholds_to_compute=[0.1, 0.6],
+        iou_thresholds_to_return=[0.1, 0.6],
+        metrics_to_return=[
+            enums.MetricType.AP,
+            enums.MetricType.AR,
+            enums.MetricType.mAP,
+            enums.MetricType.APAveragedOverIOUs,
+            enums.MetricType.mAR,
+            enums.MetricType.mAPAveragedOverIOUs,
+            enums.MetricType.PrecisionRecallCurve,
+            enums.MetricType.DetailedPrecisionRecallCurve,
+        ],
     )
 
     assert (
@@ -1489,21 +1495,19 @@ def test_evaluate_detection_with_label_maps(
     eval_job = evaluate_detection(
         groundtruths=evaluate_detection_groundtruths_with_label_maps,
         predictions=evaluate_detection_predictions_with_label_maps,
-        parameters=schemas.EvaluationParameters(
-            label_map=label_mapping,
-            iou_thresholds_to_compute=[0.1, 0.6],
-            iou_thresholds_to_return=[0.1, 0.6],
-            recall_score_threshold=0.8,
-            metrics_to_return=[
-                enums.MetricType.AP,
-                enums.MetricType.AR,
-                enums.MetricType.mAP,
-                enums.MetricType.APAveragedOverIOUs,
-                enums.MetricType.mAR,
-                enums.MetricType.mAPAveragedOverIOUs,
-                enums.MetricType.PrecisionRecallCurve,
-            ],
-        ),
+        label_map=label_mapping,
+        iou_thresholds_to_compute=[0.1, 0.6],
+        iou_thresholds_to_return=[0.1, 0.6],
+        recall_score_threshold=0.8,
+        metrics_to_return=[
+            enums.MetricType.AP,
+            enums.MetricType.AR,
+            enums.MetricType.mAP,
+            enums.MetricType.APAveragedOverIOUs,
+            enums.MetricType.mAR,
+            enums.MetricType.mAPAveragedOverIOUs,
+            enums.MetricType.PrecisionRecallCurve,
+        ],
     )
 
     assert (
@@ -1540,7 +1544,6 @@ def test_evaluate_detection_with_label_maps(
             enums.MetricType.mAPAveragedOverIOUs,
             enums.MetricType.PrecisionRecallCurve,
         ],
-        "convert_annotations_to_type": None,
         "iou_thresholds_to_compute": [0.1, 0.6],
         "iou_thresholds_to_return": [0.1, 0.6],
         "recall_score_threshold": 0.8,
@@ -1659,10 +1662,8 @@ def test_evaluate_detection_false_negatives_single_image_baseline():
     eval_job = evaluate_detection(
         groundtruths=groundtruths,
         predictions=predictions,
-        parameters=schemas.EvaluationParameters(
-            iou_thresholds_to_compute=[0.5],
-            iou_thresholds_to_return=[0.5],
-        ),
+        iou_thresholds_to_compute=[0.5],
+        iou_thresholds_to_return=[0.5],
     )
 
     ap_metric = [m for m in eval_job.metrics if m["type"] == "AP"][0]
@@ -1722,10 +1723,8 @@ def test_evaluate_detection_false_negatives_single_image():
     eval_job = evaluate_detection(
         groundtruths=groundtruths,
         predictions=predictions,
-        parameters=schemas.EvaluationParameters(
-            iou_thresholds_to_compute=[0.5],
-            iou_thresholds_to_return=[0.5],
-        ),
+        iou_thresholds_to_compute=[0.5],
+        iou_thresholds_to_return=[0.5],
     )
 
     ap_metric = [m for m in eval_job.metrics if m["type"] == "AP"][0]
@@ -1800,10 +1799,8 @@ def test_evaluate_detection_false_negatives_two_images_one_empty_low_confidence_
     eval_job = evaluate_detection(
         groundtruths=groundtruths,
         predictions=predictions,
-        parameters=schemas.EvaluationParameters(
-            iou_thresholds_to_compute=[0.5],
-            iou_thresholds_to_return=[0.5],
-        ),
+        iou_thresholds_to_compute=[0.5],
+        iou_thresholds_to_return=[0.5],
     )
 
     ap_metric = [m for m in eval_job.metrics if m["type"] == "AP"][0]
@@ -1876,10 +1873,8 @@ def test_evaluate_detection_false_negatives_two_images_one_empty_high_confidence
     eval_job = evaluate_detection(
         groundtruths=groundtruths,
         predictions=predictions,
-        parameters=schemas.EvaluationParameters(
-            iou_thresholds_to_compute=[0.5],
-            iou_thresholds_to_return=[0.5],
-        ),
+        iou_thresholds_to_compute=[0.5],
+        iou_thresholds_to_return=[0.5],
     )
 
     ap_metric = [m for m in eval_job.metrics if m["type"] == "AP"][0]
@@ -1961,10 +1956,8 @@ def test_evaluate_detection_false_negatives_two_images_one_only_with_different_c
     eval_job = evaluate_detection(
         groundtruths=groundtruths,
         predictions=predictions,
-        parameters=schemas.EvaluationParameters(
-            iou_thresholds_to_compute=[0.5],
-            iou_thresholds_to_return=[0.5],
-        ),
+        iou_thresholds_to_compute=[0.5],
+        iou_thresholds_to_return=[0.5],
     )
 
     ap_metric1 = [
@@ -2064,10 +2057,8 @@ def test_evaluate_detection_false_negatives_two_images_one_only_with_different_c
     eval_job = evaluate_detection(
         groundtruths=groundtruths,
         predictions=predictions,
-        parameters=schemas.EvaluationParameters(
-            iou_thresholds_to_compute=[0.5],
-            iou_thresholds_to_return=[0.5],
-        ),
+        iou_thresholds_to_compute=[0.5],
+        iou_thresholds_to_return=[0.5],
     )
 
     ap_metric1 = [
@@ -2106,9 +2097,7 @@ def test_detailed_precision_recall_curve(
     eval_job = evaluate_detection(
         groundtruths=evaluate_detection_detailed_pr_curve_groundtruths,
         predictions=evaluate_detection_detailed_pr_curve_predictions,
-        parameters=schemas.EvaluationParameters(
-            metrics_to_return=[enums.MetricType.DetailedPrecisionRecallCurve]
-        ),
+        metrics_to_return=[enums.MetricType.DetailedPrecisionRecallCurve],
     )
 
     # one true positive that becomes a false negative when score > .5
@@ -2230,10 +2219,8 @@ def test_detailed_precision_recall_curve(
     eval_job_low_iou_threshold = evaluate_detection(
         groundtruths=evaluate_detection_detailed_pr_curve_groundtruths,
         predictions=evaluate_detection_detailed_pr_curve_predictions,
-        parameters=schemas.EvaluationParameters(
-            metrics_to_return=[enums.MetricType.DetailedPrecisionRecallCurve],
-            pr_curve_iou_threshold=0.45,
-        ),
+        metrics_to_return=[enums.MetricType.DetailedPrecisionRecallCurve],
+        pr_curve_iou_threshold=0.45,
     )
 
     # one true positive that becomes a false negative when score > .5
@@ -2673,20 +2660,18 @@ def test_evaluate_detection_functional_test(
     eval_job = evaluate_detection(
         groundtruths=evaluate_detection_functional_test_groundtruths,
         predictions=evaluate_detection_functional_test_predictions,
-        parameters=schemas.EvaluationParameters(
-            metrics_to_return=[
-                enums.MetricType.AP,
-                enums.MetricType.AR,
-                enums.MetricType.mAP,
-                enums.MetricType.APAveragedOverIOUs,
-                enums.MetricType.mAR,
-                enums.MetricType.mAPAveragedOverIOUs,
-                enums.MetricType.PrecisionRecallCurve,
-                enums.MetricType.DetailedPrecisionRecallCurve,
-            ],
-            pr_curve_iou_threshold=0.5,
-            pr_curve_max_examples=1,
-        ),
+        metrics_to_return=[
+            enums.MetricType.AP,
+            enums.MetricType.AR,
+            enums.MetricType.mAP,
+            enums.MetricType.APAveragedOverIOUs,
+            enums.MetricType.mAR,
+            enums.MetricType.mAPAveragedOverIOUs,
+            enums.MetricType.PrecisionRecallCurve,
+            enums.MetricType.DetailedPrecisionRecallCurve,
+        ],
+        pr_curve_iou_threshold=0.5,
+        pr_curve_max_examples=1,
     )
 
     metrics = [
@@ -3046,14 +3031,12 @@ def test_evaluate_detection_functional_test(
     eval_job_higher_threshold = evaluate_detection(
         groundtruths=evaluate_detection_functional_test_groundtruths,
         predictions=evaluate_detection_functional_test_predictions,
-        parameters=schemas.EvaluationParameters(
-            metrics_to_return=[
-                enums.MetricType.PrecisionRecallCurve,
-                enums.MetricType.DetailedPrecisionRecallCurve,
-            ],
-            pr_curve_iou_threshold=0.9,
-            pr_curve_max_examples=1,
-        ),
+        metrics_to_return=[
+            enums.MetricType.PrecisionRecallCurve,
+            enums.MetricType.DetailedPrecisionRecallCurve,
+        ],
+        pr_curve_iou_threshold=0.9,
+        pr_curve_max_examples=1,
     )
 
     pr_metrics = [
@@ -3191,14 +3174,12 @@ def test_evaluate_detection_functional_test(
     eval_job_higher_threshold = evaluate_detection(
         groundtruths=evaluate_detection_functional_test_groundtruths,
         predictions=evaluate_detection_functional_test_predictions,
-        parameters=schemas.EvaluationParameters(
-            metrics_to_return=[
-                enums.MetricType.PrecisionRecallCurve,
-                enums.MetricType.DetailedPrecisionRecallCurve,
-            ],
-            pr_curve_iou_threshold=0.9,
-            pr_curve_max_examples=3,
-        ),
+        metrics_to_return=[
+            enums.MetricType.PrecisionRecallCurve,
+            enums.MetricType.DetailedPrecisionRecallCurve,
+        ],
+        pr_curve_iou_threshold=0.9,
+        pr_curve_max_examples=3,
     )
 
     pr_metrics = [
@@ -3264,14 +3245,12 @@ def test_evaluate_detection_functional_test(
     eval_job_higher_threshold = evaluate_detection(
         groundtruths=evaluate_detection_functional_test_groundtruths,
         predictions=evaluate_detection_functional_test_predictions,
-        parameters=schemas.EvaluationParameters(
-            metrics_to_return=[
-                enums.MetricType.PrecisionRecallCurve,
-                enums.MetricType.DetailedPrecisionRecallCurve,
-            ],
-            pr_curve_iou_threshold=0.9,
-            pr_curve_max_examples=0,
-        ),
+        metrics_to_return=[
+            enums.MetricType.PrecisionRecallCurve,
+            enums.MetricType.DetailedPrecisionRecallCurve,
+        ],
+        pr_curve_iou_threshold=0.9,
+        pr_curve_max_examples=0,
     )
 
     pr_metrics = [
@@ -3342,19 +3321,17 @@ def test_evaluate_detection_functional_test_with_rasters(
     eval_job = evaluate_detection(
         groundtruths=evaluate_detection_functional_test_groundtruths_with_rasters,
         predictions=evaluate_detection_functional_test_predictions_with_rasters,
-        parameters=schemas.EvaluationParameters(
-            metrics_to_return=[
-                enums.MetricType.AP,
-                enums.MetricType.AR,
-                enums.MetricType.mAP,
-                enums.MetricType.APAveragedOverIOUs,
-                enums.MetricType.mAR,
-                enums.MetricType.mAPAveragedOverIOUs,
-                enums.MetricType.PrecisionRecallCurve,
-            ],
-            pr_curve_iou_threshold=0.5,
-            pr_curve_max_examples=1,
-        ),
+        metrics_to_return=[
+            enums.MetricType.AP,
+            enums.MetricType.AR,
+            enums.MetricType.mAP,
+            enums.MetricType.APAveragedOverIOUs,
+            enums.MetricType.mAR,
+            enums.MetricType.mAPAveragedOverIOUs,
+            enums.MetricType.PrecisionRecallCurve,
+        ],
+        pr_curve_iou_threshold=0.5,
+        pr_curve_max_examples=1,
     )
 
     metrics = [

@@ -153,14 +153,14 @@ def _calculate_iou(joint_df: pd.DataFrame):
 
 
 def _calculate_grouper_id_level_metrics(
-    calculation_df: pd.DataFrame, parameters: schemas.EvaluationParameters
+    calculation_df: pd.DataFrame, recall_score_threshold: float
 ):
     """Calculate the flags and metrics needed to compute AP, AR, and PR curves."""
 
     # create flags where predictions meet the score and IOU criteria
     calculation_df["recall_true_positive_flag"] = (
         calculation_df["iou_"] >= calculation_df["iou_threshold"]
-    ) & (calculation_df["score"] >= parameters.recall_score_threshold)
+    ) & (calculation_df["score"] >= recall_score_threshold)
     # only consider the highest scoring true positive as an actual true positive
     calculation_df["recall_true_positive_flag"] = calculation_df[
         "recall_true_positive_flag"
@@ -183,7 +183,7 @@ def _calculate_grouper_id_level_metrics(
 
     calculation_df["recall_false_positive_flag"] = ~calculation_df[
         "recall_true_positive_flag"
-    ] & (calculation_df["score"] >= parameters.recall_score_threshold)
+    ] & (calculation_df["score"] >= recall_score_threshold)
     calculation_df["precision_false_positive_flag"] = ~calculation_df[
         "precision_true_positive_flag"
     ] & (calculation_df["score"] > 0)
@@ -303,7 +303,8 @@ def _mean_ignoring_negative_one(series: pd.Series) -> float:
 def _calculate_ap_metrics(
     calculation_df: pd.DataFrame,
     grouper_mappings: dict,
-    parameters: schemas.EvaluationParameters,
+    iou_thresholds_to_compute: List[float],
+    iou_thresholds_to_return: List[float],
 ) -> list[
     metrics.APMetric
     | metrics.APMetricAveragedOverIOUs
@@ -365,13 +366,9 @@ def _calculate_ap_metrics(
         )
     )
 
-    # handle type errors
-    assert parameters.iou_thresholds_to_compute
-    assert parameters.iou_thresholds_to_return
-
     ap_over_ious = [
         metrics.APMetricAveragedOverIOUs(
-            ious=set(parameters.iou_thresholds_to_compute),
+            ious=set(iou_thresholds_to_compute),
             value=row["calculated_precision"],
             label=row["label"],
         )
@@ -397,7 +394,7 @@ def _calculate_ap_metrics(
 
     map_over_ious = [
         metrics.mAPMetricAveragedOverIOUs(
-            ious=set(parameters.iou_thresholds_to_compute),
+            ious=set(iou_thresholds_to_compute),
             value=row["calculated_precision"],
             label_key=row["label_key"],
         )
@@ -405,12 +402,8 @@ def _calculate_ap_metrics(
     ]
 
     return (
-        [m for m in ap_metrics if m.iou in parameters.iou_thresholds_to_return]
-        + [
-            m
-            for m in map_metrics
-            if m.iou in parameters.iou_thresholds_to_return
-        ]
+        [m for m in ap_metrics if m.iou in iou_thresholds_to_return]
+        + [m for m in map_metrics if m.iou in iou_thresholds_to_return]
         + ap_over_ious
         + map_over_ious
     )
@@ -419,7 +412,7 @@ def _calculate_ap_metrics(
 def _calculate_ar_metrics(
     calculation_df: pd.DataFrame,
     grouper_mappings: dict,
-    parameters: schemas.EvaluationParameters,
+    iou_thresholds_to_compute: List[float],
 ) -> list[metrics.ARMetric | metrics.mARMetric]:
     """Calculates all AR metrics, including aggregated metrics like mAR."""
 
@@ -439,9 +432,8 @@ def _calculate_ar_metrics(
     )
 
     # resolve typing error
-    assert parameters.iou_thresholds_to_compute
 
-    ious_ = set(parameters.iou_thresholds_to_compute)
+    ious_ = set(iou_thresholds_to_compute)
     ar_metrics = [
         metrics.ARMetric(
             ious=ious_,
@@ -472,14 +464,14 @@ def _calculate_ar_metrics(
 def _calculate_pr_metrics(
     joint_df: pd.DataFrame,
     grouper_mappings: dict,
-    parameters: schemas.EvaluationParameters,
+    metrics_to_return: List[enums.MetricType],
+    pr_curve_iou_threshold: float,
 ) -> list[metrics.PrecisionRecallCurve]:
     """Calculates all PrecisionRecallCurve metrics."""
 
     if not (
-        parameters.metrics_to_return
-        and enums.MetricType.PrecisionRecallCurve
-        in parameters.metrics_to_return
+        metrics_to_return
+        and enums.MetricType.PrecisionRecallCurve in metrics_to_return
     ):
         return []
 
@@ -501,7 +493,7 @@ def _calculate_pr_metrics(
     )
 
     pr_calculation_df["true_positive_flag"] = (
-        (pr_calculation_df["iou_"] >= parameters.pr_curve_iou_threshold)
+        (pr_calculation_df["iou_"] >= pr_curve_iou_threshold)
         & (
             pr_calculation_df["score"]
             >= pr_calculation_df["confidence_threshold"]
@@ -591,7 +583,7 @@ def _calculate_pr_metrics(
         metrics.PrecisionRecallCurve(
             label_key=key,
             value=value,  # type: ignore - defaultdict doesn't have strict typing
-            pr_curve_iou_threshold=parameters.pr_curve_iou_threshold,
+            pr_curve_iou_threshold=pr_curve_iou_threshold,
         )
         for key, value in curves.items()
     ]
@@ -683,14 +675,15 @@ def _calculate_detailed_pr_metrics(
     groundtruth_df: pd.DataFrame,
     prediction_df: pd.DataFrame,
     grouper_mappings: dict,
-    parameters: schemas.EvaluationParameters,
+    metrics_to_return: List[enums.MetricType],
+    pr_curve_iou_threshold: float,
+    pr_curve_max_examples: int,
 ) -> list[metrics.DetailedPrecisionRecallCurve]:
     """Calculates all DetailedPrecisionRecallCurve metrics."""
 
     if not (
-        parameters.metrics_to_return
-        and enums.MetricType.DetailedPrecisionRecallCurve
-        in parameters.metrics_to_return
+        metrics_to_return
+        and enums.MetricType.DetailedPrecisionRecallCurve in metrics_to_return
     ):
         return []
 
@@ -744,7 +737,7 @@ def _calculate_detailed_pr_metrics(
 
     # create flags where predictions meet the score and IOU criteria
     detailed_pr_calc_df["true_positive_flag"] = (
-        (detailed_pr_calc_df["iou_"] >= parameters.pr_curve_iou_threshold)
+        (detailed_pr_calc_df["iou_"] >= pr_curve_iou_threshold)
         & (
             detailed_pr_calc_df["score"]
             >= detailed_pr_calc_df["confidence_threshold"]
@@ -754,7 +747,7 @@ def _calculate_detailed_pr_metrics(
 
     # for all the false positives, we consider them to be a misclassification if they overlap with a groundtruth of the same label key
     detailed_pr_calc_df["misclassification_false_positive_flag"] = (
-        (detailed_pr_calc_df["iou_"] >= parameters.pr_curve_iou_threshold)
+        (detailed_pr_calc_df["iou_"] >= pr_curve_iou_threshold)
         & (
             detailed_pr_calc_df["score"]
             >= detailed_pr_calc_df["confidence_threshold"]
@@ -764,7 +757,7 @@ def _calculate_detailed_pr_metrics(
 
     # if they aren't a true positive nor a misclassification FP but they meet the iou and score conditions, then they are a hallucination
     detailed_pr_calc_df["hallucination_false_positive_flag"] = (
-        (detailed_pr_calc_df["iou_"] < parameters.pr_curve_iou_threshold)
+        (detailed_pr_calc_df["iou_"] < pr_curve_iou_threshold)
         | (detailed_pr_calc_df["iou_"].isnull())
     ) & (
         detailed_pr_calc_df["score"]
@@ -1035,7 +1028,7 @@ def _calculate_detailed_pr_metrics(
         detailed_pr_curve_counts_df = _add_samples_to_dataframe(
             detailed_pr_calc_df=detailed_pr_calc_df,
             detailed_pr_curve_counts_df=detailed_pr_curve_counts_df,
-            max_examples=parameters.pr_curve_max_examples,
+            max_examples=pr_curve_max_examples,
             flag_column=flag,
         )
 
@@ -1100,7 +1093,7 @@ def _calculate_detailed_pr_metrics(
         metrics.DetailedPrecisionRecallCurve(
             label_key=key,
             value=dict(value),
-            pr_curve_iou_threshold=parameters.pr_curve_iou_threshold,
+            pr_curve_iou_threshold=pr_curve_iou_threshold,
         )
         for key, value in detailed_pr_curves.items()
     ]
@@ -1147,7 +1140,13 @@ def _create_detection_grouper_mappings(
 def _compute_detection_metrics(
     groundtruth_df: pd.DataFrame,
     prediction_df: pd.DataFrame,
-    parameters: schemas.EvaluationParameters,
+    label_map: Dict[schemas.Label, schemas.Label],
+    metrics_to_return: List[enums.MetricType],
+    iou_thresholds_to_compute: List[float],
+    iou_thresholds_to_return: List[float],
+    recall_score_threshold: float,
+    pr_curve_iou_threshold: float,
+    pr_curve_max_examples: int,
     unique_labels: list,
 ) -> List[dict]:
     """
@@ -1175,7 +1174,7 @@ def _compute_detection_metrics(
     """
 
     grouper_mappings = _create_detection_grouper_mappings(
-        label_map=parameters.label_map,
+        label_map=label_map,
         labels=unique_labels,
     )
 
@@ -1248,11 +1247,10 @@ def _compute_detection_metrics(
     )
 
     # add iou_threshold to the dataframe and sort
-    assert parameters.iou_thresholds_to_compute
     calculation_df = pd.concat(
         [
             joint_df.assign(iou_threshold=threshold)
-            for threshold in parameters.iou_thresholds_to_compute
+            for threshold in iou_thresholds_to_compute
         ],
         ignore_index=True,
     ).sort_values(
@@ -1261,39 +1259,44 @@ def _compute_detection_metrics(
     )
 
     calculation_df = _calculate_grouper_id_level_metrics(
-        calculation_df=calculation_df, parameters=parameters
+        calculation_df=calculation_df,
+        recall_score_threshold=recall_score_threshold,
     )
 
     metrics_to_output += _calculate_ap_metrics(
         calculation_df=calculation_df,
         grouper_mappings=grouper_mappings,
-        parameters=parameters,
+        iou_thresholds_to_compute=iou_thresholds_to_compute,
+        iou_thresholds_to_return=iou_thresholds_to_return,
     )
 
     metrics_to_output += _calculate_ar_metrics(
         calculation_df=calculation_df,
         grouper_mappings=grouper_mappings,
-        parameters=parameters,
+        iou_thresholds_to_compute=iou_thresholds_to_compute,
     )
 
     metrics_to_output += _calculate_pr_metrics(
         joint_df=joint_df,
         grouper_mappings=grouper_mappings,
-        parameters=parameters,
+        metrics_to_return=metrics_to_return,
+        pr_curve_iou_threshold=pr_curve_iou_threshold,
     )
 
     metrics_to_output += _calculate_detailed_pr_metrics(
         groundtruth_df=groundtruth_df,
         prediction_df=prediction_df,
         grouper_mappings=grouper_mappings,
-        parameters=parameters,
+        metrics_to_return=metrics_to_return,
+        pr_curve_iou_threshold=pr_curve_iou_threshold,
+        pr_curve_max_examples=pr_curve_max_examples,
     )
 
     # convert objects to dictionaries and only return what was asked for
     metrics_to_output = [
         m.to_dict()
         for m in metrics_to_output
-        if m.to_dict()["type"] in parameters.metrics_to_return
+        if m.to_dict()["type"] in metrics_to_return
     ]
 
     return metrics_to_output
@@ -1302,7 +1305,13 @@ def _compute_detection_metrics(
 def evaluate_detection(
     groundtruths: Union[pd.DataFrame, List[schemas.GroundTruth]],
     predictions: Union[pd.DataFrame, List[schemas.Prediction]],
-    parameters: schemas.EvaluationParameters = schemas.EvaluationParameters(),
+    label_map: Optional[Dict[schemas.Label, schemas.Label]] = None,
+    metrics_to_return: Optional[List[enums.MetricType]] = None,
+    iou_thresholds_to_compute: Optional[List[float]] = None,
+    iou_thresholds_to_return: Optional[List[float]] = None,
+    recall_score_threshold: float = 0.0,
+    pr_curve_iou_threshold: float = 0.5,
+    pr_curve_max_examples: int = 1,
 ) -> schemas.Evaluation:
     """
     Create object detection metrics.
@@ -1310,9 +1319,42 @@ def evaluate_detection(
     """
     start_time = time.time()
 
-    # TODO move this into some shared function
-    parameters = utilities.validate_parameters(
-        parameters, task_type=enums.TaskType.OBJECT_DETECTION
+    if not label_map:
+        label_map = {}
+
+    if metrics_to_return is None:
+        metrics_to_return = [
+            enums.MetricType.AP,
+            enums.MetricType.AR,
+            enums.MetricType.mAP,
+            enums.MetricType.APAveragedOverIOUs,
+            enums.MetricType.mAR,
+            enums.MetricType.mAPAveragedOverIOUs,
+        ]
+
+    if iou_thresholds_to_compute is None:
+        iou_thresholds_to_compute = [
+            round(0.5 + 0.05 * i, 2) for i in range(10)
+        ]
+    if iou_thresholds_to_return is None:
+        iou_thresholds_to_return = [0.5, 0.75]
+
+    utilities.validate_label_map(label_map=label_map)
+    utilities.validate_metrics_to_return(
+        metrics_to_return=metrics_to_return,
+        task_type=enums.TaskType.OBJECT_DETECTION,
+    )
+    utilities.validate_parameters(
+        pr_curve_iou_threshold=pr_curve_iou_threshold,
+        pr_curve_max_examples=pr_curve_max_examples,
+        recall_score_threshold=recall_score_threshold,
+    )
+
+    prediction_df = utilities.validate_prediction_dataframe(
+        predictions, task_type=enums.TaskType.OBJECT_DETECTION
+    )
+    groundtruth_df = utilities.validate_groundtruth_dataframe(
+        groundtruths, task_type=enums.TaskType.OBJECT_DETECTION
     )
 
     prediction_df = utilities.validate_prediction_dataframe(
@@ -1328,7 +1370,7 @@ def evaluate_detection(
     ) = utilities.get_disjoint_labels(
         groundtruth_df=groundtruth_df,
         prediction_df=prediction_df,
-        label_map=parameters.label_map,
+        label_map=label_map,
     )
 
     unique_labels = list(
@@ -1343,19 +1385,30 @@ def evaluate_detection(
         | set(prediction_df["annotation_id"])
     )
 
-    # handle type errors
-    assert parameters.metrics_to_return
-
     # TODO just pass parameters to the classification equivalent of this function
     metrics = _compute_detection_metrics(
         groundtruth_df=groundtruth_df,
         prediction_df=prediction_df,
-        parameters=parameters,
+        label_map=label_map,
+        metrics_to_return=metrics_to_return,
+        iou_thresholds_to_compute=iou_thresholds_to_compute,
+        iou_thresholds_to_return=iou_thresholds_to_return,
+        recall_score_threshold=recall_score_threshold,
+        pr_curve_iou_threshold=pr_curve_iou_threshold,
+        pr_curve_max_examples=pr_curve_max_examples,
         unique_labels=unique_labels,
     )
 
     return schemas.Evaluation(
-        parameters=parameters,
+        parameters=schemas.EvaluationParameters(
+            label_map=label_map,
+            metrics_to_return=metrics_to_return,
+            iou_thresholds_to_compute=iou_thresholds_to_compute,
+            iou_thresholds_to_return=iou_thresholds_to_return,
+            recall_score_threshold=recall_score_threshold,
+            pr_curve_iou_threshold=pr_curve_iou_threshold,
+            pr_curve_max_examples=pr_curve_max_examples,
+        ),
         metrics=metrics,
         confusion_matrices=[],
         ignored_pred_labels=ignored_pred_labels,

@@ -7,7 +7,6 @@ import requests
 from valor_core import (
     Annotation,
     Datum,
-    EvaluationParameters,
     GroundTruth,
     Label,
     Prediction,
@@ -112,16 +111,14 @@ def run_pr_curve_evaluation(groundtruths, predictions):
     evaluation = evaluate_classification(
         groundtruths=groundtruths,
         predictions=predictions,
-        parameters=EvaluationParameters(
-            metrics_to_return=[
-                enums.MetricType.Accuracy,
-                enums.MetricType.Precision,
-                enums.MetricType.Recall,
-                enums.MetricType.F1,
-                enums.MetricType.ROCAUC,
-                enums.MetricType.PrecisionRecallCurve,
-            ],
-        ),
+        metrics_to_return=[
+            enums.MetricType.Accuracy,
+            enums.MetricType.Precision,
+            enums.MetricType.Recall,
+            enums.MetricType.F1,
+            enums.MetricType.ROCAUC,
+            enums.MetricType.PrecisionRecallCurve,
+        ],
     )
     return evaluation
 
@@ -131,17 +128,15 @@ def run_detailed_pr_curve_evaluation(groundtruths, predictions):
     evaluation = evaluate_classification(
         groundtruths=groundtruths,
         predictions=predictions,
-        parameters=EvaluationParameters(
-            metrics_to_return=[
-                enums.MetricType.Accuracy,
-                enums.MetricType.Precision,
-                enums.MetricType.Recall,
-                enums.MetricType.F1,
-                enums.MetricType.ROCAUC,
-                enums.MetricType.PrecisionRecallCurve,
-                enums.MetricType.DetailedPrecisionRecallCurve,
-            ],
-        ),
+        metrics_to_return=[
+            enums.MetricType.Accuracy,
+            enums.MetricType.Precision,
+            enums.MetricType.Recall,
+            enums.MetricType.F1,
+            enums.MetricType.ROCAUC,
+            enums.MetricType.PrecisionRecallCurve,
+            enums.MetricType.DetailedPrecisionRecallCurve,
+        ],
     )
     return evaluation
 
@@ -200,6 +195,9 @@ def run_benchmarking_analysis(
             "detailed_pr_eval_runtime": f"{(detailed_pr_eval.meta['duration']):.1f} seconds",
         }
         write_results_to_file(write_path=write_path, result_dict=results)
+
+        if base_eval.meta["duration"] > 30:
+            raise TimeoutError("Base evaluation took longer than 30 seconds.")
 
 
 if __name__ == "__main__":

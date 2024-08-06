@@ -8,7 +8,6 @@ from valor_core import (
     Annotation,
     Box,
     Datum,
-    EvaluationParameters,
     GroundTruth,
     Label,
     MultiPolygon,
@@ -187,17 +186,15 @@ def run_pr_curve_evaluation(groundtruths, predictions):
     evaluation = evaluate_detection(
         groundtruths=groundtruths,
         predictions=predictions,
-        parameters=EvaluationParameters(
-            metrics_to_return=[
-                enums.MetricType.AP,
-                enums.MetricType.AR,
-                enums.MetricType.mAP,
-                enums.MetricType.APAveragedOverIOUs,
-                enums.MetricType.mAR,
-                enums.MetricType.mAPAveragedOverIOUs,
-                enums.MetricType.PrecisionRecallCurve,
-            ],
-        ),
+        metrics_to_return=[
+            enums.MetricType.AP,
+            enums.MetricType.AR,
+            enums.MetricType.mAP,
+            enums.MetricType.APAveragedOverIOUs,
+            enums.MetricType.mAR,
+            enums.MetricType.mAPAveragedOverIOUs,
+            enums.MetricType.PrecisionRecallCurve,
+        ],
     )
     return evaluation
 
@@ -207,23 +204,21 @@ def run_detailed_pr_curve_evaluation(groundtruths, predictions):
     evaluation = evaluate_detection(
         groundtruths=groundtruths,
         predictions=predictions,
-        parameters=EvaluationParameters(
-            metrics_to_return=[
-                enums.MetricType.AP,
-                enums.MetricType.AR,
-                enums.MetricType.mAP,
-                enums.MetricType.APAveragedOverIOUs,
-                enums.MetricType.mAR,
-                enums.MetricType.mAPAveragedOverIOUs,
-                enums.MetricType.PrecisionRecallCurve,
-            ],
-        ),
+        metrics_to_return=[
+            enums.MetricType.AP,
+            enums.MetricType.AR,
+            enums.MetricType.mAP,
+            enums.MetricType.APAveragedOverIOUs,
+            enums.MetricType.mAR,
+            enums.MetricType.mAPAveragedOverIOUs,
+            enums.MetricType.PrecisionRecallCurve,
+        ],
     )
     return evaluation
 
 
 def run_benchmarking_analysis(
-    limits_to_test: list[int] = [100, 100],
+    limits_to_test: list[int] = [5000],
     results_file: str = "results.json",
     data_file: str = "data.json",
 ):
@@ -282,6 +277,9 @@ def run_benchmarking_analysis(
             "detailed_pr_eval_runtime": f"{(detailed_pr_eval.meta['duration']):.1f} seconds",
         }
         write_results_to_file(write_path=write_path, result_dict=results)
+
+        if base_eval.meta["duration"] > 30:
+            raise TimeoutError("Base evaluation took longer than 30 seconds.")
 
 
 if __name__ == "__main__":

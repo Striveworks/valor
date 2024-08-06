@@ -191,9 +191,7 @@ def test_evaluate_image_clf(
     eval_job = evaluate_classification(
         groundtruths=evaluate_image_clf_groundtruths,
         predictions=evaluate_image_clf_predictions,
-        parameters=schemas.EvaluationParameters(
-            metrics_to_return=selected_metrics,
-        ),
+        metrics_to_return=selected_metrics,
     )
 
     assert set([metric["type"] for metric in eval_job.metrics]) == set(
@@ -211,9 +209,7 @@ def test_evaluate_image_clf(
     eval_job = evaluate_classification(
         groundtruths=evaluate_image_clf_groundtruths,
         predictions=evaluate_image_clf_predictions,
-        parameters=schemas.EvaluationParameters(
-            metrics_to_return=None,
-        ),
+        metrics_to_return=None,
     )
     assert set([metric["type"] for metric in eval_job.metrics]) == set(
         default_metrics
@@ -657,19 +653,17 @@ def test_evaluate_classification_with_label_maps(
     eval_job = evaluate_classification(
         groundtruths=gt_clfs_with_label_maps,
         predictions=pred_clfs_with_label_maps,
-        parameters=schemas.EvaluationParameters(
-            label_map=label_mapping,
-            pr_curve_max_examples=3,
-            metrics_to_return=[
-                enums.MetricType.Precision,
-                enums.MetricType.Recall,
-                enums.MetricType.F1,
-                enums.MetricType.Accuracy,
-                enums.MetricType.ROCAUC,
-                enums.MetricType.PrecisionRecallCurve,
-                enums.MetricType.DetailedPrecisionRecallCurve,
-            ],
-        ),
+        label_map=label_mapping,
+        pr_curve_max_examples=3,
+        metrics_to_return=[
+            enums.MetricType.Precision,
+            enums.MetricType.Recall,
+            enums.MetricType.F1,
+            enums.MetricType.Accuracy,
+            enums.MetricType.ROCAUC,
+            enums.MetricType.PrecisionRecallCurve,
+            enums.MetricType.DetailedPrecisionRecallCurve,
+        ],
     )
 
     pr_expected_values = {
@@ -827,26 +821,24 @@ def test_evaluate_classification_with_label_maps(
         _ = evaluate_classification(
             groundtruths=gt_clfs_with_label_maps,
             predictions=pred_clfs_with_label_maps,
-            parameters=schemas.EvaluationParameters(
-                label_map=[
+            label_map=[
+                [
                     [
-                        [
-                            schemas.Label(key="class", value="tabby cat"),
-                            schemas.Label(key="class", value="mammals"),
-                        ]
+                        schemas.Label(key="class", value="tabby cat"),
+                        schemas.Label(key="class", value="mammals"),
                     ]
-                ],  # type: ignore - purposefully raising error,
-                pr_curve_max_examples=3,
-                metrics_to_return=[
-                    enums.MetricType.Precision,
-                    enums.MetricType.Recall,
-                    enums.MetricType.F1,
-                    enums.MetricType.Accuracy,
-                    enums.MetricType.ROCAUC,
-                    enums.MetricType.PrecisionRecallCurve,
-                    enums.MetricType.DetailedPrecisionRecallCurve,
-                ],
-            ),
+                ]
+            ],  # type: ignore - purposefully raising error,
+            pr_curve_max_examples=3,
+            metrics_to_return=[
+                enums.MetricType.Precision,
+                enums.MetricType.Recall,
+                enums.MetricType.F1,
+                enums.MetricType.Accuracy,
+                enums.MetricType.ROCAUC,
+                enums.MetricType.PrecisionRecallCurve,
+                enums.MetricType.DetailedPrecisionRecallCurve,
+            ],
         )
 
 
@@ -936,19 +928,17 @@ def test_compute_confusion_matrix_at_grouper_key_using_label_map(
     eval_job = evaluate_classification(
         groundtruths=groundtruths,
         predictions=predictions,
-        parameters=schemas.EvaluationParameters(
-            label_map={
-                schemas.Label(key="animal", value="dog"): schemas.Label(
-                    key="class", value="mammal"
-                ),
-                schemas.Label(key="animal", value="cat"): schemas.Label(
-                    key="class", value="mammal"
-                ),
-                schemas.Label(key="animal", value="bird"): schemas.Label(
-                    key="class", value="avian"
-                ),
-            }
-        ),
+        label_map={
+            schemas.Label(key="animal", value="dog"): schemas.Label(
+                key="class", value="mammal"
+            ),
+            schemas.Label(key="animal", value="cat"): schemas.Label(
+                key="class", value="mammal"
+            ),
+            schemas.Label(key="animal", value="bird"): schemas.Label(
+                key="class", value="avian"
+            ),
+        },
     )
 
     cm = eval_job.confusion_matrices
@@ -1054,17 +1044,15 @@ def test_compute_classification(
     eval_job = evaluate_classification(
         groundtruths=groundtruths,
         predictions=predictions,
-        parameters=schemas.EvaluationParameters(
-            metrics_to_return=[
-                enums.MetricType.Precision,
-                enums.MetricType.Recall,
-                enums.MetricType.F1,
-                enums.MetricType.Accuracy,
-                enums.MetricType.ROCAUC,
-                enums.MetricType.PrecisionRecallCurve,
-                enums.MetricType.DetailedPrecisionRecallCurve,
-            ],
-        ),
+        metrics_to_return=[
+            enums.MetricType.Precision,
+            enums.MetricType.Recall,
+            enums.MetricType.F1,
+            enums.MetricType.Accuracy,
+            enums.MetricType.ROCAUC,
+            enums.MetricType.PrecisionRecallCurve,
+            enums.MetricType.DetailedPrecisionRecallCurve,
+        ],
     )
 
     computed_metrics = [
@@ -1351,12 +1339,10 @@ def test_compute_classification(
     eval_job = evaluate_classification(
         groundtruths=groundtruths,
         predictions=predictions,
-        parameters=schemas.EvaluationParameters(
-            pr_curve_max_examples=3,
-            metrics_to_return=[
-                enums.MetricType.DetailedPrecisionRecallCurve,
-            ],
-        ),
+        pr_curve_max_examples=3,
+        metrics_to_return=[
+            enums.MetricType.DetailedPrecisionRecallCurve,
+        ],
     )
 
     assert (
@@ -1380,12 +1366,10 @@ def test_compute_classification(
     eval_job = evaluate_classification(
         groundtruths=groundtruths,
         predictions=predictions,
-        parameters=schemas.EvaluationParameters(
-            pr_curve_max_examples=0,
-            metrics_to_return=[
-                enums.MetricType.DetailedPrecisionRecallCurve,
-            ],
-        ),
+        pr_curve_max_examples=0,
+        metrics_to_return=[
+            enums.MetricType.DetailedPrecisionRecallCurve,
+        ],
     )
 
     assert (

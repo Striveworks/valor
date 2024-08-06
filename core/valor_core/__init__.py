@@ -31,7 +31,6 @@ from .schemas import (
     Annotation,
     Datum,
     Evaluation,
-    EvaluationParameters,
     GroundTruth,
     Label,
     Prediction,
@@ -69,5 +68,4 @@ __all__ = [
     "mAPMetric",
     "mAPMetricAveragedOverIOUs",
     "ConfusionMatrixEntry",
-    "EvaluationParameters",
 ]
