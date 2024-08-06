@@ -54,7 +54,7 @@ def _match_annotation_to_implied_task_type(
         and annotation.raster is None
         and annotation.embedding is None
         and annotation.text is None
-        and annotation.context is None
+        and annotation.context_list is None
     ):
         implied_type = ["classification"]
     # object detection annotations have bounding boxes, polygons, and/or rasters
@@ -68,7 +68,7 @@ def _match_annotation_to_implied_task_type(
         and annotation.is_instance is True
         and annotation.embedding is None
         and annotation.text is None
-        and annotation.context is None
+        and annotation.context_list is None
     ):
         implied_type = ["object-detection"]
     # semantic segmentation tasks only support rasters
@@ -80,7 +80,7 @@ def _match_annotation_to_implied_task_type(
         and annotation.polygon is None
         and annotation.embedding is None
         and annotation.text is None
-        and annotation.context is None
+        and annotation.context_list is None
     ):
         implied_type = ["semantic-segmentation"]
     # embedding tasks only support enbeddings
@@ -91,10 +91,10 @@ def _match_annotation_to_implied_task_type(
         and annotation.polygon is None
         and annotation.raster is None
         and annotation.text is None
-        and annotation.context is None
+        and annotation.context_list is None
     ):
         implied_type = ["embedding"]
-    # text generation tasks only support text and optionally context
+    # text generation tasks only support text and optionally context_list
     elif (
         annotation.text is not None
         and not annotation.labels
@@ -112,12 +112,12 @@ def _match_annotation_to_implied_task_type(
         and annotation.polygon is None
         and annotation.raster is None
         and annotation.text is None
-        and annotation.context is None
+        and annotation.context_list is None
     ):
         implied_type = ["empty"]
     else:
         raise ValueError(
-            "Input didn't match any known patterns. Classification tasks should only contain labels. Object detection tasks should contain labels and polygons, bounding boxes, or rasters with is_instance == True. Segmentation tasks should contain labels and rasters with is_instance != True. Text generation tasks should only contain text and optionally context."
+            "Input didn't match any known patterns. Classification tasks should only contain labels. Object detection tasks should contain labels and polygons, bounding boxes, or rasters with is_instance == True. Segmentation tasks should contain labels and rasters with is_instance != True. Text generation tasks should only contain text and optionally context_list."
         )
 
     return implied_type
@@ -310,8 +310,8 @@ class Annotation(BaseModel):
         The validated task types that are applicable to each Annotation. Doesn't need to be set by the user.
     text: str, optional
         A piece of text to assign to the 'Annotation'.
-    context: list[str], optional
-        A list of context to assign to the 'Annotation'.
+    context_list: list[str], optional
+        A list of contexts to assign to the 'Annotation'.
 
     """
 
@@ -325,7 +325,7 @@ class Annotation(BaseModel):
     model_config = ConfigDict(extra="forbid")
     implied_task_types: list[str] | None = None
     text: str | None = None
-    context: list[str] | None = None
+    context_list: list[str] | None = None
 
     @field_validator("implied_task_types")
     @classmethod

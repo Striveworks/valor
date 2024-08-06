@@ -310,7 +310,7 @@ print(detailed_evaluation)
 
 ## General Text Generation Metrics
 
-The general text generation metrics apply to a broad set of text generation tasks. These metrics don't compare to any groundtruths and don't require any sort of context. The metrics are evaluated purely based on the predicted text.
+The general text generation metrics apply to a broad set of text generation tasks. These metrics don't compare to groundtruths and don't require context. The metrics are evaluated purely based on the predicted text.
 
 Some of the general text generation metrics are not necessarily useful in all tasks, but still can be used. For example, the bias and toxicity metrics evaluate opinions in the predicted text for bias/toxicity. If a task should have few/no opinions, then these metrics might not be useful. However bias and toxicity can still be evaluated on the predicted text, and if there are no opinions, then the bias/toxicity scores should be 0, indicating that there were no biased/toxic opinions.
 
@@ -385,33 +385,33 @@ Our implementation closely follows [DeepEval's implementation](https://github.co
 
 ## RAG Metrics
 
-Note that RAG is a form of Q&A, so any Q&A metric can also be used to evaluate RAG models. The metrics in this section however should not be used for all Q&A tasks. RAG specific metrics use retrieved context, so should not be used to evaluate models that don't use context.
+Note that RAG is a form of Q&A, so any Q&A metric can also be used to evaluate RAG models. The metrics in this section however should not be used for all Q&A tasks. RAG specific metrics use retrieved contexts, so should not be used to evaluate models that don't use contexts.
 
 ### Context Relevance
 
-Context relevance is the proportion of pieces of retrieved context that are relevant to the query. A piece of context is considered relevant to the query if any part of the context is relevant to answering the query. For example, a piece of context might be a paragraph of text, so if the answer or part of the answer to a query is contained somewhere in that paragraph, then that piece of context is considered relevant.
+Context relevance is the proportion of pieces of retrieved contexts that are relevant to the query. A piece of context is considered relevant to the query if any part of the context is relevant to answering the query. For example, a piece of context might be a paragraph of text, so if the answer or part of the answer to a query is contained somewhere in that paragraph, then that piece of context is considered relevant.
 
-Context relevance is useful for evaluating the retrieval mechanism of a RAG model. This metric does not considered the generated answer or any groundtruth answers to the query, only the retrieved context.
+Context relevance is useful for evaluating the retrieval mechanism of a RAG model. This metric does not considered the generated answer or any groundtruth answers to the query, only the retrieved contexts.
 
-Given the query and the list of context, an LLM is prompted to determine if each piece of context is relevant to the query. Then the score is computed as the number of relevant pieces of context divided by the total number of pieces of context.
+Given the query and the list of contexts, an LLM is prompted to determine if each piece of context is relevant to the query. Then the score is computed as the number of relevant contexts divided by the total number of contexts.
 
 Our implementation closely follows [DeepEval's implementation](https://github.com/confident-ai/deepeval/tree/main/deepeval/metrics/context_relevancy). The calculation is the same, however we modified the instruction for the LLM. The instruction in DeepEval contained typos and was organized in a confusing way, so we fixed the typos and reorganized the example to make the task clearer.
 
 ### Faithfulness
 
-Faithfulness is the proportion of claims from the predicted text that are implied by the retrieved context.
+Faithfulness is the proportion of claims from the predicted text that are implied by the retrieved contexts.
 
-First, an LLM is prompted to extract a list of claims from the predicted text. Then, the LLM is prompted again with the list of claims and the list of context and is asked if each claim is implied / can be verified from the context. If the claim contradicts the context or if the claim is unrelated to the context, the LLM is instructed to indicate that the claim is not implied by the context. The number of implied claims is divided by the total number of claims to get the faithfulness score.
+First, an LLM is prompted to extract a list of claims from the predicted text. Then, the LLM is prompted again with the list of claims and the list of contexts and is asked if each claim is implied / can be verified from the contexts. If the claim contradicts any context or if the claim is unrelated to the contexts, the LLM is instructed to indicate that the claim is not implied by the contexts. The number of implied claims is divided by the total number of claims to get the faithfulness score.
 
-Our implementation loosely follows and combines the strategies of [DeepEval](https://docs.confident-ai.com/docs/metrics-faithfulness) and [RAGAS](https://docs.ragas.io/en/latest/concepts/metrics/faithfulness.html), however it is notable that DeepEval and RAGAS's definitions of faithfulness are not equivalent. The difference is that, if a claim is unrelated to the context (is not implied by the context but also does not contradict the context), then DeepEval counts this claim positively towards the faithfulness score, however RAGAS counts this claim against the faithfulness score. Valor follows the same definition as RAGAS, as we believe that a claim that is unrelated to the context should not be counted positively towards the faithfulness score. If a predicted text makes many claims that are unrelated and unverifiable from the context, then how can we consider that text faithful to the context?
+Our implementation loosely follows and combines the strategies of [DeepEval](https://docs.confident-ai.com/docs/metrics-faithfulness) and [RAGAS](https://docs.ragas.io/en/latest/concepts/metrics/faithfulness.html), however it is notable that DeepEval and RAGAS's definitions of faithfulness are not equivalent. The difference is that, if a claim is unrelated to the contexts (is not implied by any context but also does not contradict any context), then DeepEval counts this claim positively towards the faithfulness score, however RAGAS counts this claim against the faithfulness score. Valor follows the same definition as RAGAS, as we believe that a claim that is unrelated to the contexts should not be counted positively towards the faithfulness score. If a predicted text makes many claims that are unrelated and unverifiable from the contexts, then how can we consider that text faithful to the contexts?
 
 We follow [DeepEval's prompting strategy](https://github.com/confident-ai/deepeval/blob/main/deepeval/metrics/faithfulness/template.py) as this strategy is closer to the other prompting strategies in Valor, however we heavily modify the instructions. Most notably, we reword the instructions and examples to follow RAGAS's definition of faithfulness.
 
 ### Hallucination
 
-Hallucination is the proportion of pieces of context that are contradicted by the predicted text. If the predicted text does not contradict any of the retrieved context, then it should receive a hallucination score of 0. The hallucination score is computed as the number of pieces of context contradicted by the predicted text divided by the total number of pieces of context.
+Hallucination is the proportion of contexts that are contradicted by the predicted text. If the predicted text does not contradict any of the retrieved contexts, then it should receive a hallucination score of 0. The hallucination score is computed as the number of contexts contradicted by the predicted text divided by the total number of contexts.
 
-Given the list of context and the predicted text, an LLM is prompted to determine if the text agrees or contradicts with each piece of context. The LLM is instructed to only indicate contradiction if the text directly contradicts the context, and otherwise indicates agreement.
+Given the list of context and the predicted text, an LLM is prompted to determine if the text agrees or contradicts with each piece of context. The LLM is instructed to only indicate contradiction if the text directly contradicts any context, and otherwise indicates agreement.
 
 Our implementation closely follows [DeepEval's implementation](https://github.com/confident-ai/deepeval/tree/main/deepeval/metrics/hallucination). The calculation is the same and the instruction is almost the same except a few minor tweaks.
 

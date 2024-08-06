@@ -14,6 +14,7 @@ from mistralai.models.common import UsageInfo
 from openai import OpenAIError
 from openai.types.chat import ChatCompletionMessage
 from openai.types.chat.chat_completion import ChatCompletion, Choice
+from openai.types.completion_usage import CompletionUsage
 from pydantic import ValidationError
 
 from valor_api.backend.core.llm_clients import (
@@ -45,7 +46,7 @@ VALID_OPINIONS = """```json
     ]
 }```"""
 
-ANSWER_RELEVANCE_VALID_STATEMENTS = """```json
+VALID_STATEMENTS = """```json
 {
     "statements": [
         "statement 1",
@@ -122,19 +123,19 @@ FAITHFULNESS_VALID_VERDICTS = """```json
     ]
 }```"""
 
-HALLUCINATION_AGREEMENT_VALID_VERDICTS = """```json
+HALLUCINATION_VALID_VERDICTS = """```json
 {
     "verdicts": [
         {
-            "verdict": "yes"
+            "verdict": "no"
         },
 
         {
-            "verdict": "no",
-            "reason": "The text and context mention disagree on when Abraham Lincoln was born."
+            "verdict": "yes",
+            "reason": "The text and context disagree on when Abraham Lincoln was born."
         },
         {
-            "verdict": "no",
+            "verdict": "yes",
             "reason": "The text says that Abraham Lincoln lost the election of 1860, but the context says that Abraham Lincoln won the election of 1860."
         }
     ]
@@ -161,19 +162,31 @@ TOXICITY_VALID_VERDICTS = """```json
 }```"""
 
 
+class BadValueInTestLLMClientsError(Exception):
+    """
+    Raised when a mock function in test_llm_clients.py receives a bad value.
+    """
+
+    pass
+
+
 def test_LLMClient(monkeypatch):
-    """Check that this parent class mostly throws NotImplementedErrors, since its methods are intended to be overridden by its children."""
+    """
+    Check that LLMClient throws NotImplementedErrors for connect and __call__.
+
+    Check the metric computations for LLMClient. The client children inherit all of these metric computations.
+    """
 
     def _return_valid_answer_relevance_response(*args, **kwargs):
-        if "generate a list of statements" in args[1][1]["content"]:
-            return ANSWER_RELEVANCE_VALID_STATEMENTS
+        if "generate a list of STATEMENTS" in args[1][1]["content"]:
+            return VALID_STATEMENTS
         elif (
-            "determine whether each statement is relevant to address the input"
+            "generate a list of verdicts that indicate whether each statement is relevant to address the query"
             in args[1][1]["content"]
         ):
             return ANSWER_RELEVANCE_VALID_VERDICTS
         else:
-            raise ValueError
+            raise BadValueInTestLLMClientsError
 
     def _return_invalid1_answer_relevance_response(*args, **kwargs):
         return """```json
@@ -198,10 +211,10 @@ def test_LLMClient(monkeypatch):
 }```"""
 
     def _return_invalid3_answer_relevance_response(*args, **kwargs):
-        if "generate a list of statements" in args[1][1]["content"]:
-            return ANSWER_RELEVANCE_VALID_STATEMENTS
+        if "generate a list of STATEMENTS" in args[1][1]["content"]:
+            return VALID_STATEMENTS
         elif (
-            "determine whether each statement is relevant to address the input"
+            "generate a list of verdicts that indicate whether each statement is relevant to address the query"
             in args[1][1]["content"]
         ):
             return """```json
@@ -223,13 +236,13 @@ def test_LLMClient(monkeypatch):
     ]
 }```"""
         else:
-            raise ValueError
+            raise BadValueInTestLLMClientsError
 
     def _return_invalid4_answer_relevance_response(*args, **kwargs):
-        if "generate a list of statements" in args[1][1]["content"]:
-            return ANSWER_RELEVANCE_VALID_STATEMENTS
+        if "generate a list of STATEMENTS" in args[1][1]["content"]:
+            return VALID_STATEMENTS
         elif (
-            "determine whether each statement is relevant to address the input"
+            "generate a list of verdicts that indicate whether each statement is relevant to address the query"
             in args[1][1]["content"]
         ):
             return """```json
@@ -251,18 +264,18 @@ def test_LLMClient(monkeypatch):
     ]
 }```"""
         else:
-            raise ValueError
+            raise BadValueInTestLLMClientsError
 
     def _return_valid1_bias_response(*args, **kwargs):
-        if "please generate a list of OPINIONS" in args[1][1]["content"]:
+        if "generate a list of OPINIONS" in args[1][1]["content"]:
             return VALID_OPINIONS
         elif (
-            "generate a list of JSON objects to indicate whether EACH opinion is biased"
+            "generate a list of verdicts to indicate whether EACH opinion is biased"
             in args[1][1]["content"]
         ):
             return BIAS_VALID_VERDICTS
         else:
-            raise ValueError
+            raise BadValueInTestLLMClientsError
 
     def _return_valid2_bias_response(*args, **kwargs):
         return """```json
@@ -293,29 +306,29 @@ def test_LLMClient(monkeypatch):
 }```"""
 
     def _return_invalid3_bias_response(*args, **kwargs):
-        if "please generate a list of OPINIONS" in args[1][1]["content"]:
+        if "generate a list of OPINIONS" in args[1][1]["content"]:
             return VALID_OPINIONS
         elif (
-            "generate a list of JSON objects to indicate whether EACH opinion is biased"
+            "generate a list of verdicts to indicate whether EACH opinion is biased"
             in args[1][1]["content"]
         ):
             return """```json
 {
     "opinions": [
-        "opinion 1",
+        "the key should be 'verdicts' not 'opinions'",
         "opinion 2",
         "opinion 3",
         "opinion 4"
     ]
 }```"""
         else:
-            raise ValueError
+            raise BadValueInTestLLMClientsError
 
     def _return_invalid4_bias_response(*args, **kwargs):
-        if "please generate a list of OPINIONS" in args[1][1]["content"]:
+        if "generate a list of OPINIONS" in args[1][1]["content"]:
             return VALID_OPINIONS
         elif (
-            "generate a list of JSON objects to indicate whether EACH opinion is biased"
+            "generate a list of verdicts to indicate whether EACH opinion is biased"
             in args[1][1]["content"]
         ):
             return """```json
@@ -338,10 +351,13 @@ def test_LLMClient(monkeypatch):
     ]
 }```"""
         else:
-            raise ValueError
+            raise BadValueInTestLLMClientsError
 
     def _return_valid_coherence_response(*args, **kwargs):
         return "5"
+
+    def _return_invalid1_coherence_response(*args, **kwargs):
+        return "The score is 5."
 
     def _return_invalid2_coherence_response(*args, **kwargs):
         return "0"
@@ -361,17 +377,17 @@ def test_LLMClient(monkeypatch):
 
     def _return_valid1_faithfulness_response(*args, **kwargs):
         if (
-            "generate a comprehensive list of FACTUAL claims that can inferred from the provided text"
+            "generate a comprehensive list of FACTUAL CLAIMS"
             in args[1][1]["content"]
         ):
             return VALID_CLAIMS
         elif (
-            "generate a list of JSON objects to indicate whether EACH claim is implied by the retrieved context"
+            "generate a list of verdicts to indicate whether EACH claim is implied by the context list"
             in args[1][1]["content"]
         ):
             return FAITHFULNESS_VALID_VERDICTS
         else:
-            raise ValueError
+            raise BadValueInTestLLMClientsError
 
     def _return_valid2_faithfulness_response(*args, **kwargs):
         return """```json
@@ -380,37 +396,59 @@ def test_LLMClient(monkeypatch):
 }```"""
 
     def _return_invalid1_faithfulness_response(*args, **kwargs):
-        return """```json
-{
-    "list": [
-        "claim 1",
-        "claim 2",
-        "claim 3",
-        "claim 4",
-        "claim 5"
-    ]
-}```"""
-
-    def _return_invalid2_faithfulness_response(*args, **kwargs):
-        return """```json
-{
-    "claims": [
-        "claim 1",
-        2,
-        "claim 3",
-        "claim 4",
-        "claim 5"
-    ]
-}```"""
-
-    def _return_invalid3_faithfulness_response(*args, **kwargs):
         if (
-            "generate a comprehensive list of FACTUAL claims that can inferred from the provided text"
+            "generate a comprehensive list of FACTUAL CLAIMS"
             in args[1][1]["content"]
         ):
             return VALID_CLAIMS
         elif (
-            "generate a list of JSON objects to indicate whether EACH claim is implied by the retrieved context"
+            "generate a list of verdicts to indicate whether EACH claim is implied by the context list"
+            in args[1][1]["content"]
+        ):
+            return """```json
+{
+    "list": [
+        "verdict 1",
+        "verdict 2",
+        "verdict 3",
+        "verdict 4",
+        "verdict 5"
+    ]
+}```"""
+        else:
+            raise BadValueInTestLLMClientsError
+
+    def _return_invalid2_faithfulness_response(*args, **kwargs):
+        if (
+            "generate a comprehensive list of FACTUAL CLAIMS"
+            in args[1][1]["content"]
+        ):
+            return VALID_CLAIMS
+        elif (
+            "generate a list of verdicts to indicate whether EACH claim is implied by the context list"
+            in args[1][1]["content"]
+        ):
+            return """```json
+{
+    "claims": [
+        "verdict 1",
+        2,
+        "verdict 3",
+        "verdict 4",
+        "verdict 5"
+    ]
+}```"""
+        else:
+            raise BadValueInTestLLMClientsError
+
+    def _return_invalid3_faithfulness_response(*args, **kwargs):
+        if (
+            "generate a comprehensive list of FACTUAL CLAIMS"
+            in args[1][1]["content"]
+        ):
+            return VALID_CLAIMS
+        elif (
+            "generate a list of verdicts to indicate whether EACH claim is implied by the context list"
             in args[1][1]["content"]
         ):
             return """```json
@@ -424,16 +462,16 @@ def test_LLMClient(monkeypatch):
     ]
 }```"""
         else:
-            raise ValueError
+            raise BadValueInTestLLMClientsError
 
     def _return_invalid4_faithfulness_response(*args, **kwargs):
         if (
-            "generate a comprehensive list of FACTUAL claims that can inferred from the provided text"
+            "generate a comprehensive list of FACTUAL CLAIMS"
             in args[1][1]["content"]
         ):
             return VALID_CLAIMS
         elif (
-            "generate a list of JSON objects to indicate whether EACH claim is implied by the retrieved context"
+            "generate a list of verdicts to indicate whether EACH claim is implied by the context list"
             in args[1][1]["content"]
         ):
             return """```json
@@ -446,16 +484,16 @@ def test_LLMClient(monkeypatch):
     ]
 }```"""
         else:
-            raise ValueError
+            raise BadValueInTestLLMClientsError
 
     def _return_invalid5_faithfulness_response(*args, **kwargs):
         if (
-            "generate a comprehensive list of FACTUAL claims that can inferred from the provided text"
+            "generate a comprehensive list of FACTUAL CLAIMS"
             in args[1][1]["content"]
         ):
             return VALID_CLAIMS
         elif (
-            "generate a list of JSON objects to indicate whether EACH claim is implied by the retrieved context"
+            "generate a list of verdicts to indicate whether EACH claim is implied by the context list"
             in args[1][1]["content"]
         ):
             return """```json
@@ -469,10 +507,10 @@ def test_LLMClient(monkeypatch):
     ]
 }```"""
         else:
-            raise ValueError
+            raise BadValueInTestLLMClientsError
 
     def _return_valid_hallucination_response(*args, **kwargs):
-        return HALLUCINATION_AGREEMENT_VALID_VERDICTS
+        return HALLUCINATION_VALID_VERDICTS
 
     def _return_invalid1_hallucination_response(*args, **kwargs):
         return """```json
@@ -485,15 +523,15 @@ def test_LLMClient(monkeypatch):
 }```"""
 
     def _return_valid1_toxicity_response(*args, **kwargs):
-        if "please generate a list of OPINIONS" in args[1][1]["content"]:
+        if "generate a list of OPINIONS" in args[1][1]["content"]:
             return VALID_OPINIONS
         elif (
-            "generate a list of JSON objects to indicate whether EACH opinion is toxic"
+            "generate a list of verdicts to indicate whether EACH opinion is toxic"
             in args[1][1]["content"]
         ):
             return TOXICITY_VALID_VERDICTS
         else:
-            raise ValueError
+            raise BadValueInTestLLMClientsError
 
     def _return_valid2_toxicity_response(*args, **kwargs):
         return """```json
@@ -524,10 +562,10 @@ def test_LLMClient(monkeypatch):
 }```"""
 
     def _return_invalid3_toxicity_response(*args, **kwargs):
-        if "please generate a list of OPINIONS" in args[1][1]["content"]:
+        if "generate a list of OPINIONS" in args[1][1]["content"]:
             return VALID_OPINIONS
         elif (
-            "generate a list of JSON objects to indicate whether EACH opinion is toxic"
+            "generate a list of verdicts to indicate whether EACH opinion is toxic"
             in args[1][1]["content"]
         ):
             return """```json
@@ -540,13 +578,13 @@ def test_LLMClient(monkeypatch):
     ]
 }```"""
         else:
-            raise ValueError
+            raise BadValueInTestLLMClientsError
 
     def _return_invalid4_toxicity_response(*args, **kwargs):
-        if "please generate a list of OPINIONS" in args[1][1]["content"]:
+        if "generate a list of OPINIONS" in args[1][1]["content"]:
             return VALID_OPINIONS
         elif (
-            "generate a list of JSON objects to indicate whether EACH opinion is toxic"
+            "generate a list of verdicts to indicate whether EACH opinion is toxic"
             in args[1][1]["content"]
         ):
             return """```json
@@ -569,25 +607,18 @@ def test_LLMClient(monkeypatch):
     ]
 }```"""
         else:
-            raise ValueError
-
-    def _return_invalid_response(*args, **kwargs):
-        return "some bad response"
+            raise BadValueInTestLLMClientsError
 
     client = LLMClient(api_key=None, model_name="model_name")
 
-    # connect() is not implemented for the parent class.
+    # connect(), _process_messages() and __call__() are not implemented for the parent class.
     fake_message = [
         {"role": "system", "content": "You are a helpful assistant."}
     ]
     with pytest.raises(NotImplementedError):
         client.connect()
-
-    # _process_messages() is not implemented for the parent class.
     with pytest.raises(NotImplementedError):
         client._process_messages(fake_message)
-
-    # __call__() is not implemented for the parent class.
     with pytest.raises(NotImplementedError):
         client(fake_message)
 
@@ -686,7 +717,7 @@ def test_LLMClient(monkeypatch):
     # Coherence score is not an integer.
     monkeypatch.setattr(
         "valor_api.backend.core.llm_clients.LLMClient.__call__",
-        _return_invalid_response,
+        _return_invalid1_coherence_response,
     )
     with pytest.raises(InvalidLLMResponseError):
         client.coherence("some text")
@@ -708,7 +739,7 @@ def test_LLMClient(monkeypatch):
         "some query", ["context 1", "context 2", "context 3"]
     )
 
-    # Context relevance doesn't make sense if no context is provided.
+    # Context relevance is meaningless if context_list is empty.
     monkeypatch.setattr(
         "valor_api.backend.core.llm_clients.LLMClient.__call__",
         _return_valid_context_relevance_response,
@@ -716,14 +747,15 @@ def test_LLMClient(monkeypatch):
     with pytest.raises(ValueError):
         client.context_relevance("some query", [])
 
-    # Only 1 piece of context provided but 3 verdicts were returned.
+    # Only 1 context provided but 3 verdicts were returned.
     monkeypatch.setattr(
         "valor_api.backend.core.llm_clients.LLMClient.__call__",
         _return_valid_context_relevance_response,
     )
     with pytest.raises(InvalidLLMResponseError):
         client.context_relevance(
-            "some query", ["number of context does not match LLM's response"]
+            "some query",
+            ["length of context list does not match LLM's response"],
         )
 
     # Key 'all_verdicts' is returned but the key should be 'verdicts'.
@@ -750,7 +782,7 @@ def test_LLMClient(monkeypatch):
     )
     assert 1.0 == client.faithfulness("some text", ["context 1", "context 2"])
 
-    # Faithfulness is meaningless if no context is provided, so should throw a ValueError.
+    # Faithfulness is meaningless if context_list is empty.
     monkeypatch.setattr(
         "valor_api.backend.core.llm_clients.LLMClient.__call__",
         _return_valid1_faithfulness_response,
@@ -807,7 +839,7 @@ def test_LLMClient(monkeypatch):
         "some answer", ["context 1", "context 2", "context 3"]
     )
 
-    # Context relevance doesn't make sense if no context is provided.
+    # Context relevance is meaningless if context_list is empty.
     monkeypatch.setattr(
         "valor_api.backend.core.llm_clients.LLMClient.__call__",
         _return_valid_hallucination_response,
@@ -815,14 +847,15 @@ def test_LLMClient(monkeypatch):
     with pytest.raises(ValueError):
         client.hallucination("some query", [])
 
-    # Only 1 piece of context provided but 3 verdicts were returned.
+    # Only 1 context provided but 3 verdicts were returned.
     monkeypatch.setattr(
         "valor_api.backend.core.llm_clients.LLMClient.__call__",
         _return_valid_hallucination_response,
     )
     with pytest.raises(InvalidLLMResponseError):
         client.hallucination(
-            "some query", ["number of context does not match LLM's response"]
+            "some query",
+            ["length of context list does not match LLM's response"],
         )
 
     # Key 'all_verdicts' is returned but the key should be 'verdicts'.
@@ -903,6 +936,9 @@ def test_WrappedOpenAIClient():
                     ),
                 )
             ],
+            usage=CompletionUsage(
+                completion_tokens=1, prompt_tokens=2, total_tokens=3
+            ),
             created=int(datetime.datetime.now().timestamp()),
         )
 
@@ -923,6 +959,9 @@ def test_WrappedOpenAIClient():
                     ),
                 )
             ],
+            usage=CompletionUsage(
+                completion_tokens=1, prompt_tokens=2, total_tokens=3
+            ),
             created=int(datetime.datetime.now().timestamp()),
         )
 
@@ -941,6 +980,9 @@ def test_WrappedOpenAIClient():
                     ),
                 )
             ],
+            usage=CompletionUsage(
+                completion_tokens=1, prompt_tokens=2, total_tokens=3
+            ),
             created=int(datetime.datetime.now().timestamp()),
         )
 
@@ -961,6 +1003,9 @@ def test_WrappedOpenAIClient():
                     ),
                 )
             ],
+            usage=CompletionUsage(
+                completion_tokens=1, prompt_tokens=2, total_tokens=3
+            ),
             created=int(datetime.datetime.now().timestamp()),
         )
 
