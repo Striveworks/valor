@@ -216,14 +216,15 @@ def _setup_llm_client(
 
     client_name = llm_api_params.get("client")
     if client_name is not None:
-        if client_name == "openai":
-            client_cls = WrappedOpenAIClient
-        elif client_name == "mistral":
-            client_cls = WrappedMistralAIClient
-        elif client_name == "mock":
-            client_cls = MockLLMClient
-        else:
-            raise ValueError(f"Client {client_name} is not supported.")
+        match client_name:
+            case "openai":
+                client_cls = WrappedOpenAIClient
+            case "mistral":
+                client_cls = WrappedMistralAIClient
+            case "mock":
+                client_cls = MockLLMClient
+            case _:
+                raise ValueError(f"Client {client_name} is not supported.")
     else:
         raise NotImplementedError(
             "Support has not been implemented for api_url."
