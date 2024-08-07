@@ -641,7 +641,7 @@ def test_ContextRelevanceMetric():
         parameters={
             "dataset_uid": "01",
             "dataset_name": "test_dataset",
-            "context": ["context1", "context2"],
+            "context_list": ["context1", "context2"],
         },
     )
 
@@ -651,7 +651,7 @@ def test_ContextRelevanceMetric():
             parameters={
                 "dataset_uid": "01",
                 "dataset_name": "test_dataset",
-                "context": ["context1", "context2"],
+                "context_list": ["context1", "context2"],
             },
         )
 
@@ -661,7 +661,7 @@ def test_ContextRelevanceMetric():
             parameters={
                 "dataset_uid": "01",
                 "dataset_name": "test_dataset",
-                "context": ["context1", "context2"],
+                "context_list": ["context1", "context2"],
             },
         )
 
@@ -686,7 +686,7 @@ def test_FaithfulnessMetric():
             "dataset_uid": "01",
             "dataset_name": "test_dataset",
             "prediction": "some prediction",
-            "context": ["context1", "context2"],
+            "context_list": ["context1", "context2"],
         },
     )
 
@@ -697,7 +697,7 @@ def test_FaithfulnessMetric():
                 "dataset_uid": "01",
                 "dataset_name": "test_dataset",
                 "prediction": "some prediction",
-                "context": ["context1", "context2"],
+                "context_list": ["context1", "context2"],
             },
         )
 
@@ -708,7 +708,7 @@ def test_FaithfulnessMetric():
                 "dataset_uid": "01",
                 "dataset_name": "test_dataset",
                 "prediction": "some prediction",
-                "context": ["context1", "context2"],
+                "context_list": ["context1", "context2"],
             },
         )
 
@@ -733,7 +733,7 @@ def test_HallucinationMetric():
             "dataset_uid": "01",
             "dataset_name": "test_dataset",
             "prediction": "some prediction",
-            "context": ["context1", "context2"],
+            "context_list": ["context1", "context2"],
         },
     )
 
@@ -744,7 +744,7 @@ def test_HallucinationMetric():
                 "dataset_uid": "01",
                 "dataset_name": "test_dataset",
                 "prediction": "some prediction",
-                "context": ["context1", "context2"],
+                "context_list": ["context1", "context2"],
             },
         )
 
@@ -755,7 +755,7 @@ def test_HallucinationMetric():
                 "dataset_uid": "01",
                 "dataset_name": "test_dataset",
                 "prediction": "some prediction",
-                "context": ["context1", "context2"],
+                "context_list": ["context1", "context2"],
             },
         )
 
