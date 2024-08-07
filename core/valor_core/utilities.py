@@ -72,13 +72,10 @@ def validate_parameters(
         )
 
 
-# TODO this is a bit messy. maybe refactor and move shared parts into a new function
 def validate_groundtruth_dataframe(
     obj: Union[pd.DataFrame, List[schemas.GroundTruth]],
-    task_type: enums.TaskType,
 ) -> pd.DataFrame:
     if isinstance(obj, pd.DataFrame):
-        # TODO check for correct columns
         return obj
     elif (
         obj
@@ -96,10 +93,8 @@ def validate_groundtruth_dataframe(
 
 def validate_prediction_dataframe(
     obj: Union[pd.DataFrame, List[schemas.Prediction]],
-    task_type: enums.TaskType,
 ) -> pd.DataFrame:
     if isinstance(obj, pd.DataFrame):
-        # TODO check for correct columns
         return obj
     elif (
         obj
@@ -121,7 +116,6 @@ def validate_matching_label_keys(
     label_map,
 ) -> None:
     """
-    # TODO
     Validates that every datum has the same set of label keys for both ground truths and predictions. This check is only needed for classification tasks.
 
     Parameters
@@ -288,7 +282,6 @@ def get_disjoint_labels(
     """
     Returns all unique labels that are not shared between both filters.
 
-    # TODO
     Parameters
     ----------
     db : Session
@@ -616,7 +609,6 @@ def _add_converted_geometry_column(
     return df
 
 
-# TODO add tests for this function
 def convert_annotations_to_common_type(
     groundtruth_df: pd.DataFrame,
     prediction_df: pd.DataFrame,

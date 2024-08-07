@@ -98,7 +98,6 @@ class _LabelKeyMetricBase:
 @dataclass
 class ARMetric(_LabelMetricBase):
     """
-    # TODO
     An AR metric response from the API.
 
     Attributes
@@ -135,7 +134,6 @@ class ARMetric(_LabelMetricBase):
 @dataclass
 class APMetric(_LabelMetricBase):
     """
-    # TODO
     An AP metric response from the API.
 
     Attributes
@@ -172,7 +170,6 @@ class APMetric(_LabelMetricBase):
 @dataclass
 class APMetricAveragedOverIOUs(_LabelMetricBase):
     """
-    # TODO
     An AR metric response from the API.
 
     Attributes

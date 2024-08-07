@@ -267,7 +267,6 @@ class Annotation:
             )
 
 
-# TODO delete this and move arguments into individual evaluation functions
 @dataclass
 class EvaluationParameters:
     """
@@ -289,7 +288,6 @@ class EvaluationParameters:
             The IOU threshold to use when calculating precision-recall curves for object detection tasks. Defaults to 0.5.
     pr_curve_max_examples: int
         The maximum number of datum examples to store when calculating PR curves.
-        # TODO
     """
 
     label_map: Optional[Dict[Label, Label]] = None
@@ -368,7 +366,6 @@ def __post_init__(self):
 
 @dataclass
 class Evaluation:
-    # TODO docstring
     parameters: EvaluationParameters
     metrics: List[Dict]
     confusion_matrices: Optional[List[Dict]]

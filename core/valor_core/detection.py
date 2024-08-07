@@ -1340,9 +1340,7 @@ def evaluate_detection(
     predictions: Union[pd.DataFrame, List[schemas.Prediction]],
     label_map: Optional[Dict[schemas.Label, schemas.Label]] = None,
     metrics_to_return: Optional[List[enums.MetricType]] = None,
-    convert_annotations_to_type: Optional[
-        enums.AnnotationType
-    ] = None,  # TODO is this tested anywhere?
+    convert_annotations_to_type: Optional[enums.AnnotationType] = None,
     iou_thresholds_to_compute: Optional[List[float]] = None,
     iou_thresholds_to_return: Optional[List[float]] = None,
     recall_score_threshold: float = 0.0,
@@ -1351,7 +1349,6 @@ def evaluate_detection(
 ) -> schemas.Evaluation:
     """
     Create object detection metrics.
-    # TODO
     """
     start_time = time.time()
 
@@ -1386,12 +1383,8 @@ def evaluate_detection(
         recall_score_threshold=recall_score_threshold,
     )
 
-    groundtruth_df = utilities.validate_groundtruth_dataframe(
-        groundtruths, task_type=enums.TaskType.OBJECT_DETECTION
-    )
-    prediction_df = utilities.validate_prediction_dataframe(
-        predictions, task_type=enums.TaskType.OBJECT_DETECTION
-    )
+    groundtruth_df = utilities.validate_groundtruth_dataframe(groundtruths)
+    prediction_df = utilities.validate_prediction_dataframe(predictions)
 
     # filter dataframes to only include those rows with an applicable implied task type
     groundtruth_df = utilities.filter_dataframe_based_on_task_type(
@@ -1434,7 +1427,6 @@ def evaluate_detection(
         | set(prediction_df["annotation_id"])
     )
 
-    # TODO just pass parameters to the classification equivalent of this function
     metrics = _compute_detection_metrics(
         groundtruth_df=groundtruth_df,
         prediction_df=prediction_df,
