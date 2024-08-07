@@ -72,25 +72,6 @@ def validate_parameters(
         )
 
 
-def _add_geojson_column(df: pd.DataFrame) -> pd.DataFrame:
-
-    # if the user wants to use rasters, then we don't care about converting to geojson format
-    if df["raster"].notna().any():
-        df["raster"] = df["raster"].apply(lambda x: x.array if x else None)
-        df["geojson"] = None
-
-    else:
-        # get the geojson for each object in a column called geojson
-        df["geojson"] = (
-            df[["bounding_box", "polygon"]]
-            .bfill(axis=1)
-            .iloc[:, 0]
-            .map(lambda x: x.to_dict())
-        )
-
-    return df
-
-
 # TODO this is a bit messy. maybe refactor and move shared parts into a new function
 def validate_groundtruth_dataframe(
     obj: Union[pd.DataFrame, List[schemas.GroundTruth]],
@@ -475,20 +456,31 @@ def _convert_raster_to_polygon(raster: np.ndarray) -> geometry.Polygon:
         raise ValueError("Raster must be a 2D array.")
 
     mask = (raster > 0).astype(np.uint8)
+    rows, cols = np.where(mask > 0)
 
-    contours = []
-    for y in range(mask.shape[0] - 1):
-        for x in range(mask.shape[1] - 1):
-            if mask[y, x] != mask[y + 1, x] or mask[y, x] != mask[y, x + 1]:
-                contours.append((x, y))
-
-    if not contours:
+    if len(rows) == 0 or len(cols) == 0:
         raise ValueError("Raster is empty, cannot create a polygon.")
 
-    contours = sorted(contours, key=lambda p: (p[1], p[0]))
-    polygons = [[tuple(point) for point in contours]]
+    contours = []
+    for r, c in zip(rows, cols):
+        if (
+            (r > 0 and mask[r - 1, c] == 0)
+            or (r < mask.shape[0] - 1 and mask[r + 1, c] == 0)
+            or (c > 0 and mask[r, c - 1] == 0)
+            or (c < mask.shape[1] - 1 and mask[r, c + 1] == 0)
+        ):
+            contours.append((c, r))
 
-    return geometry.Polygon(value=polygons)
+    if not contours:
+        raise ValueError("No contours found in raster.")
+
+    contours = sorted(contours, key=lambda p: (p[1], p[0]))
+
+    polygon = [[(x, y) for x, y in contours] + [contours[0]]]
+
+    return geometry.Polygon.from_dict(
+        {"type": "Polygon", "coordinates": polygon}
+    )
 
 
 def _convert_polygon_to_box(polygon: geometry.Polygon) -> geometry.Box:
@@ -551,42 +543,6 @@ def _identify_most_detailed_annotation_type(
         return enums.AnnotationType.NONE
 
 
-def _identify_least_detailed_annotation_type(
-    df: pd.DataFrame,
-) -> enums.AnnotationType:
-    """
-    Fetch annotation type from psql.
-
-    Parameters
-    ----------
-    db : Session
-        The database Session you want to query against.
-    task_type: TaskType
-        The implied task type to filter on.
-    dataset : models.Dataset
-        The dataset associated with the annotation.
-    model : models.Model
-        The model associated with the annotation.
-
-    Returns
-    ----------
-    AnnotationType
-        The type of the annotation.
-    """
-
-    if df["bounding_box"].notnull().any():
-        return enums.AnnotationType.BOX
-
-    elif df["polygon"].notnull().any():
-        return enums.AnnotationType.POLYGON
-
-    elif df["raster"].notnull().any():
-        return enums.AnnotationType.RASTER
-
-    else:
-        return enums.AnnotationType.NONE
-
-
 def _add_converted_geometry_column(
     df: pd.DataFrame,
     target_type: enums.AnnotationType,
@@ -609,7 +565,6 @@ def _add_converted_geometry_column(
     task_type: TaskType, optional
         Optional task type to search by.
     """
-    # TODO this code might be unreachable because of identify_implied_task_types
     if not (
         df[["bounding_box", "polygon", "raster"]].notna().sum(axis=1) == 1
     ).all():
@@ -617,33 +572,45 @@ def _add_converted_geometry_column(
             "Each Annotation must contain either a bounding_box, polygon, raster, or an embedding. One Annotation cannot have multiple of these attributes (for example, one Annotation can't contain both a raster and a bounding box)."
         )
 
+    # converted_geometry will be an array representing the original geometry
     df["converted_geometry"] = (
         df[["raster", "bounding_box", "polygon"]].bfill(axis=1).iloc[:, 0]
     )
 
     if target_type == enums.AnnotationType.RASTER:
-        df["converted_geometry"] = df["converted_geometry"].apply(
-            lambda x: x.array
+        df["converted_geometry"] = df["converted_geometry"].map(
+            lambda x: (
+                x.to_array() if isinstance(x, geometry.Raster) else None
+            )  # pyright: ignore
         )
     elif target_type == enums.AnnotationType.POLYGON:
-        df["converted_geometry"] = df["converted_geometry"].apply(
+        df["converted_geometry"] = df["converted_geometry"].map(
             lambda x: (
-                _convert_raster_to_polygon(x.array).to_dict()
+                _convert_raster_to_polygon(
+                    x.to_array()  # pyright: ignore
+                ).to_array()  # pyright: ignore
                 if isinstance(x, geometry.Raster)
-                else x.to_dict()
-            )
+                else x.to_array()
+                if isinstance(x, geometry.Polygon)
+                else None
+            )  # pyright: ignore
         )
+
     elif target_type == enums.AnnotationType.BOX:
-        df["converted_geometry"] = df["converted_geometry"].apply(
+        df["converted_geometry"] = df["converted_geometry"].map(
             lambda x: (
-                _convert_raster_to_box(x.array).to_dict()
+                _convert_raster_to_box(
+                    x.to_array()  # pyright: ignore
+                ).to_array()  # pyright: ignore
                 if isinstance(x, geometry.Raster)
                 else (
-                    _convert_polygon_to_box(x).to_dict()
+                    _convert_polygon_to_box(x).to_array()
                     if isinstance(x, geometry.Polygon)
-                    else x.to_dict()
+                    else x.to_array()
+                    if isinstance(x, geometry.Box)
+                    else None
                 )
-            )
+            )  # pyright: ignore
         )
 
     return df
@@ -654,7 +621,7 @@ def convert_annotations_to_common_type(
     groundtruth_df: pd.DataFrame,
     prediction_df: pd.DataFrame,
     target_type: enums.AnnotationType | None = None,
-) -> tuple[pd.DataFrame, pd.DataFrame]:
+) -> tuple[pd.DataFrame, pd.DataFrame, enums.AnnotationType]:
     """Convert all annotations to a common type."""
 
     if target_type is None:
@@ -663,30 +630,15 @@ def convert_annotations_to_common_type(
                 df=groundtruth_df,
             )
         )
-        least_detailed_groundtruth_type = (
-            _identify_least_detailed_annotation_type(
-                df=groundtruth_df,
-            )
-        )
+
         most_detailed_prediction_type = (
             _identify_most_detailed_annotation_type(
-                df=prediction_df,
-            )
-        )
-        least_detailed_prediction_type = (
-            _identify_least_detailed_annotation_type(
                 df=prediction_df,
             )
         )
 
         target_type = min(
             [most_detailed_groundtruth_type, most_detailed_prediction_type]
-        )
-        source_type = min(
-            [
-                least_detailed_groundtruth_type,
-                least_detailed_prediction_type,
-            ]
         )
 
         # Check typing
@@ -697,17 +649,9 @@ def convert_annotations_to_common_type(
         ]
 
         # validate that we can convert geometries successfully
-        if source_type not in valid_geometric_types:
-            raise ValueError(
-                f"Annotation source with type `{source_type}` not supported."
-            )
         if target_type not in valid_geometric_types:
             raise ValueError(
                 f"Annotation target with type `{target_type}` not supported."
-            )
-        if source_type < target_type:
-            raise ValueError(
-                f"Source type `{source_type}` is not capable of being converted to target type `{target_type}`."
             )
 
     groundtruth_df = _add_converted_geometry_column(
@@ -717,4 +661,4 @@ def convert_annotations_to_common_type(
         df=prediction_df, target_type=target_type
     )
 
-    return (groundtruth_df, prediction_df)
+    return (groundtruth_df, prediction_df, target_type)

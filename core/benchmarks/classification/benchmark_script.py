@@ -141,9 +141,8 @@ def run_detailed_pr_curve_evaluation(groundtruths, predictions):
     return evaluation
 
 
-# TODO reset limits
 def run_benchmarking_analysis(
-    limits_to_test: list[int] = [500, 500],
+    limits_to_test: list[int] = [5000, 5000],
     results_file: str = "results.json",
     data_file: str = "data.json",
 ):
@@ -196,12 +195,6 @@ def run_benchmarking_analysis(
             "detailed_pr_eval_runtime": f"{(detailed_pr_eval.meta['duration']):.1f} seconds",
         }
         write_results_to_file(write_path=write_path, result_dict=results)
-
-        # TODO delete
-        # write_results_to_file(
-        #     write_path=f"{current_directory}/blah_{results_file}",
-        #     result_dict=base_eval.metrics,
-        # )
 
         if base_eval.meta["duration"] > 30:
             raise TimeoutError("Base evaluation took longer than 30 seconds.")

@@ -1,6 +1,5 @@
 import io
 import json
-import warnings
 from base64 import b64decode, b64encode
 from dataclasses import dataclass
 from typing import Any, Optional, TypedDict, Union
@@ -35,8 +34,8 @@ def _validate_type_point(v: Any):
         raise generate_type_error(v, "tuple[float, float] or list[float]")
     elif not (
         len(v) == 2
-        and isinstance(v[0], (int, float))
-        and isinstance(v[1], (int, float))
+        and isinstance(v[0], (int, float, np.number))
+        and isinstance(v[1], (int, float, np.number))
     ):
         raise ValueError(
             f"Expected point to have two numeric values representing an (x, y) pair. Received '{v}'."
@@ -634,7 +633,7 @@ class Polygon:
         If the value doesn't conform to the type.
     """
 
-    value: list[list[tuple[int | float, int | float]]]
+    value: Union[list[list[tuple[int, int]]], list[list[tuple[float, float]]]]
 
     def __post_init__(self):
         _validate_type_polygon(self.value)
@@ -785,6 +784,9 @@ class Polygon:
         """
         return max([p[1] for p in self.boundary])
 
+    def to_array(self) -> np.ndarray:
+        return np.array(self.value[0])
+
 
 @dataclass
 class Box:
@@ -802,7 +804,7 @@ class Box:
         If the value doesn't conform to the type.
     """
 
-    value: list[list[tuple[int | float, int | float]]]
+    value: Union[list[list[tuple[int, int]]], list[list[tuple[float, float]]]]
 
     def __post_init__(self):
         _validate_type_box(self.value)
@@ -903,6 +905,11 @@ class Box:
             The WKT formatted string.
         """
         return Polygon(value=self.value).to_wkt()
+
+    def to_array(
+        self,
+    ) -> np.ndarray:
+        return np.array(self.value[0])
 
     @property
     def xmin(self):
@@ -1025,6 +1032,9 @@ class MultiPolygon:
         coords = "),(".join(polygons)
         return f"MULTIPOLYGON (({coords}))"
 
+    def to_array(self) -> np.ndarray:
+        return np.array(self.value[0][0])
+
 
 @dataclass
 class GeoJSON:
@@ -1073,7 +1083,7 @@ class GeoJSON:
 
 
 class RasterData(TypedDict):
-    mask: np.ndarray
+    mask: Optional[np.ndarray]
     geometry: Optional[Union[Box, Polygon, MultiPolygon]]
 
 
@@ -1139,21 +1149,29 @@ class Raster:
             raise ValueError(
                 "Raster should be described by a dictionary with keys 'mask' and 'geometry'"
             )
-        elif not isinstance(self.value["mask"], np.ndarray):
-            raise TypeError(
-                f"Expected mask to have type '{np.ndarray}' receieved type '{type(self.value['mask'])}'"
+        elif not (
+            (
+                isinstance(self.value["mask"], np.ndarray)
+                and self.value["geometry"] is None
             )
-        elif len(self.value["mask"].shape) != 2:
-            raise ValueError("raster only supports 2d arrays")
-        elif self.value["mask"].dtype != bool:
-            raise ValueError(
-                f"Expecting a binary mask (i.e. of dtype bool) but got dtype {self.value['mask'].dtype}"
+            or (
+                self.value["mask"] is None
+                and isinstance(self.value["geometry"], (Polygon, MultiPolygon))
             )
-        elif self.value["geometry"] is not None and not isinstance(
-            self.value["geometry"], (Polygon, MultiPolygon)
         ):
             raise TypeError(
-                "Expected geometry to conform to either Polygon or MultiPolygon or be 'None'"
+                "Only mask or geometry should be populated, but not both. if populated, we expect mask to have type np.ndarray, and expected geometry to have type Polygon or MultiPolygon."
+            )
+
+        if (
+            self.value["mask"] is not None
+            and len(self.value["mask"].shape) != 2
+        ):
+            raise ValueError("raster only supports 2d arrays")
+
+        if self.value["mask"] is not None and self.value["mask"].dtype != bool:
+            raise ValueError(
+                f"Expecting a binary mask (i.e. of dtype bool) but got dtype {self.value['mask'].dtype}"
             )
 
     def encode_value(self) -> Any:
@@ -1161,13 +1179,18 @@ class Raster:
         value = self.value
         if value is None:
             return None
-        f = io.BytesIO()
-        PIL.Image.fromarray(self.value["mask"]).save(f, format="PNG")
-        f.seek(0)
-        mask_bytes = f.read()
-        f.close()
+
+        if self.value["mask"] is not None:
+            f = io.BytesIO()
+            PIL.Image.fromarray(self.value["mask"]).save(f, format="PNG")
+            f.seek(0)
+            mask_bytes = f.read()
+            f.close()
+            decoded_mask_bytes = b64encode(mask_bytes).decode()
+        else:
+            decoded_mask_bytes = None
         return {
-            "mask": b64encode(mask_bytes).decode(),
+            "mask": decoded_mask_bytes,
             "geometry": self.value["geometry"],
         }
 
@@ -1234,27 +1257,25 @@ class Raster:
         -------
         Raster
         """
-        bitmask = np.full((int(height), int(width)), False)
-        return cls(value={"mask": bitmask, "geometry": geometry})
+        return cls(value={"mask": None, "geometry": geometry})
 
-    @property
-    def array(self) -> np.ndarray:
+    def to_array(self) -> np.ndarray | None:
         """
-        The bitmask as a numpy array.
+        Convert Raster to a numpy array.
 
         Returns
         -------
         Optional[np.ndarray]
             A 2D binary array representing the mask if it exists.
         """
-        value = self.value
-        # TODO check this logic
-        if value["geometry"] is not None:
-            warnings.warn(
-                "Raster array does not contain bitmask as this is a geometry-defined raster.",
-                RuntimeWarning,
+        if self.value["geometry"] is not None:
+            return self.value["geometry"].to_array()
+        else:
+            return (
+                self.value["mask"]
+                if self.value["mask"] is not None
+                else np.array([])
             )
-        return value["mask"]
 
     @property
     def geometry(self) -> Union[Box, Polygon, MultiPolygon, None]:
@@ -1267,16 +1288,6 @@ class Raster:
             The geometry if it exists.
         """
         return self.value["geometry"]
-
-    @property
-    def height(self) -> int:
-        """Returns the height of the raster if it exists."""
-        return self.array.shape[0]
-
-    @property
-    def width(self) -> int:
-        """Returns the width of the raster if it exists."""
-        return self.array.shape[1]
 
 
 @dataclass

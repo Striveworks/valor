@@ -1,5 +1,4 @@
 import heapq
-import json
 import time
 from collections import defaultdict
 from typing import Dict, List, Optional, Union
@@ -8,17 +7,7 @@ import numpy as np
 import pandas as pd
 from valor_core import enums, metrics, schemas, utilities
 
-
-def _convert_wkt_to_array(wkt_data) -> np.ndarray:
-    """Convert a WKT string to an array of coordinates."""
-    if isinstance(wkt_data, str):
-        coordinates = json.loads(wkt_data)["coordinates"][0]
-    elif isinstance(wkt_data, dict) and ("coordinates" in wkt_data.keys()):
-        coordinates = wkt_data["coordinates"][0]
-    else:
-        raise ValueError("Unknown format for wkt_data.")
-
-    return np.array(coordinates)
+pd.set_option("display.max_columns", None)
 
 
 def _calculate_bbox_intersection(bbox1, bbox2) -> float:
@@ -95,38 +84,70 @@ def _get_joint_df(
     return joint_df
 
 
-def _calculate_iou(joint_df: pd.DataFrame):
+def _get_dtypes_in_series_of_arrays(series: pd.Series):
+
+    if not isinstance(series, pd.Series) or not all(
+        series.apply(lambda x: x.ndim == 2)
+    ):
+        raise ValueError(
+            "series must be a pandas Series filled with two-dimensional arrays."
+        )
+
+    unique_primitives = series.map(lambda x: x.dtype).unique()
+
+    if len(unique_primitives) > 1:
+        raise ValueError("series contains more than one type of primitive.")
+
+    return unique_primitives[0]
+
+
+def _check_if_series_contains_masks(series: pd.Series):
+    if series.empty:
+        return False
+
+    primitive = _get_dtypes_in_series_of_arrays(series=series)
+
+    if np.issubdtype(primitive, np.bool_):
+        return True
+
+    return False
+
+
+def _calculate_iou(joint_df: pd.DataFrame, target_type: enums.AnnotationType):
     """Calculate the IOUs between predictions and groundtruths in a joint dataframe"""
-
-    if (
-        joint_df["converted_geometry_pd"]
-        .apply(lambda x: isinstance(x, np.ndarray))
-        .any()
-    ):  # if we're dealing with rasters...
-
-        # filter out rows with null rasters
-        joint_df = joint_df.loc[
-            ~joint_df["converted_geometry_pd"].isnull()
-            & ~joint_df["converted_geometry_gt"].isnull(),
-            :,
+    if _check_if_series_contains_masks(
+        joint_df.loc[
+            joint_df["converted_geometry_pd"].notnull(),
+            "converted_geometry_pd",
         ]
-
+    ):
         iou_calculation_df = (
             joint_df.assign(
                 intersection=lambda chain_df: chain_df.apply(
-                    lambda row: np.logical_and(
-                        row["converted_geometry_pd"],
-                        row["converted_geometry_gt"],
-                    ).sum(),
+                    lambda row: (
+                        0
+                        if row["converted_geometry_pd"] is None
+                        or row["converted_geometry_gt"] is None
+                        else np.logical_and(
+                            row["converted_geometry_pd"],
+                            row["converted_geometry_gt"],
+                        ).sum()
+                    ),
                     axis=1,
                 )
             )
             .assign(
-                union_=lambda chain_df: chain_df[
-                    "converted_geometry_gt"
-                ].apply(np.sum)
-                + chain_df["converted_geometry_pd"].apply(np.sum)
-                - chain_df["intersection"]
+                union_=lambda chain_df: chain_df.apply(
+                    lambda row: (
+                        0
+                        if row["converted_geometry_pd"] is None
+                        or row["converted_geometry_gt"] is None
+                        else np.sum(row["converted_geometry_gt"])
+                        + np.sum(row["converted_geometry_pd"])
+                        - row["intersection"]
+                    ),
+                    axis=1,
+                )
             )
             .assign(
                 iou_=lambda chain_df: chain_df["intersection"]
@@ -137,20 +158,15 @@ def _calculate_iou(joint_df: pd.DataFrame):
         joint_df = joint_df.join(iou_calculation_df["iou_"])
 
     else:
-
-        iou_calculation_df = (
-            joint_df.loc[
-                ~joint_df["converted_geometry_gt"].isnull()
-                & ~joint_df["converted_geometry_pd"].isnull(),
-                ["converted_geometry_gt", "converted_geometry_pd"],
-            ]
-            .map(_convert_wkt_to_array)
-            .apply(
-                lambda row: _calculate_bbox_iou(
-                    row["converted_geometry_gt"], row["converted_geometry_pd"]
-                ),
-                axis=1,
-            )
+        iou_calculation_df = joint_df.loc[
+            ~joint_df["converted_geometry_gt"].isnull()
+            & ~joint_df["converted_geometry_pd"].isnull(),
+            ["converted_geometry_gt", "converted_geometry_pd"],
+        ].apply(
+            lambda row: _calculate_bbox_iou(
+                row["converted_geometry_gt"], row["converted_geometry_pd"]
+            ),
+            axis=1,
         )
 
         if not iou_calculation_df.empty:
@@ -690,6 +706,7 @@ def _calculate_detailed_pr_metrics(
     metrics_to_return: List[enums.MetricType],
     pr_curve_iou_threshold: float,
     pr_curve_max_examples: int,
+    target_type,
 ) -> list[metrics.DetailedPrecisionRecallCurve]:
     """Calculates all DetailedPrecisionRecallCurve metrics."""
 
@@ -711,7 +728,9 @@ def _calculate_detailed_pr_metrics(
         )
     )
 
-    detailed_pr_joint_df = _calculate_iou(joint_df=detailed_pr_joint_df)
+    detailed_pr_joint_df = _calculate_iou(
+        joint_df=detailed_pr_joint_df, target_type=target_type
+    )
 
     # assign labels so that we can tell what we're matching
     detailed_pr_joint_df = detailed_pr_joint_df.assign(
@@ -1160,6 +1179,7 @@ def _compute_detection_metrics(
     pr_curve_iou_threshold: float,
     pr_curve_max_examples: int,
     unique_labels: list,
+    target_type: enums.AnnotationType,
 ) -> List[dict]:
     """
     Compute detection metrics. This version of _compute_detection_metrics only does IOU calculations for every groundtruth-prediction pair that shares a common grouper id. It also runs _compute_curves to calculate the PrecisionRecallCurve.
@@ -1236,7 +1256,7 @@ def _compute_detection_metrics(
         joint_df["id_pd"].isnull()
     ].assign(iou_=0)
 
-    joint_df = _calculate_iou(joint_df=joint_df)
+    joint_df = _calculate_iou(joint_df=joint_df, target_type=target_type)
 
     # filter out null groundtruths and sort by score and iou so that idxmax returns the best row for each prediction
     joint_df = joint_df[~joint_df["id_gt"].isnull()].sort_values(
@@ -1302,6 +1322,7 @@ def _compute_detection_metrics(
         metrics_to_return=metrics_to_return,
         pr_curve_iou_threshold=pr_curve_iou_threshold,
         pr_curve_max_examples=pr_curve_max_examples,
+        target_type=target_type,
     )
 
     # convert objects to dictionaries and only return what was asked for
@@ -1381,9 +1402,11 @@ def evaluate_detection(
     )
 
     # ensure that all annotations have a common type to operate over
+
     (
         groundtruth_df,
         prediction_df,
+        target_type,
     ) = utilities.convert_annotations_to_common_type(
         groundtruth_df=groundtruth_df,
         prediction_df=prediction_df,
@@ -1423,6 +1446,7 @@ def evaluate_detection(
         pr_curve_iou_threshold=pr_curve_iou_threshold,
         pr_curve_max_examples=pr_curve_max_examples,
         unique_labels=unique_labels,
+        target_type=target_type,
     )
 
     return schemas.Evaluation(

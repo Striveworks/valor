@@ -215,11 +215,6 @@ def run_benchmarking_analysis(
         client.delete_model(model.name, timeout=30)
         deletion_time = time.time() - start
 
-        write_results_to_file(
-            write_path=f"{current_directory}/blah_{results_file}",
-            result_dict=eval_.metrics,
-        )
-
         results = {
             "number_of_datums": limit,
             "number_of_unique_labels": eval_.meta["labels"],

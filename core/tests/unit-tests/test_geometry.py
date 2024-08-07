@@ -125,8 +125,7 @@ def test_raster(raster_raw_mask):
 
     # valid
     Raster({"mask": mask1, "geometry": None})
-    Raster({"mask": mask1, "geometry": poly1})
-    Raster({"mask": mask1, "geometry": multipoly1})
+
     Raster.from_numpy(mask=mask1)
     Raster.from_geometry(geometry=poly1, height=10, width=10)
     Raster.from_geometry(geometry=multipoly1, height=10, width=10)
@@ -136,6 +135,10 @@ def test_raster(raster_raw_mask):
         assert Raster({"mask": "test", "geometry": None})  # type: ignore - testing
     with pytest.raises(TypeError):
         assert Raster(123)  # type: ignore - testing
+    with pytest.raises(TypeError):
+        Raster({"mask": mask1, "geometry": poly1})
+    with pytest.raises(TypeError):
+        Raster({"mask": mask1, "geometry": multipoly1})
 
     # test classmethod `from_numpy`
     mask2 = np.ones((10, 10, 10)) == 1
@@ -153,4 +156,4 @@ def test_raster(raster_raw_mask):
         value["mask"]
         == "iVBORw0KGgoAAAANSUhEUgAAABQAAAAUAQAAAACl8iCgAAAAF0lEQVR4nGP4f4CBiYGBIGZgsP9AjDoAuysDE0GVDN8AAAAASUVORK5CYII="
     )
-    assert (r.array == raster_raw_mask).all()
+    assert (r.to_array() == raster_raw_mask).all()

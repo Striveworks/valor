@@ -1,5 +1,6 @@
 import random
 
+import numpy as np
 import pandas as pd
 import pytest
 from valor_core import enums, geometry, schemas
@@ -3565,3 +3566,241 @@ def test_evaluate_detection_functional_test_with_rasters(
         assert (
             pr_metrics[0]["value"][value][threshold][metric] == expected_value
         )
+
+
+def test_evaluate_mixed_annotations(
+    image_height: int,
+    image_width: int,
+):
+    """Test the automatic conversion to rasters."""
+
+    datum = schemas.Datum(uid="datum1")
+
+    xmin, xmax, ymin, ymax = 11, 45, 37, 102
+    h, w = image_height, image_width
+    mask = np.zeros((h, w), dtype=bool)
+    mask[ymin:ymax, xmin:xmax] = True
+
+    pts = [
+        (xmin, ymin),
+        (xmin, ymax),
+        (xmax, ymax),
+        (xmax, ymin),
+        (xmin, ymin),
+    ]
+    poly = geometry.Polygon([pts])
+    raster = geometry.Raster.from_numpy(mask)
+    box = geometry.Box.from_extrema(xmin=xmin, xmax=xmax, ymin=ymin, ymax=ymax)
+
+    gt_annotations = [
+        schemas.Annotation(
+            raster=raster,
+            labels=[schemas.Label(key="key", value="value")],
+            is_instance=True,
+        ),
+        schemas.Annotation(
+            raster=raster,
+            labels=[schemas.Label(key="key1", value="value")],
+            is_instance=True,
+        ),
+        schemas.Annotation(
+            raster=raster,
+            labels=[schemas.Label(key="key2", value="value")],
+            is_instance=True,
+        ),
+    ]
+
+    pd_annotations = [
+        schemas.Annotation(
+            raster=raster,
+            labels=[schemas.Label(key="key", value="value", score=0.90)],
+            is_instance=True,
+        ),
+        schemas.Annotation(
+            polygon=poly,
+            labels=[schemas.Label(key="key1", value="value", score=0.89)],
+            is_instance=True,
+        ),
+        schemas.Annotation(
+            bounding_box=box,
+            labels=[schemas.Label(key="key2", value="value", score=0.88)],
+            is_instance=True,
+        ),
+    ]
+    gts = [
+        schemas.GroundTruth(
+            datum=datum,
+            annotations=[ann for ann in gt_annotations],
+        )
+    ]
+
+    pds = [
+        schemas.Prediction(
+            datum=datum,
+            annotations=[ann for ann in pd_annotations],
+        )
+    ]
+
+    eval_job = evaluate_detection(
+        groundtruths=gts,
+        predictions=pds,
+        iou_thresholds_to_compute=[0.1, 0.6],
+        iou_thresholds_to_return=[0.1, 0.6],
+        metrics_to_return=[
+            enums.MetricType.AP,
+        ],
+    )
+
+    expected = [
+        {
+            "type": "AP",
+            "parameters": {"iou": 0.1},
+            "value": 0.0,
+            "label": {"key": "key1", "value": "value"},
+        },
+        {
+            "type": "AP",
+            "parameters": {"iou": 0.6},
+            "value": 0.0,
+            "label": {"key": "key1", "value": "value"},
+        },
+        {
+            "type": "AP",
+            "parameters": {"iou": 0.1},
+            "value": 0.0,
+            "label": {"key": "key2", "value": "value"},
+        },
+        {
+            "type": "AP",
+            "parameters": {"iou": 0.6},
+            "value": 0.0,
+            "label": {"key": "key2", "value": "value"},
+        },
+        {
+            "type": "AP",
+            "parameters": {"iou": 0.1},
+            "value": 1.0,
+            "label": {"key": "key", "value": "value"},
+        },
+        {
+            "type": "AP",
+            "parameters": {"iou": 0.6},
+            "value": 1.0,
+            "label": {"key": "key", "value": "value"},
+        },
+    ]
+
+    for m in eval_job.metrics:
+        assert m in expected
+    for m in expected:
+        assert m in eval_job.metrics
+
+    eval_job_poly = evaluate_detection(
+        groundtruths=gts,
+        predictions=pds,
+        iou_thresholds_to_compute=[0.1, 0.6],
+        iou_thresholds_to_return=[0.1, 0.6],
+        metrics_to_return=[
+            enums.MetricType.AP,
+        ],
+        convert_annotations_to_type=enums.AnnotationType.POLYGON,
+    )
+
+    expected = [
+        {
+            "label": {"key": "key", "value": "value"},
+            "parameters": {"iou": 0.1},
+            "value": 1.0,
+            "type": "AP",
+        },
+        {
+            "label": {"key": "key", "value": "value"},
+            "parameters": {"iou": 0.6},
+            "value": 1.0,
+            "type": "AP",
+        },
+        {
+            "label": {"key": "key2", "value": "value"},
+            "parameters": {"iou": 0.1},
+            "value": 0.0,
+            "type": "AP",
+        },
+        {
+            "label": {"key": "key2", "value": "value"},
+            "parameters": {"iou": 0.6},
+            "value": 0.0,
+            "type": "AP",
+        },
+        {
+            "label": {"key": "key1", "value": "value"},
+            "parameters": {"iou": 0.1},
+            "value": 1.0,
+            "type": "AP",
+        },
+        {
+            "label": {"key": "key1", "value": "value"},
+            "parameters": {"iou": 0.6},
+            "value": 1.0,
+            "type": "AP",
+        },
+    ]
+
+    for m in eval_job_poly.metrics:
+        assert m in expected
+    for m in expected:
+        assert m in eval_job_poly.metrics
+
+    eval_job_box = evaluate_detection(
+        groundtruths=gts,
+        predictions=pds,
+        iou_thresholds_to_compute=[0.1, 0.6],
+        iou_thresholds_to_return=[0.1, 0.6],
+        metrics_to_return=[
+            enums.MetricType.AP,
+        ],
+        convert_annotations_to_type=enums.AnnotationType.BOX,
+    )
+
+    expected = [
+        {
+            "type": "AP",
+            "parameters": {"iou": 0.1},
+            "value": 1.0,
+            "label": {"key": "key", "value": "value"},
+        },
+        {
+            "type": "AP",
+            "parameters": {"iou": 0.6},
+            "value": 1.0,
+            "label": {"key": "key", "value": "value"},
+        },
+        {
+            "type": "AP",
+            "parameters": {"iou": 0.1},
+            "value": 1.0,
+            "label": {"key": "key2", "value": "value"},
+        },
+        {
+            "type": "AP",
+            "parameters": {"iou": 0.6},
+            "value": 1.0,
+            "label": {"key": "key2", "value": "value"},
+        },
+        {
+            "type": "AP",
+            "parameters": {"iou": 0.1},
+            "value": 1.0,
+            "label": {"key": "key1", "value": "value"},
+        },
+        {
+            "type": "AP",
+            "parameters": {"iou": 0.6},
+            "value": 1.0,
+            "label": {"key": "key1", "value": "value"},
+        },
+    ]
+
+    for m in eval_job_box.metrics:
+        assert m in expected
+    for m in expected:
+        assert m in eval_job_box.metrics
