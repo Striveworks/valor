@@ -1262,15 +1262,11 @@ def evaluate_classification(
     )
     utilities.validate_parameters(pr_curve_max_examples=pr_curve_max_examples)
 
-    groundtruth_df = utilities.validate_groundtruth_dataframe(groundtruths)
-    prediction_df = utilities.validate_prediction_dataframe(predictions)
-
-    # filter dataframes to only include those rows with an applicable implied task type
-    groundtruth_df = utilities.filter_dataframe_based_on_task_type(
-        df=groundtruth_df, task_type=enums.TaskType.CLASSIFICATION
+    groundtruth_df = utilities.create_filtered_and_validated_groundtruth_df(
+        groundtruths, task_type=enums.TaskType.CLASSIFICATION
     )
-    prediction_df = utilities.filter_dataframe_based_on_task_type(
-        df=prediction_df, task_type=enums.TaskType.CLASSIFICATION
+    prediction_df = utilities.create_filtered_and_validated_prediction_df(
+        predictions, task_type=enums.TaskType.CLASSIFICATION
     )
 
     utilities.validate_matching_label_keys(

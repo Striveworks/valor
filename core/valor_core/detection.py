@@ -1388,19 +1388,14 @@ def evaluate_detection(
         recall_score_threshold=recall_score_threshold,
     )
 
-    groundtruth_df = utilities.validate_groundtruth_dataframe(groundtruths)
-    prediction_df = utilities.validate_prediction_dataframe(predictions)
-
-    # filter dataframes to only include those rows with an applicable implied task type
-    groundtruth_df = utilities.filter_dataframe_based_on_task_type(
-        df=groundtruth_df, task_type=enums.TaskType.OBJECT_DETECTION
+    groundtruth_df = utilities.create_filtered_and_validated_groundtruth_df(
+        groundtruths, task_type=enums.TaskType.OBJECT_DETECTION
     )
-    prediction_df = utilities.filter_dataframe_based_on_task_type(
-        df=prediction_df, task_type=enums.TaskType.OBJECT_DETECTION
+    prediction_df = utilities.create_filtered_and_validated_prediction_df(
+        predictions, task_type=enums.TaskType.OBJECT_DETECTION
     )
 
     # ensure that all annotations have a common type to operate over
-
     (
         groundtruth_df,
         prediction_df,

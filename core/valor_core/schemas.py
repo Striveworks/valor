@@ -482,14 +482,6 @@ class GroundTruth:
                 "All items in 'annotations' must be of type 'Annotation'"
             )
 
-        for annotation in self.annotations:
-            if annotation.labels:
-                for label in annotation.labels:
-                    if label.score is not None:
-                        raise ValueError(
-                            "GroundTruth labels should not have scores."
-                        )
-
 
 @dataclass
 class Prediction:

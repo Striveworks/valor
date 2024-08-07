@@ -72,42 +72,112 @@ def validate_parameters(
         )
 
 
-def validate_groundtruth_dataframe(
-    obj: Union[pd.DataFrame, List[schemas.GroundTruth]],
-) -> pd.DataFrame:
-    if isinstance(obj, pd.DataFrame):
-        return obj
-    elif (
-        obj
-        and isinstance(obj, list)
-        and isinstance(obj[0], schemas.GroundTruth)
-    ):
-        df = _convert_groundtruth_or_prediction_to_dataframe(obj)
+def _validate_groundtruth_dataframe(
+    df: pd.DataFrame, task_type: enums.TaskType
+):
+    null_placeholder_column = pd.Series([None] * len(df))
 
-        return df
-    else:
+    if df.get("score", null_placeholder_column).notnull().any():
+        raise ValueError("GroundTruth labels should not have scores.")
+
+    if task_type == enums.TaskType.SEMANTIC_SEGMENTATION:
+        if not (df.groupby("label")["annotation_id"].nunique() == 1).all():
+            raise ValueError(
+                "For semantic segmentation tasks, each label can only be associated with a single annotation id."
+            )
+
+
+def _validate_prediction_dataframe(
+    df: pd.DataFrame, task_type: enums.TaskType
+):
+    if task_type == enums.TaskType.CLASSIFICATION:
+        if df["score"].isnull().any():
+            raise ValueError(
+                "All classification predictions must have an associated score."
+            )
+
+        if not (
+            df.groupby(["datum_id", "label_key"])["score"].sum() == 1
+        ).all():
+            raise ValueError(
+                "All classification scores must sum to one for each label key."
+            )
+    if task_type == enums.TaskType.OBJECT_DETECTION:
+        if df["score"].isnull().any():
+            raise ValueError(
+                "All object detection predictions must have an associated score."
+            )
+    if task_type == enums.TaskType.SEMANTIC_SEGMENTATION:
+        if df["score"].notnull().any():
+            raise ValueError(
+                "All classification predictions must have an associated score."
+            )
+
+        if not (df.groupby("label")["annotation_id"].nunique() == 1).all():
+            raise ValueError(
+                "For semantic segmentation tasks, each label can only be associated with a single annotation id."
+            )
+
+
+def create_filtered_and_validated_groundtruth_df(
+    obj: Union[pd.DataFrame, List[schemas.GroundTruth]],
+    task_type: enums.TaskType,
+) -> pd.DataFrame:
+    if not (
+        isinstance(obj, pd.DataFrame)
+        or (
+            obj
+            and isinstance(obj, list)
+            and isinstance(obj[0], schemas.GroundTruth)
+        )
+    ):
         raise ValueError(
             f"Could not validate object as it's neither a dataframe nor a list of Valor objects. Object is of type {type(obj)}."
         )
-
-
-def validate_prediction_dataframe(
-    obj: Union[pd.DataFrame, List[schemas.Prediction]],
-) -> pd.DataFrame:
     if isinstance(obj, pd.DataFrame):
-        return obj
-    elif (
-        obj
-        and isinstance(obj, list)
-        and isinstance(obj[0], schemas.Prediction)
-    ):
+        df = obj
+    else:
         df = _convert_groundtruth_or_prediction_to_dataframe(obj)
 
-        return df
-    else:
-        raise ValueError(
-            "Could not validate object as it's neither a dataframe nor a list of Valor objects."
+    df = _identify_implied_task_types(df=df)
+
+    filtered_df = df[df["implied_task_type"] == task_type]
+
+    _validate_groundtruth_dataframe(df=filtered_df, task_type=task_type)
+
+    return filtered_df
+
+
+def create_filtered_and_validated_prediction_df(
+    obj: Union[pd.DataFrame, List[schemas.Prediction]],
+    task_type: enums.TaskType,
+) -> pd.DataFrame:
+    if not (
+        isinstance(obj, pd.DataFrame)
+        or (
+            obj
+            and isinstance(obj, list)
+            and isinstance(obj[0], schemas.Prediction)
         )
+    ):
+        raise ValueError(
+            f"Could not validate object as it's neither a dataframe nor a list of Valor objects. Object is of type {type(obj)}."
+        )
+    if isinstance(obj, pd.DataFrame):
+        df = obj
+    else:
+        df = _convert_groundtruth_or_prediction_to_dataframe(obj)
+
+    if df.empty:
+        return df
+
+    df = _identify_implied_task_types(df=df)
+
+    filtered_df = df[df["implied_task_type"] == task_type]
+
+    _validate_prediction_dataframe(df=filtered_df, task_type=task_type)
+
+    return filtered_df
 
 
 def validate_matching_label_keys(
@@ -334,7 +404,7 @@ def get_disjoint_labels(
 
 def _identify_implied_task_types(
     df: pd.DataFrame,
-) -> pd.Series:
+) -> pd.DataFrame:
     """
     Match an annotation to an implied task type based on the arguments that were passed to the Annotation constructor.
 
@@ -402,34 +472,30 @@ def _identify_implied_task_types(
         & df.get("embedding", null_placeholder_column).isnull()
     ].index
 
-    df.loc[
-        classification_rows, "implied_task_type"
-    ] = enums.TaskType.CLASSIFICATION
-    df.loc[
-        object_detection_rows, "implied_task_type"
-    ] = enums.TaskType.OBJECT_DETECTION
-    df.loc[
-        semantic_segmentation_rows, "implied_task_type"
-    ] = enums.TaskType.SEMANTIC_SEGMENTATION
-    df.loc[empty_rows, "implied_task_type"] = enums.TaskType.EMPTY
+    if not classification_rows.empty:
+        df.loc[
+            classification_rows, "implied_task_type"
+        ] = enums.TaskType.CLASSIFICATION
+
+    if not object_detection_rows.empty:
+        df.loc[
+            object_detection_rows, "implied_task_type"
+        ] = enums.TaskType.OBJECT_DETECTION
+
+    if not semantic_segmentation_rows.empty:
+        df.loc[
+            semantic_segmentation_rows, "implied_task_type"
+        ] = enums.TaskType.SEMANTIC_SEGMENTATION
+
+    if not empty_rows.empty:
+        df.loc[empty_rows, "implied_task_type"] = enums.TaskType.EMPTY
 
     if df["implied_task_type"].isnull().any():
         raise ValueError(
             "Input didn't match any known patterns. Classification tasks should only contain labels. Object detection tasks should contain labels and polygons, bounding boxes, or rasters with is_instance == True. Segmentation tasks should contain labels and rasters with is_instance != True. Text generation tasks should only contain text and optionally context."
         )
 
-    return df["implied_task_type"]
-
-
-def filter_dataframe_based_on_task_type(
-    df: pd.DataFrame, task_type: enums.TaskType
-):
-    """"""
-    if len(df) == 0:
-        return df
-
-    implied_task_types = _identify_implied_task_types(df=df)
-    return df[implied_task_types == task_type]
+    return df
 
 
 def _convert_raster_to_box(raster: np.ndarray) -> geometry.Box:
