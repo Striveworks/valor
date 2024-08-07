@@ -72,6 +72,76 @@ def validate_parameters(
         )
 
 
+def validate_matching_label_keys(
+    groundtruths: pd.DataFrame,
+    predictions: pd.DataFrame,
+    label_map,
+) -> None:
+    """
+    Validates that every datum has the same set of label keys for both ground truths and predictions. This check is only needed for classification tasks.
+
+    Parameters
+    ----------
+    db : Session
+        The database Session to query against.
+    prediction_filter : schemas.Filter
+        The filter to be used to query predictions.
+    groundtruth_filter : schemas.Filter
+        The filter to be used to query groundtruths.
+    label_map: LabelMapType, optional
+        Optional mapping of individual labels to a grouper label. Useful when you need to evaluate performance using labels that differ across datasets and models.
+
+
+    Raises
+    -------
+    ValueError
+        If the distinct ground truth label keys don't match the distinct prediction label keys for any datum.
+    """
+    # allow for case where our predictions don't have any labels
+    if len(predictions) == 0:
+        return
+
+    if not label_map:
+        label_map = dict()
+
+    # get the label keys per datum
+    groundtruths["mapped_groundtruth_label_keys"] = groundtruths.apply(
+        lambda row: label_map.get(
+            schemas.Label(key=row["label_key"], value=row["label_value"]),
+            schemas.Label(key=row["label_key"], value=row["label_value"]),
+        ).key,
+        axis=1,
+    )
+
+    predictions["mapped_prediction_label_keys"] = predictions.apply(
+        lambda row: label_map.get(
+            schemas.Label(key=row["label_key"], value=row["label_value"]),
+            schemas.Label(key=row["label_key"], value=row["label_value"]),
+        ).key,
+        axis=1,
+    )
+
+    gt_label_keys_per_datum = groundtruths.groupby(
+        ["datum_id"], as_index=False
+    )["mapped_groundtruth_label_keys"].unique()
+
+    pd_label_keys_per_datum = predictions.groupby(
+        ["datum_id"], as_index=False
+    )["mapped_prediction_label_keys"].unique()
+
+    joined = gt_label_keys_per_datum.merge(
+        pd_label_keys_per_datum,
+        on=["datum_id"],
+    )
+
+    if not joined["mapped_groundtruth_label_keys"].equals(
+        joined["mapped_prediction_label_keys"]
+    ):
+        raise ValueError(
+            "Ground truth label keys must match prediction label keys for classification tasks."
+        )
+
+
 def _validate_groundtruth_dataframe(
     df: pd.DataFrame, task_type: enums.TaskType
 ):
@@ -95,9 +165,8 @@ def _validate_prediction_dataframe(
             raise ValueError(
                 "All classification predictions must have an associated score."
             )
-
         if not (
-            df.groupby(["datum_id", "label_key"])["score"].sum() == 1
+            df.groupby(["datum_id", "label_key"])["score"].sum() - 1.0 <= 1e-6
         ).all():
             raise ValueError(
                 "All classification scores must sum to one for each label key."
@@ -178,76 +247,6 @@ def create_filtered_and_validated_prediction_df(
     _validate_prediction_dataframe(df=filtered_df, task_type=task_type)
 
     return filtered_df
-
-
-def validate_matching_label_keys(
-    groundtruths: pd.DataFrame,
-    predictions: pd.DataFrame,
-    label_map,
-) -> None:
-    """
-    Validates that every datum has the same set of label keys for both ground truths and predictions. This check is only needed for classification tasks.
-
-    Parameters
-    ----------
-    db : Session
-        The database Session to query against.
-    prediction_filter : schemas.Filter
-        The filter to be used to query predictions.
-    groundtruth_filter : schemas.Filter
-        The filter to be used to query groundtruths.
-    label_map: LabelMapType, optional
-        Optional mapping of individual labels to a grouper label. Useful when you need to evaluate performance using labels that differ across datasets and models.
-
-
-    Raises
-    -------
-    ValueError
-        If the distinct ground truth label keys don't match the distinct prediction label keys for any datum.
-    """
-    # allow for case where our predictions don't have any labels
-    if len(predictions) == 0:
-        return
-
-    if not label_map:
-        label_map = dict()
-
-    # get the label keys per datum
-    groundtruths["mapped_groundtruth_label_keys"] = groundtruths.apply(
-        lambda row: label_map.get(
-            schemas.Label(key=row["label_key"], value=row["label_value"]),
-            schemas.Label(key=row["label_key"], value=row["label_value"]),
-        ).key,
-        axis=1,
-    )
-
-    predictions["mapped_prediction_label_keys"] = predictions.apply(
-        lambda row: label_map.get(
-            schemas.Label(key=row["label_key"], value=row["label_value"]),
-            schemas.Label(key=row["label_key"], value=row["label_value"]),
-        ).key,
-        axis=1,
-    )
-
-    gt_label_keys_per_datum = groundtruths.groupby(
-        ["datum_id"], as_index=False
-    )["mapped_groundtruth_label_keys"].unique()
-
-    pd_label_keys_per_datum = predictions.groupby(
-        ["datum_id"], as_index=False
-    )["mapped_prediction_label_keys"].unique()
-
-    joined = gt_label_keys_per_datum.merge(
-        pd_label_keys_per_datum,
-        on=["datum_id"],
-    )
-
-    if not joined["mapped_groundtruth_label_keys"].equals(
-        joined["mapped_prediction_label_keys"]
-    ):
-        raise ValueError(
-            "Ground truth label keys must match prediction label keys for classification tasks."
-        )
 
 
 def _convert_groundtruth_or_prediction_to_dataframe(
@@ -350,7 +349,7 @@ def get_disjoint_labels(
     groundtruth_df: pd.DataFrame, prediction_df: pd.DataFrame, label_map
 ) -> tuple[list[schemas.Label], list[schemas.Label]]:
     """
-    Returns all unique labels that are not shared between both filters.
+    Returns all unique labels that are not shared between two dataframes.
 
     Parameters
     ----------

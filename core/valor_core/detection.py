@@ -6,47 +6,9 @@ from typing import Dict, List, Optional, Union
 
 import numpy as np
 import pandas as pd
-from valor_core import enums, metrics, schemas, utilities
+from valor_core import enums, geometry, metrics, schemas, utilities
 
 pd.set_option("display.max_columns", None)
-
-
-def _calculate_bbox_intersection(bbox1, bbox2) -> float:
-    """Calculate the intersection between two bounding boxes."""
-
-    # Calculate intersection coordinates
-    xmin_inter = max(bbox1[:, 0].min(), bbox2[:, 0].min())
-    ymin_inter = max(bbox1[:, 1].min(), bbox2[:, 1].min())
-    xmax_inter = min(bbox1[:, 0].max(), bbox2[:, 0].max())
-    ymax_inter = min(bbox1[:, 1].max(), bbox2[:, 1].max())
-
-    # Calculate width and height of intersection area
-    width = max(0, xmax_inter - xmin_inter)
-    height = max(0, ymax_inter - ymin_inter)
-
-    # Calculate intersection area
-    intersection_area = width * height
-    return intersection_area
-
-
-def _calculate_bbox_union(bbox1, bbox2) -> float:
-    """Calculate the union area between two bounding boxes."""
-    area1 = (bbox1[:, 0].max() - bbox1[:, 0].min()) * (
-        bbox1[:, 1].max() - bbox1[:, 1].min()
-    )
-    area2 = (bbox2[:, 0].max() - bbox2[:, 0].min()) * (
-        bbox2[:, 1].max() - bbox2[:, 1].min()
-    )
-    union_area = area1 + area2 - _calculate_bbox_intersection(bbox1, bbox2)
-    return union_area
-
-
-def _calculate_bbox_iou(bbox1, bbox2) -> float:
-    """Calculate the IOU between two bounding boxes."""
-    intersection = _calculate_bbox_intersection(bbox1, bbox2)
-    union = _calculate_bbox_union(bbox1, bbox2)
-    iou = intersection / union
-    return iou
 
 
 def _get_joint_df(
@@ -164,7 +126,7 @@ def _calculate_iou(joint_df: pd.DataFrame, target_type: enums.AnnotationType):
             & ~joint_df["converted_geometry_pd"].isnull(),
             ["converted_geometry_gt", "converted_geometry_pd"],
         ].apply(
-            lambda row: _calculate_bbox_iou(
+            lambda row: geometry.calculate_bbox_iou(
                 row["converted_geometry_gt"], row["converted_geometry_pd"]
             ),
             axis=1,
@@ -326,7 +288,7 @@ def _calculate_101_pt_interp(precisions, recalls) -> float:
     return ret / 101
 
 
-def _mean_ignoring_negative_one(series: pd.Series) -> float:
+def _calculate_mean_ignoring_negative_one(series: pd.Series) -> float:
     filtered = series[series != -1]
     return filtered.mean() if not filtered.empty else -1.0
 
@@ -390,7 +352,7 @@ def _calculate_ap_metrics(
     ap_over_ious_df = (
         ap_metrics_df.groupby(["label_id_grouper"], as_index=False)[
             "calculated_precision"
-        ].apply(_mean_ignoring_negative_one)
+        ].apply(_calculate_mean_ignoring_negative_one)
     ).assign(
         label=lambda chained_df: chained_df["label_id_grouper"].map(
             grouper_mappings["grouper_id_to_grouper_label_mapping"]
@@ -408,7 +370,7 @@ def _calculate_ap_metrics(
 
     map_metrics_df = ap_metrics_df.groupby(
         ["iou_threshold", "label_key"], as_index=False
-    )["calculated_precision"].apply(_mean_ignoring_negative_one)
+    )["calculated_precision"].apply(_calculate_mean_ignoring_negative_one)
 
     map_metrics = [
         metrics.mAPMetric(
@@ -421,7 +383,7 @@ def _calculate_ap_metrics(
 
     map_over_ious_df = ap_metrics_df.groupby(["label_key"], as_index=False)[
         "calculated_precision"
-    ].apply(_mean_ignoring_negative_one)
+    ].apply(_calculate_mean_ignoring_negative_one)
 
     map_over_ious = [
         metrics.mAPMetricAveragedOverIOUs(
@@ -478,7 +440,7 @@ def _calculate_ar_metrics(
     ar_metrics_df["label_key"] = ar_metrics_df["label"].apply(lambda x: x.key)
     mar_metrics_df = ar_metrics_df.groupby(["label_key"], as_index=False)[
         "recall_for_AR"
-    ].apply(_mean_ignoring_negative_one)
+    ].apply(_calculate_mean_ignoring_negative_one)
 
     mar_metrics = [
         metrics.mARMetric(

@@ -19,20 +19,6 @@ class TaskType(str, Enum):
     EMBEDDING = "embedding"
 
 
-class TableStatus(str, Enum):
-    CREATING = "creating"
-    FINALIZED = "finalized"
-    DELETING = "deleting"
-
-
-class EvaluationStatus(str, Enum):
-    PENDING = "pending"
-    RUNNING = "running"
-    DONE = "done"
-    FAILED = "failed"
-    DELETING = "deleting"
-
-
 class MetricType(str, Enum):
 
     Accuracy = ("Accuracy",)

@@ -8,6 +8,44 @@ import numpy as np
 import PIL.Image
 
 
+def calculate_bbox_intersection(bbox1, bbox2) -> float:
+    """Calculate the intersection between two bounding boxes."""
+
+    # Calculate intersection coordinates
+    xmin_inter = max(bbox1[:, 0].min(), bbox2[:, 0].min())
+    ymin_inter = max(bbox1[:, 1].min(), bbox2[:, 1].min())
+    xmax_inter = min(bbox1[:, 0].max(), bbox2[:, 0].max())
+    ymax_inter = min(bbox1[:, 1].max(), bbox2[:, 1].max())
+
+    # Calculate width and height of intersection area
+    width = max(0, xmax_inter - xmin_inter)
+    height = max(0, ymax_inter - ymin_inter)
+
+    # Calculate intersection area
+    intersection_area = width * height
+    return intersection_area
+
+
+def calculate_bbox_union(bbox1, bbox2) -> float:
+    """Calculate the union area between two bounding boxes."""
+    area1 = (bbox1[:, 0].max() - bbox1[:, 0].min()) * (
+        bbox1[:, 1].max() - bbox1[:, 1].min()
+    )
+    area2 = (bbox2[:, 0].max() - bbox2[:, 0].min()) * (
+        bbox2[:, 1].max() - bbox2[:, 1].min()
+    )
+    union_area = area1 + area2 - calculate_bbox_intersection(bbox1, bbox2)
+    return union_area
+
+
+def calculate_bbox_iou(bbox1, bbox2) -> float:
+    """Calculate the IOU between two bounding boxes."""
+    intersection = calculate_bbox_intersection(bbox1, bbox2)
+    union = calculate_bbox_union(bbox1, bbox2)
+    iou = intersection / union
+    return iou
+
+
 def generate_type_error(received_value: Any, expected_type: str):
     return TypeError(
         f"Expected value of type '{expected_type}', received value '{received_value}' with type '{type(received_value).__name__}'."
