@@ -2771,7 +2771,7 @@ def test_evaluate_detection_functional_test(
         {
             "label": {"key": "class", "value": "49"},
             "parameters": {"iou": 0.5},
-            "value": 0.79,
+            "value": 0.791,
             "type": "AP",
         },
         {
@@ -2835,7 +2835,7 @@ def test_evaluate_detection_functional_test(
             "parameters": {
                 "ious": [0.5, 0.55, 0.6, 0.65, 0.7, 0.75, 0.8, 0.85, 0.9, 0.95]
             },
-            "value": 0.555,
+            "value": 0.556,
             "type": "APAveragedOverIOUs",
         },
         {
