@@ -214,7 +214,7 @@ def run_detailed_pr_curve_evaluation(groundtruths, predictions):
 
 
 def run_benchmarking_analysis(
-    limits_to_test: list[int] = [3, 7, 10, 15, 20, 45, 60, 500, 5000],
+    limits_to_test: list[int] = [5000, 5000, 5000],
     results_file: str = "results.json",
     data_file: str = "data.json",
 ):
