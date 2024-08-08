@@ -93,8 +93,6 @@ def create_groundtruths_and_predictions(raw: list, pair_limit: int):
                                             )
                                         ]
                                     ),
-                                    height=data["datum_metadata"]["height"],
-                                    width=data["datum_metadata"]["width"],
                                 )
                                 if ann["raster"]
                                 else None
@@ -148,8 +146,6 @@ def create_groundtruths_and_predictions(raw: list, pair_limit: int):
                                             )
                                         ]
                                     ),
-                                    height=data["datum_metadata"]["height"],
-                                    width=data["datum_metadata"]["width"],
                                 )
                                 if ann["raster"]
                                 else None
