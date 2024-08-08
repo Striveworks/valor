@@ -361,6 +361,8 @@ class Point:
     value: tuple[int | float, int | float]
 
     def __post_init__(self):
+        """Validate instantiated class."""
+
         _validate_type_point(self.value)
 
     @classmethod
@@ -465,6 +467,8 @@ class MultiPoint:
     value: list[tuple[int | float, int | float]]
 
     def __post_init__(self):
+        """Validate instantiated class."""
+
         _validate_type_multipoint(self.value)
 
     @classmethod
@@ -553,6 +557,8 @@ class LineString:
     value: list[tuple[int | float, int | float]]
 
     def __post_init__(self):
+        """Validate instantiated class."""
+
         _validate_type_linestring(self.value)
 
     @classmethod
@@ -639,6 +645,8 @@ class MultiLineString:
     value: list[list[tuple[int | float, int | float]]]
 
     def __post_init__(self):
+        """Validate instantiated class."""
+
         _validate_type_multilinestring(self.value)
 
     @classmethod
@@ -732,6 +740,8 @@ class Polygon:
     value: Union[list[list[tuple[int, int]]], list[list[tuple[float, float]]]]
 
     def __post_init__(self):
+        """Validate instantiated class."""
+
         if not (
             isinstance(self.value, list)
             and len(self.value) > 0
@@ -916,6 +926,8 @@ class Box:
     value: Union[list[list[tuple[int, int]]], list[list[tuple[float, float]]]]
 
     def __post_init__(self):
+        """Validate instantiated class."""
+
         _validate_type_box(self.value)
 
     @classmethod
@@ -1063,6 +1075,8 @@ class MultiPolygon:
     value: list[list[list[tuple[int | float, int | float]]]]
 
     def __post_init__(self):
+        """Validate instantiated class."""
+
         _validate_type_multipolygon(self.value)
 
     @classmethod
@@ -1170,6 +1184,8 @@ class GeoJSON:
     )
 
     def __post_init__(self):
+        """Validate instantiated class."""
+
         _validate_geojson({"type": self.type, "coordinates": self.coordinates})
 
     @property
@@ -1251,19 +1267,8 @@ class Raster:
     value: RasterData
 
     def __post_init__(self):
-        """
-        Validates typing.
+        """Validate instantiated class."""
 
-        Parameters
-        ----------
-        value : Any
-            The value to validate.
-
-        Raises
-        ------
-        TypeError
-            If the value type is not supported.
-        """
         if not isinstance(self.value, dict):
             raise TypeError(
                 "Raster should contain a dictionary describing a mask and optionally a geometry."
@@ -1425,19 +1430,8 @@ class Embedding:
     value: Optional[Union[list[int], list[float]]] = None
 
     def __post_init__(self):
-        """
-        Validates
+        """Validate instantiated class."""
 
-        Parameters
-        ----------
-        value : Any
-            The value to validate.
-
-        Raises
-        ------
-        TypeError
-            If the value type is not supported.
-        """
         if not isinstance(self.value, list):
             raise TypeError(
                 f"Expected type 'Optional[List[float]]' received type '{type(self.value)}'"

@@ -31,7 +31,7 @@ class Datum:
     def __post_init__(
         self,
     ):
-        """Validate the object after instantiation."""
+        """Validate instantiated class."""
 
         if not isinstance(self.uid, (str, type(None))):
             raise TypeError(
@@ -63,7 +63,8 @@ class Label:
     score: Optional[float] = None
 
     def __post_init__(self):
-        """Validate the object after instantiation."""
+        """Validate instantiated class."""
+
         if not isinstance(self.key, str):
             raise TypeError(
                 f"Expected 'key' to be of type 'str', got {type(self.key).__name__}"
@@ -218,7 +219,7 @@ class Annotation:
     implied_task_types: Optional[List[str]] = None
 
     def __post_init__(self):
-        """Validate the object after instantiation."""
+        """Validate instantiated class."""
 
         if not isinstance(self.labels, list):
             raise TypeError(
@@ -304,7 +305,7 @@ class EvaluationParameters:
     pr_curve_max_examples: int = 1
 
     def __post_init__(self):
-        """Validate the object after instantiation."""
+        """Validate instantiated class."""
 
         if not isinstance(self.label_map, (dict, type(None))):
             raise TypeError(
@@ -387,7 +388,7 @@ class Evaluation:
         return json.dumps(self.__dict__, indent=4)
 
     def __post_init__(self):
-        """Validate the object after instantiation."""
+        """Validate instantiated class."""
 
         if not isinstance(self.parameters, EvaluationParameters):
             raise TypeError(
@@ -466,7 +467,7 @@ class GroundTruth:
     def __post_init__(
         self,
     ):
-        """Validate the object after instantiation."""
+        """Validate instantiated class."""
 
         if not isinstance(self.datum, Datum):
             raise TypeError(
@@ -517,7 +518,7 @@ class Prediction:
     annotations: list[Annotation]
 
     def __post_init__(self):
-        """Validate the object after instantiation."""
+        """Validate instantiated class."""
 
         if not isinstance(self.datum, Datum):
             raise TypeError(

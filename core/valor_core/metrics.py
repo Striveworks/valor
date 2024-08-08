@@ -23,15 +23,8 @@ class _LabelMetricBase:
     __type__ = "BaseClass"
 
     def __post_init__(self):
-        """
-        Validates the types of the attributes.
+        """Validate instantiated class."""
 
-        Raises
-        ------
-        TypeError
-            If `label` is not an instance of schemas.Label.
-            If `value` is not a float or None.
-        """
         if not isinstance(self.label, schemas.Label):
             raise TypeError(
                 f"Expected label to be an instance of schemas.Label, got {type(self.label).__name__}"
@@ -68,15 +61,8 @@ class _LabelKeyMetricBase:
     __type__ = "BaseClass"
 
     def __post_init__(self):
-        """
-        Validates the types of the attributes.
+        """Validate instantiated class."""
 
-        Raises
-        ------
-        TypeError
-            If `label_key` is not a string.
-            If `value` is not a float or None.
-        """
         if not isinstance(self.label_key, str):
             raise TypeError(
                 f"Expected label_key to be a string, got {type(self.label_key).__name__}"
@@ -114,6 +100,8 @@ class ARMetric(_LabelMetricBase):
     __type__ = "AR"
 
     def __post_init__(self):
+        """Validate instantiated class."""
+
         super().__post_init__()
 
         if not isinstance(self.ious, set):
@@ -150,6 +138,8 @@ class APMetric(_LabelMetricBase):
     __type__ = "AP"
 
     def __post_init__(self):
+        """Validate instantiated class."""
+
         super().__post_init__()
 
         if not isinstance(self.iou, float):
@@ -186,6 +176,8 @@ class APMetricAveragedOverIOUs(_LabelMetricBase):
     __type__ = "APAveragedOverIOUs"
 
     def __post_init__(self):
+        """Validate instantiated class."""
+
         super().__post_init__()
 
         if not isinstance(self.ious, set):
@@ -222,6 +214,8 @@ class mARMetric(_LabelKeyMetricBase):
     __type__ = "mAR"
 
     def __post_init__(self):
+        """Validate instantiated class."""
+
         super().__post_init__()
 
         if not isinstance(self.ious, set):
@@ -260,6 +254,8 @@ class mAPMetric(_LabelKeyMetricBase):
     __type__ = "mAP"
 
     def __post_init__(self):
+        """Validate instantiated class."""
+
         super().__post_init__()
 
         if not isinstance(self.iou, float):
@@ -295,6 +291,8 @@ class mAPMetricAveragedOverIOUs(_LabelKeyMetricBase):
     __type__ = "mAPAveragedOverIOUs"
 
     def __post_init__(self):
+        """Validate instantiated class."""
+
         super().__post_init__()
 
         if not isinstance(self.ious, set):
@@ -329,6 +327,8 @@ class PrecisionMetric(_LabelMetricBase):
     __type__ = "Precision"
 
     def __post_init__(self):
+        """Validate instantiated class."""
+
         super().__post_init__()
 
 
@@ -347,6 +347,8 @@ class RecallMetric(_LabelMetricBase):
     __type__ = "Recall"
 
     def __post_init__(self):
+        """Validate instantiated class."""
+
         super().__post_init__()
 
 
@@ -383,6 +385,8 @@ class ROCAUCMetric(_LabelKeyMetricBase):
     __type__ = "ROCAUC"
 
     def __post_init__(self):
+        """Validate instantiated class."""
+
         super().__post_init__()
 
 
@@ -401,6 +405,8 @@ class AccuracyMetric(_LabelKeyMetricBase):
     __type__ = "Accuracy"
 
     def __post_init__(self):
+        """Validate instantiated class."""
+
         super().__post_init__()
 
 
@@ -423,6 +429,8 @@ class _BasePrecisionRecallCurve:
     __type__ = "BaseClass"
 
     def __post_init__(self):
+        """Validate instantiated class."""
+
         if not isinstance(self.label_key, str):
             raise TypeError(
                 f"Expected label_key to be a string, but got {type(self.label_key).__name__}."
@@ -473,6 +481,8 @@ class PrecisionRecallCurve(_BasePrecisionRecallCurve):
     ]
 
     def __post_init__(self):
+        """Validate instantiated class."""
+
         super().__post_init__()
 
 
@@ -523,6 +533,8 @@ class DetailedPrecisionRecallCurve(_BasePrecisionRecallCurve):
     ]
 
     def __post_init__(self):
+        """Validate instantiated class."""
+
         super().__post_init__()
 
 
@@ -546,6 +558,8 @@ class ConfusionMatrixEntry:
     count: int
 
     def __post_init__(self):
+        """Validate instantiated class."""
+
         if not isinstance(self.prediction, str):
             raise TypeError(
                 f"Expected prediction to be a string, but got {type(self.prediction).__name__}."
@@ -587,6 +601,8 @@ class _BaseConfusionMatrix:
     entries: List[ConfusionMatrixEntry]
 
     def __post_init__(self):
+        """Validate instantiated class."""
+
         if not isinstance(self.label_key, str):
             raise TypeError(
                 f"Expected label_key to be a string, but got {type(self.label_key).__name__}."
