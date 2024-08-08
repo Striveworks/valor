@@ -183,33 +183,12 @@ def test_evaluate_detection(
             "recall_score_threshold": 0.0,
             "pr_curve_iou_threshold": 0.5,
             "pr_curve_max_examples": 1,
+            "convert_annotations_to_type": None,
         },
         "confusion_matrices": [],
         "ignored_pred_labels": [],
         "missing_pred_labels": [],
     }
-
-    # {
-    #     "parameters": {
-    #         "iou_thresholds_to_compute": [0.1, 0.6],
-    #         "iou_thresholds_to_return": [0.1, 0.6],
-    #         "label_map": None,
-    #         "recall_score_threshold": 0.0,
-    #         "metrics_to_return": [
-    #             enums.MetricType.AP,
-    #             enums.MetricType.AR,
-    #             enums.MetricType.mAP,
-    #             enums.MetricType.APAveragedOverIOUs,
-    #             enums.MetricType.mAR,
-    #             enums.MetricType.mAPAveragedOverIOUs,
-    #         ],
-    #         "pr_curve_iou_threshold": 0.5,
-    #         "pr_curve_max_examples": 1,
-    #     },
-    #     "confusion_matrices": [],
-    #     "missing_pred_labels": [],
-    #     "ignored_pred_labels": [],
-    # }
 
     # # check that metrics arg works correctly
     selected_metrics = random.sample(
@@ -525,6 +504,7 @@ def test_evaluate_detection_via_pandas_df():
             ],
             "pr_curve_iou_threshold": 0.5,
             "pr_curve_max_examples": 1,
+            "convert_annotations_to_type": None,
         },
         "confusion_matrices": [],
         "missing_pred_labels": [],
@@ -1596,6 +1576,7 @@ def test_evaluate_detection_with_label_maps(
         "recall_score_threshold": 0.8,
         "pr_curve_iou_threshold": 0.5,
         "pr_curve_max_examples": 1,
+        "convert_annotations_to_type": None,
     }
 
     metrics = eval_job.metrics

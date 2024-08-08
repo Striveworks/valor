@@ -1,7 +1,7 @@
 import copy
 
 import pytest
-from valor_core import geometry, schemas
+from valor_core import enums, geometry, schemas
 
 
 @pytest.fixture
@@ -34,12 +34,12 @@ def box_points() -> list[tuple[float, float]]:
 
 
 @pytest.fixture
-def bbox(box_points) -> geometry.Box:
+def bbox(box_points: list[tuple[float, float]]) -> geometry.Box:
     return geometry.Box(value=[box_points])
 
 
 @pytest.fixture
-def polygon(box_points) -> geometry.Polygon:
+def polygon(box_points: list[tuple[float, float]]) -> geometry.Polygon:
     return geometry.Polygon(value=[box_points])
 
 
@@ -171,7 +171,13 @@ def test_datum():
         schemas.Datum(uid="123", metadata=[1])  # type: ignore
 
 
-def test_annotation(bbox, polygon, raster, labels, metadata):
+def test_annotation(
+    bbox: geometry.Box,
+    polygon: geometry.Polygon,
+    raster: geometry.Raster,
+    labels: list[schemas.Label],
+    metadata: dict[str, dict[str, str | float]],
+):
     # valid
     schemas.Annotation(
         bounding_box=bbox,
@@ -212,7 +218,7 @@ def test_annotation(bbox, polygon, raster, labels, metadata):
     with pytest.raises(TypeError):
         schemas.Annotation(
             labels=labels,
-            raster=bbox,
+            raster=bbox,  # type: ignore
         )
     with pytest.raises(TypeError):
         schemas.Annotation(
@@ -333,3 +339,44 @@ def test_prediction():
     assert schemas.Prediction(
         datum=datum, annotations=pds
     ) == schemas.Prediction(datum=datum, annotations=pds)
+
+
+def test_EvaluationParameters():
+    schemas.EvaluationParameters()
+
+    schemas.EvaluationParameters(
+        iou_thresholds_to_compute=[0.2, 0.6],
+        iou_thresholds_to_return=[],
+    )
+
+    schemas.EvaluationParameters(
+        iou_thresholds_to_compute=[],
+        iou_thresholds_to_return=[],
+    )
+
+    # If no llm-guided metrics are requested, then llm_api_params is not required.
+    schemas.EvaluationParameters(
+        metrics_to_return=[
+            enums.MetricType.AP,
+            enums.MetricType.AR,
+        ],
+    )
+
+    schemas.EvaluationParameters(
+        convert_annotations_to_type=enums.AnnotationType.BOX,
+    )
+
+    with pytest.raises(TypeError):
+        schemas.EvaluationParameters(
+            label_map=[
+                [["class_name", "maine coon cat"], ["class", "cat"]],
+                [["class", "siamese cat"], ["class", "cat"]],
+                [["class", "british shorthair"], ["class", "cat"]],
+            ],  # type: ignore
+        )
+
+    with pytest.raises(TypeError):
+        schemas.EvaluationParameters(label_map={"bad": "inputs"})  # type: ignore
+
+    with pytest.raises(TypeError):
+        schemas.EvaluationParameters(metrics_to_return={"bad": "inputs"})  # type: ignore

@@ -294,74 +294,77 @@ class EvaluationParameters:
     metrics_to_return: Optional[List[enums.MetricType]] = None
     iou_thresholds_to_compute: Optional[List[float]] = None
     iou_thresholds_to_return: Optional[List[float]] = None
+    convert_annotations_to_type: Optional[enums.AnnotationType] = None
     recall_score_threshold: float = 0.0
     pr_curve_iou_threshold: float = 0.5
     pr_curve_max_examples: int = 1
 
+    def __post_init__(self):
+        if not isinstance(self.label_map, (dict, type(None))):
+            raise TypeError(
+                f"Expected 'label_map' to be of type 'dict' or 'None', got {type(self.label_map).__name__}"
+            )
+        if self.label_map and not isinstance(self.label_map, dict):
+            raise TypeError("label_map should be a dictionary of Labels.")
 
-def __post_init__(self):
-    if not isinstance(self.label_map, (dict, type(None))):
-        raise TypeError(
-            f"Expected 'label_map' to be of type 'dict' or 'None', got {type(self.label_map).__name__}"
-        )
-    if self.label_map is not None and not all(
-        isinstance(k, Label) and isinstance(v, Label)
-        for k, v in self.label_map.items()
-    ):
-        raise TypeError(
-            "All keys and values in 'label_map' must be of type 'Label'"
-        )
+        if self.label_map is not None and not all(
+            isinstance(k, Label) and isinstance(v, Label)
+            for k, v in self.label_map.items()
+        ):
+            raise TypeError(
+                "All keys and values in 'label_map' must be of type 'Label'"
+            )
 
-    if not isinstance(self.metrics_to_return, (list, type(None))):
-        raise TypeError(
-            f"Expected 'metrics_to_return' to be of type 'list' or 'None', got {type(self.metrics_to_return).__name__}"
-        )
-    if self.metrics_to_return is not None and not all(
-        isinstance(metric, enums.MetricType)
-        for metric in self.metrics_to_return
-    ):
-        raise TypeError(
-            "All items in 'metrics_to_return' must be of type 'enums.MetricType'"
-        )
+        if not isinstance(self.metrics_to_return, (list, type(None))):
+            raise TypeError(
+                f"Expected 'metrics_to_return' to be of type 'list' or 'None', got {type(self.metrics_to_return).__name__}"
+            )
+        if self.metrics_to_return is not None and not all(
+            isinstance(metric, enums.MetricType)
+            for metric in self.metrics_to_return
+        ):
+            raise TypeError(
+                "All items in 'metrics_to_return' must be of type 'enums.MetricType'"
+            )
 
-    if not isinstance(self.iou_thresholds_to_compute, (list, type(None))):
-        raise TypeError(
-            f"Expected 'iou_thresholds_to_compute' to be of type 'list' or 'None', got {type(self.iou_thresholds_to_compute).__name__}"
-        )
-    if self.iou_thresholds_to_compute is not None and not all(
-        isinstance(threshold, float)
-        for threshold in self.iou_thresholds_to_compute
-    ):
-        raise TypeError(
-            "All items in 'iou_thresholds_to_compute' must be of type 'float'"
-        )
+        if not isinstance(self.iou_thresholds_to_compute, (list, type(None))):
+            raise TypeError(
+                f"Expected 'iou_thresholds_to_compute' to be of type 'list' or 'None', got {type(self.iou_thresholds_to_compute).__name__}"
+            )
+        if self.iou_thresholds_to_compute is not None and not all(
+            isinstance(threshold, float)
+            for threshold in self.iou_thresholds_to_compute
+        ):
+            raise TypeError(
+                "All items in 'iou_thresholds_to_compute' must be of type 'float'"
+            )
 
-    if not isinstance(self.iou_thresholds_to_return, (list, type(None))):
-        raise TypeError(
-            f"Expected 'iou_thresholds_to_return' to be of type 'list' or 'None', got {type(self.iou_thresholds_to_return).__name__}"
-        )
-    if self.iou_thresholds_to_return is not None and not all(
-        isinstance(threshold, float)
-        for threshold in self.iou_thresholds_to_return
-    ):
-        raise TypeError(
-            "All items in 'iou_thresholds_to_return' must be of type 'float'"
-        )
+        if not isinstance(self.iou_thresholds_to_return, (list, type(None))):
+            raise TypeError(
+                f"Expected 'iou_thresholds_to_return' to be of type 'list' or 'None', got {type(self.iou_thresholds_to_return).__name__}"
+            )
+        if self.iou_thresholds_to_return is not None and not all(
+            isinstance(threshold, float)
+            for threshold in self.iou_thresholds_to_return
+        ):
+            raise TypeError(
+                "All items in 'iou_thresholds_to_return' must be of type 'float'"
+            )
 
-    if not isinstance(self.recall_score_threshold, float):
-        raise TypeError(
-            f"Expected 'recall_score_threshold' to be of type 'float', got {type(self.recall_score_threshold).__name__}"
-        )
+        if not isinstance(self.recall_score_threshold, float):
+            raise TypeError(
+                f"Expected 'recall_score_threshold' to be of type 'float', got {type(self.recall_score_threshold).__name__}"
+            )
 
-    if not isinstance(self.pr_curve_iou_threshold, float):
-        raise TypeError(
-            f"Expected 'pr_curve_iou_threshold' to be of type 'float', got {type(self.pr_curve_iou_threshold).__name__}"
-        )
+        if not isinstance(self.pr_curve_iou_threshold, float):
+            raise TypeError(
+                f"Expected 'pr_curve_iou_threshold' to be of type 'float', got {type(self.pr_curve_iou_threshold).__name__}"
+            )
 
-    if not isinstance(self.pr_curve_max_examples, int):
-        raise TypeError(
-            f"Expected 'pr_curve_max_examples' to be of type 'int', got {type(self.pr_curve_max_examples).__name__}"
-        )
+        if not isinstance(self.pr_curve_max_examples, int):
+            raise TypeError(
+                f"Expected 'pr_curve_max_examples' to be of type 'int', got {type(self.pr_curve_max_examples).__name__}"
+            )
 
 
 @dataclass

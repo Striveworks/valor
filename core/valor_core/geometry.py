@@ -75,7 +75,7 @@ def _validate_type_point(v: Any):
         and isinstance(v[0], (int, float, np.number))
         and isinstance(v[1], (int, float, np.number))
     ):
-        raise ValueError(
+        raise TypeError(
             f"Expected point to have two numeric values representing an (x, y) pair. Received '{v}'."
         )
 
@@ -101,7 +101,7 @@ def _validate_type_multipoint(v: Any):
             v, "list[tuple[float, float]] or list[list[float]]"
         )
     elif not v:
-        raise ValueError("List cannot be empty.")
+        raise TypeError("List cannot be empty.")
     for point in v:
         _validate_type_point(point)
 
@@ -124,9 +124,7 @@ def _validate_type_linestring(v: Any):
     """
     _validate_type_multipoint(v)
     if len(v) < 2:
-        raise ValueError(
-            f"A line requires two or more points. Received '{v}'."
-        )
+        raise TypeError(f"A line requires two or more points. Received '{v}'.")
 
 
 def _validate_type_multilinestring(v: Any):
@@ -171,6 +169,9 @@ def _validate_type_polygon(v: Any):
     ValueError
         If the value does not conform to the polygon requirements.
     """
+    if not isinstance(v, list):
+        raise TypeError("Expected value to be a list.")
+
     _validate_type_multilinestring(v)
     for line in v:
         if not (len(line) >= 4 and line[0] == line[-1]):
@@ -278,7 +279,7 @@ def _validate_geojson(geojson: dict):
     # validate coordinates
     try:
         map_str_to_geojson_validator[geometry_type](geometry_value)
-    except (TypeError, ValueError) as e:
+    except (ValueError, ValueError) as e:
         raise ValueError(
             f"Value does not conform to '{geometry_type}'. Validation error: {str(e)}"
         )
@@ -674,6 +675,12 @@ class Polygon:
     value: Union[list[list[tuple[int, int]]], list[list[tuple[float, float]]]]
 
     def __post_init__(self):
+        if not (
+            isinstance(self.value, list)
+            and len(self.value) > 0
+            and isinstance(self.value[0], list)
+        ):
+            raise TypeError("Expected list of lists.")
         _validate_type_polygon(self.value)
 
     @classmethod
