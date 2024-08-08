@@ -48,7 +48,7 @@ def _get_joint_df(
 
 
 def _get_dtypes_in_series_of_arrays(series: pd.Series):
-
+    """Get the data type inside of a 2D numpy array. Used to check if a np.array contains coordinates or a mask."""
     if not isinstance(series, pd.Series) or not all(
         series.apply(lambda x: x.ndim == 2)
     ):
@@ -64,7 +64,8 @@ def _get_dtypes_in_series_of_arrays(series: pd.Series):
     return unique_primitives[0]
 
 
-def _check_if_series_contains_masks(series: pd.Series):
+def _check_if_series_contains_masks(series: pd.Series) -> bool:
+    """Check if any element in a pandas.Series is a mask."""
     if series.empty:
         return False
 
@@ -76,8 +77,10 @@ def _check_if_series_contains_masks(series: pd.Series):
     return False
 
 
-def _calculate_iou(joint_df: pd.DataFrame, target_type: enums.AnnotationType):
-    """Calculate the IOUs between predictions and groundtruths in a joint dataframe"""
+def _calculate_iou(
+    joint_df: pd.DataFrame,
+) -> pd.DataFrame:
+    """Calculate the IOUs between predictions and groundtruths in a joint dataframe."""
     if _check_if_series_contains_masks(
         joint_df.loc[
             joint_df["converted_geometry_pd"].notnull(),
@@ -143,7 +146,7 @@ def _calculate_iou(joint_df: pd.DataFrame, target_type: enums.AnnotationType):
 
 def _calculate_grouper_id_level_metrics(
     calculation_df: pd.DataFrame, recall_score_threshold: float
-):
+):  # -> pd.DataFrame:
     """Calculate the flags and metrics needed to compute AP, AR, and PR curves."""
 
     # create flags where predictions meet the score and IOU criteria
@@ -255,7 +258,7 @@ def _calculate_grouper_id_level_metrics(
 
 
 def _calculate_101_pt_interp(precisions, recalls) -> float:
-    """Use the 101 point interpolation method (following torchmetrics)"""
+    """Use the 101 point interpolation method (following torchmetrics)."""
     assert len(precisions) == len(recalls)
 
     if len(precisions) == 0:
@@ -289,6 +292,7 @@ def _calculate_101_pt_interp(precisions, recalls) -> float:
 
 
 def _calculate_mean_ignoring_negative_one(series: pd.Series) -> float:
+    """Calculate the mean of a series, ignoring any values that are -1."""
     filtered = series[series != -1]
     return filtered.mean() if not filtered.empty else -1.0
 
@@ -575,7 +579,7 @@ def _calculate_pr_metrics(
     return [
         metrics.PrecisionRecallCurve(
             label_key=key,
-            value=value,  # type: ignore - defaultdict doesn't have strict typing
+            value=value,  # #type: ignore - defaultdict doesn't have strict typing
             pr_curve_iou_threshold=pr_curve_iou_threshold,
         )
         for key, value in curves.items()
@@ -587,7 +591,7 @@ def _add_samples_to_dataframe(
     detailed_pr_calc_df: pd.DataFrame,
     max_examples: int,
     flag_column: str,
-):
+):  # -> pd.DataFrame:
     """Efficienctly gather samples for a given flag."""
 
     sample_df = pd.concat(
@@ -673,7 +677,6 @@ def _calculate_detailed_pr_metrics(
     metrics_to_return: List[enums.MetricType],
     pr_curve_iou_threshold: float,
     pr_curve_max_examples: int,
-    target_type,
 ) -> list[metrics.DetailedPrecisionRecallCurve]:
     """Calculates all DetailedPrecisionRecallCurve metrics."""
 
@@ -695,9 +698,7 @@ def _calculate_detailed_pr_metrics(
         )
     )
 
-    detailed_pr_joint_df = _calculate_iou(
-        joint_df=detailed_pr_joint_df, target_type=target_type
-    )
+    detailed_pr_joint_df = _calculate_iou(joint_df=detailed_pr_joint_df)
 
     # assign labels so that we can tell what we're matching
     detailed_pr_joint_df = detailed_pr_joint_df.assign(
@@ -1146,30 +1147,42 @@ def _compute_detection_metrics(
     pr_curve_iou_threshold: float,
     pr_curve_max_examples: int,
     unique_labels: list,
-    target_type: enums.AnnotationType,
 ) -> List[dict]:
     """
-    Compute detection metrics. This version of _compute_detection_metrics only does IOU calculations for every groundtruth-prediction pair that shares a common grouper id. It also runs _compute_curves to calculate the PrecisionRecallCurve.
+    Compute detection metrics for evaluating object detection models. This function calculates Intersection over Union (IoU) for each ground truth-prediction pair that shares a common grouper id, and computes metrics such as Average Precision (AP), Average Recall (AR), and Precision-Recall (PR) curves.
 
     Parameters
     ----------
-    db : Session
-        The database Session to query against.
-    parameters : schemas.EvaluationParameters
-        Any user-defined parameters.
-    prediction_filter : schemas.Filter
-        The filter to be used to query predictions.
-    groundtruth_filter : schemas.Filter
-        The filter to be used to query groundtruths.
-    target_type: enums.AnnotationType
-        The annotation type to compute metrics for.
-
+    groundtruth_df : pd.DataFrame
+        DataFrame containing ground truth annotations with columns including bounding boxes, polygons, or rasters.
+    prediction_df : pd.DataFrame
+        DataFrame containing predicted annotations with similar columns as `groundtruth_df`.
+    label_map : Dict[schemas.Label, schemas.Label]
+        Mapping of ground truth labels to prediction labels.
+    metrics_to_return : List[enums.MetricType]
+        List of metric types to calculate and return, such as AP, AR, or PR curves.
+    iou_thresholds_to_compute : List[float]
+        List of IoU thresholds for which metrics should be computed.
+    iou_thresholds_to_return : List[float]
+        List of IoU thresholds for which metrics should be returned.
+    recall_score_threshold : float
+        Threshold for the recall score to consider in metric calculations.
+    pr_curve_iou_threshold : float
+        IoU threshold for computing Precision-Recall curves.
+    pr_curve_max_examples : int
+        Maximum number of examples to use for Precision-Recall curve calculations.
+    unique_labels : list
+        List of unique labels present in the datasets.
 
     Returns
-    ----------
-    List[schemas.APMetric | schemas.ARMetric | schemas.APMetricAveragedOverIOUs | schemas.mAPMetric | schemas.mARMetric | schemas.mAPMetricAveragedOverIOUs | schemas.PrecisionRecallCurve]
-        A list of metrics to return to the user.
+    -------
+    List[dict]
+        A list of dictionaries containing computed metrics, including AP, AR, and PR curves, filtered according to `metrics_to_return`.
 
+    Raises
+    ------
+    ValueError
+        If there is an issue with the data or parameters provided.
     """
 
     grouper_mappings = _create_detection_grouper_mappings(
@@ -1223,7 +1236,7 @@ def _compute_detection_metrics(
         joint_df["id_pd"].isnull()
     ].assign(iou_=0)
 
-    joint_df = _calculate_iou(joint_df=joint_df, target_type=target_type)
+    joint_df = _calculate_iou(joint_df=joint_df)
 
     # filter out null groundtruths and sort by score and iou so that idxmax returns the best row for each prediction
     joint_df = joint_df[~joint_df["id_gt"].isnull()].sort_values(
@@ -1257,6 +1270,7 @@ def _compute_detection_metrics(
         ascending=False,
     )
 
+    # calculate metrics
     calculation_df = _calculate_grouper_id_level_metrics(
         calculation_df=calculation_df,
         recall_score_threshold=recall_score_threshold,
@@ -1289,7 +1303,6 @@ def _compute_detection_metrics(
         metrics_to_return=metrics_to_return,
         pr_curve_iou_threshold=pr_curve_iou_threshold,
         pr_curve_max_examples=pr_curve_max_examples,
-        target_type=target_type,
     )
 
     # convert objects to dictionaries and only return what was asked for
@@ -1315,7 +1328,40 @@ def evaluate_detection(
     pr_curve_max_examples: int = 1,
 ) -> schemas.Evaluation:
     """
-    Create object detection metrics.
+    Evaluate an object detection task using some set of groundtruths and predictions.
+
+    Parameters
+    ----------
+    groundtruths : Union[pd.DataFrame, List[schemas.GroundTruth]]
+        Ground truth annotations.
+    predictions : Union[pd.DataFrame, List[schemas.Prediction]]
+        Predicted annotations.
+    label_map : Optional[Dict[schemas.Label, schemas.Label]], default=None
+        Mapping of ground truth labels to prediction labels.
+    metrics_to_return : Optional[List[enums.MetricType]], default=None
+        List of metric types to calculate and return.
+    convert_annotations_to_type : Optional[enums.AnnotationType], default=None
+        Annotation type to convert all annotations to.
+    iou_thresholds_to_compute : Optional[List[float]], default=None
+        IoU thresholds for which metrics should be computed.
+    iou_thresholds_to_return : Optional[List[float]], default=None
+        IoU thresholds for which metrics should be returned.
+    recall_score_threshold : float, default=0.0
+        Threshold for recall score to consider in metric calculations.
+    pr_curve_iou_threshold : float, default=0.5
+        IoU threshold for computing Precision-Recall curves.
+    pr_curve_max_examples : int, default=1
+        Maximum number of examples for Precision-Recall curve calculations.
+
+    Returns
+    -------
+    schemas.Evaluation
+        An Evaluation object containing the calculated metrics and other details.
+
+    Raises
+    ------
+    ValueError
+        If there is an issue with the provided parameters or data.
     """
     start_time = time.time()
 
@@ -1361,7 +1407,6 @@ def evaluate_detection(
     (
         groundtruth_df,
         prediction_df,
-        target_type,
     ) = utilities.convert_annotations_to_common_type(
         groundtruth_df=groundtruth_df,
         prediction_df=prediction_df,
@@ -1400,7 +1445,6 @@ def evaluate_detection(
         pr_curve_iou_threshold=pr_curve_iou_threshold,
         pr_curve_max_examples=pr_curve_max_examples,
         unique_labels=unique_labels,
-        target_type=target_type,
     )
 
     return schemas.Evaluation(

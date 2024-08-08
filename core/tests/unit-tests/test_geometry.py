@@ -404,14 +404,12 @@ def test_raster(
     ).all()
 
     assert (
-        Raster.from_geometry(geometry=poly1, height=10, width=10).to_array()
+        Raster.from_geometry(geometry=poly1).to_array()
         == np.array([[0, 0], [0, 1], [1, 1], [1, 0], [0, 0]])
     ).all()
 
     assert (
-        Raster.from_geometry(
-            geometry=multipoly1, height=10, width=10
-        ).to_array()
+        Raster.from_geometry(geometry=multipoly1).to_array()
         == np.array([[0, 0], [0, 1], [1, 1], [1, 0], [0, 0]])
     ).all()
 

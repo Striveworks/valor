@@ -8,9 +8,27 @@ import numpy as np
 import PIL.Image
 
 
-def calculate_bbox_intersection(bbox1, bbox2) -> float:
-    """Calculate the intersection between two bounding boxes."""
+def calculate_bbox_intersection(bbox1: np.ndarray, bbox2: np.ndarray) -> float:
+    """
+    Calculate the intersection area between two bounding boxes.
 
+    Parameters
+    ----------
+    bbox1 : np.ndarray
+        Array representing the first bounding bo.
+    bbox2 : np.ndarray
+        Array representing the second bounding box with the same format as bbox1.
+
+    Returns
+    -------
+    float
+        The area of the intersection between the two bounding boxes.
+
+    Raises
+    ------
+    ValueError
+        If the input bounding boxes do not have the expected shape.
+    """
     # Calculate intersection coordinates
     xmin_inter = max(bbox1[:, 0].min(), bbox2[:, 0].min())
     ymin_inter = max(bbox1[:, 1].min(), bbox2[:, 1].min())
@@ -26,8 +44,27 @@ def calculate_bbox_intersection(bbox1, bbox2) -> float:
     return intersection_area
 
 
-def calculate_bbox_union(bbox1, bbox2) -> float:
-    """Calculate the union area between two bounding boxes."""
+def calculate_bbox_union(bbox1: np.ndarray, bbox2: np.ndarray) -> float:
+    """
+    Calculate the union area between two bounding boxes.
+
+    Parameters
+    ----------
+    bbox1 : np.ndarray
+        Array representing the first bounding box.
+    bbox2 : np.ndarray
+        Array representing the second bounding box with the same format as bbox1.
+
+    Returns
+    -------
+    float
+        The area of the union between the two bounding boxes.
+
+    Raises
+    ------
+    ValueError
+        If the input bounding boxes do not have the expected shape.
+    """
     area1 = (bbox1[:, 0].max() - bbox1[:, 0].min()) * (
         bbox1[:, 1].max() - bbox1[:, 1].min()
     )
@@ -38,21 +75,41 @@ def calculate_bbox_union(bbox1, bbox2) -> float:
     return union_area
 
 
-def calculate_bbox_iou(bbox1, bbox2) -> float:
-    """Calculate the IOU between two bounding boxes."""
+def calculate_bbox_iou(bbox1: np.ndarray, bbox2: np.ndarray) -> float:
+    """
+    Calculate the Intersection over Union (IoU) between two bounding boxes.
+
+    Parameters
+    ----------
+    bbox1 : np.ndarray
+        Array representing the first bounding box.
+    bbox2 : np.ndarray
+        Array representing the second bounding box with the same format as bbox1.
+
+    Returns
+    -------
+    float
+        The IoU between the two bounding boxes. Returns 0 if the union area is zero.
+
+    Raises
+    ------
+    ValueError
+        If the input bounding boxes do not have the expected shape.
+    """
     intersection = calculate_bbox_intersection(bbox1, bbox2)
     union = calculate_bbox_union(bbox1, bbox2)
     iou = intersection / union
     return iou
 
 
-def generate_type_error(received_value: Any, expected_type: str):
-    return TypeError(
+def _generate_type_error(received_value: Any, expected_type: str):
+    """Raise a TypeError with a specific error string format."""
+    raise TypeError(
         f"Expected value of type '{expected_type}', received value '{received_value}' with type '{type(received_value).__name__}'."
     )
 
 
-def _validate_type_point(v: Any):
+def _validate_type_point(v: Any) -> None:
     """
     Validates geometric point values.
 
@@ -69,7 +126,7 @@ def _validate_type_point(v: Any):
         If the point is not an (x,y) position.
     """
     if not isinstance(v, (tuple, list)):
-        raise generate_type_error(v, "tuple[float, float] or list[float]")
+        _generate_type_error(v, "tuple[float, float] or list[float]")
     elif not (
         len(v) == 2
         and isinstance(v[0], (int, float, np.number))
@@ -80,7 +137,7 @@ def _validate_type_point(v: Any):
         )
 
 
-def _validate_type_multipoint(v: Any):
+def _validate_type_multipoint(v: Any) -> None:
     """
     Validates geometric multipoint values.
 
@@ -97,7 +154,7 @@ def _validate_type_multipoint(v: Any):
         If there are no points or they are not (x,y) positions.
     """
     if not isinstance(v, list):
-        raise generate_type_error(
+        _generate_type_error(
             v, "list[tuple[float, float]] or list[list[float]]"
         )
     elif not v:
@@ -106,7 +163,7 @@ def _validate_type_multipoint(v: Any):
         _validate_type_point(point)
 
 
-def _validate_type_linestring(v: Any):
+def _validate_type_linestring(v: Any) -> None:
     """
     Validates geometric linestring values.
 
@@ -127,7 +184,7 @@ def _validate_type_linestring(v: Any):
         raise TypeError(f"A line requires two or more points. Received '{v}'.")
 
 
-def _validate_type_multilinestring(v: Any):
+def _validate_type_multilinestring(v: Any) -> None:
     """
     Validates geometric multilinestring values.
 
@@ -144,7 +201,7 @@ def _validate_type_multilinestring(v: Any):
         If the value does not conform to the multilinestring requirements.
     """
     if not isinstance(v, list):
-        return generate_type_error(
+        return _generate_type_error(
             v, "list[list[tuple[float, float]]] or list[list[list[float]]]"
         )
     elif not v:
@@ -153,7 +210,7 @@ def _validate_type_multilinestring(v: Any):
         _validate_type_linestring(line)
 
 
-def _validate_type_polygon(v: Any):
+def _validate_type_polygon(v: Any) -> None:
     """
     Validates geometric polygon values.
 
@@ -180,7 +237,7 @@ def _validate_type_polygon(v: Any):
             )
 
 
-def _validate_type_box(v: Any):
+def _validate_type_box(v: Any) -> None:
     """
     Validates geometric box values.
 
@@ -203,7 +260,7 @@ def _validate_type_box(v: Any):
         )
 
 
-def _validate_type_multipolygon(v: Any):
+def _validate_type_multipolygon(v: Any) -> None:
     """
     Validates geometric multipolygon values.
 
@@ -220,7 +277,7 @@ def _validate_type_multipolygon(v: Any):
         If the value does not conform to the multipolygon requirements.
     """
     if not isinstance(v, list):
-        raise generate_type_error(
+        _generate_type_error(
             v,
             "list[list[list[tuple[float, float]]]] or list[list[list[list[float]]]]",
         )
@@ -230,7 +287,7 @@ def _validate_type_multipolygon(v: Any):
         _validate_type_polygon(polygon)
 
 
-def _validate_geojson(geojson: dict):
+def _validate_geojson(geojson: dict) -> None:
     """
     Validates that a dictionary conforms to the GeoJSON geometry specification.
 
@@ -830,6 +887,13 @@ class Polygon:
         return max([p[1] for p in self.boundary])
 
     def to_array(self) -> np.ndarray:
+        """
+        Convert Polygon to an array.
+
+        Returns
+        -------
+        np.ndarray
+        """
         return np.array(self.value[0])
 
 
@@ -954,6 +1018,13 @@ class Box:
     def to_array(
         self,
     ) -> np.ndarray:
+        """
+        Convert Box to an array.
+
+        Returns
+        -------
+        np.ndarray
+        """
         return np.array(self.value[0])
 
     @property
@@ -1078,6 +1149,13 @@ class MultiPolygon:
         return f"MULTIPOLYGON (({coords}))"
 
     def to_array(self) -> np.ndarray:
+        """
+        Convert MultiPolygon to an array.
+
+        Returns
+        -------
+        np.ndarray
+        """
         return np.array(self.value[0][0])
 
 
@@ -1283,8 +1361,6 @@ class Raster:
     def from_geometry(
         cls,
         geometry: Union[Box, Polygon, MultiPolygon],
-        height: int,
-        width: int,
     ):
         """
         Create a Raster object from a geometric mask.

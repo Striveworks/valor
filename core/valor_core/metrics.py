@@ -98,7 +98,7 @@ class _LabelKeyMetricBase:
 @dataclass
 class ARMetric(_LabelMetricBase):
     """
-    An AR metric response from the API.
+    Defines an AR metric.
 
     Attributes
     ----------
@@ -134,7 +134,7 @@ class ARMetric(_LabelMetricBase):
 @dataclass
 class APMetric(_LabelMetricBase):
     """
-    An AP metric response from the API.
+    Defines an AP metric.
 
     Attributes
     ----------
@@ -170,7 +170,7 @@ class APMetric(_LabelMetricBase):
 @dataclass
 class APMetricAveragedOverIOUs(_LabelMetricBase):
     """
-    An AR metric response from the API.
+    Defines an APMetricAveragedOverIOUs metric.
 
     Attributes
     ----------
@@ -206,7 +206,7 @@ class APMetricAveragedOverIOUs(_LabelMetricBase):
 @dataclass
 class mARMetric(_LabelKeyMetricBase):
     """
-    An mAR metric response from the API.
+    Defines a mAR metric.
 
     Attributes
     ----------
@@ -244,12 +244,12 @@ class mARMetric(_LabelKeyMetricBase):
 @dataclass
 class mAPMetric(_LabelKeyMetricBase):
     """
-    An mAR metric response from the API.
+    Defines a mAP metric.
 
     Attributes
     ----------
-    ious : set[float]
-        A set of intersect-over-union (IOU) values.
+    iou: float
+        An intersect-over-union (IOU) value.
     value : float
         The value of the metric.
     label_key : str
@@ -279,7 +279,7 @@ class mAPMetric(_LabelKeyMetricBase):
 @dataclass
 class mAPMetricAveragedOverIOUs(_LabelKeyMetricBase):
     """
-    An mAR metric response from the API.
+    Defines a mAR metric.
 
     Attributes
     ----------
@@ -316,7 +316,7 @@ class mAPMetricAveragedOverIOUs(_LabelKeyMetricBase):
 
 class PrecisionMetric(_LabelMetricBase):
     """
-    Describes a precision metric.
+    Defines a Precision metric.
 
     Attributes
     ----------
@@ -334,7 +334,7 @@ class PrecisionMetric(_LabelMetricBase):
 
 class RecallMetric(_LabelMetricBase):
     """
-    Describes a recall metric.
+    Defines a Recall metric.
 
     Attributes
     ----------
@@ -352,7 +352,7 @@ class RecallMetric(_LabelMetricBase):
 
 class F1Metric(_LabelMetricBase):
     """
-    Describes an F1 metric.
+    Defines a F1 metric.
 
     Attributes
     ----------
@@ -370,7 +370,7 @@ class F1Metric(_LabelMetricBase):
 
 class ROCAUCMetric(_LabelKeyMetricBase):
     """
-    Describes an ROC AUC metric.
+    Defines a ROC AUC metric.
 
     Attributes
     ----------
@@ -388,7 +388,7 @@ class ROCAUCMetric(_LabelKeyMetricBase):
 
 class AccuracyMetric(_LabelKeyMetricBase):
     """
-    Describes an accuracy metric.
+    Defines a accuracy metric.
 
     Attributes
     ----------

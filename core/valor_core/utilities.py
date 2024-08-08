@@ -7,9 +7,26 @@ from valor_core import enums, geometry, schemas
 
 def validate_label_map(
     label_map: Optional[Dict[schemas.Label, schemas.Label]],
-) -> Union[List[List[List[str]]], None]:
-    """Validate the label mapping if necessary."""
+) -> None:
+    """
+    Validate the label mapping if necessary.
 
+    This function checks if the provided label_map is a dictionary with both
+    keys and values being instances of schemas.Label. If the label_map is
+    invalid, a TypeError is raised.
+
+    Parameters
+    ----------
+    label_map : Optional[Dict[schemas.Label, schemas.Label]]
+        A dictionary mapping labels to other labels, or None if no mapping
+        is provided.
+
+    Raises
+    ------
+    TypeError
+        If label_map is not a dictionary or if its keys and values are not
+        instances of schemas.Label.
+    """
     if label_map and (
         not isinstance(label_map, dict)
         or not all(
@@ -27,7 +44,27 @@ def validate_label_map(
 
 def validate_metrics_to_return(
     task_type: enums.TaskType, metrics_to_return: List[enums.MetricType]
-):
+) -> None:
+    """
+    Validate that the provided metrics are appropriate for the specified task type.
+
+    This function checks if the provided metrics_to_return are valid for the given
+    task_type. It raises a ValueError if any of the metrics are not supported for
+    the specified task type.
+
+    Parameters
+    ----------
+    task_type : enums.TaskType
+        The type of task for which the metrics are being validated. This can be
+        either `enums.TaskType.CLASSIFICATION` or `enums.TaskType.OBJECT_DETECTION`.
+    metrics_to_return : List[enums.MetricType]
+        A list of metrics that need to be validated against the task type.
+
+    Raises
+    ------
+    ValueError
+        If any of the provided metrics are not supported for the specified task type.
+    """
 
     if task_type == enums.TaskType.CLASSIFICATION:
         if not set(metrics_to_return).issubset(
@@ -50,7 +87,24 @@ def validate_parameters(
     recall_score_threshold: Optional[float] = None,
     pr_curve_iou_threshold: Optional[float] = None,
     pr_curve_max_examples: Optional[int] = None,
-):
+) -> None:
+    """
+    Validate parameters for scoring and PR curves.
+
+    Parameters
+    ----------
+    recall_score_threshold : Optional[float]
+        The threshold for recall score.
+    pr_curve_iou_threshold : Optional[float]
+        The IOU threshold for PR curve.
+    pr_curve_max_examples : Optional[int]
+        The maximum number of examples for PR curve.
+
+    Raises
+    ------
+    ValueError
+        If any of the parameters are out of their valid ranges.
+    """
 
     if recall_score_threshold and (
         recall_score_threshold > 1 or recall_score_threshold < 0
@@ -75,25 +129,22 @@ def validate_parameters(
 def validate_matching_label_keys(
     groundtruths: pd.DataFrame,
     predictions: pd.DataFrame,
-    label_map,
+    label_map: Optional[Dict[schemas.Label, schemas.Label]],
 ) -> None:
     """
     Validates that every datum has the same set of label keys for both ground truths and predictions. This check is only needed for classification tasks.
 
     Parameters
     ----------
-    db : Session
-        The database Session to query against.
-    prediction_filter : schemas.Filter
-        The filter to be used to query predictions.
-    groundtruth_filter : schemas.Filter
-        The filter to be used to query groundtruths.
-    label_map: LabelMapType, optional
-        Optional mapping of individual labels to a grouper label. Useful when you need to evaluate performance using labels that differ across datasets and models.
-
+    groundtruths : pd.DataFrame
+        The DataFrame containing ground truth data.
+    predictions : pd.DataFrame
+        The DataFrame containing prediction data.
+    label_map : Optional[Dict[schemas.Label, schemas.Label]]
+        Optional mapping of individual labels to a grouper label.
 
     Raises
-    -------
+    ------
     ValueError
         If the distinct ground truth label keys don't match the distinct prediction label keys for any datum.
     """
@@ -144,7 +195,8 @@ def validate_matching_label_keys(
 
 def _validate_groundtruth_dataframe(
     df: pd.DataFrame, task_type: enums.TaskType
-):
+) -> None:
+    """Validate the details of a ground truth dataframe."""
     null_placeholder_column = pd.Series([None] * len(df))
 
     if df.get("score", null_placeholder_column).notnull().any():
@@ -159,7 +211,9 @@ def _validate_groundtruth_dataframe(
 
 def _validate_prediction_dataframe(
     df: pd.DataFrame, task_type: enums.TaskType
-):
+) -> None:
+    """Validate the details of a prediction dataframe."""
+
     if task_type == enums.TaskType.CLASSIFICATION:
         if df["score"].isnull().any():
             raise ValueError(
@@ -192,6 +246,31 @@ def create_filtered_and_validated_groundtruth_df(
     obj: Union[pd.DataFrame, List[schemas.GroundTruth]],
     task_type: enums.TaskType,
 ) -> pd.DataFrame:
+    """
+    Create a filtered and validated DataFrame of ground truth data.
+
+    This function takes either a DataFrame or a list of GroundTruth objects,
+    validates the input, identifies the implied task types, filters the DataFrame
+    to match the specified task type, and then validates the filtered DataFrame.
+
+    Parameters
+    ----------
+    obj : Union[pd.DataFrame, List[schemas.GroundTruth]]
+        The ground truth data to be processed. This can be either a pandas DataFrame
+        or a list of GroundTruth objects.
+    task_type : enums.TaskType
+        The task type for which the ground truth data is being filtered and validated.
+
+    Returns
+    -------
+    pd.DataFrame
+        A DataFrame containing the filtered and validated ground truth data.
+
+    Raises
+    ------
+    ValueError
+        If the input object is neither a DataFrame nor a list of GroundTruth objects.
+    """
     if not (
         isinstance(obj, pd.DataFrame)
         or (
@@ -221,6 +300,31 @@ def create_filtered_and_validated_prediction_df(
     obj: Union[pd.DataFrame, List[schemas.Prediction]],
     task_type: enums.TaskType,
 ) -> pd.DataFrame:
+    """
+    Create a filtered and validated DataFrame of prediction data.
+
+    This function takes either a DataFrame or a list of Prediction objects,
+    validates the input, identifies the implied task types, filters the DataFrame
+    to match the specified task type, and then validates the filtered DataFrame.
+
+    Parameters
+    ----------
+    obj : Union[pd.DataFrame, List[schemas.Prediction]]
+        The prediction data to be processed. This can be either a pandas DataFrame
+        or a list of GroundTruth objects.
+    task_type : enums.TaskType
+        The task type for which the orediction data is being filtered and validated.
+
+    Returns
+    -------
+    pd.DataFrame
+        A DataFrame containing the filtered and validated orediction data.
+
+    Raises
+    ------
+    ValueError
+        If the input object is neither a DataFrame nor a list of Prediction objects.
+    """
     if not (
         isinstance(obj, pd.DataFrame)
         or (
@@ -252,6 +356,19 @@ def create_filtered_and_validated_prediction_df(
 def _convert_groundtruth_or_prediction_to_dataframe(
     list_of_objects: Union[List[schemas.GroundTruth], List[schemas.Prediction]]
 ) -> pd.DataFrame:
+    """
+    Convert a list of GroundTruth or Prediction objects to a DataFrame.
+
+    Parameters
+    ----------
+    list_of_objects : Union[List[schemas.GroundTruth], List[schemas.Prediction]]
+        List of GroundTruth or Prediction objects.
+
+    Returns
+    -------
+    pd.DataFrame
+        DataFrame representation of the input list.
+    """
 
     output = []
 
@@ -346,21 +463,19 @@ def _convert_groundtruth_or_prediction_to_dataframe(
 
 
 def get_disjoint_labels(
-    groundtruth_df: pd.DataFrame, prediction_df: pd.DataFrame, label_map
+    groundtruth_df: pd.DataFrame,
+    prediction_df: pd.DataFrame,
+    label_map: Optional[Dict[schemas.Label, schemas.Label]],
 ) -> tuple[list[schemas.Label], list[schemas.Label]]:
     """
     Returns all unique labels that are not shared between two dataframes.
 
     Parameters
     ----------
-    db : Session
-        The database Session to query against.
-    lhs : list[schemas.Filter]
-        Filter defining first label set.
-    rhs : list[schemas.Filter]
-        Filter defining second label set.
-    label_map: LabelMapType, optional
-        Optional mapping of individual labels to a grouper label. Useful when you need to evaluate performance using labels that differ across datasets and models.
+    groundtruth_df : pd.DataFrame
+        The dataframe representing ground truth objects.
+    prediction_df : pd.DataFrame
+        The dataframe representing prediction objects.
 
     Returns
     ----------
@@ -404,19 +519,7 @@ def get_disjoint_labels(
 def _identify_implied_task_types(
     df: pd.DataFrame,
 ) -> pd.DataFrame:
-    """
-    Match an annotation to an implied task type based on the arguments that were passed to the Annotation constructor.
-
-    Parameters
-    ----------
-    annotation: Annotation
-        The annotation to validate.
-
-    Raises
-    ------
-    ValueError
-        If the contents of the annotation do not match an expected pattern.
-    """
+    """Match an annotation to an implied task type."""
     # null series for use if the column doesn't exist
     null_placeholder_column = pd.Series([None] * len(df))
 
@@ -498,6 +601,7 @@ def _identify_implied_task_types(
 
 
 def _convert_raster_to_box(raster: np.ndarray) -> geometry.Box:
+    """Convert a raster mask to a Box."""
     rows = np.any(raster, axis=1)
     cols = np.any(raster, axis=0)
     if not np.any(rows) or not np.any(cols):
@@ -510,6 +614,7 @@ def _convert_raster_to_box(raster: np.ndarray) -> geometry.Box:
 
 
 def _convert_raster_to_polygon(raster: np.ndarray) -> geometry.Polygon:
+    """Convert a raster mask to a Polygon."""
     if raster.ndim != 2:
         raise ValueError("Raster must be a 2D array.")
 
@@ -542,19 +647,8 @@ def _convert_raster_to_polygon(raster: np.ndarray) -> geometry.Polygon:
 
 
 def _convert_polygon_to_box(polygon: geometry.Polygon) -> geometry.Box:
-    """
-    Convert a Polygon to a Box.
+    """Convert a Polygon to a Box."""
 
-    Parameters
-    ----------
-    polygon : Polygon
-        The input Polygon to be converted.
-
-    Returns
-    -------
-    Box
-        The bounding Box that encompasses the Polygon.
-    """
     boundary = polygon.boundary
 
     xmin = min(point[0] for point in boundary)
@@ -569,23 +663,22 @@ def _identify_most_detailed_annotation_type(
     df: pd.DataFrame,
 ) -> enums.AnnotationType:
     """
-    Fetch annotation type from psql.
+    Identify the most detailed annotation type present in the DataFrame.
+
+    The function checks the columns in the given DataFrame for non-null values
+    to determine the most detailed annotation type in the following order:
+    raster, polygon, bounding_box. If none of these types are present,
+    it returns AnnotationType.NONE.
 
     Parameters
     ----------
-    db : Session
-        The database Session you want to query against.
-    task_type: TaskType
-        The implied task type to filter on.
-    dataset : models.Dataset
-        The dataset associated with the annotation.
-    model : models.Model
-        The model associated with the annotation.
+    df : pd.DataFrame
+        DataFrame containing the annotations.
 
     Returns
-    ----------
-    AnnotationType
-        The type of the annotation.
+    -------
+    enums.AnnotationType
+        The most detailed annotation type present in the DataFrame.
     """
 
     if df["raster"].notnull().any():
@@ -606,22 +699,29 @@ def _add_converted_geometry_column(
     target_type: enums.AnnotationType,
 ) -> pd.DataFrame:
     """
-    Converts geometry into some target type
+    Add a column with converted geometries to the DataFrame.
+
+    The function checks that each annotation contains only one type of geometry
+    (bounding_box, polygon, or raster) and then converts these geometries to the
+    specified target type. The resulting geometries are stored in a new column
+    called 'converted_geometry'.
 
     Parameters
     ----------
-    db : Session
-        The database Session you want to query against.
-    source_type: AnnotationType
-        The annotation type we have.
-    target_type: AnnotationType
-        The annotation type we wish to convert to.
-    dataset : models.Dataset
-        The dataset of the geometry.
-    model : models.Model, optional
-        The model of the geometry.
-    task_type: TaskType, optional
-        Optional task type to search by.
+    df : pd.DataFrame
+        DataFrame containing the annotations with geometry columns.
+    target_type : enums.AnnotationType
+        The target annotation type to convert the geometries to.
+
+    Returns
+    -------
+    pd.DataFrame
+        DataFrame with an added column 'converted_geometry' containing the converted geometries.
+
+    Raises
+    ------
+    ValueError
+        If an annotation contains more than one type of geometry.
     """
     if not (
         df[["bounding_box", "polygon", "raster"]].notna().sum(axis=1) == 1
@@ -678,8 +778,35 @@ def convert_annotations_to_common_type(
     groundtruth_df: pd.DataFrame,
     prediction_df: pd.DataFrame,
     target_type: enums.AnnotationType | None = None,
-) -> tuple[pd.DataFrame, pd.DataFrame, enums.AnnotationType]:
-    """Convert all annotations to a common type."""
+) -> tuple[pd.DataFrame, pd.DataFrame]:
+    """
+    Convert all annotations to a common type.
+
+    This function converts the geometries in the provided groundtruth and prediction
+    DataFrames to a common target type. If no target type is specified, it determines
+    the most detailed annotation type present in the data and uses that as the target type.
+
+    Parameters
+    ----------
+    groundtruth_df : pd.DataFrame
+        DataFrame containing the groundtruth annotations.
+    prediction_df : pd.DataFrame
+        DataFrame containing the prediction annotations.
+    target_type : enums.AnnotationType, optional
+        The target annotation type to convert the geometries to. If None, the most
+        detailed type present in the data is used.
+
+    Returns
+    -------
+    tuple[pd.DataFrame, pd.DataFrame, enums.AnnotationType]
+        A tuple containing the converted groundtruth DataFrame, the converted prediction
+        DataFrame, and the target annotation type used for conversion.
+
+    Raises
+    ------
+    ValueError
+        If the target annotation type is not supported.
+    """
 
     if target_type is None:
         most_detailed_groundtruth_type = (
@@ -718,4 +845,4 @@ def convert_annotations_to_common_type(
         df=prediction_df, target_type=target_type
     )
 
-    return (groundtruth_df, prediction_df, target_type)
+    return (groundtruth_df, prediction_df)

@@ -31,6 +31,7 @@ class Datum:
     def __post_init__(
         self,
     ):
+        """Validate the object after instantiation."""
 
         if not isinstance(self.uid, (str, type(None))):
             raise TypeError(
@@ -62,6 +63,7 @@ class Label:
     score: Optional[float] = None
 
     def __post_init__(self):
+        """Validate the object after instantiation."""
         if not isinstance(self.key, str):
             raise TypeError(
                 f"Expected 'key' to be of type 'str', got {type(self.key).__name__}"
@@ -216,6 +218,8 @@ class Annotation:
     implied_task_types: Optional[List[str]] = None
 
     def __post_init__(self):
+        """Validate the object after instantiation."""
+
         if not isinstance(self.labels, list):
             raise TypeError(
                 f"Expected 'labels' to be of type 'list', got {type(self.labels).__name__}"
@@ -300,6 +304,8 @@ class EvaluationParameters:
     pr_curve_max_examples: int = 1
 
     def __post_init__(self):
+        """Validate the object after instantiation."""
+
         if not isinstance(self.label_map, (dict, type(None))):
             raise TypeError(
                 f"Expected 'label_map' to be of type 'dict' or 'None', got {type(self.label_map).__name__}"
@@ -381,6 +387,8 @@ class Evaluation:
         return json.dumps(self.__dict__, indent=4)
 
     def __post_init__(self):
+        """Validate the object after instantiation."""
+
         if not isinstance(self.parameters, EvaluationParameters):
             raise TypeError(
                 f"Expected 'parameters' to be of type 'EvaluationParameters', got {type(self.parameters).__name__}"
@@ -458,16 +466,8 @@ class GroundTruth:
     def __post_init__(
         self,
     ):
-        """
-        Creates a ground truth.
+        """Validate the object after instantiation."""
 
-        Parameters
-        ----------
-        datum : Datum
-            The datum that the ground truth is operating over.
-        annotations : List[Annotation]
-            The list of ground truth annotations.
-        """
         if not isinstance(self.datum, Datum):
             raise TypeError(
                 f"Expected 'datum' to be of type 'Datum', got {type(self.datum).__name__}"
@@ -517,6 +517,8 @@ class Prediction:
     annotations: list[Annotation]
 
     def __post_init__(self):
+        """Validate the object after instantiation."""
+
         if not isinstance(self.datum, Datum):
             raise TypeError(
                 f"Expected 'datum' to be of type 'Datum', got {type(self.datum).__name__}"

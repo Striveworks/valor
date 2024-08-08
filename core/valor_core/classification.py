@@ -58,7 +58,7 @@ def _add_columns_to_groundtruth_and_prediction_table(
 
 def _calculate_confusion_matrix_df(
     merged_groundtruths_and_predictions_df: pd.DataFrame,
-) -> tuple:
+) -> tuple[pd.DataFrame, list[metrics.ConfusionMatrix]]:
     """Calculate our confusion matrix dataframe."""
 
     cm_counts_df = (
@@ -304,6 +304,7 @@ def _calculate_precision_recall_f1_metrics(
 ) -> List[
     Union[metrics.PrecisionMetric, metrics.RecallMetric, metrics.F1Metric]
 ]:
+    """Calculate Precision, Recall, and F1 metrics."""
     # create metric objects
     output = []
 
@@ -337,7 +338,7 @@ def _calculate_precision_recall_f1_metrics(
 def _calculate_accuracy_metrics(
     cm_counts_df: pd.DataFrame,
 ) -> List[metrics.AccuracyMetric]:
-
+    """Calculate Accuracy metrics."""
     accuracy_calculations = (
         cm_counts_df.loc[
             (
@@ -380,9 +381,10 @@ def _calculate_accuracy_metrics(
     ]
 
 
-def _get_merged_dataframe(
+def _get_joint_df(
     prediction_df: pd.DataFrame, groundtruth_df: pd.DataFrame
-):
+) -> pd.DataFrame:
+    """Merge the ground truth and prediction dataframes into one, joint dataframe."""
     max_scores_by_grouper_key_and_datum_id = (
         prediction_df[["grouper_key", "datum_id", "score"]]
         .groupby(
@@ -494,7 +496,7 @@ def _get_merged_dataframe(
 def _calculate_rocauc(
     prediction_df: pd.DataFrame, groundtruth_df: pd.DataFrame
 ) -> List[metrics.ROCAUCMetric]:
-
+    """Calculate ROC AUC metrics."""
     # if there are no predictions, then ROCAUC should be 0 for all groundtruth grouper keys
     if prediction_df.empty:
         return [
@@ -674,7 +676,7 @@ def _add_samples_to_dataframe(
     pr_calc_df: pd.DataFrame,
     max_examples: int,
     flag_column: str,
-):
+) -> pd.DataFrame:
     """Efficienctly gather samples for a given flag."""
 
     sample_df = pd.concat(
@@ -740,7 +742,8 @@ def _calculate_pr_curves(
     groundtruth_df: pd.DataFrame,
     metrics_to_return: list,
     pr_curve_max_examples: int,
-):
+) -> list[metrics.PrecisionRecallCurve]:
+    """Calculate PrecisionRecallCurve metrics."""
     if not (
         enums.MetricType.PrecisionRecallCurve in metrics_to_return
         or enums.MetricType.DetailedPrecisionRecallCurve in metrics_to_return
@@ -1151,28 +1154,29 @@ def _compute_clf_metrics(
     pr_curve_max_examples: int = 1,
 ) -> Tuple[List[dict], List[dict]]:
     """
-    Compute classification metrics.
+    Compute classification metrics including confusion matrices and various performance metrics.
 
     Parameters
     ----------
-    db : Session
-        The database Session to query against.
-    prediction_filter : schemas.Filter
-        The filter to be used to query predictions.
-    groundtruth_filter : schemas.Filter
-        The filter to be used to query groundtruths.
-    metrics_to_return: list[MetricType]
-        The list of metrics to compute, store, and return to the user.
-    label_map: schemas.LabelMapType, optional
-        Optional mapping of individual labels to a grouper label. Useful when you need to evaluate performance using labels that differ across datasets and models.
-    pr_curve_max_examples: int
-        The maximum number of datum examples to store per true positive, false negative, etc.
-
+    groundtruth_df : pd.DataFrame
+        DataFrame containing ground truth annotations with necessary columns.
+    prediction_df : pd.DataFrame
+        DataFrame containing predictions with necessary columns.
+    unique_labels : list
+        List of unique labels used for the classification.
+    label_map : Optional[Dict[schemas.Label, schemas.Label]], default=None
+        Optional dictionary mapping ground truth labels to prediction labels.
+    metrics_to_return : Optional[List[enums.MetricType]], default=None
+        List of metric types to return. If None, default metrics are used.
+    pr_curve_max_examples : int, default=1
+        Maximum number of examples to use for Precision-Recall curve calculations.
 
     Returns
-    ----------
-    Tuple[List[metrics.ConfusionMatrix], List[metrics.ConfusionMatrix | metrics.AccuracyMetric | metrics.ROCAUCMetric| metrics.PrecisionMetric | metrics.RecallMetric | metrics.F1Metric]]
-        A tuple of confusion matrices and metrics.
+    -------
+    Tuple[List[dict], List[dict]]
+        A tuple where:
+        - The first element is a list of dictionaries representing confusion matrices.
+        - The second element is a list of dictionaries representing the requested classification metrics.
     """
     grouper_mappings = _create_classification_grouper_mappings(
         label_map=label_map,
@@ -1188,7 +1192,7 @@ def _compute_clf_metrics(
         df=prediction_df, grouper_mappings=grouper_mappings
     )
 
-    merged_groundtruths_and_predictions_df = _get_merged_dataframe(
+    merged_groundtruths_and_predictions_df = _get_joint_df(
         prediction_df=prediction_df, groundtruth_df=groundtruth_df
     )
 
@@ -1239,7 +1243,31 @@ def evaluate_classification(
     pr_curve_max_examples: int = 1,
 ) -> schemas.Evaluation:
     """
-    Create classification metrics.
+    Evaluate classification metrics including Precision, Recall, F1, Accuracy, ROCAUC, and confusion matrices.
+
+    Parameters
+    ----------
+    groundtruths : Union[pd.DataFrame, List[schemas.GroundTruth]]
+        Ground truth annotations as either a DataFrame or a list of GroundTruth objects.
+    predictions : Union[pd.DataFrame, List[schemas.Prediction]]
+        Predictions as either a DataFrame or a list of Prediction objects.
+    label_map : Optional[Dict[schemas.Label, schemas.Label]], default=None
+        Optional dictionary mapping ground truth labels to prediction labels.
+    metrics_to_return : Optional[List[enums.MetricType]], default=None
+        List of metric types to return. Defaults to Precision, Recall, F1, Accuracy, ROCAUC if None.
+    pr_curve_max_examples : int, default=1
+        Maximum number of examples to use for Precision-Recall curve calculations.
+
+    Returns
+    -------
+    schemas.Evaluation
+        An Evaluation object containing:
+        - parameters: EvaluationParameters used for the calculation.
+        - metrics: List of dictionaries representing the calculated classification metrics.
+        - confusion_matrices: List of dictionaries representing the confusion matrices.
+        - meta: Dictionary with metadata including the count of labels, datums, annotations, and duration of the evaluation.
+        - ignored_pred_labels: List of ignored prediction labels (empty in this context).
+        - missing_pred_labels: List of missing prediction labels (empty in this context).
     """
     start_time = time.time()
 
