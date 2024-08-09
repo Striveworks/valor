@@ -220,8 +220,11 @@ def test_box(box_points, skewed_box_points, rotated_box_points):
     assert Box.from_extrema(xmin=-1, xmax=10, ymin=-2, ymax=11).value == coords
 
     assert Box(value=[box_points])
-    assert Box(value=[rotated_box_points])
-    assert Box(value=[skewed_box_points])
+
+    with pytest.raises(NotImplementedError):
+        assert Box(value=[rotated_box_points])
+    with pytest.raises(NotImplementedError):
+        assert Box(value=[skewed_box_points])
 
     # test type validation
     with pytest.raises(ValueError):
@@ -265,14 +268,18 @@ def test_box(box_points, skewed_box_points, rotated_box_points):
         Box(value=[box_points]).to_wkt()
         == "POLYGON ((-5 -5, 5 -5, 5 5, -5 5, -5 -5))"
     )
-    assert (
-        Box(value=[rotated_box_points]).to_wkt()
-        == "POLYGON ((0 7.0710678118654755, 7.0710678118654755 0, 0 -7.0710678118654755, -7.0710678118654755 0, 0 7.0710678118654755))"
-    )
-    assert (
-        Box(value=[skewed_box_points]).to_wkt()
-        == "POLYGON ((0 0, 10 0, 15 10, 5 10, 0 0))"
-    )
+
+    with pytest.raises(NotImplementedError):
+        assert (
+            Box(value=[rotated_box_points]).to_wkt()
+            == "POLYGON ((0 7.0710678118654755, 7.0710678118654755 0, 0 -7.0710678118654755, -7.0710678118654755 0, 0 7.0710678118654755))"
+        )
+
+    with pytest.raises(NotImplementedError):
+        assert (
+            Box(value=[skewed_box_points]).to_wkt()
+            == "POLYGON ((0 0, 10 0, 15 10, 5 10, 0 0))"
+        )
 
 
 def test_multipolygon(box_points, skewed_box_points, rotated_box_points):

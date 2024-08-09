@@ -167,6 +167,19 @@ def _validate_type_box(v: Any) -> None:
             "Boxes are defined by five points with the first and last being equal."
         )
 
+    # check that the box is axis-aligned
+    unique_x_values = set()
+    unique_y_values = set()
+
+    for x, y in v[0]:
+        unique_x_values.add(x)
+        unique_y_values.add(y)
+
+    if (len(unique_x_values) != 2) or (len(unique_y_values) != 2):
+        raise NotImplementedError(
+            "Expected an axis-aligned Box, but found too many unique values. Rotated and skewed bounding boxes are not yet supported."
+        )
+
 
 def _validate_type_multipolygon(v: Any) -> None:
     """
@@ -175,7 +188,7 @@ def _validate_type_multipolygon(v: Any) -> None:
     Parameters
     ----------
     v : Any
-        The value to validate.
+        The value to validate.v
 
     Raises
     ------
