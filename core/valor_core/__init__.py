@@ -1,15 +1,5 @@
 from .classification import evaluate_classification
 from .detection import evaluate_detection
-from .geometry import (
-    Box,
-    LineString,
-    MultiLineString,
-    MultiPoint,
-    MultiPolygon,
-    Point,
-    Polygon,
-    Raster,
-)
 from .metrics import (
     AccuracyMetric,
     APMetric,
@@ -29,11 +19,19 @@ from .metrics import (
 )
 from .schemas import (
     Annotation,
+    Box,
     Datum,
     Evaluation,
     GroundTruth,
     Label,
+    LineString,
+    MultiLineString,
+    MultiPoint,
+    MultiPolygon,
+    Point,
+    Polygon,
     Prediction,
+    Raster,
 )
 
 __all__ = [

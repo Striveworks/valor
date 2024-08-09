@@ -2,7 +2,7 @@ from typing import Dict, List, Optional, Union
 
 import numpy as np
 import pandas as pd
-from valor_core import enums, geometry, schemas
+from valor_core import enums, schemas
 
 
 def replace_labels_using_label_map(
@@ -695,7 +695,7 @@ def _identify_implied_task_types(
     return df
 
 
-def _convert_raster_to_box(raster: np.ndarray) -> geometry.Box:
+def _convert_raster_to_box(raster: np.ndarray) -> schemas.Box:
     """Convert a raster mask to a Box."""
     rows = np.any(raster, axis=1)
     cols = np.any(raster, axis=0)
@@ -705,10 +705,10 @@ def _convert_raster_to_box(raster: np.ndarray) -> geometry.Box:
     ymin, ymax = np.where(rows)[0][[0, -1]]
     xmin, xmax = np.where(cols)[0][[0, -1]]
 
-    return geometry.Box.from_extrema(xmin, xmax + 1, ymin, ymax + 1)
+    return schemas.Box.from_extrema(xmin, xmax + 1, ymin, ymax + 1)
 
 
-def _convert_raster_to_polygon(raster: np.ndarray) -> geometry.Polygon:
+def _convert_raster_to_polygon(raster: np.ndarray) -> schemas.Polygon:
     """Convert a raster mask to a Polygon."""
     if raster.ndim != 2:
         raise ValueError("Raster must be a 2D array.")
@@ -736,12 +736,12 @@ def _convert_raster_to_polygon(raster: np.ndarray) -> geometry.Polygon:
 
     polygon = [[(x, y) for x, y in contours] + [contours[0]]]
 
-    return geometry.Polygon.from_dict(
+    return schemas.Polygon.from_dict(
         {"type": "Polygon", "coordinates": polygon}
     )
 
 
-def _convert_polygon_to_box(polygon: geometry.Polygon) -> geometry.Box:
+def _convert_polygon_to_box(polygon: schemas.Polygon) -> schemas.Box:
     """Convert a Polygon to a Box."""
 
     boundary = polygon.boundary
@@ -751,7 +751,7 @@ def _convert_polygon_to_box(polygon: geometry.Polygon) -> geometry.Box:
     ymin = min(point[1] for point in boundary)
     ymax = max(point[1] for point in boundary)
 
-    return geometry.Box.from_extrema(xmin, xmax, ymin, ymax)
+    return schemas.Box.from_extrema(xmin, xmax, ymin, ymax)
 
 
 def _identify_most_detailed_annotation_type(
@@ -834,7 +834,7 @@ def _add_converted_geometry_column(
         df["converted_geometry"] = df["converted_geometry"].map(
             lambda x: (
                 x.to_array()
-                if isinstance(x, geometry.Raster)
+                if isinstance(x, schemas.Raster)
                 else None  # pyright: ignore - pandas .to_dict() typing error
             )
         )
@@ -844,9 +844,9 @@ def _add_converted_geometry_column(
                 _convert_raster_to_polygon(
                     x.to_array()  # pyright: ignore - pandas .to_dict() typing error
                 ).to_array()
-                if isinstance(x, geometry.Raster)
+                if isinstance(x, schemas.Raster)
                 else x.to_array()
-                if isinstance(x, geometry.Polygon)
+                if isinstance(x, schemas.Polygon)
                 else None
             )
         )
@@ -857,12 +857,12 @@ def _add_converted_geometry_column(
                 _convert_raster_to_box(
                     x.to_array()  # pyright: ignore - pandas .to_dict() typing error
                 ).to_array()
-                if isinstance(x, geometry.Raster)
+                if isinstance(x, schemas.Raster)
                 else (
                     _convert_polygon_to_box(x).to_array()
-                    if isinstance(x, geometry.Polygon)
+                    if isinstance(x, schemas.Polygon)
                     else x.to_array()
-                    if isinstance(x, geometry.Box)
+                    if isinstance(x, schemas.Box)
                     else None
                 )
             )

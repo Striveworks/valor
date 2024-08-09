@@ -2,7 +2,7 @@ import math
 
 import numpy as np
 import pytest
-from valor_core.geometry import (
+from valor_core.schemas import (
     Box,
     LineString,
     MultiLineString,

@@ -1230,8 +1230,8 @@ def evaluate_detection(
     - annotation_id (int): A hashed identifier for each unique (datum_uid, annotation) combination.
     - annotation_metadata (dict): Metadata associated with the annotation.
     - bounding_box (tuple): The bounding box coordinates of the annotation, if available.
-    - raster (geometry.Raster): The raster representation of the annotation, if available.
-    - polygon (geometry.Polygon): The polygon coordinates of the annotation, if available.
+    - raster (schemas.Raster): The raster representation of the annotation, if available.
+    - polygon (schemas.Polygon): The polygon coordinates of the annotation, if available.
     - embedding (schemas.Embedding): The embedding vector associated with the annotation, if available.
     - is_instance (bool): A boolean indicating whether the annotation is an instance segjmentation (True) or not (False).
     - label_key (str): The key associated with the label.

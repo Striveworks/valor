@@ -3,7 +3,7 @@ import random
 import numpy as np
 import pandas as pd
 import pytest
-from valor_core import enums, geometry, schemas
+from valor_core import enums, schemas
 from valor_core.detection import _calculate_101_pt_interp, evaluate_detection
 
 
@@ -247,7 +247,7 @@ def test_evaluate_detection_via_pandas_df():
                 "label_value": "v1",
                 "is_instance": True,
                 "grouper_key": "k1",
-                "polygon": geometry.Polygon.from_dict(
+                "polygon": schemas.Polygon.from_dict(
                     {
                         "type": "Polygon",
                         "coordinates": [
@@ -268,7 +268,7 @@ def test_evaluate_detection_via_pandas_df():
                 "label_value": "v2",
                 "is_instance": True,
                 "grouper_key": "k2",
-                "polygon": geometry.Polygon.from_dict(
+                "polygon": schemas.Polygon.from_dict(
                     {
                         "type": "Polygon",
                         "coordinates": [
@@ -295,7 +295,7 @@ def test_evaluate_detection_via_pandas_df():
                 "label_value": "v1",
                 "is_instance": True,
                 "grouper_key": "k1",
-                "polygon": geometry.Polygon.from_dict(
+                "polygon": schemas.Polygon.from_dict(
                     {
                         "type": "Polygon",
                         "coordinates": [
@@ -321,7 +321,7 @@ def test_evaluate_detection_via_pandas_df():
                 "label_value": "v1",
                 "is_instance": True,
                 "grouper_key": "k1",
-                "polygon": geometry.Polygon.from_dict(
+                "polygon": schemas.Polygon.from_dict(
                     {
                         "type": "Polygon",
                         "coordinates": [
@@ -343,7 +343,7 @@ def test_evaluate_detection_via_pandas_df():
                 "label_value": "v2",
                 "is_instance": True,
                 "grouper_key": "k2",
-                "polygon": geometry.Polygon.from_dict(
+                "polygon": schemas.Polygon.from_dict(
                     {
                         "type": "Polygon",
                         "coordinates": [
@@ -1651,7 +1651,7 @@ def test_evaluate_detection_false_negatives_single_image_baseline():
             datum=schemas.Datum(uid="uid1"),
             annotations=[
                 schemas.Annotation(
-                    bounding_box=geometry.Box.from_extrema(
+                    bounding_box=schemas.Box.from_extrema(
                         xmin=10, xmax=20, ymin=10, ymax=20
                     ),
                     labels=[schemas.Label(key="key", value="value")],
@@ -1666,7 +1666,7 @@ def test_evaluate_detection_false_negatives_single_image_baseline():
             datum=schemas.Datum(uid="uid1"),
             annotations=[
                 schemas.Annotation(
-                    bounding_box=geometry.Box.from_extrema(
+                    bounding_box=schemas.Box.from_extrema(
                         xmin=10, xmax=20, ymin=10, ymax=20
                     ),
                     labels=[
@@ -1675,7 +1675,7 @@ def test_evaluate_detection_false_negatives_single_image_baseline():
                     is_instance=True,
                 ),
                 schemas.Annotation(
-                    bounding_box=geometry.Box.from_extrema(
+                    bounding_box=schemas.Box.from_extrema(
                         xmin=100, xmax=110, ymin=100, ymax=200
                     ),
                     labels=[
@@ -1713,7 +1713,7 @@ def test_evaluate_detection_false_negatives_single_image():
             datum=schemas.Datum(uid="uid1"),
             annotations=[
                 schemas.Annotation(
-                    bounding_box=geometry.Box.from_extrema(
+                    bounding_box=schemas.Box.from_extrema(
                         xmin=10, xmax=20, ymin=10, ymax=20
                     ),
                     labels=[schemas.Label(key="key", value="value")],
@@ -1727,7 +1727,7 @@ def test_evaluate_detection_false_negatives_single_image():
             datum=schemas.Datum(uid="uid1"),
             annotations=[
                 schemas.Annotation(
-                    bounding_box=geometry.Box.from_extrema(
+                    bounding_box=schemas.Box.from_extrema(
                         xmin=10, xmax=20, ymin=10, ymax=20
                     ),
                     labels=[
@@ -1736,7 +1736,7 @@ def test_evaluate_detection_false_negatives_single_image():
                     is_instance=True,
                 ),
                 schemas.Annotation(
-                    bounding_box=geometry.Box.from_extrema(
+                    bounding_box=schemas.Box.from_extrema(
                         xmin=100, xmax=110, ymin=100, ymax=200
                     ),
                     labels=[
@@ -1779,7 +1779,7 @@ def test_evaluate_detection_false_negatives_two_images_one_empty_low_confidence_
             datum=schemas.Datum(uid="uid1"),
             annotations=[
                 schemas.Annotation(
-                    bounding_box=geometry.Box.from_extrema(
+                    bounding_box=schemas.Box.from_extrema(
                         xmin=10, xmax=20, ymin=10, ymax=20
                     ),
                     labels=[schemas.Label(key="key", value="value")],
@@ -1798,7 +1798,7 @@ def test_evaluate_detection_false_negatives_two_images_one_empty_low_confidence_
             datum=schemas.Datum(uid="uid1"),
             annotations=[
                 schemas.Annotation(
-                    bounding_box=geometry.Box.from_extrema(
+                    bounding_box=schemas.Box.from_extrema(
                         xmin=10, xmax=20, ymin=10, ymax=20
                     ),
                     labels=[
@@ -1812,7 +1812,7 @@ def test_evaluate_detection_false_negatives_two_images_one_empty_low_confidence_
             datum=schemas.Datum(uid="uid2"),
             annotations=[
                 schemas.Annotation(
-                    bounding_box=geometry.Box.from_extrema(
+                    bounding_box=schemas.Box.from_extrema(
                         xmin=10, xmax=20, ymin=10, ymax=20
                     ),
                     labels=[
@@ -1853,7 +1853,7 @@ def test_evaluate_detection_false_negatives_two_images_one_empty_high_confidence
             datum=schemas.Datum(uid="uid1"),
             annotations=[
                 schemas.Annotation(
-                    bounding_box=geometry.Box.from_extrema(
+                    bounding_box=schemas.Box.from_extrema(
                         xmin=10, xmax=20, ymin=10, ymax=20
                     ),
                     labels=[schemas.Label(key="key", value="value")],
@@ -1872,7 +1872,7 @@ def test_evaluate_detection_false_negatives_two_images_one_empty_high_confidence
             datum=schemas.Datum(uid="uid1"),
             annotations=[
                 schemas.Annotation(
-                    bounding_box=geometry.Box.from_extrema(
+                    bounding_box=schemas.Box.from_extrema(
                         xmin=10, xmax=20, ymin=10, ymax=20
                     ),
                     labels=[
@@ -1886,7 +1886,7 @@ def test_evaluate_detection_false_negatives_two_images_one_empty_high_confidence
             datum=schemas.Datum(uid="uid2"),
             annotations=[
                 schemas.Annotation(
-                    bounding_box=geometry.Box.from_extrema(
+                    bounding_box=schemas.Box.from_extrema(
                         xmin=10, xmax=20, ymin=10, ymax=20
                     ),
                     labels=[
@@ -1928,7 +1928,7 @@ def test_evaluate_detection_false_negatives_two_images_one_only_with_different_c
             datum=schemas.Datum(uid="uid1"),
             annotations=[
                 schemas.Annotation(
-                    bounding_box=geometry.Box.from_extrema(
+                    bounding_box=schemas.Box.from_extrema(
                         xmin=10, xmax=20, ymin=10, ymax=20
                     ),
                     labels=[schemas.Label(key="key", value="value")],
@@ -1940,7 +1940,7 @@ def test_evaluate_detection_false_negatives_two_images_one_only_with_different_c
             datum=schemas.Datum(uid="uid2"),
             annotations=[
                 schemas.Annotation(
-                    bounding_box=geometry.Box.from_extrema(
+                    bounding_box=schemas.Box.from_extrema(
                         xmin=10, xmax=20, ymin=10, ymax=20
                     ),
                     labels=[schemas.Label(key="key", value="other value")],
@@ -1955,7 +1955,7 @@ def test_evaluate_detection_false_negatives_two_images_one_only_with_different_c
             datum=schemas.Datum(uid="uid1"),
             annotations=[
                 schemas.Annotation(
-                    bounding_box=geometry.Box.from_extrema(
+                    bounding_box=schemas.Box.from_extrema(
                         xmin=10, xmax=20, ymin=10, ymax=20
                     ),
                     labels=[
@@ -1969,7 +1969,7 @@ def test_evaluate_detection_false_negatives_two_images_one_only_with_different_c
             datum=schemas.Datum(uid="uid2"),
             annotations=[
                 schemas.Annotation(
-                    bounding_box=geometry.Box.from_extrema(
+                    bounding_box=schemas.Box.from_extrema(
                         xmin=10, xmax=20, ymin=10, ymax=20
                     ),
                     labels=[
@@ -2029,7 +2029,7 @@ def test_evaluate_detection_false_negatives_two_images_one_only_with_different_c
             datum=schemas.Datum(uid="uid1"),
             annotations=[
                 schemas.Annotation(
-                    bounding_box=geometry.Box.from_extrema(
+                    bounding_box=schemas.Box.from_extrema(
                         xmin=10, xmax=20, ymin=10, ymax=20
                     ),
                     labels=[schemas.Label(key="key", value="value")],
@@ -2041,7 +2041,7 @@ def test_evaluate_detection_false_negatives_two_images_one_only_with_different_c
             datum=schemas.Datum(uid="uid2"),
             annotations=[
                 schemas.Annotation(
-                    bounding_box=geometry.Box.from_extrema(
+                    bounding_box=schemas.Box.from_extrema(
                         xmin=10, xmax=20, ymin=10, ymax=20
                     ),
                     labels=[schemas.Label(key="key", value="other value")],
@@ -2056,7 +2056,7 @@ def test_evaluate_detection_false_negatives_two_images_one_only_with_different_c
             datum=schemas.Datum(uid="uid1"),
             annotations=[
                 schemas.Annotation(
-                    bounding_box=geometry.Box.from_extrema(
+                    bounding_box=schemas.Box.from_extrema(
                         xmin=10, xmax=20, ymin=10, ymax=20
                     ),
                     labels=[
@@ -2070,7 +2070,7 @@ def test_evaluate_detection_false_negatives_two_images_one_only_with_different_c
             datum=schemas.Datum(uid="uid2"),
             annotations=[
                 schemas.Annotation(
-                    bounding_box=geometry.Box.from_extrema(
+                    bounding_box=schemas.Box.from_extrema(
                         xmin=10, xmax=20, ymin=10, ymax=20
                     ),
                     labels=[
@@ -3569,9 +3569,9 @@ def test_evaluate_mixed_annotations(
         (xmax, ymin),
         (xmin, ymin),
     ]
-    poly = geometry.Polygon([pts])
-    raster = geometry.Raster.from_numpy(mask)
-    box = geometry.Box.from_extrema(xmin=xmin, xmax=xmax, ymin=ymin, ymax=ymax)
+    poly = schemas.Polygon([pts])
+    raster = schemas.Raster.from_numpy(mask)
+    box = schemas.Box.from_extrema(xmin=xmin, xmax=xmax, ymin=ymin, ymax=ymax)
 
     gt_annotations = [
         schemas.Annotation(

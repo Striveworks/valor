@@ -1,7 +1,7 @@
 import numpy as np
 import pandas as pd
 import pytest
-from valor_core import geometry, schemas
+from valor_core import schemas
 
 
 @pytest.fixture
@@ -80,7 +80,7 @@ def evaluate_detection_functional_test_groundtruths(
             annotations=[
                 schemas.Annotation(
                     labels=[schemas.Label(key="class", value=class_label)],
-                    bounding_box=geometry.Box.from_extrema(
+                    bounding_box=schemas.Box.from_extrema(
                         xmin=box[0],
                         ymin=box[1],
                         xmax=box[2],
@@ -171,7 +171,7 @@ def evaluate_detection_functional_test_predictions(
                             key="class", value=class_label, score=score
                         )
                     ],
-                    bounding_box=geometry.Box.from_extrema(
+                    bounding_box=schemas.Box.from_extrema(
                         xmin=box[0],
                         ymin=box[1],
                         xmax=box[2],
@@ -210,7 +210,7 @@ def evaluate_detection_functional_test_groundtruths_with_rasters(
             annotations=[
                 schemas.Annotation(
                     labels=[schemas.Label(key="class", value=class_label)],
-                    raster=geometry.Raster.from_numpy(raster),
+                    raster=schemas.Raster.from_numpy(raster),
                     is_instance=True,
                 )
                 for raster, class_label in zip(gts["rasters"], gts["labels"])
@@ -251,7 +251,7 @@ def evaluate_detection_functional_test_predictions_with_rasters(
                             key="class", value=class_label, score=score
                         )
                     ],
-                    raster=geometry.Raster.from_numpy(raster),
+                    raster=schemas.Raster.from_numpy(raster),
                     is_instance=True,
                 )
                 for raster, class_label, score in zip(
@@ -337,12 +337,12 @@ def evaluate_detection_groundtruths(
                 schemas.Annotation(
                     is_instance=True,
                     labels=[schemas.Label(key="k1", value="v1")],
-                    bounding_box=geometry.Box([rect1]),
+                    bounding_box=schemas.Box([rect1]),
                 ),
                 schemas.Annotation(
                     is_instance=True,
                     labels=[schemas.Label(key="k2", value="v2")],
-                    bounding_box=geometry.Box([rect3]),
+                    bounding_box=schemas.Box([rect3]),
                 ),
             ],
         ),
@@ -352,7 +352,7 @@ def evaluate_detection_groundtruths(
                 schemas.Annotation(
                     is_instance=True,
                     labels=[schemas.Label(key="k1", value="v1")],
-                    bounding_box=geometry.Box([rect2]),
+                    bounding_box=schemas.Box([rect2]),
                 )
             ],
         ),
@@ -373,7 +373,7 @@ def evaluate_detection_predictions(
                 schemas.Annotation(
                     is_instance=True,
                     labels=[schemas.Label(key="k1", value="v1", score=0.3)],
-                    bounding_box=geometry.Box([rect1]),
+                    bounding_box=schemas.Box([rect1]),
                 )
             ],
         ),
@@ -383,7 +383,7 @@ def evaluate_detection_predictions(
                 schemas.Annotation(
                     is_instance=True,
                     labels=[schemas.Label(key="k2", value="v2", score=0.98)],
-                    bounding_box=geometry.Box([rect2]),
+                    bounding_box=schemas.Box([rect2]),
                 )
             ],
         ),
@@ -407,24 +407,24 @@ def evaluate_detection_groundtruths_with_label_maps(
                     labels=[
                         schemas.Label(key="class_name", value="maine coon cat")
                     ],
-                    bounding_box=geometry.Box([rect1]),
+                    bounding_box=schemas.Box([rect1]),
                 ),
                 schemas.Annotation(
                     is_instance=True,
                     labels=[
                         schemas.Label(key="class", value="british shorthair")
                     ],
-                    bounding_box=geometry.Box([rect3]),
+                    bounding_box=schemas.Box([rect3]),
                 ),
                 schemas.Annotation(
                     is_instance=True,
                     labels=[schemas.Label(key="k1", value="v1")],
-                    bounding_box=geometry.Box([rect1]),
+                    bounding_box=schemas.Box([rect1]),
                 ),
                 schemas.Annotation(
                     is_instance=True,
                     labels=[schemas.Label(key="k2", value="v2")],
-                    bounding_box=geometry.Box([rect3]),
+                    bounding_box=schemas.Box([rect3]),
                 ),
             ],
         ),
@@ -434,12 +434,12 @@ def evaluate_detection_groundtruths_with_label_maps(
                 schemas.Annotation(
                     is_instance=True,
                     labels=[schemas.Label(key="class", value="siamese cat")],
-                    bounding_box=geometry.Box([rect2]),
+                    bounding_box=schemas.Box([rect2]),
                 ),
                 schemas.Annotation(
                     is_instance=True,
                     labels=[schemas.Label(key="k1", value="v1")],
-                    bounding_box=geometry.Box([rect2]),
+                    bounding_box=schemas.Box([rect2]),
                 ),
             ],
         ),
@@ -462,12 +462,12 @@ def evaluate_detection_predictions_with_label_maps(
                     labels=[
                         schemas.Label(key="class", value="cat", score=0.3)
                     ],
-                    bounding_box=geometry.Box([rect1]),
+                    bounding_box=schemas.Box([rect1]),
                 ),
                 schemas.Annotation(
                     is_instance=True,
                     labels=[schemas.Label(key="k1", value="v1", score=0.3)],
-                    bounding_box=geometry.Box([rect1]),
+                    bounding_box=schemas.Box([rect1]),
                 ),
             ],
         ),
@@ -481,12 +481,12 @@ def evaluate_detection_predictions_with_label_maps(
                             key="class_name", value="cat", score=0.98
                         )
                     ],
-                    bounding_box=geometry.Box([rect2]),
+                    bounding_box=schemas.Box([rect2]),
                 ),
                 schemas.Annotation(
                     is_instance=True,
                     labels=[schemas.Label(key="k2", value="v2", score=0.98)],
-                    bounding_box=geometry.Box([rect2]),
+                    bounding_box=schemas.Box([rect2]),
                 ),
             ],
         ),
@@ -510,17 +510,17 @@ def evaluate_detection_detailed_pr_curve_groundtruths(
                 schemas.Annotation(
                     is_instance=True,
                     labels=[schemas.Label(key="k1", value="v1")],
-                    bounding_box=geometry.Box([rect1]),
+                    bounding_box=schemas.Box([rect1]),
                 ),
                 schemas.Annotation(
                     is_instance=True,
                     labels=[schemas.Label(key="k1", value="missed_detection")],
-                    bounding_box=geometry.Box([rect2]),
+                    bounding_box=schemas.Box([rect2]),
                 ),
                 schemas.Annotation(
                     is_instance=True,
                     labels=[schemas.Label(key="k1", value="v2")],
-                    bounding_box=geometry.Box([rect3]),
+                    bounding_box=schemas.Box([rect3]),
                 ),
             ],
         ),
@@ -530,7 +530,7 @@ def evaluate_detection_detailed_pr_curve_groundtruths(
                 schemas.Annotation(
                     is_instance=True,
                     labels=[schemas.Label(key="k1", value="low_iou")],
-                    bounding_box=geometry.Box([rect1]),
+                    bounding_box=schemas.Box([rect1]),
                 ),
             ],
         ),
@@ -554,14 +554,14 @@ def evaluate_detection_detailed_pr_curve_predictions(
                 schemas.Annotation(
                     is_instance=True,
                     labels=[schemas.Label(key="k1", value="v1", score=0.5)],
-                    bounding_box=geometry.Box([rect1]),
+                    bounding_box=schemas.Box([rect1]),
                 ),
                 schemas.Annotation(
                     is_instance=True,
                     labels=[
                         schemas.Label(key="k1", value="not_v2", score=0.3)
                     ],
-                    bounding_box=geometry.Box([rect5]),
+                    bounding_box=schemas.Box([rect5]),
                 ),
                 schemas.Annotation(
                     is_instance=True,
@@ -570,7 +570,7 @@ def evaluate_detection_detailed_pr_curve_predictions(
                             key="k1", value="hallucination", score=0.1
                         )
                     ],
-                    bounding_box=geometry.Box([rect4]),
+                    bounding_box=schemas.Box([rect4]),
                 ),
             ],
         ),
@@ -583,7 +583,7 @@ def evaluate_detection_detailed_pr_curve_predictions(
                     labels=[
                         schemas.Label(key="k1", value="low_iou", score=0.5)
                     ],
-                    bounding_box=geometry.Box([rect2]),
+                    bounding_box=schemas.Box([rect2]),
                 ),
             ],
         ),
@@ -1198,7 +1198,7 @@ def img1(
     return schemas.Datum(
         uid="uid1",
         metadata={
-            "geospatial": geometry.Polygon(coordinates),
+            "geospatial": schemas.Polygon(coordinates),
             "height": image_height,
             "width": image_width,
         },
@@ -1214,7 +1214,7 @@ def img2(
     return schemas.Datum(
         uid="uid2",
         metadata={
-            "geospatial": geometry.Point(coordinates),
+            "geospatial": schemas.Point(coordinates),
             "height": image_height,
             "width": image_width,
         },

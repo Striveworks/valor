@@ -1,7 +1,7 @@
 import copy
 
 import pytest
-from valor_core import enums, geometry, schemas
+from valor_core import enums, schemas
 
 
 @pytest.fixture
@@ -34,24 +34,24 @@ def box_points() -> list[tuple[float, float]]:
 
 
 @pytest.fixture
-def bbox(box_points: list[tuple[float, float]]) -> geometry.Box:
-    return geometry.Box(value=[box_points])
+def bbox(box_points: list[tuple[float, float]]) -> schemas.Box:
+    return schemas.Box(value=[box_points])
 
 
 @pytest.fixture
-def polygon(box_points: list[tuple[float, float]]) -> geometry.Polygon:
-    return geometry.Polygon(value=[box_points])
+def polygon(box_points: list[tuple[float, float]]) -> schemas.Polygon:
+    return schemas.Polygon(value=[box_points])
 
 
 @pytest.fixture
-def raster() -> geometry.Raster:
+def raster() -> schemas.Raster:
     """
     Creates a 2d numpy of bools of shape:
     | T  F |
     | F  T |
     """
     mask = "iVBORw0KGgoAAAANSUhEUgAAABQAAAAUAQAAAACl8iCgAAAAF0lEQVR4nGP4f4CBiYGBIGZgsP9AjDoAuysDE0GVDN8AAAAASUVORK5CYII="
-    return geometry.Raster.decode_value({"mask": mask, "geometry": None})
+    return schemas.Raster.decode_value({"mask": mask, "geometry": None})
 
 
 def test_label():
@@ -172,9 +172,9 @@ def test_datum():
 
 
 def test_annotation(
-    bbox: geometry.Box,
-    polygon: geometry.Polygon,
-    raster: geometry.Raster,
+    bbox: schemas.Box,
+    polygon: schemas.Polygon,
+    raster: schemas.Raster,
     labels: list[schemas.Label],
     metadata: dict[str, dict[str, str | float]],
 ):
@@ -213,7 +213,7 @@ def test_annotation(
     with pytest.raises(TypeError):
         schemas.Annotation(
             labels=labels,
-            bounding_box=geometry.Polygon(value=[[(0, 0), (1, 0), (1, 1), (0, 0)]]),  # type: ignore - testing
+            bounding_box=schemas.Polygon(value=[[(0, 0), (1, 0), (1, 1), (0, 0)]]),  # type: ignore - testing
         )
     with pytest.raises(TypeError):
         schemas.Annotation(
