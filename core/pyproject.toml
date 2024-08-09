@@ -12,6 +12,7 @@ dependencies = [
     "pandas>=2.2.2",
     "pandas-stubs",
     "requests",
+    "tqdm",
 ]
 
 [project.urls]
