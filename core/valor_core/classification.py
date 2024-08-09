@@ -1264,6 +1264,18 @@ def evaluate_classification(
     - label_id (int): A hashed identifier for each unique label.
     - id (str): A unique identifier for the combination of datum, annotation, and label, created by concatenating the indices of these components.
 
+    Parameters
+    ----------
+    groundtruths : Union[pd.DataFrame, List[schemas.GroundTruth]]
+        Ground truth annotations as either a DataFrame or a list of GroundTruth objects.
+    predictions : Union[pd.DataFrame, List[schemas.Prediction]]
+        Predictions as either a DataFrame or a list of Prediction objects.
+    label_map : Optional[Dict[schemas.Label, schemas.Label]], default=None
+        Optional dictionary mapping ground truth labels to prediction labels.
+    metrics_to_return : Optional[List[enums.MetricType]], default=None
+        List of metric types to return. Defaults to Precision, Recall, F1, Accuracy, ROCAUC if None.
+    pr_curve_max_examples : int, default=1
+        Maximum number of examples to use for Precision-Recall curve calculations.
 
     Returns
     -------
