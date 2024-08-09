@@ -9,7 +9,8 @@ dependencies = [
     "Pillow >= 9.1.0",
     "numpy",
     "importlib_metadata; python_version < '3.8'",
-    "pandas",
+    "pandas>=2.2.2",
+    "pandas-stubs",
     "requests",
 ]
 

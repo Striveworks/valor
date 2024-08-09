@@ -5,6 +5,101 @@ import pandas as pd
 from valor_core import enums, geometry, schemas
 
 
+def replace_labels_using_label_map(
+    groundtruth_df: pd.DataFrame,
+    prediction_df: pd.DataFrame,
+    label_map: Optional[schemas.LabelMapType],
+):
+    """
+    Replace label keys, values, and IDs in the groundtruth and prediction DataFrames using a given label map.
+
+    This function updates the `label_key`, `label_value`, and `label_id` columns in both the groundtruth and prediction
+    DataFrames based on the provided label map. If the `label_map` is not provided, the function returns the original DataFrames
+    without modification.
+
+    Parameters
+    ----------
+    groundtruth_df : pd.DataFrame
+        DataFrame containing groundtruth data with columns `label_key`, `label_value`, and `label_id`.
+    prediction_df : pd.DataFrame
+        DataFrame containing prediction data with columns `label_key`, `label_value`, and `label_id`.
+    label_map : Optional[schemas.LabelMapType]
+        Dictionary mapping tuples of (label_key, label_value) to (grouper_key, grouper_value). Used to replace the labels in the DataFrames.
+
+    Returns
+    -------
+    Tuple[pd.DataFrame, pd.DataFrame]
+        Updated groundtruth and prediction DataFrames with replaced labels and IDs based on the provided label map.
+    """
+    if not label_map:
+        return (groundtruth_df, prediction_df)
+
+    # create a mapping dictionary to map each label to its grouper label
+    mapping_dict = dict()
+    unique_grouper_labels = set()
+    if label_map:
+        for label, grouper in label_map.items():
+            mapping_dict[(label.key, label.value)] = (
+                grouper.key,
+                grouper.value,
+            )
+            unique_grouper_labels.add(
+                (
+                    grouper.key,
+                    grouper.value,
+                )
+            )
+
+    # get a dictionary mapping all current labels to their ids
+    label_id_lookup_df = pd.concat(
+        [
+            groundtruth_df[["label_key", "label_value", "label_id"]],
+            prediction_df[["label_key", "label_value", "label_id"]],
+        ]
+    )
+    label_id_lookup_df = label_id_lookup_df[~label_id_lookup_df.duplicated()]
+
+    label_to_label_id_dict = dict(
+        zip(
+            zip(
+                label_id_lookup_df["label_key"],
+                label_id_lookup_df["label_value"],
+            ),
+            label_id_lookup_df["label_id"],
+        )
+    )
+
+    # create unique ids for any new labels that will be created by the label_map
+    new_labels = unique_grouper_labels - set(label_to_label_id_dict.keys())
+    for label_key, label_value in new_labels:
+        label_id = hash(label_key + label_value)
+        label_to_label_id_dict[(label_key, label_value)] = label_id
+
+    # replace the labels both dataframes with the correct values
+    for df in (groundtruth_df, prediction_df):
+        df.loc[:, ["label_key", "label_value"]] = (
+            df.apply(
+                lambda row: mapping_dict.get(
+                    (row["label_key"], row["label_value"]),
+                    (row["label_key"], row["label_value"]),
+                ),
+                axis=1,
+            )
+            .apply(pd.Series)
+            .values
+        )
+
+        df.loc[:, ["label_id"]] = df.apply(
+            lambda row: label_to_label_id_dict.get(
+                (row["label_key"], row["label_value"]),
+                row["label_id"],
+            ),
+            axis=1,
+        ).values
+
+    return groundtruth_df, prediction_df
+
+
 def validate_label_map(
     label_map: Optional[Dict[schemas.Label, schemas.Label]],
 ) -> None:
@@ -393,7 +488,7 @@ def _convert_groundtruth_or_prediction_to_dataframe(
                 label_key = label.key
                 label_value = label.value
                 label_score = label.score
-                label_id = hash(label_key + label_value + str(label_score))
+                label_id = hash(label_key + label_value)
 
                 # only include scores for predictions
                 if isinstance(obj, schemas.Prediction):
@@ -738,14 +833,16 @@ def _add_converted_geometry_column(
     if target_type == enums.AnnotationType.RASTER:
         df["converted_geometry"] = df["converted_geometry"].map(
             lambda x: (
-                x.to_array() if isinstance(x, geometry.Raster) else None
-            )  # pyright: ignore - fix pandas-stubs typing error related to .map
+                x.to_array()
+                if isinstance(x, geometry.Raster)
+                else None  # pyright: ignore - pandas .to_dict() typing error
+            )
         )
     elif target_type == enums.AnnotationType.POLYGON:
         df["converted_geometry"] = df["converted_geometry"].map(
             lambda x: (
                 _convert_raster_to_polygon(
-                    x.to_array()  # pyright: ignore - fix pandas-stubs typing error related to .map
+                    x.to_array()  # pyright: ignore - pandas .to_dict() typing error
                 ).to_array()
                 if isinstance(x, geometry.Raster)
                 else x.to_array()
@@ -758,7 +855,7 @@ def _add_converted_geometry_column(
         df["converted_geometry"] = df["converted_geometry"].map(
             lambda x: (
                 _convert_raster_to_box(
-                    x.to_array()  # pyright: ignore - fix pandas-stubs typing error related to .map
+                    x.to_array()  # pyright: ignore - pandas .to_dict() typing error
                 ).to_array()
                 if isinstance(x, geometry.Raster)
                 else (

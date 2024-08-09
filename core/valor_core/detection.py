@@ -14,13 +14,12 @@ pd.set_option("display.max_columns", None)
 def _get_joint_df(
     groundtruth_df: pd.DataFrame,
     prediction_df: pd.DataFrame,
-    grouper_mappings: dict,
 ) -> pd.DataFrame:
     """Create a joint dataframe of groundtruths and predictions for calculating AR/AP metrics."""
 
     # add the number of groundtruth observations per groupere
     number_of_groundtruths_per_grouper_df = (
-        groundtruth_df.groupby("label_id_grouper", as_index=False)["id"]
+        groundtruth_df.groupby(["label_id", "label"], as_index=False)["id"]
         .nunique()
         .rename({"id": "gts_per_grouper"}, axis=1)
     )
@@ -28,7 +27,7 @@ def _get_joint_df(
     joint_df = pd.merge(
         groundtruth_df,
         prediction_df,
-        on=["datum_id", "label_id_grouper"],
+        on=["datum_id", "label_id", "label"],
         how="outer",
         suffixes=("_gt", "_pd"),
     )
@@ -36,12 +35,8 @@ def _get_joint_df(
     joint_df = pd.merge(
         joint_df,
         number_of_groundtruths_per_grouper_df,
-        on="label_id_grouper",
+        on=["label_id", "label"],
         how="outer",
-    ).assign(
-        label=lambda chain_df: chain_df["label_id_grouper"].map(
-            grouper_mappings["grouper_id_to_grouper_label_mapping"]
-        )
     )
 
     return joint_df
@@ -144,7 +139,7 @@ def _calculate_iou(
     return joint_df
 
 
-def _calculate_grouper_id_level_metrics(
+def _calculate_label_id_level_metrics(
     calculation_df: pd.DataFrame, recall_score_threshold: float
 ) -> pd.DataFrame:
     """Calculate the flags and metrics needed to compute AP, AR, and PR curves."""
@@ -158,7 +153,7 @@ def _calculate_grouper_id_level_metrics(
         "recall_true_positive_flag"
     ] & (
         ~calculation_df.groupby(
-            ["label_id_grouper", "iou_threshold", "id_gt"], as_index=False
+            ["label_id", "label", "iou_threshold", "id_gt"], as_index=False
         )["recall_true_positive_flag"].shift(1, fill_value=False)
     )
 
@@ -169,7 +164,7 @@ def _calculate_grouper_id_level_metrics(
         "precision_true_positive_flag"
     ] & (
         ~calculation_df.groupby(
-            ["label_id_grouper", "iou_threshold", "id_gt"], as_index=False
+            ["label_id", "iou_threshold", "id_gt"], as_index=False
         )["precision_true_positive_flag"].shift(1, fill_value=False)
     )
 
@@ -184,28 +179,28 @@ def _calculate_grouper_id_level_metrics(
     calculation_df = (
         calculation_df.join(
             calculation_df.groupby(
-                ["label_id_grouper", "iou_threshold"], as_index=False
+                ["label_id", "label", "iou_threshold"], as_index=False
             )["recall_true_positive_flag"]
             .cumsum()
             .rename("rolling_recall_tp")
         )
         .join(
             calculation_df.groupby(
-                ["label_id_grouper", "iou_threshold"], as_index=False
+                ["label_id", "label", "iou_threshold"], as_index=False
             )["recall_false_positive_flag"]
             .cumsum()
             .rename("rolling_recall_fp")
         )
         .join(
             calculation_df.groupby(
-                ["label_id_grouper", "iou_threshold"], as_index=False
+                ["label_id", "label", "iou_threshold"], as_index=False
             )["precision_true_positive_flag"]
             .cumsum()
             .rename("rolling_precision_tp")
         )
         .join(
             calculation_df.groupby(
-                ["label_id_grouper", "iou_threshold"], as_index=False
+                ["label_id", "label", "iou_threshold"], as_index=False
             )["precision_false_positive_flag"]
             .cumsum()
             .rename("rolling_precision_fp")
@@ -299,7 +294,6 @@ def _calculate_mean_ignoring_negative_one(series: pd.Series) -> float:
 
 def _calculate_ap_metrics(
     calculation_df: pd.DataFrame,
-    grouper_mappings: dict,
     iou_thresholds_to_compute: List[float],
     iou_thresholds_to_return: List[float],
 ) -> list[
@@ -309,20 +303,20 @@ def _calculate_ap_metrics(
     | metrics.mAPMetricAveragedOverIOUs
 ]:
     """Calculates all AP metrics, including aggregated metrics like mAP."""
-
     ap_metrics_df = (
         calculation_df.loc[
             ~calculation_df[
                 "id_gt"
             ].isnull(),  # for AP, we don't include any predictions without groundtruths
             [
-                "label_id_grouper",
+                "label_id",
+                "label",
                 "iou_threshold",
                 "precision",
                 "recall_for_AP",
             ],
         ]
-        .groupby(["label_id_grouper", "iou_threshold"], as_index=False)
+        .groupby(["label_id", "label", "iou_threshold"], as_index=False)
         .apply(
             lambda x: pd.Series(
                 {
@@ -336,40 +330,31 @@ def _calculate_ap_metrics(
         )
     )
 
-    # add back "label" after grouping operations are complete
-    ap_metrics_df["label"] = ap_metrics_df["label_id_grouper"].map(
-        grouper_mappings["grouper_id_to_grouper_label_mapping"]
-    )
-
     ap_metrics = [
         metrics.APMetric(
             iou=row["iou_threshold"],
             value=row["calculated_precision"],
-            label=row["label"],
+            label=schemas.Label(key=row["label"][0], value=row["label"][1]),
         )
         for row in ap_metrics_df.to_dict(orient="records")
     ]
 
     # calculate mean AP metrics
-    ap_metrics_df["label_key"] = ap_metrics_df["label"].apply(lambda x: x.key)
+    ap_metrics_df["label_key"] = ap_metrics_df["label"].apply(lambda x: x[0])
 
-    ap_over_ious_df = (
-        ap_metrics_df.groupby(["label_id_grouper"], as_index=False)[
-            "calculated_precision"
-        ].apply(_calculate_mean_ignoring_negative_one)
-    ).assign(
-        label=lambda chained_df: chained_df["label_id_grouper"].map(
-            grouper_mappings["grouper_id_to_grouper_label_mapping"]
-        )
-    )
+    ap_over_ious_df = ap_metrics_df.groupby(
+        ["label_id", "label"], as_index=False
+    )["calculated_precision"].apply(_calculate_mean_ignoring_negative_one)
 
     ap_over_ious = [
         metrics.APMetricAveragedOverIOUs(
             ious=set(iou_thresholds_to_compute),
             value=row["calculated_precision"],
-            label=row["label"],
+            label=schemas.Label(key=row["label"][0], value=row["label"][1]),
         )
-        for row in ap_over_ious_df.to_dict(orient="records")
+        for row in ap_over_ious_df.to_dict(
+            orient="records"
+        )  # pyright: ignore - pandas .to_dict() typing error
     ]
 
     map_metrics_df = ap_metrics_df.groupby(
@@ -382,7 +367,9 @@ def _calculate_ap_metrics(
             value=row["calculated_precision"],
             label_key=row["label_key"],
         )
-        for row in map_metrics_df.to_dict(orient="records")  # type: ignore - pd typing issue
+        for row in map_metrics_df.to_dict(
+            orient="records"
+        )  # pyright: ignore - pandas .to_dict() typing error
     ]
 
     map_over_ious_df = ap_metrics_df.groupby(["label_key"], as_index=False)[
@@ -395,7 +382,9 @@ def _calculate_ap_metrics(
             value=row["calculated_precision"],
             label_key=row["label_key"],
         )
-        for row in map_over_ious_df.to_dict(orient="records")  # type: ignore - pd typing issue
+        for row in map_over_ious_df.to_dict(
+            orient="records"
+        )  # pyright: ignore - pandas .to_dict() typing error
     ]
 
     return (
@@ -408,7 +397,6 @@ def _calculate_ap_metrics(
 
 def _calculate_ar_metrics(
     calculation_df: pd.DataFrame,
-    grouper_mappings: dict,
     iou_thresholds_to_compute: List[float],
 ) -> list[metrics.ARMetric | metrics.mARMetric]:
     """Calculates all AR metrics, including aggregated metrics like mAR."""
@@ -416,16 +404,11 @@ def _calculate_ar_metrics(
     # get the max recall_for_AR for each threshold, then take the mean across thresholds
     ar_metrics_df = (
         calculation_df.groupby(
-            ["label_id_grouper", "iou_threshold"], as_index=False
+            ["label_id", "label", "iou_threshold"], as_index=False
         )["recall_for_AR"]
         .max()
-        .groupby("label_id_grouper", as_index=False)["recall_for_AR"]
+        .groupby(["label_id", "label"], as_index=False)["recall_for_AR"]
         .mean()
-    )
-
-    # add back "label" after grouping operations are complete
-    ar_metrics_df["label"] = ar_metrics_df["label_id_grouper"].map(
-        grouper_mappings["grouper_id_to_grouper_label_mapping"]
     )
 
     ious_ = set(iou_thresholds_to_compute)
@@ -433,13 +416,13 @@ def _calculate_ar_metrics(
         metrics.ARMetric(
             ious=ious_,
             value=row["recall_for_AR"],
-            label=row["label"],
+            label=schemas.Label(key=row["label"][0], value=row["label"][1]),
         )
         for row in ar_metrics_df.to_dict(orient="records")
     ]
 
     # calculate mAR
-    ar_metrics_df["label_key"] = ar_metrics_df["label"].apply(lambda x: x.key)
+    ar_metrics_df["label_key"] = ar_metrics_df["label"].apply(lambda x: x[0])
     mar_metrics_df = ar_metrics_df.groupby(["label_key"], as_index=False)[
         "recall_for_AR"
     ].apply(_calculate_mean_ignoring_negative_one)
@@ -458,7 +441,6 @@ def _calculate_ar_metrics(
 
 def _calculate_pr_metrics(
     joint_df: pd.DataFrame,
-    grouper_mappings: dict,
     metrics_to_return: List[enums.MetricType],
     pr_curve_iou_threshold: float,
 ) -> list[metrics.PrecisionRecallCurve]:
@@ -479,7 +461,7 @@ def _calculate_pr_metrics(
         ignore_index=True,
     ).sort_values(
         by=[
-            "label_id_grouper",
+            "label_id",
             "confidence_threshold",
             "score",
             "iou_",
@@ -495,7 +477,7 @@ def _calculate_pr_metrics(
         )
         & (
             pr_calculation_df.groupby(
-                ["label_id_grouper", "confidence_threshold", "id_gt"]
+                ["label_id", "confidence_threshold", "id_gt"]
             ).cumcount()
             == 0
         )  # only the first gt_id in this sorted list should be considered a true positive
@@ -510,7 +492,8 @@ def _calculate_pr_metrics(
     pr_metrics_df = (
         pr_calculation_df.groupby(
             [
-                "label_id_grouper",
+                "label_id",
+                "label",
                 "confidence_threshold",
                 "gts_per_grouper",
             ],
@@ -519,10 +502,10 @@ def _calculate_pr_metrics(
         .sum()
         .merge(
             pr_calculation_df.groupby(
-                ["label_id_grouper", "confidence_threshold"],
+                ["label_id", "label", "confidence_threshold"],
                 as_index=False,
             )["false_positive_flag"].sum(),
-            on=["label_id_grouper", "confidence_threshold"],
+            on=["label_id", "label", "confidence_threshold"],
             how="outer",
         )
         .rename(
@@ -551,17 +534,12 @@ def _calculate_pr_metrics(
         )
     )
 
-    # add back "label" after grouping operations are complete
-    pr_metrics_df["label"] = pr_metrics_df["label_id_grouper"].map(
-        grouper_mappings["grouper_id_to_grouper_label_mapping"]
-    )
-
     pr_metrics_df.fillna(0, inplace=True)
 
     curves = defaultdict(lambda: defaultdict(lambda: defaultdict(dict)))
 
     for row in pr_metrics_df.to_dict(orient="records"):
-        curves[row["label"].key][row["label"].value][
+        curves[row["label"][0]][row["label"][1]][
             row["confidence_threshold"]
         ] = {
             "tp": row["true_positives"],
@@ -597,8 +575,8 @@ def _add_samples_to_dataframe(
             detailed_pr_calc_df[detailed_pr_calc_df[flag_column]]
             .groupby(
                 [
-                    "grouper_key",
-                    "grouper_value_gt",
+                    "label_key",
+                    "label_value_gt",
                     "confidence_threshold",
                 ],
                 as_index=False,
@@ -607,15 +585,15 @@ def _add_samples_to_dataframe(
             .rename(
                 columns={
                     "datum_uid_gt": "datum_uid",
-                    "grouper_value_gt": "grouper_value",
+                    "label_value_gt": "label_value",
                     "converted_geometry_gt": "converted_geometry",
                 }
             ),
             detailed_pr_calc_df[detailed_pr_calc_df[flag_column]]
             .groupby(
                 [
-                    "grouper_key",
-                    "grouper_value_pd",
+                    "label_key",
+                    "label_value_pd",
                     "confidence_threshold",
                 ],
                 as_index=False,
@@ -624,7 +602,7 @@ def _add_samples_to_dataframe(
             .rename(
                 columns={
                     "datum_uid_pd": "datum_uid",
-                    "grouper_value_pd": "grouper_value",
+                    "label_value_pd": "label_value",
                     "converted_geometry_pd": "converted_geometry",
                 }
             ),
@@ -646,13 +624,13 @@ def _add_samples_to_dataframe(
         detailed_pr_curve_counts_df = detailed_pr_curve_counts_df.merge(
             sample_df[
                 [
-                    "grouper_key",
-                    "grouper_value",
+                    "label_key",
+                    "label_value",
                     "confidence_threshold",
                     f"{flag_column}_samples",
                 ]
             ],
-            on=["grouper_key", "grouper_value", "confidence_threshold"],
+            on=["label_key", "label_value", "confidence_threshold"],
             how="outer",
         )
         detailed_pr_curve_counts_df[
@@ -671,7 +649,6 @@ def _add_samples_to_dataframe(
 def _calculate_detailed_pr_metrics(
     groundtruth_df: pd.DataFrame,
     prediction_df: pd.DataFrame,
-    grouper_mappings: dict,
     metrics_to_return: List[enums.MetricType],
     pr_curve_iou_threshold: float,
     pr_curve_max_examples: int,
@@ -687,33 +664,16 @@ def _calculate_detailed_pr_metrics(
     detailed_pr_joint_df = pd.merge(
         groundtruth_df,
         prediction_df,
-        on=["datum_id", "grouper_key"],
+        on=["datum_id", "label_key"],
         how="outer",
         suffixes=("_gt", "_pd"),
     ).assign(
         is_label_match=lambda chain_df: (
-            chain_df["label_id_grouper_pd"] == chain_df["label_id_grouper_gt"]
+            chain_df["label_id_pd"] == chain_df["label_id_gt"]
         )
     )
 
     detailed_pr_joint_df = _calculate_iou(joint_df=detailed_pr_joint_df)
-
-    # assign labels so that we can tell what we're matching
-    detailed_pr_joint_df = detailed_pr_joint_df.assign(
-        label_pd=lambda chain_df: chain_df["label_id_grouper_pd"].map(
-            grouper_mappings["grouper_id_to_grouper_label_mapping"]
-        )
-    ).assign(
-        label_gt=lambda chain_df: chain_df["label_id_grouper_gt"].map(
-            grouper_mappings["grouper_id_to_grouper_label_mapping"]
-        )
-    )
-    detailed_pr_joint_df["grouper_value_gt"] = detailed_pr_joint_df[
-        "label_gt"
-    ].apply(lambda x: x.value if isinstance(x, schemas.Label) else None)
-    detailed_pr_joint_df["grouper_value_pd"] = detailed_pr_joint_df[
-        "label_pd"
-    ].apply(lambda x: x.value if isinstance(x, schemas.Label) else None)
 
     # add confidence_threshold to the dataframe and sort
     detailed_pr_calc_df = pd.concat(
@@ -724,7 +684,7 @@ def _calculate_detailed_pr_metrics(
         ignore_index=True,
     ).sort_values(
         by=[
-            "label_id_grouper_pd",
+            "label_id_pd",
             "confidence_threshold",
             "score",
             "iou_",
@@ -880,7 +840,7 @@ def _calculate_detailed_pr_metrics(
     # next, we sum up the occurences of each classification and merge them together into one dataframe
     true_positives = (
         detailed_pr_calc_df[detailed_pr_calc_df["true_positive_flag"]]
-        .groupby(["grouper_key", "grouper_value_pd", "confidence_threshold"])[
+        .groupby(["label_key", "label_value_pd", "confidence_threshold"])[
             "id_pd"
         ]
         .nunique()
@@ -891,7 +851,7 @@ def _calculate_detailed_pr_metrics(
         detailed_pr_calc_df[
             detailed_pr_calc_df["hallucination_false_positive_flag"]
         ]
-        .groupby(["grouper_key", "grouper_value_pd", "confidence_threshold"])[
+        .groupby(["label_key", "label_value_pd", "confidence_threshold"])[
             "id_pd"
         ]
         .nunique()
@@ -902,7 +862,7 @@ def _calculate_detailed_pr_metrics(
         detailed_pr_calc_df[
             detailed_pr_calc_df["misclassification_false_positive_flag"]
         ]
-        .groupby(["grouper_key", "grouper_value_pd", "confidence_threshold"])[
+        .groupby(["label_key", "label_value_pd", "confidence_threshold"])[
             "id_pd"
         ]
         .nunique()
@@ -915,7 +875,7 @@ def _calculate_detailed_pr_metrics(
         detailed_pr_calc_df[
             detailed_pr_calc_df["misclassification_false_negative_flag"]
         ]
-        .groupby(["grouper_key", "grouper_value_gt", "confidence_threshold"])[
+        .groupby(["label_key", "label_value_gt", "confidence_threshold"])[
             "id_gt"
         ]
         .nunique()
@@ -928,7 +888,7 @@ def _calculate_detailed_pr_metrics(
         detailed_pr_calc_df[
             detailed_pr_calc_df["no_predictions_false_negative_flag"]
         ]
-        .groupby(["grouper_key", "grouper_value_gt", "confidence_threshold"])[
+        .groupby(["label_key", "label_value_gt", "confidence_threshold"])[
             "id_gt"
         ]
         .nunique()
@@ -940,21 +900,21 @@ def _calculate_detailed_pr_metrics(
         pd.concat(
             [
                 detailed_pr_calc_df.loc[
-                    ~detailed_pr_calc_df["grouper_value_pd"].isnull(),
+                    ~detailed_pr_calc_df["label_value_pd"].isnull(),
                     [
-                        "grouper_key",
-                        "grouper_value_pd",
+                        "label_key",
+                        "label_value_pd",
                         "confidence_threshold",
                     ],
-                ].rename(columns={"grouper_value_pd": "grouper_value"}),
+                ].rename(columns={"label_value_pd": "label_value"}),
                 detailed_pr_calc_df.loc[
-                    ~detailed_pr_calc_df["grouper_value_gt"].isnull(),
+                    ~detailed_pr_calc_df["label_value_gt"].isnull(),
                     [
-                        "grouper_key",
-                        "grouper_value_gt",
+                        "label_key",
+                        "label_value_gt",
                         "confidence_threshold",
                     ],
-                ].rename(columns={"grouper_value_gt": "grouper_value"}),
+                ].rename(columns={"label_value_gt": "label_value"}),
             ],
             axis=0,
         )
@@ -962,8 +922,8 @@ def _calculate_detailed_pr_metrics(
         .merge(
             true_positives,
             left_on=[
-                "grouper_key",
-                "grouper_value",
+                "label_key",
+                "label_value",
                 "confidence_threshold",
             ],
             right_index=True,
@@ -972,8 +932,8 @@ def _calculate_detailed_pr_metrics(
         .merge(
             hallucination_false_positives,
             left_on=[
-                "grouper_key",
-                "grouper_value",
+                "label_key",
+                "label_value",
                 "confidence_threshold",
             ],
             right_index=True,
@@ -982,8 +942,8 @@ def _calculate_detailed_pr_metrics(
         .merge(
             misclassification_false_positives,
             left_on=[
-                "grouper_key",
-                "grouper_value",
+                "label_key",
+                "label_value",
                 "confidence_threshold",
             ],
             right_index=True,
@@ -992,8 +952,8 @@ def _calculate_detailed_pr_metrics(
         .merge(
             misclassification_false_negatives,
             left_on=[
-                "grouper_key",
-                "grouper_value",
+                "label_key",
+                "label_value",
                 "confidence_threshold",
             ],
             right_index=True,
@@ -1002,8 +962,8 @@ def _calculate_detailed_pr_metrics(
         .merge(
             no_predictions_false_negatives,
             left_on=[
-                "grouper_key",
-                "grouper_value",
+                "label_key",
+                "label_value",
                 "confidence_threshold",
             ],
             right_index=True,
@@ -1032,13 +992,11 @@ def _calculate_detailed_pr_metrics(
     # create output
     detailed_pr_curves = defaultdict(lambda: defaultdict(dict))
     for _, row in detailed_pr_curve_counts_df.iterrows():
-        grouper_key = row["grouper_key"]
-        grouper_value = row["grouper_value"]
+        label_key = row["label_key"]
+        label_value = row["label_value"]
         confidence_threshold = row["confidence_threshold"]
 
-        detailed_pr_curves[grouper_key][grouper_value][
-            confidence_threshold
-        ] = {
+        detailed_pr_curves[label_key][label_value][confidence_threshold] = {
             "tp": {
                 "total": row["true_positives"],
                 "observations": {
@@ -1098,42 +1056,6 @@ def _calculate_detailed_pr_metrics(
     return detailed_pr_metrics
 
 
-def _create_detection_grouper_mappings(
-    label_map: Optional[schemas.LabelMapType],
-    labels: list,
-) -> Dict[str, dict]:
-    """Create grouper mappings for use when evaluating classifications."""
-    mapping_dict = dict()
-    if label_map:
-        for label, grouper in label_map.items():
-            mapping_dict[(label.key, label.value)] = (
-                grouper.key,
-                grouper.value,
-            )
-
-    # define mappers to connect groupers with labels
-    grouper_id_to_grouper_label_mapping = dict()
-    label_tuple_to_grouper_id_mapping = dict()
-    label_to_grouper_key_mapping = dict()
-
-    for label in labels:
-        # the grouper should equal the (label.key, label.value) if it wasn't mapped by the user
-        grouper_key, grouper_value = mapping_dict.get(label, label)
-        grouper_id = hash((grouper_key, grouper_value))
-
-        grouper_id_to_grouper_label_mapping[grouper_id] = schemas.Label(
-            key=grouper_key, value=grouper_value
-        )
-        label_tuple_to_grouper_id_mapping[label] = grouper_id
-        label_to_grouper_key_mapping[label] = grouper_key
-
-    return {
-        "grouper_id_to_grouper_label_mapping": grouper_id_to_grouper_label_mapping,
-        "label_tuple_to_grouper_id_mapping": label_tuple_to_grouper_id_mapping,
-        "label_to_grouper_key_mapping": label_to_grouper_key_mapping,
-    }
-
-
 def _compute_detection_metrics(
     groundtruth_df: pd.DataFrame,
     prediction_df: pd.DataFrame,
@@ -1183,47 +1105,24 @@ def _compute_detection_metrics(
         If there is an issue with the data or parameters provided.
     """
 
-    grouper_mappings = _create_detection_grouper_mappings(
+    groundtruth_df, prediction_df = utilities.replace_labels_using_label_map(
+        groundtruth_df=groundtruth_df,
+        prediction_df=prediction_df,
         label_map=label_map,
-        labels=unique_labels,
     )
+
+    # add label as a column
+    for df in (groundtruth_df, prediction_df):
+        df.loc[:, "label"] = df.apply(
+            lambda chain_df: (chain_df["label_key"], chain_df["label_value"]),
+            axis=1,
+        )
 
     metrics_to_output = []
-
-    # assign a unique ID per label to each dataframe
-    groundtruth_df["label_id_grouper"] = groundtruth_df.apply(
-        lambda row: grouper_mappings["label_tuple_to_grouper_id_mapping"].get(
-            (row["label_key"], row["label_value"])
-        ),  # type: ignore - pandas typing error
-        axis=1,
-    )
-
-    prediction_df["label_id_grouper"] = prediction_df.apply(
-        lambda row: grouper_mappings["label_tuple_to_grouper_id_mapping"].get(
-            (row["label_key"], row["label_value"])
-        ),  # type: ignore - pandas typing error
-        axis=1,
-    )
-
-    # assign grouper_key to dataframes
-    groundtruth_df["grouper_key"] = groundtruth_df.apply(
-        lambda row: grouper_mappings["label_to_grouper_key_mapping"].get(
-            (row["label_key"], row["label_value"])
-        ),  # type: ignore - pandas typing error
-        axis=1,
-    )
-
-    prediction_df["grouper_key"] = prediction_df.apply(
-        lambda row: grouper_mappings["label_to_grouper_key_mapping"].get(
-            (row["label_key"], row["label_value"])
-        ),  # type: ignore - pandas typing error
-        axis=1,
-    )
 
     joint_df = _get_joint_df(
         groundtruth_df=groundtruth_df,
         prediction_df=prediction_df,
-        grouper_mappings=grouper_mappings,
     )
 
     # store solo groundtruths and predictions such that we can add them back after we calculate IOU
@@ -1264,32 +1163,29 @@ def _compute_detection_metrics(
         ],
         ignore_index=True,
     ).sort_values(
-        by=["label_id_grouper", "iou_threshold", "score", "iou_"],
+        by=["label_id", "label", "iou_threshold", "score", "iou_"],
         ascending=False,
     )
 
     # calculate metrics
-    calculation_df = _calculate_grouper_id_level_metrics(
+    calculation_df = _calculate_label_id_level_metrics(
         calculation_df=calculation_df,
         recall_score_threshold=recall_score_threshold,
     )
 
     metrics_to_output += _calculate_ap_metrics(
         calculation_df=calculation_df,
-        grouper_mappings=grouper_mappings,
         iou_thresholds_to_compute=iou_thresholds_to_compute,
         iou_thresholds_to_return=iou_thresholds_to_return,
     )
 
     metrics_to_output += _calculate_ar_metrics(
         calculation_df=calculation_df,
-        grouper_mappings=grouper_mappings,
         iou_thresholds_to_compute=iou_thresholds_to_compute,
     )
 
     metrics_to_output += _calculate_pr_metrics(
         joint_df=joint_df,
-        grouper_mappings=grouper_mappings,
         metrics_to_return=metrics_to_return,
         pr_curve_iou_threshold=pr_curve_iou_threshold,
     )
@@ -1297,7 +1193,6 @@ def _compute_detection_metrics(
     metrics_to_output += _calculate_detailed_pr_metrics(
         groundtruth_df=groundtruth_df,
         prediction_df=prediction_df,
-        grouper_mappings=grouper_mappings,
         metrics_to_return=metrics_to_return,
         pr_curve_iou_threshold=pr_curve_iou_threshold,
         pr_curve_max_examples=pr_curve_max_examples,

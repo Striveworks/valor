@@ -1011,18 +1011,13 @@ def test_rocauc_with_label_map(
 
     expected_metrics = [
         {
-            "parameters": {"label_key": "class"},
-            "value": 0.5972222222222222,
+            "parameters": {"label_key": "animal"},
+            "value": 0.8009259259259259,
             "type": "ROCAUC",
         },
         {
             "parameters": {"label_key": "color"},
             "value": 0.43125,
-            "type": "ROCAUC",
-        },
-        {
-            "parameters": {"label_key": "other_class"},
-            "value": 0.7777777777777779,
             "type": "ROCAUC",
         },
     ]
