@@ -128,7 +128,7 @@ def ingest_predictions(
 def run_base_evaluation(dset: Dataset, model: Model):
     """Run a base evaluation (with no PR curves)."""
     evaluation = model.evaluate_detection(dset)
-    evaluation.wait_for_completion(timeout=60)
+    evaluation.wait_for_completion()
     return evaluation
 
 
@@ -174,6 +174,8 @@ def run_benchmarking_analysis(
     limits_to_test: list[int],
     results_file: str = "results.json",
     data_file: str = "data.json",
+    compute_box: bool = True,
+    compute_raster: bool = True,
 ):
     """Time various function calls and export the results."""
     current_directory = Path(os.path.dirname(os.path.realpath(__file__)))
@@ -197,14 +199,46 @@ def run_benchmarking_analysis(
             file_name=filename, file_path=file_path, url=url
         )
 
-    # iterate through datum limits
-    try:
-        for limit in limits_to_test:
-            dset_box = Dataset.create(name="coco-box")
-            dset_raster = Dataset.create(name="coco-raster")
+    from dataclasses import dataclass
 
-            model_box = Model.create(name="yolo-box")
-            model_raster = Model.create(name="yolo-raster")
+    @dataclass
+    class Dummy:
+        meta: dict
+
+    dummy_value = Dummy(meta={"duration": -1, "labels": 0, "annotations": 0})
+
+    # iterate through datum limits
+    for limit in limits_to_test:
+
+        gt_box_ingest_time = -1
+        pd_box_ingest_time = -1
+        gt_bbox_finalization_time = -1
+        pd_bbox_finalization_time = -1
+        box_deletion_time = -1
+        gt_raster_ingest_time = -1
+        pd_raster_ingest_time = -1
+        gt_raster_finalization_time = -1
+        pd_raster_finalization_time = -1
+        raster_deletion_time = -1
+
+        eval_base_box = dummy_value
+        eval_pr_box = dummy_value
+        eval_detail_box = dummy_value
+        eval_base_raster = dummy_value
+        eval_pr_raster = dummy_value
+        eval_detail_raster = dummy_value
+
+        if compute_box:
+            try:
+                dset_box = Dataset.create(name="coco-box")
+                model_box = Model.create(name="yolo-box")
+            except (
+                DatasetAlreadyExistsError,
+                ModelAlreadyExistsError,
+            ) as e:
+                client.delete_dataset("coco-box")
+                client.delete_model("yolo-box")
+                raise e
 
             # gt bbox ingestion
             gt_box_ingest_time = time_it(
@@ -212,30 +246,14 @@ def run_benchmarking_analysis(
                 dataset=dset_box,
                 path=current_directory / Path(gt_box_filename),
                 limit=limit,
-                chunk_size=5000,
-            )
-
-            # gt raster ingestion
-            gt_raster_ingest_time = time_it(
-                ingest_groundtruths,
-                dataset=dset_raster,
-                path=current_directory / Path(gt_raster_filename),
-                limit=limit,
-                chunk_size=100,
+                chunk_size=1000,
             )
 
             # gt bbox finalization
             gt_bbox_finalization_time = time_it(dset_box.finalize)
 
-            # gt raster finalization
-            gt_raster_finalization_time = time_it(dset_raster.finalize)
-
-            box_datum_uids = [datum.uid for datum in dset_box.get_datums()]
-            raster_datum_uids = [
-                datum.uid for datum in dset_raster.get_datums()
-            ]
-
             # pd bbox ingestion
+            box_datum_uids = [datum.uid for datum in dset_box.get_datums()]
             pd_box_ingest_time = time_it(
                 ingest_predictions,
                 dataset=dset_box,
@@ -243,18 +261,7 @@ def run_benchmarking_analysis(
                 datum_uids=box_datum_uids,
                 path=current_directory / Path(pd_box_filename),
                 limit=limit,
-                chunk_size=5000,
-            )
-
-            # pd raster ingestion
-            pd_raster_ingest_time = time_it(
-                ingest_predictions,
-                dataset=dset_raster,
-                model=model_raster,
-                datum_uids=raster_datum_uids,
-                path=current_directory / Path(pd_raster_filename),
-                limit=limit,
-                chunk_size=100,
+                chunk_size=1000,
             )
 
             # pd bbox finalization
@@ -262,15 +269,15 @@ def run_benchmarking_analysis(
                 model_box.finalize_inferences, dset_box
             )
 
-            # pd raster finalization
-            pd_raster_finalization_time = time_it(
-                model_raster.finalize_inferences, dset_raster
-            )
-
             try:
-                eval_box = run_base_evaluation(dset=dset_box, model=model_box)
-                eval_raster = run_base_evaluation(
-                    dset=dset_raster, model=model_raster
+                eval_base_box = run_base_evaluation(
+                    dset=dset_box, model=model_box
+                )
+                eval_pr_box = run_pr_curve_evaluation(
+                    dset=dset_box, model=model_box
+                )
+                eval_detail_box = run_detailed_pr_curve_evaluation(
+                    dset=dset_box, model=model_box
                 )
             except TimeoutError:
                 raise TimeoutError(
@@ -282,66 +289,121 @@ def run_benchmarking_analysis(
             client.delete_model(model_box.name, timeout=30)
             box_deletion_time = time() - start
 
+        if compute_raster:
+            try:
+                dset_raster = Dataset.create(name="coco-raster")
+                model_raster = Model.create(name="yolo-raster")
+            except (
+                DatasetAlreadyExistsError,
+                ModelAlreadyExistsError,
+            ) as e:
+                client.delete_dataset("coco-raster")
+                client.delete_model("yolo-raster")
+                raise e
+
+            # gt raster ingestion
+            gt_raster_ingest_time = time_it(
+                ingest_groundtruths,
+                dataset=dset_raster,
+                path=current_directory / Path(gt_raster_filename),
+                limit=limit,
+                chunk_size=100,
+            )
+
+            # gt raster finalization
+            gt_raster_finalization_time = time_it(dset_raster.finalize)
+
+            # pd raster ingestion
+            raster_datum_uids = [
+                datum.uid for datum in dset_raster.get_datums()
+            ]
+            pd_raster_ingest_time = time_it(
+                ingest_predictions,
+                dataset=dset_raster,
+                model=model_raster,
+                datum_uids=raster_datum_uids,
+                path=current_directory / Path(pd_raster_filename),
+                limit=limit,
+                chunk_size=100,
+            )
+
+            # pd raster finalization
+            pd_raster_finalization_time = time_it(
+                model_raster.finalize_inferences, dset_raster
+            )
+
+            try:
+                eval_base_raster = run_base_evaluation(
+                    dset=dset_raster, model=model_raster
+                )
+                # eval_pr_raster = run_pr_curve_evaluation(
+                #     dset=dset_raster, model=model_raster
+                # )
+                # eval_detail_raster = run_detailed_pr_curve_evaluation(
+                #     dset=dset_raster, model=model_raster
+                # )
+            except TimeoutError:
+                raise TimeoutError(
+                    f"Evaluation timed out when processing {limit} datums."
+                )
+
             start = time()
             client.delete_dataset(dset_raster.name, timeout=30)
             client.delete_model(model_raster.name, timeout=30)
             raster_deletion_time = time() - start
 
-            results = {
-                "box": {
-                    "info": {
-                        "number_of_datums": limit,
-                        "number_of_unique_labels": eval_box.meta["labels"],
-                        "number_of_annotations": eval_box.meta["annotations"],
-                    },
-                    "ingestion": {
-                        "groundtruth": f"{(gt_box_ingest_time):.1f} seconds",
-                        "prediction": f"{(pd_box_ingest_time):.1f} seconds",
-                    },
-                    "finalization": {
-                        "dataset": f"{(gt_bbox_finalization_time):.1f} seconds",
-                        "model": f"{(pd_bbox_finalization_time):.1f} seconds",
-                    },
-                    "evaluation": {
-                        "base": f"{(eval_box.meta['duration']):.1f} seconds",
-                    },
-                    "deletion": f"{(box_deletion_time):.1f} seconds",
+        results = {
+            "box": {
+                "info": {
+                    "number_of_datums": limit,
+                    "number_of_unique_labels": eval_base_box.meta["labels"],
+                    "number_of_annotations": eval_base_box.meta["annotations"],
                 },
-                "raster": {
-                    "info": {
-                        "number_of_datums": limit,
-                        "number_of_unique_labels": eval_raster.meta["labels"],
-                        "number_of_annotations": eval_raster.meta[
-                            "annotations"
-                        ],
-                    },
-                    "ingestion": {
-                        "groundtruth": f"{(gt_raster_ingest_time):.1f} seconds",
-                        "prediction": f"{(pd_raster_ingest_time):.1f} seconds",
-                    },
-                    "finalization": {
-                        "dataset": f"{(gt_raster_finalization_time):.1f} seconds",
-                        "model": f"{(pd_raster_finalization_time):.1f} seconds",
-                    },
-                    "evaluation": {
-                        "base": f"{(eval_raster.meta['duration']):.1f} seconds",
-                    },
-                    "deletion": f"{(raster_deletion_time):.1f} seconds",
+                "ingestion": {
+                    "groundtruth": f"{(gt_box_ingest_time):.1f} seconds",
+                    "prediction": f"{(pd_box_ingest_time):.1f} seconds",
                 },
-            }
-            write_results_to_file(write_path=write_path, result_dict=results)
-    except (
-        DatasetAlreadyExistsError,
-        ModelAlreadyExistsError,
-    ) as e:
-        try:
-            client.delete_dataset("coco-box")
-            client.delete_model("yolo-box")
-        finally:
-            client.delete_dataset("coco-raster")
-            client.delete_model("yolo-raster")
-            raise e
+                "finalization": {
+                    "dataset": f"{(gt_bbox_finalization_time):.1f} seconds",
+                    "model": f"{(pd_bbox_finalization_time):.1f} seconds",
+                },
+                "evaluation": {
+                    "base": f"{(eval_base_box.meta['duration']):.1f} seconds",
+                    "base+pr": f"{(eval_pr_box.meta['duration']):.1f} seconds",
+                    "base+pr+detail": f"{(eval_detail_box.meta['duration']):.1f} seconds",
+                },
+                "deletion": f"{(box_deletion_time):.1f} seconds",
+            },
+            "raster": {
+                "info": {
+                    "number_of_datums": limit,
+                    "number_of_unique_labels": eval_base_raster.meta["labels"],
+                    "number_of_annotations": eval_base_raster.meta[
+                        "annotations"
+                    ],
+                },
+                "ingestion": {
+                    "groundtruth": f"{(gt_raster_ingest_time):.1f} seconds",
+                    "prediction": f"{(pd_raster_ingest_time):.1f} seconds",
+                },
+                "finalization": {
+                    "dataset": f"{(gt_raster_finalization_time):.1f} seconds",
+                    "model": f"{(pd_raster_finalization_time):.1f} seconds",
+                },
+                "evaluation": {
+                    "base": f"{(eval_base_raster.meta['duration']):.1f} seconds",
+                    "base+pr": f"{(eval_pr_raster.meta['duration']):.1f} seconds",
+                    "base+pr+detail": f"{(eval_detail_raster.meta['duration']):.1f} seconds",
+                },
+                "deletion": f"{(raster_deletion_time):.1f} seconds",
+            },
+        }
+        write_results_to_file(write_path=write_path, result_dict=results)
 
 
 if __name__ == "__main__":
-    run_benchmarking_analysis(limits_to_test=[12, 12])
+    run_benchmarking_analysis(
+        limits_to_test=[5000, 5000, 5000],
+        compute_box=True,
+        compute_raster=False,
+    )
