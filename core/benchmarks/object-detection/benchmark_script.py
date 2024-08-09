@@ -1,24 +1,23 @@
+import io
 import json
 import os
 import re
-import requests
-import io
+from base64 import b64decode
+from dataclasses import dataclass
+from datetime import datetime
+from pathlib import Path
+from time import time
+
 import numpy as np
 import PIL.Image
-from base64 import b64decode
-from pathlib import Path
-from datetime import datetime
-from time import time
+import requests
 from tqdm import tqdm
-from dataclasses import dataclass
-
 from valor_core import (
     Annotation,
     Box,
     Datum,
     GroundTruth,
     Label,
-    MultiPolygon,
     Polygon,
     Prediction,
     Raster,
@@ -90,7 +89,7 @@ def ingest_groundtruths(
             gt_dict = json.loads(line)
             gt_dict["datum"].pop("text")
             gt_dict["datum"] = Datum(**gt_dict["datum"])
-            
+
             annotations = []
             for ann in gt_dict["annotations"]:
                 ann.pop("text")
@@ -101,18 +100,28 @@ def ingest_groundtruths(
                     labels.append(Label(**label))
                 ann["labels"] = labels
 
-                ann["bounding_box"] = Box(ann["bounding_box"]) if ann["bounding_box"] else None
-                ann["polygon"] = Polygon(ann["polygon"]) if ann["polygon"] else None
+                ann["bounding_box"] = (
+                    Box(ann["bounding_box"]) if ann["bounding_box"] else None
+                )
+                ann["polygon"] = (
+                    Polygon(ann["polygon"]) if ann["polygon"] else None
+                )
 
                 if ann["raster"]:
                     if ann["raster"]["geometry"] is not None:
-                        ann["raster"] = Raster(RasterData(mask=None, geometry=ann["raster"]["geometry"]))
+                        ann["raster"] = Raster(
+                            RasterData(
+                                mask=None, geometry=ann["raster"]["geometry"]
+                            )
+                        )
                     elif ann["raster"]["geometry"] is None:
                         # decode raster
                         mask_bytes = b64decode(ann["raster"]["mask"])
                         with io.BytesIO(mask_bytes) as f:
                             img = PIL.Image.open(f)
-                            ann["raster"] = Raster(RasterData(mask=np.array(img), geometry=None))                            
+                            ann["raster"] = Raster(
+                                RasterData(mask=np.array(img), geometry=None)
+                            )
                 else:
                     ann["raster"] = None
 
@@ -131,9 +140,9 @@ def ingest_predictions(
     path: Path,
     limit: int,
 ) -> list[Prediction]:
-    
+
     pattern = re.compile(r'"uid":\s*"(\d+)"')
-    
+
     predictions = []
     with open(path, "r") as f:
         count = 0
@@ -158,25 +167,32 @@ def ingest_predictions(
                     labels.append(Label(**label))
                 ann["labels"] = labels
 
-                ann["bounding_box"] = Box(ann["bounding_box"]) if ann["bounding_box"] else None
-                ann["polygon"] = Polygon(ann["polygon"]) if ann["polygon"] else None
+                ann["bounding_box"] = (
+                    Box(ann["bounding_box"]) if ann["bounding_box"] else None
+                )
+                ann["polygon"] = (
+                    Polygon(ann["polygon"]) if ann["polygon"] else None
+                )
 
                 if ann["raster"]:
                     if ann["raster"]["geometry"] is not None:
-                        ann["raster"] = Raster(RasterData(mask=None, geometry=ann["raster"]["geometry"]))
+                        ann["raster"] = Raster(
+                            RasterData(
+                                mask=None, geometry=ann["raster"]["geometry"]
+                            )
+                        )
                     elif ann["raster"]["geometry"] is None:
                         # decode raster
                         mask_bytes = b64decode(ann["raster"]["mask"])
                         with io.BytesIO(mask_bytes) as f:
                             img = PIL.Image.open(f)
-                            ann["raster"] = Raster(RasterData(mask=np.array(img), geometry=None))                            
+                            ann["raster"] = Raster(
+                                RasterData(mask=np.array(img), geometry=None)
+                            )
                 else:
                     ann["raster"] = None
+            pd_dict["annotations"] = annotations
 
-            pd_dict["annotations"] = [
-                Annotation(**ann)
-                for ann in pd_dict["annotations"]
-            ]
             pd = Prediction(**pd_dict)
             predictions.append(pd)
             count += 1
@@ -259,6 +275,7 @@ def run_benchmarking_analysis(
     @dataclass
     class Dummy:
         meta: dict
+
     dummy_value = Dummy(meta={"labels": -1, "annotations": -1, "duration": -1})
 
     for limit in limits_to_test:
@@ -279,7 +296,7 @@ def run_benchmarking_analysis(
         detailed_pr_eval_raster = dummy_value
 
         if compute_box:
-        
+
             # ingestion
             gt_box_ingest_time, gt_boxes = time_it(
                 ingest_groundtruths,
@@ -306,7 +323,11 @@ def run_benchmarking_analysis(
             )
 
             # handle type errors
-            if not (base_eval_box.meta and pr_eval_box.meta and detailed_pr_eval_box.meta):
+            if not (
+                base_eval_box.meta
+                and pr_eval_box.meta
+                and detailed_pr_eval_box.meta
+            ):
                 raise ValueError("Metadata isn't defined for all objects.")
 
         if compute_raster:
@@ -336,7 +357,11 @@ def run_benchmarking_analysis(
                 groundtruths=gt_rasters, predictions=pd_rasters
             )
 
-            if not (base_eval_raster.meta and pr_eval_raster.meta and detailed_pr_eval_raster.meta):
+            if not (
+                base_eval_raster.meta
+                and pr_eval_raster.meta
+                and detailed_pr_eval_raster.meta
+            ):
                 raise ValueError("Metadata isn't defined for all objects.")
 
         results = {
@@ -360,7 +385,9 @@ def run_benchmarking_analysis(
                 "info": {
                     "number_of_datums": len(gt_rasters),
                     "number_of_unique_labels": base_eval_raster.meta["labels"],
-                    "number_of_annotations": base_eval_raster.meta["annotations"],
+                    "number_of_annotations": base_eval_raster.meta[
+                        "annotations"
+                    ],
                 },
                 "ingestion": {
                     "groundtruth": f"{(gt_raster_ingest_time):.1f} seconds",
@@ -378,9 +405,10 @@ def run_benchmarking_analysis(
         if base_eval_box.meta["duration"] > 30:
             raise TimeoutError("Base evaluation took longer than 30 seconds.")
 
+
 if __name__ == "__main__":
     run_benchmarking_analysis(
-        limits_to_test=[1500,1500,1500],
-        compute_box=False,
-        compute_raster=True,
+        limits_to_test=[5000, 5000, 5000],
+        compute_box=True,
+        compute_raster=False,
     )
