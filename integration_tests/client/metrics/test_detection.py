@@ -4,6 +4,7 @@ that is no auth
 
 import random
 
+import numpy as np
 import pytest
 import requests
 from geoalchemy2.functions import ST_Area
@@ -23,7 +24,7 @@ from valor import (
 )
 from valor.enums import AnnotationType, EvaluationStatus, MetricType, TaskType
 from valor.exceptions import ClientException
-from valor.schemas import Box
+from valor.schemas import Box, Polygon, Raster
 from valor_api.backend import models
 
 
@@ -3237,3 +3238,254 @@ def test_evaluate_detection_model_with_no_predictions(
     assert all([metric["value"] == 0 for metric in computed_metrics])
     assert all([metric in computed_metrics for metric in expected_metrics])
     assert all([metric in expected_metrics for metric in computed_metrics])
+
+
+def test_evaluate_mixed_annotations(
+    db: Session,
+    client: Client,
+    dataset_name: str,
+    model_name: str,
+    image_height: int,
+    image_width: int,
+):
+    """Test the automatic conversion to rasters."""
+    dset = Dataset.create(dataset_name)
+    datum = Datum(uid="datum1")
+
+    xmin, xmax, ymin, ymax = 11, 45, 37, 102
+    h, w = image_height, image_width
+    mask = np.zeros((h, w), dtype=bool)
+    mask[ymin:ymax, xmin:xmax] = True
+
+    pts = [
+        (xmin, ymin),
+        (xmin, ymax),
+        (xmax, ymax),
+        (xmax, ymin),
+        (xmin, ymin),
+    ]
+    poly = Polygon([pts])
+    raster = Raster.from_numpy(mask)
+    box = Box.from_extrema(xmin=xmin, xmax=xmax, ymin=ymin, ymax=ymax)
+
+    gt_annotations = [
+        Annotation(
+            raster=raster,
+            labels=[Label(key="key", value="value")],
+            is_instance=True,
+        ),
+        Annotation(
+            raster=raster,
+            labels=[Label(key="key1", value="value")],
+            is_instance=True,
+        ),
+        Annotation(
+            raster=raster,
+            labels=[Label(key="key2", value="value")],
+            is_instance=True,
+        ),
+    ]
+
+    pd_annotations = [
+        Annotation(
+            raster=raster,
+            labels=[Label(key="key", value="value", score=0.90)],
+            is_instance=True,
+        ),
+        Annotation(
+            polygon=poly,
+            labels=[Label(key="key1", value="value", score=0.89)],
+            is_instance=True,
+        ),
+        Annotation(
+            bounding_box=box,
+            labels=[Label(key="key2", value="value", score=0.88)],
+            is_instance=True,
+        ),
+    ]
+    gts = [
+        GroundTruth(
+            datum=datum,
+            annotations=[ann for ann in gt_annotations],
+        )
+    ]
+
+    pds = [
+        Prediction(
+            datum=datum,
+            annotations=[ann for ann in pd_annotations],
+        )
+    ]
+
+    for gt in gts:
+        dset.add_groundtruth(gt)
+    dset.finalize()
+
+    model = Model.create(model_name)
+    for pd in pds:
+        model.add_prediction(dset, pd)
+    model.finalize_inferences(dset)
+
+    eval_job = model.evaluate_detection(
+        dset,
+        iou_thresholds_to_compute=[0.1, 0.6],
+        iou_thresholds_to_return=[0.1, 0.6],
+        metrics_to_return=[
+            "AP",
+        ],
+    )
+    eval_job.wait_for_completion()
+
+    expected = [
+        {
+            "type": "AP",
+            "parameters": {"iou": 0.1},
+            "value": 0.0,
+            "label": {"key": "key1", "value": "value"},
+        },
+        {
+            "type": "AP",
+            "parameters": {"iou": 0.6},
+            "value": 0.0,
+            "label": {"key": "key1", "value": "value"},
+        },
+        {
+            "type": "AP",
+            "parameters": {"iou": 0.1},
+            "value": 0.0,
+            "label": {"key": "key2", "value": "value"},
+        },
+        {
+            "type": "AP",
+            "parameters": {"iou": 0.6},
+            "value": 0.0,
+            "label": {"key": "key2", "value": "value"},
+        },
+        {
+            "type": "AP",
+            "parameters": {"iou": 0.1},
+            "value": 1.0,
+            "label": {"key": "key", "value": "value"},
+        },
+        {
+            "type": "AP",
+            "parameters": {"iou": 0.6},
+            "value": 1.0,
+            "label": {"key": "key", "value": "value"},
+        },
+    ]
+
+    for m in eval_job.metrics:
+        assert m in expected
+    for m in expected:
+        assert m in eval_job.metrics
+
+    eval_job_poly = model.evaluate_detection(
+        dset,
+        iou_thresholds_to_compute=[0.1, 0.6],
+        iou_thresholds_to_return=[0.1, 0.6],
+        metrics_to_return=[
+            "AP",
+        ],
+        convert_annotations_to_type=AnnotationType.POLYGON,
+    )
+    eval_job_poly.wait_for_completion()
+
+    expected = [
+        {
+            "type": "AP",
+            "parameters": {"iou": 0.1},
+            "value": 0.0,
+            "label": {"key": "key2", "value": "value"},
+        },
+        {
+            "type": "AP",
+            "parameters": {"iou": 0.6},
+            "value": 0.0,
+            "label": {"key": "key2", "value": "value"},
+        },
+        {
+            "type": "AP",
+            "parameters": {"iou": 0.1},
+            "value": 1.0,
+            "label": {"key": "key", "value": "value"},
+        },
+        {
+            "type": "AP",
+            "parameters": {"iou": 0.6},
+            "value": 1.0,
+            "label": {"key": "key", "value": "value"},
+        },
+        {
+            "type": "AP",
+            "parameters": {"iou": 0.1},
+            "value": 1.0,
+            "label": {"key": "key1", "value": "value"},
+        },
+        {
+            "type": "AP",
+            "parameters": {"iou": 0.6},
+            "value": 1.0,
+            "label": {"key": "key1", "value": "value"},
+        },
+    ]
+
+    for m in eval_job_poly.metrics:
+        assert m in expected
+    for m in expected:
+        assert m in eval_job_poly.metrics
+
+    eval_job_box = model.evaluate_detection(
+        dset,
+        iou_thresholds_to_compute=[0.1, 0.6],
+        iou_thresholds_to_return=[0.1, 0.6],
+        metrics_to_return=[
+            "AP",
+        ],
+        convert_annotations_to_type=AnnotationType.BOX,
+    )
+    eval_job_box.wait_for_completion()
+
+    expected = [
+        {
+            "type": "AP",
+            "parameters": {"iou": 0.1},
+            "value": 1.0,
+            "label": {"key": "key", "value": "value"},
+        },
+        {
+            "type": "AP",
+            "parameters": {"iou": 0.6},
+            "value": 1.0,
+            "label": {"key": "key", "value": "value"},
+        },
+        {
+            "type": "AP",
+            "parameters": {"iou": 0.1},
+            "value": 1.0,
+            "label": {"key": "key2", "value": "value"},
+        },
+        {
+            "type": "AP",
+            "parameters": {"iou": 0.6},
+            "value": 1.0,
+            "label": {"key": "key2", "value": "value"},
+        },
+        {
+            "type": "AP",
+            "parameters": {"iou": 0.1},
+            "value": 0.0,  # should be 1. this is a bug in the API suggesting that Polygon -> Box conversion isn't working properly
+            "label": {"key": "key1", "value": "value"},
+        },
+        {
+            "type": "AP",
+            "parameters": {"iou": 0.6},
+            "value": 0.0,
+            "label": {"key": "key1", "value": "value"},
+        },
+    ]
+
+    for m in eval_job_box.metrics:
+        assert m in expected
+    for m in expected:
+        assert m in eval_job_box.metrics
