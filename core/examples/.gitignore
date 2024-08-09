@@ -1,0 +1,5 @@
+!*.ipynb
+
+coco/
+bdd100k/
+*.txt
