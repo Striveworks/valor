@@ -181,9 +181,8 @@ def run_benchmarking_analysis(
         )
 
         # handle type errors
-        assert base_eval.meta
-        assert pr_eval.meta
-        assert detailed_pr_eval.meta
+        if not (base_eval.meta and pr_eval.meta and detailed_pr_eval.meta):
+            raise ValueError("Metadata isn't defined for all objects.")
 
         results = {
             "number_of_datums": limit,

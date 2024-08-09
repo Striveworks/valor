@@ -1414,27 +1414,3 @@ class Raster:
             The geometry if it exists.
         """
         return self.value["geometry"]
-
-
-@dataclass
-class Embedding:
-    """
-    Represents a model embedding.
-
-    Parameters
-    ----------
-    value : List[float], optional
-        An embedding value.
-    """
-
-    value: Optional[Union[list[int], list[float]]] = None
-
-    def __post_init__(self):
-        """Validate instantiated class."""
-
-        if not isinstance(self.value, list):
-            raise TypeError(
-                f"Expected type 'Optional[List[float]]' received type '{type(self.value)}'"
-            )
-        elif len(self.value) < 1:
-            raise ValueError("embedding should have at least one dimension")

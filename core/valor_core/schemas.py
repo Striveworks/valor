@@ -7,6 +7,30 @@ from valor_core import enums, geometry
 
 
 @dataclass
+class Embedding:
+    """
+    Represents a model embedding.
+
+    Parameters
+    ----------
+    value : List[float], optional
+        An embedding value.
+    """
+
+    value: Optional[Union[list[int], list[float]]] = None
+
+    def __post_init__(self):
+        """Validate instantiated class."""
+
+        if not isinstance(self.value, list):
+            raise TypeError(
+                f"Expected type 'Optional[List[float]]' received type '{type(self.value)}'"
+            )
+        elif len(self.value) < 1:
+            raise ValueError("embedding should have at least one dimension")
+
+
+@dataclass
 class Datum:
     """
     A class used to store information about a datum for either a 'GroundTruth' or a 'Prediction'.
@@ -214,7 +238,7 @@ class Annotation:
     bounding_box: Optional[geometry.Box] = None
     polygon: Optional[Union[geometry.Polygon, geometry.Box]] = None
     raster: Optional[geometry.Raster] = None
-    embedding: Optional[geometry.Embedding] = None
+    embedding: Optional[Embedding] = None
     is_instance: Optional[bool] = None
     implied_task_types: Optional[List[str]] = None
 
@@ -250,7 +274,7 @@ class Annotation:
                 f"Expected 'raster' to be of type 'geometry.Raster' or 'None', got {type(self.raster).__name__}"
             )
 
-        if not isinstance(self.embedding, (geometry.Embedding, type(None))):
+        if not isinstance(self.embedding, (Embedding, type(None))):
             raise TypeError(
                 f"Expected 'embedding' to be of type 'Embedding' or 'None', got {type(self.embedding).__name__}"
             )

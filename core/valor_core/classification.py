@@ -78,7 +78,10 @@ def _calculate_confusion_matrix_df(
     )
 
     # resolve pandas typing error
-    assert isinstance(cm_counts_df, pd.DataFrame)
+    if not isinstance(cm_counts_df, pd.DataFrame):
+        raise TypeError(
+            f"Expected a pd.DataFrame, but got {type(cm_counts_df)}"
+        )
 
     # count of predictions per grouper key
     cm_counts_df = cm_counts_df.merge(
@@ -401,7 +404,9 @@ def _get_joint_df(
     if not isinstance(prediction_df, pd.DataFrame) or not isinstance(
         max_scores_by_grouper_key_and_datum_id, pd.DataFrame
     ):
-        raise ValueError
+        raise ValueError(
+            "prediction_df and max_scores_by_grouper_key_and_datum_id must be pandas Dataframes."
+        )
 
     best_prediction_id_per_grouper_key_and_datum_id = (
         pd.merge(
@@ -1215,7 +1220,8 @@ def _compute_clf_metrics(
     )
 
     # handle type error
-    assert metrics_to_return
+    if not metrics_to_return:
+        raise ValueError("metrics_to_return must be defined.")
 
     metrics_to_output += _calculate_pr_curves(
         prediction_df=prediction_df,

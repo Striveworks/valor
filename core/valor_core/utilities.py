@@ -739,27 +739,27 @@ def _add_converted_geometry_column(
         df["converted_geometry"] = df["converted_geometry"].map(
             lambda x: (
                 x.to_array() if isinstance(x, geometry.Raster) else None
-            )  # pyright: ignore
+            )  # pyright: ignore - fix pandas-stubs typing error related to .map
         )
     elif target_type == enums.AnnotationType.POLYGON:
         df["converted_geometry"] = df["converted_geometry"].map(
             lambda x: (
                 _convert_raster_to_polygon(
-                    x.to_array()  # pyright: ignore
-                ).to_array()  # pyright: ignore
+                    x.to_array()  # pyright: ignore - fix pandas-stubs typing error related to .map
+                ).to_array()
                 if isinstance(x, geometry.Raster)
                 else x.to_array()
                 if isinstance(x, geometry.Polygon)
                 else None
-            )  # pyright: ignore
+            )
         )
 
     elif target_type == enums.AnnotationType.BOX:
         df["converted_geometry"] = df["converted_geometry"].map(
             lambda x: (
                 _convert_raster_to_box(
-                    x.to_array()  # pyright: ignore
-                ).to_array()  # pyright: ignore
+                    x.to_array()  # pyright: ignore - fix pandas-stubs typing error related to .map
+                ).to_array()
                 if isinstance(x, geometry.Raster)
                 else (
                     _convert_polygon_to_box(x).to_array()
@@ -768,7 +768,7 @@ def _add_converted_geometry_column(
                     if isinstance(x, geometry.Box)
                     else None
                 )
-            )  # pyright: ignore
+            )
         )
 
     return df

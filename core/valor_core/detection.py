@@ -146,7 +146,7 @@ def _calculate_iou(
 
 def _calculate_grouper_id_level_metrics(
     calculation_df: pd.DataFrame, recall_score_threshold: float
-):  # -> pd.DataFrame:
+) -> pd.DataFrame:
     """Calculate the flags and metrics needed to compute AP, AR, and PR curves."""
 
     # create flags where predictions meet the score and IOU criteria
@@ -428,8 +428,6 @@ def _calculate_ar_metrics(
         grouper_mappings["grouper_id_to_grouper_label_mapping"]
     )
 
-    # resolve typing error
-
     ious_ = set(iou_thresholds_to_compute)
     ar_metrics = [
         metrics.ARMetric(
@@ -591,7 +589,7 @@ def _add_samples_to_dataframe(
     detailed_pr_calc_df: pd.DataFrame,
     max_examples: int,
     flag_column: str,
-):  # -> pd.DataFrame:
+) -> pd.DataFrame:
     """Efficienctly gather samples for a given flag."""
 
     sample_df = pd.concat(

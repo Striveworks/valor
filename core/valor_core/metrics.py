@@ -473,10 +473,13 @@ class PrecisionRecallCurve(_BasePrecisionRecallCurve):
 
     __type__ = "PrecisionRecallCurve"
     value: Dict[
-        str,
+        str,  # the label value
         Dict[
-            float,
-            Dict[str, Optional[Union[int, float]]],
+            float,  # the score threshold
+            Dict[
+                str,  # the metric (e.g., "tp" for true positive)
+                Optional[Union[int, float]],
+            ],  # the count or metric value
         ],
     ]
 
