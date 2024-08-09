@@ -1328,12 +1328,30 @@ def evaluate_detection(
     """
     Evaluate an object detection task using some set of groundtruths and predictions.
 
+    The groundtruths and predictions can be inputted as a pandas DataFrame or as a list of GroundTruth/Prediction objects. A dataframe of groundtruths / predictions should contain the following columns:
+    - datum_uid (str): The unique identifier for the datum.
+    - datum_id (int): A hashed identifier that's unique to each datum.
+    - datum_metadata (dict): Metadata associated with the datum.
+    - annotation_id (int): A hashed identifier for each unique (datum_uid, annotation) combination.
+    - annotation_metadata (dict): Metadata associated with the annotation.
+    - bounding_box (tuple): The bounding box coordinates of the annotation, if available.
+    - raster (geometry.Raster): The raster representation of the annotation, if available.
+    - polygon (geometry.Polygon): The polygon coordinates of the annotation, if available.
+    - embedding (schemas.Embedding): The embedding vector associated with the annotation, if available.
+    - is_instance (bool): A boolean indicating whether the annotation is an instance segjmentation (True) or not (False).
+    - label_key (str): The key associated with the label.
+    - label_value (str): The value associated with the label.
+    - score (float): The confidence score of the prediction. Should be bound between 0 and 1. Should only be included for prediction dataframes.
+    - label_id (int): A hashed identifier for each unique label.
+    - id (str): A unique identifier for the combination of datum, annotation, and label, created by concatenating the indices of these components.
+
+
     Parameters
     ----------
     groundtruths : Union[pd.DataFrame, List[schemas.GroundTruth]]
-        Ground truth annotations.
+        A list of GroundTruth objects or a pandas DataFrame describing your ground truths.
     predictions : Union[pd.DataFrame, List[schemas.Prediction]]
-        Predicted annotations.
+        A list of Prediction objects or a pandas DataFrame describing your predictions.
     label_map : Optional[Dict[schemas.Label, schemas.Label]], default=None
         Mapping of ground truth labels to prediction labels.
     metrics_to_return : Optional[List[enums.MetricType]], default=None
