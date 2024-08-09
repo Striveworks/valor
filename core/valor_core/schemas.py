@@ -174,8 +174,8 @@ def _validate_type_box(v: Any) -> None:
     for x, y in v[0]:
         unique_x_values.add(x)
         unique_y_values.add(y)
-
-    if (len(unique_x_values) != 2) or (len(unique_y_values) != 2):
+    
+    if (len(unique_x_values) > 2) or (len(unique_y_values) > 2):
         raise NotImplementedError(
             "Expected an axis-aligned Box, but found too many unique values. Rotated and skewed bounding boxes are not yet supported."
         )

@@ -1,9 +1,17 @@
 import json
 import os
+import re
+import requests
+import io
+import numpy as np
+import PIL.Image
+from base64 import b64decode
+from pathlib import Path
 from datetime import datetime
 from time import time
+from tqdm import tqdm
+from dataclasses import dataclass
 
-import requests
 from valor_core import (
     Annotation,
     Box,
@@ -17,26 +25,45 @@ from valor_core import (
     enums,
     evaluate_detection,
 )
+from valor_core.schemas import RasterData
 
 
-def download_data_if_not_exists(file_path: str, file_url: str):
-    """Download the data from a public bucket if it doesn't exist in the repo."""
-    if os.path.exists(file_path):
-        return
-
-    response = json.loads(requests.get(file_url).text)
-    with open(file_path, "w+") as file:
-        json.dump(response, file, indent=4)
+def time_it(fn, *args, **kwargs):
+    start = time()
+    results = fn(*args, **kwargs)
+    return (time() - start, results)
 
 
-def _convert_wkt_to_coordinates(wkt: str) -> list[list[tuple]]:
-    """Convert a WKT string into a nested list of coordinates."""
-    return [
-        [tuple(float(y) for y in x) for x in json.loads(wkt)["coordinates"][0]]
-    ]
+def download_data_if_not_exists(
+    file_name: str,
+    file_path: Path,
+    url: str,
+):
+    """Download the data from a public bucket if it doesn't exist locally."""
+
+    if not os.path.exists(file_path):
+        response = requests.get(url, stream=True)
+        if response.status_code == 200:
+            total_size = int(response.headers.get("content-length", 0))
+            with open(file_path, "wb") as f:
+                with tqdm(
+                    total=total_size,
+                    unit="B",
+                    unit_scale=True,
+                    unit_divisor=1024,
+                    desc=file_name,
+                ) as pbar:
+                    for chunk in response.iter_content(chunk_size=1024):
+                        if chunk:
+                            f.write(chunk)
+                            pbar.update(1024)
+        else:
+            raise RuntimeError(response)
+    else:
+        print(f"{file_name} already exists locally.")
 
 
-def write_results_to_file(write_path: str, result_dict: dict):
+def write_results_to_file(write_path: Path, result_dict: dict):
     """Write results to results.json"""
     current_datetime = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
 
@@ -53,122 +80,109 @@ def write_results_to_file(write_path: str, result_dict: dict):
         json.dump(data, file, indent=4)
 
 
-def create_groundtruths_and_predictions(raw: list, pair_limit: int):
-    """Ingest the data into Valor."""
+def ingest_groundtruths(
+    path: Path,
+    limit: int,
+) -> list[GroundTruth]:
     groundtruths = []
+    with open(path, "r") as f:
+        for line in f:
+            gt_dict = json.loads(line)
+            gt_dict["datum"].pop("text")
+            gt_dict["datum"] = Datum(**gt_dict["datum"])
+            
+            annotations = []
+            for ann in gt_dict["annotations"]:
+                ann.pop("text")
+                ann.pop("context_list")
+
+                labels = []
+                for label in ann["labels"]:
+                    labels.append(Label(**label))
+                ann["labels"] = labels
+
+                ann["bounding_box"] = Box(ann["bounding_box"]) if ann["bounding_box"] else None
+                ann["polygon"] = Polygon(ann["polygon"]) if ann["polygon"] else None
+
+                if ann["raster"]:
+                    if ann["raster"]["geometry"] is not None:
+                        ann["raster"] = Raster(RasterData(mask=None, geometry=ann["raster"]["geometry"]))
+                    elif ann["raster"]["geometry"] is None:
+                        # decode raster
+                        mask_bytes = b64decode(ann["raster"]["mask"])
+                        with io.BytesIO(mask_bytes) as f:
+                            img = PIL.Image.open(f)
+                            ann["raster"] = Raster(RasterData(mask=np.array(img), geometry=None))                            
+                else:
+                    ann["raster"] = None
+
+                annotations.append(Annotation(**ann))
+            gt_dict["annotations"] = annotations
+
+            gt = GroundTruth(**gt_dict)
+            groundtruths.append(gt)
+            if len(groundtruths) >= limit:
+                return groundtruths
+    return groundtruths
+
+
+def ingest_predictions(
+    datum_uids: list[str],
+    path: Path,
+    limit: int,
+) -> list[Prediction]:
+    
+    pattern = re.compile(r'"uid":\s*"(\d+)"')
+    
     predictions = []
+    with open(path, "r") as f:
+        count = 0
+        for line in f:
+            match = pattern.search(line)
+            if not match:
+                continue
+            elif match.group(1) not in datum_uids:
+                continue
+            pd_dict = json.loads(line)
 
-    for datum_id, data in raw[:pair_limit]:
-        datum = Datum(
-            uid=str(datum_id),
-            metadata=data["datum_metadata"],
-        )
-        groundtruths.append(
-            GroundTruth(
-                datum=datum,
-                annotations=list(
-                    [
-                        Annotation(
-                            is_instance=ann["is_instance"],
-                            labels=list(
-                                [
-                                    Label(
-                                        key=label["key"],
-                                        value=label["value"],
-                                    )
-                                    for label in ann["labels"]
-                                ]
-                            ),
-                            bounding_box=(
-                                Box(_convert_wkt_to_coordinates(ann["box"]))
-                                if ann["box"]
-                                else None
-                            ),
-                            raster=(
-                                Raster.from_geometry(
-                                    geometry=MultiPolygon(
-                                        [
-                                            _convert_wkt_to_coordinates(
-                                                ann["raster"]
-                                            )
-                                        ]
-                                    ),
-                                )
-                                if ann["raster"]
-                                else None
-                            ),
-                            polygon=(
-                                (
-                                    Polygon(
-                                        _convert_wkt_to_coordinates(
-                                            ann["polygon"]
-                                        )
-                                    )
-                                )
-                                if ann["polygon"]
-                                else None
-                            ),
-                        )
-                        for ann in data["groundtruth_annotations"]
-                    ]
-                ),
-            )
-        )
+            pd_dict["datum"].pop("text")
+            pd_dict["datum"] = Datum(**pd_dict["datum"])
 
-        predictions.append(
-            Prediction(
-                datum=datum,
-                annotations=list(
-                    [
-                        Annotation(
-                            is_instance=ann["is_instance"],
-                            labels=list(
-                                [
-                                    Label(
-                                        key=label["key"],
-                                        value=label["value"],
-                                        score=label["score"],
-                                    )
-                                    for label in ann["labels"]
-                                ]
-                            ),
-                            bounding_box=(
-                                Box(_convert_wkt_to_coordinates(ann["box"]))
-                                if ann["box"]
-                                else None
-                            ),
-                            raster=(
-                                Raster.from_geometry(
-                                    geometry=MultiPolygon(
-                                        [
-                                            _convert_wkt_to_coordinates(
-                                                ann["raster"]
-                                            )
-                                        ]
-                                    ),
-                                )
-                                if ann["raster"]
-                                else None
-                            ),
-                            polygon=(
-                                (
-                                    Polygon(
-                                        _convert_wkt_to_coordinates(
-                                            ann["polygon"]
-                                        )
-                                    )
-                                )
-                                if ann["polygon"]
-                                else None
-                            ),
-                        )
-                        for ann in data["prediction_annotations"]
-                    ]
-                ),
-            )
-        )
+            annotations = []
+            for ann in pd_dict["annotations"]:
+                ann.pop("text")
+                ann.pop("context_list")
 
-    return groundtruths, predictions
+                labels = []
+                for label in ann["labels"]:
+                    labels.append(Label(**label))
+                ann["labels"] = labels
+
+                ann["bounding_box"] = Box(ann["bounding_box"]) if ann["bounding_box"] else None
+                ann["polygon"] = Polygon(ann["polygon"]) if ann["polygon"] else None
+
+                if ann["raster"]:
+                    if ann["raster"]["geometry"] is not None:
+                        ann["raster"] = Raster(RasterData(mask=None, geometry=ann["raster"]["geometry"]))
+                    elif ann["raster"]["geometry"] is None:
+                        # decode raster
+                        mask_bytes = b64decode(ann["raster"]["mask"])
+                        with io.BytesIO(mask_bytes) as f:
+                            img = PIL.Image.open(f)
+                            ann["raster"] = Raster(RasterData(mask=np.array(img), geometry=None))                            
+                else:
+                    ann["raster"] = None
+
+            pd_dict["annotations"] = [
+                Annotation(**ann)
+                for ann in pd_dict["annotations"]
+            ]
+            pd = Prediction(**pd_dict)
+            predictions.append(pd)
+            count += 1
+            if count >= limit:
+                return predictions
+    return predictions
 
 
 def run_base_evaluation(groundtruths, predictions):
@@ -214,65 +228,159 @@ def run_detailed_pr_curve_evaluation(groundtruths, predictions):
 
 
 def run_benchmarking_analysis(
-    limits_to_test: list[int] = [5000, 5000, 5000],
+    limits_to_test: list[int],
     results_file: str = "results.json",
     data_file: str = "data.json",
+    compute_box: bool = True,
+    compute_raster: bool = True,
 ):
     """Time various function calls and export the results."""
-    current_directory = os.path.dirname(os.path.realpath(__file__))
-    write_path = f"{current_directory}/{results_file}"
-    data_path = f"{current_directory}/{data_file}"
+    current_directory = Path(os.path.dirname(os.path.realpath(__file__)))
+    write_path = current_directory / Path(results_file)
 
-    download_data_if_not_exists(
-        file_path=data_path,
-        file_url="https://pub-fae71003f78140bdaedf32a7c8d331d2.r2.dev/detection_data.json",
-    )
+    gt_box_filename = "gt_objdet_coco_bbox.jsonl"
+    gt_raster_filename = "gt_objdet_coco_raster.jsonl"
+    pd_box_filename = "pd_objdet_yolo_bbox.jsonl"
+    pd_raster_filename = "pd_objdet_yolo_raster.jsonl"
 
-    with open(data_path) as file:
-        file.seek(0)
-        raw_data = json.load(file)
+    # cache data locally
+    for filename in [
+        gt_box_filename,
+        gt_raster_filename,
+        pd_box_filename,
+        pd_raster_filename,
+    ]:
+        file_path = current_directory / Path(filename)
+        url = f"https://pub-fae71003f78140bdaedf32a7c8d331d2.r2.dev/{filename}"
+        download_data_if_not_exists(
+            file_name=filename, file_path=file_path, url=url
+        )
+
+    @dataclass
+    class Dummy:
+        meta: dict
+    dummy_value = Dummy(meta={"labels": -1, "annotations": -1, "duration": -1})
 
     for limit in limits_to_test:
 
-        # convert dict into list of tuples so we can slice it
-        raw_data_tuple = [(key, value) for key, value in raw_data.items()]
+        gt_boxes = []
+        gt_rasters = []
+        pd_boxes = []
+        pd_rasters = []
+        gt_box_ingest_time = -1
+        pd_box_ingest_time = -1
+        base_eval_box = dummy_value
+        pr_eval_box = dummy_value
+        detailed_pr_eval_box = dummy_value
+        gt_raster_ingest_time = -1
+        pd_raster_ingest_time = -1
+        base_eval_raster = dummy_value
+        pr_eval_raster = dummy_value
+        detailed_pr_eval_raster = dummy_value
 
-        start_time = time()
+        if compute_box:
+        
+            # ingestion
+            gt_box_ingest_time, gt_boxes = time_it(
+                ingest_groundtruths,
+                path=current_directory / Path(gt_box_filename),
+                limit=limit,
+            )
+            box_datum_uids = [gt.datum.uid for gt in gt_boxes]
+            pd_box_ingest_time, pd_boxes = time_it(
+                ingest_predictions,
+                datum_uids=box_datum_uids,
+                path=current_directory / Path(pd_box_filename),
+                limit=limit,
+            )
 
-        groundtruths, predictions = create_groundtruths_and_predictions(
-            raw=raw_data_tuple, pair_limit=limit
-        )
-        creation_time = time() - start_time
+            # evaluation
+            base_eval_box = run_base_evaluation(
+                groundtruths=gt_boxes, predictions=pd_boxes
+            )
+            pr_eval_box = run_pr_curve_evaluation(
+                groundtruths=gt_boxes, predictions=pd_boxes
+            )
+            detailed_pr_eval_box = run_detailed_pr_curve_evaluation(
+                groundtruths=gt_boxes, predictions=pd_boxes
+            )
 
-        # run evaluations
-        base_eval = run_base_evaluation(
-            groundtruths=groundtruths, predictions=predictions
-        )
-        pr_eval = run_pr_curve_evaluation(
-            groundtruths=groundtruths, predictions=predictions
-        )
-        detailed_pr_eval = run_detailed_pr_curve_evaluation(
-            groundtruths=groundtruths, predictions=predictions
-        )
+            # handle type errors
+            if not (base_eval_box.meta and pr_eval_box.meta and detailed_pr_eval_box.meta):
+                raise ValueError("Metadata isn't defined for all objects.")
 
-        # handle type errors
-        if not (base_eval.meta and pr_eval.meta and detailed_pr_eval.meta):
-            raise ValueError("Metadata isn't defined for all objects.")
+        if compute_raster:
+
+            # ingestion
+            gt_raster_ingest_time, gt_rasters = time_it(
+                ingest_groundtruths,
+                path=current_directory / Path(gt_raster_filename),
+                limit=limit,
+            )
+            raster_datum_uids = [gt.datum.uid for gt in gt_rasters]
+            pd_raster_ingest_time, pd_rasters = time_it(
+                ingest_predictions,
+                datum_uids=raster_datum_uids,
+                path=current_directory / Path(pd_raster_filename),
+                limit=limit,
+            )
+
+            # evaluation
+            base_eval_raster = run_base_evaluation(
+                groundtruths=gt_rasters, predictions=pd_rasters
+            )
+            pr_eval_raster = run_pr_curve_evaluation(
+                groundtruths=gt_rasters, predictions=pd_rasters
+            )
+            detailed_pr_eval_raster = run_detailed_pr_curve_evaluation(
+                groundtruths=gt_rasters, predictions=pd_rasters
+            )
+
+            if not (base_eval_raster.meta and pr_eval_raster.meta and detailed_pr_eval_raster.meta):
+                raise ValueError("Metadata isn't defined for all objects.")
 
         results = {
-            "number_of_datums": limit,
-            "number_of_unique_labels": base_eval.meta["labels"],
-            "number_of_annotations": base_eval.meta["annotations"],
-            "creation_runtime": f"{(creation_time):.1f} seconds",
-            "eval_runtime": f"{(base_eval.meta['duration']):.1f} seconds",
-            "pr_eval_runtime": f"{(pr_eval.meta['duration']):.1f} seconds",
-            "detailed_pr_eval_runtime": f"{(detailed_pr_eval.meta['duration']):.1f} seconds",
+            "box": {
+                "info": {
+                    "number_of_datums": len(gt_boxes),
+                    "number_of_unique_labels": base_eval_box.meta["labels"],
+                    "number_of_annotations": base_eval_box.meta["annotations"],
+                },
+                "ingestion": {
+                    "groundtruth": f"{(gt_box_ingest_time):.1f} seconds",
+                    "prediction": f"{(pd_box_ingest_time):.1f} seconds",
+                },
+                "evaluation": {
+                    "base": f"{(base_eval_box.meta['duration']):.1f} seconds",
+                    "base+pr": f"{(pr_eval_box.meta['duration']):.1f} seconds",
+                    "base+pr+detailed": f"{(detailed_pr_eval_box.meta['duration']):.1f} seconds",
+                },
+            },
+            "raster": {
+                "info": {
+                    "number_of_datums": len(gt_rasters),
+                    "number_of_unique_labels": base_eval_raster.meta["labels"],
+                    "number_of_annotations": base_eval_raster.meta["annotations"],
+                },
+                "ingestion": {
+                    "groundtruth": f"{(gt_raster_ingest_time):.1f} seconds",
+                    "prediction": f"{(pd_raster_ingest_time):.1f} seconds",
+                },
+                "evaluation": {
+                    "base": f"{(base_eval_raster.meta['duration']):.1f} seconds",
+                    "base+pr": f"{(pr_eval_raster.meta['duration']):.1f} seconds",
+                    "base+pr+detailed": f"{(detailed_pr_eval_raster.meta['duration']):.1f} seconds",
+                },
+            },
         }
         write_results_to_file(write_path=write_path, result_dict=results)
 
-        if base_eval.meta["duration"] > 30:
+        if base_eval_box.meta["duration"] > 30:
             raise TimeoutError("Base evaluation took longer than 30 seconds.")
 
-
 if __name__ == "__main__":
-    run_benchmarking_analysis()
+    run_benchmarking_analysis(
+        limits_to_test=[1500,1500,1500],
+        compute_box=False,
+        compute_raster=True,
+    )
