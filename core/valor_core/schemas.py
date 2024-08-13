@@ -6,7 +6,8 @@ from dataclasses import dataclass
 from typing import Any, Dict, List, Optional, Union
 
 import numpy as np
-import PIL.Image
+import PIL.ImageDraw as ImageDraw
+from PIL import Image
 from valor_core import enums
 
 
@@ -799,6 +800,16 @@ class Polygon:
         """
         return np.array(self.value[0])
 
+    def to_coordinates(self) -> list[list[dict[str, int | float]]]:
+        """
+        Convert Polygon to a nested list of coordinates.
+
+        Returns
+        -------
+        np.ndarray
+        """
+        return [[{"x": points[0], "y": points[1]} for points in self.value[0]]]
+
 
 @dataclass
 class Box:
@@ -932,6 +943,16 @@ class Box:
         """
         return np.array(self.value[0])
 
+    def to_coordinates(self) -> list[list[dict[str, int | float]]]:
+        """
+        Convert Polygon to a nested list of coordinates.
+
+        Returns
+        -------
+        np.ndarray
+        """
+        return [[{"x": points[0], "y": points[1]} for points in self.value[0]]]
+
     @property
     def xmin(self):
         return min([point[0] for point in self.value[0]])
@@ -1052,7 +1073,7 @@ class Raster:
 
         if self.mask is not None:
             f = io.BytesIO()
-            PIL.Image.fromarray(self.mask).save(f, format="PNG")
+            Image.fromarray(self.mask).save(f, format="PNG")
             f.seek(0)
             mask_bytes = f.read()
             f.close()
@@ -1068,12 +1089,12 @@ class Raster:
         """Decode object from JSON compatible dictionary."""
         mask_bytes = b64decode(mask)
         with io.BytesIO(mask_bytes) as f:
-            img = PIL.Image.open(f)
+            img = Image.open(f)
             value = np.array(img)
 
         return cls(mask=value)
 
-    def to_array(self) -> np.ndarray | None:
+    def to_array(self) -> np.ndarray:
         """
         Convert Raster to a numpy array.
 
@@ -1083,6 +1104,95 @@ class Raster:
             A 2D binary array representing the mask if it exists.
         """
         return self.mask
+
+    @classmethod
+    def from_coordinates(
+        cls,
+        coordinates: list[list[dict[str, int]]] | list[list[dict[str, float]]],
+        height: int,
+        width: int,
+    ):
+        """
+        Create a Raster object from coordinates.
+
+        Parameters
+        ----------
+        coordinates : list[list[dict[str, int]]]
+            Defines the bitmask as a nested list of coordinates.
+        height : int
+            The intended height of the binary mask.
+        width : int
+            The intended width of the binary mask.
+
+        Returns
+        -------
+        schemas.Raster
+        """
+        if not (isinstance(coordinates, list)):
+            raise TypeError(
+                "coordinates should either be an empty list, or it should be a list of lists containing dictionaries with 'x' and 'y' keys."
+            )
+
+        if len(coordinates) > 0 and not (
+            isinstance(coordinates[0], list)
+            and len(coordinates[0]) > 0
+            and isinstance(coordinates[0][0], dict)
+            and all(
+                all(set(pt.keys()) == {"x", "y"} for pt in contour)
+                for contour in coordinates
+            )
+        ):
+            raise TypeError(
+                "Coordinates should either be an empty list, or it should be a list of lists containing dictionaries with 'x' and 'y' keys."
+            )
+
+        if not (
+            all(
+                all(pt["x"] >= 0 and pt["y"] >= 0 for pt in contour)
+                for contour in coordinates
+            )
+        ):
+            raise ValueError(
+                "Coordinates cannot be negative when converting to a raster."
+            )
+
+        contours = [
+            [(min(pt["x"], width), min(pt["y"], height)) for pt in contour]
+            for contour in coordinates
+        ]
+
+        img = Image.new("1", (width, height), 0)
+
+        for contour in contours:
+            if len(contour) >= 2:
+                ImageDraw.Draw(img).polygon(contour, outline=1, fill=1)
+
+        return cls(np.array(img))
+
+    @classmethod
+    def from_geometry(cls, geometry: Box | Polygon, height: int, width: int):
+        """
+        Create a Raster object from a geometry.
+
+        Parameters
+        ----------
+        coordinates : list[list[dict[str, int]]]
+            Defines the bitmask as a nested list of coordinates.
+        height : int
+            The intended height of the binary mask.
+        width : int
+            The intended width of the binary mask.
+
+        Returns
+        -------
+        schemas.Raster
+        """
+        if not (isinstance(geometry, Box) or isinstance(geometry, Polygon)):
+            raise TypeError("Geometry should be a Box or Polygon.")
+
+        return cls.from_coordinates(
+            geometry.to_coordinates(), height=height, width=width
+        )
 
 
 @dataclass
