@@ -51,7 +51,7 @@ def raster() -> schemas.Raster:
     | F  T |
     """
     mask = "iVBORw0KGgoAAAANSUhEUgAAABQAAAAUAQAAAACl8iCgAAAAF0lEQVR4nGP4f4CBiYGBIGZgsP9AjDoAuysDE0GVDN8AAAAASUVORK5CYII="
-    return schemas.Raster.decode_value({"mask": mask, "geometry": None})
+    return schemas.Raster.decode_value(mask)
 
 
 def test_label():

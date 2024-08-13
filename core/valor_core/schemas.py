@@ -3,7 +3,7 @@ import json
 import math
 from base64 import b64decode, b64encode
 from dataclasses import dataclass
-from typing import Any, Dict, List, Optional, TypedDict, Union
+from typing import Any, Dict, List, Optional, Union
 
 import numpy as np
 import PIL.Image
@@ -181,33 +181,6 @@ def _validate_type_box(v: Any) -> None:
         )
 
 
-def _validate_type_multipolygon(v: Any) -> None:
-    """
-    Validates geometric multipolygon values.
-
-    Parameters
-    ----------
-    v : Any
-        The value to validate.v
-
-    Raises
-    ------
-    TypeError
-        If the value is not of type 'list'.
-    ValueError
-        If the value does not conform to the multipolygon requirements.
-    """
-    if not isinstance(v, list):
-        _generate_type_error(
-            v,
-            "list[list[list[tuple[float, float]]]] or list[list[list[list[float]]]]",
-        )
-    elif not v:
-        raise ValueError("List cannot be empty.")
-    for polygon in v:
-        _validate_type_polygon(polygon)
-
-
 def _validate_geojson(geojson: dict) -> None:
     """
     Validates that a dictionary conforms to the GeoJSON geometry specification.
@@ -231,7 +204,6 @@ def _validate_geojson(geojson: dict) -> None:
         "linestring": _validate_type_linestring,
         "multilinestring": _validate_type_multilinestring,
         "polygon": _validate_type_polygon,
-        "multipolygon": _validate_type_multipolygon,
     }
     # validate geojson
     if not isinstance(geojson, dict):
@@ -978,123 +950,6 @@ class Box:
 
 
 @dataclass
-class MultiPolygon:
-    """
-    Describes a MultiPolygon in (x,y) coordinates.
-
-    Attributes
-    ----------
-    value : list[list[list[list[int | float]]]]
-        A list of coordinates describing the MultiPolygon.
-
-    Raises
-    ------
-    ValueError
-        If the value doesn't conform to the type.
-    """
-
-    value: list[list[list[tuple[int | float, int | float]]]]
-
-    def __post_init__(self):
-        """Validate instantiated class."""
-
-        _validate_type_multipolygon(self.value)
-
-    @classmethod
-    def from_dict(cls, geojson: dict) -> "MultiPolygon":
-        """
-        Create a MultiPolygon from a GeoJSON in dictionary format.
-
-        Parameters
-        ----------
-        geojson: dict[str, str | list[list[list[list[int | float]]]]]
-            A MultiPolygon value in GeoJSON format.
-        """
-        geometry = GeoJSON(**geojson).geometry
-        if not isinstance(geometry, MultiPolygon):
-            raise TypeError(f"GeoJSON is for a different type '{geojson}'.")
-        return geometry
-
-    @classmethod
-    def from_json(cls, geojson: str) -> "MultiPolygon":
-        """
-        Create a dictionary that represents the MultiPolygon in GeoJSON format.
-
-        Returns
-        ----------
-        dict[str, str | list[list[list[list[int | float]]]]]
-            A MultiPolygon value in GeoJSON format.
-        """
-        return cls.from_dict(json.loads(geojson))
-
-    def to_dict(self) -> dict[str, str | list[list[list[list[int | float]]]]]:
-        """
-        Create a MultiPolygon from a GeoJSON in json format.
-
-        Parameters
-        ----------
-        geojson: str
-            A MultiPolygon value in GeoJSON format.
-        """
-        return {
-            "type": "MultiPolygon",
-            "coordinates": [
-                [
-                    [list(point) for point in subpolygon]
-                    for subpolygon in polygon
-                ]
-                for polygon in self.value
-            ],
-        }
-
-    def to_json(self) -> str:
-        """
-        Create a json string that represents the MultiPolygon in GeoJSON format.
-
-        Returns
-        ----------
-        str
-            A MultiPolygon value in GeoJSON format.
-        """
-        return json.dumps(self.to_dict())
-
-    def to_wkt(self) -> str:
-        """
-        Casts the geometric object into a string using Well-Known-Text (WKT) Format.
-
-        Returns
-        -------
-        str
-            The WKT formatted string.
-        """
-        polygons = [
-            "("
-            + "),(".join(
-                [
-                    ",".join(
-                        [f"{point[0]} {point[1]}" for point in subpolygon]
-                    )
-                    for subpolygon in polygon
-                ]
-            )
-            + ")"
-            for polygon in self.value
-        ]
-        coords = "),(".join(polygons)
-        return f"MULTIPOLYGON (({coords}))"
-
-    def to_array(self) -> np.ndarray:
-        """
-        Convert MultiPolygon to an array.
-
-        Returns
-        -------
-        np.ndarray
-        """
-        return np.array(self.value[0][0])
-
-
-@dataclass
 class GeoJSON:
     type: str
     coordinates: (
@@ -1112,21 +967,13 @@ class GeoJSON:
     @property
     def geometry(
         self,
-    ) -> (
-        Point
-        | MultiPoint
-        | LineString
-        | MultiLineString
-        | Polygon
-        | MultiPolygon
-    ):
+    ) -> Point | MultiPoint | LineString | MultiLineString | Polygon:
         map_str_to_type = {
             "Point": Point,
             "MultiPoint": MultiPoint,
             "LineString": LineString,
             "MultiLineString": MultiLineString,
             "Polygon": Polygon,
-            "MultiPolygon": MultiPolygon,
         }
         return map_str_to_type[self.type](value=self.coordinates)
 
@@ -1140,11 +987,6 @@ class GeoJSON:
             The geometry in WKT format.
         """
         return self.geometry.to_wkt()
-
-
-class RasterData(TypedDict):
-    mask: Optional[np.ndarray]
-    geometry: Optional[Union[Box, Polygon, MultiPolygon]]
 
 
 @dataclass
@@ -1182,56 +1024,35 @@ class Raster:
     >>> mask = (array > 0.5)
 
     Create Raster.
-    >>> Raster.from_numpy(mask)
+    >>> Raster(mask)
     """
 
-    value: RasterData
+    mask: np.ndarray
 
     def __post_init__(self):
         """Validate instantiated class."""
 
-        if not isinstance(self.value, dict):
+        if not isinstance(self.mask, np.ndarray):
             raise TypeError(
-                "Raster should contain a dictionary describing a mask and optionally a geometry."
+                "Raster should contain a numpy array describing the Raster mask."
             )
-        elif set(self.value.keys()) != {"mask", "geometry"}:
-            raise ValueError(
-                "Raster should be described by a dictionary with keys 'mask' and 'geometry'"
-            )
-        elif not (
-            (
-                isinstance(self.value["mask"], np.ndarray)
-                and self.value["geometry"] is None
-            )
-            or (
-                self.value["mask"] is None
-                and isinstance(self.value["geometry"], (Polygon, MultiPolygon))
-            )
-        ):
-            raise TypeError(
-                "Only mask or geometry should be populated, but not both. if populated, we expect mask to have type np.ndarray, and expected geometry to have type Polygon or MultiPolygon."
-            )
-
-        if (
-            self.value["mask"] is not None
-            and len(self.value["mask"].shape) != 2
-        ):
+        if len(self.mask.shape) != 2:
             raise ValueError("raster only supports 2d arrays")
 
-        if self.value["mask"] is not None and self.value["mask"].dtype != bool:
+        if self.mask is not None and self.mask.dtype != bool:
             raise ValueError(
-                f"Expecting a binary mask (i.e. of dtype bool) but got dtype {self.value['mask'].dtype}"
+                f"Expecting a binary mask (i.e. of dtype bool) but got dtype {self.mask.dtype}"
             )
 
     def encode_value(self) -> Any:
         """Encode object to JSON compatible dictionary."""
-        value = self.value
+        value = self.mask
         if value is None:
             return None
 
-        if self.value["mask"] is not None:
+        if self.mask is not None:
             f = io.BytesIO()
-            PIL.Image.fromarray(self.value["mask"]).save(f, format="PNG")
+            PIL.Image.fromarray(self.mask).save(f, format="PNG")
             f.seek(0)
             mask_bytes = f.read()
             f.close()
@@ -1240,71 +1061,17 @@ class Raster:
             decoded_mask_bytes = None
         return {
             "mask": decoded_mask_bytes,
-            "geometry": self.value["geometry"],
         }
 
     @classmethod
-    def decode_value(cls, value: Any):
+    def decode_value(cls, mask: Any):
         """Decode object from JSON compatible dictionary."""
-        if not (
-            isinstance(value, dict)
-            and set(value.keys()) == {"mask", "geometry"}
-        ):
-            raise ValueError(
-                f"Improperly formatted raster encoding. Received '{value}'"
-            )
-        mask_bytes = b64decode(value["mask"])
+        mask_bytes = b64decode(mask)
         with io.BytesIO(mask_bytes) as f:
             img = PIL.Image.open(f)
-            value = {
-                "mask": np.array(img),
-                "geometry": value["geometry"],
-            }
-        return cls(value=value)
+            value = np.array(img)
 
-    @classmethod
-    def from_numpy(cls, mask: np.ndarray):
-        """
-        Create a Raster object from a NumPy array.
-
-        Parameters
-        ----------
-        mask : np.ndarray
-            The 2D binary array representing the mask.
-
-        Returns
-        -------
-        Raster
-
-        Raises
-        ------
-        ValueError
-            If the input array is not 2D or not of dtype bool.
-        """
-        return cls(value={"mask": mask, "geometry": None})
-
-    @classmethod
-    def from_geometry(
-        cls,
-        geometry: Union[Box, Polygon, MultiPolygon],
-    ):
-        """
-        Create a Raster object from a geometric mask.
-
-        Parameters
-        ----------
-        geometry : Union[Box, Polygon, MultiPolygon]
-            Defines the bitmask as a geometry. Overrides any existing mask.
-        height : int
-            The intended height of the binary mask.
-        width : int
-            The intended width of the binary mask.
-
-        Returns
-        -------
-        Raster
-        """
-        return cls(value={"mask": None, "geometry": geometry})
+        return cls(mask=value)
 
     def to_array(self) -> np.ndarray | None:
         """
@@ -1315,26 +1082,7 @@ class Raster:
         Optional[np.ndarray]
             A 2D binary array representing the mask if it exists.
         """
-        if self.value["geometry"] is not None:
-            return self.value["geometry"].to_array()
-        else:
-            return (
-                self.value["mask"]
-                if self.value["mask"] is not None
-                else np.array([])
-            )
-
-    @property
-    def geometry(self) -> Union[Box, Polygon, MultiPolygon, None]:
-        """
-        The geometric mask if it exists.
-
-        Returns
-        -------
-        Box | Polygon | MultiPolygon | None
-            The geometry if it exists.
-        """
-        return self.value["geometry"]
+        return self.mask
 
 
 @dataclass

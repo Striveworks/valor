@@ -3570,7 +3570,7 @@ def test_evaluate_mixed_annotations(
         (xmin, ymin),
     ]
     poly = schemas.Polygon([pts])
-    raster = schemas.Raster.from_numpy(mask)
+    raster = schemas.Raster(mask)
     box = schemas.Box.from_extrema(xmin=xmin, xmax=xmax, ymin=ymin, ymax=ymax)
 
     gt_annotations = [
