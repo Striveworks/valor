@@ -291,9 +291,14 @@ def parse_bitmask_into_multipolygon_raster_detection(
     prediction = parse_bitmask_detection(
         result=result, datum=datum, label_key=label_key, resample=resample
     )
+    annotations = []
     for annotation in prediction.annotations:
         array = annotation.raster.array
-        annotation.raster = bitmask_to_multipolygon_raster(array)
+        multipolygon = bitmask_to_multipolygon_raster(array)
+        if multipolygon is not None:
+            annotation.raster = multipolygon
+            annotations.append(annotation)
+    prediction.annotations = annotations
     return prediction
 
 
@@ -306,10 +311,15 @@ def parse_bitmask_into_bounding_polygon_detection(
     prediction = parse_bitmask_detection(
         result=result, datum=datum, label_key=label_key, resample=resample
     )
+    annotations = []
     for annotation in prediction.annotations:
         array = annotation.raster.array
-        annotation.polygon = bitmask_to_polygon(array)
-        annotation.raster = None
+        polygon = bitmask_to_polygon(array)
+        if polygon is not None:
+            annotation.polygon = polygon
+            annotation.raster = None
+            annotations.append(annotation)
+    prediction.annotations = annotations
     return prediction
 
 

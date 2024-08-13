@@ -231,6 +231,7 @@ def create_bounding_boxes(
             "is_instance"
         ]  # type: ignore - dict typing
         is True
+        and bitmask_to_bbox(mask_ids == segmentation["id"]) is not None
     ]
 
 
@@ -272,6 +273,7 @@ def create_bounding_polygons(
             "is_instance"
         ]  # type: ignore - dict typing
         is True
+        and bitmask_to_polygon(mask_ids == segmentation["id"]) is not None
     ]
 
 

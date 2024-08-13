@@ -89,10 +89,10 @@ def ingest_groundtruths(
             elif len(chunks) < chunk_size:
                 continue
 
-            dataset.add_groundtruths(chunks)
+            dataset.add_groundtruths(chunks, timeout=30)
             chunks = []
         if chunks:
-            dataset.add_groundtruths(chunks)
+            dataset.add_groundtruths(chunks, timeout=30)
 
 
 def ingest_predictions(
@@ -122,10 +122,10 @@ def ingest_predictions(
             elif len(chunks) < chunk_size:
                 continue
 
-            model.add_predictions(dataset, chunks)
+            model.add_predictions(dataset, chunks, timeout=30)
             chunks = []
         if chunks:
-            model.add_predictions(dataset, chunks)
+            model.add_predictions(dataset, chunks, timeout=30)
 
 
 def run_base_evaluation(dset: Dataset, model: Model):
@@ -291,6 +291,8 @@ def run_benchmarking_analysis(
     for limit in limits_to_test:
         for gt_type, gt_filename in groundtruths.items():
             for pd_type, pd_filename in predictions.items():
+
+                print(gt_type, pd_type)
 
                 try:
                     dataset = Dataset.create(name="coco")
