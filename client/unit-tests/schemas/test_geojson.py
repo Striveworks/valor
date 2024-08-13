@@ -105,7 +105,7 @@ def test_multipolygon():
         MultiPolygon([coords])  # type: ignore - testing
     with pytest.raises(TypeError):
         MultiPolygon([[coords], 123])  # type: ignore - testing
-    with pytest.raises(TypeError):
+    with pytest.raises(ValueError):
         MultiPolygon([[[coords]]])  # type: ignore - testing
 
 
