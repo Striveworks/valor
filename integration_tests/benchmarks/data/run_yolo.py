@@ -5,15 +5,17 @@ import zipfile
 from io import BytesIO
 from pathlib import Path
 
-import numpy
+import numpy as np
 import PIL.Image
 import requests
 import ultralytics
+from shapely import geometry, ops
+from skimage import measure
 from tqdm import tqdm
 
 from valor import Annotation, Datum, Label, Prediction
 from valor.metatypes import ImageMetadata
-from valor.schemas import Box, Raster
+from valor.schemas import Box, MultiPolygon, Polygon, Raster
 
 
 def download_coco_panoptic(
@@ -105,7 +107,60 @@ def download_image(url: str) -> PIL.Image.Image:
     return PIL.Image.open(img_data)
 
 
-def parse_detection_into_bounding_box(
+def bitmask_to_multipolygon_raster(bitmask) -> Raster:
+    bitmask = np.array(bitmask, dtype=bool)
+    labeled_array, num_features = measure.label(
+        bitmask, background=0, return_num=True
+    )
+    polygons = []
+    for region_index in range(1, num_features + 1):
+        contours = measure.find_contours(labeled_array == region_index, 0.5)
+        for contour in contours:
+            if len(contour) >= 3:
+                polygon = geometry.Polygon(contour)
+                if polygon.is_valid:
+                    polygons.append(polygon)
+    mp = geometry.MultiPolygon(polygons).simplify(tolerance=0.6)
+    values = []
+    if isinstance(mp, geometry.MultiPolygon):
+        for polygon in mp.geoms:
+            boundary = list(polygon.exterior.coords)
+            holes = [list(interior.coords) for interior in polygon.interiors]
+            values.append([boundary, *holes])
+    else:
+        boundary = list(mp.exterior.coords)
+        holes = [list(interior.coords) for interior in mp.interiors]
+        values = [[boundary, *holes]]
+    height, width = bitmask.shape
+    return Raster.from_geometry(
+        MultiPolygon(values), height=height, width=width
+    )
+
+
+def bitmask_to_polygon(bitmask) -> Polygon:
+    bitmask = np.array(bitmask, dtype=bool)
+    labeled_array, num_features = measure.label(
+        bitmask, background=0, return_num=True
+    )
+    polygons = []
+    for region_index in range(1, num_features + 1):
+        contours = measure.find_contours(labeled_array == region_index, 0.5)
+        for contour in contours:
+            if len(contour) >= 3:
+                polygon = geometry.Polygon(contour)
+                if polygon.is_valid:
+                    polygons.append(polygon)
+    polygon = ops.unary_union(
+        geometry.MultiPolygon(polygons).simplify(tolerance=0.6)
+    )
+    if not isinstance(polygon, geometry.Polygon):
+        return None
+    boundary = list(polygon.exterior.coords)
+    holes = [list(interior.coords) for interior in polygon.interiors]
+    return Polygon([boundary, *holes])
+
+
+def parse_bounding_box_detection(
     result, datum: Datum, label_key: str = "class"
 ) -> Prediction:
     """Parses Ultralytic's result for an object detection task."""
@@ -114,7 +169,7 @@ def parse_detection_into_bounding_box(
     result = result[0]
     probabilities = [conf.item() for conf in result.boxes.conf]
     labels = [result.names[int(pred.item())] for pred in result.boxes.cls]
-    bboxes = [numpy.asarray(box.cpu()) for box in result.boxes.xyxy]
+    bboxes = [np.asarray(box.cpu()) for box in result.boxes.xyxy]
 
     # validate dimensions
     image_metadata = ImageMetadata(datum)
@@ -160,15 +215,15 @@ def _convert_yolo_segmentation(
     resample: PIL.Image.Resampling = PIL.Image.Resampling.BILINEAR,
 ):
     """Resizes the raw binary mask provided by the YOLO inference to the original image size."""
-    mask = numpy.asarray(raw.cpu())
+    mask = np.asarray(raw.cpu())
     mask[mask == 1.0] = 255
-    img = PIL.Image.fromarray(numpy.uint8(mask))
+    img = PIL.Image.fromarray(np.uint8(mask))
     img = img.resize((width, height), resample=resample)
-    mask = numpy.array(img, dtype=numpy.uint8) >= 128
+    mask = np.array(img, dtype=np.uint8) >= 128
     return mask
 
 
-def parse_detection_into_raster(
+def parse_bitmask_detection(
     result,
     datum: Datum,
     label_key: str = "class",
@@ -227,6 +282,37 @@ def parse_detection_into_raster(
     )
 
 
+def parse_bitmask_into_multipolygon_raster_detection(
+    result,
+    datum: Datum,
+    label_key: str = "class",
+    resample: PIL.Image.Resampling = PIL.Image.Resampling.BILINEAR,
+):
+    prediction = parse_bitmask_detection(
+        result=result, datum=datum, label_key=label_key, resample=resample
+    )
+    for annotation in prediction.annotations:
+        array = annotation.raster.array
+        annotation.raster = bitmask_to_multipolygon_raster(array)
+    return prediction
+
+
+def parse_bitmask_into_bounding_polygon_detection(
+    result,
+    datum: Datum,
+    label_key: str = "class",
+    resample: PIL.Image.Resampling = PIL.Image.Resampling.BILINEAR,
+):
+    prediction = parse_bitmask_detection(
+        result=result, datum=datum, label_key=label_key, resample=resample
+    )
+    for annotation in prediction.annotations:
+        array = annotation.raster.array
+        annotation.polygon = bitmask_to_polygon(array)
+        annotation.raster = None
+    return prediction
+
+
 def run_inference(
     path: str = "./",
     destination: str = "coco",
@@ -266,33 +352,64 @@ def run_inference(
     inference_engine = ultralytics.YOLO("yolov8n-seg.pt")
 
     filepath_bbox = Path(path) / Path("pd_objdet_yolo_bbox.jsonl")
+    filepath_polygon = Path(path) / Path("pd_objdet_yolo_polygon.jsonl")
+    filepath_multipolygon = Path(path) / Path(
+        "pd_objdet_yolo_multipolygon.jsonl"
+    )
     filepath_raster = Path(path) / Path("pd_objdet_yolo_raster.jsonl")
 
     with open(filepath_bbox, "w") as fbox:
-        with open(filepath_raster, "w") as fraster:
-            for datum in tqdm(datums):
+        with open(filepath_polygon, "w") as fpolygon:
+            with open(filepath_multipolygon, "w") as fmultipolygon:
+                with open(filepath_raster, "w") as fraster:
 
-                image = download_image(datum.metadata["coco_url"])
+                    for datum in tqdm(datums):
 
-                results = inference_engine(image, verbose=False)
+                        image = download_image(datum.metadata["coco_url"])
 
-                # convert result into Valor Bounding Box prediction
-                bbox_prediction = parse_detection_into_bounding_box(
-                    results,  # raw inference
-                    datum=datum,  # valor datum
-                    label_key="name",  # label_key override
-                )
-                fbox.write(json.dumps(bbox_prediction.encode_value()))
-                fbox.write("\n")
+                        results = inference_engine(image, verbose=False)
 
-                # convert result into Valor Raster prediction
-                raster_prediction = parse_detection_into_raster(
-                    results,  # raw inference
-                    datum=datum,  # valor datum
-                    label_key="name",  # label_key override
-                )
-                fraster.write(json.dumps(raster_prediction.encode_value()))
-                fraster.write("\n")
+                        # convert result into Valor Bounding Box prediction
+                        prediction = parse_bounding_box_detection(
+                            results,  # raw inference
+                            datum=datum,  # valor datum
+                            label_key="name",  # label_key override
+                        )
+                        fbox.write(json.dumps(prediction.encode_value()))
+                        fbox.write("\n")
+
+                        # convert result into Valor Bounding Polygon prediction
+                        prediction = (
+                            parse_bitmask_into_bounding_polygon_detection(
+                                results,  # raw inference
+                                datum=datum,  # valor datum
+                                label_key="name",  # label_key override
+                            )
+                        )
+                        fpolygon.write(json.dumps(prediction.encode_value()))
+                        fpolygon.write("\n")
+
+                        # convert result into Valor MultiPolygon Raster prediction
+                        prediction = (
+                            parse_bitmask_into_multipolygon_raster_detection(
+                                results,  # raw inference
+                                datum=datum,  # valor datum
+                                label_key="name",  # label_key override
+                            )
+                        )
+                        fmultipolygon.write(
+                            json.dumps(prediction.encode_value())
+                        )
+                        fmultipolygon.write("\n")
+
+                        # convert result into Valor Bitmask Raster prediction
+                        prediction = parse_bitmask_detection(
+                            results,  # raw inference
+                            datum=datum,  # valor datum
+                            label_key="name",  # label_key override
+                        )
+                        fraster.write(json.dumps(prediction.encode_value()))
+                        fraster.write("\n")
 
 
 if __name__ == "__main__":

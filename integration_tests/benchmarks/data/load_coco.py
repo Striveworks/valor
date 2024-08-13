@@ -8,12 +8,14 @@ from typing import Dict, List, Union
 import numpy as np
 import PIL.Image
 import requests
+from shapely import geometry, ops
+from skimage import measure
 from tqdm import tqdm
 
 from valor import Annotation, Datum, GroundTruth, Label
 from valor.enums import TaskType
 from valor.metatypes import ImageMetadata
-from valor.schemas import Box, Raster
+from valor.schemas import Box, MultiPolygon, Polygon, Raster
 
 
 def download_coco_panoptic(
@@ -138,7 +140,60 @@ def bitmask_to_bbox(bitmask) -> Box:
     )
 
 
-def create_annotations_from_bounding_boxes(
+def bitmask_to_multipolygon_raster(bitmask) -> Raster:
+    bitmask = np.array(bitmask, dtype=bool)
+    labeled_array, num_features = measure.label(
+        bitmask, background=0, return_num=True
+    )
+    polygons = []
+    for region_index in range(1, num_features + 1):
+        contours = measure.find_contours(labeled_array == region_index, 0.5)
+        for contour in contours:
+            if len(contour) >= 3:
+                polygon = geometry.Polygon(contour)
+                if polygon.is_valid:
+                    polygons.append(polygon)
+    mp = geometry.MultiPolygon(polygons).simplify(tolerance=0.6)
+    values = []
+    if isinstance(mp, geometry.MultiPolygon):
+        for polygon in mp.geoms:
+            boundary = list(polygon.exterior.coords)
+            holes = [list(interior.coords) for interior in polygon.interiors]
+            values.append([boundary, *holes])
+    else:
+        boundary = list(mp.exterior.coords)
+        holes = [list(interior.coords) for interior in mp.interiors]
+        values = [[boundary, *holes]]
+    height, width = bitmask.shape
+    return Raster.from_geometry(
+        MultiPolygon(values), height=height, width=width
+    )
+
+
+def bitmask_to_polygon(bitmask) -> Polygon:
+    bitmask = np.array(bitmask, dtype=bool)
+    labeled_array, num_features = measure.label(
+        bitmask, background=0, return_num=True
+    )
+    polygons = []
+    for region_index in range(1, num_features + 1):
+        contours = measure.find_contours(labeled_array == region_index, 0.5)
+        for contour in contours:
+            if len(contour) >= 3:
+                polygon = geometry.Polygon(contour)
+                if polygon.is_valid:
+                    polygons.append(polygon)
+    polygon = ops.unary_union(
+        geometry.MultiPolygon(polygons).simplify(tolerance=0.6)
+    )
+    if not isinstance(polygon, geometry.Polygon):
+        return None
+    boundary = list(polygon.exterior.coords)
+    holes = [list(interior.coords) for interior in polygon.interiors]
+    return Polygon([boundary, *holes])
+
+
+def create_bounding_boxes(
     image: dict,
     category_id_to_labels_and_task: Dict[int, Union[TaskType, Dict[str, str]]],
     mask_ids,
@@ -179,7 +234,48 @@ def create_annotations_from_bounding_boxes(
     ]
 
 
-def create_annotations_from_instance_segmentations(
+def create_bounding_polygons(
+    image: dict,
+    category_id_to_labels_and_task: Dict[int, Union[TaskType, Dict[str, str]]],
+    mask_ids,
+) -> List[Annotation]:
+    return [
+        Annotation(
+            labels=[
+                Label(
+                    key="supercategory",
+                    value=str(
+                        category_id_to_labels_and_task[
+                            segmentation["category_id"]
+                        ]["labels"][
+                            "supercategory"
+                        ]  # type: ignore - dict typing
+                    ),
+                ),
+                Label(
+                    key="name",
+                    value=str(
+                        category_id_to_labels_and_task[
+                            segmentation["category_id"]
+                        ]["labels"][
+                            "name"
+                        ]  # type: ignore - dict typing
+                    ),
+                ),
+                Label(key="iscrowd", value=str(segmentation["iscrowd"])),
+            ],
+            polygon=bitmask_to_polygon(mask_ids == segmentation["id"]),
+            is_instance=True,
+        )
+        for segmentation in image["segments_info"]
+        if category_id_to_labels_and_task[segmentation["category_id"]][
+            "is_instance"
+        ]  # type: ignore - dict typing
+        is True
+    ]
+
+
+def create_raster_from_bitmask(
     image: dict,
     category_id_to_labels_and_task: Dict[int, Union[TaskType, Dict[str, str]]],
     mask_ids,
@@ -220,7 +316,50 @@ def create_annotations_from_instance_segmentations(
     ]
 
 
-def create_annotations_from_semantic_segmentations(
+def create_raster_from_multipolygon(
+    image: dict,
+    category_id_to_labels_and_task: Dict[int, Union[TaskType, Dict[str, str]]],
+    mask_ids,
+) -> List[Annotation]:
+    return [
+        Annotation(
+            labels=[
+                Label(
+                    key="supercategory",
+                    value=str(
+                        category_id_to_labels_and_task[
+                            segmentation["category_id"]
+                        ]["labels"][
+                            "supercategory"
+                        ]  # type: ignore - dict typing
+                    ),
+                ),
+                Label(
+                    key="name",
+                    value=str(
+                        category_id_to_labels_and_task[
+                            segmentation["category_id"]
+                        ]["labels"][
+                            "name"
+                        ]  # type: ignore - dict typing
+                    ),
+                ),
+                Label(key="iscrowd", value=str(segmentation["iscrowd"])),
+            ],
+            raster=bitmask_to_multipolygon_raster(
+                mask_ids == segmentation["id"]
+            ),
+            is_instance=True,
+        )
+        for segmentation in image["segments_info"]
+        if category_id_to_labels_and_task[segmentation["category_id"]][
+            "is_instance"
+        ]  # type: ignore - dict typing
+        is True
+    ]
+
+
+def create_semantic_segmentations(
     image: dict,
     category_id_to_labels_and_task: Dict[int, Union[TaskType, Dict[str, str]]],
     mask_ids,
@@ -276,6 +415,8 @@ def _create_groundtruths_from_coco_panoptic(
     data: dict,
     masks_path: Path,
     objdet_bbox_file,
+    objdet_polygon_file,
+    objdet_multipolygon_file,
     objdet_raster_file,
     semseg_raster_file,
 ):
@@ -293,7 +434,7 @@ def _create_groundtruths_from_coco_panoptic(
         mask_ids = _create_masks(masks_path / image["file_name"])
 
         # create bounding boxes
-        bbox_annotations = create_annotations_from_bounding_boxes(
+        bbox_annotations = create_bounding_boxes(
             image,
             category_id_to_labels_and_task,
             mask_ids,
@@ -305,8 +446,38 @@ def _create_groundtruths_from_coco_panoptic(
         objdet_bbox_file.write(json.dumps(gt.encode_value()).encode("utf-8"))
         objdet_bbox_file.write("\n".encode("utf-8"))
 
-        # create instance segmentations
-        instance_annotations = create_annotations_from_instance_segmentations(
+        # create bounding polygons
+        bbox_annotations = create_bounding_polygons(
+            image,
+            category_id_to_labels_and_task,
+            mask_ids,
+        )
+        gt = GroundTruth(
+            datum=image_id_to_datum[image["image_id"]],
+            annotations=bbox_annotations,
+        )
+        objdet_polygon_file.write(
+            json.dumps(gt.encode_value()).encode("utf-8")
+        )
+        objdet_polygon_file.write("\n".encode("utf-8"))
+
+        # create instance segmentations using multipolygon rasters
+        instance_annotations = create_raster_from_multipolygon(
+            image,
+            category_id_to_labels_and_task,
+            mask_ids,
+        )
+        gt = GroundTruth(
+            datum=image_id_to_datum[image["image_id"]],
+            annotations=instance_annotations,
+        )
+        objdet_multipolygon_file.write(
+            json.dumps(gt.encode_value()).encode("utf-8")
+        )
+        objdet_multipolygon_file.write("\n".encode("utf-8"))
+
+        # create instance segmentations using bitmask rasters
+        instance_annotations = create_raster_from_bitmask(
             image,
             category_id_to_labels_and_task,
             mask_ids,
@@ -319,7 +490,7 @@ def _create_groundtruths_from_coco_panoptic(
         objdet_raster_file.write("\n".encode("utf-8"))
 
         # create semantic segmentations
-        semantic_annotations = create_annotations_from_semantic_segmentations(
+        semantic_annotations = create_semantic_segmentations(
             image,
             category_id_to_labels_and_task,
             mask_ids,
@@ -370,20 +541,36 @@ def create_gts_from_coco_panoptic(
         data["annotations"] = data["annotations"][:limit]
 
     objdet_bbox_filepath = Path(path) / Path("gt_objdet_coco_bbox.jsonl")
-    objdet_raster_filepath = Path(path) / Path("gt_objdet_coco_raster.jsonl")
+    objdet_polygon_filepath = Path(path) / Path("gt_objdet_coco_polygon.jsonl")
+    objdet_multipolygon_filepath = Path(path) / Path(
+        "gt_objdet_coco_raster_multipolygon.jsonl"
+    )
+    objdet_raster_filepath = Path(path) / Path(
+        "gt_objdet_coco_raster_bitmask.jsonl"
+    )
     semseg_raster_filepath = Path(path) / Path("gt_semseg_coco.jsonl")
 
     # create groundtruths
     with open(objdet_bbox_filepath, mode="wb") as f_objdet_box:
-        with open(objdet_raster_filepath, mode="wb") as f_objdet_raster:
-            with open(semseg_raster_filepath, mode="wb") as f_semseg_raster:
-                _create_groundtruths_from_coco_panoptic(
-                    data=data,
-                    masks_path=masks_path,
-                    objdet_bbox_file=f_objdet_box,
-                    objdet_raster_file=f_objdet_raster,
-                    semseg_raster_file=f_semseg_raster,
-                )
+        with open(objdet_polygon_filepath, mode="wb") as f_objdet_polygon:
+            with open(
+                objdet_multipolygon_filepath, mode="wb"
+            ) as f_objdet_multipolygon:
+                with open(
+                    objdet_raster_filepath, mode="wb"
+                ) as f_objdet_raster:
+                    with open(
+                        semseg_raster_filepath, mode="wb"
+                    ) as f_semseg_raster:
+                        _create_groundtruths_from_coco_panoptic(
+                            data=data,
+                            masks_path=masks_path,
+                            objdet_bbox_file=f_objdet_box,
+                            objdet_polygon_file=f_objdet_polygon,
+                            objdet_multipolygon_file=f_objdet_multipolygon,
+                            objdet_raster_file=f_objdet_raster,
+                            semseg_raster_file=f_semseg_raster,
+                        )
 
 
 if __name__ == "__main__":

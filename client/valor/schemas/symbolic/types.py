@@ -769,7 +769,7 @@ class Point(Spatial, Equatable):
 
     @classmethod
     def __validate__(cls, value: typing.Any):
-        if not isinstance(value, tuple):
+        if not isinstance(value, (tuple, list)):
             raise TypeError(
                 f"Expected type 'typing.Tuple[float, float]' received type '{type(value).__name__}'"
             )

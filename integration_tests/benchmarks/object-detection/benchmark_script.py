@@ -1,10 +1,13 @@
 import json
 import os
 import re
+from collections import defaultdict
+from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
 from time import time
 
+import numpy as np
 import requests
 from tqdm import tqdm
 
@@ -81,7 +84,7 @@ def ingest_groundtruths(
             gt = GroundTruth.decode_value(gt_dict)
             chunks.append(gt)
             count += 1
-            if count >= limit:
+            if count >= limit and limit > 0:
                 break
             elif len(chunks) < chunk_size:
                 continue
@@ -114,7 +117,7 @@ def ingest_predictions(
             pd = Prediction.decode_value(pd_dict)
             chunks.append(pd)
             count += 1
-            if count >= limit:
+            if count >= limit and limit > 0:
                 break
             elif len(chunks) < chunk_size:
                 continue
@@ -170,240 +173,219 @@ def run_detailed_pr_curve_evaluation(dset: Dataset, model: Model):
     return evaluation
 
 
+@dataclass
+class DataBenchmark:
+    dtype: str = "unknown"
+    ingestion: list[float] = field(default_factory=list)
+    finalization: list[float] = field(default_factory=list)
+    deletion: list[float] = field(default_factory=list)
+
+    def add(
+        self,
+        dtype: str,
+        ingestion: float,
+        finalization: float,
+        deletion: float,
+    ):
+        self.dtype = dtype
+        self.ingestion.append(ingestion)
+        self.finalization.append(finalization)
+        self.deletion.append(deletion)
+
+    def result(self) -> dict[str, float | str]:
+        return {
+            "dtype": self.dtype,
+            "ingestion": round(float(np.mean(self.ingestion)), 2),
+            "finalization": round(float(np.mean(self.finalization)), 2),
+            "deletion": round(float(np.mean(self.deletion)), 2),
+        }
+
+
+@dataclass
+class EvaluationBenchmark:
+    gt_type: str = "unknown"
+    pd_type: str = "unknown"
+    n_datums: int = 0
+    n_annotations: int = 0
+    n_labels: int = 0
+    eval_base: list[float] = field(default_factory=list)
+    eval_base_pr: list[float] = field(default_factory=list)
+    eval_base_pr_detail: list[float] = field(default_factory=list)
+
+    def add(
+        self,
+        gt_type: str,
+        pd_type: str,
+        eval_base: dict,
+        eval_base_pr: dict,
+        eval_base_pr_detail: dict,
+    ):
+        self.gt_type = gt_type
+        self.pd_type = pd_type
+        self.n_datums = eval_base["labels"]
+        self.n_labels = eval_base["labels"]
+        self.n_annotations = eval_base["annotations"]
+        self.eval_base.append(eval_base["duration"])
+        self.eval_base_pr.append(eval_base_pr["duration"])
+        self.eval_base_pr_detail.append(eval_base_pr_detail["duration"])
+
+    def result(self) -> dict[str, float | str]:
+        return {
+            "groundtruth_type": self.gt_type,
+            "prediction_type": self.pd_type,
+            "number_of_datums": self.n_datums,
+            "number_of_annotations": self.n_annotations,
+            "number_of_labels": self.n_labels,
+            "base": round(float(np.mean(self.eval_base)), 2),
+            "base+pr": round(float(np.mean(self.eval_base_pr)), 2),
+            "base+pr+detailed": round(
+                float(np.mean(self.eval_base_pr_detail)), 2
+            ),
+        }
+
+
 def run_benchmarking_analysis(
     limits_to_test: list[int],
     results_file: str = "results.json",
-    data_file: str = "data.json",
-    compute_box: bool = True,
-    compute_raster: bool = True,
 ):
     """Time various function calls and export the results."""
-    current_directory = Path(os.path.dirname(os.path.realpath(__file__)))
+    current_directory = Path(__file__).parent
     write_path = current_directory / Path(results_file)
 
     gt_box_filename = "gt_objdet_coco_bbox.jsonl"
-    gt_raster_filename = "gt_objdet_coco_raster.jsonl"
+    gt_polygon_filename = "gt_objdet_coco_polygon.jsonl"
+    gt_multipolygon_filename = "gt_objdet_coco_raster_multipolygon.jsonl"
+    gt_raster_filename = "gt_objdet_coco_raster_bitmask.jsonl"
     pd_box_filename = "pd_objdet_yolo_bbox.jsonl"
+    pd_polygon_filename = "pd_objdet_yolo_polygon.jsonl"
+    pd_multipolygon_filename = "pd_objdet_yolo_multipolygon.jsonl"
     pd_raster_filename = "pd_objdet_yolo_raster.jsonl"
 
+    groundtruths = {
+        "box": gt_box_filename,
+        "polygon": gt_polygon_filename,
+        "multipolygon": gt_multipolygon_filename,
+        "raster": gt_raster_filename,
+    }
+    predictions = {
+        "box": pd_box_filename,
+        "polygon": pd_polygon_filename,
+        "multipolygon": pd_multipolygon_filename,
+        "raster": pd_raster_filename,
+    }
+
     # cache data locally
-    for filename in [
-        gt_box_filename,
-        gt_raster_filename,
-        pd_box_filename,
-        pd_raster_filename,
-    ]:
+    filenames = [*list(groundtruths.values()), *list(predictions.values())]
+    for filename in filenames:
         file_path = current_directory / Path(filename)
         url = f"https://pub-fae71003f78140bdaedf32a7c8d331d2.r2.dev/{filename}"
         download_data_if_not_exists(
             file_name=filename, file_path=file_path, url=url
         )
 
-    from dataclasses import dataclass
-
-    @dataclass
-    class Dummy:
-        meta: dict
-
-    dummy_value = Dummy(meta={"duration": -1, "labels": 0, "annotations": 0})
+    gt_results = defaultdict(DataBenchmark)
+    pd_results = defaultdict(DataBenchmark)
+    eval_results = defaultdict(lambda: defaultdict(EvaluationBenchmark))
 
     # iterate through datum limits
     for limit in limits_to_test:
+        for gt_type, gt_filename in groundtruths.items():
+            for pd_type, pd_filename in predictions.items():
 
-        gt_box_ingest_time = -1
-        pd_box_ingest_time = -1
-        gt_bbox_finalization_time = -1
-        pd_bbox_finalization_time = -1
-        box_deletion_time = -1
-        gt_raster_ingest_time = -1
-        pd_raster_ingest_time = -1
-        gt_raster_finalization_time = -1
-        pd_raster_finalization_time = -1
-        raster_deletion_time = -1
+                try:
+                    dataset = Dataset.create(name="coco")
+                    model = Model.create(name="yolo")
+                except (
+                    DatasetAlreadyExistsError,
+                    ModelAlreadyExistsError,
+                ) as e:
+                    client.delete_dataset("coco")
+                    client.delete_model("yolo")
+                    raise e
 
-        eval_base_box = dummy_value
-        eval_pr_box = dummy_value
-        eval_detail_box = dummy_value
-        eval_base_raster = dummy_value
-        eval_pr_raster = dummy_value
-        eval_detail_raster = dummy_value
-
-        if compute_box:
-            try:
-                dset_box = Dataset.create(name="coco-box")
-                model_box = Model.create(name="yolo-box")
-            except (
-                DatasetAlreadyExistsError,
-                ModelAlreadyExistsError,
-            ) as e:
-                client.delete_dataset("coco-box")
-                client.delete_model("yolo-box")
-                raise e
-
-            # gt bbox ingestion
-            gt_box_ingest_time = time_it(
-                ingest_groundtruths,
-                dataset=dset_box,
-                path=current_directory / Path(gt_box_filename),
-                limit=limit,
-                chunk_size=1000,
-            )
-
-            # gt bbox finalization
-            gt_bbox_finalization_time = time_it(dset_box.finalize)
-
-            # pd bbox ingestion
-            box_datum_uids = [datum.uid for datum in dset_box.get_datums()]
-            pd_box_ingest_time = time_it(
-                ingest_predictions,
-                dataset=dset_box,
-                model=model_box,
-                datum_uids=box_datum_uids,
-                path=current_directory / Path(pd_box_filename),
-                limit=limit,
-                chunk_size=1000,
-            )
-
-            # pd bbox finalization
-            pd_bbox_finalization_time = time_it(
-                model_box.finalize_inferences, dset_box
-            )
-
-            try:
-                eval_base_box = run_base_evaluation(
-                    dset=dset_box, model=model_box
-                )
-                eval_pr_box = run_pr_curve_evaluation(
-                    dset=dset_box, model=model_box
-                )
-                eval_detail_box = run_detailed_pr_curve_evaluation(
-                    dset=dset_box, model=model_box
-                )
-            except TimeoutError:
-                raise TimeoutError(
-                    f"Evaluation timed out when processing {limit} datums."
+                # gt bbox ingestion
+                gt_ingest_time = time_it(
+                    ingest_groundtruths,
+                    dataset=dataset,
+                    path=current_directory / Path(gt_filename),
+                    limit=limit,
+                    chunk_size=1000,
                 )
 
-            start = time()
-            client.delete_dataset(dset_box.name, timeout=30)
-            client.delete_model(model_box.name, timeout=30)
-            box_deletion_time = time() - start
+                # gt bbox finalization
+                gt_finalization_time = time_it(dataset.finalize)
 
-        if compute_raster:
-            try:
-                dset_raster = Dataset.create(name="coco-raster")
-                model_raster = Model.create(name="yolo-raster")
-            except (
-                DatasetAlreadyExistsError,
-                ModelAlreadyExistsError,
-            ) as e:
-                client.delete_dataset("coco-raster")
-                client.delete_model("yolo-raster")
-                raise e
-
-            # gt raster ingestion
-            gt_raster_ingest_time = time_it(
-                ingest_groundtruths,
-                dataset=dset_raster,
-                path=current_directory / Path(gt_raster_filename),
-                limit=limit,
-                chunk_size=100,
-            )
-
-            # gt raster finalization
-            gt_raster_finalization_time = time_it(dset_raster.finalize)
-
-            # pd raster ingestion
-            raster_datum_uids = [
-                datum.uid for datum in dset_raster.get_datums()
-            ]
-            pd_raster_ingest_time = time_it(
-                ingest_predictions,
-                dataset=dset_raster,
-                model=model_raster,
-                datum_uids=raster_datum_uids,
-                path=current_directory / Path(pd_raster_filename),
-                limit=limit,
-                chunk_size=100,
-            )
-
-            # pd raster finalization
-            pd_raster_finalization_time = time_it(
-                model_raster.finalize_inferences, dset_raster
-            )
-
-            try:
-                eval_base_raster = run_base_evaluation(
-                    dset=dset_raster, model=model_raster
-                )
-                # eval_pr_raster = run_pr_curve_evaluation(
-                #     dset=dset_raster, model=model_raster
-                # )
-                # eval_detail_raster = run_detailed_pr_curve_evaluation(
-                #     dset=dset_raster, model=model_raster
-                # )
-            except TimeoutError:
-                raise TimeoutError(
-                    f"Evaluation timed out when processing {limit} datums."
+                # pd bbox ingestion
+                box_datum_uids = [datum.uid for datum in dataset.get_datums()]
+                pd_ingest_time = time_it(
+                    ingest_predictions,
+                    dataset=dataset,
+                    model=model,
+                    datum_uids=box_datum_uids,
+                    path=current_directory / Path(pd_filename),
+                    limit=limit,
+                    chunk_size=1000,
                 )
 
-            start = time()
-            client.delete_dataset(dset_raster.name, timeout=30)
-            client.delete_model(model_raster.name, timeout=30)
-            raster_deletion_time = time() - start
+                # model finalization
+                pd_finalization_time = time_it(
+                    model.finalize_inferences, dataset
+                )
 
-        results = {
-            "box": {
-                "info": {
-                    "number_of_datums": limit,
-                    "number_of_unique_labels": eval_base_box.meta["labels"],
-                    "number_of_annotations": eval_base_box.meta["annotations"],
-                },
-                "ingestion": {
-                    "groundtruth": f"{(gt_box_ingest_time):.1f} seconds",
-                    "prediction": f"{(pd_box_ingest_time):.1f} seconds",
-                },
-                "finalization": {
-                    "dataset": f"{(gt_bbox_finalization_time):.1f} seconds",
-                    "model": f"{(pd_bbox_finalization_time):.1f} seconds",
-                },
-                "evaluation": {
-                    "base": f"{(eval_base_box.meta['duration']):.1f} seconds",
-                    "base+pr": f"{(eval_pr_box.meta['duration']):.1f} seconds",
-                    "base+pr+detail": f"{(eval_detail_box.meta['duration']):.1f} seconds",
-                },
-                "deletion": f"{(box_deletion_time):.1f} seconds",
-            },
-            "raster": {
-                "info": {
-                    "number_of_datums": limit,
-                    "number_of_unique_labels": eval_base_raster.meta["labels"],
-                    "number_of_annotations": eval_base_raster.meta[
-                        "annotations"
-                    ],
-                },
-                "ingestion": {
-                    "groundtruth": f"{(gt_raster_ingest_time):.1f} seconds",
-                    "prediction": f"{(pd_raster_ingest_time):.1f} seconds",
-                },
-                "finalization": {
-                    "dataset": f"{(gt_raster_finalization_time):.1f} seconds",
-                    "model": f"{(pd_raster_finalization_time):.1f} seconds",
-                },
-                "evaluation": {
-                    "base": f"{(eval_base_raster.meta['duration']):.1f} seconds",
-                    "base+pr": f"{(eval_pr_raster.meta['duration']):.1f} seconds",
-                    "base+pr+detail": f"{(eval_detail_raster.meta['duration']):.1f} seconds",
-                },
-                "deletion": f"{(raster_deletion_time):.1f} seconds",
-            },
-        }
-        write_results_to_file(write_path=write_path, result_dict=results)
+                try:
+                    eval_base = run_base_evaluation(dset=dataset, model=model)
+                    eval_pr = run_pr_curve_evaluation(
+                        dset=dataset, model=model
+                    )
+                    eval_detail = run_detailed_pr_curve_evaluation(
+                        dset=dataset, model=model
+                    )
+                except TimeoutError:
+                    raise TimeoutError(
+                        f"Evaluation timed out when processing {limit} datums."
+                    )
+
+                start = time()
+                client.delete_model(model.name, timeout=30)
+                pd_deletion_time = time() - start
+
+                start = time()
+                client.delete_dataset(dataset.name, timeout=30)
+                gt_deletion_time = time() - start
+
+                gt_results[gt_type].add(
+                    dtype=gt_type,
+                    ingestion=gt_ingest_time,
+                    finalization=gt_finalization_time,
+                    deletion=gt_deletion_time,
+                )
+                pd_results[pd_type].add(
+                    dtype=pd_type,
+                    ingestion=pd_ingest_time,
+                    finalization=pd_finalization_time,
+                    deletion=pd_deletion_time,
+                )
+                eval_results[gt_type][pd_type].add(
+                    gt_type=gt_type,
+                    pd_type=pd_type,
+                    eval_base=eval_base.meta,
+                    eval_base_pr=eval_pr.meta,
+                    eval_base_pr_detail=eval_detail.meta,
+                )
+
+    results = {
+        "dataset": [result.result() for result in gt_results.values()],
+        "model": [result.result() for result in pd_results.values()],
+        "evaluation": [
+            result.result()
+            for permuation in eval_results.values()
+            for result in permuation.values()
+        ],
+    }
+    write_results_to_file(write_path=write_path, result_dict=results)
 
 
 if __name__ == "__main__":
     run_benchmarking_analysis(
-        limits_to_test=[5000, 5000, 5000],
-        compute_box=True,
-        compute_raster=False,
+        limits_to_test=[12, 12],
     )
