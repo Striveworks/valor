@@ -389,5 +389,5 @@ def run_benchmarking_analysis(
 
 if __name__ == "__main__":
     run_benchmarking_analysis(
-        limits_to_test=[12, 12],
+        limits_to_test=[6, 6],
     )
