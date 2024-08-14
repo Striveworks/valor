@@ -788,7 +788,9 @@ def _convert_annotations_to_common_type(
             db=db, dataset=dataset, task_type=enums.TaskType.OBJECT_DETECTION
         )
         if target_type > source_type:
-            continue
+            raise ValueError(
+                f"Cannot convert dataset {dataset.name} annotations from {source_type} to {target_type}."
+            )
         core.convert_geometry(
             db=db,
             dataset=dataset,
@@ -803,6 +805,10 @@ def _convert_annotations_to_common_type(
             model=model,
             task_type=enums.TaskType.OBJECT_DETECTION,
         )
+        if target_type > source_type:
+            raise ValueError(
+                f"Cannot convert model {model.name} annotations from {source_type} to {target_type}."
+            )
         core.convert_geometry(
             db=db,
             dataset=dataset,
