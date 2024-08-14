@@ -1027,8 +1027,8 @@ class Raster(BaseModel):
         if self.geometry:
             empty_raster = ST_AddBand(
                 ST_MakeEmptyRaster(
-                    self.width,
-                    self.height,
+                    self.width,  # width
+                    self.height,  # height
                     0,  # upperleftx
                     0,  # upperlefty
                     1,  # scalex
@@ -1037,29 +1037,8 @@ class Raster(BaseModel):
                     0,  # skewy
                     0,  # srid
                 ),
-                "1BB",
+                "1BB",  # pixeltype
             )
-            # geom = select(
-            #     ST_SnapToGrid(
-            #         ST_GeomFromText(self.geometry.to_wkt()),
-            #         1.0,
-            #     ).label('geom')
-            # ).cte()
-            # geom_raster = ST_AsRaster(
-            #     geom.c.geom,
-            #     ST_XMax(geom.c.geom) - ST_XMin(geom.c.geom), # width
-            #     ST_YMax(geom.c.geom) - ST_YMin(geom.c.geom), # height
-            #     "1BB", # pixeltype
-            #     1, # precison
-            #     0, # nodata
-            #     0, #ST_XMin(geom.c.geom),
-            #     0, #ST_YMin(geom.c.geom),
-            #     # 1.0,  # scalex
-            #     # 1.0,  # scaley
-            #     # "1BB",  # pixeltype
-            #     # 1,  # value
-            #     # 0,  # nodataval
-            # )
             return select(
                 ST_MapAlgebra(
                     empty_raster,
