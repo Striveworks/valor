@@ -9,17 +9,8 @@ from geoalchemy2.functions import (
     ST_AddBand,
     ST_AsRaster,
     ST_GeomFromText,
-    ST_Height,
     ST_MakeEmptyRaster,
     ST_MapAlgebra,
-    ST_SnapToGrid,
-    ST_UpperLeftX,
-    ST_UpperLeftY,
-    ST_Width,
-    ST_XMax,
-    ST_XMin,
-    ST_YMax,
-    ST_YMin,
 )
 from pydantic import (
     BaseModel,
@@ -1069,23 +1060,19 @@ class Raster(BaseModel):
             #     # 1,  # value
             #     # 0,  # nodataval
             # )
-            # return select(
-            #     ST_MapAlgebra(
-            #         empty_raster,
-            #         geom_raster,
-            #         "[rast2]",
-            #         "1BB",
-            #         "UNION",
-            #     )
-            # ).scalar_subquery()
-            # return select(geom_raster).scalar_subquery()
             return select(
-                ST_AsRaster(
-                    ST_GeomFromText(self.geometry.to_wkt()),
+                ST_MapAlgebra(
                     empty_raster,
+                    ST_AsRaster(
+                        ST_GeomFromText(self.geometry.to_wkt()),
+                        empty_raster,
+                        "1BB",
+                        1,
+                        0,
+                    ),
+                    "[rast2]",
                     "1BB",
-                    1,
-                    0,
+                    "UNION",
                 )
             ).scalar_subquery()
         else:

@@ -4,7 +4,7 @@ from base64 import b64decode, b64encode
 
 import numpy as np
 import pytest
-from geoalchemy2.functions import ST_AsText, ST_Count, ST_Polygon
+from geoalchemy2.functions import ST_AsText, ST_Count
 from PIL import Image
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
