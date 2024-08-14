@@ -1075,7 +1075,6 @@ def _calculate_pr_curves(
 def _compute_clf_metrics(
     groundtruth_df: pd.DataFrame,
     prediction_df: pd.DataFrame,
-    unique_labels: list,
     label_map: Optional[Dict[schemas.Label, schemas.Label]] = None,
     metrics_to_return: Optional[List[enums.MetricType]] = None,
     pr_curve_max_examples: int = 1,
@@ -1089,8 +1088,6 @@ def _compute_clf_metrics(
         DataFrame containing ground truth annotations with necessary columns.
     prediction_df : pd.DataFrame
         DataFrame containing predictions with necessary columns.
-    unique_labels : list
-        List of unique labels used for the classification.
     label_map : Optional[Dict[schemas.Label, schemas.Label]], default=None
         Optional dictionary mapping ground truth labels to prediction labels.
     metrics_to_return : Optional[List[enums.MetricType]], default=None
@@ -1232,12 +1229,22 @@ def evaluate_classification(
     )
     utilities.validate_parameters(pr_curve_max_examples=pr_curve_max_examples)
 
-    groundtruth_df = utilities.create_filtered_and_validated_groundtruth_df(
+    groundtruth_df = utilities.create_validated_groundtruth_df(
         groundtruths, task_type=enums.TaskType.CLASSIFICATION
     )
-    prediction_df = utilities.create_filtered_and_validated_prediction_df(
+    prediction_df = utilities.create_validated_prediction_df(
         predictions, task_type=enums.TaskType.CLASSIFICATION
     )
+
+    # filter dataframes based on task type
+    groundtruth_df = utilities.filter_dataframe_by_task_type(
+        df=groundtruth_df, task_type=enums.TaskType.CLASSIFICATION
+    )
+
+    if not prediction_df.empty:
+        prediction_df = utilities.filter_dataframe_by_task_type(
+            df=prediction_df, task_type=enums.TaskType.CLASSIFICATION
+        )
 
     utilities.validate_matching_label_keys(
         groundtruths=groundtruth_df,
@@ -1263,7 +1270,6 @@ def evaluate_classification(
         label_map=label_map,
         metrics_to_return=metrics_to_return,
         pr_curve_max_examples=pr_curve_max_examples,
-        unique_labels=unique_labels,
     )
 
     return schemas.Evaluation(
