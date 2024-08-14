@@ -4,10 +4,11 @@ that is no auth
 
 import random
 
+import numpy as np
 import pytest
 import requests
 from geoalchemy2.functions import ST_Area
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from valor import (
@@ -23,7 +24,7 @@ from valor import (
 )
 from valor.enums import AnnotationType, EvaluationStatus, MetricType, TaskType
 from valor.exceptions import ClientException
-from valor.schemas import Box
+from valor.schemas import Box, Polygon, Raster
 from valor_api.backend import models
 
 
@@ -3237,3 +3238,347 @@ def test_evaluate_detection_model_with_no_predictions(
     assert all([metric["value"] == 0 for metric in computed_metrics])
     assert all([metric in computed_metrics for metric in expected_metrics])
     assert all([metric in expected_metrics for metric in computed_metrics])
+
+
+def test_evaluate_mixed_annotations(
+    db: Session,
+    client: Client,
+    dataset_name: str,
+    model_name: str,
+    image_height: int,
+    image_width: int,
+):
+    """Test the automatic conversion to rasters."""
+    datum = Datum(uid="datum1")
+
+    xmin, xmax, ymin, ymax = 11, 45, 37, 102
+    h, w = image_height, image_width
+    mask = np.zeros((h, w), dtype=bool)
+    mask[ymin:ymax, xmin:xmax] = True
+
+    pts = [
+        (xmin, ymin),
+        (xmin, ymax),
+        (xmax, ymax),
+        (xmax, ymin),
+        (xmin, ymin),
+    ]
+    poly = Polygon([pts])
+    raster = Raster.from_numpy(mask)
+    box = Box.from_extrema(xmin=xmin, xmax=xmax, ymin=ymin, ymax=ymax)
+
+    gt_box = GroundTruth(
+        datum=datum,
+        annotations=[
+            Annotation(
+                bounding_box=box,
+                labels=[Label(key="box", value="value")],
+                is_instance=True,
+            )
+        ],
+    )
+    gt_polygon = GroundTruth(
+        datum=datum,
+        annotations=[
+            Annotation(
+                polygon=poly,
+                labels=[Label(key="polygon", value="value")],
+                is_instance=True,
+            )
+        ],
+    )
+    gt_raster = GroundTruth(
+        datum=datum,
+        annotations=[
+            Annotation(
+                raster=raster,
+                labels=[Label(key="raster", value="value")],
+                is_instance=True,
+            )
+        ],
+    )
+
+    pd_box = Prediction(
+        datum=datum,
+        annotations=[
+            Annotation(
+                raster=raster,
+                labels=[Label(key="box", value="value", score=0.88)],
+                is_instance=True,
+            )
+        ],
+    )
+    pd_polygon = Prediction(
+        datum=datum,
+        annotations=[
+            Annotation(
+                raster=raster,
+                labels=[Label(key="polygon", value="value", score=0.89)],
+                is_instance=True,
+            )
+        ],
+    )
+    pd_raster = Prediction(
+        datum=datum,
+        annotations=[
+            Annotation(
+                raster=raster,
+                labels=[Label(key="raster", value="value", score=0.9)],
+                is_instance=True,
+            )
+        ],
+    )
+
+    dset_box = Dataset.create(f"{dataset_name}_box")
+    dset_polygon = Dataset.create(f"{dataset_name}_polygon")
+    dset_raster = Dataset.create(f"{dataset_name}_raster")
+
+    dset_box.add_groundtruth(gt_box)
+    dset_polygon.add_groundtruth(gt_polygon)
+    dset_raster.add_groundtruth(gt_raster)
+
+    dset_box.finalize()
+    dset_polygon.finalize()
+    dset_raster.finalize()
+
+    model = Model.create(model_name)
+
+    model.add_prediction(dset_box, pd_box)
+    model.add_prediction(dset_polygon, pd_polygon)
+    model.add_prediction(dset_raster, pd_raster)
+
+    assert db.scalar(select(func.count(models.Annotation.id))) == 6
+    assert (
+        db.scalar(
+            select(func.count(models.Annotation.id)).where(
+                models.Annotation.box.isnot(None)
+            )
+        )
+        == 1
+    )
+    assert (
+        db.scalar(
+            select(func.count(models.Annotation.id)).where(
+                models.Annotation.polygon.isnot(None)
+            )
+        )
+        == 1
+    )
+    assert (
+        db.scalar(
+            select(func.count(models.Annotation.id)).where(
+                models.Annotation.raster.isnot(None)
+            )
+        )
+        == 4
+    )
+
+    eval_job = model.evaluate_detection(
+        [dset_box, dset_polygon, dset_raster],
+        iou_thresholds_to_compute=[0.1, 0.6],
+        iou_thresholds_to_return=[0.1, 0.6],
+        metrics_to_return=[
+            "AP",
+        ],
+    )
+    eval_job.wait_for_completion()
+
+    # show that all 6 annotations have a box now since it is the common type.
+    assert db.scalar(select(func.count(models.Annotation.id))) == 6
+    assert (
+        db.scalar(
+            select(func.count(models.Annotation.id)).where(
+                models.Annotation.box.isnot(None)
+            )
+        )
+        == 6
+    )
+    assert (
+        db.scalar(
+            select(func.count(models.Annotation.id)).where(
+                models.Annotation.polygon.isnot(None)
+            )
+        )
+        == 1
+    )
+    assert (
+        db.scalar(
+            select(func.count(models.Annotation.id)).where(
+                models.Annotation.raster.isnot(None)
+            )
+        )
+        == 4
+    )
+
+    expected = [
+        {
+            "type": "AP",
+            "parameters": {"iou": 0.1},
+            "value": 1.0,
+            "label": {"key": "polygon", "value": "value"},
+        },
+        {
+            "type": "AP",
+            "parameters": {"iou": 0.6},
+            "value": 1.0,
+            "label": {"key": "polygon", "value": "value"},
+        },
+        {
+            "type": "AP",
+            "parameters": {"iou": 0.1},
+            "value": 1.0,
+            "label": {"key": "box", "value": "value"},
+        },
+        {
+            "type": "AP",
+            "parameters": {"iou": 0.6},
+            "value": 1.0,
+            "label": {"key": "box", "value": "value"},
+        },
+        {
+            "type": "AP",
+            "parameters": {"iou": 0.1},
+            "value": 1.0,
+            "label": {"key": "raster", "value": "value"},
+        },
+        {
+            "type": "AP",
+            "parameters": {"iou": 0.6},
+            "value": 1.0,
+            "label": {"key": "raster", "value": "value"},
+        },
+    ]
+
+    for m in eval_job.metrics:
+        assert m in expected
+    for m in expected:
+        assert m in eval_job.metrics
+
+    eval_job_raster = model.evaluate_detection(
+        [dset_box, dset_polygon, dset_raster],
+        iou_thresholds_to_compute=[0.1, 0.6],
+        iou_thresholds_to_return=[0.1, 0.6],
+        metrics_to_return=[
+            "AP",
+        ],
+        convert_annotations_to_type=AnnotationType.RASTER,
+    )
+    eval_job_raster.wait_for_completion()
+
+    expected = [
+        {
+            "type": "AP",
+            "parameters": {"iou": 0.1},
+            "value": 1.0,
+            "label": {"key": "raster", "value": "value"},
+        },
+        {
+            "type": "AP",
+            "parameters": {"iou": 0.6},
+            "value": 1.0,
+            "label": {"key": "raster", "value": "value"},
+        },
+    ]
+
+    for m in eval_job_raster.metrics:
+        assert m in expected
+    for m in expected:
+        assert m in eval_job_raster.metrics
+
+    eval_job_poly = model.evaluate_detection(
+        [dset_box, dset_polygon, dset_raster],
+        iou_thresholds_to_compute=[0.1, 0.6],
+        iou_thresholds_to_return=[0.1, 0.6],
+        metrics_to_return=[
+            "AP",
+        ],
+        convert_annotations_to_type=AnnotationType.POLYGON,
+    )
+    eval_job_poly.wait_for_completion()
+
+    expected = [
+        {
+            "type": "AP",
+            "parameters": {"iou": 0.1},
+            "value": 1.0,
+            "label": {"key": "raster", "value": "value"},
+        },
+        {
+            "type": "AP",
+            "parameters": {"iou": 0.6},
+            "value": 1.0,
+            "label": {"key": "raster", "value": "value"},
+        },
+        {
+            "type": "AP",
+            "parameters": {"iou": 0.1},
+            "value": 1.0,
+            "label": {"key": "polygon", "value": "value"},
+        },
+        {
+            "type": "AP",
+            "parameters": {"iou": 0.6},
+            "value": 1.0,
+            "label": {"key": "polygon", "value": "value"},
+        },
+    ]
+
+    for m in eval_job_poly.metrics:
+        assert m in expected
+    for m in expected:
+        assert m in eval_job_poly.metrics
+
+    eval_job_box = model.evaluate_detection(
+        [dset_box, dset_polygon, dset_raster],
+        iou_thresholds_to_compute=[0.1, 0.6],
+        iou_thresholds_to_return=[0.1, 0.6],
+        metrics_to_return=[
+            "AP",
+        ],
+        convert_annotations_to_type=AnnotationType.BOX,
+    )
+    eval_job_box.wait_for_completion()
+
+    expected = [
+        {
+            "type": "AP",
+            "parameters": {"iou": 0.1},
+            "value": 1.0,
+            "label": {"key": "raster", "value": "value"},
+        },
+        {
+            "type": "AP",
+            "parameters": {"iou": 0.6},
+            "value": 1.0,
+            "label": {"key": "raster", "value": "value"},
+        },
+        {
+            "type": "AP",
+            "parameters": {"iou": 0.1},
+            "value": 1.0,
+            "label": {"key": "box", "value": "value"},
+        },
+        {
+            "type": "AP",
+            "parameters": {"iou": 0.6},
+            "value": 1.0,
+            "label": {"key": "box", "value": "value"},
+        },
+        {
+            "type": "AP",
+            "parameters": {"iou": 0.1},
+            "value": 1.0,
+            "label": {"key": "polygon", "value": "value"},
+        },
+        {
+            "type": "AP",
+            "parameters": {"iou": 0.6},
+            "value": 1.0,
+            "label": {"key": "polygon", "value": "value"},
+        },
+    ]
+
+    for m in eval_job_box.metrics:
+        assert m in expected
+    for m in expected:
+        assert m in eval_job_box.metrics
