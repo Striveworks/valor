@@ -8,7 +8,7 @@ import numpy as np
 import pytest
 import requests
 from geoalchemy2.functions import ST_Area
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from valor import (
@@ -3249,7 +3249,6 @@ def test_evaluate_mixed_annotations(
     image_width: int,
 ):
     """Test the automatic conversion to rasters."""
-    dset = Dataset.create(dataset_name)
     datum = Datum(uid="datum1")
 
     xmin, xmax, ymin, ymax = 11, 45, 37, 102
@@ -3268,66 +3267,114 @@ def test_evaluate_mixed_annotations(
     raster = Raster.from_numpy(mask)
     box = Box.from_extrema(xmin=xmin, xmax=xmax, ymin=ymin, ymax=ymax)
 
-    gt_annotations = [
-        Annotation(
-            raster=raster,
-            labels=[Label(key="key", value="value")],
-            is_instance=True,
-        ),
-        Annotation(
-            raster=raster,
-            labels=[Label(key="key1", value="value")],
-            is_instance=True,
-        ),
-        Annotation(
-            raster=raster,
-            labels=[Label(key="key2", value="value")],
-            is_instance=True,
-        ),
-    ]
+    gt_box = GroundTruth(
+        datum=datum,
+        annotations=[
+            Annotation(
+                bounding_box=box,
+                labels=[Label(key="box", value="value")],
+                is_instance=True,
+            )
+        ],
+    )
+    gt_polygon = GroundTruth(
+        datum=datum,
+        annotations=[
+            Annotation(
+                polygon=poly,
+                labels=[Label(key="polygon", value="value")],
+                is_instance=True,
+            )
+        ],
+    )
+    gt_raster = GroundTruth(
+        datum=datum,
+        annotations=[
+            Annotation(
+                raster=raster,
+                labels=[Label(key="raster", value="value")],
+                is_instance=True,
+            )
+        ],
+    )
 
-    pd_annotations = [
-        Annotation(
-            raster=raster,
-            labels=[Label(key="key", value="value", score=0.90)],
-            is_instance=True,
-        ),
-        Annotation(
-            polygon=poly,
-            labels=[Label(key="key1", value="value", score=0.89)],
-            is_instance=True,
-        ),
-        Annotation(
-            bounding_box=box,
-            labels=[Label(key="key2", value="value", score=0.88)],
-            is_instance=True,
-        ),
-    ]
-    gts = [
-        GroundTruth(
-            datum=datum,
-            annotations=[ann for ann in gt_annotations],
-        )
-    ]
+    pd_box = Prediction(
+        datum=datum,
+        annotations=[
+            Annotation(
+                raster=raster,
+                labels=[Label(key="box", value="value", score=0.88)],
+                is_instance=True,
+            )
+        ],
+    )
+    pd_polygon = Prediction(
+        datum=datum,
+        annotations=[
+            Annotation(
+                raster=raster,
+                labels=[Label(key="polygon", value="value", score=0.89)],
+                is_instance=True,
+            )
+        ],
+    )
+    pd_raster = Prediction(
+        datum=datum,
+        annotations=[
+            Annotation(
+                raster=raster,
+                labels=[Label(key="raster", value="value", score=0.9)],
+                is_instance=True,
+            )
+        ],
+    )
 
-    pds = [
-        Prediction(
-            datum=datum,
-            annotations=[ann for ann in pd_annotations],
-        )
-    ]
+    dset_box = Dataset.create(f"{dataset_name}_box")
+    dset_polygon = Dataset.create(f"{dataset_name}_polygon")
+    dset_raster = Dataset.create(f"{dataset_name}_raster")
 
-    for gt in gts:
-        dset.add_groundtruth(gt)
-    dset.finalize()
+    dset_box.add_groundtruth(gt_box)
+    dset_polygon.add_groundtruth(gt_polygon)
+    dset_raster.add_groundtruth(gt_raster)
+
+    dset_box.finalize()
+    dset_polygon.finalize()
+    dset_raster.finalize()
 
     model = Model.create(model_name)
-    for pd in pds:
-        model.add_prediction(dset, pd)
-    model.finalize_inferences(dset)
+
+    model.add_prediction(dset_box, pd_box)
+    model.add_prediction(dset_polygon, pd_polygon)
+    model.add_prediction(dset_raster, pd_raster)
+
+    assert db.scalar(select(func.count(models.Annotation.id))) == 6
+    assert (
+        db.scalar(
+            select(func.count(models.Annotation.id)).where(
+                models.Annotation.box.isnot(None)
+            )
+        )
+        == 1
+    )
+    assert (
+        db.scalar(
+            select(func.count(models.Annotation.id)).where(
+                models.Annotation.polygon.isnot(None)
+            )
+        )
+        == 1
+    )
+    assert (
+        db.scalar(
+            select(func.count(models.Annotation.id)).where(
+                models.Annotation.raster.isnot(None)
+            )
+        )
+        == 4
+    )
 
     eval_job = model.evaluate_detection(
-        dset,
+        [dset_box, dset_polygon, dset_raster],
         iou_thresholds_to_compute=[0.1, 0.6],
         iou_thresholds_to_return=[0.1, 0.6],
         metrics_to_return=[
@@ -3336,42 +3383,69 @@ def test_evaluate_mixed_annotations(
     )
     eval_job.wait_for_completion()
 
+    # show that all 6 annotations have a box now since it is the common type.
+    assert db.scalar(select(func.count(models.Annotation.id))) == 6
+    assert (
+        db.scalar(
+            select(func.count(models.Annotation.id)).where(
+                models.Annotation.box.isnot(None)
+            )
+        )
+        == 6
+    )
+    assert (
+        db.scalar(
+            select(func.count(models.Annotation.id)).where(
+                models.Annotation.polygon.isnot(None)
+            )
+        )
+        == 1
+    )
+    assert (
+        db.scalar(
+            select(func.count(models.Annotation.id)).where(
+                models.Annotation.raster.isnot(None)
+            )
+        )
+        == 4
+    )
+
     expected = [
         {
             "type": "AP",
             "parameters": {"iou": 0.1},
-            "value": 0.0,
-            "label": {"key": "key1", "value": "value"},
-        },
-        {
-            "type": "AP",
-            "parameters": {"iou": 0.6},
-            "value": 0.0,
-            "label": {"key": "key1", "value": "value"},
-        },
-        {
-            "type": "AP",
-            "parameters": {"iou": 0.1},
-            "value": 0.0,
-            "label": {"key": "key2", "value": "value"},
-        },
-        {
-            "type": "AP",
-            "parameters": {"iou": 0.6},
-            "value": 0.0,
-            "label": {"key": "key2", "value": "value"},
-        },
-        {
-            "type": "AP",
-            "parameters": {"iou": 0.1},
             "value": 1.0,
-            "label": {"key": "key", "value": "value"},
+            "label": {"key": "polygon", "value": "value"},
         },
         {
             "type": "AP",
             "parameters": {"iou": 0.6},
             "value": 1.0,
-            "label": {"key": "key", "value": "value"},
+            "label": {"key": "polygon", "value": "value"},
+        },
+        {
+            "type": "AP",
+            "parameters": {"iou": 0.1},
+            "value": 1.0,
+            "label": {"key": "box", "value": "value"},
+        },
+        {
+            "type": "AP",
+            "parameters": {"iou": 0.6},
+            "value": 1.0,
+            "label": {"key": "box", "value": "value"},
+        },
+        {
+            "type": "AP",
+            "parameters": {"iou": 0.1},
+            "value": 1.0,
+            "label": {"key": "raster", "value": "value"},
+        },
+        {
+            "type": "AP",
+            "parameters": {"iou": 0.6},
+            "value": 1.0,
+            "label": {"key": "raster", "value": "value"},
         },
     ]
 
@@ -3380,8 +3454,39 @@ def test_evaluate_mixed_annotations(
     for m in expected:
         assert m in eval_job.metrics
 
+    eval_job_raster = model.evaluate_detection(
+        [dset_box, dset_polygon, dset_raster],
+        iou_thresholds_to_compute=[0.1, 0.6],
+        iou_thresholds_to_return=[0.1, 0.6],
+        metrics_to_return=[
+            "AP",
+        ],
+        convert_annotations_to_type=AnnotationType.RASTER,
+    )
+    eval_job_raster.wait_for_completion()
+
+    expected = [
+        {
+            "type": "AP",
+            "parameters": {"iou": 0.1},
+            "value": 1.0,
+            "label": {"key": "raster", "value": "value"},
+        },
+        {
+            "type": "AP",
+            "parameters": {"iou": 0.6},
+            "value": 1.0,
+            "label": {"key": "raster", "value": "value"},
+        },
+    ]
+
+    for m in eval_job_raster.metrics:
+        assert m in expected
+    for m in expected:
+        assert m in eval_job_raster.metrics
+
     eval_job_poly = model.evaluate_detection(
-        dset,
+        [dset_box, dset_polygon, dset_raster],
         iou_thresholds_to_compute=[0.1, 0.6],
         iou_thresholds_to_return=[0.1, 0.6],
         metrics_to_return=[
@@ -3395,38 +3500,26 @@ def test_evaluate_mixed_annotations(
         {
             "type": "AP",
             "parameters": {"iou": 0.1},
-            "value": 0.0,
-            "label": {"key": "key2", "value": "value"},
+            "value": 1.0,
+            "label": {"key": "raster", "value": "value"},
         },
         {
             "type": "AP",
             "parameters": {"iou": 0.6},
-            "value": 0.0,
-            "label": {"key": "key2", "value": "value"},
+            "value": 1.0,
+            "label": {"key": "raster", "value": "value"},
         },
         {
             "type": "AP",
             "parameters": {"iou": 0.1},
             "value": 1.0,
-            "label": {"key": "key", "value": "value"},
+            "label": {"key": "polygon", "value": "value"},
         },
         {
             "type": "AP",
             "parameters": {"iou": 0.6},
             "value": 1.0,
-            "label": {"key": "key", "value": "value"},
-        },
-        {
-            "type": "AP",
-            "parameters": {"iou": 0.1},
-            "value": 1.0,
-            "label": {"key": "key1", "value": "value"},
-        },
-        {
-            "type": "AP",
-            "parameters": {"iou": 0.6},
-            "value": 1.0,
-            "label": {"key": "key1", "value": "value"},
+            "label": {"key": "polygon", "value": "value"},
         },
     ]
 
@@ -3436,7 +3529,7 @@ def test_evaluate_mixed_annotations(
         assert m in eval_job_poly.metrics
 
     eval_job_box = model.evaluate_detection(
-        dset,
+        [dset_box, dset_polygon, dset_raster],
         iou_thresholds_to_compute=[0.1, 0.6],
         iou_thresholds_to_return=[0.1, 0.6],
         metrics_to_return=[
@@ -3451,37 +3544,37 @@ def test_evaluate_mixed_annotations(
             "type": "AP",
             "parameters": {"iou": 0.1},
             "value": 1.0,
-            "label": {"key": "key", "value": "value"},
+            "label": {"key": "raster", "value": "value"},
         },
         {
             "type": "AP",
             "parameters": {"iou": 0.6},
             "value": 1.0,
-            "label": {"key": "key", "value": "value"},
+            "label": {"key": "raster", "value": "value"},
         },
         {
             "type": "AP",
             "parameters": {"iou": 0.1},
             "value": 1.0,
-            "label": {"key": "key2", "value": "value"},
+            "label": {"key": "box", "value": "value"},
         },
         {
             "type": "AP",
             "parameters": {"iou": 0.6},
             "value": 1.0,
-            "label": {"key": "key2", "value": "value"},
+            "label": {"key": "box", "value": "value"},
         },
         {
             "type": "AP",
             "parameters": {"iou": 0.1},
-            "value": 0.0,  # should be 1. this is a bug in the API suggesting that Polygon -> Box conversion isn't working properly
-            "label": {"key": "key1", "value": "value"},
+            "value": 1.0,
+            "label": {"key": "polygon", "value": "value"},
         },
         {
             "type": "AP",
             "parameters": {"iou": 0.6},
-            "value": 0.0,
-            "label": {"key": "key1", "value": "value"},
+            "value": 1.0,
+            "label": {"key": "polygon", "value": "value"},
         },
     ]
 
