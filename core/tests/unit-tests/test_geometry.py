@@ -689,6 +689,13 @@ def test_convert_geometry_to_raster():
     )
     assert np.array_equal(output, expected_output)
 
+    polygon = Polygon([[(0, 0), (2, 0), (1, 2), (0, 0)]])
+    output = Raster.from_geometry(polygon, height=3, width=3).to_array()
+    expected_output = np.array(
+        [[True, True, True], [False, True, False], [False, True, False]]
+    )
+    assert np.array_equal(output, expected_output)
+
     # random five-pointed shape
     polygon = Polygon([[(5, 7), (2, 3), (8, 1), (9, 6), (4, 5), (5, 7)]])
     output = Raster.from_geometry(polygon, height=9, width=9).to_array()
@@ -706,3 +713,25 @@ def test_convert_geometry_to_raster():
         ]
     )
     assert np.array_equal(output, expected_output)
+
+    # test multiple shapes
+    polygon = Polygon([[(0, 0), (2, 0), (1, 2), (0, 0)]]).to_coordinates()
+    box = Box([[(4, 4), (4, 5), (5, 5), (5, 4), (4, 4)]]).to_coordinates()
+    output = Raster.from_coordinates(
+        polygon + box, height=6, width=6
+    ).to_array()
+    expected_output = np.array(
+        [
+            [True, True, True, False, False, False],
+            [False, True, False, False, False, False],
+            [False, True, False, False, False, False],
+            [False, False, False, False, False, False],
+            [False, False, False, False, True, True],
+            [False, False, False, False, True, True],
+        ]
+    )
+    assert np.array_equal(output, expected_output)
+
+    # test if we don't have the right number of points
+    with pytest.raises(ValueError):
+        polygon = Polygon([[(0, 0), (0, 2), (2, 1)]])
