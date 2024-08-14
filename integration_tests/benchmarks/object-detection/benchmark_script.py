@@ -246,33 +246,13 @@ class EvaluationBenchmark:
 
 def run_benchmarking_analysis(
     limits_to_test: list[int],
+    groundtruths: dict[str, str],
+    predictions: dict[str, str],
     results_file: str = "results.json",
 ):
     """Time various function calls and export the results."""
     current_directory = Path(__file__).parent
     write_path = current_directory / Path(results_file)
-
-    gt_box_filename = "gt_objdet_coco_bbox.jsonl"
-    gt_polygon_filename = "gt_objdet_coco_polygon.jsonl"
-    gt_multipolygon_filename = "gt_objdet_coco_raster_multipolygon.jsonl"
-    gt_raster_filename = "gt_objdet_coco_raster_bitmask.jsonl"
-    pd_box_filename = "pd_objdet_yolo_bbox.jsonl"
-    pd_polygon_filename = "pd_objdet_yolo_polygon.jsonl"
-    pd_multipolygon_filename = "pd_objdet_yolo_multipolygon.jsonl"
-    pd_raster_filename = "pd_objdet_yolo_raster.jsonl"
-
-    groundtruths = {
-        "box": gt_box_filename,
-        "polygon": gt_polygon_filename,
-        "multipolygon": gt_multipolygon_filename,
-        "raster": gt_raster_filename,
-    }
-    predictions = {
-        "box": pd_box_filename,
-        "polygon": pd_polygon_filename,
-        "multipolygon": pd_multipolygon_filename,
-        "raster": pd_raster_filename,
-    }
 
     # cache data locally
     filenames = [*list(groundtruths.values()), *list(predictions.values())]
@@ -388,6 +368,31 @@ def run_benchmarking_analysis(
 
 
 if __name__ == "__main__":
+
+    gt_box_filename = "gt_objdet_coco_bbox.jsonl"
+    gt_polygon_filename = "gt_objdet_coco_polygon.jsonl"
+    gt_multipolygon_filename = "gt_objdet_coco_raster_multipolygon.jsonl"
+    gt_raster_filename = "gt_objdet_coco_raster_bitmask.jsonl"
+    pd_box_filename = "pd_objdet_yolo_bbox.jsonl"
+    pd_polygon_filename = "pd_objdet_yolo_polygon.jsonl"
+    pd_multipolygon_filename = "pd_objdet_yolo_multipolygon.jsonl"
+    pd_raster_filename = "pd_objdet_yolo_raster.jsonl"
+
+    groundtruths = {
+        "box": gt_box_filename,
+        "polygon": gt_polygon_filename,
+        "multipolygon": gt_multipolygon_filename,
+        "raster": gt_raster_filename,
+    }
+    predictions = {
+        "box": pd_box_filename,
+        "polygon": pd_polygon_filename,
+        "multipolygon": pd_multipolygon_filename,
+        "raster": pd_raster_filename,
+    }
+
     run_benchmarking_analysis(
-        limits_to_test=[6, 6],
+        groundtruths=groundtruths,
+        predictions=predictions,
+        limits_to_test=[12],
     )
