@@ -3622,115 +3622,45 @@ def test_evaluate_mixed_annotations(
         )
     ]
 
-    eval_job = evaluate_detection(
-        groundtruths=gts,
-        predictions=pds,
-        iou_thresholds_to_compute=[0.1, 0.6],
-        iou_thresholds_to_return=[0.1, 0.6],
-        metrics_to_return=[
-            enums.MetricType.AP,
-        ],
-    )
+    # by default, valor_core should throw an error if given mixed AnnotationTypes without being explicitely told to convert to a certain type
+    with pytest.raises(ValueError):
+        _ = evaluate_detection(
+            groundtruths=gts,
+            predictions=pds,
+            iou_thresholds_to_compute=[0.1, 0.6],
+            iou_thresholds_to_return=[0.1, 0.6],
+            metrics_to_return=[
+                enums.MetricType.AP,
+            ],
+        )
 
-    expected = [
-        {
-            "type": "AP",
-            "parameters": {"iou": 0.1},
-            "value": 0.0,
-            "label": {"key": "key1", "value": "value"},
-        },
-        {
-            "type": "AP",
-            "parameters": {"iou": 0.6},
-            "value": 0.0,
-            "label": {"key": "key1", "value": "value"},
-        },
-        {
-            "type": "AP",
-            "parameters": {"iou": 0.1},
-            "value": 0.0,
-            "label": {"key": "key2", "value": "value"},
-        },
-        {
-            "type": "AP",
-            "parameters": {"iou": 0.6},
-            "value": 0.0,
-            "label": {"key": "key2", "value": "value"},
-        },
-        {
-            "type": "AP",
-            "parameters": {"iou": 0.1},
-            "value": 1.0,
-            "label": {"key": "key", "value": "value"},
-        },
-        {
-            "type": "AP",
-            "parameters": {"iou": 0.6},
-            "value": 1.0,
-            "label": {"key": "key", "value": "value"},
-        },
-    ]
+    # test conversion to raster. this should throw an error since the user is trying to convert a Box annotation to a polygon.
+    with pytest.raises(ValueError):
+        evaluate_detection(
+            groundtruths=gts,
+            predictions=pds,
+            iou_thresholds_to_compute=[0.1, 0.6],
+            iou_thresholds_to_return=[0.1, 0.6],
+            metrics_to_return=[
+                enums.MetricType.AP,
+            ],
+            convert_annotations_to_type=enums.AnnotationType.RASTER,
+        )
 
-    for m in eval_job.metrics:
-        assert m in expected
-    for m in expected:
-        assert m in eval_job.metrics
+    # test conversion to polygon. this should throw an error since the user is trying to convert a Box annotation to a polygon.
+    with pytest.raises(ValueError):
+        evaluate_detection(
+            groundtruths=gts,
+            predictions=pds,
+            iou_thresholds_to_compute=[0.1, 0.6],
+            iou_thresholds_to_return=[0.1, 0.6],
+            metrics_to_return=[
+                enums.MetricType.AP,
+            ],
+            convert_annotations_to_type=enums.AnnotationType.POLYGON,
+        )
 
-    eval_job_poly = evaluate_detection(
-        groundtruths=gts,
-        predictions=pds,
-        iou_thresholds_to_compute=[0.1, 0.6],
-        iou_thresholds_to_return=[0.1, 0.6],
-        metrics_to_return=[
-            enums.MetricType.AP,
-        ],
-        convert_annotations_to_type=enums.AnnotationType.POLYGON,
-    )
-
-    expected = [
-        {
-            "label": {"key": "key", "value": "value"},
-            "parameters": {"iou": 0.1},
-            "value": 1.0,
-            "type": "AP",
-        },
-        {
-            "label": {"key": "key", "value": "value"},
-            "parameters": {"iou": 0.6},
-            "value": 1.0,
-            "type": "AP",
-        },
-        {
-            "label": {"key": "key2", "value": "value"},
-            "parameters": {"iou": 0.1},
-            "value": 0.0,
-            "type": "AP",
-        },
-        {
-            "label": {"key": "key2", "value": "value"},
-            "parameters": {"iou": 0.6},
-            "value": 0.0,
-            "type": "AP",
-        },
-        {
-            "label": {"key": "key1", "value": "value"},
-            "parameters": {"iou": 0.1},
-            "value": 1.0,
-            "type": "AP",
-        },
-        {
-            "label": {"key": "key1", "value": "value"},
-            "parameters": {"iou": 0.6},
-            "value": 1.0,
-            "type": "AP",
-        },
-    ]
-
-    for m in eval_job_poly.metrics:
-        assert m in expected
-    for m in expected:
-        assert m in eval_job_poly.metrics
-
+    # test conversion to box
     eval_job_box = evaluate_detection(
         groundtruths=gts,
         predictions=pds,

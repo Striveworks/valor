@@ -773,11 +773,6 @@ def _identify_most_detailed_annotation_type(
     """
     Identify the most detailed annotation type present in the DataFrame.
 
-    The function checks the columns in the given DataFrame for non-null values
-    to determine the most detailed annotation type in the following order:
-    raster, polygon, bounding_box. If none of these types are present,
-    it returns AnnotationType.NONE.
-
     Parameters
     ----------
     df : pd.DataFrame
@@ -797,6 +792,36 @@ def _identify_most_detailed_annotation_type(
 
     elif df["bounding_box"].notnull().any():
         return enums.AnnotationType.BOX
+
+    else:
+        return enums.AnnotationType.NONE
+
+
+def _identify_least_detailed_annotation_type(
+    df: pd.DataFrame,
+) -> enums.AnnotationType:
+    """
+    Identify the least detailed annotation type present in the DataFrame.
+
+    Parameters
+    ----------
+    df : pd.DataFrame
+        DataFrame containing the annotations.
+
+    Returns
+    -------
+    enums.AnnotationType
+        The least detailed annotation type present in the DataFrame.
+    """
+
+    if df["bounding_box"].notnull().any():
+        return enums.AnnotationType.BOX
+
+    elif df["polygon"].notnull().any():
+        return enums.AnnotationType.POLYGON
+
+    elif df["raster"].notnull().any():
+        return enums.AnnotationType.RASTER
 
     else:
         return enums.AnnotationType.NONE
@@ -917,6 +942,22 @@ def convert_annotations_to_common_type(
     ValueError
         If the target annotation type is not supported.
     """
+    least_detailed_groundtruth_type = _identify_least_detailed_annotation_type(
+        df=groundtruth_df,
+    )
+
+    least_detailed_prediction_type = _identify_least_detailed_annotation_type(
+        df=prediction_df,
+    )
+
+    # throw an error if the user tries to convert from a lower detailed type to a higher detailed type
+    if target_type and (
+        (target_type > least_detailed_groundtruth_type)
+        or (target_type > least_detailed_prediction_type)
+    ):
+        raise ValueError(
+            f"Cannot convert from a lower-dimensional type {min([least_detailed_groundtruth_type, least_detailed_prediction_type])} to a higher-dimensional type {target_type}"
+        )
 
     if target_type is None:
         most_detailed_groundtruth_type = (
@@ -930,6 +971,16 @@ def convert_annotations_to_common_type(
                 df=prediction_df,
             )
         )
+
+        if not (
+            most_detailed_groundtruth_type
+            == most_detailed_prediction_type
+            == least_detailed_groundtruth_type
+            == least_detailed_prediction_type
+        ) and (most_detailed_prediction_type != enums.AnnotationType.NONE):
+            raise ValueError(
+                "valor_core doesn't support auto-conversion of mixed AnnotationTypes. Please make sure to pass a convert_annotation_to_type argument to the evaluation function to tell valor_core how to handle mixed annotation types."
+            )
 
         target_type = min(
             [most_detailed_groundtruth_type, most_detailed_prediction_type]
