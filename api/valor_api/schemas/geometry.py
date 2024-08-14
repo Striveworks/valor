@@ -9,9 +9,17 @@ from geoalchemy2.functions import (
     ST_AddBand,
     ST_AsRaster,
     ST_GeomFromText,
+    ST_Height,
     ST_MakeEmptyRaster,
     ST_MapAlgebra,
     ST_SnapToGrid,
+    ST_UpperLeftX,
+    ST_UpperLeftY,
+    ST_Width,
+    ST_XMax,
+    ST_XMin,
+    ST_YMax,
+    ST_YMin,
 )
 from pydantic import (
     BaseModel,
@@ -1040,24 +1048,44 @@ class Raster(BaseModel):
                 ),
                 "1BB",
             )
-            geom_raster = ST_AsRaster(
-                ST_SnapToGrid(
-                    ST_GeomFromText(self.geometry.to_wkt()),
-                    1.0,
-                ),
-                1.0,  # scalex
-                1.0,  # scaley
-                "1BB",  # pixeltype
-                1,  # value
-                0,  # nodataval
-            )
+            # geom = select(
+            #     ST_SnapToGrid(
+            #         ST_GeomFromText(self.geometry.to_wkt()),
+            #         1.0,
+            #     ).label('geom')
+            # ).cte()
+            # geom_raster = ST_AsRaster(
+            #     geom.c.geom,
+            #     ST_XMax(geom.c.geom) - ST_XMin(geom.c.geom), # width
+            #     ST_YMax(geom.c.geom) - ST_YMin(geom.c.geom), # height
+            #     "1BB", # pixeltype
+            #     1, # precison
+            #     0, # nodata
+            #     0, #ST_XMin(geom.c.geom),
+            #     0, #ST_YMin(geom.c.geom),
+            #     # 1.0,  # scalex
+            #     # 1.0,  # scaley
+            #     # "1BB",  # pixeltype
+            #     # 1,  # value
+            #     # 0,  # nodataval
+            # )
+            # return select(
+            #     ST_MapAlgebra(
+            #         empty_raster,
+            #         geom_raster,
+            #         "[rast2]",
+            #         "1BB",
+            #         "UNION",
+            #     )
+            # ).scalar_subquery()
+            # return select(geom_raster).scalar_subquery()
             return select(
-                ST_MapAlgebra(
+                ST_AsRaster(
+                    ST_GeomFromText(self.geometry.to_wkt()),
                     empty_raster,
-                    geom_raster,
-                    "[rast2]",
                     "1BB",
-                    "UNION",
+                    1,
+                    0,
                 )
             ).scalar_subquery()
         else:
