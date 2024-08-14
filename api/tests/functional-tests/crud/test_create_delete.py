@@ -4,7 +4,7 @@ from base64 import b64decode, b64encode
 
 import numpy as np
 import pytest
-from geoalchemy2.functions import ST_AsText, ST_Count
+from geoalchemy2.functions import ST_AsText, ST_Count, ST_Polygon
 from PIL import Image
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
@@ -982,8 +982,7 @@ def test_gt_seg_as_mask_or_polys(
     dataset_name: str,
 ):
     """Check that a ground truth segmentation can be created as a polygon or mask"""
-    # xmin, xmax, ymin, ymax = 11, 45, 37, 102
-    xmin, xmax, ymin, ymax = 10, 45, 40, 100
+    xmin, xmax, ymin, ymax = 11, 45, 37, 102
     h, w = 150, 200
     mask = np.zeros((h, w), dtype=bool)
     mask[ymin:ymax, xmin:xmax] = True
@@ -1036,25 +1035,25 @@ def test_gt_seg_as_mask_or_polys(
 
     crud.create_groundtruths(db=db, groundtruths=[gt])
 
-    # shapes = db.scalars(
-    #     select(
-    #         ST_AsText(ST_Polygon(models.Annotation.raster)),
-    #     )
-    # ).all()
-    # assert len(shapes) == 2
+    shapes = db.scalars(
+        select(
+            ST_AsText(ST_Polygon(models.Annotation.raster)),
+        )
+    ).all()
+    assert len(shapes) == 2
 
-    # # check that the mask and polygon define the same polygons
-    # assert (
-    #     db.scalar(
-    #         select(
-    #             func.ST_Equals(
-    #                 func.ST_GeomFromText(shapes[0]),
-    #                 func.ST_GeomFromText(shapes[1]),
-    #             )
-    #         )
-    #     )
-    #     is True
-    # )
+    # check that the mask and polygon define the same polygons
+    assert (
+        db.scalar(
+            select(
+                func.ST_Equals(
+                    func.ST_GeomFromText(shapes[0]),
+                    func.ST_GeomFromText(shapes[1]),
+                )
+            )
+        )
+        is True
+    )
 
     # verify we get the same segmentations back
     segs = crud.get_groundtruth(
