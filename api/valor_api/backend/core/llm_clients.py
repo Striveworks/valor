@@ -2,11 +2,6 @@ from typing import Any
 
 from mistralai.sdk import Mistral
 from openai import OpenAI
-from openai.types.chat import (
-    ChatCompletionAssistantMessageParam,
-    ChatCompletionSystemMessageParam,
-    ChatCompletionUserMessageParam,
-)
 from pydantic import BaseModel
 
 from valor_api.backend.core.llm_instructions_analysis import (
@@ -835,11 +830,7 @@ class WrappedOpenAIClient(LLMClient):
     def _process_messages(
         self,
         messages: list[dict[str, str]],
-    ) -> list[
-        ChatCompletionSystemMessageParam
-        | ChatCompletionUserMessageParam
-        | ChatCompletionAssistantMessageParam
-    ]:
+    ) -> list[dict[str, str]]:
         """
         Format messages for the API.
 
@@ -850,41 +841,13 @@ class WrappedOpenAIClient(LLMClient):
 
         Returns
         -------
-        list[ChatCompletionSystemMessageParam | ChatCompletionUserMessageParam | ChatCompletionAssistantMessageParam]
-            The messages converted to the OpenAI client message objects.
+        list[dict[str, str]]
+            The messages are left in the OpenAI standard.
         """
         # Validate that the input is a list of dictionaries with "role" and "content" keys.
         _ = Messages(messages=messages)  # type: ignore
 
-        ret = []
-        for i in range(len(messages)):
-            match messages[i]["role"]:
-                case "system":
-                    ret.append(
-                        ChatCompletionSystemMessageParam(
-                            content=messages[i]["content"],
-                            role="system",
-                        )
-                    )
-                case "user":
-                    ret.append(
-                        ChatCompletionUserMessageParam(
-                            content=messages[i]["content"],
-                            role="user",
-                        )
-                    )
-                case "assistant":
-                    ret.append(
-                        ChatCompletionAssistantMessageParam(
-                            content=messages[i]["content"],
-                            role="assistant",
-                        )
-                    )
-                case _:
-                    raise ValueError(
-                        f"Role {messages[i]['role']} is not supported by OpenAI."
-                    )
-        return ret
+        return messages
 
     def __call__(
         self,

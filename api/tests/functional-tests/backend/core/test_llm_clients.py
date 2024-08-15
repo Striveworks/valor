@@ -1022,11 +1022,6 @@ def test_WrappedOpenAIClient():
     # Check that the WrappedOpenAIClient does not alter the messages.
     assert fake_message == client._process_messages(fake_message)
 
-    # OpenAI only allows the roles of system, user and assistant.
-    invalid_message = [{"role": "invalid", "content": "Some content."}]
-    with pytest.raises(ValueError):
-        client._process_messages(invalid_message)
-
     # The OpenAI Client should be able to connect if the API key is set as the environment variable.
     os.environ["OPENAI_API_KEY"] = "dummy_key"
     client = WrappedOpenAIClient(model_name="model_name")
@@ -1132,9 +1127,7 @@ def test_WrappedMistralAIClient():
         client.connect()
         client(fake_message)
 
-    assert [
-        {"role": "assistant", "content": "content"}
-    ] == client._process_messages(fake_message)
+    assert fake_message == client._process_messages(fake_message)
 
     # The Mistral Client should be able to connect if the API key is set as the environment variable.
     os.environ["MISTRAL_API_KEY"] = "dummy_key"
