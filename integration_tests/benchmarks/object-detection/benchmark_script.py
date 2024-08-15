@@ -292,6 +292,8 @@ def run_benchmarking_analysis(
             gt_filename = groundtruths[gt_type]
             pd_filename = predictions[pd_type]
 
+            print(gt_type, pd_type)
+
             try:
                 dataset = Dataset.create(name="coco")
                 model = Model.create(name="yolo")
