@@ -1,7 +1,33 @@
+import math
+
 import numpy as np
 import pandas as pd
 import pytest
 from valor_core import schemas
+
+
+@pytest.fixture
+def box_points() -> list[tuple[float, float]]:
+    return [
+        (-5, -5),
+        (5, -5),
+        (5, 5),
+        (-5, 5),
+        (-5, -5),
+    ]
+
+
+@pytest.fixture
+def rotated_box_points() -> list[tuple[float, float]]:
+    """Same area and sides as box_points, but rotated 45 degrees."""
+    d = 5.0 * math.sqrt(2)
+    return [
+        (0, -d),
+        (d, 0),
+        (0, d),
+        (-d, 0),
+        (0, -d),
+    ]
 
 
 @pytest.fixture

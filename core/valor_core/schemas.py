@@ -8,7 +8,7 @@ from typing import Any, Dict, List, Optional, Union
 import numpy as np
 import PIL.ImageDraw as ImageDraw
 from PIL import Image
-from valor_core import enums
+from valor_core import enums, geometry
 
 
 def _generate_type_error(received_value: Any, expected_type: str):
@@ -142,7 +142,7 @@ def _validate_type_polygon(v: Any) -> None:
     for line in v:
         if not (len(line) >= 4 and line[0] == line[-1]):
             raise ValueError(
-                "A polygon is defined by a line of at least four points with the first and last points being equal."
+                "A polygon is defined by a list of at least four points with the first and last points being equal."
             )
 
 
@@ -168,18 +168,8 @@ def _validate_type_box(v: Any) -> None:
             "Boxes are defined by five points with the first and last being equal."
         )
 
-    # check that the box is axis-aligned
-    unique_x_values = set()
-    unique_y_values = set()
-
-    for x, y in v[0]:
-        unique_x_values.add(x)
-        unique_y_values.add(y)
-
-    if (len(unique_x_values) != 2) or (len(unique_y_values) != 2):
-        raise NotImplementedError(
-            "Expected an axis-aligned Box, but found too many unique values. Rotated and skewed bounding boxes are not yet supported."
-        )
+    if geometry.is_skewed(v[0]):
+        raise NotImplementedError("Skewed boxes are not implemented yet.")
 
 
 def _validate_geojson(geojson: dict) -> None:
