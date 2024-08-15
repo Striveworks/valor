@@ -292,8 +292,6 @@ def run_benchmarking_analysis(
             gt_filename = groundtruths[gt_type]
             pd_filename = predictions[pd_type]
 
-            print(gt_type, pd_type)
-
             try:
                 dataset = Dataset.create(name="coco")
                 model = Model.create(name="yolo")
@@ -398,22 +396,4 @@ if __name__ == "__main__":
             (AnnotationType.POLYGON, AnnotationType.POLYGON),
         ],
         limits_to_test=[5000, 5000],
-    )
-
-    # run multipolygon raster benchmark
-    run_benchmarking_analysis(
-        combinations=[
-            (AnnotationType.MULTIPOLYGON, AnnotationType.MULTIPOLYGON),
-        ],
-        evaluation_timeout=60,
-        limits_to_test=[6, 6],
-    )
-
-    # run bitmask raster benchmark
-    run_benchmarking_analysis(
-        combinations=[
-            (AnnotationType.RASTER, AnnotationType.RASTER),
-        ],
-        evaluation_timeout=60,
-        limits_to_test=[6, 6],
     )
