@@ -3,14 +3,13 @@ import os
 from unittest.mock import MagicMock
 
 import pytest
-from mistralai.exceptions import MistralException
-from mistralai.models.chat_completion import (
+from mistralai.models import (
+    AssistantMessage,
+    ChatCompletionChoice,
     ChatCompletionResponse,
-    ChatCompletionResponseChoice,
-    ChatMessage,
-    FinishReason,
+    UsageInfo,
 )
-from mistralai.models.common import UsageInfo
+from mistralai.models.sdkerror import SDKError as MistralSDKError
 from openai import OpenAIError
 from openai.types.chat import ChatCompletionMessage
 from openai.types.chat.chat_completion import ChatCompletion, Choice
@@ -1080,12 +1079,12 @@ def test_WrappedMistralAIClient():
             model="gpt-3.5-turbo",
             object="chat.completion",
             choices=[
-                ChatCompletionResponseChoice(
-                    finish_reason=FinishReason("length"),
+                ChatCompletionChoice(
+                    finish_reason="length",
                     index=0,
-                    message=ChatMessage(
-                        role="role",
-                        content="some content",
+                    message=AssistantMessage(
+                        role="assistant",
+                        content="some response",
                         name=None,
                         tool_calls=None,
                         tool_call_id=None,
@@ -1106,11 +1105,11 @@ def test_WrappedMistralAIClient():
             model="gpt-3.5-turbo",
             object="chat.completion",
             choices=[
-                ChatCompletionResponseChoice(
-                    finish_reason=FinishReason("stop"),
+                ChatCompletionChoice(
+                    finish_reason="stop",
                     index=0,
-                    message=ChatMessage(
-                        role="role",
+                    message=AssistantMessage(
+                        role="assistant",
                         content="some response",
                         name=None,
                         tool_calls=None,
@@ -1128,19 +1127,13 @@ def test_WrappedMistralAIClient():
     client = WrappedMistralAIClient(
         api_key="invalid_key", model_name="model_name"
     )
-    fake_message = [{"role": "role", "content": "content"}]
-    with pytest.raises(MistralException):
+    fake_message = [{"role": "assistant", "content": "content"}]
+    with pytest.raises(MistralSDKError):
         client.connect()
         client(fake_message)
 
     assert [
-        ChatMessage(
-            role="role",
-            content="content",
-            name=None,
-            tool_calls=None,
-            tool_call_id=None,
-        )
+        {"role": "assistant", "content": "content"}
     ] == client._process_messages(fake_message)
 
     # The Mistral Client should be able to connect if the API key is set as the environment variable.
@@ -1151,18 +1144,18 @@ def test_WrappedMistralAIClient():
     client.client = MagicMock()
 
     # The metric computation should fail if the request fails.
-    client.client.chat = _create_bad_request
+    client.client.chat.complete = _create_bad_request
     with pytest.raises(ValueError) as e:
         client(fake_message)
 
     # The metric computation should fail when the finish reason is bad length.
-    client.client.chat = _create_mock_chat_completion_with_bad_length
+    client.client.chat.complete = _create_mock_chat_completion_with_bad_length
     with pytest.raises(ValueError) as e:
         client(fake_message)
     assert "reached max token limit" in str(e)
 
     # The metric computation should run successfully when the finish reason is stop.
-    client.client.chat = _create_mock_chat_completion
+    client.client.chat.complete = _create_mock_chat_completion
     assert client(fake_message) == "some response"
 
 
