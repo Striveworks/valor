@@ -12,17 +12,17 @@ from openai.types.chat import (
 from pydantic import BaseModel
 
 from valor_api.backend.core.llm_instructions_analysis import (
-    _generate_answer_correctness_verdicts_instruction,
-    _generate_answer_relevance_verdicts_instruction,
-    _generate_bias_verdicts_instruction,
-    _generate_claims_instruction,
-    _generate_context_relevance_verdicts_instruction,
-    _generate_faithfulness_verdicts_instruction,
-    _generate_hallucination_verdicts_instruction,
-    _generate_opinions_instruction,
-    _generate_statements_instruction,
-    _generate_toxicity_verdicts_instruction,
-    _get_coherence_instruction,
+    generate_answer_correctness_verdicts_instruction,
+    generate_answer_relevance_verdicts_instruction,
+    generate_bias_verdicts_instruction,
+    generate_claims_instruction,
+    generate_coherence_instruction,
+    generate_context_relevance_verdicts_instruction,
+    generate_faithfulness_verdicts_instruction,
+    generate_hallucination_verdicts_instruction,
+    generate_opinions_instruction,
+    generate_statements_instruction,
+    generate_toxicity_verdicts_instruction,
 )
 from valor_api.backend.metrics.metric_utils import trim_and_load_json
 from valor_api.exceptions import InvalidLLMResponseError
@@ -136,7 +136,7 @@ class LLMClient:
             {"role": "system", "content": DEFAULT_SYSTEM_PROMPT},
             {
                 "role": "user",
-                "content": _generate_claims_instruction(text),
+                "content": generate_claims_instruction(text),
             },
         ]
 
@@ -176,7 +176,7 @@ class LLMClient:
             {"role": "system", "content": DEFAULT_SYSTEM_PROMPT},
             {
                 "role": "user",
-                "content": _generate_opinions_instruction(text),
+                "content": generate_opinions_instruction(text),
             },
         ]
 
@@ -216,7 +216,7 @@ class LLMClient:
             {"role": "system", "content": DEFAULT_SYSTEM_PROMPT},
             {
                 "role": "user",
-                "content": _generate_statements_instruction(text),
+                "content": generate_statements_instruction(text),
             },
         ]
 
@@ -262,7 +262,7 @@ class LLMClient:
             {"role": "system", "content": DEFAULT_SYSTEM_PROMPT},
             {
                 "role": "user",
-                "content": _generate_answer_correctness_verdicts_instruction(
+                "content": generate_answer_correctness_verdicts_instruction(
                     query=query,
                     prediction_statements=prediction_statements,
                     groundtruth_statements=groundtruth_statements,
@@ -328,7 +328,7 @@ class LLMClient:
             {"role": "system", "content": DEFAULT_SYSTEM_PROMPT},
             {
                 "role": "user",
-                "content": _generate_answer_relevance_verdicts_instruction(
+                "content": generate_answer_relevance_verdicts_instruction(
                     query,
                     statements,
                 ),
@@ -378,7 +378,7 @@ class LLMClient:
             {"role": "system", "content": DEFAULT_SYSTEM_PROMPT},
             {
                 "role": "user",
-                "content": _generate_bias_verdicts_instruction(
+                "content": generate_bias_verdicts_instruction(
                     opinions,
                 ),
             },
@@ -424,7 +424,7 @@ class LLMClient:
         """
         messages = [
             {"role": "system", "content": DEFAULT_SYSTEM_PROMPT},
-            {"role": "user", "content": _get_coherence_instruction(text)},
+            {"role": "user", "content": generate_coherence_instruction(text)},
         ]
 
         response = self(messages)
@@ -468,7 +468,7 @@ class LLMClient:
             {"role": "system", "content": DEFAULT_SYSTEM_PROMPT},
             {
                 "role": "user",
-                "content": _generate_context_relevance_verdicts_instruction(
+                "content": generate_context_relevance_verdicts_instruction(
                     query,
                     context_list,
                 ),
@@ -520,7 +520,7 @@ class LLMClient:
             {"role": "system", "content": DEFAULT_SYSTEM_PROMPT},
             {
                 "role": "user",
-                "content": _generate_faithfulness_verdicts_instruction(
+                "content": generate_faithfulness_verdicts_instruction(
                     claims,
                     context_list,
                 ),
@@ -574,7 +574,7 @@ class LLMClient:
             {"role": "system", "content": DEFAULT_SYSTEM_PROMPT},
             {
                 "role": "user",
-                "content": _generate_hallucination_verdicts_instruction(
+                "content": generate_hallucination_verdicts_instruction(
                     text,
                     context_list,
                 ),
@@ -623,7 +623,7 @@ class LLMClient:
             {"role": "system", "content": DEFAULT_SYSTEM_PROMPT},
             {
                 "role": "user",
-                "content": _generate_toxicity_verdicts_instruction(
+                "content": generate_toxicity_verdicts_instruction(
                     opinions,
                 ),
             },

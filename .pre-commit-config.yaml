@@ -52,7 +52,7 @@ repos:
             "psycopg2-binary",
             "pgvector",
             "openai",
-            "mistralai",
+            "mistralai<=0.4.2",
             "absl-py",
             "nltk",
             "rouge_score",

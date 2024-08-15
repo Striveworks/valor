@@ -1,13 +1,16 @@
+import numpy as np
 import pytest
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from valor_api import crud, enums, schemas
+from valor_api.backend import core
 from valor_api.backend.metrics.detection import (
     RankedPair,
     _compute_detailed_curves,
     _compute_detection_metrics,
     _compute_detection_metrics_with_detailed_precision_recall_curve,
+    _convert_annotations_to_common_type,
     compute_detection_metrics,
 )
 from valor_api.backend.models import (
@@ -2276,3 +2279,147 @@ def test_detection_exceptions(db: Session):
 
     # show that no errors raised
     compute_detection_metrics(db=db, evaluation_id=evaluation_id)
+
+
+def test__convert_annotations_to_common_type(db: Session):
+
+    dataset_name = "dataset"
+    model_name = "model"
+
+    xmin, xmax, ymin, ymax = 11, 45, 37, 102
+    h, w = 150, 200
+    mask = np.zeros((h, w), dtype=bool)
+    mask[ymin:ymax, xmin:xmax] = True
+
+    pts = [
+        (xmin, ymin),
+        (xmin, ymax),
+        (xmax, ymax),
+        (xmax, ymin),
+        (xmin, ymin),
+    ]
+    poly = schemas.Polygon(value=[pts])
+    raster = schemas.Raster.from_numpy(mask)
+    box = schemas.Box.from_extrema(xmin=xmin, xmax=xmax, ymin=ymin, ymax=ymax)
+    datum = schemas.Datum(uid="123")
+
+    gt_box = schemas.GroundTruth(
+        datum=datum,
+        dataset_name=dataset_name,
+        annotations=[
+            schemas.Annotation(
+                bounding_box=box,
+                labels=[schemas.Label(key="box", value="value")],
+                is_instance=True,
+            )
+        ],
+    )
+    gt_polygon = schemas.GroundTruth(
+        datum=datum,
+        dataset_name=dataset_name,
+        annotations=[
+            schemas.Annotation(
+                polygon=poly,
+                labels=[schemas.Label(key="polygon", value="value")],
+                is_instance=True,
+            )
+        ],
+    )
+    gt_raster = schemas.GroundTruth(
+        datum=datum,
+        dataset_name=dataset_name,
+        annotations=[
+            schemas.Annotation(
+                raster=raster,
+                labels=[schemas.Label(key="raster", value="value")],
+                is_instance=True,
+            )
+        ],
+    )
+
+    pd_box = schemas.Prediction(
+        datum=datum,
+        dataset_name=dataset_name,
+        model_name=model_name,
+        annotations=[
+            schemas.Annotation(
+                bounding_box=box,
+                labels=[schemas.Label(key="box", value="value", score=0.88)],
+                is_instance=True,
+            )
+        ],
+    )
+    pd_polygon = schemas.Prediction(
+        datum=datum,
+        dataset_name=dataset_name,
+        model_name=model_name,
+        annotations=[
+            schemas.Annotation(
+                polygon=poly,
+                labels=[
+                    schemas.Label(key="polygon", value="value", score=0.89)
+                ],
+                is_instance=True,
+            )
+        ],
+    )
+    pd_raster = schemas.Prediction(
+        datum=datum,
+        dataset_name=dataset_name,
+        model_name=model_name,
+        annotations=[
+            schemas.Annotation(
+                raster=raster,
+                labels=[schemas.Label(key="raster", value="value", score=0.9)],
+                is_instance=True,
+            )
+        ],
+    )
+
+    gts = [
+        (enums.AnnotationType.BOX, gt_box),
+        (enums.AnnotationType.POLYGON, gt_polygon),
+        (enums.AnnotationType.RASTER, gt_raster),
+    ]
+    pds = [
+        (enums.AnnotationType.BOX, pd_box),
+        (enums.AnnotationType.POLYGON, pd_polygon),
+        (enums.AnnotationType.RASTER, pd_raster),
+    ]
+
+    for gt_type, gt in gts:
+        for pd_type, pd in pds:
+            crud.create_dataset(
+                db=db, dataset=schemas.Dataset(name=dataset_name)
+            )
+            crud.create_groundtruths(db=db, groundtruths=[gt])
+            crud.finalize(db=db, dataset_name="dataset")
+            crud.create_model(db=db, model=schemas.Model(name=model_name))
+            crud.create_predictions(db=db, predictions=[pd])
+
+            dataset = core.fetch_dataset(db=db, name=dataset_name)
+            model = core.fetch_model(db=db, name=model_name)
+
+            for target_type in [
+                enums.AnnotationType.RASTER,
+                enums.AnnotationType.POLYGON,
+                enums.AnnotationType.BOX,
+            ]:
+                if min(gt_type, pd_type) >= target_type:
+                    _convert_annotations_to_common_type(
+                        db=db,
+                        datasets=[dataset],
+                        model=model,
+                        target_type=target_type,
+                    )
+                else:
+                    with pytest.raises(ValueError):
+                        _convert_annotations_to_common_type(
+                            db=db,
+                            datasets=[dataset],
+                            model=model,
+                            target_type=target_type,
+                        )
+
+            crud.delete(db=db, dataset_name=dataset_name)
+            crud.delete(db=db, model_name=model_name)

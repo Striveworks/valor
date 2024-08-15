@@ -28,13 +28,13 @@ If we're missing an important metric for your particular use case, please [write
 | Detailed Precision-Recall Curves | Similar to `PrecisionRecallCurve`, except this metric a) classifies false positives as `hallucinations` or `misclassifications`, b) classifies false negatives as `misclassifications` or `missed_detections`, and c) gives example datums and bounding boxes for each observation, up to a maximum of `pr_curve_max_examples`. | See [detailed precision-recall curve methods](#detailedprecisionrecallcurve)|
 
 
-**When calculating IOUs for object detection metrics, Valor handles the necessary conversion between different types of geometric annotations. For example, if your model prediction is a polygon and your groundtruth is a raster, then the raster will be converted to a polygon prior to calculating the IOU.
+**When calculating IOUs for object detection metrics, Valor handles the necessary conversion between different types of geometric annotations. For example, if your model prediction is a polygon and your ground truth is a raster, then the raster will be converted to a polygon prior to calculating the IOU.
 
 ## Semantic Segmentation Metrics
 
 | Name | Description | Equation |
 | :- | :- | :- |
-| Intersection Over Union (IOU) | A ratio between the groundtruth and predicted regions of an image, measured as a percentage, grouped by class. |$\dfrac{area( prediction \cap groundtruth )}{area( prediction \cup groundtruth )}$ |
+| Intersection Over Union (IOU) | A ratio between the ground truth and predicted regions of an image, measured as a percentage, grouped by class. |$\dfrac{area( prediction \cap groundtruth )}{area( prediction \cup groundtruth )}$ |
 | Mean IOU 	| The average of IOU across labels, grouped by label key. | $\dfrac{1}{\text{number of labels}} \sum\limits_{label \in labels} IOU_{c}$ |
 
 
@@ -213,7 +213,7 @@ It's important to note that these curves are computed slightly differently from 
 
 ### Classification Tasks
 
-Valor calculates its aggregate precision, recall, and F1 metrics by matching the highest confidence prediction with each groundtruth. One issue with this approach is that we may throw away useful information in cases where prediction labels all have similarly strong confidence scores. For example: if our top two predictions for a given ground truth are `{“label”: cat, “score”:.91}` and `{“label”: dog, “score”:.90}`, then our aggregated precision and recall metrics would penalize the `dog` label even though its confidence score was nearly equal to the `cat` label.
+Valor calculates its aggregate precision, recall, and F1 metrics by matching the highest confidence prediction with each ground truth. One issue with this approach is that we may throw away useful information in cases where prediction labels all have similarly strong confidence scores. For example: if our top two predictions for a given ground truth are `{“label”: cat, “score”:.91}` and `{“label”: dog, “score”:.90}`, then our aggregated precision and recall metrics would penalize the `dog` label even though its confidence score was nearly equal to the `cat` label.
 
 We think the approach above makes sense when calculating aggregate precision and recall metrics, but, when calculating the `PrecisionRecallCurve` value for each label, we consider all ground truth-prediction matches in order to treat each label as its own, separate binary classification problem.
 
@@ -229,23 +229,23 @@ The `PrecisionRecallCurve` values differ from the precision-recall curves used t
 Valor also includes a more detailed version of `PrecisionRecallCurve` which can be useful for debugging your model's false positives and false negatives. When calculating `DetailedPrecisionCurve`, Valor will classify false positives as either `hallucinations` or `misclassifications` and your false negatives as either `missed_detections` or `misclassifications` using the following logic:
 
 #### Classification Tasks
-  - A **false positive** occurs when there is a qualified prediction (with `score >= score_threshold`) with the same `Label.key` as the groundtruth on the datum, but the `Label.value` is incorrect.
-    - **Example**: if there's a photo with one groundtruth label on it (e.g., `Label(key='animal', value='dog')`), and we predicted another label value (e.g., `Label(key='animal', value='cat')`) on that datum, we'd say it's a `misclassification` since the key was correct but the value was not.
-  - Similarly, a **false negative** occurs when there is a prediction with the same `Label.key` as the groundtruth on the datum, but the `Label.value` is incorrect.
+  - A **false positive** occurs when there is a qualified prediction (with `score >= score_threshold`) with the same `Label.key` as the ground truth on the datum, but the `Label.value` is incorrect.
+    - **Example**: if there's a photo with one ground truth label on it (e.g., `Label(key='animal', value='dog')`), and we predicted another label value (e.g., `Label(key='animal', value='cat')`) on that datum, we'd say it's a `misclassification` since the key was correct but the value was not.
+  - Similarly, a **false negative** occurs when there is a prediction with the same `Label.key` as the ground truth on the datum, but the `Label.value` is incorrect.
     - Stratifications of False Negatives:
         - `misclassification`: Occurs when a different label value passes the score threshold.
         - `no_predictions`: Occurs when no label passes the score threshold.
 
 #### Object Detection Tasks
   - A **false positive** is a `misclassification` if the following conditions are met:
-    1. There is a qualified prediction with the same `Label.key` as the groundtruth on the datum, but the `Label.value` is incorrect
-    2. The qualified prediction and groundtruth have an IOU >= `pr_curve_iou_threshold`.
+    1. There is a qualified prediction with the same `Label.key` as the ground truth on the datum, but the `Label.value` is incorrect
+    2. The qualified prediction and ground truth have an IOU >= `pr_curve_iou_threshold`.
   - A **false positive** that does not meet the `misclassification` criteria is considered to be a part of the `hallucinations` set.
   - A **false negative** is determined to be a `misclassification` if the following criteria are met:
-    1. There is a qualified prediction with the same `Label.key` as the groundtruth on the datum, but the `Label.value` is incorrect.
-    2. The qualified prediction and groundtruth have an IOU >= `pr_curve_iou_threshold`.
+    1. There is a qualified prediction with the same `Label.key` as the ground truth on the datum, but the `Label.value` is incorrect.
+    2. The qualified prediction and ground truth have an IOU >= `pr_curve_iou_threshold`.
   - For a **false negative** that does not meet this criteria, we consider it to have `no_predictions`.
-  - **Example**: if there's a photo with one groundtruth label on it (e.g., `Label(key='animal', value='dog')`), and we predicted another bounding box directly over that same object (e.g., `Label(key='animal', value='cat')`), we'd say it's a `misclassification`.
+  - **Example**: if there's a photo with one ground truth label on it (e.g., `Label(key='animal', value='dog')`), and we predicted another bounding box directly over that same object (e.g., `Label(key='animal', value='cat')`), we'd say it's a `misclassification`.
 
 The `DetailedPrecisionRecallOutput` also includes up to `n` examples of each type of error, where `n` is set using `pr_curve_max_examples`. An example output is as follows:
 
@@ -310,7 +310,7 @@ print(detailed_evaluation)
 
 ## General Text Generation Metrics
 
-The general text generation metrics apply to a broad set of text generation tasks. These metrics don't compare to any ground truths and don't require any contexts. The metrics are evaluated purely based on the predicted text.
+The general text generation metrics apply to a broad set of text generation tasks. These metrics don't compare to ground truths and don't require context. The metrics are evaluated purely based on the predicted text.
 
 Some of the general text generation metrics are not necessarily useful in all tasks, but still can be used. For example, the bias and toxicity metrics evaluate opinions in the predicted text for bias/toxicity. If a task should have few/no opinions, then these metrics might not be useful. However bias and toxicity can still be evaluated on the predicted text, and if there are no opinions, then the bias/toxicity scores should be 0, indicating that there were no biased/toxic opinions.
 
@@ -403,7 +403,7 @@ Context relevance is the proportion of pieces of retrieved contexts that are rel
 
 Context relevance is useful for evaluating the retrieval mechanism of a RAG model. This metric does not considered the generated answer or any ground truth answers to the query, only the retrieved contexts.
 
-Given the query and the list of context, an LLM is prompted to determine if each piece of context is relevant to the query. Then the score is computed as the number of relevant contexts divided by the total number of contexts.
+Given the query and the list of contexts, an LLM is prompted to determine if each piece of context is relevant to the query. Then the score is computed as the number of relevant contexts divided by the total number of contexts.
 
 Our implementation closely follows [DeepEval's implementation](https://github.com/confident-ai/deepeval/tree/main/deepeval/metrics/context_relevancy). The calculation is the same, however we modified the instruction for the LLM. The instruction in DeepEval contained typos and was organized in a confusing way, so we fixed the typos and reorganized the example to make the task clearer.
 
@@ -411,9 +411,9 @@ Our implementation closely follows [DeepEval's implementation](https://github.co
 
 Faithfulness is the proportion of claims from the predicted text that are implied by the retrieved contexts.
 
-First, an LLM is prompted to extract a list of claims from the predicted text. Then, the LLM is prompted again with the list of claims and the list of context and is asked if each claim is implied / can be verified from the contexts. If the claim contradicts the contexts or if the claim is unrelated to the contexts, the LLM is instructed to indicate that the claim is not implied by the contexts. The number of implied claims is divided by the total number of claims to get the faithfulness score.
+First, an LLM is prompted to extract a list of claims from the predicted text. Then, the LLM is prompted again with the list of claims and the list of contexts and is asked if each claim is implied / can be verified from the contexts. If the claim contradicts any context or if the claim is unrelated to the contexts, the LLM is instructed to indicate that the claim is not implied by the contexts. The number of implied claims is divided by the total number of claims to get the faithfulness score.
 
-Our implementation loosely follows and combines the strategies of [DeepEval](https://docs.confident-ai.com/docs/metrics-faithfulness) and [RAGAS](https://docs.ragas.io/en/latest/concepts/metrics/faithfulness.html), however it is notable that DeepEval and RAGAS's definitions of faithfulness are not equivalent. The difference is that, if a claim is unrelated to the contexts (is not implied by the contexts but also does not contradict the contexts), then DeepEval counts this claim positively towards the faithfulness score, however RAGAS counts this claim against the faithfulness score. Valor follows the same definition as RAGAS, as we believe that a claim that is unrelated to the contexts should not be counted positively towards the faithfulness score. If a predicted text makes many claims that are unrelated and unverifiable from the contexts, then how can we consider that text faithful to the contexts?
+Our implementation loosely follows and combines the strategies of [DeepEval](https://docs.confident-ai.com/docs/metrics-faithfulness) and [RAGAS](https://docs.ragas.io/en/latest/concepts/metrics/faithfulness.html), however it is notable that DeepEval and RAGAS's definitions of faithfulness are not equivalent. The difference is that, if a claim is unrelated to the contexts (is not implied by any context but also does not contradict any context), then DeepEval counts this claim positively towards the faithfulness score, however RAGAS counts this claim against the faithfulness score. Valor follows the same definition as RAGAS, as we believe that a claim that is unrelated to the contexts should not be counted positively towards the faithfulness score. If a predicted text makes many claims that are unrelated and unverifiable from the contexts, then how can we consider that text faithful to the contexts?
 
 We follow [DeepEval's prompting strategy](https://github.com/confident-ai/deepeval/blob/main/deepeval/metrics/faithfulness/template.py) as this strategy is closer to the other prompting strategies in Valor, however we heavily modify the instructions. Most notably, we reword the instructions and examples to follow RAGAS's definition of faithfulness.
 
@@ -421,7 +421,7 @@ We follow [DeepEval's prompting strategy](https://github.com/confident-ai/deepev
 
 Hallucination is the proportion of contexts that are contradicted by the predicted text. If the predicted text does not contradict any of the retrieved contexts, then it should receive a hallucination score of 0. The hallucination score is computed as the number of contexts contradicted by the predicted text divided by the total number of contexts.
 
-Given the list of context and the predicted text, an LLM is prompted to determine if the text agrees or contradicts with each piece of context. The LLM is instructed to only indicate contradiction if the text directly contradicts the contexts, and otherwise indicates agreement.
+Given the list of context and the predicted text, an LLM is prompted to determine if the text agrees or contradicts with each piece of context. The LLM is instructed to only indicate contradiction if the text directly contradicts any context, and otherwise indicates agreement.
 
 Our implementation closely follows [DeepEval's implementation](https://github.com/confident-ai/deepeval/tree/main/deepeval/metrics/hallucination). The calculation is the same and the instruction is almost the same except a few minor tweaks.
 
