@@ -239,7 +239,7 @@ def run_benchmarking_analysis(
     results_file: str = "results.json",
     data_file: str = "data.json",
     ingestion_timeout: int | None = 150,
-    evaluation_timeout: int | None = 30,
+    evaluation_timeout: int | None = 40,
 ):
     """Time various function calls and export the results."""
     current_directory = Path(os.path.dirname(os.path.realpath(__file__)))
