@@ -1,0 +1,1 @@
+ALTER TABLE annotation ADD COLUMN bitmask bit varying;

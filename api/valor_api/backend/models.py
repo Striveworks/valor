@@ -4,7 +4,7 @@ from geoalchemy2 import Geometry, Raster
 from geoalchemy2.functions import ST_SetBandNoDataValue, ST_SetGeoReference
 from pgvector.sqlalchemy import Vector
 from sqlalchemy import ForeignKey, UniqueConstraint
-from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy.dialects.postgresql import BIT, JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.sql import func
 
@@ -134,6 +134,7 @@ class Annotation(Base):
     box = mapped_column(Geometry("POLYGON"), nullable=True)
     polygon = mapped_column(Geometry("POLYGON"), nullable=True)
     raster = mapped_column(GDALRaster, nullable=True)
+    bitmask = mapped_column(BIT(varying=True), nullable=True)
     embedding_id = mapped_column(ForeignKey("embedding.id"), nullable=True)
     is_instance: Mapped[bool] = mapped_column(nullable=False)
     implied_task_types = mapped_column(JSONB)

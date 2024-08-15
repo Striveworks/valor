@@ -24,6 +24,14 @@ def _format_raster(
     return raster.to_psql() if raster else None
 
 
+def _format_bitmask(
+    raster: schemas.Raster | None,
+) -> str | None:
+    if not raster or raster.geometry:
+        return None
+    return "".join("1" if b else "0" for b in raster.array.flatten())
+
+
 def _create_embedding(
     db: Session,
     value: list[float] | None,
@@ -104,6 +112,7 @@ def create_annotations(
             "box": _format_box(annotation.bounding_box),
             "polygon": _format_polygon(annotation.polygon),
             "raster": _format_raster(annotation.raster),
+            "bitmask": _format_bitmask(annotation.raster),
             "embedding_id": _create_embedding(
                 db=db, value=annotation.embedding
             ),
@@ -166,6 +175,7 @@ def create_skipped_annotations(
             box=None,
             polygon=None,
             raster=None,
+            bitmask=None,
             embedding_id=None,
             text=None,
             context_list=None,

@@ -2,12 +2,13 @@ import bisect
 import heapq
 import math
 import random
+import time
 from collections import defaultdict
 from dataclasses import dataclass
 from typing import Sequence, Tuple
 
 from geoalchemy2 import functions as gfunc
-from sqlalchemy import CTE, and_, func, or_, select
+from sqlalchemy import CTE, TEXT, and_, func, or_, select
 from sqlalchemy.orm import Session, aliased
 
 from valor_api import enums, schemas
@@ -23,6 +24,16 @@ from valor_api.backend.metrics.metric_utils import (
 )
 from valor_api.backend.query import generate_query, generate_select
 from valor_api.enums import AnnotationType
+
+
+def profiler(fn):
+    def wrapper(*args, **kwargs):
+        start_time = time.time()
+        result = fn(*args, **kwargs)
+        print(time.time() - start_time)
+        return result
+
+    return wrapper
 
 
 @dataclass
@@ -1093,43 +1104,31 @@ def _compute_detection_metrics(
     # IOU Computation Block
     if target_type == AnnotationType.RASTER:
 
-        gt_counts = (
-            select(
-                gt_distinct.c.annotation_id,
-                gfunc.ST_Count(models.Annotation.raster).label("count"),
-            )
-            .select_from(gt_distinct)
-            .join(
-                models.Annotation,
-                models.Annotation.id == gt_distinct.c.annotation_id,
-            )
-            .subquery()
-        )
-
-        pd_counts = (
-            select(
-                pd_distinct.c.annotation_id,
-                gfunc.ST_Count(models.Annotation.raster).label("count"),
-            )
-            .select_from(pd_distinct)
-            .join(
-                models.Annotation,
-                models.Annotation.id == pd_distinct.c.annotation_id,
-            )
-            .subquery()
-        )
-
         gt_pd_counts = (
             select(
                 gt_pd_pairs.c.gt_annotation_id,
                 gt_pd_pairs.c.pd_annotation_id,
-                gt_counts.c.count.label("gt_count"),
-                pd_counts.c.count.label("pd_count"),
                 func.coalesce(
-                    gfunc.ST_Count(
-                        gfunc.ST_Intersection(
-                            gt_annotation.raster, pd_annotation.raster
-                        )
+                    func.bit_count(
+                        (
+                            gt_annotation.bitmask.op("|")(
+                                pd_annotation.bitmask
+                            )
+                        ).cast(TEXT),
+                        "0",
+                        "",
+                    ),
+                    0,
+                ).label("union"),
+                func.coalesce(
+                    func.bit_count(
+                        (
+                            gt_annotation.bitmask.op("&")(
+                                pd_annotation.bitmask
+                            )
+                        ).cast(TEXT),
+                        "0",
+                        "",
                     ),
                     0,
                 ).label("intersection"),
@@ -1143,14 +1142,6 @@ def _compute_detection_metrics(
                 pd_annotation,
                 pd_annotation.id == gt_pd_pairs.c.pd_annotation_id,
             )
-            .join(
-                gt_counts,
-                gt_counts.c.annotation_id == gt_pd_pairs.c.gt_annotation_id,
-            )
-            .join(
-                pd_counts,
-                pd_counts.c.annotation_id == gt_pd_pairs.c.pd_annotation_id,
-            )
             .subquery()
         )
 
@@ -1159,12 +1150,7 @@ def _compute_detection_metrics(
                 gt_pd_counts.c.gt_annotation_id,
                 gt_pd_counts.c.pd_annotation_id,
                 func.coalesce(
-                    gt_pd_counts.c.intersection
-                    / (
-                        gt_pd_counts.c.gt_count
-                        + gt_pd_counts.c.pd_count
-                        - gt_pd_counts.c.intersection
-                    ),
+                    gt_pd_counts.c.intersection / gt_pd_counts.c.union,
                     0,
                 ).label("iou"),
             )
@@ -1233,9 +1219,9 @@ def _compute_detection_metrics(
         .subquery()
     )
 
-    ordered_ious = (
-        db.query(ious).order_by(-ious.c.score, -ious.c.iou, ious.c.gt_id).all()
-    )
+    ordered_ious = profiler(
+        db.query(ious).order_by(-ious.c.score, -ious.c.iou, ious.c.gt_id).all
+    )()
 
     matched_pd_set = set()
     matched_sorted_ranked_pairs = defaultdict(list)
@@ -1514,7 +1500,13 @@ def _compute_detection_metrics_with_detailed_precision_recall_curve(
         gt_counts = (
             select(
                 gt_distinct.c.annotation_id,
-                gfunc.ST_Count(models.Annotation.raster).label("count"),
+                func.Length(
+                    func.Replace(
+                        models.Annotation.bitmask.cast(TEXT),
+                        "0",
+                        "",
+                    )
+                ).label("count"),
             )
             .select_from(gt_distinct)
             .join(
@@ -1527,7 +1519,13 @@ def _compute_detection_metrics_with_detailed_precision_recall_curve(
         pd_counts = (
             select(
                 pd_distinct.c.annotation_id,
-                gfunc.ST_Count(models.Annotation.raster).label("count"),
+                func.Length(
+                    func.Replace(
+                        models.Annotation.bitmask.cast(TEXT),
+                        "0",
+                        "",
+                    )
+                ).label("count"),
             )
             .select_from(pd_distinct)
             .join(
@@ -1544,9 +1542,15 @@ def _compute_detection_metrics_with_detailed_precision_recall_curve(
                 gt_counts.c.count.label("gt_count"),
                 pd_counts.c.count.label("pd_count"),
                 func.coalesce(
-                    gfunc.ST_Count(
-                        gfunc.ST_Intersection(
-                            gt_annotation.raster, pd_annotation.raster
+                    func.Length(
+                        func.Replace(
+                            (
+                                gt_annotation.bitmask.op("&")(
+                                    pd_annotation.bitmask
+                                )
+                            ).cast(TEXT),
+                            "0",
+                            "",
                         )
                     ),
                     0,
