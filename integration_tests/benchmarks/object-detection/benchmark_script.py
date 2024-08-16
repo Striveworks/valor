@@ -238,6 +238,7 @@ def run_benchmarking_analysis(
     limits_to_test: list[int],
     combinations: list[tuple[AnnotationType, AnnotationType]] | None = None,
     results_file: str = "results.json",
+    ingestion_chunk_size: int = 100,
     ingestion_chunk_timeout: int = 30,
     evaluation_timeout: int = 30,
     compute_pr: bool = True,
@@ -311,7 +312,7 @@ def run_benchmarking_analysis(
                 dataset=dataset,
                 path=current_directory / Path(gt_filename),
                 limit=limit,
-                chunk_size=1000,
+                chunk_size=ingestion_chunk_size,
                 timeout=ingestion_chunk_timeout,
             )
 
@@ -327,7 +328,7 @@ def run_benchmarking_analysis(
                 datum_uids=datum_uids,
                 path=current_directory / Path(pd_filename),
                 limit=limit,
-                chunk_size=1000,
+                chunk_size=ingestion_chunk_size,
                 timeout=ingestion_chunk_timeout,
             )
 
@@ -411,7 +412,7 @@ if __name__ == "__main__":
         combinations=[
             (AnnotationType.MULTIPOLYGON, AnnotationType.MULTIPOLYGON),
         ],
-        limits_to_test=[6, 6],
+        limits_to_test=[12, 12],
         compute_detailed=False,
     )
 
@@ -420,6 +421,8 @@ if __name__ == "__main__":
         combinations=[
             (AnnotationType.RASTER, AnnotationType.RASTER),
         ],
-        limits_to_test=[6, 6],
+        limits_to_test=[12, 12],
+        # ingestion_chunk_size=100,
+        # evaluation_timeout=0,
         compute_detailed=False,
     )

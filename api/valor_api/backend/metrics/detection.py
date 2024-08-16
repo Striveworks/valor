@@ -2,7 +2,6 @@ import bisect
 import heapq
 import math
 import random
-import time
 from collections import defaultdict
 from dataclasses import dataclass
 from typing import Sequence, Tuple
@@ -24,16 +23,6 @@ from valor_api.backend.metrics.metric_utils import (
 )
 from valor_api.backend.query import generate_query, generate_select
 from valor_api.enums import AnnotationType
-
-
-def profiler(fn):
-    def wrapper(*args, **kwargs):
-        start_time = time.time()
-        result = fn(*args, **kwargs)
-        print(time.time() - start_time)
-        return result
-
-    return wrapper
 
 
 @dataclass
@@ -1106,25 +1095,13 @@ def _compute_detection_metrics(
                 gt_pd_pairs.c.pd_annotation_id,
                 func.coalesce(
                     func.bit_count(
-                        (
-                            gt_annotation.bitmask.op("|")(
-                                pd_annotation.bitmask
-                            )
-                        ).cast(TEXT),
-                        "0",
-                        "",
+                        gt_annotation.bitmask.op("|")(pd_annotation.bitmask)
                     ),
                     0,
                 ).label("union"),
                 func.coalesce(
                     func.bit_count(
-                        (
-                            gt_annotation.bitmask.op("&")(
-                                pd_annotation.bitmask
-                            )
-                        ).cast(TEXT),
-                        "0",
-                        "",
+                        gt_annotation.bitmask.op("&")(pd_annotation.bitmask)
                     ),
                     0,
                 ).label("intersection"),
@@ -1218,9 +1195,9 @@ def _compute_detection_metrics(
         .subquery()
     )
 
-    ordered_ious = profiler(
-        db.query(ious).order_by(-ious.c.score, -ious.c.iou, ious.c.gt_id).all
-    )()
+    ordered_ious = (
+        db.query(ious).order_by(-ious.c.score, -ious.c.iou, ious.c.gt_id).all()
+    )
 
     matched_pd_set = set()
     matched_sorted_ranked_pairs = defaultdict(list)
@@ -1538,19 +1515,15 @@ def _compute_detection_metrics_with_detailed_precision_recall_curve(
             select(
                 gt_pd_pairs.c.gt_annotation_id,
                 gt_pd_pairs.c.pd_annotation_id,
-                gt_counts.c.count.label("gt_count"),
-                pd_counts.c.count.label("pd_count"),
                 func.coalesce(
-                    func.Length(
-                        func.Replace(
-                            (
-                                gt_annotation.bitmask.op("&")(
-                                    pd_annotation.bitmask
-                                )
-                            ).cast(TEXT),
-                            "0",
-                            "",
-                        )
+                    func.bit_count(
+                        gt_annotation.bitmask.op("|")(pd_annotation.bitmask)
+                    ),
+                    0,
+                ).label("union"),
+                func.coalesce(
+                    func.bit_count(
+                        gt_annotation.bitmask.op("&")(pd_annotation.bitmask)
                     ),
                     0,
                 ).label("intersection"),
@@ -1581,20 +1554,10 @@ def _compute_detection_metrics_with_detailed_precision_recall_curve(
                 gt_pd_counts.c.pd_annotation_id,
                 case(
                     (
-                        gt_pd_counts.c.gt_count
-                        + gt_pd_counts.c.pd_count
-                        - gt_pd_counts.c.intersection
-                        == 0,
+                        gt_pd_counts.c.union == 0,
                         0,
                     ),
-                    else_=(
-                        gt_pd_counts.c.intersection
-                        / (
-                            gt_pd_counts.c.gt_count
-                            + gt_pd_counts.c.pd_count
-                            - gt_pd_counts.c.intersection
-                        )
-                    ),
+                    else_=(gt_pd_counts.c.intersection / gt_pd_counts.c.union),
                 ).label("iou"),
             )
             .select_from(gt_pd_counts)
