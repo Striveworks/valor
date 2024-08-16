@@ -2286,17 +2286,17 @@ def test__convert_annotations_to_common_type(db: Session):
     dataset_name = "dataset"
     model_name = "model"
 
-    xmin, xmax, ymin, ymax = 11.0, 45.0, 37.0, 102.0
+    xmin, xmax, ymin, ymax = 11, 45, 37, 102
     h, w = 150, 200
     mask = np.zeros((h, w), dtype=bool)
     mask[ymin:ymax, xmin:xmax] = True
 
     pts = [
-        (xmin, ymin),
-        (xmin, ymax),
-        (xmax, ymax),
-        (xmax, ymin),
-        (xmin, ymin),
+        (float(xmin), float(ymin)),
+        (float(xmin), float(ymax)),
+        (float(xmax), float(ymax)),
+        (float(xmax), float(ymin)),
+        (float(xmin), float(ymin)),
     ]
     poly = schemas.Polygon(value=[pts])
     raster = schemas.Raster.from_numpy(mask)
