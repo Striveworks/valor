@@ -84,56 +84,51 @@ ANSWER_CORRECTNESS_VALID_VERDICTS = """```json
 ANSWER_RELEVANCE_VALID_VERDICTS = """```json
 {
     "verdicts": [
-        {
-            "verdict": "no",
-            "reason": "The statement has nothing to do with the query."
-        },
-        {
-            "verdict": "yes"
-        },
-        {
-            "verdict": "idk"
-        },
-        {
-            "verdict": "yes"
-        }
+        {"verdict": "no"},
+        {"verdict": "yes"},
+        {"verdict": "idk"},
+        {"verdict": "yes"}
     ]
 }```"""
 
 BIAS_VALID_VERDICTS = """```json
 {
     "verdicts": [
-        {
-            "verdict": "yes",
-            "reason": "This opinion demonstrates gender bias."
-        },
-        {
-            "verdict": "no"
-        },
-        {
-            "verdict": "yes",
-            "reason": "This opinion demonstrates political bias."
-        },
-        {
-            "verdict": "no"
-        }
+        {"verdict": "yes"},
+        {"verdict": "no"},
+        {"verdict": "yes"},
+        {"verdict": "no"}
+    ]
+}```"""
+
+CONTEXT_PRECISION_VALID1_VERDICTS = """```json
+{
+    "verdicts": [
+        {"verdict": "no"},
+        {"verdict": "yes"},
+        {"verdict": "no"},
+        {"verdict": "no"},
+        {"verdict": "yes"}
+    ]
+}```"""
+
+CONTEXT_PRECISION_VALID2_VERDICTS = """```json
+{
+    "verdicts": [
+        {"verdict": "no"},
+        {"verdict": "no"},
+        {"verdict": "no"},
+        {"verdict": "no"},
+        {"verdict": "no"}
     ]
 }```"""
 
 CONTEXT_RELEVANCE_VALID_VERDICTS = """```json
 {
     "verdicts": [
-        {
-            "verdict": "no",
-            "reason": "This context does not relate to the query."
-        },
-        {
-            "verdict": "yes"
-        },
-        {
-            "verdict": "no",
-            "reason": "This context is not useful for answering the query."
-        }
+        {"verdict": "no"},
+        {"verdict": "yes"},
+        {"verdict": "no"}
     ]
 }```"""
 
@@ -151,38 +146,19 @@ FAITHFULNESS_VALID_VERDICTS = """```json
 HALLUCINATION_VALID_VERDICTS = """```json
 {
     "verdicts": [
-        {
-            "verdict": "no"
-        },
-
-        {
-            "verdict": "yes",
-            "reason": "The text and context disagree on when Abraham Lincoln was born."
-        },
-        {
-            "verdict": "yes",
-            "reason": "The text says that Abraham Lincoln lost the election of 1860, but the context says that Abraham Lincoln won the election of 1860."
-        }
+        {"verdict": "no"},
+        {"verdict": "yes"},
+        {"verdict": "yes"}
     ]
 }```"""
 
 TOXICITY_VALID_VERDICTS = """```json
 {
     "verdicts": [
-        {
-            "verdict": "yes",
-            "reason": "This opinion demonstrates hate."
-        },
-        {
-            "verdict": "no"
-        },
-        {
-            "verdict": "yes",
-            "reason": "This opinion demonstrates mockery."
-        },
-        {
-            "verdict": "no"
-        }
+        {"verdict": "yes"},
+        {"verdict": "no"},
+        {"verdict": "yes"},
+        {"verdict": "no"}
     ]
 }```"""
 
@@ -513,6 +489,22 @@ def test_LLMClient(monkeypatch):
         return """```json
 {
     "all_verdicts": [
+        {"verdict": "no"},
+        {"verdict": "yes"},
+        {"verdict": "no"}
+    ]
+}```"""
+
+    def _return_valid1_context_precision_response(*args, **kwargs):
+        return CONTEXT_PRECISION_VALID1_VERDICTS
+
+    def _return_valid2_context_precision_response(*args, **kwargs):
+        return CONTEXT_PRECISION_VALID2_VERDICTS
+
+    def _return_invalid1_context_precision_response(*args, **kwargs):
+        return """```json
+{
+    "invalid_key": [
         "verdict 1",
         "verdict 2",
         "verdict 3"
@@ -932,6 +924,64 @@ def test_LLMClient(monkeypatch):
     )
     with pytest.raises(InvalidLLMResponseError):
         client.coherence("some text")
+
+    # Patch __call__ with a valid response.
+    monkeypatch.setattr(
+        "valor_api.backend.core.llm_clients.LLMClient.__call__",
+        _return_valid1_context_precision_response,
+    )
+    assert 0.45 == client.context_precision(
+        "some query",
+        ["context 1", "context 2", "context 3", "context 4", "context 5"],
+        "some ground truth",
+    )
+
+    # If all verdicts are "no", the returned score should be 0.
+    monkeypatch.setattr(
+        "valor_api.backend.core.llm_clients.LLMClient.__call__",
+        _return_valid2_context_precision_response,
+    )
+    assert 0.0 == client.context_precision(
+        "some query",
+        ["context 1", "context 2", "context 3", "context 4", "context 5"],
+        "some ground truth",
+    )
+
+    # Context precision is meaningless if context_list is empty.
+    monkeypatch.setattr(
+        "valor_api.backend.core.llm_clients.LLMClient.__call__",
+        _return_valid1_context_precision_response,
+    )
+    with pytest.raises(ValueError):
+        client.context_precision(
+            "some query",
+            [],
+            "some ground truth",
+        )
+
+    # Only 1 context provided but 5 verdicts were returned.
+    monkeypatch.setattr(
+        "valor_api.backend.core.llm_clients.LLMClient.__call__",
+        _return_valid1_context_precision_response,
+    )
+    with pytest.raises(InvalidLLMResponseError):
+        client.context_precision(
+            "some query",
+            ["length of context list does not match LLM's response"],
+            "some ground truth",
+        )
+
+    # Key 'invalid_key' is returned but the key should be 'verdicts'.
+    monkeypatch.setattr(
+        "valor_api.backend.core.llm_clients.LLMClient.__call__",
+        _return_invalid1_context_precision_response,
+    )
+    with pytest.raises(InvalidLLMResponseError):
+        client.context_precision(
+            "some query",
+            ["context 1", "context 2", "context 3", "context 4", "context 5"],
+            "some ground truth",
+        )
 
     # Patch __call__ with a valid response.
     monkeypatch.setattr(

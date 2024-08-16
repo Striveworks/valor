@@ -927,6 +927,42 @@ class CoherenceMetric(BaseModel):
         }
 
 
+class ContextPrecisionMetric(BaseModel):
+    """
+    Describes a context precision metric.
+
+    Attributes
+    ----------
+    value : float
+        The context precision score for a datum. This is a float between 0 and 1, with 0 indicating that none of the contexts are useful to arrive at the ground truth answer to the query and 1 indicating that all contexts are useful to arrive at the ground truth answer to the query. The score is more heavily influenced by earlier contexts in the list of contexts than later contexts.
+    parameters : dict
+        Any parameters associated with the metric, as well as any datum or prediction parameters that are relevant to the metric.
+    """
+
+    value: float
+    parameters: dict
+
+    def db_mapping(self, evaluation_id: int) -> dict:
+        """
+        Creates a mapping for use when uploading the metric to the database.
+
+        Parameters
+        ----------
+        evaluation_id : int
+            The evaluation id.
+
+        Returns
+        ----------
+        A mapping dictionary.
+        """
+        return {
+            "value": self.value,
+            "parameters": self.parameters,
+            "type": "ContextPrecision",
+            "evaluation_id": evaluation_id,
+        }
+
+
 class ContextRelevanceMetric(BaseModel):
     """
     Describes a context relevance metric.

@@ -679,6 +679,50 @@ def test_CoherenceMetric():
     )
 
 
+def test_ContextPrecisionMetric():
+    metric = schemas.ContextPrecisionMetric(
+        value=0.873,
+        parameters={
+            "dataset_uid": "01",
+            "dataset_name": "test_dataset",
+            "context_list": ["context1", "context2"],
+        },
+    )
+
+    with pytest.raises(ValidationError):
+        schemas.ContextPrecisionMetric(
+            value=None,  # type: ignore
+            parameters={
+                "dataset_uid": "01",
+                "dataset_name": "test_dataset",
+                "context_list": ["context1", "context2"],
+            },
+        )
+
+    with pytest.raises(ValidationError):
+        schemas.ContextPrecisionMetric(
+            value={"key": 0.222},  # type: ignore
+            parameters={
+                "dataset_uid": "01",
+                "dataset_name": "test_dataset",
+                "context_list": ["context1", "context2"],
+            },
+        )
+
+    with pytest.raises(ValidationError):
+        schemas.ContextPrecisionMetric(
+            value=0.501,  # type: ignore
+            parameters="not a valid parameter",  # type: ignore
+        )
+
+    assert all(
+        [
+            key in ["value", "type", "evaluation_id", "parameters"]
+            for key in metric.db_mapping(evaluation_id=1)
+        ]
+    )
+
+
 def test_ContextRelevanceMetric():
     metric = schemas.ContextRelevanceMetric(
         value=0.5,

@@ -10,6 +10,7 @@ from valor_api.backend.core.llm_instructions_analysis import (
     generate_bias_verdicts_instruction,
     generate_claims_instruction,
     generate_coherence_instruction,
+    generate_context_precision_verdicts_instruction,
     generate_context_relevance_verdicts_instruction,
     generate_faithfulness_verdicts_instruction,
     generate_hallucination_verdicts_instruction,
@@ -315,7 +316,7 @@ class LLMClient:
         Returns
         -------
         list[dict[str,str]]
-            The list of verdicts for each statement. Each verdict is a dictionary with the "verdict" and optionally a "reason".
+            The list of verdicts for each statement. Each verdict is a dictionary with the "verdict" field.
         """
         messages = [
             {"role": "system", "content": DEFAULT_SYSTEM_PROMPT},
@@ -365,7 +366,7 @@ class LLMClient:
         Returns
         -------
         list[dict[str,str]]
-            The list of verdicts for each opinion. Each verdict is a dictionary with the "verdict" and optionally a "reason".
+            The list of verdicts for each opinion. Each verdict is a dictionary with the "verdict" field.
         """
         messages = [
             {"role": "system", "content": DEFAULT_SYSTEM_PROMPT},
@@ -437,6 +438,64 @@ class LLMClient:
 
         return ret
 
+    def _generate_context_precision_verdicts(
+        self,
+        query: str,
+        context_list: list[str],
+        groundtruth: str,
+    ) -> list[dict[str, str]]:
+        """
+        Generate a list of context precision verdicts for a list of contexts, using a call to the LLM API.
+
+        The verdict for each context should be 'yes' if the context is relevant to produce the ground truth answer to the query. The verdict should be 'no' otherwise.
+
+        Parameters
+        ----------
+        query: str
+            The query.
+        context_list: list[str]
+            The ordered list of contexts. Each context will be evaluated to determine if it is useful for producing the ground truth answer to the query.
+        groundtruth: str
+            The ground truth answer to the query.
+
+        Returns
+        -------
+        list[dict[str,str]]
+            The list of verdicts for each context. Each verdict is a dictionary with the "verdict" field.
+        """
+        messages = [
+            {"role": "system", "content": DEFAULT_SYSTEM_PROMPT},
+            {
+                "role": "user",
+                "content": generate_context_precision_verdicts_instruction(
+                    query=query,
+                    context_list=context_list,
+                    groundtruth=groundtruth,
+                ),
+            },
+        ]
+
+        response = self(messages)
+        response = trim_and_load_json(response)
+        if type(response) != dict or "verdicts" not in response:
+            raise InvalidLLMResponseError(
+                f"LLM response was not a list of valid verdicts: {response}"
+            )
+
+        verdicts = response["verdicts"]
+        if (
+            type(verdicts) != list
+            or len(verdicts) != len(context_list)
+            or not all(
+                verdict["verdict"] in ["yes", "no"] for verdict in verdicts
+            )
+        ):
+            raise InvalidLLMResponseError(
+                f"LLM response was not a list of valid verdicts: {response}"
+            )
+
+        return verdicts
+
     def _generate_context_relevance_verdicts(
         self,
         query: str,
@@ -455,7 +514,7 @@ class LLMClient:
         Returns
         -------
         list[dict[str,str]]
-            The list of verdicts for each context. Each verdict is a dictionary with the "verdict" and optionally a "reason".
+            The list of verdicts for each context. Each verdict is a dictionary with the "verdict" field.
         """
         messages = [
             {"role": "system", "content": DEFAULT_SYSTEM_PROMPT},
@@ -561,7 +620,7 @@ class LLMClient:
         Returns
         -------
         list[dict[str,str]]
-            The list of verdicts for each context. Each verdict is a dictionary with the "verdict" and optionally a "reason".
+            The list of verdicts for each context. Each verdict is a dictionary with the "verdict" field.
         """
         messages = [
             {"role": "system", "content": DEFAULT_SYSTEM_PROMPT},
@@ -610,7 +669,7 @@ class LLMClient:
         Returns
         -------
         list[dict[str,str]]
-            The list of verdicts for each opinion. Each verdict is a dictionary with the "verdict" and optionally a "reason".
+            The list of verdicts for each opinion. Each verdict is a dictionary with the "verdict" field.
         """
         messages = [
             {"role": "system", "content": DEFAULT_SYSTEM_PROMPT},
@@ -752,6 +811,65 @@ class LLMClient:
             The coherence score will be evaluated as an integer, with 1 indicating the lowest coherence and 5 the highest coherence.
         """
         return self._coherence(text)
+
+    def context_precision(
+        self,
+        query: str,
+        context_list: list[str],
+        groundtruth: str,
+    ) -> float:
+        """
+        Compute context precision, a score for evaluating the retrieval mechanism of a RAG model.
+
+        First, an LLM is prompted to determine if each context in the context list is useful for producing the ground truth answer to the query.
+
+        Then the context precision score is computed as a weighted sum of the precision at k for each k from 1 to the length of the context list.
+
+        Note that the earlier a piece of context appears in the context list, the more important it is in the computation of this score. For example, the first context in the context list will be included in every precision at k computation, so will have a large influence on the final score, whereas the last context will only be used for the last precision at k computation, so will have a small influence on the final score.
+
+        Parameters
+        ----------
+        query: str
+            A query.
+        context_list: list[str]
+            The ordered list of contexts. Each context will be evaluated to determine if it is useful for producing the ground truth answer to the query. Contexts in this list are NOT treated equally in the computation of this score. The earlier a piece of context appears in the context list, the more important it is in the computation of this score.
+        groundtruth: str
+            A ground truth answer to the query.
+
+        Returns
+        -------
+        float
+            The context precision score will be evaluated as a float between 0 and 1, with a higher score indicating better context precision.
+        """
+        if len(context_list) == 0:
+            raise ValueError(
+                "Context precision is meaningless if context_list is empty."
+            )
+
+        verdicts = self._generate_context_precision_verdicts(
+            query, context_list, groundtruth
+        )
+
+        precision_at_k_list = []
+        for k in range(1, len(context_list) + 1):
+            # Only compute the precision at k if the kth context is relevant.
+            if verdicts[k - 1]["verdict"] == "yes":
+                precision_at_k = (
+                    sum(
+                        1
+                        for verdict in verdicts[:k]
+                        if verdict["verdict"] == "yes"
+                    )
+                    / k
+                )
+                precision_at_k_list.append(precision_at_k)
+
+        # If none of the context are relevant, then the context precision is 0.
+        if len(precision_at_k_list) == 0:
+            return 0
+
+        # Average over all the precision at k for which the kth context is relevant.
+        return sum(precision_at_k_list) / len(precision_at_k_list)
 
     def context_relevance(
         self,
@@ -1191,7 +1309,7 @@ class MockLLMClient(LLMClient):
         "claims": [
             "The capital of the UK is London.",
             "The capital of South Korea is Seoul.",
-            "The capital of the Argentina is Canada."
+            "The capital of Argentina is Canada."
         ]
     }```"""
 
@@ -1247,13 +1365,8 @@ class MockLLMClient(LLMClient):
                 response = """```json
     {
         "verdicts": [
-            {
-                "verdict": "yes"
-            },
-            {
-                "verdict": "no",
-                "reason": "The detail in this statement is not necessary for answering the question."
-            }
+            {"verdict": "yes"},
+            {"verdict": "no"}
         ]
     }```"""
 
@@ -1265,13 +1378,8 @@ class MockLLMClient(LLMClient):
                 response = """```json
     {
         "verdicts": [
-            {
-                "verdict": "no"
-            },
-            {
-                "verdict": "yes",
-                "reason": "The opinion 'People from Canada are nicer than people from other countries' shows geographical bias by generalizing positive traits to a specific group of people. A correction would be, 'Many individuals from Canada are known for their politeness.'"
-            }
+            {"verdict": "no"},
+            {"verdict": "yes"}
         ]
     }```"""
 
@@ -1282,6 +1390,21 @@ class MockLLMClient(LLMClient):
             ):
                 response = "4"
 
+            # Context precision verdicts
+            elif (
+                "generate a list of verdicts to determine whether each context in the context list is useful for producing the ground truth answer to the query"
+                in processed_messages[1]["content"]
+            ):
+                response = """```json
+    {
+        "verdicts": [
+            {"verdict": "yes"},
+            {"verdict": "no"},
+            {"verdict": "no"},
+            {"verdict": "yes"}
+        ]
+    }```"""
+
             # Context relevance verdicts
             elif (
                 "generate a list of verdicts to indicate whether each context is relevant to the provided query"
@@ -1290,19 +1413,10 @@ class MockLLMClient(LLMClient):
                 response = """```json
     {
         "verdicts": [
-            {
-                "verdict": "yes"
-            },
-            {
-                "verdict": "yes"
-            },
-            {
-                "verdict": "no",
-                "reason": "This context has no relevance to the query"
-            },
-            {
-                "verdict": "yes"
-            }
+            {"verdict": "yes"},
+            {"verdict": "yes"},
+            {"verdict": "no"},
+            {"verdict": "yes"}
         ]
     }```"""
 
@@ -1328,19 +1442,10 @@ class MockLLMClient(LLMClient):
                 response = """```json
     {
         "verdicts": [
-            {
-                "verdict": "no"
-            },
-            {
-                "verdict": "no"
-            },
-            {
-                "verdict": "yes",
-                "reason": "The text contradicts this context."
-            },
-            {
-                "verdict": "no"
-            }
+            {"verdict": "no"},
+            {"verdict": "no"},
+            {"verdict": "yes"},
+            {"verdict": "no"}
         ]
     }```"""
 
@@ -1352,12 +1457,8 @@ class MockLLMClient(LLMClient):
                 response = """```json
     {
         "verdicts": [
-            {
-                "verdict": "no"
-            },
-            {
-                "verdict": "no"
-            }
+            {"verdict": "no"},
+            {"verdict": "no"}
         ]
     }```"""
 

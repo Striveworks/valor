@@ -141,13 +141,21 @@ class EvaluationParameters(BaseModel):
                                 "`iou_thresholds_to_return` must be a subset of `iou_thresholds_to_compute`"
                             )
             case TaskType.TEXT_GENERATION:
-                text_comparison_metrics = set(["ROUGE", "BLEU"])
+                text_comparison_metrics = set(
+                    [
+                        "AnswerCorrectness",
+                        "BLEU",
+                        "ContextPrecision",
+                        "ROUGE",
+                    ]
+                )
                 llm_guided_metrics = set(
                     [
                         "AnswerCorrectness",
                         "AnswerRelevance",
                         "Bias",
                         "Coherence",
+                        "ContextPrecision",
                         "ContextRelevance",
                         "Faithfulness",
                         "Hallucination",

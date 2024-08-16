@@ -115,6 +115,7 @@ def commit_results(
         | schemas.BiasMetric
         | schemas.BLEUMetric
         | schemas.CoherenceMetric
+        | schemas.ContextPrecisionMetric
         | schemas.ContextRelevanceMetric
         | schemas.FaithfulnessMetric
         | schemas.HallucinationMetric

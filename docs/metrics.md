@@ -397,6 +397,30 @@ Our implementation closely follows [DeepEval's implementation](https://github.co
 
 Note that RAG is a form of Q&A, so any Q&A metric can also be used to evaluate RAG models. The metrics in this section however should not be used for all Q&A tasks. RAG specific metrics use retrieved contexts, so should not be used to evaluate models that don't use contexts.
 
+### Context Precision
+
+Context precision is an LLM-guided metric that uses the query, an ordered list of retrieved context and a ground truth to measure the quality of a RAG retrieval mechanism.
+
+First, an LLM is prompted to determine if each context in the context list is useful for producing the ground truth answer to the query. A verdict is produced by the LLM for each context, either "yes" this context is useful for producing the ground truth answer or "no" this context is not useful for producing the ground truth answer.
+
+Second, the list of verdicts is used to compute the context precision score. The context precision score is computed as a weighted sum of the precision at $k$ for each $k$ from 1 to the length of the context list.
+
+The precision at $k$ is the proportion of "yes" verdicts amongst the first $k$ contexts. Because the precision at $k$ considers the first $k$ contexts, the order of the context list matters. If the RAG retrieval mechanism returns contexts with a measure of the relevance of each context to the query, then the contexts should be ordered from most relevant to least relevant. The formula for precision at $k$ is:
+
+$$Precision@k = \frac{1}{k}\sum_{i=1}^kv_i$$
+
+where $v_l$ is 1 if the $i$ th verdict is "yes" and 0 if the $i$ th verdict is "no".
+
+The context precision score is computed by adding up all the precision at $k$ for which the $k$ verdict is "yes", then dividing by the total number of contexts for which the verdict is "yes". You could think of this as averaging over the precision at $k$ for which the $k$th verdict is "yes". As an edge case, if all of the verdicts are "no", then the score is 0. If the total number of contexts is $K$, then the formula for context precision is:
+
+$$Context Precision = \frac{\sum_{k=1}^K(Precision@k \times v_k)}{\sum_{k=1}^Kv_k}$$
+
+Most importantly, context precision evaluates not just which contexts are retrieved, but the order of those contexts. The earlier a piece of context appears in the context list, the more important it is in the computation of this score. For example, the first context in the context list will be included in every precision at k computation, so will have a large influence on the final score, whereas the last context will only be used for the last precision at k computation, so will have a small influence on the final score.
+
+As an example, suppose there are 4 contexts and the verdicts are ["yes", "no", "no", "yes"]. The precision at 1 is 1 and the precision at 4 is 0.5. The context precision score is then (1 + 0.5) / 2 = 0.75. If instead the verdicts were ["no", "yes", "no", "yes"], then the precision at 2 is 0.5 and the precision at 4 is 0.5, so the context precision score is (0.5 + 0.5) / 2 = 0.5. This example demonstrates how important the first few contexts are in determining the context precision score. Just swapping the first two contexts had a large impact on the score.
+
+Our implementation uses the same computation as both [RAGAS](https://docs.ragas.io/en/latest/concepts/metrics/context_precision.html) and [DeepEval](https://docs.confident-ai.com/docs/metrics-contextual-precision). Our instruction is loosely adapted from DeepEval's instruction.
+
 ### Context Relevance
 
 Context relevance is the proportion of pieces of retrieved contexts that are relevant to the query. A piece of context is considered relevant to the query if any part of the context is relevant to answering the query. For example, a piece of context might be a paragraph of text, so if the answer or part of the answer to a query is contained somewhere in that paragraph, then that piece of context is considered relevant.

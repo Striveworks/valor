@@ -32,6 +32,7 @@ LLM_GUIDED_METRICS = {
     "AnswerRelevance",
     "Bias",
     "Coherence",
+    "ContextPrecision",
     "ContextRelevance",
     "Faithfulness",
     "Hallucination",
@@ -39,20 +40,10 @@ LLM_GUIDED_METRICS = {
 }
 
 
-NO_GROUNDTRUTH_METRICS = {
-    "AnswerRelevance",
-    "Bias",
-    "Coherence",
-    "ContextRelevance",
-    "Faithfulness",
-    "Hallucination",
-    "Toxicity",
-}
-
-
-GROUNDTRUTH_METRICS = {
+TEXT_COMPARISON_METRICS = {
     "AnswerCorrectness",
     "BLEU",
+    "ContextPrecision",
     "ROUGE",
 }
 
@@ -277,6 +268,7 @@ def _compute_text_generation_metrics(
     | schemas.BiasMetric
     | schemas.BLEUMetric
     | schemas.CoherenceMetric
+    | schemas.ContextPrecisionMetric
     | schemas.ContextRelevanceMetric
     | schemas.FaithfulnessMetric
     | schemas.HallucinationMetric
@@ -305,7 +297,7 @@ def _compute_text_generation_metrics(
 
     Returns
     ----------
-    Sequence[schemas.AnswerCorrectnessMetric | schemas.AnswerRelevanceMetric | schemas.BiasMetric | schemas.BLEUMetric | schemas.CoherenceMetric | schemas.ContextRelevanceMetric | schemas.FaithfulnessMetric | schemas.HallucinationMetric | schemas.ROUGEMetric | schemas.ToxicityMetric]
+    Sequence[schemas.AnswerCorrectnessMetric | schemas.AnswerRelevanceMetric | schemas.BiasMetric | schemas.BLEUMetric | schemas.CoherenceMetric | schemas.ContextPrecisionMetric | schemas.ContextRelevanceMetric | schemas.FaithfulnessMetric | schemas.HallucinationMetric | schemas.ROUGEMetric | schemas.ToxicityMetric]
         A list of computed metrics.
     """
     is_AnswerCorrectness_enabled = (
@@ -317,6 +309,9 @@ def _compute_text_generation_metrics(
     is_Bias_enabled = MetricType.Bias in metrics_to_return
     is_BLEU_enabled = MetricType.BLEU in metrics_to_return
     is_Coherence_enabled = MetricType.Coherence in metrics_to_return
+    is_ContextPrecision_enabled = (
+        MetricType.ContextPrecision in metrics_to_return
+    )
     is_ContextRelevance_enabled = (
         MetricType.ContextRelevance in metrics_to_return
     )
@@ -345,10 +340,12 @@ def _compute_text_generation_metrics(
         .subquery()
     )
 
+    # Text comparison metrics require both predictions and ground truths.
     output = []
-    if any([metric in GROUNDTRUTH_METRICS for metric in metrics_to_return]):
-        # get reference text to compare against from ground truths
-        # use array_agg since there can be multiple references for a given datum_uid
+    if any(
+        [metric in TEXT_COMPARISON_METRICS for metric in metrics_to_return]
+    ):
+        # Use array_agg since there can be multiple ground truths and multiple predictions for a given datum_uid.
         groundtruth_subquery = (
             generate_select(
                 models.Datum.id.label("datum_id"),
@@ -380,6 +377,9 @@ def _compute_text_generation_metrics(
                     prediction_subquery.c.prediction_text
                 ).label("predictions"),
                 functions.array_agg(
+                    prediction_subquery.c.prediction_context_list
+                ).label("list_of_prediction_context_lists"),
+                functions.array_agg(
                     groundtruth_subquery.c.groundtruth_text
                 ).label("references"),
             )
@@ -403,6 +403,7 @@ def _compute_text_generation_metrics(
             dataset_name,
             datum_text,
             predictions,
+            list_of_prediction_context_lists,
             references,
         ) in results:
             if is_AnswerCorrectness_enabled:
@@ -454,6 +455,33 @@ def _compute_text_generation_metrics(
                     )
                     for metric in bleu_metrics
                 ]
+
+            if is_ContextPrecision_enabled:
+                assert client
+                for (prediction_context_list, groundtruth_list) in zip(
+                    list_of_prediction_context_lists, references
+                ):
+                    score = 0
+                    for groundtruth in groundtruth_list:
+                        score = max(
+                            score,
+                            client.context_precision(
+                                query=datum_text,
+                                context_list=prediction_context_list,
+                                groundtruth=groundtruth,
+                            ),
+                        )
+                    output += [
+                        schemas.ContextPrecisionMetric(
+                            value=score,
+                            parameters={
+                                "dataset": dataset_name,
+                                "datum_uid": datum_uid,
+                                "context_list": prediction_context_list,
+                            },
+                        )
+                    ]
+
             if is_ROUGE_enabled:
                 rouge_params = metric_params.get("ROUGE", {})
                 if not isinstance(rouge_params, dict):
@@ -491,7 +519,10 @@ def _compute_text_generation_metrics(
 
     if any(
         [
-            metric_name in NO_GROUNDTRUTH_METRICS
+            (
+                metric_name in LLM_GUIDED_METRICS
+                and metric_name not in TEXT_COMPARISON_METRICS
+            )
             for metric_name in metrics_to_return
         ]
     ):

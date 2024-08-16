@@ -14,7 +14,7 @@ def generate_claims_instruction(text: str) -> str:
     Returns
     -------
     str
-        The instruction for the llm.
+        The instruction for the LLM.
     """
     return f"""Based on the text, generate a comprehensive list of FACTUAL CLAIMS that can be inferred from the text.
 
@@ -23,13 +23,13 @@ Only include claims that are factual. The claims you extract should include the 
 You should NOT include any prior knowledge. Take the text at face value when extracting claims.
 
 ===== EXAMPLE ======
-Example Text: "Einstein won the noble prize in 1968 for his discovery of the photoelectric effect."
+Example Text: "Einstein won the noble prize in 1921 for his discovery of the photoelectric effect."
 
 Example JSON:
 {{
     "claims": [
         "Einstein won the noble prize for his discovery of the photoelectric effect.",
-        "Einstein won the noble prize in 1968."
+        "Einstein won the noble prize in 1921."
     ]
 }}
 ===== END OF EXAMPLE ======
@@ -57,7 +57,7 @@ def generate_opinions_instruction(text: str) -> str:
     Returns
     -------
     str
-        The instruction for the llm.
+        The instruction for the LLM.
     """
     return f"""Based on the text, generate a list of OPINIONS presented in the text. Claims and undisputed truths are NOT opinions.
 
@@ -101,7 +101,7 @@ def generate_statements_instruction(text: str) -> str:
     Returns
     -------
     str
-        The instruction for the llm.
+        The instruction for the LLM.
     """
     return f"""Based on the text, breakdown and generate a list of STATEMENTS presented in the text. Ambiguous statements and single words can also be considered as statements.
 
@@ -149,7 +149,7 @@ def generate_answer_correctness_verdicts_instruction(
     Returns
     -------
     str
-        The instruction for the llm.
+        The instruction for the LLM.
     """
     return f"""Based on the query, the prediction statements and the ground truth statements, analyze each statement and classify them in one of the following categories:
 - TP (true positive): statements present in the prediction that are also directly supported by one or more statements in the ground truth,
@@ -220,7 +220,7 @@ def generate_answer_relevance_verdicts_instruction(
     Returns
     -------
     str
-        The instruction for the llm.
+        The instruction for the LLM.
     """
     return f"""Based on the query and the list of statements, generate a list of verdicts that indicate whether each statement is relevant to address the query. Each verdict should have two mandatory fields: 'analysis' and 'verdict'.
 
@@ -284,7 +284,7 @@ def generate_bias_verdicts_instruction(opinions: list[str]) -> str:
     Returns
     -------
     str
-        The instruction for the llm.
+        The instruction for the LLM.
     """
     return f"""Based on the list of opinions, generate a list of verdicts to indicate whether EACH opinion is biased. Each verdict should have two mandatory fields: 'analysis' and 'verdict'.
 
@@ -359,7 +359,7 @@ def generate_coherence_instruction(text: str) -> str:
     Returns
     -------
     str
-        The instruction for the llm.
+        The instruction for the LLM.
     """
     return f"""Grade the text. Your task is to rate the text based on its coherence. Please make sure you read and understand these instructions carefully. Please keep this document open while reviewing, and refer to it as needed.
 
@@ -376,6 +376,79 @@ def generate_coherence_instruction(text: str) -> str:
 
     Coherence Score (1-5):
     """
+
+
+def generate_context_precision_verdicts_instruction(
+    query: str,
+    context_list: list[str],
+    groundtruth: str,
+) -> str:
+    """
+    Generate LLM instruction for evaluating the usefulness of contexts for producing the ground truth answer to the query.
+
+    Instruction template was adapted from DeepEval's codebase https://github.com/confident-ai/deepeval/blob/main/deepeval/metrics/context_precision/template.py.
+
+    Modifications to the instruction include improvements to the spelling, grammar, formatting and examples.
+
+    Parameters
+    ----------
+    query: str
+        The query.
+    context_list: list[str]
+        The ordered list of contexts. Each context will be evaluated to determine if it is useful for producing the ground truth answer to the query.
+    groundtruth: str
+        The ground truth answer to the query.
+
+    Returns
+    -------
+    str
+        The instruction for the LLM.
+    """
+    return f"""Given the query, context list, and ground truth, generate a list of verdicts to determine whether each context in the context list is useful for producing the ground truth answer to the query.
+
+IMPORTANT: Return in JSON format with the 'verdicts' key mapping to a list of verdicts.
+Since you will generate a verdict for each context, the number of verdicts SHOULD BE STRICTLY EQUAL to the length of the context list.
+The 'analysis' key should provide a brief analysis of the usefulness of each context for producing the ground truth answer to the query.
+The 'analysis' should come BEFORE the 'verdict'. Use your 'analysis' to help you decide the 'verdict'.
+The 'verdict' key should STRICTLY be either 'yes' or 'no', and states whether each context is useful for producing the ground truth answer to the query.
+
+===== EXAMPLE ======
+Example Query: "Who won the Nobel Prize in 1921 and for what?"
+
+Example Context List: ["Einstein won the Nobel Prize for his discovery of the photoelectric effect", "Einstein won the Nobel Prize in 1921.", "Einstein was born in 1879 in Germany."]
+
+Example Ground Truth: "Einstein won the Nobel Prize in 1921 for his discovery of the photoelectric effect."
+
+Example JSON:
+{{
+    "verdicts": [
+        {{
+            "analysis": "The reason why Einstein won the Nobel Prize answers the second part of the query.",
+            "verdict": "yes"
+        }},
+        {{
+            "reason": "The context answers who won the prize in 1921.",
+            "verdict": "yes"
+        }},
+        {{
+            "reason": "Einstein's birth year is not mentioned in the ground truth answer, so this context is not useful for producing the ground truth.",
+            "verdict": "no"
+        }}
+    ]
+}}
+===== END OF EXAMPLE ======
+
+Query:
+{query}
+
+Context List:
+{context_list}
+
+Ground Truth:
+{groundtruth}
+
+JSON:
+"""
 
 
 def generate_context_relevance_verdicts_instruction(
@@ -399,7 +472,7 @@ def generate_context_relevance_verdicts_instruction(
     Returns
     -------
     str
-        The instruction for the llm.
+        The instruction for the LLM.
     """
     return f"""Based on the query and the context list, generate a list of verdicts to indicate whether each context is relevant to the provided query. Each verdict should have two mandatory fields: 'analysis' and 'verdict'.
 
@@ -460,7 +533,7 @@ def generate_faithfulness_verdicts_instruction(
     Returns
     -------
     str
-        The instruction for the llm.
+        The instruction for the LLM.
     """
     return f"""Based on the context list and the list of claims, generate a list of verdicts to indicate whether EACH claim is implied by the context list. Each verdict should have two mandatory fields: 'analysis' and 'verdict'.
 
@@ -537,7 +610,7 @@ def generate_hallucination_verdicts_instruction(
     Returns
     -------
     str
-        The instruction for the llm.
+        The instruction for the LLM.
     """
     return f"""Based on the context list and the text, generate a list of verdicts to indicate whether the given text contradicts EACH context. Each verdict should have two mandatory fields: 'analysis' and 'verdict'.
 
@@ -600,7 +673,7 @@ def generate_toxicity_verdicts_instruction(opinions: list[str]) -> str:
     Returns
     -------
     str
-        The instruction for the llm.
+        The instruction for the LLM.
     """
     return f"""Based on the list of opinions, generate a list of verdicts to indicate whether EACH opinion is toxic. Each verdict should have two mandatory fields: 'analysis' and 'verdict'.
 
