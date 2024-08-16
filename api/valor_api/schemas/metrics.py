@@ -796,7 +796,7 @@ class BLEUMetric(BaseModel):
     """
 
     value: float
-    parameters: dict[str, str | list[int | float]]
+    parameters: dict[str, str | float | list[int | float]]
 
     def db_mapping(self, evaluation_id: int) -> dict:
         """
@@ -1012,7 +1012,7 @@ class ROUGEMetric(BaseModel):
     """
 
     value: dict[str, float]
-    parameters: dict[str, str | bool | list[str]]
+    parameters: dict[str, str | bool | dict[str, float] | list[str]]
 
     def db_mapping(self, evaluation_id: int) -> dict:
         """

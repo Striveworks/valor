@@ -245,8 +245,8 @@ def test_tasktypeenum():
 
 def test_box():
     objcls = Box
-    value = [[(0, 2), (1, 2), (1, 3), (0, 3), (0, 2)]]
-    other = [[(1, 2), (2, 2), (2, 3), (1, 3), (1, 2)]]
+    value = [[(0.0, 2.0), (1.0, 2.0), (1.0, 3.0), (0.0, 3.0), (0.0, 2.0)]]
+    other = [[(1.0, 2.0), (2.0, 2.0), (2.0, 3.0), (1.0, 3.0), (1.0, 2.0)]]
 
     # test __init__
     assert objcls(value).get_value() == value
