@@ -25,7 +25,6 @@ from valor_core import (
     evaluate_detection,
 )
 from valor_core.enums import AnnotationType
-from valor_core.schemas import Raster
 
 
 def time_it(fn, *args, **kwargs):
@@ -296,11 +295,11 @@ def run_benchmarking_analysis(
 
     gt_box_filename = "gt_objdet_coco_bbox.jsonl"
     gt_polygon_filename = "gt_objdet_coco_polygon.jsonl"
-    gt_multipolygon_filename = "gt_objdet_coco_raster_multipolygon.jsonl"
+    # gt_multipolygon_filename = "gt_objdet_coco_raster_multipolygon.jsonl"
     gt_raster_filename = "gt_objdet_coco_raster_bitmask.jsonl"
     pd_box_filename = "pd_objdet_yolo_bbox.jsonl"
     pd_polygon_filename = "pd_objdet_yolo_polygon.jsonl"
-    pd_multipolygon_filename = "pd_objdet_yolo_multipolygon.jsonl"
+    # pd_multipolygon_filename = "pd_objdet_yolo_multipolygon.jsonl"
     pd_raster_filename = "pd_objdet_yolo_raster.jsonl"
 
     groundtruth_caches = {
@@ -320,8 +319,8 @@ def run_benchmarking_analysis(
     if combinations is None:
         combinations = [
             (gt_type, pd_type)
-            for gt_type in groundtruths
-            for pd_type in predictions
+            for gt_type in groundtruth_caches
+            for pd_type in prediction_caches
         ]
 
     # cache data locally
@@ -373,6 +372,8 @@ def run_benchmarking_analysis(
                     groundtruths, predictions
                 )
 
+            assert eval_base.meta
+
             results.append(
                 EvaluationBenchmark(
                     limit=limit,
@@ -388,9 +389,13 @@ def run_benchmarking_analysis(
                     n_annotations=eval_base.meta["annotations"],
                     n_labels=eval_base.meta["labels"],
                     eval_base=eval_base.meta["duration"],
-                    eval_base_pr=eval_pr.meta["duration"] if eval_pr else -1,
+                    eval_base_pr=eval_pr.meta["duration"]
+                    if eval_pr and eval_pr.meta
+                    else -1,
                     eval_base_pr_detail=(
-                        eval_detail.meta["duration"] if eval_detail else -1
+                        eval_detail.meta["duration"]
+                        if eval_detail and eval_detail.meta
+                        else -1
                     ),
                 ).result()
             )
