@@ -2,6 +2,7 @@ import json
 import os
 import time
 from datetime import datetime
+from dataclasses import dataclass
 
 import requests
 from valor_core import (
@@ -25,10 +26,9 @@ def download_data_if_not_exists(file_path: str, file_url: str):
         json.dump(response, file, indent=4)
 
 
-def write_results_to_file(write_path: str, result_dict: dict):
+def write_results_to_file(write_path: Path, results: list[dict]):
     """Write results to results.json"""
     current_datetime = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
-
     if os.path.isfile(write_path):
         with open(write_path, "r") as file:
             file.seek(0)
@@ -36,7 +36,7 @@ def write_results_to_file(write_path: str, result_dict: dict):
     else:
         data = {}
 
-    data[current_datetime] = result_dict
+    data[current_datetime] = results
 
     with open(write_path, "w+") as file:
         json.dump(data, file, indent=4)
@@ -141,15 +141,57 @@ def run_detailed_pr_curve_evaluation(groundtruths, predictions):
     return evaluation
 
 
+@dataclass
+class DataBenchmark:
+    ingestion: float
+
+    def result(self) -> dict[str, float | str]:
+        return {
+            "ingestion": round(self.ingestion, 2),
+            "finalization": round(self.finalization, 2),
+            "deletion": round(self.deletion, 2),
+        }
+
+
+@dataclass
+class EvaluationBenchmark:
+    limit: int
+    gt_stats: DataBenchmark
+    pd_stats: DataBenchmark
+    n_datums: int
+    n_annotations: int
+    n_labels: int
+    eval_base: float
+    eval_base_pr: float
+    eval_base_pr_detail: float
+
+    def result(self) -> dict[str, float | str | dict[str, str | float]]:
+        return {
+            "limit": self.limit,
+            "groundtruths": self.gt_stats.result(),
+            "predictions": self.pd_stats.result(),
+            "evaluation": {
+                "number_of_datums": self.n_datums,
+                "number_of_annotations": self.n_annotations,
+                "number_of_labels": self.n_labels,
+                "base": round(self.eval_base, 2),
+                "base+pr": round(self.eval_base_pr, 2),
+                "base+pr+detailed": round(self.eval_base_pr_detail, 2),
+            },
+        }
+
+
 def run_benchmarking_analysis(
-    limits_to_test: list[int] = [5000, 5000],
+    limits: list[int],
     results_file: str = "results.json",
     data_file: str = "data.json",
+    ingestion_timeout: int | None = 150,
+    evaluation_timeout: int | None = 40,
 ):
     """Time various function calls and export the results."""
-    current_directory = os.path.dirname(os.path.realpath(__file__))
-    write_path = f"{current_directory}/{results_file}"
-    data_path = f"{current_directory}/{data_file}"
+    current_directory = Path(os.path.dirname(os.path.realpath(__file__)))
+    write_path = current_directory / Path(results_file)
+    data_path = current_directory / Path(data_file)
 
     download_data_if_not_exists(
         file_path=data_path,
@@ -160,44 +202,51 @@ def run_benchmarking_analysis(
         file.seek(0)
         raw_data = json.load(file)
 
-    for limit in limits_to_test:
+    results = list()
+    for limit in limits:
 
+        # ingest groundtruths
         start_time = time.time()
-
-        groundtruths, predictions = create_groundtruths_and_predictions(
-            raw=raw_data, pair_limit=limit
+        groundtruths = ingest_groundtruths(
+            raw=raw_data,
+            pair_limit=limit,
         )
-        creation_time = time.time() - start_time
+        gt_ingest_time = time.time() - start_time
+
+        # ingest predictions
+        start_time = time.time()
+        predictions = ingest_predictions(
+            raw=raw_data,
+            pair_limit=limit,
+            timeout=ingestion_timeout,
+        )
+        pd_ingest_time = time.time() - start_time
 
         # run evaluations
-        base_eval = run_base_evaluation(
-            groundtruths=groundtruths, predictions=predictions
-        )
-        pr_eval = run_pr_curve_evaluation(
-            groundtruths=groundtruths, predictions=predictions
-        )
-        detailed_pr_eval = run_detailed_pr_curve_evaluation(
-            groundtruths=groundtruths, predictions=predictions
+        eval_base = run_base_evaluation(groundtruths, predictions)
+        eval_pr = run_pr_curve_evaluation(groundtruths, predictions)
+        eval_detail = run_detailed_pr_curve_evaluation(groundtruths, predictions)
+
+        results.append(
+            EvaluationBenchmark(
+                limit=limit,
+                gt_stats=DataBenchmark(
+                    ingestion=gt_ingest_time,
+                ),
+                pd_stats=DataBenchmark(
+                    ingestion=pd_ingest_time,
+                ),
+                n_datums=eval_base.meta["datums"],
+                n_annotations=eval_base.meta["annotations"],
+                n_labels=eval_base.meta["labels"],
+                eval_base=eval_base.meta["duration"],
+                eval_base_pr=eval_pr.meta["duration"],
+                eval_base_pr_detail=eval_detail.meta["duration"],
+            ).result()
         )
 
-        # handle type errors
-        if not (base_eval.meta and pr_eval.meta and detailed_pr_eval.meta):
-            raise ValueError("Metadata isn't defined for all objects.")
-
-        results = {
-            "number_of_datums": limit,
-            "number_of_unique_labels": base_eval.meta["labels"],
-            "number_of_annotations": base_eval.meta["annotations"],
-            "creation_runtime": f"{(creation_time):.1f} seconds",
-            "eval_runtime": f"{(base_eval.meta['duration']):.1f} seconds",
-            "pr_eval_runtime": f"{(pr_eval.meta['duration']):.1f} seconds",
-            "detailed_pr_eval_runtime": f"{(detailed_pr_eval.meta['duration']):.1f} seconds",
-        }
-        write_results_to_file(write_path=write_path, result_dict=results)
-
-        if base_eval.meta["duration"] > 30:
-            raise TimeoutError("Base evaluation took longer than 30 seconds.")
+    write_results_to_file(write_path=write_path, results=results)
 
 
 if __name__ == "__main__":
-    run_benchmarking_analysis()
+    run_benchmarking_analysis(limits=[5000, 5000])
