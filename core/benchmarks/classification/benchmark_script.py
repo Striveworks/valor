@@ -1,8 +1,10 @@
 import json
 import os
 import time
-from datetime import datetime
 from dataclasses import dataclass
+from datetime import datetime
+from pathlib import Path
+from typing import Any
 
 import requests
 from valor_core import (
@@ -16,7 +18,13 @@ from valor_core import (
 )
 
 
-def download_data_if_not_exists(file_path: str, file_url: str):
+def time_it(fn, *args, **kwargs) -> tuple[float, Any]:
+    start = time.time()
+    results = fn(*args, **kwargs)
+    return (time.time() - start, results)
+
+
+def download_data_if_not_exists(file_path: Path, file_url: str):
     """Download the data from a public bucket if it doesn't exist in the repo."""
     if os.path.exists(file_path):
         return
@@ -42,11 +50,10 @@ def write_results_to_file(write_path: Path, results: list[dict]):
         json.dump(data, file, indent=4)
 
 
-def create_groundtruths_and_predictions(raw: dict, pair_limit: int):
+def ingest_groundtruths(raw: dict, pair_limit: int) -> list[GroundTruth]:
     """Ingest the data into Valor."""
 
     groundtruths = []
-    predictions = []
     slice_ = (
         raw["groundtruth_prediction_pairs"][:pair_limit]
         if pair_limit != -1
@@ -75,6 +82,19 @@ def create_groundtruths_and_predictions(raw: dict, pair_limit: int):
             )
         )
 
+    return groundtruths
+
+
+def ingest_predictions(raw: dict, pair_limit: int) -> list[Prediction]:
+    """Ingest the data into Valor."""
+
+    predictions = []
+    slice_ = (
+        raw["groundtruth_prediction_pairs"][:pair_limit]
+        if pair_limit != -1
+        else raw["groundtruth_prediction_pairs"]
+    )
+    for _, prediction in slice_:
         predictions.append(
             Prediction(
                 datum=Datum(
@@ -97,7 +117,7 @@ def create_groundtruths_and_predictions(raw: dict, pair_limit: int):
             )
         )
 
-    return groundtruths, predictions
+    return predictions
 
 
 def run_base_evaluation(groundtruths, predictions):
@@ -148,8 +168,6 @@ class DataBenchmark:
     def result(self) -> dict[str, float | str]:
         return {
             "ingestion": round(self.ingestion, 2),
-            "finalization": round(self.finalization, 2),
-            "deletion": round(self.deletion, 2),
         }
 
 
@@ -206,26 +224,29 @@ def run_benchmarking_analysis(
     for limit in limits:
 
         # ingest groundtruths
-        start_time = time.time()
-        groundtruths = ingest_groundtruths(
+        gt_ingest_time, groundtruths = time_it(
+            ingest_groundtruths,
             raw=raw_data,
             pair_limit=limit,
         )
-        gt_ingest_time = time.time() - start_time
 
         # ingest predictions
-        start_time = time.time()
-        predictions = ingest_predictions(
+        pd_ingest_time, predictions = time_it(
+            ingest_predictions,
             raw=raw_data,
             pair_limit=limit,
-            timeout=ingestion_timeout,
         )
-        pd_ingest_time = time.time() - start_time
 
         # run evaluations
         eval_base = run_base_evaluation(groundtruths, predictions)
         eval_pr = run_pr_curve_evaluation(groundtruths, predictions)
-        eval_detail = run_detailed_pr_curve_evaluation(groundtruths, predictions)
+        eval_detail = run_detailed_pr_curve_evaluation(
+            groundtruths, predictions
+        )
+
+        assert eval_base.meta
+        assert eval_pr.meta
+        assert eval_detail.meta
 
         results.append(
             EvaluationBenchmark(
