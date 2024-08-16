@@ -337,29 +337,25 @@ def _validate_prediction_dataframe(
             )
 
 
-def create_filtered_and_validated_groundtruth_df(
+def create_validated_groundtruth_df(
     obj: Union[pd.DataFrame, List[schemas.GroundTruth]],
     task_type: enums.TaskType,
 ) -> pd.DataFrame:
     """
-    Create a filtered and validated DataFrame of ground truth data.
-
-    This function takes either a DataFrame or a list of GroundTruth objects,
-    validates the input, identifies the implied task types, filters the DataFrame
-    to match the specified task type, and then validates the filtered DataFrame.
+    Create a validated DataFrame of groundtruth data.
 
     Parameters
     ----------
     obj : Union[pd.DataFrame, List[schemas.GroundTruth]]
-        The ground truth data to be processed. This can be either a pandas DataFrame
+        The groundtruth data to be processed. This can be either a pandas DataFrame
         or a list of GroundTruth objects.
     task_type : enums.TaskType
-        The task type for which the ground truth data is being filtered and validated.
+        The task type for which the prediction data is being validated.
 
     Returns
     -------
     pd.DataFrame
-        A DataFrame containing the filtered and validated ground truth data.
+        A DataFrame containing the validated prediction data.
 
     Raises
     ------
@@ -382,38 +378,30 @@ def create_filtered_and_validated_groundtruth_df(
     else:
         df = _convert_groundtruth_or_prediction_to_dataframe(obj)
 
-    df = _identify_implied_task_types(df=df)
+    _validate_groundtruth_dataframe(df=df, task_type=task_type)
 
-    filtered_df = df[df["implied_task_type"] == task_type]
-
-    _validate_groundtruth_dataframe(df=filtered_df, task_type=task_type)
-
-    return filtered_df
+    return df
 
 
-def create_filtered_and_validated_prediction_df(
+def create_validated_prediction_df(
     obj: Union[pd.DataFrame, List[schemas.Prediction]],
     task_type: enums.TaskType,
 ) -> pd.DataFrame:
     """
-    Create a filtered and validated DataFrame of prediction data.
-
-    This function takes either a DataFrame or a list of Prediction objects,
-    validates the input, identifies the implied task types, filters the DataFrame
-    to match the specified task type, and then validates the filtered DataFrame.
+    Create a validated DataFrame of prediction data.
 
     Parameters
     ----------
     obj : Union[pd.DataFrame, List[schemas.Prediction]]
         The prediction data to be processed. This can be either a pandas DataFrame
-        or a list of GroundTruth objects.
+        or a list of Prediction objects.
     task_type : enums.TaskType
-        The task type for which the orediction data is being filtered and validated.
+        The task type for which the prediction data is being validated.
 
     Returns
     -------
     pd.DataFrame
-        A DataFrame containing the filtered and validated orediction data.
+        A DataFrame containing the validated prediction data.
 
     Raises
     ------
@@ -439,11 +427,35 @@ def create_filtered_and_validated_prediction_df(
     if df.empty:
         return df
 
+    _validate_prediction_dataframe(df=df, task_type=task_type)
+
+    return df
+
+
+def filter_dataframe_by_task_type(df: pd.DataFrame, task_type: enums.TaskType):
+    """
+    Filter a DataFrame by task type.
+
+    This function identifies the task type implied by the data and filters the DataFrame to include only rows
+    that match the specified task type.
+
+    Parameters
+    ----------
+    df : pd.DataFrame
+        The DataFrame containing the data to be filtered.
+
+    task_type : enums.TaskType
+        The task type to filter the DataFrame by (e.g., classification, detection).
+
+    Returns
+    -------
+    pd.DataFrame
+        A DataFrame filtered to contain only rows that match the specified task type.
+    """
+
     df = _identify_implied_task_types(df=df)
 
     filtered_df = df[df["implied_task_type"] == task_type]
-
-    _validate_prediction_dataframe(df=filtered_df, task_type=task_type)
 
     return filtered_df
 
@@ -615,6 +627,7 @@ def _identify_implied_task_types(
     df: pd.DataFrame,
 ) -> pd.DataFrame:
     """Match an annotation to an implied task type."""
+
     # null series for use if the column doesn't exist
     null_placeholder_column = pd.Series([None] * len(df))
 
@@ -760,11 +773,6 @@ def _identify_most_detailed_annotation_type(
     """
     Identify the most detailed annotation type present in the DataFrame.
 
-    The function checks the columns in the given DataFrame for non-null values
-    to determine the most detailed annotation type in the following order:
-    raster, polygon, bounding_box. If none of these types are present,
-    it returns AnnotationType.NONE.
-
     Parameters
     ----------
     df : pd.DataFrame
@@ -784,6 +792,36 @@ def _identify_most_detailed_annotation_type(
 
     elif df["bounding_box"].notnull().any():
         return enums.AnnotationType.BOX
+
+    else:
+        return enums.AnnotationType.NONE
+
+
+def _identify_least_detailed_annotation_type(
+    df: pd.DataFrame,
+) -> enums.AnnotationType:
+    """
+    Identify the least detailed annotation type present in the DataFrame.
+
+    Parameters
+    ----------
+    df : pd.DataFrame
+        DataFrame containing the annotations.
+
+    Returns
+    -------
+    enums.AnnotationType
+        The least detailed annotation type present in the DataFrame.
+    """
+
+    if df["bounding_box"].notnull().any():
+        return enums.AnnotationType.BOX
+
+    elif df["polygon"].notnull().any():
+        return enums.AnnotationType.POLYGON
+
+    elif df["raster"].notnull().any():
+        return enums.AnnotationType.RASTER
 
     else:
         return enums.AnnotationType.NONE
@@ -904,6 +942,22 @@ def convert_annotations_to_common_type(
     ValueError
         If the target annotation type is not supported.
     """
+    least_detailed_groundtruth_type = _identify_least_detailed_annotation_type(
+        df=groundtruth_df,
+    )
+
+    least_detailed_prediction_type = _identify_least_detailed_annotation_type(
+        df=prediction_df,
+    )
+
+    # throw an error if the user tries to convert from a lower detailed type to a higher detailed type
+    if target_type and (
+        (target_type > least_detailed_groundtruth_type)
+        or (target_type > least_detailed_prediction_type)
+    ):
+        raise ValueError(
+            f"Cannot convert from a lower-dimensional type {min([least_detailed_groundtruth_type, least_detailed_prediction_type])} to a higher-dimensional type {target_type}"
+        )
 
     if target_type is None:
         most_detailed_groundtruth_type = (
@@ -917,6 +971,16 @@ def convert_annotations_to_common_type(
                 df=prediction_df,
             )
         )
+
+        if not (
+            most_detailed_groundtruth_type
+            == most_detailed_prediction_type
+            == least_detailed_groundtruth_type
+            == least_detailed_prediction_type
+        ) and (most_detailed_prediction_type != enums.AnnotationType.NONE):
+            raise ValueError(
+                "valor_core doesn't support auto-conversion of mixed AnnotationTypes. Please make sure to pass a convert_annotation_to_type argument to the evaluation function to tell valor_core how to handle mixed annotation types."
+            )
 
         target_type = min(
             [most_detailed_groundtruth_type, most_detailed_prediction_type]

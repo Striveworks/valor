@@ -787,6 +787,8 @@ def _convert_annotations_to_common_type(
         source_type = core.get_annotation_type(
             db=db, dataset=dataset, task_type=enums.TaskType.OBJECT_DETECTION
         )
+        if target_type > source_type:
+            continue
         core.convert_geometry(
             db=db,
             dataset=dataset,

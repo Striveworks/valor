@@ -1,7 +1,33 @@
+import math
+
 import numpy as np
 import pandas as pd
 import pytest
 from valor_core import schemas
+
+
+@pytest.fixture
+def box_points() -> list[tuple[float, float]]:
+    return [
+        (-5, -5),
+        (5, -5),
+        (5, 5),
+        (-5, 5),
+        (-5, -5),
+    ]
+
+
+@pytest.fixture
+def rotated_box_points() -> list[tuple[float, float]]:
+    """Same area and sides as box_points, but rotated 45 degrees."""
+    d = 5.0 * math.sqrt(2)
+    return [
+        (0, -d),
+        (d, 0),
+        (0, d),
+        (-d, 0),
+        (0, -d),
+    ]
 
 
 @pytest.fixture
@@ -210,7 +236,7 @@ def evaluate_detection_functional_test_groundtruths_with_rasters(
             annotations=[
                 schemas.Annotation(
                     labels=[schemas.Label(key="class", value=class_label)],
-                    raster=schemas.Raster.from_numpy(raster),
+                    raster=schemas.Raster(raster),
                     is_instance=True,
                 )
                 for raster, class_label in zip(gts["rasters"], gts["labels"])
@@ -251,7 +277,7 @@ def evaluate_detection_functional_test_predictions_with_rasters(
                             key="class", value=class_label, score=score
                         )
                     ],
-                    raster=schemas.Raster.from_numpy(raster),
+                    raster=schemas.Raster(raster),
                     is_instance=True,
                 )
                 for raster, class_label, score in zip(
@@ -1532,7 +1558,6 @@ def classification_functional_test_data():
 
 @pytest.fixture
 def classification_functional_test_groundtruth_df():
-    """Used in test_rocauc_with_label_map so that we can test _calculate_rocauc directly, since this original text violated the matching groundtruth/prediction label keys criteria."""
     return pd.DataFrame(
         [
             {

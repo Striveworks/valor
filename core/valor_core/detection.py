@@ -1066,7 +1066,6 @@ def _compute_detection_metrics(
     recall_score_threshold: float,
     pr_curve_iou_threshold: float,
     pr_curve_max_examples: int,
-    unique_labels: list,
 ) -> List[dict]:
     """
     Compute detection metrics for evaluating object detection models. This function calculates Intersection over Union (IoU) for each ground truth-prediction pair that shares a common grouper id, and computes metrics such as Average Precision (AP), Average Recall (AR), and Precision-Recall (PR) curves.
@@ -1091,8 +1090,6 @@ def _compute_detection_metrics(
         IoU threshold for computing Precision-Recall curves.
     pr_curve_max_examples : int
         Maximum number of examples to use for Precision-Recall curve calculations.
-    unique_labels : list
-        List of unique labels present in the datasets.
 
     Returns
     -------
@@ -1307,12 +1304,22 @@ def evaluate_detection(
         recall_score_threshold=recall_score_threshold,
     )
 
-    groundtruth_df = utilities.create_filtered_and_validated_groundtruth_df(
+    groundtruth_df = utilities.create_validated_groundtruth_df(
         groundtruths, task_type=enums.TaskType.OBJECT_DETECTION
     )
-    prediction_df = utilities.create_filtered_and_validated_prediction_df(
+    prediction_df = utilities.create_validated_prediction_df(
         predictions, task_type=enums.TaskType.OBJECT_DETECTION
     )
+
+    # filter dataframes based on task type
+    groundtruth_df = utilities.filter_dataframe_by_task_type(
+        df=groundtruth_df, task_type=enums.TaskType.OBJECT_DETECTION
+    )
+
+    if not prediction_df.empty:
+        prediction_df = utilities.filter_dataframe_by_task_type(
+            df=prediction_df, task_type=enums.TaskType.OBJECT_DETECTION
+        )
 
     # ensure that all annotations have a common type to operate over
     (
@@ -1355,7 +1362,6 @@ def evaluate_detection(
         recall_score_threshold=recall_score_threshold,
         pr_curve_iou_threshold=pr_curve_iou_threshold,
         pr_curve_max_examples=pr_curve_max_examples,
-        unique_labels=unique_labels,
     )
 
     return schemas.Evaluation(

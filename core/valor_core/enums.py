@@ -6,7 +6,6 @@ class AnnotationType(str, Enum):
     NONE = "none"
     BOX = "box"
     POLYGON = "polygon"
-    MULTIPOLYGON = "multipolygon"
     RASTER = "raster"
 
 

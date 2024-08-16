@@ -24,7 +24,8 @@ from valor_core import (
     enums,
     evaluate_detection,
 )
-from valor_core.schemas import RasterData
+from valor_core.enums import AnnotationType
+from valor_core.schemas import Raster
 
 
 def time_it(fn, *args, **kwargs):
@@ -62,10 +63,9 @@ def download_data_if_not_exists(
         print(f"{file_name} already exists locally.")
 
 
-def write_results_to_file(write_path: Path, result_dict: dict):
+def write_results_to_file(write_path: Path, results: list[dict]):
     """Write results to results.json"""
     current_datetime = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
-
     if os.path.isfile(write_path):
         with open(write_path, "r") as file:
             file.seek(0)
@@ -73,13 +73,14 @@ def write_results_to_file(write_path: Path, result_dict: dict):
     else:
         data = {}
 
-    data[current_datetime] = result_dict
+    data[current_datetime] = results
 
     with open(write_path, "w+") as file:
         json.dump(data, file, indent=4)
 
 
 def ingest_groundtruths(
+    dtype: AnnotationType,
     path: Path,
     limit: int,
 ) -> list[GroundTruth]:
@@ -100,34 +101,31 @@ def ingest_groundtruths(
                     labels.append(Label(**label))
                 ann["labels"] = labels
 
-                ann["bounding_box"] = (
-                    Box(ann["bounding_box"]) if ann["bounding_box"] else None
-                )
-                ann["polygon"] = (
-                    Polygon(ann["polygon"]) if ann["polygon"] else None
-                )
+                if ann["bounding_box"] and dtype == AnnotationType.BOX:
+                    ann["bounding_box"] = Box(ann["bounding_box"])
+                    annotations.append(Annotation(**ann))
 
-                if ann["raster"]:
-                    if ann["raster"]["geometry"] is not None:
-                        ann["raster"] = Raster(
-                            RasterData(
-                                mask=None, geometry=ann["raster"]["geometry"]
-                            )
-                        )
-                    elif ann["raster"]["geometry"] is None:
-                        # decode raster
-                        mask_bytes = b64decode(ann["raster"]["mask"])
-                        with io.BytesIO(mask_bytes) as f:
-                            img = PIL.Image.open(f)
-                            ann["raster"] = Raster(
-                                RasterData(mask=np.array(img), geometry=None)
-                            )
-                else:
-                    ann["raster"] = None
+                if ann["polygon"] and dtype == AnnotationType.POLYGON:
+                    ann["polygon"] = Polygon(ann["polygon"])
+                    annotations.append(Annotation(**ann))
 
-                annotations.append(Annotation(**ann))
+                if ann["raster"] and dtype == AnnotationType.RASTER:
+                    mask_bytes = b64decode(ann["raster"]["mask"])
+                    with io.BytesIO(mask_bytes) as f:
+                        img = PIL.Image.open(f)
+                        w, h = img.size
+                        if ann["raster"]["geometry"] is not None:
+                            ann["raster"] = Raster.from_geometry(
+                                ann["raster"]["geometry"],
+                                width=w,
+                                height=h,
+                            )
+                        elif ann["raster"]["geometry"] is None:
+                            # decode raster
+                            ann["raster"] = Raster(mask=np.array(img))
+                    annotations.append(Annotation(**ann))
+
             gt_dict["annotations"] = annotations
-
             gt = GroundTruth(**gt_dict)
             groundtruths.append(gt)
             if len(groundtruths) >= limit:
@@ -136,6 +134,7 @@ def ingest_groundtruths(
 
 
 def ingest_predictions(
+    dtype: AnnotationType,
     datum_uids: list[str],
     path: Path,
     limit: int,
@@ -167,32 +166,31 @@ def ingest_predictions(
                     labels.append(Label(**label))
                 ann["labels"] = labels
 
-                ann["bounding_box"] = (
-                    Box(ann["bounding_box"]) if ann["bounding_box"] else None
-                )
-                ann["polygon"] = (
-                    Polygon(ann["polygon"]) if ann["polygon"] else None
-                )
+                if ann["bounding_box"] and dtype == AnnotationType.BOX:
+                    ann["bounding_box"] = Box(ann["bounding_box"])
+                    annotations.append(Annotation(**ann))
 
-                if ann["raster"]:
-                    if ann["raster"]["geometry"] is not None:
-                        ann["raster"] = Raster(
-                            RasterData(
-                                mask=None, geometry=ann["raster"]["geometry"]
+                if ann["polygon"] and dtype == AnnotationType.POLYGON:
+                    ann["polygon"] = Polygon(ann["polygon"])
+                    annotations.append(Annotation(**ann))
+
+                if ann["raster"] and dtype == AnnotationType.RASTER:
+                    mask_bytes = b64decode(ann["raster"]["mask"])
+                    with io.BytesIO(mask_bytes) as f:
+                        img = PIL.Image.open(f)
+                        w, h = img.size
+                        if ann["raster"]["geometry"] is not None:
+                            ann["raster"] = Raster.from_geometry(
+                                ann["raster"]["geometry"],
+                                width=w,
+                                height=h,
                             )
-                        )
-                    elif ann["raster"]["geometry"] is None:
-                        # decode raster
-                        mask_bytes = b64decode(ann["raster"]["mask"])
-                        with io.BytesIO(mask_bytes) as f:
-                            img = PIL.Image.open(f)
-                            ann["raster"] = Raster(
-                                RasterData(mask=np.array(img), geometry=None)
-                            )
-                else:
-                    ann["raster"] = None
+                        elif ann["raster"]["geometry"] is None:
+                            # decode raster
+                            ann["raster"] = Raster(mask=np.array(img))
+                    annotations.append(Annotation(**ann))
+
             pd_dict["annotations"] = annotations
-
             pd = Prediction(**pd_dict)
             predictions.append(pd)
             count += 1
@@ -243,172 +241,195 @@ def run_detailed_pr_curve_evaluation(groundtruths, predictions):
     return evaluation
 
 
+@dataclass
+class DataBenchmark:
+    dtype: str
+    ingestion: float
+
+    def result(self) -> dict[str, float | str]:
+        return {
+            "dtype": self.dtype,
+            "ingestion": round(self.ingestion, 2),
+        }
+
+
+@dataclass
+class EvaluationBenchmark:
+    limit: int
+    gt_stats: DataBenchmark
+    pd_stats: DataBenchmark
+    n_datums: int
+    n_annotations: int
+    n_labels: int
+    eval_base: float
+    eval_base_pr: float
+    eval_base_pr_detail: float
+
+    def result(self) -> dict[str, float | str | dict[str, str | float]]:
+        return {
+            "limit": self.limit,
+            "groundtruths": self.gt_stats.result(),
+            "predictions": self.pd_stats.result(),
+            "evaluation": {
+                "number_of_datums": self.n_datums,
+                "number_of_annotations": self.n_annotations,
+                "number_of_labels": self.n_labels,
+                "base": round(self.eval_base, 2),
+                "base+pr": round(self.eval_base_pr, 2),
+                "base+pr+detailed": round(self.eval_base_pr_detail, 2),
+            },
+        }
+
+
 def run_benchmarking_analysis(
     limits_to_test: list[int],
+    combinations: list[tuple[AnnotationType, AnnotationType]] | None = None,
     results_file: str = "results.json",
-    data_file: str = "data.json",
-    compute_box: bool = True,
-    compute_raster: bool = True,
+    ingestion_chunk_timeout: int = 30,
+    evaluation_timeout: int = 30,
+    compute_pr: bool = True,
+    compute_detailed: bool = True,
 ):
     """Time various function calls and export the results."""
-    current_directory = Path(os.path.dirname(os.path.realpath(__file__)))
+    current_directory = Path(__file__).parent
     write_path = current_directory / Path(results_file)
 
     gt_box_filename = "gt_objdet_coco_bbox.jsonl"
-    gt_raster_filename = "gt_objdet_coco_raster.jsonl"
+    gt_polygon_filename = "gt_objdet_coco_polygon.jsonl"
+    gt_multipolygon_filename = "gt_objdet_coco_raster_multipolygon.jsonl"
+    gt_raster_filename = "gt_objdet_coco_raster_bitmask.jsonl"
     pd_box_filename = "pd_objdet_yolo_bbox.jsonl"
+    pd_polygon_filename = "pd_objdet_yolo_polygon.jsonl"
+    pd_multipolygon_filename = "pd_objdet_yolo_multipolygon.jsonl"
     pd_raster_filename = "pd_objdet_yolo_raster.jsonl"
 
+    groundtruth_caches = {
+        AnnotationType.BOX: gt_box_filename,
+        AnnotationType.POLYGON: gt_polygon_filename,
+        # AnnotationType.MULTIPOLYGON: gt_multipolygon_filename,
+        AnnotationType.RASTER: gt_raster_filename,
+    }
+    prediction_caches = {
+        AnnotationType.BOX: pd_box_filename,
+        AnnotationType.POLYGON: pd_polygon_filename,
+        # AnnotationType.MULTIPOLYGON: pd_multipolygon_filename,
+        AnnotationType.RASTER: pd_raster_filename,
+    }
+
+    # default is to perform all combinations
+    if combinations is None:
+        combinations = [
+            (gt_type, pd_type)
+            for gt_type in groundtruths
+            for pd_type in predictions
+        ]
+
     # cache data locally
-    for filename in [
-        gt_box_filename,
-        gt_raster_filename,
-        pd_box_filename,
-        pd_raster_filename,
-    ]:
+    filenames = [
+        *list(groundtruth_caches.values()),
+        *list(prediction_caches.values()),
+    ]
+    for filename in filenames:
         file_path = current_directory / Path(filename)
         url = f"https://pub-fae71003f78140bdaedf32a7c8d331d2.r2.dev/{filename}"
         download_data_if_not_exists(
             file_name=filename, file_path=file_path, url=url
         )
 
-    @dataclass
-    class Dummy:
-        meta: dict
-
-    dummy_value = Dummy(meta={"labels": -1, "annotations": -1, "duration": -1})
-
+    # iterate through datum limits
+    results = list()
     for limit in limits_to_test:
+        for gt_type, pd_type in combinations:
 
-        gt_boxes = []
-        gt_rasters = []
-        pd_boxes = []
-        pd_rasters = []
-        gt_box_ingest_time = -1
-        pd_box_ingest_time = -1
-        base_eval_box = dummy_value
-        pr_eval_box = dummy_value
-        detailed_pr_eval_box = dummy_value
-        gt_raster_ingest_time = -1
-        pd_raster_ingest_time = -1
-        base_eval_raster = dummy_value
-        pr_eval_raster = dummy_value
-        detailed_pr_eval_raster = dummy_value
+            gt_filename = groundtruth_caches[gt_type]
+            pd_filename = prediction_caches[pd_type]
 
-        if compute_box:
-
-            # ingestion
-            gt_box_ingest_time, gt_boxes = time_it(
+            # gt ingestion
+            gt_ingest_time, groundtruths = time_it(
                 ingest_groundtruths,
-                path=current_directory / Path(gt_box_filename),
+                dtype=gt_type,
+                path=current_directory / Path(gt_filename),
                 limit=limit,
             )
-            box_datum_uids = [gt.datum.uid for gt in gt_boxes]
-            pd_box_ingest_time, pd_boxes = time_it(
+
+            # pd ingestion
+            datum_uids = [gt.datum.uid for gt in groundtruths]
+            pd_ingest_time, predictions = time_it(
                 ingest_predictions,
-                datum_uids=box_datum_uids,
-                path=current_directory / Path(pd_box_filename),
+                dtype=pd_type,
+                datum_uids=datum_uids,
+                path=current_directory / Path(pd_filename),
                 limit=limit,
             )
 
-            # evaluation
-            base_eval_box = run_base_evaluation(
-                groundtruths=gt_boxes, predictions=pd_boxes
-            )
-            pr_eval_box = run_pr_curve_evaluation(
-                groundtruths=gt_boxes, predictions=pd_boxes
-            )
-            detailed_pr_eval_box = run_detailed_pr_curve_evaluation(
-                groundtruths=gt_boxes, predictions=pd_boxes
+            # run evaluations
+            eval_pr = None
+            eval_detail = None
+            eval_base = run_base_evaluation(groundtruths, predictions)
+            if compute_pr:
+                eval_pr = run_pr_curve_evaluation(groundtruths, predictions)
+            if compute_detailed:
+                eval_detail = run_detailed_pr_curve_evaluation(
+                    groundtruths, predictions
+                )
+
+            results.append(
+                EvaluationBenchmark(
+                    limit=limit,
+                    gt_stats=DataBenchmark(
+                        dtype=gt_type,
+                        ingestion=gt_ingest_time,
+                    ),
+                    pd_stats=DataBenchmark(
+                        dtype=pd_type,
+                        ingestion=pd_ingest_time,
+                    ),
+                    n_datums=eval_base.meta["datums"],
+                    n_annotations=eval_base.meta["annotations"],
+                    n_labels=eval_base.meta["labels"],
+                    eval_base=eval_base.meta["duration"],
+                    eval_base_pr=eval_pr.meta["duration"] if eval_pr else -1,
+                    eval_base_pr_detail=(
+                        eval_detail.meta["duration"] if eval_detail else -1
+                    ),
+                ).result()
             )
 
-            # handle type errors
-            if not (
-                base_eval_box.meta
-                and pr_eval_box.meta
-                and detailed_pr_eval_box.meta
-            ):
-                raise ValueError("Metadata isn't defined for all objects.")
-
-        if compute_raster:
-
-            # ingestion
-            gt_raster_ingest_time, gt_rasters = time_it(
-                ingest_groundtruths,
-                path=current_directory / Path(gt_raster_filename),
-                limit=limit,
-            )
-            raster_datum_uids = [gt.datum.uid for gt in gt_rasters]
-            pd_raster_ingest_time, pd_rasters = time_it(
-                ingest_predictions,
-                datum_uids=raster_datum_uids,
-                path=current_directory / Path(pd_raster_filename),
-                limit=limit,
-            )
-
-            # evaluation
-            base_eval_raster = run_base_evaluation(
-                groundtruths=gt_rasters, predictions=pd_rasters
-            )
-            pr_eval_raster = run_pr_curve_evaluation(
-                groundtruths=gt_rasters, predictions=pd_rasters
-            )
-            detailed_pr_eval_raster = run_detailed_pr_curve_evaluation(
-                groundtruths=gt_rasters, predictions=pd_rasters
-            )
-
-            if not (
-                base_eval_raster.meta
-                and pr_eval_raster.meta
-                and detailed_pr_eval_raster.meta
-            ):
-                raise ValueError("Metadata isn't defined for all objects.")
-
-        results = {
-            "box": {
-                "info": {
-                    "number_of_datums": len(gt_boxes),
-                    "number_of_unique_labels": base_eval_box.meta["labels"],
-                    "number_of_annotations": base_eval_box.meta["annotations"],
-                },
-                "ingestion": {
-                    "groundtruth": f"{(gt_box_ingest_time):.1f} seconds",
-                    "prediction": f"{(pd_box_ingest_time):.1f} seconds",
-                },
-                "evaluation": {
-                    "base": f"{(base_eval_box.meta['duration']):.1f} seconds",
-                    "base+pr": f"{(pr_eval_box.meta['duration']):.1f} seconds",
-                    "base+pr+detailed": f"{(detailed_pr_eval_box.meta['duration']):.1f} seconds",
-                },
-            },
-            "raster": {
-                "info": {
-                    "number_of_datums": len(gt_rasters),
-                    "number_of_unique_labels": base_eval_raster.meta["labels"],
-                    "number_of_annotations": base_eval_raster.meta[
-                        "annotations"
-                    ],
-                },
-                "ingestion": {
-                    "groundtruth": f"{(gt_raster_ingest_time):.1f} seconds",
-                    "prediction": f"{(pd_raster_ingest_time):.1f} seconds",
-                },
-                "evaluation": {
-                    "base": f"{(base_eval_raster.meta['duration']):.1f} seconds",
-                    "base+pr": f"{(pr_eval_raster.meta['duration']):.1f} seconds",
-                    "base+pr+detailed": f"{(detailed_pr_eval_raster.meta['duration']):.1f} seconds",
-                },
-            },
-        }
-        write_results_to_file(write_path=write_path, result_dict=results)
-
-        if base_eval_box.meta["duration"] > 30:
-            raise TimeoutError("Base evaluation took longer than 30 seconds.")
+    write_results_to_file(write_path=write_path, results=results)
 
 
 if __name__ == "__main__":
+
+    # run bounding box benchmark
     run_benchmarking_analysis(
-        limits_to_test=[5000, 5000, 5000],
-        compute_box=True,
-        compute_raster=False,
+        combinations=[
+            (AnnotationType.BOX, AnnotationType.BOX),
+        ],
+        limits_to_test=[5000, 5000],
+    )
+
+    # run polygon benchmark
+    run_benchmarking_analysis(
+        combinations=[
+            (AnnotationType.POLYGON, AnnotationType.POLYGON),
+        ],
+        limits_to_test=[5000, 5000],
+    )
+
+    # # run multipolygon benchmark
+    # run_benchmarking_analysis(
+    #     combinations=[
+    #         (AnnotationType.MULTIPOLYGON, AnnotationType.MULTIPOLYGON),
+    #     ],
+    #     limits_to_test=[6, 6],
+    #     compute_detailed=False,
+    # )
+
+    # run raster benchmark
+    run_benchmarking_analysis(
+        combinations=[
+            (AnnotationType.RASTER, AnnotationType.RASTER),
+        ],
+        limits_to_test=[500, 500],
+        compute_detailed=False,
     )
