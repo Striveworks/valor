@@ -11,7 +11,6 @@ from geoalchemy2.functions import (
     ST_GeomFromText,
     ST_MakeEmptyRaster,
     ST_MapAlgebra,
-    ST_SnapToGrid,
 )
 from pydantic import (
     BaseModel,
@@ -1028,8 +1027,8 @@ class Raster(BaseModel):
         if self.geometry:
             empty_raster = ST_AddBand(
                 ST_MakeEmptyRaster(
-                    self.width,
-                    self.height,
+                    self.width,  # width
+                    self.height,  # height
                     0,  # upperleftx
                     0,  # upperlefty
                     1,  # scalex
@@ -1038,23 +1037,18 @@ class Raster(BaseModel):
                     0,  # skewy
                     0,  # srid
                 ),
-                "1BB",
-            )
-            geom_raster = ST_AsRaster(
-                ST_SnapToGrid(
-                    ST_GeomFromText(self.geometry.to_wkt()),
-                    1.0,
-                ),
-                1.0,  # scalex
-                1.0,  # scaley
                 "1BB",  # pixeltype
-                1,  # value
-                0,  # nodataval
             )
             return select(
                 ST_MapAlgebra(
                     empty_raster,
-                    geom_raster,
+                    ST_AsRaster(
+                        ST_GeomFromText(self.geometry.to_wkt()),
+                        empty_raster,
+                        "1BB",
+                        1,
+                        0,
+                    ),
                     "[rast2]",
                     "1BB",
                     "UNION",

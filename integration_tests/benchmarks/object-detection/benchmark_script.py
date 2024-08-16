@@ -238,9 +238,10 @@ def run_benchmarking_analysis(
     limits_to_test: list[int],
     combinations: list[tuple[AnnotationType, AnnotationType]] | None = None,
     results_file: str = "results.json",
-    chunk_size: int = 500,
-    ingestion_chunk_timeout: int | None = 30,
-    evaluation_timeout: int | None = 30,
+    ingestion_chunk_timeout: int = 30,
+    evaluation_timeout: int = 30,
+    compute_pr: bool = True,
+    compute_detailed: bool = True,
 ):
     """Time various function calls and export the results."""
     current_directory = Path(__file__).parent
@@ -310,7 +311,7 @@ def run_benchmarking_analysis(
                 dataset=dataset,
                 path=current_directory / Path(gt_filename),
                 limit=limit,
-                chunk_size=chunk_size,
+                chunk_size=1000,
                 timeout=ingestion_chunk_timeout,
             )
 
@@ -326,7 +327,7 @@ def run_benchmarking_analysis(
                 datum_uids=datum_uids,
                 path=current_directory / Path(pd_filename),
                 limit=limit,
-                chunk_size=chunk_size,
+                chunk_size=1000,
                 timeout=ingestion_chunk_timeout,
             )
 
@@ -334,15 +335,19 @@ def run_benchmarking_analysis(
             pd_finalization_time = time_it(model.finalize_inferences, dataset)
 
             # run evaluations
+            eval_pr = None
+            eval_detail = None
             eval_base = run_base_evaluation(
                 dset=dataset, model=model, timeout=evaluation_timeout
             )
-            # eval_pr = run_pr_curve_evaluation(
-            #     dset=dataset, model=model, timeout=evaluation_timeout
-            # )
-            # eval_detail = run_detailed_pr_curve_evaluation(
-            #     dset=dataset, model=model, timeout=evaluation_timeout
-            # )
+            if compute_pr:
+                eval_pr = run_pr_curve_evaluation(
+                    dset=dataset, model=model, timeout=evaluation_timeout
+                )
+            if compute_detailed:
+                eval_detail = run_detailed_pr_curve_evaluation(
+                    dset=dataset, model=model, timeout=evaluation_timeout
+                )
 
             # delete model
             start = time()
@@ -373,8 +378,10 @@ def run_benchmarking_analysis(
                     n_annotations=eval_base.meta["annotations"],
                     n_labels=eval_base.meta["labels"],
                     eval_base=eval_base.meta["duration"],
-                    eval_base_pr=eval_pr.meta["duration"],
-                    eval_base_pr_detail=eval_detail.meta["duration"],
+                    eval_base_pr=eval_pr.meta["duration"] if eval_pr else -1,
+                    eval_base_pr_detail=(
+                        eval_detail.meta["duration"] if eval_detail else -1
+                    ),
                 ).result()
             )
 
@@ -386,17 +393,33 @@ if __name__ == "__main__":
     # run bounding box benchmark
     run_benchmarking_analysis(
         combinations=[
-            (AnnotationType.RASTER, AnnotationType.RASTER),
+            (AnnotationType.BOX, AnnotationType.BOX),
         ],
-        limits_to_test=[500, 500],
-        evaluation_timeout=None,
-        chunk_size=100,
+        limits_to_test=[5000, 5000],
     )
 
-    # # run polygon benchmark
-    # run_benchmarking_analysis(
-    #     combinations=[
-    #         (AnnotationType.POLYGON, AnnotationType.POLYGON),
-    #     ],
-    #     limits_to_test=[5000, 5000],
-    # )
+    # run polygon benchmark
+    run_benchmarking_analysis(
+        combinations=[
+            (AnnotationType.POLYGON, AnnotationType.POLYGON),
+        ],
+        limits_to_test=[5000, 5000],
+    )
+
+    # run multipolygon benchmark
+    run_benchmarking_analysis(
+        combinations=[
+            (AnnotationType.MULTIPOLYGON, AnnotationType.MULTIPOLYGON),
+        ],
+        limits_to_test=[6, 6],
+        compute_detailed=False,
+    )
+
+    # run raster benchmark
+    run_benchmarking_analysis(
+        combinations=[
+            (AnnotationType.RASTER, AnnotationType.RASTER),
+        ],
+        limits_to_test=[6, 6],
+        compute_detailed=False,
+    )
