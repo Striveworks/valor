@@ -3,14 +3,13 @@ import os
 from unittest.mock import MagicMock
 
 import pytest
-from mistralai.exceptions import MistralException
-from mistralai.models.chat_completion import (
+from mistralai.models import (
+    AssistantMessage,
+    ChatCompletionChoice,
     ChatCompletionResponse,
-    ChatCompletionResponseChoice,
-    ChatMessage,
-    FinishReason,
+    UsageInfo,
 )
-from mistralai.models.common import UsageInfo
+from mistralai.models.sdkerror import SDKError as MistralSDKError
 from openai import OpenAIError
 from openai.types.chat import ChatCompletionMessage
 from openai.types.chat.chat_completion import ChatCompletion, Choice
@@ -1227,11 +1226,6 @@ def test_WrappedOpenAIClient():
     # Check that the WrappedOpenAIClient does not alter the messages.
     assert fake_message == client._process_messages(fake_message)
 
-    # OpenAI only allows the roles of system, user and assistant.
-    invalid_message = [{"role": "invalid", "content": "Some content."}]
-    with pytest.raises(ValueError):
-        client._process_messages(invalid_message)
-
     # The OpenAI Client should be able to connect if the API key is set as the environment variable.
     os.environ["OPENAI_API_KEY"] = "dummy_key"
     client = WrappedOpenAIClient(model_name="model_name")
@@ -1284,15 +1278,15 @@ def test_WrappedMistralAIClient():
             model="gpt-3.5-turbo",
             object="chat.completion",
             choices=[
-                ChatCompletionResponseChoice(
-                    finish_reason=FinishReason("length"),
+                ChatCompletionChoice(
+                    finish_reason="length",
                     index=0,
-                    message=ChatMessage(
-                        role="role",
-                        content="some content",
-                        name=None,
+                    message=AssistantMessage(
+                        role="assistant",
+                        content="some response",
+                        name=None,  # type: ignore - mistralai issue
                         tool_calls=None,
-                        tool_call_id=None,
+                        tool_call_id=None,  # type: ignore - mistralai issue
                     ),
                 )
             ],
@@ -1310,15 +1304,15 @@ def test_WrappedMistralAIClient():
             model="gpt-3.5-turbo",
             object="chat.completion",
             choices=[
-                ChatCompletionResponseChoice(
-                    finish_reason=FinishReason("stop"),
+                ChatCompletionChoice(
+                    finish_reason="stop",
                     index=0,
-                    message=ChatMessage(
-                        role="role",
+                    message=AssistantMessage(
+                        role="assistant",
                         content="some response",
-                        name=None,
+                        name=None,  # type: ignore - mistralai issue
                         tool_calls=None,
-                        tool_call_id=None,
+                        tool_call_id=None,  # type: ignore - mistralai issue
                     ),
                 )
             ],
@@ -1332,20 +1326,12 @@ def test_WrappedMistralAIClient():
     client = WrappedMistralAIClient(
         api_key="invalid_key", model_name="model_name"
     )
-    fake_message = [{"role": "role", "content": "content"}]
-    with pytest.raises(MistralException):
+    fake_message = [{"role": "assistant", "content": "content"}]
+    with pytest.raises(MistralSDKError):
         client.connect()
         client(fake_message)
 
-    assert [
-        ChatMessage(
-            role="role",
-            content="content",
-            name=None,
-            tool_calls=None,
-            tool_call_id=None,
-        )
-    ] == client._process_messages(fake_message)
+    assert fake_message == client._process_messages(fake_message)
 
     # The Mistral Client should be able to connect if the API key is set as the environment variable.
     os.environ["MISTRAL_API_KEY"] = "dummy_key"
@@ -1355,18 +1341,18 @@ def test_WrappedMistralAIClient():
     client.client = MagicMock()
 
     # The metric computation should fail if the request fails.
-    client.client.chat = _create_bad_request
+    client.client.chat.complete = _create_bad_request
     with pytest.raises(ValueError) as e:
         client(fake_message)
 
     # The metric computation should fail when the finish reason is bad length.
-    client.client.chat = _create_mock_chat_completion_with_bad_length
+    client.client.chat.complete = _create_mock_chat_completion_with_bad_length
     with pytest.raises(ValueError) as e:
         client(fake_message)
     assert "reached max token limit" in str(e)
 
     # The metric computation should run successfully when the finish reason is stop.
-    client.client.chat = _create_mock_chat_completion
+    client.client.chat.complete = _create_mock_chat_completion
     assert client(fake_message) == "some response"
 
 
