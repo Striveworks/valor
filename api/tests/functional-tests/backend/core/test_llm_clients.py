@@ -1080,9 +1080,9 @@ def test_WrappedMistralAIClient():
                     message=AssistantMessage(
                         role="assistant",
                         content="some response",
-                        name=None,
+                        name=None,  # type: ignore - mistralai issue
                         tool_calls=None,
-                        tool_call_id=None,
+                        tool_call_id=None,  # type: ignore - mistralai issue
                     ),
                 )
             ],
@@ -1106,9 +1106,9 @@ def test_WrappedMistralAIClient():
                     message=AssistantMessage(
                         role="assistant",
                         content="some response",
-                        name=None,
+                        name=None,  # type: ignore - mistralai issue
                         tool_calls=None,
-                        tool_call_id=None,
+                        tool_call_id=None,  # type: ignore - mistralai issue
                     ),
                 )
             ],

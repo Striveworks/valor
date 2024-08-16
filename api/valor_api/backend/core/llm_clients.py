@@ -869,7 +869,7 @@ class WrappedOpenAIClient(LLMClient):
         processed_messages = self._process_messages(messages)
         openai_response = self.client.chat.completions.create(
             model=self.model_name,
-            messages=processed_messages,
+            messages=processed_messages,  # type: ignore - mistralai issue
             seed=self.seed,
         )
 
@@ -994,6 +994,9 @@ class WrappedMistralAIClient(LLMClient):
             raise ValueError(
                 "Mistral response reached max token limit. Resulting evaluation is likely invalid or of low quality."
             )
+
+        if not isinstance(response, str):
+            raise TypeError("Mistral AI response was not a string.")
 
         return response
 

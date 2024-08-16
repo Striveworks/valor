@@ -2286,7 +2286,7 @@ def test__convert_annotations_to_common_type(db: Session):
     dataset_name = "dataset"
     model_name = "model"
 
-    xmin, xmax, ymin, ymax = 11, 45, 37, 102
+    xmin, xmax, ymin, ymax = 11.0, 45.0, 37.0, 102.0
     h, w = 150, 200
     mask = np.zeros((h, w), dtype=bool)
     mask[ymin:ymax, xmin:xmax] = True
