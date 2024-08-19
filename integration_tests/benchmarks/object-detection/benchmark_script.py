@@ -412,7 +412,7 @@ if __name__ == "__main__":
         combinations=[
             (AnnotationType.MULTIPOLYGON, AnnotationType.MULTIPOLYGON),
         ],
-        limits_to_test=[12, 12],
+        limits_to_test=[100, 100],
         compute_detailed=False,
     )
 
@@ -421,8 +421,9 @@ if __name__ == "__main__":
         combinations=[
             (AnnotationType.RASTER, AnnotationType.RASTER),
         ],
-        limits_to_test=[12, 12],
-        # ingestion_chunk_size=100,
-        # evaluation_timeout=0,
+        limits_to_test=[100, 100],
+        ingestion_chunk_size=100,
+        evaluation_timeout=0,
+        compute_pr=False,
         compute_detailed=False,
     )
