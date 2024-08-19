@@ -33,11 +33,10 @@ def _count_true_positives(
     return (
         select(
             groundtruths.c.label_id,
-            func.coalesce(
+            func.sum(
                 func.bit_count(
                     groundtruths.c.bitmask.op("&")(predictions.c.bitmask)
-                ),
-                0,
+                )
             ).label("count"),
         )
         .select_from(groundtruths)
@@ -60,10 +59,7 @@ def _count_groundtruths(
     return (
         select(
             groundtruths.c.label_id,
-            func.coalesce(
-                func.bit_count(groundtruths.c.bitmask),
-                0,
-            ).label("count"),
+            func.sum(func.bit_count(groundtruths.c.bitmask)).label("count"),
         )
         .group_by(groundtruths.c.label_id)
         .subquery()
@@ -77,10 +73,7 @@ def _count_predictions(
     return (
         select(
             predictions.c.label_id,
-            func.coalesce(
-                func.bit_count(predictions.c.bitmask),
-                0,
-            ).label("count"),
+            func.sum(func.bit_count(predictions.c.bitmask)).label("count"),
         )
         .select_from(predictions)
         .group_by(predictions.c.label_id)
@@ -232,7 +225,7 @@ def _aggregate_data(
         models.Datum.id.label("datum_id"),
         models.Datum.uid.label("datum_uid"),
         models.Annotation.id.label("annotation_id"),
-        models.Annotation.raster.label("raster"),
+        models.Annotation.bitmask.label("bitmask"),
         models.GroundTruth.id.label("groundtruth_id"),
         models.Label.id,
         label_mapping,
@@ -249,7 +242,7 @@ def _aggregate_data(
             models.Label.id.label("label_id"),
             models.Label.key,
             models.Label.value,
-            func.ST_Union(groundtruths_subquery.c.raster).label("raster"),
+            func.bit_or(groundtruths_subquery.c.bitmask).label("bitmask"),
         )
         .select_from(groundtruths_subquery)
         .join(
@@ -274,7 +267,7 @@ def _aggregate_data(
         models.Datum.id.label("datum_id"),
         models.Datum.uid.label("datum_uid"),
         models.Annotation.id.label("annotation_id"),
-        models.Annotation.raster.label("raster"),
+        models.Annotation.bitmask.label("bitmask"),
         models.Prediction.id.label("prediction_id"),
         models.Prediction.score.label("score"),
         models.Label.id,
@@ -295,7 +288,7 @@ def _aggregate_data(
                 "prediction_id"
             ),
             func.max(predictions_subquery.c.score).label("score"),
-            func.ST_UNION(predictions_subquery.c.raster).label("raster"),
+            func.bit_or(predictions_subquery.c.bitmask).label("bitmask"),
         )
         .select_from(predictions_subquery)
         .join(
