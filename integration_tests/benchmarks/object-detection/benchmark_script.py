@@ -412,8 +412,10 @@ if __name__ == "__main__":
         combinations=[
             (AnnotationType.MULTIPOLYGON, AnnotationType.MULTIPOLYGON),
         ],
+        ingestion_chunk_size=10,
         limits_to_test=[100, 100],
         compute_detailed=False,
+        compute_pr=False,
     )
 
     # run raster benchmark
