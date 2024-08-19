@@ -1108,7 +1108,7 @@ def test_query_by_annotation_geometry(
         )
     )
     annotations = generate_select(
-        models.Annotation, filters=f, label_source=models.Prediction
+        models.Annotation.id, filters=f, label_source=models.Prediction
     ).distinct()
     annotations = db.query(annotations.subquery()).all()
     assert len(annotations) == 4
