@@ -3454,80 +3454,6 @@ def test_evaluate_mixed_annotations(
     for m in expected:
         assert m in eval_job.metrics
 
-    eval_job_raster = model.evaluate_detection(
-        [dset_box, dset_polygon, dset_raster],
-        iou_thresholds_to_compute=[0.1, 0.6],
-        iou_thresholds_to_return=[0.1, 0.6],
-        metrics_to_return=[
-            "AP",
-        ],
-        convert_annotations_to_type=AnnotationType.RASTER,
-    )
-    eval_job_raster.wait_for_completion()
-
-    expected = [
-        {
-            "type": "AP",
-            "parameters": {"iou": 0.1},
-            "value": 1.0,
-            "label": {"key": "raster", "value": "value"},
-        },
-        {
-            "type": "AP",
-            "parameters": {"iou": 0.6},
-            "value": 1.0,
-            "label": {"key": "raster", "value": "value"},
-        },
-    ]
-
-    for m in eval_job_raster.metrics:
-        assert m in expected
-    for m in expected:
-        assert m in eval_job_raster.metrics
-
-    eval_job_poly = model.evaluate_detection(
-        [dset_box, dset_polygon, dset_raster],
-        iou_thresholds_to_compute=[0.1, 0.6],
-        iou_thresholds_to_return=[0.1, 0.6],
-        metrics_to_return=[
-            "AP",
-        ],
-        convert_annotations_to_type=AnnotationType.POLYGON,
-    )
-    eval_job_poly.wait_for_completion()
-
-    expected = [
-        {
-            "type": "AP",
-            "parameters": {"iou": 0.1},
-            "value": 1.0,
-            "label": {"key": "raster", "value": "value"},
-        },
-        {
-            "type": "AP",
-            "parameters": {"iou": 0.6},
-            "value": 1.0,
-            "label": {"key": "raster", "value": "value"},
-        },
-        {
-            "type": "AP",
-            "parameters": {"iou": 0.1},
-            "value": 1.0,
-            "label": {"key": "polygon", "value": "value"},
-        },
-        {
-            "type": "AP",
-            "parameters": {"iou": 0.6},
-            "value": 1.0,
-            "label": {"key": "polygon", "value": "value"},
-        },
-    ]
-
-    for m in eval_job_poly.metrics:
-        assert m in expected
-    for m in expected:
-        assert m in eval_job_poly.metrics
-
     eval_job_box = model.evaluate_detection(
         [dset_box, dset_polygon, dset_raster],
         iou_thresholds_to_compute=[0.1, 0.6],
@@ -3538,45 +3464,6 @@ def test_evaluate_mixed_annotations(
         convert_annotations_to_type=AnnotationType.BOX,
     )
     eval_job_box.wait_for_completion()
-
-    expected = [
-        {
-            "type": "AP",
-            "parameters": {"iou": 0.1},
-            "value": 1.0,
-            "label": {"key": "raster", "value": "value"},
-        },
-        {
-            "type": "AP",
-            "parameters": {"iou": 0.6},
-            "value": 1.0,
-            "label": {"key": "raster", "value": "value"},
-        },
-        {
-            "type": "AP",
-            "parameters": {"iou": 0.1},
-            "value": 1.0,
-            "label": {"key": "box", "value": "value"},
-        },
-        {
-            "type": "AP",
-            "parameters": {"iou": 0.6},
-            "value": 1.0,
-            "label": {"key": "box", "value": "value"},
-        },
-        {
-            "type": "AP",
-            "parameters": {"iou": 0.1},
-            "value": 1.0,
-            "label": {"key": "polygon", "value": "value"},
-        },
-        {
-            "type": "AP",
-            "parameters": {"iou": 0.6},
-            "value": 1.0,
-            "label": {"key": "polygon", "value": "value"},
-        },
-    ]
 
     for m in eval_job_box.metrics:
         assert m in expected
