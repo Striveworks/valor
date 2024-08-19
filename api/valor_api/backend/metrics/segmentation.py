@@ -1,7 +1,6 @@
 from collections import defaultdict
 from typing import Any
 
-from geoalchemy2.functions import ST_Count, ST_MapAlgebra
 from sqlalchemy import CTE, Subquery, and_, case, func, select
 from sqlalchemy.orm import Session
 
@@ -34,14 +33,11 @@ def _count_true_positives(
     return (
         select(
             groundtruths.c.label_id,
-            func.sum(
-                ST_Count(
-                    ST_MapAlgebra(
-                        groundtruths.c.raster,
-                        predictions.c.raster,
-                        "[rast1]*[rast2]",  # https://postgis.net/docs/RT_ST_MapAlgebra_expr.html
-                    )
-                )
+            func.coalesce(
+                func.bit_count(
+                    groundtruths.c.bitmask.op("&")(predictions.c.bitmask)
+                ),
+                0,
             ).label("count"),
         )
         .select_from(groundtruths)
@@ -64,7 +60,10 @@ def _count_groundtruths(
     return (
         select(
             groundtruths.c.label_id,
-            func.sum(ST_Count(groundtruths.c.raster)).label("count"),
+            func.coalesce(
+                func.bit_count(groundtruths.c.bitmask),
+                0,
+            ).label("count"),
         )
         .group_by(groundtruths.c.label_id)
         .subquery()
@@ -78,7 +77,10 @@ def _count_predictions(
     return (
         select(
             predictions.c.label_id,
-            func.sum(ST_Count(predictions.c.raster)).label("count"),
+            func.coalesce(
+                func.bit_count(predictions.c.bitmask),
+                0,
+            ).label("count"),
         )
         .select_from(predictions)
         .group_by(predictions.c.label_id)
