@@ -411,7 +411,8 @@ if __name__ == "__main__":
         combinations=[
             (AnnotationType.MULTIPOLYGON, AnnotationType.MULTIPOLYGON),
         ],
-        limits_to_test=[6, 6],
+        limits_to_test=[100, 100],
+        compute_pr=False,
         compute_detailed=False,
     )
 
@@ -421,5 +422,6 @@ if __name__ == "__main__":
             (AnnotationType.RASTER, AnnotationType.RASTER),
         ],
         limits_to_test=[6, 6],
+        compute_pr=False,
         compute_detailed=False,
     )
