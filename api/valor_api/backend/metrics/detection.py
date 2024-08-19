@@ -7,7 +7,7 @@ from dataclasses import dataclass
 from typing import Sequence, Tuple
 
 from geoalchemy2 import functions as gfunc
-from sqlalchemy import CTE, TEXT, and_, case, func, or_, select
+from sqlalchemy import CTE, and_, case, func, or_, select
 from sqlalchemy.orm import Session, aliased
 
 from valor_api import enums, schemas
@@ -1458,58 +1458,8 @@ def _compute_detection_metrics_with_detailed_precision_recall_curve(
         .cte()
     )
 
-    gt_distinct = (
-        select(gt_pd_pairs.c.gt_annotation_id.label("annotation_id"))
-        .distinct()
-        .subquery()
-    )
-
-    pd_distinct = (
-        select(gt_pd_pairs.c.pd_annotation_id.label("annotation_id"))
-        .distinct()
-        .subquery()
-    )
-
     # IOU Computation Block
     if target_type == AnnotationType.RASTER:
-
-        gt_counts = (
-            select(
-                gt_distinct.c.annotation_id,
-                func.Length(
-                    func.Replace(
-                        models.Annotation.bitmask.cast(TEXT),
-                        "0",
-                        "",
-                    )
-                ).label("count"),
-            )
-            .select_from(gt_distinct)
-            .join(
-                models.Annotation,
-                models.Annotation.id == gt_distinct.c.annotation_id,
-            )
-            .subquery()
-        )
-
-        pd_counts = (
-            select(
-                pd_distinct.c.annotation_id,
-                func.Length(
-                    func.Replace(
-                        models.Annotation.bitmask.cast(TEXT),
-                        "0",
-                        "",
-                    )
-                ).label("count"),
-            )
-            .select_from(pd_distinct)
-            .join(
-                models.Annotation,
-                models.Annotation.id == pd_distinct.c.annotation_id,
-            )
-            .subquery()
-        )
 
         gt_pd_counts = (
             select(
@@ -1536,14 +1486,6 @@ def _compute_detection_metrics_with_detailed_precision_recall_curve(
             .join(
                 pd_annotation,
                 pd_annotation.id == gt_pd_pairs.c.pd_annotation_id,
-            )
-            .join(
-                gt_counts,
-                gt_counts.c.annotation_id == gt_pd_pairs.c.gt_annotation_id,
-            )
-            .join(
-                pd_counts,
-                pd_counts.c.annotation_id == gt_pd_pairs.c.pd_annotation_id,
             )
             .subquery()
         )
