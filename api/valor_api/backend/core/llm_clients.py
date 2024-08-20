@@ -1,14 +1,7 @@
 from typing import Any
 
-from mistralai.client import MistralClient
-from mistralai.models.chat_completion import ChatMessage
-from openai import OpenAI as OpenAIClient
-from openai.types.chat import (
-    ChatCompletionAssistantMessageParam,
-    ChatCompletionMessageParam,
-    ChatCompletionSystemMessageParam,
-    ChatCompletionUserMessageParam,
-)
+from mistralai.sdk import Mistral
+from openai import OpenAI
 from pydantic import BaseModel
 
 from valor_api.backend.core.llm_instructions_analysis import (
@@ -830,14 +823,14 @@ class WrappedOpenAIClient(LLMClient):
         Setup the connection to the API.
         """
         if self.api_key is None:
-            self.client = OpenAIClient()
+            self.client = OpenAI()
         else:
-            self.client = OpenAIClient(api_key=self.api_key)
+            self.client = OpenAI(api_key=self.api_key)
 
     def _process_messages(
         self,
         messages: list[dict[str, str]],
-    ) -> list[ChatCompletionMessageParam]:
+    ) -> list[dict[str, str]]:
         """
         Format messages for the API.
 
@@ -848,40 +841,13 @@ class WrappedOpenAIClient(LLMClient):
 
         Returns
         -------
-        list[ChatCompletionMessageParam]
-            The messages converted to the OpenAI client message objects.
+        list[dict[str, str]]
+            The messages are left in the OpenAI standard.
         """
         # Validate that the input is a list of dictionaries with "role" and "content" keys.
         _ = Messages(messages=messages)  # type: ignore
 
-        ret = []
-        for i in range(len(messages)):
-            if messages[i]["role"] == "system":
-                ret.append(
-                    ChatCompletionSystemMessageParam(
-                        content=messages[i]["content"],
-                        role="system",
-                    )
-                )
-            elif messages[i]["role"] == "user":
-                ret.append(
-                    ChatCompletionUserMessageParam(
-                        content=messages[i]["content"],
-                        role="user",
-                    )
-                )
-            elif messages[i]["role"] == "assistant":
-                ret.append(
-                    ChatCompletionAssistantMessageParam(
-                        content=messages[i]["content"],
-                        role="assistant",
-                    )
-                )
-            else:
-                raise ValueError(
-                    f"Role {messages[i]['role']} is not supported by OpenAI."
-                )
-        return ret
+        return messages
 
     def __call__(
         self,
@@ -903,7 +869,7 @@ class WrappedOpenAIClient(LLMClient):
         processed_messages = self._process_messages(messages)
         openai_response = self.client.chat.completions.create(
             model=self.model_name,
-            messages=processed_messages,
+            messages=processed_messages,  # type: ignore - mistralai issue
             seed=self.seed,
         )
 
@@ -965,9 +931,9 @@ class WrappedMistralAIClient(LLMClient):
         Setup the connection to the API.
         """
         if self.api_key is None:
-            self.client = MistralClient()
+            self.client = Mistral()
         else:
-            self.client = MistralClient(api_key=self.api_key)
+            self.client = Mistral(api_key=self.api_key)
 
     def _process_messages(
         self,
@@ -984,20 +950,12 @@ class WrappedMistralAIClient(LLMClient):
         Returns
         -------
         Any
-            The messages formatted for Mistral's API. Each message is converted to a mistralai.models.chat_completion.ChatMessage object.
+            The messages formatted for Mistral's API. With mistralai>=1.0.0, the messages can be left in the OpenAI standard.
         """
         # Validate that the input is a list of dictionaries with "role" and "content" keys.
         _ = Messages(messages=messages)  # type: ignore
 
-        ret = []
-        for i in range(len(messages)):
-            ret.append(
-                ChatMessage(
-                    role=messages[i]["role"],
-                    content=messages[i]["content"],
-                )
-            )
-        return ret
+        return messages
 
     def __call__(
         self,
@@ -1017,21 +975,28 @@ class WrappedMistralAIClient(LLMClient):
             The response from the API.
         """
         processed_messages = self._process_messages(messages)
-        mistral_response = self.client.chat(
+        mistral_response = self.client.chat.complete(
             model=self.model_name,
             messages=processed_messages,
         )
+        if mistral_response is None or mistral_response.choices is None:
+            return ""
 
         finish_reason = mistral_response.choices[
             0
         ].finish_reason  # Enum: "stop" "length" "model_length" "error" "tool_calls"
-        response = mistral_response.choices[0].message.content
-        finish_reason = mistral_response.choices[0].finish_reason
+        if mistral_response.choices[0].message is None:
+            response = ""
+        else:
+            response = mistral_response.choices[0].message.content
 
         if finish_reason == "length":
             raise ValueError(
                 "Mistral response reached max token limit. Resulting evaluation is likely invalid or of low quality."
             )
+
+        if not isinstance(response, str):
+            raise TypeError("Mistral AI response was not a string.")
 
         return response
 

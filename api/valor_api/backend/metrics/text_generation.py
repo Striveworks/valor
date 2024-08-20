@@ -1,5 +1,4 @@
 from collections import defaultdict
-from typing import Sequence
 
 import evaluate
 from nltk.tokenize import RegexpTokenizer
@@ -47,7 +46,7 @@ def _calculate_rouge_scores(
     references: list[str],
     rouge_types: list[ROUGEType] | None = None,
     use_stemmer: bool = False,
-) -> list[dict]:
+) -> list[dict[str, dict[str, float]]]:
     """
     Calculate ROUGE scores for a prediction (or list of predictions) given some set of references.
 
@@ -126,7 +125,7 @@ def _calculate_sentence_bleu(
     predictions: str | list[str],
     references: list[str] | list[list[str]],
     weights: list[float] = [0.25, 0.25, 0.25, 0.25],
-) -> list[dict]:
+) -> list[dict[str, float]]:
     """
     Calculate sentence BLEU scores for a set of prediction-groundtruth pairs.
 
@@ -180,11 +179,13 @@ def _calculate_sentence_bleu(
 
         # find the max value for each prediction
         output[pred] = max(
-            bleu_score.sentence_bleu(
-                references=tokenized_references,
-                hypothesis=tokenized_prediction,
-                weights=weights,
-            ),  # type: ignore
+            float(
+                bleu_score.sentence_bleu(
+                    references=tokenized_references,
+                    hypothesis=tokenized_prediction,
+                    weights=weights,
+                ),  # type: ignore
+            ),
             output[pred],
         )
 
@@ -254,7 +255,7 @@ def _compute_text_generation_metrics(
     metrics_to_return: list[MetricType] = [],
     llm_api_params: dict[str, str | dict] | None = None,
     metric_params: dict = {},
-) -> Sequence[
+) -> list[
     schemas.AnswerRelevanceMetric
     | schemas.BiasMetric
     | schemas.BLEUMetric
@@ -458,13 +459,19 @@ def _compute_text_generation_metrics(
         )
 
         results = db.execute(joint_subquery).all()
-        is_AnswerRelevance_enabled = "AnswerRelevance" in metrics_to_return
-        is_Bias_enabled = "Bias" in metrics_to_return
-        is_Coherence_enabled = "Coherence" in metrics_to_return
-        is_ContextRelevance_enabled = "ContextRelevance" in metrics_to_return
-        is_Faithfulness_enabled = "Faithfulness" in metrics_to_return
-        is_Hallucination_enabled = "Hallucination" in metrics_to_return
-        is_Toxicity_enabled = "Toxicity" in metrics_to_return
+        is_AnswerRelevance_enabled = (
+            MetricType.AnswerRelevance in metrics_to_return
+        )
+        is_Bias_enabled = MetricType.Bias in metrics_to_return
+        is_Coherence_enabled = MetricType.Coherence in metrics_to_return
+        is_ContextRelevance_enabled = (
+            MetricType.ContextRelevance in metrics_to_return
+        )
+        is_Faithfulness_enabled = MetricType.Faithfulness in metrics_to_return
+        is_Hallucination_enabled = (
+            MetricType.Hallucination in metrics_to_return
+        )
+        is_Toxicity_enabled = MetricType.Toxicity in metrics_to_return
 
         for (
             datum_uid,
