@@ -18,6 +18,8 @@ from valor_api.backend.metrics.metric_utils import (
 )
 from valor_api.backend.query import generate_select
 
+LabelMapType = list[list[list[str]]]
+
 
 def _compute_curves(
     db: Session,
@@ -1167,7 +1169,7 @@ def _aggregate_data(
     db: Session,
     groundtruth_filter: schemas.Filter,
     prediction_filter: schemas.Filter,
-    label_map: list[list[list[str]]] | None = None,
+    label_map: LabelMapType | None = None,
 ) -> tuple[CTE, CTE, dict[int, tuple[str, str]]]:
     """
     Aggregates data for a classification task.
@@ -1183,7 +1185,7 @@ def _aggregate_data(
         The filter to be used to query groundtruths.
     prediction_filter : schemas.Filter
         The filter to be used to query predictions.
-    label_map: list[list[list[str]]], optional
+    label_map: LabelMapType, optional
         Optional mapping of individual labels to a grouper label. Useful when you need to evaluate performance using labels that differ across datasets and models.
 
     Returns
@@ -1314,7 +1316,7 @@ def _compute_clf_metrics(
     prediction_filter: schemas.Filter,
     pr_curve_max_examples: int,
     metrics_to_return: list[enums.MetricType],
-    label_map: list[list[list[str]]] | None = None,
+    label_map: LabelMapType | None = None,
 ) -> list[
     schemas.ConfusionMatrix
     | schemas.AccuracyMetric
@@ -1338,7 +1340,7 @@ def _compute_clf_metrics(
         The filter to be used to query predictions.
     metrics_to_return: list[MetricType]
         The list of metrics to compute, store, and return to the user.
-    label_map: list[list[list[str]]], optional
+    label_map: LabelMapType, optional
         Optional mapping of individual labels to a grouper label. Useful when you need to evaluate performance using labels that differ across datasets and models.
     pr_curve_max_examples: int
         The maximum number of datum examples to store per true positive, false negative, etc.

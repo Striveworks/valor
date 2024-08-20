@@ -24,6 +24,9 @@ from valor_api.backend.metrics.metric_utils import (
 from valor_api.backend.query import generate_select
 from valor_api.enums import MetricType, ROUGEType
 
+LabelMapType = list[list[list[str]]]
+
+
 LLM_GUIDED_METRICS = {
     "AnswerRelevance",
     "Bias",

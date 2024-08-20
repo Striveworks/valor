@@ -14,6 +14,8 @@ from valor_api.schemas.metrics import ConfusionMatrixResponse, Metric
 from valor_api.schemas.migrations import DeprecatedFilter
 from valor_api.schemas.types import Label
 
+LabelMapType = list[list[list[str]]]
+
 
 class EvaluationParameters(BaseModel):
     """
@@ -51,7 +53,7 @@ class EvaluationParameters(BaseModel):
 
     task_type: TaskType
     metrics_to_return: list[MetricType] | None = None
-    label_map: list[list[list[str]]] | None = None
+    label_map: LabelMapType | None = None
     llm_api_params: dict[str, str | dict] | None = None
 
     convert_annotations_to_type: AnnotationType | None = None
