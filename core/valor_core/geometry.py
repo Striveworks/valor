@@ -4,6 +4,10 @@ import numpy as np
 import shapely.affinity
 from shapely.geometry import Polygon as ShapelyPolygon
 
+# turn off "invalid value encountered in scalar divide" warning
+# when dividing by 0 or NaN, the returned value will be NaN. we'll then handle those NaNs later in the evaluation code
+np.seterr(divide="ignore", invalid="ignore")
+
 
 def calculate_bbox_iou(
     bbox1: List[Tuple[float, float]], bbox2: List[Tuple[float, float]]

@@ -190,7 +190,7 @@ def test_evaluate_detection(
         "missing_pred_labels": [],
     }
 
-    # # check that metrics arg works correctly
+    # check that metrics arg works correctly
     selected_metrics = random.sample(
         [
             enums.MetricType.AP,
@@ -511,7 +511,7 @@ def test_evaluate_detection_via_pandas_df():
         "ignored_pred_labels": [],
     }
 
-    # # check that metrics arg works correctly
+    # check that metrics arg works correctly
     selected_metrics = random.sample(
         [
             enums.MetricType.AP,
@@ -3717,7 +3717,6 @@ def test_evaluate_mixed_annotations(
         assert m in eval_job_box.metrics
 
 
-# TODO delete if we decide not to use shapely
 def test_evaluate_detection_rotated_bboxes_with_shapely(
     rect1: list[tuple[float, float]],
     rect2: list[tuple[float, float]],
@@ -3946,7 +3945,7 @@ def test_evaluate_detection_rotated_bboxes_with_shapely(
         "missing_pred_labels": [],
     }
 
-    # # check that metrics arg works correctly
+    #  check that metrics arg works correctly
     selected_metrics = random.sample(
         [
             enums.MetricType.AP,
@@ -4235,7 +4234,7 @@ def test_evaluate_detection_rotated_bboxes(
         "missing_pred_labels": [],
     }
 
-    # # check that metrics arg works correctly
+    #  check that metrics arg works correctly
     selected_metrics = random.sample(
         [
             enums.MetricType.AP,
@@ -4260,3 +4259,176 @@ def test_evaluate_detection_rotated_bboxes(
     assert set([metric["type"] for metric in eval_job.metrics]) == set(
         selected_metrics
     )
+
+
+def test_two_groundtruths_one_datum(
+    evaluate_detection_predictions: list[schemas.Prediction],
+    rect1: list[tuple[float, float]],
+    rect2: list[tuple[float, float]],
+    rect3: list[tuple[float, float]],
+    img1: schemas.Datum,
+    img2: schemas.Datum,
+):
+    """Same test as test_evaluate_detection, but we show that we can handle two groundtruths for a single datum"""
+
+    groundtruths = [
+        schemas.GroundTruth(
+            datum=img1,
+            annotations=[
+                schemas.Annotation(
+                    is_instance=True,
+                    labels=[schemas.Label(key="k1", value="v1")],
+                    bounding_box=schemas.Box([rect1]),
+                ),
+            ],
+        ),
+        schemas.GroundTruth(
+            datum=img1,
+            annotations=[
+                schemas.Annotation(
+                    is_instance=True,
+                    labels=[schemas.Label(key="k2", value="v2")],
+                    bounding_box=schemas.Box([rect3]),
+                ),
+            ],
+        ),
+        schemas.GroundTruth(
+            datum=img2,
+            annotations=[
+                schemas.Annotation(
+                    is_instance=True,
+                    labels=[schemas.Label(key="k1", value="v1")],
+                    bounding_box=schemas.Box([rect2]),
+                )
+            ],
+        ),
+    ]
+
+    eval_job = evaluate_detection(
+        groundtruths=groundtruths,
+        predictions=evaluate_detection_predictions,
+        iou_thresholds_to_compute=[0.1, 0.6],
+        iou_thresholds_to_return=[0.1, 0.6],
+        metrics_to_return=[
+            enums.MetricType.AP,
+            enums.MetricType.AR,
+            enums.MetricType.mAP,
+            enums.MetricType.APAveragedOverIOUs,
+            enums.MetricType.mAR,
+            enums.MetricType.mAPAveragedOverIOUs,
+        ],
+    )
+
+    metrics = eval_job.metrics
+
+    expected_metrics = [
+        {
+            "label": {"key": "k2", "value": "v2"},
+            "parameters": {"iou": 0.1},
+            "value": 0.0,
+            "type": "AP",
+        },
+        {
+            "label": {"key": "k2", "value": "v2"},
+            "parameters": {"iou": 0.6},
+            "value": 0.0,
+            "type": "AP",
+        },
+        {
+            "label": {"key": "k1", "value": "v1"},
+            "parameters": {"iou": 0.1},
+            "value": 0.504950495049505,
+            "type": "AP",
+        },
+        {
+            "label": {"key": "k1", "value": "v1"},
+            "parameters": {"iou": 0.6},
+            "value": 0.504950495049505,
+            "type": "AP",
+        },
+        {
+            "parameters": {"label_key": "k1", "iou": 0.1},
+            "value": 0.504950495049505,
+            "type": "mAP",
+        },
+        {
+            "parameters": {"label_key": "k2", "iou": 0.1},
+            "value": 0.0,
+            "type": "mAP",
+        },
+        {
+            "parameters": {"label_key": "k1", "iou": 0.6},
+            "value": 0.504950495049505,
+            "type": "mAP",
+        },
+        {
+            "parameters": {"label_key": "k2", "iou": 0.6},
+            "value": 0.0,
+            "type": "mAP",
+        },
+        {
+            "label": {"key": "k2", "value": "v2"},
+            "parameters": {"ious": [0.1, 0.6]},
+            "value": 0.0,
+            "type": "APAveragedOverIOUs",
+        },
+        {
+            "label": {"key": "k1", "value": "v1"},
+            "parameters": {"ious": [0.1, 0.6]},
+            "value": 0.504950495049505,
+            "type": "APAveragedOverIOUs",
+        },
+        {
+            "parameters": {"label_key": "k1", "ious": [0.1, 0.6]},
+            "value": 0.504950495049505,
+            "type": "mAPAveragedOverIOUs",
+        },
+        {
+            "parameters": {"label_key": "k2", "ious": [0.1, 0.6]},
+            "value": 0.0,
+            "type": "mAPAveragedOverIOUs",
+        },
+        {
+            "label": {"key": "k2", "value": "v2"},
+            "parameters": {"ious": [0.1, 0.6]},
+            "value": 0.0,
+            "type": "AR",
+        },
+        {
+            "label": {"key": "k1", "value": "v1"},
+            "parameters": {"ious": [0.1, 0.6]},
+            "value": 0.5,
+            "type": "AR",
+        },
+        {
+            "parameters": {"label_key": "k1", "ious": [0.1, 0.6]},
+            "value": 0.5,
+            "type": "mAR",
+        },
+        {
+            "parameters": {"label_key": "k2", "ious": [0.1, 0.6]},
+            "value": 0.0,
+            "type": "mAR",
+        },
+    ]
+
+    for m in metrics:
+        if m["type"] not in [
+            "PrecisionRecallCurve",
+            "DetailedPrecisionRecallCurve",
+        ]:
+            assert m in expected_metrics
+    for m in expected_metrics:
+        assert m in metrics
+
+    assert eval_job.ignored_pred_labels == []
+    assert eval_job.missing_pred_labels == []
+
+    result = eval_job
+    result_dict = result.to_dict()
+
+    # duration isn't deterministic, so test meta separately
+    assert result_dict["meta"]["datums"] == 2
+    assert result_dict["meta"]["labels"] == 2
+    assert result_dict["meta"]["annotations"] == 5
+    assert result_dict["meta"]["duration"] <= 5

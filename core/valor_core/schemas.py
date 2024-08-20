@@ -1580,8 +1580,8 @@ class Evaluation:
     parameters: EvaluationParameters
     metrics: List[Dict]
     confusion_matrices: Optional[List[Dict]]
-    ignored_pred_labels: Optional[List[Label]]
-    missing_pred_labels: Optional[List[Label]]
+    ignored_pred_labels: Optional[List[tuple[str, str]]]
+    missing_pred_labels: Optional[List[tuple[str, str]]]
     meta: Optional[Dict] = None
 
     def __str__(self) -> str:
@@ -1737,45 +1737,3 @@ class Prediction:
             raise TypeError(
                 "All items in 'annotations' must be of type 'Annotation'"
             )
-
-
-LabelMapType = Dict[Label, Label]
-
-
-# @dataclass
-# class ValorContext:
-#     datum_uids: set = set()
-#     data: pd.DataFrame = pd.DataFrame(
-#         [],
-#         columns=[
-#             "datum_uid",
-#             "datum_id",
-#             "datum_metadata",
-#             "annotation_id",
-#             "annotation_metadata",
-#             "bounding_box",
-#             "raster",
-#             "embedding",
-#             "polygon",
-#             "is_instance",
-#             "label_key",
-#             "label_value",
-#             "score",
-#             "label_id",
-#             "id",
-#         ],
-#     )
-
-#     def add_datum_data(
-#         self, groundtruths: list[GroundTruth], predictions: list[Prediction]
-#     ):
-#         groundtruth_df = (
-#             utilities._convert_groundtruth_or_prediction_to_dataframe(
-#                 groundtruths
-#             )
-#         )
-#         prediction_df = (
-#             utilities._convert_groundtruth_or_prediction_to_dataframe(
-#                 predictions
-#             )
-#         )

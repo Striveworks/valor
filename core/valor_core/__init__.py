@@ -1,5 +1,6 @@
 from .classification import evaluate_classification
 from .detection import evaluate_detection
+from .managers import ValorDetectionManager
 from .metrics import (
     AccuracyMetric,
     APMetric,
@@ -34,6 +35,7 @@ from .schemas import (
 )
 
 __all__ = [
+    "ValorDetectionManager",
     "evaluate_classification",
     "evaluate_detection",
     "Annotation",

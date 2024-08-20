@@ -8,7 +8,7 @@ from valor_core import enums, schemas
 def replace_labels_using_label_map(
     groundtruth_df: pd.DataFrame,
     prediction_df: pd.DataFrame,
-    label_map: Optional[schemas.LabelMapType],
+    label_map: Optional[schemas.Dict[schemas.Label, schemas.Label]],
 ):
     """
     Replace label keys, values, and IDs in the groundtruth and prediction DataFrames using a given label map.
@@ -23,7 +23,7 @@ def replace_labels_using_label_map(
         DataFrame containing groundtruth data with columns `label_key`, `label_value`, and `label_id`.
     prediction_df : pd.DataFrame
         DataFrame containing prediction data with columns `label_key`, `label_value`, and `label_id`.
-    label_map : Optional[schemas.LabelMapType]
+    label_map : Optional[schemas.Dict[schemas.Label, schemas.Label]]
         Dictionary mapping tuples of (label_key, label_value) to (grouper_key, grouper_value). Used to replace the labels in the DataFrames.
 
     Returns
@@ -495,7 +495,7 @@ def _convert_groundtruth_or_prediction_to_dataframe(
 
             for k, label in enumerate(ann.labels):
                 id_ = (
-                    str(i) + str(j) + str(k)
+                    str(ann_id) + str(i) + str(j) + str(k)
                 )  # we use indices here, rather than a hash() so that the IDs are sequential. this prevents randomness when two predictions share the same score
                 label_key = label.key
                 label_value = label.value
@@ -573,7 +573,7 @@ def get_disjoint_labels(
     groundtruth_df: pd.DataFrame,
     prediction_df: pd.DataFrame,
     label_map: Optional[Dict[schemas.Label, schemas.Label]],
-) -> tuple[list[schemas.Label], list[schemas.Label]]:
+) -> tuple[list[tuple[str, str]], list[tuple[str, str]]]:
     """
     Returns all unique labels that are not shared between two dataframes.
 
@@ -586,7 +586,7 @@ def get_disjoint_labels(
 
     Returns
     ----------
-    Tuple[list[schemas.Label], list[schemas.Label]]
+    tuple[list[tuple[str, str]], list[tuple[str, str]]]
         A tuple of disjoint labels, where the first element is those labels which are present in lhs label set but absent in rhs label set.
     """
     if not label_map:

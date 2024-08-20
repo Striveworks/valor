@@ -17,26 +17,12 @@ def _get_joint_df(
 ) -> pd.DataFrame:
     """Create a joint dataframe of groundtruths and predictions for calculating AR/AP metrics."""
 
-    # add the number of groundtruth observations per groupere
-    number_of_groundtruths_per_grouper_df = (
-        groundtruth_df.groupby(["label_id", "label"], as_index=False)["id"]
-        .nunique()
-        .rename({"id": "gts_per_grouper"}, axis=1)
-    )
-
     joint_df = pd.merge(
         groundtruth_df,
         prediction_df,
         on=["datum_id", "label_id", "label"],
         how="outer",
         suffixes=("_gt", "_pd"),
-    )
-
-    joint_df = pd.merge(
-        joint_df,
-        number_of_groundtruths_per_grouper_df,
-        on=["label_id", "label"],
-        how="outer",
     )
 
     return joint_df
@@ -555,7 +541,7 @@ def _calculate_pr_metrics(
     return [
         metrics.PrecisionRecallCurve(
             label_key=key,
-            value=value,  # #type: ignore - defaultdict doesn't have strict typing
+            value=value,  # type: ignore - defaultdict doesn't have strict typing
             pr_curve_iou_threshold=pr_curve_iou_threshold,
         )
         for key, value in curves.items()
@@ -581,7 +567,7 @@ def _add_samples_to_dataframe(
                 ],
                 as_index=False,
             )[["datum_uid_gt", "converted_geometry_gt"]]
-            .agg(lambda x: tuple(x.head(max_examples)))
+            .agg(tuple)
             .rename(
                 columns={
                     "datum_uid_gt": "datum_uid",
@@ -598,7 +584,7 @@ def _add_samples_to_dataframe(
                 ],
                 as_index=False,
             )[["datum_uid_pd", "converted_geometry_pd"]]
-            .agg(lambda x: (tuple(x.head(max_examples))))
+            .agg(tuple)
             .rename(
                 columns={
                     "datum_uid_pd": "datum_uid",
@@ -610,9 +596,10 @@ def _add_samples_to_dataframe(
         axis=0,
     )
 
-    sample_df["converted_geometry"] = sample_df["converted_geometry"].astype(
-        str
+    sample_df["converted_geometry"] = sample_df["converted_geometry"].apply(
+        lambda row: tuple(str(x.tolist()) for x in row)
     )
+
     sample_df.drop_duplicates(inplace=True)
 
     if not sample_df.empty:
@@ -636,7 +623,7 @@ def _add_samples_to_dataframe(
         detailed_pr_curve_counts_df[
             f"{flag_column}_samples"
         ] = detailed_pr_curve_counts_df[f"{flag_column}_samples"].apply(
-            lambda x: list(x) if isinstance(x, set) else list()
+            lambda x: list(x)[:max_examples] if isinstance(x, set) else list()
         )
     else:
         detailed_pr_curve_counts_df[f"{flag_column}_samples"] = [
@@ -647,8 +634,7 @@ def _add_samples_to_dataframe(
 
 
 def _calculate_detailed_pr_metrics(
-    groundtruth_df: pd.DataFrame,
-    prediction_df: pd.DataFrame,
+    detailed_pr_joint_df: pd.DataFrame | None,
     metrics_to_return: List[enums.MetricType],
     pr_curve_iou_threshold: float,
     pr_curve_max_examples: int,
@@ -658,22 +644,8 @@ def _calculate_detailed_pr_metrics(
     if not (
         metrics_to_return
         and enums.MetricType.DetailedPrecisionRecallCurve in metrics_to_return
-    ):
+    ) or (detailed_pr_joint_df is None):
         return []
-
-    detailed_pr_joint_df = pd.merge(
-        groundtruth_df,
-        prediction_df,
-        on=["datum_id", "label_key"],
-        how="outer",
-        suffixes=("_gt", "_pd"),
-    ).assign(
-        is_label_match=lambda chain_df: (
-            chain_df["label_id_pd"] == chain_df["label_id_gt"]
-        )
-    )
-
-    detailed_pr_joint_df = _calculate_iou(joint_df=detailed_pr_joint_df)
 
     # add confidence_threshold to the dataframe and sort
     detailed_pr_calc_df = pd.concat(
@@ -1056,66 +1028,71 @@ def _calculate_detailed_pr_metrics(
     return detailed_pr_metrics
 
 
-def _compute_detection_metrics(
-    groundtruth_df: pd.DataFrame,
-    prediction_df: pd.DataFrame,
-    label_map: Dict[schemas.Label, schemas.Label],
-    metrics_to_return: List[enums.MetricType],
-    iou_thresholds_to_compute: List[float],
-    iou_thresholds_to_return: List[float],
-    recall_score_threshold: float,
-    pr_curve_iou_threshold: float,
-    pr_curve_max_examples: int,
-) -> List[dict]:
-    """
-    Compute detection metrics for evaluating object detection models. This function calculates Intersection over Union (IoU) for each ground truth-prediction pair that shares a common grouper id, and computes metrics such as Average Precision (AP), Average Recall (AR), and Precision-Recall (PR) curves.
+def _create_detailed_joint_df(
+    groundtruth_df: pd.DataFrame, prediction_df: pd.DataFrame
+):
+    """Create the dataframe needed to calculate DetailedPRCurves from a groundtruth and prediction dataframe."""
+    detailed_joint_df = pd.merge(
+        groundtruth_df,
+        prediction_df,
+        on=["datum_id", "label_key"],
+        how="outer",
+        suffixes=("_gt", "_pd"),
+    ).assign(
+        is_label_match=lambda chain_df: (
+            chain_df["label_id_pd"] == chain_df["label_id_gt"]
+        )
+    )
+    detailed_joint_df = _calculate_iou(joint_df=detailed_joint_df)
+    return detailed_joint_df
 
-    Parameters
-    ----------
-    groundtruth_df : pd.DataFrame
-        DataFrame containing ground truth annotations with columns including bounding boxes, polygons, or rasters.
-    prediction_df : pd.DataFrame
-        DataFrame containing predicted annotations with similar columns as `groundtruth_df`.
-    label_map : Dict[schemas.Label, schemas.Label]
-        Mapping of ground truth labels to prediction labels.
-    metrics_to_return : List[enums.MetricType]
-        List of metric types to calculate and return, such as AP, AR, or PR curves.
-    iou_thresholds_to_compute : List[float]
-        List of IoU thresholds for which metrics should be computed.
-    iou_thresholds_to_return : List[float]
-        List of IoU thresholds for which metrics should be returned.
-    recall_score_threshold : float
-        Threshold for the recall score to consider in metric calculations.
-    pr_curve_iou_threshold : float
-        IoU threshold for computing Precision-Recall curves.
-    pr_curve_max_examples : int
-        Maximum number of examples to use for Precision-Recall curve calculations.
 
-    Returns
-    -------
-    List[dict]
-        A list of dictionaries containing computed metrics, including AP, AR, and PR curves, filtered according to `metrics_to_return`.
+def create_detection_evaluation_inputs(
+    groundtruths,
+    predictions,
+    metrics_to_return,
+    label_map,
+    convert_annotations_to_type,
+):
 
-    Raises
-    ------
-    ValueError
-        If there is an issue with the data or parameters provided.
-    """
+    groundtruth_df = utilities.create_validated_groundtruth_df(
+        groundtruths, task_type=enums.TaskType.OBJECT_DETECTION
+    )
+    prediction_df = utilities.create_validated_prediction_df(
+        predictions, task_type=enums.TaskType.OBJECT_DETECTION
+    )
+
+    # filter dataframes based on task type
+    groundtruth_df = utilities.filter_dataframe_by_task_type(
+        df=groundtruth_df, task_type=enums.TaskType.OBJECT_DETECTION
+    )
+
+    if not prediction_df.empty:
+        prediction_df = utilities.filter_dataframe_by_task_type(
+            df=prediction_df, task_type=enums.TaskType.OBJECT_DETECTION
+        )
+
+    # ensure that all annotations have a common type to operate over
+    (
+        groundtruth_df,
+        prediction_df,
+    ) = utilities.convert_annotations_to_common_type(
+        groundtruth_df=groundtruth_df,
+        prediction_df=prediction_df,
+        target_type=convert_annotations_to_type,
+    )
 
     groundtruth_df, prediction_df = utilities.replace_labels_using_label_map(
         groundtruth_df=groundtruth_df,
         prediction_df=prediction_df,
         label_map=label_map,
     )
-
     # add label as a column
     for df in (groundtruth_df, prediction_df):
         df.loc[:, "label"] = df.apply(
             lambda chain_df: (chain_df["label_key"], chain_df["label_value"]),
             axis=1,
         )
-
-    metrics_to_output = []
 
     joint_df = _get_joint_df(
         groundtruth_df=groundtruth_df,
@@ -1151,6 +1128,64 @@ def _compute_detection_metrics(
         ],
         axis=0,
     )
+
+    if (
+        metrics_to_return
+        and enums.MetricType.DetailedPrecisionRecallCurve in metrics_to_return
+    ):
+        detailed_joint_df = _create_detailed_joint_df(
+            groundtruth_df=groundtruth_df, prediction_df=prediction_df
+        )
+    else:
+        detailed_joint_df = None
+
+    return groundtruth_df, prediction_df, joint_df, detailed_joint_df
+
+
+def compute_detection_metrics(
+    joint_df: pd.DataFrame,
+    detailed_joint_df: pd.DataFrame | None,
+    metrics_to_return: List[enums.MetricType],
+    iou_thresholds_to_compute: List[float],
+    iou_thresholds_to_return: List[float],
+    recall_score_threshold: float,
+    pr_curve_iou_threshold: float,
+    pr_curve_max_examples: int,
+) -> List[dict]:
+    """
+    Compute detection metrics for evaluating object detection models. This function calculates Intersection over Union (IoU) for each ground truth-prediction pair that shares a common grouper id, and computes metrics such as Average Precision (AP), Average Recall (AR), and Precision-Recall (PR) curves.
+
+    Parameters
+    ----------
+    joint_df : pd.DataFrame
+        Dataframe containing merged groundtruths and predictions, joined by label.
+    detailed_joint_df : pd.DataFrame
+        Dataframe containing merged groundtruths and predictions, joined by label key.
+    metrics_to_return : List[enums.MetricType]
+        List of metric types to calculate and return, such as AP, AR, or PR curves.
+    iou_thresholds_to_compute : List[float]
+        List of IoU thresholds for which metrics should be computed.
+    iou_thresholds_to_return : List[float]
+        List of IoU thresholds for which metrics should be returned.
+    recall_score_threshold : float
+        Threshold for the recall score to consider in metric calculations.
+    pr_curve_iou_threshold : float
+        IoU threshold for computing Precision-Recall curves.
+    pr_curve_max_examples : int
+        Maximum number of examples to use for Precision-Recall curve calculations.
+
+    Returns
+    -------
+    List[dict]
+        A list of dictionaries containing computed metrics, including AP, AR, and PR curves, filtered according to `metrics_to_return`.
+
+    Raises
+    ------
+    ValueError
+        If there is an issue with the data or parameters provided.
+    """
+
+    metrics_to_output = []
 
     # add iou_threshold to the dataframe and sort
     calculation_df = pd.concat(
@@ -1188,8 +1223,7 @@ def _compute_detection_metrics(
     )
 
     metrics_to_output += _calculate_detailed_pr_metrics(
-        groundtruth_df=groundtruth_df,
-        prediction_df=prediction_df,
+        detailed_pr_joint_df=detailed_joint_df,
         metrics_to_return=metrics_to_return,
         pr_curve_iou_threshold=pr_curve_iou_threshold,
         pr_curve_max_examples=pr_curve_max_examples,
@@ -1304,31 +1338,30 @@ def evaluate_detection(
         recall_score_threshold=recall_score_threshold,
     )
 
-    groundtruth_df = utilities.create_validated_groundtruth_df(
-        groundtruths, task_type=enums.TaskType.OBJECT_DETECTION
-    )
-    prediction_df = utilities.create_validated_prediction_df(
-        predictions, task_type=enums.TaskType.OBJECT_DETECTION
-    )
-
-    # filter dataframes based on task type
-    groundtruth_df = utilities.filter_dataframe_by_task_type(
-        df=groundtruth_df, task_type=enums.TaskType.OBJECT_DETECTION
-    )
-
-    if not prediction_df.empty:
-        prediction_df = utilities.filter_dataframe_by_task_type(
-            df=prediction_df, task_type=enums.TaskType.OBJECT_DETECTION
-        )
-
-    # ensure that all annotations have a common type to operate over
     (
         groundtruth_df,
         prediction_df,
-    ) = utilities.convert_annotations_to_common_type(
-        groundtruth_df=groundtruth_df,
-        prediction_df=prediction_df,
-        target_type=convert_annotations_to_type,
+        joint_df,
+        detailed_joint_df,
+    ) = create_detection_evaluation_inputs(
+        groundtruths=groundtruths,
+        predictions=predictions,
+        metrics_to_return=metrics_to_return,
+        label_map=label_map,
+        convert_annotations_to_type=convert_annotations_to_type,
+    )
+
+    # add the number of groundtruth observations per grouper
+    number_of_groundtruths_per_grouper_df = (
+        groundtruth_df.groupby(["label"], as_index=False)["id"]
+        .nunique()
+        .rename({"id": "gts_per_grouper"}, axis=1)
+    )
+    joint_df = pd.merge(
+        joint_df,
+        number_of_groundtruths_per_grouper_df,
+        on=["label"],
+        how="outer",
     )
 
     (
@@ -1352,10 +1385,9 @@ def evaluate_detection(
         | set(prediction_df["annotation_id"])
     )
 
-    metrics = _compute_detection_metrics(
-        groundtruth_df=groundtruth_df,
-        prediction_df=prediction_df,
-        label_map=label_map,
+    metrics = compute_detection_metrics(
+        joint_df=joint_df,
+        detailed_joint_df=detailed_joint_df,
         metrics_to_return=metrics_to_return,
         iou_thresholds_to_compute=iou_thresholds_to_compute,
         iou_thresholds_to_return=iou_thresholds_to_return,

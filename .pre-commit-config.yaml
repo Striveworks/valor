@@ -57,4 +57,5 @@ repos:
             "nltk",
             "rouge_score",
             "evaluate",
+            "shapely",
           ]

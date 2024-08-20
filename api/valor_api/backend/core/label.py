@@ -1,4 +1,4 @@
-from typing import Any
+from typing import Any, Dict
 
 from sqlalchemy import and_, desc, func, or_, select
 from sqlalchemy.dialects.postgresql import insert
@@ -10,12 +10,10 @@ from valor_api.backend import models
 from valor_api.backend.query import generate_query, generate_select
 from valor_api.backend.query.types import TableTypeAlias
 
-LabelMapType = list[list[list[str]]]
-
 
 def validate_matching_label_keys(
     db: Session,
-    label_map: LabelMapType | None,
+    label_map: Dict[schemas.Label, schemas.Label] | None,
     prediction_filter: schemas.Filter,
     groundtruth_filter: schemas.Filter,
 ) -> None:
@@ -30,7 +28,7 @@ def validate_matching_label_keys(
         The filter to be used to query predictions.
     groundtruth_filter : schemas.Filter
         The filter to be used to query groundtruths.
-    label_map: LabelMapType, optional
+    label_map: Dict[Label, Label], optional
         Optional mapping of individual labels to a grouper label. Useful when you need to evaluate performance using labels that differ across datasets and models.
 
 
@@ -99,7 +97,7 @@ def validate_matching_label_keys(
     label_map_lookup = {}
     if label_map:
         for entry in label_map:
-            label_map_lookup[tuple(entry[0])] = tuple(entry[1])
+            label_map_lookup[tuple(entry.key)] = tuple(entry.value)
 
     results = [
         {
@@ -467,7 +465,7 @@ def get_disjoint_labels(
     db: Session,
     lhs: schemas.Filter,
     rhs: schemas.Filter,
-    label_map: LabelMapType | None = None,
+    label_map: Dict[schemas.Label, schemas.Label] | None = None,
 ) -> tuple[list[schemas.Label], list[schemas.Label]]:
     """
     Returns all unique labels that are not shared between both filters.
@@ -480,7 +478,7 @@ def get_disjoint_labels(
         Filter defining first label set.
     rhs : list[schemas.Filter]
         Filter defining second label set.
-    label_map: LabelMapType, optional
+    label_map: Dict[Label, Label], optional
         Optional mapping of individual labels to a grouper label. Useful when you need to evaluate performance using labels that differ across datasets and models.
 
     Returns
@@ -509,7 +507,7 @@ def get_disjoint_keys(
     db: Session,
     lhs: schemas.Filter,
     rhs: schemas.Filter,
-    label_map: LabelMapType | None = None,
+    label_map: Dict[schemas.Label, schemas.Label] | None = None,
 ) -> tuple[list[str], list[str]]:
     """
     Returns all unique label keys that are not shared between both predictions and groundtruths.
@@ -522,7 +520,7 @@ def get_disjoint_keys(
         Filter defining first label set.
     rhs : list[schemas.Filter]
         Filter defining second label set.
-    label_map: LabelMapType, optional,
+    label_map: Dict[Label, Label], optional,
 
         Optional mapping of individual labels to a grouper label. Useful when you need to evaluate performance using labels that differ across datasets and models.
 
