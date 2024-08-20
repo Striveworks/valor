@@ -34,6 +34,10 @@ def test_evaluate_segmentation(
         model.add_prediction(dataset, pred)
     model.finalize_inferences(dataset)
 
+    import time
+
+    time.sleep(20)
+
     eval_job = model.evaluate_segmentation(dataset)
     assert eval_job.missing_pred_labels == [
         {"key": "k3", "value": "v3", "score": None}

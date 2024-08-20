@@ -1,5 +1,12 @@
-from geoalchemy2.functions import ST_AsGeoJSON
-from sqlalchemy import ScalarSelect, and_, delete, insert, select
+from geoalchemy2.functions import (
+    ST_AddBand,
+    ST_AsGeoJSON,
+    ST_AsRaster,
+    ST_GeomFromText,
+    ST_MakeEmptyRaster,
+    ST_MapAlgebra,
+)
+from sqlalchemy import CTE, ScalarSelect, and_, delete, func, insert, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -8,6 +15,40 @@ from valor_api.backend import models
 from valor_api.backend.core.geometry import _raster_to_png_b64
 from valor_api.backend.query import generate_query
 from valor_api.enums import ModelStatus, TableStatus, TaskType
+
+
+def _create_raster_from_multipolygon(raster: schemas.Raster) -> CTE:
+    if not raster.geometry:
+        raise ValueError("Raster must contain a geometry.")
+    empty_raster = ST_AddBand(
+        ST_MakeEmptyRaster(
+            raster.width,  # width
+            raster.height,  # height
+            0,  # upperleftx
+            0,  # upperlefty
+            1,  # scalex
+            1,  # scaley
+            0,  # skewx
+            0,  # skewy
+            0,  # srid
+        ),
+        "1BB",  # pixeltype
+    )
+    return select(
+        ST_MapAlgebra(
+            empty_raster,
+            ST_AsRaster(
+                ST_GeomFromText(raster.geometry.to_wkt()),
+                empty_raster,
+                "1BB",
+                1,
+                0,
+            ),
+            "[rast2]",
+            "1BB",
+            "UNION",
+        ).label("raster")
+    ).cte()
 
 
 def _format_box(box: schemas.Box | None) -> str | None:
@@ -25,10 +66,17 @@ def _format_raster(
 
 
 def _format_bitmask(
+    db: Session,
     raster: schemas.Raster | None,
 ) -> str | None:
-    if not raster or raster.geometry:
+    """
+    Converts a Raster schema into a bitmask.
+    """
+    if raster is None:
         return None
+    elif raster and raster.geometry:
+        r = _create_raster_from_multipolygon(raster)
+        return db.scalar(func.raster_to_bitstring(r.c.raster))
     return "".join("1" if b else "0" for b in raster.array.flatten())
 
 
@@ -112,7 +160,7 @@ def create_annotations(
             "box": _format_box(annotation.bounding_box),
             "polygon": _format_polygon(annotation.polygon),
             "raster": _format_raster(annotation.raster),
-            "bitmask": _format_bitmask(annotation.raster),
+            "bitmask": _format_bitmask(db, annotation.raster),
             "embedding_id": _create_embedding(
                 db=db, value=annotation.embedding
             ),
