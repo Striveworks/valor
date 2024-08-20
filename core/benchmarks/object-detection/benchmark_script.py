@@ -407,26 +407,26 @@ def run_benchmarking_analysis(
 
 if __name__ == "__main__":
 
-    # # run bounding box benchmark
-    # run_benchmarking_analysis(
-    #     combinations=[
-    #         (AnnotationType.BOX, AnnotationType.BOX),
-    #     ],
-    #     limits_to_test=[5000, 5000],
-    # )
+    # run bounding box benchmark
+    run_benchmarking_analysis(
+        combinations=[
+            (AnnotationType.BOX, AnnotationType.BOX),
+        ],
+        limits_to_test=[5000, 5000],
+    )
 
-    # # run polygon benchmark
-    # run_benchmarking_analysis(
-    #     combinations=[
-    #         (AnnotationType.POLYGON, AnnotationType.POLYGON),
-    #     ],
-    #     limits_to_test=[5000, 5000],
-    # )
+    # run polygon benchmark
+    run_benchmarking_analysis(
+        combinations=[
+            (AnnotationType.POLYGON, AnnotationType.POLYGON),
+        ],
+        limits_to_test=[5000, 5000],
+    )
 
     # run raster benchmark
     run_benchmarking_analysis(
         combinations=[
             (AnnotationType.RASTER, AnnotationType.RASTER),
         ],
-        limits_to_test=[1500, 1500],
+        limits_to_test=[500, 500],
     )
