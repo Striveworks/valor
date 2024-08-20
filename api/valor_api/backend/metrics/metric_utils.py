@@ -12,13 +12,11 @@ from valor_api.backend import core, models
 from valor_api.backend.query import generate_select
 from valor_api.exceptions import InvalidLLMResponseError
 
-LabelMapType = list[list[list[str]]]
-
 
 def create_label_mapping(
     db: Session,
     labels: list[models.Label],
-    label_map: LabelMapType | None,
+    label_map: list[list[list[str]]] | None,
 ) -> ColumnElement[bool] | Label[int]:
     """
     Creates a dictionary of mappings that connect each label with a "grouper" (i.e., a unique ID-key-value combination that can represent one or more labels).
@@ -30,7 +28,7 @@ def create_label_mapping(
         The database session.
     labels : list[models.Label]
         A list of labels that exist for this evaluation job.
-    label_map: LabelMapType, optional
+    label_map: list[list[list[str]]], optional
         An optional label map to use when grouping labels. If None is passed, this function will still create the appropriate mappings using individual labels.
 
     Returns

@@ -13,7 +13,6 @@ from sqlalchemy.orm import Session, aliased
 from valor_api import enums, schemas
 from valor_api.backend import core, models
 from valor_api.backend.metrics.metric_utils import (
-    LabelMapType,
     commit_results,
     create_label_mapping,
     log_evaluation_duration,
@@ -850,7 +849,7 @@ def _aggregate_data(
     groundtruth_filter: schemas.Filter,
     prediction_filter: schemas.Filter,
     target_type: enums.AnnotationType,
-    label_map: LabelMapType | None = None,
+    label_map: list[list[list[str]]] | None = None,
 ) -> tuple[CTE, CTE, dict[int, tuple[str, str]]]:
     """
     Aggregates data for an object detection task.
@@ -868,7 +867,7 @@ def _aggregate_data(
         The filter to be used to query predictions.
     target_type : enums.AnnotationType
         The annotation type used by the object detection evaluation.
-    label_map: LabelMapType, optional
+    label_map: list[list[list[str]]], optional
         Optional mapping of individual labels to a grouper label. Useful when you need to evaluate performance using labels that differ across datasets and models.
 
     Returns

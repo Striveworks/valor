@@ -2,7 +2,6 @@ import datetime
 
 from pydantic import BaseModel, ConfigDict, field_validator, model_validator
 
-from valor_api.backend.metrics.metric_utils import LabelMapType
 from valor_api.enums import (
     AnnotationType,
     EvaluationStatus,
@@ -52,7 +51,7 @@ class EvaluationParameters(BaseModel):
 
     task_type: TaskType
     metrics_to_return: list[MetricType] | None = None
-    label_map: LabelMapType | None = None
+    label_map: list[list[list[str]]] | None = None
     llm_api_params: dict[str, str | dict] | None = None
 
     convert_annotations_to_type: AnnotationType | None = None

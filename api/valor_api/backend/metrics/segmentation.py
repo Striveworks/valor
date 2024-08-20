@@ -8,7 +8,6 @@ from sqlalchemy.orm import Session
 from valor_api import schemas
 from valor_api.backend import core, models
 from valor_api.backend.metrics.metric_utils import (
-    LabelMapType,
     commit_results,
     create_label_mapping,
     log_evaluation_duration,
@@ -189,7 +188,7 @@ def _aggregate_data(
     db: Session,
     groundtruth_filter: schemas.Filter,
     prediction_filter: schemas.Filter,
-    label_map: LabelMapType | None = None,
+    label_map: list[list[list[str]]] | None = None,
 ) -> tuple[CTE, CTE, dict[int, tuple[str, str]]]:
     """
     Aggregates data for a semantic segmentation task.
@@ -205,7 +204,7 @@ def _aggregate_data(
         The filter to be used to query groundtruths.
     prediction_filter : schemas.Filter
         The filter to be used to query predictions.
-    label_map: LabelMapType, optional
+    label_map: list[list[list[str]]], optional
         Optional mapping of individual labels to a grouper label. Useful when you need to evaluate performance using labels that differ across datasets and models.
 
     Returns
