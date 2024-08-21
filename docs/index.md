@@ -15,7 +15,7 @@ These docs are organized as follows:
 - **[Endpoints](endpoints.md)**: Documents Valor's various API endpoints.
 - **[Technical Concepts](technical_concepts.md)**: Describes the technical concepts that underpin Valor.
 - **[Contributing and Development](contributing.md)**: Explains how you can build on and contribute to Valor.
-- **[Python Client API](client_api/Client.md)**: Shares reference documentation for our Python client.
+- **[Python Client API](client_api/core/Client.md)**: Shares reference documentation for our Python client.
 
 # Overview
 

@@ -41,6 +41,47 @@ FunctionTypeTuple = (
 
 @dataclass
 class Filter:
+    """
+    Filter object.
+
+    Attributes
+    ----------
+    datasets : dict | FunctionType, optional
+        Filter conditions to apply to datasets.
+    models : dict | FunctionType, optional
+        Filter conditions to apply to models.
+    datums : dict | FunctionType, optional
+        Filter conditions to apply to datums.
+    annotations : dict | FunctionType, optional
+        Filter conditions to apply to annotations.
+    groundtruths : dict | FunctionType, optional
+        Filter conditions to apply to groundtruths.
+    predictions : dict | FunctionType, optional
+        Filter conditions to apply to predictions.
+    labels : dict | FunctionType, optional
+        Filter conditions to apply to labels.
+    embeddings : dict | FunctionType, optional
+        Filter conditions to apply to embeddings.
+
+    Examples
+    --------
+    Filter annotations by area and label.
+    >>> Filter(
+    ...     annotations=And(
+    ...         Label.key == "name",
+    ...         Annotation.raster.area > upper_bound,
+    ...     )
+    ... )
+
+    Filter datums by annotations and labels.
+    >>> Filter(
+    ...     datums=And(
+    ...         Label.key == "name",
+    ...         Annotation.raster.area > upper_bound,
+    ...     )
+    ... )
+    """
+
     datasets: Optional[Union[dict, FunctionType]] = None
     models: Optional[Union[dict, FunctionType]] = None
     datums: Optional[Union[dict, FunctionType]] = None
