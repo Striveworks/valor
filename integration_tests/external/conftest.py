@@ -4,6 +4,90 @@ from valor import Annotation, Datum, GroundTruth, Prediction
 
 
 @pytest.fixture
+def answer_correctness_q0() -> Datum:
+    return Datum(
+        uid="uid0",
+        text="""Did John Adams get along with Alexander Hamilton?""",
+        metadata={
+            "category": "history",
+        },
+    )
+
+
+@pytest.fixture
+def answer_correctness_q1() -> Datum:
+    return Datum(
+        uid="uid1",
+        text="""Did Lincoln win the election of 1860?""",
+        metadata={
+            "category": "history",
+        },
+    )
+
+
+@pytest.fixture
+def answer_correctness_datums(
+    answer_correctness_q0: Datum,
+    answer_correctness_q1: Datum,
+) -> list[Datum]:
+    return [answer_correctness_q0, answer_correctness_q1]
+
+
+@pytest.fixture
+def answer_correctness_predictions() -> list[str]:
+    return [
+        """John Adams and Alexander Hamilton did not get along. John Adams and Alexander Hamilton were both federalists.""",
+        """Lincoln won the election of 1860.""",
+    ]
+
+
+@pytest.fixture
+def answer_correctness_groundtruths() -> list[str]:
+    return [
+        """John Adams and Alexander Hamilton did not get along. John Adams and Alexander Hamilton held opposing views on the role of the federal government.""",
+        """Lincoln won the election of 1860.""",
+    ]
+
+
+@pytest.fixture
+def answer_correctness_gt_questions(
+    answer_correctness_datums: list[Datum],
+    answer_correctness_groundtruths: list[str],
+) -> list[GroundTruth]:
+    assert len(answer_correctness_datums) == len(
+        answer_correctness_groundtruths
+    )
+    return [
+        GroundTruth(
+            datum=answer_correctness_datums[i],
+            annotations=[Annotation(text=answer_correctness_groundtruths[i])],
+        )
+        for i in range(len(answer_correctness_datums))
+    ]
+
+
+@pytest.fixture
+def answer_correctness_pred_answers(
+    answer_correctness_datums: list[Datum],
+    answer_correctness_predictions: list[str],
+) -> list[GroundTruth]:
+    assert len(answer_correctness_datums) == len(
+        answer_correctness_predictions
+    )
+    return [
+        Prediction(
+            datum=answer_correctness_datums[i],
+            annotations=[
+                Annotation(
+                    text=answer_correctness_predictions[i],
+                )
+            ],
+        )
+        for i in range(len(answer_correctness_datums))
+    ]
+
+
+@pytest.fixture
 def answer_relevance_q0() -> Datum:
     return Datum(
         uid="uid0",
@@ -230,6 +314,174 @@ def coherence_pred_answers(
 
 
 @pytest.fixture
+def context_precision_q0() -> Datum:
+    return Datum(
+        uid="uid0",
+        text="""What are some foods that Lewis Hamilton likes?""",
+    )
+
+
+@pytest.fixture
+def context_precision_q1() -> Datum:
+    return Datum(
+        uid="uid1",
+        text="""Name the first and third United States presidents.""",
+    )
+
+
+@pytest.fixture
+def context_precision_datums(
+    context_precision_q0: Datum,
+    context_precision_q1: Datum,
+) -> list[Datum]:
+    return [context_precision_q0, context_precision_q1]
+
+
+@pytest.fixture
+def context_precision_groundtruths() -> list[str]:
+    return [
+        """Lewis Hamilton likes spicy wings.""",
+        """The first president of the United States was George Washington. The third president of the United States was Thomas Jefferson.""",
+    ]
+
+
+@pytest.fixture
+def context_precision_context_list() -> list[list[str]]:
+    return [
+        [
+            """Lewis Hamilton is an F1 driver.""",
+            """Lewis Hamilton likes spicy wings.""",
+            """The F1 driver with the most wins of all time is Lewis Hamilton.""",
+            """Taylor Swift likes chicken tenders.""",
+        ],
+        [
+            """The first president of the United States was George Washington.""",
+            """The second president of the United States was John Adams.""",
+            """The third president of the United States was Thomas Jefferson.""",
+            """The fourth president of the United States was James Madison.""",
+        ],
+    ]
+
+
+@pytest.fixture
+def context_precision_gt_questions(
+    context_precision_datums: list[Datum],
+    context_precision_groundtruths: list[str],
+) -> list[GroundTruth]:
+    assert len(context_precision_datums) == len(context_precision_groundtruths)
+    return [
+        GroundTruth(
+            datum=context_precision_datums[i],
+            annotations=[Annotation(text=context_precision_groundtruths[i])],
+        )
+        for i in range(len(context_precision_datums))
+    ]
+
+
+@pytest.fixture
+def context_precision_pred_answers(
+    context_precision_datums: list[Datum],
+    context_precision_context_list: list[list[str]],
+) -> list[GroundTruth]:
+    assert len(context_precision_datums) == len(context_precision_context_list)
+    return [
+        Prediction(
+            datum=context_precision_datums[i],
+            annotations=[
+                Annotation(
+                    context_list=context_precision_context_list[i],
+                )
+            ],
+        )
+        for i in range(len(context_precision_datums))
+    ]
+
+
+@pytest.fixture
+def context_recall_q0() -> Datum:
+    return Datum(
+        uid="uid0",
+    )
+
+
+@pytest.fixture
+def context_recall_q1() -> Datum:
+    return Datum(
+        uid="uid1",
+    )
+
+
+@pytest.fixture
+def context_recall_datums(
+    context_recall_q0: Datum,
+    context_recall_q1: Datum,
+) -> list[Datum]:
+    return [context_recall_q0, context_recall_q1]
+
+
+@pytest.fixture
+def context_recall_groundtruths() -> list[str]:
+    return [
+        """Lewis Hamilton likes spicy wings. Taylor Swift likes chicken tenders.""",
+        """The first U.S. president was George Washington. The second U.S. president was John Adams. The third U.S. president was Thomas Jefferson.""",
+    ]
+
+
+@pytest.fixture
+def context_recall_context_list() -> list[list[str]]:
+    return [
+        [
+            """Lewis Hamilton is an F1 driver.""",
+            """Lewis Hamilton likes spicy wings.""",
+        ],
+        [
+            """The first president of the United States was George Washington.""",
+            """The second president of the United States was John Adams.""",
+            """The third president of the United States was Thomas Jefferson.""",
+            """The fourth president of the United States was James Madison.""",
+        ],
+    ]
+
+
+@pytest.fixture
+def context_recall_gt_questions(
+    context_recall_datums: list[Datum],
+    context_recall_groundtruths: list[str],
+) -> list[GroundTruth]:
+    assert len(context_recall_datums) == len(context_recall_groundtruths)
+    return [
+        GroundTruth(
+            datum=context_recall_datums[i],
+            annotations=[
+                Annotation(
+                    text=context_recall_groundtruths[i],
+                )
+            ],
+        )
+        for i in range(len(context_recall_datums))
+    ]
+
+
+@pytest.fixture
+def context_recall_pred_answers(
+    context_recall_datums: list[Datum],
+    context_recall_context_list: list[list[str]],
+) -> list[GroundTruth]:
+    assert len(context_recall_datums) == len(context_recall_context_list)
+    return [
+        Prediction(
+            datum=context_recall_datums[i],
+            annotations=[
+                Annotation(
+                    context_list=context_recall_context_list[i],
+                )
+            ],
+        )
+        for i in range(len(context_recall_datums))
+    ]
+
+
+@pytest.fixture
 def context_relevance_q0() -> Datum:
     return Datum(
         uid="uid0",
@@ -268,7 +520,7 @@ def context_relevance_context_list() -> list[list[str]]:
             """Lewis Hamilton is an F1 driver.""",
             """Lewis Hamilton likes spicy wings.""",
             """The F1 driver with the most wins of all time is Lewis Hamilton.""",
-            """Taylor Swift likes chicken tendors.""",
+            """Taylor Swift likes chicken tenders.""",
         ],
         [
             """The first president of the United States was George Washington.""",
@@ -354,7 +606,7 @@ def faithfulness_context_list() -> list[list[str]]:
             """Lewis Hamilton is an F1 driver.""",
             """Lewis Hamilton likes spicy wings.""",
             """The F1 driver with the most wins of all time is Lewis Hamilton.""",
-            """Taylor Swift likes chicken tendors.""",
+            """Taylor Swift likes chicken tenders.""",
         ],
         [
             """George Washington's favorite color was yellow.""",

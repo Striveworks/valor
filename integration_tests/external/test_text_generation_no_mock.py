@@ -69,6 +69,40 @@ def _get_metrics(
     return eval_job.metrics
 
 
+def test_answer_correctness_with_openai(
+    client: Client,
+    answer_correctness_gt_questions: list[GroundTruth],
+    answer_correctness_pred_answers: list[Prediction],
+    dataset_name: str,
+    model_name: str,
+):
+    metrics = _get_metrics(
+        dataset_name=dataset_name,
+        model_name=model_name,
+        gt_questions=answer_correctness_gt_questions,
+        pred_answers=answer_correctness_pred_answers,
+        metrics_to_return=[MetricType.AnswerCorrectness],
+        llm_client="openai",
+    )
+
+    expected_metrics = {
+        "uid0": {
+            "AnswerCorrectness": 0.5,
+        },
+        "uid1": {
+            "AnswerCorrectness": 1.0,
+        },
+    }
+
+    # Check that the returned metrics have the right format.
+    for m in metrics:
+        uid = m["parameters"]["datum_uid"]
+        metric_name = m["type"]
+        assert (
+            expected_metrics[uid][metric_name] == m["value"]
+        ), f"Failed for {uid} and {metric_name}"
+
+
 def test_answer_relevance_with_openai(
     client: Client,
     answer_relevance_gt_questions: list[GroundTruth],
@@ -205,6 +239,74 @@ def test_context_relevance_with_openai(
         ), f"Failed for {uid} and {metric_name}"
 
 
+def test_context_precision_with_openai(
+    client: Client,
+    context_precision_gt_questions: list[GroundTruth],
+    context_precision_pred_answers: list[Prediction],
+    dataset_name: str,
+    model_name: str,
+):
+    metrics = _get_metrics(
+        dataset_name=dataset_name,
+        model_name=model_name,
+        gt_questions=context_precision_gt_questions,
+        pred_answers=context_precision_pred_answers,
+        metrics_to_return=[MetricType.ContextPrecision],
+        llm_client="openai",
+    )
+
+    expected_metrics = {
+        "uid0": {
+            "ContextPrecision": 0.5,
+        },
+        "uid1": {
+            "ContextPrecision": 0.8333333333333333,
+        },
+    }
+
+    # Check that the returned metrics have the right format.
+    for m in metrics:
+        uid = m["parameters"]["datum_uid"]
+        metric_name = m["type"]
+        assert (
+            expected_metrics[uid][metric_name] == m["value"]
+        ), f"Failed for {uid} and {metric_name}"
+
+
+def test_context_recall_with_openai(
+    client: Client,
+    context_recall_gt_questions: list[GroundTruth],
+    context_recall_pred_answers: list[Prediction],
+    dataset_name: str,
+    model_name: str,
+):
+    metrics = _get_metrics(
+        dataset_name=dataset_name,
+        model_name=model_name,
+        gt_questions=context_recall_gt_questions,
+        pred_answers=context_recall_pred_answers,
+        metrics_to_return=[MetricType.ContextRecall],
+        llm_client="openai",
+    )
+
+    expected_metrics = {
+        "uid0": {
+            "ContextRecall": 0.5,
+        },
+        "uid1": {
+            "ContextRecall": 1.0,
+        },
+    }
+
+    # Check that the returned metrics have the right format.
+    for m in metrics:
+        uid = m["parameters"]["datum_uid"]
+        metric_name = m["type"]
+        assert (
+            expected_metrics[uid][metric_name] == m["value"]
+        ), f"Failed for {uid} and {metric_name}"
+
+
 def test_faithfulness_with_openai(
     client: Client,
     faithfulness_gt_questions: list[GroundTruth],
@@ -310,6 +412,40 @@ def test_toxicity_with_openai(
         ), f"Failed for {uid} and {metric_name}"
 
 
+def test_answer_correctness_with_mistral(
+    client: Client,
+    answer_correctness_gt_questions: list[GroundTruth],
+    answer_correctness_pred_answers: list[Prediction],
+    dataset_name: str,
+    model_name: str,
+):
+    metrics = _get_metrics(
+        dataset_name=dataset_name,
+        model_name=model_name,
+        gt_questions=answer_correctness_gt_questions,
+        pred_answers=answer_correctness_pred_answers,
+        metrics_to_return=[MetricType.AnswerCorrectness],
+        llm_client="mistral",
+    )
+
+    expected_metrics = {
+        "uid0": {
+            "AnswerCorrectness": 0.5,
+        },
+        "uid1": {
+            "AnswerCorrectness": 1.0,
+        },
+    }
+
+    # Check that the returned metrics have the right format.
+    for m in metrics:
+        uid = m["parameters"]["datum_uid"]
+        metric_name = m["type"]
+        assert (
+            expected_metrics[uid][metric_name] == m["value"]
+        ), f"Failed for {uid} and {metric_name}"
+
+
 def test_answer_relevance_with_mistral(
     client: Client,
     answer_relevance_gt_questions: list[GroundTruth],
@@ -400,6 +536,74 @@ def test_coherence_with_mistral(
         },
         "uid1": {
             "Coherence": 5,
+        },
+    }
+
+    # Check that the returned metrics have the right format.
+    for m in metrics:
+        uid = m["parameters"]["datum_uid"]
+        metric_name = m["type"]
+        assert (
+            expected_metrics[uid][metric_name] == m["value"]
+        ), f"Failed for {uid} and {metric_name}"
+
+
+def test_context_precision_with_mistral(
+    client: Client,
+    context_precision_gt_questions: list[GroundTruth],
+    context_precision_pred_answers: list[Prediction],
+    dataset_name: str,
+    model_name: str,
+):
+    metrics = _get_metrics(
+        dataset_name=dataset_name,
+        model_name=model_name,
+        gt_questions=context_precision_gt_questions,
+        pred_answers=context_precision_pred_answers,
+        metrics_to_return=[MetricType.ContextPrecision],
+        llm_client="mistral",
+    )
+
+    expected_metrics = {
+        "uid0": {
+            "ContextPrecision": 0.5,
+        },
+        "uid1": {
+            "ContextPrecision": 0.8333333333333333,
+        },
+    }
+
+    # Check that the returned metrics have the right format.
+    for m in metrics:
+        uid = m["parameters"]["datum_uid"]
+        metric_name = m["type"]
+        assert (
+            expected_metrics[uid][metric_name] == m["value"]
+        ), f"Failed for {uid} and {metric_name}"
+
+
+def test_context_recall_with_mistral(
+    client: Client,
+    context_recall_gt_questions: list[GroundTruth],
+    context_recall_pred_answers: list[Prediction],
+    dataset_name: str,
+    model_name: str,
+):
+    metrics = _get_metrics(
+        dataset_name=dataset_name,
+        model_name=model_name,
+        gt_questions=context_recall_gt_questions,
+        pred_answers=context_recall_pred_answers,
+        metrics_to_return=[MetricType.ContextRecall],
+        llm_client="mistral",
+    )
+
+    expected_metrics = {
+        "uid0": {
+            "ContextRecall": 0.5,
+        },
+        "uid1": {
+            "ContextRecall": 1.0,
         },
     }
 
