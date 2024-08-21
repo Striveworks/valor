@@ -1,7 +1,6 @@
 import gc
 import time
 from collections import defaultdict
-from typing import Dict, List, Optional, Tuple, Union
 
 import numpy as np
 import pandas as pd
@@ -240,9 +239,7 @@ def _calculate_metrics_at_label_value_level(
 
 def _calculate_precision_recall_f1_metrics(
     metrics_per_label_key_and_label_value_df: pd.DataFrame,
-) -> List[
-    Union[metrics.PrecisionMetric, metrics.RecallMetric, metrics.F1Metric]
-]:
+) -> list[metrics.PrecisionMetric | metrics.RecallMetric | metrics.F1Metric]:
     """Calculate Precision, Recall, and F1 metrics."""
     # create metric objects
     output = []
@@ -274,7 +271,7 @@ def _calculate_precision_recall_f1_metrics(
 
 def _calculate_accuracy_metrics(
     cm_counts_df: pd.DataFrame,
-) -> List[metrics.AccuracyMetric]:
+) -> list[metrics.AccuracyMetric]:
     """Calculate Accuracy metrics."""
     accuracy_calculations = (
         cm_counts_df.loc[
@@ -434,7 +431,7 @@ def _get_joint_df(
 
 def _calculate_rocauc(
     prediction_df: pd.DataFrame, groundtruth_df: pd.DataFrame
-) -> List[metrics.ROCAUCMetric]:
+) -> list[metrics.ROCAUCMetric]:
     """Calculate ROC AUC metrics."""
     # if there are no predictions, then ROCAUC should be 0 for all groundtruth grouper keys
     if prediction_df.empty:
@@ -1086,9 +1083,9 @@ def _calculate_pr_curves(
 def _compute_clf_metrics(
     groundtruth_df: pd.DataFrame,
     prediction_df: pd.DataFrame,
-    metrics_to_return: Optional[List[enums.MetricType]] = None,
+    metrics_to_return: list[enums.MetricType] | None = None,
     pr_curve_max_examples: int = 1,
-) -> Tuple[List[dict], List[dict]]:
+) -> tuple[list[dict], list[dict]]:
     """
     Compute classification metrics including confusion matrices and various performance metrics.
 
@@ -1098,14 +1095,14 @@ def _compute_clf_metrics(
         DataFrame containing ground truth annotations with necessary columns.
     prediction_df : pd.DataFrame
         DataFrame containing predictions with necessary columns.
-    metrics_to_return : Optional[List[enums.MetricType]], default=None
-        List of metric types to return. If None, default metrics are used.
-    pr_curve_max_examples : int, default=1
+    metrics_to_return : list[enums.MetricType], optional
+        list of metric types to return. If None, default metrics are used.
+    pr_curve_max_examples : int
         Maximum number of examples to use for Precision-Recall curve calculations.
 
     Returns
     -------
-    Tuple[List[dict], List[dict]]
+    tuple[list[dict], list[dict]]
         A tuple where:
         - The first element is a list of dictionaries representing confusion matrices.
         - The second element is a list of dictionaries representing the requested classification metrics.
@@ -1165,10 +1162,10 @@ def _compute_clf_metrics(
 
 
 def evaluate_classification(
-    groundtruths: Union[pd.DataFrame, List[schemas.GroundTruth]],
-    predictions: Union[pd.DataFrame, List[schemas.Prediction]],
-    label_map: Optional[Dict[schemas.Label, schemas.Label]] = None,
-    metrics_to_return: Optional[List[enums.MetricType]] = None,
+    groundtruths: pd.DataFrame | list[schemas.GroundTruth],
+    predictions: pd.DataFrame | list[schemas.Prediction],
+    label_map: dict[schemas.Label, schemas.Label] | None = None,
+    metrics_to_return: list[enums.MetricType] | None = None,
     pr_curve_max_examples: int = 1,
 ) -> schemas.Evaluation:
     """
@@ -1189,13 +1186,13 @@ def evaluate_classification(
 
     Parameters
     ----------
-    groundtruths : Union[pd.DataFrame, List[schemas.GroundTruth]]
+    groundtruths : pd.DataFrame | list[schemas.GroundTruth]
         Ground truth annotations as either a DataFrame or a list of GroundTruth objects.
-    predictions : Union[pd.DataFrame, List[schemas.Prediction]]
+    predictions : pd.DataFrame | list[schemas.Prediction]
         Predictions as either a DataFrame or a list of Prediction objects.
-    label_map : Optional[Dict[schemas.Label, schemas.Label]], default=None
+    label_map : dict[schemas.Label, schemas.Label], optional
         Optional dictionary mapping ground truth labels to prediction labels.
-    metrics_to_return : Optional[List[enums.MetricType]], default=None
+    metrics_to_return : list[enums.MetricType], optional
         List of metric types to return. Defaults to Precision, Recall, F1, Accuracy, ROCAUC if None.
     pr_curve_max_examples : int, default=1
         Maximum number of examples to use for Precision-Recall curve calculations.

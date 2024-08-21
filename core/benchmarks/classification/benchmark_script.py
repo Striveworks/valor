@@ -4,7 +4,6 @@ import time
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
-from typing import Any
 
 import requests
 from valor_core import (
@@ -18,7 +17,7 @@ from valor_core import (
 )
 
 
-def time_it(fn, *args, **kwargs) -> tuple[float, Any]:
+def time_it(fn, *args, **kwargs) -> tuple[float, dict]:
     start = time.time()
     results = fn(*args, **kwargs)
     return (time.time() - start, results)

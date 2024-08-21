@@ -3,7 +3,7 @@ import json
 import math
 from base64 import b64decode, b64encode
 from dataclasses import dataclass
-from typing import Any, Dict, List, Optional, Union
+from typing import Any
 
 import numpy as np
 import PIL.ImageDraw as ImageDraw
@@ -621,7 +621,7 @@ class Polygon:
         If the value doesn't conform to the type.
     """
 
-    value: Union[list[list[tuple[int, int]]], list[list[tuple[float, float]]]]
+    value: list[list[tuple[int, int]]] | list[list[tuple[float, float]]]
 
     def __post_init__(self):
         """Validate instantiated class."""
@@ -713,7 +713,7 @@ class Polygon:
 
         Returns
         -------
-        List[Tuple(float, float)]
+        list[Tuple(float, float)]
             A list of points.
         """
         value = self.value
@@ -728,7 +728,7 @@ class Polygon:
 
         Returns
         -------
-        List[List[Tuple(float, float)]]
+        list[list[Tuple(float, float)]]
             A list of holes.
         """
         value = self.value
@@ -817,7 +817,7 @@ class Box:
         If the value doesn't conform to the type.
     """
 
-    value: Union[list[list[tuple[int, int]]], list[list[tuple[float, float]]]]
+    value: list[list[tuple[int, int]]] | list[list[tuple[float, float]]]
 
     def __post_init__(self):
         """Validate instantiated class."""
@@ -1007,7 +1007,7 @@ class Raster:
 
     Parameters
     ----------
-    value : Dict[str, typing.Union[np.ndarray, str, None]], optional
+    value : dict[str, np.ndarray | str | None], optional
         An raster value.
 
     Attributes
@@ -1090,7 +1090,7 @@ class Raster:
 
         Returns
         -------
-        Optional[np.ndarray]
+        np.ndarray | None
             A 2D binary array representing the mask if it exists.
         """
         return self.mask
@@ -1192,18 +1192,18 @@ class Embedding:
 
     Parameters
     ----------
-    value : List[float], optional
+    value : list[float], optional
         An embedding value.
     """
 
-    value: Optional[Union[list[int], list[float]]] = None
+    value: list[int] | list[float] | None = None
 
     def __post_init__(self):
         """Validate instantiated class."""
 
         if not isinstance(self.value, list):
             raise TypeError(
-                f"Expected type 'Optional[List[float]]' received type '{type(self.value)}'"
+                f"Expected type 'list[float] | None' received type '{type(self.value)}'"
             )
         elif len(self.value) < 1:
             raise ValueError("embedding should have at least one dimension")
@@ -1216,9 +1216,9 @@ class Datum:
 
     Attributes
     ----------
-    uid : String
+    uid : str
         The UID of the datum.
-    metadata : Dictionary
+    metadata : dict[str, Any]
         A dictionary of metadata that describes the datum.
 
     Examples
@@ -1228,8 +1228,8 @@ class Datum:
     >>> Datum(uid="uid1", metadata={"foo": "bar", "pi": 3.14})
     """
 
-    uid: Optional[str] = None
-    metadata: Optional[dict] = None
+    uid: str | None = None
+    metadata: dict | None = None
 
     def __post_init__(
         self,
@@ -1263,7 +1263,7 @@ class Label:
 
     key: str
     value: str
-    score: Optional[float] = None
+    score: float | None = None
 
     def __post_init__(self):
         """Validate instantiated class."""
@@ -1348,9 +1348,9 @@ class Annotation:
 
     Attributes
     ----------
-    metadata: Dictionary
+    metadata: dict[str, Any]
         A dictionary of metadata that describes the `Annotation`.
-    labels: List[Label], optional
+    labels: list[Label], optional
         A list of labels to use for the `Annotation`.
     bounding_box: schemas.Box
         A bounding box to assign to the `Annotation`.
@@ -1358,7 +1358,7 @@ class Annotation:
         A polygon to assign to the `Annotation`.
     raster: Raster
         A raster to assign to the `Annotation`.
-    embedding: List[float]
+    embedding: list[float]
         An embedding, described by a list of values with type float and a maximum length of 16,000.
     is_instance: bool, optional
         A boolean describing whether we should treat the Raster attached to an annotation as an instance segmentation or not. If set to true, then the Annotation will be validated for use in object detection tasks. If set to false, then the Annotation will be validated for use in semantic segmentation tasks.
@@ -1412,14 +1412,14 @@ class Annotation:
     ... )
     """
 
-    labels: List[Label]
-    metadata: Optional[dict] = None
-    bounding_box: Optional[Box] = None
-    polygon: Optional[Union[Polygon, Box]] = None
-    raster: Optional[Raster] = None
-    embedding: Optional[Embedding] = None
-    is_instance: Optional[bool] = None
-    implied_task_types: Optional[List[str]] = None
+    labels: list[Label]
+    metadata: dict | None = None
+    bounding_box: Box | None = None
+    polygon: Polygon | Box | None = None
+    raster: Raster | None = None
+    embedding: Embedding | None = None
+    is_instance: bool | None = None
+    implied_task_types: list[str] | None = None
 
     def __post_init__(self):
         """Validate instantiated class."""
@@ -1480,13 +1480,13 @@ class EvaluationParameters:
 
     Attributes
     ----------
-    label_map: Optional[List[List[List[str]]]]
+    label_map: list[list[list[str]]], optional
         Optional mapping of individual labels to a grouper label. Useful when you need to evaluate performance using labels that differ across datasets and models.
-    metrics: List[str], optional
+    metrics: list[str], optional
         The list of metrics to compute, store, and return to the user.
-    iou_thresholds_to_compute: List[float], optional
+    iou_thresholds_to_compute: list[float], optional
         A list of floats describing which Intersection over Unions (IoUs) to use when calculating metrics (i.e., mAP).
-    iou_thresholds_to_return: List[float], optional
+    iou_thresholds_to_return: list[float], optional
         A list of floats describing which Intersection over Union (IoUs) thresholds to calculate a metric for. Must be a subset of `iou_thresholds_to_compute`.
     recall_score_threshold: float, default=0
         The confidence score threshold for use when determining whether to count a prediction as a true positive or not while calculating Average Recall.
@@ -1496,11 +1496,11 @@ class EvaluationParameters:
         The maximum number of datum examples to store when calculating PR curves.
     """
 
-    label_map: Optional[Dict[Label, Label]] = None
-    metrics_to_return: Optional[List[enums.MetricType]] = None
-    iou_thresholds_to_compute: Optional[List[float]] = None
-    iou_thresholds_to_return: Optional[List[float]] = None
-    convert_annotations_to_type: Optional[enums.AnnotationType] = None
+    label_map: dict[Label, Label] | None = None
+    metrics_to_return: list[enums.MetricType] | None = None
+    iou_thresholds_to_compute: list[float] | None = None
+    iou_thresholds_to_return: list[float] | None = None
+    convert_annotations_to_type: enums.AnnotationType | None = None
     recall_score_threshold: float = 0.0
     pr_curve_iou_threshold: float = 0.5
     pr_curve_max_examples: int = 1
@@ -1578,11 +1578,11 @@ class EvaluationParameters:
 @dataclass
 class Evaluation:
     parameters: EvaluationParameters
-    metrics: List[Dict]
-    confusion_matrices: Optional[List[Dict]]
-    ignored_pred_labels: Optional[List[tuple[str, str]]]
-    missing_pred_labels: Optional[List[tuple[str, str]]]
-    meta: Optional[Dict] = None
+    metrics: list[dict]
+    confusion_matrices: list[dict] | None
+    ignored_pred_labels: list[tuple[str, str]] | None
+    missing_pred_labels: list[tuple[str, str]] | None
+    meta: dict | None = None
 
     def __str__(self) -> str:
         """Dumps the object into a JSON formatted string."""
@@ -1647,7 +1647,7 @@ class GroundTruth:
     ----------
     datum : Datum
         The datum associated with the groundtruth.
-    annotations : List[Annotation]
+    annotations : list[Annotation]
         The list of annotations associated with the groundtruth.
 
     Examples
@@ -1697,7 +1697,7 @@ class Prediction:
     ----------
     datum : Datum
         The datum associated with the prediction.
-    annotations : List[Annotation]
+    annotations : list[Annotation]
         The list of annotations associated with the prediction.
 
     Examples

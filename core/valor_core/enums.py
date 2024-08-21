@@ -1,5 +1,4 @@
 from enum import Enum
-from typing import Set
 
 
 class AnnotationType(str, Enum):
@@ -37,7 +36,7 @@ class MetricType(str, Enum):
     DetailedPrecisionRecallCurve = "DetailedPrecisionRecallCurve"
 
     @classmethod
-    def classification(cls) -> Set["MetricType"]:
+    def classification(cls) -> set["MetricType"]:
         """
         MetricTypes for classification tasks.
         """
@@ -52,7 +51,7 @@ class MetricType(str, Enum):
         }
 
     @classmethod
-    def object_detection(cls) -> Set["MetricType"]:
+    def object_detection(cls) -> set["MetricType"]:
         """
         MetricTypes for object-detection tasks.
         """
@@ -68,7 +67,7 @@ class MetricType(str, Enum):
         }
 
     @classmethod
-    def semantic_segmentation(cls) -> Set["MetricType"]:
+    def semantic_segmentation(cls) -> set["MetricType"]:
         """
         MetricTypes for semantic-segmentation tasks.
         """

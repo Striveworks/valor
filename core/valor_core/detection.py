@@ -2,7 +2,6 @@ import heapq
 import math
 import time
 from collections import defaultdict
-from typing import Dict, List, Optional, Union
 
 import numpy as np
 import pandas as pd
@@ -280,8 +279,8 @@ def _calculate_mean_ignoring_negative_one(series: pd.Series) -> float:
 
 def _calculate_ap_metrics(
     calculation_df: pd.DataFrame,
-    iou_thresholds_to_compute: List[float],
-    iou_thresholds_to_return: List[float],
+    iou_thresholds_to_compute: list[float],
+    iou_thresholds_to_return: list[float],
 ) -> list[
     metrics.APMetric
     | metrics.APMetricAveragedOverIOUs
@@ -383,7 +382,7 @@ def _calculate_ap_metrics(
 
 def _calculate_ar_metrics(
     calculation_df: pd.DataFrame,
-    iou_thresholds_to_compute: List[float],
+    iou_thresholds_to_compute: list[float],
 ) -> list[metrics.ARMetric | metrics.mARMetric]:
     """Calculates all AR metrics, including aggregated metrics like mAR."""
 
@@ -427,7 +426,7 @@ def _calculate_ar_metrics(
 
 def _calculate_pr_metrics(
     joint_df: pd.DataFrame,
-    metrics_to_return: List[enums.MetricType],
+    metrics_to_return: list[enums.MetricType],
     pr_curve_iou_threshold: float,
 ) -> list[metrics.PrecisionRecallCurve]:
     """Calculates all PrecisionRecallCurve metrics."""
@@ -635,7 +634,7 @@ def _add_samples_to_dataframe(
 
 def _calculate_detailed_pr_metrics(
     detailed_pr_joint_df: pd.DataFrame | None,
-    metrics_to_return: List[enums.MetricType],
+    metrics_to_return: list[enums.MetricType],
     pr_curve_iou_threshold: float,
     pr_curve_max_examples: int,
 ) -> list[metrics.DetailedPrecisionRecallCurve]:
@@ -1211,13 +1210,13 @@ def create_detection_evaluation_inputs(
 def compute_detection_metrics(
     joint_df: pd.DataFrame,
     detailed_joint_df: pd.DataFrame | None,
-    metrics_to_return: List[enums.MetricType],
-    iou_thresholds_to_compute: List[float],
-    iou_thresholds_to_return: List[float],
+    metrics_to_return: list[enums.MetricType],
+    iou_thresholds_to_compute: list[float],
+    iou_thresholds_to_return: list[float],
     recall_score_threshold: float,
     pr_curve_iou_threshold: float,
     pr_curve_max_examples: int,
-) -> List[dict]:
+) -> list[dict]:
     """
     Compute detection metrics for evaluating object detection models. This function calculates Intersection over Union (IoU) for each ground truth-prediction pair that shares a common grouper id, and computes metrics such as Average Precision (AP), Average Recall (AR), and Precision-Recall (PR) curves.
 
@@ -1227,11 +1226,11 @@ def compute_detection_metrics(
         Dataframe containing merged groundtruths and predictions, joined by label.
     detailed_joint_df : pd.DataFrame
         Dataframe containing merged groundtruths and predictions, joined by label key.
-    metrics_to_return : List[enums.MetricType]
+    metrics_to_return : list[enums.MetricType]
         List of metric types to calculate and return, such as AP, AR, or PR curves.
-    iou_thresholds_to_compute : List[float]
+    iou_thresholds_to_compute : list[float]
         List of IoU thresholds for which metrics should be computed.
-    iou_thresholds_to_return : List[float]
+    iou_thresholds_to_return : list[float]
         List of IoU thresholds for which metrics should be returned.
     recall_score_threshold : float
         Threshold for the recall score to consider in metric calculations.
@@ -1242,7 +1241,7 @@ def compute_detection_metrics(
 
     Returns
     -------
-    List[dict]
+    list[dict]
         A list of dictionaries containing computed metrics, including AP, AR, and PR curves, filtered according to `metrics_to_return`.
 
     Raises
@@ -1306,13 +1305,13 @@ def compute_detection_metrics(
 
 
 def evaluate_detection(
-    groundtruths: Union[pd.DataFrame, List[schemas.GroundTruth]],
-    predictions: Union[pd.DataFrame, List[schemas.Prediction]],
-    label_map: Optional[Dict[schemas.Label, schemas.Label]] = None,
-    metrics_to_return: Optional[List[enums.MetricType]] = None,
-    convert_annotations_to_type: Optional[enums.AnnotationType] = None,
-    iou_thresholds_to_compute: Optional[List[float]] = None,
-    iou_thresholds_to_return: Optional[List[float]] = None,
+    groundtruths: pd.DataFrame | list[schemas.GroundTruth],
+    predictions: pd.DataFrame | list[schemas.Prediction],
+    label_map: dict[schemas.Label, schemas.Label] | None = None,
+    metrics_to_return: list[enums.MetricType] | None = None,
+    convert_annotations_to_type: enums.AnnotationType | None = None,
+    iou_thresholds_to_compute: list[float] | None = None,
+    iou_thresholds_to_return: list[float] | None = None,
     recall_score_threshold: float = 0.0,
     pr_curve_iou_threshold: float = 0.5,
     pr_curve_max_examples: int = 1,
@@ -1340,19 +1339,19 @@ def evaluate_detection(
 
     Parameters
     ----------
-    groundtruths : Union[pd.DataFrame, List[schemas.GroundTruth]]
+    groundtruths : pd.DataFrame | list[schemas.GroundTruth]
         A list of GroundTruth objects or a pandas DataFrame describing your ground truths.
-    predictions : Union[pd.DataFrame, List[schemas.Prediction]]
+    predictions : pd.DataFrame | list[schemas.Prediction]
         A list of Prediction objects or a pandas DataFrame describing your predictions.
-    label_map : Optional[Dict[schemas.Label, schemas.Label]], default=None
+    label_map : dict[schemas.Label, schemas.Label], optional
         Mapping of ground truth labels to prediction labels.
-    metrics_to_return : Optional[List[enums.MetricType]], default=None
+    metrics_to_return : list[enums.MetricType], optional
         List of metric types to calculate and return.
-    convert_annotations_to_type : Optional[enums.AnnotationType], default=None
+    convert_annotations_to_type : enums.AnnotationType, optional
         Annotation type to convert all annotations to.
-    iou_thresholds_to_compute : Optional[List[float]], default=None
+    iou_thresholds_to_compute : list[float], optional
         IoU thresholds for which metrics should be computed.
-    iou_thresholds_to_return : Optional[List[float]], default=None
+    iou_thresholds_to_return : list[float], optional
         IoU thresholds for which metrics should be returned.
     recall_score_threshold : float, default=0.0
         Threshold for recall score to consider in metric calculations.

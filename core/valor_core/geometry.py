@@ -1,5 +1,3 @@
-from typing import List, Tuple, Union
-
 import numpy as np
 import shapely.affinity
 from shapely.geometry import Polygon as ShapelyPolygon
@@ -10,16 +8,16 @@ np.seterr(divide="ignore", invalid="ignore")
 
 
 def calculate_iou(
-    bbox1: List[Tuple[float, float]], bbox2: List[Tuple[float, float]]
+    bbox1: list[tuple[float, float]], bbox2: list[tuple[float, float]]
 ) -> float:
     """
     Calculate the Intersection over Union (IOU) for two bounding boxes.
 
     Parameters
     ----------
-    bbox1 : List[Tuple[float, float]]
+    bbox1 : list[tuple[float, float]]
         Coordinates of the first bounding box.
-    bbox2 : List[Tuple[float, float]]
+    bbox2 : list[tuple[float, float]]
         Coordinates of the second bounding box.
 
     Returns
@@ -35,25 +33,25 @@ def calculate_iou(
 
 
 def rotate_bbox(
-    bbox: List[Tuple[float, float]],
+    bbox: list[tuple[float, float]],
     angle: float,
-    origin: Union[str, Tuple[float, float]] = "centroid",
-) -> List[Tuple[float, float]]:
+    origin: str | tuple[float, float] = "centroid",
+) -> list[tuple[float, float]]:
     """
     Rotate a bounding box by a given angle around the centroid of a polygon.
 
     Parameters
     ----------
-    bbox : List[Tuple[float, float]]
+    bbox : list[tuple[float, float]]
         Coordinates of the bounding box.
     angle : float
         The rotation angle in degrees.
-    origin : Union[str, Tuple[float, float]]
+    origin : str | tuple[float, float]
         The point around which to rotate. Default is "centroid".
 
     Returns
     ----------
-    List[Tuple[float, float]]
+    list[tuple[float, float]]
         Coordinates of the rotated bounding box.
     """
     return list(
@@ -63,13 +61,13 @@ def rotate_bbox(
     )
 
 
-def is_axis_aligned(bbox: List[Tuple[float, float]]) -> bool:
+def is_axis_aligned(bbox: list[tuple[float, float]]) -> bool:
     """
     Check if the bounding box is axis-aligned.
 
     Parameters
     ----------
-    bbox : List[Tuple[float, float]]
+    bbox : list[tuple[float, float]]
         Coordinates of the bounding box.
 
     Returns
@@ -83,13 +81,13 @@ def is_axis_aligned(bbox: List[Tuple[float, float]]) -> bool:
     )
 
 
-def is_skewed(bbox: List[Tuple[float, float]]) -> bool:
+def is_skewed(bbox: list[tuple[float, float]]) -> bool:
     """
     Check if the bounding box is skewed.
 
     Parameters
     ----------
-    bbox : List[Tuple[float, float]]
+    bbox : list[tuple[float, float]]
         Coordinates of the bounding box.
 
     Returns
@@ -124,13 +122,13 @@ def is_skewed(bbox: List[Tuple[float, float]]) -> bool:
     )
 
 
-def is_rotated(bbox: List[Tuple[float, float]]) -> bool:
+def is_rotated(bbox: list[tuple[float, float]]) -> bool:
     """
     Check if the bounding box is rotated (not axis-aligned and not skewed).
 
     Parameters
     ----------
-    bbox : List[Tuple[float, float]]
+    bbox : list[tuple[float, float]]
         Coordinates of the bounding box.
 
     Returns

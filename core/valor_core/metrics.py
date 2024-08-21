@@ -1,5 +1,4 @@
 from dataclasses import dataclass
-from typing import Dict, List, Optional, Tuple, Union
 
 import numpy as np
 from valor_core import schemas
@@ -19,7 +18,7 @@ class _LabelMetricBase:
     """
 
     label: schemas.Label
-    value: Optional[float]
+    value: float | None
     __type__ = "BaseClass"
 
     def __post_init__(self):
@@ -57,7 +56,7 @@ class _LabelKeyMetricBase:
     """
 
     label_key: str
-    value: Optional[float]
+    value: float | None
     __type__ = "BaseClass"
 
     def __post_init__(self):
@@ -425,7 +424,7 @@ class _BasePrecisionRecallCurve:
 
     label_key: str
     value: dict
-    pr_curve_iou_threshold: Optional[float]
+    pr_curve_iou_threshold: float | None
     __type__ = "BaseClass"
 
     def __post_init__(self):
@@ -472,13 +471,13 @@ class PrecisionRecallCurve(_BasePrecisionRecallCurve):
     """
 
     __type__ = "PrecisionRecallCurve"
-    value: Dict[
+    value: dict[
         str,  # the label value
-        Dict[
+        dict[
             float,  # the score threshold
-            Dict[
+            dict[
                 str,  # the metric (e.g., "tp" for true positive)
-                Optional[Union[int, float]],
+                int | float | None,
             ],  # the count or metric value
         ],
     ]
@@ -504,31 +503,24 @@ class DetailedPrecisionRecallCurve(_BasePrecisionRecallCurve):
     """
 
     __type__ = "DetailedPrecisionRecallCurve"
-    value: Dict[
+    value: dict[
         str,  # the label value
-        Dict[
+        dict[
             float,  # the score threshold
-            Dict[
+            dict[
                 str,  # the metric (e.g., "tp" for true positive)
-                Dict[
+                dict[
                     str,  # the label for the next level of the dictionary (e.g., "observations" or "total")
-                    Union[
-                        int,  # the count of classifications
-                        Dict[
-                            str,  # the subclassification for the label (e.g., "misclassifications")
-                            Dict[
-                                str,  # the label for the next level of the dictionary (e.g., "count" or "examples")
-                                Union[
-                                    int,  # the count of subclassifications
-                                    List[
-                                        Union[
-                                            Tuple[str, str],
-                                            Tuple[str, str, str],
-                                        ]
-                                    ],
-                                ],  # a list containing examples
+                    int  # the count of classifications
+                    | dict[
+                        str,  # the subclassification for the label (e.g., "misclassifications")
+                        dict[
+                            str,  # the label for the next level of the dictionary (e.g., "count" or "examples")
+                            int  # the count of subclassifications
+                            | list[
+                                tuple[str, str] | tuple[str, str, str],
                             ],
-                        ],
+                        ],  # a list containing examples
                     ],
                 ],
             ],
@@ -596,12 +588,12 @@ class _BaseConfusionMatrix:
     ----------
     label_ley : str
         A label for the matrix.
-    entries : List[ConfusionMatrixEntry]
+    entries : list[ConfusionMatrixEntry]
         A list of entries for the matrix.
     """
 
     label_key: str
-    entries: List[ConfusionMatrixEntry]
+    entries: list[ConfusionMatrixEntry]
 
     def __post_init__(self):
         """Validate instantiated class."""
@@ -638,12 +630,12 @@ class ConfusionMatrix(_BaseConfusionMatrix):
     ----------
     label_key : str
         A label for the matrix.
-    entries : List[ConfusionMatrixEntry]
+    entries : list[ConfusionMatrixEntry]
         A list of entries for the matrix.
 
     Attributes
     ----------
-    matrix : np.zeroes
+    matrix : np.ndarray
         A sparse matrix representing the confusion matrix.
     """
 

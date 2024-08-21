@@ -1,5 +1,3 @@
-from typing import Dict, List, Optional, Union
-
 import numpy as np
 import pandas as pd
 from valor_core import enums, schemas
@@ -8,7 +6,7 @@ from valor_core import enums, schemas
 def replace_labels_using_label_map(
     groundtruth_df: pd.DataFrame,
     prediction_df: pd.DataFrame,
-    label_map: Optional[schemas.Dict[schemas.Label, schemas.Label]],
+    label_map: dict[schemas.Label, schemas.Label] | None,
 ):
     """
     Replace label keys, values, and IDs in the groundtruth and prediction DataFrames using a given label map.
@@ -23,7 +21,7 @@ def replace_labels_using_label_map(
         DataFrame containing groundtruth data with columns `label_key`, `label_value`, and `label_id`.
     prediction_df : pd.DataFrame
         DataFrame containing prediction data with columns `label_key`, `label_value`, and `label_id`.
-    label_map : Optional[schemas.Dict[schemas.Label, schemas.Label]]
+    label_map : dict[schemas.Label, schemas.Label], optional
         Dictionary mapping tuples of (label_key, label_value) to (grouper_key, grouper_value). Used to replace the labels in the DataFrames.
 
     Returns
@@ -101,7 +99,7 @@ def replace_labels_using_label_map(
 
 
 def validate_label_map(
-    label_map: Optional[Dict[schemas.Label, schemas.Label]],
+    label_map: dict[schemas.Label, schemas.Label] | None,
 ) -> None:
     """
     Validate the label mapping if necessary.
@@ -112,7 +110,7 @@ def validate_label_map(
 
     Parameters
     ----------
-    label_map : Optional[Dict[schemas.Label, schemas.Label]]
+    label_map : dict[schemas.Label, schemas.Label], optional
         A dictionary mapping labels to other labels, or None if no mapping
         is provided.
 
@@ -138,7 +136,7 @@ def validate_label_map(
 
 
 def validate_metrics_to_return(
-    task_type: enums.TaskType, metrics_to_return: List[enums.MetricType]
+    task_type: enums.TaskType, metrics_to_return: list[enums.MetricType]
 ) -> None:
     """
     Validate that the provided metrics are appropriate for the specified task type.
@@ -179,20 +177,20 @@ def validate_metrics_to_return(
 
 
 def validate_parameters(
-    recall_score_threshold: Optional[float] = None,
-    pr_curve_iou_threshold: Optional[float] = None,
-    pr_curve_max_examples: Optional[int] = None,
+    recall_score_threshold: float | None = None,
+    pr_curve_iou_threshold: float | None = None,
+    pr_curve_max_examples: int | None = None,
 ) -> None:
     """
     Validate parameters for scoring and PR curves.
 
     Parameters
     ----------
-    recall_score_threshold : Optional[float]
+    recall_score_threshold : float, optional
         The threshold for recall score.
-    pr_curve_iou_threshold : Optional[float]
+    pr_curve_iou_threshold : float, optional
         The IOU threshold for PR curve.
-    pr_curve_max_examples : Optional[int]
+    pr_curve_max_examples : int, optional
         The maximum number of examples for PR curve.
 
     Raises
@@ -224,7 +222,7 @@ def validate_parameters(
 def validate_matching_label_keys(
     groundtruths: pd.DataFrame,
     predictions: pd.DataFrame,
-    label_map: Optional[Dict[schemas.Label, schemas.Label]],
+    label_map: dict[schemas.Label, schemas.Label] | None,
 ) -> None:
     """
     Validates that every datum has the same set of label keys for both ground truths and predictions. This check is only needed for classification tasks.
@@ -235,7 +233,7 @@ def validate_matching_label_keys(
         The DataFrame containing ground truth data.
     predictions : pd.DataFrame
         The DataFrame containing prediction data.
-    label_map : Optional[Dict[schemas.Label, schemas.Label]]
+    label_map : dict[schemas.Label, schemas.Label], optional
         Optional mapping of individual labels to a grouper label.
 
     Raises
@@ -342,7 +340,7 @@ def _validate_prediction_dataframe(
 
 
 def create_validated_groundtruth_df(
-    obj: Union[pd.DataFrame, List[schemas.GroundTruth]],
+    obj: pd.DataFrame | list[schemas.GroundTruth],
     task_type: enums.TaskType,
 ) -> pd.DataFrame:
     """
@@ -350,7 +348,7 @@ def create_validated_groundtruth_df(
 
     Parameters
     ----------
-    obj : Union[pd.DataFrame, List[schemas.GroundTruth]]
+    obj : pd.DataFrame | list[schemas.GroundTruth]
         The groundtruth data to be processed. This can be either a pandas DataFrame
         or a list of GroundTruth objects.
     task_type : enums.TaskType
@@ -388,7 +386,7 @@ def create_validated_groundtruth_df(
 
 
 def create_validated_prediction_df(
-    obj: Union[pd.DataFrame, List[schemas.Prediction]],
+    obj: pd.DataFrame | list[schemas.Prediction],
     task_type: enums.TaskType,
 ) -> pd.DataFrame:
     """
@@ -396,7 +394,7 @@ def create_validated_prediction_df(
 
     Parameters
     ----------
-    obj : Union[pd.DataFrame, List[schemas.Prediction]]
+    obj : pd.DataFrame | list[schemas.Prediction]
         The prediction data to be processed. This can be either a pandas DataFrame
         or a list of Prediction objects.
     task_type : enums.TaskType
@@ -465,14 +463,14 @@ def filter_dataframe_by_task_type(df: pd.DataFrame, task_type: enums.TaskType):
 
 
 def _convert_groundtruth_or_prediction_to_dataframe(
-    list_of_objects: Union[List[schemas.GroundTruth], List[schemas.Prediction]]
+    list_of_objects: list[schemas.GroundTruth] | list[schemas.Prediction],
 ) -> pd.DataFrame:
     """
     Convert a list of GroundTruth or Prediction objects to a DataFrame.
 
     Parameters
     ----------
-    list_of_objects : Union[List[schemas.GroundTruth], List[schemas.Prediction]]
+    list_of_objects : list[schemas.GroundTruth] | list[schemas.Prediction]
         List of GroundTruth or Prediction objects.
 
     Returns
@@ -576,7 +574,7 @@ def _convert_groundtruth_or_prediction_to_dataframe(
 def get_disjoint_labels(
     groundtruth_df: pd.DataFrame,
     prediction_df: pd.DataFrame,
-    label_map: Optional[Dict[schemas.Label, schemas.Label]],
+    label_map: dict[schemas.Label, schemas.Label] | None,
 ) -> tuple[list[tuple[str, str]], list[tuple[str, str]]]:
     """
     Returns all unique labels that are not shared between two dataframes.
@@ -587,6 +585,8 @@ def get_disjoint_labels(
         The dataframe representing ground truth objects.
     prediction_df : pd.DataFrame
         The dataframe representing prediction objects.
+    label_map : dict[schemas.Label, schemas.Label], optional
+        Dictionary mapping tuples of (label_key, label_value) to (grouper_key, grouper_value). Used to replace the labels in the DataFrames.
 
     Returns
     ----------

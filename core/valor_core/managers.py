@@ -32,11 +32,11 @@ class ValorDetectionManager:
 
     Attributes
     ----------
-    datum_uids : set
+    datum_uids : set[str]
         A set of unique identifiers for the data samples.
-    label_map : dict
+    label_map : dict[schemas.Label, schemas.Label]
         A mapping from one label schema to another.
-    convert_annotations_to_type : enums.AnnotationType or None
+    convert_annotations_to_type : AnnotationType, optional
         The target annotation type to convert the data to.
     metrics_to_return : list[enums.MetricType]
         A list of metrics to calculate during the evaluation.
