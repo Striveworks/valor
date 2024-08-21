@@ -3,7 +3,7 @@ name = "valor-core"
 dynamic = ["version"]
 description = "Compute valor metrics directly in your client."
 readme = "README.md"
-requires-python = ">=3.7"
+requires-python = ">=3.10"
 license = { file = "LICENSE" }
 dependencies = [
     "Pillow >= 9.1.0",
