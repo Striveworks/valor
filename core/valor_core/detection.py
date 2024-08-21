@@ -110,7 +110,7 @@ def _calculate_iou(
             & ~joint_df["converted_geometry_pd"].isnull(),
             ["converted_geometry_gt", "converted_geometry_pd"],
         ].apply(
-            lambda row: geometry.calculate_bbox_iou(
+            lambda row: geometry.calculate_iou(
                 row["converted_geometry_gt"], row["converted_geometry_pd"]
             ),
             axis=1,
@@ -712,17 +712,26 @@ def _calculate_detailed_pr_metrics(
             .to_dict()
         )
 
-        misclassification_id_pds = detailed_pr_calc_df.apply(
-            lambda row: row["id_pd"]
-            in confidence_interval_to_predictions_associated_with_tps_or_misclassification_fps_dict.get(
-                row["confidence_threshold"], set()
-            ),
-            axis=1,
-        )
+        mask = pd.Series(False, index=detailed_pr_calc_df.index)
+
+        for (
+            threshold,
+            elements,
+        ) in (
+            confidence_interval_to_predictions_associated_with_tps_or_misclassification_fps_dict.items()
+        ):
+            threshold_mask = (
+                detailed_pr_calc_df["confidence_threshold"] == threshold
+            )
+            membership_mask = detailed_pr_calc_df["id_pd"].isin(elements)
+            mask |= (
+                threshold_mask
+                & membership_mask
+                & detailed_pr_calc_df["hallucination_false_positive_flag"]
+            )
 
         detailed_pr_calc_df.loc[
-            (misclassification_id_pds)
-            & (detailed_pr_calc_df["hallucination_false_positive_flag"]),
+            mask,
             "hallucination_false_positive_flag",
         ] = False
 
@@ -742,13 +751,22 @@ def _calculate_detailed_pr_metrics(
             .to_dict()
         )
 
-        detailed_pr_calc_df["false_negative_flag"] = detailed_pr_calc_df.apply(
-            lambda row: row["id_gt"]
-            not in confidence_interval_to_groundtruths_associated_with_true_positives_dict.get(
-                row["confidence_threshold"], set()
-            ),
-            axis=1,
-        )
+        mask = pd.Series(False, index=detailed_pr_calc_df.index)
+
+        for (
+            threshold,
+            elements,
+        ) in (
+            confidence_interval_to_groundtruths_associated_with_true_positives_dict.items()
+        ):
+            threshold_mask = (
+                detailed_pr_calc_df["confidence_threshold"] == threshold
+            )
+            membership_mask = detailed_pr_calc_df["id_gt"].isin(elements)
+            mask |= threshold_mask & membership_mask
+
+        detailed_pr_calc_df["false_negative_flag"] = ~mask
+
     else:
         detailed_pr_calc_df["false_negative_flag"] = False
 
@@ -780,15 +798,23 @@ def _calculate_detailed_pr_metrics(
             .to_dict()
         )
 
-        detailed_pr_calc_df["no_predictions_false_negative_flag"] = (
-            detailed_pr_calc_df.apply(
-                lambda row: row["id_gt"]
-                not in confidence_interval_to_groundtruths_associated_with_misclassification_fn_dict.get(
-                    row["confidence_threshold"], set()
-                ),
-                axis=1,
+        mask = pd.Series(False, index=detailed_pr_calc_df.index)
+
+        for (
+            threshold,
+            elements,
+        ) in (
+            confidence_interval_to_groundtruths_associated_with_misclassification_fn_dict.items()
+        ):
+            threshold_mask = (
+                detailed_pr_calc_df["confidence_threshold"] == threshold
             )
-        ) & detailed_pr_calc_df["false_negative_flag"]
+            membership_mask = detailed_pr_calc_df["id_gt"].isin(elements)
+            mask |= threshold_mask & membership_mask
+
+        detailed_pr_calc_df["no_predictions_false_negative_flag"] = (
+            ~mask & detailed_pr_calc_df["false_negative_flag"]
+        )
     else:
         detailed_pr_calc_df[
             "no_predictions_false_negative_flag"

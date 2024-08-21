@@ -9,7 +9,7 @@ from shapely.geometry import Polygon as ShapelyPolygon
 np.seterr(divide="ignore", invalid="ignore")
 
 
-def calculate_bbox_iou(
+def calculate_iou(
     bbox1: List[Tuple[float, float]], bbox2: List[Tuple[float, float]]
 ) -> float:
     """

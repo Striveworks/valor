@@ -705,7 +705,7 @@ def test_convert_geometry_to_raster():
         polygon = Polygon([[(0, 0), (0, 2), (2, 1)]])
 
 
-def test_calculate_bbox_iou():
+def test_calculate_iou():
     """Test ability to calculate IOU for axis-aligend and rotated bounding boxes."""
 
     # first, we test that we get the same IOU when we rotate polygon around the origin by the same number of degrees
@@ -766,7 +766,7 @@ def test_calculate_bbox_iou():
 
             expected = test["expected"]
 
-            iou = geometry.calculate_bbox_iou(bbox1=bbox1, bbox2=bbox2)
+            iou = geometry.calculate_iou(bbox1=bbox1, bbox2=bbox2)
             assert expected == round(iou, 4)
 
     # next we rotate shapes around their centroids to check that we get the same IOUs as shapely
@@ -1037,7 +1037,7 @@ def test_calculate_bbox_iou():
         for bbox1, bbox2, expected in zip(
             test["bbox1"], test["bbox2"], test["expected"]
         ):
-            iou = geometry.calculate_bbox_iou(bbox1=bbox1, bbox2=bbox2)
+            iou = geometry.calculate_iou(bbox1=bbox1, bbox2=bbox2)
             assert expected == round(iou, 4)
 
 

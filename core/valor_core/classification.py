@@ -763,13 +763,17 @@ def _calculate_pr_curves(
             .to_dict()
         )
 
-        pr_calc_df["false_negative_flag"] = pr_calc_df.apply(
-            lambda row: row["id_gt"]
-            not in confidence_interval_to_true_positive_groundtruth_ids_dict.get(
-                row["confidence_threshold"], set()
-            ),
-            axis=1,
-        )
+        mask = pd.Series(False, index=pr_calc_df.index)
+
+        for (
+            threshold,
+            elements,
+        ) in confidence_interval_to_true_positive_groundtruth_ids_dict.items():
+            threshold_mask = pr_calc_df["confidence_threshold"] == threshold
+            membership_mask = pr_calc_df["id_gt"].isin(elements)
+            mask |= threshold_mask & membership_mask
+
+        pr_calc_df["false_negative_flag"] = ~mask
 
     else:
         pr_calc_df["false_negative_flag"] = False
@@ -800,15 +804,20 @@ def _calculate_pr_curves(
             .to_dict()
         )
 
+        mask = pd.Series(False, index=pr_calc_df.index)
+
+        for (
+            threshold,
+            elements,
+        ) in (
+            confidence_interval_to_misclassification_fn_groundtruth_ids_dict.items()
+        ):
+            threshold_mask = pr_calc_df["confidence_threshold"] == threshold
+            membership_mask = ~pr_calc_df["id_gt"].isin(elements)
+            mask |= threshold_mask & membership_mask
+
         pr_calc_df["no_predictions_false_negative_flag"] = (
-            pr_calc_df.apply(
-                lambda row: row["id_gt"]
-                not in confidence_interval_to_misclassification_fn_groundtruth_ids_dict.get(
-                    row["confidence_threshold"], set()
-                ),
-                axis=1,
-            )
-            & pr_calc_df["false_negative_flag"]
+            mask & pr_calc_df["false_negative_flag"]
         )
 
     else:
@@ -1077,7 +1086,6 @@ def _calculate_pr_curves(
 def _compute_clf_metrics(
     groundtruth_df: pd.DataFrame,
     prediction_df: pd.DataFrame,
-    label_map: Optional[Dict[schemas.Label, schemas.Label]] = None,
     metrics_to_return: Optional[List[enums.MetricType]] = None,
     pr_curve_max_examples: int = 1,
 ) -> Tuple[List[dict], List[dict]]:
@@ -1090,8 +1098,6 @@ def _compute_clf_metrics(
         DataFrame containing ground truth annotations with necessary columns.
     prediction_df : pd.DataFrame
         DataFrame containing predictions with necessary columns.
-    label_map : Optional[Dict[schemas.Label, schemas.Label]], default=None
-        Optional dictionary mapping ground truth labels to prediction labels.
     metrics_to_return : Optional[List[enums.MetricType]], default=None
         List of metric types to return. If None, default metrics are used.
     pr_curve_max_examples : int, default=1
@@ -1104,11 +1110,6 @@ def _compute_clf_metrics(
         - The first element is a list of dictionaries representing confusion matrices.
         - The second element is a list of dictionaries representing the requested classification metrics.
     """
-    groundtruth_df, prediction_df = utilities.replace_labels_using_label_map(
-        groundtruth_df=groundtruth_df,
-        prediction_df=prediction_df,
-        label_map=label_map,
-    )
 
     # add label as a column
     for df in (groundtruth_df, prediction_df):
@@ -1294,10 +1295,15 @@ def evaluate_classification(
         | set(prediction_df["annotation_id"])
     )
 
-    confusion_matrices, metrics = _compute_clf_metrics(
+    groundtruth_df, prediction_df = utilities.replace_labels_using_label_map(
         groundtruth_df=groundtruth_df,
         prediction_df=prediction_df,
         label_map=label_map,
+    )
+
+    confusion_matrices, metrics = _compute_clf_metrics(
+        groundtruth_df=groundtruth_df,
+        prediction_df=prediction_df,
         metrics_to_return=metrics_to_return,
         pr_curve_max_examples=pr_curve_max_examples,
     )
