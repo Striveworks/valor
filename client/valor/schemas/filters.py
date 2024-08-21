@@ -42,7 +42,7 @@ FunctionTypeTuple = (
 @dataclass
 class Filter:
     """
-    Filter object.
+    A data class that encapsulates filter conditions for various Valor components.
 
     Attributes
     ----------
