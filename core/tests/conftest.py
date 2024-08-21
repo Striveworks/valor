@@ -1582,8 +1582,6 @@ def classification_functional_test_groundtruth_df():
                 "id": -6147199056584656887,
                 "mapped_groundtruth_label_keys": "class",
                 "label": ("animal", "bird"),
-                "grouper_key": "other_class",
-                "grouper_value": "avian",
             },
             {
                 "datum_uid": "uid0",
@@ -1607,8 +1605,6 @@ def classification_functional_test_groundtruth_df():
                 "id": 8837325099618861823,
                 "mapped_groundtruth_label_keys": "color",
                 "label": ("color", "white"),
-                "grouper_key": "color",
-                "grouper_value": "white",
             },
             {
                 "datum_uid": "uid1",
@@ -1632,8 +1628,6 @@ def classification_functional_test_groundtruth_df():
                 "id": -1593123359500601416,
                 "mapped_groundtruth_label_keys": "class",
                 "label": ("animal", "dog"),
-                "grouper_key": "class",
-                "grouper_value": "mammal",
             },
             {
                 "datum_uid": "uid1",
@@ -1657,8 +1651,6 @@ def classification_functional_test_groundtruth_df():
                 "id": 3582630467549642626,
                 "mapped_groundtruth_label_keys": "color",
                 "label": ("color", "white"),
-                "grouper_key": "color",
-                "grouper_value": "white",
             },
             {
                 "datum_uid": "uid2",
@@ -1682,8 +1674,6 @@ def classification_functional_test_groundtruth_df():
                 "id": -6917823642762098726,
                 "mapped_groundtruth_label_keys": "class",
                 "label": ("animal", "bird"),
-                "grouper_key": "other_class",
-                "grouper_value": "avian",
             },
             {
                 "datum_uid": "uid2",
@@ -1707,8 +1697,6 @@ def classification_functional_test_groundtruth_df():
                 "id": -1339278877785114234,
                 "mapped_groundtruth_label_keys": "color",
                 "label": ("color", "red"),
-                "grouper_key": "color",
-                "grouper_value": "red",
             },
             {
                 "datum_uid": "uid3",
@@ -1732,8 +1720,6 @@ def classification_functional_test_groundtruth_df():
                 "id": 1083297721794099590,
                 "mapped_groundtruth_label_keys": "class",
                 "label": ("animal", "bird"),
-                "grouper_key": "other_class",
-                "grouper_value": "avian",
             },
             {
                 "datum_uid": "uid3",
@@ -1757,8 +1743,6 @@ def classification_functional_test_groundtruth_df():
                 "id": -615284425434206300,
                 "mapped_groundtruth_label_keys": "color",
                 "label": ("color", "blue"),
-                "grouper_key": "color",
-                "grouper_value": "blue",
             },
             {
                 "datum_uid": "uid4",
@@ -1782,8 +1766,6 @@ def classification_functional_test_groundtruth_df():
                 "id": -7816578330009256692,
                 "mapped_groundtruth_label_keys": "class",
                 "label": ("animal", "cat"),
-                "grouper_key": "class",
-                "grouper_value": "mammal",
             },
             {
                 "datum_uid": "uid4",
@@ -1807,8 +1789,6 @@ def classification_functional_test_groundtruth_df():
                 "id": -5129897778521880842,
                 "mapped_groundtruth_label_keys": "color",
                 "label": ("color", "black"),
-                "grouper_key": "color",
-                "grouper_value": "black",
             },
             {
                 "datum_uid": "uid5",
@@ -1832,8 +1812,6 @@ def classification_functional_test_groundtruth_df():
                 "id": -6769946184488850844,
                 "mapped_groundtruth_label_keys": "class",
                 "label": ("animal", "dog"),
-                "grouper_key": "class",
-                "grouper_value": "mammal",
             },
             {
                 "datum_uid": "uid5",
@@ -1857,8 +1835,6 @@ def classification_functional_test_groundtruth_df():
                 "id": -503991891998595125,
                 "mapped_groundtruth_label_keys": "color",
                 "label": ("color", "red"),
-                "grouper_key": "color",
-                "grouper_value": "red",
             },
         ]
     )
@@ -1892,8 +1868,6 @@ def classification_functional_test_prediction_df():
                 "id": -1240527857667701281,
                 "mapped_prediction_label_keys": "class",
                 "label": ("animal", "bird"),
-                "grouper_key": "other_class",
-                "grouper_value": "avian",
             },
             {
                 "datum_uid": "uid0",
@@ -1918,8 +1892,6 @@ def classification_functional_test_prediction_df():
                 "id": 49317224219915580,
                 "mapped_prediction_label_keys": "class",
                 "label": ("animal", "dog"),
-                "grouper_key": "class",
-                "grouper_value": "mammal",
             },
             {
                 "datum_uid": "uid0",
@@ -1944,8 +1916,6 @@ def classification_functional_test_prediction_df():
                 "id": 233173136032973625,
                 "mapped_prediction_label_keys": "class",
                 "label": ("animal", "cat"),
-                "grouper_key": "class",
-                "grouper_value": "mammal",
             },
             {
                 "datum_uid": "uid0",
@@ -1970,8 +1940,6 @@ def classification_functional_test_prediction_df():
                 "id": -6184807819874130814,
                 "mapped_prediction_label_keys": "color",
                 "label": ("color", "white"),
-                "grouper_key": "color",
-                "grouper_value": "white",
             },
             {
                 "datum_uid": "uid0",
@@ -1996,8 +1964,6 @@ def classification_functional_test_prediction_df():
                 "id": 5704534164417962892,
                 "mapped_prediction_label_keys": "color",
                 "label": ("color", "red"),
-                "grouper_key": "color",
-                "grouper_value": "red",
             },
             {
                 "datum_uid": "uid0",
@@ -2022,8 +1988,6 @@ def classification_functional_test_prediction_df():
                 "id": 1511896606515226706,
                 "mapped_prediction_label_keys": "color",
                 "label": ("color", "blue"),
-                "grouper_key": "color",
-                "grouper_value": "blue",
             },
             {
                 "datum_uid": "uid0",
@@ -2048,8 +2012,6 @@ def classification_functional_test_prediction_df():
                 "id": 3647731253780364946,
                 "mapped_prediction_label_keys": "color",
                 "label": ("color", "black"),
-                "grouper_key": "color",
-                "grouper_value": "black",
             },
             {
                 "datum_uid": "uid1",
@@ -2074,8 +2036,6 @@ def classification_functional_test_prediction_df():
                 "id": -4753231139294527417,
                 "mapped_prediction_label_keys": "class",
                 "label": ("animal", "cat"),
-                "grouper_key": "class",
-                "grouper_value": "mammal",
             },
             {
                 "datum_uid": "uid1",
@@ -2100,8 +2060,6 @@ def classification_functional_test_prediction_df():
                 "id": 8538318431236799830,
                 "mapped_prediction_label_keys": "class",
                 "label": ("animal", "dog"),
-                "grouper_key": "class",
-                "grouper_value": "mammal",
             },
             {
                 "datum_uid": "uid1",
@@ -2126,8 +2084,6 @@ def classification_functional_test_prediction_df():
                 "id": 5468044993361705841,
                 "mapped_prediction_label_keys": "class",
                 "label": ("animal", "bird"),
-                "grouper_key": "other_class",
-                "grouper_value": "avian",
             },
             {
                 "datum_uid": "uid1",
@@ -2152,8 +2108,6 @@ def classification_functional_test_prediction_df():
                 "id": 5993876661711494245,
                 "mapped_prediction_label_keys": "color",
                 "label": ("color", "blue"),
-                "grouper_key": "color",
-                "grouper_value": "blue",
             },
             {
                 "datum_uid": "uid1",
@@ -2178,8 +2132,6 @@ def classification_functional_test_prediction_df():
                 "id": -1473852835329269153,
                 "mapped_prediction_label_keys": "color",
                 "label": ("color", "white"),
-                "grouper_key": "color",
-                "grouper_value": "white",
             },
             {
                 "datum_uid": "uid1",
@@ -2204,8 +2156,6 @@ def classification_functional_test_prediction_df():
                 "id": -2806063230919808758,
                 "mapped_prediction_label_keys": "color",
                 "label": ("color", "red"),
-                "grouper_key": "color",
-                "grouper_value": "red",
             },
             {
                 "datum_uid": "uid1",
@@ -2230,8 +2180,6 @@ def classification_functional_test_prediction_df():
                 "id": -9192777550609387657,
                 "mapped_prediction_label_keys": "color",
                 "label": ("color", "black"),
-                "grouper_key": "color",
-                "grouper_value": "black",
             },
             {
                 "datum_uid": "uid2",
@@ -2256,8 +2204,6 @@ def classification_functional_test_prediction_df():
                 "id": -2495225296460022208,
                 "mapped_prediction_label_keys": "class",
                 "label": ("animal", "cat"),
-                "grouper_key": "class",
-                "grouper_value": "mammal",
             },
             {
                 "datum_uid": "uid2",
@@ -2282,8 +2228,6 @@ def classification_functional_test_prediction_df():
                 "id": 96491879800885197,
                 "mapped_prediction_label_keys": "class",
                 "label": ("animal", "dog"),
-                "grouper_key": "class",
-                "grouper_value": "mammal",
             },
             {
                 "datum_uid": "uid2",
@@ -2308,8 +2252,6 @@ def classification_functional_test_prediction_df():
                 "id": 1354699752396805280,
                 "mapped_prediction_label_keys": "class",
                 "label": ("animal", "bird"),
-                "grouper_key": "other_class",
-                "grouper_value": "avian",
             },
             {
                 "datum_uid": "uid2",
@@ -2334,8 +2276,6 @@ def classification_functional_test_prediction_df():
                 "id": 268130056698580260,
                 "mapped_prediction_label_keys": "color",
                 "label": ("color", "red"),
-                "grouper_key": "color",
-                "grouper_value": "red",
             },
             {
                 "datum_uid": "uid2",
@@ -2360,8 +2300,6 @@ def classification_functional_test_prediction_df():
                 "id": -4021126010657534621,
                 "mapped_prediction_label_keys": "color",
                 "label": ("color", "white"),
-                "grouper_key": "color",
-                "grouper_value": "white",
             },
             {
                 "datum_uid": "uid2",
@@ -2386,8 +2324,6 @@ def classification_functional_test_prediction_df():
                 "id": 6376790152767730567,
                 "mapped_prediction_label_keys": "color",
                 "label": ("color", "blue"),
-                "grouper_key": "color",
-                "grouper_value": "blue",
             },
             {
                 "datum_uid": "uid2",
@@ -2412,8 +2348,6 @@ def classification_functional_test_prediction_df():
                 "id": 7023758392816762513,
                 "mapped_prediction_label_keys": "color",
                 "label": ("color", "black"),
-                "grouper_key": "color",
-                "grouper_value": "black",
             },
             {
                 "datum_uid": "uid3",
@@ -2438,8 +2372,6 @@ def classification_functional_test_prediction_df():
                 "id": 2109915554097816409,
                 "mapped_prediction_label_keys": "class",
                 "label": ("animal", "dog"),
-                "grouper_key": "class",
-                "grouper_value": "mammal",
             },
             {
                 "datum_uid": "uid3",
@@ -2464,8 +2396,6 @@ def classification_functional_test_prediction_df():
                 "id": -7234886842398502296,
                 "mapped_prediction_label_keys": "class",
                 "label": ("animal", "cat"),
-                "grouper_key": "class",
-                "grouper_value": "mammal",
             },
             {
                 "datum_uid": "uid3",
@@ -2490,8 +2420,6 @@ def classification_functional_test_prediction_df():
                 "id": 1110595858053279959,
                 "mapped_prediction_label_keys": "class",
                 "label": ("animal", "bird"),
-                "grouper_key": "other_class",
-                "grouper_value": "avian",
             },
             {
                 "datum_uid": "uid3",
@@ -2516,8 +2444,6 @@ def classification_functional_test_prediction_df():
                 "id": 8226781192373612358,
                 "mapped_prediction_label_keys": "color",
                 "label": ("color", "white"),
-                "grouper_key": "color",
-                "grouper_value": "white",
             },
             {
                 "datum_uid": "uid3",
@@ -2542,8 +2468,6 @@ def classification_functional_test_prediction_df():
                 "id": -1930456292948739198,
                 "mapped_prediction_label_keys": "color",
                 "label": ("color", "red"),
-                "grouper_key": "color",
-                "grouper_value": "red",
             },
             {
                 "datum_uid": "uid3",
@@ -2568,8 +2492,6 @@ def classification_functional_test_prediction_df():
                 "id": 5770081132013712295,
                 "mapped_prediction_label_keys": "color",
                 "label": ("color", "blue"),
-                "grouper_key": "color",
-                "grouper_value": "blue",
             },
             {
                 "datum_uid": "uid3",
@@ -2594,8 +2516,6 @@ def classification_functional_test_prediction_df():
                 "id": 9216624913651577421,
                 "mapped_prediction_label_keys": "color",
                 "label": ("color", "black"),
-                "grouper_key": "color",
-                "grouper_value": "black",
             },
             {
                 "datum_uid": "uid4",
@@ -2620,8 +2540,6 @@ def classification_functional_test_prediction_df():
                 "id": 8865373275147915155,
                 "mapped_prediction_label_keys": "class",
                 "label": ("animal", "cat"),
-                "grouper_key": "class",
-                "grouper_value": "mammal",
             },
             {
                 "datum_uid": "uid4",
@@ -2646,8 +2564,6 @@ def classification_functional_test_prediction_df():
                 "id": 7811596003484809003,
                 "mapped_prediction_label_keys": "class",
                 "label": ("animal", "dog"),
-                "grouper_key": "class",
-                "grouper_value": "mammal",
             },
             {
                 "datum_uid": "uid4",
@@ -2672,8 +2588,6 @@ def classification_functional_test_prediction_df():
                 "id": -603291948951724467,
                 "mapped_prediction_label_keys": "class",
                 "label": ("animal", "bird"),
-                "grouper_key": "other_class",
-                "grouper_value": "avian",
             },
             {
                 "datum_uid": "uid4",
@@ -2698,8 +2612,6 @@ def classification_functional_test_prediction_df():
                 "id": 2186370402320236011,
                 "mapped_prediction_label_keys": "color",
                 "label": ("color", "red"),
-                "grouper_key": "color",
-                "grouper_value": "red",
             },
             {
                 "datum_uid": "uid4",
@@ -2724,8 +2636,6 @@ def classification_functional_test_prediction_df():
                 "id": 5980951779669100519,
                 "mapped_prediction_label_keys": "color",
                 "label": ("color", "white"),
-                "grouper_key": "color",
-                "grouper_value": "white",
             },
             {
                 "datum_uid": "uid4",
@@ -2750,8 +2660,6 @@ def classification_functional_test_prediction_df():
                 "id": -2623103473497724690,
                 "mapped_prediction_label_keys": "color",
                 "label": ("color", "blue"),
-                "grouper_key": "color",
-                "grouper_value": "blue",
             },
             {
                 "datum_uid": "uid4",
@@ -2776,8 +2684,6 @@ def classification_functional_test_prediction_df():
                 "id": 1948160906536205683,
                 "mapped_prediction_label_keys": "color",
                 "label": ("color", "black"),
-                "grouper_key": "color",
-                "grouper_value": "black",
             },
             {
                 "datum_uid": "uid5",
@@ -2802,8 +2708,6 @@ def classification_functional_test_prediction_df():
                 "id": 8196690759347808946,
                 "mapped_prediction_label_keys": "class",
                 "label": ("animal", "cat"),
-                "grouper_key": "class",
-                "grouper_value": "mammal",
             },
             {
                 "datum_uid": "uid5",
@@ -2828,8 +2732,6 @@ def classification_functional_test_prediction_df():
                 "id": -1938030899200555758,
                 "mapped_prediction_label_keys": "class",
                 "label": ("animal", "dog"),
-                "grouper_key": "class",
-                "grouper_value": "mammal",
             },
             {
                 "datum_uid": "uid5",
@@ -2854,8 +2756,6 @@ def classification_functional_test_prediction_df():
                 "id": -375807178484672075,
                 "mapped_prediction_label_keys": "class",
                 "label": ("animal", "bird"),
-                "grouper_key": "other_class",
-                "grouper_value": "avian",
             },
             {
                 "datum_uid": "uid5",
@@ -2880,8 +2780,6 @@ def classification_functional_test_prediction_df():
                 "id": 7302285613830353470,
                 "mapped_prediction_label_keys": "color",
                 "label": ("color", "red"),
-                "grouper_key": "color",
-                "grouper_value": "red",
             },
             {
                 "datum_uid": "uid5",
@@ -2906,8 +2804,6 @@ def classification_functional_test_prediction_df():
                 "id": -5213005280939427276,
                 "mapped_prediction_label_keys": "color",
                 "label": ("color", "white"),
-                "grouper_key": "color",
-                "grouper_value": "white",
             },
             {
                 "datum_uid": "uid5",
@@ -2932,8 +2828,6 @@ def classification_functional_test_prediction_df():
                 "id": 3837015023039237314,
                 "mapped_prediction_label_keys": "color",
                 "label": ("color", "blue"),
-                "grouper_key": "color",
-                "grouper_value": "blue",
             },
             {
                 "datum_uid": "uid5",
@@ -2958,8 +2852,6 @@ def classification_functional_test_prediction_df():
                 "id": 551917309394979383,
                 "mapped_prediction_label_keys": "color",
                 "label": ("color", "black"),
-                "grouper_key": "color",
-                "grouper_value": "black",
             },
         ]
     )

@@ -1418,14 +1418,14 @@ def evaluate_detection(
     )
 
     # add the number of groundtruth observations per grouper
-    number_of_groundtruths_per_grouper_df = (
+    number_of_groundtruths_per_label_df = (
         groundtruth_df.groupby(["label"], as_index=False)["id"]
         .nunique()
         .rename({"id": "gts_per_grouper"}, axis=1)
     )
     joint_df = pd.merge(
         joint_df,
-        number_of_groundtruths_per_grouper_df,
+        number_of_groundtruths_per_label_df,
         on=["label"],
         how="outer",
     )

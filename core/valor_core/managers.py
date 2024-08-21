@@ -81,36 +81,18 @@ class ValorDetectionManager:
     iou_thresholds_to_return: list[float] = field(
         default_factory=lambda: [0.5, 0.75]
     )
-    recall_score_threshold: float = field(default_factory=lambda: 0.0)
-    pr_curve_iou_threshold: float = field(default_factory=lambda: 0.5)
-    pr_curve_max_examples: int = field(default_factory=lambda: 1)
+    recall_score_threshold: float = field(default=0.0)
+    pr_curve_iou_threshold: float = field(default=0.5)
+    pr_curve_max_examples: int = field(default=1)
     joint_df: pd.DataFrame = field(
         default_factory=lambda: pd.DataFrame(
             [],
             columns=[
-                "datum_uid_gt",
-                "datum_id",
-                "datum_metadata_gt",
-                "annotation_id_gt",
-                "annotation_metadata_gt",
-                "is_instance_gt",
-                "label_key_gt",
-                "label_value_gt",
                 "label_id",
                 "id_gt",
-                "implied_task_type_gt",
                 "label",
-                "datum_uid_pd",
-                "datum_metadata_pd",
-                "annotation_id_pd",
-                "annotation_metadata_pd",
-                "is_instance_pd",
-                "label_key_pd",
-                "label_value_pd",
                 "score",
                 "id_pd",
-                "implied_task_type_pd",
-                "gts_per_grouper",
                 "iou_",
             ],
         )
@@ -120,28 +102,16 @@ class ValorDetectionManager:
             [],
             columns=[
                 "datum_uid_gt",
-                "datum_id",
-                "datum_metadata_gt",
-                "annotation_id_gt",
-                "annotation_metadata_gt",
-                "is_instance_gt",
                 "label_key",
                 "label_value_gt",
-                "label_id_gt",
                 "id_gt",
-                "implied_task_type_gt",
-                "label_gt",
+                "converted_geometry_gt",
                 "datum_uid_pd",
-                "datum_metadata_pd",
-                "annotation_id_pd",
-                "annotation_metadata_pd",
-                "is_instance_pd",
                 "label_value_pd",
                 "score",
                 "label_id_pd",
                 "id_pd",
-                "implied_task_type_pd",
-                "label_pd",
+                "converted_geometry_pd",
                 "is_label_match",
                 "iou_",
             ],

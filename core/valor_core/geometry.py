@@ -98,7 +98,9 @@ def is_skewed(bbox: List[Tuple[float, float]]) -> bool:
         True if the bounding box is skewed, otherwise False.
     """
 
-    def angle_between(v1: np.ndarray, v2: np.ndarray) -> float:
+    def _calculate_angle_between_arrays(
+        v1: np.ndarray, v2: np.ndarray
+    ) -> float:
         dot_product = np.dot(v1, v2)
         norm_product = np.linalg.norm(v1) * np.linalg.norm(v2)
         cos_angle = dot_product / norm_product
@@ -109,7 +111,9 @@ def is_skewed(bbox: List[Tuple[float, float]]) -> bool:
         vectors.append(np.array([x2 - x1, y2 - y1]))
 
     angles = [
-        angle_between(vectors[i], vectors[(i + 1) % len(vectors)])
+        _calculate_angle_between_arrays(
+            vectors[i], vectors[(i + 1) % len(vectors)]
+        )
         for i in range(len(vectors))
     ]
 

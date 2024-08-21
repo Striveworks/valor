@@ -67,7 +67,6 @@ groundtruth_df = pd.DataFrame(
                 "label_key": "k1",
                 "label_value": "v1",
                 "is_instance": True,
-                "grouper_key": "k1",
                 "polygon": schemas.Polygon.from_dict(
                     {
                         "type": "Polygon",
@@ -88,7 +87,6 @@ groundtruth_df = pd.DataFrame(
                 "label_key": "k2",
                 "label_value": "v2",
                 "is_instance": True,
-                "grouper_key": "k2",
                 "polygon": schemas.Polygon.from_dict(
                     {
                         "type": "Polygon",
@@ -115,7 +113,6 @@ groundtruth_df = pd.DataFrame(
                 "label_key": "k1",
                 "label_value": "v1",
                 "is_instance": True,
-                "grouper_key": "k1",
                 "polygon": schemas.Polygon.from_dict(
                     {
                         "type": "Polygon",
@@ -141,7 +138,6 @@ prediction_df = pd.DataFrame(
             "label_key": "k1",
             "label_value": "v1",
             "is_instance": True,
-            "grouper_key": "k1",
             "polygon": schemas.Polygon.from_dict(
                 {
                     "type": "Polygon",
@@ -163,7 +159,6 @@ prediction_df = pd.DataFrame(
             "label_key": "k2",
             "label_value": "v2",
             "is_instance": True,
-            "grouper_key": "k2",
             "polygon": schemas.Polygon.from_dict(
                 {
                     "type": "Polygon",

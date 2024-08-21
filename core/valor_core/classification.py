@@ -374,7 +374,7 @@ def _get_joint_df(
     )
 
     # add back any labels that appear in predictions but not groundtruths
-    missing_grouper_labels_from_predictions = list(
+    missing_labels_from_predictions = list(
         set(
             zip(
                 [None] * len(prediction_df),
@@ -409,7 +409,7 @@ def _get_joint_df(
     )
 
     missing_label_df = pd.DataFrame(
-        missing_grouper_labels_from_predictions,
+        missing_labels_from_predictions,
         columns=merged_groundtruths_and_predictions_df.columns,
     )
 
