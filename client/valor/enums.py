@@ -57,6 +57,7 @@ class MetricType(str, Enum):
     BLEU = "BLEU"
     Coherence = "Coherence"
     ContextPrecision = "ContextPrecision"
+    ContextRecall = "ContextRecall"
     ContextRelevance = "ContextRelevance"
     Faithfulness = "Faithfulness"
     Hallucination = "Hallucination"
@@ -119,6 +120,7 @@ class MetricType(str, Enum):
             cls.BLEU,
             cls.Coherence,
             cls.ContextPrecision,
+            cls.ContextRecall,
             cls.ContextRelevance,
             cls.Faithfulness,
             cls.Hallucination,

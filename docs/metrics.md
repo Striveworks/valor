@@ -421,6 +421,14 @@ As an example, suppose there are 4 contexts and the verdicts are ["yes", "no", "
 
 Our implementation uses the same computation as both [RAGAS](https://docs.ragas.io/en/latest/concepts/metrics/context_precision.html) and [DeepEval](https://docs.confident-ai.com/docs/metrics-contextual-precision). Our instruction is loosely adapted from DeepEval's instruction.
 
+### Context Recall
+
+Context recall is an LLM-guided metric for evaluating the retrieval mechanism of a RAG model. The context recall metric is computed based on the retrieved context list and a ground truth answer to a query. Context recall is the proportion of ground truth statements that are attributable to the context list.
+
+First, an LLM is prompted to extract a list of statements made in a ground truth answer. Second, the LLM is prompted with the context list and the list of ground truth statements to determine if each ground truth statement could be attributed to the context list. The number of ground truth statements that could be attributed to the context list is divided by the total number of ground truth statements to get the context recall score.
+
+Our implementation loosely follows [RAGAS](https://docs.ragas.io/en/latest/concepts/metrics/context_recall.html). The example in Valor's instruction was adapted from the example in [RAGAS's instruction](https://github.com/explodinggradients/ragas/blob/main/src/ragas/metrics/_context_recall.py).
+
 ### Context Relevance
 
 Context relevance is the proportion of pieces of retrieved contexts that are relevant to the query. A piece of context is considered relevant to the query if any part of the context is relevant to answering the query. For example, a piece of context might be a paragraph of text, so if the answer or part of the answer to a query is contained somewhere in that paragraph, then that piece of context is considered relevant.

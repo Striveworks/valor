@@ -33,6 +33,7 @@ LLM_GUIDED_METRICS = {
     "Bias",
     "Coherence",
     "ContextPrecision",
+    "ContextRecall",
     "ContextRelevance",
     "Faithfulness",
     "Hallucination",
@@ -44,6 +45,7 @@ TEXT_COMPARISON_METRICS = {
     "AnswerCorrectness",
     "BLEU",
     "ContextPrecision",
+    "ContextRecall",
     "ROUGE",
 }
 
@@ -269,6 +271,7 @@ def _compute_text_generation_metrics(
     | schemas.BLEUMetric
     | schemas.CoherenceMetric
     | schemas.ContextPrecisionMetric
+    | schemas.ContextRecallMetric
     | schemas.ContextRelevanceMetric
     | schemas.FaithfulnessMetric
     | schemas.HallucinationMetric
@@ -297,7 +300,7 @@ def _compute_text_generation_metrics(
 
     Returns
     ----------
-    Sequence[schemas.AnswerCorrectnessMetric | schemas.AnswerRelevanceMetric | schemas.BiasMetric | schemas.BLEUMetric | schemas.CoherenceMetric | schemas.ContextPrecisionMetric | schemas.ContextRelevanceMetric | schemas.FaithfulnessMetric | schemas.HallucinationMetric | schemas.ROUGEMetric | schemas.ToxicityMetric]
+    Sequence[schemas.AnswerCorrectnessMetric | schemas.AnswerRelevanceMetric | schemas.BiasMetric | schemas.BLEUMetric | schemas.CoherenceMetric | schemas.ContextPrecisionMetric | schemas.ContextRecallMetric | schemas.ContextRelevanceMetric | schemas.FaithfulnessMetric | schemas.HallucinationMetric | schemas.ROUGEMetric | schemas.ToxicityMetric]
         A list of computed metrics.
     """
     is_AnswerCorrectness_enabled = (
@@ -312,6 +315,7 @@ def _compute_text_generation_metrics(
     is_ContextPrecision_enabled = (
         MetricType.ContextPrecision in metrics_to_return
     )
+    is_ContextRecall_enabled = MetricType.ContextRecall in metrics_to_return
     is_ContextRelevance_enabled = (
         MetricType.ContextRelevance in metrics_to_return
     )
@@ -473,6 +477,31 @@ def _compute_text_generation_metrics(
                         )
                     output += [
                         schemas.ContextPrecisionMetric(
+                            value=score,
+                            parameters={
+                                "dataset": dataset_name,
+                                "datum_uid": datum_uid,
+                                "context_list": prediction_context_list,
+                            },
+                        )
+                    ]
+
+            if is_ContextRecall_enabled:
+                assert client
+                for (prediction_context_list, groundtruth_list) in zip(
+                    list_of_prediction_context_lists, references
+                ):
+                    score = 0
+                    for groundtruth in groundtruth_list:
+                        score = max(
+                            score,
+                            client.context_recall(
+                                context_list=prediction_context_list,
+                                groundtruth=groundtruth,
+                            ),
+                        )
+                    output += [
+                        schemas.ContextRecallMetric(
                             value=score,
                             parameters={
                                 "dataset": dataset_name,

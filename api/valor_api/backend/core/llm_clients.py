@@ -11,6 +11,7 @@ from valor_api.backend.core.llm_instructions_analysis import (
     generate_claims_instruction,
     generate_coherence_instruction,
     generate_context_precision_verdicts_instruction,
+    generate_context_recall_verdicts_instruction,
     generate_context_relevance_verdicts_instruction,
     generate_faithfulness_verdicts_instruction,
     generate_hallucination_verdicts_instruction,
@@ -130,7 +131,7 @@ class LLMClient:
             {"role": "system", "content": DEFAULT_SYSTEM_PROMPT},
             {
                 "role": "user",
-                "content": generate_claims_instruction(text),
+                "content": generate_claims_instruction(text=text),
             },
         ]
 
@@ -170,7 +171,7 @@ class LLMClient:
             {"role": "system", "content": DEFAULT_SYSTEM_PROMPT},
             {
                 "role": "user",
-                "content": generate_opinions_instruction(text),
+                "content": generate_opinions_instruction(text=text),
             },
         ]
 
@@ -210,7 +211,7 @@ class LLMClient:
             {"role": "system", "content": DEFAULT_SYSTEM_PROMPT},
             {
                 "role": "user",
-                "content": generate_statements_instruction(text),
+                "content": generate_statements_instruction(text=text),
             },
         ]
 
@@ -323,8 +324,8 @@ class LLMClient:
             {
                 "role": "user",
                 "content": generate_answer_relevance_verdicts_instruction(
-                    query,
-                    statements,
+                    query=query,
+                    statements=statements,
                 ),
             },
         ]
@@ -373,7 +374,7 @@ class LLMClient:
             {
                 "role": "user",
                 "content": generate_bias_verdicts_instruction(
-                    opinions,
+                    opinions=opinions,
                 ),
             },
         ]
@@ -418,7 +419,10 @@ class LLMClient:
         """
         messages = [
             {"role": "system", "content": DEFAULT_SYSTEM_PROMPT},
-            {"role": "user", "content": generate_coherence_instruction(text)},
+            {
+                "role": "user",
+                "content": generate_coherence_instruction(text=text),
+            },
         ]
 
         response = self(messages)
@@ -496,6 +500,60 @@ class LLMClient:
 
         return verdicts
 
+    def _generate_context_recall_verdicts(
+        self,
+        context_list: list[str],
+        groundtruth_statements: list[str],
+    ) -> list[dict[str, str]]:
+        """
+        Generate a list of context recall verdicts for a list of ground truth statements, using a call to the LLM API.
+
+        The verdict for each ground truth statement should be 'yes' if the ground truth statement is attributable to the context list and 'no' otherwise.
+
+        Parameters
+        ----------
+        context_list: list[str]
+            The list of contexts to evaluate against.
+        groundtruth_statements: str
+            A list of statements extracted from the ground truth answer.
+
+        Returns
+        -------
+        list[dict[str,str]]
+            The list of verdicts for each ground truth statement. Each verdict is a dictionary with the "verdict" field.
+        """
+        messages = [
+            {"role": "system", "content": DEFAULT_SYSTEM_PROMPT},
+            {
+                "role": "user",
+                "content": generate_context_recall_verdicts_instruction(
+                    context_list=context_list,
+                    groundtruth_statements=groundtruth_statements,
+                ),
+            },
+        ]
+
+        response = self(messages)
+        response = trim_and_load_json(response)
+        if type(response) != dict or "verdicts" not in response:
+            raise InvalidLLMResponseError(
+                f"LLM response was not a list of valid verdicts: {response}"
+            )
+
+        verdicts = response["verdicts"]
+        if (
+            type(verdicts) != list
+            or len(verdicts) != len(groundtruth_statements)
+            or not all(
+                verdict["verdict"] in ["yes", "no"] for verdict in verdicts
+            )
+        ):
+            raise InvalidLLMResponseError(
+                f"LLM response was not a list of valid verdicts: {response}"
+            )
+
+        return verdicts
+
     def _generate_context_relevance_verdicts(
         self,
         query: str,
@@ -521,8 +579,8 @@ class LLMClient:
             {
                 "role": "user",
                 "content": generate_context_relevance_verdicts_instruction(
-                    query,
-                    context_list,
+                    query=query,
+                    context_list=context_list,
                 ),
             },
         ]
@@ -573,8 +631,8 @@ class LLMClient:
             {
                 "role": "user",
                 "content": generate_faithfulness_verdicts_instruction(
-                    claims,
-                    context_list,
+                    claims=claims,
+                    context_list=context_list,
                 ),
             },
         ]
@@ -627,8 +685,8 @@ class LLMClient:
             {
                 "role": "user",
                 "content": generate_hallucination_verdicts_instruction(
-                    text,
-                    context_list,
+                    text=text,
+                    context_list=context_list,
                 ),
             },
         ]
@@ -676,7 +734,7 @@ class LLMClient:
             {
                 "role": "user",
                 "content": generate_toxicity_verdicts_instruction(
-                    opinions,
+                    opinions=opinions,
                 ),
             },
         ]
@@ -870,6 +928,43 @@ class LLMClient:
 
         # Average over all the precision at k for which the kth context is relevant.
         return sum(precision_at_k_list) / len(precision_at_k_list)
+
+    def context_recall(
+        self,
+        context_list: list[str],
+        groundtruth: str,
+    ) -> float:
+        """
+        Compute context recall, a score for evaluating the retrieval mechanism of a RAG model.
+
+        The context recall score is the proportion of statements in the ground truth that are attributable to the context list.
+
+        Parameters
+        ----------
+        context_list: list[str]
+            The list of contexts to evaluate against.
+        groundtruth: str
+            A ground truth answer to extract statements from.
+
+        Returns
+        -------
+        float
+            The context recall score will be evaluated as a float between 0 and 1, with 1 indicating that all ground truth statements are attributable to the context list.
+        """
+        if len(context_list) == 0:
+            raise ValueError(
+                "Context recall is meaningless if context_list is empty."
+            )
+
+        groundtruth_statements = self._generate_statements(groundtruth)
+
+        verdicts = self._generate_context_recall_verdicts(
+            context_list, groundtruth_statements
+        )
+
+        return sum(
+            1 for verdict in verdicts if verdict["verdict"] == "yes"
+        ) / len(verdicts)
 
     def context_relevance(
         self,
@@ -1401,6 +1496,19 @@ class MockLLMClient(LLMClient):
             {"verdict": "yes"},
             {"verdict": "no"},
             {"verdict": "no"},
+            {"verdict": "yes"}
+        ]
+    }```"""
+
+            # Context recall verdicts
+            elif (
+                "analyze each ground truth statement and determine if the statement can be attributed to the given context"
+                in processed_messages[1]["content"]
+            ):
+                response = """```json
+    {
+        "verdicts": [
+            {"verdict": "yes"},
             {"verdict": "yes"}
         ]
     }```"""

@@ -565,6 +565,21 @@ def mocked_context_precision(
     return 0.0
 
 
+def mocked_context_recall(
+    self,
+    context_list: list[str],
+    groundtruth: str,
+):
+    ret_dict = {
+        (tuple(RAG_CONTEXT[0]), RAG_REFERENCES[0]): 0.8,
+        (tuple(RAG_CONTEXT[1]), RAG_REFERENCES[1]): 0.5,
+        (tuple(RAG_CONTEXT[2]), RAG_REFERENCES[2]): 0.2,
+    }
+    if (tuple(context_list), groundtruth) in ret_dict:
+        return ret_dict[(tuple(context_list), groundtruth)]
+    return 0.0
+
+
 def mocked_context_relevance(
     self,
     query: str,
@@ -651,6 +666,10 @@ def mocked_compute_rouge_none(*args, **kwargs):
     mocked_context_precision,
 )
 @patch(
+    "valor_api.backend.core.llm_clients.WrappedOpenAIClient.context_recall",
+    mocked_context_recall,
+)
+@patch(
     "valor_api.backend.core.llm_clients.WrappedOpenAIClient.context_relevance",
     mocked_context_relevance,
 )
@@ -721,6 +740,7 @@ def test__compute_text_generation_rag(
         MetricType.BLEU,
         MetricType.Coherence,
         MetricType.ContextPrecision,
+        MetricType.ContextRecall,
         MetricType.ContextRelevance,
         MetricType.Faithfulness,
         MetricType.Hallucination,
@@ -751,6 +771,7 @@ def test__compute_text_generation_rag(
             schemas.BLEUMetric: 0.3502270395690205,
             schemas.CoherenceMetric: 4,
             schemas.ContextPrecisionMetric: 1.0,
+            schemas.ContextRecallMetric: 0.8,
             schemas.ContextRelevanceMetric: 0.75,
             schemas.FaithfulnessMetric: 0.4,
             schemas.HallucinationMetric: 0.0,
@@ -769,6 +790,7 @@ def test__compute_text_generation_rag(
             schemas.BLEUMetric: 1.0,
             schemas.CoherenceMetric: 5,
             schemas.ContextPrecisionMetric: 1.0,
+            schemas.ContextRecallMetric: 0.5,
             schemas.ContextRelevanceMetric: 1.0,
             schemas.FaithfulnessMetric: 0.55,
             schemas.HallucinationMetric: 0.0,
@@ -787,6 +809,7 @@ def test__compute_text_generation_rag(
             schemas.BLEUMetric: 0.05434912989707719,
             schemas.CoherenceMetric: 4,
             schemas.ContextPrecisionMetric: 1.0,
+            schemas.ContextRecallMetric: 0.2,
             schemas.ContextRelevanceMetric: 0.25,
             schemas.FaithfulnessMetric: 0.6666666666666666,
             schemas.HallucinationMetric: 0.25,
@@ -1027,6 +1050,10 @@ def test__compute_text_generation_rag(
     mocked_context_precision,
 )
 @patch(
+    "valor_api.backend.core.llm_clients.WrappedOpenAIClient.context_recall",
+    mocked_context_recall,
+)
+@patch(
     "valor_api.backend.core.llm_clients.WrappedOpenAIClient.context_relevance",
     mocked_context_relevance,
 )
@@ -1055,6 +1082,7 @@ def test_text_generation_rag(
         MetricType.BLEU,
         MetricType.Coherence,
         MetricType.ContextPrecision,
+        MetricType.ContextRecall,
         MetricType.ContextRelevance,
         MetricType.Faithfulness,
         MetricType.Hallucination,
@@ -1116,6 +1144,7 @@ def test_text_generation_rag(
             "BLEU": 0.3502270395690205,
             "Coherence": 4,
             "ContextPrecision": 1.0,
+            "ContextRecall": 0.8,
             "ContextRelevance": 0.75,
             "Faithfulness": 0.4,
             "Hallucination": 0.0,
@@ -1134,6 +1163,7 @@ def test_text_generation_rag(
             "BLEU": 1.0,
             "Coherence": 5,
             "ContextPrecision": 1.0,
+            "ContextRecall": 0.5,
             "ContextRelevance": 1.0,
             "Faithfulness": 0.55,
             "Hallucination": 0.0,
@@ -1152,6 +1182,7 @@ def test_text_generation_rag(
             "BLEU": 0.05434912989707719,
             "Coherence": 4,
             "ContextPrecision": 1.0,
+            "ContextRecall": 0.2,
             "ContextRelevance": 0.25,
             "Faithfulness": 0.6666666666666666,
             "Hallucination": 0.25,
@@ -1320,6 +1351,10 @@ def test_text_generation_content_gen(
     mocked_context_precision,
 )
 @patch(
+    "valor_api.backend.core.llm_clients.WrappedOpenAIClient.context_recall",
+    mocked_context_recall,
+)
+@patch(
     "valor_api.backend.core.llm_clients.WrappedOpenAIClient.context_relevance",
     mocked_context_relevance,
 )
@@ -1351,6 +1386,7 @@ def test_text_generation_two_datasets(
         MetricType.BLEU,
         MetricType.Coherence,
         MetricType.ContextPrecision,
+        MetricType.ContextRecall,
         MetricType.ContextRelevance,
         MetricType.Faithfulness,
         MetricType.Hallucination,
@@ -1412,6 +1448,7 @@ def test_text_generation_two_datasets(
             "BLEU": 0.3502270395690205,
             "Coherence": 4,
             "ContextPrecision": 1.0,
+            "ContextRecall": 0.8,
             "ContextRelevance": 0.75,
             "Faithfulness": 0.4,
             "Hallucination": 0.0,
@@ -1430,6 +1467,7 @@ def test_text_generation_two_datasets(
             "BLEU": 1.0,
             "Coherence": 5,
             "ContextPrecision": 1.0,
+            "ContextRecall": 0.5,
             "ContextRelevance": 1.0,
             "Faithfulness": 0.55,
             "Hallucination": 0.0,
@@ -1448,6 +1486,7 @@ def test_text_generation_two_datasets(
             "BLEU": 0.05434912989707719,
             "Coherence": 4,
             "ContextPrecision": 1.0,
+            "ContextRecall": 0.2,
             "ContextRelevance": 0.25,
             "Faithfulness": 0.6666666666666666,
             "Hallucination": 0.25,

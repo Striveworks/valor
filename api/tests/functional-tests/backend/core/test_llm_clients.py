@@ -123,6 +123,16 @@ CONTEXT_PRECISION_VALID2_VERDICTS = """```json
     ]
 }```"""
 
+CONTEXT_RECALL_VALID_VERDICTS = """```json
+{
+    "verdicts": [
+        {"verdict": "yes"},
+        {"verdict": "yes"},
+        {"verdict": "no"},
+        {"verdict": "yes"}
+    ]
+}```"""
+
 CONTEXT_RELEVANCE_VALID_VERDICTS = """```json
 {
     "verdicts": [
@@ -510,6 +520,76 @@ def test_LLMClient(monkeypatch):
         "verdict 3"
     ]
 }```"""
+
+    def _return_valid_context_recall_response(*args, **kwargs):
+        if "generate a list of STATEMENTS" in args[1][1]["content"]:
+            return VALID_STATEMENTS
+        elif (
+            "analyze each ground truth statement and determine if the statement can be attributed to the given context."
+            in args[1][1]["content"]
+        ):
+            return CONTEXT_RECALL_VALID_VERDICTS
+        else:
+            raise BadValueInTestLLMClientsError
+
+    def _return_invalid1_context_recall_response(*args, **kwargs):
+        return """```json
+{
+    "invalid_key": [
+        "statement 1",
+        "statement 2",
+        "statement 3",
+        "statement 4"
+    ]
+}```"""
+
+    def _return_invalid2_context_recall_response(*args, **kwargs):
+        return """```json
+{
+    "statements": [
+        1,
+        "statement 2",
+        "statement 3",
+        "statement 4"
+    ]
+}```"""
+
+    def _return_invalid3_context_recall_response(*args, **kwargs):
+        if "generate a list of STATEMENTS" in args[1][1]["content"]:
+            return VALID_STATEMENTS
+        elif (
+            "analyze each ground truth statement and determine if the statement can be attributed to the given context."
+            in args[1][1]["content"]
+        ):
+            return """```json
+{
+    "invalid_key": [
+        "verdict 1",
+        "verdict 2",
+        "verdict 3",
+        "verdict 4"
+    ]
+}```"""
+        else:
+            raise BadValueInTestLLMClientsError
+
+    def _return_invalid4_context_recall_response(*args, **kwargs):
+        if "generate a list of STATEMENTS" in args[1][1]["content"]:
+            return VALID_STATEMENTS
+        elif (
+            "analyze each ground truth statement and determine if the statement can be attributed to the given context."
+            in args[1][1]["content"]
+        ):
+            return """```json
+{
+    "verdicts": [
+        "verdict 1",
+        "verdict 2",
+        "verdict 3"
+    ]
+}```"""
+        else:
+            raise BadValueInTestLLMClientsError
 
     def _return_valid1_faithfulness_response(*args, **kwargs):
         if (
@@ -980,6 +1060,71 @@ def test_LLMClient(monkeypatch):
         client.context_precision(
             "some query",
             ["context 1", "context 2", "context 3", "context 4", "context 5"],
+            "some ground truth",
+        )
+
+    # Patch __call__ with a valid response.
+    monkeypatch.setattr(
+        "valor_api.backend.core.llm_clients.LLMClient.__call__",
+        _return_valid_context_recall_response,
+    )
+    assert 0.75 == client.context_recall(
+        ["context 1", "context 2"],
+        "some ground truth",
+    )
+
+    # Context recall is meaningless if context_list is empty.
+    monkeypatch.setattr(
+        "valor_api.backend.core.llm_clients.LLMClient.__call__",
+        _return_valid_context_recall_response,
+    )
+    with pytest.raises(ValueError):
+        client.context_recall(
+            [],
+            "some ground truth",
+        )
+
+    # Ground truth statements response must have key 'statements'.
+    monkeypatch.setattr(
+        "valor_api.backend.core.llm_clients.LLMClient.__call__",
+        _return_invalid1_context_recall_response,
+    )
+    with pytest.raises(InvalidLLMResponseError):
+        client.context_recall(
+            ["context 1", "context 2"],
+            "some ground truth",
+        )
+
+    # Ground truth statements must be strings.
+    monkeypatch.setattr(
+        "valor_api.backend.core.llm_clients.LLMClient.__call__",
+        _return_invalid2_context_recall_response,
+    )
+    with pytest.raises(InvalidLLMResponseError):
+        client.context_recall(
+            ["context 1", "context 2"],
+            "some ground truth",
+        )
+
+    # Context recall verdicts response must have key 'verdicts'.
+    monkeypatch.setattr(
+        "valor_api.backend.core.llm_clients.LLMClient.__call__",
+        _return_invalid3_context_recall_response,
+    )
+    with pytest.raises(InvalidLLMResponseError):
+        client.context_recall(
+            ["context 1", "context 2"],
+            "some ground truth",
+        )
+
+    # Number of context recall verdicts doesn't match the number of ground truth statements.
+    monkeypatch.setattr(
+        "valor_api.backend.core.llm_clients.LLMClient.__call__",
+        _return_invalid4_context_recall_response,
+    )
+    with pytest.raises(InvalidLLMResponseError):
+        client.context_recall(
+            ["context 1", "context 2"],
             "some ground truth",
         )
 

@@ -451,6 +451,75 @@ JSON:
 """
 
 
+def generate_context_recall_verdicts_instruction(
+    context_list: list[str],
+    groundtruth_statements: list[str],
+) -> str:
+    """
+    Generate LLM instruction for evaluating whether each ground truth statement is attributable to the context.
+
+    Instruction template was adapted from RAGAS's codebase https://github.com/explodinggradients/ragas/blob/main/src/ragas/metrics/_context_recall.py.
+
+    Modifications to the instruction include changes to the format to match the other Valor instructions as well as changing the ground truth into a list of ground truth statements.
+
+    Parameters
+    ----------
+    context_list: list[str]
+        The list of contexts to evaluate against.
+    groundtruth_statements: str
+        A list of statements extracted from the ground truth answer.
+
+    Returns
+    -------
+    str
+        The instruction for the LLM.
+    """
+    return f"""Given a context list and a list of ground truth statements, analyze each ground truth statement and determine if the statement can be attributed to the given context.
+
+IMPORTANT: Return in JSON format with the 'verdicts' key mapping to a list of verdicts.
+Since you will generate a verdict for each ground truth statement, the number of verdicts SHOULD BE STRICTLY EQUAL to the number of ground truth statements.
+The 'analysis' key should provide a brief analysis of the relationship of each ground truth statement to the context list.
+The 'analysis' should come BEFORE the 'verdict'. Use your 'analysis' to help you decide the 'verdict'.
+The 'verdict' key should STRICTLY be either 'yes' or 'no', and states whether each ground truth statement is attributable to the context list.
+
+===== EXAMPLE ======
+Example Context List: ["Albert Einstein (14 March 1879 - 18 April 1955) was a German-born theoretical physicist, widely held to be one of the greatest and most influential scientists of all time. Best known for developing the theory of relativity, he also made important contributions to quantum mechanics, and was thus a central figure in the revolutionary reshaping of the scientific understanding of nature that modern physics accomplished in the first decades of the twentieth century.", "Albert Einstein's mass-energy equivalence formula E = mc2, which arises from relativity theory, has been called 'the world's most famous equation'.", "Albert Einstein received the 1921 Nobel Prize in Physics 'for his services to theoretical physics, and especially for his discovery of the law of the photoelectric effect', a pivotal step in the development of quantum theory. His work is also known for its influence on the philosophy of science. In a 1999 poll of 130 leading physicists worldwide by the British journal Physics World, Einstein was ranked the greatest physicist of all time. His intellectual achievements and originality have made Einstein synonymous with genius."]
+
+Example Ground Truth Statements: ["Albert Einstein was born on 14 March 1879.", "Albert Einstein received the 1921 Nobel Prize in Physics for his services to theoretical physics.", "Einstein published 4 papers in 1905.", "Einstein moved to Switzerland in 1895."]
+
+Example JSON:
+{{
+    "verdicts": [
+        {{
+            "analysis": "The date of birth of Einstein is mentioned clearly in the context.",
+            "verdict": "yes"
+        }},
+        {{
+            "reason": "The statement matches exactly with part of a sentence present in the given context.",
+            "verdict": "yes"
+        }},
+        {{
+            "reason": "There is no mention about papers he wrote in the given context.",
+            "verdict": "no"
+        }},
+        {{
+            "reason": "There is no supporting evidence for a move to Switzerland in the given context.",
+            "verdict": "no"
+        }}
+    ]
+}}
+===== END OF EXAMPLE ======
+
+Context List:
+{context_list}
+
+Ground Truth Statements:
+{groundtruth_statements}
+
+JSON:
+"""
+
+
 def generate_context_relevance_verdicts_instruction(
     query: str,
     context_list: list[str],

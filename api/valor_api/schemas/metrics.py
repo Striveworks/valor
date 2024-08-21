@@ -963,6 +963,42 @@ class ContextPrecisionMetric(BaseModel):
         }
 
 
+class ContextRecallMetric(BaseModel):
+    """
+    Describes a context recall metric.
+
+    Attributes
+    ----------
+    value : float
+        The context recall score for a datum. This is a float between 0 and 1, with 1 indicating that all ground truth statements are attributable to the context list.
+    parameters : dict
+        Any parameters associated with the metric, as well as any datum or prediction parameters that are relevant to the metric.
+    """
+
+    value: float
+    parameters: dict
+
+    def db_mapping(self, evaluation_id: int) -> dict:
+        """
+        Creates a mapping for use when uploading the metric to the database.
+
+        Parameters
+        ----------
+        evaluation_id : int
+            The evaluation id.
+
+        Returns
+        ----------
+        A mapping dictionary.
+        """
+        return {
+            "value": self.value,
+            "parameters": self.parameters,
+            "type": "ContextRecall",
+            "evaluation_id": evaluation_id,
+        }
+
+
 class ContextRelevanceMetric(BaseModel):
     """
     Describes a context relevance metric.

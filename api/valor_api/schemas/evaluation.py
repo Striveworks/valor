@@ -146,6 +146,7 @@ class EvaluationParameters(BaseModel):
                         "AnswerCorrectness",
                         "BLEU",
                         "ContextPrecision",
+                        "ContextRecall",
                         "ROUGE",
                     ]
                 )
@@ -156,6 +157,7 @@ class EvaluationParameters(BaseModel):
                         "Bias",
                         "Coherence",
                         "ContextPrecision",
+                        "ContextRecall",
                         "ContextRelevance",
                         "Faithfulness",
                         "Hallucination",
