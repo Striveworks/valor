@@ -1,6 +1,6 @@
 import operator
 
-from geoalchemy2.functions import ST_Area, ST_Count, ST_GeomFromGeoJSON
+from geoalchemy2.functions import ST_Area, ST_GeomFromGeoJSON
 from sqlalchemy import (
     CTE,
     TIMESTAMP,
@@ -18,6 +18,7 @@ from sqlalchemy.dialects.postgresql import INTERVAL, TEXT
 
 from valor_api.backend.models import (
     Annotation,
+    Bitmask,
     Dataset,
     Datum,
     Embedding,
@@ -45,6 +46,8 @@ from valor_api.schemas.geometry import (
     Point,
     Polygon,
 )
+
+# TODO fix embedding and raster filtering
 
 
 def raise_not_implemented(x):
@@ -75,7 +78,7 @@ map_symbol_to_resources = {
     SupportedSymbol.DATUM_UID: (Datum, Datum.uid),
     SupportedSymbol.BOX: (Annotation, Annotation.box),
     SupportedSymbol.POLYGON: (Annotation, Annotation.polygon),
-    SupportedSymbol.RASTER: (Annotation, Annotation.raster),
+    SupportedSymbol.RASTER: (Annotation, Annotation.bitmask_id),
     SupportedSymbol.TASK_TYPE: (Annotation, Annotation.implied_task_types),
     SupportedSymbol.EMBEDDING: (Embedding, Embedding.value),
     SupportedSymbol.LABELS: (Label, Label),
@@ -85,7 +88,7 @@ map_symbol_to_resources = {
     # 'area' attribute
     SupportedSymbol.BOX_AREA: (Annotation, ST_Area(Annotation.box)),
     SupportedSymbol.POLYGON_AREA: (Annotation, ST_Area(Annotation.polygon)),
-    SupportedSymbol.RASTER_AREA: (Annotation, ST_Count(Annotation.raster)),
+    SupportedSymbol.RASTER_AREA: (Annotation, func.bit_count(Bitmask.value)),
     # backend use only
     SupportedSymbol.DATASET_ID: (Dataset, Dataset.id),
     SupportedSymbol.MODEL_ID: (Model, Model.id),

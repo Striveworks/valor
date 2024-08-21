@@ -2,6 +2,7 @@ from typing import Type
 
 from valor_api.backend.models import (
     Annotation,
+    Bitmask,
     Dataset,
     Datum,
     Embedding,
@@ -20,5 +21,6 @@ TableTypeAlias = (
     | Type[Prediction]
     | Type[Label]
     | Type[Embedding]
+    | Type[Bitmask]
 )
 LabelSourceAlias = Type[GroundTruth] | Type[Prediction] | Type[Annotation]

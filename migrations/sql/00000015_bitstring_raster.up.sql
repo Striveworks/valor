@@ -1,5 +1,3 @@
-ALTER TABLE annotation ADD COLUMN bitmask bit varying;
-
 CREATE OR REPLACE FUNCTION raster_to_bitstring(input_raster raster)
 RETURNS text AS
 $$
@@ -16,8 +14,8 @@ BEGIN
     -- Iterate through each row and column of the raster
     FOR i IN 1..height LOOP
         FOR j IN 1..width LOOP
-            -- Get the pixel value at position (i, j)
-            pixelval := ST_Value(input_raster, i, j);
+            -- Get the pixel value at position (j, i)
+            pixelval := ST_Value(input_raster, j, i);
 
             -- 1BB raster has values of 0 or 1, so just append it to the bitstring
             IF pixelval IS NOT NULL THEN
@@ -33,3 +31,69 @@ BEGIN
 END;
 $$
 LANGUAGE plpgsql;
+
+CREATE OR REPLACE FUNCTION bitstring_to_raster(
+    bitstring BIT VARYING,
+    raster_height INTEGER,
+    raster_width INTEGER,
+    srid INTEGER DEFAULT 4326
+)
+RETURNS RASTER AS $$
+DECLARE
+    raster RASTER;
+    pixel_type TEXT := '1BB'; -- 1-bit Boolean
+    band_index INTEGER := 1;
+    row INTEGER;
+    col INTEGER;
+    bit_value CHAR;
+BEGIN
+    -- Create an empty raster with the given width, height, and spatial reference system
+    raster := ST_AddBand(
+        ST_MakeEmptyRaster(
+            raster_width,          -- Number of columns
+            raster_height,         -- Number of rows
+            0, 0,                  -- Upper-left X and Y (origin) of the raster
+            1, 1,                 -- Pixel size X and Y (assuming square pixels)
+            0, 0,                  -- X and Y skew
+            srid                   -- Spatial Reference ID (SRID)
+        ),
+        band_index,
+        pixel_type,
+        0,
+        0
+    );
+
+    -- Set the raster values from the bitstring
+    FOR row IN 0..(raster_height - 1) LOOP
+        FOR col IN 0..(raster_width - 1) LOOP
+            bit_value := SUBSTRING(bitstring FROM row * raster_width + col + 1 FOR 1);
+            IF bit_value = '1' THEN
+                raster := ST_SetValue(raster, band_index, col + 1, row + 1, 1);
+            ELSE
+                raster := ST_SetValue(raster, band_index, col + 1, row + 1, 0);
+            END IF;
+        END LOOP;
+    END LOOP;
+
+    RETURN raster;
+END;
+$$ LANGUAGE plpgsql;
+
+
+create table bitmask
+(
+    id         serial primary key,
+    value      bit varying not null,
+    height     int not null,
+    width      int not null,
+    created_at timestamp not null
+);
+
+create index ix_bitmask_id
+    on bitmask (id);
+
+ALTER TABLE annotation ADD bitmask_id integer references bitmask;
+
+-- TODO convert rasters to bitmask and drop column
+
+ALTER TABLE annotation DROP COLUMN raster;

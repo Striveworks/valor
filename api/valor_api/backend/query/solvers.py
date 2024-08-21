@@ -6,6 +6,7 @@ from sqlalchemy.sql.elements import UnaryExpression
 
 from valor_api.backend.models import (
     Annotation,
+    Bitmask,
     Dataset,
     Datum,
     Embedding,
@@ -170,6 +171,9 @@ table_joins_with_annotation_as_label_source = {
         Embedding: lambda x: x.join(
             Embedding, Embedding.id == Annotation.embedding_id
         ),
+        Bitmask: lambda x: x.join(
+            Bitmask, Bitmask.id == Annotation.bitmask_id
+        ),
         Label: _join_label_to_annotation,
     },
     GroundTruth: {
@@ -190,6 +194,11 @@ table_joins_with_annotation_as_label_source = {
     Embedding: {
         Annotation: lambda x: x.join(
             Annotation, Annotation.embedding_id == Embedding.id
+        )
+    },
+    Bitmask: {
+        Annotation: lambda x: x.join(
+            Annotation, Annotation.bitmask_id == Bitmask.id
         )
     },
 }
@@ -215,6 +224,9 @@ table_joins_with_groundtruth_as_label_source = {
         Embedding: lambda x: x.join(
             Embedding, Embedding.id == Annotation.embedding_id
         ),
+        Bitmask: lambda x: x.join(
+            Bitmask, Bitmask.id == Annotation.bitmask_id
+        ),
     },
     GroundTruth: {
         Annotation: lambda x: x.join(
@@ -233,6 +245,11 @@ table_joins_with_groundtruth_as_label_source = {
     Embedding: {
         Annotation: lambda x: x.join(
             Annotation, Annotation.embedding_id == Embedding.id
+        )
+    },
+    Bitmask: {
+        Annotation: lambda x: x.join(
+            Annotation, Annotation.bitmask_id == Bitmask.id
         )
     },
 }
@@ -262,6 +279,9 @@ table_joins_with_prediction_as_label_source = {
         Embedding: lambda x: x.join(
             Embedding, Embedding.id == Annotation.embedding_id
         ),
+        Bitmask: lambda x: x.join(
+            Bitmask, Bitmask.id == Annotation.bitmask_id
+        ),
     },
     GroundTruth: {
         Datum: _join_datum_to_groundtruth,
@@ -282,6 +302,11 @@ table_joins_with_prediction_as_label_source = {
             Annotation, Annotation.embedding_id == Embedding.id
         )
     },
+    Bitmask: {
+        Annotation: lambda x: x.join(
+            Annotation, Annotation.bitmask_id == Bitmask.id
+        )
+    },
 }
 
 
@@ -299,18 +324,20 @@ map_label_source_to_neighbor_tables = {
         Dataset: {Datum},
         Model: {Annotation},
         Datum: {Dataset, Annotation},
-        Annotation: {Datum, Model, Embedding, Label},
+        Annotation: {Datum, Model, Embedding, Bitmask, Label},
         GroundTruth: {Label},
         Prediction: {Label},
         Embedding: {Annotation},
+        Bitmask: {Annotation},
         Label: {Annotation, GroundTruth, Prediction},
     },
     GroundTruth: {
         Dataset: {Datum},
         Model: {Datum},
         Datum: {Dataset, Model, Annotation, Prediction},
-        Annotation: {Datum, GroundTruth, Embedding},
+        Annotation: {Datum, GroundTruth, Embedding, Bitmask},
         Embedding: {Annotation},
+        Bitmask: {Annotation},
         GroundTruth: {Annotation, Label},
         Prediction: {Datum},
         Label: {GroundTruth},
@@ -319,8 +346,9 @@ map_label_source_to_neighbor_tables = {
         Dataset: {Datum},
         Model: {Annotation},
         Datum: {Dataset, Annotation, GroundTruth},
-        Annotation: {Datum, Model, Prediction, Embedding},
+        Annotation: {Datum, Model, Prediction, Embedding, Bitmask},
         Embedding: {Annotation},
+        Bitmask: {Annotation},
         GroundTruth: {Datum},
         Prediction: {Annotation, Label},
         Label: {Prediction},

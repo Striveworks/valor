@@ -1,3 +1,4 @@
+import numpy as np
 from geoalchemy2.functions import (
     ST_AddBand,
     ST_AsGeoJSON,
@@ -6,13 +7,12 @@ from geoalchemy2.functions import (
     ST_MakeEmptyRaster,
     ST_MapAlgebra,
 )
-from sqlalchemy import CTE, ScalarSelect, and_, delete, func, insert, select
+from sqlalchemy import CTE, and_, delete, func, insert, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from valor_api import schemas
 from valor_api.backend import models
-from valor_api.backend.core.geometry import _raster_to_png_b64
 from valor_api.backend.query import generate_query
 from valor_api.enums import ModelStatus, TableStatus, TaskType
 
@@ -59,25 +59,39 @@ def _format_polygon(polygon: schemas.Polygon | None) -> str | None:
     return polygon.to_wkt() if polygon else None
 
 
-def _format_raster(
-    raster: schemas.Raster | None,
-) -> ScalarSelect | bytes | None:
-    return raster.to_psql() if raster else None
+# def _format_raster(
+#     raster: schemas.Raster | None,
+# ) -> ScalarSelect | bytes | None:
+#     return raster.to_psql() if raster else None
 
 
-def _format_bitmask(
+def _create_bitmask(
     db: Session,
     raster: schemas.Raster | None,
-) -> str | None:
+) -> int | None:
     """
-    Converts a Raster schema into a bitmask.
+    Creates a bitmask from a raster schema.
     """
     if raster is None:
         return None
     elif raster and raster.geometry:
         r = _create_raster_from_multipolygon(raster)
-        return db.scalar(func.raster_to_bitstring(r.c.raster))
-    return "".join("1" if b else "0" for b in raster.array.flatten())
+        bitstring = db.scalar(func.raster_to_bitstring(r.c.raster))
+    else:
+        bitstring = "".join("1" if b else "0" for b in raster.array.flatten())
+
+    try:
+        row = models.Bitmask(
+            value=bitstring,
+            height=raster.height,
+            width=raster.width,
+        )
+        db.add(row)
+        db.commit()
+    except IntegrityError as e:
+        db.rollback()
+        raise e
+    return row.id
 
 
 def _create_embedding(
@@ -159,8 +173,7 @@ def create_annotations(
             "meta": annotation.metadata,
             "box": _format_box(annotation.bounding_box),
             "polygon": _format_polygon(annotation.polygon),
-            "raster": _format_raster(annotation.raster),
-            "bitmask": _format_bitmask(db, annotation.raster),
+            "bitmask_id": _create_bitmask(db, annotation.raster),
             "embedding_id": _create_embedding(
                 db=db, value=annotation.embedding
             ),
@@ -222,8 +235,7 @@ def create_skipped_annotations(
             meta=dict(),
             box=None,
             polygon=None,
-            raster=None,
-            bitmask=None,
+            bitmask_id=None,
             embedding_id=None,
             text=None,
             context_list=None,
@@ -305,16 +317,19 @@ def get_annotation(
         )
 
     # raster
-    if annotation.raster is not None:
-        datum = db.scalar(
-            select(models.Datum).where(models.Datum.id == annotation.datum_id)
+    if annotation.bitmask_id is not None:
+        bitmask = (
+            db.query(models.Bitmask)
+            .where(models.Bitmask.id == annotation.bitmask_id)
+            .scalar()
         )
-        if datum is None:
-            raise RuntimeError(
-                "psql unexpectedly returned None instead of a Datum."
-            )
-        raster = schemas.Raster(
-            mask=_raster_to_png_b64(db=db, raster=annotation.raster),
+        if bitmask is None:
+            raise ValueError("Expected bitmask to contain a value.")
+        raster = schemas.Raster.from_numpy(
+            mask=np.array(
+                [int(bit) == 1 for bit in bitmask.value],
+                dtype=bool,
+            ).reshape(bitmask.height, bitmask.width)
         )
 
     # embedding
@@ -381,6 +396,28 @@ def get_annotations(
     ]
 
 
+def _delete_linked_annotations(db: Session):
+    # delete embeddings that are no longer referenced
+    existing_ids = select(models.Annotation.embedding_id).where(
+        models.Annotation.embedding_id.isnot(None)
+    )
+    db.execute(
+        delete(models.Embedding).where(
+            models.Embedding.id.not_in(existing_ids)
+        )
+    )
+    db.commit()
+
+    # delete bitmasks that are no longer referenced
+    existing_ids = select(models.Annotation.bitmask_id).where(
+        models.Annotation.bitmask_id.isnot(None)
+    )
+    db.execute(
+        delete(models.Bitmask).where(models.Bitmask.id.not_in(existing_ids))
+    )
+    db.commit()
+
+
 def delete_dataset_annotations(
     db: Session,
     dataset: models.Dataset,
@@ -421,16 +458,9 @@ def delete_dataset_annotations(
         )
         db.commit()
 
-        # delete embeddings (if they exist)
-        existing_ids = select(models.Annotation.embedding_id).where(
-            models.Annotation.embedding_id.isnot(None)
-        )
-        db.execute(
-            delete(models.Embedding).where(
-                models.Embedding.id.not_in(existing_ids)
-            )
-        )
-        db.commit()
+        # delete linked annotations
+        _delete_linked_annotations(db=db)
+
     except IntegrityError as e:
         db.rollback()
         raise e
@@ -475,16 +505,9 @@ def delete_model_annotations(
         )
         db.commit()
 
-        # delete embeddings (if they exist)
-        existing_ids = select(models.Annotation.embedding_id).where(
-            models.Annotation.embedding_id.isnot(None)
-        )
-        db.execute(
-            delete(models.Embedding).where(
-                models.Embedding.id.not_in(existing_ids)
-            )
-        )
-        db.commit()
+        # delete linked annotations
+        _delete_linked_annotations(db=db)
+
     except IntegrityError as e:
         db.rollback()
         raise e

@@ -35,12 +35,28 @@ class Embedding(Base):
 
     # columns
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
-    value = mapped_column(Vector())
+    value = mapped_column(Vector(), nullable=False)
     created_at: Mapped[datetime.datetime] = mapped_column(default=func.now())
 
     # relationships
     annotations: Mapped[list["Annotation"]] = relationship(
         back_populates="embedding"
+    )
+
+
+class Bitmask(Base):
+    __tablename__ = "bitmask"
+
+    # columns
+    id: Mapped[int] = mapped_column(primary_key=True, index=True)
+    value = mapped_column(BIT(varying=True), nullable=False)
+    height: Mapped[int] = mapped_column(nullable=False)
+    width: Mapped[int] = mapped_column(nullable=False)
+    created_at: Mapped[datetime.datetime] = mapped_column(default=func.now())
+
+    # relationships
+    annotations: Mapped[list["Annotation"]] = relationship(
+        back_populates="bitmask"
     )
 
 
@@ -133,8 +149,7 @@ class Annotation(Base):
     # columns - linked objects
     box = mapped_column(Geometry("POLYGON"), nullable=True)
     polygon = mapped_column(Geometry("POLYGON"), nullable=True)
-    raster = mapped_column(GDALRaster, nullable=True)
-    bitmask = mapped_column(BIT(varying=True), nullable=True)
+    bitmask_id = mapped_column(ForeignKey("bitmask.id"), nullable=True)
     embedding_id = mapped_column(ForeignKey("embedding.id"), nullable=True)
     is_instance: Mapped[bool] = mapped_column(nullable=False)
     implied_task_types = mapped_column(JSONB)
@@ -143,6 +158,7 @@ class Annotation(Base):
     datum: Mapped["Datum"] = relationship(back_populates="annotations")
     model: Mapped["Model"] = relationship(back_populates="annotations")
     embedding: Mapped[Embedding] = relationship(back_populates="annotations")
+    bitmask: Mapped[Bitmask] = relationship(back_populates="annotations")
     groundtruths: Mapped[list["GroundTruth"]] = relationship(
         cascade="all, delete-orphan"
     )

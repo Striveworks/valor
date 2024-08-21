@@ -199,7 +199,10 @@ def test__count_true_positives(
 
         expected = _help_count_true_positives(
             gt_semantic_segs_create,
-            [pred_semantic_segs_img1_create, pred_semantic_segs_img2_create],
+            [
+                pred_semantic_segs_img1_create,
+                pred_semantic_segs_img2_create,
+            ],
             schemas.Label(key=k, value=v),
         )
 

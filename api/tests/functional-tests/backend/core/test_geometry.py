@@ -11,7 +11,6 @@ from valor_api.backend.core.geometry import (
     _convert_polygon_to_box,
     _convert_raster_to_box,
     _convert_raster_to_polygon,
-    _raster_to_png_b64,
     convert_geometry,
     get_annotation_type,
 )
@@ -206,7 +205,7 @@ def test_convert_from_raster(
             and_(
                 models.Annotation.box.is_(None),
                 models.Annotation.polygon.is_(None),
-                models.Annotation.raster.isnot(None),
+                models.Annotation.bitmask_id.isnot(None),
             )
         )
     )
@@ -227,7 +226,7 @@ def test_convert_from_raster(
 
     assert annotation.box is not None
     assert annotation.polygon is not None
-    assert annotation.raster is not None
+    assert annotation.bitmask_id is not None
 
     converted_box = _load_box(db, annotation.box)
     converted_polygon = _load_polygon(db, annotation.polygon)
@@ -257,7 +256,7 @@ def test_convert_polygon_to_box(
             and_(
                 models.Annotation.box.is_(None),
                 models.Annotation.polygon.isnot(None),
-                models.Annotation.raster.is_(None),
+                models.Annotation.bitmask_id.is_(None),
             )
         )
     )
@@ -275,7 +274,7 @@ def test_convert_polygon_to_box(
 
     assert annotation.box is not None
     assert annotation.polygon is not None
-    assert annotation.raster is None
+    assert annotation.bitmask_id is None
 
     converted_box = _load_box(db, annotation.box)
 
@@ -317,8 +316,8 @@ def test_create_raster_from_polygons(
 
     # verify all rasters are equal
     raster_arrs = [
-        Raster(mask=_raster_to_png_b64(db, r)).to_numpy()
-        for r in db.scalars(select(models.Annotation.raster)).all()
+        np.array([bit == "1" for bit in r.value]).reshape((r.height, r.width))
+        for r in db.query(models.Bitmask).all()
     ]
     assert len(raster_arrs) == 3
 

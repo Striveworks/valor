@@ -44,6 +44,10 @@ def _map_name_to_table(table_name: str) -> TableTypeAlias | None:
             return models.Prediction
         case models.Label.__tablename__:
             return models.Label
+        case models.Bitmask.__tablename__:
+            return models.Bitmask
+        case models.Embedding.__tablename__:
+            return models.Embedding
         case _:
             raise ValueError(f"Unsupported table name '{table_name}'.")
 

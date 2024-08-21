@@ -4,7 +4,7 @@ from base64 import b64decode, b64encode
 
 import numpy as np
 import pytest
-from geoalchemy2.functions import ST_AsText, ST_Count, ST_Polygon
+from geoalchemy2.functions import ST_AsText, ST_Polygon
 from PIL import Image
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
@@ -815,9 +815,12 @@ def test_create_predicted_segmentations_check_area_and_delete_model(
 
     raster_counts = set(
         db.scalars(
-            select(ST_Count(models.Annotation.raster)).where(
-                models.Annotation.model_id.isnot(None)
+            select(func.bit_count(models.Bitmask.value))
+            .join(
+                models.Annotation,
+                models.Annotation.bitmask_id == models.Bitmask.id,
             )
+            .where(models.Annotation.model_id.isnot(None))
         )
     )
 
@@ -879,7 +882,9 @@ def test_segmentation_area_no_hole(
         ],
     )
 
-    segmentation_count = db.scalar(select(ST_Count(models.Annotation.raster)))
+    segmentation_count = db.scalar(
+        select(func.bit_count(models.Bitmask.value))
+    )
 
     assert segmentation_count == math.ceil(45.5)  # area of mask will be an int
 
@@ -920,11 +925,9 @@ def test_segmentation_area_with_hole(
         ],
     )
 
-    segmentation = db.scalar(select(models.Annotation))
-
     # give tolerance of 2 pixels because of poly -> mask conversion
-    assert segmentation
-    assert (db.scalar(ST_Count(segmentation.raster)) - 92) <= 2
+    assert db.scalar(select(models.Annotation))
+    assert (db.scalar(func.bit_count(models.Bitmask.value)) - 92) <= 2
 
 
 def test_segmentation_area_multi_polygon(
@@ -966,13 +969,14 @@ def test_segmentation_area_multi_polygon(
         ],
     )
 
-    segmentation = db.scalar(select(models.Annotation))
-
     # the two shapes don't intersect so area should be sum of the areas
     # give tolerance of 2 pixels because of poly -> mask conversion
-    assert segmentation
+    assert db.scalar(select(models.Annotation))
     assert (
-        abs(db.scalar(ST_Count(segmentation.raster)) - (math.ceil(45.5) + 92))
+        abs(
+            db.scalar(func.bit_count(models.Bitmask.value))
+            - (math.ceil(45.5) + 92)
+        )
         <= 2
     )
 
@@ -1037,7 +1041,15 @@ def test_gt_seg_as_mask_or_polys(
 
     shapes = db.scalars(
         select(
-            ST_AsText(ST_Polygon(models.Annotation.raster)),
+            ST_AsText(
+                ST_Polygon(
+                    func.bitstring_to_raster(
+                        models.Bitmask.value,
+                        models.Bitmask.height,
+                        models.Bitmask.width,
+                    )
+                )
+            ),
         )
     ).all()
     assert len(shapes) == 2

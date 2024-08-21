@@ -219,7 +219,7 @@ def test_create_gt_segs_as_polys_or_masks(
     dataset.add_groundtruth(gts)
 
     wkts = db.scalars(
-        select(ST_AsText(ST_Polygon(models.Annotation.raster)))
+        select(ST_AsText(ST_Polygon(models.Bitmask.value)))
     ).all()
 
     for wkt in wkts:

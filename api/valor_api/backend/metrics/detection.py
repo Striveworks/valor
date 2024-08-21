@@ -831,15 +831,22 @@ def _convert_annotations_to_common_type(
 
 def _annotation_type_to_geojson(
     annotation_type: AnnotationType,
-    table,
 ):
     match annotation_type:
         case AnnotationType.BOX:
-            box = table.box
+            box = models.Annotation.box
         case AnnotationType.POLYGON:
-            box = gfunc.ST_Envelope(table.polygon)
+            box = gfunc.ST_Envelope(models.Annotation.polygon)
         case AnnotationType.RASTER:
-            box = gfunc.ST_Envelope(gfunc.ST_MinConvexHull(table.raster))
+            box = gfunc.ST_Envelope(
+                gfunc.ST_MinConvexHull(
+                    func.bitstring_to_raster(
+                        models.Bitmask.value,
+                        models.Bitmask.height,
+                        models.Bitmask.width,
+                    )
+                )
+            )
         case _:
             raise RuntimeError
     return gfunc.ST_AsGeoJSON(box)
@@ -896,9 +903,7 @@ def _aggregate_data(
         models.GroundTruth.id.label("groundtruth_id"),
         models.Label.id,
         label_mapping,
-        _annotation_type_to_geojson(target_type, models.Annotation).label(
-            "geojson"
-        ),
+        _annotation_type_to_geojson(target_type).label("geojson"),
         filters=groundtruth_filter,
         label_source=models.GroundTruth,
     ).subquery()
@@ -931,9 +936,7 @@ def _aggregate_data(
         models.Prediction.score.label("score"),
         models.Label.id,
         label_mapping,
-        _annotation_type_to_geojson(target_type, models.Annotation).label(
-            "geojson"
-        ),
+        _annotation_type_to_geojson(target_type).label("geojson"),
         filters=prediction_filter,
         label_source=models.Prediction,
     ).subquery()
@@ -1064,45 +1067,45 @@ def _compute_detection_metrics(
         label_map=parameters.label_map,
     )
 
-    # Alias the annotation table (required for joining twice)
-    gt_annotation = aliased(models.Annotation)
-    pd_annotation = aliased(models.Annotation)
-
-    # Get distinct annotations
-    gt_pd_pairs = (
-        select(
-            gt.c.annotation_id.label("gt_annotation_id"),
-            pd.c.annotation_id.label("pd_annotation_id"),
-        )
-        .select_from(pd)
-        .join(
-            gt,
-            and_(
-                pd.c.datum_id == gt.c.datum_id,
-                pd.c.label_id == gt.c.label_id,
-            ),
-        )
-        .distinct()
-        .cte()
-    )
-
     # IOU Computation Block
     if target_type == AnnotationType.RASTER:
+
+        # Alias the annotation table (required for joining twice)
+        gt_annotation = aliased(models.Annotation)
+        pd_annotation = aliased(models.Annotation)
+
+        # Alias bitmasks
+        gt_bitmask = aliased(models.Bitmask)
+        pd_bitmask = aliased(models.Bitmask)
+
+        # Get distinct annotations
+        gt_pd_pairs = (
+            select(
+                gt.c.annotation_id.label("gt_annotation_id"),
+                pd.c.annotation_id.label("pd_annotation_id"),
+            )
+            .select_from(pd)
+            .join(
+                gt,
+                and_(
+                    pd.c.datum_id == gt.c.datum_id,
+                    pd.c.label_id == gt.c.label_id,
+                ),
+            )
+            .distinct()
+            .cte()
+        )
 
         gt_pd_counts = (
             select(
                 gt_pd_pairs.c.gt_annotation_id,
                 gt_pd_pairs.c.pd_annotation_id,
                 func.coalesce(
-                    func.bit_count(
-                        gt_annotation.bitmask.op("|")(pd_annotation.bitmask)
-                    ),
+                    func.bit_count(gt_bitmask.value.op("|")(pd_bitmask.value)),
                     0,
                 ).label("union"),
                 func.coalesce(
-                    func.bit_count(
-                        gt_annotation.bitmask.op("&")(pd_annotation.bitmask)
-                    ),
+                    func.bit_count(gt_bitmask.value.op("&")(pd_bitmask.value)),
                     0,
                 ).label("intersection"),
             )
@@ -1114,6 +1117,14 @@ def _compute_detection_metrics(
             .join(
                 pd_annotation,
                 pd_annotation.id == gt_pd_pairs.c.pd_annotation_id,
+            )
+            .join(
+                gt_bitmask,
+                gt_bitmask.id == gt_annotation.bitmask_id,
+            )
+            .join(
+                pd_bitmask,
+                pd_bitmask.id == pd_annotation.bitmask_id,
             )
             .subquery()
         )
@@ -1135,6 +1146,28 @@ def _compute_detection_metrics(
         )
 
     else:
+        # Alias the annotation table (required for joining twice)
+        gt_annotation = aliased(models.Annotation)
+        pd_annotation = aliased(models.Annotation)
+
+        # Get distinct annotations
+        gt_pd_pairs = (
+            select(
+                gt.c.annotation_id.label("gt_annotation_id"),
+                pd.c.annotation_id.label("pd_annotation_id"),
+            )
+            .select_from(pd)
+            .join(
+                gt,
+                and_(
+                    pd.c.datum_id == gt.c.datum_id,
+                    pd.c.label_id == gt.c.label_id,
+                ),
+            )
+            .distinct()
+            .cte()
+        )
+
         gt_geom = _annotation_type_to_column(target_type, gt_annotation)
         pd_geom = _annotation_type_to_column(target_type, pd_annotation)
         gintersection = gfunc.ST_Intersection(gt_geom, pd_geom)
@@ -1436,45 +1469,45 @@ def _compute_detection_metrics_with_detailed_precision_recall_curve(
         label_map=parameters.label_map,
     )
 
-    # Alias the annotation table (required for joining twice)
-    gt_annotation = aliased(models.Annotation)
-    pd_annotation = aliased(models.Annotation)
-
-    # Get distinct annotations
-    gt_pd_pairs = (
-        select(
-            gt.c.annotation_id.label("gt_annotation_id"),
-            pd.c.annotation_id.label("pd_annotation_id"),
-        )
-        .select_from(pd)
-        .join(
-            gt,
-            and_(
-                gt.c.datum_id == pd.c.datum_id,
-                gt.c.key == pd.c.key,
-            ),
-        )
-        .distinct()
-        .cte()
-    )
-
     # IOU Computation Block
     if target_type == AnnotationType.RASTER:
+
+        # Alias the annotation table (required for joining twice)
+        gt_annotation = aliased(models.Annotation)
+        pd_annotation = aliased(models.Annotation)
+
+        # Alias bitmasks
+        gt_bitmask = aliased(models.Bitmask)
+        pd_bitmask = aliased(models.Bitmask)
+
+        # Get distinct annotations
+        gt_pd_pairs = (
+            select(
+                gt.c.annotation_id.label("gt_annotation_id"),
+                pd.c.annotation_id.label("pd_annotation_id"),
+            )
+            .select_from(pd)
+            .join(
+                gt,
+                and_(
+                    gt.c.datum_id == pd.c.datum_id,
+                    gt.c.key == pd.c.key,
+                ),
+            )
+            .distinct()
+            .cte()
+        )
 
         gt_pd_counts = (
             select(
                 gt_pd_pairs.c.gt_annotation_id,
                 gt_pd_pairs.c.pd_annotation_id,
                 func.coalesce(
-                    func.bit_count(
-                        gt_annotation.bitmask.op("|")(pd_annotation.bitmask)
-                    ),
+                    func.bit_count(gt_bitmask.value.op("|")(pd_bitmask.value)),
                     0,
                 ).label("union"),
                 func.coalesce(
-                    func.bit_count(
-                        gt_annotation.bitmask.op("&")(pd_annotation.bitmask)
-                    ),
+                    func.bit_count(gt_bitmask.value.op("&")(pd_bitmask.value)),
                     0,
                 ).label("intersection"),
             )
@@ -1486,6 +1519,14 @@ def _compute_detection_metrics_with_detailed_precision_recall_curve(
             .join(
                 pd_annotation,
                 pd_annotation.id == gt_pd_pairs.c.pd_annotation_id,
+            )
+            .join(
+                gt_bitmask,
+                gt_bitmask.id == gt_annotation.bitmask_id,
+            )
+            .join(
+                pd_bitmask,
+                pd_bitmask.id == pd_annotation.bitmask_id,
             )
             .subquery()
         )
@@ -1507,6 +1548,28 @@ def _compute_detection_metrics_with_detailed_precision_recall_curve(
         )
 
     else:
+        # Alias the annotation table (required for joining twice)
+        gt_annotation = aliased(models.Annotation)
+        pd_annotation = aliased(models.Annotation)
+
+        # Get distinct annotations
+        gt_pd_pairs = (
+            select(
+                gt.c.annotation_id.label("gt_annotation_id"),
+                pd.c.annotation_id.label("pd_annotation_id"),
+            )
+            .select_from(pd)
+            .join(
+                gt,
+                and_(
+                    gt.c.datum_id == pd.c.datum_id,
+                    gt.c.key == pd.c.key,
+                ),
+            )
+            .distinct()
+            .cte()
+        )
+
         gt_geom = _annotation_type_to_column(target_type, gt_annotation)
         pd_geom = _annotation_type_to_column(target_type, pd_annotation)
         gintersection = gfunc.ST_Intersection(gt_geom, pd_geom)

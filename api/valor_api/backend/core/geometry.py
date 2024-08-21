@@ -75,7 +75,7 @@ def get_annotation_type(
         else models.Annotation.model_id.is_(None)
     )
     hierarchy = [
-        (AnnotationType.RASTER, models.Annotation.raster),
+        (AnnotationType.RASTER, models.Annotation.bitmask_id),
         (AnnotationType.POLYGON, models.Annotation.polygon),
         (AnnotationType.BOX, models.Annotation.box),
     ]
@@ -150,17 +150,29 @@ def _convert_raster_to_box(where_conditions: list[BinaryExpression]) -> Update:
         select(
             models.Annotation.id.label("id"),
             func.ST_Envelope(
-                func.ST_MinConvexHull(models.Annotation.raster)
+                func.ST_MinConvexHull(
+                    func.bitstring_to_raster(
+                        models.Bitmask.value,
+                        models.Bitmask.height,
+                        models.Bitmask.width,
+                    )
+                )
             ).label("box"),
         )
         .select_from(models.Annotation)
         .join(models.Datum, models.Datum.id == models.Annotation.datum_id)
+        .join(
+            models.Bitmask, models.Bitmask.id == models.Annotation.bitmask_id
+        )
         .where(
             models.Annotation.box.is_(None),
-            models.Annotation.raster.isnot(None),
+            models.Annotation.bitmask_id.isnot(None),
             *where_conditions,
         )
-        .group_by(models.Annotation.id)
+        .group_by(
+            models.Annotation.id,
+            models.Bitmask.id,
+        )
         .subquery()
     )
     return (
@@ -187,13 +199,27 @@ def _convert_raster_to_polygon(
         A SQL update to complete the conversion.
     """
 
-    pixels_subquery = select(
-        models.Annotation.id.label("id"),
-        type_coerce(
-            func.ST_PixelAsPoints(models.Annotation.raster, 1),
-            type_=GeometricValueType,
-        ).geom.label("geom"),
-    ).lateral("pixels")
+    pixels_subquery = (
+        select(
+            models.Annotation.id.label("id"),
+            type_coerce(
+                func.ST_PixelAsPoints(
+                    func.bitstring_to_raster(
+                        models.Bitmask.value,
+                        models.Bitmask.height,
+                        models.Bitmask.width,
+                    ),
+                    1,
+                ),
+                type_=GeometricValueType,
+            ).geom.label("geom"),
+        )
+        .join(
+            models.Bitmask,
+            models.Bitmask.id == models.Annotation.bitmask_id,
+        )
+        .lateral("pixels")
+    )
     subquery = (
         select(
             models.Annotation.id.label("id"),
@@ -206,7 +232,7 @@ def _convert_raster_to_polygon(
         .join(pixels_subquery, pixels_subquery.c.id == models.Annotation.id)
         .where(
             models.Annotation.polygon.is_(None),
-            models.Annotation.raster.isnot(None),
+            models.Annotation.bitmask_id.isnot(None),
             *where_conditions,
         )
         .group_by(models.Annotation.id)
@@ -312,7 +338,7 @@ def convert_geometry(
         db.rollback()
 
 
-def _raster_to_png_b64(
+def convert_postgis_raster_to_png_b64(
     db: Session,
     raster: RasterElement,
 ) -> str:

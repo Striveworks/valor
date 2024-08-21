@@ -375,7 +375,7 @@ def get_n_groundtruth_rasters_in_dataset(db: Session, name: str) -> int:
             and_(
                 models.Dataset.name == name,
                 models.Dataset.status != enums.TableStatus.DELETING,
-                models.Annotation.raster.isnot(None),
+                models.Annotation.bitmask_id.isnot(None),
             )
         )
         .distinct()
