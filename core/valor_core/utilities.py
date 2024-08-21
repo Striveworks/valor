@@ -287,6 +287,10 @@ def validate_matching_label_keys(
             "Ground truth label keys must match prediction label keys for classification tasks."
         )
 
+    # delete interediary columns
+    del groundtruths["mapped_groundtruth_label_keys"]
+    del predictions["mapped_prediction_label_keys"]
+
 
 def _validate_groundtruth_dataframe(
     df: pd.DataFrame, task_type: enums.TaskType

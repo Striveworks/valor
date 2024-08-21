@@ -704,24 +704,22 @@ def _calculate_detailed_pr_metrics(
     )
 
     if not predictions_associated_with_tps_or_misclassification_fps.empty:
-        predictions_associated_with_tps_or_misclassification_fps.columns = [
-            "confidence_threshold",
-            "predictions_associated_with_tps_or_misclassification_fps",
-        ]
-        detailed_pr_calc_df = detailed_pr_calc_df.merge(
-            predictions_associated_with_tps_or_misclassification_fps,
-            on=["confidence_threshold"],
-            how="left",
+        confidence_interval_to_predictions_associated_with_tps_or_misclassification_fps_dict = (
+            predictions_associated_with_tps_or_misclassification_fps.set_index(
+                "confidence_threshold"
+            )["id_pd"]
+            .apply(set)
+            .to_dict()
         )
-        misclassification_id_pds = detailed_pr_calc_df[
-            "predictions_associated_with_tps_or_misclassification_fps"
-        ].apply(lambda x: set(x) if isinstance(x, np.ndarray) else [])
-        misclassification_id_pds = np.array(
-            [
-                id_pd in misclassification_id_pds[i]
-                for i, id_pd in enumerate(detailed_pr_calc_df["id_pd"].values)
-            ]
+
+        misclassification_id_pds = detailed_pr_calc_df.apply(
+            lambda row: row["id_pd"]
+            in confidence_interval_to_predictions_associated_with_tps_or_misclassification_fps_dict.get(
+                row["confidence_threshold"], set()
+            ),
+            axis=1,
         )
+
         detailed_pr_calc_df.loc[
             (misclassification_id_pds)
             & (detailed_pr_calc_df["hallucination_false_positive_flag"]),
@@ -736,26 +734,21 @@ def _calculate_detailed_pr_metrics(
     )
 
     if not groundtruths_associated_with_true_positives.empty:
-        groundtruths_associated_with_true_positives.columns = [
-            "confidence_threshold",
-            "groundtruths_associated_with_true_positives",
-        ]
-        detailed_pr_calc_df = detailed_pr_calc_df.merge(
-            groundtruths_associated_with_true_positives,
-            on=["confidence_threshold"],
-            how="left",
-        )
-        true_positive_sets = detailed_pr_calc_df[
-            "groundtruths_associated_with_true_positives"
-        ].apply(lambda x: set(x) if isinstance(x, np.ndarray) else set())
-
-        detailed_pr_calc_df["false_negative_flag"] = np.array(
-            [
-                id_gt not in true_positive_sets[i]
-                for i, id_gt in enumerate(detailed_pr_calc_df["id_gt"].values)
-            ]
+        confidence_interval_to_groundtruths_associated_with_true_positives_dict = (
+            groundtruths_associated_with_true_positives.set_index(
+                "confidence_threshold"
+            )["id_gt"]
+            .apply(set)
+            .to_dict()
         )
 
+        detailed_pr_calc_df["false_negative_flag"] = detailed_pr_calc_df.apply(
+            lambda row: row["id_gt"]
+            not in confidence_interval_to_groundtruths_associated_with_true_positives_dict.get(
+                row["confidence_threshold"], set()
+            ),
+            axis=1,
+        )
     else:
         detailed_pr_calc_df["false_negative_flag"] = False
 
@@ -777,33 +770,25 @@ def _calculate_detailed_pr_metrics(
     if (
         not groundtruths_associated_with_misclassification_false_negatives.empty
     ):
-        groundtruths_associated_with_misclassification_false_negatives.columns = [
-            "confidence_threshold",
-            "groundtruths_associated_with_misclassification_false_negatives",
-        ]
-        detailed_pr_calc_df = detailed_pr_calc_df.merge(
-            groundtruths_associated_with_misclassification_false_negatives,
-            on=["confidence_threshold"],
-            how="left",
-        )
-        misclassification_sets = (
-            detailed_pr_calc_df[
-                "groundtruths_associated_with_misclassification_false_negatives"
+        confidence_interval_to_groundtruths_associated_with_misclassification_fn_dict = (
+            groundtruths_associated_with_misclassification_false_negatives.set_index(
+                "confidence_threshold"
+            )[
+                "id_gt"
             ]
-            .apply(lambda x: set(x) if isinstance(x, np.ndarray) else set())
-            .values
+            .apply(set)
+            .to_dict()
         )
+
         detailed_pr_calc_df["no_predictions_false_negative_flag"] = (
-            np.array(
-                [
-                    id_gt not in misclassification_sets[i]
-                    for i, id_gt in enumerate(
-                        detailed_pr_calc_df["id_gt"].values
-                    )
-                ]
+            detailed_pr_calc_df.apply(
+                lambda row: row["id_gt"]
+                not in confidence_interval_to_groundtruths_associated_with_misclassification_fn_dict.get(
+                    row["confidence_threshold"], set()
+                ),
+                axis=1,
             )
-            & detailed_pr_calc_df["false_negative_flag"]
-        )
+        ) & detailed_pr_calc_df["false_negative_flag"]
     else:
         detailed_pr_calc_df[
             "no_predictions_false_negative_flag"
@@ -1138,6 +1123,61 @@ def create_detection_evaluation_inputs(
         )
     else:
         detailed_joint_df = None
+
+    # remove unnecessary columns to save memory
+    groundtruth_df = groundtruth_df.loc[
+        :,
+        [
+            "datum_uid",
+            "label_key",
+            "annotation_id",
+            "label_value",
+            "id",
+            "label",
+        ],
+    ]
+
+    prediction_df = prediction_df.loc[
+        :,
+        [
+            "datum_uid",
+            "annotation_id",
+            "label_key",
+            "label_value",
+        ],
+    ]
+
+    joint_df = joint_df.loc[
+        :,
+        [
+            "label_id",
+            "id_gt",
+            "label",
+            "score",
+            "id_pd",
+            "iou_",
+        ],
+    ]
+
+    if detailed_joint_df is not None:
+        detailed_joint_df = detailed_joint_df.loc[
+            :,
+            [
+                "datum_uid_gt",
+                "label_key",
+                "label_value_gt",
+                "id_gt",
+                "converted_geometry_gt",
+                "datum_uid_pd",
+                "label_value_pd",
+                "score",
+                "label_id_pd",
+                "id_pd",
+                "converted_geometry_pd",
+                "is_label_match",
+                "iou_",
+            ],
+        ]
 
     return groundtruth_df, prediction_df, joint_df, detailed_joint_df
 

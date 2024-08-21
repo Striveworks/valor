@@ -239,31 +239,6 @@ class ValorDetectionManager:
             convert_annotations_to_type=self.convert_annotations_to_type,
         )
 
-        # delete unnecessary columns from these dataframes
-        columns_to_delete = [
-            "raster",
-            "embedding",
-            "polygon",
-            "bounding_box",
-            "datum_metadata",
-            "annotation_id",
-            "annotation_metadata",
-            "is_instance",
-        ]
-        for df in [joint_df, detailed_joint_df]:
-            if df is not None:
-                df.drop(
-                    columns=[col + "_gt" for col in columns_to_delete]
-                    + [col + "_pd" for col in columns_to_delete],
-                    inplace=True,
-                )
-
-        # drop unneeded cols from joint_df
-        joint_df.drop(
-            columns=["converted_geometry_gt", "converted_geometry_gt"],
-            inplace=True,
-        )
-
         # append these dataframes to self
         self.joint_df = _concatenate_df_if_not_empty(
             df1=self.joint_df, df2=joint_df

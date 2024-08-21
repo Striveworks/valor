@@ -1,3 +1,4 @@
+import gc
 import time
 from collections import defaultdict
 from typing import Dict, List, Optional, Tuple, Union
@@ -678,6 +679,7 @@ def _calculate_pr_curves(
     pr_curve_max_examples: int,
 ) -> list[metrics.PrecisionRecallCurve]:
     """Calculate PrecisionRecallCurve metrics."""
+
     if not (
         enums.MetricType.PrecisionRecallCurve in metrics_to_return
         or enums.MetricType.DetailedPrecisionRecallCurve in metrics_to_return
@@ -689,7 +691,7 @@ def _calculate_pr_curves(
             groundtruth_df,
             prediction_df,
             on=["datum_id", "datum_uid", "label_key"],
-            how="outer",
+            how="inner",
             suffixes=("_gt", "_pd"),
         ).assign(
             is_label_match=lambda chain_df: (
@@ -712,6 +714,12 @@ def _calculate_pr_curves(
             ],
         ]
     )
+
+    # free up memory
+    del groundtruth_df
+    del prediction_df
+    gc.collect()
+
     # add confidence_threshold to the dataframe and sort
     pr_calc_df = pd.concat(
         [
@@ -747,24 +755,20 @@ def _calculate_pr_curves(
     )
 
     if not groundtruths_associated_with_true_positives.empty:
-        groundtruths_associated_with_true_positives.columns = [
-            "confidence_threshold",
-            "groundtruths_associated_with_true_positives",
-        ]
-        pr_calc_df = pr_calc_df.merge(
-            groundtruths_associated_with_true_positives,
-            on=["confidence_threshold"],
-            how="left",
+        confidence_interval_to_true_positive_groundtruth_ids_dict = (
+            groundtruths_associated_with_true_positives.set_index(
+                "confidence_threshold"
+            )["id_gt"]
+            .apply(set)
+            .to_dict()
         )
-        true_positive_sets = pr_calc_df[
-            "groundtruths_associated_with_true_positives"
-        ].apply(lambda x: set(x) if isinstance(x, np.ndarray) else set())
 
-        pr_calc_df["false_negative_flag"] = np.array(
-            [
-                id_gt not in true_positive_sets[i]
-                for i, id_gt in enumerate(pr_calc_df["id_gt"].values)
-            ]
+        pr_calc_df["false_negative_flag"] = pr_calc_df.apply(
+            lambda row: row["id_gt"]
+            not in confidence_interval_to_true_positive_groundtruth_ids_dict.get(
+                row["confidence_threshold"], set()
+            ),
+            axis=1,
         )
 
     else:
@@ -786,28 +790,23 @@ def _calculate_pr_curves(
     if (
         not groundtruths_associated_with_misclassification_false_negatives.empty
     ):
-        groundtruths_associated_with_misclassification_false_negatives.columns = [
-            "confidence_threshold",
-            "groundtruths_associated_with_misclassification_false_negatives",
-        ]
-        pr_calc_df = pr_calc_df.merge(
-            groundtruths_associated_with_misclassification_false_negatives,
-            on=["confidence_threshold"],
-            how="left",
-        )
-        misclassification_sets = (
-            pr_calc_df[
-                "groundtruths_associated_with_misclassification_false_negatives"
+        confidence_interval_to_misclassification_fn_groundtruth_ids_dict = (
+            groundtruths_associated_with_misclassification_false_negatives.set_index(
+                "confidence_threshold"
+            )[
+                "id_gt"
             ]
-            .apply(lambda x: set(x) if isinstance(x, np.ndarray) else set())
-            .values
+            .apply(set)
+            .to_dict()
         )
+
         pr_calc_df["no_predictions_false_negative_flag"] = (
-            np.array(
-                [
-                    id_gt not in misclassification_sets[i]
-                    for i, id_gt in enumerate(pr_calc_df["id_gt"].values)
-                ]
+            pr_calc_df.apply(
+                lambda row: row["id_gt"]
+                not in confidence_interval_to_misclassification_fn_groundtruth_ids_dict.get(
+                    row["confidence_threshold"], set()
+                ),
+                axis=1,
             )
             & pr_calc_df["false_negative_flag"]
         )
@@ -1248,6 +1247,34 @@ def evaluate_classification(
         prediction_df = utilities.filter_dataframe_by_task_type(
             df=prediction_df, task_type=enums.TaskType.CLASSIFICATION
         )
+
+    # drop intermediary columns that are no longer needed
+    groundtruth_df = groundtruth_df.loc[
+        :,
+        [
+            "datum_uid",
+            "datum_id",
+            "annotation_id",
+            "label_key",
+            "label_value",
+            "label_id",
+            "id",
+        ],
+    ]
+
+    prediction_df = prediction_df.loc[
+        :,
+        [
+            "datum_uid",
+            "datum_id",
+            "annotation_id",
+            "label_key",
+            "label_value",
+            "score",
+            "label_id",
+            "id",
+        ],
+    ]
 
     utilities.validate_matching_label_keys(
         groundtruths=groundtruth_df,
