@@ -691,24 +691,27 @@ def _calculate_pr_curves(
             on=["datum_id", "datum_uid", "label_key"],
             how="outer",
             suffixes=("_gt", "_pd"),
-        )
-        .assign(
+        ).assign(
             is_label_match=lambda chain_df: (
                 (chain_df["label_value_pd"] == chain_df["label_value_gt"])
             )
         )
-        .drop(
-            columns=[
-                "annotation_id_gt",
-                "created_at_gt",
-                "annotation_id_pd",
-                "created_at_pd",
-                "label_pd",
+        # only keep the columns we need
+        .loc[
+            :,
+            [
+                "datum_uid",
+                "datum_id",
+                "label_key",
+                "label_value_gt",
+                "id_gt",
+                "label_value_pd",
+                "score",
+                "id_pd",
+                "is_label_match",
             ],
-            errors="ignore",
-        )
+        ]
     )
-
     # add confidence_threshold to the dataframe and sort
     pr_calc_df = pd.concat(
         [
