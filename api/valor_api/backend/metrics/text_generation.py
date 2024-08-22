@@ -431,7 +431,7 @@ def _compute_text_generation_metrics(
                             parameters={
                                 "dataset": dataset_name,
                                 "datum_uid": datum_uid,
-                                "prediction": predictions,
+                                "prediction": prediction,
                             },
                         )
                     ]
