@@ -289,8 +289,6 @@ def _calculate_pr_curves(
         + pr_curve_counts_df["false_positives"]
         + pr_curve_counts_df["false_negatives"]
     )
-
-    '''
     pr_curve_counts_df["precision"] = pr_curve_counts_df["true_positives"] / (
         pr_curve_counts_df["true_positives"]
         + pr_curve_counts_df["false_positives"]
@@ -310,6 +308,7 @@ def _calculate_pr_curves(
     # any NaNs that are left are from division by zero errors
     pr_curve_counts_df.fillna(-1, inplace=True)
 
+    '''
     pr_output = defaultdict(lambda: defaultdict(dict))
     detailed_pr_output = defaultdict(lambda: defaultdict(dict))
 
