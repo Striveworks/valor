@@ -296,6 +296,24 @@ def _validate_groundtruth_dataframe(
     """Validate the details of a ground truth dataframe."""
     null_placeholder_column = pd.Series([None] * len(df))
 
+    required_columns = [
+        "datum_uid",
+        "datum_id",
+        "id",
+        "label_key",
+        "label_value",
+        "annotation_id",
+        "label_id",
+    ]
+
+    if not all(col in df.columns for col in required_columns):
+        raise ValueError(
+            f"DataFrame must contain columns: {', '.join(required_columns)}"
+        )
+
+    if not df["id"].is_unique:
+        raise ValueError("The column 'id' contains duplicate values.")
+
     if df.get("score", null_placeholder_column).notnull().any():
         raise ValueError("GroundTruth labels should not have scores.")
 
@@ -311,13 +329,34 @@ def _validate_prediction_dataframe(
 ) -> None:
     """Validate the details of a prediction dataframe."""
 
+    required_columns = [
+        "datum_uid",
+        "datum_id",
+        "id",
+        "label_key",
+        "label_value",
+        "annotation_id",
+        "label_id",
+        "score",
+    ]
+
+    if not all(col in df.columns for col in required_columns):
+        raise ValueError(
+            f"DataFrame must contain columns: {', '.join(required_columns)}"
+        )
+
+    if not df["id"].is_unique:
+        raise ValueError("The column 'id' contains duplicate values.")
+
     if task_type == enums.TaskType.CLASSIFICATION:
         if df["score"].isnull().any():
             raise ValueError(
                 "All classification predictions must have an associated score."
             )
+
         if not (
-            df.groupby(["datum_id", "label_key"])["score"].sum() - 1.0 <= 1e-6
+            abs(df.groupby(["datum_id", "label_key"])["score"].sum() - 1.0)
+            <= 1e-6
         ).all():
             raise ValueError(
                 "All classification scores must sum to one for each label key."
