@@ -396,6 +396,8 @@ if __name__ == "__main__":
         combinations=[
             (AnnotationType.BOX, AnnotationType.BOX),
         ],
+        evaluation_timeout=40,
+        ingestion_chunk_size=100,
         limits_to_test=[5000, 5000],
     )
 
@@ -404,6 +406,8 @@ if __name__ == "__main__":
         combinations=[
             (AnnotationType.POLYGON, AnnotationType.POLYGON),
         ],
+        evaluation_timeout=40,
+        ingestion_chunk_size=100,
         limits_to_test=[5000, 5000],
     )
 
@@ -412,6 +416,7 @@ if __name__ == "__main__":
         combinations=[
             (AnnotationType.MULTIPOLYGON, AnnotationType.MULTIPOLYGON),
         ],
+        evaluation_timeout=0,
         ingestion_chunk_size=10,
         limits_to_test=[100, 100],
         compute_detailed=False,
@@ -424,7 +429,7 @@ if __name__ == "__main__":
             (AnnotationType.RASTER, AnnotationType.RASTER),
         ],
         limits_to_test=[100, 100],
-        ingestion_chunk_size=100,
+        ingestion_chunk_size=10,
         evaluation_timeout=0,
         compute_pr=False,
         compute_detailed=False,

@@ -1150,11 +1150,9 @@ def _compute_detection_metrics(
     else:
         gt_geom = _annotation_type_to_column(target_type, gt_annotation)
         pd_geom = _annotation_type_to_column(target_type, pd_annotation)
-        gintersection = gfunc.ST_Area(gfunc.ST_Intersection(gt_geom, pd_geom))
-        gunion = (
-            gfunc.ST_Area(gt_geom) + gfunc.ST_Area(pd_geom) - gintersection
-        )
-        iou_computation = gintersection / gunion
+        gintersection = gfunc.ST_Intersection(gt_geom, pd_geom)
+        gunion = gfunc.ST_Union(gt_geom, pd_geom)
+        iou_computation = gfunc.ST_Area(gintersection) / gfunc.ST_Area(gunion)
 
         gt_pd_ious = (
             select(
