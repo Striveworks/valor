@@ -4514,3 +4514,72 @@ def test_evaluate_detection_fp(img1, img2):
         "accuracy": None,
         "f1_score": 0.0,
     }
+
+    # test DetailedPRCurve version
+    eval_job = evaluate_detection(
+        groundtruths=gts,
+        predictions=preds,
+        metrics_to_return=[
+            enums.MetricType.DetailedPrecisionRecallCurve,
+        ],
+    )
+
+    metrics = eval_job.metrics
+
+    score_threshold = 0.5
+    assert metrics[0]["value"]["v1"][score_threshold]["tp"]["total"] == 1
+    assert "tn" not in metrics[0]["value"]["v1"][score_threshold]
+    assert (
+        metrics[0]["value"]["v1"][score_threshold]["fp"]["observations"][
+            "hallucinations"
+        ]["count"]
+        == 1
+    )
+    assert (
+        metrics[0]["value"]["v1"][score_threshold]["fp"]["observations"][
+            "misclassifications"
+        ]["count"]
+        == 0
+    )
+    assert (
+        metrics[0]["value"]["v1"][score_threshold]["fn"]["observations"][
+            "no_predictions"
+        ]["count"]
+        == 1
+    )
+    assert metrics[0]["value"]["v1"][score_threshold]["tp"]["total"] == 1
+    assert (
+        metrics[0]["value"]["v1"][score_threshold]["fn"]["observations"][
+            "misclassifications"
+        ]["count"]
+        == 0
+    )
+
+    # score threshold is now higher than the scores, so we should the predictions drop out such that we're only left with 2 fns (one for each image)
+    score_threshold = 0.85
+    assert metrics[0]["value"]["v1"][score_threshold]["tp"]["total"] == 0
+    assert "tn" not in metrics[0]["value"]["v1"][score_threshold]
+    assert (
+        metrics[0]["value"]["v1"][score_threshold]["fp"]["observations"][
+            "hallucinations"
+        ]["count"]
+        == 0
+    )
+    assert (
+        metrics[0]["value"]["v1"][score_threshold]["fp"]["observations"][
+            "misclassifications"
+        ]["count"]
+        == 0
+    )
+    assert (
+        metrics[0]["value"]["v1"][score_threshold]["fn"]["observations"][
+            "no_predictions"
+        ]["count"]
+        == 2
+    )
+    assert (
+        metrics[0]["value"]["v1"][score_threshold]["fn"]["observations"][
+            "misclassifications"
+        ]["count"]
+        == 0
+    )
