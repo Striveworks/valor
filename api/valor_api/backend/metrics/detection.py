@@ -433,34 +433,19 @@ def _compute_detailed_curves(
                     ]
                     seen_gts.add(row.gt_id)
                     seen_pds.add(row.pd_id)
-                # elif (
-                #     row.score >= confidence_threshold
-                #     and row.iou < pr_curve_iou_threshold
-                #     and row.gt_id not in seen_gts
-                #     and row.is_match is True
-                # ):
-                #     # if there is at least one groundtruth overlapping the prediction with a sufficient score and iou threshold, then it's a misclassification
-                #     if misclassification_detected:
-                #         fp["misclassifications"].append(
-                #             (dataset_name, datum_uid, pd_geojson)
-                #             if pd_geojson is not None
-                #             else (dataset_name, datum_uid)
-                #         )
-                #     elif hallucination_detected:
-                #         fp["hallucinations"].append(
-                #             (dataset_name, datum_uid, pd_geojson)
-                #             if pd_geojson is not None
-                #             else (dataset_name, datum_uid)
-                #         )
-                #     fp += [
-                #         (
-                #             row.dataset_name,
-                #             row.gt_datum_uid,
-                #             row.gt_geojson,
-                #         )
-                #     ]
-                #     seen_gts.add(row.gt_id)
-                #     seen_pds.add(row.pd_id)
+                elif (
+                    row.score >= confidence_threshold
+                    and row.iou < pr_curve_iou_threshold
+                    and row.gt_id not in seen_gts
+                    and row.is_match is True
+                ):
+                    fp["hallucinations"].append(
+                        (
+                            row.dataset_name,
+                            row.gt_datum_uid,
+                            row.gt_geojson,
+                        )
+                    )
 
             if label_id in groundtruths_per_label:
                 for (
