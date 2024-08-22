@@ -781,8 +781,6 @@ def _convert_annotations_to_common_type(
 ) -> enums.AnnotationType:
     """Convert all annotations to a common type."""
 
-    print("\n\n\n === CONVERSION START === \n\n\n")
-
     if target_type is None:
         # find the greatest common type
         groundtruth_type = AnnotationType.RASTER
@@ -845,8 +843,6 @@ def _convert_annotations_to_common_type(
             task_type=enums.TaskType.OBJECT_DETECTION,
         )
 
-    print("\n\n\n === CONVERSION END === \n\n\n")
-    print(target_type)
     return target_type
 
 
@@ -1230,8 +1226,6 @@ def _compute_detection_metrics(
         )
         .subquery()
     )
-
-    print(ious)
 
     ordered_ious = profiler(
         db.query(ious).order_by(-ious.c.score, -ious.c.iou, ious.c.gt_id).all
