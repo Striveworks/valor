@@ -252,11 +252,9 @@ def _compute_curves(
 
         for confidence_threshold in [x / 100 for x in range(5, 100, 5)]:
 
-            fp_cnt = 0
-            tp_cnt = 0
-            fn_cnt = 0
+            tp_cnt, fp_cnt, fn_cnt = 0, 0, 0
+
             if label_id not in sorted_ranked_pairs:
-                tp_cnt = 0
                 if label_id in groundtruths_per_label:
                     fn_cnt = len(groundtruths_per_label[label_id])
             else:
@@ -273,7 +271,6 @@ def _compute_curves(
                     elif (
                         row.score >= confidence_threshold
                         and row.iou < iou_threshold
-                        and row.gt_id not in seen_gts
                     ):
                         fp_cnt += 1
 
@@ -433,19 +430,19 @@ def _compute_detailed_curves(
                     ]
                     seen_gts.add(row.gt_id)
                     seen_pds.add(row.pd_id)
-                elif (
-                    row.score >= confidence_threshold
-                    and row.iou < pr_curve_iou_threshold
-                    and row.gt_id not in seen_gts
-                    and row.is_match is True
-                ):
-                    fp["hallucinations"].append(
-                        (
-                            row.dataset_name,
-                            row.gt_datum_uid,
-                            row.gt_geojson,
-                        )
-                    )
+                # elif (
+                #     row.score >= confidence_threshold
+                #     and row.iou < pr_curve_iou_threshold
+                #     and row.is_match is True
+                #     and row
+                # ):
+                #     fp["hallucinations"].append(
+                #         (
+                #             row.dataset_name,
+                #             row.gt_datum_uid,
+                #             row.gt_geojson,
+                #         )
+                #     )
 
             if label_id in groundtruths_per_label:
                 for (
