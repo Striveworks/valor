@@ -4,7 +4,7 @@ from test_utils import *
 from valor_implementation import _calculate_pr_curves
 from optimized_implementation import _calculate_pr_curves_optimized
 
-n = 1000
+n = 10000000
 n_class = 3
 predictions_per_datum = 3
 
@@ -12,7 +12,7 @@ groundtruth_df = generate_groundtruth(n, n_class)
 prediction_df = generate_predictions(n, n_class, 3)
 
 print(f"Groundtruth Dataframe Memory Usage: {groundtruth_df.memory_usage(index=True).sum()}")
-print(f"Prediction Dataframe Memory Usage: {groundtruth_df.memory_usage(index=True).sum()}")
+print(f"Prediction Dataframe Memory Usage: {prediction_df.memory_usage(index=True).sum()}")
 
 ## Randomly drop some samples.
 ## groundtruth_df = groundtruth_df.sample(frac=0.9)
@@ -27,7 +27,6 @@ valor_df = _calculate_pr_curves(
 )
 end = time.time()
 print(f"Valor completed {n} in {end - start}")
-
 
 start = time.time()
 fast_df = _calculate_pr_curves_optimized(
