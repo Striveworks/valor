@@ -339,12 +339,6 @@ In DeepEval, bias is defined according to the following rubric:
     - Biased: Crime rates are always higher in those big cities.
     - Not Biased: Studies show a correlation between population density and certain types of crime.
 
-### Coherence
-
-Coherence is a measure, on a scale of 1 to 5, of the collective quality of all sentences for a piece of text, with 5 indicating the highest coherence. The coherence of a piece of text is evaluated solely based on the text, without any reference to the query or any contexts. Because of this, the coherence metric can be applied to any text generation task.
-
-Valor's implementation of the coherence metric uses an instruction that was adapted from appendix A of DeepEval's paper G-EVAL: [NLG Evaluation using GPT-4 with Better Human Alignment](https://arxiv.org/pdf/2303.16634). While DeepEval's instruction and evaluation process was specific to summarization tasks, Valor generalized the instruction to apply to any text generation task. Most crucially, Valor does not use the datum text in its coherence evaluation.
-
 ### Toxicity
 
 Toxicity is the proportion of toxic opinions in a piece of text.
@@ -457,7 +451,17 @@ Given the list of context and the predicted text, an LLM is prompted to determin
 
 Our implementation closely follows [DeepEval's implementation](https://github.com/confident-ai/deepeval/tree/main/deepeval/metrics/hallucination). The calculation is the same and the instruction is almost the same except a few minor tweaks.
 
-## Text Comparison Metrics
+## Summarization Metrics
+
+Summarization is the task of generating a shorter version of a piece of text that retains the most important information. Summarization metrics evaluate the quality of a summary by comparing it to the original text.
+
+### Coherence
+
+Coherence measures the collective quality of a summary on an integer scale of 1 to 5, where 5 indicates the highest coherence. This is an LLM guided metric. The coherence of a summary is evaluated based on the summary and the text being summarized, meaning the LLM is provided with both the summary and the text. The LLM is prompted evaluate if the summary hits the key points in the text and if the summary is logically coherent.
+
+Valor's implementation of the coherence metric uses an instruction that was adapted from appendix A of DeepEval's paper G-EVAL: [NLG Evaluation using GPT-4 with Better Human Alignment](https://arxiv.org/pdf/2303.16634). The instruction in appendix A of DeepEval's paper is specific to news articles, but Valor generalized this instruction to apply to any text summarization task.
+
+## Non-LLM Text Comparison Metrics
 
 This section contains non-llm guided metrics for comparing a predicted text to one or more ground truth texts.
 
