@@ -4429,7 +4429,7 @@ def test_two_groundtruths_one_datum(
     assert result_dict["meta"]["duration"] <= 5
 
 
-def test_evaluate_detection_fp(img1, img2):
+def test_evaluate_detection_pr_fp(img1, img2):
     gts = [
         schemas.GroundTruth(
             datum=img1,
