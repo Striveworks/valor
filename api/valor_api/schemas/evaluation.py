@@ -286,3 +286,9 @@ class EvaluationResponse(BaseModel):
     model_config = ConfigDict(
         extra="allow", protected_namespaces=("protected_",)
     )
+
+    # make sure that `meta` is a dictionary
+    @field_validator("meta")
+    @classmethod
+    def null_to_empty_dict(cls, v):
+        return v or {}
