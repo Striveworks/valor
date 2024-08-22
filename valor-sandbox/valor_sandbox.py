@@ -4,7 +4,7 @@ from test_utils import *
 from valor_implementation import _calculate_pr_curves
 from optimized_implementation import _calculate_pr_curves_optimized
 
-n = 10000000
+n = 1000
 n_class = 3
 predictions_per_datum = 3
 
@@ -41,5 +41,5 @@ print(f"New code completed {n} in {end - start}")
 print(label_values[:n_class])
 
 def print_compare(label_value):
-    print(valor_df[valor_df['label_value'] == label_value][fast_df.columns])
-    print(fast_df[fast_df['label_value'] == label_value][fast_df.columns])
+    print(valor_df[valor_df['label_value'] == label_value][fast_df.columns.difference(['total_datums'])])
+    print(fast_df[fast_df['label_value'] == label_value][fast_df.columns.difference(['total_datums'])])

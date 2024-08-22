@@ -29,8 +29,10 @@ def _calculate_pr_curves_optimized(
         ]
     )
 
-    total_datums_per_label_key = joint_df.drop_duplicates(["datum_uid", "datum_id", "label_key"])["label_key"].value_counts()
-    total_label_values_per_label_key = joint_df.drop_duplicates(["datum_uid", "datum_id", "label_key"])[["label_key", "label_value_gt"]].value_counts()
+    dd = defaultdict(lambda: 0)
+
+    total_datums_per_label_key = joint_df.drop_duplicates(["datum_uid", "datum_id", "label_key"])["label_key"].value_counts().to_dict(into=dd)
+    total_label_values_per_label_key = joint_df.drop_duplicates(["datum_uid", "datum_id", "label_key"])[["label_key", "label_value_gt"]].value_counts().to_dict(into=dd)
 
     joint_df = joint_df.assign(
         threshold_index=lambda chain_df: (
@@ -41,13 +43,11 @@ def _calculate_pr_curves_optimized(
         )
     )
 
-    
     true_positives = joint_df[joint_df["is_label_match"] == True][["label_key", "label_value_gt", "threshold_index"]].value_counts()
     ## true_positives = true_positives.reset_index(2).sort_values("threshold_index").groupby(["label_key", "label_value_gt"]).cumsum()
     false_positives = joint_df[joint_df["is_label_match"] == False][["label_key", "label_value_pd", "threshold_index"]].value_counts()
     ## false_positives = false_positives.reset_index(2).sort_values("threshold_index").groupby(["label_key", "label_value_pd"]).cumsum()
-
-    dd = defaultdict(lambda: 0)
+    
     confidence_thresholds = [x / 100 for x in range(5, 100, 5)]
 
     tps_keys = []
@@ -63,14 +63,14 @@ def _calculate_pr_curves_optimized(
     tns_cumulative = []
 
     ## Not sure what the efficient way of doing this is in pandas
-    for label_key in true_positives.keys().get_level_values(0).unique():
-        for label_value in true_positives.keys().get_level_values(1).unique():
+    for label_key in false_positives.keys().get_level_values(0).unique():
+        for label_value in false_positives.keys().get_level_values(1).unique():
             dd = true_positives[label_key][label_value].to_dict(into=dd)
             cumulative_true_positive = [0] * 21
             cumulative_false_negative = [0] * 21
             for threshold_index in range(19, -1, -1):
                 cumulative_true_positive[threshold_index] = cumulative_true_positive[threshold_index + 1] + dd[threshold_index]
-                cumulative_false_negative[threshold_index] = total_label_values_per_label_key[label_key][label_value] - cumulative_true_positive[threshold_index]
+                cumulative_false_negative[threshold_index] = total_label_values_per_label_key[(label_key, label_value)] - cumulative_true_positive[threshold_index]
             
             tps_keys += [label_key] * 19
             tps_values += [label_value] * 19
@@ -86,7 +86,7 @@ def _calculate_pr_curves_optimized(
             cumulative_true_negative = [0] * 21
             for threshold_index in range(19, -1, -1):
                 cumulative_false_positive[threshold_index] = cumulative_false_positive[threshold_index + 1] + dd[threshold_index]
-                cumulative_true_negative[threshold_index] = total_datums_per_label_key[label_key] - total_label_values_per_label_key[label_key][label_value] - cumulative_false_positive[threshold_index]
+                cumulative_true_negative[threshold_index] = total_datums_per_label_key[label_key] - total_label_values_per_label_key[(label_key, label_value)] - cumulative_false_positive[threshold_index]
             
             fps_keys += [label_key] * 19
             fps_values += [label_value] * 19
@@ -118,7 +118,7 @@ def _calculate_pr_curves_optimized(
     )
 
     pr_curve_counts_df.fillna(0, inplace=True)
-    pr_curve_counts_df["total_datums"] = pr_curve_counts_df["label_key"].map(total_datums_per_label_key.to_dict())
+    pr_curve_counts_df["total_datums"] = pr_curve_counts_df["label_key"].map(total_datums_per_label_key)
 
     pr_curve_counts_df["precision"] = pr_curve_counts_df["true_positives"] / (
         pr_curve_counts_df["true_positives"]
