@@ -63,36 +63,34 @@ def _calculate_pr_curves_optimized(
     tns_cumulative = []
 
     ## Not sure what the efficient way of doing this is in pandas
-    for label_key in false_positives.keys().get_level_values(0).unique():
-        for label_value in false_positives.keys().get_level_values(1).unique():
-            dd = true_positives[label_key][label_value].to_dict(into=dd)
-            cumulative_true_positive = [0] * 21
-            cumulative_false_negative = [0] * 21
-            for threshold_index in range(19, -1, -1):
-                cumulative_true_positive[threshold_index] = cumulative_true_positive[threshold_index + 1] + dd[threshold_index]
-                cumulative_false_negative[threshold_index] = total_label_values_per_label_key[(label_key, label_value)] - cumulative_true_positive[threshold_index]
-            
-            tps_keys += [label_key] * 19
-            tps_values += [label_value] * 19
-            tps_confidence += confidence_thresholds
-            tps_cumulative += cumulative_true_positive[1:-1]
-            fns_cumulative += cumulative_false_negative[1:-1]
+    for (label_key, label_value) in true_positives.keys().droplevel(2).unique():
+        dd = true_positives[label_key][label_value].to_dict(into=dd)
+        cumulative_true_positive = [0] * 21
+        cumulative_false_negative = [0] * 21
+        for threshold_index in range(19, -1, -1):
+            cumulative_true_positive[threshold_index] = cumulative_true_positive[threshold_index + 1] + dd[threshold_index]
+            cumulative_false_negative[threshold_index] = total_label_values_per_label_key[(label_key, label_value)] - cumulative_true_positive[threshold_index]
+        
+        tps_keys += [label_key] * 19
+        tps_values += [label_value] * 19
+        tps_confidence += confidence_thresholds
+        tps_cumulative += cumulative_true_positive[1:-1]
+        fns_cumulative += cumulative_false_negative[1:-1]
 
     ## Not sure what the efficient way of doing this is in pandas
-    for label_key in false_positives.keys().get_level_values(0).unique():
-        for label_value in false_positives.keys().get_level_values(1).unique():
-            dd = false_positives[label_key][label_value].to_dict(into=dd)
-            cumulative_false_positive = [0] * 21
-            cumulative_true_negative = [0] * 21
-            for threshold_index in range(19, -1, -1):
-                cumulative_false_positive[threshold_index] = cumulative_false_positive[threshold_index + 1] + dd[threshold_index]
-                cumulative_true_negative[threshold_index] = total_datums_per_label_key[label_key] - total_label_values_per_label_key[(label_key, label_value)] - cumulative_false_positive[threshold_index]
-            
-            fps_keys += [label_key] * 19
-            fps_values += [label_value] * 19
-            fps_confidence += confidence_thresholds
-            fps_cumulative += cumulative_false_positive[1:-1]
-            tns_cumulative += cumulative_true_negative[1:-1]
+    for (label_key, label_value) in false_positives.keys().droplevel(2).unique():
+        dd = false_positives[label_key][label_value].to_dict(into=dd)
+        cumulative_false_positive = [0] * 21
+        cumulative_true_negative = [0] * 21
+        for threshold_index in range(19, -1, -1):
+            cumulative_false_positive[threshold_index] = cumulative_false_positive[threshold_index + 1] + dd[threshold_index]
+            cumulative_true_negative[threshold_index] = total_datums_per_label_key[label_key] - total_label_values_per_label_key[(label_key, label_value)] - cumulative_false_positive[threshold_index]
+        
+        fps_keys += [label_key] * 19
+        fps_values += [label_value] * 19
+        fps_confidence += confidence_thresholds
+        fps_cumulative += cumulative_false_positive[1:-1]
+        tns_cumulative += cumulative_true_negative[1:-1]
 
     tps_df = pd.DataFrame({
         "label_key": tps_keys,
