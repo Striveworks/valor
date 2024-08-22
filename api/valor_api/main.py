@@ -1383,6 +1383,7 @@ def create_or_get_evaluations(
 @app.get(
     "/evaluations",
     dependencies=[Depends(token_auth_scheme)],
+    response_model_exclude_none=True,
     tags=["Evaluations"],
 )
 def get_evaluations(
