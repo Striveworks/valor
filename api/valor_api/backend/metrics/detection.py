@@ -251,16 +251,17 @@ def _compute_curves(
         curves = defaultdict(lambda: defaultdict(dict))
 
         for confidence_threshold in [x / 100 for x in range(5, 100, 5)]:
+
+            fp_cnt = 0
+            tp_cnt = 0
+            fn_cnt = 0
             if label_id not in sorted_ranked_pairs:
                 tp_cnt = 0
                 if label_id in groundtruths_per_label:
                     fn_cnt = len(groundtruths_per_label[label_id])
-                else:
-                    fn_cnt = 0
-
             else:
-                tp_cnt, fn_cnt = 0, 0
                 seen_gts = set()
+                gts_counted_as_fp = defaultdict(int)
 
                 for row in sorted_ranked_pairs[label_id]:
                     if (
@@ -270,6 +271,14 @@ def _compute_curves(
                     ):
                         tp_cnt += 1
                         seen_gts.add(row.gt_id)
+                        fp_cnt -= gts_counted_as_fp.pop(row.gt_id, 0)
+                    elif (
+                        row.score >= confidence_threshold
+                        and row.iou < iou_threshold
+                        and row.gt_id not in seen_gts
+                    ):
+                        fp_cnt += 1
+                        gts_counted_as_fp[row.gt_id] += 1
 
                 for (
                     _,
@@ -279,7 +288,6 @@ def _compute_curves(
                     if gt_id not in seen_gts:
                         fn_cnt += 1
 
-            fp_cnt = 0
             for (
                 _,
                 _,
