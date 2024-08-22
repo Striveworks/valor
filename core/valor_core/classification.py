@@ -690,13 +690,7 @@ def _calculate_pr_curves(
             on=["datum_id", "datum_uid", "label_key"],
             how="inner",
             suffixes=("_gt", "_pd"),
-        ).assign(
-            is_label_match=lambda chain_df: (
-                (chain_df["label_value_pd"] == chain_df["label_value_gt"])
-            )
-        )
-        # only keep the columns we need
-        .loc[
+        ).loc[
             :,
             [
                 "datum_uid",
@@ -707,254 +701,105 @@ def _calculate_pr_curves(
                 "label_value_pd",
                 "score",
                 "id_pd",
-                "is_label_match",
             ],
         ]
     )
 
-    # free up memory
     del groundtruth_df
     del prediction_df
     gc.collect()
 
-    # add confidence_threshold to the dataframe and sort
-    pr_calc_df = pd.concat(
-        [
-            joint_df.assign(confidence_threshold=threshold)
-            for threshold in [x / 100 for x in range(5, 100, 5)]
-        ],
-        ignore_index=True,
-    ).sort_values(
-        by=[
-            "label_key",
-            "label_value_pd",
-            "confidence_threshold",
-            "score",
-        ],
-        ascending=False,
-    )
+    total_datums_per_label_key = joint_df.drop_duplicates(["datum_uid", "datum_id", "label_key"])["label_key"].value_counts()
+    total_label_values_per_label_key = joint_df.drop_duplicates(["datum_uid", "datum_id", "label_key"])[["label_key", "label_value_gt"]].value_counts()
 
-    # create flags where the predictions meet criteria
-    pr_calc_df["true_positive_flag"] = (
-        pr_calc_df["score"] >= pr_calc_df["confidence_threshold"]
-    ) & pr_calc_df["is_label_match"]
-
-    # for all the false positives, we consider them to be a misclassification if they share a key but not a value with a gt
-    pr_calc_df["misclassification_false_positive_flag"] = (
-        pr_calc_df["score"] >= pr_calc_df["confidence_threshold"]
-    ) & ~pr_calc_df["is_label_match"]
-
-    # next, we flag false negatives by declaring any groundtruth that isn't associated with a true positive to be a false negative
-    groundtruths_associated_with_true_positives = (
-        pr_calc_df[pr_calc_df["true_positive_flag"]]
-        .groupby(["confidence_threshold"], as_index=False)["id_gt"]
-        .unique()
-    )
-
-    if not groundtruths_associated_with_true_positives.empty:
-        confidence_interval_to_true_positive_groundtruth_ids_dict = (
-            groundtruths_associated_with_true_positives.set_index(
-                "confidence_threshold"
-            )["id_gt"]
-            .apply(set)
-            .to_dict()
-        )
-
-        mask = pd.Series(False, index=pr_calc_df.index)
-
-        for (
-            threshold,
-            elements,
-        ) in confidence_interval_to_true_positive_groundtruth_ids_dict.items():
-            threshold_mask = pr_calc_df["confidence_threshold"] == threshold
-            membership_mask = pr_calc_df["id_gt"].isin(elements)
-            mask |= threshold_mask & membership_mask
-
-        pr_calc_df["false_negative_flag"] = ~mask
-
-    else:
-        pr_calc_df["false_negative_flag"] = False
-
-    # it's a misclassification if there is a corresponding misclassification false positive
-    pr_calc_df["misclassification_false_negative_flag"] = (
-        pr_calc_df["misclassification_false_positive_flag"]
-        & pr_calc_df["false_negative_flag"]
-    )
-
-    # assign all id_gts that aren't misclassifications but are false negatives to be no_predictions
-    groundtruths_associated_with_misclassification_false_negatives = (
-        pr_calc_df[pr_calc_df["misclassification_false_negative_flag"]]
-        .groupby(["confidence_threshold"], as_index=False)["id_gt"]
-        .unique()
-    )
-
-    if (
-        not groundtruths_associated_with_misclassification_false_negatives.empty
-    ):
-        confidence_interval_to_misclassification_fn_groundtruth_ids_dict = (
-            groundtruths_associated_with_misclassification_false_negatives.set_index(
-                "confidence_threshold"
-            )[
-                "id_gt"
-            ]
-            .apply(set)
-            .to_dict()
-        )
-
-        mask = pd.Series(False, index=pr_calc_df.index)
-
-        for (
-            threshold,
-            elements,
-        ) in (
-            confidence_interval_to_misclassification_fn_groundtruth_ids_dict.items()
-        ):
-            threshold_mask = pr_calc_df["confidence_threshold"] == threshold
-            membership_mask = ~pr_calc_df["id_gt"].isin(elements)
-            mask |= threshold_mask & membership_mask
-
-        pr_calc_df["no_predictions_false_negative_flag"] = (
-            mask & pr_calc_df["false_negative_flag"]
-        )
-
-    else:
-        pr_calc_df["no_predictions_false_negative_flag"] = pr_calc_df[
-            "false_negative_flag"
-        ]
-
-    # true negatives are any rows which don't have another flag
-    pr_calc_df["true_negative_flag"] = (
-        ~pr_calc_df["true_positive_flag"]
-        & ~pr_calc_df["false_negative_flag"]
-        & ~pr_calc_df["misclassification_false_positive_flag"]
-    )
-
-    # next, we sum up the occurences of each classification and merge them together into one dataframe
-    true_positives = (
-        pr_calc_df[pr_calc_df["true_positive_flag"]]
-        .groupby(["label_key", "label_value_pd", "confidence_threshold"])[
-            "id_pd"
-        ]
-        .nunique()
-    )
-    true_positives.name = "true_positives"
-
-    misclassification_false_positives = (
-        pr_calc_df[pr_calc_df["misclassification_false_positive_flag"]]
-        .groupby(["label_key", "label_value_pd", "confidence_threshold"])[
-            "id_pd"
-        ]
-        .nunique()
-    )
-    misclassification_false_positives.name = (
-        "misclassification_false_positives"
-    )
-
-    misclassification_false_negatives = (
-        pr_calc_df[pr_calc_df["misclassification_false_negative_flag"]]
-        .groupby(["label_key", "label_value_gt", "confidence_threshold"])[
-            "id_gt"
-        ]
-        .nunique()
-    )
-    misclassification_false_negatives.name = (
-        "misclassification_false_negatives"
-    )
-
-    no_predictions_false_negatives = (
-        pr_calc_df[pr_calc_df["no_predictions_false_negative_flag"]]
-        .groupby(["label_key", "label_value_gt", "confidence_threshold"])[
-            "id_gt"
-        ]
-        .nunique()
-    )
-    no_predictions_false_negatives.name = "no_predictions_false_negatives"
-
-    # combine these outputs
-    pr_curve_counts_df = (
-        pd.concat(
-            [
-                pr_calc_df.loc[
-                    ~pr_calc_df["label_value_pd"].isnull(),
-                    [
-                        "label_key",
-                        "label_value_pd",
-                        "confidence_threshold",
-                    ],
-                ].rename(columns={"label_value_pd": "label_value"}),
-                pr_calc_df.loc[
-                    ~pr_calc_df["label_value_gt"].isnull(),
-                    [
-                        "label_key",
-                        "label_value_gt",
-                        "confidence_threshold",
-                    ],
-                ].rename(columns={"label_value_gt": "label_value"}),
-            ],
-            axis=0,
-        )
-        .drop_duplicates()
-        .merge(
-            true_positives,
-            left_on=[
-                "label_key",
-                "label_value",
-                "confidence_threshold",
-            ],
-            right_index=True,
-            how="outer",
-        )
-        .merge(
-            misclassification_false_positives,
-            left_on=[
-                "label_key",
-                "label_value",
-                "confidence_threshold",
-            ],
-            right_index=True,
-            how="outer",
-        )
-        .merge(
-            misclassification_false_negatives,
-            left_on=[
-                "label_key",
-                "label_value",
-                "confidence_threshold",
-            ],
-            right_index=True,
-            how="outer",
-        )
-        .merge(
-            no_predictions_false_negatives,
-            left_on=[
-                "label_key",
-                "label_value",
-                "confidence_threshold",
-            ],
-            right_index=True,
-            how="outer",
+    joint_df = joint_df.assign(
+        threshold_index=lambda chain_df: (
+            ((joint_df["score"] * 100) // 5).astype("int32")
+        ),
+        is_label_match=lambda chain_df: (
+            (chain_df["label_value_pd"] == chain_df["label_value_gt"])
         )
     )
 
-    # we're doing an outer join, so any nulls should be zeroes
+    
+    true_positives = joint_df[joint_df["is_label_match"] == True][["label_key", "label_value_gt", "threshold_index"]].value_counts()
+    ## true_positives = true_positives.reset_index(2).sort_values("threshold_index").groupby(["label_key", "label_value_gt"]).cumsum()
+    false_positives = joint_df[joint_df["is_label_match"] == False][["label_key", "label_value_pd", "threshold_index"]].value_counts()
+    ## false_positives = false_positives.reset_index(2).sort_values("threshold_index").groupby(["label_key", "label_value_pd"]).cumsum()
+
+    dd = defaultdict(lambda: 0)
+    confidence_thresholds = [x / 100 for x in range(5, 100, 5)]
+
+    tps_keys = []
+    tps_values = []
+    tps_confidence = []
+    tps_cumulative = []
+    fns_cumulative = []
+
+    fps_keys = []
+    fps_values = []
+    fps_confidence = []
+    fps_cumulative = []
+    tns_cumulative = []
+
+    ## Not sure what the efficient way of doing this is in pandas
+    for label_key in true_positives.keys().get_level_values(0).unique():
+        for label_value in true_positives.keys().get_level_values(1).unique():
+            dd = true_positives[label_key][label_value].to_dict(into=dd)
+            cumulative_true_positive = [0] * 21
+            cumulative_false_negative = [0] * 21
+            for threshold_index in range(19, -1, -1):
+                cumulative_true_positive[threshold_index] = cumulative_true_positive[threshold_index + 1] + dd[threshold_index]
+                cumulative_false_negative[threshold_index] = total_label_values_per_label_key[label_key][label_value] - cumulative_true_positive[threshold_index]
+            
+            tps_keys += [label_key] * 19
+            tps_values += [label_value] * 19
+            tps_confidence += confidence_thresholds
+            tps_cumulative += cumulative_true_positive[1:-1]
+            fns_cumulative += cumulative_false_negative[1:-1]
+
+    ## Not sure what the efficient way of doing this is in pandas
+    for label_key in false_positives.keys().get_level_values(0).unique():
+        for label_value in false_positives.keys().get_level_values(1).unique():
+            dd = false_positives[label_key][label_value].to_dict(into=dd)
+            cumulative_false_positive = [0] * 21
+            cumulative_true_negative = [0] * 21
+            for threshold_index in range(19, -1, -1):
+                cumulative_false_positive[threshold_index] = cumulative_false_positive[threshold_index + 1] + dd[threshold_index]
+                cumulative_true_negative[threshold_index] = total_datums_per_label_key[label_key] - total_label_values_per_label_key[label_key][label_value] - cumulative_false_positive[threshold_index]
+            
+            fps_keys += [label_key] * 19
+            fps_values += [label_value] * 19
+            fps_confidence += confidence_thresholds
+            fps_cumulative += cumulative_false_positive[1:-1]
+            tns_cumulative += cumulative_true_negative[1:-1]
+
+    tps_df = pd.DataFrame({
+        "label_key": tps_keys,
+        "label_value": tps_values,
+        "confidence_threshold": tps_confidence,
+        "true_positives": tps_cumulative,
+        "false_negatives": fns_cumulative, 
+    })
+
+    fps_df = pd.DataFrame({
+        "label_key": fps_keys,
+        "label_value": fps_values,
+        "confidence_threshold": fps_confidence,
+        "false_positives": fps_cumulative,
+        "true_negatives": tns_cumulative, 
+    })
+
+    pr_curve_counts_df = pd.merge(
+        tps_df,
+        fps_df,
+        on=["label_key", "label_value", "confidence_threshold"],
+        how="outer",
+    )
+
     pr_curve_counts_df.fillna(0, inplace=True)
+    pr_curve_counts_df["total_datums"] = pr_curve_counts_df["label_key"].map(total_datums_per_label_key.to_dict())
 
-    # find all unique datums for use when identifying true negatives
-    unique_datum_ids = set(pr_calc_df["datum_id"].unique())
-
-    # calculate additional metrics
-    pr_curve_counts_df["false_positives"] = pr_curve_counts_df[
-        "misclassification_false_positives"
-    ]  # we don't have any hallucinations for classification
-    pr_curve_counts_df["false_negatives"] = (
-        pr_curve_counts_df["misclassification_false_negatives"]
-        + pr_curve_counts_df["no_predictions_false_negatives"]
-    )
-    pr_curve_counts_df["true_negatives"] = len(unique_datum_ids) - (
-        pr_curve_counts_df["true_positives"]
-        + pr_curve_counts_df["false_positives"]
-        + pr_curve_counts_df["false_negatives"]
-    )
     pr_curve_counts_df["precision"] = pr_curve_counts_df["true_positives"] / (
         pr_curve_counts_df["true_positives"]
         + pr_curve_counts_df["false_positives"]
@@ -966,7 +811,7 @@ def _calculate_pr_curves(
     pr_curve_counts_df["accuracy"] = (
         pr_curve_counts_df["true_positives"]
         + pr_curve_counts_df["true_negatives"]
-    ) / len(unique_datum_ids)
+    ) / pr_curve_counts_df["total_datums"]
     pr_curve_counts_df["f1_score"] = (
         2 * pr_curve_counts_df["precision"] * pr_curve_counts_df["recall"]
     ) / (pr_curve_counts_df["precision"] + pr_curve_counts_df["recall"])
@@ -977,6 +822,7 @@ def _calculate_pr_curves(
     pr_output = defaultdict(lambda: defaultdict(dict))
     detailed_pr_output = defaultdict(lambda: defaultdict(dict))
 
+    '''
     # add samples to the dataframe for DetailedPrecisionRecallCurves
     if enums.MetricType.DetailedPrecisionRecallCurve in metrics_to_return:
         for flag in [
@@ -992,7 +838,8 @@ def _calculate_pr_curves(
                 max_examples=pr_curve_max_examples,
                 flag_column=flag,
             )
-
+    '''
+    
     for _, row in pr_curve_counts_df.iterrows():
         pr_output[row["label_key"]][row["label_value"]][
             row["confidence_threshold"]
