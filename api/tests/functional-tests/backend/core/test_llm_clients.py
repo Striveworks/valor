@@ -987,7 +987,7 @@ def test_LLMClient(monkeypatch):
         "valor_api.backend.core.llm_clients.LLMClient.__call__",
         _return_valid_coherence_response,
     )
-    assert 5 == client.coherence("some text")
+    assert 5 == client.coherence("some text", "some summary")
 
     # Coherence score is not an integer.
     monkeypatch.setattr(
@@ -995,7 +995,7 @@ def test_LLMClient(monkeypatch):
         _return_invalid1_coherence_response,
     )
     with pytest.raises(InvalidLLMResponseError):
-        client.coherence("some text")
+        client.coherence("some text", "some summary")
 
     # Coherence score is 0, which is not in {1,2,3,4,5}.
     monkeypatch.setattr(
@@ -1003,7 +1003,7 @@ def test_LLMClient(monkeypatch):
         _return_invalid2_coherence_response,
     )
     with pytest.raises(InvalidLLMResponseError):
-        client.coherence("some text")
+        client.coherence("some text", "some summary")
 
     # Patch __call__ with a valid response.
     monkeypatch.setattr(

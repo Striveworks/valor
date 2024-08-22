@@ -63,7 +63,6 @@ def test_EvaluationParameters(llm_api_params):
             MetricType.AnswerRelevance,
             MetricType.Bias,
             MetricType.BLEU,
-            MetricType.Coherence,
             MetricType.ContextPrecision,
             MetricType.ContextRecall,
             MetricType.ContextRelevance,
@@ -83,7 +82,6 @@ def test_EvaluationParameters(llm_api_params):
             MetricType.AnswerRelevance,
             MetricType.Bias,
             MetricType.BLEU,
-            MetricType.Coherence,
             MetricType.ContextPrecision,
             MetricType.ContextRecall,
             MetricType.ContextRelevance,
@@ -199,21 +197,14 @@ def test_EvaluationParameters(llm_api_params):
             bleu_weights=[1.1, 0.3, -0.5, 0.1],
         )
 
-    # BLEU weights must sum to 1.
+    # BLEU weights must sum to 1. metrics_to_return here are all metrics applicable to summarization.
     with pytest.raises(ValidationError):
         schemas.EvaluationParameters(
             task_type=enums.TaskType.TEXT_GENERATION,
             metrics_to_return=[
-                MetricType.AnswerCorrectness,
-                MetricType.AnswerRelevance,
                 MetricType.Bias,
                 MetricType.BLEU,
                 MetricType.Coherence,
-                MetricType.ContextPrecision,
-                MetricType.ContextRecall,
-                MetricType.ContextRelevance,
-                MetricType.Faithfulness,
-                MetricType.Hallucination,
                 MetricType.ROUGE,
                 MetricType.Toxicity,
             ],

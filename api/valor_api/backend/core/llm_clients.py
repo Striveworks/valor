@@ -403,14 +403,17 @@ class LLMClient:
     def _coherence(
         self,
         text: str,
+        summary: str,
     ) -> int:
         """
-        Compute coherence, the collective quality of all sentences, for a single piece of text.
+        Compute coherence, the collective quality of a summary.
 
         Parameters
         ----------
         text: str
-            The text to be evaluated.
+            The text that was summarized.
+        summary: str
+            The summary to be evaluated.
 
         Returns
         -------
@@ -421,7 +424,9 @@ class LLMClient:
             {"role": "system", "content": DEFAULT_SYSTEM_PROMPT},
             {
                 "role": "user",
-                "content": generate_coherence_instruction(text=text),
+                "content": generate_coherence_instruction(
+                    text=text, summary=summary
+                ),
             },
         ]
 
@@ -854,21 +859,24 @@ class LLMClient:
     def coherence(
         self,
         text: str,
+        summary: str,
     ) -> int:
         """
-        Compute coherence, the collective quality of all sentences, for a single piece of text.
+        Compute coherence, the collective quality of a summary.
 
         Parameters
         ----------
         text: str
-            The text to be evaluated.
+            The text that was summarized.
+        summary: str
+            The summary to be evaluated.
 
         Returns
         -------
         int
             The coherence score will be evaluated as an integer, with 1 indicating the lowest coherence and 5 the highest coherence.
         """
-        return self._coherence(text)
+        return self._coherence(text=text, summary=summary)
 
     def context_precision(
         self,
@@ -1480,7 +1488,7 @@ class MockLLMClient(LLMClient):
 
             # Coherence score
             elif (
-                "Coherence (1-5) - the collective quality of all sentences."
+                "Your task is to rate the summary based on its coherence"
                 in processed_messages[1]["content"]
             ):
                 response = "4"

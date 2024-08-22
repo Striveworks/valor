@@ -631,7 +631,7 @@ def test_CoherenceMetric():
         parameters={
             "dataset_uid": "01",
             "dataset_name": "test_dataset",
-            "prediction": "some prediction",
+            "prediction": "some summary",
         },
     )
 
@@ -641,7 +641,7 @@ def test_CoherenceMetric():
             parameters={
                 "dataset_uid": "01",
                 "dataset_name": "test_dataset",
-                "prediction": "some prediction",
+                "prediction": "some summary",
             },
         )
 
@@ -651,7 +651,7 @@ def test_CoherenceMetric():
             parameters={
                 "dataset_uid": "01",
                 "dataset_name": "test_dataset",
-                "prediction": "some prediction",
+                "prediction": "some summary",
             },
         )
 
@@ -661,7 +661,7 @@ def test_CoherenceMetric():
             parameters={
                 "dataset_uid": "01",
                 "dataset_name": "test_dataset",
-                "prediction": "some prediction",
+                "prediction": "some summary",
             },
         )
 

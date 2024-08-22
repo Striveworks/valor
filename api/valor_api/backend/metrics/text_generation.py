@@ -623,7 +623,10 @@ def _compute_text_generation_metrics(
                 ]
 
             if is_Coherence_enabled:
-                score = client.coherence(text=prediction_text)
+                score = client.coherence(
+                    text=datum_text,
+                    summary=prediction_text,
+                )
                 output += [
                     schemas.CoherenceMetric(
                         value=score,

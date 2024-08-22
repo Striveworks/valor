@@ -187,22 +187,13 @@ def test_coherence_with_openai(
         llm_client="openai",
     )
 
-    expected_metrics = {
-        "uid0": {
-            "Coherence": 1,
-        },
-        "uid1": {
-            "Coherence": 5,
-        },
-    }
-
     # Check that the returned metrics have the right format.
-    for m in metrics:
-        uid = m["parameters"]["datum_uid"]
-        metric_name = m["type"]
-        assert (
-            expected_metrics[uid][metric_name] == m["value"]
-        ), f"Failed for {uid} and {metric_name}"
+    assert len(metrics) == 1
+    assert metrics[0]["parameters"]["datum_uid"] == "uid0"
+    assert metrics[0]["type"] == "Coherence"
+
+    # Check that the coherence was rated >= 3.
+    assert metrics[0]["value"] in {3, 4, 5}
 
 
 def test_context_relevance_with_openai(
@@ -530,22 +521,13 @@ def test_coherence_with_mistral(
         llm_client="mistral",
     )
 
-    expected_metrics = {
-        "uid0": {
-            "Coherence": 1,
-        },
-        "uid1": {
-            "Coherence": 5,
-        },
-    }
-
     # Check that the returned metrics have the right format.
-    for m in metrics:
-        uid = m["parameters"]["datum_uid"]
-        metric_name = m["type"]
-        assert (
-            expected_metrics[uid][metric_name] == m["value"]
-        ), f"Failed for {uid} and {metric_name}"
+    assert len(metrics) == 1
+    assert metrics[0]["parameters"]["datum_uid"] == "uid0"
+    assert metrics[0]["type"] == "Coherence"
+
+    # Check that the coherence was rated >= 3.
+    assert metrics[0]["value"] in {3, 4, 5}
 
 
 def test_context_precision_with_mistral(
