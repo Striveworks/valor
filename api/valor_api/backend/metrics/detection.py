@@ -430,19 +430,6 @@ def _compute_detailed_curves(
                     ]
                     seen_gts.add(row.gt_id)
                     seen_pds.add(row.pd_id)
-                # elif (
-                #     row.score >= confidence_threshold
-                #     and row.iou < pr_curve_iou_threshold
-                #     and row.is_match is True
-                #     and row
-                # ):
-                #     fp["hallucinations"].append(
-                #         (
-                #             row.dataset_name,
-                #             row.gt_datum_uid,
-                #             row.gt_geojson,
-                #         )
-                #     )
 
             if label_id in groundtruths_per_label:
                 for (
