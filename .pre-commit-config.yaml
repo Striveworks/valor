@@ -32,11 +32,12 @@ repos:
     rev: v1.1.376
     hooks:
       - id: pyright
-        additional_dependencies:
-          [
+        additional_dependencies: [
             "requests",
             "Pillow >= 9.1.0",
             "numpy",
+            "pandas>=2.2.2",
+            "pandas-stubs", # fixes pyright issues with pandas
             "pytest",
             "python-dotenv",
             "SQLAlchemy>=2.0",
@@ -44,7 +45,6 @@ repos:
             "importlib_metadata; python_version < '3.8'",
             "pydantic-settings",
             "tqdm",
-            "pandas",
             "packaging",
             "PyJWT[crypto]",
             "structlog",
@@ -57,4 +57,5 @@ repos:
             "nltk",
             "rouge_score",
             "evaluate",
+            "shapely",
           ]
