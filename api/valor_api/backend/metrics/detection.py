@@ -25,16 +25,6 @@ from valor_api.backend.query import generate_query, generate_select
 from valor_api.enums import AnnotationType
 
 
-def profiler(fn):
-    def wrapper(*args, **kwargs):
-        print("ENTERING", fn.__name__)
-        result = fn(*args, **kwargs)
-        print("EXITING", fn.__name__)
-        return result
-
-    return wrapper
-
-
 @dataclass
 class RankedPair:
     dataset_name: str
@@ -225,7 +215,6 @@ def _calculate_ap_and_ar(
     return ap_metrics, ar_metrics
 
 
-@profiler
 def _compute_curves(
     sorted_ranked_pairs: dict[int, list[RankedPair]],
     labels: dict[int, tuple[str, str]],
@@ -342,7 +331,6 @@ def _compute_curves(
     ]
 
 
-@profiler
 def _compute_detailed_curves(
     sorted_ranked_pairs: dict[int, list[RankedPair]],
     labels: dict[int, tuple[str, str]],
@@ -656,7 +644,6 @@ def _compute_detailed_curves(
     return output
 
 
-@profiler
 def _compute_detection_metrics_averaged_over_ious_from_aps(
     ap_scores: Sequence[schemas.APMetric],
 ) -> Sequence[schemas.APMetricAveragedOverIOUs]:
@@ -685,7 +672,6 @@ def _compute_detection_metrics_averaged_over_ious_from_aps(
     return ret
 
 
-@profiler
 def _average_ignore_minus_one(a):
     """Average a list of metrics, ignoring values of -1"""
     num, denom = 0.0, 0.0
@@ -698,7 +684,6 @@ def _average_ignore_minus_one(a):
     return -1 if div0_flag else num / denom
 
 
-@profiler
 def _compute_mean_ar_metrics(
     ar_metrics: Sequence[schemas.ARMetric],
 ) -> list[schemas.mARMetric]:
@@ -727,7 +712,6 @@ def _compute_mean_ar_metrics(
     return mean_metrics
 
 
-@profiler
 def _compute_mean_detection_metrics_from_aps(
     ap_scores: Sequence[schemas.APMetric | schemas.APMetricAveragedOverIOUs],
 ) -> Sequence[schemas.mAPMetric | schemas.mAPMetricAveragedOverIOUs]:
@@ -772,7 +756,6 @@ def _compute_mean_detection_metrics_from_aps(
     return mean_detection_metrics
 
 
-@profiler
 def _convert_annotations_to_common_type(
     db: Session,
     datasets: list[models.Dataset],
@@ -859,31 +842,32 @@ def _annotation_type_to_column(
             raise RuntimeError
 
 
-@profiler
 def _annotation_type_to_geojson(
     annotation_type: AnnotationType,
 ):
     match annotation_type:
         case AnnotationType.BOX:
-            box = models.Annotation.box
+            return gfunc.ST_AsGeoJSON(models.Annotation.box)
         case AnnotationType.POLYGON:
-            box = gfunc.ST_Envelope(models.Annotation.polygon)
+            return gfunc.ST_AsGeoJSON(
+                gfunc.ST_Envelope(models.Annotation.polygon)
+            )
         case AnnotationType.RASTER:
-            box = gfunc.ST_Envelope(
-                gfunc.ST_MinConvexHull(
-                    func.bitstring_to_raster(
-                        models.Bitmask.value,
-                        models.Bitmask.height,
-                        models.Bitmask.width,
+            return gfunc.ST_AsGeoJSON(
+                gfunc.ST_Envelope(
+                    gfunc.ST_MinConvexHull(
+                        func.bitstring_to_raster(
+                            models.Bitmask.value,
+                            models.Bitmask.height,
+                            models.Bitmask.width,
+                        )
                     )
                 )
             )
         case _:
             raise RuntimeError
-    return gfunc.ST_AsGeoJSON(box)
 
 
-@profiler
 def _aggregate_data(
     db: Session,
     groundtruth_filter: schemas.Filter,
@@ -1020,7 +1004,6 @@ def _aggregate_data(
     return (groundtruths_cte, predictions_cte, labels)
 
 
-@profiler
 def _compute_detection_metrics(
     db: Session,
     parameters: schemas.EvaluationParameters,
@@ -1227,9 +1210,9 @@ def _compute_detection_metrics(
         .subquery()
     )
 
-    ordered_ious = profiler(
-        db.query(ious).order_by(-ious.c.score, -ious.c.iou, ious.c.gt_id).all
-    )()
+    ordered_ious = (
+        db.query(ious).order_by(-ious.c.score, -ious.c.iou, ious.c.gt_id).all()
+    )
 
     matched_pd_set = set()
     matched_sorted_ranked_pairs = defaultdict(list)
@@ -1389,7 +1372,6 @@ def _compute_detection_metrics(
     return ap_ar_output + pr_curves
 
 
-@profiler
 def _compute_detection_metrics_with_detailed_precision_recall_curve(
     db: Session,
     parameters: schemas.EvaluationParameters,

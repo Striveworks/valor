@@ -36,7 +36,7 @@ CREATE OR REPLACE FUNCTION bitstring_to_raster(
     bitstring BIT VARYING,
     raster_height INTEGER,
     raster_width INTEGER,
-    srid INTEGER DEFAULT 4326
+    srid INTEGER DEFAULT 0
 )
 RETURNS RASTER AS $$
 DECLARE

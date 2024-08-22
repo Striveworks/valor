@@ -1,4 +1,4 @@
-from sqlalchemy import Function
+from sqlalchemy import BindParameter, Function
 from sqlalchemy.orm.attributes import InstrumentedAttribute
 from sqlalchemy.orm.decl_api import DeclarativeMeta
 from sqlalchemy.sql.elements import (
@@ -96,6 +96,8 @@ def _recursive_select_to_table_names(
         for clause in argument.clauses:
             table_names.extend(_recursive_select_to_table_names(clause))
         return table_names
+    elif isinstance(argument, BindParameter):
+        return []
     else:
         raise NotImplementedError(
             f"Unsupported table type '{type(argument)}'."
