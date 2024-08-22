@@ -851,6 +851,7 @@ def _calculate_pr_curves(
 
     # any NaNs that are left are from division by zero errors
     pr_curve_counts_df.fillna(-1, inplace=True)
+
     pr_output = defaultdict(lambda: defaultdict(dict))
     detailed_pr_output = defaultdict(lambda: defaultdict(dict))
 
