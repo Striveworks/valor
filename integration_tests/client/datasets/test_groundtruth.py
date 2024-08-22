@@ -7,7 +7,7 @@ import warnings
 import numpy as np
 import pytest
 from geoalchemy2.functions import ST_AsText, ST_Polygon
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from valor import Annotation, Client, Dataset, Datum, GroundTruth, Label
@@ -219,7 +219,17 @@ def test_create_gt_segs_as_polys_or_masks(
     dataset.add_groundtruth(gts)
 
     wkts = db.scalars(
-        select(ST_AsText(ST_Polygon(models.Bitmask.value)))
+        select(
+            ST_AsText(
+                ST_Polygon(
+                    func.bitstring_to_raster(
+                        models.Bitmask.value,
+                        models.Bitmask.height,
+                        models.Bitmask.width,
+                    )
+                )
+            )
+        )
     ).all()
 
     for wkt in wkts:

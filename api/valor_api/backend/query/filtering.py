@@ -88,7 +88,7 @@ map_symbol_to_resources = {
     # 'area' attribute
     SupportedSymbol.BOX_AREA: (Annotation, ST_Area(Annotation.box)),
     SupportedSymbol.POLYGON_AREA: (Annotation, ST_Area(Annotation.polygon)),
-    SupportedSymbol.RASTER_AREA: (Annotation, func.bit_count(Bitmask.value)),
+    SupportedSymbol.RASTER_AREA: (Bitmask, func.bit_count(Bitmask.value)),
     # backend use only
     SupportedSymbol.DATASET_ID: (Dataset, Dataset.id),
     SupportedSymbol.MODEL_ID: (Model, Model.id),

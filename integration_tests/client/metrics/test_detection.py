@@ -3367,12 +3367,13 @@ def test_evaluate_mixed_annotations(
     assert (
         db.scalar(
             select(func.count(models.Annotation.id)).where(
-                models.Annotation.raster.isnot(None)
+                models.Annotation.bitmask_id.isnot(None)
             )
         )
         == 4
     )
 
+    print("creating job 1")
     eval_job = model.evaluate_detection(
         [dset_box, dset_polygon, dset_raster],
         iou_thresholds_to_compute=[0.1, 0.6],
@@ -3381,7 +3382,9 @@ def test_evaluate_mixed_annotations(
             "AP",
         ],
     )
+    print("job1")
     eval_job.wait_for_completion()
+    print("job1 completed")
 
     # show that all 6 annotations have a box now since it is the common type.
     assert db.scalar(select(func.count(models.Annotation.id))) == 6
@@ -3404,7 +3407,7 @@ def test_evaluate_mixed_annotations(
     assert (
         db.scalar(
             select(func.count(models.Annotation.id)).where(
-                models.Annotation.raster.isnot(None)
+                models.Annotation.bitmask_id.isnot(None)
             )
         )
         == 4

@@ -2,15 +2,12 @@
 that is no auth
 """
 
-import io
 import json
 import warnings
 from typing import Any
 
 import numpy as np
-import PIL.Image
 import pytest
-from geoalchemy2.functions import ST_AsPNG
 from sqlalchemy import and_, func, select
 from sqlalchemy.orm import Session
 
@@ -223,7 +220,10 @@ def test_create_model_with_predicted_segmentations(
     # grab the segmentation from the db, recover the mask, and check
     # its equal to the mask the client sent over
     db_annotations = (
-        db.query(models.Bitmask)
+        db.query(
+            models.Annotation.datum_id,
+            models.Bitmask,
+        )
         .join(
             models.Annotation,
             models.Annotation.bitmask_id == models.Bitmask.id,
@@ -232,29 +232,21 @@ def test_create_model_with_predicted_segmentations(
         .all()
     )
 
-    if db_annotations[0].datum_id < db_annotations[1].datum_id:
-        raster_uid1 = _convert_bitstring_to_numpy(db_annotations[0])
-        raster_uid2 = _convert_bitstring_to_numpy(db_annotations[1])
+    if db_annotations[0][0] < db_annotations[1][0]:
+        raster_uid1 = _convert_bitstring_to_numpy(db_annotations[0][1])
+        raster_uid2 = _convert_bitstring_to_numpy(db_annotations[1][1])
     else:
-        raster_uid1 = _convert_bitstring_to_numpy(db_annotations[1])
-        raster_uid2 = _convert_bitstring_to_numpy(db_annotations[0])
+        raster_uid1 = _convert_bitstring_to_numpy(db_annotations[1][1])
+        raster_uid2 = _convert_bitstring_to_numpy(db_annotations[0][1])
 
     # test raster 1
-    png_from_db = db.scalar(ST_AsPNG(raster_uid1))
-    f = io.BytesIO(png_from_db.tobytes())
-    mask_array = np.array(PIL.Image.open(f))
-    assert pred_instance_segs[0].annotations[0].raster is not None
     np.testing.assert_equal(
-        mask_array, pred_instance_segs[0].annotations[0].raster.array
+        raster_uid1, pred_instance_segs[0].annotations[0].raster.array
     )
 
     # test raster 2
-    png_from_db = db.scalar(ST_AsPNG(raster_uid2))
-    f = io.BytesIO(png_from_db.tobytes())
-    mask_array = np.array(PIL.Image.open(f))
-    assert pred_instance_segs[1].annotations[0].raster is not None
     np.testing.assert_equal(
-        mask_array, pred_instance_segs[1].annotations[0].raster.array
+        raster_uid2, pred_instance_segs[1].annotations[0].raster.array
     )
 
 
