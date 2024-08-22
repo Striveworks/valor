@@ -3495,3 +3495,46 @@ def test_evaluate_mixed_annotations(
     )
     eval_job_raster.wait_for_completion()
     assert eval_job_raster.status == EvaluationStatus.FAILED
+
+
+def test_evaluate_detection_fp(db: Session, model_name, dataset_name, img1):
+    gt = GroundTruth(
+        datum=img1,
+        annotations=[
+            Annotation(
+                is_instance=True,
+                labels=[Label(key="k1", value="v1")],
+                bounding_box=Box.from_extrema(xmin=0, xmax=5, ymin=0, ymax=5),
+            )
+        ],
+    )
+    pred = Prediction(
+        datum=img1,
+        annotations=[
+            Annotation(
+                is_instance=True,
+                labels=[Label(key="k1", value="v1", score=1.0)],
+                bounding_box=Box.from_extrema(
+                    xmin=10, xmax=20, ymin=10, ymax=20
+                ),
+            )
+        ],
+    )
+
+    dataset = Dataset.create(dataset_name)
+    dataset.add_groundtruth(gt)
+    dataset.finalize()
+
+    model = Model.create(model_name)
+    model.add_prediction(dataset, pred)
+    model.finalize_inferences(dataset)
+
+    eval_job = model.evaluate_detection(
+        dataset,
+        metrics_to_return=[
+            MetricType.PrecisionRecallCurve,
+        ],
+    )
+    eval_job.wait_for_completion(timeout=30)
+    metrics = eval_job.metrics
+    assert metrics[0]["value"]["v1"]["0.5"]["fp"] == 1
