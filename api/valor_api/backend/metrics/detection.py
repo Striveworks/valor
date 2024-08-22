@@ -261,7 +261,6 @@ def _compute_curves(
                     fn_cnt = len(groundtruths_per_label[label_id])
             else:
                 seen_gts = set()
-                gts_counted_as_fp = defaultdict(int)
 
                 for row in sorted_ranked_pairs[label_id]:
                     if (
@@ -271,14 +270,12 @@ def _compute_curves(
                     ):
                         tp_cnt += 1
                         seen_gts.add(row.gt_id)
-                        fp_cnt -= gts_counted_as_fp.pop(row.gt_id, 0)
                     elif (
                         row.score >= confidence_threshold
                         and row.iou < iou_threshold
                         and row.gt_id not in seen_gts
                     ):
                         fp_cnt += 1
-                        gts_counted_as_fp[row.gt_id] += 1
 
                 for (
                     _,
@@ -438,10 +435,32 @@ def _compute_detailed_curves(
                     seen_pds.add(row.pd_id)
                 # elif (
                 #     row.score >= confidence_threshold
-                #     and row.iou >= pr_curve_iou_threshold
+                #     and row.iou < pr_curve_iou_threshold
                 #     and row.gt_id not in seen_gts
                 #     and row.is_match is True
                 # ):
+                #     # if there is at least one groundtruth overlapping the prediction with a sufficient score and iou threshold, then it's a misclassification
+                #     if misclassification_detected:
+                #         fp["misclassifications"].append(
+                #             (dataset_name, datum_uid, pd_geojson)
+                #             if pd_geojson is not None
+                #             else (dataset_name, datum_uid)
+                #         )
+                #     elif hallucination_detected:
+                #         fp["hallucinations"].append(
+                #             (dataset_name, datum_uid, pd_geojson)
+                #             if pd_geojson is not None
+                #             else (dataset_name, datum_uid)
+                #         )
+                #     fp += [
+                #         (
+                #             row.dataset_name,
+                #             row.gt_datum_uid,
+                #             row.gt_geojson,
+                #         )
+                #     ]
+                #     seen_gts.add(row.gt_id)
+                #     seen_pds.add(row.pd_id)
 
             if label_id in groundtruths_per_label:
                 for (
