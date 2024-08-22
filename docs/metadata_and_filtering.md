@@ -38,15 +38,25 @@ For example, using the above example where `capture_day` was added as metadata, 
 ```python
 import datetime
 
-import valor
+from valor.schemas import Filter, Or
 
-model: valor.Model # classification model
-dset: valor.Dataset # dataset to evaluate on
+...
+
+before_filter = Filter(
+    datums=(
+        Datum.metadata["capture_day"] < d
+    )
+)
+after_filter = Filter(
+    datums=(
+        Datum.metadata["capture_day"] > d
+    )
+)
 
 # compare performance on data captured before and after 2020
 d = datetime.datetime(day=5, month=10, year=2020)
-eval1 = model.evaluate_classification(dset, filter_by=[Datum.metadata["capture_day"] < d])
-eval2 = model.evaluate_classification(dset, filter_by=[Datum.metadata["capture_day"] > d])
+eval1 = model.evaluate_classification(dset, filter_by=before_filter)
+eval2 = model.evaluate_classification(dset, filter_by=after_filter)
 ```
 
 ### Filtering by geometric attributes
@@ -54,12 +64,17 @@ eval2 = model.evaluate_classification(dset, filter_by=[Datum.metadata["capture_d
 As an example for filtering by geometric attributes, consider evaluating an object detection model's performance on small objects, where we define small as being less than 500 square pixels in area. This can be achieved via:
 
 ```python
-import valor
+from valor.schemas import Filter
 
-model: valor.Model # object detection model
-dset: valor.Dataset # dataset to evaluate on
+...
 
-dset.evaluate_detection(dset, filter_by=[valor.Annotation.bounding_box.area < 500])
+f = Filter(
+    annotations=(
+        valor.Annotation.bounding_box.area < 500
+    )
+)
+
+dset.evaluate_detection(dset, filter_by=f)
 ```
 
 ### Filtering in queries
@@ -68,8 +83,16 @@ Filtering can also be used when querying for different objects. For example, tak
 
 ```python
 from valor import client
+from valor.schemas import Filter, And
 
 run_name: str # run name to query for
 
-client.get_models([Model.metadata["run_name"] == run_name, Model.metadata["ckpt"] > 100])
+f = Filter(
+    models=And(
+        Model.metadata["run_name"] == run_name,
+        Model.metadata["ckpt"] > 100,
+    )
+)
+
+client.get_models(f)
 ```

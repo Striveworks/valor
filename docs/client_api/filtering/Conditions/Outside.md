@@ -1,4 +1,4 @@
-::: valor.schemas.filters
+::: valor.schemas.Outside
     handler: python
     options:
         show_root_heading: false

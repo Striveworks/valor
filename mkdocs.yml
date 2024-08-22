@@ -19,7 +19,10 @@ nav:
   - Endpoints: "endpoints.md"
   - Technical Concepts: "technical_concepts.md"
   - Contributing & Development: "contributing.md"
-  - Python Client API: "client_api"
+  - Python Client:
+    - "client_api/core"
+    - Schemas: "client_api/schemas"
+    - Filtering: "client_api/filtering"
 markdown_extensions:
   - pymdownx.highlight:
       anchor_linenums: true
