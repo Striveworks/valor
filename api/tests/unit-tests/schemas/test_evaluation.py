@@ -389,3 +389,20 @@ def test_EvaluationResponse():
             created_at=datetime.now(),
             meta={},
         )
+
+    # test validation for meta
+    er = schemas.EvaluationResponse(
+        id=1,
+        dataset_names=["ds"],
+        model_name="test",
+        filters=schemas.Filter(),
+        parameters=schemas.EvaluationParameters(
+            task_type=enums.TaskType.CLASSIFICATION,
+        ),
+        status=enums.EvaluationStatus.DONE,
+        metrics=[],
+        confusion_matrices=[],
+        created_at=datetime.now(),
+        meta=None,
+    )
+    assert er.meta == {}

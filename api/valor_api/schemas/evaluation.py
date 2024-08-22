@@ -287,7 +287,7 @@ class EvaluationResponse(BaseModel):
     parameters: EvaluationParameters
     status: EvaluationStatus
     created_at: datetime.datetime
-    meta: dict[str, str | int | float] | None
+    meta: dict[str, str | int | float] | None = {}
     metrics: list[Metric] | None = None
     confusion_matrices: list[ConfusionMatrixResponse] | None = None
     ignored_pred_labels: list[Label] | None = None
@@ -297,3 +297,9 @@ class EvaluationResponse(BaseModel):
     model_config = ConfigDict(
         extra="allow", protected_namespaces=("protected_",)
     )
+
+    # make sure that `meta` is a dictionary
+    @field_validator("meta")
+    @classmethod
+    def null_to_empty_dict(cls, v):
+        return v or {}
