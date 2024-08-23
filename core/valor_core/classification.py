@@ -210,12 +210,10 @@ def _calculate_metrics_at_label_value_level(
     )
 
     # replace nulls and infinities
-    metrics_per_label_key_and_label_value_df[
-        ["precision", "recall", "f1"]
-    ] = metrics_per_label_key_and_label_value_df.loc[
-        :, ["precision", "recall", "f1"]
-    ].replace(
-        [np.inf, -np.inf, np.nan], 0
+    metrics_per_label_key_and_label_value_df[["precision", "recall", "f1"]] = (
+        metrics_per_label_key_and_label_value_df.loc[
+            :, ["precision", "recall", "f1"]
+        ].replace([np.inf, -np.inf, np.nan], 0)
     )
 
     # replace values of labels that only exist in predictions (not groundtruths) with -1
@@ -416,12 +414,9 @@ def _get_joint_df(
         else (
             missing_label_df.copy()
             if merged_groundtruths_and_predictions_df.empty
-            else pd.concat(
-                [
-                    merged_groundtruths_and_predictions_df,
-                    missing_label_df,
-                ],
-                ignore_index=True,
+            else utilities.concatenate_df_if_not_empty(
+                df1=merged_groundtruths_and_predictions_df,
+                df2=missing_label_df,
             )
         )
     )
@@ -1161,6 +1156,82 @@ def _compute_clf_metrics(
     return confusion_matrices, metrics_to_output
 
 
+def create_classification_evaluation_inputs(
+    groundtruths: list[schemas.GroundTruth] | pd.DataFrame,
+    predictions: list[schemas.Prediction] | pd.DataFrame,
+    metrics_to_return: list[enums.MetricType],
+    label_map: dict[schemas.Label, schemas.Label],
+):
+    """
+    Creates and validates the inputs needed to run a classification evaluation.
+
+    Parameters
+    ----------
+    groundtruths : list[schemas.GroundTruth] | pd.DataFrame
+        A list or pandas DataFrame describing the groundtruths.
+    predictions : list[schemas.GroundTruth] | pd.DataFrame
+        A list or pandas DataFrame describing the predictions.
+    metrics_to_return : list[enums.MetricType]
+        A list of metrics to calculate during the evaluation.
+    label_map : dict[schemas.Label, schemas.Label]
+        A mapping from one label schema to another.
+    """
+
+    groundtruth_df = utilities.create_validated_groundtruth_df(
+        groundtruths, task_type=enums.TaskType.CLASSIFICATION
+    )
+    prediction_df = utilities.create_validated_prediction_df(
+        predictions, task_type=enums.TaskType.CLASSIFICATION
+    )
+
+    # filter dataframes based on task type
+    groundtruth_df = utilities.filter_dataframe_by_task_type(
+        df=groundtruth_df, task_type=enums.TaskType.CLASSIFICATION
+    )
+
+    if not prediction_df.empty:
+        prediction_df = utilities.filter_dataframe_by_task_type(
+            df=prediction_df, task_type=enums.TaskType.CLASSIFICATION
+        )
+
+    # apply label map
+    groundtruth_df, prediction_df = utilities.replace_labels_using_label_map(
+        groundtruth_df=groundtruth_df,
+        prediction_df=prediction_df,
+        label_map=label_map,
+    )
+
+    # remove unnecessary columns to save memory
+    groundtruth_df = groundtruth_df.loc[
+        :,
+        [
+            "datum_uid",
+            "datum_id",
+            "annotation_id",
+            "label_key",
+            "label_value",
+            "label_id",
+            "id",
+        ],
+    ]
+
+    prediction_df = prediction_df.loc[
+        :,
+        [
+            "datum_uid",
+            "datum_id",
+            "annotation_id",
+            "label_key",
+            "label_value",
+            "score",
+            "label_id",
+            "id",
+        ],
+    ]
+
+    return groundtruth_df, prediction_df
+
+
 def evaluate_classification(
     groundtruths: pd.DataFrame | list[schemas.GroundTruth],
     predictions: pd.DataFrame | list[schemas.Prediction],
@@ -1229,55 +1300,16 @@ def evaluate_classification(
     )
     utilities.validate_parameters(pr_curve_max_examples=pr_curve_max_examples)
 
-    groundtruth_df = utilities.create_validated_groundtruth_df(
-        groundtruths, task_type=enums.TaskType.CLASSIFICATION
+    groundtruth_df, prediction_df = create_classification_evaluation_inputs(
+        groundtruths=groundtruths,
+        predictions=predictions,
+        metrics_to_return=metrics_to_return,
+        label_map=label_map,
     )
-    prediction_df = utilities.create_validated_prediction_df(
-        predictions, task_type=enums.TaskType.CLASSIFICATION
-    )
-
-    # filter dataframes based on task type
-    groundtruth_df = utilities.filter_dataframe_by_task_type(
-        df=groundtruth_df, task_type=enums.TaskType.CLASSIFICATION
-    )
-
-    if not prediction_df.empty:
-        prediction_df = utilities.filter_dataframe_by_task_type(
-            df=prediction_df, task_type=enums.TaskType.CLASSIFICATION
-        )
-
-    # drop intermediary columns that are no longer needed
-    groundtruth_df = groundtruth_df.loc[
-        :,
-        [
-            "datum_uid",
-            "datum_id",
-            "annotation_id",
-            "label_key",
-            "label_value",
-            "label_id",
-            "id",
-        ],
-    ]
-
-    prediction_df = prediction_df.loc[
-        :,
-        [
-            "datum_uid",
-            "datum_id",
-            "annotation_id",
-            "label_key",
-            "label_value",
-            "score",
-            "label_id",
-            "id",
-        ],
-    ]
 
     utilities.validate_matching_label_keys(
         groundtruths=groundtruth_df,
         predictions=prediction_df,
-        label_map=label_map,
     )
 
     unique_labels = list(
@@ -1290,12 +1322,6 @@ def evaluate_classification(
     unique_annotations_cnt = len(
         set(groundtruth_df["annotation_id"])
         | set(prediction_df["annotation_id"])
-    )
-
-    groundtruth_df, prediction_df = utilities.replace_labels_using_label_map(
-        groundtruth_df=groundtruth_df,
-        prediction_df=prediction_df,
-        label_map=label_map,
     )
 
     confusion_matrices, metrics = _compute_clf_metrics(

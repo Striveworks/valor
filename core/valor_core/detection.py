@@ -1058,12 +1058,28 @@ def _create_detailed_joint_df(
 
 
 def create_detection_evaluation_inputs(
-    groundtruths,
-    predictions,
-    metrics_to_return,
-    label_map,
-    convert_annotations_to_type,
+    groundtruths: list[schemas.GroundTruth] | pd.DataFrame,
+    predictions: list[schemas.Prediction] | pd.DataFrame,
+    metrics_to_return: list[enums.MetricType],
+    label_map: dict[schemas.Label, schemas.Label],
+    convert_annotations_to_type: enums.AnnotationType | None,
 ):
+    """
+    Creates and validates the inputs needed to run a detection evaluation.
+
+    Parameters
+    ----------
+    groundtruths : list[schemas.GroundTruth] | pd.DataFrame
+        A list or pandas DataFrame describing the groundtruths.
+    predictions : list[schemas.GroundTruth] | pd.DataFrame
+        A list or pandas DataFrame describing the predictions.
+    metrics_to_return : list[enums.MetricType]
+        A list of metrics to calculate during the evaluation.
+    label_map : dict[schemas.Label, schemas.Label]
+        A mapping from one label schema to another.
+    convert_annotations_to_type : AnnotationType, optional
+        The target annotation type to convert the data to.
+    """
 
     groundtruth_df = utilities.create_validated_groundtruth_df(
         groundtruths, task_type=enums.TaskType.OBJECT_DETECTION
@@ -1092,11 +1108,13 @@ def create_detection_evaluation_inputs(
         target_type=convert_annotations_to_type,
     )
 
+    # apply label map
     groundtruth_df, prediction_df = utilities.replace_labels_using_label_map(
         groundtruth_df=groundtruth_df,
         prediction_df=prediction_df,
         label_map=label_map,
     )
+
     # add label as a column
     for df in (groundtruth_df, prediction_df):
         df.loc[:, "label"] = df.apply(
