@@ -4,6 +4,7 @@ import pytest
 from valor_core import enums, schemas
 from valor_core.classification import (
     _calculate_rocauc,
+    _create_joint_df,
     evaluate_classification,
 )
 
@@ -863,12 +864,13 @@ def test_rocauc_with_label_map(
 
     """
 
+    joint_df = _create_joint_df(
+        groundtruth_df=classification_functional_test_groundtruth_df,
+        prediction_df=classification_functional_test_prediction_df,
+    )
+
     computed_metrics = [
-        m.to_dict()
-        for m in _calculate_rocauc(
-            prediction_df=classification_functional_test_prediction_df,
-            groundtruth_df=classification_functional_test_groundtruth_df,
-        )
+        m.to_dict() for m in _calculate_rocauc(joint_df=joint_df)
     ]
 
     expected_metrics = [

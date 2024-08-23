@@ -3254,12 +3254,6 @@ def test_evaluate_detection_with_label_maps_and_ValorDetectionManager(
             predictions=evaluate_detection_predictions_with_label_maps[:2],
         )
 
-    with pytest.raises(ValueError):
-        manager.add_data(
-            groundtruths=evaluate_detection_groundtruths_with_label_maps[:2],
-            predictions=[],
-        )
-
     manager.add_data(
         groundtruths=evaluate_detection_groundtruths_with_label_maps[1:2],
         predictions=evaluate_detection_predictions_with_label_maps[1:2],

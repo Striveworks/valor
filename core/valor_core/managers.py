@@ -2,7 +2,7 @@ import time
 from dataclasses import dataclass, field
 
 import pandas as pd
-from valor_core import enums, schemas, utilities, detection, classification
+from valor_core import classification, detection, enums, schemas, utilities
 
 
 @dataclass
@@ -214,9 +214,9 @@ class ValorDetectionManager:
 
         for label, value in ids_per_label.items():
             if label in self.unique_groundtruth_labels.keys():
-                self.unique_groundtruth_labels[label] = (
-                    self.unique_groundtruth_labels[label].union(value)
-                )
+                self.unique_groundtruth_labels[
+                    label
+                ] = self.unique_groundtruth_labels[label].union(value)
             else:
                 self.unique_groundtruth_labels[label] = value
 
@@ -355,33 +355,32 @@ class ValorClassificationManager:
     joint_df: pd.DataFrame = field(
         default_factory=lambda: pd.DataFrame(
             [],
-            columns=[
-                "label_id",
-                "id_gt",
-                "label",
-                "score",
-                "id_pd",
-                "iou_",
-            ],
-        )
-    )
-    detailed_joint_df: pd.DataFrame = field(
-        default_factory=lambda: pd.DataFrame(
-            [],
-            columns=[
-                "datum_uid_gt",
+            [
+                "datum_uid",
+                "datum_id",
                 "label_key",
                 "label_value_gt",
                 "id_gt",
-                "converted_geometry_gt",
-                "datum_uid_pd",
+                "annotation_id_gt",
                 "label_value_pd",
                 "score",
-                "label_id_pd",
                 "id_pd",
-                "converted_geometry_pd",
-                "is_label_match",
-                "iou_",
+                "annotation_id_pd",
+                "is_true_positive",
+                "is_false_positive",
+                "label",
+            ],
+        )
+    )
+    joint_df_filtered_on_best_score: pd.DataFrame = field(
+        default_factory=lambda: pd.DataFrame(
+            [],
+            columns=[
+                "datum_id",
+                "label_key",
+                "label_value_gt",
+                "label_value_pd",
+                "best_score",
             ],
         )
     )
@@ -467,43 +466,50 @@ class ValorClassificationManager:
         else:
             self.datum_uids = self.datum_uids.union(unique_datum_uids)
 
-        (groundtruth_df, prediction_df) = (
-            classification.create_classification_evaluation_inputs(
-                groundtruths=groundtruths,
-                predictions=predictions,
-                metrics_to_return=self.metrics_to_return,
-                label_map=self.label_map,
+        (
+            joint_df,
+            joint_df_filtered_on_best_score,
+        ) = classification.create_classification_evaluation_inputs(
+            groundtruths=groundtruths,
+            predictions=predictions,
+            label_map=self.label_map,
+        )
+
+        # append these dataframes to self
+        self.joint_df = utilities.concatenate_df_if_not_empty(
+            df1=self.joint_df, df2=joint_df
+        )
+        self.joint_df_filtered_on_best_score = (
+            utilities.concatenate_df_if_not_empty(
+                df1=self.joint_df_filtered_on_best_score,
+                df2=joint_df_filtered_on_best_score,
             )
         )
 
-        # # append these dataframes to self
-        # self.joint_df = _concatenate_df_if_not_empty(
-        #     df1=self.joint_df, df2=joint_df
-        # )
-        # self.detailed_joint_df = _concatenate_df_if_not_empty(
-        #     df1=self.detailed_joint_df, df2=detailed_joint_df
-        # )
+        # store unique labels (split by gt and pd) and unique annotations
+        ids_per_label = (
+            joint_df[joint_df["label_value_gt"].notnull()]
+            .groupby(["label"])["id_gt"]
+            .apply(set)
+            .to_dict()
+        )
 
-        # # store unique labels (split by gt and pd) and unique annotations
-        # ids_per_label = (
-        #     groundtruth_df.groupby(["label"])["id"].apply(set).to_dict()
-        # )
+        for label, value in ids_per_label.items():
+            if label in self.unique_groundtruth_labels.keys():
+                self.unique_groundtruth_labels[
+                    label
+                ] = self.unique_groundtruth_labels[label].union(value)
+            else:
+                self.unique_groundtruth_labels[label] = value
 
-        # for label, value in ids_per_label.items():
-        #     if label in self.unique_groundtruth_labels.keys():
-        #         self.unique_groundtruth_labels[label] = (
-        #             self.unique_groundtruth_labels[label].union(value)
-        #         )
-        #     else:
-        #         self.unique_groundtruth_labels[label] = value
-
-        # self.unique_prediction_labels.update(
-        #     set(zip(prediction_df["label_key"], prediction_df["label_value"]))
-        # )
-        # self.unique_annotation_ids.update(
-        #     set(groundtruth_df["annotation_id"])
-        #     | set(prediction_df["annotation_id"])
-        # )
+        self.unique_prediction_labels.update(
+            set(zip(joint_df["label_key"], joint_df["label_value_gt"]))
+            | set(zip(joint_df["label_key"], joint_df["label_value_pd"]))
+        )
+        self.unique_annotation_ids.update(
+            set(joint_df["annotation_id_gt"])
+            | set(joint_df["annotation_id_pd"])
+        )
 
     def evaluate(self):
         """
@@ -520,75 +526,66 @@ class ValorClassificationManager:
             If the method is called before any data has been added.
         """
 
-        # utilities.validate_matching_label_keys(
-        #     groundtruths=groundtruth_df,
-        #     predictions=prediction_df,
-        # )
-        # if self.joint_df.empty:
-        #     raise ValueError(
-        #         "Attempted to call .evaluate() without adding any data first. Please use add_data to add data to this class."
-        #     )
+        if self.joint_df.empty:
+            raise ValueError(
+                "Attempted to call .evaluate() without adding any data first. Please use add_data to add data to this class."
+            )
 
-        # start_time = time.time()
+        start_time = time.time()
 
-        # # add the number of groundtruth observations per grouper to joint_df
-        # count_of_unique_ids_per_label = {
-        #     key: len(value)
-        #     for key, value in self.unique_groundtruth_labels.items()
-        # }
+        # add the number of groundtruth observations per grouper to joint_df
+        count_of_unique_ids_per_label = {
+            key: len(value)
+            for key, value in self.unique_groundtruth_labels.items()
+        }
 
-        # self.joint_df["gts_per_grouper"] = self.joint_df["label"].map(
-        #     count_of_unique_ids_per_label
-        # )
+        self.joint_df["gts_per_grouper"] = self.joint_df["label"].map(
+            count_of_unique_ids_per_label
+        )
 
-        # metrics = classification.compute_classification_metrics(
-        #     joint_df=self.joint_df,
-        #     detailed_joint_df=self.detailed_joint_df,
-        #     metrics_to_return=self.metrics_to_return,
-        #     iou_thresholds_to_compute=self.iou_thresholds_to_compute,
-        #     iou_thresholds_to_return=self.iou_thresholds_to_return,
-        #     recall_score_threshold=self.recall_score_threshold,
-        #     pr_curve_iou_threshold=self.pr_curve_iou_threshold,
-        #     pr_curve_max_examples=self.pr_curve_max_examples,
-        # )
+        (
+            confusion_matrices,
+            metrics,
+        ) = classification.compute_classification_metrics(
+            joint_df=self.joint_df,
+            joint_df_filtered_on_best_score=self.joint_df_filtered_on_best_score,
+            metrics_to_return=self.metrics_to_return,
+            pr_curve_max_examples=self.pr_curve_max_examples,
+        )
 
-        # missing_pred_labels = [
-        #     (key, value)
-        #     for key, value in (
-        #         self.unique_groundtruth_labels.keys()
-        #         - self.unique_prediction_labels
-        #     )
-        # ]
+        missing_pred_labels = [
+            (key, value)
+            for key, value in (
+                self.unique_groundtruth_labels.keys()
+                - self.unique_prediction_labels
+            )
+        ]
 
-        # ignored_pred_labels = [
-        #     (key, value)
-        #     for key, value in (
-        #         self.unique_prediction_labels
-        #         - self.unique_groundtruth_labels.keys()
-        #     )
-        # ]
+        ignored_pred_labels = [
+            (key, value)
+            for key, value in (
+                self.unique_prediction_labels
+                - self.unique_groundtruth_labels.keys()
+            )
+        ]
 
-        # return schemas.Evaluation(
-        #     parameters=schemas.EvaluationParameters(
-        #         label_map=self.label_map,
-        #         metrics_to_return=self.metrics_to_return,
-        #         iou_thresholds_to_compute=self.iou_thresholds_to_compute,
-        #         iou_thresholds_to_return=self.iou_thresholds_to_return,
-        #         recall_score_threshold=self.recall_score_threshold,
-        #         pr_curve_iou_threshold=self.pr_curve_iou_threshold,
-        #         pr_curve_max_examples=self.pr_curve_max_examples,
-        #     ),
-        #     metrics=metrics,
-        #     confusion_matrices=[],
-        #     ignored_pred_labels=ignored_pred_labels,
-        #     missing_pred_labels=missing_pred_labels,  # type: ignore - confirmed that this object is list[tuple[str, str]], but it isn't registerring as such
-        #     meta={
-        #         "labels": len(
-        #             self.unique_groundtruth_labels.keys()
-        #             | self.unique_prediction_labels
-        #         ),
-        #         "datums": len(self.datum_uids),
-        #         "annotations": len(self.unique_annotation_ids),
-        #         "duration": time.time() - start_time,
-        #     },
-        # )
+        return schemas.Evaluation(
+            parameters=schemas.EvaluationParameters(
+                label_map=self.label_map,
+                metrics_to_return=self.metrics_to_return,
+                pr_curve_max_examples=self.pr_curve_max_examples,
+            ),
+            metrics=metrics,
+            confusion_matrices=confusion_matrices,
+            ignored_pred_labels=ignored_pred_labels,
+            missing_pred_labels=missing_pred_labels,  # type: ignore - confirmed that this object is list[tuple[str, str]], but it isn't registerring as such
+            meta={
+                "labels": len(
+                    self.unique_groundtruth_labels.keys()
+                    | self.unique_prediction_labels
+                ),
+                "datums": len(self.datum_uids),
+                "annotations": len(self.unique_annotation_ids),
+                "duration": time.time() - start_time,
+            },
+        )
