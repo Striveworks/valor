@@ -1063,7 +1063,7 @@ def create_detection_evaluation_inputs(
     metrics_to_return: list[enums.MetricType],
     label_map: dict[schemas.Label, schemas.Label],
     convert_annotations_to_type: enums.AnnotationType | None,
-):
+) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame | None]:
     """
     Creates and validates the inputs needed to run a detection evaluation.
 
@@ -1079,6 +1079,11 @@ def create_detection_evaluation_inputs(
         A mapping from one label schema to another.
     convert_annotations_to_type : AnnotationType, optional
         The target annotation type to convert the data to.
+
+    Returns
+    -------
+    tuple[pd.DataFrame, pd.DataFrame]
+        A tuple of input dataframes.
     """
 
     groundtruth_df = utilities.create_validated_groundtruth_df(

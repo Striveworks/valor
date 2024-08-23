@@ -312,7 +312,6 @@ class ValorDetectionManager:
         )
 
 
-# TODO docstring for this class
 @dataclass
 class ValorClassificationManager:
     """
@@ -330,8 +329,8 @@ class ValorClassificationManager:
         The maximum number of examples to include in the precision-recall curve.
     joint_df : pd.DataFrame
         A DataFrame containing merged groundtruth and prediction data with calculated IoU.
-    detailed_joint_df : pd.DataFrame
-        A DataFrame containing detailed data for precision-recall curves.
+    joint_df_filtered_on_best_score : pd.DataFrame
+        A DataFrame containing merged groundtruth and prediction data with calculated IoU. Only joins on the best prediction for each groundtruth.
     unique_groundtruth_labels : dict[set[tuple[str, str]], set[str]]
         A dictionary mapping labels to unique groundtruth annotation IDs.
     unique_prediction_labels : set[tuple[str, str]]

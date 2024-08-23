@@ -15,6 +15,11 @@ def concatenate_df_if_not_empty(
         The first dataframe to join.
     df2: pd.DataFrame, optional
         The second (potentially empty) dataframe to join.
+
+    Returns
+    -------
+    pd.DataFrame
+        A concatenated dataframe.
     """
 
     if not df1.empty and (df2 is not None):

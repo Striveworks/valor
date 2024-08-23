@@ -365,7 +365,7 @@ def _create_joint_df(
 def _create_joint_df_filtered_on_best_score(
     prediction_df: pd.DataFrame, groundtruth_df: pd.DataFrame
 ) -> pd.DataFrame:
-    """Merge the ground truth and prediction dataframes into one, joint dataframe. Only include the best prediction for each groundtruth."""
+    """Create a merged dataframe across groundtruths and predictions. Only includes the best prediction for each groundtruth."""
     max_scores_by_label_key_and_datum_id = (
         prediction_df[["label_key", "datum_id", "score"]]
         .groupby(
@@ -1127,7 +1127,7 @@ def create_classification_evaluation_inputs(
     groundtruths: list[schemas.GroundTruth] | pd.DataFrame,
     predictions: list[schemas.Prediction] | pd.DataFrame,
     label_map: dict[schemas.Label, schemas.Label],
-):
+) -> tuple[pd.DataFrame, pd.DataFrame]:
     """
     Creates and validates the inputs needed to run a classification evaluation.
 
@@ -1139,6 +1139,11 @@ def create_classification_evaluation_inputs(
         A list or pandas DataFrame describing the predictions.
     label_map : dict[schemas.Label, schemas.Label]
         A mapping from one label schema to another.
+
+    Returns
+    -------
+    tuple[pd.DataFrame, pd.DataFrame]
+        A tuple of two joint dataframes, with the first dataframe containing all groundtruth-prediction matches and the second dataframe only matching the best prediction with each groundtruth.
     """
 
     groundtruth_df = utilities.create_validated_groundtruth_df(
