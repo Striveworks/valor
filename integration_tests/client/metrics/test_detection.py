@@ -3498,3 +3498,169 @@ def test_evaluate_mixed_annotations(
     )
     eval_job_raster.wait_for_completion()
     assert eval_job_raster.status == EvaluationStatus.FAILED
+
+
+def test_evaluate_detection_pr_fp(
+    db: Session, model_name, dataset_name, img1, img2
+):
+    gts = [
+        GroundTruth(
+            datum=img1,
+            annotations=[
+                Annotation(
+                    is_instance=True,
+                    labels=[Label(key="k1", value="v1")],
+                    bounding_box=Box.from_extrema(
+                        xmin=0, xmax=5, ymin=0, ymax=5
+                    ),
+                )
+            ],
+        ),
+        GroundTruth(
+            datum=img2,
+            annotations=[
+                Annotation(
+                    is_instance=True,
+                    labels=[Label(key="k1", value="v1")],
+                    bounding_box=Box.from_extrema(
+                        xmin=0, xmax=5, ymin=0, ymax=5
+                    ),
+                )
+            ],
+        ),
+    ]
+    preds = [
+        Prediction(
+            datum=img1,
+            annotations=[
+                Annotation(
+                    is_instance=True,
+                    labels=[Label(key="k1", value="v1", score=0.8)],
+                    bounding_box=Box.from_extrema(
+                        xmin=0, xmax=5, ymin=0, ymax=5
+                    ),
+                )
+            ],
+        ),
+        Prediction(
+            datum=img2,
+            annotations=[
+                Annotation(
+                    is_instance=True,
+                    labels=[Label(key="k1", value="v1", score=0.8)],
+                    bounding_box=Box.from_extrema(
+                        xmin=10, xmax=20, ymin=10, ymax=20
+                    ),
+                )
+            ],
+        ),
+    ]
+
+    dataset = Dataset.create(dataset_name)
+
+    for gt in gts:
+        dataset.add_groundtruth(gt)
+    dataset.finalize()
+
+    model = Model.create(model_name)
+
+    for pred in preds:
+        model.add_prediction(dataset, pred)
+    model.finalize_inferences(dataset)
+
+    eval_job = model.evaluate_detection(
+        dataset,
+        metrics_to_return=[
+            MetricType.PrecisionRecallCurve,
+        ],
+    )
+    eval_job.wait_for_completion(timeout=30)
+    metrics = eval_job.metrics
+    assert metrics[0]["value"]["v1"]["0.5"] == {
+        "fn": 1,  # img2
+        "fp": 1,  # img2
+        "tn": None,
+        "tp": 1,  # img1
+        "recall": 0.5,
+        "accuracy": None,
+        "f1_score": 0.5,
+        "precision": 0.5,
+    }
+
+    # score threshold is now higher than the scores, so we should the predictions drop out such that we're only left with 2 fns (one for each image)
+    assert metrics[0]["value"]["v1"]["0.85"] == {
+        "fn": 2,
+        "fp": 0,
+        "tn": None,
+        "tp": 0,
+        "recall": 0.0,
+        "accuracy": None,
+        "f1_score": -1,
+        "precision": -1,
+    }
+
+    eval_job = model.evaluate_detection(
+        dataset,
+        metrics_to_return=[
+            MetricType.DetailedPrecisionRecallCurve,
+        ],
+    )
+    eval_job.wait_for_completion(timeout=30)
+    metrics = eval_job.metrics
+
+    score_threshold = "0.5"
+    assert metrics[0]["value"]["v1"][score_threshold]["tp"]["total"] == 1
+    assert "tn" not in metrics[0]["value"]["v1"][score_threshold]
+    assert (
+        metrics[0]["value"]["v1"][score_threshold]["fp"]["observations"][
+            "hallucinations"
+        ]["count"]
+        == 1
+    )
+    assert (
+        metrics[0]["value"]["v1"][score_threshold]["fp"]["observations"][
+            "misclassifications"
+        ]["count"]
+        == 0
+    )
+    assert (
+        metrics[0]["value"]["v1"][score_threshold]["fn"]["observations"][
+            "no_predictions"
+        ]["count"]
+        == 1
+    )
+    assert (
+        metrics[0]["value"]["v1"][score_threshold]["fn"]["observations"][
+            "misclassifications"
+        ]["count"]
+        == 0
+    )
+
+    # score threshold is now higher than the scores, so we should the predictions drop out such that we're only left with 2 fns (one for each image)
+    score_threshold = "0.85"
+    assert metrics[0]["value"]["v1"][score_threshold]["tp"]["total"] == 0
+    assert "tn" not in metrics[0]["value"]["v1"][score_threshold]
+    assert (
+        metrics[0]["value"]["v1"][score_threshold]["fp"]["observations"][
+            "hallucinations"
+        ]["count"]
+        == 0
+    )
+    assert (
+        metrics[0]["value"]["v1"][score_threshold]["fp"]["observations"][
+            "misclassifications"
+        ]["count"]
+        == 0
+    )
+    assert (
+        metrics[0]["value"]["v1"][score_threshold]["fn"]["observations"][
+            "no_predictions"
+        ]["count"]
+        == 2
+    )
+    assert (
+        metrics[0]["value"]["v1"][score_threshold]["fn"]["observations"][
+            "misclassifications"
+        ]["count"]
+        == 0
+    )
