@@ -292,6 +292,8 @@ def run_benchmarking_analysis(
     for limit in limits_to_test:
         for gt_type, pd_type in combinations:
 
+            print(gt_type, pd_type)
+
             gt_filename = groundtruths[gt_type]
             pd_filename = predictions[pd_type]
 
@@ -391,46 +393,46 @@ def run_benchmarking_analysis(
 
 if __name__ == "__main__":
 
-    # run bounding box benchmark
-    run_benchmarking_analysis(
-        combinations=[
-            (AnnotationType.BOX, AnnotationType.BOX),
-        ],
-        evaluation_timeout=40,
-        ingestion_chunk_size=100,
-        limits_to_test=[5000, 5000],
-    )
+    # # run bounding box benchmark
+    # run_benchmarking_analysis(
+    #     combinations=[
+    #         (AnnotationType.BOX, AnnotationType.BOX),
+    #     ],
+    #     evaluation_timeout=40,
+    #     ingestion_chunk_size=100,
+    #     limits_to_test=[50, 50],
+    # )
 
-    # run polygon benchmark
-    run_benchmarking_analysis(
-        combinations=[
-            (AnnotationType.POLYGON, AnnotationType.POLYGON),
-        ],
-        evaluation_timeout=40,
-        ingestion_chunk_size=100,
-        limits_to_test=[5000, 5000],
-    )
+    # # run polygon benchmark
+    # run_benchmarking_analysis(
+    #     combinations=[
+    #         (AnnotationType.POLYGON, AnnotationType.POLYGON),
+    #     ],
+    #     evaluation_timeout=40,
+    #     ingestion_chunk_size=100,
+    #     limits_to_test=[50, 50],
+    # )
 
     # run multipolygon benchmark
     run_benchmarking_analysis(
         combinations=[
-            (AnnotationType.MULTIPOLYGON, AnnotationType.MULTIPOLYGON),
+            (AnnotationType.MULTIPOLYGON, AnnotationType.RASTER),
         ],
         evaluation_timeout=0,
         ingestion_chunk_size=10,
-        limits_to_test=[100, 100],
-        compute_detailed=False,
+        limits_to_test=[1, 1],
         compute_pr=False,
+        compute_detailed=False,
     )
 
-    # run raster benchmark
-    run_benchmarking_analysis(
-        combinations=[
-            (AnnotationType.RASTER, AnnotationType.RASTER),
-        ],
-        limits_to_test=[100, 100],
-        ingestion_chunk_size=10,
-        evaluation_timeout=0,
-        compute_pr=False,
-        compute_detailed=False,
-    )
+    # # run raster benchmark
+    # run_benchmarking_analysis(
+    #     combinations=[
+    #         (AnnotationType.RASTER, AnnotationType.RASTER),
+    #     ],
+    #     limits_to_test=[100, 100],
+    #     ingestion_chunk_size=10,
+    #     evaluation_timeout=0,
+    #     compute_pr=False,
+    #     compute_detailed=False,
+    # )

@@ -6,8 +6,10 @@ from geoalchemy2.functions import (
     ST_GeomFromText,
     ST_MakeEmptyRaster,
     ST_MapAlgebra,
+    ST_SnapToGrid,
 )
-from sqlalchemy import CTE, and_, delete, func, insert, select
+from sqlalchemy import ScalarSelect, and_, delete, func, select
+from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -17,13 +19,15 @@ from valor_api.backend.query import generate_query
 from valor_api.enums import ModelStatus, TableStatus, TaskType
 
 
-def _create_raster_from_multipolygon(raster: schemas.Raster) -> CTE:
+def _create_bitstring_from_multipolygon(
+    db: Session, raster: schemas.Raster
+) -> ScalarSelect:
     if not raster.geometry:
         raise ValueError("Raster must contain a geometry.")
     empty_raster = ST_AddBand(
         ST_MakeEmptyRaster(
-            raster.width,  # width
             raster.height,  # height
+            raster.width,  # width
             0,  # upperleftx
             0,  # upperlefty
             1,  # scalex
@@ -34,11 +38,14 @@ def _create_raster_from_multipolygon(raster: schemas.Raster) -> CTE:
         ),
         "1BB",  # pixeltype
     )
-    return select(
+    geom_raster = select(
         ST_MapAlgebra(
             empty_raster,
             ST_AsRaster(
-                ST_GeomFromText(raster.geometry.to_wkt()),
+                ST_SnapToGrid(
+                    ST_GeomFromText(raster.geometry.to_wkt()),
+                    1.0,
+                ),
                 empty_raster,
                 "1BB",
                 1,
@@ -50,6 +57,10 @@ def _create_raster_from_multipolygon(raster: schemas.Raster) -> CTE:
         ).label("raster")
     ).cte()
 
+    return select(
+        func.raster_to_bitstring(geom_raster.c.raster)
+    ).scalar_subquery()
+
 
 def _format_box(box: schemas.Box | None) -> str | None:
     return box.to_wkt() if box else None
@@ -57,12 +68,6 @@ def _format_box(box: schemas.Box | None) -> str | None:
 
 def _format_polygon(polygon: schemas.Polygon | None) -> str | None:
     return polygon.to_wkt() if polygon else None
-
-
-# def _format_raster(
-#     raster: schemas.Raster | None,
-# ) -> ScalarSelect | bytes | None:
-#     return raster.to_psql() if raster else None
 
 
 def _create_bitmask(
@@ -75,23 +80,40 @@ def _create_bitmask(
     if raster is None:
         return None
     elif raster and raster.geometry:
-        r = _create_raster_from_multipolygon(raster)
-        bitstring = db.scalar(func.raster_to_bitstring(r.c.raster))
+        bitstring = _create_bitstring_from_multipolygon(db, raster)
+        insert_stmt = (
+            insert(models.Bitmask)
+            .values(
+                value=bitstring,
+                height=raster.height,
+                width=raster.width,
+                boundary=raster.to_box().to_wkt(),
+                created_at=func.now(),
+            )
+            .returning(models.Bitmask.id)
+        )
+        try:
+            result = db.execute(insert_stmt).scalar()
+            db.commit()
+            return result
+        except IntegrityError as e:
+            db.rollback()
+            raise e
     else:
         bitstring = "".join("1" if b else "0" for b in raster.array.flatten())
-
-    try:
         row = models.Bitmask(
             value=bitstring,
             height=raster.height,
             width=raster.width,
+            boundary=raster.to_box().to_wkt(),
         )
-        db.add(row)
-        db.commit()
-    except IntegrityError as e:
-        db.rollback()
-        raise e
-    return row.id
+        try:
+            db.add(row)
+            db.commit()
+            return row.id
+        except IntegrityError as e:
+            db.rollback()
+            raise e
 
 
 def _create_embedding(

@@ -536,6 +536,22 @@ class Polygon(BaseModel):
         )
         return f"POLYGON (({coords}))"
 
+    @property
+    def xmin(self):
+        return min([point[0] for point in self.value[0]])
+
+    @property
+    def xmax(self):
+        return max([point[0] for point in self.value[0]])
+
+    @property
+    def ymin(self):
+        return min([point[1] for point in self.value[0]])
+
+    @property
+    def ymax(self):
+        return max([point[1] for point in self.value[0]])
+
 
 class Box(BaseModel):
     """
@@ -800,6 +816,30 @@ class MultiPolygon(BaseModel):
         coords = "),(".join(polygons)
         return f"MULTIPOLYGON (({coords}))"
 
+    @property
+    def xmin(self):
+        return min(
+            [point[0] for polygon in self.value for point in polygon[0]]
+        )
+
+    @property
+    def xmax(self):
+        return max(
+            [point[0] for polygon in self.value for point in polygon[0]]
+        )
+
+    @property
+    def ymin(self):
+        return min(
+            [point[1] for polygon in self.value for point in polygon[0]]
+        )
+
+    @property
+    def ymax(self):
+        return max(
+            [point[1] for polygon in self.value for point in polygon[0]]
+        )
+
 
 class GeoJSON(BaseModel):
     type: str
@@ -962,6 +1002,25 @@ class Raster(BaseModel):
         with io.BytesIO(mask_bytes) as f:
             img = PIL.Image.open(f)
             return np.array(img)
+
+    def to_box(self) -> Box:
+        if self.geometry:
+            return Box.from_extrema(
+                xmin=self.geometry.xmin,
+                xmax=self.geometry.xmax,
+                ymin=self.geometry.ymin,
+                ymax=self.geometry.ymax,
+            )
+        else:
+            rows, cols = np.where(self.array)
+            ymin, ymax = float(np.min(rows)), float(np.max(rows))
+            xmin, xmax = float(np.min(cols)), float(np.max(cols))
+            return Box.from_extrema(
+                xmin=xmin,
+                xmax=xmax,
+                ymin=ymin,
+                ymax=ymax,
+            )
 
     @property
     def mask_bytes(self) -> bytes:

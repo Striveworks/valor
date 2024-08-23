@@ -987,7 +987,9 @@ def test_gt_seg_as_mask_or_polys(
 ):
     """Check that a ground truth segmentation can be created as a polygon or mask"""
     xmin, xmax, ymin, ymax = 11, 45, 37, 102
-    h, w = 150, 200
+    h, w = 150, 100
+    # xmin, xmax, ymin, ymax = 4, 6, 3, 7
+    # h, w = 150, 100
     mask = np.zeros((h, w), dtype=bool)
     mask[ymin:ymax, xmin:xmax] = True
     mask_b64 = b64encode(_np_to_bytes(mask)).decode()
@@ -1036,9 +1038,30 @@ def test_gt_seg_as_mask_or_polys(
     _check_db_empty(db=db)
 
     crud.create_dataset(db=db, dataset=schemas.Dataset(name=dataset_name))
-
     crud.create_groundtruths(db=db, groundtruths=[gt])
 
+    for value, height, width in db.query(
+        models.Bitmask.value, models.Bitmask.height, models.Bitmask.width
+    ).all():
+        retrieved_mask = np.array(
+            [
+                [value[h * width + w] == "1" for w in range(width)]
+                for h in range(height)
+            ]
+        )
+        print("\n\n\n")
+        print(mask)
+        print()
+        print(retrieved_mask)
+        print()
+        indices = np.where(mask & retrieved_mask)[0]
+        print(indices.tolist())
+        assert mask.shape == retrieved_mask.shape
+        assert (mask == retrieved_mask).all()
+
+    assert db.scalar(func.count(models.Bitmask.id)) == 2
+
+    # check that the mask and polygon define the same polygons
     shapes = db.scalars(
         select(
             ST_AsText(
@@ -1052,9 +1075,6 @@ def test_gt_seg_as_mask_or_polys(
             ),
         )
     ).all()
-    assert len(shapes) == 2
-
-    # check that the mask and polygon define the same polygons
     assert (
         db.scalar(
             select(

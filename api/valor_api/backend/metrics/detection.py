@@ -855,17 +855,7 @@ def _annotation_type_to_geojson(
                 gfunc.ST_Envelope(models.Annotation.polygon)
             )
         case AnnotationType.RASTER:
-            return gfunc.ST_AsGeoJSON(
-                gfunc.ST_Envelope(
-                    gfunc.ST_MinConvexHull(
-                        func.bitstring_to_raster(
-                            models.Bitmask.value,
-                            models.Bitmask.height,
-                            models.Bitmask.width,
-                        )
-                    )
-                )
-            )
+            return gfunc.ST_AsGeoJSON(models.Bitmask.boundary)
         case _:
             raise RuntimeError
 
@@ -1161,7 +1151,7 @@ def _compute_detection_metrics(
                 gt_pd_pairs.c.gt_annotation_id,
                 gt_pd_pairs.c.pd_annotation_id,
                 case(
-                    (gunion == 0, 0),
+                    (gfunc.ST_Area(gunion) == 0, 0),
                     else_=iou_computation,
                 ).label("iou"),
             )
@@ -1196,8 +1186,8 @@ def _compute_detection_metrics(
         .outerjoin(
             gt,
             and_(
-                pd.c.datum_id == gt.c.datum_id,
-                pd.c.label_id == gt.c.label_id,
+                gt.c.datum_id == pd.c.datum_id,
+                gt.c.label_id == pd.c.label_id,
             ),
         )
         .outerjoin(

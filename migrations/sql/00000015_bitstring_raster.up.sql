@@ -1,10 +1,10 @@
 CREATE OR REPLACE FUNCTION raster_to_bitstring(input_raster raster)
-RETURNS text AS
+RETURNS BIT VARYING AS
 $$
 DECLARE
     width INTEGER;
     height INTEGER;
-    bitstring TEXT := '';
+    bitstring BIT VARYING := B'';
     val INTEGER;
     pixelval INTEGER;
 BEGIN
@@ -12,17 +12,17 @@ BEGIN
     SELECT ST_Width(input_raster), ST_Height(input_raster) INTO width, height;
 
     -- Iterate through each row and column of the raster
-    FOR i IN 1..height LOOP
-        FOR j IN 1..width LOOP
+    FOR i IN 1..width LOOP
+        FOR j IN 1..height LOOP
             -- Get the pixel value at position (j, i)
             pixelval := ST_Value(input_raster, j, i);
 
             -- 1BB raster has values of 0 or 1, so just append it to the bitstring
             IF pixelval IS NOT NULL THEN
                 val := pixelval::integer;
-                bitstring := bitstring || val::text;
+                bitstring := bitstring || val::BIT(1);
             ELSE
-                bitstring := bitstring || '0'; -- or handle NULL as needed
+                bitstring := bitstring || B'0'; -- or handle NULL as needed
             END IF;
         END LOOP;
     END LOOP;
@@ -50,10 +50,10 @@ BEGIN
     -- Create an empty raster with the given width, height, and spatial reference system
     raster := ST_AddBand(
         ST_MakeEmptyRaster(
-            raster_width,          -- Number of columns
-            raster_height,         -- Number of rows
+            raster_height,         -- Number of columns
+            raster_width,          -- Number of rows
             0, 0,                  -- Upper-left X and Y (origin) of the raster
-            1, 1,                 -- Pixel size X and Y (assuming square pixels)
+            1, 1,                  -- Pixel size X and Y (assuming square pixels)
             0, 0,                  -- X and Y skew
             srid                   -- Spatial Reference ID (SRID)
         ),
@@ -64,9 +64,9 @@ BEGIN
     );
 
     -- Set the raster values from the bitstring
-    FOR row IN 0..(raster_height - 1) LOOP
-        FOR col IN 0..(raster_width - 1) LOOP
-            bit_value := SUBSTRING(bitstring FROM row * raster_width + col + 1 FOR 1);
+    FOR row IN 0..(raster_width - 1) LOOP
+        FOR col IN 0..(raster_height - 1) LOOP
+            bit_value := SUBSTRING(bitstring FROM row * raster_height + col + 1 FOR 1);
             IF bit_value = '1' THEN
                 raster := ST_SetValue(raster, band_index, col + 1, row + 1, 1);
             ELSE
@@ -86,6 +86,7 @@ create table bitmask
     value      bit varying not null,
     height     int not null,
     width      int not null,
+    boundary   geometry(Polygon) not null,
     created_at timestamp not null
 );
 

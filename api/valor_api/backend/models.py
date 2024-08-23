@@ -52,6 +52,7 @@ class Bitmask(Base):
     value = mapped_column(BIT(varying=True), nullable=False)
     height: Mapped[int] = mapped_column(nullable=False)
     width: Mapped[int] = mapped_column(nullable=False)
+    boundary = mapped_column(Geometry("Polygon"), nullable=False)
     created_at: Mapped[datetime.datetime] = mapped_column(default=func.now())
 
     # relationships
