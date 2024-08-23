@@ -605,39 +605,86 @@ def _calculate_rocauc(
 
 def _add_samples_to_dataframe(
     pr_curve_counts_df: pd.DataFrame,
-    pr_calc_df: pd.DataFrame,
+    joint_df: pd.DataFrame,
     max_examples: int,
     flag_column: str,
 ) -> pd.DataFrame:
     """Efficienctly gather samples for a given flag."""
 
-    sample_df = pd.concat(
-        [
-            pr_calc_df[pr_calc_df[flag_column]]
+    sample_df = pd.DataFrame()
+    if flag_column == "true_positive":
+        sample_df = (
+            joint_df[joint_df["is_label_match"]]
             .groupby(
-                [
-                    "label_key",
-                    "label_value_gt",
-                    "confidence_threshold",
-                ],
+                ["label_key", "label_value_pd", "threshold_index"],
                 as_index=False,
-            )[["datum_uid"]]
+            )["datum_uid"]
             .agg(lambda x: tuple(x.head(max_examples)))
-            .rename(columns={"label_value_gt": "label_value"}),
-            pr_calc_df[pr_calc_df[flag_column]]
+            .rename(columns={"label_value_pd": "label_value"})
+        )
+    elif flag_column == "misclassification_false_positive_flag":
+        sample_df = (
+            joint_df[~joint_df["is_label_match"]]
             .groupby(
-                [
-                    "label_key",
-                    "label_value_pd",
-                    "confidence_threshold",
-                ],
+                ["label_key", "label_value_pd", "threshold_index"],
                 as_index=False,
-            )[["datum_uid"]]
+            )["datum_uid"]
             .agg(lambda x: tuple(x.head(max_examples)))
-            .rename(columns={"label_value_pd": "label_value"}),
-        ],
-        axis=0,
-    ).drop_duplicates()
+            .rename(columns={"label_value_pd": "label_value"})
+        )
+    elif flag_column == "true_negative_flag":
+        ## A false postitive at threshold x becomes a true negative at threshold x+1
+        sample_df = (
+            joint_df[~joint_df["is_label_match"]]
+            .groupby(
+                ["label_key", "label_value_pd", "threshold_index"],
+                as_index=False,
+            )["datum_uid"]
+            .agg(lambda x: tuple(x.head(max_examples)))
+            .rename(columns={"label_value_pd": "label_value"})
+        )
+        sample_df["threshold_index"] = sample_df["threshold_index"] + 1
+    elif flag_column == "misclassification_false_negative_flag":
+        ## A misclassification false negative occurs when another prediction has a higher score than the correct prediction
+        sample_df = (
+            joint_df[
+                joint_df["is_label_match"]
+                & (
+                    joint_df["threshold_index"]
+                    < joint_df["threshold_index_fn"]
+                )
+            ]
+            .groupby(
+                ["label_key", "label_value_pd", "threshold_index_fn"],
+                as_index=False,
+            )["datum_uid"]
+            .agg(lambda x: tuple(x.head(max_examples)))
+            .rename(
+                columns={
+                    "label_value_pd": "label_value",
+                    "threshold_index_fn": "threshold_index",
+                }
+            )
+        )
+    elif flag_column == "no_predictions_false_negative_flag":
+        ## A no prediction false negative occurs when no prediction on a datum has a score higher than the threshold.
+        ## If the correct prediction has the highest score at threshold x, it becomes a no predict false negative at threshold x+1
+        sample_df = (
+            joint_df[
+                joint_df["is_label_match"]
+                & (
+                    joint_df["threshold_index"]
+                    == joint_df["threshold_index_fn"]
+                )
+            ]
+            .groupby(
+                ["label_key", "label_value_pd", "threshold_index"],
+                as_index=False,
+            )["datum_uid"]
+            .agg(lambda x: tuple(x.head(max_examples)))
+            .rename(columns={"label_value_pd": "label_value"})
+        )
+        sample_df["threshold_index"] = sample_df["threshold_index"] + 1
 
     if not sample_df.empty:
         sample_df[f"{flag_column}_samples"] = sample_df.apply(
@@ -650,11 +697,11 @@ def _add_samples_to_dataframe(
                 [
                     "label_key",
                     "label_value",
-                    "confidence_threshold",
+                    "threshold_index",
                     f"{flag_column}_samples",
                 ]
             ],
-            on=["label_key", "label_value", "confidence_threshold"],
+            on=["label_key", "label_value", "threshold_index"],
             how="outer",
         )
         pr_curve_counts_df[f"{flag_column}_samples"] = pr_curve_counts_df[
@@ -669,14 +716,12 @@ def _add_samples_to_dataframe(
     return pr_curve_counts_df
 
 
-def _calculate_pr_curves(
+def _calculate_pr_curves_optimized(
     prediction_df: pd.DataFrame,
     groundtruth_df: pd.DataFrame,
     metrics_to_return: list,
     pr_curve_max_examples: int,
-) -> list[metrics.PrecisionRecallCurve]:
-    """Calculate PrecisionRecallCurve metrics."""
-
+):
     if not (
         enums.MetricType.PrecisionRecallCurve in metrics_to_return
         or enums.MetricType.DetailedPrecisionRecallCurve in metrics_to_return
@@ -699,139 +744,100 @@ def _calculate_pr_curves(
             "id_gt",
             "label_value_pd",
             "score",
-            "id_pd",
         ],
     ]
 
-    del groundtruth_df
-    del prediction_df
-    gc.collect()
-
     dd = defaultdict(lambda: 0)
 
-    total_datums_per_label_key = (
-        joint_df.drop_duplicates(["datum_uid", "datum_id", "label_key"])[
-            "label_key"
-        ]
-        .value_counts()
-        .to_dict(into=dd)
-    )
     total_label_values_per_label_key = (
         joint_df.drop_duplicates(["datum_uid", "datum_id", "label_key"])[
             ["label_key", "label_value_gt"]
         ]
+        .rename(columns={"label_value_gt": "label_value"})
         .value_counts()
-        .to_dict(into=dd)
     )
 
-    joint_df = joint_df.assign(
-        threshold_index=lambda chain_df: (
-            ((joint_df["score"] * 100) // 5).astype("int32")
-        ),
-        is_label_match=lambda chain_df: (
-            (chain_df["label_value_pd"] == chain_df["label_value_gt"])
-        ),
+    total_datums_per_label_key = total_label_values_per_label_key.groupby(
+        "label_key"
+    ).sum()
+
+    joint_df["threshold_index"] = ((100 * joint_df["score"]) // 5).astype(
+        "uint8"
+    )
+    joint_df["is_label_match"] = (
+        joint_df["label_value_pd"] == joint_df["label_value_gt"]
     )
 
-    true_positives = joint_df[joint_df["is_label_match"] == True][
-        ["label_key", "label_value_gt", "threshold_index"]
-    ].value_counts()
-    false_positives = joint_df[joint_df["is_label_match"] == False][
-        ["label_key", "label_value_pd", "threshold_index"]
-    ].value_counts()
-
-    confidence_thresholds = [x / 100 for x in range(5, 100, 5)]
-
-    tps_keys = []
-    tps_values = []
-    tps_confidence = []
-    tps_cumulative = []
-    fns_cumulative = []
-
-    fps_keys = []
-    fps_values = []
-    fps_confidence = []
-    fps_cumulative = []
-    tns_cumulative = []
-
-    # Not sure what the efficient way of doing this is in pandas
-    for (label_key, label_value) in (
-        true_positives.keys().droplevel(2).unique()
-    ):
-        dd = true_positives[label_key][label_value].to_dict(into=dd)
-        cumulative_true_positive = [0] * 21
-        cumulative_false_negative = [0] * 21
-        for threshold_index in range(19, -1, -1):
-            cumulative_true_positive[threshold_index] = (
-                cumulative_true_positive[threshold_index + 1]
-                + dd[threshold_index]
-            )
-            cumulative_false_negative[threshold_index] = (
-                total_label_values_per_label_key[(label_key, label_value)]
-                - cumulative_true_positive[threshold_index]
-            )
-
-        tps_keys += [label_key] * 19
-        tps_values += [label_value] * 19
-        tps_confidence += confidence_thresholds
-        tps_cumulative += cumulative_true_positive[1:-1]
-        fns_cumulative += cumulative_false_negative[1:-1]
-
-    # Not sure what the efficient way of doing this is in pandas
-    for (label_key, label_value) in (
-        false_positives.keys().droplevel(2).unique()
-    ):
-        dd = false_positives[label_key][label_value].to_dict(into=dd)
-        cumulative_false_positive = [0] * 21
-        cumulative_true_negative = [0] * 21
-        for threshold_index in range(19, -1, -1):
-            cumulative_false_positive[threshold_index] = (
-                cumulative_false_positive[threshold_index + 1]
-                + dd[threshold_index]
-            )
-            cumulative_true_negative[threshold_index] = (
-                total_datums_per_label_key[label_key]
-                - total_label_values_per_label_key[(label_key, label_value)]
-                - cumulative_false_positive[threshold_index]
-            )
-
-        fps_keys += [label_key] * 19
-        fps_values += [label_value] * 19
-        fps_confidence += confidence_thresholds
-        fps_cumulative += cumulative_false_positive[1:-1]
-        tns_cumulative += cumulative_true_negative[1:-1]
-
-    tps_df = pd.DataFrame(
-        {
-            "label_key": tps_keys,
-            "label_value": tps_values,
-            "confidence_threshold": tps_confidence,
-            "true_positives": tps_cumulative,
-            "false_negatives": fns_cumulative,
-        }
+    ## Count all true positives at each threshold
+    true_positives = (
+        joint_df[joint_df["is_label_match"]][
+            ["label_key", "label_value_gt", "threshold_index"]
+        ]
+        .value_counts()
+        .reset_index(name="true_positive_count")
+        .rename(columns={"label_value_gt": "label_value"})
     )
 
-    fps_df = pd.DataFrame(
-        {
-            "label_key": fps_keys,
-            "label_value": fps_values,
-            "confidence_threshold": fps_confidence,
-            "false_positives": fps_cumulative,
-            "true_negatives": tns_cumulative,
-        }
+    ## Count all false positives at each threshold
+    false_positives = (
+        joint_df[~joint_df["is_label_match"]][
+            ["label_key", "label_value_pd", "threshold_index"]
+        ]
+        .value_counts()
+        .reset_index(name="false_positive_count")
+        .rename(columns={"label_value_pd": "label_value"})
     )
 
-    pr_curve_counts_df = pd.merge(
-        tps_df,
-        fps_df,
-        on=["label_key", "label_value", "confidence_threshold"],
-        how="outer",
+    ## Merge and fill missing rows and values
+    pr_curve_counts_df = pd.DataFrame(
+        total_label_values_per_label_key.keys().to_list(),
+        columns=["label_key", "label_value"],
+    ).merge(pd.DataFrame({"threshold_index": range(21)}), how="cross")
+    pr_curve_counts_df = pr_curve_counts_df.merge(
+        true_positives, how="left"
+    ).fillna(0)
+    pr_curve_counts_df = pr_curve_counts_df.merge(
+        false_positives, how="left"
+    ).fillna(0)
+
+    ## Total number of datums per label key
+    total_datums_per_label_key = pr_curve_counts_df[["label_key"]].apply(
+        lambda row: total_datums_per_label_key[row["label_key"]], axis=1
     )
 
-    pr_curve_counts_df.fillna(0, inplace=True)
-    pr_curve_counts_df["total_datums"] = pr_curve_counts_df["label_key"].map(
-        total_datums_per_label_key
+    ## Total number of datums with groundtruth label per label key
+    total_label_values_per_label_key = pr_curve_counts_df[
+        ["label_key", "label_value"]
+    ].apply(
+        lambda row: total_label_values_per_label_key[row["label_key"]][
+            row["label_value"]
+        ],
+        axis=1,
     )
+
+    ## Compute cumulative sum of true positives to get the total number of true positives at each threshold
+    pr_curve_counts_df["true_positives"] = (
+        pr_curve_counts_df.loc[::-1, :]
+        .groupby(["label_key", "label_value"])["true_positive_count"]
+        .transform(pd.Series.cumsum)
+    )
+
+    ## Compute cumulative sum of false positives to get the total number of true positives at each threshold
+    pr_curve_counts_df["false_positives"] = (
+        pr_curve_counts_df.loc[::-1, :]
+        .groupby(["label_key", "label_value"])["false_positive_count"]
+        .transform(pd.Series.cumsum)
+    )
+
+    ## False negatives = total_ground_truth_datum_with_label - true_positives_with_label
+    pr_curve_counts_df["false_negatives"] = (
+        total_label_values_per_label_key - pr_curve_counts_df["true_positives"]
+    )
+
+    ## True negatives = total_predictions_without_correct_label - false_positives_with_label
+    pr_curve_counts_df["true_negatives"] = (
+        total_datums_per_label_key - total_label_values_per_label_key
+    ) - pr_curve_counts_df["false_positives"]
 
     pr_curve_counts_df["precision"] = pr_curve_counts_df["true_positives"] / (
         pr_curve_counts_df["true_positives"]
@@ -845,6 +851,7 @@ def _calculate_pr_curves(
         pr_curve_counts_df["true_positives"]
         + pr_curve_counts_df["true_negatives"]
     ) / pr_curve_counts_df["total_datums"]
+
     pr_curve_counts_df["f1_score"] = (
         2 * pr_curve_counts_df["precision"] * pr_curve_counts_df["recall"]
     ) / (pr_curve_counts_df["precision"] + pr_curve_counts_df["recall"])
@@ -852,12 +859,54 @@ def _calculate_pr_curves(
     # any NaNs that are left are from division by zero errors
     pr_curve_counts_df.fillna(-1, inplace=True)
 
-    pr_output = defaultdict(lambda: defaultdict(dict))
-    detailed_pr_output = defaultdict(lambda: defaultdict(dict))
-
-    """
     # add samples to the dataframe for DetailedPrecisionRecallCurves
     if enums.MetricType.DetailedPrecisionRecallCurve in metrics_to_return:
+        false_negative_threshold = (
+            joint_df[["datum_id", "datum_uid", "label_key", "threshold_index"]]
+            .groupby(["datum_id", "datum_uid", "label_key"])
+            .max()
+        )
+        joint_df = joint_df.merge(
+            false_negative_threshold,
+            on=["datum_id", "datum_uid", "label_key"],
+            how="left",
+            suffixes=(None, "_fn"),
+        )
+
+        fn_miss = (
+            joint_df[joint_df["is_label_match"]][
+                ["label_key", "label_value_gt", "threshold_index_fn"]
+            ]
+            .value_counts()
+            .reset_index(name="false_negative_miss_count")
+            .rename(
+                columns={
+                    "label_value_gt": "label_value",
+                    "threshold_index_fn": "threshold_index",
+                }
+            )
+        )
+
+        pr_curve_counts_df = pr_curve_counts_df.merge(
+            fn_miss,
+            on=["label_key", "label_value", "threshold_index"],
+            how="left",
+        ).fillna(0)
+
+        pr_curve_counts_df["false_negative_no_predict"] = pr_curve_counts_df[
+            "total_values"
+        ] - pr_curve_counts_df.loc[::-1, :].groupby(
+            ["label_key", "label_value"]
+        )[
+            "false_negative_miss_count"
+        ].transform(
+            pd.Series.cumsum
+        )
+        pr_curve_counts_df["false_negative_misclassification"] = (
+            pr_curve_counts_df["false_negatives"]
+            - pr_curve_counts_df["false_negative_no_predict"]
+        )
+
         for flag in [
             "true_positive_flag",
             "true_negative_flag",
@@ -867,15 +916,22 @@ def _calculate_pr_curves(
         ]:
             pr_curve_counts_df = _add_samples_to_dataframe(
                 pr_curve_counts_df=pr_curve_counts_df,
-                pr_calc_df=pr_calc_df,
+                joint_df=joint_df,
                 max_examples=pr_curve_max_examples,
                 flag_column=flag,
             )
-    """
+
+    pr_output = defaultdict(lambda: defaultdict(dict))
+    detailed_pr_output = defaultdict(lambda: defaultdict(dict))
 
     for _, row in pr_curve_counts_df.iterrows():
+        if row["threshold_index"] == 0:
+            continue
+        if row["threshold_index"] > 19:
+            continue
+
         pr_output[row["label_key"]][row["label_value"]][
-            row["confidence_threshold"]
+            row["threshold_index"] * 5 / 100
         ] = {
             "tp": row["true_positives"],
             "fp": row["false_positives"],
@@ -889,7 +945,7 @@ def _calculate_pr_curves(
 
         if enums.MetricType.DetailedPrecisionRecallCurve in metrics_to_return:
             detailed_pr_output[row["label_key"]][row["label_value"]][
-                row["confidence_threshold"]
+                row["threshold_index"] * 5 / 100
             ] = {
                 "tp": {
                     "total": row["true_positives"],
@@ -913,13 +969,13 @@ def _calculate_pr_curves(
                     "total": row["false_negatives"],
                     "observations": {
                         "misclassifications": {
-                            "count": row["misclassification_false_negatives"],
+                            "count": row["false_negative_misclassification"],
                             "examples": row[
                                 "misclassification_false_negative_flag_samples"
                             ],
                         },
                         "no_predictions": {
-                            "count": row["no_predictions_false_negatives"],
+                            "count": row["false_negative_no_predict"],
                             "examples": row[
                                 "no_predictions_false_negative_flag_samples"
                             ],
@@ -930,7 +986,7 @@ def _calculate_pr_curves(
                     "total": row["false_positives"],
                     "observations": {
                         "misclassifications": {
-                            "count": row["misclassification_false_positives"],
+                            "count": row["false_positives"],
                             "examples": row[
                                 "misclassification_false_positive_flag_samples"
                             ],
