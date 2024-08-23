@@ -512,7 +512,7 @@ class ValorClassificationManager:
 
     def evaluate(self):
         """
-        Evaluates the added data to compute detection metrics.
+        Evaluates the added data to compute classification metrics.
 
         Returns
         -------
