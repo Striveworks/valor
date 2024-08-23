@@ -1,7 +1,9 @@
 import json
 import os
 import time
+from dataclasses import dataclass
 from datetime import datetime
+from pathlib import Path
 
 import requests
 
@@ -22,7 +24,7 @@ connect("http://0.0.0.0:8000")
 client = Client()
 
 
-def download_data_if_not_exists(file_path: str, file_url: str):
+def download_data_if_not_exists(file_path: Path, file_url: str):
     """Download the data from a public bucket if it doesn't exist in the repo."""
     if os.path.exists(file_path):
         return
@@ -32,10 +34,9 @@ def download_data_if_not_exists(file_path: str, file_url: str):
         json.dump(response, file, indent=4)
 
 
-def write_results_to_file(write_path: str, result_dict: dict):
+def write_results_to_file(write_path: Path, results: list[dict]):
     """Write results to results.json"""
     current_datetime = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
-
     if os.path.isfile(write_path):
         with open(write_path, "r") as file:
             file.seek(0)
@@ -43,25 +44,27 @@ def write_results_to_file(write_path: str, result_dict: dict):
     else:
         data = {}
 
-    data[current_datetime] = result_dict
+    data[current_datetime] = results
 
     with open(write_path, "w+") as file:
         json.dump(data, file, indent=4)
 
 
-def ingest_groundtruths_and_predictions(
-    dset: Dataset, model: Model, raw: dict, pair_limit: int
+def ingest_groundtruths(
+    dset: Dataset,
+    raw: dict,
+    pair_limit: int,
+    timeout: int | None,
 ):
-    """Ingest the data into Valor."""
+    """Ingest groundtruths into Valor."""
 
     groundtruths = []
-    predictions = []
     slice_ = (
         raw["groundtruth_prediction_pairs"][:pair_limit]
         if pair_limit != -1
         else raw["groundtruth_prediction_pairs"]
     )
-    for groundtruth, prediction in slice_:
+    for groundtruth, _ in slice_:
         groundtruths.append(
             GroundTruth(
                 datum=Datum(
@@ -83,6 +86,26 @@ def ingest_groundtruths_and_predictions(
                 ],
             )
         )
+
+    dset.add_groundtruths(groundtruths, timeout=timeout)
+
+
+def ingest_predictions(
+    dset: Dataset,
+    model: Model,
+    raw: dict,
+    pair_limit: int,
+    timeout: int | None,
+):
+    """Ingest the data into Valor."""
+
+    predictions = []
+    slice_ = (
+        raw["groundtruth_prediction_pairs"][:pair_limit]
+        if pair_limit != -1
+        else raw["groundtruth_prediction_pairs"]
+    )
+    for _, prediction in slice_:
 
         predictions.append(
             Prediction(
@@ -106,65 +129,122 @@ def ingest_groundtruths_and_predictions(
             )
         )
 
-    dset.add_groundtruths(groundtruths, timeout=150)
-    model.add_predictions(dset, predictions, timeout=150)
-
-    dset.finalize()
-    model.finalize_inferences(dataset=dset)
+    model.add_predictions(dset, predictions, timeout=timeout)
 
 
-def run_base_evaluation(dset: Dataset, model: Model):
+def run_base_evaluation(dset: Dataset, model: Model, timeout: int | None):
     """Run a base evaluation (with no PR curves)."""
-    evaluation = model.evaluate_classification(dset)
-    evaluation.wait_for_completion()
+    try:
+        evaluation = model.evaluate_classification(dset)
+        evaluation.wait_for_completion(timeout=timeout)
+    except TimeoutError:
+        raise TimeoutError(
+            f"Base evaluation timed out when processing {evaluation.meta['datums']} datums."  # type: ignore
+        )
     return evaluation
 
 
-def run_pr_curve_evaluation(dset: Dataset, model: Model):
+def run_pr_curve_evaluation(dset: Dataset, model: Model, timeout: int | None):
     """Run a base evaluation with PrecisionRecallCurve included."""
-    evaluation = model.evaluate_classification(
-        dset,
-        metrics_to_return=[
-            MetricType.Accuracy,
-            MetricType.Precision,
-            MetricType.Recall,
-            MetricType.F1,
-            MetricType.ROCAUC,
-            MetricType.PrecisionRecallCurve,
-        ],
-    )
-    evaluation.wait_for_completion()
+    try:
+        evaluation = model.evaluate_classification(
+            dset,
+            metrics_to_return=[
+                MetricType.Accuracy,
+                MetricType.Precision,
+                MetricType.Recall,
+                MetricType.F1,
+                MetricType.ROCAUC,
+                MetricType.PrecisionRecallCurve,
+            ],
+        )
+        evaluation.wait_for_completion(timeout=timeout)
+    except TimeoutError:
+        raise TimeoutError(
+            f"PR evaluation timed out when processing {evaluation.meta['datums']} datums."  # type: ignore
+        )
     return evaluation
 
 
-def run_detailed_pr_curve_evaluation(dset: Dataset, model: Model):
+def run_detailed_pr_curve_evaluation(
+    dset: Dataset, model: Model, timeout: int | None
+):
     """Run a base evaluation with PrecisionRecallCurve and DetailedPrecisionRecallCurve included."""
 
-    evaluation = model.evaluate_classification(
-        dset,
-        metrics_to_return=[
-            MetricType.Accuracy,
-            MetricType.Precision,
-            MetricType.Recall,
-            MetricType.F1,
-            MetricType.ROCAUC,
-            MetricType.PrecisionRecallCurve,
-            MetricType.DetailedPrecisionRecallCurve,
-        ],
-    )
-    evaluation.wait_for_completion()
+    try:
+        evaluation = model.evaluate_classification(
+            dset,
+            metrics_to_return=[
+                MetricType.Accuracy,
+                MetricType.Precision,
+                MetricType.Recall,
+                MetricType.F1,
+                MetricType.ROCAUC,
+                MetricType.PrecisionRecallCurve,
+                MetricType.DetailedPrecisionRecallCurve,
+            ],
+        )
+        evaluation.wait_for_completion(timeout=timeout)
+    except TimeoutError:
+        raise TimeoutError(
+            f"Detailed evaluation timed out when processing {evaluation.meta['datums']} datums."  # type: ignore
+        )
     return evaluation
+
+
+@dataclass
+class DataBenchmark:
+    ingestion: float
+    finalization: float
+    deletion: float
+
+    def result(self) -> dict[str, float | str]:
+        return {
+            "ingestion": round(self.ingestion, 2),
+            "finalization": round(self.finalization, 2),
+            "deletion": round(self.deletion, 2),
+        }
+
+
+@dataclass
+class EvaluationBenchmark:
+    limit: int
+    gt_stats: DataBenchmark
+    pd_stats: DataBenchmark
+    n_datums: int
+    n_annotations: int
+    n_labels: int
+    eval_base: float
+    eval_base_pr: float
+    eval_base_pr_detail: float
+
+    def result(self) -> dict[str, float | str | dict[str, str | float]]:
+        return {
+            "limit": self.limit,
+            "groundtruths": self.gt_stats.result(),
+            "predictions": self.pd_stats.result(),
+            "evaluation": {
+                "number_of_datums": self.n_datums,
+                "number_of_annotations": self.n_annotations,
+                "number_of_labels": self.n_labels,
+                "base": round(self.eval_base, 2),
+                "base+pr": round(self.eval_base_pr, 2),
+                "base+pr+detailed": round(self.eval_base_pr_detail, 2),
+            },
+        }
 
 
 def run_benchmarking_analysis(
-    limits_to_test: list[int] = [5000, 5000],
+    limits: list[int],
     results_file: str = "results.json",
     data_file: str = "data.json",
+    ingestion_timeout: int | None = 150,
+    evaluation_timeout: int | None = 40,
 ):
     """Time various function calls and export the results."""
-    current_directory = os.path.dirname(os.path.realpath(__file__))
-    write_path = f"{current_directory}/{results_file}"
-    data_path = f"{current_directory}/{data_file}"
+    current_directory = Path(os.path.dirname(os.path.realpath(__file__)))
+    write_path = current_directory / Path(results_file)
+    data_path = current_directory / Path(data_file)
 
     download_data_if_not_exists(
         file_path=data_path,
@@ -175,58 +255,88 @@ def run_benchmarking_analysis(
         file.seek(0)
         raw_data = json.load(file)
 
-    for limit in limits_to_test:
+    results = list()
+    for limit in limits:
 
         dset = Dataset.create(name=f"bird-identification-{time.time()}")
         model = Model.create(name=f"some_model-{time.time()}")
 
+        # ingest groundtruths
         start_time = time.time()
-
-        ingest_groundtruths_and_predictions(
-            dset=dset, model=model, raw=raw_data, pair_limit=limit
+        ingest_groundtruths(
+            dset=dset,
+            raw=raw_data,
+            pair_limit=limit,
+            timeout=ingestion_timeout,
         )
-        ingest_time = time.time() - start_time
+        gt_ingest_time = time.time() - start_time
 
-        try:
-            eval_base = run_base_evaluation(dset=dset, model=model)
-        except TimeoutError:
-            raise TimeoutError(
-                f"Evaluation timed out when processing {limit} datums."
-            )
+        # finalize groundtruths
+        start_time = time.time()
+        dset.finalize()
+        gt_finalization_time = time.time() - start_time
 
-        try:
-            eval_pr = run_pr_curve_evaluation(dset=dset, model=model)
-        except TimeoutError:
-            raise TimeoutError(
-                f"PR Evaluation timed out when processing {limit} datums."
-            )
+        # ingest predictions
+        start_time = time.time()
+        ingest_predictions(
+            dset=dset,
+            model=model,
+            raw=raw_data,
+            pair_limit=limit,
+            timeout=ingestion_timeout,
+        )
+        pd_ingest_time = time.time() - start_time
 
-        try:
-            eval_pr_detail = run_detailed_pr_curve_evaluation(
-                dset=dset, model=model
-            )
-        except TimeoutError:
-            raise TimeoutError(
-                f"Detailed PR Evaluation timed out when processing {limit} datums."
-            )
+        # finalize predictions
+        start_time = time.time()
+        model.finalize_inferences(dset)
+        pd_finalization_time = time.time() - start_time
 
+        # run evaluations
+        eval_base = run_base_evaluation(
+            dset=dset, model=model, timeout=evaluation_timeout
+        )
+        eval_pr = run_pr_curve_evaluation(
+            dset=dset, model=model, timeout=evaluation_timeout
+        )
+        eval_detail = run_detailed_pr_curve_evaluation(
+            dset=dset, model=model, timeout=evaluation_timeout
+        )
+
+        # delete model
+        start = time.time()
+        client.delete_model(model.name, timeout=30)
+        pd_deletion_time = time.time() - start
+
+        # delete dataset
         start = time.time()
         client.delete_dataset(dset.name, timeout=30)
-        client.delete_model(model.name, timeout=30)
-        deletion_time = time.time() - start
+        gt_deletion_time = time.time() - start
 
-        results = {
-            "number_of_datums": limit,
-            "number_of_unique_labels": eval_base.meta["labels"],
-            "number_of_annotations": eval_base.meta["annotations"],
-            "ingest_runtime": f"{(ingest_time):.1f} seconds",
-            "eval_runtime": f"{(eval_base.meta['duration']):.1f} seconds",
-            "eval_pr_runtime": f"{(eval_pr.meta['duration']):.1f} seconds",
-            "eval_detailed_pr_runtime": f"{(eval_pr_detail.meta['duration']):.1f} seconds",
-            "del_runtime": f"{(deletion_time):.1f} seconds",
-        }
-        write_results_to_file(write_path=write_path, result_dict=results)
+        results.append(
+            EvaluationBenchmark(
+                limit=limit,
+                gt_stats=DataBenchmark(
+                    ingestion=gt_ingest_time,
+                    finalization=gt_finalization_time,
+                    deletion=gt_deletion_time,
+                ),
+                pd_stats=DataBenchmark(
+                    ingestion=pd_ingest_time,
+                    finalization=pd_finalization_time,
+                    deletion=pd_deletion_time,
+                ),
+                n_datums=eval_base.meta["datums"],
+                n_annotations=eval_base.meta["annotations"],
+                n_labels=eval_base.meta["labels"],
+                eval_base=eval_base.meta["duration"],
+                eval_base_pr=eval_pr.meta["duration"],
+                eval_base_pr_detail=eval_detail.meta["duration"],
+            ).result()
+        )
+
+    write_results_to_file(write_path=write_path, results=results)
 
 
 if __name__ == "__main__":
-    run_benchmarking_analysis()
+    run_benchmarking_analysis(limits=[5000, 5000])

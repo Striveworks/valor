@@ -5,7 +5,7 @@ from dataclasses import dataclass
 from typing import Sequence, Tuple
 
 from geoalchemy2 import functions as gfunc
-from sqlalchemy import CTE, Integer, and_, func, literal, select
+from sqlalchemy import CTE, Integer, and_, case, func, literal, select
 from sqlalchemy.dialects.postgresql import array, insert
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, aliased
@@ -786,15 +786,13 @@ def _compute_curves(
         curves = defaultdict(lambda: defaultdict(dict))
 
         for confidence_threshold in [x / 100 for x in range(5, 100, 5)]:
+
+            tp_cnt, fp_cnt, fn_cnt = 0, 0, 0
+
             if label_id not in sorted_ranked_pairs:
-                tp_cnt = 0
                 if label_id in groundtruths_per_label:
                     fn_cnt = len(groundtruths_per_label[label_id])
-                else:
-                    fn_cnt = 0
-
             else:
-                tp_cnt, fn_cnt = 0, 0
                 seen_gts = set()
 
                 for (
@@ -809,12 +807,13 @@ def _compute_curves(
                     ):
                         tp_cnt += 1
                         seen_gts.add(gt_id)
+                    elif score >= confidence_threshold and iou < iou_threshold:
+                        fp_cnt += 1
 
                 for gt_id in groundtruths_per_label[label_id]:
                     if gt_id not in seen_gts:
                         fn_cnt += 1
 
-            fp_cnt = 0
             for (
                 gt_label_id,
                 pd_label_id,
@@ -991,10 +990,14 @@ def _compute_detailed_curves(
                         if misclassification_detected:
                             fn["misclassifications"].append(
                                 (dataset_name, datum_uid, gt_geojson)
+                                if gt_geojson is not None
+                                else (dataset_name, datum_uid)
                             )
                         else:
                             fn["no_predictions"].append(
                                 (dataset_name, datum_uid, gt_geojson)
+                                if gt_geojson is not None
+                                else (dataset_name, datum_uid)
                             )
 
             if label_id in predictions_per_label:
@@ -1034,10 +1037,14 @@ def _compute_detailed_curves(
                         if misclassification_detected:
                             fp["misclassifications"].append(
                                 (dataset_name, datum_uid, pd_geojson)
+                                if pd_geojson is not None
+                                else (dataset_name, datum_uid)
                             )
                         elif hallucination_detected:
                             fp["hallucinations"].append(
                                 (dataset_name, datum_uid, pd_geojson)
+                                if pd_geojson is not None
+                                else (dataset_name, datum_uid)
                             )
 
             # calculate metrics
@@ -1312,6 +1319,10 @@ def _convert_annotations_to_common_type(
         source_type = core.get_annotation_type(
             db=db, dataset=dataset, task_type=enums.TaskType.OBJECT_DETECTION
         )
+        if target_type > source_type:
+            raise ValueError(
+                f"Cannot convert dataset {dataset.name} annotations from {source_type} to {target_type}."
+            )
         core.convert_geometry(
             db=db,
             dataset=dataset,
@@ -1326,6 +1337,10 @@ def _convert_annotations_to_common_type(
             model=model,
             task_type=enums.TaskType.OBJECT_DETECTION,
         )
+        if target_type > source_type:
+            raise ValueError(
+                f"Cannot convert model {model.name} annotations from {source_type} to {target_type}."
+            )
         core.convert_geometry(
             db=db,
             dataset=dataset,
@@ -1648,14 +1663,22 @@ def _compute_and_cache_ious(
             select(
                 gt_pd_counts.c.gt_annotation_id,
                 gt_pd_counts.c.pd_annotation_id,
-                func.coalesce(
-                    gt_pd_counts.c.intersection
-                    / (
+                case(
+                    (
                         gt_pd_counts.c.gt_count
                         + gt_pd_counts.c.pd_count
                         - gt_pd_counts.c.intersection
+                        == 0,
+                        0,
                     ),
-                    0,
+                    else_=(
+                        gt_pd_counts.c.intersection
+                        / (
+                            gt_pd_counts.c.gt_count
+                            + gt_pd_counts.c.pd_count
+                            - gt_pd_counts.c.intersection
+                        )
+                    ),
                 ).label("iou"),
                 literal(f"'{target_type.value}'").label("type"),
             )
@@ -1676,6 +1699,10 @@ def _compute_and_cache_ious(
                 gt_pd_pairs.c.pd_annotation_id,
                 iou_computation.label("iou"),
                 literal(f"'{target_type.value}'").label("type"),
+                case(
+                    (gfunc.ST_Area(gunion) == 0, 0),
+                    else_=iou_computation,
+                ).label("iou"),
             )
             .select_from(gt_pd_pairs)
             .join(
@@ -2094,14 +2121,22 @@ def _compute_detection_metrics_with_detailed_precision_recall_curve(
             select(
                 gt_pd_counts.c.gt_annotation_id,
                 gt_pd_counts.c.pd_annotation_id,
-                func.coalesce(
-                    gt_pd_counts.c.intersection
-                    / (
+                case(
+                    (
                         gt_pd_counts.c.gt_count
                         + gt_pd_counts.c.pd_count
                         - gt_pd_counts.c.intersection
+                        == 0,
+                        0,
                     ),
-                    0,
+                    else_=(
+                        gt_pd_counts.c.intersection
+                        / (
+                            gt_pd_counts.c.gt_count
+                            + gt_pd_counts.c.pd_count
+                            - gt_pd_counts.c.intersection
+                        )
+                    ),
                 ).label("iou"),
             )
             .select_from(gt_pd_counts)
@@ -2119,7 +2154,10 @@ def _compute_detection_metrics_with_detailed_precision_recall_curve(
             select(
                 gt_pd_pairs.c.gt_annotation_id,
                 gt_pd_pairs.c.pd_annotation_id,
-                iou_computation.label("iou"),
+                case(
+                    (gfunc.ST_Area(gunion) == 0, 0),
+                    else_=iou_computation,
+                ).label("iou"),
             )
             .select_from(gt_pd_pairs)
             .join(
@@ -2145,10 +2183,7 @@ def _compute_detection_metrics_with_detailed_precision_recall_curve(
             gt.c.label_id.label("gt_label_id"),
             pd.c.label_id.label("pd_label_id"),
             pd.c.score.label("score"),
-            func.coalesce(
-                gt_pd_ious.c.iou,
-                0,
-            ).label("iou"),
+            gt_pd_ious.c.iou,
             gt.c.geojson.label("gt_geojson"),
             (gt.c.label_id == pd.c.label_id).label("is_match"),
         )

@@ -11,7 +11,7 @@ from valor import (
 )
 from valor.schemas import (
     Box,
-    Context,
+    ContextList,
     Dictionary,
     Float,
     List,
@@ -49,7 +49,7 @@ def test_annotation_typing():
     assert type(Annotation.polygon) is Polygon
     assert type(Annotation.raster) is Raster
     assert type(Annotation.text) is String
-    assert type(Annotation.context) is Context
+    assert type(Annotation.context_list) is ContextList
 
     annotation = Annotation(
         labels=[],
@@ -60,7 +60,7 @@ def test_annotation_typing():
     assert annotation.polygon is None
     assert annotation.raster is None
     assert annotation.text is None
-    assert annotation.context is None
+    assert annotation.context_list is None
 
     bbox = Box.from_extrema(0, 1, 0, 1)
     polygon = Polygon([bbox.boundary])
@@ -78,14 +78,14 @@ def test_annotation_typing():
     assert type(annotation.polygon) is Polygon
     assert type(annotation.raster) is Raster
     assert annotation.text is None
-    assert annotation.context is None
+    assert annotation.context_list is None
 
     text = "Example text."
-    context = ["context 1", "context 2"]
+    context_list = ["context 1", "context 2"]
     annotation = Annotation(
         metadata={},
         text=text,
-        context=context,
+        context_list=context_list,
     )
 
     assert type(annotation.labels) is List[Label]
@@ -94,7 +94,7 @@ def test_annotation_typing():
     assert annotation.polygon is None
     assert annotation.raster is None
     assert type(annotation.text) is str
-    assert type(annotation.context) is Context
+    assert type(annotation.context_list) is ContextList
 
 
 def test_datum_typing():

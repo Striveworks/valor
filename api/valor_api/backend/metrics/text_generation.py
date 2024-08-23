@@ -1,5 +1,4 @@
 from collections import defaultdict
-from typing import Sequence
 
 import evaluate
 from nltk.tokenize import RegexpTokenizer
@@ -47,7 +46,7 @@ def _calculate_rouge_scores(
     references: list[str],
     rouge_types: list[ROUGEType] | None = None,
     use_stemmer: bool = False,
-) -> list[dict]:
+) -> list[dict[str, dict[str, float]]]:
     """
     Calculate ROUGE scores for a prediction (or list of predictions) given some set of references.
 
@@ -126,7 +125,7 @@ def _calculate_sentence_bleu(
     predictions: str | list[str],
     references: list[str] | list[list[str]],
     weights: list[float] = [0.25, 0.25, 0.25, 0.25],
-) -> list[dict]:
+) -> list[dict[str, float]]:
     """
     Calculate sentence BLEU scores for a set of prediction-groundtruth pairs.
 
@@ -180,11 +179,13 @@ def _calculate_sentence_bleu(
 
         # find the max value for each prediction
         output[pred] = max(
-            bleu_score.sentence_bleu(
-                references=tokenized_references,
-                hypothesis=tokenized_prediction,
-                weights=weights,
-            ),  # type: ignore
+            float(
+                bleu_score.sentence_bleu(
+                    references=tokenized_references,
+                    hypothesis=tokenized_prediction,
+                    weights=weights,
+                ),  # type: ignore
+            ),
             output[pred],
         )
 
@@ -214,18 +215,17 @@ def _setup_llm_client(
     if "client" in llm_api_params and "api_url" in llm_api_params:
         raise ValueError("Cannot specify both client and api_url.")
 
-    client = llm_api_params.get("client")
-    if client is not None:
-        if client == "openai":
-            client_cls = WrappedOpenAIClient
-        elif client == "mistral":
-            client_cls = WrappedMistralAIClient
-        elif client == "mock":
-            client_cls = MockLLMClient
-        else:
-            raise ValueError(
-                f"Client {llm_api_params['client']} is not supported."
-            )
+    client_name = llm_api_params.get("client")
+    if client_name is not None:
+        match client_name:
+            case "openai":
+                client_cls = WrappedOpenAIClient
+            case "mistral":
+                client_cls = WrappedMistralAIClient
+            case "mock":
+                client_cls = MockLLMClient
+            case _:
+                raise ValueError(f"Client {client_name} is not supported.")
     else:
         raise NotImplementedError(
             "Support has not been implemented for api_url."
@@ -255,7 +255,7 @@ def _compute_text_generation_metrics(
     metrics_to_return: list[MetricType] = [],
     llm_api_params: dict[str, str | dict] | None = None,
     metric_params: dict = {},
-) -> Sequence[
+) -> list[
     schemas.AnswerRelevanceMetric
     | schemas.BiasMetric
     | schemas.BLEUMetric
@@ -295,15 +295,13 @@ def _compute_text_generation_metrics(
         generate_select(
             models.Annotation.datum_id.label("datum_id"),
             models.Annotation.text.label("prediction_text"),
-            models.Annotation.context.label("prediction_context"),
+            models.Annotation.context_list.label("prediction_context_list"),
             label_source=models.Annotation,
             filters=prediction_filter,
         )
         .where(models.Annotation.model_id.isnot(None))
         .subquery()
     )
-
-    print("PREDS", len(db.query(prediction_subquery).all()))
 
     output = []
     if any(
@@ -449,8 +447,8 @@ def _compute_text_generation_metrics(
                 datum_subquery.c.dataset_name.label("dataset_name"),
                 datum_subquery.c.datum_text.label("datum_text"),
                 prediction_subquery.c.prediction_text.label("prediction_text"),
-                prediction_subquery.c.prediction_context.label(
-                    "prediction_context"
+                prediction_subquery.c.prediction_context_list.label(
+                    "prediction_context_list"
                 ),
             )
             .select_from(datum_subquery)
@@ -461,20 +459,26 @@ def _compute_text_generation_metrics(
         )
 
         results = db.execute(joint_subquery).all()
-        is_AnswerRelevance_enabled = "AnswerRelevance" in metrics_to_return
-        is_Bias_enabled = "Bias" in metrics_to_return
-        is_Coherence_enabled = "Coherence" in metrics_to_return
-        is_ContextRelevance_enabled = "ContextRelevance" in metrics_to_return
-        is_Faithfulness_enabled = "Faithfulness" in metrics_to_return
-        is_Hallucination_enabled = "Hallucination" in metrics_to_return
-        is_Toxicity_enabled = "Toxicity" in metrics_to_return
+        is_AnswerRelevance_enabled = (
+            MetricType.AnswerRelevance in metrics_to_return
+        )
+        is_Bias_enabled = MetricType.Bias in metrics_to_return
+        is_Coherence_enabled = MetricType.Coherence in metrics_to_return
+        is_ContextRelevance_enabled = (
+            MetricType.ContextRelevance in metrics_to_return
+        )
+        is_Faithfulness_enabled = MetricType.Faithfulness in metrics_to_return
+        is_Hallucination_enabled = (
+            MetricType.Hallucination in metrics_to_return
+        )
+        is_Toxicity_enabled = MetricType.Toxicity in metrics_to_return
 
         for (
             datum_uid,
             dataset_name,
             datum_text,
             prediction_text,
-            prediction_context,
+            prediction_context_list,
         ) in results:
             if is_AnswerRelevance_enabled:
                 score = client.answer_relevance(
@@ -518,7 +522,7 @@ def _compute_text_generation_metrics(
 
             if is_ContextRelevance_enabled:
                 score = client.context_relevance(
-                    query=datum_text, context=prediction_context
+                    query=datum_text, context_list=prediction_context_list
                 )
                 output += [
                     schemas.ContextRelevanceMetric(
@@ -526,14 +530,14 @@ def _compute_text_generation_metrics(
                         parameters={
                             "dataset": dataset_name,
                             "datum_uid": datum_uid,
-                            "context": prediction_context,
+                            "context_list": prediction_context_list,
                         },
                     )
                 ]
 
             if is_Faithfulness_enabled:
                 score = client.faithfulness(
-                    text=prediction_text, context=prediction_context
+                    text=prediction_text, context_list=prediction_context_list
                 )
                 output += [
                     schemas.FaithfulnessMetric(
@@ -542,14 +546,14 @@ def _compute_text_generation_metrics(
                             "dataset": dataset_name,
                             "datum_uid": datum_uid,
                             "prediction": prediction_text,
-                            "context": prediction_context,
+                            "context_list": prediction_context_list,
                         },
                     )
                 ]
 
             if is_Hallucination_enabled:
                 score = client.hallucination(
-                    text=prediction_text, context=prediction_context
+                    text=prediction_text, context_list=prediction_context_list
                 )
                 output += [
                     schemas.HallucinationMetric(
@@ -558,7 +562,7 @@ def _compute_text_generation_metrics(
                             "dataset": dataset_name,
                             "datum_uid": datum_uid,
                             "prediction": prediction_text,
-                            "context": prediction_context,
+                            "context_list": prediction_context_list,
                         },
                     )
                 ]
@@ -606,7 +610,7 @@ def compute_text_generation_metrics(
 
     # unpack filters and params
     parameters = schemas.EvaluationParameters(**evaluation.parameters)
-    (groundtruth_filter, prediction_filter,) = prepare_filter_for_evaluation(
+    groundtruth_filter, prediction_filter = prepare_filter_for_evaluation(
         filters=schemas.Filter(**evaluation.filters),
         dataset_names=evaluation.dataset_names,
         model_name=evaluation.model_name,

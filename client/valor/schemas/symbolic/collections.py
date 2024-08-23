@@ -5,7 +5,7 @@ import numpy as np
 from valor.schemas.symbolic.types import (
     Boolean,
     Box,
-    Context,
+    ContextList,
     Dictionary,
     Embedding,
     Equatable,
@@ -265,8 +265,8 @@ class Annotation(StaticCollection):
         An embedding, described by a list of values with type float and a maximum length of 16,000.
     text: str, optional
         A piece of text to assign to the `Annotation`.
-    context: List[str], optional
-        A list of context strings associated with an `Annotation`.
+    context_list: List[str], optional
+        A list of contexts associated with an `Annotation`.
     is_instance: bool, optional
         A boolean describing whether we should treat the Raster attached to an annotation as an instance segmentation or not. If set to true, then the Annotation will be validated for use in object detection tasks. If set to false, then the Annotation will be validated for use in semantic segmentation tasks.
     implied_task_types: list[str], optional
@@ -321,7 +321,7 @@ class Annotation(StaticCollection):
     Text Generation
     >>> annotation = Annotation(
     ...     text="Yes, Lincoln won the election of 1860. He received the highest number of votes...",
-    ...     context=["Republican speakers focused first on...", "Lincoln received 1,866,452 votes...", ...],
+    ...     context_list=["Republican speakers focused first on...", "Lincoln received 1,866,452 votes...", ...],
     ... )
     """
 
@@ -338,7 +338,9 @@ class Annotation(StaticCollection):
         owner="annotation", name="embedding"
     )
     text: String = String.symbolic(owner="annotation", name="text")
-    context: Context = Context.symbolic(owner="annotation", name="context")
+    context_list: ContextList = ContextList.symbolic(
+        owner="annotation", name="context_list"
+    )
     is_instance: Boolean = Boolean.symbolic(
         owner="annotation", name="is_instance"
     )
@@ -356,7 +358,7 @@ class Annotation(StaticCollection):
         raster: Optional[Raster] = None,
         embedding: Optional[Embedding] = None,
         text: Optional[str] = None,
-        context: Optional[List[str]] = None,
+        context_list: Optional[List[str]] = None,
         is_instance: Optional[bool] = None,
         implied_task_types: Optional[List[String]] = None,
     ):
@@ -379,8 +381,8 @@ class Annotation(StaticCollection):
             An embedding, described by a list of values with type float and a maximum length of 16,000.
         text: str, optional
             A text annotation.
-        context: List[str], optional
-            A list of context associated to the annotation text. Not all text annotations will have context.
+        context_list: List[str], optional
+            A list of contexts associated to the annotation text. Not all text annotations will have context_list.
         is_instance: bool, optional
             A boolean describing whether we should treat the Raster attached to an annotation as an instance segmentation or not. If set to true, then the Annotation will be validated for use in object detection tasks. If set to false, then the Annotation will be validated for use in semantic segmentation tasks.
         implied_task_types: list[str], optional
@@ -394,7 +396,7 @@ class Annotation(StaticCollection):
             raster=raster,
             embedding=embedding,
             text=text,
-            context=context,
+            context_list=context_list,
             is_instance=is_instance,
             implied_task_types=implied_task_types,
         )
@@ -408,7 +410,7 @@ class Annotation(StaticCollection):
             "raster": Raster.nullable,
             "embedding": Embedding.nullable,
             "text": String.nullable,
-            "context": Context.nullable,
+            "context_list": ContextList.nullable,
             "is_instance": Boolean.nullable,
             "implied_task_types": SymbolicList,
         }
