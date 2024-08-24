@@ -852,7 +852,7 @@ def _calculate_pr_curves(
     pr_curve_counts_df["accuracy"] = (
         pr_curve_counts_df["true_positives"]
         + pr_curve_counts_df["true_negatives"]
-    ) / pr_curve_counts_df["total_datums"]
+    ) / total_datums_per_label_key
 
     pr_curve_counts_df["f1_score"] = (
         2 * pr_curve_counts_df["precision"] * pr_curve_counts_df["recall"]
