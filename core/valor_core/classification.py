@@ -895,9 +895,11 @@ def _calculate_pr_curves(
             how="left",
         ).fillna(0)
 
-        pr_curve_counts_df["false_negative_no_predict"] = pr_curve_counts_df[
-            "total_values"
-        ] - pr_curve_counts_df.loc[::-1, :].groupby(
+        pr_curve_counts_df[
+            "false_negative_no_predict"
+        ] = total_label_values_per_label_key - pr_curve_counts_df.loc[
+            ::-1, :
+        ].groupby(
             ["label_key", "label_value"]
         )[
             "false_negative_miss_count"
