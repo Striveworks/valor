@@ -633,7 +633,7 @@ def _add_samples_to_dataframe(
             .rename(columns={"label_value_pd": "label_value"})
         )
     elif flag_column == "true_negative_flag":
-        ## A false postitive at threshold x becomes a true negative at threshold x+1
+        # A false postitive at threshold x becomes a true negative at threshold x+1
         sample_df = (
             joint_df[~joint_df["is_label_match"]]
             .groupby(
@@ -645,7 +645,7 @@ def _add_samples_to_dataframe(
         )
         sample_df["threshold_index"] = sample_df["threshold_index"] + 1
     elif flag_column == "misclassification_false_negative_flag":
-        ## A misclassification false negative occurs when another prediction has a higher score than the correct prediction
+        # A misclassification false negative occurs when another prediction has a higher score than the correct prediction
         sample_df = (
             joint_df[
                 joint_df["is_label_match"]
@@ -667,8 +667,8 @@ def _add_samples_to_dataframe(
             )
         )
     elif flag_column == "no_predictions_false_negative_flag":
-        ## A no prediction false negative occurs when no prediction on a datum has a score higher than the threshold.
-        ## If the correct prediction has the highest score at threshold x, it becomes a no predict false negative at threshold x+1
+        # A no prediction false negative occurs when no prediction on a datum has a score higher than the threshold.
+        # If the correct prediction has the highest score at threshold x, it becomes a no predict false negative at threshold x+1
         sample_df = (
             joint_df[
                 joint_df["is_label_match"]
@@ -716,7 +716,7 @@ def _add_samples_to_dataframe(
     return pr_curve_counts_df
 
 
-def _calculate_pr_curves_optimized(
+def _calculate_pr_curves(
     prediction_df: pd.DataFrame,
     groundtruth_df: pd.DataFrame,
     metrics_to_return: list,
@@ -747,7 +747,9 @@ def _calculate_pr_curves_optimized(
         ],
     ]
 
-    dd = defaultdict(lambda: 0)
+    del groundtruth_df
+    del prediction_df
+    gc.collect()
 
     total_label_values_per_label_key = (
         joint_df.drop_duplicates(["datum_uid", "datum_id", "label_key"])[
@@ -768,7 +770,7 @@ def _calculate_pr_curves_optimized(
         joint_df["label_value_pd"] == joint_df["label_value_gt"]
     )
 
-    ## Count all true positives at each threshold
+    # Count all true positives at each threshold
     true_positives = (
         joint_df[joint_df["is_label_match"]][
             ["label_key", "label_value_gt", "threshold_index"]
@@ -778,7 +780,7 @@ def _calculate_pr_curves_optimized(
         .rename(columns={"label_value_gt": "label_value"})
     )
 
-    ## Count all false positives at each threshold
+    # Count all false positives at each threshold
     false_positives = (
         joint_df[~joint_df["is_label_match"]][
             ["label_key", "label_value_pd", "threshold_index"]
@@ -788,7 +790,7 @@ def _calculate_pr_curves_optimized(
         .rename(columns={"label_value_pd": "label_value"})
     )
 
-    ## Merge and fill missing rows and values
+    # Merge and fill missing rows and values
     pr_curve_counts_df = pd.DataFrame(
         total_label_values_per_label_key.keys().to_list(),
         columns=["label_key", "label_value"],
@@ -800,12 +802,12 @@ def _calculate_pr_curves_optimized(
         false_positives, how="left"
     ).fillna(0)
 
-    ## Total number of datums per label key
+    # Total number of datums per label key
     total_datums_per_label_key = pr_curve_counts_df[["label_key"]].apply(
         lambda row: total_datums_per_label_key[row["label_key"]], axis=1
     )
 
-    ## Total number of datums with groundtruth label per label key
+    # Total number of datums with groundtruth label per label key
     total_label_values_per_label_key = pr_curve_counts_df[
         ["label_key", "label_value"]
     ].apply(
@@ -815,26 +817,26 @@ def _calculate_pr_curves_optimized(
         axis=1,
     )
 
-    ## Compute cumulative sum of true positives to get the total number of true positives at each threshold
+    # Compute cumulative sum of true positives to get the total number of true positives at each threshold
     pr_curve_counts_df["true_positives"] = (
         pr_curve_counts_df.loc[::-1, :]
         .groupby(["label_key", "label_value"])["true_positive_count"]
         .transform(pd.Series.cumsum)
     )
 
-    ## Compute cumulative sum of false positives to get the total number of true positives at each threshold
+    # Compute cumulative sum of false positives to get the total number of true positives at each threshold
     pr_curve_counts_df["false_positives"] = (
         pr_curve_counts_df.loc[::-1, :]
         .groupby(["label_key", "label_value"])["false_positive_count"]
         .transform(pd.Series.cumsum)
     )
 
-    ## False negatives = total_ground_truth_datum_with_label - true_positives_with_label
+    # False negatives = total_ground_truth_datum_with_label - true_positives_with_label
     pr_curve_counts_df["false_negatives"] = (
         total_label_values_per_label_key - pr_curve_counts_df["true_positives"]
     )
 
-    ## True negatives = total_predictions_without_correct_label - false_positives_with_label
+    # True negatives = total_predictions_without_correct_label - false_positives_with_label
     pr_curve_counts_df["true_negatives"] = (
         total_datums_per_label_key - total_label_values_per_label_key
     ) - pr_curve_counts_df["false_positives"]
