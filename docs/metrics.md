@@ -520,6 +520,8 @@ Our implementation follows [DeepEval's implementation](https://github.com/confid
 
 Summarization is the task of generating a shorter version of a piece of text that retains the most important information. Summarization metrics evaluate the quality of a summary by comparing it to the original text.
 
+Note that Datum.text is used differently for summarization than for Q&A and RAG tasks. For summarization, the Datum.text should be the text that was summarized and the prediction text should be the generated summary. This is different than Q&A and RAG where the Datum.text is the query and the prediction text is the generated answer.
+
 ### Coherence (LLM-guided)
 
 Uses
