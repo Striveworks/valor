@@ -810,11 +810,11 @@ def _calculate_pr_curves(
             confidence_interval_to_misclassification_fn_groundtruth_ids_dict.items()
         ):
             threshold_mask = pr_calc_df["confidence_threshold"] == threshold
-            membership_mask = ~pr_calc_df["id_gt"].isin(elements)
+            membership_mask = pr_calc_df["id_gt"].isin(elements)
             mask |= threshold_mask & membership_mask
 
         pr_calc_df["no_predictions_false_negative_flag"] = (
-            mask & pr_calc_df["false_negative_flag"]
+            ~mask & pr_calc_df["false_negative_flag"]
         )
 
     else:
