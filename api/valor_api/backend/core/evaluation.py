@@ -376,13 +376,17 @@ def _create_responses(
         parameters = schemas.EvaluationParameters(**evaluation.parameters)
         kwargs = dict()
         try:
-            filters = schemas.Filter(**evaluation.filters)
 
-            groundtruth_filter = filters.model_copy()
-            groundtruth_filter.predictions = None
-
-            prediction_filter = filters.model_copy()
-            prediction_filter.groundtruths = None
+            # generate filters
+            (
+                groundtruth_filter,
+                prediction_filter,
+            ) = prepare_filter_for_evaluation(
+                filters=schemas.Filter(**evaluation.filters),
+                dataset_names=evaluation.dataset_names,
+                model_name=evaluation.model_name,
+                task_type=parameters.task_type,
+            )
 
             match parameters.task_type:
                 case enums.TaskType.CLASSIFICATION:
