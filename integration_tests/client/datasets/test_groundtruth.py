@@ -218,6 +218,19 @@ def test_create_gt_segs_as_polys_or_masks(
 
     dataset.add_groundtruth(gts)
 
+    bitmasks = [
+        np.array(
+            [
+                [int(bitstring[0][r * w + c]) for c in range(w)]
+                for r in range(h)
+            ]
+        )
+        for bitstring in db.query(models.Bitmask.value).all()
+    ]
+    assert len(bitmasks) == 2
+    assert (bitmasks[0] == bitmasks[1]).all()
+    assert (bitmasks[0] == mask).all()
+
     wkts = db.scalars(
         select(
             ST_AsText(

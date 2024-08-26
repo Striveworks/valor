@@ -143,7 +143,6 @@ def _compute_iou(
         )
 
         if iou is None:
-            print(label)
             continue
 
         metrics.extend(

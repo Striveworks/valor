@@ -26,8 +26,8 @@ def _create_bitstring_from_multipolygon(
         raise ValueError("Raster must contain a geometry.")
     empty_raster = ST_AddBand(
         ST_MakeEmptyRaster(
-            raster.height,  # height
             raster.width,  # width
+            raster.height,  # height
             0,  # upperleftx
             0,  # upperlefty
             1,  # scalex
@@ -81,13 +81,14 @@ def _create_bitmask(
         return None
     elif raster and raster.geometry:
         bitstring = _create_bitstring_from_multipolygon(db, raster)
+        boundary = raster.boundary.to_wkt() if raster.boundary else None
         insert_stmt = (
             insert(models.Bitmask)
             .values(
                 value=bitstring,
                 height=raster.height,
                 width=raster.width,
-                boundary=raster.to_box().to_wkt(),
+                boundary=boundary,
                 created_at=func.now(),
             )
             .returning(models.Bitmask.id)
@@ -101,11 +102,12 @@ def _create_bitmask(
             raise e
     else:
         bitstring = "".join("1" if b else "0" for b in raster.array.flatten())
+        boundary = raster.boundary.to_wkt() if raster.boundary else None
         row = models.Bitmask(
             value=bitstring,
             height=raster.height,
             width=raster.width,
-            boundary=raster.to_box().to_wkt(),
+            boundary=boundary,
         )
         try:
             db.add(row)

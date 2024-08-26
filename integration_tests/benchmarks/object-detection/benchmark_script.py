@@ -292,8 +292,6 @@ def run_benchmarking_analysis(
     for limit in limits_to_test:
         for gt_type, pd_type in combinations:
 
-            print(gt_type, pd_type)
-
             gt_filename = groundtruths[gt_type]
             pd_filename = predictions[pd_type]
 

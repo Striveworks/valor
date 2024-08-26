@@ -1003,7 +1003,8 @@ class Raster(BaseModel):
             img = PIL.Image.open(f)
             return np.array(img)
 
-    def to_box(self) -> Box:
+    @property
+    def boundary(self) -> Box | None:
         if self.geometry:
             return Box.from_extrema(
                 xmin=self.geometry.xmin,
@@ -1012,15 +1013,18 @@ class Raster(BaseModel):
                 ymax=self.geometry.ymax,
             )
         else:
-            rows, cols = np.where(self.array)
-            ymin, ymax = float(np.min(rows)), float(np.max(rows))
-            xmin, xmax = float(np.min(cols)), float(np.max(cols))
-            return Box.from_extrema(
-                xmin=xmin,
-                xmax=xmax,
-                ymin=ymin,
-                ymax=ymax,
-            )
+            try:
+                rows, cols = np.where(self.array)
+                ymin, ymax = float(np.min(rows)), float(np.max(rows))
+                xmin, xmax = float(np.min(cols)), float(np.max(cols))
+                return Box.from_extrema(
+                    xmin=xmin,
+                    xmax=xmax,
+                    ymin=ymin,
+                    ymax=ymax,
+                )
+            except ValueError:
+                return None
 
     @property
     def mask_bytes(self) -> bytes:

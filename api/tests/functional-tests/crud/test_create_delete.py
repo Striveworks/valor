@@ -1029,6 +1029,7 @@ def test_gt_seg_as_mask_or_polys(
         ),
         is_instance=True,
     )
+
     gt = schemas.GroundTruth(
         dataset_name=dataset_name,
         datum=img,
@@ -1049,13 +1050,6 @@ def test_gt_seg_as_mask_or_polys(
                 for h in range(height)
             ]
         )
-        print("\n\n\n")
-        print(mask)
-        print()
-        print(retrieved_mask)
-        print()
-        indices = np.where(mask & retrieved_mask)[0]
-        print(indices.tolist())
         assert mask.shape == retrieved_mask.shape
         assert (mask == retrieved_mask).all()
 
