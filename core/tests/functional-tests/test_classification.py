@@ -765,6 +765,17 @@ def test_evaluate_classification_model_with_no_predictions(
         {"type": "F1", "value": 0.0, "label": {"key": "k3", "value": "v3"}},
     ]
 
+    # can't pass empty lists, but can pass predictions without annotations
+    with pytest.raises(ValueError) as e:
+        evaluation = evaluate_classification(
+            groundtruths=gt_clfs,
+            predictions=[],
+        )
+    assert (
+        "it's neither a dataframe nor a list of Valor Prediction objects"
+        in str(e)
+    )
+
     evaluation = evaluate_classification(
         groundtruths=gt_clfs,
         predictions=[

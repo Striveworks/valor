@@ -2659,6 +2659,17 @@ def test_evaluate_detection_model_with_no_predictions(
         },
     ]
 
+    # can't pass empty lists, but can pass predictions without annotations
+    with pytest.raises(ValueError) as e:
+        eval_job = evaluate_detection(
+            groundtruths=evaluate_detection_groundtruths,
+            predictions=[],
+        )
+    assert (
+        "it's neither a dataframe nor a list of Valor Prediction objects"
+        in str(e)
+    )
+
     eval_job = evaluate_detection(
         groundtruths=evaluate_detection_groundtruths,
         predictions=predictions,

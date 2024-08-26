@@ -183,8 +183,6 @@ class ValorDetectionManager:
             raise ValueError(
                 "Attempted to add data for a datum_uid which already exists in this instantiated class."
             )
-        else:
-            self.datum_uids = self.datum_uids.union(unique_datum_uids)
 
         (
             groundtruth_df,
@@ -206,6 +204,9 @@ class ValorDetectionManager:
         self.detailed_joint_df = utilities.concatenate_df_if_not_empty(
             df1=self.detailed_joint_df, df2=detailed_joint_df
         )
+
+        # add datums to self
+        self.datum_uids = self.datum_uids.union(unique_datum_uids)
 
         # store unique labels (split by gt and pd) and unique annotations
         ids_per_label = (
@@ -462,8 +463,6 @@ class ValorClassificationManager:
             raise ValueError(
                 "Attempted to add data for a datum_uid which already exists in this instantiated class."
             )
-        else:
-            self.datum_uids = self.datum_uids.union(unique_datum_uids)
 
         (
             joint_df,
@@ -484,6 +483,9 @@ class ValorClassificationManager:
                 df2=joint_df_filtered_on_best_score,
             )
         )
+
+        # add datums to self
+        self.datum_uids = self.datum_uids.union(unique_datum_uids)
 
         # store unique labels (split by gt and pd) and unique annotations
         ids_per_label = (

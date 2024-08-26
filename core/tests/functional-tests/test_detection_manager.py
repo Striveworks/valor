@@ -1513,6 +1513,17 @@ def test_evaluate_detection_model_with_no_predictions_with_ValorDetectionManager
 
     manager = managers.ValorDetectionManager()
 
+    # can't pass empty lists, but can pass predictions without annotations
+    with pytest.raises(ValueError) as e:
+        manager.add_data(
+            groundtruths=evaluate_detection_groundtruths,
+            predictions=[],
+        )
+    assert (
+        "it's neither a dataframe nor a list of Valor Prediction objects"
+        in str(e)
+    )
+
     manager.add_data(
         groundtruths=evaluate_detection_groundtruths,
         predictions=predictions,

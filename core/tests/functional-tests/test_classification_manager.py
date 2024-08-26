@@ -775,9 +775,22 @@ def test_evaluate_classification_model_with_no_predictions_with_ValorClassificat
 
     manager = managers.ValorClassificationManager()
 
+    # can't pass empty lists, but can pass predictions without annotations
+    with pytest.raises(ValueError) as e:
+        manager.add_data(
+            groundtruths=gt_clfs,
+            predictions=[],
+        )
+    assert (
+        "it's neither a dataframe nor a list of Valor Prediction objects"
+        in str(e)
+    )
+
     manager.add_data(
         groundtruths=gt_clfs,
-        predictions=[],
+        predictions=[
+            schemas.Prediction(datum=gt_clfs[0].datum, annotations=[])
+        ],
     )
 
     eval_job = manager.evaluate()

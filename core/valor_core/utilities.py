@@ -412,7 +412,7 @@ def create_validated_groundtruth_df(
         )
     ):
         raise ValueError(
-            f"Could not validate object as it's neither a dataframe nor a list of Valor objects. Object is of type {type(obj)}."
+            f"Could not validate object as it's neither a dataframe nor a list of Valor Groundtruth objects. Object is of type {type(obj)}."
         )
     if isinstance(obj, pd.DataFrame):
         df = obj
@@ -449,10 +449,18 @@ def create_validated_prediction_df(
     ValueError
         If the input object is neither a DataFrame nor a list of Prediction objects.
     """
-    if not (isinstance(obj, pd.DataFrame) or (isinstance(obj, list))):
-        raise ValueError(
-            f"Could not validate object as it's neither a dataframe nor a list of Valor objects. Object is of type {type(obj)}."
+    if not (
+        isinstance(obj, pd.DataFrame)
+        or (
+            obj
+            and isinstance(obj, list)
+            and isinstance(obj[0], schemas.Prediction)
         )
+    ):
+        raise ValueError(
+            f"Could not validate object as it's neither a dataframe nor a list of Valor Prediction objects. Object is of type {type(obj)}."
+        )
+
     if isinstance(obj, pd.DataFrame):
         df = obj
     else:
