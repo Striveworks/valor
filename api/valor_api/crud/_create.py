@@ -131,6 +131,8 @@ def create_or_get_evaluations(
                     compute_func = (
                         backend.compute_semantic_segmentation_metrics
                     )
+                case enums.TaskType.TEXT_GENERATION:
+                    compute_func = backend.compute_text_generation_metrics
                 case _:
                     raise RuntimeError
             if task_handler:

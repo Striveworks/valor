@@ -13,6 +13,7 @@ from valor.schemas.symbolic.operators import (
 )
 from valor.schemas.symbolic.types import (
     Boolean,
+    ContextList,
     Date,
     DateTime,
     Duration,
@@ -1033,8 +1034,8 @@ def test_polygon():
     # test encoding
     _test_encoding(
         objcls,
-        [[(0, 0), (1, 1), (0, 1), (0, 0)]],
-        [[(0, 0), (1, 1), (0, 1), (0, 0)]],
+        [[(0.0, 0.0), (1.0, 1.0), (0.0, 1.0), (0.0, 0.0)]],
+        [[(0.0, 0.0), (1.0, 1.0), (0.0, 1.0), (0.0, 0.0)]],
     )
 
     # test property 'area'
@@ -1045,7 +1046,7 @@ def test_polygon():
     }
     # test that property 'area' is not accessible when object is a value
     with pytest.raises(ValueError):
-        objcls(permutations[0][0]).area
+        objcls(permutations[0][0]).area  # type: ignore - testing value error
 
 
 def test_multipolygon():
@@ -1114,6 +1115,18 @@ def test_multipolygon():
     with pytest.raises(ValueError):
         objcls(permutations[0][0]).area
 
+    # test `from_polygons` class method
+
+    poly1_boundary = [(0.0, 0.0), (1.0, 1.0), (0.0, 1.0), (0.0, 0.0)]
+    poly2_boundary = [(0.0, 10.0), (5.0, 5.0), (0.0, 5.0), (0.0, 10.0)]
+    poly2_hole = [(0.1, 0.1), (0.9, 0.9), (0.1, 0.9), (0.1, 0.1)]
+    polys = [Polygon([poly1_boundary]), Polygon([poly2_boundary, poly2_hole])]
+    multi_poly = MultiPolygon.from_polygons(polys)
+    assert multi_poly.get_value() == [
+        [poly1_boundary],
+        [poly2_boundary, poly2_hole],
+    ]
+
 
 def test_nullable():
 
@@ -1128,3 +1141,11 @@ def test_nullable():
         "type": "float",
         "value": None,
     }
+
+
+def test_context():
+    with pytest.raises(TypeError):
+        ContextList(5)  # type: ignore
+
+    with pytest.raises(TypeError):
+        ContextList([5])  # type: ignore

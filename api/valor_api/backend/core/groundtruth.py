@@ -91,13 +91,14 @@ def create_groundtruths(
         groundtruths, annotation_ids
     ):
         for i, annotation in enumerate(groundtruth.annotations):
-            for label in annotation.labels:
-                groundtruth_rows.append(
-                    models.GroundTruth(
-                        annotation_id=annotation_ids_per_groundtruth[i],
-                        label_id=label_dict[(label.key, label.value)],
+            if annotation.labels:
+                for label in annotation.labels:
+                    groundtruth_rows.append(
+                        models.GroundTruth(
+                            annotation_id=annotation_ids_per_groundtruth[i],
+                            label_id=label_dict[(label.key, label.value)],
+                        )
                     )
-                )
     try:
         db.add_all(groundtruth_rows)
         db.commit()

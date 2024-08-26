@@ -158,14 +158,16 @@ def create_predictions(
         predictions, annotation_ids
     ):
         for i, annotation in enumerate(prediction.annotations):
-            for label in annotation.labels:
-                prediction_mappings.append(
-                    models.Prediction(
-                        annotation_id=annotation_ids_per_prediction[i],
-                        label_id=label_dict[(label.key, label.value)],
-                        score=label.score,
+            if annotation.labels:
+                for label in annotation.labels:
+                    prediction_mappings.append(
+                        models.Prediction(
+                            annotation_id=annotation_ids_per_prediction[i],
+                            label_id=label_dict[(label.key, label.value)],
+                            score=label.score,
+                        )
                     )
-                )
+
     try:
         db.add_all(prediction_mappings)
         db.commit()

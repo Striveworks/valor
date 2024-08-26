@@ -769,12 +769,14 @@ class Point(Spatial, Equatable):
 
     @classmethod
     def __validate__(cls, value: typing.Any):
-        if not isinstance(value, tuple):
+        if not isinstance(value, (tuple, list)):
             raise TypeError(
                 f"Expected type 'typing.Tuple[float, float]' received type '{type(value).__name__}'"
             )
         elif len(value) != 2:
-            raise ValueError("")
+            raise ValueError(
+                "A point should contain only two x-y coordinates."
+            )
         for item in value:
             if not isinstance(item, (int, float, np.floating)):
                 raise TypeError(
@@ -1324,6 +1326,23 @@ class MultiPolygon(Spatial):
         List[Polygon]
         """
         return [Polygon(poly) for poly in self.get_value()]
+
+    @classmethod
+    def from_polygons(self, polygons: typing.List[Polygon]) -> "MultiPolygon":
+        """
+        Converts a list of Polygon instances to a MultiPolygon.
+
+        Parameters
+        ----------
+        polygons : List[Polygon]
+            A list of Polygon instances.
+
+        Returns
+        -------
+        MultiPolygon
+            A MultiPolygon instance.
+        """
+        return MultiPolygon([poly.get_value() for poly in polygons])
 
 
 T = typing.TypeVar("T", bound=Variable)
@@ -2124,3 +2143,36 @@ def get_type_by_name(
         return List[type_]
     else:
         raise NotImplementedError(name)
+
+
+class ContextList(Equatable):
+    """
+    Implementation of a context list as a Variable.
+    ContextList is a list of contexts. Each context is a string. None is a valid value.
+
+    Parameters
+    ----------
+    value : List[str], optional
+        A list of contexts.
+
+    Examples
+    --------
+    >>> ContextList(["Republican speakers focused first on...", "Lincoln received 1,866,452 votes...", ...])
+    >>> ContextList(None)
+    """
+
+    def __init__(self, value: typing.List[str]):
+        super().__init__(value=value)
+
+    @classmethod
+    def __validate__(cls, value: typing.Any):
+        if (value is not None) and not isinstance(value, list):
+            raise TypeError(
+                f"Expected type 'List[str]' received type '{type(value)}'"
+            )
+        if isinstance(value, list):
+            for v in value:
+                if not isinstance(v, str):
+                    raise TypeError(
+                        f"Expected type 'List[str]' received type '{type(value)}', not all elements are strings."
+                    )

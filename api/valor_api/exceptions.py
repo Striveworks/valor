@@ -389,6 +389,14 @@ class EvaluationStateError(Exception):
         )
 
 
+class InvalidLLMResponseError(Exception):
+    """
+    Raised when the response from the LLM is invalid for a given metric computation.
+    """
+
+    pass
+
+
 error_to_status_code = {
     # 400
     Exception: 400,

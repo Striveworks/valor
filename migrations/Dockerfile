@@ -1,4 +1,5 @@
 FROM docker.io/migrate/migrate
+RUN apk upgrade && apk update
 COPY . /migrations
 WORKDIR /migrations
 

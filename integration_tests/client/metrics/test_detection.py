@@ -4,10 +4,11 @@ that is no auth
 
 import random
 
+import numpy as np
 import pytest
 import requests
 from geoalchemy2.functions import ST_Area
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from valor import (
@@ -23,7 +24,7 @@ from valor import (
 )
 from valor.enums import AnnotationType, EvaluationStatus, MetricType, TaskType
 from valor.exceptions import ClientException
-from valor.schemas import Box
+from valor.schemas import Box, Polygon, Raster
 from valor_api.backend import models
 
 
@@ -167,6 +168,10 @@ def test_evaluate_detection(
             ],
             "pr_curve_iou_threshold": 0.5,
             "pr_curve_max_examples": 1,
+            "bleu_weights": None,
+            "rouge_types": None,
+            "rouge_use_stemmer": None,
+            "llm_api_params": None,
         },
         "status": EvaluationStatus.DONE.value,
         "confusion_matrices": [],
@@ -326,6 +331,10 @@ def test_evaluate_detection(
             ],
             "pr_curve_iou_threshold": 0.5,
             "pr_curve_max_examples": 1,
+            "bleu_weights": None,
+            "rouge_types": None,
+            "rouge_use_stemmer": None,
+            "llm_api_params": None,
         },
         "status": EvaluationStatus.DONE.value,
         "confusion_matrices": [],
@@ -404,6 +413,10 @@ def test_evaluate_detection(
             ],
             "pr_curve_iou_threshold": 0.5,
             "pr_curve_max_examples": 1,
+            "bleu_weights": None,
+            "rouge_types": None,
+            "rouge_use_stemmer": None,
+            "llm_api_params": None,
         },
         # check metrics below
         "status": EvaluationStatus.DONE.value,
@@ -514,6 +527,10 @@ def test_evaluate_detection(
             ],
             "pr_curve_iou_threshold": 0.5,
             "pr_curve_max_examples": 1,
+            "bleu_weights": None,
+            "rouge_types": None,
+            "rouge_use_stemmer": None,
+            "llm_api_params": None,
         },
         # check metrics below
         "status": EvaluationStatus.DONE.value,
@@ -738,6 +755,10 @@ def test_evaluate_detection_with_json_filters(
             ],
             "pr_curve_iou_threshold": 0.5,
             "pr_curve_max_examples": 1,
+            "bleu_weights": None,
+            "rouge_types": None,
+            "rouge_use_stemmer": None,
+            "llm_api_params": None,
         },
         # check metrics below
         "status": EvaluationStatus.DONE.value,
@@ -2015,6 +2036,10 @@ def test_evaluate_detection_with_label_maps(
         ],
         "pr_curve_iou_threshold": 0.5,
         "pr_curve_max_examples": 1,
+        "bleu_weights": None,
+        "rouge_types": None,
+        "rouge_use_stemmer": None,
+        "llm_api_params": None,
     }
 
     metrics = eval_job.metrics
@@ -3213,3 +3238,426 @@ def test_evaluate_detection_model_with_no_predictions(
     assert all([metric["value"] == 0 for metric in computed_metrics])
     assert all([metric in computed_metrics for metric in expected_metrics])
     assert all([metric in expected_metrics for metric in computed_metrics])
+
+
+def test_evaluate_mixed_annotations(
+    db: Session,
+    client: Client,
+    dataset_name: str,
+    model_name: str,
+    image_height: int,
+    image_width: int,
+):
+    """Test the automatic conversion to rasters."""
+    datum = Datum(uid="datum1")
+
+    xmin, xmax, ymin, ymax = 11, 45, 37, 102
+    h, w = image_height, image_width
+    mask = np.zeros((h, w), dtype=bool)
+    mask[ymin:ymax, xmin:xmax] = True
+
+    pts = [
+        (xmin, ymin),
+        (xmin, ymax),
+        (xmax, ymax),
+        (xmax, ymin),
+        (xmin, ymin),
+    ]
+    poly = Polygon([pts])
+    raster = Raster.from_numpy(mask)
+    box = Box.from_extrema(xmin=xmin, xmax=xmax, ymin=ymin, ymax=ymax)
+
+    gt_box = GroundTruth(
+        datum=datum,
+        annotations=[
+            Annotation(
+                bounding_box=box,
+                labels=[Label(key="box", value="value")],
+                is_instance=True,
+            )
+        ],
+    )
+    gt_polygon = GroundTruth(
+        datum=datum,
+        annotations=[
+            Annotation(
+                polygon=poly,
+                labels=[Label(key="polygon", value="value")],
+                is_instance=True,
+            )
+        ],
+    )
+    gt_raster = GroundTruth(
+        datum=datum,
+        annotations=[
+            Annotation(
+                raster=raster,
+                labels=[Label(key="raster", value="value")],
+                is_instance=True,
+            )
+        ],
+    )
+
+    pd_box = Prediction(
+        datum=datum,
+        annotations=[
+            Annotation(
+                raster=raster,
+                labels=[Label(key="box", value="value", score=0.88)],
+                is_instance=True,
+            )
+        ],
+    )
+    pd_polygon = Prediction(
+        datum=datum,
+        annotations=[
+            Annotation(
+                raster=raster,
+                labels=[Label(key="polygon", value="value", score=0.89)],
+                is_instance=True,
+            )
+        ],
+    )
+    pd_raster = Prediction(
+        datum=datum,
+        annotations=[
+            Annotation(
+                raster=raster,
+                labels=[Label(key="raster", value="value", score=0.9)],
+                is_instance=True,
+            )
+        ],
+    )
+
+    dset_box = Dataset.create(f"{dataset_name}_box")
+    dset_polygon = Dataset.create(f"{dataset_name}_polygon")
+    dset_raster = Dataset.create(f"{dataset_name}_raster")
+
+    dset_box.add_groundtruth(gt_box)
+    dset_polygon.add_groundtruth(gt_polygon)
+    dset_raster.add_groundtruth(gt_raster)
+
+    dset_box.finalize()
+    dset_polygon.finalize()
+    dset_raster.finalize()
+
+    model = Model.create(model_name)
+
+    model.add_prediction(dset_box, pd_box)
+    model.add_prediction(dset_polygon, pd_polygon)
+    model.add_prediction(dset_raster, pd_raster)
+
+    assert db.scalar(select(func.count(models.Annotation.id))) == 6
+    assert (
+        db.scalar(
+            select(func.count(models.Annotation.id)).where(
+                models.Annotation.box.isnot(None)
+            )
+        )
+        == 1
+    )
+    assert (
+        db.scalar(
+            select(func.count(models.Annotation.id)).where(
+                models.Annotation.polygon.isnot(None)
+            )
+        )
+        == 1
+    )
+    assert (
+        db.scalar(
+            select(func.count(models.Annotation.id)).where(
+                models.Annotation.raster.isnot(None)
+            )
+        )
+        == 4
+    )
+
+    eval_job = model.evaluate_detection(
+        [dset_box, dset_polygon, dset_raster],
+        iou_thresholds_to_compute=[0.1, 0.6],
+        iou_thresholds_to_return=[0.1, 0.6],
+        metrics_to_return=[
+            "AP",
+        ],
+    )
+    eval_job.wait_for_completion()
+
+    # show that all 6 annotations have a box now since it is the common type.
+    assert db.scalar(select(func.count(models.Annotation.id))) == 6
+    assert (
+        db.scalar(
+            select(func.count(models.Annotation.id)).where(
+                models.Annotation.box.isnot(None)
+            )
+        )
+        == 6
+    )
+    assert (
+        db.scalar(
+            select(func.count(models.Annotation.id)).where(
+                models.Annotation.polygon.isnot(None)
+            )
+        )
+        == 1
+    )
+    assert (
+        db.scalar(
+            select(func.count(models.Annotation.id)).where(
+                models.Annotation.raster.isnot(None)
+            )
+        )
+        == 4
+    )
+
+    expected = [
+        {
+            "type": "AP",
+            "parameters": {"iou": 0.1},
+            "value": 1.0,
+            "label": {"key": "polygon", "value": "value"},
+        },
+        {
+            "type": "AP",
+            "parameters": {"iou": 0.6},
+            "value": 1.0,
+            "label": {"key": "polygon", "value": "value"},
+        },
+        {
+            "type": "AP",
+            "parameters": {"iou": 0.1},
+            "value": 1.0,
+            "label": {"key": "box", "value": "value"},
+        },
+        {
+            "type": "AP",
+            "parameters": {"iou": 0.6},
+            "value": 1.0,
+            "label": {"key": "box", "value": "value"},
+        },
+        {
+            "type": "AP",
+            "parameters": {"iou": 0.1},
+            "value": 1.0,
+            "label": {"key": "raster", "value": "value"},
+        },
+        {
+            "type": "AP",
+            "parameters": {"iou": 0.6},
+            "value": 1.0,
+            "label": {"key": "raster", "value": "value"},
+        },
+    ]
+
+    for m in eval_job.metrics:
+        assert m in expected
+    for m in expected:
+        assert m in eval_job.metrics
+
+    eval_job_box = model.evaluate_detection(
+        [dset_box, dset_polygon, dset_raster],
+        iou_thresholds_to_compute=[0.1, 0.6],
+        iou_thresholds_to_return=[0.1, 0.6],
+        metrics_to_return=[
+            "AP",
+        ],
+        convert_annotations_to_type=AnnotationType.BOX,
+    )
+    eval_job_box.wait_for_completion()
+
+    for m in eval_job_box.metrics:
+        assert m in expected
+    for m in expected:
+        assert m in eval_job_box.metrics
+
+    # cannot force to polygon as some datasets do not contain this type
+    eval_job_poly = model.evaluate_detection(
+        [dset_box, dset_polygon, dset_raster],
+        iou_thresholds_to_compute=[0.1, 0.6],
+        iou_thresholds_to_return=[0.1, 0.6],
+        metrics_to_return=[
+            "AP",
+        ],
+        convert_annotations_to_type=AnnotationType.POLYGON,
+    )
+    eval_job_poly.wait_for_completion()
+    assert eval_job_poly.status == EvaluationStatus.FAILED
+
+    # cannot force to raster as some datasets do not contain this type
+    eval_job_raster = model.evaluate_detection(
+        [dset_box, dset_polygon, dset_raster],
+        iou_thresholds_to_compute=[0.1, 0.6],
+        iou_thresholds_to_return=[0.1, 0.6],
+        metrics_to_return=[
+            "AP",
+        ],
+        convert_annotations_to_type=AnnotationType.RASTER,
+    )
+    eval_job_raster.wait_for_completion()
+    assert eval_job_raster.status == EvaluationStatus.FAILED
+
+
+def test_evaluate_detection_pr_fp(
+    db: Session, model_name, dataset_name, img1, img2
+):
+    gts = [
+        GroundTruth(
+            datum=img1,
+            annotations=[
+                Annotation(
+                    is_instance=True,
+                    labels=[Label(key="k1", value="v1")],
+                    bounding_box=Box.from_extrema(
+                        xmin=0, xmax=5, ymin=0, ymax=5
+                    ),
+                )
+            ],
+        ),
+        GroundTruth(
+            datum=img2,
+            annotations=[
+                Annotation(
+                    is_instance=True,
+                    labels=[Label(key="k1", value="v1")],
+                    bounding_box=Box.from_extrema(
+                        xmin=0, xmax=5, ymin=0, ymax=5
+                    ),
+                )
+            ],
+        ),
+    ]
+    preds = [
+        Prediction(
+            datum=img1,
+            annotations=[
+                Annotation(
+                    is_instance=True,
+                    labels=[Label(key="k1", value="v1", score=0.8)],
+                    bounding_box=Box.from_extrema(
+                        xmin=0, xmax=5, ymin=0, ymax=5
+                    ),
+                )
+            ],
+        ),
+        Prediction(
+            datum=img2,
+            annotations=[
+                Annotation(
+                    is_instance=True,
+                    labels=[Label(key="k1", value="v1", score=0.8)],
+                    bounding_box=Box.from_extrema(
+                        xmin=10, xmax=20, ymin=10, ymax=20
+                    ),
+                )
+            ],
+        ),
+    ]
+
+    dataset = Dataset.create(dataset_name)
+
+    for gt in gts:
+        dataset.add_groundtruth(gt)
+    dataset.finalize()
+
+    model = Model.create(model_name)
+
+    for pred in preds:
+        model.add_prediction(dataset, pred)
+    model.finalize_inferences(dataset)
+
+    eval_job = model.evaluate_detection(
+        dataset,
+        metrics_to_return=[
+            MetricType.PrecisionRecallCurve,
+        ],
+    )
+    eval_job.wait_for_completion(timeout=30)
+    metrics = eval_job.metrics
+    assert metrics[0]["value"]["v1"]["0.5"] == {
+        "fn": 1,  # img2
+        "fp": 1,  # img2
+        "tn": None,
+        "tp": 1,  # img1
+        "recall": 0.5,
+        "accuracy": None,
+        "f1_score": 0.5,
+        "precision": 0.5,
+    }
+
+    # score threshold is now higher than the scores, so we should the predictions drop out such that we're only left with 2 fns (one for each image)
+    assert metrics[0]["value"]["v1"]["0.85"] == {
+        "fn": 2,
+        "fp": 0,
+        "tn": None,
+        "tp": 0,
+        "recall": 0.0,
+        "accuracy": None,
+        "f1_score": -1,
+        "precision": -1,
+    }
+
+    eval_job = model.evaluate_detection(
+        dataset,
+        metrics_to_return=[
+            MetricType.DetailedPrecisionRecallCurve,
+        ],
+    )
+    eval_job.wait_for_completion(timeout=30)
+    metrics = eval_job.metrics
+
+    score_threshold = "0.5"
+    assert metrics[0]["value"]["v1"][score_threshold]["tp"]["total"] == 1
+    assert "tn" not in metrics[0]["value"]["v1"][score_threshold]
+    assert (
+        metrics[0]["value"]["v1"][score_threshold]["fp"]["observations"][
+            "hallucinations"
+        ]["count"]
+        == 1
+    )
+    assert (
+        metrics[0]["value"]["v1"][score_threshold]["fp"]["observations"][
+            "misclassifications"
+        ]["count"]
+        == 0
+    )
+    assert (
+        metrics[0]["value"]["v1"][score_threshold]["fn"]["observations"][
+            "no_predictions"
+        ]["count"]
+        == 1
+    )
+    assert (
+        metrics[0]["value"]["v1"][score_threshold]["fn"]["observations"][
+            "misclassifications"
+        ]["count"]
+        == 0
+    )
+
+    # score threshold is now higher than the scores, so we should the predictions drop out such that we're only left with 2 fns (one for each image)
+    score_threshold = "0.85"
+    assert metrics[0]["value"]["v1"][score_threshold]["tp"]["total"] == 0
+    assert "tn" not in metrics[0]["value"]["v1"][score_threshold]
+    assert (
+        metrics[0]["value"]["v1"][score_threshold]["fp"]["observations"][
+            "hallucinations"
+        ]["count"]
+        == 0
+    )
+    assert (
+        metrics[0]["value"]["v1"][score_threshold]["fp"]["observations"][
+            "misclassifications"
+        ]["count"]
+        == 0
+    )
+    assert (
+        metrics[0]["value"]["v1"][score_threshold]["fn"]["observations"][
+            "no_predictions"
+        ]["count"]
+        == 2
+    )
+    assert (
+        metrics[0]["value"]["v1"][score_threshold]["fn"]["observations"][
+            "misclassifications"
+        ]["count"]
+        == 0
+    )

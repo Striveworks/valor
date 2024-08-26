@@ -1064,15 +1064,11 @@ def test_gt_seg_as_mask_or_polys(
     assert len(segs.annotations) == 2
 
     assert segs.annotations[0].raster and segs.annotations[1].raster
-    decoded_mask0 = np.array(
-        _bytes_to_pil(b64decode(segs.annotations[0].raster.mask))
-    )
+    decoded_mask0 = segs.annotations[0].raster.array
     assert decoded_mask0.shape == mask.shape
     np.testing.assert_equal(decoded_mask0, mask)
 
-    decoded_mask1 = np.array(
-        _bytes_to_pil(b64decode(segs.annotations[1].raster.mask))
-    )
+    decoded_mask1 = segs.annotations[1].raster.array
     assert decoded_mask1.shape == mask.shape
     np.testing.assert_equal(decoded_mask1, mask)
 

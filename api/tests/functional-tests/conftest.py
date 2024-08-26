@@ -49,8 +49,9 @@ def model_name() -> str:
     return "test_model"
 
 
-def random_mask_bytes(size: tuple[int, int]) -> bytes:
-    mask = np.random.randint(0, 2, size=size, dtype=bool)
+def random_mask_bytes(size: tuple[int, int], seed: int) -> bytes:
+    rng = np.random.default_rng(seed)
+    mask = rng.integers(0, 2, size=size, dtype=bool)
     mask = Image.fromarray(mask)
     f = io.BytesIO()
     mask.save(f, format="PNG")
@@ -82,47 +83,47 @@ def img2() -> schemas.Datum:
 
 @pytest.fixture
 def img1_pred_mask_bytes1():
-    return random_mask_bytes(size=img1_size)
+    return random_mask_bytes(size=img1_size, seed=1)
 
 
 @pytest.fixture
 def img1_pred_mask_bytes2():
-    return random_mask_bytes(size=img1_size)
+    return random_mask_bytes(size=img1_size, seed=2)
 
 
 @pytest.fixture
 def img1_pred_mask_bytes3():
-    return random_mask_bytes(size=img1_size)
+    return random_mask_bytes(size=img1_size, seed=3)
 
 
 @pytest.fixture
 def img1_gt_mask_bytes1():
-    return random_mask_bytes(size=img1_size)
+    return random_mask_bytes(size=img1_size, seed=4)
 
 
 @pytest.fixture
 def img1_gt_mask_bytes2():
-    return random_mask_bytes(size=img1_size)
+    return random_mask_bytes(size=img1_size, seed=5)
 
 
 @pytest.fixture
 def img1_gt_mask_bytes3():
-    return random_mask_bytes(size=img1_size)
+    return random_mask_bytes(size=img1_size, seed=6)
 
 
 @pytest.fixture
 def img2_pred_mask_bytes1():
-    return random_mask_bytes(size=img2_size)
+    return random_mask_bytes(size=img2_size, seed=7)
 
 
 @pytest.fixture
 def img2_pred_mask_bytes2():
-    return random_mask_bytes(size=img2_size)
+    return random_mask_bytes(size=img2_size, seed=8)
 
 
 @pytest.fixture
 def img2_gt_mask_bytes1():
-    return random_mask_bytes(size=img2_size)
+    return random_mask_bytes(size=img2_size, seed=9)
 
 
 @pytest.fixture

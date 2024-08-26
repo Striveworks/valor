@@ -55,6 +55,7 @@ class TaskType(str, Enum):
     OBJECT_DETECTION = "object-detection"
     SEMANTIC_SEGMENTATION = "semantic-segmentation"
     EMBEDDING = "embedding"
+    TEXT_GENERATION = "text-generation"
 
 
 class TableStatus(str, Enum):
@@ -119,7 +120,6 @@ class EvaluationStatus(str, Enum):
 
 
 class MetricType(str, Enum):
-
     Accuracy = ("Accuracy",)
     Precision = ("Precision",)
     Recall = ("Recall",)
@@ -135,3 +135,19 @@ class MetricType(str, Enum):
     mIOU = "mIOU"
     PrecisionRecallCurve = "PrecisionRecallCurve"
     DetailedPrecisionRecallCurve = "DetailedPrecisionRecallCurve"
+    AnswerRelevance = "AnswerRelevance"
+    Bias = "Bias"
+    BLEU = "BLEU"
+    Coherence = "Coherence"
+    ContextRelevance = "ContextRelevance"
+    Faithfulness = "Faithfulness"
+    Hallucination = "Hallucination"
+    ROUGE = "ROUGE"
+    Toxicity = "Toxicity"
+
+
+class ROUGEType(str, Enum):
+    ROUGE1 = "rouge1"
+    ROUGE2 = "rouge2"
+    ROUGEL = "rougeL"
+    ROUGELSUM = "rougeLsum"

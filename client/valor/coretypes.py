@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import datetime
 import json
+import os
 import time
 from dataclasses import asdict, dataclass
 from typing import Any, Dict, List, Optional, Tuple, Union
@@ -164,7 +165,7 @@ class Evaluation:
             A list of metric dictionaries returned by the job.
         confusion_matrices : List[dict]
             A list of confusion matrix dictionaries returned by the job.
-        meta: dict[str, str | float | dict], optional
+        meta : dict[str, str | float | dict], optional
             A dictionary of metadata describing the evaluation run.
         """
         if not connection:
@@ -502,7 +503,7 @@ class Dataset(StaticCollection):
 
         Parameters
         ----------
-        datum: Union[Datum, str]
+        datum : Union[Datum, str]
             The desired datum.
 
         Returns
@@ -557,7 +558,7 @@ class Dataset(StaticCollection):
 
         Parameters
         ----------
-        metrics_to_sort_by: dict[str, str | dict[str, str]], optional
+        metrics_to_sort_by : dict[str, str | dict[str, str]], optional
             An optional dict of metric types to sort the evaluations by.
         timeout : float, optional
             The number of seconds the client should wait until raising a timeout.
@@ -589,25 +590,25 @@ class Dataset(StaticCollection):
         DatasetSummary
             The summary of the dataset. This class has the following fields:
 
-            name: name of the dataset
+            name : name of the dataset
 
-            num_datums: total number of datums in the dataset
+            num_datums : total number of datums in the dataset
 
-            num_annotations: total number of labeled annotations in the dataset; if an
+            num_annotations : total number of labeled annotations in the dataset; if an
             object (such as a bounding box) has multiple labels, then each label is counted separately
 
-            num_bounding_boxes: total number of bounding boxes in the dataset
+            num_bounding_boxes : total number of bounding boxes in the dataset
 
-            num_polygons: total number of polygons in the dataset
+            num_polygons : total number of polygons in the dataset
 
-            num_rasters: total number of rasters in the dataset
+            num_rasters : total number of rasters in the dataset
 
-            labels: list of the unique labels in the dataset
+            labels : list of the unique labels in the dataset
 
-            datum_metadata: list of the unique metadata dictionaries in the dataset that are associated
+            datum_metadata : list of the unique metadata dictionaries in the dataset that are associated
             to datums
 
-            groundtruth_annotation_metadata: list of the unique metadata dictionaries in the dataset that are
+            groundtruth_annotation_metadata : list of the unique metadata dictionaries in the dataset that are
             associated to annotations
         """
         return Client(self.conn).get_dataset_summary(self.name, timeout=timeout)  # type: ignore
@@ -781,9 +782,9 @@ class Model(StaticCollection):
 
         Parameters
         ----------
-        dataset: Union[Dataset, str]
+        dataset : Union[Dataset, str]
             The dataset the datum belongs to.
-        datum: Union[Datum, str]
+        datum : Union[Datum, str]
             The desired datum.
 
         Returns
@@ -854,13 +855,13 @@ class Model(StaticCollection):
 
         Parameters
         ----------
-        datasets : Union[Dataset, List[Dataset]], optional
+        datasets : Union[Dataset, List[Dataset]]
             The dataset or list of datasets to evaluate against.
         filters : Filter, optional
             Optional set of constraints to filter evaluation by.
         label_map : Dict[Label, Label], optional
             Optional mapping of individual labels to a grouper label. Useful when you need to evaluate performance using labels that differ across datasets and models.
-        metrics_to_return: List[MetricType], optional
+        metrics_to_return : List[MetricType], optional
             The list of metrics to compute, store, and return to the user.
         allow_retries : bool, default = False
             Option to retry previously failed evaluations.
@@ -872,11 +873,7 @@ class Model(StaticCollection):
         Evaluation
             A job object that can be used to track the status of the job and get the metrics of it upon completion.
         """
-        if not datasets and not filters:
-            raise ValueError(
-                "Evaluation requires the definition of either datasets, dataset filters or both."
-            )
-        elif metrics_to_return and not set(metrics_to_return).issubset(
+        if metrics_to_return and not set(metrics_to_return).issubset(
             MetricType.classification()
         ):
             raise ValueError(
@@ -927,7 +924,7 @@ class Model(StaticCollection):
 
         Parameters
         ----------
-        datasets : Union[Dataset, List[Dataset]], optional
+        datasets : Union[Dataset, List[Dataset]]
             The dataset or list of datasets to evaluate against.
         filters : Filter, optional
             Optional set of constraints to filter evaluation by.
@@ -939,13 +936,13 @@ class Model(StaticCollection):
             Thresholds to return AP for. Must be subset of `iou_thresholds_to_compute`.
         label_map : Dict[Label, Label], optional
             Optional mapping of individual labels to a grouper label. Useful when you need to evaluate performance using labels that differ across datasets and models.
-        recall_score_threshold: float, default=0
+        recall_score_threshold : float, default=0
             The confidence score threshold for use when determining whether to count a prediction as a true positive or not while calculating Average Recall.
-        metrics_to_return: List[MetricType], optional
+        metrics_to_return : List[MetricType], optional
             The list of metrics to compute, store, and return to the user.
-        pr_curve_iou_threshold: float, optional
+        pr_curve_iou_threshold : float, optional
             The IOU threshold to use when calculating precision-recall curves. Defaults to 0.5.
-        pr_curve_max_examples: int, optional
+        pr_curve_max_examples : int, optional
             The maximum number of datum examples to store when calculating PR curves.
         allow_retries : bool, default = False
             Option to retry previously failed evaluations.
@@ -1015,13 +1012,13 @@ class Model(StaticCollection):
 
         Parameters
         ----------
-        datasets : Union[Dataset, List[Dataset]], optional
+        datasets : Union[Dataset, List[Dataset]]
             The dataset or list of datasets to evaluate against.
         filters : Filter, optional
             Optional set of constraints to filter evaluation by.
         label_map : Dict[Label, Label], optional
             Optional mapping of individual labels to a grouper label. Useful when you need to evaluate performance using labels that differ across datasets and models.
-        metrics_to_return: List[MetricType], optional
+        metrics_to_return : List[MetricType], optional
             The list of metrics to compute, store, and return to the user.
         allow_retries : bool, default = False
             Option to retry previously failed evaluations.
@@ -1058,6 +1055,107 @@ class Model(StaticCollection):
         evaluation = Client(self.conn).evaluate(
             request, allow_retries=allow_retries, timeout=timeout
         )
+        if len(evaluation) != 1:
+            raise RuntimeError
+        return evaluation[0]
+
+    def evaluate_text_generation(
+        self,
+        datasets: Union[Dataset, List[Dataset]],
+        metrics_to_return: List[MetricType],
+        filters: Optional[Filter] = None,
+        llm_api_params: Optional[Dict[str, Union[str, dict]]] = None,
+        metric_params: Optional[Dict[MetricType, Dict[str, Any]]] = None,
+    ) -> Evaluation:
+        """
+        Start a classification evaluation job.
+
+        Parameters
+        ----------
+        datasets : Union[Dataset, List[Dataset]]
+            The dataset or list of datasets to evaluate against.
+        metrics_to_return : List[MetricType]
+            The list of metrics to compute, store, and return to the user. This is not optional for text generation evaluations.
+        filters : Filter, optional
+            Optional set of constraints to filter evaluation by.
+        llm_api_params : Dict[str, Union[str,dict]], optional
+            A dictionary of parameters for the LLM API.
+        metric_params : Dict[MetricType, Dict[str,Any]], optional
+            A dictionary of parameters for the metrics used in the evaluation. The keys should be the metrics and the values should be dictionaries of parameters for those metrics.
+
+        Returns
+        -------
+        Evaluation
+            A job object that can be used to track the status of the job and get the metrics of it upon completion.
+        """
+        if not set(metrics_to_return).issubset(MetricType.text_generation()):
+            raise ValueError(
+                f"The following metrics are not supported for text generation: '{set(metrics_to_return) - MetricType.text_generation()}'"
+            )
+
+        # If no api_key is provided, check the environment variables for an api key.
+        if llm_api_params is not None:
+            if "api_key" not in llm_api_params:
+                if "client" not in llm_api_params:
+                    raise ValueError(
+                        "The client must be specified in the llm_api_params."
+                    )
+
+                if llm_api_params["client"] == "openai":
+                    api_key = os.getenv("OPENAI_API_KEY", None)
+                elif llm_api_params["client"] == "mistral":
+                    api_key = os.getenv("MISTRAL_API_KEY", None)
+                elif llm_api_params["client"] == "mock":
+                    api_key = ""
+                else:
+                    raise ValueError(
+                        "The client specified in llm_api_params is not supported."
+                    )
+
+                if api_key is not None:
+                    llm_api_params["api_key"] = api_key
+
+        bleu_weights = None
+        rouge_types = None
+        rouge_use_stemmer = None
+        if metric_params is not None:
+            if not all(
+                metric in metrics_to_return for metric in metric_params.keys()
+            ):
+                raise ValueError(
+                    "All metrics in metric_params must be in metrics_to_return."
+                )
+
+            if MetricType.BLEU in metric_params:
+                bleu_weights = metric_params[MetricType.BLEU].get("weights")
+
+            if MetricType.ROUGE in metric_params:
+                rouge_types = metric_params[MetricType.ROUGE].get(
+                    "rouge_types"
+                )
+                rouge_use_stemmer = metric_params[MetricType.ROUGE].get(
+                    "use_stemmer"
+                )
+
+        # format request
+        datasets = datasets if isinstance(datasets, list) else [datasets]
+        filters = filters if filters else Filter()
+        request = EvaluationRequest(
+            dataset_names=[dataset.name for dataset in datasets],  # type: ignore - issue #604
+            model_names=[self.name],  # type: ignore - issue #604
+            filters=filters,
+            parameters=EvaluationParameters(
+                task_type=TaskType.TEXT_GENERATION,
+                metrics_to_return=metrics_to_return,
+                llm_api_params=llm_api_params,
+                bleu_weights=bleu_weights,
+                rouge_types=rouge_types,
+                rouge_use_stemmer=rouge_use_stemmer,
+            ),
+        )
+
+        # create evaluation
+        evaluation = Client(self.conn).evaluate(request)
         if len(evaluation) != 1:
             raise RuntimeError
         return evaluation[0]
@@ -1099,7 +1197,7 @@ class Model(StaticCollection):
 
         Parameters
         ----------
-        metrics_to_sort_by: dict[str, str | dict[str, str]], optional
+        metrics_to_sort_by : dict[str, str | dict[str, str]], optional
             An optional dict of metric types to sort the evaluations by.
         timeout : float, optional
             The number of seconds the client should wait until raising a timeout.
@@ -1284,9 +1382,9 @@ class Client:
 
         Parameters
         ----------
-        dataset: Union[Dataset, str]
+        dataset : Union[Dataset, str]
             The dataset the datum belongs to.
-        datum: Union[Datum, str]
+        datum : Union[Datum, str]
             The desired datum.
 
         Returns
@@ -1404,12 +1502,14 @@ class Client:
         """
         Get datum.
         `GET` endpoint.
+
         Parameters
         ----------
         dataset : valor.Dataset
             The dataset the datum belongs to.
         uid : str
             The UID of the datum.
+
         Returns
         -------
         valor.Datum
@@ -1554,11 +1654,11 @@ class Client:
 
         Parameters
         ----------
-        dataset: Union[Dataset, str]
+        dataset : Union[Dataset, str]
             The dataset the datum belongs to.
-        model: Union[Model, str]
+        model : Union[Model, str]
             The model that made the prediction.
-        datum: Union[Datum, str]
+        datum : Union[Datum, str]
             The desired datum.
 
         Returns
@@ -1743,7 +1843,7 @@ class Client:
             A list of model names that we want to return metrics for.
         datasets : Union[List[valor.Dataset], List[str]], optional
             A list of dataset names that we want to return metrics for.
-        metrics_to_sort_by: dict[str, str | dict[str, str]], optional
+        metrics_to_sort_by : dict[str, str | dict[str, str]], optional
             An optional dict of metric types to sort the evaluations by.
         timeout : float, optional
             The number of seconds the client should wait until raising a timeout.

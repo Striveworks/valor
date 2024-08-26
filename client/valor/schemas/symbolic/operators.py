@@ -100,7 +100,35 @@ class Function:
 
 
 class And(Function):
-    """Implementation of logical AND (&)."""
+    """
+    Implementation of logical AND (&).
+
+    This class represents a logical AND operation that can be performed on
+    two or more arguments. It supports chaining of multiple AND operations
+    using the `&` operator.
+
+    Parameters
+    ----------
+    *args : Any
+        The arguments to be logically ANDed together. At least two arguments
+        are required.
+
+    Raises
+    ------
+    ValueError
+        If fewer than two arguments are provided.
+
+    Examples
+    --------
+    >>> a = And(Label.key == "k1", Label.value == "v1")
+    >>> b = And(Label.key == "k1", Label.value == "v2")
+    >>> c = a & b
+
+    Methods
+    -------
+    __and__(other)
+        Supports chaining of multiple `And` operations using the `&` operator.
+    """
 
     def __init__(self, *args):
         if len(args) < 2:
@@ -116,7 +144,34 @@ class And(Function):
 
 
 class Or(Function):
-    """Implementation of logical OR (|)."""
+    """Implementation of logical OR (|).
+
+    This class represents a logical OR operation that can be performed on
+    two or more arguments. It supports chaining of multiple OR operations
+    using the `|` operator.
+
+    Parameters
+    ----------
+    *args : Any
+        The arguments to be logically ORed together. At least two arguments
+        are required.
+
+    Raises
+    ------
+    ValueError
+        If fewer than two arguments are provided.
+
+    Examples
+    --------
+    >>> a = Or(Label.key == "k1", Label.key == "k2")
+    >>> b = Or(Label.value == "v1", Label.value == "v2")
+    >>> c = a | b
+
+    Methods
+    -------
+    __or__(other)
+        Supports chaining of multiple `Or` operations using the `|` operator.
+    """
 
     def __init__(self, *args):
         if len(args) < 2:
@@ -132,7 +187,33 @@ class Or(Function):
 
 
 class Not(Function):
-    """Implementation of logical negation (~)."""
+    """Implementation of logical negation (~).
+
+    This class represents a logical NOT operation that can be performed on
+    on a single arguments. It supports chaining of multiple NOT operations
+    using the `~` operator.
+
+    Parameters
+    ----------
+    *args : Any
+        The arguments to be logically ORed together. At least two arguments
+        are required.
+
+    Raises
+    ------
+    ValueError
+        If the number of args is not equal to one.
+
+    Examples
+    --------
+    >>> a = Not(Label.key == "k1")
+    >>> b = ~a
+
+    Methods
+    -------
+    __invert__()
+        Supports chaining of multiple `Not` operations using the `~` operator.
+    """
 
     def __init__(self, *args):
         if len(args) != 1:

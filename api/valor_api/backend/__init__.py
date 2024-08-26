@@ -36,6 +36,7 @@ from .metrics import (
     compute_clf_metrics,
     compute_detection_metrics,
     compute_semantic_segmentation_metrics,
+    compute_text_generation_metrics,
 )
 from .query import generate_query, generate_select
 
@@ -66,6 +67,7 @@ __all__ = [
     "compute_clf_metrics",
     "compute_detection_metrics",
     "compute_semantic_segmentation_metrics",
+    "compute_text_generation_metrics",
     "get_paginated_evaluations",
     "get_evaluation_status",
     "generate_select",

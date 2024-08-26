@@ -107,6 +107,8 @@ def create_annotations(
             "embedding_id": _create_embedding(
                 db=db, value=annotation.embedding
             ),
+            "text": annotation.text,
+            "context_list": annotation.context_list,
             "is_instance": annotation.is_instance,
             "implied_task_types": annotation.implied_task_types,
         }
@@ -165,6 +167,8 @@ def create_skipped_annotations(
             polygon=None,
             raster=None,
             embedding_id=None,
+            text=None,
+            context_list=None,
             is_instance=False,
             implied_task_types=[TaskType.EMPTY],
         )
@@ -270,6 +274,8 @@ def get_annotation(
         polygon=polygon,
         raster=raster,
         embedding=embedding,
+        text=annotation.text,
+        context_list=annotation.context_list,
         is_instance=annotation.is_instance,
         implied_task_types=annotation.implied_task_types,
     )
