@@ -262,6 +262,29 @@ def test_LLMClient(monkeypatch):
         ):
             return """```json
 {
+    "TP": "statement 1",
+    "FP": [
+        "statement 3"
+    ],
+    "FN": [
+        "gt statement 1",
+        "gt statement 4"
+    ]
+}```"""
+        else:
+            raise BadValueInTestLLMClientsError
+
+    def _return_invalid5_answer_correctness_response(*args, **kwargs):
+        if "prediction text" in args[1][1]["content"]:
+            return VALID_STATEMENTS
+        elif "ground truth text" in args[1][1]["content"]:
+            return GROUNDTRUTH_VALID_STATEMENTS
+        elif (
+            "Return in JSON format with three keys: 'TP', 'FP', and 'FN'"
+            in args[1][1]["content"]
+        ):
+            return """```json
+{
     "TP": [
         "statement 1",
         "statement 2"
@@ -277,7 +300,7 @@ def test_LLMClient(monkeypatch):
         else:
             raise BadValueInTestLLMClientsError
 
-    def _return_invalid5_answer_correctness_response(*args, **kwargs):
+    def _return_invalid6_answer_correctness_response(*args, **kwargs):
         if "prediction text" in args[1][1]["content"]:
             return VALID_STATEMENTS
         elif "ground truth text" in args[1][1]["content"]:
@@ -612,50 +635,24 @@ def test_LLMClient(monkeypatch):
 }```"""
 
     def _return_invalid1_faithfulness_response(*args, **kwargs):
-        if (
-            "generate a comprehensive list of FACTUAL CLAIMS"
-            in args[1][1]["content"]
-        ):
-            return VALID_CLAIMS
-        elif (
-            "generate a list of verdicts to indicate whether EACH claim is implied by the context list"
-            in args[1][1]["content"]
-        ):
-            return """```json
+        return """```json
 {
-    "list": [
-        "verdict 1",
-        "verdict 2",
-        "verdict 3",
-        "verdict 4",
-        "verdict 5"
+    "invalid_key": [
+        "claim 1",
+        "claim 2"
     ]
 }```"""
-        else:
-            raise BadValueInTestLLMClientsError
 
     def _return_invalid2_faithfulness_response(*args, **kwargs):
-        if (
-            "generate a comprehensive list of FACTUAL CLAIMS"
-            in args[1][1]["content"]
-        ):
-            return VALID_CLAIMS
-        elif (
-            "generate a list of verdicts to indicate whether EACH claim is implied by the context list"
-            in args[1][1]["content"]
-        ):
-            return """```json
+        return """```json
 {
     "claims": [
-        "verdict 1",
-        2,
-        "verdict 3",
-        "verdict 4",
-        "verdict 5"
+        [
+            "claim 1",
+            "claim 2"
+        ]
     ]
 }```"""
-        else:
-            raise BadValueInTestLLMClientsError
 
     def _return_invalid3_faithfulness_response(*args, **kwargs):
         if (
@@ -696,7 +693,7 @@ def test_LLMClient(monkeypatch):
         {"verdict": "no"},
         {"verdict": "yes"},
         {"verdict": "yes"},
-        {"verdict": "yes"},
+        {"verdict": "yes"}
     ]
 }```"""
         else:
@@ -877,7 +874,7 @@ def test_LLMClient(monkeypatch):
             "some query", "prediction text", "ground truth text"
         )
 
-    # Number of TP + FP does not equal the number of prediction statements
+    # TP has an invalid value.
     monkeypatch.setattr(
         "valor_api.backend.core.llm_clients.LLMClient.__call__",
         _return_invalid4_answer_correctness_response,
@@ -887,10 +884,20 @@ def test_LLMClient(monkeypatch):
             "some query", "prediction text", "ground truth text"
         )
 
-    # The number of FN is more than the number of ground truth statements
+    # Number of TP + FP does not equal the number of prediction statements
     monkeypatch.setattr(
         "valor_api.backend.core.llm_clients.LLMClient.__call__",
         _return_invalid5_answer_correctness_response,
+    )
+    with pytest.raises(InvalidLLMResponseError):
+        client.answer_correctness(
+            "some query", "prediction text", "ground truth text"
+        )
+
+    # The number of FN is more than the number of ground truth statements
+    monkeypatch.setattr(
+        "valor_api.backend.core.llm_clients.LLMClient.__call__",
+        _return_invalid6_answer_correctness_response,
     )
     with pytest.raises(InvalidLLMResponseError):
         client.answer_correctness(
@@ -1188,7 +1195,7 @@ def test_LLMClient(monkeypatch):
     with pytest.raises(ValueError):
         client.faithfulness("some text", [])
 
-    # Bad key in the response.
+    # Bad key in the claims response.
     monkeypatch.setattr(
         "valor_api.backend.core.llm_clients.LLMClient.__call__",
         _return_invalid1_faithfulness_response,
@@ -1196,7 +1203,7 @@ def test_LLMClient(monkeypatch):
     with pytest.raises(InvalidLLMResponseError):
         client.faithfulness("some text", ["context 1", "context 2"])
 
-    # Invalid claim value.
+    # Claims must be strings, not lists of strings.
     monkeypatch.setattr(
         "valor_api.backend.core.llm_clients.LLMClient.__call__",
         _return_invalid2_faithfulness_response,
@@ -1204,7 +1211,7 @@ def test_LLMClient(monkeypatch):
     with pytest.raises(InvalidLLMResponseError):
         client.faithfulness("some text", ["context 1", "context 2"])
 
-    # Bad key in the response.
+    # Bad key in the verdicts response.
     monkeypatch.setattr(
         "valor_api.backend.core.llm_clients.LLMClient.__call__",
         _return_invalid3_faithfulness_response,

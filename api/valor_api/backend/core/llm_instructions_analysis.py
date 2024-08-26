@@ -151,10 +151,10 @@ def generate_answer_correctness_verdicts_instruction(
     str
         The instruction for the LLM.
     """
-    return f"""Based on the query, the prediction statements and the ground truth statements, analyze each statement and classify them in one of the following categories:
-- TP (true positive): statements present in the prediction that are also directly supported by one or more statements in the ground truth,
-- FP (false positive): statements present in the prediction but not directly supported by any statement in ground truth,
-- FN (false negative): statements found in the ground truth but not present in the prediction.
+    return f"""Based on the query, the prediction statements and the ground truth statements, analyze each statement and classify them into one of the following categories:
+- TP (true positive): statements present in the prediction that are directly supported by one or more statements in the ground truth,
+- FP (false positive): statements present in the prediction that are not directly supported by any statement in the ground truth,
+- FN (false negative): statements present in the ground truth that aren't represented in any statements in the prediction.
 
 IMPORTANT: Return in JSON format with three keys: 'TP', 'FP', and 'FN', each mapping to a list of statements.
 Each statement can only belong to one of the categories.
@@ -372,7 +372,7 @@ def generate_coherence_instruction(
     Evaluation Steps:
     1. Read the text carefully and identify the main topic and key points.
     2. Read the summary and compare it to the text. Check if the summary covers the main topic and key points of the text, and if it presents them in a clear and logical order.
-    3. Assign a score for coherence on a scale of 1 to 5, where 1 is the lowest and 5 is the highest based on the Evaluation Criteria. Respond with just the number 1 to 5.
+    3. Assign a score for coherence on a scale of 1 to 5, where 1 is the lowest and 5 is the highest based on the Evaluation Criteria. Respond with just the number 1, 2, 3, 4 or 5.
 
     Text:
     {text}

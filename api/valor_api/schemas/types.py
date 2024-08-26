@@ -94,7 +94,7 @@ def _match_annotation_to_implied_task_type(
         and annotation.context_list is None
     ):
         implied_type = ["embedding"]
-    # text generation tasks only support text and context_list, although some metrics only use text or context_list
+    # text generation tasks only support text and context_list, although some metrics only use text or only use context_list
     elif (
         (annotation.text is not None or annotation.context_list is not None)
         and not annotation.labels
