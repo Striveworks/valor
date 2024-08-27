@@ -350,6 +350,7 @@ def _create_joint_df(
     )
     joint_df["is_false_positive"] = ~joint_df["is_label_match"]
 
+
     joint_df = joint_df.sort_values(
         by=["score", "label_key", "label_value_gt"],
         ascending=[False, False, True],
@@ -728,12 +729,12 @@ def _calculate_pr_curves(
     # create flags where the predictions meet criteria
     pr_calc_df["true_positive_flag"] = (
         pr_calc_df["score"] >= pr_calc_df["confidence_threshold"]
-    ) & pr_calc_df["is_label_match"]
+    ) & pr_calc_df["is_true_positive"]
 
     # for all the false positives, we consider them to be a misclassification if they share a key but not a value with a gt
     pr_calc_df["misclassification_false_positive_flag"] = (
         pr_calc_df["score"] >= pr_calc_df["confidence_threshold"]
-    ) & ~pr_calc_df["is_label_match"]
+    ) & ~pr_calc_df["is_true_positive"]
 
     # next, we flag false negatives by declaring any groundtruth that isn't associated with a true positive to be a false negative
     groundtruths_associated_with_true_positives = (

@@ -597,7 +597,7 @@ def test_pr_curves_multiple_predictions_per_groundtruth(
                     threshold
                 ]
             )
-
+            
 
 def test_detailed_curve_examples(
     multiclass_pr_curve_groundtruths: list,
