@@ -4121,3 +4121,48 @@ def evaluate_detection_pr_fp_inputs(img1, img2):
     ]
 
     return gts, preds
+
+
+@pytest.fixture
+def two_groundtruths_one_datum_groundtruths(
+    rect1: list[tuple[float, float]],
+    rect2: list[tuple[float, float]],
+    rect3: list[tuple[float, float]],
+    img1: schemas.Datum,
+    img2: schemas.Datum,
+):
+
+    groundtruths = [
+        schemas.GroundTruth(
+            datum=img1,
+            annotations=[
+                schemas.Annotation(
+                    is_instance=True,
+                    labels=[schemas.Label(key="k1", value="v1")],
+                    bounding_box=schemas.Box([rect1]),
+                ),
+            ],
+        ),
+        schemas.GroundTruth(
+            datum=img1,
+            annotations=[
+                schemas.Annotation(
+                    is_instance=True,
+                    labels=[schemas.Label(key="k2", value="v2")],
+                    bounding_box=schemas.Box([rect3]),
+                ),
+            ],
+        ),
+        schemas.GroundTruth(
+            datum=img2,
+            annotations=[
+                schemas.Annotation(
+                    is_instance=True,
+                    labels=[schemas.Label(key="k1", value="v1")],
+                    bounding_box=schemas.Box([rect2]),
+                )
+            ],
+        ),
+    ]
+
+    return groundtruths

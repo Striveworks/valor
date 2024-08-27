@@ -1472,51 +1472,14 @@ def test_evaluate_detection_rotated_bboxes(
 
 def test_two_groundtruths_one_datum(
     evaluate_detection_predictions: list[schemas.Prediction],
-    rect1: list[tuple[float, float]],
-    rect2: list[tuple[float, float]],
-    rect3: list[tuple[float, float]],
-    img1: schemas.Datum,
-    img2: schemas.Datum,
+    two_groundtruths_one_datum_groundtruths: list,
     evaluate_detection_expected: tuple,
 ):
     """Same test as test_evaluate_detection, but we show that we can handle two groundtruths for a single datum"""
-    expected_metrics, expected_metadata = evaluate_detection_expected
-
-    groundtruths = [
-        schemas.GroundTruth(
-            datum=img1,
-            annotations=[
-                schemas.Annotation(
-                    is_instance=True,
-                    labels=[schemas.Label(key="k1", value="v1")],
-                    bounding_box=schemas.Box([rect1]),
-                ),
-            ],
-        ),
-        schemas.GroundTruth(
-            datum=img1,
-            annotations=[
-                schemas.Annotation(
-                    is_instance=True,
-                    labels=[schemas.Label(key="k2", value="v2")],
-                    bounding_box=schemas.Box([rect3]),
-                ),
-            ],
-        ),
-        schemas.GroundTruth(
-            datum=img2,
-            annotations=[
-                schemas.Annotation(
-                    is_instance=True,
-                    labels=[schemas.Label(key="k1", value="v1")],
-                    bounding_box=schemas.Box([rect2]),
-                )
-            ],
-        ),
-    ]
+    expected_metrics, _ = evaluate_detection_expected
 
     eval_job = evaluate_detection(
-        groundtruths=groundtruths,
+        groundtruths=two_groundtruths_one_datum_groundtruths,
         predictions=evaluate_detection_predictions,
         iou_thresholds_to_compute=[0.1, 0.6],
         iou_thresholds_to_return=[0.1, 0.6],
@@ -1567,6 +1530,7 @@ def test_evaluate_detection_pr_fp(evaluate_detection_pr_fp_inputs):
     )
 
     metrics = eval_job.metrics
+
     assert metrics[0]["value"]["v1"][0.5] == {
         "fn": 1,  # img2
         "fp": 1,  # img2
