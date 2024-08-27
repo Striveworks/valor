@@ -243,7 +243,7 @@ def test_evaluate_classification_with_label_maps_with_ValorClassificationManager
         assert (
             pr_metrics[index]["value"][value][float(threshold)][metric]
             == expected_value
-        )
+        ), f"{index} value {value} {float(threshold)} {metric} expected {expected_value} but got {pr_metrics[index]['value'][value][float(threshold)][metric]}\n\n{pr_metrics}"
 
     # check DetailedPrecisionRecallCurve
     for (
