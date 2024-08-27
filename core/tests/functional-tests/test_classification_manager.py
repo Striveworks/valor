@@ -157,11 +157,11 @@ def test_evaluate_classification_with_label_maps_with_ValorClassificationManager
 ):
     print("groundtruths")
     for x in gt_clfs_with_label_maps:
-        repr(x)
+        print(repr(x))
 
     print("predictions")
     for x in pred_clfs_with_label_maps:
-        repr(x)
+        print(repr(x))
 
     (
         cat_expected_metrics,
