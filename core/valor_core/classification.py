@@ -620,7 +620,7 @@ def _add_samples_to_dataframe(
                     joint_df["is_label_match"]
                     & (joint_df["threshold_index"] >= threshold_index)
                 ]
-                .groupby(["label_key", "label_value_pd"], as_index=False)[
+                .groupby(["label_key", "label_value"], as_index=False)[
                     "datum_uid"
                 ]
                 .agg(lambda x: tuple(x.head(max_examples)))
@@ -635,7 +635,7 @@ def _add_samples_to_dataframe(
                     ~joint_df["is_label_match"]
                     & (joint_df["threshold_index"] >= threshold_index)
                 ]
-                .groupby(["label_key", "label_value_pd"], as_index=False)[
+                .groupby(["label_key", "label_value"], as_index=False)[
                     "datum_uid"
                 ]
                 .agg(lambda x: tuple(x.head(max_examples)))
@@ -650,7 +650,7 @@ def _add_samples_to_dataframe(
                     ~joint_df["is_label_match"]
                     & (joint_df["threshold_index"] < threshold_index)
                 ]
-                .groupby(["label_key", "label_value_pd"], as_index=False)[
+                .groupby(["label_key", "label_value"], as_index=False)[
                     "datum_uid"
                 ]
                 .agg(lambda x: tuple(x.head(max_examples)))
@@ -666,7 +666,7 @@ def _add_samples_to_dataframe(
                     & (joint_df["threshold_index"] < threshold_index)
                     & (threshold_index <= joint_df["threshold_index_max"])
                 ]
-                .groupby(["label_key", "label_value_pd"], as_index=False)[
+                .groupby(["label_key", "label_value"], as_index=False)[
                     "datum_uid"
                 ]
                 .agg(lambda x: tuple(x.head(max_examples)))
@@ -681,7 +681,7 @@ def _add_samples_to_dataframe(
                     joint_df["is_label_match"]
                     & (joint_df["threshold_index_max"] < threshold_index)
                 ]
-                .groupby(["label_key", "label_value_pd"], as_index=False)[
+                .groupby(["label_key", "label_value"], as_index=False)[
                     "datum_uid"
                 ]
                 .agg(lambda x: tuple(x.head(max_examples)))
@@ -933,6 +933,7 @@ def _calculate_pr_curves(
                 "label_value_pd",
                 "threshold_index",
                 "threshold_index_max",
+                "is_label_match",
             ]
         ].rename(
             columns={
