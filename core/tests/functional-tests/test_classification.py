@@ -597,3 +597,105 @@ def test_pr_curves_multiple_predictions_per_groundtruth(
                     threshold
                 ]
             )
+
+
+def test_detailed_curve_examples(
+    multiclass_pr_curve_groundtruths: list,
+    multiclass_pr_curve_predictions: list,
+):
+    """Test that we get back the right examples in DetailedPRCurves."""
+
+    eval_job = evaluate_classification(
+        groundtruths=multiclass_pr_curve_groundtruths,
+        predictions=multiclass_pr_curve_predictions,
+        metrics_to_return=[enums.MetricType.DetailedPrecisionRecallCurve],
+        pr_curve_max_examples=5,
+    )
+
+    output = eval_job.metrics[0]["value"]
+
+    assert set(
+        output["bee"][0.05]["tp"]["observations"]["all"]["examples"]
+    ) == set(
+        [
+            ("datum1",),
+            ("datum3",),
+        ]
+    )
+    assert set(
+        output["bee"][0.05]["fp"]["observations"]["misclassifications"][
+            "examples"
+        ]
+    ) == set([("datum2",), ("datum0",), ("datum4",)])
+
+    assert set(
+        output["dog"][0.05]["tp"]["observations"]["all"]["examples"]
+    ) == set([("datum4",)])
+    assert set(
+        output["dog"][0.05]["fp"]["observations"]["misclassifications"][
+            "examples"
+        ]
+    ) == set(
+        [
+            ("datum2",),
+            ("datum0",),
+            ("datum3",),
+            ("datum1",),
+        ]
+    )
+    assert set(
+        output["cat"][0.05]["tp"]["observations"]["all"]["examples"]
+    ) == set(
+        [
+            ("datum2",),
+            ("datum0",),
+        ]
+    )
+    assert set(
+        output["cat"][0.05]["fp"]["observations"]["misclassifications"][
+            "examples"
+        ]
+    ) == set([("datum3",), ("datum1",), ("datum4",)])
+
+    assert set(
+        output["bee"][0.85]["tn"]["observations"]["all"]["examples"]
+    ) == set([("datum0",), ("datum2",), ("datum4",)])
+    assert set(
+        output["bee"][0.85]["fn"]["observations"]["no_predictions"]["examples"]
+    ) == set([("datum3",), ("datum1",)])
+
+    assert set(
+        output["dog"][0.85]["tn"]["observations"]["all"]["examples"]
+    ) == set(
+        [
+            ("datum2",),
+            ("datum0",),
+            ("datum3",),
+            ("datum1",),
+        ]
+    )
+    assert set(
+        output["dog"][0.85]["fn"]["observations"]["no_predictions"]["examples"]
+    ) == set(
+        [
+            ("datum4",),
+        ]
+    )
+
+    assert set(
+        output["cat"][0.85]["tn"]["observations"]["all"]["examples"]
+    ) == set(
+        [
+            ("datum1",),
+            ("datum3",),
+            ("datum4",),
+        ]
+    )
+    assert set(
+        output["cat"][0.85]["fn"]["observations"]["no_predictions"]["examples"]
+    ) == set(
+        [
+            ("datum2",),
+            ("datum0",),
+        ]
+    )
