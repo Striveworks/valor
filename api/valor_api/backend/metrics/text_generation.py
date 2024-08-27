@@ -31,12 +31,12 @@ LLM_GUIDED_METRICS = {
     "AnswerCorrectness",
     "AnswerRelevance",
     "Bias",
-    "Coherence",
     "ContextPrecision",
     "ContextRecall",
     "ContextRelevance",
     "Faithfulness",
     "Hallucination",
+    "SummaryCoherence",
     "Toxicity",
 }
 
@@ -269,13 +269,13 @@ def _compute_text_generation_metrics(
     | schemas.AnswerRelevanceMetric
     | schemas.BiasMetric
     | schemas.BLEUMetric
-    | schemas.CoherenceMetric
     | schemas.ContextPrecisionMetric
     | schemas.ContextRecallMetric
     | schemas.ContextRelevanceMetric
     | schemas.FaithfulnessMetric
     | schemas.HallucinationMetric
     | schemas.ROUGEMetric
+    | schemas.SummaryCoherenceMetric
     | schemas.ToxicityMetric
 ]:
     """
@@ -300,7 +300,7 @@ def _compute_text_generation_metrics(
 
     Returns
     ----------
-    Sequence[schemas.AnswerCorrectnessMetric | schemas.AnswerRelevanceMetric | schemas.BiasMetric | schemas.BLEUMetric | schemas.CoherenceMetric | schemas.ContextPrecisionMetric | schemas.ContextRecallMetric | schemas.ContextRelevanceMetric | schemas.FaithfulnessMetric | schemas.HallucinationMetric | schemas.ROUGEMetric | schemas.ToxicityMetric]
+    Sequence[schemas.AnswerCorrectnessMetric | schemas.AnswerRelevanceMetric | schemas.BiasMetric | schemas.BLEUMetric | schemas.ContextPrecisionMetric | schemas.ContextRecallMetric | schemas.ContextRelevanceMetric | schemas.FaithfulnessMetric | schemas.HallucinationMetric | schemas.ROUGEMetric | schemas.SummaryCoherenceMetric | schemas.ToxicityMetric]
         A list of computed metrics.
     """
     is_AnswerCorrectness_enabled = (
@@ -311,7 +311,6 @@ def _compute_text_generation_metrics(
     )
     is_Bias_enabled = MetricType.Bias in metrics_to_return
     is_BLEU_enabled = MetricType.BLEU in metrics_to_return
-    is_Coherence_enabled = MetricType.Coherence in metrics_to_return
     is_ContextPrecision_enabled = (
         MetricType.ContextPrecision in metrics_to_return
     )
@@ -322,6 +321,9 @@ def _compute_text_generation_metrics(
     is_Faithfulness_enabled = MetricType.Faithfulness in metrics_to_return
     is_Hallucination_enabled = MetricType.Hallucination in metrics_to_return
     is_ROUGE_enabled = MetricType.ROUGE in metrics_to_return
+    is_SummaryCoherence_enabled = (
+        MetricType.SummaryCoherence in metrics_to_return
+    )
     is_Toxicity_enabled = MetricType.Toxicity in metrics_to_return
 
     client = None
@@ -622,22 +624,6 @@ def _compute_text_generation_metrics(
                     )
                 ]
 
-            if is_Coherence_enabled:
-                score = client.coherence(
-                    text=datum_text,
-                    summary=prediction_text,
-                )
-                output += [
-                    schemas.CoherenceMetric(
-                        value=score,
-                        parameters={
-                            "dataset": dataset_name,
-                            "datum_uid": datum_uid,
-                            "prediction": prediction_text,
-                        },
-                    )
-                ]
-
             if is_ContextRelevance_enabled:
                 score = client.context_relevance(
                     query=datum_text, context_list=prediction_context_list
@@ -681,6 +667,22 @@ def _compute_text_generation_metrics(
                             "datum_uid": datum_uid,
                             "prediction": prediction_text,
                             "context_list": prediction_context_list,
+                        },
+                    )
+                ]
+
+            if is_SummaryCoherence_enabled:
+                score = client.summary_coherence(
+                    text=datum_text,
+                    summary=prediction_text,
+                )
+                output += [
+                    schemas.SummaryCoherenceMetric(
+                        value=score,
+                        parameters={
+                            "dataset": dataset_name,
+                            "datum_uid": datum_uid,
+                            "prediction": prediction_text,
                         },
                     )
                 ]

@@ -343,47 +343,6 @@ JSON:
 """
 
 
-def generate_coherence_instruction(
-    text: str,
-    summary: str,
-) -> str:
-    """
-    This instruction was adapted from appendix A of DeepEval's paper G-EVAL: NLG Evaluation using GPT-4 with Better Human Alignment (https://arxiv.org/pdf/2303.16634).
-
-    The instruction was generalized to apply to any text summarization task, as opposed to DeepEval's example instruction which was specific to news article summarization.
-
-    Parameters
-    ----------
-    text: str
-        The text that was summarized.
-    summary: str
-        The summary to be evaluated.
-
-    Returns
-    -------
-    str
-        The instruction for the llm.
-    """
-    return f"""You will be given one summary written for a piece of text. Your task is to rate the summary based on its coherence. Please make sure you read and understand these instructions carefully. Please keep this document open while reviewing and refer to it as needed.
-
-    Evaluation Criteria:
-    Coherence (1-5) - the collective quality of all sentences. We align this dimension with the DUC quality question of structure and coherence: the summary should be well-structured and well-organized. The summary should not just be a heap of related information, but should build from sentence to sentence to a coherent body of information about a topic.
-
-    Evaluation Steps:
-    1. Read the text carefully and identify the main topic and key points.
-    2. Read the summary and compare it to the text. Check if the summary covers the main topic and key points of the text, and if it presents them in a clear and logical order.
-    3. Assign a score for coherence on a scale of 1 to 5, where 1 is the lowest and 5 is the highest based on the Evaluation Criteria. Respond with just the number 1, 2, 3, 4 or 5.
-
-    Text:
-    {text}
-
-    Summary:
-    {summary}
-
-    Coherence Score (1-5):
-    """
-
-
 def generate_context_precision_verdicts_instruction(
     query: str,
     context_list: list[str],
@@ -730,6 +689,47 @@ Text:
 
 JSON:
 """
+
+
+def generate_summary_coherence_instruction(
+    text: str,
+    summary: str,
+) -> str:
+    """
+    This instruction was adapted from appendix A of DeepEval's paper G-EVAL: NLG Evaluation using GPT-4 with Better Human Alignment (https://arxiv.org/pdf/2303.16634).
+
+    The instruction was generalized to apply to any text summarization task, as opposed to DeepEval's example instruction which was specific to news article summarization.
+
+    Parameters
+    ----------
+    text: str
+        The text that was summarized.
+    summary: str
+        The summary to be evaluated.
+
+    Returns
+    -------
+    str
+        The instruction for the llm.
+    """
+    return f"""You will be given one summary written for a piece of text. Your task is to rate the summary based on its coherence. Please make sure you read and understand these instructions carefully. Please keep this document open while reviewing and refer to it as needed.
+
+    Evaluation Criteria:
+    Coherence (1-5) - the collective quality of all sentences. We align this dimension with the DUC quality question of structure and coherence: the summary should be well-structured and well-organized. The summary should not just be a heap of related information, but should build from sentence to sentence to a coherent body of information about a topic.
+
+    Evaluation Steps:
+    1. Read the text carefully and identify the main topic and key points.
+    2. Read the summary and compare it to the text. Check if the summary covers the main topic and key points of the text, and if it presents them in a clear and logical order.
+    3. Assign a score for coherence on a scale of 1 to 5, where 1 is the lowest and 5 is the highest based on the Evaluation Criteria. Respond with just the number 1, 2, 3, 4 or 5.
+
+    Text:
+    {text}
+
+    Summary:
+    {summary}
+
+    Coherence Score (1-5):
+    """
 
 
 def generate_toxicity_verdicts_instruction(opinions: list[str]) -> str:

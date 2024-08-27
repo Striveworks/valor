@@ -506,15 +506,6 @@ def test_LLMClient(monkeypatch):
         else:
             raise BadValueInTestLLMClientsError
 
-    def _return_valid_coherence_response(*args, **kwargs):
-        return "5"
-
-    def _return_invalid1_coherence_response(*args, **kwargs):
-        return "The score is 5."
-
-    def _return_invalid2_coherence_response(*args, **kwargs):
-        return "0"
-
     def _return_valid_context_relevance_response(*args, **kwargs):
         return CONTEXT_RELEVANCE_VALID_VERDICTS
 
@@ -734,6 +725,15 @@ def test_LLMClient(monkeypatch):
         {"verdict": "yes"}
     ]
 }```"""
+
+    def _return_valid_summary_coherence_response(*args, **kwargs):
+        return "5"
+
+    def _return_invalid1_summary_coherence_response(*args, **kwargs):
+        return "The score is 5."
+
+    def _return_invalid2_summary_coherence_response(*args, **kwargs):
+        return "0"
 
     def _return_valid1_toxicity_response(*args, **kwargs):
         if "generate a list of OPINIONS" in args[1][1]["content"]:
@@ -988,29 +988,6 @@ def test_LLMClient(monkeypatch):
     )
     with pytest.raises(InvalidLLMResponseError):
         client.bias("some text")
-
-    # Patch __call__ with a valid response.
-    monkeypatch.setattr(
-        "valor_api.backend.core.llm_clients.LLMClient.__call__",
-        _return_valid_coherence_response,
-    )
-    assert 5 == client.coherence("some text", "some summary")
-
-    # Coherence score is not an integer.
-    monkeypatch.setattr(
-        "valor_api.backend.core.llm_clients.LLMClient.__call__",
-        _return_invalid1_coherence_response,
-    )
-    with pytest.raises(InvalidLLMResponseError):
-        client.coherence("some text", "some summary")
-
-    # Coherence score is 0, which is not in {1,2,3,4,5}.
-    monkeypatch.setattr(
-        "valor_api.backend.core.llm_clients.LLMClient.__call__",
-        _return_invalid2_coherence_response,
-    )
-    with pytest.raises(InvalidLLMResponseError):
-        client.coherence("some text", "some summary")
 
     # Patch __call__ with a valid response.
     monkeypatch.setattr(
@@ -1272,6 +1249,29 @@ def test_LLMClient(monkeypatch):
         client.hallucination(
             "some query", ["context 1", "context 2", "context 3"]
         )
+
+    # Patch __call__ with a valid response.
+    monkeypatch.setattr(
+        "valor_api.backend.core.llm_clients.LLMClient.__call__",
+        _return_valid_summary_coherence_response,
+    )
+    assert 5 == client.summary_coherence("some text", "some summary")
+
+    # Summary coherence score is not an integer.
+    monkeypatch.setattr(
+        "valor_api.backend.core.llm_clients.LLMClient.__call__",
+        _return_invalid1_summary_coherence_response,
+    )
+    with pytest.raises(InvalidLLMResponseError):
+        client.summary_coherence("some text", "some summary")
+
+    # Summary coherence score is 0, which is not in {1,2,3,4,5}.
+    monkeypatch.setattr(
+        "valor_api.backend.core.llm_clients.LLMClient.__call__",
+        _return_invalid2_summary_coherence_response,
+    )
+    with pytest.raises(InvalidLLMResponseError):
+        client.summary_coherence("some text", "some summary")
 
     # Patch __call__ with a valid response.
     monkeypatch.setattr(

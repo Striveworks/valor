@@ -155,12 +155,12 @@ class EvaluationParameters(BaseModel):
                         "AnswerCorrectness",
                         "AnswerRelevance",
                         "Bias",
-                        "Coherence",
                         "ContextPrecision",
                         "ContextRecall",
                         "ContextRelevance",
                         "Faithfulness",
                         "Hallucination",
+                        "SummaryCoherence",
                         "Toxicity",
                     ]
                 )

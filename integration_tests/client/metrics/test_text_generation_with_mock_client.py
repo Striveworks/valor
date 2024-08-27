@@ -433,7 +433,7 @@ def test_llm_evaluation_summarization_with_mock_client(
     model.finalize_inferences(dataset)
 
     metrics_to_return = [
-        MetricType.Coherence,
+        MetricType.SummaryCoherence,
     ]
 
     eval_job = model.evaluate_text_generation(
@@ -462,16 +462,16 @@ def test_llm_evaluation_summarization_with_mock_client(
 
     expected_metrics = {
         "uid0": {
-            "Coherence": 4,
+            "SummaryCoherence": 4,
         },
         "uid1": {
-            "Coherence": 4,
+            "SummaryCoherence": 4,
         },
     }
 
     # Check that the returned metrics have the right format.
     for m in metrics:
-        if m["type"] == "Coherence":
+        if m["type"] == "SummaryCoherence":
             assert m["value"] in [1, 2, 3, 4, 5]
 
     # Check that mocked metrics are in the returned metrics.

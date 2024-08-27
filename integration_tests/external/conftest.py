@@ -244,60 +244,6 @@ def bias_pred_answers(
 
 
 @pytest.fixture
-def coherence_q0() -> Datum:
-    return Datum(
-        uid="uid0",
-        text="""Everton manager Roberto Martinez has not ruled out the prospect of Antolin Alcaraz or Sylvain Distin earning new contracts but stressed they need to prove they can still be important figures in the club's future. Both centre-backs' current deals expire this summer and it seems highly unlikely Distin, who is 38 in December and has played more for the under-21s in the last month than he has the first team, will be retained. Alcaraz, 33 in July, has more of a chance of securing a short-term extension as Martinez looks to strengthen and restructure his defence in the summer. Roberto Martinez insists 37-year-old defender Sylvain Distin still has time to prove he deserves a new deal . Antolin Alcaraz, who joined Everton from Wigan where he played under Martinez, could get a new deal . While the Toffees boss is keen to advance the talents of younger players - Tyias Browning and Brendan Galloway the two most likely to benefit - he has not ruled out retaining existing senior players. 'There are only two players out of contract and we have two loan players (Aaron Lennon and Christian Atsu) and those decisions will be made when we have finished the season,' said Martinez. 'The next six games could have a massive bearing on that. Ninety minutes is a big opportunity to change people's views. 'All individuals will be judged over that period. In football it does not matter if you have a contract or not, you always need to improve and show the right attitude and show you are ready to be part of the future of the club. 'But when you get players at the end of their contract there are decisions to be made and it is not just the club, it is the player as well.' Roberto Martinez says his club's recruitment team have been searching for targets for six months . Distin has played more for Everton's youth team than the first XI in the past month, and could be on his way . Martinez said they have established a list of transfer targets for the summer and, while he would not confirm publicly, Aston Villa's on-loan Manchester United midfielder Tom Cleverley, out of contract at the end of the season, is believed to be one of them. 'The recruitment department has been working really hard over the last six months and we need to assemble a really strong squad,' Martinez said. 'First and foremost it is an opportunity for young players to show they are ready for big important roles for next campaign and everyone else providing strong competition to be important figures for the future. Tom Cleverley, who is on loan at Aston Villa, is a target, with Martinez having worked with him before . 'The dressing room is very strong as it is now, so we need to make sure whatever we do in the summer is to get us in a better place. 'We know the situation with Tom. He is a player that I know well having worked with him (in a previous loan spell at Wigan) - and that's it. 'Tom is a player that is at the moment fighting for something very important for his club and that deserves respect. 'I wouldn't expect anyone to speak about my players and I would never do that.'""",
-    )
-
-
-@pytest.fixture
-def coherence_datums(
-    coherence_q0: Datum,
-) -> list[Datum]:
-    return [coherence_q0]
-
-
-@pytest.fixture
-def coherence_predictions() -> list[str]:
-    return [
-        """Roberto Martinez, Everton's manager, has not ruled out the possibility of offering new contracts to veteran defenders Antolin Alcaraz and Sylvain Distin. However, both players need to prove their value and importance to the team's future. Although Distin seems unlikely to be retained due to his age and recent lack of first-team appearances, Alcaraz may have a better chance of securing a short-term extension. Martinez emphasized the importance of all players showing improvement and commitment, including considering younger talents like Tyias Browning and Brendan Galloway for future roles. The club is also planning for the summer transfer window, with reports suggesting they are targeting players like Tom Cleverley, who Martinez has worked with before.""",
-    ]
-
-
-@pytest.fixture
-def coherence_gt_questions(
-    coherence_datums: list[Datum],
-) -> list[GroundTruth]:
-    return [
-        GroundTruth(
-            datum=coherence_datums[i],
-            annotations=[],
-        )
-        for i in range(len(coherence_datums))
-    ]
-
-
-@pytest.fixture
-def coherence_pred_answers(
-    coherence_datums: list[Datum],
-    coherence_predictions: list[str],
-) -> list[GroundTruth]:
-    assert len(coherence_datums) == len(coherence_predictions)
-    return [
-        Prediction(
-            datum=coherence_datums[i],
-            annotations=[
-                Annotation(
-                    text=coherence_predictions[i],
-                )
-            ],
-        )
-        for i in range(len(coherence_datums))
-    ]
-
-
-@pytest.fixture
 def context_precision_q0() -> Datum:
     return Datum(
         uid="uid0",
@@ -721,6 +667,60 @@ def hallucination_pred_answers(
             ],
         )
         for i in range(len(hallucination_datums))
+    ]
+
+
+@pytest.fixture
+def summary_coherence_q0() -> Datum:
+    return Datum(
+        uid="uid0",
+        text="""Everton manager Roberto Martinez has not ruled out the prospect of Antolin Alcaraz or Sylvain Distin earning new contracts but stressed they need to prove they can still be important figures in the club's future. Both centre-backs' current deals expire this summer and it seems highly unlikely Distin, who is 38 in December and has played more for the under-21s in the last month than he has the first team, will be retained. Alcaraz, 33 in July, has more of a chance of securing a short-term extension as Martinez looks to strengthen and restructure his defence in the summer. Roberto Martinez insists 37-year-old defender Sylvain Distin still has time to prove he deserves a new deal . Antolin Alcaraz, who joined Everton from Wigan where he played under Martinez, could get a new deal . While the Toffees boss is keen to advance the talents of younger players - Tyias Browning and Brendan Galloway the two most likely to benefit - he has not ruled out retaining existing senior players. 'There are only two players out of contract and we have two loan players (Aaron Lennon and Christian Atsu) and those decisions will be made when we have finished the season,' said Martinez. 'The next six games could have a massive bearing on that. Ninety minutes is a big opportunity to change people's views. 'All individuals will be judged over that period. In football it does not matter if you have a contract or not, you always need to improve and show the right attitude and show you are ready to be part of the future of the club. 'But when you get players at the end of their contract there are decisions to be made and it is not just the club, it is the player as well.' Roberto Martinez says his club's recruitment team have been searching for targets for six months . Distin has played more for Everton's youth team than the first XI in the past month, and could be on his way . Martinez said they have established a list of transfer targets for the summer and, while he would not confirm publicly, Aston Villa's on-loan Manchester United midfielder Tom Cleverley, out of contract at the end of the season, is believed to be one of them. 'The recruitment department has been working really hard over the last six months and we need to assemble a really strong squad,' Martinez said. 'First and foremost it is an opportunity for young players to show they are ready for big important roles for next campaign and everyone else providing strong competition to be important figures for the future. Tom Cleverley, who is on loan at Aston Villa, is a target, with Martinez having worked with him before . 'The dressing room is very strong as it is now, so we need to make sure whatever we do in the summer is to get us in a better place. 'We know the situation with Tom. He is a player that I know well having worked with him (in a previous loan spell at Wigan) - and that's it. 'Tom is a player that is at the moment fighting for something very important for his club and that deserves respect. 'I wouldn't expect anyone to speak about my players and I would never do that.'""",
+    )
+
+
+@pytest.fixture
+def summary_coherence_datums(
+    summary_coherence_q0: Datum,
+) -> list[Datum]:
+    return [summary_coherence_q0]
+
+
+@pytest.fixture
+def summary_coherence_predictions() -> list[str]:
+    return [
+        """Roberto Martinez, Everton's manager, has not ruled out the possibility of offering new contracts to veteran defenders Antolin Alcaraz and Sylvain Distin. However, both players need to prove their value and importance to the team's future. Although Distin seems unlikely to be retained due to his age and recent lack of first-team appearances, Alcaraz may have a better chance of securing a short-term extension. Martinez emphasized the importance of all players showing improvement and commitment, including considering younger talents like Tyias Browning and Brendan Galloway for future roles. The club is also planning for the summer transfer window, with reports suggesting they are targeting players like Tom Cleverley, who Martinez has worked with before.""",
+    ]
+
+
+@pytest.fixture
+def summary_coherence_gt_questions(
+    summary_coherence_datums: list[Datum],
+) -> list[GroundTruth]:
+    return [
+        GroundTruth(
+            datum=summary_coherence_datums[i],
+            annotations=[],
+        )
+        for i in range(len(summary_coherence_datums))
+    ]
+
+
+@pytest.fixture
+def summary_coherence_pred_answers(
+    summary_coherence_datums: list[Datum],
+    summary_coherence_predictions: list[str],
+) -> list[GroundTruth]:
+    assert len(summary_coherence_datums) == len(summary_coherence_predictions)
+    return [
+        Prediction(
+            datum=summary_coherence_datums[i],
+            annotations=[
+                Annotation(
+                    text=summary_coherence_predictions[i],
+                )
+            ],
+        )
+        for i in range(len(summary_coherence_datums))
     ]
 
 

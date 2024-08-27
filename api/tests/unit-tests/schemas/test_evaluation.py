@@ -204,8 +204,8 @@ def test_EvaluationParameters(llm_api_params):
             metrics_to_return=[
                 MetricType.Bias,
                 MetricType.BLEU,
-                MetricType.Coherence,
                 MetricType.ROUGE,
+                MetricType.SummaryCoherence,
                 MetricType.Toxicity,
             ],
             llm_api_params=llm_api_params,

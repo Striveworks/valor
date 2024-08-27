@@ -9,7 +9,6 @@ from valor_api.backend.core.llm_instructions_analysis import (
     generate_answer_relevance_verdicts_instruction,
     generate_bias_verdicts_instruction,
     generate_claims_instruction,
-    generate_coherence_instruction,
     generate_context_precision_verdicts_instruction,
     generate_context_recall_verdicts_instruction,
     generate_context_relevance_verdicts_instruction,
@@ -17,6 +16,7 @@ from valor_api.backend.core.llm_instructions_analysis import (
     generate_hallucination_verdicts_instruction,
     generate_opinions_instruction,
     generate_statements_instruction,
+    generate_summary_coherence_instruction,
     generate_toxicity_verdicts_instruction,
 )
 from valor_api.backend.metrics.metric_utils import trim_and_load_json
@@ -400,53 +400,6 @@ class LLMClient:
 
         return verdicts
 
-    def _coherence(
-        self,
-        text: str,
-        summary: str,
-    ) -> int:
-        """
-        Compute coherence, the collective quality of a summary.
-
-        Parameters
-        ----------
-        text: str
-            The text that was summarized.
-        summary: str
-            The summary to be evaluated.
-
-        Returns
-        -------
-        int
-            The coherence score will be evaluated as an integer, with 1 indicating the lowest coherence and 5 the highest coherence.
-        """
-        messages = [
-            {"role": "system", "content": DEFAULT_SYSTEM_PROMPT},
-            {
-                "role": "user",
-                "content": generate_coherence_instruction(
-                    text=text, summary=summary
-                ),
-            },
-        ]
-
-        response = self(messages)
-
-        try:
-            # Valid responses: "5", "\n5", "5\n", "5.", " 5", "5 {explanation}", etc.
-            ret = int(response.strip()[0])
-        except Exception:
-            raise InvalidLLMResponseError(
-                f"LLM response was not a valid coherence score: {response}"
-            )
-
-        if ret not in {1, 2, 3, 4, 5}:
-            raise InvalidLLMResponseError(
-                f"Coherence score was not an integer between 1 and 5: {ret}"
-            )
-
-        return ret
-
     def _generate_context_precision_verdicts(
         self,
         query: str,
@@ -717,6 +670,53 @@ class LLMClient:
 
         return verdicts
 
+    def _summary_coherence(
+        self,
+        text: str,
+        summary: str,
+    ) -> int:
+        """
+        Compute summary coherence, the collective quality of a summary.
+
+        Parameters
+        ----------
+        text: str
+            The text that was summarized.
+        summary: str
+            The summary to be evaluated.
+
+        Returns
+        -------
+        int
+            The summary coherence score will be evaluated as an integer, with 1 indicating the lowest summary coherence and 5 the highest summary coherence.
+        """
+        messages = [
+            {"role": "system", "content": DEFAULT_SYSTEM_PROMPT},
+            {
+                "role": "user",
+                "content": generate_summary_coherence_instruction(
+                    text=text, summary=summary
+                ),
+            },
+        ]
+
+        response = self(messages)
+
+        try:
+            # Valid responses: "5", "\n5", "5\n", "5.", " 5", "5 {explanation}", etc.
+            ret = int(response.strip()[0])
+        except Exception:
+            raise InvalidLLMResponseError(
+                f"LLM response was not a valid summary coherence score: {response}"
+            )
+
+        if ret not in {1, 2, 3, 4, 5}:
+            raise InvalidLLMResponseError(
+                f"Summary coherence score was not an integer between 1 and 5: {ret}"
+            )
+
+        return ret
+
     def _generate_toxicity_verdicts(
         self,
         opinions: list[str],
@@ -855,28 +855,6 @@ class LLMClient:
         return sum(
             1 for verdict in verdicts if verdict["verdict"] == "yes"
         ) / len(verdicts)
-
-    def coherence(
-        self,
-        text: str,
-        summary: str,
-    ) -> int:
-        """
-        Compute coherence, the collective quality of a summary.
-
-        Parameters
-        ----------
-        text: str
-            The text that was summarized.
-        summary: str
-            The summary to be evaluated.
-
-        Returns
-        -------
-        int
-            The coherence score will be evaluated as an integer, with 1 indicating the lowest coherence and 5 the highest coherence.
-        """
-        return self._coherence(text=text, summary=summary)
 
     def context_precision(
         self,
@@ -1081,6 +1059,28 @@ class LLMClient:
         return sum(
             1 for verdict in verdicts if verdict["verdict"] == "yes"
         ) / len(verdicts)
+
+    def summary_coherence(
+        self,
+        text: str,
+        summary: str,
+    ) -> int:
+        """
+        Compute summary coherence, the collective quality of a summary.
+
+        Parameters
+        ----------
+        text: str
+            The text that was summarized.
+        summary: str
+            The summary to be evaluated.
+
+        Returns
+        -------
+        int
+            The summary coherence score will be evaluated as an integer, with 1 indicating the lowest summary coherence and 5 the highest summary coherence.
+        """
+        return self._summary_coherence(text=text, summary=summary)
 
     def toxicity(
         self,
@@ -1486,7 +1486,7 @@ class MockLLMClient(LLMClient):
         ]
     }```"""
 
-            # Coherence score
+            # Summary coherence score
             elif (
                 "Your task is to rate the summary based on its coherence"
                 in processed_messages[1]["content"]

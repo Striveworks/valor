@@ -652,18 +652,6 @@ def mocked_bias(
     return ret_dict[text]
 
 
-def mocked_coherence(
-    self,
-    text: str,
-    summary: str,
-):
-    ret_dict = {
-        (SUMMARIZATION_TEXTS[0], SUMMARIZATION_PREDICTIONS[0]): 4,
-        (SUMMARIZATION_TEXTS[1], SUMMARIZATION_PREDICTIONS[1]): 5,
-    }
-    return ret_dict[(text, summary)]
-
-
 def mocked_context_precision(
     self,
     query: str,
@@ -732,6 +720,18 @@ def mocked_hallucination(
         (RAG_PREDICTIONS[2], tuple(RAG_CONTEXT[2])): 0.25,
     }
     return ret_dict[(text, tuple(context_list))]
+
+
+def mocked_summary_coherence(
+    self,
+    text: str,
+    summary: str,
+):
+    ret_dict = {
+        (SUMMARIZATION_TEXTS[0], SUMMARIZATION_PREDICTIONS[0]): 4,
+        (SUMMARIZATION_TEXTS[1], SUMMARIZATION_PREDICTIONS[1]): 5,
+    }
+    return ret_dict[(text, summary)]
 
 
 def mocked_toxicity(
@@ -879,7 +879,6 @@ def test__compute_text_generation_rag(
             schemas.AnswerRelevanceMetric: 0.6666666666666666,
             schemas.BiasMetric: 0.0,
             schemas.BLEUMetric: 0.3502270395690205,
-            schemas.CoherenceMetric: None,
             schemas.ContextPrecisionMetric: 1.0,
             schemas.ContextRecallMetric: 0.8,
             schemas.ContextRelevanceMetric: 0.75,
@@ -891,6 +890,7 @@ def test__compute_text_generation_rag(
                 "rougeL": 0.5925925925925926,
                 "rougeLsum": 0.5925925925925926,
             },
+            schemas.SummaryCoherenceMetric: None,
             schemas.ToxicityMetric: 0.0,
         },
         "uid1": {
@@ -898,7 +898,6 @@ def test__compute_text_generation_rag(
             schemas.AnswerRelevanceMetric: 0.2,
             schemas.BiasMetric: 0.0,
             schemas.BLEUMetric: 1.0,
-            schemas.CoherenceMetric: None,
             schemas.ContextPrecisionMetric: 1.0,
             schemas.ContextRecallMetric: 0.5,
             schemas.ContextRelevanceMetric: 1.0,
@@ -910,6 +909,7 @@ def test__compute_text_generation_rag(
                 "rougeL": 1.0,
                 "rougeLsum": 1.0,
             },
+            schemas.SummaryCoherenceMetric: None,
             schemas.ToxicityMetric: 0.0,
         },
         "uid2": {
@@ -917,7 +917,6 @@ def test__compute_text_generation_rag(
             schemas.AnswerRelevanceMetric: 0.2,
             schemas.BiasMetric: 0.0,
             schemas.BLEUMetric: 0.05434912989707719,
-            schemas.CoherenceMetric: None,
             schemas.ContextPrecisionMetric: 1.0,
             schemas.ContextRecallMetric: 0.2,
             schemas.ContextRelevanceMetric: 0.25,
@@ -929,6 +928,7 @@ def test__compute_text_generation_rag(
                 "rougeL": 0.18666666666666668,
                 "rougeLsum": 0.18666666666666668,
             },
+            schemas.SummaryCoherenceMetric: None,
             schemas.ToxicityMetric: 0.0,
         },
     }
@@ -1417,8 +1417,8 @@ def test_text_generation_content_gen(
     mocked_connection,
 )
 @patch(
-    "valor_api.backend.core.llm_clients.WrappedOpenAIClient.coherence",
-    mocked_coherence,
+    "valor_api.backend.core.llm_clients.WrappedOpenAIClient.summary_coherence",
+    mocked_summary_coherence,
 )
 def test_text_generation_summarization(
     db: Session,
@@ -1427,7 +1427,7 @@ def test_text_generation_summarization(
     summarization_data,
 ):
     metrics_to_return = [
-        MetricType.Coherence,
+        MetricType.SummaryCoherence,
     ]
 
     # default request
@@ -1470,10 +1470,10 @@ def test_text_generation_summarization(
 
     expected_values = {
         "uid0": {
-            "Coherence": 4,
+            "SummaryCoherence": 4,
         },
         "uid1": {
-            "Coherence": 5,
+            "SummaryCoherence": 5,
         },
     }
 

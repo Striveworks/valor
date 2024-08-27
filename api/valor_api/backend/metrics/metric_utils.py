@@ -114,13 +114,13 @@ def commit_results(
         | schemas.AnswerRelevanceMetric
         | schemas.BiasMetric
         | schemas.BLEUMetric
-        | schemas.CoherenceMetric
         | schemas.ContextPrecisionMetric
         | schemas.ContextRecallMetric
         | schemas.ContextRelevanceMetric
         | schemas.FaithfulnessMetric
         | schemas.HallucinationMetric
         | schemas.ROUGEMetric
+        | schemas.SummaryCoherenceMetric
         | schemas.ToxicityMetric
     ],
     evaluation_id: int,

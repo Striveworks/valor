@@ -55,13 +55,13 @@ class MetricType(str, Enum):
     AnswerRelevance = "AnswerRelevance"
     Bias = "Bias"
     BLEU = "BLEU"
-    Coherence = "Coherence"
     ContextPrecision = "ContextPrecision"
     ContextRecall = "ContextRecall"
     ContextRelevance = "ContextRelevance"
     Faithfulness = "Faithfulness"
     Hallucination = "Hallucination"
     ROUGE = "ROUGE"
+    SummaryCoherence = "SummaryCoherence"
     Toxicity = "Toxicity"
 
     @classmethod
@@ -118,13 +118,13 @@ class MetricType(str, Enum):
             cls.AnswerRelevance,
             cls.Bias,
             cls.BLEU,
-            cls.Coherence,
             cls.ContextPrecision,
             cls.ContextRecall,
             cls.ContextRelevance,
             cls.Faithfulness,
             cls.Hallucination,
             cls.ROUGE,
+            cls.SummaryCoherence,
             cls.Toxicity,
         }
 
