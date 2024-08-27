@@ -1,5 +1,6 @@
 import random
 
+import pandas as pd
 import pytest
 from valor_core import enums, schemas
 from valor_core.classification import (
@@ -10,8 +11,12 @@ from valor_core.classification import (
 
 
 def test_evaluate_image_clf(
-    evaluate_image_clf_groundtruths, evaluate_image_clf_predictions
+    evaluate_image_clf_groundtruths: list[schemas.GroundTruth],
+    evaluate_image_clf_predictions: list[schemas.Prediction],
+    evaluate_image_clf_expected: tuple,
 ):
+
+    expected_metrics, expected_confusion_matrices = evaluate_image_clf_expected
 
     eval_job = evaluate_classification(
         groundtruths=evaluate_image_clf_groundtruths,
@@ -19,133 +24,6 @@ def test_evaluate_image_clf(
     )
 
     eval_job_metrics = eval_job.metrics
-
-    expected_metrics = [
-        {"type": "Accuracy", "parameters": {"label_key": "k4"}, "value": 0.5},
-        {
-            "type": "ROCAUC",
-            "parameters": {"label_key": "k4"},
-            "value": 1.0,
-        },
-        {
-            "type": "Precision",
-            "value": 1.0,  # no false predictions
-            "label": {"key": "k4", "value": "v4"},
-        },
-        {
-            "type": "Recall",
-            "value": 0.5,  # img5 had the correct prediction, but not img6
-            "label": {"key": "k4", "value": "v4"},
-        },
-        {
-            "type": "F1",
-            "value": 0.6666666666666666,
-            "label": {"key": "k4", "value": "v4"},
-        },
-        {
-            "type": "Precision",
-            "value": 0.0,
-            "label": {"key": "k4", "value": "v8"},
-        },
-        {
-            "type": "Recall",
-            "value": 0.0,
-            "label": {"key": "k4", "value": "v8"},
-        },
-        {"type": "F1", "value": 0.0, "label": {"key": "k4", "value": "v8"}},
-        {
-            "type": "Precision",
-            "value": -1.0,
-            "label": {"key": "k4", "value": "v5"},
-        },
-        {
-            "type": "Recall",
-            "value": -1.0,
-            "label": {"key": "k4", "value": "v5"},
-        },
-        {"type": "F1", "value": -1.0, "label": {"key": "k4", "value": "v5"}},
-        {
-            "type": "Precision",
-            "value": -1.0,  # this value is -1 (not 0) because this label is never used anywhere; (k4, v8) has the higher score for img5, so it's chosen over (k4, v1)
-            "label": {"key": "k4", "value": "v1"},
-        },
-        {
-            "type": "Recall",
-            "value": -1.0,
-            "label": {"key": "k4", "value": "v1"},
-        },
-        {"type": "F1", "value": -1.0, "label": {"key": "k4", "value": "v1"}},
-        {"type": "Accuracy", "parameters": {"label_key": "k5"}, "value": 0.0},
-        {
-            "type": "ROCAUC",
-            "parameters": {"label_key": "k5"},
-            "value": 1.0,
-        },
-        {
-            "type": "Precision",
-            "value": 0.0,
-            "label": {"key": "k5", "value": "v1"},
-        },
-        {
-            "type": "Recall",
-            "value": 0.0,
-            "label": {"key": "k5", "value": "v1"},
-        },
-        {"type": "F1", "value": 0.0, "label": {"key": "k5", "value": "v1"}},
-        {
-            "type": "Precision",
-            "value": 0.0,
-            "label": {"key": "k5", "value": "v5"},
-        },
-        {
-            "type": "Recall",
-            "value": 0.0,
-            "label": {"key": "k5", "value": "v5"},
-        },
-        {"type": "F1", "value": 0.0, "label": {"key": "k5", "value": "v5"}},
-        {"type": "Accuracy", "parameters": {"label_key": "k3"}, "value": 0.0},
-        {"type": "ROCAUC", "parameters": {"label_key": "k3"}, "value": 1.0},
-        {
-            "type": "Precision",
-            "value": 0.0,
-            "label": {"key": "k3", "value": "v1"},
-        },
-        {
-            "type": "Recall",
-            "value": 0.0,
-            "label": {"key": "k3", "value": "v1"},
-        },
-        {"type": "F1", "value": 0.0, "label": {"key": "k3", "value": "v1"}},
-        {
-            "type": "Precision",
-            "value": 0.0,
-            "label": {"key": "k3", "value": "v3"},
-        },
-        {
-            "type": "Recall",
-            "value": 0.0,
-            "label": {"key": "k3", "value": "v3"},
-        },
-        {"type": "F1", "value": 0.0, "label": {"key": "k3", "value": "v3"}},
-    ]
-
-    expected_confusion_matrices = [
-        {
-            "label_key": "k5",
-            "entries": [{"prediction": "v1", "groundtruth": "v5", "count": 1}],
-        },
-        {
-            "label_key": "k4",
-            "entries": [
-                {"prediction": "v4", "groundtruth": "v4", "count": 1},
-                {"prediction": "v8", "groundtruth": "v4", "count": 1},
-            ],
-        },
-        {
-            "label_key": "k3",
-            "entries": [{"prediction": "v1", "groundtruth": "v3", "count": 1}],
-        },
-    ]
 
     for m in eval_job_metrics:
         if m["type"] not in [
@@ -218,68 +96,19 @@ def test_evaluate_image_clf(
 
 
 def test_evaluate_tabular_clf(
-    evaluate_tabular_clf_groundtruths, evaluate_tabular_clf_predictions
+    evaluate_tabular_clf_groundtruths_df: pd.DataFrame,
+    evaluate_tabular_clf_predictions_df: pd.DataFrame,
+    evaluate_tabular_clf_expected: tuple,
 ):
+    expected_metrics, expected_confusion_matrix = evaluate_tabular_clf_expected
+
     eval_job = evaluate_classification(
-        groundtruths=evaluate_tabular_clf_groundtruths,
-        predictions=evaluate_tabular_clf_predictions,
+        groundtruths=evaluate_tabular_clf_groundtruths_df,
+        predictions=evaluate_tabular_clf_predictions_df,
     )
 
     eval_job_metrics = eval_job.metrics
 
-    expected_metrics = [
-        {
-            "type": "Accuracy",
-            "parameters": {"label_key": "class"},
-            "value": 0.5,
-        },
-        {
-            "type": "ROCAUC",
-            "parameters": {"label_key": "class"},
-            "value": 0.7685185185185185,
-        },
-        {
-            "type": "Precision",
-            "value": 0.6666666666666666,
-            "label": {"key": "class", "value": "1"},
-        },
-        {
-            "type": "Recall",
-            "value": 0.3333333333333333,
-            "label": {"key": "class", "value": "1"},
-        },
-        {
-            "type": "F1",
-            "value": 0.4444444444444444,
-            "label": {"key": "class", "value": "1"},
-        },
-        {
-            "type": "Precision",
-            "value": 0.0,
-            "label": {"key": "class", "value": "2"},
-        },
-        {
-            "type": "Recall",
-            "value": 0.0,
-            "label": {"key": "class", "value": "2"},
-        },
-        {"type": "F1", "value": 0.0, "label": {"key": "class", "value": "2"}},
-        {
-            "type": "Precision",
-            "value": 0.5,
-            "label": {"key": "class", "value": "0"},
-        },
-        {
-            "type": "Recall",
-            "value": 1.0,
-            "label": {"key": "class", "value": "0"},
-        },
-        {
-            "type": "F1",
-            "value": 0.6666666666666666,
-            "label": {"key": "class", "value": "0"},
-        },
-    ]
     for m in eval_job_metrics:
         if m["type"] not in [
             "PrecisionRecallCurve",
@@ -290,17 +119,6 @@ def test_evaluate_tabular_clf(
         assert m in eval_job_metrics
 
     confusion_matrices = eval_job.confusion_matrices
-
-    expected_confusion_matrix = {
-        "label_key": "class",
-        "entries": [
-            {"prediction": "0", "groundtruth": "0", "count": 3},
-            {"prediction": "0", "groundtruth": "1", "count": 3},
-            {"prediction": "1", "groundtruth": "1", "count": 2},
-            {"prediction": "1", "groundtruth": "2", "count": 1},
-            {"prediction": "2", "groundtruth": "1", "count": 1},
-        ],
-    }
 
     # validate return schema
     assert confusion_matrices
@@ -337,7 +155,17 @@ def test_evaluate_tabular_clf(
 def test_evaluate_classification_with_label_maps(
     gt_clfs_with_label_maps: list[schemas.GroundTruth],
     pred_clfs_with_label_maps: list[schemas.Prediction],
+    cat_label_map: dict,
+    evaluate_classification_with_label_maps_expected: tuple,
 ):
+
+    (
+        cat_expected_metrics,
+        cat_expected_cm,
+        pr_expected_values,
+        detailed_pr_expected_answers,
+    ) = evaluate_classification_with_label_maps_expected
+
     # check baseline case, where we have mismatched ground truth and prediction label keys
     with pytest.raises(ValueError) as e:
         evaluate_classification(
@@ -346,177 +174,10 @@ def test_evaluate_classification_with_label_maps(
         )
     assert "label keys must match" in str(e)
 
-    # now try using a label map to connect all the cats
-    label_mapping = {
-        # map the ground truths
-        schemas.Label(key="class", value="tabby cat"): schemas.Label(
-            key="special_class", value="cat_type1"
-        ),
-        schemas.Label(key="class", value="siamese cat"): schemas.Label(
-            key="special_class", value="cat_type1"
-        ),
-        schemas.Label(key="class", value="british shorthair"): schemas.Label(
-            key="special_class", value="cat_type1"
-        ),
-        # map the predictions
-        schemas.Label(key="class", value="cat"): schemas.Label(
-            key="special_class", value="cat_type1"
-        ),
-        schemas.Label(key="class_name", value="cat"): schemas.Label(
-            key="special_class", value="cat_type1"
-        ),
-    }
-
-    cat_expected_metrics = [
-        {"type": "Accuracy", "parameters": {"label_key": "k3"}, "value": 0.0},
-        {"type": "ROCAUC", "parameters": {"label_key": "k3"}, "value": 1.0},
-        {
-            "type": "Precision",
-            "value": 0.0,
-            "label": {"key": "k3", "value": "v1"},
-        },
-        {
-            "type": "Recall",
-            "value": 0.0,
-            "label": {"key": "k3", "value": "v1"},
-        },
-        {"type": "F1", "value": 0.0, "label": {"key": "k3", "value": "v1"}},
-        {
-            "type": "Precision",
-            "value": 0.0,
-            "label": {"key": "k3", "value": "v3"},
-        },
-        {
-            "type": "Recall",
-            "value": 0.0,
-            "label": {"key": "k3", "value": "v3"},
-        },
-        {"type": "F1", "value": 0.0, "label": {"key": "k3", "value": "v3"}},
-        {"type": "Accuracy", "parameters": {"label_key": "k5"}, "value": 0.0},
-        {"type": "ROCAUC", "parameters": {"label_key": "k5"}, "value": 1.0},
-        {
-            "type": "Precision",
-            "value": 0.0,
-            "label": {"key": "k5", "value": "v5"},
-        },
-        {
-            "type": "Recall",
-            "value": 0.0,
-            "label": {"key": "k5", "value": "v5"},
-        },
-        {"type": "F1", "value": 0.0, "label": {"key": "k5", "value": "v5"}},
-        {
-            "type": "Precision",
-            "value": 0.0,
-            "label": {"key": "k5", "value": "v1"},
-        },
-        {
-            "type": "Recall",
-            "value": 0.0,
-            "label": {"key": "k5", "value": "v1"},
-        },
-        {"type": "F1", "value": 0.0, "label": {"key": "k5", "value": "v1"}},
-        {
-            "type": "Accuracy",
-            "parameters": {"label_key": "special_class"},
-            "value": 1.0,
-        },
-        {
-            "type": "ROCAUC",
-            "parameters": {"label_key": "special_class"},
-            "value": 1.0,
-        },
-        {
-            "type": "Precision",
-            "value": 1.0,
-            "label": {"key": "special_class", "value": "cat_type1"},
-        },
-        {
-            "type": "Recall",
-            "value": 1.0,
-            "label": {"key": "special_class", "value": "cat_type1"},
-        },
-        {
-            "type": "F1",
-            "value": 1.0,
-            "label": {"key": "special_class", "value": "cat_type1"},
-        },
-        {"type": "Accuracy", "parameters": {"label_key": "k4"}, "value": 0.5},
-        {
-            "type": "ROCAUC",
-            "parameters": {
-                "label_key": "k4",
-            },
-            "value": 1.0,
-        },
-        {
-            "type": "Precision",
-            "value": -1.0,
-            "label": {"key": "k4", "value": "v5"},
-        },
-        {
-            "type": "Recall",
-            "value": -1.0,
-            "label": {"key": "k4", "value": "v5"},
-        },
-        {"type": "F1", "value": -1.0, "label": {"key": "k4", "value": "v5"}},
-        {
-            "type": "Precision",
-            "value": -1.0,
-            "label": {"key": "k4", "value": "v1"},
-        },
-        {
-            "type": "Recall",
-            "value": -1.0,
-            "label": {"key": "k4", "value": "v1"},
-        },
-        {"type": "F1", "value": -1.0, "label": {"key": "k4", "value": "v1"}},
-        {
-            "type": "Precision",
-            "value": 1.0,
-            "label": {"key": "k4", "value": "v4"},
-        },
-        {
-            "type": "Recall",
-            "value": 0.5,
-            "label": {"key": "k4", "value": "v4"},
-        },
-        {
-            "type": "F1",
-            "value": 0.6666666666666666,
-            "label": {"key": "k4", "value": "v4"},
-        },
-        {
-            "type": "Precision",
-            "value": 0.0,
-            "label": {"key": "k4", "value": "v8"},
-        },
-        {
-            "type": "Recall",
-            "value": 0.0,
-            "label": {"key": "k4", "value": "v8"},
-        },
-        {"type": "F1", "value": 0.0, "label": {"key": "k4", "value": "v8"}},
-    ]
-
-    cat_expected_cm = [
-        {
-            "label_key": "special_class",
-            "entries": [
-                {
-                    "prediction": "cat_type1",
-                    "groundtruth": "cat_type1",
-                    "count": 3,
-                }
-            ],
-        }
-        # other label keys not included for testing purposes
-    ]
-
     eval_job = evaluate_classification(
         groundtruths=gt_clfs_with_label_maps,
         predictions=pred_clfs_with_label_maps,
-        label_map=label_mapping,
+        label_map=cat_label_map,
         pr_curve_max_examples=3,
         metrics_to_return=[
             enums.MetricType.Precision,
@@ -528,53 +189,6 @@ def test_evaluate_classification_with_label_maps(
             enums.MetricType.DetailedPrecisionRecallCurve,
         ],
     )
-
-    pr_expected_values = {
-        # k3
-        (0, "k3", "v1", "0.1", "fp"): 1,
-        (0, "k3", "v1", "0.1", "tn"): 2,
-        (0, "k3", "v3", "0.1", "fn"): 1,
-        (0, "k3", "v3", "0.1", "tn"): 2,
-        (0, "k3", "v3", "0.1", "accuracy"): 2 / 3,
-        (0, "k3", "v3", "0.1", "precision"): -1,
-        (0, "k3", "v3", "0.1", "recall"): 0,
-        (0, "k3", "v3", "0.1", "f1_score"): -1,
-        # k4
-        (1, "k4", "v1", "0.1", "fp"): 1,
-        (1, "k4", "v1", "0.1", "tn"): 2,
-        (1, "k4", "v4", "0.1", "fn"): 1,
-        (1, "k4", "v4", "0.1", "tn"): 1,
-        (1, "k4", "v4", "0.1", "tp"): 1,
-        (1, "k4", "v4", "0.9", "tp"): 0,
-        (1, "k4", "v4", "0.9", "tn"): 1,
-        (1, "k4", "v4", "0.9", "fn"): 2,
-        (1, "k4", "v5", "0.1", "fp"): 1,
-        (1, "k4", "v5", "0.1", "tn"): 2,
-        (1, "k4", "v5", "0.3", "fp"): 0,
-        (1, "k4", "v5", "0.3", "tn"): 3,
-        (1, "k4", "v8", "0.1", "tn"): 2,
-        (1, "k4", "v8", "0.6", "fp"): 0,
-        (1, "k4", "v8", "0.6", "tn"): 3,
-        # k5
-        (2, "k5", "v1", "0.1", "fp"): 1,
-        (2, "k5", "v1", "0.1", "tn"): 2,
-        (2, "k5", "v5", "0.1", "fn"): 1,
-        (
-            2,
-            "k5",
-            "v5",
-            "0.1",
-            "tn",
-        ): 2,
-        (2, "k5", "v1", "0.1", "accuracy"): 2 / 3,
-        (2, "k5", "v1", "0.1", "precision"): 0,
-        (2, "k5", "v1", "0.1", "recall"): -1,
-        (2, "k5", "v1", "0.1", "f1_score"): -1,
-        # special_class
-        (3, "special_class", "cat_type1", "0.1", "tp"): 3,
-        (3, "special_class", "cat_type1", "0.1", "tn"): 0,
-        (3, "special_class", "cat_type1", "0.95", "tp"): 3,
-    }
 
     pr_metrics = []
     detailed_pr_metrics = []
@@ -605,39 +219,6 @@ def test_evaluate_classification_with_label_maps(
         )
 
     # check DetailedPrecisionRecallCurve
-    detailed_pr_expected_answers = {
-        # k3
-        (0, "v1", "0.1", "tp"): {"all": 0, "total": 0},
-        (0, "v1", "0.1", "fp"): {
-            "misclassifications": 1,
-            "total": 1,
-        },
-        (0, "v1", "0.1", "tn"): {"all": 2, "total": 2},
-        (0, "v1", "0.1", "fn"): {
-            "no_predictions": 0,
-            "misclassifications": 0,
-            "total": 0,
-        },
-        # k4
-        (1, "v1", "0.1", "tp"): {"all": 0, "total": 0},
-        (1, "v1", "0.1", "fp"): {
-            "misclassifications": 1,
-            "total": 1,
-        },
-        (1, "v1", "0.1", "tn"): {"all": 2, "total": 2},
-        (1, "v1", "0.1", "fn"): {
-            "no_predictions": 0,
-            "misclassifications": 0,
-            "total": 0,
-        },
-        (1, "v4", "0.1", "fn"): {
-            "no_predictions": 0,
-            "misclassifications": 1,
-            "total": 1,
-        },
-        (1, "v8", "0.1", "tn"): {"all": 2, "total": 2},
-    }
-
     for (
         index,
         value,
@@ -721,49 +302,8 @@ def test_evaluate_classification_mismatched_label_keys(
 
 def test_evaluate_classification_model_with_no_predictions(
     gt_clfs: list[schemas.GroundTruth],
+    evaluate_classification_model_with_no_predictions_expected: list,
 ):
-
-    expected_metrics = [
-        {"type": "Accuracy", "parameters": {"label_key": "k5"}, "value": 0.0},
-        {"type": "ROCAUC", "parameters": {"label_key": "k5"}, "value": 0.0},
-        {
-            "type": "Precision",
-            "value": 0.0,
-            "label": {"key": "k5", "value": "v5"},
-        },
-        {
-            "type": "Recall",
-            "value": 0.0,
-            "label": {"key": "k5", "value": "v5"},
-        },
-        {"type": "F1", "value": 0.0, "label": {"key": "k5", "value": "v5"}},
-        {"type": "Accuracy", "parameters": {"label_key": "k4"}, "value": 0.0},
-        {"type": "ROCAUC", "parameters": {"label_key": "k4"}, "value": 0.0},
-        {
-            "type": "Precision",
-            "value": 0.0,
-            "label": {"key": "k4", "value": "v4"},
-        },
-        {
-            "type": "Recall",
-            "value": 0.0,
-            "label": {"key": "k4", "value": "v4"},
-        },
-        {"type": "F1", "value": 0.0, "label": {"key": "k4", "value": "v4"}},
-        {"type": "Accuracy", "parameters": {"label_key": "k3"}, "value": 0.0},
-        {"type": "ROCAUC", "parameters": {"label_key": "k3"}, "value": 0.0},
-        {
-            "type": "Precision",
-            "value": 0.0,
-            "label": {"key": "k3", "value": "v3"},
-        },
-        {
-            "type": "Recall",
-            "value": 0.0,
-            "label": {"key": "k3", "value": "v3"},
-        },
-        {"type": "F1", "value": 0.0, "label": {"key": "k3", "value": "v3"}},
-    ]
 
     # can't pass empty lists, but can pass predictions without annotations
     with pytest.raises(ValueError) as e:
@@ -786,12 +326,25 @@ def test_evaluate_classification_model_with_no_predictions(
     computed_metrics = evaluation.metrics
 
     assert all([metric["value"] == 0 for metric in computed_metrics])
-    assert all([metric in computed_metrics for metric in expected_metrics])
-    assert all([metric in expected_metrics for metric in computed_metrics])
+    assert all(
+        [
+            metric in computed_metrics
+            for metric in evaluate_classification_model_with_no_predictions_expected
+        ]
+    )
+    assert all(
+        [
+            metric
+            in evaluate_classification_model_with_no_predictions_expected
+            for metric in computed_metrics
+        ]
+    )
 
 
 def test_compute_confusion_matrix_at_label_key_using_label_map(
-    classification_functional_test_data,
+    classification_functional_test_data: tuple,
+    mammal_label_map: dict,
+    compute_confusion_matrix_at_label_key_using_label_map_expected: list,
 ):
     """
     Test grouping using the label_map
@@ -802,53 +355,30 @@ def test_compute_confusion_matrix_at_label_key_using_label_map(
     eval_job = evaluate_classification(
         groundtruths=groundtruths,
         predictions=predictions,
-        label_map={
-            schemas.Label(key="animal", value="dog"): schemas.Label(
-                key="class", value="mammal"
-            ),
-            schemas.Label(key="animal", value="cat"): schemas.Label(
-                key="class", value="mammal"
-            ),
-            schemas.Label(key="animal", value="bird"): schemas.Label(
-                key="class", value="avian"
-            ),
-        },
+        label_map=mammal_label_map,
     )
 
     cm = eval_job.confusion_matrices
 
-    expected_entries = [
-        {
-            "label_key": "class",
-            "entries": [
-                {"prediction": "avian", "groundtruth": "avian", "count": 1},
-                {"prediction": "mammal", "groundtruth": "avian", "count": 2},
-                {"prediction": "mammal", "groundtruth": "mammal", "count": 3},
-            ],
-        },
-        {
-            "label_key": "color",
-            "entries": [
-                {"prediction": "blue", "groundtruth": "white", "count": 1},
-                {"prediction": "red", "groundtruth": "black", "count": 1},
-                {"prediction": "red", "groundtruth": "red", "count": 2},
-                {"prediction": "white", "groundtruth": "blue", "count": 1},
-                {"prediction": "white", "groundtruth": "white", "count": 1},
-            ],
-        },
-    ]
-
     assert cm
-    assert len(cm) == len(expected_entries)
+    assert len(cm) == len(
+        compute_confusion_matrix_at_label_key_using_label_map_expected
+    )
     for entry in cm:
-        assert entry in expected_entries
-    for entry in expected_entries:
+        assert (
+            entry
+            in compute_confusion_matrix_at_label_key_using_label_map_expected
+        )
+    for (
+        entry
+    ) in compute_confusion_matrix_at_label_key_using_label_map_expected:
         assert entry in cm
 
 
 def test_rocauc_with_label_map(
     classification_functional_test_prediction_df,
     classification_functional_test_groundtruth_df,
+    rocauc_with_label_map_expected: list,
 ):
     """Test ROC auc computation using a label_map to group labels together. Matches the following output from sklearn:
 
@@ -884,31 +414,26 @@ def test_rocauc_with_label_map(
         m.to_dict() for m in _calculate_rocauc(joint_df=joint_df)
     ]
 
-    expected_metrics = [
-        {
-            "parameters": {"label_key": "animal"},
-            "value": 0.8009259259259259,
-            "type": "ROCAUC",
-        },
-        {
-            "parameters": {"label_key": "color"},
-            "value": 0.43125,
-            "type": "ROCAUC",
-        },
-    ]
-
     for entry in computed_metrics:
-        assert entry in expected_metrics
-    for entry in expected_metrics:
+        assert entry in rocauc_with_label_map_expected
+    for entry in rocauc_with_label_map_expected:
         assert entry in computed_metrics
 
 
 def test_compute_classification(
-    classification_functional_test_data,
+    classification_functional_test_data, compute_classification_expected: list
 ):
     """
     Tests the _compute_classification function.
     """
+
+    (
+        expected_metrics,
+        expected_cm,
+        expected_pr_curves,
+        expected_detailed_pr_curves,
+    ) = compute_classification_expected
+
     groundtruths, predictions = classification_functional_test_data
 
     eval_job = evaluate_classification(
@@ -940,231 +465,6 @@ def test_compute_classification(
         if m["type"] == "DetailedPrecisionRecallCurve"
     ]
     confusion_matrices = eval_job.confusion_matrices
-
-    expected_metrics = [
-        {
-            "label": {"key": "animal", "value": "bird"},
-            "value": 1.0,
-            "type": "Precision",
-        },
-        {
-            "label": {"key": "animal", "value": "bird"},
-            "value": 0.3333333333333333,
-            "type": "Recall",
-        },
-        {
-            "label": {"key": "animal", "value": "bird"},
-            "value": 0.5,
-            "type": "F1",
-        },
-        {
-            "label": {"key": "animal", "value": "cat"},
-            "value": 0.25,
-            "type": "Precision",
-        },
-        {
-            "label": {"key": "animal", "value": "cat"},
-            "value": 1.0,
-            "type": "Recall",
-        },
-        {
-            "label": {"key": "animal", "value": "cat"},
-            "value": 0.4,
-            "type": "F1",
-        },
-        {
-            "label": {"key": "animal", "value": "dog"},
-            "value": 0.0,
-            "type": "Precision",
-        },
-        {
-            "label": {"key": "animal", "value": "dog"},
-            "value": 0.0,
-            "type": "Recall",
-        },
-        {
-            "label": {"key": "animal", "value": "dog"},
-            "value": 0.0,
-            "type": "F1",
-        },
-        {
-            "label": {"key": "color", "value": "blue"},
-            "value": 0.0,
-            "type": "Precision",
-        },
-        {
-            "label": {"key": "color", "value": "blue"},
-            "value": 0.0,
-            "type": "Recall",
-        },
-        {
-            "label": {"key": "color", "value": "blue"},
-            "value": 0.0,
-            "type": "F1",
-        },
-        {
-            "label": {"key": "color", "value": "red"},
-            "value": 0.6666666666666666,
-            "type": "Precision",
-        },
-        {
-            "label": {"key": "color", "value": "red"},
-            "value": 1.0,
-            "type": "Recall",
-        },
-        {
-            "label": {"key": "color", "value": "red"},
-            "value": 0.8,
-            "type": "F1",
-        },
-        {
-            "label": {"key": "color", "value": "white"},
-            "value": 0.5,
-            "type": "Precision",
-        },
-        {
-            "label": {"key": "color", "value": "white"},
-            "value": 0.5,
-            "type": "Recall",
-        },
-        {
-            "label": {"key": "color", "value": "white"},
-            "value": 0.5,
-            "type": "F1",
-        },
-        {
-            "label": {"key": "color", "value": "black"},
-            "value": 0.0,
-            "type": "Precision",
-        },
-        {
-            "label": {"key": "color", "value": "black"},
-            "value": 0.0,
-            "type": "Recall",
-        },
-        {
-            "label": {"key": "color", "value": "black"},
-            "value": 0.0,
-            "type": "F1",
-        },
-        {
-            "parameters": {"label_key": "animal"},
-            "value": 0.3333333333333333,
-            "type": "Accuracy",
-        },
-        {
-            "parameters": {"label_key": "color"},
-            "value": 0.5,
-            "type": "Accuracy",
-        },
-        {
-            "parameters": {"label_key": "animal"},
-            "value": 0.8009259259259259,
-            "type": "ROCAUC",
-        },
-        {
-            "parameters": {"label_key": "color"},
-            "value": 0.43125,
-            "type": "ROCAUC",
-        },
-    ]
-    expected_pr_curves = {
-        # bird
-        ("bird", 0.05, "tp"): 3,
-        ("bird", 0.05, "fp"): 1,
-        ("bird", 0.05, "tn"): 2,
-        ("bird", 0.05, "fn"): 0,
-        ("bird", 0.3, "tp"): 1,
-        ("bird", 0.3, "fn"): 2,
-        ("bird", 0.3, "fp"): 0,
-        ("bird", 0.3, "tn"): 3,
-        ("bird", 0.65, "fn"): 3,
-        ("bird", 0.65, "tn"): 3,
-        ("bird", 0.65, "tp"): 0,
-        ("bird", 0.65, "fp"): 0,
-        # dog
-        ("dog", 0.05, "tp"): 2,
-        ("dog", 0.05, "fp"): 3,
-        ("dog", 0.05, "tn"): 1,
-        ("dog", 0.05, "fn"): 0,
-        ("dog", 0.45, "fn"): 2,
-        ("dog", 0.45, "fp"): 1,
-        ("dog", 0.45, "tn"): 3,
-        ("dog", 0.45, "tp"): 0,
-        ("dog", 0.8, "fn"): 2,
-        ("dog", 0.8, "fp"): 0,
-        ("dog", 0.8, "tn"): 4,
-        ("dog", 0.8, "tp"): 0,
-        # cat
-        ("cat", 0.05, "tp"): 1,
-        ("cat", 0.05, "tn"): 0,
-        ("cat", 0.05, "fp"): 5,
-        ("cat", 0.05, "fn"): 0,
-        ("cat", 0.95, "tp"): 1,
-        ("cat", 0.95, "fp"): 0,
-        ("cat", 0.95, "tn"): 5,
-        ("cat", 0.95, "fn"): 0,
-    }
-    expected_detailed_pr_curves = {
-        # bird
-        ("bird", 0.05, "tp"): {"all": 3, "total": 3},
-        ("bird", 0.05, "fp"): {
-            "misclassifications": 1,
-            "total": 1,
-        },
-        ("bird", 0.05, "tn"): {"all": 2, "total": 2},
-        ("bird", 0.05, "fn"): {
-            "no_predictions": 0,
-            "misclassifications": 0,
-            "total": 0,
-        },
-        # dog
-        ("dog", 0.05, "tp"): {"all": 2, "total": 2},
-        ("dog", 0.05, "fp"): {
-            "misclassifications": 3,
-            "total": 3,
-        },
-        ("dog", 0.05, "tn"): {"all": 1, "total": 1},
-        ("dog", 0.8, "fn"): {
-            "no_predictions": 1,
-            "misclassifications": 1,
-            "total": 2,
-        },
-        # cat
-        ("cat", 0.05, "tp"): {"all": 1, "total": 1},
-        ("cat", 0.05, "fp"): {
-            "misclassifications": 5,
-            "total": 5,
-        },
-        ("cat", 0.05, "tn"): {"all": 0, "total": 0},
-        ("cat", 0.8, "fn"): {
-            "no_predictions": 0,
-            "misclassifications": 0,
-            "total": 0,
-        },
-    }
-    expected_cm = [
-        {
-            "label_key": "animal",
-            "entries": [
-                {"prediction": "bird", "groundtruth": "bird", "count": 1},
-                {"prediction": "cat", "groundtruth": "bird", "count": 1},
-                {"prediction": "cat", "groundtruth": "cat", "count": 1},
-                {"prediction": "cat", "groundtruth": "dog", "count": 2},
-                {"prediction": "dog", "groundtruth": "bird", "count": 1},
-            ],
-        },
-        {
-            "label_key": "color",
-            "entries": [
-                {"prediction": "blue", "groundtruth": "white", "count": 1},
-                {"prediction": "red", "groundtruth": "black", "count": 1},
-                {"prediction": "red", "groundtruth": "red", "count": 2},
-                {"prediction": "white", "groundtruth": "blue", "count": 1},
-                {"prediction": "white", "groundtruth": "white", "count": 1},
-            ],
-        },
-    ]
 
     # assert base metrics
     for actual, expected in [
@@ -1260,196 +560,16 @@ def test_compute_classification(
     )
 
 
-def test_pr_curves_multiple_predictions_per_groundtruth():
+def test_pr_curves_multiple_predictions_per_groundtruth(
+    multiclass_pr_curve_groundtruths: list,
+    multiclass_pr_curve_predictions: list,
+    test_pr_curves_multiple_predictions_per_groundtruth_expected: dict,
+):
     """Test that we get back the expected results when creating PR curves with multiple predictions per groundtruth."""
-    groundtruths = [
-        schemas.GroundTruth(
-            datum=schemas.Datum(uid="datum0", metadata=None),
-            annotations=[
-                schemas.Annotation(
-                    labels=[
-                        schemas.Label(
-                            key="class_label", value="cat", score=None
-                        )
-                    ],
-                )
-            ],
-        ),
-        schemas.GroundTruth(
-            datum=schemas.Datum(uid="datum1", metadata=None),
-            annotations=[
-                schemas.Annotation(
-                    labels=[
-                        schemas.Label(
-                            key="class_label", value="bee", score=None
-                        )
-                    ],
-                )
-            ],
-        ),
-        schemas.GroundTruth(
-            datum=schemas.Datum(uid="datum2", metadata=None),
-            annotations=[
-                schemas.Annotation(
-                    labels=[
-                        schemas.Label(
-                            key="class_label", value="cat", score=None
-                        )
-                    ],
-                )
-            ],
-        ),
-        schemas.GroundTruth(
-            datum=schemas.Datum(uid="datum3", metadata=None),
-            annotations=[
-                schemas.Annotation(
-                    labels=[
-                        schemas.Label(
-                            key="class_label", value="bee", score=None
-                        )
-                    ],
-                )
-            ],
-        ),
-        schemas.GroundTruth(
-            datum=schemas.Datum(uid="datum4", metadata=None),
-            annotations=[
-                schemas.Annotation(
-                    labels=[
-                        schemas.Label(
-                            key="class_label", value="dog", score=None
-                        )
-                    ],
-                )
-            ],
-        ),
-    ]
-    predictions = [
-        schemas.Prediction(
-            datum=schemas.Datum(uid="datum0", metadata=None),
-            annotations=[
-                schemas.Annotation(
-                    labels=[
-                        schemas.Label(
-                            key="class_label",
-                            value="cat",
-                            score=0.44598543489942505,
-                        ),
-                        schemas.Label(
-                            key="class_label",
-                            value="dog",
-                            score=0.3255517969601126,
-                        ),
-                        schemas.Label(
-                            key="class_label",
-                            value="bee",
-                            score=0.22846276814046224,
-                        ),
-                    ],
-                )
-            ],
-        ),
-        schemas.Prediction(
-            datum=schemas.Datum(uid="datum1", metadata=None),
-            annotations=[
-                schemas.Annotation(
-                    labels=[
-                        schemas.Label(
-                            key="class_label",
-                            value="cat",
-                            score=0.4076893257212283,
-                        ),
-                        schemas.Label(
-                            key="class_label",
-                            value="dog",
-                            score=0.14780458563955237,
-                        ),
-                        schemas.Label(
-                            key="class_label",
-                            value="bee",
-                            score=0.4445060886392194,
-                        ),
-                    ],
-                )
-            ],
-        ),
-        schemas.Prediction(
-            datum=schemas.Datum(uid="datum2", metadata=None),
-            annotations=[
-                schemas.Annotation(
-                    labels=[
-                        schemas.Label(
-                            key="class_label",
-                            value="cat",
-                            score=0.25060075263871917,
-                        ),
-                        schemas.Label(
-                            key="class_label",
-                            value="dog",
-                            score=0.3467428086425673,
-                        ),
-                        schemas.Label(
-                            key="class_label",
-                            value="bee",
-                            score=0.4026564387187136,
-                        ),
-                    ],
-                )
-            ],
-        ),
-        schemas.Prediction(
-            datum=schemas.Datum(uid="datum3", metadata=None),
-            annotations=[
-                schemas.Annotation(
-                    labels=[
-                        schemas.Label(
-                            key="class_label",
-                            value="cat",
-                            score=0.2003514145616792,
-                        ),
-                        schemas.Label(
-                            key="class_label",
-                            value="dog",
-                            score=0.2485912151889644,
-                        ),
-                        schemas.Label(
-                            key="class_label",
-                            value="bee",
-                            score=0.5510573702493565,
-                        ),
-                    ],
-                )
-            ],
-        ),
-        schemas.Prediction(
-            datum=schemas.Datum(uid="datum4", metadata=None),
-            annotations=[
-                schemas.Annotation(
-                    labels=[
-                        schemas.Label(
-                            key="class_label",
-                            value="cat",
-                            score=0.33443897813714385,
-                        ),
-                        schemas.Label(
-                            key="class_label",
-                            value="dog",
-                            score=0.5890646197236098,
-                        ),
-                        schemas.Label(
-                            key="class_label",
-                            value="bee",
-                            score=0.07649640213924616,
-                        ),
-                    ],
-                )
-            ],
-        ),
-    ]
 
     eval_job = evaluate_classification(
-        groundtruths=groundtruths,
-        predictions=predictions,
+        groundtruths=multiclass_pr_curve_groundtruths,
+        predictions=multiclass_pr_curve_predictions,
         metrics_to_return=[enums.MetricType.PrecisionRecallCurve],
     )
 
@@ -1457,8 +577,6 @@ def test_pr_curves_multiple_predictions_per_groundtruth():
 
     # there are two cat, two bee, and one dog groundtruths
     # once we raise the score threshold above the maximum score, we expect the tps to become fns and the fps to become tns
-
-    # start by testing bee
     def _get_specific_keys_from_pr_output(output_dict):
         return {
             k: v
@@ -1466,61 +584,16 @@ def test_pr_curves_multiple_predictions_per_groundtruth():
             if k in ["tp", "fp", "tn", "fn"]
         }
 
-    assert _get_specific_keys_from_pr_output(output["bee"][0.05]) == {
-        "tp": 2.0,
-        "fp": 3.0,
-        "fn": 0.0,
-        "tn": 0.0,
-    }
-    assert _get_specific_keys_from_pr_output(output["bee"][0.55]) == {
-        "tp": 1.0,
-        "fp": 0.0,
-        "fn": 1.0,
-        "tn": 3.0,
-    }
-    assert _get_specific_keys_from_pr_output(output["bee"][0.95]) == {
-        "tp": 0.0,
-        "fp": 0.0,
-        "fn": 2.0,
-        "tn": 3.0,
-    }
-
-    # cat
-    assert _get_specific_keys_from_pr_output(output["cat"][0.05]) == {
-        "tp": 2.0,
-        "fp": 3.0,
-        "fn": 0.0,
-        "tn": 0.0,
-    }
-    assert _get_specific_keys_from_pr_output(output["cat"][0.40]) == {
-        "tp": 1.0,
-        "fp": 1.0,
-        "fn": 1.0,
-        "tn": 2.0,
-    }
-    assert _get_specific_keys_from_pr_output(output["cat"][0.95]) == {
-        "tp": 0.0,
-        "fp": 0.0,
-        "fn": 2.0,
-        "tn": 3.0,
-    }
-
-    # dog
-    assert _get_specific_keys_from_pr_output(output["dog"][0.05]) == {
-        "tp": 1.0,
-        "fp": 4.0,
-        "fn": 0.0,
-        "tn": 0.0,
-    }
-    assert _get_specific_keys_from_pr_output(output["dog"][0.55]) == {
-        "tp": 1.0,
-        "fp": 0.0,
-        "fn": 0.0,
-        "tn": 4.0,
-    }
-    assert _get_specific_keys_from_pr_output(output["dog"][0.95]) == {
-        "tp": 0.0,
-        "fp": 0.0,
-        "fn": 1.0,
-        "tn": 4.0,
-    }
+    for (
+        animal,
+        thresholds,
+    ) in test_pr_curves_multiple_predictions_per_groundtruth_expected.items():
+        for threshold in thresholds.keys():
+            assert (
+                _get_specific_keys_from_pr_output(output[animal][threshold])
+                == test_pr_curves_multiple_predictions_per_groundtruth_expected[
+                    animal
+                ][
+                    threshold
+                ]
+            )
