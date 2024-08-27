@@ -1,4 +1,3 @@
-import gc
 import time
 from collections import defaultdict
 
@@ -8,16 +7,16 @@ from valor_core import enums, metrics, schemas, utilities
 
 
 def _calculate_confusion_matrix_df(
-    merged_groundtruths_and_predictions_df: pd.DataFrame,
+    joint_df_filtered_on_best_score: pd.DataFrame,
 ) -> tuple[pd.DataFrame, list[metrics.ConfusionMatrix]]:
     """Calculate our confusion matrix dataframe."""
 
     cm_counts_df = (
-        merged_groundtruths_and_predictions_df[
-            ["label_key", "pd_label_value", "gt_label_value"]
+        joint_df_filtered_on_best_score[
+            ["label_key", "label_value_pd", "label_value_gt"]
         ]
         .groupby(
-            ["label_key", "pd_label_value", "gt_label_value"],
+            ["label_key", "label_value_pd", "label_value_gt"],
             as_index=False,
             dropna=False,
         )
@@ -25,7 +24,7 @@ def _calculate_confusion_matrix_df(
     )
 
     cm_counts_df["true_positive_flag"] = (
-        cm_counts_df["pd_label_value"] == cm_counts_df["gt_label_value"]
+        cm_counts_df["label_value_pd"] == cm_counts_df["label_value_gt"]
     )
 
     # resolve pandas typing error
@@ -37,19 +36,19 @@ def _calculate_confusion_matrix_df(
     # count of predictions per grouper key
     cm_counts_df = cm_counts_df.merge(
         cm_counts_df.groupby(
-            ["label_key", "pd_label_value"],
+            ["label_key", "label_value_pd"],
             as_index=False,
             dropna=False,
         )
         .size()
         .rename({"size": "number_of_predictions"}, axis=1),
-        on=["label_key", "pd_label_value"],
+        on=["label_key", "label_value_pd"],
     )
 
     # count of groundtruths per grouper key
     cm_counts_df = cm_counts_df.merge(
         cm_counts_df.groupby(
-            ["label_key", "gt_label_value"],
+            ["label_key", "label_value_gt"],
             as_index=False,
             dropna=False,
         )
@@ -61,34 +60,34 @@ def _calculate_confusion_matrix_df(
         cm_counts_df[
             [
                 "label_key",
-                "pd_label_value",
+                "label_value_pd",
                 "true_positive_flag",
             ]
         ]
         .groupby(
-            ["label_key", "pd_label_value"],
+            ["label_key", "label_value_pd"],
             as_index=False,
             dropna=False,
         )
         .sum()
         .rename(
-            columns={"true_positive_flag": "true_positives_per_pd_label_value"}
+            columns={"true_positive_flag": "true_positives_per_label_value_pd"}
         ),
-        on=["label_key", "pd_label_value"],
+        on=["label_key", "label_value_pd"],
     )
 
     cm_counts_df = cm_counts_df.merge(
-        cm_counts_df[["label_key", "gt_label_value", "true_positive_flag"]]
+        cm_counts_df[["label_key", "label_value_gt", "true_positive_flag"]]
         .groupby(
-            ["label_key", "gt_label_value"],
+            ["label_key", "label_value_gt"],
             as_index=False,
             dropna=False,
         )
         .sum()
         .rename(
-            columns={"true_positive_flag": "true_positives_per_gt_label_value"}
+            columns={"true_positive_flag": "true_positives_per_label_value_gt"}
         ),
-        on=["label_key", "gt_label_value"],
+        on=["label_key", "label_value_gt"],
     )
 
     cm_counts_df = cm_counts_df.merge(
@@ -106,19 +105,19 @@ def _calculate_confusion_matrix_df(
     for label_key in cm_counts_df.loc[:, "label_key"].unique():
         revelant_rows = cm_counts_df.loc[
             (cm_counts_df["label_key"] == label_key)
-            & cm_counts_df["gt_label_value"].notnull()
+            & cm_counts_df["label_value_gt"].notnull()
         ]
         relevant_confusion_matrices = metrics.ConfusionMatrix(
             label_key=label_key,
             entries=[
                 metrics.ConfusionMatrixEntry(
-                    prediction=row["pd_label_value"],
-                    groundtruth=row["gt_label_value"],
+                    prediction=row["label_value_pd"],
+                    groundtruth=row["label_value_gt"],
                     count=row["size"],
                 )
                 for row in revelant_rows.to_dict(orient="records")
-                if isinstance(row["pd_label_value"], str)
-                and isinstance(row["gt_label_value"], str)
+                if isinstance(row["label_value_pd"], str)
+                and isinstance(row["label_value_gt"], str)
             ],
         )
         confusion_matrices.append(relevant_confusion_matrices)
@@ -135,10 +134,10 @@ def _calculate_metrics_at_label_value_level(
     unique_label_values_per_label_key_df = pd.DataFrame(
         np.concatenate(
             [
-                cm_counts_df[["label_key", "pd_label_value"]].values,
+                cm_counts_df[["label_key", "label_value_pd"]].values,
                 cm_counts_df.loc[
-                    cm_counts_df["gt_label_value"].notnull(),
-                    ["label_key", "gt_label_value"],
+                    cm_counts_df["label_value_gt"].notnull(),
+                    ["label_key", "label_value_gt"],
                 ].values,
             ]
         ),
@@ -155,7 +154,7 @@ def _calculate_metrics_at_label_value_level(
                 lambda chain_df: (
                     cm_counts_df[
                         (
-                            cm_counts_df["gt_label_value"]
+                            cm_counts_df["label_value_gt"]
                             == chain_df["label_value"]
                         )
                         & (cm_counts_df["label_key"] == chain_df["label_key"])
@@ -170,7 +169,7 @@ def _calculate_metrics_at_label_value_level(
                 lambda chain_df: (
                     cm_counts_df[
                         (
-                            cm_counts_df["gt_label_value"]
+                            cm_counts_df["label_value_gt"]
                             == chain_df["label_value"]
                         )
                         & (cm_counts_df["label_key"] == chain_df["label_key"])
@@ -184,7 +183,7 @@ def _calculate_metrics_at_label_value_level(
                 lambda chain_df: (
                     cm_counts_df[
                         (
-                            cm_counts_df["pd_label_value"]
+                            cm_counts_df["label_value_pd"]
                             == chain_df["label_value"]
                         )
                         & (cm_counts_df["label_key"] == chain_df["label_key"])
@@ -220,8 +219,8 @@ def _calculate_metrics_at_label_value_level(
 
     # replace values of labels that only exist in predictions (not groundtruths) with -1
     labels_to_replace = cm_counts_df.loc[
-        cm_counts_df["gt_label_value"].isnull(),
-        ["label_key", "pd_label_value"],
+        cm_counts_df["label_value_gt"].isnull(),
+        ["label_key", "label_value_pd"],
     ].values.tolist()
 
     for key, value in labels_to_replace:
@@ -276,7 +275,7 @@ def _calculate_accuracy_metrics(
     accuracy_calculations = (
         cm_counts_df.loc[
             (
-                cm_counts_df["gt_label_value"].notnull()
+                cm_counts_df["label_value_gt"].notnull()
                 & cm_counts_df["true_positive_flag"]
             ),
             ["label_key", "size"],
@@ -286,7 +285,7 @@ def _calculate_accuracy_metrics(
         .rename({"size": "true_positives_per_label_key"}, axis=1)
     ).merge(
         cm_counts_df.loc[
-            (cm_counts_df["gt_label_value"].notnull()),
+            (cm_counts_df["label_value_gt"].notnull()),
             ["label_key", "size"],
         ]
         .groupby(["label_key"], as_index=False)
@@ -315,10 +314,58 @@ def _calculate_accuracy_metrics(
     ]
 
 
-def _get_joint_df(
+def _create_joint_df(
+    groundtruth_df: pd.DataFrame, prediction_df: pd.DataFrame
+) -> pd.DataFrame:
+    """Create a merged dataframe across groundtruths and predictions. Includes all predictions, not just those with the best score for each groundtruth."""
+
+    joint_df = groundtruth_df[
+        [
+            "datum_uid",
+            "datum_id",
+            "label_key",
+            "label_value",
+            "id",
+            "annotation_id",
+        ]
+    ].merge(
+        prediction_df[
+            [
+                "datum_uid",
+                "datum_id",
+                "label_key",
+                "label_value",
+                "score",
+                "id",
+                "annotation_id",
+            ]
+        ],
+        on=["datum_uid", "datum_id", "label_key"],
+        how="left",
+        suffixes=("_gt", "_pd"),
+    )
+
+    joint_df["is_true_positive"] = (
+        joint_df["label_value_gt"] == joint_df["label_value_pd"]
+    )
+    joint_df["is_false_positive"] = ~joint_df["is_true_positive"]
+
+    joint_df = joint_df.sort_values(
+        by=["score", "label_key", "label_value_gt"],
+        ascending=[False, False, True],
+    )
+
+    joint_df["label"] = joint_df.apply(
+        lambda row: (row["label_key"], row["label_value_gt"]), axis=1
+    )
+
+    return joint_df
+
+
+def _create_joint_df_filtered_on_best_score(
     prediction_df: pd.DataFrame, groundtruth_df: pd.DataFrame
 ) -> pd.DataFrame:
-    """Merge the ground truth and prediction dataframes into one, joint dataframe."""
+    """Create a merged dataframe across groundtruths and predictions. Only includes the best prediction for each groundtruth."""
     max_scores_by_label_key_and_datum_id = (
         prediction_df[["label_key", "datum_id", "score"]]
         .groupby(
@@ -358,16 +405,13 @@ def _get_joint_df(
         how="inner",
     )[["label_key", "datum_id", "label_value", "best_score"]]
 
-    # count the number of matches for each (pd_label_value, gt_label_value) for each label_key
-    merged_groundtruths_and_predictions_df = pd.merge(
-        groundtruth_df[["datum_id", "label_key", "label_value"]].rename(
-            columns={"label_value": "gt_label_value"}
-        ),
-        best_prediction_label_for_each_label_key_and_datum.rename(
-            columns={"label_value": "pd_label_value"}
-        ),
+    # count the number of matches for each (label_value_pd, label_value_gt) for each label_key
+    joint_df = pd.merge(
+        groundtruth_df[["datum_id", "label_key", "label_value"]],
+        best_prediction_label_for_each_label_key_and_datum,
         on=["datum_id", "label_key"],
-        how="left",
+        suffixes=("_gt", "_pd"),
+        how="outer",
     )
 
     # add back any labels that appear in predictions but not groundtruths
@@ -383,21 +427,19 @@ def _get_joint_df(
         ).difference(
             set(
                 zip(
-                    [None] * len(merged_groundtruths_and_predictions_df),
-                    merged_groundtruths_and_predictions_df["label_key"],
-                    [None] * len(merged_groundtruths_and_predictions_df),
-                    merged_groundtruths_and_predictions_df["pd_label_value"],
+                    [None] * len(joint_df),
+                    joint_df["label_key"],
+                    [None] * len(joint_df),
+                    joint_df["label_value_pd"],
                     [None] * len(prediction_df),
                 )
             ).union(
                 set(
                     zip(
-                        [None] * len(merged_groundtruths_and_predictions_df),
-                        merged_groundtruths_and_predictions_df["label_key"],
-                        [None] * len(merged_groundtruths_and_predictions_df),
-                        merged_groundtruths_and_predictions_df[
-                            "gt_label_value"
-                        ],
+                        [None] * len(joint_df),
+                        joint_df["label_key"],
+                        [None] * len(joint_df),
+                        joint_df["label_value_gt"],
                         [None] * len(prediction_df),
                     )
                 )
@@ -407,90 +449,57 @@ def _get_joint_df(
 
     missing_label_df = pd.DataFrame(
         missing_labels_from_predictions,
-        columns=merged_groundtruths_and_predictions_df.columns,
+        columns=joint_df.columns,
     )
 
-    merged_groundtruths_and_predictions_df = (
-        merged_groundtruths_and_predictions_df.copy()
-        if missing_label_df.empty
-        else (
-            missing_label_df.copy()
-            if merged_groundtruths_and_predictions_df.empty
-            else pd.concat(
-                [
-                    merged_groundtruths_and_predictions_df,
-                    missing_label_df,
-                ],
-                ignore_index=True,
-            )
-        )
+    joint_df = utilities.concatenate_df_if_not_empty(
+        df1=joint_df, df2=missing_label_df
     )
 
-    return merged_groundtruths_and_predictions_df
-
-
-def _calculate_rocauc(
-    prediction_df: pd.DataFrame, groundtruth_df: pd.DataFrame
-) -> list[metrics.ROCAUCMetric]:
-    """Calculate ROC AUC metrics."""
-    # if there are no predictions, then ROCAUC should be 0 for all groundtruth grouper keys
-    if prediction_df.empty:
-        return [
-            metrics.ROCAUCMetric(label_key=label_key, value=float(0))
-            for label_key in groundtruth_df["label_key"].unique()
-        ]
-
-    merged_predictions_and_groundtruths = (
-        prediction_df[["datum_id", "label_key", "label_value", "score"]]
-        .merge(
-            groundtruth_df[["datum_id", "label_key", "label_value"]].rename(
-                columns={
-                    "label_value": "gt_label_value",
-                }
-            ),
-            on=["datum_id", "label_key"],
-            how="left",
-        )
-        .assign(
-            is_true_positive=lambda chain_df: chain_df["label_value"]
-            == chain_df["gt_label_value"],
-        )
-        .assign(
-            is_false_positive=lambda chain_df: chain_df["label_value"]
-            != chain_df["gt_label_value"],
-        )
-    ).sort_values(
-        by=["score", "label_key", "gt_label_value"],
+    joint_df = joint_df.sort_values(
+        by=["best_score", "label_key", "label_value_gt"],
         ascending=[False, False, True],
     )
 
+    return joint_df
+
+
+def _calculate_rocauc(
+    joint_df: pd.DataFrame,
+) -> list[metrics.ROCAUCMetric]:
+    """Calculate ROC AUC metrics."""
+    # if there are no predictions, then ROCAUC should be 0 for all groundtruth grouper keys
+    if joint_df["label_value_pd"].isnull().all():
+        return [
+            metrics.ROCAUCMetric(label_key=label_key, value=float(0))
+            for label_key in joint_df["label_key"].unique()
+        ]
+
     # count the number of observations (i.e., predictions) and true positives for each grouper key
     total_observations_per_label_key_and_label_value = (
-        merged_predictions_and_groundtruths.groupby(
-            ["label_key", "label_value"], as_index=False
-        )["gt_label_value"]
+        joint_df.groupby(["label_key", "label_value_pd"], as_index=False)[
+            "label_value_gt"
+        ]
         .size()
         .rename({"size": "n"}, axis=1)
     )
 
     total_true_positves_per_label_key_and_label_value = (
-        merged_predictions_and_groundtruths.loc[
-            merged_predictions_and_groundtruths["is_true_positive"], :
-        ]
-        .groupby(["label_key", "label_value"], as_index=False)[
-            "gt_label_value"
+        joint_df.loc[joint_df["is_true_positive"], :]
+        .groupby(["label_key", "label_value_pd"], as_index=False)[
+            "label_value_gt"
         ]
         .size()
         .rename({"size": "n_true_positives"}, axis=1)
     )
 
-    merged_counts = merged_predictions_and_groundtruths.merge(
+    merged_counts = joint_df.merge(
         total_observations_per_label_key_and_label_value,
-        on=["label_key", "label_value"],
+        on=["label_key", "label_value_pd"],
         how="left",
     ).merge(
         total_true_positves_per_label_key_and_label_value,
-        on=["label_key", "label_value"],
+        on=["label_key", "label_value_pd"],
         how="left",
     )
 
@@ -498,12 +507,12 @@ def _calculate_rocauc(
         merged_counts[
             [
                 "label_key",
-                "label_value",
+                "label_value_pd",
                 "is_true_positive",
                 "is_false_positive",
             ]
         ]
-        .groupby(["label_key", "label_value"], as_index=False)
+        .groupby(["label_key", "label_value_pd"], as_index=False)
         .cumsum()
     ).rename(
         columns={
@@ -516,9 +525,9 @@ def _calculate_rocauc(
 
     # correct cumulative sums to be the max value for a given datum_id / label_key / label_value (this logic brings pandas' cumsum logic in line with psql's sum().over())
     max_cum_sums = (
-        rates.groupby(["label_key", "label_value", "score"], as_index=False)[
-            ["cum_true_positive_cnt", "cum_false_positive_cnt"]
-        ]
+        rates.groupby(
+            ["label_key", "label_value_pd", "score"], as_index=False
+        )[["cum_true_positive_cnt", "cum_false_positive_cnt"]]
         .max()
         .rename(
             columns={
@@ -527,7 +536,9 @@ def _calculate_rocauc(
             }
         )
     )
-    rates = rates.merge(max_cum_sums, on=["label_key", "label_value", "score"])
+    rates = rates.merge(
+        max_cum_sums, on=["label_key", "label_value_pd", "score"]
+    )
     rates["cum_true_positive_cnt"] = rates[
         ["cum_true_positive_cnt", "max_cum_true_positive_cnt"]
     ].max(axis=1)
@@ -550,14 +561,14 @@ def _calculate_rocauc(
             rates[
                 [
                     "label_key",
-                    "label_value",
+                    "label_value_pd",
                     "n",
                     "n_true_positives",
                     "tpr",
                     "fpr",
                 ]
             ],
-            rates.groupby(["label_key", "label_value"], as_index=False)[
+            rates.groupby(["label_key", "label_value_pd"], as_index=False)[
                 ["tpr", "fpr"]
             ]
             .shift(1)
@@ -573,7 +584,7 @@ def _calculate_rocauc(
     )
 
     summed_trap_areas_per_label_value = trap_areas_per_label_value.groupby(
-        ["label_key", "label_value"], as_index=False
+        ["label_key", "label_value_pd"], as_index=False
     )[["n", "n_true_positives", "trap_area"]].sum(min_count=1)
 
     # replace values if specific conditions are met
@@ -670,8 +681,7 @@ def _add_samples_to_dataframe(
 
 
 def _calculate_pr_curves(
-    prediction_df: pd.DataFrame,
-    groundtruth_df: pd.DataFrame,
+    joint_df: pd.DataFrame,
     metrics_to_return: list,
     pr_curve_max_examples: int,
 ) -> list[metrics.PrecisionRecallCurve]:
@@ -682,40 +692,6 @@ def _calculate_pr_curves(
         or enums.MetricType.DetailedPrecisionRecallCurve in metrics_to_return
     ):
         return []
-
-    joint_df = (
-        pd.merge(
-            groundtruth_df,
-            prediction_df,
-            on=["datum_id", "datum_uid", "label_key"],
-            how="inner",
-            suffixes=("_gt", "_pd"),
-        ).assign(
-            is_label_match=lambda chain_df: (
-                (chain_df["label_value_pd"] == chain_df["label_value_gt"])
-            )
-        )
-        # only keep the columns we need
-        .loc[
-            :,
-            [
-                "datum_uid",
-                "datum_id",
-                "label_key",
-                "label_value_gt",
-                "id_gt",
-                "label_value_pd",
-                "score",
-                "id_pd",
-                "is_label_match",
-            ],
-        ]
-    )
-
-    # free up memory
-    del groundtruth_df
-    del prediction_df
-    gc.collect()
 
     # add confidence_threshold to the dataframe and sort
     pr_calc_df = pd.concat(
@@ -737,12 +713,12 @@ def _calculate_pr_curves(
     # create flags where the predictions meet criteria
     pr_calc_df["true_positive_flag"] = (
         pr_calc_df["score"] >= pr_calc_df["confidence_threshold"]
-    ) & pr_calc_df["is_label_match"]
+    ) & pr_calc_df["is_true_positive"]
 
     # for all the false positives, we consider them to be a misclassification if they share a key but not a value with a gt
     pr_calc_df["misclassification_false_positive_flag"] = (
         pr_calc_df["score"] >= pr_calc_df["confidence_threshold"]
-    ) & ~pr_calc_df["is_label_match"]
+    ) & ~pr_calc_df["is_true_positive"]
 
     # next, we flag false negatives by declaring any groundtruth that isn't associated with a true positive to be a false negative
     groundtruths_associated_with_true_positives = (
@@ -1080,9 +1056,9 @@ def _calculate_pr_curves(
     return output
 
 
-def _compute_clf_metrics(
-    groundtruth_df: pd.DataFrame,
-    prediction_df: pd.DataFrame,
+def compute_classification_metrics(
+    joint_df: pd.DataFrame,
+    joint_df_filtered_on_best_score: pd.DataFrame,
     metrics_to_return: list[enums.MetricType] | None = None,
     pr_curve_max_examples: int = 1,
 ) -> tuple[list[dict], list[dict]]:
@@ -1091,10 +1067,10 @@ def _compute_clf_metrics(
 
     Parameters
     ----------
-    groundtruth_df : pd.DataFrame
-        DataFrame containing ground truth annotations with necessary columns.
-    prediction_df : pd.DataFrame
-        DataFrame containing predictions with necessary columns.
+    joint_df : pd.DataFrame
+        DataFrame containing ground truth and predictions.
+    joint_df_filtered_on_best_score: pd.DataFrame
+        DataFrame containing ground truths and predictions. Only matches the best prediction to each ground truth.
     metrics_to_return : list[enums.MetricType], optional
         list of metric types to return. If None, default metrics are used.
     pr_curve_max_examples : int
@@ -1108,21 +1084,10 @@ def _compute_clf_metrics(
         - The second element is a list of dictionaries representing the requested classification metrics.
     """
 
-    # add label as a column
-    for df in (groundtruth_df, prediction_df):
-        df.loc[:, "label"] = df.apply(
-            lambda chain_df: (chain_df["label_key"], chain_df["label_value"]),
-            axis=1,
-        )
-
     confusion_matrices, metrics_to_output = [], []
 
-    merged_groundtruths_and_predictions_df = _get_joint_df(
-        prediction_df=prediction_df, groundtruth_df=groundtruth_df
-    )
-
     cm_counts_df, confusion_matrices = _calculate_confusion_matrix_df(
-        merged_groundtruths_and_predictions_df=merged_groundtruths_and_predictions_df
+        joint_df_filtered_on_best_score=joint_df_filtered_on_best_score
     )
 
     metrics_per_label_key_and_label_value_df = (
@@ -1135,17 +1100,14 @@ def _compute_clf_metrics(
 
     metrics_to_output += _calculate_accuracy_metrics(cm_counts_df=cm_counts_df)
 
-    metrics_to_output += _calculate_rocauc(
-        prediction_df=prediction_df, groundtruth_df=groundtruth_df
-    )
+    metrics_to_output += _calculate_rocauc(joint_df=joint_df)
 
     # handle type error
     if not metrics_to_return:
         raise ValueError("metrics_to_return must be defined.")
 
     metrics_to_output += _calculate_pr_curves(
-        prediction_df=prediction_df,
-        groundtruth_df=groundtruth_df,
+        joint_df=joint_df,
         metrics_to_return=metrics_to_return,
         pr_curve_max_examples=pr_curve_max_examples,
     )
@@ -1159,6 +1121,73 @@ def _compute_clf_metrics(
     confusion_matrices = [cm.to_dict() for cm in confusion_matrices]
 
     return confusion_matrices, metrics_to_output
+
+
+def create_classification_evaluation_inputs(
+    groundtruths: list[schemas.GroundTruth] | pd.DataFrame,
+    predictions: list[schemas.Prediction] | pd.DataFrame,
+    label_map: dict[schemas.Label, schemas.Label],
+) -> tuple[pd.DataFrame, pd.DataFrame]:
+    """
+    Creates and validates the inputs needed to run a classification evaluation.
+
+    Parameters
+    ----------
+    groundtruths : list[schemas.GroundTruth] | pd.DataFrame
+        A list or pandas DataFrame describing the groundtruths.
+    predictions : list[schemas.GroundTruth] | pd.DataFrame
+        A list or pandas DataFrame describing the predictions.
+    label_map : dict[schemas.Label, schemas.Label]
+        A mapping from one label schema to another.
+
+    Returns
+    -------
+    tuple[pd.DataFrame, pd.DataFrame]
+        A tuple of two joint dataframes, with the first dataframe containing all groundtruth-prediction matches and the second dataframe only matching the best prediction with each groundtruth.
+    """
+
+    groundtruth_df = utilities.create_validated_groundtruth_df(
+        groundtruths, task_type=enums.TaskType.CLASSIFICATION
+    )
+    prediction_df = utilities.create_validated_prediction_df(
+        predictions, task_type=enums.TaskType.CLASSIFICATION
+    )
+
+    # filter dataframes based on task type
+    groundtruth_df = utilities.filter_dataframe_by_task_type(
+        df=groundtruth_df, task_type=enums.TaskType.CLASSIFICATION
+    )
+
+    if not prediction_df.empty:
+        prediction_df = utilities.filter_dataframe_by_task_type(
+            df=prediction_df, task_type=enums.TaskType.CLASSIFICATION
+        )
+
+    # apply label map
+    groundtruth_df, prediction_df = utilities.replace_labels_using_label_map(
+        groundtruth_df=groundtruth_df,
+        prediction_df=prediction_df,
+        label_map=label_map,
+    )
+
+    # validate that each datum has the same label keys for both groundtruths and predictions
+    utilities.validate_matching_label_keys(
+        groundtruths=groundtruth_df,
+        predictions=prediction_df,
+    )
+
+    joint_df = _create_joint_df(
+        groundtruth_df=groundtruth_df, prediction_df=prediction_df
+    )
+
+    joint_df_filtered_on_best_score = _create_joint_df_filtered_on_best_score(
+        prediction_df=prediction_df, groundtruth_df=groundtruth_df
+    )
+
+    return (
+        joint_df,
+        joint_df_filtered_on_best_score,
+    )
 
 
 def evaluate_classification(
@@ -1229,78 +1258,27 @@ def evaluate_classification(
     )
     utilities.validate_parameters(pr_curve_max_examples=pr_curve_max_examples)
 
-    groundtruth_df = utilities.create_validated_groundtruth_df(
-        groundtruths, task_type=enums.TaskType.CLASSIFICATION
-    )
-    prediction_df = utilities.create_validated_prediction_df(
-        predictions, task_type=enums.TaskType.CLASSIFICATION
-    )
-
-    # filter dataframes based on task type
-    groundtruth_df = utilities.filter_dataframe_by_task_type(
-        df=groundtruth_df, task_type=enums.TaskType.CLASSIFICATION
-    )
-
-    if not prediction_df.empty:
-        prediction_df = utilities.filter_dataframe_by_task_type(
-            df=prediction_df, task_type=enums.TaskType.CLASSIFICATION
-        )
-
-    # drop intermediary columns that are no longer needed
-    groundtruth_df = groundtruth_df.loc[
-        :,
-        [
-            "datum_uid",
-            "datum_id",
-            "annotation_id",
-            "label_key",
-            "label_value",
-            "label_id",
-            "id",
-        ],
-    ]
-
-    prediction_df = prediction_df.loc[
-        :,
-        [
-            "datum_uid",
-            "datum_id",
-            "annotation_id",
-            "label_key",
-            "label_value",
-            "score",
-            "label_id",
-            "id",
-        ],
-    ]
-
-    utilities.validate_matching_label_keys(
-        groundtruths=groundtruth_df,
-        predictions=prediction_df,
+    (
+        joint_df,
+        joint_df_filtered_on_best_score,
+    ) = create_classification_evaluation_inputs(
+        groundtruths=groundtruths,
+        predictions=predictions,
         label_map=label_map,
     )
 
     unique_labels = list(
-        set(zip(groundtruth_df["label_key"], groundtruth_df["label_value"]))
-        | set(zip(prediction_df["label_key"], prediction_df["label_value"]))
+        set(zip(joint_df["label_key"], joint_df["label_value_gt"]))
+        | set(zip(joint_df["label_key"], joint_df["label_value_pd"]))
     )
-    unique_datums_cnt = len(
-        set(groundtruth_df["datum_uid"]) | set(prediction_df["datum_uid"])
-    )
+    unique_datums_cnt = len(set(joint_df["datum_uid"]))
     unique_annotations_cnt = len(
-        set(groundtruth_df["annotation_id"])
-        | set(prediction_df["annotation_id"])
+        set(joint_df["annotation_id_gt"]) | set(joint_df["annotation_id_pd"])
     )
 
-    groundtruth_df, prediction_df = utilities.replace_labels_using_label_map(
-        groundtruth_df=groundtruth_df,
-        prediction_df=prediction_df,
-        label_map=label_map,
-    )
-
-    confusion_matrices, metrics = _compute_clf_metrics(
-        groundtruth_df=groundtruth_df,
-        prediction_df=prediction_df,
+    confusion_matrices, metrics = compute_classification_metrics(
+        joint_df=joint_df,
+        joint_df_filtered_on_best_score=joint_df_filtered_on_best_score,
         metrics_to_return=metrics_to_return,
         pr_curve_max_examples=pr_curve_max_examples,
     )
