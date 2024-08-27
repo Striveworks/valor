@@ -655,7 +655,7 @@ def mocked_bias(
 def mocked_context_precision(
     self,
     query: str,
-    context_list: list[str],
+    ordered_context_list: list[str],
     groundtruth: str,
 ):
     ret_dict = {
@@ -663,8 +663,8 @@ def mocked_context_precision(
         (RAG_QUERIES[1], tuple(RAG_CONTEXT[1]), RAG_REFERENCES[1]): 1.0,
         (RAG_QUERIES[2], tuple(RAG_CONTEXT[2]), RAG_REFERENCES[2]): 1.0,
     }
-    if (query, tuple(context_list), groundtruth) in ret_dict:
-        return ret_dict[(query, tuple(context_list), groundtruth)]
+    if (query, tuple(ordered_context_list), groundtruth) in ret_dict:
+        return ret_dict[(query, tuple(ordered_context_list), groundtruth)]
     return 0.0
 
 

@@ -403,11 +403,11 @@ class LLMClient:
     def _generate_context_precision_verdicts(
         self,
         query: str,
-        context_list: list[str],
+        ordered_context_list: list[str],
         groundtruth: str,
     ) -> list[dict[str, str]]:
         """
-        Generate a list of context precision verdicts for a list of contexts, using a call to the LLM API.
+        Generate a list of context precision verdicts for an ordered list of contexts, using a call to the LLM API.
 
         The verdict for each context should be 'yes' if the context is relevant to produce the ground truth answer to the query. The verdict should be 'no' otherwise.
 
@@ -415,7 +415,7 @@ class LLMClient:
         ----------
         query: str
             The query.
-        context_list: list[str]
+        ordered_context_list: list[str]
             The ordered list of contexts. Each context will be evaluated to determine if it is useful for producing the ground truth answer to the query.
         groundtruth: str
             The ground truth answer to the query.
@@ -431,7 +431,7 @@ class LLMClient:
                 "role": "user",
                 "content": generate_context_precision_verdicts_instruction(
                     query=query,
-                    context_list=context_list,
+                    ordered_context_list=ordered_context_list,
                     groundtruth=groundtruth,
                 ),
             },
@@ -447,7 +447,7 @@ class LLMClient:
         verdicts = response["verdicts"]
         if (
             type(verdicts) != list
-            or len(verdicts) != len(context_list)
+            or len(verdicts) != len(ordered_context_list)
             or not all(
                 verdict["verdict"] in ["yes", "no"] for verdict in verdicts
             )
@@ -859,7 +859,7 @@ class LLMClient:
     def context_precision(
         self,
         query: str,
-        context_list: list[str],
+        ordered_context_list: list[str],
         groundtruth: str,
     ) -> float:
         """
@@ -875,7 +875,7 @@ class LLMClient:
         ----------
         query: str
             A query.
-        context_list: list[str]
+        ordered_context_list: list[str]
             The ordered list of contexts. Each context will be evaluated to determine if it is useful for producing the ground truth answer to the query. Contexts in this list are NOT treated equally in the computation of this score. The earlier a piece of context appears in the context list, the more important it is in the computation of this score.
         groundtruth: str
             A ground truth answer to the query.
@@ -885,17 +885,19 @@ class LLMClient:
         float
             The context precision score will be evaluated as a float between 0 and 1, with a higher score indicating better context precision.
         """
-        if len(context_list) == 0:
+        if len(ordered_context_list) == 0:
             raise ValueError(
-                "Context precision is meaningless if context_list is empty."
+                "Context precision is meaningless if the context list is empty."
             )
 
         verdicts = self._generate_context_precision_verdicts(
-            query, context_list, groundtruth
+            query=query,
+            ordered_context_list=ordered_context_list,
+            groundtruth=groundtruth,
         )
 
         precision_at_k_list = []
-        for k in range(1, len(context_list) + 1):
+        for k in range(1, len(ordered_context_list) + 1):
             # Only compute the precision at k if the kth context is relevant.
             if verdicts[k - 1]["verdict"] == "yes":
                 precision_at_k = (
@@ -939,7 +941,7 @@ class LLMClient:
         """
         if len(context_list) == 0:
             raise ValueError(
-                "Context recall is meaningless if context_list is empty."
+                "Context recall is meaningless if the context list is empty."
             )
 
         groundtruth_statements = self._generate_statements(groundtruth)
@@ -974,7 +976,7 @@ class LLMClient:
         """
         if len(context_list) == 0:
             raise ValueError(
-                "Context relevance is meaningless if context_list is empty."
+                "Context relevance is meaningless if the context list is empty."
             )
 
         verdicts = self._generate_context_relevance_verdicts(
@@ -1007,7 +1009,7 @@ class LLMClient:
         """
         if len(context_list) == 0:
             raise ValueError(
-                "Faithfulness is meaningless if context_list is empty."
+                "Faithfulness is meaningless if the context list is empty."
             )
 
         claims = self._generate_claims(text)
@@ -1048,7 +1050,7 @@ class LLMClient:
         """
         if len(context_list) == 0:
             raise ValueError(
-                "Hallucination is meaningless if context_list is empty."
+                "Hallucination is meaningless if the context list is empty."
             )
 
         verdicts = self._generate_hallucination_verdicts(

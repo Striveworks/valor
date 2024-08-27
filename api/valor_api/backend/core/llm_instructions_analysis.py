@@ -345,7 +345,7 @@ JSON:
 
 def generate_context_precision_verdicts_instruction(
     query: str,
-    context_list: list[str],
+    ordered_context_list: list[str],
     groundtruth: str,
 ) -> str:
     """
@@ -359,7 +359,7 @@ def generate_context_precision_verdicts_instruction(
     ----------
     query: str
         The query.
-    context_list: list[str]
+    ordered_context_list: list[str]
         The ordered list of contexts. Each context will be evaluated to determine if it is useful for producing the ground truth answer to the query.
     groundtruth: str
         The ground truth answer to the query.
@@ -407,7 +407,7 @@ Query:
 {query}
 
 Context List:
-{context_list}
+{ordered_context_list}
 
 Ground Truth:
 {groundtruth}

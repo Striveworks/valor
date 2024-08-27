@@ -473,7 +473,7 @@ def _compute_text_generation_metrics(
                             score,
                             client.context_precision(
                                 query=datum_text,
-                                context_list=prediction_context_list,
+                                ordered_context_list=prediction_context_list,
                                 groundtruth=groundtruth,
                             ),
                         )
