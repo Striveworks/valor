@@ -2,15 +2,11 @@ import random
 
 import pandas as pd
 import pytest
-from valor_core import enums, schemas
-from valor_core.classification import (
-    _calculate_rocauc,
-    _create_joint_df,
-    evaluate_classification,
-)
+from valor_core import enums, managers, schemas
+from valor_core.classification import _calculate_rocauc, _create_joint_df
 
 
-def test_evaluate_image_clf(
+def test_evaluate_image_clf_with_ValorClassificationManager(
     evaluate_image_clf_groundtruths: list[schemas.GroundTruth],
     evaluate_image_clf_predictions: list[schemas.Prediction],
     evaluate_image_clf_expected: tuple,
@@ -18,21 +14,22 @@ def test_evaluate_image_clf(
 
     expected_metrics, expected_confusion_matrices = evaluate_image_clf_expected
 
-    eval_job = evaluate_classification(
+    manager = managers.ValorClassificationManager()
+    manager.add_data(
         groundtruths=evaluate_image_clf_groundtruths,
         predictions=evaluate_image_clf_predictions,
     )
 
-    eval_job_metrics = eval_job.metrics
+    eval_job = manager.evaluate()
 
-    for m in eval_job_metrics:
+    for m in eval_job.metrics:
         if m["type"] not in [
             "PrecisionRecallCurve",
             "DetailedPrecisionRecallCurve",
         ]:
             assert m in expected_metrics
     for m in expected_metrics:
-        assert m in eval_job_metrics
+        assert m in eval_job.metrics
 
     confusion_matrices = eval_job.confusion_matrices
     assert confusion_matrices
@@ -54,6 +51,18 @@ def test_evaluate_image_clf(
     # eval should definitely take less than 5 seconds, usually around .4
     assert eval_job.meta["duration"] <= 5  # type: ignore - issue #605
 
+    # check that passing None to metrics returns the assumed list of default metrics
+    default_metrics = [
+        enums.MetricType.Precision,
+        enums.MetricType.Recall,
+        enums.MetricType.F1,
+        enums.MetricType.Accuracy,
+        enums.MetricType.ROCAUC,
+    ]
+    assert set([metric["type"] for metric in eval_job.metrics]) == set(
+        default_metrics
+    )
+
     # check that metrics arg works correctly
     selected_metrics = random.sample(
         [
@@ -67,56 +76,44 @@ def test_evaluate_image_clf(
         2,
     )
 
-    eval_job = evaluate_classification(
-        groundtruths=evaluate_image_clf_groundtruths,
-        predictions=evaluate_image_clf_predictions,
+    manager = managers.ValorClassificationManager(
         metrics_to_return=selected_metrics,
     )
+    manager.add_data(
+        groundtruths=evaluate_image_clf_groundtruths,
+        predictions=evaluate_image_clf_predictions,
+    )
+
+    eval_job = manager.evaluate()
 
     assert set([metric["type"] for metric in eval_job.metrics]) == set(
         selected_metrics
     )
 
-    # check that passing None to metrics returns the assumed list of default metrics
-    default_metrics = [
-        enums.MetricType.Precision,
-        enums.MetricType.Recall,
-        enums.MetricType.F1,
-        enums.MetricType.Accuracy,
-        enums.MetricType.ROCAUC,
-    ]
-    eval_job = evaluate_classification(
-        groundtruths=evaluate_image_clf_groundtruths,
-        predictions=evaluate_image_clf_predictions,
-        metrics_to_return=None,
-    )
-    assert set([metric["type"] for metric in eval_job.metrics]) == set(
-        default_metrics
-    )
 
-
-def test_evaluate_tabular_clf(
-    evaluate_tabular_clf_groundtruths_df: pd.DataFrame,
-    evaluate_tabular_clf_predictions_df: pd.DataFrame,
+def test_evaluate_tabular_clf_with_ValorClassificationManager(
+    evaluate_tabular_clf_groundtruths: list[schemas.GroundTruth],
+    evaluate_tabular_clf_predictions: list[schemas.Prediction],
     evaluate_tabular_clf_expected: tuple,
 ):
     expected_metrics, expected_confusion_matrix = evaluate_tabular_clf_expected
 
-    eval_job = evaluate_classification(
-        groundtruths=evaluate_tabular_clf_groundtruths_df,
-        predictions=evaluate_tabular_clf_predictions_df,
+    manager = managers.ValorClassificationManager()
+    manager.add_data(
+        groundtruths=evaluate_tabular_clf_groundtruths,
+        predictions=evaluate_tabular_clf_predictions,
     )
 
-    eval_job_metrics = eval_job.metrics
+    eval_job = manager.evaluate()
 
-    for m in eval_job_metrics:
+    for m in eval_job.metrics:
         if m["type"] not in [
             "PrecisionRecallCurve",
             "DetailedPrecisionRecallCurve",
         ]:
             assert m in expected_metrics
     for m in expected_metrics:
-        assert m in eval_job_metrics
+        assert m in eval_job.metrics
 
     confusion_matrices = eval_job.confusion_matrices
 
@@ -152,7 +149,7 @@ def test_evaluate_tabular_clf(
         assert entry in confusion_matrix["entries"]
 
 
-def test_evaluate_classification_with_label_maps(
+def test_evaluate_classification_with_label_maps_with_ValorClassificationManager(
     gt_clfs_with_label_maps: list[schemas.GroundTruth],
     pred_clfs_with_label_maps: list[schemas.Prediction],
     cat_label_map: dict,
@@ -166,19 +163,9 @@ def test_evaluate_classification_with_label_maps(
         detailed_pr_expected_answers,
     ) = evaluate_classification_with_label_maps_expected
 
-    # check baseline case, where we have mismatched ground truth and prediction label keys
-    with pytest.raises(ValueError) as e:
-        evaluate_classification(
-            groundtruths=gt_clfs_with_label_maps,
-            predictions=pred_clfs_with_label_maps,
-        )
-    assert "label keys must match" in str(e)
-
-    eval_job = evaluate_classification(
-        groundtruths=gt_clfs_with_label_maps,
-        predictions=pred_clfs_with_label_maps,
+    manager = managers.ValorClassificationManager(
+        pr_curve_max_examples=1,
         label_map=cat_label_map,
-        pr_curve_max_examples=3,
         metrics_to_return=[
             enums.MetricType.Precision,
             enums.MetricType.Recall,
@@ -189,6 +176,46 @@ def test_evaluate_classification_with_label_maps(
             enums.MetricType.DetailedPrecisionRecallCurve,
         ],
     )
+
+    manager.add_data(
+        groundtruths=gt_clfs_with_label_maps[:1],
+        predictions=pred_clfs_with_label_maps[:1],
+    )
+
+    # test that both fields are required
+    with pytest.raises(ValueError):
+        manager.add_data(
+            groundtruths=[],
+            predictions=pred_clfs_with_label_maps[:2],
+        )
+
+    with pytest.raises(ValueError):
+        manager.add_data(
+            groundtruths=gt_clfs_with_label_maps[:2],
+            predictions=[],
+        )
+
+    manager.add_data(
+        groundtruths=gt_clfs_with_label_maps[1:],
+        predictions=pred_clfs_with_label_maps[1:],
+    )
+
+    # can't add an already existing datum
+    with pytest.raises(ValueError):
+        manager.add_data(
+            groundtruths=gt_clfs_with_label_maps[1:],
+            predictions=pred_clfs_with_label_maps[1:],
+        )
+
+    # check that the right dataframes exist in the class
+    assert isinstance(manager.joint_df, pd.DataFrame) & (
+        len(manager.joint_df) > 0
+    )
+    assert isinstance(
+        manager.joint_df_filtered_on_best_score, pd.DataFrame
+    ) & (len(manager.joint_df_filtered_on_best_score) > 0)
+
+    eval_job = manager.evaluate()
 
     pr_metrics = []
     detailed_pr_metrics = []
@@ -262,9 +289,7 @@ def test_evaluate_classification_with_label_maps(
 
     # finally, check invalid label_map
     with pytest.raises(TypeError):
-        _ = evaluate_classification(
-            groundtruths=gt_clfs_with_label_maps,
-            predictions=pred_clfs_with_label_maps,
+        _ = managers.ValorClassificationManager(
             label_map=[
                 [
                     [
@@ -272,42 +297,41 @@ def test_evaluate_classification_with_label_maps(
                         schemas.Label(key="class", value="mammals"),
                     ]
                 ]
-            ],  # type: ignore - purposefully raising error,
-            pr_curve_max_examples=3,
-            metrics_to_return=[
-                enums.MetricType.Precision,
-                enums.MetricType.Recall,
-                enums.MetricType.F1,
-                enums.MetricType.Accuracy,
-                enums.MetricType.ROCAUC,
-                enums.MetricType.PrecisionRecallCurve,
-                enums.MetricType.DetailedPrecisionRecallCurve,
-            ],
+            ],  # type: ignore - purposefully raising error,)
         )
 
 
-def test_evaluate_classification_mismatched_label_keys(
+def test_evaluate_classification_mismatched_label_keys_with_ValorClassificationManager(
     gt_clfs_label_key_mismatch: list[schemas.GroundTruth],
     pred_clfs_label_key_mismatch: list[schemas.Prediction],
 ):
     """Check that we get an error when trying to evaluate over ground truths and predictions with different sets of label keys."""
 
+    manager = managers.ValorClassificationManager(
+        pr_curve_max_examples=0,
+        metrics_to_return=[
+            enums.MetricType.DetailedPrecisionRecallCurve,
+        ],
+    )
+
     with pytest.raises(ValueError) as e:
-        evaluate_classification(
+        manager.add_data(
             groundtruths=gt_clfs_label_key_mismatch,
             predictions=pred_clfs_label_key_mismatch,
         )
     assert "label keys must match" in str(e)
 
 
-def test_evaluate_classification_model_with_no_predictions(
+def test_evaluate_classification_model_with_no_predictions_with_ValorClassificationManager(
     gt_clfs: list[schemas.GroundTruth],
     evaluate_classification_model_with_no_predictions_expected: list,
 ):
 
+    manager = managers.ValorClassificationManager()
+
     # can't pass empty lists, but can pass predictions without annotations
     with pytest.raises(ValueError) as e:
-        evaluation = evaluate_classification(
+        manager.add_data(
             groundtruths=gt_clfs,
             predictions=[],
         )
@@ -316,14 +340,16 @@ def test_evaluate_classification_model_with_no_predictions(
         in str(e)
     )
 
-    evaluation = evaluate_classification(
+    manager.add_data(
         groundtruths=gt_clfs,
         predictions=[
             schemas.Prediction(datum=gt_clfs[0].datum, annotations=[])
         ],
     )
 
-    computed_metrics = evaluation.metrics
+    eval_job = manager.evaluate()
+
+    computed_metrics = eval_job.metrics
 
     assert all([metric["value"] == 0 for metric in computed_metrics])
     assert all(
@@ -341,7 +367,7 @@ def test_evaluate_classification_model_with_no_predictions(
     )
 
 
-def test_compute_confusion_matrix_at_label_key_using_label_map(
+def test_compute_confusion_matrix_at_label_key_using_label_map_with_ValorClassificationManager(
     classification_functional_test_data: tuple,
     mammal_label_map: dict,
     compute_confusion_matrix_at_label_key_using_label_map_expected: list,
@@ -352,11 +378,25 @@ def test_compute_confusion_matrix_at_label_key_using_label_map(
 
     groundtruths, predictions = classification_functional_test_data
 
-    eval_job = evaluate_classification(
+    manager = managers.ValorClassificationManager(
+        label_map={
+            schemas.Label(key="animal", value="dog"): schemas.Label(
+                key="class", value="mammal"
+            ),
+            schemas.Label(key="animal", value="cat"): schemas.Label(
+                key="class", value="mammal"
+            ),
+            schemas.Label(key="animal", value="bird"): schemas.Label(
+                key="class", value="avian"
+            ),
+        },
+    )
+    manager.add_data(
         groundtruths=groundtruths,
         predictions=predictions,
-        label_map=mammal_label_map,
     )
+
+    eval_job = manager.evaluate()
 
     cm = eval_job.confusion_matrices
 
@@ -375,7 +415,7 @@ def test_compute_confusion_matrix_at_label_key_using_label_map(
         assert entry in cm
 
 
-def test_rocauc_with_label_map(
+def test_rocauc_with_label_map_with_ValorClassificationManager(
     classification_functional_test_prediction_df,
     classification_functional_test_groundtruth_df,
     rocauc_with_label_map_expected: list,
@@ -420,7 +460,7 @@ def test_rocauc_with_label_map(
         assert entry in computed_metrics
 
 
-def test_compute_classification(
+def test_compute_classification_with_ValorClassificationManager(
     classification_functional_test_data, compute_classification_expected: list
 ):
     """
@@ -436,9 +476,7 @@ def test_compute_classification(
 
     groundtruths, predictions = classification_functional_test_data
 
-    eval_job = evaluate_classification(
-        groundtruths=groundtruths,
-        predictions=predictions,
+    manager = managers.ValorClassificationManager(
         metrics_to_return=[
             enums.MetricType.Precision,
             enums.MetricType.Recall,
@@ -449,6 +487,12 @@ def test_compute_classification(
             enums.MetricType.DetailedPrecisionRecallCurve,
         ],
     )
+    manager.add_data(
+        groundtruths=groundtruths,
+        predictions=predictions,
+    )
+
+    eval_job = manager.evaluate()
 
     computed_metrics = [
         m
@@ -506,14 +550,18 @@ def test_compute_classification(
             ]
         )
     # test that DetailedPRCurve gives more examples when we adjust pr_curve_max_examples
-    eval_job = evaluate_classification(
-        groundtruths=groundtruths,
-        predictions=predictions,
+    manager = managers.ValorClassificationManager(
         pr_curve_max_examples=3,
         metrics_to_return=[
             enums.MetricType.DetailedPrecisionRecallCurve,
         ],
     )
+    manager.add_data(
+        groundtruths=groundtruths,
+        predictions=predictions,
+    )
+
+    eval_job = manager.evaluate()
 
     assert (
         len(
@@ -533,14 +581,18 @@ def test_compute_classification(
     )  # only two examples exist
 
     # test behavior if pr_curve_max_examples == 0
-    eval_job = evaluate_classification(
-        groundtruths=groundtruths,
-        predictions=predictions,
+    manager = managers.ValorClassificationManager(
         pr_curve_max_examples=0,
         metrics_to_return=[
             enums.MetricType.DetailedPrecisionRecallCurve,
         ],
     )
+    manager.add_data(
+        groundtruths=groundtruths,
+        predictions=predictions,
+    )
+
+    eval_job = manager.evaluate()
 
     assert (
         len(
@@ -560,18 +612,24 @@ def test_compute_classification(
     )
 
 
-def test_pr_curves_multiple_predictions_per_groundtruth(
+def test_pr_curves_multiple_predictions_per_groundtruth_with_ValorClassificationManager(
     multiclass_pr_curve_groundtruths: list,
     multiclass_pr_curve_predictions: list,
     test_pr_curves_multiple_predictions_per_groundtruth_expected: dict,
 ):
     """Test that we get back the expected results when creating PR curves with multiple predictions per groundtruth."""
 
-    eval_job = evaluate_classification(
+    manager = managers.ValorClassificationManager(
+        metrics_to_return=[
+            enums.MetricType.PrecisionRecallCurve,
+        ],
+    )
+    manager.add_data(
         groundtruths=multiclass_pr_curve_groundtruths,
         predictions=multiclass_pr_curve_predictions,
-        metrics_to_return=[enums.MetricType.PrecisionRecallCurve],
     )
+
+    eval_job = manager.evaluate()
 
     output = eval_job.metrics[0]["value"]
 
@@ -597,30 +655,3 @@ def test_pr_curves_multiple_predictions_per_groundtruth(
                     threshold
                 ]
             )
-
-
-def test_detailed_curve_examples(
-    multiclass_pr_curve_groundtruths: list,
-    multiclass_pr_curve_predictions: list,
-    detailed_curve_examples_output: dict,
-):
-    """Test that we get back the right examples in DetailedPRCurves."""
-
-    eval_job = evaluate_classification(
-        groundtruths=multiclass_pr_curve_groundtruths,
-        predictions=multiclass_pr_curve_predictions,
-        metrics_to_return=[enums.MetricType.DetailedPrecisionRecallCurve],
-        pr_curve_max_examples=5,
-    )
-
-    output = eval_job.metrics[0]["value"]
-
-    for key, expected in detailed_curve_examples_output.items():
-        assert (
-            set(
-                output[key[0]][key[1]][key[2]]["observations"][key[3]][
-                    "examples"
-                ]
-            )
-            == expected
-        )
