@@ -155,6 +155,13 @@ def test_evaluate_classification_with_label_maps_with_ValorClassificationManager
     cat_label_map: dict,
     evaluate_classification_with_label_maps_expected: tuple,
 ):
+    print("groundtruths")
+    for x in gt_clfs_with_label_maps:
+        repr(x)
+
+    print("predictions")
+    for x in pred_clfs_with_label_maps:
+        repr(x)
 
     (
         cat_expected_metrics,
