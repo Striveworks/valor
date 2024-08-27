@@ -612,15 +612,27 @@ def mocked_answer_correctness(
     self,
     query: str,
     prediction: str,
-    groundtruth: str,
+    groundtruth_list: list[str],
 ):
     ret_dict = {
-        (RAG_PREDICTIONS[0], RAG_REFERENCES[0]): 0.8,
-        (RAG_PREDICTIONS[1], RAG_REFERENCES[1]): 1.0,
-        (RAG_PREDICTIONS[2], RAG_REFERENCES[2]): 0.0,
+        (
+            RAG_QUERIES[0],
+            RAG_PREDICTIONS[0],
+            tuple([RAG_REFERENCES[0], "some other text", "some final text"]),
+        ): 0.8,
+        (
+            RAG_QUERIES[1],
+            RAG_PREDICTIONS[1],
+            tuple([RAG_REFERENCES[1], "some other text", "some final text"]),
+        ): 1.0,
+        (
+            RAG_QUERIES[2],
+            RAG_PREDICTIONS[2],
+            tuple([RAG_REFERENCES[2], "some other text", "some final text"]),
+        ): 0.0,
     }
-    if (prediction, groundtruth) in ret_dict:
-        return ret_dict[(prediction, groundtruth)]
+    if (query, prediction, tuple(groundtruth_list)) in ret_dict:
+        return ret_dict[(query, prediction, tuple(groundtruth_list))]
     return 0.0
 
 
@@ -656,30 +668,57 @@ def mocked_context_precision(
     self,
     query: str,
     ordered_context_list: list[str],
-    groundtruth: str,
+    groundtruth_list: list[str],
 ):
     ret_dict = {
-        (RAG_QUERIES[0], tuple(RAG_CONTEXT[0]), RAG_REFERENCES[0]): 1.0,
-        (RAG_QUERIES[1], tuple(RAG_CONTEXT[1]), RAG_REFERENCES[1]): 1.0,
-        (RAG_QUERIES[2], tuple(RAG_CONTEXT[2]), RAG_REFERENCES[2]): 1.0,
+        (
+            RAG_QUERIES[0],
+            tuple(RAG_CONTEXT[0]),
+            tuple([RAG_REFERENCES[0], "some other text", "some final text"]),
+        ): 1.0,
+        (
+            RAG_QUERIES[1],
+            tuple(RAG_CONTEXT[1]),
+            tuple([RAG_REFERENCES[1], "some other text", "some final text"]),
+        ): 1.0,
+        (
+            RAG_QUERIES[2],
+            tuple(RAG_CONTEXT[2]),
+            tuple([RAG_REFERENCES[2], "some other text", "some final text"]),
+        ): 1.0,
     }
-    if (query, tuple(ordered_context_list), groundtruth) in ret_dict:
-        return ret_dict[(query, tuple(ordered_context_list), groundtruth)]
+    if (
+        query,
+        tuple(ordered_context_list),
+        tuple(groundtruth_list),
+    ) in ret_dict:
+        return ret_dict[
+            (query, tuple(ordered_context_list), tuple(groundtruth_list))
+        ]
     return 0.0
 
 
 def mocked_context_recall(
     self,
     context_list: list[str],
-    groundtruth: str,
+    groundtruth_list: list[str],
 ):
     ret_dict = {
-        (tuple(RAG_CONTEXT[0]), RAG_REFERENCES[0]): 0.8,
-        (tuple(RAG_CONTEXT[1]), RAG_REFERENCES[1]): 0.5,
-        (tuple(RAG_CONTEXT[2]), RAG_REFERENCES[2]): 0.2,
+        (
+            tuple(RAG_CONTEXT[0]),
+            tuple([RAG_REFERENCES[0], "some other text", "some final text"]),
+        ): 0.8,
+        (
+            tuple(RAG_CONTEXT[1]),
+            tuple([RAG_REFERENCES[1], "some other text", "some final text"]),
+        ): 0.5,
+        (
+            tuple(RAG_CONTEXT[2]),
+            tuple([RAG_REFERENCES[2], "some other text", "some final text"]),
+        ): 0.2,
     }
-    if (tuple(context_list), groundtruth) in ret_dict:
-        return ret_dict[(tuple(context_list), groundtruth)]
+    if (tuple(context_list), tuple(groundtruth_list)) in ret_dict:
+        return ret_dict[(tuple(context_list), tuple(groundtruth_list))]
     return 0.0
 
 

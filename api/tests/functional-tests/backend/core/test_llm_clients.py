@@ -841,7 +841,7 @@ def test_LLMClient(monkeypatch):
         _return_valid_answer_correctness_response,
     )
     assert 0.6666666666666666 == client.answer_correctness(
-        "some query", "prediction text", "ground truth text"
+        "some query", "prediction text", ["ground truth text"]
     )
 
     # Needs to have 'statements' key.
@@ -851,7 +851,7 @@ def test_LLMClient(monkeypatch):
     )
     with pytest.raises(InvalidLLMResponseError):
         client.answer_correctness(
-            "some query", "prediction text", "ground truth text"
+            "some query", "prediction text", ["ground truth text"]
         )
 
     # Should fail if ground truth statements are invalid even when prediction statements are valid
@@ -861,7 +861,7 @@ def test_LLMClient(monkeypatch):
     )
     with pytest.raises(InvalidLLMResponseError):
         client.answer_correctness(
-            "some query", "prediction text", "ground truth text"
+            "some query", "prediction text", ["ground truth text"]
         )
 
     # Missing 'FN' in dictionary
@@ -871,7 +871,7 @@ def test_LLMClient(monkeypatch):
     )
     with pytest.raises(InvalidLLMResponseError):
         client.answer_correctness(
-            "some query", "prediction text", "ground truth text"
+            "some query", "prediction text", ["ground truth text"]
         )
 
     # TP has an invalid value.
@@ -881,7 +881,7 @@ def test_LLMClient(monkeypatch):
     )
     with pytest.raises(InvalidLLMResponseError):
         client.answer_correctness(
-            "some query", "prediction text", "ground truth text"
+            "some query", "prediction text", ["ground truth text"]
         )
 
     # Number of TP + FP does not equal the number of prediction statements
@@ -891,7 +891,7 @@ def test_LLMClient(monkeypatch):
     )
     with pytest.raises(InvalidLLMResponseError):
         client.answer_correctness(
-            "some query", "prediction text", "ground truth text"
+            "some query", "prediction text", ["ground truth text"]
         )
 
     # The number of FN is more than the number of ground truth statements
@@ -901,7 +901,7 @@ def test_LLMClient(monkeypatch):
     )
     with pytest.raises(InvalidLLMResponseError):
         client.answer_correctness(
-            "some query", "prediction text", "ground truth text"
+            "some query", "prediction text", ["ground truth text"]
         )
 
     # Patch __call__ with a valid response.
@@ -997,7 +997,7 @@ def test_LLMClient(monkeypatch):
     assert 0.45 == client.context_precision(
         "some query",
         ["context 1", "context 2", "context 3", "context 4", "context 5"],
-        "some ground truth",
+        ["some ground truth"],
     )
 
     # If all verdicts are "no", the returned score should be 0.
@@ -1008,7 +1008,7 @@ def test_LLMClient(monkeypatch):
     assert 0.0 == client.context_precision(
         "some query",
         ["context 1", "context 2", "context 3", "context 4", "context 5"],
-        "some ground truth",
+        ["some ground truth"],
     )
 
     # Context precision is meaningless if context_list is empty.
@@ -1020,7 +1020,7 @@ def test_LLMClient(monkeypatch):
         client.context_precision(
             "some query",
             [],
-            "some ground truth",
+            ["some ground truth"],
         )
 
     # Only 1 context provided but 5 verdicts were returned.
@@ -1032,7 +1032,7 @@ def test_LLMClient(monkeypatch):
         client.context_precision(
             "some query",
             ["length of context list does not match LLM's response"],
-            "some ground truth",
+            ["some ground truth"],
         )
 
     # Key 'invalid_key' is returned but the key should be 'verdicts'.
@@ -1044,7 +1044,7 @@ def test_LLMClient(monkeypatch):
         client.context_precision(
             "some query",
             ["context 1", "context 2", "context 3", "context 4", "context 5"],
-            "some ground truth",
+            ["some ground truth"],
         )
 
     # Patch __call__ with a valid response.
@@ -1054,7 +1054,7 @@ def test_LLMClient(monkeypatch):
     )
     assert 0.75 == client.context_recall(
         ["context 1", "context 2"],
-        "some ground truth",
+        ["some ground truth"],
     )
 
     # Context recall is meaningless if context_list is empty.
@@ -1065,7 +1065,7 @@ def test_LLMClient(monkeypatch):
     with pytest.raises(ValueError):
         client.context_recall(
             [],
-            "some ground truth",
+            ["some ground truth"],
         )
 
     # Ground truth statements response must have key 'statements'.
@@ -1076,7 +1076,7 @@ def test_LLMClient(monkeypatch):
     with pytest.raises(InvalidLLMResponseError):
         client.context_recall(
             ["context 1", "context 2"],
-            "some ground truth",
+            ["some ground truth"],
         )
 
     # Ground truth statements must be strings.
@@ -1087,7 +1087,7 @@ def test_LLMClient(monkeypatch):
     with pytest.raises(InvalidLLMResponseError):
         client.context_recall(
             ["context 1", "context 2"],
-            "some ground truth",
+            ["some ground truth"],
         )
 
     # Context recall verdicts response must have key 'verdicts'.
@@ -1098,7 +1098,7 @@ def test_LLMClient(monkeypatch):
     with pytest.raises(InvalidLLMResponseError):
         client.context_recall(
             ["context 1", "context 2"],
-            "some ground truth",
+            ["some ground truth"],
         )
 
     # Number of context recall verdicts doesn't match the number of ground truth statements.
@@ -1109,7 +1109,7 @@ def test_LLMClient(monkeypatch):
     with pytest.raises(InvalidLLMResponseError):
         client.context_recall(
             ["context 1", "context 2"],
-            "some ground truth",
+            ["some ground truth"],
         )
 
     # Patch __call__ with a valid response.

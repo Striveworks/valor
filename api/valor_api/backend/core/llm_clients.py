@@ -769,10 +769,12 @@ class LLMClient:
         self,
         query: str,
         prediction: str,
-        groundtruth: str,
+        groundtruth_list: list[str],
     ) -> float:
         """
         Compute answer correctness. Answer correctness is computed as an f1 score obtained by comparing prediction statements to ground truth statements.
+
+        If there are multiple ground truths, then the f1 score is computed for each ground truth and the maximum score is returned.
 
         This metric was adapted from RAGAS. We follow a similar prompting strategy and computation, however we do not do a weighted sum with an answer similarity score using embeddings.
 
@@ -782,26 +784,36 @@ class LLMClient:
             The query that both the ground truth and prediction should be answering.
         prediction: str
             The prediction text to extract statements from.
-        groundtruth: str
-            The ground truth text to extract statements from.
+        groundtruth_list: list[str]
+            A list of ground truth texts to extract statements from.
 
         Returns
         -------
         float
-            The answer correctness score between 0 and 1, with higher values indicating that the answer is more correct. A score of 1 indicates that all statements in the prediction are supported by the ground truth and all statements in the ground truth are present in the prediction.
+            The answer correctness score between 0 and 1. Higher values indicate that the answer is more correct. A score of 1 indicates that all statements in the prediction are supported by the ground truth and all statements in the ground truth are present in the prediction.
         """
-        groundtruth_statements = self._generate_statements(groundtruth)
+        if len(groundtruth_list) == 0:
+            raise ValueError(
+                "Answer correctness is meaningless if the ground truth list is empty."
+            )
+
         prediction_statements = self._generate_statements(prediction)
-        verdicts = self._generate_answer_correctness_verdicts(
-            query, groundtruth_statements, prediction_statements
-        )
+        f1_scores = []
+        for groundtruth in groundtruth_list:
+            groundtruth_statements = self._generate_statements(groundtruth)
+            verdicts = self._generate_answer_correctness_verdicts(
+                query=query,
+                groundtruth_statements=groundtruth_statements,
+                prediction_statements=prediction_statements,
+            )
 
-        tp = len(verdicts["TP"])
-        fp = len(verdicts["FP"])
-        fn = len(verdicts["FN"])
+            tp = len(verdicts["TP"])
+            fp = len(verdicts["FP"])
+            fn = len(verdicts["FN"])
 
-        f1_score = tp / (tp + 0.5 * (fp + fn)) if tp > 0 else 0
-        return f1_score
+            f1_scores.append(tp / (tp + 0.5 * (fp + fn)) if tp > 0 else 0)
+
+        return max(f1_scores)
 
     def answer_relevance(
         self,
@@ -821,7 +833,7 @@ class LLMClient:
         Returns
         -------
         float
-            The answer relevance score will be evaluated as a float between 0 and 1, with 1 indicating that all statements are relevant to the query.
+            The answer relevance score between 0 and 1. A score of 1 indicates that all statements are relevant to the query.
         """
         statements = self._generate_statements(text)
         verdicts = self._generate_answer_relevance_verdicts(query, statements)
@@ -844,7 +856,7 @@ class LLMClient:
         Returns
         -------
         float
-            The bias score will be evaluated as a float between 0 and 1, with 1 indicating that all opinions in the text are biased.
+            The bias score between 0 and 1. A score of 1 indicates that all opinions in the text are biased.
         """
         opinions = self._generate_opinions(text)
         if len(opinions) == 0:
@@ -860,14 +872,16 @@ class LLMClient:
         self,
         query: str,
         ordered_context_list: list[str],
-        groundtruth: str,
+        groundtruth_list: list[str],
     ) -> float:
         """
         Compute context precision, a score for evaluating the retrieval mechanism of a RAG model.
 
         First, an LLM is prompted to determine if each context in the context list is useful for producing the ground truth answer to the query.
 
-        Then the context precision score is computed as a weighted sum of the precision at k for each k from 1 to the length of the context list.
+        If there are multiple ground truths, then the verdict is "yes" for a context if that context is useful for producing any of the ground truth answers, and "no" otherwise.
+
+        Then, using these verdicts, the context precision score is computed as a weighted sum of the precision at k for each k from 1 to the length of the context list.
 
         Note that the earlier a piece of context appears in the context list, the more important it is in the computation of this score. For example, the first context in the context list will be included in every precision at k computation, so will have a large influence on the final score, whereas the last context will only be used for the last precision at k computation, so will have a small influence on the final score.
 
@@ -877,34 +891,46 @@ class LLMClient:
             A query.
         ordered_context_list: list[str]
             The ordered list of contexts. Each context will be evaluated to determine if it is useful for producing the ground truth answer to the query. Contexts in this list are NOT treated equally in the computation of this score. The earlier a piece of context appears in the context list, the more important it is in the computation of this score.
-        groundtruth: str
-            A ground truth answer to the query.
+        groundtruth_list: list[str]
+            A list of ground truth answers to the query.
 
         Returns
         -------
         float
-            The context precision score will be evaluated as a float between 0 and 1, with a higher score indicating better context precision.
+            The context precision score between 0 and 1. A higher score indicates better context precision.
         """
         if len(ordered_context_list) == 0:
             raise ValueError(
                 "Context precision is meaningless if the context list is empty."
             )
+        if len(groundtruth_list) == 0:
+            raise ValueError(
+                "Context precision is meaningless if the ground truth list is empty."
+            )
 
-        verdicts = self._generate_context_precision_verdicts(
-            query=query,
-            ordered_context_list=ordered_context_list,
-            groundtruth=groundtruth,
-        )
+        # Get verdicts for each ground truth, and aggregate by setting the verdict for
+        # a context to "yes" if the verdict is "yes" for any ground truth.
+        aggregate_verdicts = ["no"] * len(ordered_context_list)
+        for groundtruth in groundtruth_list:
+            verdicts = self._generate_context_precision_verdicts(
+                query=query,
+                ordered_context_list=ordered_context_list,
+                groundtruth=groundtruth,
+            )
+            for i in range(len(verdicts)):
+                if verdicts[i]["verdict"] == "yes":
+                    aggregate_verdicts[i] = "yes"
 
+        # Use the aggregate verdicts to compute the precision at k for each k.
         precision_at_k_list = []
         for k in range(1, len(ordered_context_list) + 1):
             # Only compute the precision at k if the kth context is relevant.
-            if verdicts[k - 1]["verdict"] == "yes":
+            if aggregate_verdicts[k - 1] == "yes":
                 precision_at_k = (
                     sum(
                         1
-                        for verdict in verdicts[:k]
-                        if verdict["verdict"] == "yes"
+                        for verdict in aggregate_verdicts[:k]
+                        if verdict == "yes"
                     )
                     / k
                 )
@@ -920,39 +946,50 @@ class LLMClient:
     def context_recall(
         self,
         context_list: list[str],
-        groundtruth: str,
+        groundtruth_list: list[str],
     ) -> float:
         """
         Compute context recall, a score for evaluating the retrieval mechanism of a RAG model.
 
         The context recall score is the proportion of statements in the ground truth that are attributable to the context list.
 
+        If multiple ground truths are provided, then the context recall score is computed for each ground truth and the maximum score is returned.
+
         Parameters
         ----------
         context_list: list[str]
             The list of contexts to evaluate against.
-        groundtruth: str
-            A ground truth answer to extract statements from.
+        groundtruth_list: str
+            A list of ground truth answers to extract statements from.
 
         Returns
         -------
         float
-            The context recall score will be evaluated as a float between 0 and 1, with 1 indicating that all ground truth statements are attributable to the context list.
+            The context recall score between 0 and 1. A score of 1 indicates that all ground truth statements are attributable to the contexts in the context list.
         """
         if len(context_list) == 0:
             raise ValueError(
                 "Context recall is meaningless if the context list is empty."
             )
+        if len(groundtruth_list) == 0:
+            raise ValueError(
+                "Context recall is meaningless if the ground truth list is empty."
+            )
 
-        groundtruth_statements = self._generate_statements(groundtruth)
+        scores = []
+        for groundtruth in groundtruth_list:
+            groundtruth_statements = self._generate_statements(groundtruth)
 
-        verdicts = self._generate_context_recall_verdicts(
-            context_list, groundtruth_statements
-        )
+            verdicts = self._generate_context_recall_verdicts(
+                context_list, groundtruth_statements
+            )
 
-        return sum(
-            1 for verdict in verdicts if verdict["verdict"] == "yes"
-        ) / len(verdicts)
+            scores.append(
+                sum(1 for verdict in verdicts if verdict["verdict"] == "yes")
+                / len(verdicts)
+            )
+
+        return max(scores)
 
     def context_relevance(
         self,
@@ -972,7 +1009,7 @@ class LLMClient:
         Returns
         -------
         float
-            The context relevance score will be evaluated as a float between 0 and 1, with 0 indicating that none of the contexts are relevant and 1 indicating that all of the contexts are relevant.
+            The context relevance score between 0 and 1. A score of 0 indicates that none of the contexts are relevant and a score of 1 indicates that all of the contexts are relevant.
         """
         if len(context_list) == 0:
             raise ValueError(
@@ -1005,7 +1042,7 @@ class LLMClient:
         Returns
         -------
         float
-            The faithfulness score will be evaluated as a float between 0 and 1, with 1 indicating that all claims in the text are implied by the list of contexts.
+            The faithfulness score between 0 and 1. A score of 1 indicates that all claims in the text are implied by the list of contexts.
         """
         if len(context_list) == 0:
             raise ValueError(
@@ -1046,7 +1083,7 @@ class LLMClient:
         Returns
         -------
         float
-            The hallucination score will be evaluated as a float between 0 and 1, with 1 indicating that all contexts are contradicted by the text.
+            The hallucination score between 0 and 1. A score of 1 indicates that all contexts are contradicted by the text.
         """
         if len(context_list) == 0:
             raise ValueError(
@@ -1080,7 +1117,7 @@ class LLMClient:
         Returns
         -------
         int
-            The summary coherence score will be evaluated as an integer, with 1 indicating the lowest summary coherence and 5 the highest summary coherence.
+            The summary coherence score between 1 and 5. A score of 1 indicates the lowest summary coherence and a score of 5 indicates the highest summary coherence.
         """
         return self._summary_coherence(text=text, summary=summary)
 

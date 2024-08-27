@@ -417,19 +417,13 @@ def _compute_text_generation_metrics(
                 for (prediction, groundtruth_list) in zip(
                     predictions, references
                 ):
-                    score = 0
-                    for groundtruth in groundtruth_list:
-                        score = max(
-                            score,
-                            client.answer_correctness(
-                                query=datum_text,
-                                prediction=prediction,
-                                groundtruth=groundtruth,
-                            ),
-                        )
                     output += [
                         schemas.AnswerCorrectnessMetric(
-                            value=score,
+                            value=client.answer_correctness(
+                                query=datum_text,
+                                prediction=prediction,
+                                groundtruth_list=groundtruth_list,
+                            ),
                             parameters={
                                 "dataset": dataset_name,
                                 "datum_uid": datum_uid,
@@ -467,19 +461,13 @@ def _compute_text_generation_metrics(
                 for (prediction_context_list, groundtruth_list) in zip(
                     list_of_prediction_context_lists, references
                 ):
-                    score = 0
-                    for groundtruth in groundtruth_list:
-                        score = max(
-                            score,
-                            client.context_precision(
-                                query=datum_text,
-                                ordered_context_list=prediction_context_list,
-                                groundtruth=groundtruth,
-                            ),
-                        )
                     output += [
                         schemas.ContextPrecisionMetric(
-                            value=score,
+                            value=client.context_precision(
+                                query=datum_text,
+                                ordered_context_list=prediction_context_list,
+                                groundtruth_list=groundtruth_list,
+                            ),
                             parameters={
                                 "dataset": dataset_name,
                                 "datum_uid": datum_uid,
@@ -493,18 +481,12 @@ def _compute_text_generation_metrics(
                 for (prediction_context_list, groundtruth_list) in zip(
                     list_of_prediction_context_lists, references
                 ):
-                    score = 0
-                    for groundtruth in groundtruth_list:
-                        score = max(
-                            score,
-                            client.context_recall(
-                                context_list=prediction_context_list,
-                                groundtruth=groundtruth,
-                            ),
-                        )
                     output += [
                         schemas.ContextRecallMetric(
-                            value=score,
+                            value=client.context_recall(
+                                context_list=prediction_context_list,
+                                groundtruth_list=groundtruth_list,
+                            ),
                             parameters={
                                 "dataset": dataset_name,
                                 "datum_uid": datum_uid,
