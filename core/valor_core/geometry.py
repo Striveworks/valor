@@ -7,6 +7,103 @@ from shapely.geometry import Polygon as ShapelyPolygon
 np.seterr(divide="ignore", invalid="ignore")
 
 
+def calculate_axis_aligned_bbox_intersection(
+    bbox1: np.ndarray, bbox2: np.ndarray
+) -> float:
+    """
+    Calculate the intersection area between two axis-aligned bounding boxes.
+
+    Parameters
+    ----------
+    bbox1 : np.ndarray
+        Array representing the first bounding bo.
+    bbox2 : np.ndarray
+        Array representing the second bounding box with the same format as bbox1.
+    Returns
+    -------
+    float
+        The area of the intersection between the two bounding boxes.
+    Raises
+    ------
+    ValueError
+        If the input bounding boxes do not have the expected shape.
+    """
+
+    xmin_inter = max(bbox1[:, 0].min(), bbox2[:, 0].min())
+    ymin_inter = max(bbox1[:, 1].min(), bbox2[:, 1].min())
+    xmax_inter = min(bbox1[:, 0].max(), bbox2[:, 0].max())
+    ymax_inter = min(bbox1[:, 1].max(), bbox2[:, 1].max())
+
+    width = max(0, xmax_inter - xmin_inter)
+    height = max(0, ymax_inter - ymin_inter)
+
+    intersection_area = width * height
+
+    return intersection_area
+
+
+def calculate_axis_aligned_bbox_union(
+    bbox1: np.ndarray, bbox2: np.ndarray
+) -> float:
+    """
+    Calculate the union area between two axis-aligned bounding boxes.
+
+    Parameters
+    ----------
+    bbox1 : np.ndarray
+        Array representing the first bounding box.
+    bbox2 : np.ndarray
+        Array representing the second bounding box with the same format as bbox1.
+    Returns
+    -------
+    float
+        The area of the union between the two bounding boxes.
+    Raises
+    ------
+    ValueError
+        If the input bounding boxes do not have the expected shape.
+    """
+    area1 = (bbox1[:, 0].max() - bbox1[:, 0].min()) * (
+        bbox1[:, 1].max() - bbox1[:, 1].min()
+    )
+    area2 = (bbox2[:, 0].max() - bbox2[:, 0].min()) * (
+        bbox2[:, 1].max() - bbox2[:, 1].min()
+    )
+    union_area = (
+        area1 + area2 - calculate_axis_aligned_bbox_intersection(bbox1, bbox2)
+    )
+    return union_area
+
+
+def calculate_axis_aligned_bbox_iou(
+    bbox1: np.ndarray, bbox2: np.ndarray
+) -> float:
+    """
+    Calculate the Intersection over Union (IoU) between two axis-aligned bounding boxes.
+
+    Parameters
+    ----------
+    bbox1 : np.ndarray
+        Array representing the first bounding box.
+    bbox2 : np.ndarray
+        Array representing the second bounding box with the same format as bbox1.
+    Returns
+    -------
+    float
+        The IoU between the two bounding boxes. Returns 0 if the union area is zero.
+
+    Raises
+    ------
+    ValueError
+        If the input bounding boxes do not have the expected shape.
+    """
+    intersection = calculate_axis_aligned_bbox_intersection(bbox1, bbox2)
+    union = calculate_axis_aligned_bbox_union(bbox1, bbox2)
+    iou = intersection / union
+
+    return iou
+
+
 def calculate_iou(
     bbox1: list[tuple[float, float]], bbox2: list[tuple[float, float]]
 ) -> float:
@@ -75,6 +172,12 @@ def is_axis_aligned(bbox: list[tuple[float, float]]) -> bool:
     bool
         True if the bounding box is axis-aligned, otherwise False.
     """
+
+    if isinstance(bbox, np.ndarray):
+        raise ValueError(
+            "Please make sure your bounding box is a list, otherwise is_axis_aligned may not work correctly."
+        )
+
     return all(
         x1 == x2 or y1 == y2
         for (x1, y1), (x2, y2) in zip(bbox, bbox[1:] + bbox[:1])

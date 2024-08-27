@@ -57,16 +57,53 @@ def _check_if_series_contains_masks(series: pd.Series) -> bool:
     return False
 
 
+def _check_if_series_contains_axis_aligned_bboxes(series: pd.Series) -> bool:
+    """Check if all elements in a pandas.Series are axis-aligned bounding boxes."""
+
+    return (
+        series.apply(lambda x: x.tolist())
+        .apply(geometry.is_axis_aligned)
+        .all()
+    )
+
+
 def _calculate_iou(
     joint_df: pd.DataFrame,
 ) -> pd.DataFrame:
     """Calculate the IOUs between predictions and groundtruths in a joint dataframe."""
-    if _check_if_series_contains_masks(
-        joint_df.loc[
-            joint_df["converted_geometry_pd"].notnull(),
-            "converted_geometry_pd",
-        ]
+
+    filtered_df = joint_df.loc[
+        ~joint_df["converted_geometry_gt"].isnull()
+        & ~joint_df["converted_geometry_pd"].isnull(),
+        ["converted_geometry_gt", "converted_geometry_pd"],
+    ]
+
+    if not _check_if_series_contains_masks(
+        filtered_df["converted_geometry_pd"]
     ):
+        if _check_if_series_contains_axis_aligned_bboxes(
+            filtered_df["converted_geometry_pd"]
+        ) & _check_if_series_contains_axis_aligned_bboxes(
+            filtered_df["converted_geometry_gt"]
+        ):
+            iou_func = geometry.calculate_axis_aligned_bbox_iou
+        else:
+            iou_func = geometry.calculate_iou
+
+        iou_calculation_df = filtered_df.apply(
+            lambda row: iou_func(
+                row["converted_geometry_gt"], row["converted_geometry_pd"]
+            ),
+            axis=1,
+        )
+
+        if not iou_calculation_df.empty:
+            iou_calculation_df = iou_calculation_df.rename("iou_")
+            joint_df = joint_df.join(iou_calculation_df)
+        else:
+            joint_df["iou_"] = 0
+
+    else:
         iou_calculation_df = (
             joint_df.assign(
                 intersection=lambda chain_df: chain_df.apply(
@@ -102,24 +139,6 @@ def _calculate_iou(
         )
 
         joint_df = joint_df.join(iou_calculation_df["iou_"])
-
-    else:
-        iou_calculation_df = joint_df.loc[
-            ~joint_df["converted_geometry_gt"].isnull()
-            & ~joint_df["converted_geometry_pd"].isnull(),
-            ["converted_geometry_gt", "converted_geometry_pd"],
-        ].apply(
-            lambda row: geometry.calculate_iou(
-                row["converted_geometry_gt"], row["converted_geometry_pd"]
-            ),
-            axis=1,
-        )
-
-        if not iou_calculation_df.empty:
-            iou_calculation_df = iou_calculation_df.rename("iou_")
-            joint_df = joint_df.join(iou_calculation_df)
-        else:
-            joint_df["iou_"] = 0
 
     return joint_df
 
