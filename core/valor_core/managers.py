@@ -366,7 +366,7 @@ class ValorClassificationManager:
                 "score",
                 "id_pd",
                 "annotation_id_pd",
-                "is_true_positive",
+                "is_label_match",
                 "is_false_positive",
                 "label",
             ],

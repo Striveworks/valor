@@ -345,10 +345,10 @@ def _create_joint_df(
         suffixes=("_gt", "_pd"),
     )
 
-    joint_df["is_true_positive"] = (
+    joint_df["is_label_match"] = (
         joint_df["label_value_gt"] == joint_df["label_value_pd"]
     )
-    joint_df["is_false_positive"] = ~joint_df["is_true_positive"]
+    joint_df["is_false_positive"] = ~joint_df["is_label_match"]
 
     joint_df = joint_df.sort_values(
         by=["score", "label_key", "label_value_gt"],
@@ -485,7 +485,7 @@ def _calculate_rocauc(
     )
 
     total_true_positves_per_label_key_and_label_value = (
-        joint_df.loc[joint_df["is_true_positive"], :]
+        joint_df.loc[joint_df["is_label_match"], :]
         .groupby(["label_key", "label_value_pd"], as_index=False)[
             "label_value_gt"
         ]
@@ -508,7 +508,7 @@ def _calculate_rocauc(
             [
                 "label_key",
                 "label_value_pd",
-                "is_true_positive",
+                "is_label_match",
                 "is_false_positive",
             ]
         ]
@@ -516,7 +516,7 @@ def _calculate_rocauc(
         .cumsum()
     ).rename(
         columns={
-            "is_true_positive": "cum_true_positive_cnt",
+            "is_label_match": "cum_true_positive_cnt",
             "is_false_positive": "cum_false_positive_cnt",
         }
     )
@@ -622,8 +622,8 @@ def _add_samples_to_dataframe(
 ) -> pd.DataFrame:
     """Efficienctly gather samples for a given flag."""
 
-    sample_df = pd.concat(
-        [
+    if flag_column in ["no_predictions_false_negative_flag"]:
+        sample_df = (
             pr_calc_df[pr_calc_df[flag_column]]
             .groupby(
                 [
@@ -634,21 +634,36 @@ def _add_samples_to_dataframe(
                 as_index=False,
             )[["datum_uid"]]
             .agg(lambda x: tuple(x.head(max_examples)))
-            .rename(columns={"label_value_gt": "label_value"}),
-            pr_calc_df[pr_calc_df[flag_column]]
-            .groupby(
-                [
-                    "label_key",
-                    "label_value_pd",
-                    "confidence_threshold",
-                ],
-                as_index=False,
-            )[["datum_uid"]]
-            .agg(lambda x: tuple(x.head(max_examples)))
-            .rename(columns={"label_value_pd": "label_value"}),
-        ],
-        axis=0,
-    ).drop_duplicates()
+            .rename(columns={"label_value_gt": "label_value"})
+        )
+    else:
+        sample_df = pd.concat(
+            [
+                pr_calc_df[pr_calc_df[flag_column]]
+                .groupby(
+                    [
+                        "label_key",
+                        "label_value_gt",
+                        "confidence_threshold",
+                    ],
+                    as_index=False,
+                )[["datum_uid"]]
+                .agg(lambda x: tuple(x.head(max_examples)))
+                .rename(columns={"label_value_gt": "label_value"}),
+                pr_calc_df[pr_calc_df[flag_column]]
+                .groupby(
+                    [
+                        "label_key",
+                        "label_value_pd",
+                        "confidence_threshold",
+                    ],
+                    as_index=False,
+                )[["datum_uid"]]
+                .agg(lambda x: tuple(x.head(max_examples)))
+                .rename(columns={"label_value_pd": "label_value"}),
+            ],
+            axis=0,
+        ).drop_duplicates()
 
     if not sample_df.empty:
         sample_df[f"{flag_column}_samples"] = sample_df.apply(
@@ -713,12 +728,12 @@ def _calculate_pr_curves(
     # create flags where the predictions meet criteria
     pr_calc_df["true_positive_flag"] = (
         pr_calc_df["score"] >= pr_calc_df["confidence_threshold"]
-    ) & pr_calc_df["is_true_positive"]
+    ) & pr_calc_df["is_label_match"]
 
     # for all the false positives, we consider them to be a misclassification if they share a key but not a value with a gt
     pr_calc_df["misclassification_false_positive_flag"] = (
         pr_calc_df["score"] >= pr_calc_df["confidence_threshold"]
-    ) & ~pr_calc_df["is_true_positive"]
+    ) & ~pr_calc_df["is_label_match"]
 
     # next, we flag false negatives by declaring any groundtruth that isn't associated with a true positive to be a false negative
     groundtruths_associated_with_true_positives = (
@@ -798,10 +813,8 @@ def _calculate_pr_curves(
             "false_negative_flag"
         ]
 
-    # true negatives are any rows which don't have another flag
     pr_calc_df["true_negative_flag"] = (
-        ~pr_calc_df["true_positive_flag"]
-        & ~pr_calc_df["false_negative_flag"]
+        ~pr_calc_df["is_label_match"]
         & ~pr_calc_df["misclassification_false_positive_flag"]
     )
 
