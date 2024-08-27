@@ -2598,3 +2598,64 @@ def evaluate_mixed_annotations_output():
     ]
 
     return expected
+
+
+@pytest.fixture
+def detailed_curve_examples_output():
+
+    expected_outputs = {
+        ("bee", 0.05, "tp", "all"): {
+            ("datum1",),
+            ("datum3",),
+        },
+        (
+            "bee",
+            0.05,
+            "fp",
+            "misclassifications",
+        ): {("datum2",), ("datum0",), ("datum4",)},
+        ("dog", 0.05, "tp", "all"): {("datum4",)},
+        (
+            "dog",
+            0.05,
+            "fp",
+            "misclassifications",
+        ): {("datum2",), ("datum0",), ("datum3",), ("datum1",)},
+        ("cat", 0.05, "tp", "all"): {
+            ("datum2",),
+            ("datum0",),
+        },
+        (
+            "cat",
+            0.05,
+            "fp",
+            "misclassifications",
+        ): {("datum3",), ("datum1",), ("datum4",)},
+        ("bee", 0.85, "tn", "all"): {
+            ("datum0",),
+            ("datum2",),
+            ("datum4",),
+        },
+        ("bee", 0.85, "fn", "no_predictions"): {
+            ("datum3",),
+            ("datum1",),
+        },
+        ("dog", 0.85, "tn", "all"): {
+            ("datum2",),
+            ("datum0",),
+            ("datum3",),
+            ("datum1",),
+        },
+        ("dog", 0.85, "fn", "no_predictions"): {("datum4",)},
+        ("cat", 0.85, "tn", "all"): {
+            ("datum1",),
+            ("datum3",),
+            ("datum4",),
+        },
+        ("cat", 0.85, "fn", "no_predictions"): {
+            ("datum2",),
+            ("datum0",),
+        },
+    }
+
+    return expected_outputs

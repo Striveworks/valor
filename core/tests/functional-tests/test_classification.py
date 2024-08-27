@@ -597,3 +597,30 @@ def test_pr_curves_multiple_predictions_per_groundtruth(
                     threshold
                 ]
             )
+
+
+def test_detailed_curve_examples(
+    multiclass_pr_curve_groundtruths: list,
+    multiclass_pr_curve_predictions: list,
+    detailed_curve_examples_output: dict,
+):
+    """Test that we get back the right examples in DetailedPRCurves."""
+
+    eval_job = evaluate_classification(
+        groundtruths=multiclass_pr_curve_groundtruths,
+        predictions=multiclass_pr_curve_predictions,
+        metrics_to_return=[enums.MetricType.DetailedPrecisionRecallCurve],
+        pr_curve_max_examples=5,
+    )
+
+    output = eval_job.metrics[0]["value"]
+
+    for key, expected in detailed_curve_examples_output.items():
+        assert (
+            set(
+                output[key[0]][key[1]][key[2]]["observations"][key[3]][
+                    "examples"
+                ]
+            )
+            == expected
+        )
