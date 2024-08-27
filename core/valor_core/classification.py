@@ -611,87 +611,93 @@ def _add_samples_to_dataframe(
 ) -> pd.DataFrame:
     """Efficienctly gather samples for a given flag."""
 
+    samples = []
     sample_df = pd.DataFrame()
-    if flag_column == "true_positive":
-        sample_df = (
-            joint_df[joint_df["is_label_match"]]
-            .groupby(
-                ["label_key", "label_value_pd", "threshold_index"],
-                as_index=False,
-            )["datum_uid"]
-            .agg(lambda x: tuple(x.head(max_examples)))
-            .rename(columns={"label_value_pd": "label_value"})
-        )
-    elif flag_column == "misclassification_false_positive_flag":
-        sample_df = (
-            joint_df[~joint_df["is_label_match"]]
-            .groupby(
-                ["label_key", "label_value_pd", "threshold_index"],
-                as_index=False,
-            )["datum_uid"]
-            .agg(lambda x: tuple(x.head(max_examples)))
-            .rename(columns={"label_value_pd": "label_value"})
-        )
-    elif flag_column == "true_negative_flag":
-        # A false postitive at threshold x becomes a true negative at threshold x+1
-        sample_df = (
-            joint_df[~joint_df["is_label_match"]]
-            .groupby(
-                ["label_key", "label_value_pd", "threshold_index"],
-                as_index=False,
-            )["datum_uid"]
-            .agg(lambda x: tuple(x.head(max_examples)))
-            .rename(columns={"label_value_pd": "label_value"})
-        )
-        sample_df["threshold_index"] = sample_df["threshold_index"] + 1
-    elif flag_column == "misclassification_false_negative_flag":
-        # A misclassification false negative occurs when another prediction has a higher score than the correct prediction
-        sample_df = (
-            joint_df[
-                joint_df["is_label_match"]
-                & (
-                    joint_df["threshold_index"]
-                    < joint_df["threshold_index_fn"]
-                )
-            ]
-            .groupby(
-                ["label_key", "label_value_pd", "threshold_index_fn"],
-                as_index=False,
-            )["datum_uid"]
-            .agg(lambda x: tuple(x.head(max_examples)))
-            .rename(
-                columns={
-                    "label_value_pd": "label_value",
-                    "threshold_index_fn": "threshold_index",
-                }
+    if flag_column == "true_positive_flag":
+        for threshold_index in range(1, 20):
+            temp = (
+                joint_df[
+                    joint_df["is_label_match"]
+                    & (joint_df["threshold_index"] >= threshold_index)
+                ]
+                .groupby(["label_key", "label_value_pd"], as_index=False)[
+                    "datum_uid"
+                ]
+                .agg(lambda x: tuple(x.head(max_examples)))
             )
-        )
+            if not temp.empty:
+                temp["threshold_index"] = threshold_index
+                samples.append(temp)
+    elif flag_column == "misclassification_false_positive_flag":
+        for threshold_index in range(1, 20):
+            temp = (
+                joint_df[
+                    ~joint_df["is_label_match"]
+                    & (joint_df["threshold_index"] >= threshold_index)
+                ]
+                .groupby(["label_key", "label_value_pd"], as_index=False)[
+                    "datum_uid"
+                ]
+                .agg(lambda x: tuple(x.head(max_examples)))
+            )
+            if not temp.empty:
+                temp["threshold_index"] = threshold_index
+                samples.append(temp)
+    elif flag_column == "true_negative_flag":
+        for threshold_index in range(1, 20):
+            temp = (
+                joint_df[
+                    ~joint_df["is_label_match"]
+                    & (joint_df["threshold_index"] < threshold_index)
+                ]
+                .groupby(["label_key", "label_value_pd"], as_index=False)[
+                    "datum_uid"
+                ]
+                .agg(lambda x: tuple(x.head(max_examples)))
+            )
+            if not temp.empty:
+                temp["threshold_index"] = threshold_index
+                samples.append(temp)
+    elif flag_column == "misclassification_false_negative_flag":
+        for threshold_index in range(1, 20):
+            temp = (
+                joint_df[
+                    joint_df["is_label_match"]
+                    & (joint_df["threshold_index"] < threshold_index)
+                    & (threshold_index <= joint_df["threshold_index_max"])
+                ]
+                .groupby(["label_key", "label_value_pd"], as_index=False)[
+                    "datum_uid"
+                ]
+                .agg(lambda x: tuple(x.head(max_examples)))
+            )
+            if not temp.empty:
+                temp["threshold_index"] = threshold_index
+                samples.append(temp)
     elif flag_column == "no_predictions_false_negative_flag":
-        # A no prediction false negative occurs when no prediction on a datum has a score higher than the threshold.
-        # If the correct prediction has the highest score at threshold x, it becomes a no predict false negative at threshold x+1
-        sample_df = (
-            joint_df[
-                joint_df["is_label_match"]
-                & (
-                    joint_df["threshold_index"]
-                    == joint_df["threshold_index_fn"]
-                )
-            ]
-            .groupby(
-                ["label_key", "label_value_pd", "threshold_index"],
-                as_index=False,
-            )["datum_uid"]
-            .agg(lambda x: tuple(x.head(max_examples)))
-            .rename(columns={"label_value_pd": "label_value"})
-        )
-        sample_df["threshold_index"] = sample_df["threshold_index"] + 1
+        for threshold_index in range(1, 20):
+            temp = (
+                joint_df[
+                    joint_df["is_label_match"]
+                    & (joint_df["threshold_index_max"] < threshold_index)
+                ]
+                .groupby(["label_key", "label_value_pd"], as_index=False)[
+                    "datum_uid"
+                ]
+                .agg(lambda x: tuple(x.head(max_examples)))
+            )
+            if not temp.empty:
+                temp["threshold_index"] = threshold_index
+                samples.append(temp)
+
+    if len(samples):
+        sample_df = pd.concat(samples)
 
     if not sample_df.empty:
         sample_df[f"{flag_column}_samples"] = sample_df.apply(
             lambda row: set(zip(*row[["datum_uid"]])),  # type: ignore - pandas typing error
             axis=1,
         )
-
         pr_curve_counts_df = pr_curve_counts_df.merge(
             sample_df[
                 [
@@ -702,16 +708,16 @@ def _add_samples_to_dataframe(
                 ]
             ],
             on=["label_key", "label_value", "threshold_index"],
-            how="outer",
+            how="left",
         )
         pr_curve_counts_df[f"{flag_column}_samples"] = pr_curve_counts_df[
             f"{flag_column}_samples"
         ].apply(lambda x: list(x) if isinstance(x, set) else list())
 
     else:
-        pr_curve_counts_df[f"{flag_column}_samples"] = [
-            list() for _ in range(len(pr_curve_counts_df))
-        ]
+        pr_curve_counts_df[f"{flag_column}_samples"] = [[]] * len(
+            pr_curve_counts_df
+        )
 
     return pr_curve_counts_df
 
@@ -751,13 +757,9 @@ def _calculate_pr_curves(
     del prediction_df
     gc.collect()
 
-    total_label_values_per_label_key = (
-        joint_df.drop_duplicates(["datum_uid", "datum_id", "label_key"])[
-            ["label_key", "label_value_gt"]
-        ]
-        .rename(columns={"label_value_gt": "label_value"})
-        .value_counts()
-    )
+    total_label_values_per_label_key = joint_df.groupby(
+        ["label_key", "label_value_gt"]
+    )["id_gt"].nunique()
 
     total_datums_per_label_key = total_label_values_per_label_key.groupby(
         "label_key"
@@ -768,6 +770,15 @@ def _calculate_pr_curves(
     )
     joint_df["is_label_match"] = (
         joint_df["label_value_pd"] == joint_df["label_value_gt"]
+    )
+
+    joint_df = joint_df.merge(
+        joint_df[["datum_id", "datum_uid", "label_key", "threshold_index"]]
+        .groupby(["datum_id", "datum_uid", "label_key"])
+        .max(),
+        on=["datum_id", "datum_uid", "label_key"],
+        how="left",
+        suffixes=(None, "_max"),
     )
 
     # Count all true positives at each threshold
@@ -790,29 +801,61 @@ def _calculate_pr_curves(
         .rename(columns={"label_value_pd": "label_value"})
     )
 
-    # Merge and fill missing rows and values
-    pr_curve_counts_df = pd.DataFrame(
-        total_label_values_per_label_key.keys().to_list(),
-        columns=["label_key", "label_value"],
-    ).merge(pd.DataFrame({"threshold_index": range(21)}), how="cross")
+    false_negative_misclassification = (
+        joint_df[joint_df["is_label_match"]][
+            ["label_key", "label_value_gt", "threshold_index_max"]
+        ]
+        .value_counts()
+        .reset_index(name="false_negative_misclass_count")
+        .rename(
+            columns={
+                "label_value_gt": "label_value",
+                "threshold_index_max": "threshold_index",
+            }
+        )
+    )
+
+    pr_curve_counts_df = (
+        pd.merge(
+            true_positives,
+            false_positives,
+            on=["label_key", "label_value", "threshold_index"],
+            how="outer",
+        )
+        .merge(
+            false_negative_misclassification,
+            on=["label_key", "label_value", "threshold_index"],
+            how="outer",
+        )
+        .fillna(0)
+    )
+
+    del true_positives
+    del false_positives
+    gc.collect()
+
     pr_curve_counts_df = pr_curve_counts_df.merge(
-        true_positives, how="left"
-    ).fillna(0)
-    pr_curve_counts_df = pr_curve_counts_df.merge(
-        false_positives, how="left"
+        pr_curve_counts_df[["label_value", "label_key"]]
+        .drop_duplicates()
+        .merge(pd.DataFrame({"threshold_index": range(21)}), how="cross"),
+        on=["label_key", "label_value", "threshold_index"],
+        how="outer",
     ).fillna(0)
 
     # Total number of datums per label key
-    total_datums_per_label_key = pr_curve_counts_df[["label_key"]].apply(
-        lambda row: total_datums_per_label_key[row["label_key"]], axis=1
+    total_datums_per_label_key = pr_curve_counts_df["label_key"].map(
+        total_datums_per_label_key
     )
 
     # Total number of datums with groundtruth label per label key
-    total_label_values_per_label_key = pr_curve_counts_df[
+    total_label_values_per_label_key = (
+        total_label_values_per_label_key.to_dict(into=defaultdict(lambda: 0))
+    )
+    total_label_values_per_label_key = pr_curve_counts_df[  # type: ignore - pandas typing error
         ["label_key", "label_value"]
     ].apply(
-        lambda row: total_label_values_per_label_key[row["label_key"]][
-            row["label_value"]
+        lambda row: total_label_values_per_label_key[  # type: ignore - pandas typing error
+            (row["label_key"], row["label_value"])
         ],
         axis=1,
     )
@@ -841,6 +884,7 @@ def _calculate_pr_curves(
         total_datums_per_label_key - total_label_values_per_label_key
     ) - pr_curve_counts_df["false_positives"]
 
+    # Compute Metrics
     pr_curve_counts_df["precision"] = pr_curve_counts_df["true_positives"] / (
         pr_curve_counts_df["true_positives"]
         + pr_curve_counts_df["false_positives"]
@@ -863,38 +907,7 @@ def _calculate_pr_curves(
 
     # add samples to the dataframe for DetailedPrecisionRecallCurves
     if enums.MetricType.DetailedPrecisionRecallCurve in metrics_to_return:
-        false_negative_threshold = (
-            joint_df[["datum_id", "datum_uid", "label_key", "threshold_index"]]
-            .groupby(["datum_id", "datum_uid", "label_key"])
-            .max()
-        )
-        joint_df = joint_df.merge(
-            false_negative_threshold,
-            on=["datum_id", "datum_uid", "label_key"],
-            how="left",
-            suffixes=(None, "_fn"),
-        )
-
-        fn_miss = (
-            joint_df[joint_df["is_label_match"]][
-                ["label_key", "label_value_gt", "threshold_index_fn"]
-            ]
-            .value_counts()
-            .reset_index(name="false_negative_miss_count")
-            .rename(
-                columns={
-                    "label_value_gt": "label_value",
-                    "threshold_index_fn": "threshold_index",
-                }
-            )
-        )
-
-        pr_curve_counts_df = pr_curve_counts_df.merge(
-            fn_miss,
-            on=["label_key", "label_value", "threshold_index"],
-            how="left",
-        ).fillna(0)
-
+        # Compute total number of no prediction false negatives at each threshold
         pr_curve_counts_df[
             "false_negative_no_predict"
         ] = total_label_values_per_label_key - pr_curve_counts_df.loc[
@@ -902,14 +915,34 @@ def _calculate_pr_curves(
         ].groupby(
             ["label_key", "label_value"]
         )[
-            "false_negative_miss_count"
+            "false_negative_misclass_count"
         ].transform(
             pd.Series.cumsum
         )
+
+        # Misclassification false negatives = total_false_negatives - no_prediction_false_negatives
         pr_curve_counts_df["false_negative_misclassification"] = (
             pr_curve_counts_df["false_negatives"]
             - pr_curve_counts_df["false_negative_no_predict"]
         )
+
+        joint_df = joint_df[
+            [
+                "datum_uid",
+                "label_key",
+                "label_value_pd",
+                "threshold_index",
+                "threshold_index_max",
+            ]
+        ].rename(
+            columns={
+                "label_value_pd": "label_value",
+            }
+        )
+
+        del total_datums_per_label_key
+        del total_label_values_per_label_key
+        gc.collect()
 
         for flag in [
             "true_positive_flag",
@@ -929,23 +962,24 @@ def _calculate_pr_curves(
     detailed_pr_output = defaultdict(lambda: defaultdict(dict))
 
     for _, row in pr_curve_counts_df.iterrows():
-        if row["threshold_index"] == 0:
+        if row["threshold_index"] < 1:
             continue
         if row["threshold_index"] > 19:
             continue
 
-        pr_output[row["label_key"]][row["label_value"]][
-            row["threshold_index"] * 5 / 100
-        ] = {
-            "tp": row["true_positives"],
-            "fp": row["false_positives"],
-            "fn": row["false_negatives"],
-            "tn": row["true_negatives"],
-            "accuracy": row["accuracy"],
-            "precision": row["precision"],
-            "recall": row["recall"],
-            "f1_score": row["f1_score"],
-        }
+        if enums.MetricType.PrecisionRecallCurve in metrics_to_return:
+            pr_output[row["label_key"]][row["label_value"]][
+                row["threshold_index"] * 5 / 100
+            ] = {
+                "tp": row["true_positives"],
+                "fp": row["false_positives"],
+                "fn": row["false_negatives"],
+                "tn": row["true_negatives"],
+                "accuracy": row["accuracy"],
+                "precision": row["precision"],
+                "recall": row["recall"],
+                "f1_score": row["f1_score"],
+            }
 
         if enums.MetricType.DetailedPrecisionRecallCurve in metrics_to_return:
             detailed_pr_output[row["label_key"]][row["label_value"]][
