@@ -281,6 +281,6 @@ def calculate_raster_sum_pixels_of_two_images(row: pd.Series) -> pd.Series:
         A Series indicating the sum of pixels across two masks.
     """
 
-    return np.sum(row["converted_geometry_gt"]) + np.sum(
-        row["converted_geometry_pd"]
-    )
+    return np.logical_or(
+        row["converted_geometry_pd"], row["converted_geometry_gt"]
+    ).sum()
