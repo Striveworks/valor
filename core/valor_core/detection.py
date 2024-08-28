@@ -432,6 +432,7 @@ def _calculate_pr_metrics(
     """Calculates all PrecisionRecallCurve metrics."""
 
     print(joint_df)
+    return []
 
     if not (
         metrics_to_return
@@ -642,6 +643,9 @@ def _calculate_detailed_pr_metrics(
 ) -> list[metrics.DetailedPrecisionRecallCurve]:
     """Calculates all DetailedPrecisionRecallCurve metrics."""
 
+    print(detailed_pr_joint_df)
+
+    return []
     if not (
         metrics_to_return
         and enums.MetricType.DetailedPrecisionRecallCurve in metrics_to_return
