@@ -21,6 +21,7 @@ from valor_core import (
     Polygon,
     Prediction,
     Raster,
+    ValorDetectionManager,
     enums,
     evaluate_detection,
 )
@@ -235,9 +236,57 @@ def run_detailed_pr_curve_evaluation(groundtruths, predictions):
             enums.MetricType.mAR,
             enums.MetricType.mAPAveragedOverIOUs,
             enums.MetricType.PrecisionRecallCurve,
+            enums.MetricType.DetailedPrecisionRecallCurve,
         ],
     )
     return evaluation
+
+
+def run_base_evaluation_with_manager(groundtruths, predictions):
+    """Run a base evaluation (with no PR curves) using ValorDetectionManager."""
+    manager = ValorDetectionManager()
+    manager.add_data(groundtruths=groundtruths, predictions=predictions)
+    return manager.evaluate()
+
+
+def run_pr_curve_evaluation_with_manager(groundtruths, predictions):
+    """Run a base evaluation with PrecisionRecallCurve included using ValorDetectionManager."""
+    manager = ValorDetectionManager(
+        metrics_to_return=[
+            enums.MetricType.AP,
+            enums.MetricType.AR,
+            enums.MetricType.mAP,
+            enums.MetricType.APAveragedOverIOUs,
+            enums.MetricType.mAR,
+            enums.MetricType.mAPAveragedOverIOUs,
+            enums.MetricType.PrecisionRecallCurve,
+        ],
+    )
+
+    manager.add_data(groundtruths=groundtruths, predictions=predictions)
+
+    return manager.evaluate()
+
+
+def run_detailed_pr_curve_evaluation_with_manager(groundtruths, predictions):
+    """Run a base evaluation with PrecisionRecallCurve and DetailedPrecisionRecallCurve included using ValorDetectionManager."""
+
+    manager = ValorDetectionManager(
+        metrics_to_return=[
+            enums.MetricType.AP,
+            enums.MetricType.AR,
+            enums.MetricType.mAP,
+            enums.MetricType.APAveragedOverIOUs,
+            enums.MetricType.mAR,
+            enums.MetricType.mAPAveragedOverIOUs,
+            enums.MetricType.PrecisionRecallCurve,
+            enums.MetricType.DetailedPrecisionRecallCurve,
+        ],
+    )
+
+    manager.add_data(groundtruths=groundtruths, predictions=predictions)
+
+    return manager.evaluate()
 
 
 @dataclass
@@ -364,9 +413,13 @@ def run_benchmarking_analysis(
             # run evaluations
             eval_pr = None
             eval_detail = None
-            eval_base = run_base_evaluation(groundtruths, predictions)
+            eval_base = run_base_evaluation_with_manager(
+                groundtruths, predictions
+            )
             if compute_pr:
-                eval_pr = run_pr_curve_evaluation(groundtruths, predictions)
+                eval_pr = run_pr_curve_evaluation_with_manager(
+                    groundtruths, predictions
+                )
             if compute_detailed:
                 eval_detail = run_detailed_pr_curve_evaluation(
                     groundtruths, predictions
@@ -422,11 +475,11 @@ if __name__ == "__main__":
         ],
         limits_to_test=[5000, 5000],
     )
-
     # run raster benchmark
     run_benchmarking_analysis(
         combinations=[
             (AnnotationType.RASTER, AnnotationType.RASTER),
         ],
-        limits_to_test=[500, 500],
+        limits_to_test=[500],
+        compute_detailed=False,
     )

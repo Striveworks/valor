@@ -99,41 +99,19 @@ def _calculate_iou(
             joint_df["iou_"] = 0
 
     else:
-        iou_calculation_df = (
-            joint_df.assign(
-                intersection=lambda chain_df: chain_df.apply(
-                    lambda row: (
-                        0
-                        if row["converted_geometry_pd"] is None
-                        or row["converted_geometry_gt"] is None
-                        else np.logical_and(
-                            row["converted_geometry_pd"],
-                            row["converted_geometry_gt"],
-                        ).sum()
-                    ),
-                    axis=1,
-                )
+        intersection_ = joint_df.apply(
+            geometry.calculate_raster_intersection,
+            axis=1,
+        )
+        union_ = (
+            joint_df.apply(
+                geometry.calculate_raster_union,
+                axis=1,
             )
-            .assign(
-                union_=lambda chain_df: chain_df.apply(
-                    lambda row: (
-                        0
-                        if row["converted_geometry_pd"] is None
-                        or row["converted_geometry_gt"] is None
-                        else np.sum(row["converted_geometry_gt"])
-                        + np.sum(row["converted_geometry_pd"])
-                        - row["intersection"]
-                    ),
-                    axis=1,
-                )
-            )
-            .assign(
-                iou_=lambda chain_df: chain_df["intersection"]
-                / chain_df["union_"]
-            )
+            - intersection_
         )
 
-        joint_df = joint_df.join(iou_calculation_df["iou_"])
+        joint_df["iou_"] = intersection_ / union_
 
     return joint_df
 
@@ -643,6 +621,21 @@ def _calculate_detailed_pr_metrics(
     ) or (detailed_pr_joint_df is None):
         return []
 
+    if _check_if_series_contains_masks(
+        detailed_pr_joint_df.loc[
+            detailed_pr_joint_df["converted_geometry_pd"].notnull(),
+            "converted_geometry_pd",
+        ]
+    ) or _check_if_series_contains_masks(
+        detailed_pr_joint_df.loc[
+            detailed_pr_joint_df["converted_geometry_pd"].notnull(),
+            "converted_geometry_pd",
+        ]
+    ):
+        raise NotImplementedError(
+            "DetailedPrecisionRecallCurves are not yet implemented when dealing with rasters."
+        )
+
     # add confidence_threshold to the dataframe and sort
     detailed_pr_calc_df = pd.concat(
         [
@@ -1045,11 +1038,12 @@ def _create_detailed_joint_df(
         on=["datum_id", "label_key"],
         how="outer",
         suffixes=("_gt", "_pd"),
-    ).assign(
-        is_label_match=lambda chain_df: (
-            chain_df["label_id_pd"] == chain_df["label_id_gt"]
-        )
     )
+
+    detailed_joint_df["is_label_match"] = (
+        detailed_joint_df["label_id_pd"] == detailed_joint_df["label_id_gt"]
+    )
+
     detailed_joint_df = _calculate_iou(joint_df=detailed_joint_df)
     return detailed_joint_df
 

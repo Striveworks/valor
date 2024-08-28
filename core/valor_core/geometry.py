@@ -1,5 +1,6 @@
 import numba
 import numpy as np
+import pandas as pd
 import shapely.affinity
 from shapely.geometry import Polygon as ShapelyPolygon
 
@@ -244,3 +245,42 @@ def is_rotated(bbox: list[tuple[float, float]]) -> bool:
         True if the bounding box is rotated, otherwise False.
     """
     return not is_axis_aligned(bbox) and not is_skewed(bbox)
+
+
+def calculate_raster_intersection(row: pd.Series) -> pd.Series:
+    """
+    Calculate the raster intersection for a given row in a pandas DataFrame. This function is intended to be used with .apply.
+
+    Parameters
+    ----------
+    row : pd.Series
+        A row of a pandas.DataFrame containing two masks in the columns "converted_geometry_pd" and "converted_geometry_gt".
+
+    Returns
+    ----------
+    pd.Series
+        A Series indicating the intersection of two masks.
+    """
+    return np.logical_and(
+        row["converted_geometry_pd"], row["converted_geometry_gt"]
+    ).sum()
+
+
+def calculate_raster_union(row: pd.Series) -> pd.Series:
+    """
+    Calculate the raster union for a given row in a pandas DataFrame. This function is intended to be used with .apply.
+
+    Parameters
+    ----------
+    row : pd.Series
+        A row of a pandas.DataFrame containing two masks in the columns "converted_geometry_pd" and "converted_geometry_gt".
+
+    Returns
+    ----------
+    pd.Series
+        A Series indicating the union of two masks.
+    """
+
+    return np.sum(row["converted_geometry_gt"]) + np.sum(
+        row["converted_geometry_pd"]
+    )
