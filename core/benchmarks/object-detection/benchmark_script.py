@@ -411,18 +411,20 @@ def run_benchmarking_analysis(
             )
 
             # run evaluations
-            eval_pr = None
-            eval_detail = None
-            eval_base = run_base_evaluation_with_manager(
-                groundtruths, predictions
+            eval_pr_time = None
+            eval_detail_time = None
+            eval_base_time, eval_base = time_it(
+                run_base_evaluation_with_manager, groundtruths, predictions
             )
             if compute_pr:
-                eval_pr = run_pr_curve_evaluation_with_manager(
-                    groundtruths, predictions
+                eval_pr_time, eval_pr = time_it(
+                    run_pr_curve_evaluation_with_manager,
+                    groundtruths,
+                    predictions,
                 )
             if compute_detailed:
-                eval_detail = run_detailed_pr_curve_evaluation(
-                    groundtruths, predictions
+                eval_detail_time, eval_detail = time_it(
+                    run_detailed_pr_curve_evaluation, groundtruths, predictions
                 )
 
             assert eval_base.meta
@@ -441,16 +443,10 @@ def run_benchmarking_analysis(
                     n_datums=eval_base.meta["datums"],
                     n_annotations=eval_base.meta["annotations"],
                     n_labels=eval_base.meta["labels"],
-                    eval_base=eval_base.meta["duration"],
-                    eval_base_pr=(
-                        eval_pr.meta["duration"]
-                        if eval_pr and eval_pr.meta
-                        else -1
-                    ),
+                    eval_base=eval_base_time,
+                    eval_base_pr=(eval_pr_time if eval_pr_time else -1),
                     eval_base_pr_detail=(
-                        eval_detail.meta["duration"]
-                        if eval_detail and eval_detail.meta
-                        else -1
+                        eval_detail_time if eval_detail_time else -1
                     ),
                 ).result()
             )
@@ -466,6 +462,7 @@ if __name__ == "__main__":
             (AnnotationType.BOX, AnnotationType.BOX),
         ],
         limits_to_test=[5000, 5000],
+        compute_pr=False,
         compute_detailed=False,
     )
 
@@ -477,6 +474,7 @@ if __name__ == "__main__":
         limits_to_test=[5000, 5000],
         compute_detailed=False,
     )
+
     # run raster benchmark
     run_benchmarking_analysis(
         combinations=[
