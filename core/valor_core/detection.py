@@ -438,7 +438,7 @@ def _calculate_pr_metrics(
         return []
 
     joint_df["threshold_index"] = ((100 * joint_df["score"]) // 5).astype(
-        "uint8"
+        "uint8", errors="coerce"
     )
 
     joint_df = joint_df.merge(
