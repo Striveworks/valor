@@ -1134,9 +1134,6 @@ def create_detection_evaluation_inputs(
         joint_df["id_pd"].isnull()
     ].assign(iou_=0)
 
-    if not groundtruths_missing_predictions.empty:
-        groundtruths_missing_predictions.loc[:, "iou_"] = 0
-
     joint_df = _calculate_iou(joint_df=joint_df)
 
     # filter out null groundtruths and sort by score and iou so that idxmax returns the best row for each prediction
