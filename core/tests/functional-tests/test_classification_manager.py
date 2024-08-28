@@ -155,13 +155,6 @@ def test_evaluate_classification_with_label_maps_with_ValorClassificationManager
     cat_label_map: dict,
     evaluate_classification_with_label_maps_expected: tuple,
 ):
-    print("groundtruths")
-    for x in gt_clfs_with_label_maps:
-        print(repr(x))
-
-    print("predictions")
-    for x in pred_clfs_with_label_maps:
-        print(repr(x))
 
     (
         cat_expected_metrics,
@@ -250,7 +243,7 @@ def test_evaluate_classification_with_label_maps_with_ValorClassificationManager
         assert (
             pr_metrics[index]["value"][value][float(threshold)][metric]
             == expected_value
-        ), f"{index} value {value} {float(threshold)} {metric} expected {expected_value} but got {pr_metrics[index]['value'][value][float(threshold)][metric]}\n\n{pr_expected_values}\n\n{pr_metrics}"
+        )
 
     # check DetailedPrecisionRecallCurve
     for (
