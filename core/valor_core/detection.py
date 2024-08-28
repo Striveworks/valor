@@ -514,9 +514,14 @@ def _calculate_pr_metrics(
 
     curves = defaultdict(lambda: defaultdict(lambda: defaultdict(dict)))
 
-    for row in pr_curve_counts_df.to_dict(orient="records"):
+    for _, row in pr_curve_counts_df.iterrows():
+        if row["threshold_index"] == 0:
+            continue
+        if row["threshold_index"] > 19:
+            continue
+
         curves[row["label"][0]][row["label"][1]][
-            row["confidence_threshold"]
+            row["threshold_index"] * 5 / 100
         ] = {
             "tp": row["true_positives"],
             "fp": row["false_positives"],
