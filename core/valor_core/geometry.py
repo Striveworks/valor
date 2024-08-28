@@ -9,7 +9,7 @@ from shapely.geometry import Polygon as ShapelyPolygon
 np.seterr(divide="ignore", invalid="ignore")
 
 
-@numba.jit(nopython=True, parallel=True)
+@numba.jit(nopython=True)
 def calculate_axis_aligned_bbox_intersection(
     bbox1: np.ndarray, bbox2: np.ndarray
 ) -> float:
@@ -45,7 +45,7 @@ def calculate_axis_aligned_bbox_intersection(
     return intersection_area
 
 
-@numba.jit(nopython=True, parallel=True)
+@numba.jit(nopython=True)
 def calculate_axis_aligned_bbox_union(
     bbox1: np.ndarray, bbox2: np.ndarray
 ) -> float:
@@ -79,7 +79,7 @@ def calculate_axis_aligned_bbox_union(
     return union_area
 
 
-@numba.jit(nopython=True, parallel=True)
+@numba.jit(nopython=True)
 def calculate_axis_aligned_bbox_iou(
     bbox1: np.ndarray, bbox2: np.ndarray
 ) -> float:
@@ -266,9 +266,9 @@ def calculate_raster_intersection(row: pd.Series) -> pd.Series:
     ).sum()
 
 
-def calculate_raster_union(row: pd.Series) -> pd.Series:
+def calculate_raster_sum_pixels_of_two_images(row: pd.Series) -> pd.Series:
     """
-    Calculate the raster union for a given row in a pandas DataFrame. This function is intended to be used with .apply.
+    Calculate the sum of pixels across two images for a given row in a pandas DataFrame. When we subtract the intersection series from this output, we expect to get back the union for all sets of images. This function is intended to be used with .apply.
 
     Parameters
     ----------
@@ -278,7 +278,7 @@ def calculate_raster_union(row: pd.Series) -> pd.Series:
     Returns
     ----------
     pd.Series
-        A Series indicating the union of two masks.
+        A Series indicating the sum of pixels across two masks.
     """
 
     return np.sum(row["converted_geometry_gt"]) + np.sum(
