@@ -373,6 +373,9 @@ def run_benchmarking_analysis(
             eval_pr = None
             eval_detail = None
             eval_base = run_base_evaluation(groundtruths, predictions)
+            eval_base = run_base_evaluation_with_manager(
+                groundtruths, predictions
+            )
             if compute_pr:
                 eval_pr = run_pr_curve_evaluation(groundtruths, predictions)
             if compute_detailed:
@@ -421,6 +424,8 @@ if __name__ == "__main__":
             (AnnotationType.BOX, AnnotationType.BOX),
         ],
         limits_to_test=[5000, 5000],
+        compute_detailed=False,
+        compute_pr=False,
     )
 
     # # run polygon benchmark

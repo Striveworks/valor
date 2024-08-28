@@ -1127,12 +1127,12 @@ def create_detection_evaluation_inputs(
     )
 
     # store solo groundtruths and predictions such that we can add them back after we calculate IOU
-    predictions_missing_groundtruths = joint_df[joint_df["id_gt"].isnull()]
-
-    if not predictions_missing_groundtruths.empty:
-        predictions_missing_groundtruths["iou_"] = 0
-
-    groundtruths_missing_predictions = joint_df[joint_df["id_pd"].isnull()]
+    predictions_missing_groundtruths = joint_df[
+        joint_df["id_gt"].isnull()
+    ].assign(iou_=0)
+    groundtruths_missing_predictions = joint_df[
+        joint_df["id_pd"].isnull()
+    ].assign(iou_=0)
 
     if not groundtruths_missing_predictions.empty:
         groundtruths_missing_predictions.loc[:, "iou_"] = 0
