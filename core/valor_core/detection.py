@@ -455,17 +455,13 @@ def _calculate_pr_metrics(
     )
 
     true_positives = (
-        joint_df[mask][
-            ["label_id", "label", "gts_per_grouper", "threshold_index"]
-        ]
+        joint_df[mask][["label_id", "label", "threshold_index"]]
         .value_counts()
         .reset_index(name="true_positive_count")
     )
 
     false_positives = (
-        joint_df[~mask][
-            ["label_id", "label", "gts_per_grouper", "threshold_index"]
-        ]
+        joint_df[~mask][["label_id", "label", "threshold_index"]]
         .value_counts()
         .reset_index(name="false_positive_count")
     )
@@ -473,7 +469,7 @@ def _calculate_pr_metrics(
     pr_curve_counts_df = pd.merge(
         true_positives,
         false_positives,
-        on=["label_id", "label", "gts_per_grouper", "threshold_index"],
+        on=["label_id", "label", "threshold_index"],
         how="outer",
     ).fillna(0)
 
@@ -484,6 +480,12 @@ def _calculate_pr_metrics(
         on=["label_id", "label", "threshold_index"],
         how="outer",
     ).fillna(0)
+
+    pr_curve_counts_df = pr_curve_counts_df.merge(
+        joint_df[["label_id", "gts_per_grouper"]].drop_duplicates(),
+        on=["label_id"],
+        how="left",
+    )
 
     pr_curve_counts_df["true_positives"] = (
         pr_curve_counts_df.loc[::-1, :]
