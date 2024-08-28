@@ -30,7 +30,7 @@ def _get_joint_df(
 def _get_dtypes_in_series_of_arrays(series: pd.Series):
     """Get the data type inside of a 2D numpy array. Used to check if a np.array contains coordinates or a mask."""
     if not isinstance(series, pd.Series) or not all(
-        series.apply(lambda x: x.ndim == 2)
+        series.map(lambda x: x.ndim == 2)
     ):
         raise ValueError(
             "series must be a pandas Series filled with two-dimensional arrays."
@@ -60,18 +60,13 @@ def _check_if_series_contains_masks(series: pd.Series) -> bool:
 def _check_if_series_contains_axis_aligned_bboxes(series: pd.Series) -> bool:
     """Check if all elements in a pandas.Series are axis-aligned bounding boxes."""
 
-    return (
-        series.apply(lambda x: x.tolist())
-        .apply(geometry.is_axis_aligned)
-        .all()
-    )
+    return series.map(lambda x: x.tolist()).map(geometry.is_axis_aligned).all()
 
 
 def _calculate_iou(
     joint_df: pd.DataFrame,
 ) -> pd.DataFrame:
     """Calculate the IOUs between predictions and groundtruths in a joint dataframe."""
-
     filtered_df = joint_df.loc[
         ~joint_df["converted_geometry_gt"].isnull()
         & ~joint_df["converted_geometry_pd"].isnull(),
@@ -180,65 +175,47 @@ def _calculate_label_id_level_metrics(
     ] & (calculation_df["score"] > 0)
 
     # calculate true and false positives
-    calculation_df = (
-        calculation_df.join(
-            calculation_df.groupby(
-                ["label_id", "label", "iou_threshold"], as_index=False
-            )["recall_true_positive_flag"]
-            .cumsum()
-            .rename("rolling_recall_tp")
-        )
-        .join(
-            calculation_df.groupby(
-                ["label_id", "label", "iou_threshold"], as_index=False
-            )["recall_false_positive_flag"]
-            .cumsum()
-            .rename("rolling_recall_fp")
-        )
-        .join(
-            calculation_df.groupby(
-                ["label_id", "label", "iou_threshold"], as_index=False
-            )["precision_true_positive_flag"]
-            .cumsum()
-            .rename("rolling_precision_tp")
-        )
-        .join(
-            calculation_df.groupby(
-                ["label_id", "label", "iou_threshold"], as_index=False
-            )["precision_false_positive_flag"]
-            .cumsum()
-            .rename("rolling_precision_fp")
-        )
+    columns_to_sum = {
+        "recall_true_positive_flag": "rolling_recall_tp",
+        "recall_false_positive_flag": "rolling_recall_fp",
+        "precision_true_positive_flag": "rolling_precision_tp",
+        "precision_false_positive_flag": "rolling_precision_fp",
+    }
+
+    grouped = calculation_df.groupby(
+        ["label_id", "label", "iou_threshold"], as_index=False
     )
 
+    cumulative_sums = {
+        new_col: grouped[col].cumsum()
+        for col, new_col in columns_to_sum.items()
+    }
+
+    cumulative_sums_df = pd.concat(cumulative_sums, axis=1)
+
+    calculation_df = calculation_df.join(cumulative_sums_df)
+
     # calculate false negatives, then precision / recall
-    calculation_df = (
-        calculation_df.assign(
-            rolling_recall_fn=lambda chain_df: chain_df["gts_per_grouper"]
-            - chain_df["rolling_recall_tp"]
-        )
-        .assign(
-            rolling_precision_fn=lambda chain_df: chain_df["gts_per_grouper"]
-            - chain_df["rolling_precision_tp"]
-        )
-        .assign(
-            precision=lambda chain_df: chain_df["rolling_precision_tp"]
-            / (
-                chain_df["rolling_precision_tp"]
-                + chain_df["rolling_precision_fp"]
-            )
-        )
-        .assign(
-            recall_for_AP=lambda chain_df: chain_df["rolling_precision_tp"]
-            / (
-                chain_df["rolling_precision_tp"]
-                + chain_df["rolling_precision_fn"]
-            )
-        )
-        .assign(
-            recall_for_AR=lambda chain_df: chain_df["rolling_recall_tp"]
-            / (chain_df["rolling_recall_tp"] + chain_df["rolling_recall_fn"])
-        )
+    calculation_df["rolling_recall_fn"] = (
+        calculation_df["gts_per_grouper"] - calculation_df["rolling_recall_tp"]
+    )
+    calculation_df["rolling_precision_fn"] = (
+        calculation_df["gts_per_grouper"]
+        - calculation_df["rolling_precision_tp"]
+    )
+    calculation_df["precision"] = calculation_df["rolling_precision_tp"] / (
+        calculation_df["rolling_precision_tp"]
+        + calculation_df["rolling_precision_fp"]
+    )
+    calculation_df["recall_for_AP"] = calculation_df[
+        "rolling_precision_tp"
+    ] / (
+        calculation_df["rolling_precision_tp"]
+        + calculation_df["rolling_precision_fn"]
+    )
+    calculation_df["recall_for_AR"] = calculation_df["rolling_recall_tp"] / (
+        calculation_df["rolling_recall_tp"]
+        + calculation_df["rolling_recall_fn"]
     )
 
     # fill any predictions that are missing groundtruths with -1
@@ -307,6 +284,7 @@ def _calculate_ap_metrics(
     | metrics.mAPMetricAveragedOverIOUs
 ]:
     """Calculates all AP metrics, including aggregated metrics like mAP."""
+
     ap_metrics_df = (
         calculation_df.loc[
             ~calculation_df[
@@ -344,7 +322,7 @@ def _calculate_ap_metrics(
     ]
 
     # calculate mean AP metrics
-    ap_metrics_df["label_key"] = ap_metrics_df["label"].apply(lambda x: x[0])
+    ap_metrics_df["label_key"] = ap_metrics_df["label"].str[0]
 
     ap_over_ious_df = ap_metrics_df.groupby(
         ["label_id", "label"], as_index=False
@@ -426,7 +404,7 @@ def _calculate_ar_metrics(
     ]
 
     # calculate mAR
-    ar_metrics_df["label_key"] = ar_metrics_df["label"].apply(lambda x: x[0])
+    ar_metrics_df["label_key"] = ar_metrics_df["label"].str[0]
     mar_metrics_df = ar_metrics_df.groupby(["label_key"], as_index=False)[
         "recall_for_AR"
     ].apply(_calculate_mean_ignoring_negative_one)
@@ -1141,10 +1119,7 @@ def create_detection_evaluation_inputs(
 
     # add label as a column
     for df in (groundtruth_df, prediction_df):
-        df.loc[:, "label"] = df.apply(
-            lambda chain_df: (chain_df["label_key"], chain_df["label_value"]),
-            axis=1,
-        )
+        df["label"] = list(zip(df["label_key"], df["label_value"]))
 
     joint_df = _get_joint_df(
         groundtruth_df=groundtruth_df,
@@ -1152,12 +1127,15 @@ def create_detection_evaluation_inputs(
     )
 
     # store solo groundtruths and predictions such that we can add them back after we calculate IOU
-    predictions_missing_groundtruths = joint_df[
-        joint_df["id_gt"].isnull()
-    ].assign(iou_=0)
-    groundtruths_missing_predictions = joint_df[
-        joint_df["id_pd"].isnull()
-    ].assign(iou_=0)
+    predictions_missing_groundtruths = joint_df[joint_df["id_gt"].isnull()]
+
+    if not predictions_missing_groundtruths.empty:
+        predictions_missing_groundtruths["iou_"] = 0
+
+    groundtruths_missing_predictions = joint_df[joint_df["id_pd"].isnull()]
+
+    if not groundtruths_missing_predictions.empty:
+        groundtruths_missing_predictions.loc[:, "iou_"] = 0
 
     joint_df = _calculate_iou(joint_df=joint_df)
 
@@ -1294,16 +1272,17 @@ def compute_detection_metrics(
 
     metrics_to_output = []
 
-    # add iou_threshold to the dataframe and sort
-    calculation_df = pd.concat(
-        [
-            joint_df.assign(iou_threshold=threshold)
-            for threshold in iou_thresholds_to_compute
-        ],
-        ignore_index=True,
-    ).sort_values(
+    dfs = [
+        joint_df.copy().assign(iou_threshold=threshold)
+        for threshold in iou_thresholds_to_compute
+    ]
+
+    calculation_df = pd.concat(dfs, ignore_index=True)
+
+    calculation_df.sort_values(
         by=["label_id", "label", "iou_threshold", "score", "iou_"],
         ascending=False,
+        inplace=True,
     )
 
     # calculate metrics
@@ -1445,12 +1424,6 @@ def evaluate_detection(
         recall_score_threshold=recall_score_threshold,
     )
 
-    print("--------------------------")
-    print(f"1449 {time.time()-start_time}")
-    last_time = time.time()
-    print("--------------------------")
-
-    # TODO 7.9 seconds
     (
         groundtruth_df,
         prediction_df,
@@ -1463,11 +1436,6 @@ def evaluate_detection(
         label_map=label_map,
         convert_annotations_to_type=convert_annotations_to_type,
     )
-
-    print("--------------------------")
-    print(f"1469 {time.time()-last_time}")
-    last_time = time.time()
-    print("--------------------------")
 
     # add the number of groundtruth observations per grouper
     number_of_groundtruths_per_label_df = (
@@ -1482,13 +1450,6 @@ def evaluate_detection(
         how="outer",
     )
 
-    print("--------------------------")
-    print(f"1485 {time.time()-last_time}")
-    last_time = time.time()
-    print("--------------------------")
-
-    # TODO .4 seconds... kind of long for what it does
-    # TODO check todos
     (
         missing_pred_labels,
         ignored_pred_labels,
@@ -1497,11 +1458,6 @@ def evaluate_detection(
         prediction_df=prediction_df,
         label_map=label_map,
     )
-
-    print("--------------------------")
-    print(f"1500 {time.time()-last_time}")
-    last_time = time.time()
-    print("--------------------------")
 
     unique_labels = list(
         set(zip(groundtruth_df["label_key"], groundtruth_df["label_value"]))
@@ -1515,12 +1471,6 @@ def evaluate_detection(
         | set(prediction_df["annotation_id"])
     )
 
-    print("--------------------------")
-    print(f"1513 {time.time()-last_time}")
-    last_time = time.time()
-    print("--------------------------")
-
-    # 3.97 seconds
     metrics = compute_detection_metrics(
         joint_df=joint_df,
         detailed_joint_df=detailed_joint_df,
@@ -1532,12 +1482,7 @@ def evaluate_detection(
         pr_curve_max_examples=pr_curve_max_examples,
     )
 
-    print("--------------------------")
-    print(f"1532 {time.time()-last_time}")
-    last_time = time.time()
-    print("--------------------------")
-
-    blah = schemas.Evaluation(
+    return schemas.Evaluation(
         parameters=schemas.EvaluationParameters(
             label_map=label_map,
             metrics_to_return=metrics_to_return,
@@ -1558,10 +1503,3 @@ def evaluate_detection(
             "duration": time.time() - start_time,
         },
     )
-
-    print("--------------------------")
-    print(f"1559 {time.time()-last_time}")
-    last_time = time.time()
-    print("--------------------------")
-
-    return blah
