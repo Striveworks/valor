@@ -462,7 +462,6 @@ if __name__ == "__main__":
             (AnnotationType.BOX, AnnotationType.BOX),
         ],
         limits_to_test=[5000, 5000],
-        compute_pr=False,
         compute_detailed=False,
     )
 
