@@ -431,102 +431,90 @@ def _calculate_pr_metrics(
 ) -> list[metrics.PrecisionRecallCurve]:
     """Calculates all PrecisionRecallCurve metrics."""
 
-    print(joint_df)
-    return []
-
     if not (
         metrics_to_return
         and enums.MetricType.PrecisionRecallCurve in metrics_to_return
     ):
         return []
 
-    confidence_thresholds = [x / 100 for x in range(5, 100, 5)]
-    pr_calculation_df = pd.concat(
-        [
-            joint_df.assign(confidence_threshold=threshold)
-            for threshold in confidence_thresholds
-        ],
-        ignore_index=True,
-    ).sort_values(
-        by=[
-            "label_id",
-            "confidence_threshold",
-            "score",
-            "iou_",
-        ],
-        ascending=False,
+    joint_df["threshold_index"] = ((100 * joint_df["score"]) // 5).astype(
+        "uint8"
     )
 
-    pr_calculation_df["true_positive_flag"] = (
-        (pr_calculation_df["iou_"] >= pr_curve_iou_threshold)
-        & (
-            pr_calculation_df["score"]
-            >= pr_calculation_df["confidence_threshold"]
-        )
-        & (
-            pr_calculation_df.groupby(
-                ["label_id", "confidence_threshold", "id_gt"]
-            ).cumcount()
-            == 0
-        )  # only the first gt_id in this sorted list should be considered a true positive
+    joint_df = joint_df.merge(
+        joint_df.groupby(["label_id", "id_gt"], as_index=False)["iou_"].max(),
+        on=["label_id", "id_gt"],
+        how="inner",
+        suffixes=(None, "max"),
     )
 
-    pr_calculation_df["false_positive_flag"] = ~pr_calculation_df[
-        "true_positive_flag"
-    ] & (
-        pr_calculation_df["score"] >= pr_calculation_df["confidence_threshold"]
+    mask = (joint_df["iou_"] >= pr_curve_iou_threshold) & (
+        joint_df["iou_"] == joint_df["iou_max"]
     )
 
-    pr_metrics_df = (
-        pr_calculation_df.groupby(
-            [
-                "label_id",
-                "label",
-                "confidence_threshold",
-                "gts_per_grouper",
-            ],
-            as_index=False,
-        )["true_positive_flag"]
-        .sum()
-        .merge(
-            pr_calculation_df.groupby(
-                ["label_id", "label", "confidence_threshold"],
-                as_index=False,
-            )["false_positive_flag"].sum(),
-            on=["label_id", "label", "confidence_threshold"],
-            how="outer",
-        )
-        .rename(
-            columns={
-                "true_positive_flag": "true_positives",
-                "false_positive_flag": "false_positives",
-            }
-        )
-        .assign(
-            false_negatives=lambda chain_df: chain_df["gts_per_grouper"]
-            - chain_df["true_positives"]
-        )
-        .assign(
-            precision=lambda chain_df: chain_df["true_positives"]
-            / (chain_df["true_positives"] + chain_df["false_positives"])
-        )
-        .assign(
-            recall=lambda chain_df: chain_df["true_positives"]
-            / (chain_df["true_positives"] + chain_df["false_negatives"])
-        )
-        .assign(
-            f1_score=lambda chain_df: (
-                2 * chain_df["precision"] * chain_df["recall"]
-            )
-            / (chain_df["precision"] + chain_df["recall"])
-        )
+    true_positives = (
+        joint_df[mask][
+            ["label_id", "label", "gts_per_grouper", "threshold_index"]
+        ]
+        .value_counts()
+        .reset_index(name="true_positive_count")
     )
 
-    pr_metrics_df.fillna(0, inplace=True)
+    false_positives = (
+        joint_df[~mask][
+            ["label_id", "label", "gts_per_grouper", "threshold_index"]
+        ]
+        .value_counts()
+        .reset_index(name="false_positive_count")
+    )
+
+    pr_curve_counts_df = pd.merge(
+        true_positives,
+        false_positives,
+        on=["label_id", "label", "gts_per_grouper", "threshold_index"],
+        how="outer",
+    ).fillna(0)
+
+    pr_curve_counts_df = pr_curve_counts_df.merge(
+        pr_curve_counts_df[["label_id", "label"]]
+        .drop_duplicates()
+        .merge(pd.DataFrame({"threshold_index": range(21)}), how="cross"),
+        on=["label_id", "label", "threshold_index"],
+        how="outer",
+    ).fillna(0)
+
+    pr_curve_counts_df["true_positives"] = (
+        pr_curve_counts_df.loc[::-1, :]
+        .groupby(["label_id", "label"])["true_positive_count"]
+        .transform(pd.Series.cumsum)
+    )
+
+    pr_curve_counts_df["false_positives"] = (
+        pr_curve_counts_df.loc[::-1, :]
+        .groupby(["label_id", "label"])["false_positive_count"]
+        .transform(pd.Series.cumsum)
+    )
+
+    pr_curve_counts_df["false_negatives"] = (
+        pr_curve_counts_df["gts_per_grouper"]
+        - pr_curve_counts_df["true_positives"]
+    )
+
+    pr_curve_counts_df["precision"] = pr_curve_counts_df["true_positives"] / (
+        pr_curve_counts_df["true_positives"]
+        + pr_curve_counts_df["false_positives"]
+    )
+    pr_curve_counts_df["recall"] = pr_curve_counts_df["true_positives"] / (
+        pr_curve_counts_df["true_positives"]
+        + pr_curve_counts_df["false_negatives"]
+    )
+    pr_curve_counts_df["f1_score"] = (
+        2 * pr_curve_counts_df["precision"] * pr_curve_counts_df["recall"]
+    ) / (pr_curve_counts_df["precision"] + pr_curve_counts_df["recall"])
 
     curves = defaultdict(lambda: defaultdict(lambda: defaultdict(dict)))
 
-    for row in pr_metrics_df.to_dict(orient="records"):
+    for row in pr_curve_counts_df.to_dict(orient="records"):
         curves[row["label"][0]][row["label"][1]][
             row["confidence_threshold"]
         ] = {
