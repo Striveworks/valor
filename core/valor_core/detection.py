@@ -99,16 +99,11 @@ def _calculate_iou(
             joint_df["iou_"] = 0
 
     else:
-        intersection_ = joint_df.apply(
-            geometry.calculate_raster_intersection,
-            axis=1,
-        )
-        union_ = joint_df.apply(
-            geometry.calculate_raster_union,
-            axis=1,
-        )
 
-        joint_df["iou_"] = intersection_ / union_
+        joint_df["iou_"] = geometry.calculate_raster_ious(
+            joint_df["converted_geometry_gt"],
+            joint_df["converted_geometry_pd"],
+        )
 
     return joint_df
 
