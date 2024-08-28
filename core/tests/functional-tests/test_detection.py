@@ -1223,6 +1223,16 @@ def test_evaluate_detection_functional_test_with_rasters(
             pr_metrics[0]["value"][value][threshold][metric] == expected_value
         )
 
+    # test that we get a NotImplementedError if we try to calculate DetailedPRCurves with rasters
+    with pytest.raises(NotImplementedError):
+        evaluate_detection(
+            groundtruths=evaluate_detection_functional_test_groundtruths_with_rasters,
+            predictions=evaluate_detection_functional_test_predictions_with_rasters,
+            metrics_to_return=[
+                enums.MetricType.DetailedPrecisionRecallCurve,
+            ],
+        )
+
 
 def test_evaluate_mixed_annotations(
     evaluate_mixed_annotations_inputs: tuple,

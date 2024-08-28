@@ -1,5 +1,6 @@
 import numba
 import numpy as np
+import pandas as pd
 import shapely.affinity
 from shapely.geometry import Polygon as ShapelyPolygon
 
@@ -244,3 +245,39 @@ def is_rotated(bbox: list[tuple[float, float]]) -> bool:
         True if the bounding box is rotated, otherwise False.
     """
     return not is_axis_aligned(bbox) and not is_skewed(bbox)
+
+
+def calculate_raster_ious(series1: pd.Series, series2: pd.Series) -> pd.Series:
+    """
+    Calculate the IOUs between two series of rasters.
+
+    Parameters
+    ----------
+    series1 : pd.Series
+        The first series of rasters.
+    series2: pd.Series
+        The second series of rasters.
+
+    Returns
+    ----------
+    pd.Series
+        A Series of IOUs.
+    """
+
+    if len(series1) != len(series2):
+        raise ValueError(
+            "Series of rasters must be the same length to calculate IOUs."
+        )
+
+    intersection_ = pd.Series(
+        [np.logical_and(x, y).sum() for x, y in zip(series1, series2)]
+    )
+
+    union_ = pd.Series(
+        [np.logical_or(x, y).sum() for x, y in zip(series1, series2)]
+    )
+
+    if (intersection_ > union_).any():
+        raise ValueError("Intersection can't be greater than union.")
+
+    return intersection_ / union_
