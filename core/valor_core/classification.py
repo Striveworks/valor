@@ -744,6 +744,8 @@ def _calculate_pr_curves(
     ):
         return []
 
+    joint_df = joint_df[joint_df["score"].notna()]
+
     total_label_values_per_label_key = joint_df.groupby(
         ["label_key", "label_value_gt"]
     )["id_gt"].nunique()
