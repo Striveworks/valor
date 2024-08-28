@@ -1,3 +1,4 @@
+import numba
 import numpy as np
 import shapely.affinity
 from shapely.geometry import Polygon as ShapelyPolygon
@@ -7,6 +8,7 @@ from shapely.geometry import Polygon as ShapelyPolygon
 np.seterr(divide="ignore", invalid="ignore")
 
 
+@numba.jit
 def calculate_axis_aligned_bbox_intersection(
     bbox1: np.ndarray, bbox2: np.ndarray
 ) -> float:
@@ -42,6 +44,7 @@ def calculate_axis_aligned_bbox_intersection(
     return intersection_area
 
 
+@numba.jit
 def calculate_axis_aligned_bbox_union(
     bbox1: np.ndarray, bbox2: np.ndarray
 ) -> float:
@@ -75,6 +78,7 @@ def calculate_axis_aligned_bbox_union(
     return union_area
 
 
+@numba.jit
 def calculate_axis_aligned_bbox_iou(
     bbox1: np.ndarray, bbox2: np.ndarray
 ) -> float:
