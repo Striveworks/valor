@@ -103,12 +103,9 @@ def _calculate_iou(
             geometry.calculate_raster_intersection,
             axis=1,
         )
-        union_ = (
-            joint_df.apply(
-                geometry.calculate_raster_sum_pixels_of_two_images,
-                axis=1,
-            )
-            - intersection_
+        union_ = joint_df.apply(
+            geometry.calculate_raster_union,
+            axis=1,
         )
 
         joint_df["iou_"] = intersection_ / union_
