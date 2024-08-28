@@ -466,6 +466,7 @@ if __name__ == "__main__":
             (AnnotationType.BOX, AnnotationType.BOX),
         ],
         limits_to_test=[5000, 5000],
+        compute_detailed=False,
     )
 
     # run polygon benchmark
@@ -474,6 +475,7 @@ if __name__ == "__main__":
             (AnnotationType.POLYGON, AnnotationType.POLYGON),
         ],
         limits_to_test=[5000, 5000],
+        compute_detailed=False,
     )
     # run raster benchmark
     run_benchmarking_analysis(
