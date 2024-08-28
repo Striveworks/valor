@@ -1445,6 +1445,12 @@ def evaluate_detection(
         recall_score_threshold=recall_score_threshold,
     )
 
+    print("--------------------------")
+    print(f"1449 {time.time()-start_time}")
+    last_time = time.time()
+    print("--------------------------")
+
+    # TODO 7.9 seconds
     (
         groundtruth_df,
         prediction_df,
@@ -1457,6 +1463,11 @@ def evaluate_detection(
         label_map=label_map,
         convert_annotations_to_type=convert_annotations_to_type,
     )
+
+    print("--------------------------")
+    print(f"1469 {time.time()-last_time}")
+    last_time = time.time()
+    print("--------------------------")
 
     # add the number of groundtruth observations per grouper
     number_of_groundtruths_per_label_df = (
@@ -1471,6 +1482,13 @@ def evaluate_detection(
         how="outer",
     )
 
+    print("--------------------------")
+    print(f"1485 {time.time()-last_time}")
+    last_time = time.time()
+    print("--------------------------")
+
+    # TODO .4 seconds... kind of long for what it does
+    # TODO check todos
     (
         missing_pred_labels,
         ignored_pred_labels,
@@ -1479,6 +1497,11 @@ def evaluate_detection(
         prediction_df=prediction_df,
         label_map=label_map,
     )
+
+    print("--------------------------")
+    print(f"1500 {time.time()-last_time}")
+    last_time = time.time()
+    print("--------------------------")
 
     unique_labels = list(
         set(zip(groundtruth_df["label_key"], groundtruth_df["label_value"]))
@@ -1492,6 +1515,12 @@ def evaluate_detection(
         | set(prediction_df["annotation_id"])
     )
 
+    print("--------------------------")
+    print(f"1513 {time.time()-last_time}")
+    last_time = time.time()
+    print("--------------------------")
+
+    # 3.97 seconds
     metrics = compute_detection_metrics(
         joint_df=joint_df,
         detailed_joint_df=detailed_joint_df,
@@ -1503,7 +1532,12 @@ def evaluate_detection(
         pr_curve_max_examples=pr_curve_max_examples,
     )
 
-    return schemas.Evaluation(
+    print("--------------------------")
+    print(f"1532 {time.time()-last_time}")
+    last_time = time.time()
+    print("--------------------------")
+
+    blah = schemas.Evaluation(
         parameters=schemas.EvaluationParameters(
             label_map=label_map,
             metrics_to_return=metrics_to_return,
@@ -1524,3 +1558,10 @@ def evaluate_detection(
             "duration": time.time() - start_time,
         },
     )
+
+    print("--------------------------")
+    print(f"1559 {time.time()-last_time}")
+    last_time = time.time()
+    print("--------------------------")
+
+    return blah

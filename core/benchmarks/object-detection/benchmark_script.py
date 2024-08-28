@@ -413,15 +413,14 @@ def run_benchmarking_analysis(
             # run evaluations
             eval_pr = None
             eval_detail = None
+            eval_base = run_base_evaluation(groundtruths, predictions)
             eval_base = run_base_evaluation_with_manager(
                 groundtruths, predictions
             )
             if compute_pr:
-                eval_pr = run_pr_curve_evaluation_with_manager(
-                    groundtruths, predictions
-                )
+                eval_pr = run_pr_curve_evaluation(groundtruths, predictions)
             if compute_detailed:
-                eval_detail = run_detailed_pr_curve_evaluation_with_manager(
+                eval_detail = run_detailed_pr_curve_evaluation(
                     groundtruths, predictions
                 )
 
