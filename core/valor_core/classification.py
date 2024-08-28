@@ -773,11 +773,11 @@ def _calculate_pr_curves(
     # Count all true positives at each threshold
     true_positives = (
         joint_df[joint_df["is_label_match"]][
-            ["label_key", "label_value_gt", "threshold_index"]
+            ["label_key", "label_value_pd", "threshold_index"]
         ]
         .value_counts()
         .reset_index(name="true_positive_count")
-        .rename(columns={"label_value_gt": "label_value"})
+        .rename(columns={"label_value_pd": "label_value"})
     )
 
     # Count all false positives at each threshold
@@ -792,13 +792,13 @@ def _calculate_pr_curves(
 
     false_negative_misclassification = (
         joint_df[joint_df["is_label_match"]][
-            ["label_key", "label_value_gt", "threshold_index_max"]
+            ["label_key", "label_value_pd", "threshold_index_max"]
         ]
         .value_counts()
         .reset_index(name="false_negative_misclass_count")
         .rename(
             columns={
-                "label_value_gt": "label_value",
+                "label_value_pd": "label_value",
                 "threshold_index_max": "threshold_index",
             }
         )
