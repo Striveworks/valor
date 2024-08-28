@@ -623,8 +623,8 @@ def _calculate_detailed_pr_metrics(
 
     if _check_if_series_contains_masks(
         detailed_pr_joint_df.loc[
-            detailed_pr_joint_df["converted_geometry_pd"].notnull(),
-            "converted_geometry_pd",
+            detailed_pr_joint_df["converted_geometry_gt"].notnull(),
+            "converted_geometry_gt",
         ]
     ) or _check_if_series_contains_masks(
         detailed_pr_joint_df.loc[

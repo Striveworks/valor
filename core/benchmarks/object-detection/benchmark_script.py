@@ -482,6 +482,6 @@ if __name__ == "__main__":
         combinations=[
             (AnnotationType.RASTER, AnnotationType.RASTER),
         ],
-        limits_to_test=[500],
+        limits_to_test=[500, 500],
         compute_detailed=False,
     )
