@@ -27,12 +27,20 @@ jobs:
           export BENCHMARK_RESULTS=$(python -c "import os;import json;print(json.dumps(json.load(open('results.json', 'r')), indent=4));")
           echo "$BENCHMARK_RESULTS"
         working-directory: ./core/benchmarks/classification
-      - name: run object detection benchmarks
-        run: python benchmark_script.py
+      - name: run core object detection benchmarks
+        run: python benchmark_core.py
         working-directory: ./core/benchmarks/object-detection
-      - name: print object detection results
+      - name: print core object detection results
         run: |
-          export BENCHMARK_RESULTS=$(python -c "import os;import json;print(json.dumps(json.load(open('results.json', 'r')), indent=4));")
+          export BENCHMARK_RESULTS=$(python -c "import os;import json;print(json.dumps(json.load(open('core_results.json', 'r')), indent=4));")
+          echo "$BENCHMARK_RESULTS"
+        working-directory: ./core/benchmarks/object-detection
+      - name: run manager object detection benchmarks
+        run: python benchmark_manager.py
+        working-directory: ./core/benchmarks/object-detection
+      - name: print manager object detection results
+        run: |
+          export BENCHMARK_RESULTS=$(python -c "import os;import json;print(json.dumps(json.load(open('manager_results.json', 'r')), indent=4));")
           echo "$BENCHMARK_RESULTS"
         working-directory: ./core/benchmarks/object-detection
       - run: make stop-env

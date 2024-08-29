@@ -20,9 +20,9 @@ from valor_core import (
     Polygon,
     Prediction,
     Raster,
+    enums,
+    evaluate_detection,
 )
-from valor_core import ValorDetectionManager as Manager
-from valor_core import enums
 from valor_core.enums import AnnotationType
 
 
@@ -74,7 +74,7 @@ def download_data_if_not_exists(
 
 
 def write_results_to_file(write_path: Path, results: list[dict]):
-    """Write results to results.json"""
+    """Write results to core_results.json"""
     current_datetime = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
     if os.path.isfile(write_path):
         with open(write_path, "r") as file:
@@ -127,104 +127,114 @@ def _create_annotation(
 
 
 @time_it
-def ingest_and_preprocess(
-    manager: Manager,
-    gt_type: AnnotationType,
-    pd_type: AnnotationType,
-    gt_path: Path,
-    pd_path: Path,
+def ingest_groundtruths(
+    dtype: AnnotationType,
+    path: Path,
     limit: int,
-    chunk_size: int,
-) -> tuple[float, Manager]:
-    with open(gt_path, "r") as gf:
-        with open(pd_path, "r") as pf:
+) -> list[GroundTruth]:
+    groundtruths = []
+    with open(path, "r") as f:
+        for line in f:
+            gt_dict = json.loads(line)
+            gt_dict["datum"].pop("text")
+            gt_dict["datum"] = Datum(**gt_dict["datum"])
 
-            count = 0
-            groundtruths = []
-            predictions = []
+            annotations = []
+            for ann in gt_dict["annotations"]:
+                annotations.append(_create_annotation(dtype=dtype, ann=ann))
 
-            accumulated_runtime = 0.0
+            gt_dict["annotations"] = annotations
+            gt = GroundTruth(**gt_dict)
+            groundtruths.append(gt)
 
-            for gline, pline in zip(gf, pf):
-
-                # unpack groundtruth
-                gt_dict = json.loads(gline)
-                gt_dict["datum"].pop("text")
-                gt_dict["datum"] = Datum(**gt_dict["datum"])
-                annotations = [
-                    _create_annotation(dtype=gt_type, ann=ann)
-                    for ann in gt_dict["annotations"]
-                ]
-                gt_dict["annotations"] = annotations
-                gt = GroundTruth(**gt_dict)
-                groundtruths.append(gt)
-
-                # unpack prediction
-                pd_dict = json.loads(pline)
-                pd_dict["datum"].pop("text")
-                pd_dict["datum"] = Datum(**pd_dict["datum"])
-                annotations = [
-                    _create_annotation(dtype=pd_type, ann=ann)
-                    for ann in pd_dict["annotations"]
-                ]
-                pd_dict["annotations"] = annotations
-                pd = Prediction(**pd_dict)
-                predictions.append(pd)
-
-                count += 1
-                if count >= limit and limit > 0:
-                    break
-                elif len(groundtruths) < chunk_size or chunk_size == -1:
-                    continue
-
-                runtime, _ = time_it(manager.add_data)(
-                    groundtruths, predictions
-                )
-                accumulated_runtime += runtime
-                groundtruths = []
-                predictions = []
-
-            if groundtruths:
-                runtime, _ = time_it(manager.add_data)(
-                    groundtruths, predictions
-                )
-                accumulated_runtime += runtime
-        return (accumulated_runtime, manager)
+            if len(groundtruths) >= limit:
+                return groundtruths
+    return groundtruths
 
 
-def run_base_evaluation(manager: Manager):
-    """Run a base evaluation (with no PR curves) using Manager."""
-    return manager.evaluate()
+@time_it
+def ingest_predictions(
+    dtype: AnnotationType,
+    datum_uids: list[str],
+    path: Path,
+    limit: int,
+) -> list[Prediction]:
+
+    predictions = []
+    with open(path, "r") as f:
+        count = 0
+        for line in f:
+            pd_dict = json.loads(line)
+            pd_dict["datum"].pop("text")
+            pd_dict["datum"] = Datum(**pd_dict["datum"])
+
+            annotations = []
+            for ann in pd_dict["annotations"]:
+                annotations.append(_create_annotation(dtype=dtype, ann=ann))
+
+            pd_dict["annotations"] = annotations
+            pd = Prediction(**pd_dict)
+            predictions.append(pd)
+
+            count += 1
+            if count >= limit:
+                return predictions
+    return predictions
 
 
-def run_pr_curve_evaluation(manager: Manager):
-    """Run a base evaluation with PrecisionRecallCurve included using Manager."""
-    return manager.evaluate()
+def run_base_evaluation(groundtruths, predictions):
+    """Run a base evaluation (with no PR curves)."""
+    evaluation = evaluate_detection(groundtruths, predictions)
+    return evaluation
 
 
-def run_detailed_pr_curve_evaluation(manager: Manager):
-    """Run a base evaluation with PrecisionRecallCurve and DetailedPrecisionRecallCurve included using Manager."""
-    return manager.evaluate()
+def run_pr_curve_evaluation(groundtruths, predictions):
+    """Run a base evaluation with PrecisionRecallCurve included."""
+    evaluation = evaluate_detection(
+        groundtruths=groundtruths,
+        predictions=predictions,
+        metrics_to_return=[
+            enums.MetricType.AP,
+            enums.MetricType.AR,
+            enums.MetricType.mAP,
+            enums.MetricType.APAveragedOverIOUs,
+            enums.MetricType.mAR,
+            enums.MetricType.mAPAveragedOverIOUs,
+            enums.MetricType.PrecisionRecallCurve,
+        ],
+    )
+    return evaluation
+
+
+def run_detailed_pr_curve_evaluation(groundtruths, predictions):
+    """Run a base evaluation with PrecisionRecallCurve and DetailedPrecisionRecallCurve included."""
+    evaluation = evaluate_detection(
+        groundtruths=groundtruths,
+        predictions=predictions,
+        metrics_to_return=[
+            enums.MetricType.AP,
+            enums.MetricType.AR,
+            enums.MetricType.mAP,
+            enums.MetricType.APAveragedOverIOUs,
+            enums.MetricType.mAR,
+            enums.MetricType.mAPAveragedOverIOUs,
+            enums.MetricType.PrecisionRecallCurve,
+            enums.MetricType.DetailedPrecisionRecallCurve,
+        ],
+    )
+    return evaluation
 
 
 @dataclass
 class Benchmark:
     limit: int
-    base_runtime: float
-    pr_runtime: float
-    detailed_runtime: float
     n_datums: int
     n_annotations: int
     n_labels: int
     gt_type: AnnotationType
     pd_type: AnnotationType
-    chunk_size: int
-    base_ingest: float
-    pr_ingest: float
-    detailed_ingest: float
-    base_precompute: float
-    pr_precompute: float
-    detailed_precompute: float
+    gt_ingest: float
+    pd_ingest: float
     eval_base: float
     eval_base_pr: float
     eval_base_pr_detail: float
@@ -239,34 +249,34 @@ class Benchmark:
                 "groundtruth": self.gt_type.value,
                 "prediction": self.pd_type.value,
             },
-            "chunk_size": self.chunk_size,
+            "ingestion": {
+                "groundtruths": f"{round(self.gt_ingest, 2)} seconds",
+                "predictions": f"{round(self.pd_ingest, 2)} seconds",
+            },
             "base": {
-                "ingestion": f"{round(self.base_ingest - self.base_precompute, 2)} seconds",
                 "evaluation": {
-                    "preprocessing": f"{round(self.base_precompute, 2)} seconds",
+                    "preprocessing": "0.0 seconds",
                     "computation": f"{round(self.eval_base, 2)} seconds",
-                    "total": f"{round(self.base_precompute + self.eval_base, 2)} seconds",
+                    "total": f"{round(self.eval_base, 2)} seconds",
                 },
             },
             "base+pr": {
-                "ingestion": f"{round(self.pr_ingest - self.pr_precompute, 2)} seconds",
                 "evaluation": {
-                    "preprocessing": f"{round(self.pr_precompute, 2)} seconds",
+                    "preprocessing": "0.0 seconds",
                     "computation": f"{round(self.eval_base_pr, 2)} seconds",
-                    "total": f"{round(self.pr_precompute + self.eval_base_pr, 2)} seconds",
+                    "total": f"{round(self.eval_base_pr, 2)} seconds",
                 },
             }
-            if self.pr_ingest > -1
+            if self.eval_base_pr > -1
             else {},
             "base+pr+detailed": {
-                "ingestion": f"{round(self.detailed_ingest - self.detailed_precompute, 2)} seconds",
                 "evaluation": {
-                    "preprocessing": f"{round(self.detailed_precompute, 2)} seconds",
+                    "preprocessing": "0.0 seconds",
                     "computation": f"{round(self.eval_base_pr_detail, 2)} seconds",
-                    "total": f"{round(self.detailed_precompute + self.eval_base_pr, 2)} seconds",
+                    "total": f"{round(self.eval_base_pr_detail, 2)} seconds",
                 },
             }
-            if self.detailed_ingest > -1
+            if self.eval_base_pr_detail > -1
             else {},
         }
 
@@ -274,12 +284,11 @@ class Benchmark:
 def run_benchmarking_analysis(
     limits_to_test: list[int],
     combinations: list[tuple[AnnotationType, AnnotationType]] | None = None,
-    results_file: str = "results.json",
-    chunk_size: int = -1,
+    results_file: str = "core_results.json",
+    ingestion_chunk_timeout: int = 30,
+    evaluation_timeout: int = 30,
     compute_pr: bool = True,
     compute_detailed: bool = True,
-    ingestion_timeout=30,
-    evaluation_timeout=30,
 ):
     """Time various function calls and export the results."""
     current_directory = Path(__file__).parent
@@ -335,31 +344,24 @@ def run_benchmarking_analysis(
             gt_filename = groundtruth_caches[gt_type]
             pd_filename = prediction_caches[pd_type]
 
-            # === Base Evaluation ===
-            start = time()
-            base_evaluation = Manager()
-
-            # ingest + preprocess
-            base_ingest, (
-                base_precompute,
-                base_evaluation,
-            ) = ingest_and_preprocess(
-                manager=base_evaluation,
-                gt_type=gt_type,
-                pd_type=pd_type,
-                gt_path=current_directory / Path(gt_filename),
-                pd_path=current_directory / Path(pd_filename),
+            # gt ingestion
+            gt_ingest_time, groundtruths = ingest_groundtruths(
+                dtype=gt_type,
+                path=current_directory / Path(gt_filename),
                 limit=limit,
-                chunk_size=chunk_size,
-            )  # type: ignore - time_it wrapper
-            if base_ingest > ingestion_timeout and ingestion_timeout != -1:
-                raise TimeoutError(
-                    f"Base precomputation timed out with limit of {limit}."
-                )
+            )
 
-            # evaluate
-            base_results = run_base_evaluation(base_evaluation)
-            base_total = time() - start
+            # pd ingestion
+            datum_uids = [gt.datum.uid for gt in groundtruths]  # type: ignore
+            pd_ingest_time, predictions = ingest_predictions(
+                dtype=pd_type,
+                datum_uids=datum_uids,
+                path=current_directory / Path(pd_filename),
+                limit=limit,
+            )
+
+            # === Base Evaluation ===
+            base_results = run_base_evaluation(groundtruths, predictions)
             assert base_results.meta
             n_datums = base_results.meta["datums"]
             n_annotations = base_results.meta["annotations"]
@@ -371,45 +373,9 @@ def run_benchmarking_analysis(
                 )
 
             # === PR Evaluation ===
-            pr_total = -1
-            pr_ingest = -1
-            pr_precompute = -1
             pr = -1
             if compute_pr:
-                start = time()
-                pr_evaluation = Manager(
-                    metrics_to_return=[
-                        enums.MetricType.AP,
-                        enums.MetricType.AR,
-                        enums.MetricType.mAP,
-                        enums.MetricType.APAveragedOverIOUs,
-                        enums.MetricType.mAR,
-                        enums.MetricType.mAPAveragedOverIOUs,
-                        enums.MetricType.PrecisionRecallCurve,
-                    ]
-                )
-
-                # ingest + preprocess
-                pr_ingest, (
-                    pr_precompute,
-                    pr_evaluation,
-                ) = ingest_and_preprocess(
-                    manager=pr_evaluation,
-                    gt_type=gt_type,
-                    pd_type=pd_type,
-                    gt_path=current_directory / Path(gt_filename),
-                    pd_path=current_directory / Path(pd_filename),
-                    limit=limit,
-                    chunk_size=chunk_size,
-                )  # type: ignore - time_it wrapper
-                if pr_ingest > ingestion_timeout and ingestion_timeout != -1:
-                    raise TimeoutError(
-                        f"PR precomputation timed out with {n_datums} datums."
-                    )
-
-                # evaluate
-                pr_results = run_pr_curve_evaluation(pr_evaluation)
-                pr_total = time() - start
+                pr_results = run_pr_curve_evaluation(groundtruths, predictions)
                 assert pr_results.meta
                 pr = pr_results.meta["duration"]
                 if pr > evaluation_timeout and evaluation_timeout != -1:
@@ -418,52 +384,11 @@ def run_benchmarking_analysis(
                     )
 
             # === Detailed Evaluation ===
-            detailed_total = -1
-            detailed_ingest = -1
-            detailed_precompute = -1
             detailed = -1
             if compute_detailed:
-                start = time()
-                detailed_evaluation = Manager(
-                    metrics_to_return=[
-                        enums.MetricType.AP,
-                        enums.MetricType.AR,
-                        enums.MetricType.mAP,
-                        enums.MetricType.APAveragedOverIOUs,
-                        enums.MetricType.mAR,
-                        enums.MetricType.mAPAveragedOverIOUs,
-                        enums.MetricType.PrecisionRecallCurve,
-                        enums.MetricType.DetailedPrecisionRecallCurve,
-                    ]
-                )
-
-                # ingest + preprocess
-                detailed_ingest, (
-                    detailed_precompute,
-                    detailed_evaluation,
-                ) = ingest_and_preprocess(
-                    manager=detailed_evaluation,
-                    gt_type=gt_type,
-                    pd_type=pd_type,
-                    gt_path=current_directory / Path(gt_filename),
-                    pd_path=current_directory / Path(pd_filename),
-                    limit=limit,
-                    chunk_size=chunk_size,
-                )  # type: ignore - time_it wrapper
-                if (
-                    detailed_ingest > ingestion_timeout
-                    and ingestion_timeout != -1
-                ):
-                    raise TimeoutError(
-                        f"Detailed precomputation timed out with {n_datums} datums."
-                    )
-
-                # evaluate
                 detailed_results = run_detailed_pr_curve_evaluation(
-                    detailed_evaluation
+                    groundtruths, predictions
                 )
-                detailed_total = time() - start
-
                 assert detailed_results.meta
                 detailed = detailed_results.meta["duration"]
                 if detailed > evaluation_timeout and evaluation_timeout != -1:
@@ -474,21 +399,13 @@ def run_benchmarking_analysis(
             results.append(
                 Benchmark(
                     limit=limit,
-                    base_runtime=base_total,
-                    pr_runtime=pr_total,
-                    detailed_runtime=detailed_total,
                     n_datums=n_datums,
                     n_annotations=n_annotations,
                     n_labels=n_labels,
                     gt_type=gt_type,
                     pd_type=pd_type,
-                    chunk_size=chunk_size,
-                    base_ingest=base_ingest,
-                    pr_ingest=pr_ingest,
-                    detailed_ingest=detailed_ingest,
-                    base_precompute=base_precompute,
-                    pr_precompute=pr_precompute,
-                    detailed_precompute=detailed_precompute,
+                    gt_ingest=gt_ingest_time,
+                    pd_ingest=pd_ingest_time,
                     eval_base=base,
                     eval_base_pr=pr,
                     eval_base_pr_detail=detailed,
@@ -517,7 +434,6 @@ if __name__ == "__main__":
         limits_to_test=[5000, 5000],
         compute_detailed=False,
     )
-
     # run raster benchmark
     run_benchmarking_analysis(
         combinations=[
