@@ -48,11 +48,13 @@ class LLMClient:
 
     api_key: str | None = None
     model_name: str
+    retries: int = 3
 
     def __init__(
         self,
         api_key: str | None = None,
         model_name: str | None = None,
+        retries: int | None = None,
     ):
         """
         Set the API key and model name (if provided).
@@ -60,6 +62,8 @@ class LLMClient:
         self.api_key = api_key
         if model_name is not None:
             self.model_name = model_name
+        if retries is not None:
+            self.retries = retries
 
     def connect(
         self,
@@ -109,6 +113,36 @@ class LLMClient:
             The response from the API.
         """
         raise NotImplementedError
+
+    def _function_with_retries(
+        self,
+        function,
+        **kwargs,
+    ):
+        """
+        Call the metric subfunction with retries.
+
+        Parameters
+        ----------
+        function: function
+            The function to call.
+        kwargs: dict
+            The arguments to pass to the function.
+
+        Returns
+        -------
+        Any
+            The result of the function call.
+        """
+        # Try for self.retries - 1 times.
+        for i in range(self.retries - 1):
+            try:
+                return function(**kwargs)
+            except InvalidLLMResponseError as e:
+                if i == self.retries - 1:
+                    raise e
+        # Then try one last time and allow the exception to be raised if it occurs again.
+        return function(**kwargs)
 
     def _generate_claims(
         self,
@@ -797,11 +831,18 @@ class LLMClient:
                 "Answer correctness is meaningless if the ground truth list is empty."
             )
 
-        prediction_statements = self._generate_statements(prediction)
+        prediction_statements = self._function_with_retries(
+            function=self._generate_statements,
+            text=prediction,
+        )
         f1_scores = []
         for groundtruth in groundtruth_list:
-            groundtruth_statements = self._generate_statements(groundtruth)
-            verdicts = self._generate_answer_correctness_verdicts(
+            groundtruth_statements = self._function_with_retries(
+                function=self._generate_statements,
+                text=groundtruth,
+            )
+            verdicts = self._function_with_retries(
+                function=self._generate_answer_correctness_verdicts,
                 query=query,
                 groundtruth_statements=groundtruth_statements,
                 prediction_statements=prediction_statements,
@@ -835,8 +876,15 @@ class LLMClient:
         float
             The answer relevance score between 0 and 1. A score of 1 indicates that all statements are relevant to the query.
         """
-        statements = self._generate_statements(text)
-        verdicts = self._generate_answer_relevance_verdicts(query, statements)
+        statements = self._function_with_retries(
+            function=self._generate_statements,
+            text=text,
+        )
+        verdicts = self._function_with_retries(
+            function=self._generate_answer_relevance_verdicts,
+            query=query,
+            statements=statements,
+        )
         return sum(
             1 for verdict in verdicts if verdict["verdict"] == "yes"
         ) / len(verdicts)
@@ -858,11 +906,17 @@ class LLMClient:
         float
             The bias score between 0 and 1. A score of 1 indicates that all opinions in the text are biased.
         """
-        opinions = self._generate_opinions(text)
+        opinions = self._function_with_retries(
+            function=self._generate_opinions,
+            text=text,
+        )
         if len(opinions) == 0:
             return 0
 
-        verdicts = self._generate_bias_verdicts(opinions)
+        verdicts = self._function_with_retries(
+            function=self._generate_bias_verdicts,
+            opinions=opinions,
+        )
 
         return sum(
             1 for verdict in verdicts if verdict["verdict"] == "yes"
@@ -912,7 +966,8 @@ class LLMClient:
         # a context to "yes" if the verdict is "yes" for any ground truth.
         aggregate_verdicts = ["no"] * len(ordered_context_list)
         for groundtruth in groundtruth_list:
-            verdicts = self._generate_context_precision_verdicts(
+            verdicts = self._function_with_retries(
+                function=self._generate_context_precision_verdicts,
                 query=query,
                 ordered_context_list=ordered_context_list,
                 groundtruth=groundtruth,
@@ -978,10 +1033,15 @@ class LLMClient:
 
         scores = []
         for groundtruth in groundtruth_list:
-            groundtruth_statements = self._generate_statements(groundtruth)
+            groundtruth_statements = self._function_with_retries(
+                function=self._generate_statements,
+                text=groundtruth,
+            )
 
-            verdicts = self._generate_context_recall_verdicts(
-                context_list, groundtruth_statements
+            verdicts = self._function_with_retries(
+                function=self._generate_context_recall_verdicts,
+                context_list=context_list,
+                groundtruth_statements=groundtruth_statements,
             )
 
             scores.append(
@@ -1016,8 +1076,10 @@ class LLMClient:
                 "Context relevance is meaningless if the context list is empty."
             )
 
-        verdicts = self._generate_context_relevance_verdicts(
-            query, context_list
+        verdicts = self._function_with_retries(
+            function=self._generate_context_relevance_verdicts,
+            query=query,
+            context_list=context_list,
         )
 
         return sum(
@@ -1049,14 +1111,19 @@ class LLMClient:
                 "Faithfulness is meaningless if the context list is empty."
             )
 
-        claims = self._generate_claims(text)
+        claims = self._function_with_retries(
+            function=self._generate_claims,
+            text=text,
+        )
 
         # If there aren't any claims, then the text is perfectly faithful, as the text does not contain any non-faithful claims.
         if len(claims) == 0:
             return 1
 
-        faithfulness_verdicts = self._generate_faithfulness_verdicts(
-            claims, context_list
+        faithfulness_verdicts = self._function_with_retries(
+            function=self._generate_faithfulness_verdicts,
+            claims=claims,
+            context_list=context_list,
         )
 
         return sum(
@@ -1090,9 +1157,10 @@ class LLMClient:
                 "Hallucination is meaningless if the context list is empty."
             )
 
-        verdicts = self._generate_hallucination_verdicts(
-            text,
-            context_list,
+        verdicts = self._function_with_retries(
+            function=self._generate_hallucination_verdicts,
+            text=text,
+            context_list=context_list,
         )
 
         return sum(
@@ -1119,7 +1187,11 @@ class LLMClient:
         int
             The summary coherence score between 1 and 5. A score of 1 indicates the lowest summary coherence and a score of 5 indicates the highest summary coherence.
         """
-        return self._summary_coherence(text=text, summary=summary)
+        return self._function_with_retries(
+            function=self._summary_coherence,
+            text=text,
+            summary=summary,
+        )
 
     def toxicity(
         self,
@@ -1138,11 +1210,17 @@ class LLMClient:
         float
             The toxicity score will be evaluated as a float between 0 and 1, with 1 indicating that all opinions in the text are toxic.
         """
-        opinions = self._generate_opinions(text)
+        opinions = self._function_with_retries(
+            function=self._generate_opinions,
+            text=text,
+        )
         if len(opinions) == 0:
             return 0
 
-        verdicts = self._generate_toxicity_verdicts(opinions)
+        verdicts = self._function_with_retries(
+            function=self._generate_toxicity_verdicts,
+            opinions=opinions,
+        )
 
         return sum(
             1 for verdict in verdicts if verdict["verdict"] == "yes"
@@ -1164,25 +1242,31 @@ class WrappedOpenAIClient(LLMClient):
     """
 
     api_key: str | None = None
-    seed: int | None = None
     model_name: str = "gpt-3.5-turbo"
+    retries: int = 3
+    seed: int | None = None
     total_prompt_tokens: int = 0
     total_completion_tokens: int = 0
 
     def __init__(
         self,
         api_key: str | None = None,
-        seed: int | None = None,
         model_name: str | None = None,
+        retries: int | None = None,
+        seed: int | None = None,
     ):
         """
         Set the API key, seed and model name (if provided).
         """
         self.api_key = api_key
-        if seed is not None:
-            self.seed = seed
         if model_name is not None:
             self.model_name = model_name
+        if retries is not None:
+            self.retries = retries
+        if seed is not None:
+            self.seed = seed
+            self.retries = 1
+            print("Seed is provided, so setting retries to 1.")
 
     def connect(
         self,
@@ -1279,11 +1363,13 @@ class WrappedMistralAIClient(LLMClient):
 
     api_key: str | None = None
     model_name: str = "mistral-small-latest"
+    retries: int = 3
 
     def __init__(
         self,
         api_key: str | None = None,
         model_name: str | None = None,
+        retries: int | None = None,
     ):
         """
         Set the API key and model name (if provided).
@@ -1291,6 +1377,8 @@ class WrappedMistralAIClient(LLMClient):
         self.api_key = api_key
         if model_name is not None:
             self.model_name = model_name
+        if retries is not None:
+            self.retries = retries
 
     def connect(
         self,
