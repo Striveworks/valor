@@ -135,12 +135,16 @@ def ingest_and_preprocess(
     pd_path: Path,
     limit: int,
     chunk_size: int,
-) -> Manager:
+) -> tuple[float, Manager]:
     with open(gt_path, "r") as gf:
         with open(pd_path, "r") as pf:
+
             count = 0
             groundtruths = []
             predictions = []
+
+            accumulated_runtime = 0.0
+
             for gline, pline in zip(gf, pf):
 
                 # unpack groundtruth
@@ -167,22 +171,25 @@ def ingest_and_preprocess(
                 pd = Prediction(**pd_dict)
                 predictions.append(pd)
 
-                assert gt.datum.uid == pd.datum.uid
-                assert len(groundtruths) == len(predictions)
-
                 count += 1
                 if count >= limit and limit > 0:
                     break
                 elif len(groundtruths) < chunk_size or chunk_size == -1:
                     continue
 
-                manager.add_data(groundtruths, predictions)
+                runtime, _ = time_it(manager.add_data)(
+                    groundtruths, predictions
+                )
+                accumulated_runtime += runtime
                 groundtruths = []
                 predictions = []
 
             if groundtruths:
-                manager.add_data(groundtruths, predictions)
-        return manager
+                runtime, _ = time_it(manager.add_data)(
+                    groundtruths, predictions
+                )
+                accumulated_runtime += runtime
+        return (accumulated_runtime, manager)
 
 
 def run_base_evaluation(manager: Manager):
@@ -201,40 +208,6 @@ def run_detailed_pr_curve_evaluation(manager: Manager):
 
 
 @dataclass
-class IngestionBenchmark:
-    gt_type: AnnotationType
-    pd_type: AnnotationType
-    chunk_size: int
-    base_precompute: float
-    pr_precompute: float
-    detailed_precompute: float
-
-    def result(self) -> dict:
-        return {
-            "groundtruth_type": self.gt_type.value,
-            "prediction_type": self.pd_type.value,
-            "chunk_size": self.chunk_size,
-            "base": f"{round(self.base_precompute, 2)} seconds",
-            "base+pr": f"{round(self.pr_precompute, 2)} seconds",
-            "base+pr+detail": f"{round(self.detailed_precompute, 2)} seconds",
-        }
-
-
-@dataclass
-class EvaluationBenchmark:
-    eval_base: float
-    eval_base_pr: float
-    eval_base_pr_detail: float
-
-    def result(self) -> dict[str, str]:
-        return {
-            "base": f"{round(self.eval_base, 2)} seconds",
-            "base+pr": f"{round(self.eval_base_pr, 2)} seconds",
-            "base+pr+detailed": f"{round(self.eval_base_pr_detail, 2)} seconds",
-        }
-
-
-@dataclass
 class Benchmark:
     limit: int
     base_runtime: float
@@ -243,8 +216,18 @@ class Benchmark:
     n_datums: int
     n_annotations: int
     n_labels: int
-    ingestion: IngestionBenchmark
-    evaluation: EvaluationBenchmark
+    gt_type: AnnotationType
+    pd_type: AnnotationType
+    chunk_size: int
+    base_ingest: float
+    pr_ingest: float
+    detailed_ingest: float
+    base_precompute: float
+    pr_precompute: float
+    detailed_precompute: float
+    eval_base: float
+    eval_base_pr: float
+    eval_base_pr_detail: float
 
     def result(self) -> dict:
         return {
@@ -252,13 +235,39 @@ class Benchmark:
             "n_datums": self.n_datums,
             "n_annotations": self.n_annotations,
             "n_labels": self.n_labels,
-            "preprocessing": self.ingestion.result(),
-            "evaluation": self.evaluation.result(),
-            "total": {
-                "base": f"{round(self.base_runtime, 2)} seconds",
-                "base+pr": f"{round(self.pr_runtime, 2)} seconds",
-                "base+pr+detailed": f"{round(self.detailed_runtime, 2)} seconds",
+            "dtype": {
+                "groundtruth": self.gt_type.value,
+                "prediction": self.pd_type.value,
             },
+            "chunk_size": self.chunk_size,
+            "base": {
+                "ingestion": f"{round(self.base_ingest - self.base_precompute, 2)} seconds",
+                "evaluation": {
+                    "preprocessing": f"{round(self.base_precompute, 2)} seconds",
+                    "computation": f"{round(self.eval_base, 2)} seconds",
+                    "total": f"{round(self.base_precompute + self.eval_base, 2)} seconds",
+                },
+            },
+            "base+pr": {
+                "ingestion": f"{round(self.pr_ingest - self.pr_precompute, 2)} seconds",
+                "evaluation": {
+                    "preprocessing": f"{round(self.pr_precompute, 2)} seconds",
+                    "computation": f"{round(self.eval_base_pr, 2)} seconds",
+                    "total": f"{round(self.pr_precompute + self.eval_base_pr, 2)} seconds",
+                },
+            }
+            if self.pr_ingest > -1
+            else {},
+            "base+pr+detailed": {
+                "ingestion": f"{round(self.detailed_ingest - self.detailed_precompute, 2)} seconds",
+                "evaluation": {
+                    "preprocessing": f"{round(self.detailed_precompute, 2)} seconds",
+                    "computation": f"{round(self.eval_base_pr_detail, 2)} seconds",
+                    "total": f"{round(self.detailed_precompute + self.eval_base_pr, 2)} seconds",
+                },
+            }
+            if self.detailed_ingest > -1
+            else {},
         }
 
 
@@ -331,7 +340,10 @@ def run_benchmarking_analysis(
             base_evaluation = Manager()
 
             # ingest + preprocess
-            base_ingest, base_evaluation = ingest_and_preprocess(
+            base_ingest, (
+                base_precompute,
+                base_evaluation,
+            ) = ingest_and_preprocess(
                 manager=base_evaluation,
                 gt_type=gt_type,
                 pd_type=pd_type,
@@ -361,6 +373,7 @@ def run_benchmarking_analysis(
             # === PR Evaluation ===
             pr_total = -1
             pr_ingest = -1
+            pr_precompute = -1
             pr = -1
             if compute_pr:
                 start = time()
@@ -377,7 +390,10 @@ def run_benchmarking_analysis(
                 )
 
                 # ingest + preprocess
-                pr_ingest, pr_evaluation = ingest_and_preprocess(
+                pr_ingest, (
+                    pr_precompute,
+                    pr_evaluation,
+                ) = ingest_and_preprocess(
                     manager=pr_evaluation,
                     gt_type=gt_type,
                     pd_type=pd_type,
@@ -404,6 +420,7 @@ def run_benchmarking_analysis(
             # === Detailed Evaluation ===
             detailed_total = -1
             detailed_ingest = -1
+            detailed_precompute = -1
             detailed = -1
             if compute_detailed:
                 start = time()
@@ -421,7 +438,10 @@ def run_benchmarking_analysis(
                 )
 
                 # ingest + preprocess
-                detailed_ingest, detailed_evaluation = ingest_and_preprocess(
+                detailed_ingest, (
+                    detailed_precompute,
+                    detailed_evaluation,
+                ) = ingest_and_preprocess(
                     manager=detailed_evaluation,
                     gt_type=gt_type,
                     pd_type=pd_type,
@@ -460,19 +480,18 @@ def run_benchmarking_analysis(
                     n_datums=n_datums,
                     n_annotations=n_annotations,
                     n_labels=n_labels,
-                    ingestion=IngestionBenchmark(
-                        gt_type=gt_type,
-                        pd_type=pd_type,
-                        chunk_size=chunk_size,
-                        base_precompute=base_ingest,
-                        pr_precompute=pr_ingest,
-                        detailed_precompute=detailed_ingest,
-                    ),
-                    evaluation=EvaluationBenchmark(
-                        eval_base=base,
-                        eval_base_pr=pr,
-                        eval_base_pr_detail=detailed,
-                    ),
+                    gt_type=gt_type,
+                    pd_type=pd_type,
+                    chunk_size=chunk_size,
+                    base_ingest=base_ingest,
+                    pr_ingest=pr_ingest,
+                    detailed_ingest=detailed_ingest,
+                    base_precompute=base_precompute,
+                    pr_precompute=pr_precompute,
+                    detailed_precompute=detailed_precompute,
+                    eval_base=base,
+                    eval_base_pr=pr,
+                    eval_base_pr_detail=detailed,
                 ).result()
             )
 
