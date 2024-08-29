@@ -168,6 +168,7 @@ def ingest_and_preprocess(
                 predictions.append(pd)
 
                 assert gt.datum.uid == pd.datum.uid
+                assert len(groundtruths) == len(predictions)
 
                 count += 1
                 if count >= limit and limit > 0:
