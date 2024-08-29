@@ -55,59 +55,90 @@ VALID_STATEMENTS = """```json
     ]
 }```"""
 
+GROUNDTRUTH_VALID_STATEMENTS = """```json
+{
+    "statements": [
+        "gt statement 1",
+        "gt statement 2",
+        "gt statement 3",
+        "gt statement 4"
+    ]
+}```"""
+
+ANSWER_CORRECTNESS_VALID_VERDICTS = """```json
+{
+    "TP": [
+        "statement 1",
+        "statement 2",
+        "statement 4"
+    ],
+    "FP": [
+        "statement 3"
+    ],
+    "FN": [
+        "gt statement 1",
+        "gt statement 4"
+    ]
+}```"""
+
 ANSWER_RELEVANCE_VALID_VERDICTS = """```json
 {
     "verdicts": [
-        {
-            "verdict": "no",
-            "reason": "The statement has nothing to do with the query."
-        },
-        {
-            "verdict": "yes"
-        },
-        {
-            "verdict": "idk"
-        },
-        {
-            "verdict": "yes"
-        }
+        {"verdict": "no"},
+        {"verdict": "yes"},
+        {"verdict": "idk"},
+        {"verdict": "yes"}
     ]
 }```"""
 
 BIAS_VALID_VERDICTS = """```json
 {
     "verdicts": [
-        {
-            "verdict": "yes",
-            "reason": "This opinion demonstrates gender bias."
-        },
-        {
-            "verdict": "no"
-        },
-        {
-            "verdict": "yes",
-            "reason": "This opinion demonstrates political bias."
-        },
-        {
-            "verdict": "no"
-        }
+        {"verdict": "yes"},
+        {"verdict": "no"},
+        {"verdict": "yes"},
+        {"verdict": "no"}
+    ]
+}```"""
+
+CONTEXT_PRECISION_VALID1_VERDICTS = """```json
+{
+    "verdicts": [
+        {"verdict": "no"},
+        {"verdict": "yes"},
+        {"verdict": "no"},
+        {"verdict": "no"},
+        {"verdict": "yes"}
+    ]
+}```"""
+
+CONTEXT_PRECISION_VALID2_VERDICTS = """```json
+{
+    "verdicts": [
+        {"verdict": "no"},
+        {"verdict": "no"},
+        {"verdict": "no"},
+        {"verdict": "no"},
+        {"verdict": "no"}
+    ]
+}```"""
+
+CONTEXT_RECALL_VALID_VERDICTS = """```json
+{
+    "verdicts": [
+        {"verdict": "yes"},
+        {"verdict": "yes"},
+        {"verdict": "no"},
+        {"verdict": "yes"}
     ]
 }```"""
 
 CONTEXT_RELEVANCE_VALID_VERDICTS = """```json
 {
     "verdicts": [
-        {
-            "verdict": "no",
-            "reason": "This context does not relate to the query."
-        },
-        {
-            "verdict": "yes"
-        },
-        {
-            "verdict": "no",
-            "reason": "This context is not useful for answering the query."
-        }
+        {"verdict": "no"},
+        {"verdict": "yes"},
+        {"verdict": "no"}
     ]
 }```"""
 
@@ -125,38 +156,19 @@ FAITHFULNESS_VALID_VERDICTS = """```json
 HALLUCINATION_VALID_VERDICTS = """```json
 {
     "verdicts": [
-        {
-            "verdict": "no"
-        },
-
-        {
-            "verdict": "yes",
-            "reason": "The text and context disagree on when Abraham Lincoln was born."
-        },
-        {
-            "verdict": "yes",
-            "reason": "The text says that Abraham Lincoln lost the election of 1860, but the context says that Abraham Lincoln won the election of 1860."
-        }
+        {"verdict": "no"},
+        {"verdict": "yes"},
+        {"verdict": "yes"}
     ]
 }```"""
 
 TOXICITY_VALID_VERDICTS = """```json
 {
     "verdicts": [
-        {
-            "verdict": "yes",
-            "reason": "This opinion demonstrates hate."
-        },
-        {
-            "verdict": "no"
-        },
-        {
-            "verdict": "yes",
-            "reason": "This opinion demonstrates mockery."
-        },
-        {
-            "verdict": "no"
-        }
+        {"verdict": "yes"},
+        {"verdict": "no"},
+        {"verdict": "yes"},
+        {"verdict": "no"}
     ]
 }```"""
 
@@ -175,6 +187,148 @@ def test_LLMClient(monkeypatch):
 
     Check the metric computations for LLMClient. The client children inherit all of these metric computations.
     """
+
+    def _return_valid_answer_correctness_response(*args, **kwargs):
+        if "prediction text" in args[1][1]["content"]:
+            return VALID_STATEMENTS
+        elif "ground truth text" in args[1][1]["content"]:
+            return GROUNDTRUTH_VALID_STATEMENTS
+        elif (
+            "Return in JSON format with three keys: 'TP', 'FP', and 'FN'"
+            in args[1][1]["content"]
+        ):
+            return ANSWER_CORRECTNESS_VALID_VERDICTS
+        else:
+            raise BadValueInTestLLMClientsError
+
+    def _return_invalid1_answer_correctness_response(*args, **kwargs):
+        return """```json
+{
+    "list": [
+        "statement 1",
+        "statement 2",
+        "statement 3",
+        "statement 4"
+    ]
+}```"""
+
+    def _return_invalid2_answer_correctness_response(*args, **kwargs):
+        if "prediction text" in args[1][1]["content"]:
+            return VALID_STATEMENTS
+        elif "ground truth text" in args[1][1]["content"]:
+            return """```json
+{
+    "statements": [
+        "statement 1",
+        4,
+        "statement 3",
+        "statement 4"
+    ]
+}```"""
+        else:
+            raise BadValueInTestLLMClientsError
+
+    def _return_invalid3_answer_correctness_response(*args, **kwargs):
+        if "prediction text" in args[1][1]["content"]:
+            return VALID_STATEMENTS
+        elif "ground truth text" in args[1][1]["content"]:
+            return GROUNDTRUTH_VALID_STATEMENTS
+        elif (
+            "Return in JSON format with three keys: 'TP', 'FP', and 'FN'"
+            in args[1][1]["content"]
+        ):
+            return """```json
+{
+    "TP": [
+        "statement 1",
+        "statement 2",
+        "statement 4"
+    ],
+    "FP": [
+        "statement 3"
+    ]
+}```"""
+        else:
+            raise BadValueInTestLLMClientsError
+
+    def _return_invalid4_answer_correctness_response(*args, **kwargs):
+        if "prediction text" in args[1][1]["content"]:
+            return VALID_STATEMENTS
+        elif "ground truth text" in args[1][1]["content"]:
+            return GROUNDTRUTH_VALID_STATEMENTS
+        elif (
+            "Return in JSON format with three keys: 'TP', 'FP', and 'FN'"
+            in args[1][1]["content"]
+        ):
+            return """```json
+{
+    "TP": "statement 1",
+    "FP": [
+        "statement 3"
+    ],
+    "FN": [
+        "gt statement 1",
+        "gt statement 4"
+    ]
+}```"""
+        else:
+            raise BadValueInTestLLMClientsError
+
+    def _return_invalid5_answer_correctness_response(*args, **kwargs):
+        if "prediction text" in args[1][1]["content"]:
+            return VALID_STATEMENTS
+        elif "ground truth text" in args[1][1]["content"]:
+            return GROUNDTRUTH_VALID_STATEMENTS
+        elif (
+            "Return in JSON format with three keys: 'TP', 'FP', and 'FN'"
+            in args[1][1]["content"]
+        ):
+            return """```json
+{
+    "TP": [
+        "statement 1",
+        "statement 2"
+    ],
+    "FP": [
+        "statement 3"
+    ],
+    "FN": [
+        "gt statement 1",
+        "gt statement 4"
+    ]
+}```"""
+        else:
+            raise BadValueInTestLLMClientsError
+
+    def _return_invalid6_answer_correctness_response(*args, **kwargs):
+        if "prediction text" in args[1][1]["content"]:
+            return VALID_STATEMENTS
+        elif "ground truth text" in args[1][1]["content"]:
+            return GROUNDTRUTH_VALID_STATEMENTS
+        elif (
+            "Return in JSON format with three keys: 'TP', 'FP', and 'FN'"
+            in args[1][1]["content"]
+        ):
+            return """```json
+{
+    "TP": [
+        "statement 1",
+        "statement 2",
+        "statement 4"
+    ],
+    "FP": [
+        "statement 3"
+    ],
+    "FN": [
+        "gt statement 1",
+        "gt statement 2",
+        "gt statement 3",
+        "gt statement 4",
+        "too many statements in 'FN'"
+    ]
+}```"""
+        else:
+            raise BadValueInTestLLMClientsError
 
     def _return_valid_answer_relevance_response(*args, **kwargs):
         if "generate a list of STATEMENTS" in args[1][1]["content"]:
@@ -352,15 +506,6 @@ def test_LLMClient(monkeypatch):
         else:
             raise BadValueInTestLLMClientsError
 
-    def _return_valid_coherence_response(*args, **kwargs):
-        return "5"
-
-    def _return_invalid1_coherence_response(*args, **kwargs):
-        return "The score is 5."
-
-    def _return_invalid2_coherence_response(*args, **kwargs):
-        return "0"
-
     def _return_valid_context_relevance_response(*args, **kwargs):
         return CONTEXT_RELEVANCE_VALID_VERDICTS
 
@@ -368,11 +513,97 @@ def test_LLMClient(monkeypatch):
         return """```json
 {
     "all_verdicts": [
+        {"verdict": "no"},
+        {"verdict": "yes"},
+        {"verdict": "no"}
+    ]
+}```"""
+
+    def _return_valid1_context_precision_response(*args, **kwargs):
+        return CONTEXT_PRECISION_VALID1_VERDICTS
+
+    def _return_valid2_context_precision_response(*args, **kwargs):
+        return CONTEXT_PRECISION_VALID2_VERDICTS
+
+    def _return_invalid1_context_precision_response(*args, **kwargs):
+        return """```json
+{
+    "invalid_key": [
         "verdict 1",
         "verdict 2",
         "verdict 3"
     ]
 }```"""
+
+    def _return_valid_context_recall_response(*args, **kwargs):
+        if "generate a list of STATEMENTS" in args[1][1]["content"]:
+            return VALID_STATEMENTS
+        elif (
+            "analyze each ground truth statement and determine if the statement can be attributed to the given context."
+            in args[1][1]["content"]
+        ):
+            return CONTEXT_RECALL_VALID_VERDICTS
+        else:
+            raise BadValueInTestLLMClientsError
+
+    def _return_invalid1_context_recall_response(*args, **kwargs):
+        return """```json
+{
+    "invalid_key": [
+        "statement 1",
+        "statement 2",
+        "statement 3",
+        "statement 4"
+    ]
+}```"""
+
+    def _return_invalid2_context_recall_response(*args, **kwargs):
+        return """```json
+{
+    "statements": [
+        1,
+        "statement 2",
+        "statement 3",
+        "statement 4"
+    ]
+}```"""
+
+    def _return_invalid3_context_recall_response(*args, **kwargs):
+        if "generate a list of STATEMENTS" in args[1][1]["content"]:
+            return VALID_STATEMENTS
+        elif (
+            "analyze each ground truth statement and determine if the statement can be attributed to the given context."
+            in args[1][1]["content"]
+        ):
+            return """```json
+{
+    "invalid_key": [
+        "verdict 1",
+        "verdict 2",
+        "verdict 3",
+        "verdict 4"
+    ]
+}```"""
+        else:
+            raise BadValueInTestLLMClientsError
+
+    def _return_invalid4_context_recall_response(*args, **kwargs):
+        if "generate a list of STATEMENTS" in args[1][1]["content"]:
+            return VALID_STATEMENTS
+        elif (
+            "analyze each ground truth statement and determine if the statement can be attributed to the given context."
+            in args[1][1]["content"]
+        ):
+            return """```json
+{
+    "verdicts": [
+        "verdict 1",
+        "verdict 2",
+        "verdict 3"
+    ]
+}```"""
+        else:
+            raise BadValueInTestLLMClientsError
 
     def _return_valid1_faithfulness_response(*args, **kwargs):
         if (
@@ -395,50 +626,24 @@ def test_LLMClient(monkeypatch):
 }```"""
 
     def _return_invalid1_faithfulness_response(*args, **kwargs):
-        if (
-            "generate a comprehensive list of FACTUAL CLAIMS"
-            in args[1][1]["content"]
-        ):
-            return VALID_CLAIMS
-        elif (
-            "generate a list of verdicts to indicate whether EACH claim is implied by the context list"
-            in args[1][1]["content"]
-        ):
-            return """```json
+        return """```json
 {
-    "list": [
-        "verdict 1",
-        "verdict 2",
-        "verdict 3",
-        "verdict 4",
-        "verdict 5"
+    "invalid_key": [
+        "claim 1",
+        "claim 2"
     ]
 }```"""
-        else:
-            raise BadValueInTestLLMClientsError
 
     def _return_invalid2_faithfulness_response(*args, **kwargs):
-        if (
-            "generate a comprehensive list of FACTUAL CLAIMS"
-            in args[1][1]["content"]
-        ):
-            return VALID_CLAIMS
-        elif (
-            "generate a list of verdicts to indicate whether EACH claim is implied by the context list"
-            in args[1][1]["content"]
-        ):
-            return """```json
+        return """```json
 {
     "claims": [
-        "verdict 1",
-        2,
-        "verdict 3",
-        "verdict 4",
-        "verdict 5"
+        [
+            "claim 1",
+            "claim 2"
+        ]
     ]
 }```"""
-        else:
-            raise BadValueInTestLLMClientsError
 
     def _return_invalid3_faithfulness_response(*args, **kwargs):
         if (
@@ -479,7 +684,7 @@ def test_LLMClient(monkeypatch):
         {"verdict": "no"},
         {"verdict": "yes"},
         {"verdict": "yes"},
-        {"verdict": "yes"},
+        {"verdict": "yes"}
     ]
 }```"""
         else:
@@ -520,6 +725,15 @@ def test_LLMClient(monkeypatch):
         {"verdict": "yes"}
     ]
 }```"""
+
+    def _return_valid_summary_coherence_response(*args, **kwargs):
+        return "5"
+
+    def _return_invalid1_summary_coherence_response(*args, **kwargs):
+        return "The score is 5."
+
+    def _return_invalid2_summary_coherence_response(*args, **kwargs):
+        return "0"
 
     def _return_valid1_toxicity_response(*args, **kwargs):
         if "generate a list of OPINIONS" in args[1][1]["content"]:
@@ -624,6 +838,75 @@ def test_LLMClient(monkeypatch):
     # Patch __call__ with a valid response.
     monkeypatch.setattr(
         "valor_api.backend.core.llm_clients.LLMClient.__call__",
+        _return_valid_answer_correctness_response,
+    )
+    assert 0.6666666666666666 == client.answer_correctness(
+        "some query", "prediction text", ["ground truth text"]
+    )
+
+    # Needs to have 'statements' key.
+    monkeypatch.setattr(
+        "valor_api.backend.core.llm_clients.LLMClient.__call__",
+        _return_invalid1_answer_correctness_response,
+    )
+    with pytest.raises(InvalidLLMResponseError):
+        client.answer_correctness(
+            "some query", "prediction text", ["ground truth text"]
+        )
+
+    # Should fail if ground truth statements are invalid even when prediction statements are valid
+    monkeypatch.setattr(
+        "valor_api.backend.core.llm_clients.LLMClient.__call__",
+        _return_invalid2_answer_correctness_response,
+    )
+    with pytest.raises(InvalidLLMResponseError):
+        client.answer_correctness(
+            "some query", "prediction text", ["ground truth text"]
+        )
+
+    # Missing 'FN' in dictionary
+    monkeypatch.setattr(
+        "valor_api.backend.core.llm_clients.LLMClient.__call__",
+        _return_invalid3_answer_correctness_response,
+    )
+    with pytest.raises(InvalidLLMResponseError):
+        client.answer_correctness(
+            "some query", "prediction text", ["ground truth text"]
+        )
+
+    # TP has an invalid value.
+    monkeypatch.setattr(
+        "valor_api.backend.core.llm_clients.LLMClient.__call__",
+        _return_invalid4_answer_correctness_response,
+    )
+    with pytest.raises(InvalidLLMResponseError):
+        client.answer_correctness(
+            "some query", "prediction text", ["ground truth text"]
+        )
+
+    # Number of TP + FP does not equal the number of prediction statements
+    monkeypatch.setattr(
+        "valor_api.backend.core.llm_clients.LLMClient.__call__",
+        _return_invalid5_answer_correctness_response,
+    )
+    with pytest.raises(InvalidLLMResponseError):
+        client.answer_correctness(
+            "some query", "prediction text", ["ground truth text"]
+        )
+
+    # The number of FN is more than the number of ground truth statements
+    monkeypatch.setattr(
+        "valor_api.backend.core.llm_clients.LLMClient.__call__",
+        _return_invalid6_answer_correctness_response,
+    )
+    with pytest.raises(InvalidLLMResponseError):
+        client.answer_correctness(
+            "some query", "prediction text", ["ground truth text"]
+        )
+
+    # Patch __call__ with a valid response.
+    monkeypatch.setattr(
+        "valor_api.backend.core.llm_clients.LLMClient.__call__",
         _return_valid_answer_relevance_response,
     )
     assert 0.5 == client.answer_relevance("some query", "some answer")
@@ -709,25 +992,125 @@ def test_LLMClient(monkeypatch):
     # Patch __call__ with a valid response.
     monkeypatch.setattr(
         "valor_api.backend.core.llm_clients.LLMClient.__call__",
-        _return_valid_coherence_response,
+        _return_valid1_context_precision_response,
     )
-    assert 5 == client.coherence("some text")
+    assert 0.45 == client.context_precision(
+        "some query",
+        ["context 1", "context 2", "context 3", "context 4", "context 5"],
+        ["some ground truth"],
+    )
 
-    # Coherence score is not an integer.
+    # If all verdicts are "no", the returned score should be 0.
     monkeypatch.setattr(
         "valor_api.backend.core.llm_clients.LLMClient.__call__",
-        _return_invalid1_coherence_response,
+        _return_valid2_context_precision_response,
     )
-    with pytest.raises(InvalidLLMResponseError):
-        client.coherence("some text")
+    assert 0.0 == client.context_precision(
+        "some query",
+        ["context 1", "context 2", "context 3", "context 4", "context 5"],
+        ["some ground truth"],
+    )
 
-    # Coherence score is 0, which is not in {1,2,3,4,5}.
+    # Context precision is meaningless if context_list is empty.
     monkeypatch.setattr(
         "valor_api.backend.core.llm_clients.LLMClient.__call__",
-        _return_invalid2_coherence_response,
+        _return_valid1_context_precision_response,
+    )
+    with pytest.raises(ValueError):
+        client.context_precision(
+            "some query",
+            [],
+            ["some ground truth"],
+        )
+
+    # Only 1 context provided but 5 verdicts were returned.
+    monkeypatch.setattr(
+        "valor_api.backend.core.llm_clients.LLMClient.__call__",
+        _return_valid1_context_precision_response,
     )
     with pytest.raises(InvalidLLMResponseError):
-        client.coherence("some text")
+        client.context_precision(
+            "some query",
+            ["length of context list does not match LLM's response"],
+            ["some ground truth"],
+        )
+
+    # Key 'invalid_key' is returned but the key should be 'verdicts'.
+    monkeypatch.setattr(
+        "valor_api.backend.core.llm_clients.LLMClient.__call__",
+        _return_invalid1_context_precision_response,
+    )
+    with pytest.raises(InvalidLLMResponseError):
+        client.context_precision(
+            "some query",
+            ["context 1", "context 2", "context 3", "context 4", "context 5"],
+            ["some ground truth"],
+        )
+
+    # Patch __call__ with a valid response.
+    monkeypatch.setattr(
+        "valor_api.backend.core.llm_clients.LLMClient.__call__",
+        _return_valid_context_recall_response,
+    )
+    assert 0.75 == client.context_recall(
+        ["context 1", "context 2"],
+        ["some ground truth"],
+    )
+
+    # Context recall is meaningless if context_list is empty.
+    monkeypatch.setattr(
+        "valor_api.backend.core.llm_clients.LLMClient.__call__",
+        _return_valid_context_recall_response,
+    )
+    with pytest.raises(ValueError):
+        client.context_recall(
+            [],
+            ["some ground truth"],
+        )
+
+    # Ground truth statements response must have key 'statements'.
+    monkeypatch.setattr(
+        "valor_api.backend.core.llm_clients.LLMClient.__call__",
+        _return_invalid1_context_recall_response,
+    )
+    with pytest.raises(InvalidLLMResponseError):
+        client.context_recall(
+            ["context 1", "context 2"],
+            ["some ground truth"],
+        )
+
+    # Ground truth statements must be strings.
+    monkeypatch.setattr(
+        "valor_api.backend.core.llm_clients.LLMClient.__call__",
+        _return_invalid2_context_recall_response,
+    )
+    with pytest.raises(InvalidLLMResponseError):
+        client.context_recall(
+            ["context 1", "context 2"],
+            ["some ground truth"],
+        )
+
+    # Context recall verdicts response must have key 'verdicts'.
+    monkeypatch.setattr(
+        "valor_api.backend.core.llm_clients.LLMClient.__call__",
+        _return_invalid3_context_recall_response,
+    )
+    with pytest.raises(InvalidLLMResponseError):
+        client.context_recall(
+            ["context 1", "context 2"],
+            ["some ground truth"],
+        )
+
+    # Number of context recall verdicts doesn't match the number of ground truth statements.
+    monkeypatch.setattr(
+        "valor_api.backend.core.llm_clients.LLMClient.__call__",
+        _return_invalid4_context_recall_response,
+    )
+    with pytest.raises(InvalidLLMResponseError):
+        client.context_recall(
+            ["context 1", "context 2"],
+            ["some ground truth"],
+        )
 
     # Patch __call__ with a valid response.
     monkeypatch.setattr(
@@ -789,7 +1172,7 @@ def test_LLMClient(monkeypatch):
     with pytest.raises(ValueError):
         client.faithfulness("some text", [])
 
-    # Bad key in the response.
+    # Bad key in the claims response.
     monkeypatch.setattr(
         "valor_api.backend.core.llm_clients.LLMClient.__call__",
         _return_invalid1_faithfulness_response,
@@ -797,7 +1180,7 @@ def test_LLMClient(monkeypatch):
     with pytest.raises(InvalidLLMResponseError):
         client.faithfulness("some text", ["context 1", "context 2"])
 
-    # Invalid claim value.
+    # Claims must be strings, not lists of strings.
     monkeypatch.setattr(
         "valor_api.backend.core.llm_clients.LLMClient.__call__",
         _return_invalid2_faithfulness_response,
@@ -805,7 +1188,7 @@ def test_LLMClient(monkeypatch):
     with pytest.raises(InvalidLLMResponseError):
         client.faithfulness("some text", ["context 1", "context 2"])
 
-    # Bad key in the response.
+    # Bad key in the verdicts response.
     monkeypatch.setattr(
         "valor_api.backend.core.llm_clients.LLMClient.__call__",
         _return_invalid3_faithfulness_response,
@@ -866,6 +1249,29 @@ def test_LLMClient(monkeypatch):
         client.hallucination(
             "some query", ["context 1", "context 2", "context 3"]
         )
+
+    # Patch __call__ with a valid response.
+    monkeypatch.setattr(
+        "valor_api.backend.core.llm_clients.LLMClient.__call__",
+        _return_valid_summary_coherence_response,
+    )
+    assert 5 == client.summary_coherence("some text", "some summary")
+
+    # Summary coherence score is not an integer.
+    monkeypatch.setattr(
+        "valor_api.backend.core.llm_clients.LLMClient.__call__",
+        _return_invalid1_summary_coherence_response,
+    )
+    with pytest.raises(InvalidLLMResponseError):
+        client.summary_coherence("some text", "some summary")
+
+    # Summary coherence score is 0, which is not in {1,2,3,4,5}.
+    monkeypatch.setattr(
+        "valor_api.backend.core.llm_clients.LLMClient.__call__",
+        _return_invalid2_summary_coherence_response,
+    )
+    with pytest.raises(InvalidLLMResponseError):
+        client.summary_coherence("some text", "some summary")
 
     # Patch __call__ with a valid response.
     monkeypatch.setattr(

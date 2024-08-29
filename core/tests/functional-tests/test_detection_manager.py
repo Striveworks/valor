@@ -1002,6 +1002,21 @@ def test_evaluate_detection_functional_test_with_rasters_with_ValorDetectionMana
             pr_metrics[0]["value"][value][threshold][metric] == expected_value
         )
 
+    # test that we get a NotImplementedError if we try to calculate DetailedPRCurves with rasters
+    manager = managers.ValorDetectionManager(
+        metrics_to_return=[
+            enums.MetricType.DetailedPrecisionRecallCurve,
+        ],
+    )
+
+    manager.add_data(
+        groundtruths=evaluate_detection_functional_test_groundtruths_with_rasters,
+        predictions=evaluate_detection_functional_test_predictions_with_rasters,
+    )
+
+    with pytest.raises(NotImplementedError):
+        manager.evaluate()
+
 
 def test_evaluate_mixed_annotations_with_ValorDetectionManager(
     evaluate_mixed_annotations_inputs: tuple,

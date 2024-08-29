@@ -140,6 +140,70 @@ def rag_pred_answers(
     ]
 
 
+@pytest.fixture
+def summarization_q0() -> Datum:
+    return Datum(
+        uid="uid0",
+        text="""News article 0""",
+    )
+
+
+@pytest.fixture
+def summarization_q1() -> Datum:
+    return Datum(
+        uid="uid1",
+        text="""News article 1""",
+    )
+
+
+@pytest.fixture
+def summarization_datums(
+    summarization_q0: Datum,
+    summarization_q1: Datum,
+) -> list[Datum]:
+    return [summarization_q0, summarization_q1]
+
+
+@pytest.fixture
+def summarization_predictions() -> list[str]:
+    return [
+        """Summary 0""",
+        """Summary 1""",
+    ]
+
+
+@pytest.fixture
+def summarization_gt_questions(
+    summarization_datums: list[Datum],
+) -> list[GroundTruth]:
+    return [
+        GroundTruth(
+            datum=summarization_datums[i],
+            annotations=[],
+        )
+        for i in range(len(summarization_datums))
+    ]
+
+
+@pytest.fixture
+def summarization_pred_answers(
+    summarization_datums: list[Datum],
+    summarization_predictions: list[str],
+) -> list[GroundTruth]:
+    assert len(summarization_datums) == len(summarization_predictions)
+    return [
+        Prediction(
+            datum=summarization_datums[i],
+            annotations=[
+                Annotation(
+                    text=summarization_predictions[i],
+                )
+            ],
+        )
+        for i in range(len(summarization_datums))
+    ]
+
+
 def test_llm_evaluation_rag_with_mock_client(
     client: Client,
     rag_gt_questions: list[GroundTruth],
@@ -161,10 +225,12 @@ def test_llm_evaluation_rag_with_mock_client(
     model.finalize_inferences(dataset)
 
     metrics_to_return = [
+        MetricType.AnswerCorrectness,
         MetricType.AnswerRelevance,
         MetricType.Bias,
         MetricType.BLEU,
-        MetricType.Coherence,
+        MetricType.ContextPrecision,
+        MetricType.ContextRecall,
         MetricType.ContextRelevance,
         MetricType.Faithfulness,
         MetricType.Hallucination,
@@ -209,10 +275,12 @@ def test_llm_evaluation_rag_with_mock_client(
 
     expected_metrics = {
         "uid0": {
+            "AnswerCorrectness": 0.5,
             "AnswerRelevance": 0.5,
             "Bias": 0.5,
             "BLEU": 0.3502270395690205,
-            "Coherence": 4,
+            "ContextPrecision": 0.75,
+            "ContextRecall": 1.0,
             "ContextRelevance": 0.75,
             "Faithfulness": 0.3333333333333333,
             "Hallucination": 0.25,
@@ -225,10 +293,12 @@ def test_llm_evaluation_rag_with_mock_client(
             "Toxicity": 0.0,
         },
         "uid1": {
+            "AnswerCorrectness": 0.5,
             "AnswerRelevance": 0.5,
             "Bias": 0.5,
             "BLEU": 1.0,
-            "Coherence": 4,
+            "ContextPrecision": 0.75,
+            "ContextRecall": 1.0,
             "ContextRelevance": 0.75,
             "Faithfulness": 0.3333333333333333,
             "Hallucination": 0.25,
@@ -241,10 +311,12 @@ def test_llm_evaluation_rag_with_mock_client(
             "Toxicity": 0.0,
         },
         "uid2": {
+            "AnswerCorrectness": 0.5,
             "AnswerRelevance": 0.5,
             "Bias": 0.5,
             "BLEU": 0.05434912989707719,
-            "Coherence": 4,
+            "ContextPrecision": 0.75,
+            "ContextRecall": 1.0,
             "ContextRelevance": 0.75,
             "Faithfulness": 0.3333333333333333,
             "Hallucination": 0.25,
@@ -261,15 +333,16 @@ def test_llm_evaluation_rag_with_mock_client(
     # Check that the returned metrics have the right format.
     for m in metrics:
         if m["type"] in [
+            "AnswerCorrectness",
             "AnswerRelevance",
             "Bias",
             "BLEU",
+            "ContextPrecision",
+            "ContextRecall",
             "ContextRelevance",
             "Toxicity",
         ]:
             assert 0 <= m["value"] <= 1
-        if m["type"] == "Coherence":
-            assert m["value"] in [1, 2, 3, 4, 5]
         if m["type"] == "ROUGE":
             assert isinstance(m["value"], dict)
             assert all(0 <= v <= 1 for v in m["value"].values())
@@ -337,3 +410,74 @@ def test_llm_evaluation_rag_with_mock_client(
                 },
             },
         )
+
+
+def test_llm_evaluation_summarization_with_mock_client(
+    client: Client,
+    summarization_gt_questions: list[GroundTruth],
+    summarization_pred_answers: list[Prediction],
+    dataset_name: str,
+    model_name: str,
+):
+    dataset = Dataset.create(dataset_name)
+    model = Model.create(model_name)
+
+    for gt in summarization_gt_questions:
+        dataset.add_groundtruth(gt)
+
+    dataset.finalize()
+
+    for pred in summarization_pred_answers:
+        model.add_prediction(dataset, pred)
+
+    model.finalize_inferences(dataset)
+
+    metrics_to_return = [
+        MetricType.SummaryCoherence,
+    ]
+
+    eval_job = model.evaluate_text_generation(
+        datasets=dataset,
+        metrics_to_return=metrics_to_return,
+        llm_api_params={
+            "client": "mock",
+            "data": {
+                "model": "model",
+            },
+        },
+        metric_params={},
+    )
+
+    assert eval_job.id
+    eval_job.wait_for_completion(timeout=30)
+
+    assert eval_job.wait_for_completion(timeout=30) == EvaluationStatus.DONE
+
+    metrics = eval_job.metrics
+
+    # Check that the right number of metrics are returned.
+    assert len(metrics) == len(summarization_pred_answers) * len(
+        metrics_to_return
+    )
+
+    expected_metrics = {
+        "uid0": {
+            "SummaryCoherence": 4,
+        },
+        "uid1": {
+            "SummaryCoherence": 4,
+        },
+    }
+
+    # Check that the returned metrics have the right format.
+    for m in metrics:
+        if m["type"] == "SummaryCoherence":
+            assert m["value"] in [1, 2, 3, 4, 5]
+
+    # Check that mocked metrics are in the returned metrics.
+    for m in metrics:
+        uid = m["parameters"]["datum_uid"]
+        metric_name = m["type"]
+        assert (
+            expected_metrics[uid][metric_name] == m["value"]
+        ), f"Failed for {uid} and {metric_name}"
