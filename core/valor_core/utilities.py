@@ -637,25 +637,25 @@ def get_disjoint_labels(
         label_map = {}
 
     groundtruth_labels = set(
-        groundtruth_df.apply(
-            lambda row: (row["label_key"], row["label_value"]),
-            axis=1,
-        ).values  # type: ignore - pandas typing errors
+        map(tuple, groundtruth_df[["label_key", "label_value"]].values)
     )
 
     prediction_labels = set(
-        prediction_df.apply(
-            lambda row: (row["label_key"], row["label_value"]),
-            axis=1,
-        ).values  # type: ignore - pandas typing errors
+        map(tuple, prediction_df[["label_key", "label_value"]].values)
     )
 
     # don't count user-mapped labels as disjoint
     mapped_labels = set()
     if label_map:
-        for map_from, map_to in label_map.items():
-            mapped_labels.add((map_from.key, map_from.value))
-            mapped_labels.add((map_to.key, map_to.value))
+        mapped_labels.update(
+            {
+                (map_from.key, map_from.value)
+                for map_from, _ in label_map.items()
+            }
+        )
+        mapped_labels.update(
+            {(map_to.key, map_to.value) for _, map_to in label_map.items()}
+        )
 
     groundtruth_unique = list(
         groundtruth_labels - prediction_labels - mapped_labels
@@ -664,7 +664,7 @@ def get_disjoint_labels(
         prediction_labels - groundtruth_labels - mapped_labels
     )
 
-    return (groundtruth_unique, prediction_unique)
+    return groundtruth_unique, prediction_unique
 
 
 def _identify_implied_task_types(
@@ -1030,7 +1030,6 @@ def convert_annotations_to_common_type(
             [most_detailed_groundtruth_type, most_detailed_prediction_type]
         )
 
-        # Check typing
         valid_geometric_types = [
             enums.AnnotationType.BOX,
             enums.AnnotationType.POLYGON,

@@ -38,6 +38,7 @@ repos:
             "numpy",
             "pandas>=2.2.2",
             "pandas-stubs", # fixes pyright issues with pandas
+            "pandas[performance]",
             "pytest",
             "python-dotenv",
             "SQLAlchemy>=2.0",

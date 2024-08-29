@@ -1,4 +1,5 @@
 import numpy as np
+import pandas as pd
 import pytest
 from valor_core import geometry
 from valor_core.schemas import (
@@ -1039,6 +1040,242 @@ def test_calculate_iou():
         ):
             iou = geometry.calculate_iou(bbox1=bbox1, bbox2=bbox2)
             assert expected == round(iou, 4)
+
+
+def test_calculate_raster_iou():
+    filled_8x8 = np.full((8, 8), True)
+    filled_10x10 = (np.full((10, 10), True),)
+
+    series1 = pd.Series(
+        [
+            filled_10x10,
+            filled_10x10,
+            [
+                [True, True, True, True, True, False, False, False],
+                [True, True, True, True, True, False, False, False],
+                [True, True, True, True, True, False, False, False],
+                [True, True, True, True, True, False, False, False],
+                [True, True, True, True, True, False, False, False],
+                [True, True, True, True, True, False, False, False],
+                [True, True, True, True, True, False, False, False],
+                [True, True, True, True, True, False, False, False],
+            ],
+            filled_8x8,
+            filled_8x8,
+        ]
+    )
+
+    series2 = pd.Series(
+        [
+            [
+                [True, True, True, True, True, True, True, True, True, True],
+                [True, True, True, True, True, True, True, True, True, True],
+                [True, True, True, True, True, True, True, True, True, True],
+                [True, True, True, True, True, True, True, True, True, True],
+                [True, True, True, True, True, True, True, True, True, True],
+                [True, True, True, True, True, True, True, True, True, True],
+                [True, True, True, True, True, True, True, True, True, True],
+                [True, True, True, True, True, True, True, True, True, True],
+                [True, True, True, True, True, True, True, True, True, True],
+                [True, True, True, True, True, True, True, True, True, True],
+            ],
+            [
+                [
+                    True,
+                    True,
+                    True,
+                    True,
+                    True,
+                    False,
+                    False,
+                    False,
+                    False,
+                    False,
+                ],
+                [
+                    True,
+                    True,
+                    True,
+                    True,
+                    True,
+                    False,
+                    False,
+                    False,
+                    False,
+                    False,
+                ],
+                [
+                    True,
+                    True,
+                    True,
+                    True,
+                    True,
+                    False,
+                    False,
+                    False,
+                    False,
+                    False,
+                ],
+                [
+                    True,
+                    True,
+                    True,
+                    True,
+                    True,
+                    False,
+                    False,
+                    False,
+                    False,
+                    False,
+                ],
+                [
+                    True,
+                    True,
+                    True,
+                    True,
+                    True,
+                    False,
+                    False,
+                    False,
+                    False,
+                    False,
+                ],
+                [
+                    True,
+                    True,
+                    True,
+                    True,
+                    True,
+                    False,
+                    False,
+                    False,
+                    False,
+                    False,
+                ],
+                [
+                    True,
+                    True,
+                    True,
+                    True,
+                    True,
+                    False,
+                    False,
+                    False,
+                    False,
+                    False,
+                ],
+                [
+                    True,
+                    True,
+                    True,
+                    True,
+                    True,
+                    False,
+                    False,
+                    False,
+                    False,
+                    False,
+                ],
+                [
+                    True,
+                    True,
+                    True,
+                    True,
+                    True,
+                    False,
+                    False,
+                    False,
+                    False,
+                    False,
+                ],
+                [
+                    True,
+                    True,
+                    True,
+                    True,
+                    True,
+                    False,
+                    False,
+                    False,
+                    False,
+                    False,
+                ],
+            ],
+            [
+                [False, False, False, False, False, True, True, True],
+                [False, False, False, False, False, True, True, True],
+                [False, False, False, False, False, True, True, True],
+                [False, False, False, False, False, True, True, True],
+                [False, False, False, False, False, True, True, True],
+                [False, False, False, False, False, True, True, True],
+                [False, False, False, False, False, True, True, True],
+                [False, False, False, False, False, True, True, True],
+            ],
+            [
+                [False, False, False, False, True, True, True, True],
+                [False, False, False, False, True, True, True, True],
+                [False, False, False, False, True, True, True, True],
+                [False, False, False, False, True, True, True, True],
+                [False, False, False, False, False, False, False, False],
+                [False, False, False, False, False, False, False, False],
+                [False, False, False, False, False, False, False, False],
+                [False, False, False, False, False, False, False, False],
+            ],
+            [
+                [False, False, False, False, False, True, True, True],
+                [False, False, False, False, False, True, True, True],
+                [False, False, False, False, False, True, True, True],
+                [False, False, False, False, False, True, True, True],
+                [True, True, True, False, False, True, True, True],
+                [True, True, True, False, False, True, True, True],
+                [True, True, True, False, False, True, True, True],
+                [True, True, True, False, False, True, True, True],
+            ],
+        ]
+    )
+
+    result = geometry.calculate_raster_ious(series1, series2)
+    assert (result == [1, 0.5, 0, 0.25, 36 / 64]).all()
+
+    # check that we throw an error if the series aren't the same length
+    series1 = pd.Series(
+        [
+            filled_10x10,
+            filled_10x10,
+        ]
+    )
+
+    series2 = pd.Series(
+        [
+            filled_10x10,
+            filled_10x10,
+            filled_10x10,
+        ]
+    )
+    with pytest.raises(ValueError) as e:
+        geometry.calculate_raster_ious(series1, series2)
+    assert (
+        "Series of rasters must be the same length to calculate IOUs."
+        in str(e)
+    )
+
+    # check that we don't compare rasters that aren't the same size
+    series1 = pd.Series(
+        [
+            filled_10x10,
+            filled_10x10,
+        ]
+    )
+
+    series2 = pd.Series(
+        [
+            filled_10x10,
+            filled_8x8,
+        ]
+    )
+    with pytest.raises(ValueError) as e:
+        geometry.calculate_raster_ious(series1, series2)
+    assert "operands could not be broadcast together with shapes" in str(e)
 
 
 def test_is_axis_aligned(box_points, skewed_box_points, rotated_box_points):
