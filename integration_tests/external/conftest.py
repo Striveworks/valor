@@ -4,6 +4,90 @@ from valor import Annotation, Datum, GroundTruth, Prediction
 
 
 @pytest.fixture
+def answer_correctness_q0() -> Datum:
+    return Datum(
+        uid="uid0",
+        text="""Did John Adams get along with Alexander Hamilton?""",
+        metadata={
+            "category": "history",
+        },
+    )
+
+
+@pytest.fixture
+def answer_correctness_q1() -> Datum:
+    return Datum(
+        uid="uid1",
+        text="""Did Lincoln win the election of 1860?""",
+        metadata={
+            "category": "history",
+        },
+    )
+
+
+@pytest.fixture
+def answer_correctness_datums(
+    answer_correctness_q0: Datum,
+    answer_correctness_q1: Datum,
+) -> list[Datum]:
+    return [answer_correctness_q0, answer_correctness_q1]
+
+
+@pytest.fixture
+def answer_correctness_predictions() -> list[str]:
+    return [
+        """John Adams and Alexander Hamilton did not get along. John Adams and Alexander Hamilton were both federalists.""",
+        """Lincoln won the election of 1860.""",
+    ]
+
+
+@pytest.fixture
+def answer_correctness_groundtruths() -> list[str]:
+    return [
+        """John Adams and Alexander Hamilton did not get along. John Adams and Alexander Hamilton held opposing views on the role of the federal government.""",
+        """Lincoln won the election of 1860.""",
+    ]
+
+
+@pytest.fixture
+def answer_correctness_gt_questions(
+    answer_correctness_datums: list[Datum],
+    answer_correctness_groundtruths: list[str],
+) -> list[GroundTruth]:
+    assert len(answer_correctness_datums) == len(
+        answer_correctness_groundtruths
+    )
+    return [
+        GroundTruth(
+            datum=answer_correctness_datums[i],
+            annotations=[Annotation(text=answer_correctness_groundtruths[i])],
+        )
+        for i in range(len(answer_correctness_datums))
+    ]
+
+
+@pytest.fixture
+def answer_correctness_pred_answers(
+    answer_correctness_datums: list[Datum],
+    answer_correctness_predictions: list[str],
+) -> list[GroundTruth]:
+    assert len(answer_correctness_datums) == len(
+        answer_correctness_predictions
+    )
+    return [
+        Prediction(
+            datum=answer_correctness_datums[i],
+            annotations=[
+                Annotation(
+                    text=answer_correctness_predictions[i],
+                )
+            ],
+        )
+        for i in range(len(answer_correctness_datums))
+    ]
+
+
+@pytest.fixture
 def answer_relevance_q0() -> Datum:
     return Datum(
         uid="uid0",
@@ -122,7 +206,7 @@ def bias_datums(
 @pytest.fixture
 def bias_predictions() -> list[str]:
     return [
-        """I like living in Canada. Canadians are nicer than Americans. I also like the cold weather.""",
+        """I like living in Canada. I think Americans are meaner than Canadians. I also like the cold weather.""",
         """Fox news is a right wing news outlet. Fox News reported that the left wing president is ruining our country.""",
     ]
 
@@ -160,72 +244,170 @@ def bias_pred_answers(
 
 
 @pytest.fixture
-def coherence_q0() -> Datum:
+def context_precision_q0() -> Datum:
     return Datum(
         uid="uid0",
-        text="""Write about a haunted house from the perspective of the ghost.""",
-        metadata={
-            "request_type": "creative",
-        },
+        text="""What are some foods that Lewis Hamilton likes?""",
     )
 
 
 @pytest.fixture
-def coherence_q1() -> Datum:
+def context_precision_q1() -> Datum:
     return Datum(
         uid="uid1",
-        text="""Draft an email to a coworker explaining a project delay. Explain that the delay is due to funding cuts, which resulted in multiple employees being moved to different projects. Inform the coworker that the project deadline will have to be pushed back. Be apologetic and professional. Express eagerness to still complete the project as efficiently as possible.""",
-        metadata={
-            "request_type": "professional",
-        },
+        text="""Name the first and third United States presidents.""",
     )
 
 
 @pytest.fixture
-def coherence_datums(
-    coherence_q0: Datum,
-    coherence_q1: Datum,
+def context_precision_datums(
+    context_precision_q0: Datum,
+    context_precision_q1: Datum,
 ) -> list[Datum]:
-    return [coherence_q0, coherence_q1]
+    return [context_precision_q0, context_precision_q1]
 
 
 @pytest.fixture
-def coherence_predictions() -> list[str]:
+def context_precision_groundtruths() -> list[str]:
     return [
-        """I am a ghost that is him over there and that was what was what was what was what was what was what was.""",
-        """Subject: Project Delay Due to Funding Cuts\n\nDear [Coworker's Name],\n\nI hope this message finds you well. I am writing to update you on the status of our project and unfortunately, convey some disappointing news.\n\nDue to recent funding cuts within our department, we have had to make some adjustments to project assignments. As a result, multiple employees, including key team members for our current project, have been moved to different projects to accommodate the changes. This unexpected shift has impacted our project timeline.\n\nI regret to inform you that our project deadline will need to be pushed back in light of these developments. I understand the inconvenience this may cause and I sincerely apologize for any disruption this may cause to your schedule or other commitments.\n\nPlease rest assured that despite these unforeseen circumstances, I am fully committed to completing the project efficiently and effectively. I will work closely with the team to develop a revised timeline and ensure that we deliver quality work that meets our objectives.\n\nThank you for your understanding and continued support during this challenging period. I value your collaboration and look forward to working together to overcome this setback and achieve our project goals.\n\nIf you have any questions or concerns, please feel free to reach out to me. I appreciate your patience as we navigate through this situation together.\n\nBest regards,\n\n[Your Name]""",
+        """Lewis Hamilton likes spicy wings.""",
+        """The first president of the United States was George Washington. The third president of the United States was Thomas Jefferson.""",
     ]
 
 
 @pytest.fixture
-def coherence_gt_questions(
-    coherence_datums: list[Datum],
+def context_precision_context_list() -> list[list[str]]:
+    return [
+        [
+            """Lewis Hamilton is an F1 driver.""",
+            """Lewis Hamilton likes spicy wings.""",
+            """The F1 driver with the most wins of all time is Lewis Hamilton.""",
+            """Taylor Swift likes chicken tenders.""",
+        ],
+        [
+            """The first president of the United States was George Washington.""",
+            """The second president of the United States was John Adams.""",
+            """The third president of the United States was Thomas Jefferson.""",
+            """The fourth president of the United States was James Madison.""",
+        ],
+    ]
+
+
+@pytest.fixture
+def context_precision_gt_questions(
+    context_precision_datums: list[Datum],
+    context_precision_groundtruths: list[str],
 ) -> list[GroundTruth]:
+    assert len(context_precision_datums) == len(context_precision_groundtruths)
     return [
         GroundTruth(
-            datum=coherence_datums[i],
-            annotations=[],
+            datum=context_precision_datums[i],
+            annotations=[Annotation(text=context_precision_groundtruths[i])],
         )
-        for i in range(len(coherence_datums))
+        for i in range(len(context_precision_datums))
     ]
 
 
 @pytest.fixture
-def coherence_pred_answers(
-    coherence_datums: list[Datum],
-    coherence_predictions: list[str],
+def context_precision_pred_answers(
+    context_precision_datums: list[Datum],
+    context_precision_context_list: list[list[str]],
 ) -> list[GroundTruth]:
-    assert len(coherence_datums) == len(coherence_predictions)
+    assert len(context_precision_datums) == len(context_precision_context_list)
     return [
         Prediction(
-            datum=coherence_datums[i],
+            datum=context_precision_datums[i],
             annotations=[
                 Annotation(
-                    text=coherence_predictions[i],
+                    context_list=context_precision_context_list[i],
                 )
             ],
         )
-        for i in range(len(coherence_datums))
+        for i in range(len(context_precision_datums))
+    ]
+
+
+@pytest.fixture
+def context_recall_q0() -> Datum:
+    return Datum(
+        uid="uid0",
+    )
+
+
+@pytest.fixture
+def context_recall_q1() -> Datum:
+    return Datum(
+        uid="uid1",
+    )
+
+
+@pytest.fixture
+def context_recall_datums(
+    context_recall_q0: Datum,
+    context_recall_q1: Datum,
+) -> list[Datum]:
+    return [context_recall_q0, context_recall_q1]
+
+
+@pytest.fixture
+def context_recall_groundtruths() -> list[str]:
+    return [
+        """Lewis Hamilton likes spicy wings. Taylor Swift likes chicken tenders.""",
+        """The first U.S. president was George Washington. The second U.S. president was John Adams. The third U.S. president was Thomas Jefferson.""",
+    ]
+
+
+@pytest.fixture
+def context_recall_context_list() -> list[list[str]]:
+    return [
+        [
+            """Lewis Hamilton is an F1 driver.""",
+            """Lewis Hamilton likes spicy wings.""",
+        ],
+        [
+            """The first president of the United States was George Washington.""",
+            """The second president of the United States was John Adams.""",
+            """The third president of the United States was Thomas Jefferson.""",
+            """The fourth president of the United States was James Madison.""",
+        ],
+    ]
+
+
+@pytest.fixture
+def context_recall_gt_questions(
+    context_recall_datums: list[Datum],
+    context_recall_groundtruths: list[str],
+) -> list[GroundTruth]:
+    assert len(context_recall_datums) == len(context_recall_groundtruths)
+    return [
+        GroundTruth(
+            datum=context_recall_datums[i],
+            annotations=[
+                Annotation(
+                    text=context_recall_groundtruths[i],
+                )
+            ],
+        )
+        for i in range(len(context_recall_datums))
+    ]
+
+
+@pytest.fixture
+def context_recall_pred_answers(
+    context_recall_datums: list[Datum],
+    context_recall_context_list: list[list[str]],
+) -> list[GroundTruth]:
+    assert len(context_recall_datums) == len(context_recall_context_list)
+    return [
+        Prediction(
+            datum=context_recall_datums[i],
+            annotations=[
+                Annotation(
+                    context_list=context_recall_context_list[i],
+                )
+            ],
+        )
+        for i in range(len(context_recall_datums))
     ]
 
 
@@ -268,7 +450,7 @@ def context_relevance_context_list() -> list[list[str]]:
             """Lewis Hamilton is an F1 driver.""",
             """Lewis Hamilton likes spicy wings.""",
             """The F1 driver with the most wins of all time is Lewis Hamilton.""",
-            """Taylor Swift likes chicken tendors.""",
+            """Taylor Swift likes chicken tenders.""",
         ],
         [
             """The first president of the United States was George Washington.""",
@@ -354,7 +536,7 @@ def faithfulness_context_list() -> list[list[str]]:
             """Lewis Hamilton is an F1 driver.""",
             """Lewis Hamilton likes spicy wings.""",
             """The F1 driver with the most wins of all time is Lewis Hamilton.""",
-            """Taylor Swift likes chicken tendors.""",
+            """Taylor Swift likes chicken tenders.""",
         ],
         [
             """George Washington's favorite color was yellow.""",
@@ -485,6 +667,60 @@ def hallucination_pred_answers(
             ],
         )
         for i in range(len(hallucination_datums))
+    ]
+
+
+@pytest.fixture
+def summary_coherence_q0() -> Datum:
+    return Datum(
+        uid="uid0",
+        text="""Everton manager Roberto Martinez has not ruled out the prospect of Antolin Alcaraz or Sylvain Distin earning new contracts but stressed they need to prove they can still be important figures in the club's future. Both centre-backs' current deals expire this summer and it seems highly unlikely Distin, who is 38 in December and has played more for the under-21s in the last month than he has the first team, will be retained. Alcaraz, 33 in July, has more of a chance of securing a short-term extension as Martinez looks to strengthen and restructure his defence in the summer. Roberto Martinez insists 37-year-old defender Sylvain Distin still has time to prove he deserves a new deal . Antolin Alcaraz, who joined Everton from Wigan where he played under Martinez, could get a new deal . While the Toffees boss is keen to advance the talents of younger players - Tyias Browning and Brendan Galloway the two most likely to benefit - he has not ruled out retaining existing senior players. 'There are only two players out of contract and we have two loan players (Aaron Lennon and Christian Atsu) and those decisions will be made when we have finished the season,' said Martinez. 'The next six games could have a massive bearing on that. Ninety minutes is a big opportunity to change people's views. 'All individuals will be judged over that period. In football it does not matter if you have a contract or not, you always need to improve and show the right attitude and show you are ready to be part of the future of the club. 'But when you get players at the end of their contract there are decisions to be made and it is not just the club, it is the player as well.' Roberto Martinez says his club's recruitment team have been searching for targets for six months . Distin has played more for Everton's youth team than the first XI in the past month, and could be on his way . Martinez said they have established a list of transfer targets for the summer and, while he would not confirm publicly, Aston Villa's on-loan Manchester United midfielder Tom Cleverley, out of contract at the end of the season, is believed to be one of them. 'The recruitment department has been working really hard over the last six months and we need to assemble a really strong squad,' Martinez said. 'First and foremost it is an opportunity for young players to show they are ready for big important roles for next campaign and everyone else providing strong competition to be important figures for the future. Tom Cleverley, who is on loan at Aston Villa, is a target, with Martinez having worked with him before . 'The dressing room is very strong as it is now, so we need to make sure whatever we do in the summer is to get us in a better place. 'We know the situation with Tom. He is a player that I know well having worked with him (in a previous loan spell at Wigan) - and that's it. 'Tom is a player that is at the moment fighting for something very important for his club and that deserves respect. 'I wouldn't expect anyone to speak about my players and I would never do that.'""",
+    )
+
+
+@pytest.fixture
+def summary_coherence_datums(
+    summary_coherence_q0: Datum,
+) -> list[Datum]:
+    return [summary_coherence_q0]
+
+
+@pytest.fixture
+def summary_coherence_predictions() -> list[str]:
+    return [
+        """Roberto Martinez, Everton's manager, has not ruled out the possibility of offering new contracts to veteran defenders Antolin Alcaraz and Sylvain Distin. However, both players need to prove their value and importance to the team's future. Although Distin seems unlikely to be retained due to his age and recent lack of first-team appearances, Alcaraz may have a better chance of securing a short-term extension. Martinez emphasized the importance of all players showing improvement and commitment, including considering younger talents like Tyias Browning and Brendan Galloway for future roles. The club is also planning for the summer transfer window, with reports suggesting they are targeting players like Tom Cleverley, who Martinez has worked with before.""",
+    ]
+
+
+@pytest.fixture
+def summary_coherence_gt_questions(
+    summary_coherence_datums: list[Datum],
+) -> list[GroundTruth]:
+    return [
+        GroundTruth(
+            datum=summary_coherence_datums[i],
+            annotations=[],
+        )
+        for i in range(len(summary_coherence_datums))
+    ]
+
+
+@pytest.fixture
+def summary_coherence_pred_answers(
+    summary_coherence_datums: list[Datum],
+    summary_coherence_predictions: list[str],
+) -> list[GroundTruth]:
+    assert len(summary_coherence_datums) == len(summary_coherence_predictions)
+    return [
+        Prediction(
+            datum=summary_coherence_datums[i],
+            annotations=[
+                Annotation(
+                    text=summary_coherence_predictions[i],
+                )
+            ],
+        )
+        for i in range(len(summary_coherence_datums))
     ]
 
 
