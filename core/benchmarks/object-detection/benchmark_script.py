@@ -252,7 +252,7 @@ class Benchmark:
             "n_datums": self.n_datums,
             "n_annotations": self.n_annotations,
             "n_labels": self.n_labels,
-            "ingest + preprocess": self.ingestion.result(),
+            "preprocessing": self.ingestion.result(),
             "evaluation": self.evaluation.result(),
             "total": {
                 "base": f"{round(self.base_runtime, 2)} seconds",
