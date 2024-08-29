@@ -284,7 +284,7 @@ class Benchmark:
 def run_benchmarking_analysis(
     limits_to_test: list[int],
     combinations: list[tuple[AnnotationType, AnnotationType]] | None = None,
-    results_file: str = "manager_results.json",
+    results_file: str = "core_results.json",
     compute_pr: bool = True,
     compute_detailed: bool = True,
     ingestion_timeout=30,
