@@ -249,11 +249,9 @@ class Benchmark:
                 "groundtruth": self.gt_type.value,
                 "prediction": self.pd_type.value,
             },
-            "ingestion": {
-                "groundtruths": f"{round(self.gt_ingest, 2)} seconds",
-                "predictions": f"{round(self.pd_ingest, 2)} seconds",
-            },
+            "chunk_size": self.limit,
             "base": {
+                "ingestion": f"{round(self.gt_ingest + self.pd_ingest, 2)} seconds",
                 "evaluation": {
                     "preprocessing": "0.0 seconds",
                     "computation": f"{round(self.eval_base, 2)} seconds",
@@ -261,6 +259,7 @@ class Benchmark:
                 },
             },
             "base+pr": {
+                "ingestion": f"{round(self.gt_ingest + self.pd_ingest, 2)} seconds",
                 "evaluation": {
                     "preprocessing": "0.0 seconds",
                     "computation": f"{round(self.eval_base_pr, 2)} seconds",
@@ -270,6 +269,7 @@ class Benchmark:
             if self.eval_base_pr > -1
             else {},
             "base+pr+detailed": {
+                "ingestion": f"{round(self.gt_ingest + self.pd_ingest, 2)} seconds",
                 "evaluation": {
                     "preprocessing": "0.0 seconds",
                     "computation": f"{round(self.eval_base_pr_detail, 2)} seconds",
@@ -284,11 +284,11 @@ class Benchmark:
 def run_benchmarking_analysis(
     limits_to_test: list[int],
     combinations: list[tuple[AnnotationType, AnnotationType]] | None = None,
-    results_file: str = "core_results.json",
-    ingestion_chunk_timeout: int = 30,
-    evaluation_timeout: int = 30,
+    results_file: str = "manager_results.json",
     compute_pr: bool = True,
     compute_detailed: bool = True,
+    ingestion_timeout=30,
+    evaluation_timeout=30,
 ):
     """Time various function calls and export the results."""
     current_directory = Path(__file__).parent
@@ -359,6 +359,14 @@ def run_benchmarking_analysis(
                 path=current_directory / Path(pd_filename),
                 limit=limit,
             )
+
+            if (
+                gt_ingest_time + pd_ingest_time > ingestion_timeout  # type: ignore
+                and ingestion_timeout != -1
+            ):
+                raise TimeoutError(
+                    f"Benchmark timed out while attempting to ingest {limit} datums."
+                )
 
             # === Base Evaluation ===
             base_results = run_base_evaluation(groundtruths, predictions)
