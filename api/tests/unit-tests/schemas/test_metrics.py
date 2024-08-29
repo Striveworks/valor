@@ -434,6 +434,50 @@ def test_DetailedPrecisionRecallCurve():
     }
 
 
+def test_AnswerCorrectnessMetric():
+    metric = schemas.AnswerCorrectnessMetric(
+        value=0.52,
+        parameters={
+            "dataset_uid": "01",
+            "dataset_name": "test_dataset",
+            "prediction": "some prediction",
+        },
+    )
+
+    with pytest.raises(ValidationError):
+        schemas.AnswerCorrectnessMetric(
+            value=None,  # type: ignore
+            parameters={
+                "dataset_uid": "01",
+                "dataset_name": "test_dataset",
+                "prediction": "some prediction",
+            },
+        )
+
+    with pytest.raises(ValidationError):
+        schemas.AnswerCorrectnessMetric(
+            value={"key": 0.3},  # type: ignore
+            parameters={
+                "dataset_uid": "01",
+                "dataset_name": "test_dataset",
+                "prediction": "some prediction",
+            },
+        )
+
+    with pytest.raises(ValidationError):
+        schemas.AnswerCorrectnessMetric(
+            value=0.0,  # type: ignore
+            parameters="not a valid parameter",  # type: ignore
+        )
+
+    assert all(
+        [
+            key in ["value", "type", "evaluation_id", "parameters"]
+            for key in metric.db_mapping(evaluation_id=1)
+        ]
+    )
+
+
 def test_AnswerRelevanceMetric():
     metric = schemas.AnswerRelevanceMetric(
         value=0.421,
@@ -581,49 +625,83 @@ def test_BLEUMetric():
     )
 
 
-def test_CoherenceMetric():
-    metric = schemas.CoherenceMetric(
-        value=3,
+def test_ContextPrecisionMetric():
+    metric = schemas.ContextPrecisionMetric(
+        value=0.873,
         parameters={
             "dataset_uid": "01",
             "dataset_name": "test_dataset",
-            "prediction": "some prediction",
+            "context_list": ["context1", "context2"],
         },
     )
 
     with pytest.raises(ValidationError):
-        schemas.CoherenceMetric(
+        schemas.ContextPrecisionMetric(
             value=None,  # type: ignore
             parameters={
                 "dataset_uid": "01",
                 "dataset_name": "test_dataset",
-                "prediction": "some prediction",
+                "context_list": ["context1", "context2"],
             },
         )
 
     with pytest.raises(ValidationError):
-        schemas.CoherenceMetric(
-            value=2.5,  # type: ignore
+        schemas.ContextPrecisionMetric(
+            value={"key": 0.222},  # type: ignore
             parameters={
                 "dataset_uid": "01",
                 "dataset_name": "test_dataset",
-                "prediction": "some prediction",
+                "context_list": ["context1", "context2"],
             },
         )
 
     with pytest.raises(ValidationError):
-        schemas.CoherenceMetric(
-            value={"key": 4},  # type: ignore
+        schemas.ContextPrecisionMetric(
+            value=0.501,  # type: ignore
+            parameters="not a valid parameter",  # type: ignore
+        )
+
+    assert all(
+        [
+            key in ["value", "type", "evaluation_id", "parameters"]
+            for key in metric.db_mapping(evaluation_id=1)
+        ]
+    )
+
+
+def test_ContextRecallMetric():
+    metric = schemas.ContextRecallMetric(
+        value=0.8,
+        parameters={
+            "dataset_uid": "01",
+            "dataset_name": "test_dataset",
+            "context_list": ["context1", "context2"],
+        },
+    )
+
+    with pytest.raises(ValidationError):
+        schemas.ContextRecallMetric(
+            value="value",  # type: ignore
             parameters={
                 "dataset_uid": "01",
                 "dataset_name": "test_dataset",
-                "prediction": "some prediction",
+                "context_list": ["context1", "context2"],
             },
         )
 
     with pytest.raises(ValidationError):
-        schemas.CoherenceMetric(
-            value=5,  # type: ignore
+        schemas.ContextRecallMetric(
+            value={"key": 0.5},  # type: ignore
+            parameters={
+                "dataset_uid": "01",
+                "dataset_name": "test_dataset",
+                "context_list": ["context1", "context2"],
+            },
+        )
+
+    with pytest.raises(ValidationError):
+        schemas.ContextRecallMetric(
+            value=0.6,  # type: ignore
             parameters="not a valid parameter",  # type: ignore
         )
 
@@ -827,6 +905,60 @@ def test_ROUGEMetric():
                 "rougeL": 1.0,
                 "rougeLsum": 1.0,
             },
+            parameters="not a valid parameter",  # type: ignore
+        )
+
+    assert all(
+        [
+            key in ["value", "type", "evaluation_id", "parameters"]
+            for key in metric.db_mapping(evaluation_id=1)
+        ]
+    )
+
+
+def test_SummaryCoherenceMetric():
+    metric = schemas.SummaryCoherenceMetric(
+        value=3,
+        parameters={
+            "dataset_uid": "01",
+            "dataset_name": "test_dataset",
+            "prediction": "some summary",
+        },
+    )
+
+    with pytest.raises(ValidationError):
+        schemas.SummaryCoherenceMetric(
+            value=None,  # type: ignore
+            parameters={
+                "dataset_uid": "01",
+                "dataset_name": "test_dataset",
+                "prediction": "some summary",
+            },
+        )
+
+    with pytest.raises(ValidationError):
+        schemas.SummaryCoherenceMetric(
+            value=2.5,  # type: ignore
+            parameters={
+                "dataset_uid": "01",
+                "dataset_name": "test_dataset",
+                "prediction": "some summary",
+            },
+        )
+
+    with pytest.raises(ValidationError):
+        schemas.SummaryCoherenceMetric(
+            value={"key": 4},  # type: ignore
+            parameters={
+                "dataset_uid": "01",
+                "dataset_name": "test_dataset",
+                "prediction": "some summary",
+            },
+        )
+
+    with pytest.raises(ValidationError):
+        schemas.SummaryCoherenceMetric(
+            value=5,  # type: ignore
             parameters="not a valid parameter",  # type: ignore
         )
 
