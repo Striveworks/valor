@@ -177,9 +177,9 @@ def ingest_and_preprocess(
                     continue
 
                 manager.add_data(groundtruths, predictions)
-
                 groundtruths = []
                 predictions = []
+
             if groundtruths:
                 manager.add_data(groundtruths, predictions)
         return manager
@@ -254,7 +254,7 @@ class Benchmark:
             "n_labels": self.n_labels,
             "ingest + preprocess": self.ingestion.result(),
             "evaluation": self.evaluation.result(),
-            "total runtime": {
+            "total": {
                 "base": f"{round(self.base_runtime, 2)} seconds",
                 "base+pr": f"{round(self.pr_runtime, 2)} seconds",
                 "base+pr+detailed": f"{round(self.detailed_runtime, 2)} seconds",
@@ -340,6 +340,10 @@ def run_benchmarking_analysis(
                 limit=limit,
                 chunk_size=chunk_size,
             )  # type: ignore - time_it wrapper
+            if base_ingest > ingestion_timeout and ingestion_timeout != -1:
+                raise TimeoutError(
+                    f"Base precomputation timed out with limit of {limit}."
+                )
 
             # evaluate
             base_results = run_base_evaluation(base_evaluation)
@@ -349,6 +353,10 @@ def run_benchmarking_analysis(
             n_annotations = base_results.meta["annotations"]
             n_labels = base_results.meta["labels"]
             base = base_results.meta["duration"]
+            if base > evaluation_timeout and evaluation_timeout != -1:
+                raise TimeoutError(
+                    f"Base evaluation timed out with {n_datums} datums."
+                )
 
             # === PR Evaluation ===
             pr_total = -1
@@ -378,12 +386,20 @@ def run_benchmarking_analysis(
                     limit=limit,
                     chunk_size=chunk_size,
                 )  # type: ignore - time_it wrapper
+                if pr_ingest > ingestion_timeout and ingestion_timeout != -1:
+                    raise TimeoutError(
+                        f"PR precomputation timed out with {n_datums} datums."
+                    )
 
                 # evaluate
                 pr_results = run_pr_curve_evaluation(pr_evaluation)
                 pr_total = time() - start
                 assert pr_results.meta
                 pr = pr_results.meta["duration"]
+                if pr > evaluation_timeout and evaluation_timeout != -1:
+                    raise TimeoutError(
+                        f"PR evaluation timed out with {n_datums} datums."
+                    )
 
             # === Detailed Evaluation ===
             detailed_total = -1
@@ -414,6 +430,13 @@ def run_benchmarking_analysis(
                     limit=limit,
                     chunk_size=chunk_size,
                 )  # type: ignore - time_it wrapper
+                if (
+                    detailed_ingest > ingestion_timeout
+                    and ingestion_timeout != -1
+                ):
+                    raise TimeoutError(
+                        f"Detailed precomputation timed out with {n_datums} datums."
+                    )
 
                 # evaluate
                 detailed_results = run_detailed_pr_curve_evaluation(
@@ -423,6 +446,10 @@ def run_benchmarking_analysis(
 
                 assert detailed_results.meta
                 detailed = detailed_results.meta["duration"]
+                if detailed > evaluation_timeout and evaluation_timeout != -1:
+                    raise TimeoutError(
+                        f"Detailed evaluation timed out with {n_datums} datums."
+                    )
 
             results.append(
                 Benchmark(
@@ -463,21 +490,20 @@ if __name__ == "__main__":
         compute_detailed=False,
     )
 
-    # # run polygon benchmark
-    # run_benchmarking_analysis(
-    #     combinations=[
-    #         (AnnotationType.POLYGON, AnnotationType.POLYGON),
-    #     ],
-    #     limits_to_test=[5000, 5000],
-    #     compute_detailed=False,
-    # )
+    # run polygon benchmark
+    run_benchmarking_analysis(
+        combinations=[
+            (AnnotationType.POLYGON, AnnotationType.POLYGON),
+        ],
+        limits_to_test=[5000, 5000],
+        compute_detailed=False,
+    )
 
-    # # run raster benchmark
-    # run_benchmarking_analysis(
-    #     combinations=[
-    #         (AnnotationType.RASTER, AnnotationType.RASTER),
-    #     ],
-    #     limits_to_test=[5000, 5000],
-    #     compute_detailed=False,
-    #     chunk_size=250,
-    # )
+    # run raster benchmark
+    run_benchmarking_analysis(
+        combinations=[
+            (AnnotationType.RASTER, AnnotationType.RASTER),
+        ],
+        limits_to_test=[500, 500],
+        compute_detailed=False,
+    )
