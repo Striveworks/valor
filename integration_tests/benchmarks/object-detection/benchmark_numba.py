@@ -14,10 +14,13 @@ from valor.enums import AnnotationType
 from valor.evaluator import DetectionManager as Manager
 
 
-def time_it(fn, *args, **kwargs):
-    start = time()
-    fn(*args, **kwargs)
-    return time() - start
+def time_it(fn):
+    def wrapper(*args, **kwargs):
+        start = time()
+        results = fn(*args, **kwargs)
+        return (time() - start, results)
+
+    return wrapper
 
 
 def download_data_if_not_exists(
@@ -48,9 +51,18 @@ def download_data_if_not_exists(
     else:
         print(f"{file_name} already exists locally.")
 
+    # sort file by datum uid
+    with open(file_path, "r") as f:
+        lines = [x for x in f]
+    with open(file_path, "w") as f:
+        for line in sorted(
+            lines, key=lambda x: int(json.loads(x)["datum"]["uid"])
+        ):
+            f.write(line)
+
 
 def write_results_to_file(write_path: Path, results: list[dict]):
-    """Write results to results.json"""
+    """Write results to manager_results.json"""
     current_datetime = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
     if os.path.isfile(write_path):
         with open(write_path, "r") as file:
@@ -65,61 +77,40 @@ def write_results_to_file(write_path: Path, results: list[dict]):
         json.dump(data, file, indent=4)
 
 
-def ingest_groundtruths(
+@time_it
+def ingest(
     manager: Manager,
-    path: Path,
+    gt_path: Path,
+    pd_path: Path,
     limit: int,
     chunk_size: int,
 ):
-    with open(path, "r") as f:
-        count = 0
-        chunks = []
-        for line in f:
-            gt_dict = json.loads(line)
-            gt = GroundTruth.decode_value(gt_dict)
-            chunks.append(gt)
-            count += 1
-            if count >= limit and limit > 0:
-                break
-            elif len(chunks) < chunk_size:
-                continue
+    with open(gt_path, "r") as gf:
+        with open(pd_path, "r") as pf:
+            count = 0
+            groundtruths = []
+            predictions = []
+            for gline, pline in zip(gf, pf):
 
-            manager.add_groundtruths(chunks)
-            chunks = []
-        if chunks:
-            manager.add_groundtruths(chunks)
+                # groundtruth
+                gt_dict = json.loads(gline)
+                groundtruths.append(gt_dict)
 
+                # prediction
+                pd_dict = json.loads(pline)
+                predictions.append(pd_dict)
 
-def ingest_predictions(
-    manager: Manager,
-    datum_uids: list[str],
-    path: Path,
-    limit: int,
-    chunk_size: int,
-):
-    pattern = re.compile(r'"uid":\s*"(\d+)"')
-    with open(path, "r") as f:
-        count = 0
-        chunks = []
-        for line in f:
-            match = pattern.search(line)
-            if not match:
-                continue
-            elif match.group(1) not in datum_uids:
-                continue
-            pd_dict = json.loads(line)
-            pd = Prediction.decode_value(pd_dict)
-            chunks.append(pd)
-            count += 1
-            if count >= limit and limit > 0:
-                break
-            elif len(chunks) < chunk_size:
-                continue
+                count += 1
+                if count >= limit and limit > 0:
+                    break
+                elif len(groundtruths) < chunk_size or chunk_size == -1:
+                    continue
 
-            manager.add_predictions(chunks)
-            chunks = []
-        if chunks:
-            manager.add_predictions(chunks)
+                manager.add_data(groundtruths, predictions)
+                groundtruths = []
+                predictions = []
+            if groundtruths:
+                manager.add_data(groundtruths, predictions)
 
 
 def run_base_evaluation(manager: Manager, timeout: int | None):
@@ -227,10 +218,11 @@ def run_benchmarking_analysis(
     limits_to_test: list[int],
     combinations: list[tuple[AnnotationType, AnnotationType]] | None = None,
     results_file: str = "results.json",
-    ingestion_chunk_timeout: int = 30,
-    evaluation_timeout: int = 30,
+    chunk_size: int = -1,
     compute_pr: bool = True,
     compute_detailed: bool = True,
+    ingestion_timeout: int = 30,
+    evaluation_timeout: int = 30,
 ):
     """Time various function calls and export the results."""
     current_directory = Path(__file__).parent
@@ -285,29 +277,21 @@ def run_benchmarking_analysis(
 
             manager = Manager()
 
-            # gt ingestion
-            gt_ingest_time = time_it(
-                ingest_groundtruths,
+            # ingestion
+            ingest_time, _ = ingest(
                 manager=manager,
-                path=current_directory / Path(gt_filename),
+                gt_path=current_directory / Path(gt_filename),
+                pd_path=current_directory / Path(pd_filename),
                 limit=limit,
-                chunk_size=1000,
-            )
+                chunk_size=chunk_size,
+            )  # type: ignore - time_it wrapper
+            print("ingest", ingest_time)
 
-            # pd ingestion
-            datum_uids = list(manager.uid_to_index.keys())
-            pd_ingest_time = time_it(
-                ingest_predictions,
-                manager=manager,
-                datum_uids=datum_uids,
-                path=current_directory / Path(pd_filename),
-                limit=limit,
-                chunk_size=1000,
-            )
+            ap_time, _ = time_it(manager.compute_ap)()
+            print("AP computation (work in progress)", ap_time)
 
-            print(gt_ingest_time, pd_ingest_time)
-            print(manager.data.shape)
-            print(manager.data)
+            iou_time, _ = time_it(manager.benchmark_iou)()
+            print("detailed-iou benchmark", iou_time)
 
             # # run evaluations
             # eval_pr = None
