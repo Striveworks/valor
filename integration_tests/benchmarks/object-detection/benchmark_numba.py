@@ -295,6 +295,10 @@ def run_benchmarking_analysis(
 
             print(json.dumps(ap_metrics, indent=2))
 
+            print("ingest", ingest_time)
+            print("AP computation (work in progress)", ap_time)
+            print("detailed-iou benchmark", iou_time)
+
             # # run evaluations
             # eval_pr = None
             # eval_detail = None

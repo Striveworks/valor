@@ -1,3 +1,5 @@
+from collections import defaultdict
+
 import numba
 import numpy as np
 from tqdm import tqdm
@@ -90,14 +92,14 @@ def compute_iou(data: list[np.ndarray]):
     return np.concatenate(results, axis=0)
 
 
-@numba.njit(parallel=True)
+@numba.njit(parallel=False)
 def _compute_ranked_pairs(
     data: list[np.ndarray],
 ) -> list[np.ndarray]:
     """
     Returns a list of ious in form [(p1, g1), (p1, g2), ..., (p1, gN), (p2, g1), ...].
     """
-    results = [np.empty((1,6)) for _ in range(len(data))]
+    results = [np.empty((1, 6)) for _ in range(len(data))]
     for datum_idx in numba.prange(len(data)):
         datum = data[datum_idx]
         h, _ = datum.shape
@@ -141,18 +143,18 @@ def _compute_ranked_pairs(
 
                 intersection = (xmax - xmin) * (ymax - ymin)
                 union = gt_area + pd_area - intersection
-                ious[row] = (
-                    intersection / union if union > 0 else 0.0
-                )
+                ious[row] = intersection / union if union > 0 else 0.0
 
         visited_gts, visited_pds = set(), set()
         ranked_pairs = np.zeros((h, 6))
         for row in range(h):
-            
+
             ranked_pairs[row][0] = datum[row][0]
             ranked_pairs[row][1] = datum[row][1]
             ranked_pairs[row][2] = datum[row][2]
-            ranked_pairs[row][4] = datum[row][11] if datum[row][11] > -1.0 else datum[row][12]
+            ranked_pairs[row][4] = (
+                datum[row][11] if datum[row][11] > -1.0 else datum[row][12]
+            )
             ranked_pairs[row][5] = datum[row][13]
 
             gt_tuple = (
@@ -166,10 +168,7 @@ def _compute_ranked_pairs(
                 datum[row][4],
             )
 
-            if (
-                gt_tuple in visited_gts 
-                or pd_tuple in visited_pds
-            ):
+            if gt_tuple in visited_gts or pd_tuple in visited_pds:
                 continue
 
             visited_gts.add(gt_tuple)
@@ -180,60 +179,64 @@ def _compute_ranked_pairs(
     return results
 
 
-@numba.njit(parallel=True)
+@numba.njit(parallel=False)
 def _compute_ap(
     data: list[np.ndarray],
+    gt_counts: np.ndarray,
     iou_thresholds: np.ndarray,
 ) -> np.ndarray:
-    
+
     n_thresh = iou_thresholds.shape[0]
-    results = np.zeros((len(data), n_thresh + 1)) # AP metrics per label
+    results = np.zeros((len(data), n_thresh + 1))  # AP metrics per label
     for label_idx in numba.prange(len(data)):
         h, _ = data[label_idx].shape
+        number_of_groundtruths = int(gt_counts[int(data[label_idx][0][4])])
+
         for thresh_idx in range(n_thresh):
-            tp, fp, fn = 0, 0, 0
-            pr_curve = np.zeros((101,)) # binned PR curve
+            total_count = 0
+            tp_count = 0
+            pr_curve = np.zeros((101,))  # binned PR curve
             for row in range(h):
-                if (
-                    data[label_idx][row][1] < 0
-                    and data[label_idx][row][2] < 0
-                ):  # neither a groundtruth or prediction exist
+
+                if data[label_idx][row][2] < 0:  # no prediction
                     continue
-                elif data[label_idx][row][1] < 0:  # no groundtruth exists
-                    fp += 1
-                elif data[label_idx][row][2] < 0:  # no prediction exists
-                    fn += 1
-                elif data[label_idx][row][3] >= iou_thresholds[thresh_idx]:
-                    tp += 1
-                else:
-                    fp += 1
-                
-                precision = (
-                    tp / (tp + fp) if (tp + fp) else 0.0
-                )
+
+                total_count += 1
+                if (
+                    data[label_idx][row][1] > 0  # groundtruth exists
+                    and data[label_idx][row][3]
+                    > iou_thresholds[thresh_idx]  # passes iou threshold
+                ):
+                    tp_count += 1
+                    print(tp_count)
+
+                precision = tp_count / total_count
                 recall = (
-                    tp / (tp + fn) if (tp + fn) else 0.0
+                    tp_count / number_of_groundtruths
+                    if number_of_groundtruths > 0
+                    else 0.0
                 )
+
+                if recall > 0.1:
+                    print(recall)
 
                 recall = int(np.floor(recall * 100.0))
                 pr_curve[recall] = (
-                    precision 
+                    precision
                     if precision > pr_curve[recall]
                     else pr_curve[recall]
                 )
-            
+
             # interpolate the PR-Curve
             auc = 0.0
             running_max = 0.0
-            for recall in range(101, -1, -1):
+            for recall in range(100, -1, -1):
                 if pr_curve[recall] > running_max:
                     running_max = pr_curve[recall]
-                else:
-                    pr_curve[recall] = running_max
-                auc += pr_curve[recall]
+                auc += running_max
             results[label_idx][thresh_idx] = auc / 101
         results[label_idx][n_thresh] = data[label_idx][0][4]  # record label
-        
+
     return results
 
 
@@ -257,11 +260,8 @@ class DetectionManager:
         self.pr_pairs = list()
         self.detailed_pairs = list()
 
-        self.gt_count = 0
-        self.pd_count = 0
-
-        self.gt_cache = dict()
-        self.pd_cache = dict()
+        self.gt_count = defaultdict(int)
+        self.pd_count = defaultdict(int)
 
         self.uid_to_index = dict()
         self.index_to_uid = dict()
@@ -276,9 +276,6 @@ class DetectionManager:
     ):
         for groundtruth, prediction in tqdm(zip(groundtruths, predictions)):
 
-            self.gt_count += len(groundtruth["annotations"])
-            self.pd_count += len(prediction["annotations"])
-
             # update datum uids
             uid = groundtruth["datum"]["uid"]
             if uid not in self.uid_to_index:
@@ -288,21 +285,30 @@ class DetectionManager:
             uid_index = self.uid_to_index[uid]
 
             # update labels
-            glabels = {
+            glabels = [
                 (glabel["key"], glabel["value"])
                 for gann in groundtruth["annotations"]
                 for glabel in gann["labels"]
-            }
-            plabels = {
+            ]
+            glabels_set = set(glabels)
+
+            plabels = [
                 (plabel["key"], plabel["value"])
                 for pann in prediction["annotations"]
                 for plabel in pann["labels"]
-            }
+            ]
+            plabels_set = set(plabels)
+
             label_count = len(self.label_to_index)
-            for idx, label in enumerate(glabels.union(plabels)):
+            for idx, label in enumerate(glabels_set.union(plabels_set)):
                 if label not in self.label_to_index:
                     self.label_to_index[label] = label_count + idx
                     self.index_to_label[label_count + idx] = label
+
+            for item in glabels_set:
+                self.gt_count[self.label_to_index[item]] += glabels.count(item)
+            for item in plabels_set:
+                self.pd_count[self.label_to_index[item]] += plabels.count(item)
 
             if groundtruth["annotations"] and prediction["annotations"]:
                 new_data = np.array(
@@ -417,7 +423,7 @@ class DetectionManager:
 
     def compute_ap(
         self,
-        iou_thresholds: list[float] = [0.3, 0.6, 0.9],
+        iou_thresholds: list[float] = [0.5, 0.75, 0.9],
     ):
         if self.pr_pairs is None:
             raise ValueError
@@ -431,13 +437,23 @@ class DetectionManager:
             (pairs[:, 4], pairs[:, 5], pairs[:, 3], pairs[:, 1])
         )
         sorted_pairs = pairs[indices]
-
-        pairs_by_label = [
-            sorted_pairs[sorted_pairs[:, 4] == label]
-            for label in np.unique(sorted_pairs[:, 4])
+        sorted_pairs_by_label = [
+            sorted_pairs[sorted_pairs[:, 4] == label_id]
+            for label_id in np.unique(sorted_pairs[:, 4])
         ]
 
-        metrics = _compute_ap(pairs_by_label, iou_thresholds=np.array(iou_thresholds))
+        gt_counts = np.array(
+            [
+                float(self.gt_count[label_id])
+                for label_id in self.index_to_label
+            ]
+        )
+
+        metrics = _compute_ap(
+            data=sorted_pairs_by_label,
+            gt_counts=gt_counts,
+            iou_thresholds=np.array(iou_thresholds),
+        )
 
         results = []
         n_labels, n_cols = metrics.shape
