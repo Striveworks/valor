@@ -30,7 +30,7 @@ from valor import GroundTruth, Prediction
 # score     5
 
 
-@numba.njit(parallel=True)
+@numba.njit(parallel=False)
 def _compute_iou(
     data: list[np.ndarray],
 ) -> list[np.ndarray]:
@@ -208,7 +208,7 @@ def _compute_ap(
                     > iou_thresholds[thresh_idx]  # passes iou threshold
                 ):
                     tp_count += 1
-                    print(tp_count)
+                    # print(tp_count)
 
                 precision = tp_count / total_count
                 recall = (
@@ -217,8 +217,8 @@ def _compute_ap(
                     else 0.0
                 )
 
-                if recall > 0.1:
-                    print(recall)
+                # if recall > 0.1:
+                # print(recall)
 
                 recall = int(np.floor(recall * 100.0))
                 pr_curve[recall] = (
