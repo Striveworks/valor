@@ -73,6 +73,10 @@ def _calculate_iou(
         ["converted_geometry_gt", "converted_geometry_pd"],
     ]
 
+    if filtered_df.empty:
+        joint_df["iou_"] = 0
+        return joint_df
+
     if not _check_if_series_contains_masks(
         filtered_df["converted_geometry_pd"]
     ):
@@ -81,22 +85,27 @@ def _calculate_iou(
         ) & _check_if_series_contains_axis_aligned_bboxes(
             filtered_df["converted_geometry_gt"]
         ):
-            iou_func = geometry.calculate_axis_aligned_bbox_iou
-        else:
-            iou_func = geometry.calculate_iou
+            series_of_iou_calculations = (
+                geometry.calculate_axis_aligned_bbox_iou(
+                    filtered_df["converted_geometry_gt"],
+                    filtered_df["converted_geometry_pd"],
+                )
+            )
 
-        iou_calculation_df = filtered_df.apply(
-            lambda row: iou_func(
-                row["converted_geometry_gt"], row["converted_geometry_pd"]
-            ),
-            axis=1,
-        )
-
-        if not iou_calculation_df.empty:
-            iou_calculation_df = iou_calculation_df.rename("iou_")
-            joint_df = joint_df.join(iou_calculation_df)
         else:
-            joint_df["iou_"] = 0
+            iou_func = np.vectorize(geometry.calculate_iou)
+
+            series_of_iou_calculations = pd.Series(
+                iou_func(
+                    filtered_df["converted_geometry_gt"],
+                    filtered_df["converted_geometry_pd"],
+                ),
+                index=filtered_df.index,
+            )
+
+        series_of_iou_calculations = series_of_iou_calculations.rename("iou_")
+
+        joint_df = joint_df.join(series_of_iou_calculations)
 
     else:
 
