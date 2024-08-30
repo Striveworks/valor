@@ -287,11 +287,13 @@ def run_benchmarking_analysis(
             )  # type: ignore - time_it wrapper
             print("ingest", ingest_time)
 
-            ap_time, _ = time_it(manager.compute_ap)()
+            ap_time, ap_metrics = time_it(manager.compute_ap)()
             print("AP computation (work in progress)", ap_time)
 
             iou_time, _ = time_it(manager.benchmark_iou)()
             print("detailed-iou benchmark", iou_time)
+
+            print(json.dumps(ap_metrics, indent=2))
 
             # # run evaluations
             # eval_pr = None

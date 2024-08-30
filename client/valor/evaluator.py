@@ -24,9 +24,8 @@ from valor import GroundTruth, Prediction
 # gt        1
 # pd        2
 # iou       3
-# gt label  4
-# pd label  5
-# pd score  6
+# label     4
+# score     5
 
 
 @numba.njit(parallel=True)
@@ -92,33 +91,25 @@ def compute_iou(data: list[np.ndarray]):
 
 
 @numba.njit(parallel=True)
-def compute_ap(
+def _compute_ranked_pairs(
     data: list[np.ndarray],
 ) -> list[np.ndarray]:
     """
     Returns a list of ious in form [(p1, g1), (p1, g2), ..., (p1, gN), (p2, g1), ...].
     """
-    results = [
-        np.empty((1, 7)).astype(data[0].dtype) for i in range(len(data))
-    ]
+    results = [np.empty((1,6)) for _ in range(len(data))]
     for datum_idx in numba.prange(len(data)):
         datum = data[datum_idx]
         h, _ = datum.shape
-        results[datum_idx] = np.zeros((h, 7))
+        ious = np.zeros((h,))
         for row in numba.prange(h):
-            results[datum_idx][row][0] = datum[row][0]
-            results[datum_idx][row][1] = datum[row][1]
-            results[datum_idx][row][2] = datum[row][2]
-            results[datum_idx][row][4] = datum[row][11]
-            results[datum_idx][row][5] = datum[row][12]
-            results[datum_idx][row][6] = datum[row][13]
             if (
                 datum[row][3] >= datum[row][8]
                 or datum[row][4] <= datum[row][7]
                 or datum[row][5] >= datum[row][10]
                 or datum[row][6] <= datum[row][9]
             ):
-                results[datum_idx][row][3] = 0.0
+                ious[row] = 0.0
             else:
                 gt_area = (datum[row][4] - datum[row][3]) * (
                     datum[row][6] - datum[row][5]
@@ -150,60 +141,100 @@ def compute_ap(
 
                 intersection = (xmax - xmin) * (ymax - ymin)
                 union = gt_area + pd_area - intersection
-                results[datum_idx][row][3] = (
+                ious[row] = (
                     intersection / union if union > 0 else 0.0
                 )
 
         visited_gts, visited_pds = set(), set()
-        ordering = list()
+        ranked_pairs = np.zeros((h, 6))
         for row in range(h):
+            
+            ranked_pairs[row][0] = datum[row][0]
+            ranked_pairs[row][1] = datum[row][1]
+            ranked_pairs[row][2] = datum[row][2]
+            ranked_pairs[row][4] = datum[row][11] if datum[row][11] > -1.0 else datum[row][12]
+            ranked_pairs[row][5] = datum[row][13]
+
+            gt_tuple = (
+                datum[row][0],
+                datum[row][1],
+                datum[row][4],
+            )
+            pd_tuple = (
+                datum[row][0],
+                datum[row][2],
+                datum[row][4],
+            )
+
             if (
-                results[datum_idx][row][1] > -1.0
-                and results[datum_idx][row][2] > -1.0
+                gt_tuple in visited_gts 
+                or pd_tuple in visited_pds
             ):
-                gt_tuple = (
-                    results[datum_idx][row][0],
-                    results[datum_idx][row][1],
-                    results[datum_idx][row][4],
-                )
-                pd_tuple = (
-                    results[datum_idx][row][0],
-                    results[datum_idx][row][2],
-                    results[datum_idx][row][5],
-                )
-
-                if gt_tuple in visited_gts or pd_tuple in visited_pds:
-                    continue
-
-                visited_gts.add(gt_tuple)
-                visited_pds.add(pd_tuple)
-            ordering.append(row)
-        results[datum_idx] = results[datum_idx][np.array(ordering)]
-    return results
-
-
-@numba.njit()
-def min_pair_indices(
-    data: np.ndarray,
-) -> list:
-    h, _ = data.shape
-
-    result = list()
-    visited_gts, visited_pds = set(), set()
-
-    for row in numba.prange(h):
-        if data[row][1] > -1.0 and data[row][2] > -1.0:
-            gt_tuple = (data[row][0], data[row][1], data[row][4])
-            pd_tuple = (data[row][0], data[row][2], data[row][5])
-
-            if gt_tuple in visited_gts or pd_tuple in visited_pds:
                 continue
 
             visited_gts.add(gt_tuple)
             visited_pds.add(pd_tuple)
-        result.append(data[row])
 
-    return result
+            ranked_pairs[row][3] = ious[row]
+        results[datum_idx] = ranked_pairs
+    return results
+
+
+@numba.njit(parallel=True)
+def _compute_ap(
+    data: list[np.ndarray],
+    iou_thresholds: np.ndarray,
+) -> np.ndarray:
+    
+    n_thresh = iou_thresholds.shape[0]
+    results = np.zeros((len(data), n_thresh + 1)) # AP metrics per label
+    for label_idx in numba.prange(len(data)):
+        h, _ = data[label_idx].shape
+        for thresh_idx in range(n_thresh):
+            tp, fp, fn = 0, 0, 0
+            pr_curve = np.zeros((101,)) # binned PR curve
+            for row in range(h):
+                if (
+                    data[label_idx][row][1] < 0
+                    and data[label_idx][row][2] < 0
+                ):  # neither a groundtruth or prediction exist
+                    continue
+                elif data[label_idx][row][1] < 0:  # no groundtruth exists
+                    fp += 1
+                elif data[label_idx][row][2] < 0:  # no prediction exists
+                    fn += 1
+                elif data[label_idx][row][3] >= iou_thresholds[thresh_idx]:
+                    tp += 1
+                else:
+                    fp += 1
+                
+                precision = (
+                    tp / (tp + fp) if (tp + fp) else 0.0
+                )
+                recall = (
+                    tp / (tp + fn) if (tp + fn) else 0.0
+                )
+
+                recall = int(np.floor(recall * 100.0))
+                pr_curve[recall] = (
+                    precision 
+                    if precision > pr_curve[recall]
+                    else pr_curve[recall]
+                )
+            
+            # interpolate the PR-Curve
+            auc = 0.0
+            running_max = 0.0
+            for recall in range(101, -1, -1):
+                if pr_curve[recall] > running_max:
+                    running_max = pr_curve[recall]
+                else:
+                    pr_curve[recall] = running_max
+                auc += pr_curve[recall]
+            results[label_idx][thresh_idx] = auc / 101
+        results[label_idx][n_thresh] = data[label_idx][0][4]  # record label
+        
+    return results
 
 
 def _get_bbox_extrema(
@@ -324,7 +355,6 @@ class DetectionManager:
                         for glabel in gann["labels"]
                     ]
                 )
-
             elif prediction["annotations"]:
                 new_data = np.array(
                     [
@@ -385,20 +415,42 @@ class DetectionManager:
             raise ValueError
         compute_iou(self.detailed_pairs)
 
-    def compute_ap(self):
+    def compute_ap(
+        self,
+        iou_thresholds: list[float] = [0.3, 0.6, 0.9],
+    ):
         if self.pr_pairs is None:
             raise ValueError
 
-        ranked_pairs = np.concatenate(
-            compute_ap(self.pr_pairs),
+        pairs = np.concatenate(
+            _compute_ranked_pairs(self.pr_pairs),
             axis=0,
         )
 
         indices = np.lexsort(
-            (ranked_pairs[:, 6], ranked_pairs[:, 3], ranked_pairs[:, 1])
+            (pairs[:, 4], pairs[:, 5], pairs[:, 3], pairs[:, 1])
         )
-        sorted_pairs = ranked_pairs[indices]
+        sorted_pairs = pairs[indices]
 
-        # print(sorted_pairs.shape)
+        pairs_by_label = [
+            sorted_pairs[sorted_pairs[:, 4] == label]
+            for label in np.unique(sorted_pairs[:, 4])
+        ]
 
-        # ranked_pairs = min_pairs(sorted_pairs, self.gt_count, self.pd_count)
+        metrics = _compute_ap(pairs_by_label, iou_thresholds=np.array(iou_thresholds))
+
+        results = []
+        n_labels, n_cols = metrics.shape
+        for row in metrics:
+            label_id = int(row[-1])
+            if label_id == -1:
+                continue
+
+            values = {
+                str(round(thresh, 2)): round(value, 2)
+                for thresh, value in zip(iou_thresholds, row[:-1])
+            }
+            values["label"] = self.index_to_label[label_id]
+            results.append(values)
+
+        return results
