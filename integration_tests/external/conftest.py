@@ -758,7 +758,7 @@ def toxicity_datums(
 def toxicity_predictions() -> list[str]:
     return [
         """My opponent's opinion is incorrect because they are not accounting for the difference in agricultural output.""",
-        """I don't think we should increase taxes. My opponent is an idiot. They should just give up if they know what's good for them.""",
+        """My opponent is an idiot. They should just give up if they know what's good for them.""",
         """Fox news is a right wing news outlet. Fox News claimed that the left wing president is an idiot in their latest article.""",
     ]
 

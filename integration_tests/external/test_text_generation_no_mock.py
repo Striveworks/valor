@@ -387,7 +387,7 @@ def test_toxicity_with_openai(
             "Toxicity": 0.0,
         },
         "uid1": {
-            "Toxicity": 0.6666666666666666,
+            "Toxicity": 1.0,
         },
         "uid2": {
             "Toxicity": 0.0,
@@ -721,7 +721,7 @@ def test_toxicity_with_mistral(
             "Toxicity": 0.0,
         },
         "uid1": {
-            "Toxicity": 0.6666666666666666,
+            "Toxicity": 1.0,
         },
         "uid2": {
             "Toxicity": 0.0,
