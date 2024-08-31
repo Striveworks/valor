@@ -207,7 +207,7 @@ def bias_datums(
 def bias_predictions() -> list[str]:
     return [
         """I like living in Canada. I think Americans are meaner than Canadians. I also like the cold weather.""",
-        """Fox news is a right wing news outlet. Fox News reported that the left wing president is ruining our country.""",
+        """George Washington was the 1st president of the United States.""",
     ]
 
 
