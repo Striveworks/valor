@@ -4,6 +4,7 @@ from typing import Any
 import numba
 import numpy as np
 from tqdm import tqdm
+from valor_core import schemas
 
 # datum id  0
 # gt        1
@@ -52,37 +53,22 @@ def _compute_iou(data: list[np.ndarray]) -> list[np.ndarray]:
                 iou = 0.0
             else:
 
-                # xmin, xmax, ymin, ymax
-                # 3, 4, 5, 6
-                # 7, 8, 9, 10
+                xmin1 = datum[row][3]
+                xmax1 = datum[row][4]
+                ymin1 = datum[row][5]
+                ymax1 = datum[row][6]
+                xmin2 = datum[row][7]
+                xmax2 = datum[row][8]
+                ymin2 = datum[row][9]
+                ymax2 = datum[row][10]
 
-                gt_area = (datum[row][4] - datum[row][3]) * (
-                    datum[row][6] - datum[row][5]
-                )
-                pd_area = (datum[row][8] - datum[row][7]) * (
-                    datum[row][10] - datum[row][9]
-                )
+                gt_area = (xmax1 - xmin1) * (ymax1 - ymin1)
+                pd_area = (xmax2 - xmin2) * (ymax2 - ymin2)
 
-                xmin = (
-                    datum[row][3]
-                    if datum[row][3] > datum[row][7]
-                    else datum[row][7]
-                )
-                xmax = (
-                    datum[row][4]
-                    if datum[row][4] < datum[row][8]
-                    else datum[row][8]
-                )
-                ymin = (
-                    datum[row][5]
-                    if datum[row][5] > datum[row][9]
-                    else datum[row][9]
-                )
-                ymax = (
-                    datum[row][6]
-                    if datum[row][6] < datum[row][10]
-                    else datum[row][10]
-                )
+                xmin = max([xmin1, xmin2])
+                xmax = min([xmax1, xmax2])
+                ymin = max([ymin1, ymin2])
+                ymax = min([ymax1, ymax2])
 
                 intersection = (xmax - xmin) * (ymax - ymin)
                 union = gt_area + pd_area - intersection
@@ -99,7 +85,7 @@ def _compute_iou(data: list[np.ndarray]) -> list[np.ndarray]:
     return results
 
 
-@numba.njit(parallel=False)
+# @numba.njit(parallel=False)
 def _compute_ap(
     data: list[np.ndarray],
     gt_counts: np.ndarray,
@@ -107,7 +93,7 @@ def _compute_ap(
 ) -> np.ndarray:
 
     n_thresh = iou_thresholds.shape[0]
-    results = np.zeros((len(data), n_thresh + 1))  # AP metrics per label
+    results = np.zeros((len(data), n_thresh + 1))  # AP metrics + label
     for label_idx in numba.prange(len(data)):
         h, _ = data[label_idx].shape
 
@@ -166,7 +152,7 @@ def _compute_ap(
                 total_count += 1
                 if (
                     ranked_pairs[row][5] > 0  # score > 0
-                    and ranked_pairs[row][1] > 0  # groundtruth exists
+                    and ranked_pairs[row][1] > -0.5  # groundtruth exists
                     and ranked_pairs[row][3]  # passes iou threshold
                     > iou_thresholds[thresh_idx]
                 ):
@@ -178,9 +164,6 @@ def _compute_ap(
                     if number_of_groundtruths > 0
                     else 0.0
                 )
-
-                # print(ranked_pairs[row][3], tp_count, total_count, number_of_groundtruths)
-                # print(tp_count, total_count, number_of_groundtruths)
 
                 recall = int(np.floor(recall * 100.0))
                 pr_curve[recall] = (
@@ -195,7 +178,6 @@ def _compute_ap(
             for precision in pr_curve:
                 if precision > running_max:
                     running_max = precision
-                    # print(running_max)
                 auc += running_max
             results[label_idx][thresh_idx] = auc / 101
         results[label_idx][n_thresh] = label_idx  # record label
@@ -259,6 +241,162 @@ class DetectionManager:
         return super().__setattr__(__name, __value)
 
     def add_data(
+        self,
+        groundtruths: list[schemas.GroundTruth],
+        predictions: list[schemas.Prediction],
+    ):
+        for groundtruth, prediction in tqdm(zip(groundtruths, predictions)):
+
+            # update datum uids
+            uid = groundtruth.datum.uid
+            if uid not in self.uid_to_index:
+                index = len(self.uid_to_index)
+                self.uid_to_index[uid] = index
+                self.index_to_uid[index] = uid
+            uid_index = self.uid_to_index[uid]
+
+            # update labels
+            glabels = [
+                (glabel.key, glabel.value)
+                for gann in groundtruth.annotations
+                for glabel in gann.labels
+            ]
+            glabels_set = set(glabels)
+
+            plabels = [
+                (plabel.key, plabel.value)
+                for pann in prediction.annotations
+                for plabel in pann.labels
+            ]
+            plabels_set = set(plabels)
+
+            label_id = len(self.index_to_label)
+            for label in glabels_set.union(plabels_set):
+                if label not in self.label_to_index:
+                    self.label_to_index[label] = label_id
+                    self.index_to_label[label_id] = label
+                    label_id += 1
+
+            for item in glabels_set:
+                self.gt_counts[self.label_to_index[item]] += glabels.count(
+                    item
+                )
+            for item in plabels_set:
+                self.pd_counts[self.label_to_index[item]] += plabels.count(
+                    item
+                )
+
+            if groundtruth.annotations and prediction.annotations:
+                new_data = np.array(
+                    [
+                        [
+                            float(uid_index),
+                            float(gidx),
+                            float(pidx),
+                            float(gann.bounding_box.xmin),
+                            float(gann.bounding_box.xmax),
+                            float(gann.bounding_box.ymin),
+                            float(gann.bounding_box.ymax),
+                            float(pann.bounding_box.xmin),
+                            float(pann.bounding_box.xmax),
+                            float(pann.bounding_box.ymin),
+                            float(pann.bounding_box.ymax),
+                            float(
+                                self.label_to_index[(glabel.key, glabel.value)]
+                            ),
+                            float(
+                                self.label_to_index[(plabel.key, plabel.value)]
+                            ),
+                            float(plabel.score),
+                        ]
+                        for pidx, pann in enumerate(prediction.annotations)
+                        for plabel in pann.labels
+                        for gidx, gann in enumerate(groundtruth.annotations)
+                        for glabel in gann.labels
+                    ]
+                )
+            elif groundtruth.annotations:
+                new_data = np.array(
+                    [
+                        [
+                            float(uid_index),
+                            float(gidx),
+                            -1.0,
+                            float(gann.bounding_box.xmin),
+                            float(gann.bounding_box.xmax),
+                            float(gann.bounding_box.ymin),
+                            float(gann.bounding_box.ymax),
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            float(
+                                self.label_to_index[(glabel.key, glabel.value)]
+                            ),
+                            -1.0,
+                            -1.0,
+                        ]
+                        for gidx, gann in enumerate(groundtruth.annotations)
+                        for glabel in gann.labels
+                    ]
+                )
+            elif prediction.annotations:
+                new_data = np.array(
+                    [
+                        [
+                            float(uid_index),
+                            -1.0,
+                            float(pidx),
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            float(pann.bounding_box.xmin),
+                            float(pann.bounding_box.xmax),
+                            float(pann.bounding_box.ymin),
+                            float(pann.bounding_box.ymax),
+                            -1.0,
+                            float(
+                                self.label_to_index[(plabel.key, plabel.value)]
+                            ),
+                            float(plabel.score),
+                        ]
+                        for pidx, pann in enumerate(prediction.annotations)
+                        for plabel in pann.labels
+                    ]
+                )
+            else:
+                new_data = np.array(
+                    [
+                        [
+                            float(uid_index),
+                            -1.0,
+                            -1.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            -1.0,
+                            -1.0,
+                            -1.0,
+                        ]
+                    ]
+                )
+
+            indices = (
+                (new_data[:, 11] == new_data[:, 12])
+                | (new_data[:, 11] == -1.0)
+                | (new_data[:, 12] == -1.0)
+            )
+            self.pr_pairs.append(new_data[indices].copy())
+
+            self.detailed_pairs.append(new_data)
+
+    def add_data_from_dict(
         self,
         groundtruths: list[dict],
         predictions: list[dict],
@@ -464,8 +602,7 @@ class DetectionManager:
             iou_thresholds=np.array(iou_thresholds),
         )
 
-        results = []
-        n_labels, n_cols = metrics.shape
+        results = list()
         for row in metrics:
             label_id = int(row[-1])
             if label_id == -1:
@@ -476,6 +613,7 @@ class DetectionManager:
                 for thresh, value in zip(iou_thresholds, row[:-1])
             }
             values["label"] = self.index_to_label[label_id]
+            values["type"] = "AP"
             results.append(values)
 
         return results

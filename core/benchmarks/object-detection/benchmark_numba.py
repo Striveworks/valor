@@ -7,9 +7,8 @@ from time import time
 
 import requests
 from tqdm import tqdm
-
-from valor.enums import AnnotationType
-from valor.evaluator import DetectionManager as Manager
+from valor_core.enums import AnnotationType
+from valor_core.evaluator import DetectionManager as Manager
 
 
 def time_it(fn):
@@ -104,11 +103,11 @@ def ingest(
                 elif len(groundtruths) < chunk_size or chunk_size == -1:
                     continue
 
-                manager.add_data(groundtruths, predictions)
+                manager.add_data_from_dict(groundtruths, predictions)
                 groundtruths = []
                 predictions = []
             if groundtruths:
-                manager.add_data(groundtruths, predictions)
+                manager.add_data_from_dict(groundtruths, predictions)
 
 
 def run_base_evaluation(manager: Manager, timeout: int | None):
@@ -238,13 +237,13 @@ def run_benchmarking_analysis(
     groundtruths = {
         AnnotationType.BOX: gt_box_filename,
         AnnotationType.POLYGON: gt_polygon_filename,
-        AnnotationType.MULTIPOLYGON: gt_multipolygon_filename,
+        # AnnotationType.MULTIPOLYGON: gt_multipolygon_filename,
         AnnotationType.RASTER: gt_raster_filename,
     }
     predictions = {
         AnnotationType.BOX: pd_box_filename,
         AnnotationType.POLYGON: pd_polygon_filename,
-        AnnotationType.MULTIPOLYGON: pd_multipolygon_filename,
+        # AnnotationType.MULTIPOLYGON: pd_multipolygon_filename,
         AnnotationType.RASTER: pd_raster_filename,
     }
 
