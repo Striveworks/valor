@@ -286,20 +286,16 @@ def run_benchmarking_analysis(
             print("ingest", ingest_time)
 
             finalization_time, _ = time_it(manager.finalize)()
-            print("Finalization", finalization_time)
+            print("preprocess", finalization_time)
 
             ap_time, ap_metrics = time_it(manager.compute_ap)()
             print("AP computation (work in progress)", ap_time)
 
-            iou_time, _ = time_it(manager.benchmark_iou)()
-            print("detailed-iou benchmark", iou_time)
-
             print(json.dumps(ap_metrics, indent=2))
 
             print("ingest", ingest_time)
-            print("Finalization", finalization_time)
+            print("preprocess", finalization_time)
             print("AP computation (work in progress)", ap_time)
-            print("detailed-iou benchmark", iou_time)
 
             # # run evaluations
             # eval_pr = None

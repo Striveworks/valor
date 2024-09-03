@@ -30,70 +30,8 @@ from tqdm import tqdm
 # score     6
 
 
-# @numba.njit(parallel=False)
-def _compute_iou(
-    data: list[np.ndarray],
-) -> list[np.ndarray]:
-    """
-    Returns a list of ious in form [(p1, g1), (p1, g2), ..., (p1, gN), (p2, g1), ...].
-    """
-    results = [np.empty((1,)).astype(data[0].dtype) for i in range(len(data))]
-    for datum_idx in numba.prange(len(data)):
-        datum = data[datum_idx]
-        h, _ = datum.shape
-        results[datum_idx] = np.zeros((h,))
-        for row in numba.prange(h):
-            if (
-                datum[row][3] >= datum[row][8]
-                or datum[row][4] <= datum[row][7]
-                or datum[row][5] >= datum[row][10]
-                or datum[row][6] <= datum[row][9]
-            ):
-                results[datum_idx][row] = 0.0
-            else:
-                gt_area = (datum[row][4] - datum[row][3]) * (
-                    datum[row][6] - datum[row][5]
-                )
-                pd_area = (datum[row][8] - datum[row][7]) * (
-                    datum[row][10] - datum[row][9]
-                )
-
-                xmin = (
-                    datum[row][6]
-                    if datum[row][6] > datum[row][7]
-                    else datum[row][7]
-                )
-                xmax = (
-                    datum[row][4]
-                    if datum[row][4] < datum[row][8]
-                    else datum[row][8]
-                )
-                ymin = (
-                    datum[row][5]
-                    if datum[row][5] > datum[row][9]
-                    else datum[row][9]
-                )
-                ymax = (
-                    datum[row][6]
-                    if datum[row][6] < datum[row][10]
-                    else datum[row][10]
-                )
-
-                intersection = (xmax - xmin) * (ymax - ymin)
-                union = gt_area + pd_area - intersection
-                results[datum_idx][row] = (
-                    intersection / union if union > 0 else 0.0
-                )
-    return results
-
-
-def compute_iou(data: list[np.ndarray]):
-    results = _compute_iou(data)
-    return np.concatenate(results, axis=0)
-
-
 @numba.njit(parallel=False)
-def _create_detailed_pairs(data: list[np.ndarray]) -> list[np.ndarray]:
+def _compute_iou(data: list[np.ndarray]) -> list[np.ndarray]:
     """
     Returns a list of ious in form [(p1, g1), (p1, g2), ..., (p1, gN), (p2, g1), ...].
     """
@@ -161,7 +99,7 @@ def _create_detailed_pairs(data: list[np.ndarray]) -> list[np.ndarray]:
     return results
 
 
-# @numba.njit(parallel=False)
+@numba.njit(parallel=False)
 def _compute_ap(
     data: list[np.ndarray],
     gt_counts: np.ndarray,
@@ -242,7 +180,7 @@ def _compute_ap(
                 )
 
                 # print(ranked_pairs[row][3], tp_count, total_count, number_of_groundtruths)
-                print(tp_count, total_count, number_of_groundtruths)
+                # print(tp_count, total_count, number_of_groundtruths)
 
                 recall = int(np.floor(recall * 100.0))
                 pr_curve[recall] = (
@@ -257,7 +195,7 @@ def _compute_ap(
             for precision in pr_curve:
                 if precision > running_max:
                     running_max = precision
-                    print(running_max)
+                    # print(running_max)
                 auc += running_max
             results[label_idx][thresh_idx] = auc / 101
         results[label_idx][n_thresh] = label_idx  # record label
@@ -489,23 +427,16 @@ class DetectionManager:
             ]
         )
 
-        for k, v in self._label_counts:
-            print(k, v)
-
-        print(self._label_counts.shape)
-
         detailed_pairs = np.concatenate(
-            _create_detailed_pairs(self.detailed_pairs),
+            _compute_iou(self.detailed_pairs),
             axis=0,
         )
 
         indices = np.lexsort(
             (
-                detailed_pairs[:, 4],
                 detailed_pairs[:, 6],
                 detailed_pairs[:, 3],
                 detailed_pairs[:, 1],
-                detailed_pairs[:, 0],
             )
         )
         detailed_pairs = detailed_pairs[indices]
@@ -519,11 +450,6 @@ class DetectionManager:
 
         # lock the object
         self._lock = True
-
-    def benchmark_iou(self):
-        if self.detailed_pairs is None:
-            raise ValueError
-        compute_iou(self.detailed_pairs)
 
     def compute_ap(
         self,
