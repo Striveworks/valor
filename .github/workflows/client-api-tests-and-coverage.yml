@@ -43,7 +43,7 @@ jobs:
         uses: actions/upload-artifact@v3
         with:
           name: ${{ env.COVERAGE_FILE }}
-          path: ./api/${{ env.COVERAGE_FILE }}
+          path: api/${{ env.COVERAGE_FILE }}
           include-hidden-files: true
 
   integration-tests:
@@ -84,7 +84,7 @@ jobs:
         uses: actions/upload-artifact@v3
         with:
           name: ${{ env.COVERAGE_FILE }}
-          path: ./${{ env.COVERAGE_FILE }}
+          path: ${{ env.COVERAGE_FILE }}
           include-hidden-files: true
       - name: install typescript client
         run: npm install
