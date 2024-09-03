@@ -1,6 +1,5 @@
 import json
 import os
-import re
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
@@ -9,7 +8,6 @@ from time import time
 import requests
 from tqdm import tqdm
 
-from valor import GroundTruth, Prediction
 from valor.enums import AnnotationType
 from valor.evaluator import DetectionManager as Manager
 
@@ -207,9 +205,9 @@ class EvaluationBenchmark:
                 "number_of_datums": self.n_datums,
                 "number_of_annotations": self.n_annotations,
                 "number_of_labels": self.n_labels,
-                "base": round(self.eval_base, 2),
-                "base+pr": round(self.eval_base_pr, 2),
-                "base+pr+detailed": round(self.eval_base_pr_detail, 2),
+                "base": round(self.eval_base, 5),
+                "base+pr": round(self.eval_base_pr, 5),
+                "base+pr+detailed": round(self.eval_base_pr_detail, 5),
             },
         }
 
@@ -287,6 +285,9 @@ def run_benchmarking_analysis(
             )  # type: ignore - time_it wrapper
             print("ingest", ingest_time)
 
+            finalization_time, _ = time_it(manager.finalize)()
+            print("Finalization", finalization_time)
+
             ap_time, ap_metrics = time_it(manager.compute_ap)()
             print("AP computation (work in progress)", ap_time)
 
@@ -296,6 +297,7 @@ def run_benchmarking_analysis(
             print(json.dumps(ap_metrics, indent=2))
 
             print("ingest", ingest_time)
+            print("Finalization", finalization_time)
             print("AP computation (work in progress)", ap_time)
             print("detailed-iou benchmark", iou_time)
 

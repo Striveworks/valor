@@ -1,10 +1,9 @@
 from collections import defaultdict
+from typing import Any
 
 import numba
 import numpy as np
 from tqdm import tqdm
-
-from valor import GroundTruth, Prediction
 
 # datum id  0
 # gt        1
@@ -26,11 +25,12 @@ from valor import GroundTruth, Prediction
 # gt        1
 # pd        2
 # iou       3
-# label     4
-# score     5
+# gt label  4
+# pd label  5
+# score     6
 
 
-@numba.njit(parallel=False)
+# @numba.njit(parallel=False)
 def _compute_iou(
     data: list[np.ndarray],
 ) -> list[np.ndarray]:
@@ -93,17 +93,17 @@ def compute_iou(data: list[np.ndarray]):
 
 
 @numba.njit(parallel=False)
-def _compute_ranked_pairs(
-    data: list[np.ndarray],
-) -> list[np.ndarray]:
+def _create_detailed_pairs(data: list[np.ndarray]) -> list[np.ndarray]:
     """
     Returns a list of ious in form [(p1, g1), (p1, g2), ..., (p1, gN), (p2, g1), ...].
     """
-    results = [np.empty((1, 6)) for _ in range(len(data))]
+    results = [
+        np.empty((1, 7)).astype(data[0].dtype) for i in range(len(data))
+    ]
     for datum_idx in numba.prange(len(data)):
         datum = data[datum_idx]
         h, _ = datum.shape
-        ious = np.zeros((h,))
+        results[datum_idx] = np.zeros((h, 7))
         for row in numba.prange(h):
             if (
                 datum[row][3] >= datum[row][8]
@@ -111,8 +111,13 @@ def _compute_ranked_pairs(
                 or datum[row][5] >= datum[row][10]
                 or datum[row][6] <= datum[row][9]
             ):
-                ious[row] = 0.0
+                iou = 0.0
             else:
+
+                # xmin, xmax, ymin, ymax
+                # 3, 4, 5, 6
+                # 7, 8, 9, 10
+
                 gt_area = (datum[row][4] - datum[row][3]) * (
                     datum[row][6] - datum[row][5]
                 )
@@ -121,8 +126,8 @@ def _compute_ranked_pairs(
                 )
 
                 xmin = (
-                    datum[row][6]
-                    if datum[row][6] > datum[row][7]
+                    datum[row][3]
+                    if datum[row][3] > datum[row][7]
                     else datum[row][7]
                 )
                 xmax = (
@@ -143,43 +148,20 @@ def _compute_ranked_pairs(
 
                 intersection = (xmax - xmin) * (ymax - ymin)
                 union = gt_area + pd_area - intersection
-                ious[row] = intersection / union if union > 0 else 0.0
+                iou = intersection / union if union > 0 else 0.0
 
-        visited_gts, visited_pds = set(), set()
-        ranked_pairs = np.zeros((h, 6))
-        for row in range(h):
+            results[datum_idx][row][0] = datum[row][0]
+            results[datum_idx][row][1] = datum[row][1]
+            results[datum_idx][row][2] = datum[row][2]
+            results[datum_idx][row][3] = iou
+            results[datum_idx][row][4] = datum[row][11]
+            results[datum_idx][row][5] = datum[row][12]
+            results[datum_idx][row][6] = datum[row][13]
 
-            ranked_pairs[row][0] = datum[row][0]
-            ranked_pairs[row][1] = datum[row][1]
-            ranked_pairs[row][2] = datum[row][2]
-            ranked_pairs[row][4] = (
-                datum[row][11] if datum[row][11] > -1.0 else datum[row][12]
-            )
-            ranked_pairs[row][5] = datum[row][13]
-
-            gt_tuple = (
-                datum[row][0],
-                datum[row][1],
-                datum[row][4],
-            )
-            pd_tuple = (
-                datum[row][0],
-                datum[row][2],
-                datum[row][4],
-            )
-
-            if gt_tuple in visited_gts or pd_tuple in visited_pds:
-                continue
-
-            visited_gts.add(gt_tuple)
-            visited_pds.add(pd_tuple)
-
-            ranked_pairs[row][3] = ious[row]
-        results[datum_idx] = ranked_pairs
     return results
 
 
-@numba.njit(parallel=False)
+# @numba.njit(parallel=False)
 def _compute_ap(
     data: list[np.ndarray],
     gt_counts: np.ndarray,
@@ -190,7 +172,49 @@ def _compute_ap(
     results = np.zeros((len(data), n_thresh + 1))  # AP metrics per label
     for label_idx in numba.prange(len(data)):
         h, _ = data[label_idx].shape
-        number_of_groundtruths = int(gt_counts[int(data[label_idx][0][4])])
+
+        number_of_groundtruths = gt_counts[label_idx]
+
+        # rank pairs
+        visited_gts, visited_pds = set(), set()
+        ranked_pairs = np.zeros((h, 6))
+        ranked_row = 0
+        for row in range(h):
+
+            datum = data[label_idx][row]
+
+            label_id = datum[4] if datum[4] > -1.0 else datum[5]
+
+            if datum[4] != datum[5]:  # label mismatch
+                continue
+
+            gt_tuple = (
+                datum[0],  # datum
+                datum[1],  # gt_id
+                label_id,
+            )
+            pd_tuple = (
+                datum[0],
+                datum[2],
+                label_id,
+            )
+
+            if gt_tuple in visited_gts or pd_tuple in visited_pds:
+                continue
+
+            ranked_pairs[ranked_row][0] = datum[0]  # datum
+            ranked_pairs[ranked_row][1] = datum[1]  # gt
+            ranked_pairs[ranked_row][2] = datum[2]  # pd
+            ranked_pairs[ranked_row][3] = datum[3]  # iou
+            ranked_pairs[ranked_row][4] = label_id  # label
+            ranked_pairs[ranked_row][5] = datum[6]  # score
+            ranked_row += 1
+
+            visited_gts.add(gt_tuple)
+            visited_pds.add(pd_tuple)
+
+        ranked_pairs = ranked_pairs[:ranked_row]
+        h, _ = ranked_pairs.shape
 
         for thresh_idx in range(n_thresh):
             total_count = 0
@@ -198,17 +222,17 @@ def _compute_ap(
             pr_curve = np.zeros((101,))  # binned PR curve
             for row in range(h):
 
-                if data[label_idx][row][2] < 0:  # no prediction
+                if ranked_pairs[row][2] < 0:  # no prediction
                     continue
 
                 total_count += 1
                 if (
-                    data[label_idx][row][1] > 0  # groundtruth exists
-                    and data[label_idx][row][3]
-                    > iou_thresholds[thresh_idx]  # passes iou threshold
+                    ranked_pairs[row][5] > 0  # score > 0
+                    and ranked_pairs[row][1] > 0  # groundtruth exists
+                    and ranked_pairs[row][3]  # passes iou threshold
+                    > iou_thresholds[thresh_idx]
                 ):
                     tp_count += 1
-                    # print(tp_count)
 
                 precision = tp_count / total_count
                 recall = (
@@ -217,8 +241,8 @@ def _compute_ap(
                     else 0.0
                 )
 
-                # if recall > 0.1:
-                # print(recall)
+                # print(ranked_pairs[row][3], tp_count, total_count, number_of_groundtruths)
+                print(tp_count, total_count, number_of_groundtruths)
 
                 recall = int(np.floor(recall * 100.0))
                 pr_curve[recall] = (
@@ -230,12 +254,13 @@ def _compute_ap(
             # interpolate the PR-Curve
             auc = 0.0
             running_max = 0.0
-            for recall in range(100, -1, -1):
-                if pr_curve[recall] > running_max:
-                    running_max = pr_curve[recall]
+            for precision in pr_curve:
+                if precision > running_max:
+                    running_max = precision
+                    print(running_max)
                 auc += running_max
             results[label_idx][thresh_idx] = auc / 101
-        results[label_idx][n_thresh] = data[label_idx][0][4]  # record label
+        results[label_idx][n_thresh] = label_idx  # record label
 
     return results
 
@@ -257,17 +282,43 @@ def _get_bbox_extrema(
 
 class DetectionManager:
     def __init__(self):
-        self.pr_pairs = list()
-        self.detailed_pairs = list()
 
-        self.gt_count = defaultdict(int)
-        self.pd_count = defaultdict(int)
-
+        # datum reference
         self.uid_to_index = dict()
         self.index_to_uid = dict()
 
+        # label reference
         self.label_to_index = dict()
         self.index_to_label = dict()
+
+        # ingestion caches
+        self.pr_pairs = list()
+        self.detailed_pairs = list()
+        self.gt_counts = defaultdict(int)
+        self.pd_counts = defaultdict(int)
+
+        # computation caches
+        self._label_counts = np.empty((1, 2))
+        self._pairs_sorted_by_label = list()
+
+    def __setattr__(self, __name: str, __value: Any) -> None:
+        if "_lock" not in self.__dict__:
+            super().__setattr__("_lock", False)
+        if self._lock and __name in {
+            "pr_pairs",
+            "detailed_pairs",
+            "gt_count",
+            "pd_count",
+            "uid_to_index",
+            "index_to_uid",
+            "label_to_index",
+            "index_to_label",
+            "_lock",
+        }:
+            raise AttributeError(
+                f"Cannot manually modify '{__name}' after finalization."
+            )
+        return super().__setattr__(__name, __value)
 
     def add_data(
         self,
@@ -299,16 +350,21 @@ class DetectionManager:
             ]
             plabels_set = set(plabels)
 
-            label_count = len(self.label_to_index)
-            for idx, label in enumerate(glabels_set.union(plabels_set)):
+            label_id = len(self.index_to_label)
+            for label in glabels_set.union(plabels_set):
                 if label not in self.label_to_index:
-                    self.label_to_index[label] = label_count + idx
-                    self.index_to_label[label_count + idx] = label
+                    self.label_to_index[label] = label_id
+                    self.index_to_label[label_id] = label
+                    label_id += 1
 
             for item in glabels_set:
-                self.gt_count[self.label_to_index[item]] += glabels.count(item)
+                self.gt_counts[self.label_to_index[item]] += glabels.count(
+                    item
+                )
             for item in plabels_set:
-                self.pd_count[self.label_to_index[item]] += plabels.count(item)
+                self.pd_counts[self.label_to_index[item]] += plabels.count(
+                    item
+                )
 
             if groundtruth["annotations"] and prediction["annotations"]:
                 new_data = np.array(
@@ -416,6 +472,54 @@ class DetectionManager:
 
             self.detailed_pairs.append(new_data)
 
+    def finalize(self) -> None:
+        if self._lock:
+            return
+
+        if self.pr_pairs is None:
+            raise ValueError
+
+        self._label_counts = np.array(
+            [
+                [
+                    float(self.gt_counts.get(label_id, 0)),
+                    float(self.pd_counts.get(label_id, 0)),
+                ]
+                for label_id in range(len(self.index_to_label))
+            ]
+        )
+
+        for k, v in self._label_counts:
+            print(k, v)
+
+        print(self._label_counts.shape)
+
+        detailed_pairs = np.concatenate(
+            _create_detailed_pairs(self.detailed_pairs),
+            axis=0,
+        )
+
+        indices = np.lexsort(
+            (
+                detailed_pairs[:, 4],
+                detailed_pairs[:, 6],
+                detailed_pairs[:, 3],
+                detailed_pairs[:, 1],
+                detailed_pairs[:, 0],
+            )
+        )
+        detailed_pairs = detailed_pairs[indices]
+        self._pairs_sorted_by_label = [
+            detailed_pairs[
+                (detailed_pairs[:, 4] == label_id)
+                | (detailed_pairs[:, 5] == label_id)
+            ]
+            for label_id in range(len(self.index_to_label))
+        ]
+
+        # lock the object
+        self._lock = True
+
     def benchmark_iou(self):
         if self.detailed_pairs is None:
             raise ValueError
@@ -425,33 +529,12 @@ class DetectionManager:
         self,
         iou_thresholds: list[float] = [0.5, 0.75, 0.9],
     ):
-        if self.pr_pairs is None:
-            raise ValueError
-
-        pairs = np.concatenate(
-            _compute_ranked_pairs(self.pr_pairs),
-            axis=0,
-        )
-
-        indices = np.lexsort(
-            (pairs[:, 4], pairs[:, 5], pairs[:, 3], pairs[:, 1])
-        )
-        sorted_pairs = pairs[indices]
-        sorted_pairs_by_label = [
-            sorted_pairs[sorted_pairs[:, 4] == label_id]
-            for label_id in np.unique(sorted_pairs[:, 4])
-        ]
-
-        gt_counts = np.array(
-            [
-                float(self.gt_count[label_id])
-                for label_id in self.index_to_label
-            ]
-        )
+        if not self._lock:
+            raise RuntimeError("Data not finalized.")
 
         metrics = _compute_ap(
-            data=sorted_pairs_by_label,
-            gt_counts=gt_counts,
+            data=self._pairs_sorted_by_label,
+            gt_counts=self._label_counts[:, 0],
             iou_thresholds=np.array(iou_thresholds),
         )
 
@@ -463,7 +546,7 @@ class DetectionManager:
                 continue
 
             values = {
-                str(round(thresh, 2)): round(value, 2)
+                str(round(thresh, 5)): round(value, 5)
                 for thresh, value in zip(iou_thresholds, row[:-1])
             }
             values["label"] = self.index_to_label[label_id]
