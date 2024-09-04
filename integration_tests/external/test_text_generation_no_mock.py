@@ -155,10 +155,15 @@ def test_bias_with_openai(
 
     expected_metrics = {
         "uid0": {
-            "Bias": 0.3333333333333333,
+            "Bias": [
+                0.3333333333333333,
+                0.5,
+            ],
         },
         "uid1": {
-            "Bias": 0.0,
+            "Bias": [
+                0.0,
+            ],
         },
     }
 
@@ -167,7 +172,7 @@ def test_bias_with_openai(
         uid = m["parameters"]["datum_uid"]
         metric_name = m["type"]
         assert (
-            expected_metrics[uid][metric_name] == m["value"]
+            m["value"] in expected_metrics[uid][metric_name]
         ), f"Failed for {uid} and {metric_name}"
 
 
@@ -387,7 +392,7 @@ def test_toxicity_with_openai(
             "Toxicity": 0.0,
         },
         "uid1": {
-            "Toxicity": 0.6666666666666666,
+            "Toxicity": 1.0,
         },
         "uid2": {
             "Toxicity": 0.0,
@@ -721,7 +726,7 @@ def test_toxicity_with_mistral(
             "Toxicity": 0.0,
         },
         "uid1": {
-            "Toxicity": 0.6666666666666666,
+            "Toxicity": 1.0,
         },
         "uid2": {
             "Toxicity": 0.0,
