@@ -7,8 +7,8 @@ from time import time
 
 import requests
 from tqdm import tqdm
-from valor_core.enums import AnnotationType
-from valor_core.evaluator import DetectionManager as Manager
+from valor_lite.detection import DetectionManager as Manager
+from valor_lite.enums import AnnotationType
 
 
 def time_it(fn):
@@ -289,12 +289,18 @@ def run_benchmarking_analysis(
 
             ap_time, ap_metrics = time_it(manager.compute_ap)()
             print("AP computation (work in progress)", ap_time)
+            # print(json.dumps(ap_metrics, indent=2))
 
-            print(json.dumps(ap_metrics, indent=2))
+            pr_time, pr_metrics = time_it(manager.compute_pr_curve)()
+            print("PR Curve", pr_time)
+
+            for m in pr_metrics:
+                print(json.dumps(m.to_dict(), indent=2))
 
             print("ingest", ingest_time)
             print("preprocess", finalization_time)
             print("AP computation (work in progress)", ap_time)
+            print("Detailed PR Curve", pr_time)
 
             # # run evaluations
             # eval_pr = None

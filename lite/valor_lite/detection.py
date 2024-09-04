@@ -1,10 +1,12 @@
 from collections import defaultdict
+from dataclasses import dataclass
 from typing import Any
 
 import numba
 import numpy as np
 from tqdm import tqdm
-from valor_core import schemas
+from valor_lite import schemas
+from valor_lite.enums import MetricType
 
 # datum id  0
 # gt        1
@@ -31,6 +33,81 @@ from valor_core import schemas
 # score     6
 
 
+@dataclass
+class ValueAtIoU:
+    value: float
+    iou: float
+
+
+@dataclass
+class AP:
+    values: list[ValueAtIoU]
+    label: tuple[str, str]
+
+    def to_dict(self) -> dict:
+        return {
+            "type": "AP",
+            "values": {str(value.iou): value.value for value in self.values},
+            "label": {
+                "key": self.label[0],
+                "value": self.label[1],
+            },
+        }
+
+
+@dataclass
+class CountWithExamples:
+    value: int
+    examples: list[str]
+
+    def __post_init__(self):
+        self.value = int(self.value)
+
+    def to_dict(self) -> dict:
+        return {
+            "value": self.value,
+            "examples": self.examples,
+        }
+
+
+@dataclass
+class PrecisionRecallCurvePoint:
+    score: float
+    tp: CountWithExamples
+    fp_misclassification: CountWithExamples
+    fp_hallucination: CountWithExamples
+    fn_misclassification: CountWithExamples
+    fn_missing_prediction: CountWithExamples
+
+    def to_dict(self) -> dict:
+        return {
+            "score": self.score,
+            "tp": self.tp.to_dict(),
+            "fp_misclassification": self.fp_misclassification.to_dict(),
+            "fp_hallucination": self.fp_hallucination.to_dict(),
+            "fn_misclassification": self.fn_misclassification.to_dict(),
+            "fn_missing_prediction": self.fn_missing_prediction.to_dict(),
+        }
+
+
+@dataclass
+class PrecisionRecallCurve:
+    iou: float
+    value: list[PrecisionRecallCurvePoint]
+    label: tuple[str, str]
+
+    def to_dict(self) -> dict:
+        return {
+            "value": [pt.to_dict() for pt in self.value],
+            "iou": self.iou,
+            "label": {
+                "key": self.label[0],
+                "value": self.label[1],
+            },
+            "type": "PrecisionRecallCurve",
+        }
+
+
 @numba.njit(parallel=False)
 def _compute_iou(data: list[np.ndarray]) -> list[np.ndarray]:
     """
@@ -41,7 +118,7 @@ def _compute_iou(data: list[np.ndarray]) -> list[np.ndarray]:
     ]
     for datum_idx in numba.prange(len(data)):
         datum = data[datum_idx]
-        h, _ = datum.shape
+        h = datum.shape[0]
         results[datum_idx] = np.zeros((h, 7))
         for row in numba.prange(h):
             if (
@@ -99,64 +176,80 @@ def _compute_ap(
 
         number_of_groundtruths = gt_counts[label_idx]
 
+        # if no groundtruths exist for the label, set to null results and continue
+        if number_of_groundtruths == 0.0:
+            for thresh_idx in range(n_thresh):
+                results[label_idx][thresh_idx] = 0.0
+            results[label_idx][n_thresh] = -1.0
+            continue
+
         # rank pairs
-        visited_gts, visited_pds = set(), set()
-        ranked_pairs = np.zeros((h, 6))
+        visited_pds = set()
+        ranked_pairs = np.zeros((h, 7))
         ranked_row = 0
         for row in range(h):
 
             datum = data[label_idx][row]
 
-            label_id = datum[4] if datum[4] > -1.0 else datum[5]
-
-            if datum[4] != datum[5]:  # label mismatch
+            if datum[5] != label_idx:  # label mismatch
                 continue
 
-            gt_tuple = (
-                datum[0],  # datum
-                datum[1],  # gt_id
-                label_id,
-            )
             pd_tuple = (
-                datum[0],
-                datum[2],
-                label_id,
+                datum[0],  # datum
+                datum[2],  # pd id
+                datum[5],  # pd label
             )
 
-            if gt_tuple in visited_gts or pd_tuple in visited_pds:
-                continue
-
-            ranked_pairs[ranked_row][0] = datum[0]  # datum
-            ranked_pairs[ranked_row][1] = datum[1]  # gt
-            ranked_pairs[ranked_row][2] = datum[2]  # pd
-            ranked_pairs[ranked_row][3] = datum[3]  # iou
-            ranked_pairs[ranked_row][4] = label_id  # label
-            ranked_pairs[ranked_row][5] = datum[6]  # score
-            ranked_row += 1
-
-            visited_gts.add(gt_tuple)
-            visited_pds.add(pd_tuple)
+            if pd_tuple not in visited_pds or datum[1] < 0.0:
+                is_match = 1.0 if datum[4] == datum[5] else 0.0
+                ranked_pairs[ranked_row][0] = datum[0]  # datum
+                ranked_pairs[ranked_row][1] = datum[1]  # gt
+                ranked_pairs[ranked_row][2] = datum[2]  # pd
+                ranked_pairs[ranked_row][3] = datum[3]  # iou
+                ranked_pairs[ranked_row][4] = datum[5]  # label
+                ranked_pairs[ranked_row][5] = datum[6]  # score
+                ranked_pairs[ranked_row][6] = is_match  # is_match
+                visited_pds.add(pd_tuple)
+                ranked_row += 1
 
         ranked_pairs = ranked_pairs[:ranked_row]
-        h, _ = ranked_pairs.shape
+        h = ranked_pairs.shape[0]
 
         for thresh_idx in range(n_thresh):
             total_count = 0
             tp_count = 0
             pr_curve = np.zeros((101,))  # binned PR curve
+            visited_gts = set()
             for row in range(h):
+
+                gt_tuple = (
+                    ranked_pairs[row][0],  # datum
+                    ranked_pairs[row][1],  # gt
+                )
 
                 if ranked_pairs[row][2] < 0:  # no prediction
                     continue
 
                 total_count += 1
                 if (
-                    ranked_pairs[row][5] > 0  # score > 0
+                    ranked_pairs[row][5] > 0.0  # score > 0
                     and ranked_pairs[row][1] > -0.5  # groundtruth exists
                     and ranked_pairs[row][3]  # passes iou threshold
                     > iou_thresholds[thresh_idx]
+                    and ranked_pairs[row][6] > 0.5  # matching label
+                    and gt_tuple not in visited_gts
                 ):
                     tp_count += 1
+                    visited_gts.add(gt_tuple)
+
+                if label_idx == 5 and thresh_idx == 0:
+                    print(
+                        tp_count,
+                        total_count,
+                        int(number_of_groundtruths),
+                        ranked_pairs[row][1],
+                        ranked_pairs[row][2],
+                    )
 
                 precision = tp_count / total_count
                 recall = (
@@ -175,13 +268,110 @@ def _compute_ap(
             # interpolate the PR-Curve
             auc = 0.0
             running_max = 0.0
-            for precision in pr_curve:
+            for recall in range(100, -1, -1):
+                precision = pr_curve[recall]
                 if precision > running_max:
                     running_max = precision
                 auc += running_max
             results[label_idx][thresh_idx] = auc / 101
         results[label_idx][n_thresh] = label_idx  # record label
 
+    return results
+
+
+@numba.njit(parallel=False)
+def _compute_detailed_pr_curve(
+    data: list[np.ndarray],
+    label_counts: np.ndarray,
+    iou_thresholds: np.ndarray,
+    n_samples: int,
+) -> list[np.ndarray]:
+
+    """
+    0  label
+    1  tp
+    ...
+    2  fp - 1
+    3  fp - 2
+    4  fn - misclassification
+    5  fn - hallucination
+    """
+
+    n_ious = iou_thresholds.shape[0]
+
+    w = 5 * (n_samples + 1) + 1
+    tp_idx = 1
+    fp_misclf_idx = n_samples + 1
+    fp_hall_idx = fp_misclf_idx + n_samples + 1
+    fn_misclf_idx = fp_hall_idx + n_samples + 1
+    fn_misprd_idx = fn_misclf_idx + n_samples + 1
+
+    results = [
+        np.empty((len(iou_thresholds), 100, w)) for i in range(len(data))
+    ]
+    for label_idx in numba.prange(len(data)):
+        result = np.zeros((len(iou_thresholds), 100, w))
+        datum = data[label_idx]
+        n_rows = datum.shape[0]
+        for iou_idx in numba.prange(n_ious):
+            for score_idx in numba.prange(100):
+                score_threshold = (score_idx + 1) / 100.0
+                tp, fp_misclf, fp_hall, fn_misclf, fn_misprd = 0, 0, 0, 0, 0
+                for row in numba.prange(n_rows):
+
+                    gt_exists = not datum[row][1] < 0.0
+                    pd_exists = not datum[row][2] < 0.0
+                    iou = datum[row][3]
+                    gt_label = int(datum[row][4])
+                    pd_label = int(datum[row][5])
+                    score = datum[row][6]
+
+                    tp_conditional = (
+                        gt_exists
+                        and pd_exists
+                        and iou >= iou_thresholds[iou_idx]
+                        and score >= score_threshold
+                        and gt_label == pd_label
+                        and gt_label == label_idx
+                    )
+                    fp_misclf_conditional = (
+                        gt_exists
+                        and pd_exists
+                        and iou >= iou_thresholds[iou_idx]
+                        and score >= score_threshold
+                        and gt_label != pd_label
+                        and pd_label == label_idx
+                    )
+                    fn_misclf_conditional = (
+                        gt_exists
+                        and pd_exists
+                        and iou >= iou_thresholds[iou_idx]
+                        and score <= score_threshold
+                        and gt_label == pd_label
+                        and gt_label == label_idx
+                    )
+
+                    if tp_conditional:
+                        tp += 1
+                    elif fp_misclf_conditional:
+                        fp_misclf += 1
+                    elif fn_misclf_conditional:
+                        fn_misclf += 1
+                    elif pd_exists:
+                        fp_hall += 1
+                    elif gt_exists:
+                        fn_misprd += 1
+                    else:
+                        raise RuntimeError
+
+                result[iou_idx][score_idx][0] = label_idx
+                result[iou_idx][score_idx][tp_idx] = tp
+                result[iou_idx][score_idx][fp_misclf_idx] = fp_misclf
+                result[iou_idx][score_idx][fp_hall_idx] = fp_hall
+                result[iou_idx][score_idx][fn_misclf_idx] = fn_misclf
+                result[iou_idx][score_idx][fn_misprd_idx] = fn_misprd
+
+        results[label_idx] = result
     return results
 
 
@@ -203,6 +393,14 @@ def _get_bbox_extrema(
 class DetectionManager:
     def __init__(self):
 
+        # metadata
+        self.n_datums = 0
+        self.n_groundtruths = 0
+        self.n_predictions = 0
+        self.n_labels = 0
+        self.ignored_prediction_labels = list()
+        self.missing_prediction_labels = list()
+
         # datum reference
         self.uid_to_index = dict()
         self.index_to_uid = dict()
@@ -212,8 +410,7 @@ class DetectionManager:
         self.index_to_label = dict()
 
         # ingestion caches
-        self.pr_pairs = list()
-        self.detailed_pairs = list()
+        self.pairs = list()
         self.gt_counts = defaultdict(int)
         self.pd_counts = defaultdict(int)
 
@@ -233,6 +430,11 @@ class DetectionManager:
             "index_to_uid",
             "label_to_index",
             "index_to_label",
+            "ignored_prediction_labels",
+            "missing_groundtruth_labels",
+            "n_datums",
+            "n_annotations",
+            "n_labels",
             "_lock",
         }:
             raise AttributeError(
@@ -240,12 +442,28 @@ class DetectionManager:
             )
         return super().__setattr__(__name, __value)
 
+    @property
+    def metadata(self) -> dict:
+        return {
+            "n_datums": self.n_datums,
+            "n_groundtruths": self.n_groundtruths,
+            "n_predictions": self.n_predictions,
+            "n_labels": self.n_labels,
+            "ignored_prediction_labels": self.ignored_prediction_labels,
+            "missing_prediction_labels": self.missing_prediction_labels,
+        }
+
     def add_data(
         self,
         groundtruths: list[schemas.GroundTruth],
         predictions: list[schemas.Prediction],
     ):
         for groundtruth, prediction in tqdm(zip(groundtruths, predictions)):
+
+            # update metadata
+            self.n_datums += 1
+            self.n_groundtruths += len(groundtruth.annotations)
+            self.n_predictions += len(prediction.annotations)
 
             # update datum uids
             uid = groundtruth.datum.uid
@@ -387,14 +605,7 @@ class DetectionManager:
                     ]
                 )
 
-            indices = (
-                (new_data[:, 11] == new_data[:, 12])
-                | (new_data[:, 11] == -1.0)
-                | (new_data[:, 12] == -1.0)
-            )
-            self.pr_pairs.append(new_data[indices].copy())
-
-            self.detailed_pairs.append(new_data)
+            self.pairs.append(new_data)
 
     def add_data_from_dict(
         self,
@@ -539,20 +750,13 @@ class DetectionManager:
                     ]
                 )
 
-            indices = (
-                (new_data[:, 11] == new_data[:, 12])
-                | (new_data[:, 11] == -1.0)
-                | (new_data[:, 12] == -1.0)
-            )
-            self.pr_pairs.append(new_data[indices].copy())
-
-            self.detailed_pairs.append(new_data)
+            self.pairs.append(new_data)
 
     def finalize(self) -> None:
         if self._lock:
             return
 
-        if self.pr_pairs is None:
+        if self.pairs is None:
             raise ValueError
 
         self._label_counts = np.array(
@@ -565,19 +769,39 @@ class DetectionManager:
             ]
         )
 
+        glabels = set(self.gt_counts.keys())
+        plabels = set(self.pd_counts.keys())
+
+        self.ignored_prediction_labels = [
+            schemas.Label(
+                key=self.index_to_label[idx][0],
+                value=self.index_to_label[idx][1],
+            )
+            for idx in (plabels - glabels)
+        ]
+        self.missing_prediction_labels = [
+            schemas.Label(
+                key=self.index_to_label[idx][0],
+                value=self.index_to_label[idx][1],
+            )
+            for idx in (glabels - plabels)
+        ]
+        self.n_labels = len(self.index_to_label)
+
         detailed_pairs = np.concatenate(
-            _compute_iou(self.detailed_pairs),
+            _compute_iou(self.pairs),
             axis=0,
         )
 
         indices = np.lexsort(
             (
-                detailed_pairs[:, 6],
-                detailed_pairs[:, 3],
                 detailed_pairs[:, 1],
+                -detailed_pairs[:, 3],
+                -detailed_pairs[:, 6],
             )
         )
         detailed_pairs = detailed_pairs[indices]
+
         self._pairs_sorted_by_label = [
             detailed_pairs[
                 (detailed_pairs[:, 4] == label_id)
@@ -592,7 +816,7 @@ class DetectionManager:
     def compute_ap(
         self,
         iou_thresholds: list[float] = [0.5, 0.75, 0.9],
-    ):
+    ) -> list[AP]:
         if not self._lock:
             raise RuntimeError("Data not finalized.")
 
@@ -602,18 +826,92 @@ class DetectionManager:
             iou_thresholds=np.array(iou_thresholds),
         )
 
+        return [
+            AP(
+                values=[
+                    ValueAtIoU(
+                        iou=iou_thresholds[iou_idx],
+                        value=value,
+                    )
+                    for iou_idx, value in enumerate(row[:-1])
+                ],
+                label=self.index_to_label[row[-1]],
+            )
+            for row in metrics
+            if row[-1] > -0.5
+        ]
+
+    def compute_pr_curve(
+        self,
+        iou_thresholds: list[float] = [0.5],
+        n_samples: int = 0,
+    ) -> list[PrecisionRecallCurve]:
+        if not self._lock:
+            raise RuntimeError("Data not finalized.")
+
+        metrics = _compute_detailed_pr_curve(
+            self._pairs_sorted_by_label,
+            label_counts=self._label_counts,
+            iou_thresholds=np.array(iou_thresholds),
+            n_samples=n_samples,
+        )
+
+        tp_idx = 1
+        fp_misclf_idx = n_samples + 1
+        fp_hall_idx = fp_misclf_idx + n_samples + 1
+        fn_misclf_idx = fp_hall_idx + n_samples + 1
+        fn_misprd_idx = fn_misclf_idx + n_samples + 1
+
         results = list()
-        for row in metrics:
-            label_id = int(row[-1])
-            if label_id == -1:
-                continue
-
-            values = {
-                str(round(thresh, 5)): round(value, 5)
-                for thresh, value in zip(iou_thresholds, row[:-1])
-            }
-            values["label"] = self.index_to_label[label_id]
-            values["type"] = "AP"
-            results.append(values)
-
+        for label_idx in range(len(metrics)):
+            n_ious, n_scores, _ = metrics[label_idx].shape
+            for iou_idx in range(n_ious):
+                curve = PrecisionRecallCurve(
+                    iou=iou_thresholds[iou_idx],
+                    value=list(),
+                    label=self.index_to_label[label_idx],
+                )
+                for score_idx in range(n_scores):
+                    curve.value.append(
+                        PrecisionRecallCurvePoint(
+                            score=(score_idx + 1) / 100.0,
+                            tp=CountWithExamples(
+                                value=metrics[label_idx][iou_idx][score_idx][
+                                    tp_idx
+                                ],
+                                examples=[],
+                            ),
+                            fp_misclassification=CountWithExamples(
+                                value=metrics[label_idx][iou_idx][score_idx][
+                                    fp_misclf_idx
+                                ],
+                                examples=[],
+                            ),
+                            fp_hallucination=CountWithExamples(
+                                value=metrics[label_idx][iou_idx][score_idx][
+                                    fp_hall_idx
+                                ],
+                                examples=[],
+                            ),
+                            fn_misclassification=CountWithExamples(
+                                value=metrics[label_idx][iou_idx][score_idx][
+                                    fn_misclf_idx
+                                ],
+                                examples=[],
+                            ),
+                            fn_missing_prediction=CountWithExamples(
+                                value=metrics[label_idx][iou_idx][score_idx][
+                                    fn_misprd_idx
+                                ],
+                                examples=[],
+                            ),
+                        )
+                    )
+                results.append(curve)
         return results
+
+    def evaluate(
+        self,
+        metrics: list[MetricType],
+    ):
+        return list()
