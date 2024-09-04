@@ -1,4 +1,3 @@
-import numba
 import numpy as np
 import pandas as pd
 import shapely.affinity
@@ -9,104 +8,67 @@ from shapely.geometry import Polygon as ShapelyPolygon
 np.seterr(divide="ignore", invalid="ignore")
 
 
-@numba.jit(nopython=True)
-def calculate_axis_aligned_bbox_intersection(
-    bbox1: np.ndarray, bbox2: np.ndarray
-) -> float:
-    """
-    Calculate the intersection area between two axis-aligned bounding boxes.
+def _calculate_area_and_boundaries_of_bbox_series(array):
+    """Calculate the area and boundaries for each bbox represented in a numpy array."""
+    xmin = np.min(array[:, :, 0], axis=1)
+    xmax = np.max(array[:, :, 0], axis=1)
+    ymin = np.min(array[:, :, 1], axis=1)
+    ymax = np.max(array[:, :, 1], axis=1)
 
-    Parameters
-    ----------
-    bbox1 : np.ndarray
-        Array representing the first bounding bo.
-    bbox2 : np.ndarray
-        Array representing the second bounding box with the same format as bbox1.
-    Returns
-    -------
-    float
-        The area of the intersection between the two bounding boxes.
-    Raises
-    ------
-    ValueError
-        If the input bounding boxes do not have the expected shape.
-    """
+    area = (ymax - ymin) * (xmax - xmin)
 
-    xmin_inter = max(bbox1[:, 0].min(), bbox2[:, 0].min())
-    ymin_inter = max(bbox1[:, 1].min(), bbox2[:, 1].min())
-    xmax_inter = min(bbox1[:, 0].max(), bbox2[:, 0].max())
-    ymax_inter = min(bbox1[:, 1].max(), bbox2[:, 1].max())
-
-    width = max(0, xmax_inter - xmin_inter)
-    height = max(0, ymax_inter - ymin_inter)
-
-    intersection_area = width * height
-
-    return intersection_area
+    return area, (xmin, xmax, ymin, ymax)
 
 
-@numba.jit(nopython=True)
-def calculate_axis_aligned_bbox_union(
-    bbox1: np.ndarray, bbox2: np.ndarray
-) -> float:
-    """
-    Calculate the union area between two axis-aligned bounding boxes.
-
-    Parameters
-    ----------
-    bbox1 : np.ndarray
-        Array representing the first bounding box.
-    bbox2 : np.ndarray
-        Array representing the second bounding box with the same format as bbox1.
-    Returns
-    -------
-    float
-        The area of the union between the two bounding boxes.
-    Raises
-    ------
-    ValueError
-        If the input bounding boxes do not have the expected shape.
-    """
-    area1 = (bbox1[:, 0].max() - bbox1[:, 0].min()) * (
-        bbox1[:, 1].max() - bbox1[:, 1].min()
-    )
-    area2 = (bbox2[:, 0].max() - bbox2[:, 0].min()) * (
-        bbox2[:, 1].max() - bbox2[:, 1].min()
-    )
-    union_area = (
-        area1 + area2 - calculate_axis_aligned_bbox_intersection(bbox1, bbox2)
-    )
-    return union_area
-
-
-@numba.jit(nopython=True)
 def calculate_axis_aligned_bbox_iou(
-    bbox1: np.ndarray, bbox2: np.ndarray
-) -> float:
+    series_of_bboxes1: pd.Series, series_of_bboxes2: pd.Series
+) -> pd.Series:
     """
-    Calculate the Intersection over Union (IoU) between two axis-aligned bounding boxes.
+    Calculate the IOU between two series of axis-aligned bounding boxes.
 
     Parameters
     ----------
-    bbox1 : np.ndarray
-        Array representing the first bounding box.
-    bbox2 : np.ndarray
-        Array representing the second bounding box with the same format as bbox1.
+    series_of_bboxes1 : pd.Series
+        Series of bounding boxes, where each element is an array-like object representing a bounding box.
+    series_of_bboxes2 : pd.Series
+        Series of bounding boxes with the same format as series1.
+
     Returns
     -------
-    float
-        The IoU between the two bounding boxes. Returns 0 if the union area is zero.
-
-    Raises
-    ------
-    ValueError
-        If the input bounding boxes do not have the expected shape.
+    pd.Series
+        Series containing the IOU for each pair of bounding boxes.
     """
-    intersection = calculate_axis_aligned_bbox_intersection(bbox1, bbox2)
-    union = calculate_axis_aligned_bbox_union(bbox1, bbox2)
+    # convert series to NumPy arrays for vectorized operations. note that this output has a different shape than using .to_numpy()
+    series1 = np.array(series_of_bboxes1.tolist())
+    series2 = np.array(series_of_bboxes2.tolist())
+
+    s1_area, (
+        s1_xmin,
+        s1_xmax,
+        s1_ymin,
+        s1_ymax,
+    ) = _calculate_area_and_boundaries_of_bbox_series(series1)
+    s2_area, (
+        s2_xmin,
+        s2_xmax,
+        s2_ymin,
+        s2_ymax,
+    ) = _calculate_area_and_boundaries_of_bbox_series(series2)
+
+    intersection_width = np.clip(
+        np.minimum(s1_xmax, s2_xmax) - np.maximum(s1_xmin, s2_xmin), 0, None
+    )
+    intersection_height = np.clip(
+        np.minimum(s1_ymax, s2_ymax) - np.maximum(s1_ymin, s2_ymin), 0, None
+    )
+
+    intersection = intersection_height * intersection_width
+    union = s1_area + s2_area - intersection
+
     iou = intersection / union
 
-    return iou
+    # the indexes of series_of_bboxes1 and series_of_bboxes2 are the same, so it doesn't matter which you use
+    return pd.Series(iou, index=series_of_bboxes1.index)
 
 
 def calculate_iou(

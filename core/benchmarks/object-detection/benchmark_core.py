@@ -1,7 +1,6 @@
 import io
 import json
 import os
-import re
 from base64 import b64decode
 from dataclasses import dataclass
 from datetime import datetime
@@ -21,17 +20,19 @@ from valor_core import (
     Polygon,
     Prediction,
     Raster,
-    ValorDetectionManager,
     enums,
     evaluate_detection,
 )
 from valor_core.enums import AnnotationType
 
 
-def time_it(fn, *args, **kwargs):
-    start = time()
-    results = fn(*args, **kwargs)
-    return (time() - start, results)
+def time_it(fn):
+    def wrapper(*args, **kwargs):
+        start = time()
+        results = fn(*args, **kwargs)
+        return (time() - start, results)
+
+    return wrapper
 
 
 def download_data_if_not_exists(
@@ -62,9 +63,18 @@ def download_data_if_not_exists(
     else:
         print(f"{file_name} already exists locally.")
 
+    # sort file by datum uid
+    with open(file_path, "r") as f:
+        lines = [x for x in f]
+    with open(file_path, "w") as f:
+        for line in sorted(
+            lines, key=lambda x: int(json.loads(x)["datum"]["uid"])
+        ):
+            f.write(line)
+
 
 def write_results_to_file(write_path: Path, results: list[dict]):
-    """Write results to results.json"""
+    """Write results to core_results.json"""
     current_datetime = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
     if os.path.isfile(write_path):
         with open(write_path, "r") as file:
@@ -79,6 +89,44 @@ def write_results_to_file(write_path: Path, results: list[dict]):
         json.dump(data, file, indent=4)
 
 
+def _create_annotation(
+    dtype: str,
+    ann: dict,
+):
+    ann.pop("text")
+    ann.pop("context_list")
+
+    labels = []
+    for label in ann["labels"]:
+        labels.append(Label(**label))
+    ann["labels"] = labels
+
+    if ann["bounding_box"] and dtype == AnnotationType.BOX:
+        ann["bounding_box"] = Box(ann["bounding_box"])
+        return Annotation(**ann)
+
+    if ann["polygon"] and dtype == AnnotationType.POLYGON:
+        ann["polygon"] = Polygon(ann["polygon"])
+        return Annotation(**ann)
+
+    if ann["raster"] and dtype == AnnotationType.RASTER:
+        mask_bytes = b64decode(ann["raster"]["mask"])
+        with io.BytesIO(mask_bytes) as f:
+            img = PIL.Image.open(f)
+            w, h = img.size
+            if ann["raster"]["geometry"] is not None:
+                ann["raster"] = Raster.from_geometry(
+                    ann["raster"]["geometry"],
+                    width=w,
+                    height=h,
+                )
+            elif ann["raster"]["geometry"] is None:
+                # decode raster
+                ann["raster"] = Raster(mask=np.array(img))
+        return Annotation(**ann)
+
+
+@time_it
 def ingest_groundtruths(
     dtype: AnnotationType,
     path: Path,
@@ -93,46 +141,18 @@ def ingest_groundtruths(
 
             annotations = []
             for ann in gt_dict["annotations"]:
-                ann.pop("text")
-                ann.pop("context_list")
-
-                labels = []
-                for label in ann["labels"]:
-                    labels.append(Label(**label))
-                ann["labels"] = labels
-
-                if ann["bounding_box"] and dtype == AnnotationType.BOX:
-                    ann["bounding_box"] = Box(ann["bounding_box"])
-                    annotations.append(Annotation(**ann))
-
-                if ann["polygon"] and dtype == AnnotationType.POLYGON:
-                    ann["polygon"] = Polygon(ann["polygon"])
-                    annotations.append(Annotation(**ann))
-
-                if ann["raster"] and dtype == AnnotationType.RASTER:
-                    mask_bytes = b64decode(ann["raster"]["mask"])
-                    with io.BytesIO(mask_bytes) as f:
-                        img = PIL.Image.open(f)
-                        w, h = img.size
-                        if ann["raster"]["geometry"] is not None:
-                            ann["raster"] = Raster.from_geometry(
-                                ann["raster"]["geometry"],
-                                width=w,
-                                height=h,
-                            )
-                        elif ann["raster"]["geometry"] is None:
-                            # decode raster
-                            ann["raster"] = Raster(mask=np.array(img))
-                    annotations.append(Annotation(**ann))
+                annotations.append(_create_annotation(dtype=dtype, ann=ann))
 
             gt_dict["annotations"] = annotations
             gt = GroundTruth(**gt_dict)
             groundtruths.append(gt)
+
             if len(groundtruths) >= limit:
                 return groundtruths
     return groundtruths
 
 
+@time_it
 def ingest_predictions(
     dtype: AnnotationType,
     datum_uids: list[str],
@@ -140,59 +160,22 @@ def ingest_predictions(
     limit: int,
 ) -> list[Prediction]:
 
-    pattern = re.compile(r'"uid":\s*"(\d+)"')
-
     predictions = []
     with open(path, "r") as f:
         count = 0
         for line in f:
-            match = pattern.search(line)
-            if not match:
-                continue
-            elif match.group(1) not in datum_uids:
-                continue
             pd_dict = json.loads(line)
-
             pd_dict["datum"].pop("text")
             pd_dict["datum"] = Datum(**pd_dict["datum"])
 
             annotations = []
             for ann in pd_dict["annotations"]:
-                ann.pop("text")
-                ann.pop("context_list")
-
-                labels = []
-                for label in ann["labels"]:
-                    labels.append(Label(**label))
-                ann["labels"] = labels
-
-                if ann["bounding_box"] and dtype == AnnotationType.BOX:
-                    ann["bounding_box"] = Box(ann["bounding_box"])
-                    annotations.append(Annotation(**ann))
-
-                if ann["polygon"] and dtype == AnnotationType.POLYGON:
-                    ann["polygon"] = Polygon(ann["polygon"])
-                    annotations.append(Annotation(**ann))
-
-                if ann["raster"] and dtype == AnnotationType.RASTER:
-                    mask_bytes = b64decode(ann["raster"]["mask"])
-                    with io.BytesIO(mask_bytes) as f:
-                        img = PIL.Image.open(f)
-                        w, h = img.size
-                        if ann["raster"]["geometry"] is not None:
-                            ann["raster"] = Raster.from_geometry(
-                                ann["raster"]["geometry"],
-                                width=w,
-                                height=h,
-                            )
-                        elif ann["raster"]["geometry"] is None:
-                            # decode raster
-                            ann["raster"] = Raster(mask=np.array(img))
-                    annotations.append(Annotation(**ann))
+                annotations.append(_create_annotation(dtype=dtype, ann=ann))
 
             pd_dict["annotations"] = annotations
             pd = Prediction(**pd_dict)
             predictions.append(pd)
+
             count += 1
             if count >= limit:
                 return predictions
@@ -242,101 +225,70 @@ def run_detailed_pr_curve_evaluation(groundtruths, predictions):
     return evaluation
 
 
-def run_base_evaluation_with_manager(groundtruths, predictions):
-    """Run a base evaluation (with no PR curves) using ValorDetectionManager."""
-    manager = ValorDetectionManager()
-    manager.add_data(groundtruths=groundtruths, predictions=predictions)
-    return manager.evaluate()
-
-
-def run_pr_curve_evaluation_with_manager(groundtruths, predictions):
-    """Run a base evaluation with PrecisionRecallCurve included using ValorDetectionManager."""
-    manager = ValorDetectionManager(
-        metrics_to_return=[
-            enums.MetricType.AP,
-            enums.MetricType.AR,
-            enums.MetricType.mAP,
-            enums.MetricType.APAveragedOverIOUs,
-            enums.MetricType.mAR,
-            enums.MetricType.mAPAveragedOverIOUs,
-            enums.MetricType.PrecisionRecallCurve,
-        ],
-    )
-
-    manager.add_data(groundtruths=groundtruths, predictions=predictions)
-
-    return manager.evaluate()
-
-
-def run_detailed_pr_curve_evaluation_with_manager(groundtruths, predictions):
-    """Run a base evaluation with PrecisionRecallCurve and DetailedPrecisionRecallCurve included using ValorDetectionManager."""
-
-    manager = ValorDetectionManager(
-        metrics_to_return=[
-            enums.MetricType.AP,
-            enums.MetricType.AR,
-            enums.MetricType.mAP,
-            enums.MetricType.APAveragedOverIOUs,
-            enums.MetricType.mAR,
-            enums.MetricType.mAPAveragedOverIOUs,
-            enums.MetricType.PrecisionRecallCurve,
-            enums.MetricType.DetailedPrecisionRecallCurve,
-        ],
-    )
-
-    manager.add_data(groundtruths=groundtruths, predictions=predictions)
-
-    return manager.evaluate()
-
-
 @dataclass
-class DataBenchmark:
-    dtype: str
-    ingestion: float
-
-    def result(self) -> dict[str, float | str]:
-        return {
-            "dtype": self.dtype,
-            "ingestion": round(self.ingestion, 2),
-        }
-
-
-@dataclass
-class EvaluationBenchmark:
+class Benchmark:
     limit: int
-    gt_stats: DataBenchmark
-    pd_stats: DataBenchmark
     n_datums: int
     n_annotations: int
     n_labels: int
+    gt_type: AnnotationType
+    pd_type: AnnotationType
+    gt_ingest: float
+    pd_ingest: float
     eval_base: float
     eval_base_pr: float
     eval_base_pr_detail: float
 
-    def result(self) -> dict[str, float | str | dict[str, str | float]]:
+    def result(self) -> dict:
         return {
             "limit": self.limit,
-            "groundtruths": self.gt_stats.result(),
-            "predictions": self.pd_stats.result(),
-            "evaluation": {
-                "number_of_datums": self.n_datums,
-                "number_of_annotations": self.n_annotations,
-                "number_of_labels": self.n_labels,
-                "base": round(self.eval_base, 2),
-                "base+pr": round(self.eval_base_pr, 2),
-                "base+pr+detailed": round(self.eval_base_pr_detail, 2),
+            "n_datums": self.n_datums,
+            "n_annotations": self.n_annotations,
+            "n_labels": self.n_labels,
+            "dtype": {
+                "groundtruth": self.gt_type.value,
+                "prediction": self.pd_type.value,
             },
+            "chunk_size": self.limit,
+            "base": {
+                "ingestion": f"{round(self.gt_ingest + self.pd_ingest, 2)} seconds",
+                "evaluation": {
+                    "preprocessing": "0.0 seconds",
+                    "computation": f"{round(self.eval_base, 2)} seconds",
+                    "total": f"{round(self.eval_base, 2)} seconds",
+                },
+            },
+            "base+pr": {
+                "ingestion": f"{round(self.gt_ingest + self.pd_ingest, 2)} seconds",
+                "evaluation": {
+                    "preprocessing": "0.0 seconds",
+                    "computation": f"{round(self.eval_base_pr, 2)} seconds",
+                    "total": f"{round(self.eval_base_pr, 2)} seconds",
+                },
+            }
+            if self.eval_base_pr > -1
+            else {},
+            "base+pr+detailed": {
+                "ingestion": f"{round(self.gt_ingest + self.pd_ingest, 2)} seconds",
+                "evaluation": {
+                    "preprocessing": "0.0 seconds",
+                    "computation": f"{round(self.eval_base_pr_detail, 2)} seconds",
+                    "total": f"{round(self.eval_base_pr_detail, 2)} seconds",
+                },
+            }
+            if self.eval_base_pr_detail > -1
+            else {},
         }
 
 
 def run_benchmarking_analysis(
     limits_to_test: list[int],
     combinations: list[tuple[AnnotationType, AnnotationType]] | None = None,
-    results_file: str = "results.json",
-    ingestion_chunk_timeout: int = 30,
-    evaluation_timeout: int = 30,
+    results_file: str = "core_results.json",
     compute_pr: bool = True,
     compute_detailed: bool = True,
+    ingestion_timeout=30,
+    evaluation_timeout=30,
 ):
     """Time various function calls and export the results."""
     current_directory = Path(__file__).parent
@@ -393,65 +345,78 @@ def run_benchmarking_analysis(
             pd_filename = prediction_caches[pd_type]
 
             # gt ingestion
-            gt_ingest_time, groundtruths = time_it(
-                ingest_groundtruths,
+            gt_ingest_time, groundtruths = ingest_groundtruths(
                 dtype=gt_type,
                 path=current_directory / Path(gt_filename),
                 limit=limit,
             )
 
             # pd ingestion
-            datum_uids = [gt.datum.uid for gt in groundtruths]
-            pd_ingest_time, predictions = time_it(
-                ingest_predictions,
+            datum_uids = [gt.datum.uid for gt in groundtruths]  # type: ignore
+            pd_ingest_time, predictions = ingest_predictions(
                 dtype=pd_type,
                 datum_uids=datum_uids,
                 path=current_directory / Path(pd_filename),
                 limit=limit,
             )
 
-            # run evaluations
-            eval_pr = None
-            eval_detail = None
-            eval_base = run_base_evaluation_with_manager(
-                groundtruths, predictions
-            )
-            if compute_pr:
-                eval_pr = run_pr_curve_evaluation_with_manager(
-                    groundtruths, predictions
-                )
-            if compute_detailed:
-                eval_detail = run_detailed_pr_curve_evaluation(
-                    groundtruths, predictions
+            if (
+                gt_ingest_time + pd_ingest_time > ingestion_timeout  # type: ignore
+                and ingestion_timeout != -1
+            ):
+                raise TimeoutError(
+                    f"Benchmark timed out while attempting to ingest {limit} datums."
                 )
 
-            assert eval_base.meta
+            # === Base Evaluation ===
+            base_results = run_base_evaluation(groundtruths, predictions)
+            assert base_results.meta
+            n_datums = base_results.meta["datums"]
+            n_annotations = base_results.meta["annotations"]
+            n_labels = base_results.meta["labels"]
+            base = base_results.meta["duration"]
+            if base > evaluation_timeout and evaluation_timeout != -1:
+                raise TimeoutError(
+                    f"Base evaluation timed out with {n_datums} datums."
+                )
+
+            # === PR Evaluation ===
+            pr = -1
+            if compute_pr:
+                pr_results = run_pr_curve_evaluation(groundtruths, predictions)
+                assert pr_results.meta
+                pr = pr_results.meta["duration"]
+                if pr > evaluation_timeout and evaluation_timeout != -1:
+                    raise TimeoutError(
+                        f"PR evaluation timed out with {n_datums} datums."
+                    )
+
+            # === Detailed Evaluation ===
+            detailed = -1
+            if compute_detailed:
+                detailed_results = run_detailed_pr_curve_evaluation(
+                    groundtruths, predictions
+                )
+                assert detailed_results.meta
+                detailed = detailed_results.meta["duration"]
+                if detailed > evaluation_timeout and evaluation_timeout != -1:
+                    raise TimeoutError(
+                        f"Detailed evaluation timed out with {n_datums} datums."
+                    )
 
             results.append(
-                EvaluationBenchmark(
+                Benchmark(
                     limit=limit,
-                    gt_stats=DataBenchmark(
-                        dtype=gt_type,
-                        ingestion=gt_ingest_time,
-                    ),
-                    pd_stats=DataBenchmark(
-                        dtype=pd_type,
-                        ingestion=pd_ingest_time,
-                    ),
-                    n_datums=eval_base.meta["datums"],
-                    n_annotations=eval_base.meta["annotations"],
-                    n_labels=eval_base.meta["labels"],
-                    eval_base=eval_base.meta["duration"],
-                    eval_base_pr=(
-                        eval_pr.meta["duration"]
-                        if eval_pr and eval_pr.meta
-                        else -1
-                    ),
-                    eval_base_pr_detail=(
-                        eval_detail.meta["duration"]
-                        if eval_detail and eval_detail.meta
-                        else -1
-                    ),
+                    n_datums=n_datums,
+                    n_annotations=n_annotations,
+                    n_labels=n_labels,
+                    gt_type=gt_type,
+                    pd_type=pd_type,
+                    gt_ingest=gt_ingest_time,
+                    pd_ingest=pd_ingest_time,
+                    eval_base=base,
+                    eval_base_pr=pr,
+                    eval_base_pr_detail=detailed,
                 ).result()
             )
 
