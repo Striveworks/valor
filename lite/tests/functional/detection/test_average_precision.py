@@ -21,12 +21,18 @@ def test__compute_ap():
     iou_thresholds = np.array([0.1, 0.6])
 
     results = _compute_ap(
-        [sorted_pairs],
+        sorted_pairs,
         gt_counts=gt_counts,
         iou_thresholds=iou_thresholds,
     )
 
-    expected = np.array([[1.0, 1 / 3, 0.0]])
+    print(results)
+
+    expected = np.array(
+        [
+            [1.0, 1 / 3],
+        ]
+    )
 
     assert expected.shape == results.shape
     assert np.isclose(results, expected).all()

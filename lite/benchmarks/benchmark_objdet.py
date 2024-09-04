@@ -293,18 +293,18 @@ def run_benchmarking_analysis(
             print("AP computation (work in progress)", ap_time)
             # print(json.dumps(ap_metrics, indent=2))
 
-            pr_time, pr_metrics = time_it(manager.compute_pr_curve)(
-                n_samples=3
-            )
-            print("PR Curve", pr_time)
+            # pr_time, pr_metrics = time_it(manager.compute_pr_curve)(
+            #     n_samples=3
+            # )
+            # print("PR Curve", pr_time)
 
-            for m in pr_metrics:
-                print(json.dumps(m.to_dict(), indent=2))
+            # for m in pr_metrics:
+            #     print(json.dumps(m.to_dict(), indent=2))
 
             print("ingest", ingest_time)
             print("preprocess", finalization_time)
             print("AP computation (work in progress)", ap_time)
-            print("Detailed PR Curve", pr_time)
+            # print("Detailed PR Curve", pr_time)
             print("Benchmark IoU:", numpy_iou)
 
             # # run evaluations

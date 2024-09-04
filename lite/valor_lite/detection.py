@@ -1,3 +1,4 @@
+import math
 from collections import defaultdict
 from dataclasses import dataclass
 from typing import Any
@@ -106,35 +107,47 @@ class PrecisionRecallCurve:
             },
             "type": "PrecisionRecallCurve",
         }
-    
+
 
 def _compute_iou(data: list[np.ndarray]) -> list[np.ndarray]:
 
     results = list()
     for datum_idx in numba.prange(len(data)):
         datum = data[datum_idx]
-    
-        xmin1, xmax1, ymin1, ymax1 = datum[:, 3], datum[:, 4], datum[:, 5], datum[:, 6]
-        xmin2, xmax2, ymin2, ymax2 = datum[:, 7], datum[:, 8], datum[:, 9], datum[:, 10]
-        
+
+        xmin1, xmax1, ymin1, ymax1 = (
+            datum[:, 3],
+            datum[:, 4],
+            datum[:, 5],
+            datum[:, 6],
+        )
+        xmin2, xmax2, ymin2, ymax2 = (
+            datum[:, 7],
+            datum[:, 8],
+            datum[:, 9],
+            datum[:, 10],
+        )
+
         xmin = np.maximum(xmin1, xmin2)
         ymin = np.maximum(ymin1, ymin2)
         xmax = np.minimum(xmax1, xmax2)
         ymax = np.minimum(ymax1, ymax2)
-        
+
         intersection_width = np.maximum(0, xmax - xmin)
         intersection_height = np.maximum(0, ymax - ymin)
         intersection_area = intersection_width * intersection_height
-        
+
         area1 = (xmax1 - xmin1) * (ymax1 - ymin1)
         area2 = (xmax2 - xmin2) * (ymax2 - ymin2)
-        
+
         union_area = area1 + area2 - intersection_area
-        
+
         iou = np.zeros_like(union_area)
         valid_union_mask = union_area >= 1e-9
-        iou[valid_union_mask] = intersection_area[valid_union_mask] / union_area[valid_union_mask]
-    
+        iou[valid_union_mask] = (
+            intersection_area[valid_union_mask] / union_area[valid_union_mask]
+        )
+
         h = datum.shape[0]
         result = np.zeros((h, 7))
         result[:, 0:3] = datum[:, 0:3]
@@ -142,115 +155,88 @@ def _compute_iou(data: list[np.ndarray]) -> list[np.ndarray]:
         result[:, 4:] = datum[:, 11:]
 
         results.append(result)
-        
+
     return results
 
 
+# @numba.njit()
 def _compute_ap(
-    data: list[np.ndarray],
+    data: np.ndarray,
     gt_counts: np.ndarray,
     iou_thresholds: np.ndarray,
 ) -> np.ndarray:
 
-    n_thresh = iou_thresholds.shape[0]
-    results = np.zeros((len(data), n_thresh + 1))  # AP metrics + label
-    for label_idx in numba.prange(len(data)):
-        h, _ = data[label_idx].shape
+    n_rows = data.shape[0]
+    n_labels = len(gt_counts)
+    n_ious = iou_thresholds.shape[0]
 
-        number_of_groundtruths = gt_counts[label_idx]
+    visited_gts, visited_pds = set(), set()
 
-        # if no groundtruths exist for the label, set to null results and continue
-        if number_of_groundtruths == 0.0:
-            for thresh_idx in range(n_thresh):
-                results[label_idx][thresh_idx] = 0.0
-            results[label_idx][n_thresh] = -1.0
-            continue
+    total_count = np.zeros((n_labels, n_ious))
+    tp_count = np.zeros((n_labels, n_ious))
+    pr_curve = np.zeros((n_labels, 101, n_ious))  # binned PR curve
 
-        # rank pairs
-        visited_pds = set()
-        ranked_pairs = np.zeros((h, 7))
-        ranked_row = 0
-        for row in range(h):
+    for row in numba.prange(n_rows):
+        for iou_idx in range(n_ious):
 
-            datum = data[label_idx][row]
+            datum_id = data[row][0]
+            gt_id = data[row][1]
+            pd_id = data[row][2]
+            iou = data[row][3]
+            gt_label = data[row][4]
+            pd_label = int(data[row][5])
+            score = data[row][6]  # score
+            is_match = 1.0 if data[row][4] == data[row][5] else 0.0
 
-            if datum[5] != label_idx:  # label mismatch
+            gt_tuple = (datum_id, gt_id, gt_label, iou_idx)
+            pd_tuple = (datum_id, pd_id, pd_label, iou_idx)
+
+            skip1 = pd_tuple in visited_pds and data[row][1] >= 0.0
+            skip2 = pd_id < 0.0
+            skip3 = np.isclose(gt_counts[pd_label], 0.0)  # no groundtruths
+
+            if skip1 or skip2 or skip3:
                 continue
 
-            pd_tuple = (
-                datum[0],  # datum
-                datum[2],  # pd id
-                datum[5],  # pd label
+            total_count[pd_label][iou_idx] += 1
+            visited_pds.add(pd_tuple)
+
+            if (
+                score > 0.0
+                and gt_id >= 0.0
+                and iou > iou_thresholds[iou_idx]
+                and is_match
+                and gt_tuple not in visited_gts
+            ):
+                tp_count[pd_label][iou_idx] += 1
+                visited_gts.add(gt_tuple)
+
+            precision = (
+                tp_count[pd_label][iou_idx] / total_count[pd_label][iou_idx]
+            )
+            recall = (
+                tp_count[pd_label][iou_idx] / gt_counts[pd_label]
+                if gt_counts[pd_label] > 0
+                else 0.0
             )
 
-            if pd_tuple not in visited_pds or datum[1] < 0.0:
-                is_match = 1.0 if datum[4] == datum[5] else 0.0
-                ranked_pairs[ranked_row][0] = datum[0]  # datum
-                ranked_pairs[ranked_row][1] = datum[1]  # gt
-                ranked_pairs[ranked_row][2] = datum[2]  # pd
-                ranked_pairs[ranked_row][3] = datum[3]  # iou
-                ranked_pairs[ranked_row][4] = datum[5]  # label
-                ranked_pairs[ranked_row][5] = datum[6]  # score
-                ranked_pairs[ranked_row][6] = is_match  # is_match
-                visited_pds.add(pd_tuple)
-                ranked_row += 1
+            recall = int(math.floor(recall * 100.0))
+            pr_curve[pd_label][recall][iou_idx] = (
+                precision
+                if precision > pr_curve[pd_label][recall][iou_idx]
+                else pr_curve[pd_label][recall][iou_idx]
+            )
 
-        ranked_pairs = ranked_pairs[:ranked_row]
-        h = ranked_pairs.shape[0]
-
-        for thresh_idx in range(n_thresh):
-            total_count = 0
-            tp_count = 0
-            pr_curve = np.zeros((101,))  # binned PR curve
-            visited_gts = set()
-            for row in range(h):
-
-                gt_tuple = (
-                    ranked_pairs[row][0],  # datum
-                    ranked_pairs[row][1],  # gt
-                )
-
-                if ranked_pairs[row][2] < 0:  # no prediction
-                    continue
-
-                total_count += 1
-                if (
-                    ranked_pairs[row][5] > 0.0  # score > 0
-                    and ranked_pairs[row][1] > -0.5  # groundtruth exists
-                    and ranked_pairs[row][3]  # passes iou threshold
-                    > iou_thresholds[thresh_idx]
-                    and ranked_pairs[row][6] > 0.5  # matching label
-                    and gt_tuple not in visited_gts
-                ):
-                    tp_count += 1
-                    visited_gts.add(gt_tuple)
-
-                precision = tp_count / total_count
-                recall = (
-                    tp_count / number_of_groundtruths
-                    if number_of_groundtruths > 0
-                    else 0.0
-                )
-
-                recall = int(np.floor(recall * 100.0))
-                pr_curve[recall] = (
-                    precision
-                    if precision > pr_curve[recall]
-                    else pr_curve[recall]
-                )
-
-            # interpolate the PR-Curve
-            auc = 0.0
-            running_max = 0.0
-            for recall in range(100, -1, -1):
-                precision = pr_curve[recall]
-                if precision > running_max:
-                    running_max = precision
-                auc += running_max
-            results[label_idx][thresh_idx] = auc / 101
-        results[label_idx][n_thresh] = label_idx  # record label
-
-    return results
+    # interpolate the PR-Curve
+    results = np.zeros((n_labels, n_ious))
+    running_max = np.zeros((n_labels, n_ious))
+    for recall in range(100, -1, -1):
+        precision = pr_curve[:, recall, :]
+        running_max[precision > running_max] = precision[
+            precision > running_max
+        ]
+        results += running_max
+    return results / 101.0
 
 
 @numba.njit(parallel=False)
@@ -410,6 +396,8 @@ class DetectionManager:
         self.n_groundtruths = 0
         self.n_predictions = 0
         self.n_labels = 0
+        self.gt_counts = defaultdict(int)
+        self.pd_counts = defaultdict(int)
 
         # datum reference
         self.uid_to_index = dict()
@@ -421,8 +409,6 @@ class DetectionManager:
 
         # ingestion caches
         self.pairs = list()
-        self.gt_counts = defaultdict(int)
-        self.pd_counts = defaultdict(int)
 
         # computation caches
         self._label_counts = np.empty((1, 2))
@@ -433,8 +419,8 @@ class DetectionManager:
             super().__setattr__("_lock", False)
         if self._lock and __name in {
             "pairs",
-            "gt_count",
-            "pd_count",
+            "gt_counts",
+            "pd_counts",
             "uid_to_index",
             "index_to_uid",
             "label_to_index",
@@ -461,7 +447,7 @@ class DetectionManager:
             )
             for idx in (plabels - glabels)
         ]
-    
+
     @property
     def missing_prediction_labels(self) -> list[schemas.Label]:
         glabels = set(self.gt_counts.keys())
@@ -472,7 +458,7 @@ class DetectionManager:
                 value=self.index_to_label[idx][1],
             )
             for idx in (glabels - plabels)
-        ] 
+        ]
 
     @property
     def metadata(self) -> dict:
@@ -814,24 +800,21 @@ class DetectionManager:
                 -detailed_pairs[:, 6],
             )
         )
-        detailed_pairs = detailed_pairs[indices]
+        self.detailed_pairs = detailed_pairs[indices]
 
-        self._pairs_sorted_by_label = [
-            detailed_pairs[
-                (detailed_pairs[:, 4] == label_id)
-                | (detailed_pairs[:, 5] == label_id)
-            ]
-            for label_id in range(len(self.index_to_label))
-        ]
+        # self._pairs_sorted_by_label = [
+        #     detailed_pairs[
+        #         (detailed_pairs[:, 4] == label_id)
+        #         | (detailed_pairs[:, 5] == label_id)
+        #     ]
+        #     for label_id in range(len(self.index_to_label))
+        # ]
 
         # lock the object
         self._lock = True
 
         # clear ingestion cache
         del self.pairs
-        del self.gt_counts
-        del self.pd_counts
-
 
     def compute_ap(
         self,
@@ -841,7 +824,7 @@ class DetectionManager:
             raise RuntimeError("Data not finalized.")
 
         metrics = _compute_ap(
-            data=self._pairs_sorted_by_label,
+            data=self.detailed_pairs,
             gt_counts=self._label_counts[:, 0],
             iou_thresholds=np.array(iou_thresholds),
         )
@@ -853,12 +836,12 @@ class DetectionManager:
                         iou=iou_thresholds[iou_idx],
                         value=value,
                     )
-                    for iou_idx, value in enumerate(row[:-1])
+                    for iou_idx, value in enumerate(row)
                 ],
-                label=self.index_to_label[row[-1]],
+                label=self.index_to_label[label_idx],
             )
-            for row in metrics
-            if row[-1] > -0.5
+            for label_idx, row in enumerate(metrics)
+            if int(self._label_counts[label_idx][0]) > 0.0
         ]
 
     def compute_pr_curve(
