@@ -44,10 +44,14 @@ jobs:
         with:
           name: ${{ env.COVERAGE_FILE }}
           path: api/${{ env.COVERAGE_FILE }}
+          include-hidden-files: true
 
   integration-tests:
     env:
       COVERAGE_FILE: .coverage.integration-tests
+    defaults:
+      run:
+        working-directory: .
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
@@ -81,6 +85,7 @@ jobs:
         with:
           name: ${{ env.COVERAGE_FILE }}
           path: ${{ env.COVERAGE_FILE }}
+          include-hidden-files: true
       - name: install typescript client
         run: npm install
         working-directory: ./ts-client
@@ -121,6 +126,7 @@ jobs:
         with:
           name: ${{ env.COVERAGE_FILE }}
           path: api/${{ env.COVERAGE_FILE }}
+          include-hidden-files: true
 
   client-unit-tests:
     env:
@@ -144,6 +150,7 @@ jobs:
         with:
           name: ${{ env.COVERAGE_FILE }}
           path: client/${{ env.COVERAGE_FILE }}
+          include-hidden-files: true
 
   combine-coverage-report:
     needs:
