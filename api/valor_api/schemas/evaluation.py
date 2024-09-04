@@ -1,5 +1,6 @@
 import datetime
 
+from nltk.translate import bleu_score
 from pydantic import BaseModel, ConfigDict, field_validator, model_validator
 
 from valor_api.enums import (
@@ -43,6 +44,8 @@ class EvaluationParameters(BaseModel):
           The IOU threshold to use when calculating precision-recall curves for object detection tasks. Defaults to 0.5.
     pr_curve_max_examples: int
         The maximum number of datum examples to store when calculating PR curves.
+    bleu_smoothing_function: str, optional
+        The method name of the smoothing function to use when calculating BLEU scores. See https://github.com/nltk/nltk/blob/develop/nltk/translate/bleu_score.py for options.
     bleu_weights: list[float], optional
         The weights to use when calculating BLEU scores.
     rouge_types: list[ROUGEType]
@@ -62,6 +65,7 @@ class EvaluationParameters(BaseModel):
     recall_score_threshold: float | None = 0
     pr_curve_iou_threshold: float = 0.5
     pr_curve_max_examples: int = 1
+    bleu_smoothing_function: str | None = None
     bleu_weights: list[float] | None = None
     rouge_types: list[ROUGEType] | None = None
     rouge_use_stemmer: bool | None = None
@@ -182,6 +186,15 @@ class EvaluationParameters(BaseModel):
                     if values.llm_api_params is None:
                         raise ValueError(
                             "`llm_api_params` must be provided for LLM guided evaluations."
+                        )
+
+                if values.bleu_smoothing_function is not None:
+                    if not hasattr(
+                        bleu_score.SmoothingFunction,
+                        values.bleu_smoothing_function,
+                    ):
+                        raise ValueError(
+                            f"BLEU smoothing function `{values.bleu_smoothing_function}` is not supported."
                         )
 
                 if values.bleu_weights is not None:

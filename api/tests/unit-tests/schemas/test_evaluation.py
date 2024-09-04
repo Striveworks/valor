@@ -91,6 +91,7 @@ def test_EvaluationParameters(llm_api_params):
             MetricType.Toxicity,
         ],
         llm_api_params=llm_api_params,
+        bleu_smoothing_function="method1",
         bleu_weights=[0.5, 0.25, 0.25, 0],
         rouge_types=[ROUGEType.ROUGE1, ROUGEType.ROUGELSUM],
         rouge_use_stemmer=True,
@@ -183,6 +184,16 @@ def test_EvaluationParameters(llm_api_params):
                 MetricType.ROUGE,
                 MetricType.Toxicity,
             ],
+        )
+
+    # BLEU smoothing function name must be a valid option. See https://github.com/nltk/nltk/blob/develop/nltk/translate/bleu_score.py for options.
+    with pytest.raises(ValidationError):
+        schemas.EvaluationParameters(
+            task_type=enums.TaskType.TEXT_GENERATION,
+            metrics_to_return=[
+                MetricType.BLEU,
+            ],
+            bleu_smoothing_function="invalid_smoothing_function_name",
         )
 
     # BLEU weights must be 0 <= weight <= 1.

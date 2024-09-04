@@ -133,6 +133,7 @@ def _calculate_rouge_scores(
 def _calculate_sentence_bleu(
     predictions: str | list[str],
     references: list[str] | list[list[str]],
+    smoothing_function: str | None = None,
     weights: list[float] = [0.25, 0.25, 0.25, 0.25],
 ) -> list[dict[str, float]]:
     """
@@ -144,6 +145,8 @@ def _calculate_sentence_bleu(
         The predictions to score. Each prediction should be a string with tokens separated by spaces.
     references: list[str] | list[list[str]
         A list of reference for each prediction or a list of several references per prediction. Each reference should be a string with tokens separated by spaces.
+    smoothing_function: str, optional
+        The method name of the smoothing function to use. Defaults to None. If None, then no smoothing will be used. See https://github.com/nltk/nltk/blob/develop/nltk/translate/bleu_score.py for options.
     weights: list[float]
         The default BLEU calculates a score for up to 4-grams using uniform
         weights (this is called BLEU-4). To evaluate your translations with
@@ -176,6 +179,11 @@ def _calculate_sentence_bleu(
             "prediction should be a str or list[str]. If prediction is a list[str], then references must be a list of lists."
         )
 
+    if smoothing_function is not None:
+        smoothing_function = getattr(
+            bleu_score.SmoothingFunction(), smoothing_function
+        )
+
     output = defaultdict(float)
     tokenizer = RegexpTokenizer(
         r"\w+|\$[\d]+|[^\s\.]+"
@@ -192,6 +200,7 @@ def _calculate_sentence_bleu(
                 bleu_score.sentence_bleu(
                     references=tokenized_references,
                     hypothesis=tokenized_prediction,
+                    smoothing_function=smoothing_function,
                     weights=weights,
                 ),  # type: ignore
             ),
@@ -436,10 +445,14 @@ def _compute_text_generation_metrics(
                 bleu_params = metric_params.get("BLEU", {})
                 if not isinstance(bleu_params, dict):
                     raise ValueError("BLEU parameters must be a dictionary.")
+                smoothing_function = bleu_params.get(
+                    "smoothing_function", None
+                )
                 weights = bleu_params.get("weights", [0.25, 0.25, 0.25, 0.25])
                 bleu_metrics = _calculate_sentence_bleu(
                     predictions=predictions,
                     references=references,
+                    smoothing_function=smoothing_function,
                     weights=weights,
                 )
 
@@ -731,6 +744,12 @@ def compute_text_generation_metrics(
     )
 
     metric_params = {}
+    if parameters.bleu_smoothing_function is not None:
+        if "BLEU" not in metric_params:
+            metric_params["BLEU"] = {}
+        metric_params["BLEU"][
+            "smoothing_function"
+        ] = parameters.bleu_smoothing_function
     if parameters.bleu_weights is not None:
         if "BLEU" not in metric_params:
             metric_params["BLEU"] = {}
