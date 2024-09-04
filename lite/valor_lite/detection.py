@@ -106,47 +106,35 @@ class PrecisionRecallCurve:
             },
             "type": "PrecisionRecallCurve",
         }
-
+    
 
 def _compute_iou(data: list[np.ndarray]) -> list[np.ndarray]:
 
     results = list()
     for datum_idx in numba.prange(len(data)):
         datum = data[datum_idx]
-
-        xmin1, xmax1, ymin1, ymax1 = (
-            datum[:, 3],
-            datum[:, 4],
-            datum[:, 5],
-            datum[:, 6],
-        )
-        xmin2, xmax2, ymin2, ymax2 = (
-            datum[:, 7],
-            datum[:, 8],
-            datum[:, 9],
-            datum[:, 10],
-        )
-
+    
+        xmin1, xmax1, ymin1, ymax1 = datum[:, 3], datum[:, 4], datum[:, 5], datum[:, 6]
+        xmin2, xmax2, ymin2, ymax2 = datum[:, 7], datum[:, 8], datum[:, 9], datum[:, 10]
+        
         xmin = np.maximum(xmin1, xmin2)
         ymin = np.maximum(ymin1, ymin2)
         xmax = np.minimum(xmax1, xmax2)
         ymax = np.minimum(ymax1, ymax2)
-
+        
         intersection_width = np.maximum(0, xmax - xmin)
         intersection_height = np.maximum(0, ymax - ymin)
         intersection_area = intersection_width * intersection_height
-
+        
         area1 = (xmax1 - xmin1) * (ymax1 - ymin1)
         area2 = (xmax2 - xmin2) * (ymax2 - ymin2)
-
+        
         union_area = area1 + area2 - intersection_area
-
+        
         iou = np.zeros_like(union_area)
         valid_union_mask = union_area >= 1e-9
-        iou[valid_union_mask] = (
-            intersection_area[valid_union_mask] / union_area[valid_union_mask]
-        )
-
+        iou[valid_union_mask] = intersection_area[valid_union_mask] / union_area[valid_union_mask]
+    
         h = datum.shape[0]
         result = np.zeros((h, 7))
         result[:, 0:3] = datum[:, 0:3]
@@ -154,7 +142,7 @@ def _compute_iou(data: list[np.ndarray]) -> list[np.ndarray]:
         result[:, 4:] = datum[:, 11:]
 
         results.append(result)
-
+        
     return results
 
 
@@ -473,7 +461,7 @@ class DetectionManager:
             )
             for idx in (plabels - glabels)
         ]
-
+    
     @property
     def missing_prediction_labels(self) -> list[schemas.Label]:
         glabels = set(self.gt_counts.keys())
@@ -484,7 +472,7 @@ class DetectionManager:
                 value=self.index_to_label[idx][1],
             )
             for idx in (glabels - plabels)
-        ]
+        ] 
 
     @property
     def metadata(self) -> dict:
@@ -844,6 +832,7 @@ class DetectionManager:
         del self.gt_counts
         del self.pd_counts
 
+
     def compute_ap(
         self,
         iou_thresholds: list[float] = [0.5, 0.75, 0.9],
@@ -984,8 +973,6 @@ class DetectionManager:
         return list()
 
     def benchmark_iou(self):
-        if not self._lock:
-            raise RuntimeError
-        if self.pairs is None:
+        if not self.pairs:
             raise ValueError
         _compute_iou(self.pairs)

@@ -284,6 +284,8 @@ def run_benchmarking_analysis(
             )  # type: ignore - time_it wrapper
             print("ingest", ingest_time)
 
+            numpy_iou, _ = time_it(manager.benchmark_iou)()
+
             finalization_time, _ = time_it(manager.finalize)()
             print("preprocess", finalization_time)
 
@@ -303,9 +305,7 @@ def run_benchmarking_analysis(
             print("preprocess", finalization_time)
             print("AP computation (work in progress)", ap_time)
             print("Detailed PR Curve", pr_time)
-
-            numpy_iou, _ = time_it(manager.benchmark_iou)()
-            print("Numpy IoU:", numpy_iou)
+            print("Benchmark IoU:", numpy_iou)
 
             # # run evaluations
             # eval_pr = None
