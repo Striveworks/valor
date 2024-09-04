@@ -135,7 +135,8 @@ def _calculate_label_id_level_metrics(
         .groupby(["label_id", "label", "iou_threshold", "id_gt"])[
             "recall_true_positive_flag"
         ]
-        .transform(lambda x: [True] + [False] * (len(x) - 1))
+        .cumsum()
+        .eq(1)
     )
 
     calculation_df["precision_true_positive_flag"] = (
@@ -148,7 +149,8 @@ def _calculate_label_id_level_metrics(
         .groupby(["label_id", "label", "iou_threshold", "id_gt"])[
             "precision_true_positive_flag"
         ]
-        .transform(lambda x: [True] + [False] * (len(x) - 1))
+        .cumsum()
+        .eq(1)
     )
 
     calculation_df["recall_false_positive_flag"] = ~calculation_df[
