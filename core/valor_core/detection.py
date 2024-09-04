@@ -126,13 +126,16 @@ def _calculate_label_id_level_metrics(
     calculation_df["recall_true_positive_flag"] = (
         calculation_df["iou_"] >= calculation_df["iou_threshold"]
     ) & (calculation_df["score"] >= recall_score_threshold)
-    # only consider the highest scoring true positive as an actual true positive
+
+    # only consider the highest scoring true positive as an actual true positive'
     calculation_df["recall_true_positive_flag"] = calculation_df[
         "recall_true_positive_flag"
     ] & (
-        ~calculation_df.groupby(
-            ["label_id", "label", "iou_threshold", "id_gt"], as_index=False
-        )["recall_true_positive_flag"].shift(1, fill_value=False)
+        calculation_df[calculation_df["recall_true_positive_flag"]]
+        .groupby(["label_id", "label", "iou_threshold", "id_gt"])[
+            "recall_true_positive_flag"
+        ]
+        .transform(lambda x: [True] + [False] * (len(x) - 1))
     )
 
     calculation_df["precision_true_positive_flag"] = (
@@ -141,9 +144,11 @@ def _calculate_label_id_level_metrics(
     calculation_df["precision_true_positive_flag"] = calculation_df[
         "precision_true_positive_flag"
     ] & (
-        ~calculation_df.groupby(
-            ["label_id", "iou_threshold", "id_gt"], as_index=False
-        )["precision_true_positive_flag"].shift(1, fill_value=False)
+        calculation_df[calculation_df["precision_true_positive_flag"]]
+        .groupby(["label_id", "label", "iou_threshold", "id_gt"])[
+            "precision_true_positive_flag"
+        ]
+        .transform(lambda x: [True] + [False] * (len(x) - 1))
     )
 
     calculation_df["recall_false_positive_flag"] = ~calculation_df[

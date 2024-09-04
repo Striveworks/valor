@@ -3929,3 +3929,98 @@ def two_groundtruths_one_datum_groundtruths(
     ]
 
     return groundtruths
+
+
+@pytest.fixture
+def check_correct_deassignment_of_true_positive_boolean_inputs() -> tuple:
+    def _get_datums(n) -> list[schemas.Datum]:
+        return [
+            schemas.Datum(
+                uid=f"{i}",
+                metadata={
+                    "height": 1000,
+                    "width": 2000,
+                },
+            )
+            for i in range(n)
+        ]
+
+    def _get_groundtruths(
+        images,
+    ) -> list[schemas.GroundTruth]:
+        gts_per_img = [
+            {
+                "boxes": [[10, 10, 20, 20], [10, 15, 20, 25]],
+                "labels": ["1", "1"],
+            },
+        ]
+
+        return [
+            schemas.GroundTruth(
+                datum=image,
+                annotations=[
+                    schemas.Annotation(
+                        labels=[schemas.Label(key="class", value=class_label)],
+                        bounding_box=schemas.Box.from_extrema(
+                            xmin=box[0],
+                            ymin=box[1],
+                            xmax=box[2],
+                            ymax=box[3],
+                        ),
+                        is_instance=True,
+                    )
+                    for box, class_label in zip(gts["boxes"], gts["labels"])
+                ],
+            )
+            for gts, image in zip(gts_per_img, images)
+        ]
+
+    def _get_predictions(
+        images,
+    ) -> list[schemas.Prediction]:
+        preds_per_img = [
+            {
+                "boxes": [
+                    [10, 10, 20, 20],
+                    [10, 12, 20, 22],
+                    [10, 12, 20, 22],
+                    [101, 101, 102, 102],
+                ],
+                "scores": [0.78, 0.96, 0.96, 0.87],
+                "labels": ["1", "1", "1", "1"],
+            }
+        ]
+
+        db_preds_per_img = [
+            schemas.Prediction(
+                datum=image,
+                annotations=[
+                    schemas.Annotation(
+                        labels=[
+                            schemas.Label(
+                                key="class", value=class_label, score=score
+                            )
+                        ],
+                        bounding_box=schemas.Box.from_extrema(
+                            xmin=box[0],
+                            ymin=box[1],
+                            xmax=box[2],
+                            ymax=box[3],
+                        ),
+                        is_instance=True,
+                    )
+                    for box, class_label, score in zip(
+                        preds["boxes"], preds["labels"], preds["scores"]
+                    )
+                ],
+            )
+            for preds, image in zip(preds_per_img, images)
+        ]
+
+        return db_preds_per_img
+
+    imgs = _get_datums(1)
+    groundtruths = _get_groundtruths(imgs)
+    predictions = _get_predictions(imgs)
+
+    return (groundtruths, predictions)

@@ -1723,3 +1723,33 @@ def test_evaluate_detection_with_label_maps_and_ValorDetectionManager(
             key="class_name", value="cat", score=None
         ): schemas.Label(key="foo", value="bar", score=None),
     }
+
+
+def test_correct_deassignment_of_true_positive_boolean_with_ValorDetectionManager(
+    check_correct_deassignment_of_true_positive_boolean_inputs: tuple,
+    check_correct_deassignment_of_true_positive_boolean_outputs: list,
+):
+    """
+    Test a bug where multiple predictions for a single groundtruth / label could both be considered true positives as long as there was at least one other prediction in between them.
+    For this test, only the first prediction in calculation_df should be considered a true positive; all the others should be marked as false positives.
+    """
+
+    (
+        groundtruths,
+        predictions,
+    ) = check_correct_deassignment_of_true_positive_boolean_inputs
+
+    manager = managers.ValorDetectionManager(
+        iou_thresholds_to_compute=[0.5],
+        iou_thresholds_to_return=[0.5],
+    )
+
+    manager.add_data(groundtruths=groundtruths, predictions=predictions)
+
+    metrics = manager.evaluate().metrics
+
+    expected = check_correct_deassignment_of_true_positive_boolean_outputs
+    for m in metrics:
+        assert m in expected
+    for m in expected:
+        assert m in metrics
