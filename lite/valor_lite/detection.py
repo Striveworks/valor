@@ -108,61 +108,56 @@ class PrecisionRecallCurve:
         }
 
 
-@numba.njit(parallel=False)
 def _compute_iou(data: list[np.ndarray]) -> list[np.ndarray]:
-    """
-    Returns a list of ious in form [(p1, g1), (p1, g2), ..., (p1, gN), (p2, g1), ...].
-    """
-    results = [
-        np.empty((1, 7)).astype(data[0].dtype) for i in range(len(data))
-    ]
+
+    results = list()
     for datum_idx in numba.prange(len(data)):
         datum = data[datum_idx]
+
+        xmin1, xmax1, ymin1, ymax1 = (
+            datum[:, 3],
+            datum[:, 4],
+            datum[:, 5],
+            datum[:, 6],
+        )
+        xmin2, xmax2, ymin2, ymax2 = (
+            datum[:, 7],
+            datum[:, 8],
+            datum[:, 9],
+            datum[:, 10],
+        )
+
+        xmin = np.maximum(xmin1, xmin2)
+        ymin = np.maximum(ymin1, ymin2)
+        xmax = np.minimum(xmax1, xmax2)
+        ymax = np.minimum(ymax1, ymax2)
+
+        intersection_width = np.maximum(0, xmax - xmin)
+        intersection_height = np.maximum(0, ymax - ymin)
+        intersection_area = intersection_width * intersection_height
+
+        area1 = (xmax1 - xmin1) * (ymax1 - ymin1)
+        area2 = (xmax2 - xmin2) * (ymax2 - ymin2)
+
+        union_area = area1 + area2 - intersection_area
+
+        iou = np.zeros_like(union_area)
+        valid_union_mask = union_area >= 1e-9
+        iou[valid_union_mask] = (
+            intersection_area[valid_union_mask] / union_area[valid_union_mask]
+        )
+
         h = datum.shape[0]
-        results[datum_idx] = np.zeros((h, 7))
-        for row in numba.prange(h):
-            if (
-                datum[row][3] >= datum[row][8]
-                or datum[row][4] <= datum[row][7]
-                or datum[row][5] >= datum[row][10]
-                or datum[row][6] <= datum[row][9]
-            ):
-                iou = 0.0
-            else:
+        result = np.zeros((h, 7))
+        result[:, 0:3] = datum[:, 0:3]
+        result[:, 3] = iou
+        result[:, 4:] = datum[:, 11:]
 
-                xmin1 = datum[row][3]
-                xmax1 = datum[row][4]
-                ymin1 = datum[row][5]
-                ymax1 = datum[row][6]
-                xmin2 = datum[row][7]
-                xmax2 = datum[row][8]
-                ymin2 = datum[row][9]
-                ymax2 = datum[row][10]
-
-                gt_area = (xmax1 - xmin1) * (ymax1 - ymin1)
-                pd_area = (xmax2 - xmin2) * (ymax2 - ymin2)
-
-                xmin = max([xmin1, xmin2])
-                xmax = min([xmax1, xmax2])
-                ymin = max([ymin1, ymin2])
-                ymax = min([ymax1, ymax2])
-
-                intersection = (xmax - xmin) * (ymax - ymin)
-                union = gt_area + pd_area - intersection
-                iou = intersection / union if union > 0 else 0.0
-
-            results[datum_idx][row][0] = datum[row][0]
-            results[datum_idx][row][1] = datum[row][1]
-            results[datum_idx][row][2] = datum[row][2]
-            results[datum_idx][row][3] = iou
-            results[datum_idx][row][4] = datum[row][11]
-            results[datum_idx][row][5] = datum[row][12]
-            results[datum_idx][row][6] = datum[row][13]
+        results.append(result)
 
     return results
 
 
-# @numba.njit(parallel=False)
 def _compute_ap(
     data: list[np.ndarray],
     gt_counts: np.ndarray,
@@ -304,7 +299,7 @@ def _compute_detailed_pr_curve(
         result = np.zeros((len(iou_thresholds), 100, w))
         datum = data[label_idx]
         n_rows = datum.shape[0]
-        for iou_idx in numba.prange(n_ious):
+        for iou_idx in range(n_ious):
             for score_idx in range(100):
 
                 examples = np.ones((5, n_samples)) * -1.0
@@ -375,8 +370,6 @@ def _compute_detailed_pr_curve(
                         if fn_misprd_example_idx < n_samples:
                             examples[4][fn_misprd_example_idx] = datum[row][0]
                             fn_misprd_example_idx += 1
-                    else:
-                        raise RuntimeError
 
                 result[iou_idx][score_idx][0] = label_idx
                 result[iou_idx][score_idx][tp_idx] = tp
@@ -429,8 +422,6 @@ class DetectionManager:
         self.n_groundtruths = 0
         self.n_predictions = 0
         self.n_labels = 0
-        self.ignored_prediction_labels = list()
-        self.missing_prediction_labels = list()
 
         # datum reference
         self.uid_to_index = dict()
@@ -453,18 +444,16 @@ class DetectionManager:
         if "_lock" not in self.__dict__:
             super().__setattr__("_lock", False)
         if self._lock and __name in {
-            "pr_pairs",
-            "detailed_pairs",
+            "pairs",
             "gt_count",
             "pd_count",
             "uid_to_index",
             "index_to_uid",
             "label_to_index",
             "index_to_label",
-            "ignored_prediction_labels",
-            "missing_groundtruth_labels",
             "n_datums",
-            "n_annotations",
+            "n_groundtruths",
+            "n_predictions",
             "n_labels",
             "_lock",
         }:
@@ -472,6 +461,30 @@ class DetectionManager:
                 f"Cannot manually modify '{__name}' after finalization."
             )
         return super().__setattr__(__name, __value)
+
+    @property
+    def ignored_prediction_labels(self) -> list[schemas.Label]:
+        glabels = set(self.gt_counts.keys())
+        plabels = set(self.pd_counts.keys())
+        return [
+            schemas.Label(
+                key=self.index_to_label[idx][0],
+                value=self.index_to_label[idx][1],
+            )
+            for idx in (plabels - glabels)
+        ]
+
+    @property
+    def missing_prediction_labels(self) -> list[schemas.Label]:
+        glabels = set(self.gt_counts.keys())
+        plabels = set(self.pd_counts.keys())
+        return [
+            schemas.Label(
+                key=self.index_to_label[idx][0],
+                value=self.index_to_label[idx][1],
+            )
+            for idx in (glabels - plabels)
+        ]
 
     @property
     def metadata(self) -> dict:
@@ -799,24 +812,6 @@ class DetectionManager:
                 for label_id in range(len(self.index_to_label))
             ]
         )
-
-        glabels = set(self.gt_counts.keys())
-        plabels = set(self.pd_counts.keys())
-
-        self.ignored_prediction_labels = [
-            schemas.Label(
-                key=self.index_to_label[idx][0],
-                value=self.index_to_label[idx][1],
-            )
-            for idx in (plabels - glabels)
-        ]
-        self.missing_prediction_labels = [
-            schemas.Label(
-                key=self.index_to_label[idx][0],
-                value=self.index_to_label[idx][1],
-            )
-            for idx in (glabels - plabels)
-        ]
         self.n_labels = len(self.index_to_label)
 
         detailed_pairs = np.concatenate(
@@ -843,6 +838,11 @@ class DetectionManager:
 
         # lock the object
         self._lock = True
+
+        # clear ingestion cache
+        del self.pairs
+        del self.gt_counts
+        del self.pd_counts
 
     def compute_ap(
         self,
@@ -982,3 +982,10 @@ class DetectionManager:
         metrics: list[MetricType],
     ):
         return list()
+
+    def benchmark_iou(self):
+        if not self._lock:
+            raise RuntimeError
+        if self.pairs is None:
+            raise ValueError
+        _compute_iou(self.pairs)

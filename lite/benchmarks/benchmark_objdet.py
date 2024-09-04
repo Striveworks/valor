@@ -304,6 +304,9 @@ def run_benchmarking_analysis(
             print("AP computation (work in progress)", ap_time)
             print("Detailed PR Curve", pr_time)
 
+            numpy_iou, _ = time_it(manager.benchmark_iou)()
+            print("Numpy IoU:", numpy_iou)
+
             # # run evaluations
             # eval_pr = None
             # eval_detail = None
