@@ -5,9 +5,50 @@ from collections import defaultdict
 
 import numpy as np
 import pandas as pd
+import polars as pl
 from valor_core import enums, geometry, metrics, schemas, utilities
 
-pd.set_option("display.max_columns", None)
+
+def _merge_dataframes_polars(
+    df1: pl.DataFrame,
+    df2: pl.DataFrame,
+    suffixes: tuple[str, str],
+    on: list[str],
+    how: str = "outer",
+) -> pl.DataFrame:
+    """Handle differences in behavior between polars and pandas"""
+    df1 = df1.with_columns(
+        [
+            pl.col(col).alias(f"{col}{suffixes[0]}")
+            for col in df1.columns
+            if col not in on
+        ]
+    )
+    df2 = df2.with_columns(
+        [
+            pl.col(col).alias(f"{col}{suffixes[1]}")
+            for col in df2.columns
+            if col not in on
+        ]
+    )
+
+    merged_df = df1.join(df2, on=on, how=how)
+    return merged_df
+
+
+# TODO this could be useful later instead of _get_joint_df
+def _get_joint_df_TODO(
+    groundtruth_df: pl.DataFrame,
+    prediction_df: pl.DataFrame,
+) -> pl.DataFrame:
+    """Create a joint dataframe of groundtruths and predictions for calculating AR/AP metrics."""
+
+    return _merge_dataframes_polars(
+        df1=groundtruth_df,
+        df2=prediction_df,
+        suffixes=("_gt", "_pd"),
+        on=["datum_id", "label_id", "label"],
+    )
 
 
 def _get_joint_df(
@@ -27,7 +68,7 @@ def _get_joint_df(
     return joint_df
 
 
-def _get_dtypes_in_series_of_arrays(series: pd.Series):
+def _get_dtypes_in_series_of_arrays(series: pl.Series):
     """Get the data type inside of a 2D numpy array. Used to check if a np.array contains coordinates or a mask."""
     if not isinstance(series, pd.Series) or not all(
         series.map(lambda x: x.ndim == 2)
@@ -44,7 +85,7 @@ def _get_dtypes_in_series_of_arrays(series: pd.Series):
     return unique_primitives[0]
 
 
-def _check_if_series_contains_masks(series: pd.Series) -> bool:
+def _check_if_series_contains_masks(series: pl.Series) -> bool:
     """Check if any element in a pandas.Series is a mask."""
     if series.empty:
         return False
@@ -57,15 +98,15 @@ def _check_if_series_contains_masks(series: pd.Series) -> bool:
     return False
 
 
-def _check_if_series_contains_axis_aligned_bboxes(series: pd.Series) -> bool:
+def _check_if_series_contains_axis_aligned_bboxes(series: pl.Series) -> bool:
     """Check if all elements in a pandas.Series are axis-aligned bounding boxes."""
 
     return series.map(lambda x: x.tolist()).map(geometry.is_axis_aligned).all()
 
 
 def _calculate_iou(
-    joint_df: pd.DataFrame,
-) -> pd.DataFrame:
+    joint_df: pl.DataFrame,
+) -> pl.DataFrame:
     """Calculate the IOUs between predictions and groundtruths in a joint dataframe."""
     filtered_df = joint_df.loc[
         ~joint_df["converted_geometry_gt"].isnull()
@@ -95,7 +136,7 @@ def _calculate_iou(
         else:
             iou_func = np.vectorize(geometry.calculate_iou)
 
-            series_of_iou_calculations = pd.Series(
+            series_of_iou_calculations = pl.Series(
                 iou_func(
                     filtered_df["converted_geometry_gt"],
                     filtered_df["converted_geometry_pd"],
@@ -118,96 +159,175 @@ def _calculate_iou(
 
 
 def _calculate_label_id_level_metrics(
-    calculation_df: pd.DataFrame, recall_score_threshold: float
-) -> pd.DataFrame:
+    calculation_df: pl.DataFrame, recall_score_threshold: float
+) -> pl.DataFrame:
     """Calculate the flags and metrics needed to compute AP, AR, and PR curves."""
 
     # create flags where predictions meet the score and IOU criteria
-    calculation_df["recall_true_positive_flag"] = (
-        calculation_df["iou_"] >= calculation_df["iou_threshold"]
-    ) & (calculation_df["score"] >= recall_score_threshold)
+    calculation_df = calculation_df.with_columns(
+        pl.when(
+            (pl.col("iou_") >= pl.col("iou_threshold"))
+            & (pl.col("score") >= recall_score_threshold)
+        )
+        .then(True)
+        .otherwise(False)
+        .alias("recall_true_positive_flag")
+    )
+
     # only consider the highest scoring true positive as an actual true positive
-    calculation_df["recall_true_positive_flag"] = calculation_df[
-        "recall_true_positive_flag"
-    ] & (
-        ~calculation_df.groupby(
-            ["label_id", "label", "iou_threshold", "id_gt"], as_index=False
-        )["recall_true_positive_flag"].shift(1, fill_value=False)
+
+    calculate_ids_with_highest_score = calculation_df.group_by(
+        ["label_id", "label", "iou_threshold", "id_gt"]
+    ).agg(
+        pl.col("id_gt")
+        .filter(pl.col("score") == pl.col("score").max())
+        .first()
+        .is_not_null()
+        .alias("id_with_highest_score")
     )
 
-    calculation_df["precision_true_positive_flag"] = (
-        calculation_df["iou_"] >= calculation_df["iou_threshold"]
-    ) & (calculation_df["score"] > 0)
-    calculation_df["precision_true_positive_flag"] = calculation_df[
-        "precision_true_positive_flag"
-    ] & (
-        ~calculation_df.groupby(
-            ["label_id", "iou_threshold", "id_gt"], as_index=False
-        )["precision_true_positive_flag"].shift(1, fill_value=False)
+    calculation_df = calculation_df.join(
+        calculate_ids_with_highest_score,
+        on=["label_id", "label", "iou_threshold", "id_gt"],
+        how="left",
     )
 
-    calculation_df["recall_false_positive_flag"] = ~calculation_df[
-        "recall_true_positive_flag"
-    ] & (calculation_df["score"] >= recall_score_threshold)
-    calculation_df["precision_false_positive_flag"] = ~calculation_df[
-        "precision_true_positive_flag"
-    ] & (calculation_df["score"] > 0)
+    calculation_df = calculation_df.with_columns(
+        pl.when(
+            pl.col("recall_true_positive_flag")
+            & pl.col("id_with_highest_score")
+        )
+        .then(True)
+        .otherwise(False)
+        .alias("recall_true_positive_flag")
+    )
+
+    # calculate precision_true_positive_flag and filter to only include the highest scoring prediction
+    calculation_df = calculation_df.with_columns(
+        pl.when(
+            (pl.col("iou_") >= pl.col("iou_threshold")) & (pl.col("score") > 0)
+        )
+        .then(True)
+        .otherwise(False)
+        .alias("precision_true_positive_flag")
+    )
+
+    calculation_df = calculation_df.with_columns(
+        pl.when(
+            pl.col("precision_true_positive_flag")
+            & pl.col("id_with_highest_score")
+        )
+        .then(True)
+        .otherwise(False)
+        .alias("precision_true_positive_flag")
+    )
+
+    calculation_df = calculation_df.with_columns(
+        pl.when(
+            ~pl.col("recall_true_positive_flag")
+            & (pl.col("score") >= recall_score_threshold)
+        )
+        .then(True)
+        .otherwise(False)
+        .alias("recall_false_positive_flag"),
+        pl.when(
+            ~pl.col("precision_true_positive_flag") & (pl.col("score") > 0)
+        )
+        .then(True)
+        .otherwise(False)
+        .alias("precision_false_positive_flag"),
+    )
 
     # calculate true and false positives
-    columns_to_sum = {
-        "recall_true_positive_flag": "rolling_recall_tp",
-        "recall_false_positive_flag": "rolling_recall_fp",
-        "precision_true_positive_flag": "rolling_precision_tp",
-        "precision_false_positive_flag": "rolling_precision_fp",
-    }
 
-    grouped = calculation_df.groupby(
-        ["label_id", "label", "iou_threshold"], as_index=False
+    cumulative_sums = calculation_df.group_by(
+        ["label_id", "label", "iou_threshold"]
+    ).agg(
+        [
+            pl.col("recall_true_positive_flag")
+            .cum_sum()
+            .last()
+            .alias("rolling_recall_tp"),
+            pl.col("recall_false_positive_flag")
+            .cum_sum()
+            .last()
+            .alias("rolling_recall_fp"),
+            pl.col("precision_true_positive_flag")
+            .cum_sum()
+            .last()
+            .alias("rolling_precision_tp"),
+            pl.col("precision_false_positive_flag")
+            .cum_sum()
+            .last()
+            .alias("rolling_precision_fp"),
+        ]
     )
 
-    cumulative_sums = {
-        new_col: grouped[col].cumsum()
-        for col, new_col in columns_to_sum.items()
-    }
-
-    cumulative_sums_df = pd.concat(cumulative_sums, axis=1)
-
-    calculation_df = calculation_df.join(cumulative_sums_df)
+    calculation_df = calculation_df.join(
+        cumulative_sums, on=["label_id", "label", "iou_threshold"], how="left"
+    )
 
     # calculate false negatives, then precision / recall
-    calculation_df["rolling_recall_fn"] = (
-        calculation_df["gts_per_grouper"] - calculation_df["rolling_recall_tp"]
-    )
-    calculation_df["rolling_precision_fn"] = (
-        calculation_df["gts_per_grouper"]
-        - calculation_df["rolling_precision_tp"]
-    )
-    calculation_df["precision"] = calculation_df["rolling_precision_tp"] / (
-        calculation_df["rolling_precision_tp"]
-        + calculation_df["rolling_precision_fp"]
-    )
-    calculation_df["recall_for_AP"] = calculation_df[
-        "rolling_precision_tp"
-    ] / (
-        calculation_df["rolling_precision_tp"]
-        + calculation_df["rolling_precision_fn"]
-    )
-    calculation_df["recall_for_AR"] = calculation_df["rolling_recall_tp"] / (
-        calculation_df["rolling_recall_tp"]
-        + calculation_df["rolling_recall_fn"]
+    calculation_df = calculation_df.with_columns(
+        [
+            (pl.col("gts_per_grouper") - pl.col("rolling_recall_tp")).alias(
+                "rolling_recall_fn"
+            ),
+            (pl.col("gts_per_grouper") - pl.col("rolling_precision_tp")).alias(
+                "rolling_precision_fn"
+            ),
+            (
+                pl.col("rolling_precision_tp")
+                / (
+                    pl.col("rolling_precision_tp")
+                    + pl.col("rolling_precision_fp")
+                )
+            ).alias("precision"),
+        ],
+    ).with_columns(
+        (
+            pl.col("rolling_precision_tp")
+            / (pl.col("rolling_precision_tp") + pl.col("rolling_precision_fn"))
+        ).alias("recall_for_AP"),
+        (
+            pl.col("rolling_recall_tp")
+            / (pl.col("rolling_recall_tp") + pl.col("rolling_recall_fn"))
+        ).alias("recall_for_AR"),
     )
 
     # fill any predictions that are missing groundtruths with -1
     # leave any groundtruths that are missing predictions with 0
-    calculation_df.loc[
-        calculation_df["id_gt"].isnull(),
-        ["precision", "recall_for_AP", "recall_for_AR"],
-    ] = -1
-
-    calculation_df.loc[
-        calculation_df["id_pd"].isnull(),
-        ["precision", "recall_for_AP", "recall_for_AR"],
-    ] = 0
+    calculation_df = calculation_df.with_columns(
+        [
+            pl.when(pl.col("id_gt").is_null())
+            .then(-1)
+            .otherwise(pl.col("precision"))
+            .alias("precision"),
+            pl.when(pl.col("id_gt").is_null())
+            .then(-1)
+            .otherwise(pl.col("recall_for_AP"))
+            .alias("recall_for_AP"),
+            pl.when(pl.col("id_gt").is_null())
+            .then(-1)
+            .otherwise(pl.col("recall_for_AR"))
+            .alias("recall_for_AR"),
+        ]
+    ).with_columns(
+        [
+            pl.when(pl.col("id_pd").is_null())
+            .then(0)
+            .otherwise(pl.col("precision"))
+            .alias("precision"),
+            pl.when(pl.col("id_pd").is_null())
+            .then(0)
+            .otherwise(pl.col("recall_for_AP"))
+            .alias("recall_for_AP"),
+            pl.when(pl.col("id_pd").is_null())
+            .then(0)
+            .otherwise(pl.col("recall_for_AR"))
+            .alias("recall_for_AR"),
+        ]
+    )
 
     return calculation_df
 
@@ -246,14 +366,14 @@ def _calculate_101_pt_interp(precisions, recalls) -> float:
     return ret / 101
 
 
-def _calculate_mean_ignoring_negative_one(series: pd.Series) -> float:
+def _calculate_mean_ignoring_negative_one(series: pl.Series) -> float:
     """Calculate the mean of a series, ignoring any values that are -1."""
-    filtered = series[series != -1]
-    return filtered.mean() if not filtered.empty else -1.0
+    filtered = series.filter(series != -1)
+    return filtered.mean() if not filtered.is_empty() else -1.0
 
 
 def _calculate_ap_metrics(
-    calculation_df: pd.DataFrame,
+    calculation_df: pl.DataFrame,
     iou_thresholds_to_compute: list[float],
     iou_thresholds_to_return: list[float],
 ) -> list[
@@ -265,30 +385,45 @@ def _calculate_ap_metrics(
     """Calculates all AP metrics, including aggregated metrics like mAP."""
 
     ap_metrics_df = (
-        calculation_df.loc[
-            ~calculation_df[
-                "id_gt"
-            ].isnull(),  # for AP, we don't include any predictions without groundtruths
+        calculation_df.filter(
+            ~pl.col("id_gt").is_null()
+        )  # for AP, we don't include any predictions without groundtruths
+        .group_by(["label_id", "label", "iou_threshold"])
+        .agg(
             [
-                "label_id",
-                "label",
-                "iou_threshold",
-                "precision",
-                "recall_for_AP",
-            ],
-        ]
-        .groupby(["label_id", "label", "iou_threshold"], as_index=False)
-        .apply(
-            lambda x: pd.Series(
-                {
-                    "calculated_precision": _calculate_101_pt_interp(
-                        x["precision"].tolist(),
-                        x["recall_for_AP"].tolist(),
-                    )
-                }
-            ),
-            include_groups=False,
+                pl.col("precision").explode().alias("precision_arr"),
+                pl.col("recall_for_AP").explode().alias("recall_for_AP_arr"),
+            ]
         )
+    ).with_columns(
+        [
+            pl.struct(["precision_arr", "recall_for_AP_arr"])
+            .map_elements(
+                lambda s: _calculate_101_pt_interp(
+                    s["precision_arr"], s["recall_for_AP_arr"]
+                ),
+                return_dtype=pl.Float64,
+            )
+            .alias("calculated_precision")
+        ]
+    )
+
+    # TODO figure out how to not treat labels like strings. this was causing an issue when joining on label. might be as easy as using tuple instead of list?
+    # TODO ctrl + f for "lambda s" and "lambda x"
+    ap_metrics_df = ap_metrics_df.with_columns(
+        pl.col("label")
+        .map_elements(
+            lambda x: x.strip("[]").split(", "),
+            return_dtype=pl.List(pl.Utf8),
+        )
+        .alias("label")
+    ).with_columns(
+        pl.col("label")
+        .map_elements(
+            lambda x: x[0],
+            return_dtype=pl.Utf8,
+        )
+        .alias("label_key")
     )
 
     ap_metrics = [
@@ -297,55 +432,61 @@ def _calculate_ap_metrics(
             value=row["calculated_precision"],
             label=schemas.Label(key=row["label"][0], value=row["label"][1]),
         )
-        for row in ap_metrics_df.to_dict(orient="records")
+        for row in ap_metrics_df.rows(named=True)
     ]
 
-    # calculate mean AP metrics
-    ap_metrics_df["label_key"] = ap_metrics_df["label"].str[0]
+    ap_over_ious_df = ap_metrics_df.group_by(["label_id", "label"]).agg(
+        [
+            pl.col("calculated_precision")
+            .map_elements(lambda x: _calculate_mean_ignoring_negative_one(x))
+            .alias("mean_precision")
+        ]
+    )
 
-    ap_over_ious_df = ap_metrics_df.groupby(
-        ["label_id", "label"], as_index=False
-    )["calculated_precision"].apply(_calculate_mean_ignoring_negative_one)
-
+    # TODO try to clear out pyright type ignores
     ap_over_ious = [
         metrics.APMetricAveragedOverIOUs(
             ious=set(iou_thresholds_to_compute),
-            value=row["calculated_precision"],
+            value=row["mean_precision"],
             label=schemas.Label(key=row["label"][0], value=row["label"][1]),
         )
-        for row in ap_over_ious_df.to_dict(
-            orient="records"
-        )  # pyright: ignore - pandas .to_dict() typing error
+        for row in ap_over_ious_df.rows(named=True)
     ]
 
-    map_metrics_df = ap_metrics_df.groupby(
-        ["iou_threshold", "label_key"], as_index=False
-    )["calculated_precision"].apply(_calculate_mean_ignoring_negative_one)
+    map_metrics_df = ap_metrics_df.group_by(
+        ["iou_threshold", "label_key"]
+    ).agg(
+        [
+            pl.col("calculated_precision")
+            .map_elements(lambda x: _calculate_mean_ignoring_negative_one(x))
+            .alias("mean_precision")
+        ]
+    )
 
     map_metrics = [
         metrics.mAPMetric(
             iou=row["iou_threshold"],
-            value=row["calculated_precision"],
+            value=row["mean_precision"],
             label_key=row["label_key"],
         )
-        for row in map_metrics_df.to_dict(
-            orient="records"
-        )  # pyright: ignore - pandas .to_dict() typing error
+        for row in map_metrics_df.rows(named=True)
     ]
 
-    map_over_ious_df = ap_metrics_df.groupby(["label_key"], as_index=False)[
-        "calculated_precision"
-    ].apply(_calculate_mean_ignoring_negative_one)
+    map_over_ious_df = ap_metrics_df.group_by(["label_key"]).agg(
+        [
+            pl.col("calculated_precision")
+            .map_elements(lambda x: _calculate_mean_ignoring_negative_one(x))
+            .alias("mean_precision")
+        ]
+    )
 
     map_over_ious = [
         metrics.mAPMetricAveragedOverIOUs(
             ious=set(iou_thresholds_to_compute),
-            value=row["calculated_precision"],
+            value=row["mean_precision"],
             label_key=row["label_key"],
         )
-        for row in map_over_ious_df.to_dict(
-            orient="records"
-        )  # pyright: ignore - pandas .to_dict() typing error
+        for row in map_over_ious_df.rows(named=True)
     ]
 
     return (
@@ -357,7 +498,7 @@ def _calculate_ap_metrics(
 
 
 def _calculate_ar_metrics(
-    calculation_df: pd.DataFrame,
+    calculation_df: pl.DataFrame,
     iou_thresholds_to_compute: list[float],
 ) -> list[metrics.ARMetric | metrics.mARMetric]:
     """Calculates all AR metrics, including aggregated metrics like mAR."""
@@ -401,7 +542,7 @@ def _calculate_ar_metrics(
 
 
 def _calculate_pr_metrics(
-    joint_df: pd.DataFrame,
+    joint_df: pl.DataFrame,
     metrics_to_return: list[enums.MetricType],
     pr_curve_iou_threshold: float,
 ) -> list[metrics.PrecisionRecallCurve]:
@@ -524,11 +665,11 @@ def _calculate_pr_metrics(
 
 
 def _add_samples_to_dataframe(
-    detailed_pr_curve_counts_df: pd.DataFrame,
-    detailed_pr_calc_df: pd.DataFrame,
+    detailed_pr_curve_counts_df: pl.DataFrame,
+    detailed_pr_calc_df: pl.DataFrame,
     max_examples: int,
     flag_column: str,
-) -> pd.DataFrame:
+) -> pl.DataFrame:
     """Efficienctly gather samples for a given flag."""
 
     sample_df = pd.concat(
@@ -609,7 +750,7 @@ def _add_samples_to_dataframe(
 
 
 def _calculate_detailed_pr_metrics(
-    detailed_pr_joint_df: pd.DataFrame | None,
+    detailed_pr_joint_df: pl.DataFrame | None,
     metrics_to_return: list[enums.MetricType],
     pr_curve_iou_threshold: float,
     pr_curve_max_examples: int,
@@ -702,7 +843,7 @@ def _calculate_detailed_pr_metrics(
             .to_dict()
         )
 
-        mask = pd.Series(False, index=detailed_pr_calc_df.index)
+        mask = pl.Series(False, index=detailed_pr_calc_df.index)
 
         for (
             threshold,
@@ -741,7 +882,7 @@ def _calculate_detailed_pr_metrics(
             .to_dict()
         )
 
-        mask = pd.Series(False, index=detailed_pr_calc_df.index)
+        mask = pl.Series(False, index=detailed_pr_calc_df.index)
 
         for (
             threshold,
@@ -788,7 +929,7 @@ def _calculate_detailed_pr_metrics(
             .to_dict()
         )
 
-        mask = pd.Series(False, index=detailed_pr_calc_df.index)
+        mask = pl.Series(False, index=detailed_pr_calc_df.index)
 
         for (
             threshold,
@@ -1030,7 +1171,7 @@ def _calculate_detailed_pr_metrics(
 
 
 def _create_detailed_joint_df(
-    groundtruth_df: pd.DataFrame, prediction_df: pd.DataFrame
+    groundtruth_df: pl.DataFrame, prediction_df: pl.DataFrame
 ):
     """Create the dataframe needed to calculate DetailedPRCurves from a groundtruth and prediction dataframe."""
     detailed_joint_df = pd.merge(
@@ -1050,20 +1191,20 @@ def _create_detailed_joint_df(
 
 
 def create_detection_evaluation_inputs(
-    groundtruths: list[schemas.GroundTruth] | pd.DataFrame,
-    predictions: list[schemas.Prediction] | pd.DataFrame,
+    groundtruths: list[schemas.GroundTruth] | pl.DataFrame,
+    predictions: list[schemas.Prediction] | pl.DataFrame,
     metrics_to_return: list[enums.MetricType],
     label_map: dict[schemas.Label, schemas.Label],
     convert_annotations_to_type: enums.AnnotationType | None,
-) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame | None]:
+) -> tuple[pl.DataFrame, pl.DataFrame, pl.DataFrame, pl.DataFrame | None]:
     """
     Creates and validates the inputs needed to run a detection evaluation.
 
     Parameters
     ----------
-    groundtruths : list[schemas.GroundTruth] | pd.DataFrame
+    groundtruths : list[schemas.GroundTruth] | pl.DataFrame
         A list or pandas DataFrame describing the groundtruths.
-    predictions : list[schemas.GroundTruth] | pd.DataFrame
+    predictions : list[schemas.GroundTruth] | pl.DataFrame
         A list or pandas DataFrame describing the predictions.
     metrics_to_return : list[enums.MetricType]
         A list of metrics to calculate during the evaluation.
@@ -1074,7 +1215,7 @@ def create_detection_evaluation_inputs(
 
     Returns
     -------
-    tuple[pd.DataFrame, pd.DataFrame]
+    tuple[pl.DataFrame, pl.DataFrame]
         A tuple of input dataframes.
     """
 
@@ -1220,8 +1361,8 @@ def create_detection_evaluation_inputs(
 
 
 def compute_detection_metrics(
-    joint_df: pd.DataFrame,
-    detailed_joint_df: pd.DataFrame | None,
+    joint_df: pl.DataFrame,
+    detailed_joint_df: pl.DataFrame | None,
     metrics_to_return: list[enums.MetricType],
     iou_thresholds_to_compute: list[float],
     iou_thresholds_to_return: list[float],
@@ -1234,9 +1375,9 @@ def compute_detection_metrics(
 
     Parameters
     ----------
-    joint_df : pd.DataFrame
+    joint_df : pl.DataFrame
         Dataframe containing merged groundtruths and predictions, joined by label.
-    detailed_joint_df : pd.DataFrame
+    detailed_joint_df : pl.DataFrame
         Dataframe containing merged groundtruths and predictions, joined by label key.
     metrics_to_return : list[enums.MetricType]
         List of metric types to calculate and return, such as AP, AR, or PR curves.
@@ -1265,16 +1406,13 @@ def compute_detection_metrics(
     metrics_to_output = []
 
     dfs = [
-        joint_df.copy().assign(iou_threshold=threshold)
+        joint_df.with_columns(pl.lit(threshold).alias("iou_threshold"))
         for threshold in iou_thresholds_to_compute
     ]
 
-    calculation_df = pd.concat(dfs, ignore_index=True)
-
-    calculation_df.sort_values(
+    calculation_df = pl.concat(dfs).sort(
         by=["label_id", "label", "iou_threshold", "score", "iou_"],
-        ascending=False,
-        inplace=True,
+        nulls_last=True,
     )
 
     # calculate metrics
@@ -1318,8 +1456,8 @@ def compute_detection_metrics(
 
 
 def evaluate_detection(
-    groundtruths: pd.DataFrame | list[schemas.GroundTruth],
-    predictions: pd.DataFrame | list[schemas.Prediction],
+    groundtruths: pl.DataFrame | list[schemas.GroundTruth],
+    predictions: pl.DataFrame | list[schemas.Prediction],
     label_map: dict[schemas.Label, schemas.Label] | None = None,
     metrics_to_return: list[enums.MetricType] | None = None,
     convert_annotations_to_type: enums.AnnotationType | None = None,
@@ -1352,9 +1490,9 @@ def evaluate_detection(
 
     Parameters
     ----------
-    groundtruths : pd.DataFrame | list[schemas.GroundTruth]
+    groundtruths : pl.DataFrame | list[schemas.GroundTruth]
         A list of GroundTruth objects or a pandas DataFrame describing your ground truths.
-    predictions : pd.DataFrame | list[schemas.Prediction]
+    predictions : pl.DataFrame | list[schemas.Prediction]
         A list of Prediction objects or a pandas DataFrame describing your predictions.
     label_map : dict[schemas.Label, schemas.Label], optional
         Mapping of ground truth labels to prediction labels.
@@ -1429,14 +1567,44 @@ def evaluate_detection(
         convert_annotations_to_type=convert_annotations_to_type,
     )
 
+    # TODO eventually make it so joint_df is natively created as a polars DF, rather than being converted
+    joint_df = pl.from_pandas(joint_df)
+
+    # TODO
+    joint_df = joint_df.with_columns(
+        pl.format(
+            "[{}]", pl.col("label").cast(pl.List(pl.Utf8)).list.join(", ")
+        ).alias("label")
+    )
+
+    if detailed_joint_df is not None:
+        detailed_joint_df = pl.from_pandas(detailed_joint_df)
+        detailed_joint_df = detailed_joint_df.with_columns(
+            pl.format(
+                "[{}]", pl.col("label").cast(pl.List(pl.Utf8)).list.join(", ")
+            ).alias("label")
+        )
+
     # add the number of groundtruth observations per grouper
     number_of_groundtruths_per_label_df = (
         groundtruth_df.groupby(["label"], as_index=False)["id"]
         .nunique()
         .rename({"id": "gts_per_grouper"}, axis=1)
     )
-    joint_df = pd.merge(
-        joint_df,
+
+    # TODO don't use from_pandas anywhere
+    number_of_groundtruths_per_label_df = pl.from_pandas(
+        number_of_groundtruths_per_label_df
+    )
+    number_of_groundtruths_per_label_df = (
+        number_of_groundtruths_per_label_df.with_columns(
+            pl.format(
+                "[{}]", pl.col("label").cast(pl.List(pl.Utf8)).list.join(", ")
+            ).alias("label")
+        )
+    )
+
+    joint_df = joint_df.join(
         number_of_groundtruths_per_label_df,
         on=["label"],
         how="outer",
