@@ -1005,7 +1005,11 @@ def _calculate_pr_curves(
                     "observations": {
                         "all": {
                             "count": row["true_positives"],
-                            "examples": row["true_positive_flag_samples"],
+                            "examples": (
+                                row["true_positive_flag_samples"]
+                                if row["true_positives"]
+                                else []
+                            ),
                         }
                     },
                 },
@@ -1014,7 +1018,11 @@ def _calculate_pr_curves(
                     "observations": {
                         "all": {
                             "count": row["true_negatives"],
-                            "examples": row["true_negative_flag_samples"],
+                            "examples": (
+                                row["true_negative_flag_samples"]
+                                if row["true_negatives"]
+                                else []
+                            ),
                         }
                     },
                 },
@@ -1023,15 +1031,23 @@ def _calculate_pr_curves(
                     "observations": {
                         "misclassifications": {
                             "count": row["misclassification_false_negatives"],
-                            "examples": row[
-                                "misclassification_false_negative_flag_samples"
-                            ],
+                            "examples": (
+                                row[
+                                    "misclassification_false_negative_flag_samples"
+                                ]
+                                if row["misclassification_false_negatives"]
+                                else []
+                            ),
                         },
                         "no_predictions": {
                             "count": row["no_predictions_false_negatives"],
-                            "examples": row[
-                                "no_predictions_false_negative_flag_samples"
-                            ],
+                            "examples": (
+                                row[
+                                    "no_predictions_false_negative_flag_samples"
+                                ]
+                                if row["no_predictions_false_negatives"]
+                                else []
+                            ),
                         },
                     },
                 },
@@ -1040,9 +1056,13 @@ def _calculate_pr_curves(
                     "observations": {
                         "misclassifications": {
                             "count": row["misclassification_false_positives"],
-                            "examples": row[
-                                "misclassification_false_positive_flag_samples"
-                            ],
+                            "examples": (
+                                row[
+                                    "misclassification_false_positive_flag_samples"
+                                ]
+                                if row["misclassification_false_positives"]
+                                else []
+                            ),
                         },
                     },
                 },

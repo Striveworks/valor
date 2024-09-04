@@ -3239,6 +3239,52 @@ def multiclass_pr_curve_predictions():
 
 
 @pytest.fixture
+def multiclass_pr_curve_check_zero_count_examples_groundtruths():
+    return [
+        schemas.GroundTruth(
+            datum=schemas.Datum(
+                uid="uid0",
+                metadata={
+                    "height": 900,
+                    "width": 300,
+                },
+            ),
+            annotations=[
+                schemas.Annotation(
+                    labels=[
+                        schemas.Label(key="k", value="ant"),
+                    ],
+                ),
+            ],
+        ),
+    ]
+
+
+@pytest.fixture
+def multiclass_pr_curve_check_zero_count_examples_predictions():
+    return [
+        schemas.Prediction(
+            datum=schemas.Datum(
+                uid="uid0",
+                metadata={
+                    "height": 900,
+                    "width": 300,
+                },
+            ),
+            annotations=[
+                schemas.Annotation(
+                    labels=[
+                        schemas.Label(key="k", value="ant", score=0.15),
+                        schemas.Label(key="k", value="bee", score=0.48),
+                        schemas.Label(key="k", value="cat", score=0.37),
+                    ],
+                )
+            ],
+        ),
+    ]
+
+
+@pytest.fixture
 def evaluate_detection_false_negatives_single_image_baseline_inputs():
     groundtruths = [
         schemas.GroundTruth(
