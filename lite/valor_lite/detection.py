@@ -242,15 +242,6 @@ def _compute_ap(
                     tp_count += 1
                     visited_gts.add(gt_tuple)
 
-                if label_idx == 5 and thresh_idx == 0:
-                    print(
-                        tp_count,
-                        total_count,
-                        int(number_of_groundtruths),
-                        ranked_pairs[row][1],
-                        ranked_pairs[row][2],
-                    )
-
                 precision = tp_count / total_count
                 recall = (
                     tp_count / number_of_groundtruths
@@ -279,7 +270,7 @@ def _compute_ap(
     return results
 
 
-@numba.njit(parallel=False)
+# @numba.njit(parallel=False)
 def _compute_detailed_pr_curve(
     data: list[np.ndarray],
     label_counts: np.ndarray,
@@ -301,7 +292,7 @@ def _compute_detailed_pr_curve(
 
     w = 5 * (n_samples + 1) + 1
     tp_idx = 1
-    fp_misclf_idx = n_samples + 1
+    fp_misclf_idx = tp_idx + n_samples + 1
     fp_hall_idx = fp_misclf_idx + n_samples + 1
     fn_misclf_idx = fp_hall_idx + n_samples + 1
     fn_misprd_idx = fn_misclf_idx + n_samples + 1
@@ -319,8 +310,8 @@ def _compute_detailed_pr_curve(
                 tp, fp_misclf, fp_hall, fn_misclf, fn_misprd = 0, 0, 0, 0, 0
                 for row in numba.prange(n_rows):
 
-                    gt_exists = not datum[row][1] < 0.0
-                    pd_exists = not datum[row][2] < 0.0
+                    gt_exists = datum[row][1] > -0.5
+                    pd_exists = datum[row][2] > -0.5
                     iou = datum[row][3]
                     gt_label = int(datum[row][4])
                     pd_label = int(datum[row][5])

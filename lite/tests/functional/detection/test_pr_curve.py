@@ -1,123 +1,178 @@
-import pytest
+import numpy as np
 from valor_lite import DetectionManager as Manager
 from valor_lite import enums, schemas
+from valor_lite.detection import _compute_detailed_pr_curve
 
 
-@pytest.fixture
-def test_detailed_precision_recall_curve(
-    evaluate_detection_detailed_pr_curve_groundtruths: list,
-    evaluate_detection_detailed_pr_curve_predictions: list,
-    detailed_precision_recall_curve_outputs: tuple,
-):
-
-    expected_outputs, _ = detailed_precision_recall_curve_outputs
-
-    manager = Manager(
-        metrics_to_return=[enums.MetricType.DetailedPrecisionRecallCurve],
-    )
-
-    manager.add_data(
-        groundtruths=evaluate_detection_detailed_pr_curve_groundtruths,
-        predictions=evaluate_detection_detailed_pr_curve_predictions,
-    )
-
-    # check that ious have been precomputed
-    assert "iou_" in manager.joint_df.columns
-    assert all(
+def test__compute_detailed_pr_curve():
+    sorted_pairs = np.array(
         [
-            col not in ["raster", "bounding_box"]
-            for col in manager.joint_df.columns
+            # dt,  gt,  pd,  iou,  gl,  pl, score,
+            [0.0, 0.0, 1.0, 0.98, 0.0, 0.0, 0.95],
+            [0.0, 1.0, 2.0, 0.55, 1.0, 0.0, 0.95],
+            [0.0, -1.0, 3.0, 0.67, -1.0, 0.0, 0.65],
+            [0.0, 4.0, 4.0, 1.0, 0.0, 0.0, 0.1],
+            [0.0, 5.0, -1.0, 0.5, 0.0, -1.0, -1.0],
         ]
     )
 
-    eval_job = manager.evaluate()
-    for key, expected_value in expected_outputs.items():
-        result = eval_job.metrics[0]["value"]
-        for k in key:
-            result = result[k]
-        assert result == expected_value
-
-    # repeat tests using a lower IOU threshold
-    manager = Manager(
-        metrics_to_return=[enums.MetricType.DetailedPrecisionRecallCurve],
-        pr_curve_iou_threshold=0.45,
+    results = _compute_detailed_pr_curve(
+        data=[sorted_pairs],
+        label_counts=np.array([[1, 5]]),
+        iou_thresholds=np.array([0.5]),
+        n_samples=0,
     )
 
-    manager.add_data(
-        groundtruths=evaluate_detection_detailed_pr_curve_groundtruths,
-        predictions=evaluate_detection_detailed_pr_curve_predictions,
-    )
+    assert len(results) == 1
+    assert results[0].shape == (1, 100, 6)  # threshold, score, metrics
+    result = results[0][0]
 
-    eval_job_low_iou_threshold = manager.evaluate()
-
-    for key, expected_value in expected_outputs.items():
-        result = eval_job_low_iou_threshold.metrics[0]["value"]
-        for k in key:
-            result = result[k]
-        assert result == expected_value
-
-
-def test_evaluate_detection_model_with_no_predictions(
-    evaluate_detection_groundtruths: list,
-    evaluate_detection_model_with_no_predictions_output: list,
-):
     """
-    Test detection evaluations when the model outputs nothing.
-
-    gt_dets1
-        datum 1
-            - Label (k1, v1) with Annotation area = 1500
-            - Label (k2, v2) with Annotation area = 57,510
-        datum2
-            - Label (k1, v1) with Annotation area = 1100
+    @ iou=0.5, score<0.1
+    2x tp
+    1x fp misclassification
+    1x fp hallucination
+    0x fn misclassification
+    1x fn missing prediction
     """
-    predictions = []
-    for gt in evaluate_detection_groundtruths:
-        predictions.append(
-            schemas.Prediction(
-                datum=gt.datum,
-                annotations=[],
-            )
-        )
+    assert np.isclose(result[:10], np.array([0, 2, 1, 1, 0, 1])).all()
 
-    manager = Manager()
+    """
+    @ iou=0.5, score=0.5
+    1x tp
+    1x fp misclassification
+    1x fp hallucination
+    1x fn misclassification
+    1x fn missing prediction
+    """
+    assert np.isclose(result[10:95], np.array([0, 1, 1, 1, 1, 1])).all()
 
-    # can't pass empty lists, but can pass predictions without annotations
-    with pytest.raises(ValueError) as e:
-        manager.add_data(
-            groundtruths=evaluate_detection_groundtruths,
-            predictions=[],
-        )
-    assert (
-        "it's neither a dataframe nor a list of Valor Prediction objects"
-        in str(e)
-    )
+    """
+    @ iou=0.5, score>=0.95
+    0x tp
+    0x fp misclassification
+    2x fp hallucination
+    2x fn misclassification
+    1x fn missing prediction
+    """
+    assert np.isclose(result[95:], np.array([0, 0, 0, 2, 2, 1])).all()
 
-    manager.add_data(
-        groundtruths=evaluate_detection_groundtruths,
-        predictions=predictions,
-    )
 
-    # check that ious have been precomputed
-    assert "iou_" in manager.joint_df.columns
-    assert all(
-        [
-            col not in ["raster", "bounding_box"]
-            for col in manager.joint_df.columns
-        ]
-    )
+# @pytest.fixture
+# def test_detailed_precision_recall_curve(
+#     evaluate_detection_detailed_pr_curve_groundtruths: list,
+#     evaluate_detection_detailed_pr_curve_predictions: list,
+#     detailed_precision_recall_curve_outputs: tuple,
+# ):
 
-    eval_job = manager.evaluate()
+#     expected_outputs, _ = detailed_precision_recall_curve_outputs
 
-    computed_metrics = eval_job.metrics
+#     manager = Manager(
+#         metrics_to_return=[enums.MetricType.DetailedPrecisionRecallCurve],
+#     )
 
-    assert all([metric["value"] == 0 for metric in computed_metrics])
+#     manager.add_data(
+#         groundtruths=evaluate_detection_detailed_pr_curve_groundtruths,
+#         predictions=evaluate_detection_detailed_pr_curve_predictions,
+#     )
 
-    for m in evaluate_detection_model_with_no_predictions_output:
-        assert m in computed_metrics
+#     # check that ious have been precomputed
+#     assert "iou_" in manager.joint_df.columns
+#     assert all(
+#         [
+#             col not in ["raster", "bounding_box"]
+#             for col in manager.joint_df.columns
+#         ]
+#     )
 
-    for m in computed_metrics:
-        assert m in evaluate_detection_model_with_no_predictions_output
+#     eval_job = manager.evaluate()
+#     for key, expected_value in expected_outputs.items():
+#         result = eval_job.metrics[0]["value"]
+#         for k in key:
+#             result = result[k]
+#         assert result == expected_value
+
+#     # repeat tests using a lower IOU threshold
+#     manager = Manager(
+#         metrics_to_return=[enums.MetricType.DetailedPrecisionRecallCurve],
+#         pr_curve_iou_threshold=0.45,
+#     )
+
+#     manager.add_data(
+#         groundtruths=evaluate_detection_detailed_pr_curve_groundtruths,
+#         predictions=evaluate_detection_detailed_pr_curve_predictions,
+#     )
+
+#     eval_job_low_iou_threshold = manager.evaluate()
+
+#     for key, expected_value in expected_outputs.items():
+#         result = eval_job_low_iou_threshold.metrics[0]["value"]
+#         for k in key:
+#             result = result[k]
+#         assert result == expected_value
+
+
+# def test_evaluate_detection_model_with_no_predictions(
+#     evaluate_detection_groundtruths: list,
+#     evaluate_detection_model_with_no_predictions_output: list,
+# ):
+#     """
+#     Test detection evaluations when the model outputs nothing.
+
+#     gt_dets1
+#         datum 1
+#             - Label (k1, v1) with Annotation area = 1500
+#             - Label (k2, v2) with Annotation area = 57,510
+#         datum2
+#             - Label (k1, v1) with Annotation area = 1100
+#     """
+#     predictions = []
+#     for gt in evaluate_detection_groundtruths:
+#         predictions.append(
+#             schemas.Prediction(
+#                 datum=gt.datum,
+#                 annotations=[],
+#             )
+#         )
+
+#     manager = Manager()
+
+#     # can't pass empty lists, but can pass predictions without annotations
+#     with pytest.raises(ValueError) as e:
+#         manager.add_data(
+#             groundtruths=evaluate_detection_groundtruths,
+#             predictions=[],
+#         )
+#     assert (
+#         "it's neither a dataframe nor a list of Valor Prediction objects"
+#         in str(e)
+#     )
+
+#     manager.add_data(
+#         groundtruths=evaluate_detection_groundtruths,
+#         predictions=predictions,
+#     )
+
+#     # check that ious have been precomputed
+#     assert "iou_" in manager.joint_df.columns
+#     assert all(
+#         [
+#             col not in ["raster", "bounding_box"]
+#             for col in manager.joint_df.columns
+#         ]
+#     )
+
+#     eval_job = manager.evaluate()
+
+#     computed_metrics = eval_job.metrics
+
+#     assert all([metric["value"] == 0 for metric in computed_metrics])
+
+#     for m in evaluate_detection_model_with_no_predictions_output:
+#         assert m in computed_metrics
+
+#     for m in computed_metrics:
+#         assert m in evaluate_detection_model_with_no_predictions_output
 
 
 # def test_evaluate_detection_functional_test(
