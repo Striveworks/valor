@@ -270,7 +270,7 @@ def _compute_ap(
     return results
 
 
-# @numba.njit(parallel=False)
+@numba.njit(parallel=False)
 def _compute_detailed_pr_curve(
     data: list[np.ndarray],
     label_counts: np.ndarray,
@@ -305,10 +305,18 @@ def _compute_detailed_pr_curve(
         datum = data[label_idx]
         n_rows = datum.shape[0]
         for iou_idx in numba.prange(n_ious):
-            for score_idx in numba.prange(100):
+            for score_idx in range(100):
+
+                examples = np.ones((5, n_samples)) * -1.0
+                tp_example_idx = 0
+                fp_misclf_example_idx = 0
+                fp_halluc_example_idx = 0
+                fn_misclf_example_idx = 0
+                fn_misprd_example_idx = 0
+
                 score_threshold = (score_idx + 1) / 100.0
                 tp, fp_misclf, fp_hall, fn_misclf, fn_misprd = 0, 0, 0, 0, 0
-                for row in numba.prange(n_rows):
+                for row in range(n_rows):
 
                     gt_exists = datum[row][1] > -0.5
                     pd_exists = datum[row][2] > -0.5
@@ -344,14 +352,29 @@ def _compute_detailed_pr_curve(
 
                     if tp_conditional:
                         tp += 1
+                        if tp_example_idx < n_samples:
+                            examples[0][tp_example_idx] = datum[row][0]
+                            tp_example_idx += 1
                     elif fp_misclf_conditional:
                         fp_misclf += 1
+                        if fp_misclf_example_idx < n_samples:
+                            examples[1][fp_misclf_example_idx] = datum[row][0]
+                            fp_misclf_example_idx += 1
                     elif fn_misclf_conditional:
                         fn_misclf += 1
+                        if fn_misclf_example_idx < n_samples:
+                            examples[3][fn_misclf_example_idx] = datum[row][0]
+                            fn_misclf_example_idx += 1
                     elif pd_exists:
                         fp_hall += 1
+                        if fp_halluc_example_idx < n_samples:
+                            examples[2][fp_halluc_example_idx] = datum[row][0]
+                            fp_halluc_example_idx += 1
                     elif gt_exists:
                         fn_misprd += 1
+                        if fn_misprd_example_idx < n_samples:
+                            examples[4][fn_misprd_example_idx] = datum[row][0]
+                            fn_misprd_example_idx += 1
                     else:
                         raise RuntimeError
 
@@ -361,6 +384,23 @@ def _compute_detailed_pr_curve(
                 result[iou_idx][score_idx][fp_hall_idx] = fp_hall
                 result[iou_idx][score_idx][fn_misclf_idx] = fn_misclf
                 result[iou_idx][score_idx][fn_misprd_idx] = fn_misprd
+
+                if n_samples > 0:
+                    result[iou_idx][score_idx][
+                        tp_idx + 1 : fp_misclf_idx
+                    ] = examples[0]
+                    result[iou_idx][score_idx][
+                        fp_misclf_idx + 1 : fp_hall_idx
+                    ] = examples[1]
+                    result[iou_idx][score_idx][
+                        fp_hall_idx + 1 : fn_misclf_idx
+                    ] = examples[2]
+                    result[iou_idx][score_idx][
+                        fn_misclf_idx + 1 : fn_misprd_idx
+                    ] = examples[3]
+                    result[iou_idx][score_idx][fn_misprd_idx + 1 :] = examples[
+                        4
+                    ]
 
         results[label_idx] = result
     return results
@@ -848,7 +888,7 @@ class DetectionManager:
         )
 
         tp_idx = 1
-        fp_misclf_idx = n_samples + 1
+        fp_misclf_idx = tp_idx + n_samples + 1
         fp_hall_idx = fp_misclf_idx + n_samples + 1
         fn_misclf_idx = fp_hall_idx + n_samples + 1
         fn_misprd_idx = fn_misclf_idx + n_samples + 1
@@ -870,31 +910,67 @@ class DetectionManager:
                                 value=metrics[label_idx][iou_idx][score_idx][
                                     tp_idx
                                 ],
-                                examples=[],
+                                examples=[
+                                    self.index_to_uid[int(datum_idx)]
+                                    for datum_idx in metrics[label_idx][
+                                        iou_idx
+                                    ][score_idx][tp_idx + 1 : fp_misclf_idx]
+                                    if int(datum_idx) >= 0
+                                ],
                             ),
                             fp_misclassification=CountWithExamples(
                                 value=metrics[label_idx][iou_idx][score_idx][
                                     fp_misclf_idx
                                 ],
-                                examples=[],
+                                examples=[
+                                    self.index_to_uid[int(datum_idx)]
+                                    for datum_idx in metrics[label_idx][
+                                        iou_idx
+                                    ][score_idx][
+                                        fp_misclf_idx + 1 : fp_hall_idx
+                                    ]
+                                    if int(datum_idx) >= 0
+                                ],
                             ),
                             fp_hallucination=CountWithExamples(
                                 value=metrics[label_idx][iou_idx][score_idx][
                                     fp_hall_idx
                                 ],
-                                examples=[],
+                                examples=[
+                                    self.index_to_uid[int(datum_idx)]
+                                    for datum_idx in metrics[label_idx][
+                                        iou_idx
+                                    ][score_idx][
+                                        fp_hall_idx + 1 : fn_misclf_idx
+                                    ]
+                                    if int(datum_idx) >= 0
+                                ],
                             ),
                             fn_misclassification=CountWithExamples(
                                 value=metrics[label_idx][iou_idx][score_idx][
                                     fn_misclf_idx
                                 ],
-                                examples=[],
+                                examples=[
+                                    self.index_to_uid[int(datum_idx)]
+                                    for datum_idx in metrics[label_idx][
+                                        iou_idx
+                                    ][score_idx][
+                                        fn_misclf_idx + 1 : fn_misprd_idx
+                                    ]
+                                    if int(datum_idx) >= 0
+                                ],
                             ),
                             fn_missing_prediction=CountWithExamples(
                                 value=metrics[label_idx][iou_idx][score_idx][
                                     fn_misprd_idx
                                 ],
-                                examples=[],
+                                examples=[
+                                    self.index_to_uid[int(datum_idx)]
+                                    for datum_idx in metrics[label_idx][
+                                        iou_idx
+                                    ][score_idx][fn_misprd_idx + 1 :]
+                                    if int(datum_idx) >= 0
+                                ],
                             ),
                         )
                     )

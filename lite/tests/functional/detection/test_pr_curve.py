@@ -9,10 +9,10 @@ def test__compute_detailed_pr_curve():
         [
             # dt,  gt,  pd,  iou,  gl,  pl, score,
             [0.0, 0.0, 1.0, 0.98, 0.0, 0.0, 0.95],
-            [0.0, 1.0, 2.0, 0.55, 1.0, 0.0, 0.95],
-            [0.0, -1.0, 3.0, 0.67, -1.0, 0.0, 0.65],
-            [0.0, 4.0, 4.0, 1.0, 0.0, 0.0, 0.1],
-            [0.0, 5.0, -1.0, 0.5, 0.0, -1.0, -1.0],
+            [1.0, 1.0, 2.0, 0.55, 1.0, 0.0, 0.95],
+            [2.0, -1.0, 3.0, 0.67, -1.0, 0.0, 0.65],
+            [3.0, 4.0, 4.0, 1.0, 0.0, 0.0, 0.1],
+            [4.0, 5.0, -1.0, 0.5, 0.0, -1.0, -1.0],
         ]
     )
 
@@ -56,6 +56,135 @@ def test__compute_detailed_pr_curve():
     1x fn missing prediction
     """
     assert np.isclose(result[95:], np.array([0, 0, 0, 2, 2, 1])).all()
+
+    ### compute with examples
+
+    """
+
+    output
+
+    label_idx
+    tp
+    ... examples
+    fp_misclassification
+    ... examples
+    fp_hallucination
+    ... examples
+    fn_misclassification
+    ... examples
+    fn_missing_prediction
+    ... examples
+    """
+
+    results = _compute_detailed_pr_curve(
+        data=[sorted_pairs],
+        label_counts=np.array([[1, 5]]),
+        iou_thresholds=np.array([0.5]),
+        n_samples=2,
+    )
+
+    assert len(results) == 1
+    assert results[0].shape == (1, 100, 16)  # threshold, score, metrics
+    result = results[0][0]
+
+    label_idx = 0
+    tp_idx = 1
+    fp_misclf_idx = tp_idx + 3
+    fp_halluc_idx = fp_misclf_idx + 3
+    fn_misclf_idx = fp_halluc_idx + 3
+    fn_misprd_idx = fn_misclf_idx + 3
+
+    metric_indices = np.zeros((16,), dtype=bool)
+    for index in [
+        label_idx,
+        tp_idx,
+        fp_misclf_idx,
+        fp_halluc_idx,
+        fn_misclf_idx,
+        fn_misprd_idx,
+    ]:
+        metric_indices[index] = True
+
+    """
+    @ iou=0.5, score<0.1
+    2x tp
+    1x fp misclassification
+    1x fp hallucination
+    0x fn misclassification
+    1x fn missing prediction
+    """
+    assert np.isclose(
+        result[:10, metric_indices], np.array([0, 2, 1, 1, 0, 1])
+    ).all()  # metrics
+    assert np.isclose(
+        result[:10, tp_idx + 1 : fp_misclf_idx], np.array([0.0, 3.0])
+    ).all()  # tp
+    assert np.isclose(
+        result[:10, fp_misclf_idx + 1 : fp_halluc_idx], np.array([1.0, -1.0])
+    ).all()  # fp misclf
+    assert np.isclose(
+        result[:10, fp_halluc_idx + 1 : fn_misclf_idx], np.array([2.0, -1.0])
+    ).all()  # fp halluc
+    assert np.isclose(
+        result[:10, fn_misclf_idx + 1 : fn_misprd_idx], np.array([-1.0, -1.0])
+    ).all()  # fn misclf
+    assert np.isclose(
+        result[:10, fn_misprd_idx + 1 :], np.array([4.0, -1.0])
+    ).all()  # fn misprd
+
+    """
+    @ iou=0.5, score=0.5
+    1x tp
+    1x fp misclassification
+    1x fp hallucination
+    1x fn misclassification
+    1x fn missing prediction
+    """
+    assert np.isclose(
+        result[10:95, metric_indices], np.array([0, 1, 1, 1, 1, 1])
+    ).all()
+    assert np.isclose(
+        result[10:95, tp_idx + 1 : fp_misclf_idx], np.array([0.0, -1.0])
+    ).all()  # tp
+    assert np.isclose(
+        result[10:95, fp_misclf_idx + 1 : fp_halluc_idx], np.array([1.0, -1.0])
+    ).all()  # fp misclf
+    assert np.isclose(
+        result[10:95, fp_halluc_idx + 1 : fn_misclf_idx], np.array([2.0, -1.0])
+    ).all()  # fp halluc
+    assert np.isclose(
+        result[10:95, fn_misclf_idx + 1 : fn_misprd_idx], np.array([3.0, -1.0])
+    ).all()  # fn misclf
+    assert np.isclose(
+        result[10:95, fn_misprd_idx + 1 :], np.array([4.0, -1.0])
+    ).all()  # fn misprd
+
+    """
+    @ iou=0.5, score>=0.95
+    0x tp
+    0x fp misclassification
+    2x fp hallucination
+    2x fn misclassification
+    1x fn missing prediction
+    """
+    assert np.isclose(
+        result[95:, metric_indices], np.array([0, 0, 0, 2, 2, 1])
+    ).all()
+    assert np.isclose(
+        result[95:, tp_idx + 1 : fp_misclf_idx], np.array([-1.0, -1.0])
+    ).all()  # tp
+    assert np.isclose(
+        result[95:, fp_misclf_idx + 1 : fp_halluc_idx], np.array([-1.0, -1.0])
+    ).all()  # fp misclf
+    assert np.isclose(
+        result[95:, fp_halluc_idx + 1 : fn_misclf_idx], np.array([1.0, 2.0])
+    ).all()  # fp halluc
+    assert np.isclose(
+        result[95:, fn_misclf_idx + 1 : fn_misprd_idx], np.array([0.0, 3.0])
+    ).all()  # fn misclf
+    assert np.isclose(
+        result[95:, fn_misprd_idx + 1 :], np.array([4.0, -1.0])
+    ).all()  # fn misprd
 
 
 # @pytest.fixture

@@ -291,7 +291,9 @@ def run_benchmarking_analysis(
             print("AP computation (work in progress)", ap_time)
             # print(json.dumps(ap_metrics, indent=2))
 
-            pr_time, pr_metrics = time_it(manager.compute_pr_curve)()
+            pr_time, pr_metrics = time_it(manager.compute_pr_curve)(
+                n_samples=3
+            )
             print("PR Curve", pr_time)
 
             for m in pr_metrics:
