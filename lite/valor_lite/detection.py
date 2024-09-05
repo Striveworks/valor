@@ -159,24 +159,47 @@ def _compute_iou(data: list[np.ndarray]) -> list[np.ndarray]:
     return results
 
 
-# @numba.njit()
 def _compute_ap(
     data: np.ndarray,
     gt_counts: np.ndarray,
     iou_thresholds: np.ndarray,
 ) -> np.ndarray:
 
+    # sort by gt_id, iou, score
+    indices = np.lexsort(
+        (
+            data[:, 1],
+            -data[:, 3],
+            -data[:, 6],
+        )
+    )
+    data = data[indices]
+
+    # only keep the highest ranked pair
+    _, indices = np.unique(data[:, [0, 2]], axis=0, return_index=True)
+    indices = np.sort(indices)
+    data = data[indices]
+
+    # remove null predictions
+    data = data[data[:, 2] >= 0.0]
+
+    # remove ignored predictions
+    for idx, count in enumerate(gt_counts):
+        if count > 0:
+            continue
+        data = data[data[:, 5] != idx]
+
     n_rows = data.shape[0]
     n_labels = len(gt_counts)
     n_ious = iou_thresholds.shape[0]
 
-    visited_gts, visited_pds = set(), set()
+    visited_gts = set()
 
     total_count = np.zeros((n_labels, n_ious))
     tp_count = np.zeros((n_labels, n_ious))
     pr_curve = np.zeros((n_labels, 101, n_ious))  # binned PR curve
 
-    for row in numba.prange(n_rows):
+    for row in range(n_rows):
         for iou_idx in range(n_ious):
 
             datum_id = data[row][0]
@@ -185,21 +208,12 @@ def _compute_ap(
             iou = data[row][3]
             gt_label = data[row][4]
             pd_label = int(data[row][5])
-            score = data[row][6]  # score
+            score = data[row][6]
             is_match = 1.0 if data[row][4] == data[row][5] else 0.0
 
             gt_tuple = (datum_id, gt_id, gt_label, iou_idx)
-            pd_tuple = (datum_id, pd_id, pd_label, iou_idx)
-
-            skip1 = pd_tuple in visited_pds and data[row][1] >= 0.0
-            skip2 = pd_id < 0.0
-            skip3 = np.isclose(gt_counts[pd_label], 0.0)  # no groundtruths
-
-            if skip1 or skip2 or skip3:
-                continue
 
             total_count[pd_label][iou_idx] += 1
-            visited_pds.add(pd_tuple)
 
             if (
                 score > 0.0
@@ -788,27 +802,10 @@ class DetectionManager:
         )
         self.n_labels = len(self.index_to_label)
 
-        detailed_pairs = np.concatenate(
+        self.detailed_pairs = np.concatenate(
             _compute_iou(self.pairs),
             axis=0,
         )
-
-        indices = np.lexsort(
-            (
-                detailed_pairs[:, 1],
-                -detailed_pairs[:, 3],
-                -detailed_pairs[:, 6],
-            )
-        )
-        self.detailed_pairs = detailed_pairs[indices]
-
-        # self._pairs_sorted_by_label = [
-        #     detailed_pairs[
-        #         (detailed_pairs[:, 4] == label_id)
-        #         | (detailed_pairs[:, 5] == label_id)
-        #     ]
-        #     for label_id in range(len(self.index_to_label))
-        # ]
 
         # lock the object
         self._lock = True
@@ -852,8 +849,22 @@ class DetectionManager:
         if not self._lock:
             raise RuntimeError("Data not finalized.")
 
+        indices = np.lexsort(
+            (
+                self.detailed_pairs[:, 1],
+                -self.detailed_pairs[:, 3],
+                -self.detailed_pairs[:, 6],
+            )
+        )
+        data = self.detailed_pairs[indices]
+
+        pairs_sorted_by_label = [
+            data[(data[:, 4] == label_id) | (data[:, 5] == label_id)]
+            for label_id in range(len(self.index_to_label))
+        ]
+
         metrics = _compute_detailed_pr_curve(
-            self._pairs_sorted_by_label,
+            pairs_sorted_by_label,
             label_counts=self._label_counts,
             iou_thresholds=np.array(iou_thresholds),
             n_samples=n_samples,
