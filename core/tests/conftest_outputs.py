@@ -2892,6 +2892,78 @@ def detailed_curve_examples_output():
             ("datum2",),
             ("datum0",),
         },
+        # check cases where we shouldn't have any examples since the count is zero
+        ("bee", 0.3, "fn", "misclassifications"): set(),
+        ("dog", 0.1, "tn", "all"): set(),
     }
 
     return expected_outputs
+
+
+@pytest.fixture
+def detailed_curve_examples_check_zero_count_examples_output():
+    expected_outputs = {
+        ("ant", 0.05, "fp", "misclassifications"): 0,
+        ("ant", 0.95, "tn", "all"): 0,
+        ("bee", 0.2, "fn", "misclassifications"): 0,
+        ("cat", 0.2, "fn", "misclassifications"): 0,
+    }
+
+    return expected_outputs
+
+
+@pytest.fixture
+def detailed_curve_examples_check_true_negatives_output():
+    expected_outputs = {
+        ("bee", 0.05, "tn", "all"): {
+            ("uid1",),
+        },
+        ("bee", 0.15, "tn", "all"): {
+            ("uid1",),
+        },
+        ("bee", 0.95, "tn", "all"): {
+            ("uid1",),
+            ("uid0",),
+        },
+    }
+
+    return expected_outputs
+
+
+@pytest.fixture
+def check_correct_deassignment_of_true_positive_boolean_outputs() -> list:
+    return [
+        {
+            "label": {"key": "class", "value": "1"},
+            "parameters": {"iou": 0.5},
+            "value": 0.504950495049505,
+            "type": "AP",
+        },
+        {
+            "parameters": {"label_key": "class", "iou": 0.5},
+            "value": 0.504950495049505,
+            "type": "mAP",
+        },
+        {
+            "label": {"key": "class", "value": "1"},
+            "parameters": {"ious": [0.5]},
+            "value": 0.504950495049505,
+            "type": "APAveragedOverIOUs",
+        },
+        {
+            "parameters": {"label_key": "class", "ious": [0.5]},
+            "value": 0.504950495049505,
+            "type": "mAPAveragedOverIOUs",
+        },
+        {
+            "label": {"key": "class", "value": "1"},
+            "parameters": {"ious": [0.5]},
+            "value": 0.5,
+            "type": "AR",
+        },
+        {
+            "parameters": {"label_key": "class", "ious": [0.5]},
+            "value": 0.5,
+            "type": "mAR",
+        },
+    ]
