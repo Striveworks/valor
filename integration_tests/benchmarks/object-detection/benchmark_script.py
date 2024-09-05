@@ -484,19 +484,19 @@ if __name__ == "__main__":
         ],
         evaluation_timeout=0,
         chunk_size=10,
-        limits_to_test=[1, 1],
+        limits_to_test=[10, 10],
         compute_pr=False,
         compute_detailed=False,
     )
 
-    # # run raster benchmark
-    # run_benchmarking_analysis(
-    #     combinations=[
-    #         (AnnotationType.RASTER, AnnotationType.RASTER),
-    #     ],
-    #     limits_to_test=[100, 100],
-    #     ingestion_chunk_size=10,
-    #     evaluation_timeout=0,
-    #     compute_pr=False,
-    #     compute_detailed=False,
-    # )
+    # run raster benchmark
+    run_benchmarking_analysis(
+        combinations=[
+            (AnnotationType.RASTER, AnnotationType.RASTER),
+        ],
+        limits_to_test=[10, 10],
+        chunk_size=10,
+        evaluation_timeout=0,
+        compute_pr=False,
+        compute_detailed=False,
+    )
