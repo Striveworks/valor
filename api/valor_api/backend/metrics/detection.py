@@ -174,8 +174,8 @@ def _calculate_ap_and_ar(
                     )
 
                 recalls_across_thresholds.append(
-                    recall_cnt_tp / (recall_cnt_tp + recall_cnt_fn)
-                    if (recall_cnt_tp + recall_cnt_fn)
+                    recall_cnt_tp / number_of_groundtruths_per_label[label_id]
+                    if number_of_groundtruths_per_label[label_id]
                     else 0
                 )
             else:

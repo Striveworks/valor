@@ -158,7 +158,7 @@ def _compute_iou(data: list[np.ndarray]) -> list[np.ndarray]:
     return results
 
 
-def _compute_ap(
+def _compute_average_precision(
     data: np.ndarray,
     label_counts: np.ndarray,
     iou_thresholds: np.ndarray,
@@ -191,14 +191,122 @@ def _compute_ap(
     n_labels = label_counts.shape[0]
     n_ious = iou_thresholds.shape[0]
 
+    mask_score = data[:, 6] > 0.0
+    mask_labels_match = np.isclose(data[:, 4], data[:, 5])
+    mask_gt_exists = data[:, 1] >= 0.0
+
+    total_count = np.zeros(
+        (
+            n_ious,
+            n_rows,
+        ),
+        dtype=np.int32,
+    )
+    tp_count = np.zeros_like(total_count)
+    gt_count = np.zeros_like(total_count)
+    pd_labels = data[:, 5].astype(int)
+
     pr_curve = np.zeros((n_ious, n_labels, 101))  # binned PR curve
+
     for iou_idx in range(n_ious):
 
-        mask_score = data[:, 6] > 0.0
         mask_iou = data[:, 3] >= iou_thresholds[iou_idx]
-        mask_labels_match = np.isclose(data[:, 4], data[:, 5])
-        mask_gt_exists = data[:, 1] >= 0.0
         mask = mask_score & mask_iou & mask_labels_match & mask_gt_exists
+        tp_canidates = data[mask]
+        _, indices_gt_unique = np.unique(
+            tp_canidates[:, [0, 1, 4]], axis=0, return_index=True
+        )
+        mask_gt_unique = np.zeros(tp_canidates.shape[0], dtype=bool)
+        mask_gt_unique[indices_gt_unique] = True
+        true_positives_mask = np.zeros(n_rows, dtype=bool)
+        true_positives_mask[mask] = mask_gt_unique
+
+        for pd_label in np.unique(pd_labels):
+            mask_pd_label = pd_labels == pd_label
+
+            # count ground truths
+            gt_count[iou_idx][mask_pd_label] = label_counts[pd_label][0]
+
+            # count total predictions
+            total_count[iou_idx][mask_pd_label] = np.arange(
+                1, mask_pd_label.sum() + 1
+            )
+
+            # count tp
+            mask_tp = mask_pd_label & true_positives_mask
+            tp_count[iou_idx][mask_tp] = np.arange(1, mask_tp.sum() + 1)
+
+    precision = np.divide(tp_count, total_count, where=total_count > 0)
+    recall = np.divide(tp_count, gt_count, where=gt_count > 0)
+    recall_index = np.floor(recall * 100.0).astype(int)
+
+    pr_curve[:, pd_labels, recall_index] = np.maximum(
+        pr_curve[:, pd_labels, recall_index], precision
+    )
+
+    # interpolate the PR-Curve
+    results = np.zeros((n_ious, n_labels))
+    running_max = np.zeros((n_ious, n_labels))
+    for recall in range(100, -1, -1):
+        precision = pr_curve[:, :, recall]
+        running_max = np.maximum(precision, running_max)
+        # print(recall, running_max)
+        results += running_max
+    return results / 101.0
+
+
+def _compute_average_recall(
+    data: np.ndarray,
+    label_counts: np.ndarray,
+    iou_thresholds: np.ndarray,
+    score_thresholds: np.ndarray,
+) -> np.ndarray:
+
+    # remove null predictions
+    data = data[data[:, 2] >= 0.0]
+
+    # sort by gt_id, iou, score
+    indices = np.lexsort(
+        (
+            data[:, 1],
+            -data[:, 3],
+            -data[:, 6],
+        )
+    )
+    data = data[indices]
+
+    # remove ignored predictions
+    for idx, count in enumerate(label_counts[:, 0]):
+        if count > 0:
+            continue
+        data = data[data[:, 5] != idx]
+
+    # only keep the highest ranked pair
+    _, indices = np.unique(data[:, [0, 2]], axis=0, return_index=True)
+    data = data[np.sort(indices)]
+
+    n_rows = data.shape[0]
+    n_labels = label_counts.shape[0]
+    n_ious = iou_thresholds.shape[0]
+    n_scores = score_thresholds.shape[0]
+
+    recall = np.zeros((n_scores, n_ious, n_labels))
+
+    mask_labels_match = np.isclose(data[:, 4], data[:, 5])
+    mask_gt_exists = data[:, 1] >= 0.0
+
+    for score_idx in range(n_scores):
+
+        mask_score_1 = data[:, 6] >= score_thresholds[score_idx]
+        mask_score_2 = np.isclose(data[:, 6], score_thresholds[score_idx])
+        mask_score_3 = score_thresholds[score_idx] > 1e-9
+        mask_score = mask_score_1 | (mask_score_2 & mask_score_3)
+
+        for iou_idx in range(n_ious):
+
+            mask_iou = data[:, 3] >= iou_thresholds[iou_idx]
+            mask = mask_score & mask_iou & mask_labels_match & mask_gt_exists
+
         tp_canidates = data[mask]
         _, indices_gt_unique = np.unique(
             tp_canidates[:, [0, 1, 4]], axis=0, return_index=True
@@ -806,7 +914,7 @@ class DetectionManager:
         if not self._lock:
             raise RuntimeError("Data not finalized.")
 
-        metrics = _compute_ap(
+        metrics = _compute_average_precision(
             data=self.detailed_pairs,
             label_counts=self._label_counts,
             iou_thresholds=np.array(iou_thresholds),
