@@ -2895,3 +2895,42 @@ def detailed_curve_examples_output():
     }
 
     return expected_outputs
+
+
+@pytest.fixture
+def check_correct_deassignment_of_true_positive_boolean_outputs() -> list:
+    return [
+        {
+            "label": {"key": "class", "value": "1"},
+            "parameters": {"iou": 0.5},
+            "value": 0.504950495049505,
+            "type": "AP",
+        },
+        {
+            "parameters": {"label_key": "class", "iou": 0.5},
+            "value": 0.504950495049505,
+            "type": "mAP",
+        },
+        {
+            "label": {"key": "class", "value": "1"},
+            "parameters": {"ious": [0.5]},
+            "value": 0.504950495049505,
+            "type": "APAveragedOverIOUs",
+        },
+        {
+            "parameters": {"label_key": "class", "ious": [0.5]},
+            "value": 0.504950495049505,
+            "type": "mAPAveragedOverIOUs",
+        },
+        {
+            "label": {"key": "class", "value": "1"},
+            "parameters": {"ious": [0.5]},
+            "value": 0.5,
+            "type": "AR",
+        },
+        {
+            "parameters": {"label_key": "class", "ious": [0.5]},
+            "value": 0.5,
+            "type": "mAR",
+        },
+    ]
