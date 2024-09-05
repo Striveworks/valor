@@ -198,16 +198,13 @@ def _compute_ap(
         mask_iou = data[:, 3] >= iou_thresholds[iou_idx]
         mask_labels_match = np.isclose(data[:, 4], data[:, 5])
         mask_gt_exists = data[:, 1] >= 0.0
-
         mask = mask_score & mask_iou & mask_labels_match & mask_gt_exists
         tp_canidates = data[mask]
-
         _, indices_gt_unique = np.unique(
             tp_canidates[:, [0, 1, 4]], axis=0, return_index=True
         )
         mask_gt_unique = np.zeros(tp_canidates.shape[0], dtype=bool)
         mask_gt_unique[indices_gt_unique] = True
-
         true_positives_mask = np.zeros(n_rows, dtype=bool)
         true_positives_mask[mask] = mask_gt_unique
 
@@ -217,7 +214,6 @@ def _compute_ap(
         pd_labels = data[:, 5].astype(int)
 
         for pd_label in np.unique(pd_labels):
-
             mask_pd_label = pd_labels == pd_label
             gt_count[mask_pd_label] = label_counts[pd_label][0]
             total_count[mask_pd_label] = np.arange(1, mask_pd_label.sum() + 1)
