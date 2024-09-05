@@ -2,7 +2,7 @@ import time
 
 import numpy as np
 import pandas as pd
-from valor_core import enums, metrics, schemas
+from valor_core import enums, metrics, schemas, utilities
 
 
 def bbox_to_useful(bbox):
@@ -15,7 +15,9 @@ def bbox_to_useful(bbox):
     y_max = max(y_values)
 
     area = (x_max - x_min) * (y_max - y_min)
-    ## area = (x_max - x_min + 1) * (y_max - y_min + 1)
+
+    # Pixel-center axis aligned bounding box format
+    # area = (x_max - x_min + 1) * (y_max - y_min + 1)
 
     return x_min, x_max, y_min, y_max, area
 
@@ -24,7 +26,6 @@ def create_dataframes(
     groundtruths: list[schemas.GroundTruth],
     predictions: list[schemas.Prediction],
 ):
-    start = time.time()
     datum_ids = {}
     datum_id_counter = 0
 
@@ -78,7 +79,7 @@ def create_dataframes(
         rows,
         columns=[
             "id",
-            "id_gt",
+            "id_g",
             "k",
             "v",
             "x_min",
@@ -89,9 +90,12 @@ def create_dataframes(
         ],
     )
 
-    gt_kv_size = groundtruth_dataframe.groupby(
-        ["k", "v"], as_index=False
-    ).size()
+    # Count number of groundtruths with each (label_key, label_value) pair
+    groundtruth_label_counts = (
+        groundtruth_dataframe.groupby(["k", "v"])
+        .size()
+        .reset_index(name="glc")  # type: ignore - pandas typing error
+    )
 
     rows = []
     dropped_preds = []
@@ -139,7 +143,7 @@ def create_dataframes(
         rows,
         columns=[
             "id",
-            "id_pd",
+            "id_p",
             "k",
             "v",
             "x_min",
@@ -151,9 +155,10 @@ def create_dataframes(
         ],
     )
 
-    pd_kv_size = prediction_dataframe.groupby(
-        ["k", "v"], as_index=False
-    ).size()
+    # Count number of prediction with each (label_key, label_value) pair
+    prediction_label_counts = (
+        prediction_dataframe.groupby(["k", "v"]).size().reset_index(name="plc")  # type: ignore - pandas typing error
+    )
 
     datum_id_lookup = [""] * len(datum_ids)
     for k, v in datum_ids.items():
@@ -169,64 +174,47 @@ def create_dataframes(
 
     if len(dropped_preds):
         print(
-            f"Dropped {len(dropped_preds)} predictions because there was no detection groundtruth for datums: {dropped_preds}"
+            f"Dropped {len(dropped_preds)} predictions because there is no groundtruth for datums: {dropped_preds}"
         )
 
-    end = time.time()
-    print(
-        f"Optimized Created {len(groundtruth_dataframe)} GT Rows and {len(prediction_dataframe)} PD Rows in: {end - start}"
-    )
-
-    start = time.time()
-    joint_df = _create_joint_df(groundtruth_dataframe, prediction_dataframe)
-    end = time.time()
-    print(
-        f"Optimized Created Detailed Joint DF with {len(joint_df)} rows in: {end - start}"
+    joint_dataframe = _create_joint_df(
+        groundtruth_dataframe, prediction_dataframe
     )
 
     return (
         groundtruth_dataframe,
         prediction_dataframe,
-        joint_df,
+        joint_dataframe,
         datum_id_lookup,
         label_keys_lookup,
         label_value_lookup,
-        gt_kv_size,
-        pd_kv_size,
+        groundtruth_label_counts,
+        prediction_label_counts,
     )
 
 
 def _create_joint_df(
-    groundtruth_df: pd.DataFrame, prediction_df: pd.DataFrame
+    groundtruth_dataframe: pd.DataFrame, prediction_dataframe: pd.DataFrame
 ):
-    joint_df = pd.merge(
-        groundtruth_df,
-        prediction_df,
+    joint_dataframe = pd.merge(
+        groundtruth_dataframe,
+        prediction_dataframe,
         on=["id", "k"],
         how="outer",
-        suffixes=("_gt", "_pd"),
+        suffixes=("_g", "_p"),
     )
 
-    joint_df["iou"] = _calculate_iou(joint_df=joint_df)
+    joint_dataframe = _calculate_iou(joint_dataframe=joint_dataframe)
 
-    """
-    joint_df['size_gt'] = joint_df['size_gt'].fillna(0)
-    joint_df['size_pd'] = joint_df['size_pd'].fillna(0)
-    joint_df["v_pd"] = joint_df["v_pd"].fillna(joint_df["v_gt"])
-    joint_df["s"] = joint_df["s"].fillna(0)
-    joint_df["v_gt"] = joint_df["v_gt"].fillna(-1)
-    joint_df["id_gt"] = joint_df["id_gt"].fillna(-1)
-    """
-
-    return joint_df.loc[
+    return joint_dataframe.loc[
         :,
         [
             "id",
-            "id_gt",
-            "id_pd",
+            "id_g",
+            "id_p",
             "k",
-            "v_gt",
-            "v_pd",
+            "v_g",
+            "v_p",
             "s",
             "iou",
         ],
@@ -234,213 +222,274 @@ def _create_joint_df(
 
 
 def _calculate_iou(
-    joint_df: pd.DataFrame,
+    joint_dataframe: pd.DataFrame,
 ) -> pd.DataFrame:
-    """Calculate the IOUs between predictions and groundtruths in a joint dataframe."""
+    """Calculate the IOUs between groundtruths and predictions in a joint dataframe."""
 
-    x_min = np.maximum(joint_df["x_min_gt"], joint_df["x_min_pd"])
-    x_max = np.minimum(joint_df["x_max_gt"], joint_df["x_max_pd"])
-    y_min = np.maximum(joint_df["y_min_gt"], joint_df["y_min_pd"])
-    y_max = np.minimum(joint_df["y_max_gt"], joint_df["y_max_pd"])
+    x_min = np.maximum(joint_dataframe["x_min_g"], joint_dataframe["x_min_p"])
+    x_max = np.minimum(joint_dataframe["x_max_g"], joint_dataframe["x_max_p"])
+    y_min = np.maximum(joint_dataframe["y_min_g"], joint_dataframe["y_min_p"])
+    y_max = np.minimum(joint_dataframe["y_max_g"], joint_dataframe["y_max_p"])
 
-    x = np.maximum(0, x_max - x_min)
-    y = np.maximum(0, y_max - y_min)
-    ## x = np.maximum(0, x_max - x_min + 1)
-    ## y = np.maximum(0, y_max - y_min + 1)
+    w = np.maximum(0, x_max - x_min)
+    h = np.maximum(0, y_max - y_min)
 
-    intersection = np.nan_to_num(x * y, nan=0)
-    return intersection / (
-        joint_df["area_gt"] + joint_df["area_pd"] - intersection
+    # Pixel-center axis aligned bounding box format
+    # w = np.maximum(0, x_max - x_min + 1)
+    # h = np.maximum(0, y_max - y_min + 1)
+
+    intersection = np.nan_to_num(w * h, nan=0)
+    joint_dataframe["iou"] = intersection / (
+        joint_dataframe["area_g"] + joint_dataframe["area_p"] - intersection
     )
 
+    return joint_dataframe
 
-def _calculate_label_id_level_metrics(
-    prediction_df: pd.DataFrame,
-    joint_df: pd.DataFrame,
-    iou_thresholds: list[float],
+
+def _calculate_true_positive_predictions_at_each_iou_threshold(
+    prediction_dataframe: pd.DataFrame,
+    joint_dataframe: pd.DataFrame,
+    iou_thresholds_to_compute: list[float],
 ) -> pd.DataFrame:
+    """Pre-compute some filters and data for reuse."""
 
-    best_g_per_p = (
-        joint_df[joint_df["iou"].notna()]
-        .groupby(["id", "id_pd"])["iou"]
+    # For each prediction, get the index of the ground truth with the highest iou and has matching labels.
+    best_groundtruth_per_prediction = (
+        joint_dataframe[
+            (joint_dataframe["iou"] >= min(iou_thresholds_to_compute))
+            & (joint_dataframe["v_g"] == joint_dataframe["v_p"])
+        ]
+        .groupby(["id", "id_p"])["iou"]
         .idxmax()
     )
-    best_gp_pair = (
-        joint_df.loc[best_g_per_p, :].groupby(["id", "id_gt"])["s"].idxmax()
-    )
 
-    sorted_groundtruth_prediction_pairs = pd.merge(
-        prediction_df[["id", "id_pd", "k", "v", "s"]],
-        joint_df.loc[best_gp_pair, ["id", "id_pd", "id_gt", "iou"]],
-        on=["id", "id_pd"],
-        how="left",
-    ).sort_values(by=["s"], ascending=False)
-
-    sorted_groundtruth_prediction_pairs["count"] = (
-        sorted_groundtruth_prediction_pairs.groupby(["k", "v"]).cumcount() + 1
-    )
-    sorted_groundtruth_prediction_pairs = sorted_groundtruth_prediction_pairs[
-        sorted_groundtruth_prediction_pairs["id_gt"].notna()
+    best_groundtruth_per_prediction = joint_dataframe.loc[
+        best_groundtruth_per_prediction, ["id", "id_g", "id_p", "s", "iou"]
     ]
 
-    return sorted_groundtruth_prediction_pairs.reset_index(drop=True)
+    true_positives_at_iou_thresholds = []
+    for i, iou_threshold in enumerate(iou_thresholds_to_compute):
+        true_positives = (
+            best_groundtruth_per_prediction[
+                best_groundtruth_per_prediction["iou"] >= iou_threshold
+            ]
+            .groupby(["id", "id_g"])["s"]
+            .idxmax()
+        )
+        true_positives_at_iou_thresholds.append(
+            pd.Series(True, index=true_positives, name=i, dtype="boolean")
+        )
+
+    true_positives_at_iou_thresholds = pd.concat(
+        true_positives_at_iou_thresholds, axis=1
+    )
+    rows_to_keep = true_positives_at_iou_thresholds.any(axis=1)
+    best_groundtruth_per_prediction = pd.concat(
+        [
+            best_groundtruth_per_prediction.loc[
+                rows_to_keep.index, ["id", "id_p"]
+            ],
+            true_positives_at_iou_thresholds.loc[rows_to_keep.index, :],
+        ],
+        axis=1,
+    ).fillna(False)
+    del rows_to_keep, true_positives_at_iou_thresholds
+
+    true_positive_predictions = (
+        prediction_dataframe[["id", "id_p", "k", "v", "s"]]
+        .sort_values(by=["s"], ascending=False)
+        .reset_index(drop=True)
+    )
+    true_positive_predictions["c"] = (
+        true_positive_predictions.groupby(["k", "v"]).cumcount() + 1
+    )
+
+    true_positive_predictions = true_positive_predictions.merge(
+        best_groundtruth_per_prediction, on=["id", "id_p"], how="inner"
+    )
+
+    return true_positive_predictions
 
 
 def _calculate_ap_metrics(
-    calculation_df: pd.DataFrame,
-    gt_kv_size: pd.DataFrame,
+    true_positive_predictions: pd.DataFrame,
+    groundtruth_label_counts: pd.DataFrame,
     iou_thresholds_to_compute: list[float],
     iou_thresholds_to_return: list[float],
     label_key_lookup: list,
     label_value_lookup: list,
 ):
-    calc_ap_df = {
-        "k": calculation_df["k"],
-        "v": calculation_df["v"],
-        "c": calculation_df["count"],
-    }
-    cols = [str(i) for i in range(len(iou_thresholds_to_compute))]
+    calculation_columns = list(
+        range(
+            len(iou_thresholds_to_compute), 2 * len(iou_thresholds_to_compute)
+        )
+    )
     for i, iou_threshold in enumerate(iou_thresholds_to_compute):
-        calc_ap_df[cols[i]] = (
-            calculation_df[calculation_df["iou"] >= iou_threshold]
+        # Calculate max precision for each recall value on PR curve
+        true_positive_predictions[calculation_columns[i]] = (
+            true_positive_predictions[true_positive_predictions[i]]
             .groupby(["k", "v"])
             .cumcount()
             + 1
-        ).astype("float64")
+        ) / true_positive_predictions["c"]
 
-    calc_ap_df = pd.DataFrame(calc_ap_df)
-
-    calc_ap_df[cols] = calc_ap_df[cols].div(calc_ap_df["c"], axis=0)
-
-    calc_ap_df[cols] = (
-        calc_ap_df[::-1].groupby(["k", "v"])[cols].cummax()[::-1]
+    # Max precision from the right for PR curve interpolation
+    true_positive_predictions[calculation_columns] = (
+        true_positive_predictions[::-1]
+        .groupby(["k", "v"])[calculation_columns]
+        .cummax()[::-1]
     )
 
-    ap_metrics_df = (calc_ap_df.groupby(["k", "v"])[cols].sum()).reset_index()
-    ap_metrics_df = gt_kv_size.merge(
-        ap_metrics_df,
+    # Sum PR curve approximation to approximate total area under the curve
+    average_precision_metrics = true_positive_predictions.groupby(
+        ["k", "v"], as_index=False
+    )[calculation_columns].sum()
+    true_positive_predictions.drop(columns=calculation_columns, inplace=True)
+
+    # Map groundtruth count for each label key-value pair to 'glc' column for each row
+    average_precision_metrics = groundtruth_label_counts.merge(
+        average_precision_metrics,
         on=["k", "v"],
         how="left",
     ).fillna(0)
 
-    ap_metrics_df[cols] = (
-        ap_metrics_df[cols].div(ap_metrics_df["size"], axis=0).fillna(0)
+    # Divide by groundtruth count for each label key-value pair to calculate AP
+    average_precision_metrics[calculation_columns] = (
+        average_precision_metrics[calculation_columns]
+        .div(average_precision_metrics["glc"], axis=0)
+        .fillna(0)
     )
 
-    ap_metrics = []
-    col_lookup = {
-        iou_thresholds_to_compute[i]: cols[i] for i in range(len(cols))
+    output_metrics = []
+    iou_set = set(iou_thresholds_to_compute)
+    iou_column_lookup = {
+        iou_thresholds_to_compute[i]: calculation_columns[i]
+        for i in range(len(iou_thresholds_to_compute))
     }
-    ap_metrics_df["AP"] = ap_metrics_df[cols].mean(axis=1)
-    temp = set(iou_thresholds_to_compute)
 
-    for _, row in ap_metrics_df.iterrows():
+    # Average AP over all IOU thresholds to calculate AP averaged over IOUs
+    average_precision_metrics["APAvg"] = average_precision_metrics[
+        calculation_columns
+    ].mean(axis=1)
+
+    for _, row in average_precision_metrics.iterrows():
         k = label_key_lookup[int(row["k"])]
         v = label_value_lookup[int(row["v"])]
         for _, iou_threshold in enumerate(iou_thresholds_to_return):
-            ap_metrics.append(
+            output_metrics.append(
                 metrics.APMetric(
                     iou=iou_threshold,
-                    value=float(row[col_lookup[iou_threshold]]),
+                    value=float(row[iou_column_lookup[iou_threshold]]),
                     label=schemas.Label(key=k, value=v),
                 )
             )
 
-        ap_metrics.append(
+        output_metrics.append(
             metrics.APMetricAveragedOverIOUs(
-                ious=temp,
-                value=float(row["AP"]),
+                ious=iou_set,
+                value=float(row["APAvg"]),
                 label=schemas.Label(key=k, value=v),
             )
         )
 
-    map_metrics_df = ap_metrics_df.groupby("k", as_index=False)[cols].mean()
-    map_metrics_df["mAP"] = map_metrics_df[cols].mean(axis=1)
+    # Average AP over label values in label key to calculate mAP
+    mean_average_precision_metrics = average_precision_metrics.groupby(
+        "k", as_index=False
+    )[calculation_columns].mean()
 
-    for _, row in map_metrics_df.iterrows():
+    # Average mAP over all IOU thresholds to calculate mAP averaged over IOUs
+    mean_average_precision_metrics["mAPAvg"] = mean_average_precision_metrics[
+        calculation_columns
+    ].mean(axis=1)
+
+    for _, row in mean_average_precision_metrics.iterrows():
         k = label_key_lookup[int(row["k"])]
         for _, iou_threshold in enumerate(iou_thresholds_to_return):
-            ap_metrics.append(
+            output_metrics.append(
                 metrics.mAPMetric(
                     iou=iou_threshold,
-                    value=float(row[col_lookup[iou_threshold]]),
+                    value=float(row[iou_column_lookup[iou_threshold]]),
                     label_key=k,
                 )
             )
 
-        ap_metrics.append(
+        output_metrics.append(
             metrics.mAPMetricAveragedOverIOUs(
-                ious=temp,
-                value=float(row["mAP"]),
+                ious=iou_set,
+                value=float(row["mAPAvg"]),
                 label_key=k,
             )
         )
 
-    return ap_metrics
+    return output_metrics
 
 
 def _calculate_ar_metrics(
-    calculation_df: pd.DataFrame,
-    gt_kv_size: pd.DataFrame,
+    true_positive_predictions: pd.DataFrame,
+    groundtruth_label_counts: pd.DataFrame,
     iou_thresholds_to_compute: list[float],
     recall_score_threshold: float,
     label_key_lookup: list,
     label_value_lookup: list,
 ):
-    ar_metrics_df = []
-    for iou_threshold in iou_thresholds_to_compute:
-        ar_metrics_df.append(
-            calculation_df[
-                (calculation_df["iou"] >= iou_threshold)
-                & (calculation_df["s"] >= recall_score_threshold)
-            ]
+    true_positive_predictions = true_positive_predictions[
+        true_positive_predictions["s"] >= recall_score_threshold
+    ]
+    recall_metrics = pd.concat(
+        [
+            true_positive_predictions[true_positive_predictions[i]]
             .groupby(["k", "v"])
             .size()
-        )
+            for i in range(len(iou_thresholds_to_compute))
+        ],
+        axis=1,
+    ).fillna(0)
 
-    ar_metrics_df = pd.concat(ar_metrics_df, axis=1).sum(axis=1) / len(
-        iou_thresholds_to_compute
-    )
-    ar_metrics_df = ar_metrics_df.reset_index(name="ar")
+    # Calculate true positives count averaged over all IOUs
+    recall_metrics = recall_metrics.mean(axis=1)
+    recall_metrics = recall_metrics.reset_index(name="RAvg")
 
-    ar_metrics_df = gt_kv_size.merge(
-        ar_metrics_df,
+    recall_metrics = groundtruth_label_counts.merge(
+        recall_metrics,
         on=["k", "v"],
         how="left",
     ).fillna(0)
 
-    ar_metrics_df["ar"] = ar_metrics_df["ar"] / ar_metrics_df["size"]
+    # Divide average true positive count by groundtruth count for each label key-value pair to calculate recall averaged over IOUs
+    recall_metrics["RAvg"] = recall_metrics["RAvg"] / recall_metrics["glc"]
 
-    temp = set(iou_thresholds_to_compute)
-    ar_metrics = [
+    iou_set = set(iou_thresholds_to_compute)
+    output_metrics = [
         metrics.ARMetric(
-            ious=temp,
-            value=float(row["ar"]),
+            ious=iou_set,
+            value=float(row["RAvg"]),
             label=schemas.Label(
                 key=label_key_lookup[int(row["k"])],
                 value=label_value_lookup[int(row["v"])],
             ),
         )
-        for _, row in ar_metrics_df.iterrows()
+        for _, row in recall_metrics.iterrows()
     ]
 
-    mar_metrics_df = ar_metrics_df.groupby("k", as_index=False)["ar"].mean()
+    mean_recall_metrics = recall_metrics.groupby("k", as_index=False)[
+        "RAvg"
+    ].mean()
 
-    mar_metrics = [
+    output_metrics += [
         metrics.mARMetric(
-            ious=temp,
-            value=float(row["ar"]),
+            ious=iou_set,
+            value=float(row["RAvg"]),
             label_key=label_key_lookup[int(row["k"])],
         )
-        for _, row in mar_metrics_df.iterrows()
+        for _, row in mean_recall_metrics.iterrows()
     ]
 
-    return ar_metrics + mar_metrics
+    return output_metrics
 
 
 def evaluate_detections(
-    groundtruths: pd.DataFrame | list[schemas.GroundTruth],
-    predictions: pd.DataFrame | list[schemas.Prediction],
+    groundtruths: list[schemas.GroundTruth],
+    predictions: list[schemas.Prediction],
     label_map: dict[schemas.Label, schemas.Label] | None = None,
     metrics_to_return: list[enums.MetricType] | None = None,
     iou_thresholds_to_compute: list[float] | None = None,
@@ -450,8 +499,20 @@ def evaluate_detections(
     pr_curve_max_examples: int = 1,
 ):
 
+    start_time = time.time()
+
     if not label_map:
         label_map = {}
+
+    if metrics_to_return is None:
+        metrics_to_return = [
+            enums.MetricType.AP,
+            enums.MetricType.AR,
+            enums.MetricType.mAP,
+            enums.MetricType.APAveragedOverIOUs,
+            enums.MetricType.mAR,
+            enums.MetricType.mAPAveragedOverIOUs,
+        ]
 
     if iou_thresholds_to_compute is None:
         iou_thresholds_to_compute = [
@@ -460,27 +521,40 @@ def evaluate_detections(
     if iou_thresholds_to_return is None:
         iou_thresholds_to_return = [0.5, 0.75]
 
+    utilities.validate_label_map(label_map=label_map)
+    utilities.validate_metrics_to_return(
+        metrics_to_return=metrics_to_return,
+        task_type=enums.TaskType.OBJECT_DETECTION,
+    )
+    utilities.validate_parameters(
+        pr_curve_iou_threshold=pr_curve_iou_threshold,
+        pr_curve_max_examples=pr_curve_max_examples,
+        recall_score_threshold=recall_score_threshold,
+    )
+
     (
         groundtruth_dataframe,
         prediction_dataframe,
-        joint_df,
+        joint_dataframe,
         datum_id_lookup,
         label_key_lookup,
         label_value_lookup,
-        gt_kv_size,
-        pd_kv_size,
+        groundtruth_label_counts,
+        prediction_label_counts,
     ) = create_dataframes(groundtruths, predictions)
 
-    calculation_df = _calculate_label_id_level_metrics(
-        prediction_dataframe,
-        joint_df,
-        iou_thresholds_to_compute,
+    true_positive_predictions = (
+        _calculate_true_positive_predictions_at_each_iou_threshold(
+            prediction_dataframe,
+            joint_dataframe,
+            iou_thresholds_to_compute,
+        )
     )
 
     metrics_to_output = []
     metrics_to_output += _calculate_ap_metrics(
-        calculation_df,
-        gt_kv_size,
+        true_positive_predictions,
+        groundtruth_label_counts,
         iou_thresholds_to_compute,
         iou_thresholds_to_return,
         label_key_lookup,
@@ -488,10 +562,38 @@ def evaluate_detections(
     )
 
     metrics_to_output += _calculate_ar_metrics(
-        calculation_df,
-        gt_kv_size,
+        true_positive_predictions,
+        groundtruth_label_counts,
         iou_thresholds_to_compute,
         recall_score_threshold,
         label_key_lookup,
         label_value_lookup,
+    )
+
+    metrics_to_output = [
+        metric.to_dict()
+        for metric in metrics_to_output
+        if metric.to_dict()["type"] in metrics_to_return
+    ]
+
+    return schemas.Evaluation(
+        parameters=schemas.EvaluationParameters(
+            label_map=label_map,
+            metrics_to_return=metrics_to_return,
+            iou_thresholds_to_compute=iou_thresholds_to_compute,
+            iou_thresholds_to_return=iou_thresholds_to_return,
+            recall_score_threshold=recall_score_threshold,
+            pr_curve_iou_threshold=pr_curve_iou_threshold,
+            pr_curve_max_examples=pr_curve_max_examples,
+        ),
+        metrics=metrics_to_output,
+        confusion_matrices=[],
+        ignored_pred_labels=[],
+        missing_pred_labels=[],
+        meta={
+            "labels": len(groundtruth_dataframe[["k", "v"]].drop_duplicates()),
+            "datums": len(datum_id_lookup),
+            "annotations": len(groundtruth_dataframe),
+            "duration": time.time() - start_time,
+        },
     )
