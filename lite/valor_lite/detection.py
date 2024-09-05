@@ -1,4 +1,3 @@
-import math
 from collections import defaultdict
 from dataclasses import dataclass
 from typing import Any
@@ -161,9 +160,12 @@ def _compute_iou(data: list[np.ndarray]) -> list[np.ndarray]:
 
 def _compute_ap(
     data: np.ndarray,
-    gt_counts: np.ndarray,
+    label_counts: np.ndarray,
     iou_thresholds: np.ndarray,
 ) -> np.ndarray:
+
+    # remove null predictions
+    data = data[data[:, 2] >= 0.0]
 
     # sort by gt_id, iou, score
     indices = np.lexsort(
@@ -175,80 +177,68 @@ def _compute_ap(
     )
     data = data[indices]
 
-    # only keep the highest ranked pair
-    _, indices = np.unique(data[:, [0, 2]], axis=0, return_index=True)
-    indices = np.sort(indices)
-    data = data[indices]
-
-    # remove null predictions
-    data = data[data[:, 2] >= 0.0]
-
     # remove ignored predictions
-    for idx, count in enumerate(gt_counts):
+    for idx, count in enumerate(label_counts[:, 0]):
         if count > 0:
             continue
         data = data[data[:, 5] != idx]
 
+    # only keep the highest ranked pair
+    _, indices = np.unique(data[:, [0, 2]], axis=0, return_index=True)
+    data = data[np.sort(indices)]
+
     n_rows = data.shape[0]
-    n_labels = len(gt_counts)
+    n_labels = label_counts.shape[0]
     n_ious = iou_thresholds.shape[0]
 
-    visited_gts = set()
+    pr_curve = np.zeros((n_ious, n_labels, 101))  # binned PR curve
+    for iou_idx in range(n_ious):
 
-    total_count = np.zeros((n_labels, n_ious))
-    tp_count = np.zeros((n_labels, n_ious))
-    pr_curve = np.zeros((n_labels, 101, n_ious))  # binned PR curve
+        mask_score = data[:, 6] > 0.0
+        mask_iou = data[:, 3] >= iou_thresholds[iou_idx]
+        mask_labels_match = np.isclose(data[:, 4], data[:, 5])
+        mask_gt_exists = data[:, 1] >= 0.0
 
-    for row in range(n_rows):
-        for iou_idx in range(n_ious):
+        mask = mask_score & mask_iou & mask_labels_match & mask_gt_exists
+        tp_canidates = data[mask]
 
-            datum_id = data[row][0]
-            gt_id = data[row][1]
-            pd_id = data[row][2]
-            iou = data[row][3]
-            gt_label = data[row][4]
-            pd_label = int(data[row][5])
-            score = data[row][6]
-            is_match = 1.0 if data[row][4] == data[row][5] else 0.0
+        _, indices_gt_unique = np.unique(
+            tp_canidates[:, [0, 1, 4]], axis=0, return_index=True
+        )
+        mask_gt_unique = np.zeros(tp_canidates.shape[0], dtype=bool)
+        mask_gt_unique[indices_gt_unique] = True
 
-            gt_tuple = (datum_id, gt_id, gt_label, iou_idx)
+        true_positives_mask = np.zeros(n_rows, dtype=bool)
+        true_positives_mask[mask] = mask_gt_unique
 
-            total_count[pd_label][iou_idx] += 1
+        total_count = np.zeros((n_rows,), dtype=np.int32)
+        tp_count = np.zeros_like(total_count)
+        gt_count = np.zeros_like(total_count)
+        pd_labels = data[:, 5].astype(int)
 
-            if (
-                score > 0.0
-                and gt_id >= 0.0
-                and iou > iou_thresholds[iou_idx]
-                and is_match
-                and gt_tuple not in visited_gts
-            ):
-                tp_count[pd_label][iou_idx] += 1
-                visited_gts.add(gt_tuple)
+        for pd_label in np.unique(pd_labels):
 
-            precision = (
-                tp_count[pd_label][iou_idx] / total_count[pd_label][iou_idx]
-            )
-            recall = (
-                tp_count[pd_label][iou_idx] / gt_counts[pd_label]
-                if gt_counts[pd_label] > 0
-                else 0.0
-            )
+            mask_pd_label = pd_labels == pd_label
+            gt_count[mask_pd_label] = label_counts[pd_label][0]
+            total_count[mask_pd_label] = np.arange(1, mask_pd_label.sum() + 1)
+            mask_tp = mask_pd_label & true_positives_mask
+            tp_count[mask_tp] = np.arange(1, mask_tp.sum() + 1)
 
-            recall = int(math.floor(recall * 100.0))
-            pr_curve[pd_label][recall][iou_idx] = (
-                precision
-                if precision > pr_curve[pd_label][recall][iou_idx]
-                else pr_curve[pd_label][recall][iou_idx]
-            )
+        precision = np.divide(tp_count, total_count, where=total_count > 0)
+        recall = np.divide(tp_count, gt_count, where=gt_count > 0)
+        recall_index = np.floor(recall * 100.0).astype(int)
+
+        pr_curve[iou_idx, pd_labels, recall_index] = np.maximum(
+            pr_curve[iou_idx, pd_labels, recall_index], precision
+        )
 
     # interpolate the PR-Curve
-    results = np.zeros((n_labels, n_ious))
-    running_max = np.zeros((n_labels, n_ious))
+    results = np.zeros((n_ious, n_labels))
+    running_max = np.zeros((n_ious, n_labels))
     for recall in range(100, -1, -1):
-        precision = pr_curve[:, recall, :]
-        running_max[precision > running_max] = precision[
-            precision > running_max
-        ]
+        precision = pr_curve[:, :, recall]
+        running_max = np.maximum(precision, running_max)
+        # print(recall, running_max)
         results += running_max
     return results / 101.0
 
@@ -822,7 +812,7 @@ class DetectionManager:
 
         metrics = _compute_ap(
             data=self.detailed_pairs,
-            gt_counts=self._label_counts[:, 0],
+            label_counts=self._label_counts,
             iou_thresholds=np.array(iou_thresholds),
         )
 
@@ -833,11 +823,11 @@ class DetectionManager:
                         iou=iou_thresholds[iou_idx],
                         value=value,
                     )
-                    for iou_idx, value in enumerate(row)
+                    for iou_idx, value in enumerate(metrics[:, row])
                 ],
                 label=self.index_to_label[label_idx],
             )
-            for label_idx, row in enumerate(metrics)
+            for label_idx, row in enumerate(range(metrics.shape[1]))
             if int(self._label_counts[label_idx][0]) > 0.0
         ]
 

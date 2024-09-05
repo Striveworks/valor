@@ -17,20 +17,19 @@ def test__compute_ap():
         ]
     )
 
-    gt_counts = np.array([1])
+    label_counts = np.array([[1, 5]])
     iou_thresholds = np.array([0.1, 0.6])
 
     results = _compute_ap(
         sorted_pairs,
-        gt_counts=gt_counts,
+        label_counts=label_counts,
         iou_thresholds=iou_thresholds,
     )
 
-    print(results)
-
     expected = np.array(
         [
-            [1.0, 1 / 3],
+            [1.0],
+            [1 / 3],
         ]
     )
 
@@ -62,15 +61,9 @@ def test_ap_using_torch_metrics_example(
     assert manager.n_groundtruths == 20
     assert manager.n_predictions == 19
 
-    print("Label 49: idx = ", manager.label_to_index[("class", "49")])
-
     ap_metrics = manager.compute_ap(
         iou_thresholds=[0.5, 0.75],
     )
-
-    for m in ap_metrics:
-        print()
-        print(m.to_dict())
 
     expected_metrics = [
         {
