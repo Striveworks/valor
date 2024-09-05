@@ -602,10 +602,13 @@ def test_pr_curves_multiple_predictions_per_groundtruth(
 def test_detailed_curve_examples(
     multiclass_pr_curve_groundtruths: list,
     multiclass_pr_curve_check_zero_count_examples_groundtruths: list,
+    multiclass_pr_curve_check_true_negatives_groundtruths: list,
     multiclass_pr_curve_predictions: list,
     multiclass_pr_curve_check_zero_count_examples_predictions: list,
+    multiclass_pr_curve_check_true_negatives_predictions: list,
     detailed_curve_examples_output: dict,
     detailed_curve_examples_check_zero_count_examples_output: dict,
+    detailed_curve_examples_check_true_negatives_output: dict,
 ):
     """Test that we get back the right examples in DetailedPRCurves."""
 
@@ -651,3 +654,28 @@ def test_detailed_curve_examples(
         assert (
             output[key[0]][key[1]][key[2]]["observations"][key[3]]["count"]
         ) == 0
+
+    # test additional cases to make sure that we're getting back enough true negative examples
+    eval_job = evaluate_classification(
+        groundtruths=multiclass_pr_curve_check_true_negatives_groundtruths,
+        predictions=multiclass_pr_curve_check_true_negatives_predictions,
+        metrics_to_return=[enums.MetricType.DetailedPrecisionRecallCurve],
+        pr_curve_max_examples=5,
+    )
+    output = eval_job.metrics[0]["value"]
+
+    for (
+        key,
+        expected,
+    ) in detailed_curve_examples_check_true_negatives_output.items():
+        import pdb
+
+        pdb.set_trace()
+        assert (
+            set(
+                output[key[0]][key[1]][key[2]]["observations"][key[3]][
+                    "examples"
+                ]
+            )
+            == expected
+        )

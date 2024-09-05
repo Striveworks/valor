@@ -3285,6 +3285,90 @@ def multiclass_pr_curve_check_zero_count_examples_predictions():
 
 
 @pytest.fixture
+def multiclass_pr_curve_check_true_negatives_groundtruths():
+    return [
+        schemas.GroundTruth(
+            datum=schemas.Datum(
+                uid="uid0",
+                metadata={
+                    "height": 900,
+                    "width": 300,
+                },
+            ),
+            annotations=[
+                schemas.Annotation(
+                    labels=[
+                        schemas.Label(key="dataset1", value="ant"),
+                    ],
+                ),
+            ],
+        ),
+        schemas.GroundTruth(
+            datum=schemas.Datum(
+                uid="uid1",
+                metadata={
+                    "height": 900,
+                    "width": 300,
+                },
+            ),
+            annotations=[
+                schemas.Annotation(
+                    labels=[
+                        schemas.Label(key="dataset2", value="egg"),
+                    ],
+                ),
+            ],
+        ),
+    ]
+
+
+@pytest.fixture
+def multiclass_pr_curve_check_true_negatives_predictions():
+    return [
+        schemas.Prediction(
+            datum=schemas.Datum(
+                uid="uid0",
+                metadata={
+                    "height": 900,
+                    "width": 300,
+                },
+            ),
+            annotations=[
+                schemas.Annotation(
+                    labels=[
+                        schemas.Label(key="dataset1", value="ant", score=0.15),
+                        schemas.Label(key="dataset1", value="bee", score=0.48),
+                        schemas.Label(key="dataset1", value="cat", score=0.37),
+                    ],
+                )
+            ],
+        ),
+        schemas.Prediction(
+            datum=schemas.Datum(
+                uid="uid1",
+                metadata={
+                    "height": 900,
+                    "width": 300,
+                },
+            ),
+            annotations=[
+                schemas.Annotation(
+                    labels=[
+                        schemas.Label(key="dataset2", value="egg", score=0.15),
+                        schemas.Label(
+                            key="dataset2", value="milk", score=0.48
+                        ),
+                        schemas.Label(
+                            key="dataset2", value="flour", score=0.37
+                        ),
+                    ],
+                )
+            ],
+        ),
+    ]
+
+
+@pytest.fixture
 def evaluate_detection_false_negatives_single_image_baseline_inputs():
     groundtruths = [
         schemas.GroundTruth(

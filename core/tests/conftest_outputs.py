@@ -2910,3 +2910,21 @@ def detailed_curve_examples_check_zero_count_examples_output():
     }
 
     return expected_outputs
+
+
+@pytest.fixture
+def detailed_curve_examples_check_true_negatives_output():
+    expected_outputs = {
+        ("bee", 0.05, "tn", "all"): {
+            ("uid1",),
+        },
+        ("bee", 0.15, "tn", "all"): {
+            ("uid1",),
+        },
+        ("bee", 0.95, "tn", "all"): {
+            ("uid1",),
+            ("uid0",),
+        },
+    }
+
+    return expected_outputs

@@ -619,10 +619,11 @@ def _add_samples_to_dataframe(
     pr_calc_df: pd.DataFrame,
     max_examples: int,
     flag_column: str,
+    true_negative_datum_uids: pd.DataFrame,
 ) -> pd.DataFrame:
     """Efficienctly gather samples for a given flag."""
 
-    if flag_column in ["no_predictions_false_negative_flag"]:
+    if flag_column == "no_predictions_false_negative_flag":
         sample_df = (
             pr_calc_df[pr_calc_df[flag_column]]
             .groupby(
@@ -686,11 +687,42 @@ def _add_samples_to_dataframe(
         pr_curve_counts_df[f"{flag_column}_samples"] = pr_curve_counts_df[
             f"{flag_column}_samples"
         ].apply(lambda x: list(x) if isinstance(x, set) else list())
-
     else:
         pr_curve_counts_df[f"{flag_column}_samples"] = [
             list() for _ in range(len(pr_curve_counts_df))
         ]
+
+    # for true negative examples, we also need to consider examples where a label key doesn't exist on a datum (so there won't be any rows in pr_calc_df for that datum)
+    if flag_column == "true_negative_flag":
+        true_negative_datum_uids.columns = [
+            "label_key",
+            "confidence_threshold",
+            "true_negative_flag_samples",
+        ]
+        pr_curve_counts_df = pr_curve_counts_df.merge(
+            true_negative_datum_uids,
+            on=[
+                "label_key",
+                "confidence_threshold",
+            ],
+            suffixes=("", "_temp"),
+        )
+        pr_curve_counts_df[
+            "true_negative_flag_samples"
+        ] = pr_curve_counts_df.apply(
+            lambda row: (
+                [
+                    x
+                    for x in row["true_negative_flag_samples"]
+                    + row["true_negative_flag_samples_temp"]
+                    if len(x) > 0
+                ]
+            )[:max_examples],
+            axis=1,
+        )
+        del pr_curve_counts_df["true_negative_flag_samples_temp"]
+
+        return pr_curve_counts_df
 
     return pr_curve_counts_df
 
@@ -813,6 +845,33 @@ def _calculate_pr_curves(
             "false_negative_flag"
         ]
 
+    # find all unique datums for use when identifying true negatives
+    unique_datum_uids = set(pr_calc_df["datum_uid"].unique())
+
+    true_negative_datum_uids: pd.DataFrame = (
+        pr_calc_df[
+            pr_calc_df["true_positive_flag"]
+            | pr_calc_df["misclassification_false_negative_flag"]
+            | pr_calc_df["no_predictions_false_negative_flag"]
+            | pr_calc_df["misclassification_false_positive_flag"]
+        ]
+        .groupby(["label_key", "confidence_threshold"], as_index=False)[
+            "datum_uid"
+        ]
+        .apply(set)
+    )  # type: ignore - pyright thinks this output is a Series, when really it's a dataframe
+
+    true_negative_datum_uids["datum_uid"] = (
+        unique_datum_uids - true_negative_datum_uids["datum_uid"]
+    ).apply(  # type: ignore - pandas can handle subtracting a pd.Series from a set
+        lambda x: [tuple(x)][:pr_curve_max_examples]
+    )
+    true_negative_datum_uids.columns = [
+        "label_key",
+        "confidence_threshold",
+        "true_negative_datum_uids",
+    ]
+
     pr_calc_df["true_negative_flag"] = (
         ~pr_calc_df["is_label_match"]
         & ~pr_calc_df["misclassification_false_positive_flag"]
@@ -928,9 +987,6 @@ def _calculate_pr_curves(
     # we're doing an outer join, so any nulls should be zeroes
     pr_curve_counts_df.fillna(0, inplace=True)
 
-    # find all unique datums for use when identifying true negatives
-    unique_datum_ids = set(pr_calc_df["datum_id"].unique())
-
     # calculate additional metrics
     pr_curve_counts_df["false_positives"] = pr_curve_counts_df[
         "misclassification_false_positives"
@@ -939,7 +995,7 @@ def _calculate_pr_curves(
         pr_curve_counts_df["misclassification_false_negatives"]
         + pr_curve_counts_df["no_predictions_false_negatives"]
     )
-    pr_curve_counts_df["true_negatives"] = len(unique_datum_ids) - (
+    pr_curve_counts_df["true_negatives"] = len(unique_datum_uids) - (
         pr_curve_counts_df["true_positives"]
         + pr_curve_counts_df["false_positives"]
         + pr_curve_counts_df["false_negatives"]
@@ -955,7 +1011,7 @@ def _calculate_pr_curves(
     pr_curve_counts_df["accuracy"] = (
         pr_curve_counts_df["true_positives"]
         + pr_curve_counts_df["true_negatives"]
-    ) / len(unique_datum_ids)
+    ) / len(unique_datum_uids)
     pr_curve_counts_df["f1_score"] = (
         2 * pr_curve_counts_df["precision"] * pr_curve_counts_df["recall"]
     ) / (pr_curve_counts_df["precision"] + pr_curve_counts_df["recall"])
@@ -980,6 +1036,7 @@ def _calculate_pr_curves(
                 pr_calc_df=pr_calc_df,
                 max_examples=pr_curve_max_examples,
                 flag_column=flag,
+                true_negative_datum_uids=true_negative_datum_uids,
             )
 
     for _, row in pr_curve_counts_df.iterrows():
