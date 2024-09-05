@@ -668,9 +668,6 @@ def test_detailed_curve_examples(
         key,
         expected,
     ) in detailed_curve_examples_check_true_negatives_output.items():
-        import pdb
-
-        pdb.set_trace()
         assert (
             set(
                 output[key[0]][key[1]][key[2]]["observations"][key[3]][
