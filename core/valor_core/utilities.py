@@ -3,6 +3,36 @@ import pandas as pd
 from valor_core import enums, schemas
 
 
+def concatenate_df_if_not_empty(
+    df1: pd.DataFrame, df2: pd.DataFrame | None
+) -> pd.DataFrame:
+    """
+    Checks to see if a dataframe is None before attempting a concatenation. Handles pandas warning about not using pd.concat on empty dataframes.
+
+    Parameters
+    ----------
+    df1: pd.DataFrame
+        The first dataframe to join.
+    df2: pd.DataFrame, optional
+        The second (potentially empty) dataframe to join.
+
+    Returns
+    -------
+    pd.DataFrame
+        A concatenated dataframe.
+    """
+
+    if not df1.empty and (df2 is not None):
+        df1 = pd.concat(
+            [df1, df2],
+            ignore_index=True,
+        )
+    elif df1.empty and (df2 is not None):
+        df1 = df2
+
+    return df1
+
+
 def replace_labels_using_label_map(
     groundtruth_df: pd.DataFrame,
     prediction_df: pd.DataFrame,
@@ -222,7 +252,6 @@ def validate_parameters(
 def validate_matching_label_keys(
     groundtruths: pd.DataFrame,
     predictions: pd.DataFrame,
-    label_map: dict[schemas.Label, schemas.Label] | None,
 ) -> None:
     """
     Validates that every datum has the same set of label keys for both ground truths and predictions. This check is only needed for classification tasks.
@@ -233,8 +262,6 @@ def validate_matching_label_keys(
         The DataFrame containing ground truth data.
     predictions : pd.DataFrame
         The DataFrame containing prediction data.
-    label_map : dict[schemas.Label, schemas.Label], optional
-        Optional mapping of individual labels to a grouper label.
 
     Raises
     ------
@@ -245,49 +272,22 @@ def validate_matching_label_keys(
     if len(predictions) == 0:
         return
 
-    if not label_map:
-        label_map = dict()
-
-    # get the label keys per datum
-    groundtruths["mapped_groundtruth_label_keys"] = groundtruths.apply(
-        lambda row: label_map.get(
-            schemas.Label(key=row["label_key"], value=row["label_value"]),
-            schemas.Label(key=row["label_key"], value=row["label_value"]),
-        ).key,
-        axis=1,
-    )
-
-    predictions["mapped_prediction_label_keys"] = predictions.apply(
-        lambda row: label_map.get(
-            schemas.Label(key=row["label_key"], value=row["label_value"]),
-            schemas.Label(key=row["label_key"], value=row["label_value"]),
-        ).key,
-        axis=1,
-    )
-
     gt_label_keys_per_datum = groundtruths.groupby(
         ["datum_id"], as_index=False
-    )["mapped_groundtruth_label_keys"].unique()
+    )["label_key"].unique()
 
     pd_label_keys_per_datum = predictions.groupby(
         ["datum_id"], as_index=False
-    )["mapped_prediction_label_keys"].unique()
+    )["label_key"].unique()
 
     joined = gt_label_keys_per_datum.merge(
-        pd_label_keys_per_datum,
-        on=["datum_id"],
+        pd_label_keys_per_datum, on=["datum_id"], suffixes=("_gt", "_pd")
     )
 
-    if not joined["mapped_groundtruth_label_keys"].equals(
-        joined["mapped_prediction_label_keys"]
-    ):
+    if not joined["label_key_gt"].equals(joined["label_key_pd"]):
         raise ValueError(
             "Ground truth label keys must match prediction label keys for classification tasks."
         )
-
-    # delete interediary columns
-    del groundtruths["mapped_groundtruth_label_keys"]
-    del predictions["mapped_prediction_label_keys"]
 
 
 def _validate_groundtruth_dataframe(
@@ -412,7 +412,7 @@ def create_validated_groundtruth_df(
         )
     ):
         raise ValueError(
-            f"Could not validate object as it's neither a dataframe nor a list of Valor objects. Object is of type {type(obj)}."
+            f"Could not validate object as it's neither a dataframe nor a list of Valor Groundtruth objects. Object is of type {type(obj)}."
         )
     if isinstance(obj, pd.DataFrame):
         df = obj
@@ -458,8 +458,9 @@ def create_validated_prediction_df(
         )
     ):
         raise ValueError(
-            f"Could not validate object as it's neither a dataframe nor a list of Valor objects. Object is of type {type(obj)}."
+            f"Could not validate object as it's neither a dataframe nor a list of Valor Prediction objects. Object is of type {type(obj)}."
         )
+
     if isinstance(obj, pd.DataFrame):
         df = obj
     else:
@@ -636,25 +637,25 @@ def get_disjoint_labels(
         label_map = {}
 
     groundtruth_labels = set(
-        groundtruth_df.apply(
-            lambda row: (row["label_key"], row["label_value"]),
-            axis=1,
-        ).values  # type: ignore - pandas typing errors
+        map(tuple, groundtruth_df[["label_key", "label_value"]].values)
     )
 
     prediction_labels = set(
-        prediction_df.apply(
-            lambda row: (row["label_key"], row["label_value"]),
-            axis=1,
-        ).values  # type: ignore - pandas typing errors
+        map(tuple, prediction_df[["label_key", "label_value"]].values)
     )
 
     # don't count user-mapped labels as disjoint
     mapped_labels = set()
     if label_map:
-        for map_from, map_to in label_map.items():
-            mapped_labels.add((map_from.key, map_from.value))
-            mapped_labels.add((map_to.key, map_to.value))
+        mapped_labels.update(
+            {
+                (map_from.key, map_from.value)
+                for map_from, _ in label_map.items()
+            }
+        )
+        mapped_labels.update(
+            {(map_to.key, map_to.value) for _, map_to in label_map.items()}
+        )
 
     groundtruth_unique = list(
         groundtruth_labels - prediction_labels - mapped_labels
@@ -663,7 +664,7 @@ def get_disjoint_labels(
         prediction_labels - groundtruth_labels - mapped_labels
     )
 
-    return (groundtruth_unique, prediction_unique)
+    return groundtruth_unique, prediction_unique
 
 
 def _identify_implied_task_types(
@@ -1029,7 +1030,6 @@ def convert_annotations_to_common_type(
             [most_detailed_groundtruth_type, most_detailed_prediction_type]
         )
 
-        # Check typing
         valid_geometric_types = [
             enums.AnnotationType.BOX,
             enums.AnnotationType.POLYGON,

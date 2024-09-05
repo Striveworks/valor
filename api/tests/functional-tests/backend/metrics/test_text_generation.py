@@ -28,6 +28,13 @@ RAG_PREDICTIONS = [
 ]
 
 
+RAG_REFERENCES = [
+    """John Adams and Alexander Hamilton did not get along. John Adams had grown independent of his cabinet, often making decisions despite opposition from it.\n""",  # same as prediction with some strings deleted
+    """Yes, Lincoln won the election of 1860. He received the highest number of votes and a majority in the Electoral College, making him the 16th President of the United States. However, it's important to note that he won entirely due to his support in the North and West, as he did not receive any votes in 10 of the 15 Southern slave states.""",  # same as prediction
+    """If kept warm, it would hatch a coyote.""",  # very different than prediction
+]
+
+
 RAG_CONTEXT = [
     [
         """Although aware of Hamilton\'s influence, Adams was convinced that their retention ensured a smoother succession. Adams maintained the economic programs of Hamilton, who regularly consulted with key cabinet members, especially the powerful Treasury Secretary, Oliver Wolcott Jr. Adams was in other respects quite independent of his cabinet, often making decisions despite opposition from it. Hamilton had grown accustomed to being regularly consulted by Washington. Shortly after Adams was inaugurated, Hamilton sent him a detailed letter with policy suggestions. Adams dismissively ignored it.\n\nFailed peace commission and XYZ affair\nHistorian Joseph Ellis writes that "[t]he Adams presidency was destined to be dominated by a single question of American policy to an extent seldom if ever encountered by any succeeding occupant of the office." That question was whether to make war with France or find peace. Britain and France were at war as a result of the French Revolution. Hamilton and the Federalists strongly favored the British monarchy against what they denounced as the political radicalism and anti-religious frenzy of the French Revolution. Jefferson and the Republicans, with their firm opposition to monarchy, strongly supported the French overthrowing their king. The French had supported Jefferson for president in 1796 and became belligerent at his loss.""",
@@ -54,6 +61,16 @@ CONTENT_GEN_PREDICTIONS = [
     """As a ghost haunting the old, decrepit house on Elm Street, I am trapped in a state of perpetual torment and longing. I drift through the dusty halls, my translucent figure flickering in and out of existence as I relive the memories of my past life.\n\nMy presence is felt by those who dare to enter the house, their hairs standing on end as they sense the chill in the air and the whispers that echo through the rooms. I watch as fear grips their hearts, knowing that I am the reason for their unease.\n\nI am bound to this house by unfinished business, a deep-rooted need for closure that eludes me even in death. I long to reach out to the living, to make them understand the pain and sorrow that consume me, but my ethereal form cannot touch them.\n\nYet, despite the fear and dread that my presence evokes, there is a part of me that yearns for connection, for someone to see beyond the horror and recognize the lost soul that I am. But until that day comes, I remain a ghost trapped within the walls of the haunted house on Elm Street, my existence a haunting reminder of the past that refuses to fade away.""",
     """Sure! To multiply 43 by 22, you need to follow these steps:\n\n1. Write down the numbers vertically, with one on top of the other:\n\t\n```\t\n   43\t\nx 22\t\n-----\t\n```\n\n2. Start by multiplying the rightmost digit of the bottom number (2) by each digit in the top number. Write down each result below the line, leaving a space for the next step:\n\t\n```\t\n   43\t\nx 22\t\n-----\t\n   86\t\n```\n\n3. Next, move to the left and multiply the left digit of the bottom number (2) by each digit in the top number. Write down each result with one position shifted to the left from the previous step. Add any results from previous steps that overlap:\n\t\n```\t\n  43\t\nx 22\t\n-----\t\n  86\t\n+86\t\n-----\t\n946\t\n```\n\nSo, 43 times 22 is equal to 946.""",
     """Subject: Project Delay Due to Funding Cuts\n\nDear [Coworker's Name],\n\nI hope this message finds you well. I am writing to update you on the status of our project and unfortunately, convey some disappointing news.\n\nDue to recent funding cuts within our department, we have had to make some adjustments to project assignments. As a result, multiple employees, including key team members for our current project, have been moved to different projects to accommodate the changes. This unexpected shift has impacted our project timeline.\n\nI regret to inform you that our project deadline will need to be pushed back in light of these developments. I understand the inconvenience this may cause and I sincerely apologize for any disruption this may cause to your schedule or other commitments.\n\nPlease rest assured that despite these unforeseen circumstances, I am fully committed to completing the project efficiently and effectively. I will work closely with the team to develop a revised timeline and ensure that we deliver quality work that meets our objectives.\n\nThank you for your understanding and continued support during this challenging period. I value your collaboration and look forward to working together to overcome this setback and achieve our project goals.\n\nIf you have any questions or concerns, please feel free to reach out to me. I appreciate your patience as we navigate through this situation together.\n\nBest regards,\n\n[Your Name]""",
+]
+
+SUMMARIZATION_TEXTS = [
+    """Aston Villa take on Liverpool in their FA Cup semi-final encounter on Sunday with the competition both sides' last chance to win any silverware this season. Sportsmail columnist Jamie Redknapp looks ahead to the Wembley showdown and where the match could be won and lost with individual player duels. CHRISTIAN BENTEKE v MARTIN SKRTEL . This will be a heavyweight contest that could decide the game. Christian Benteke is superb in the air and Martin Skrtel will have his hands full. Liverpool have to stop the supply line because defending crosses has been their Achilles heel this season. Christian Benteke (centre) scored the only goal of the game as Villa won 1-0 at Tottenham on April 11 . Liverpool defender Martin Skrtel (right) will have his hands full trying to stop Benteke on Sunday afternoon . FABIAN DELPH v JORDAN HENDERSON . This should be a good contest between two England team-mates. Fabian Delph’s new deal was a real boost for Villa - he drives that midfield, though he doesn’t get enough goals. You used to say the same about Jordan Henderson but he has improved so much. England international Fabian Delph (left) and Jordan Henderson are set for a midfield battle at Wembley . RAHEEM STERLING v RON VLAAR and NATHAN BAKER . Ron Vlaar and Nathan Baker make an imposing back line but they would rather be up against a Benteke than a Raheem Sterling, who will float around and make himself difficult to mark so he can use his lightning pace to get in behind them. Raheem Sterling's (left) pace and trickery is bound to cause the Villa defence a lot of problems . Ron Vlaar (left) was part of the Villa defence that kept a clean sheet at Spurs in the Premier League . The Holland international and Nathan Baker (right) will be hoping to do likewise against the Reds at Wembley.""",
+    """Juventus and Liverpool are continuing to monitor developments with Chelsea midfielder Oscar. The Brazil international has been criticised by Jose Mourinho in recent weeks and there are question marks over his future. Chelsea want to strengthen in the summer and may need a high profile departure to help balance the books. Juventus and Liverpool are interested in signing Chelsea 23-year-old midfielder Oscar . Oscar in action during Chelsea's 1-0 Premier League victory against Queens Park Rangers last weekend . Oscar cost Chelsea £19.35m and they would want a substantial profit on the 23 year-old. Paris Saintt Germain have shown interest in the past also. Juventus want a playmaker for next season and Brazil boss Carlos Dunga advised them to buy Oscar. 'He reminds me of Roberto Baggio,' he said. 'Oscar has technique, reads situations well and is a modern and versatile trequartista. He reminds me of Roberto Baggio, but also has similarities to Massimiliano Allegri. The former Sao Paulo youngster has struggled to make an impact for Chelsea this season . Brazil coach Dunga (pictured) revealed the Chelsea midfielder reminds him of Roberto Baggio . 'Brazilians like to have fun with their football, which hasn’t happened to Oscar very much recently, but I met Jose Mourinho and he spoke highly of all his Brazilian players. 'I tell Allegri that Oscar is strong and also a good lad. A forward line with him, Carlos Tevez and Alvaro Morata would drive any Coach crazy. 'It wouldn’t be a step backwards for Oscar to go to Juventus. He’d be decisive in Serie A and whether he plays for Juventus or Chelsea it’ll always be a great club.' Oscar celebrates scoring Chelsea's fourth goal during the 5-0 victory against Swansea in January.""",
+]
+
+SUMMARIZATION_PREDICTIONS = [
+    """Aston Villa and Liverpool face off in the FA Cup semi-final as both teams look to secure their last chance at silverware this season. Sportsmail columnist Jamie Redknapp analyzes key player duels that could decide the game, such as Christian Benteke against Martin Skrtel, Fabian Delph against Jordan Henderson, and Raheem Sterling against Ron Vlaar and Nathan Baker. Redknapp emphasizes the importance of stopping the supply line to Benteke and dealing with Sterling's pace and trickery in the match.""",
+    """Juventus and Liverpool are showing interest in Chelsea midfielder Oscar, who has faced criticism and uncertainty about his future at the club. Chelsea may need to sell a high-profile player to strengthen their squad in the summer. Oscar, who was signed for £19.35m, has also attracted interest from Paris Saint-Germain in the past. Brazil coach Carlos Dunga sees qualities in Oscar similar to Roberto Baggio and believes he could be a key player for Juventus.""",
 ]
 
 
@@ -101,15 +118,6 @@ def rag_q2() -> schemas.Datum:
 
 
 @pytest.fixture
-def rag_references():
-    return [
-        """John Adams and Alexander Hamilton did not get along. John Adams had grown independent of his cabinet, often making decisions despite opposition from it.\n""",  # same as prediction with some strings deleted
-        """Yes, Lincoln won the election of 1860. He received the highest number of votes and a majority in the Electoral College, making him the 16th President of the United States. However, it's important to note that he won entirely due to his support in the North and West, as he did not receive any votes in 10 of the 15 Southern slave states.""",  # same as prediction
-        """If kept warm, it would hatch a coyote.""",  # very different than prediction
-    ]
-
-
-@pytest.fixture
 def rag_data(
     db: Session,
     rag_dataset_name: str,
@@ -117,7 +125,6 @@ def rag_data(
     rag_q0: schemas.Datum,
     rag_q1: schemas.Datum,
     rag_q2: schemas.Datum,
-    rag_references: list[str],
 ):
     datums = [rag_q0, rag_q1, rag_q2]
 
@@ -128,7 +135,7 @@ def rag_data(
                 dataset_name=rag_dataset_name,
                 datum=datums[i],
                 annotations=[
-                    schemas.Annotation(text=rag_references[i]),
+                    schemas.Annotation(text=RAG_REFERENCES[i]),
                     schemas.Annotation(text="some other text"),
                     schemas.Annotation(text="some final text"),
                 ],
@@ -335,6 +342,114 @@ def content_gen_data(
 
 
 @pytest.fixture
+def summarization_dataset_name() -> str:
+    return "summarization_test_dataset"
+
+
+@pytest.fixture
+def summarization_model_name() -> str:
+    return "summarization_test_model"
+
+
+@pytest.fixture
+def summarization_q0() -> schemas.Datum:
+    return schemas.Datum(
+        uid="uid0",
+        text=SUMMARIZATION_TEXTS[0],
+    )
+
+
+@pytest.fixture
+def summarization_q1() -> schemas.Datum:
+    return schemas.Datum(
+        uid="uid1",
+        text=SUMMARIZATION_TEXTS[1],
+    )
+
+
+@pytest.fixture
+def summarization_data(
+    db: Session,
+    summarization_dataset_name: str,
+    summarization_model_name: str,
+    summarization_q0: schemas.Datum,
+    summarization_q1: schemas.Datum,
+):
+    datums = [summarization_q0, summarization_q1]
+
+    gts = []
+    for i in range(len(datums)):
+        gts.append(
+            schemas.GroundTruth(
+                dataset_name=summarization_dataset_name,
+                datum=datums[i],
+                annotations=[],
+            )
+        )
+
+    preds = []
+    for i in range(len(datums)):
+        preds.append(
+            schemas.Prediction(
+                dataset_name=summarization_dataset_name,
+                model_name=summarization_model_name,
+                datum=datums[i],
+                annotations=[
+                    schemas.Annotation(
+                        text=SUMMARIZATION_PREDICTIONS[i],
+                    )
+                ],
+            )
+        )
+
+    crud.create_dataset(
+        db=db,
+        dataset=schemas.Dataset(
+            name=summarization_dataset_name,
+        ),
+    )
+
+    crud.create_groundtruths(db=db, groundtruths=gts)
+    crud.finalize(db=db, dataset_name=summarization_dataset_name)
+
+    crud.create_model(
+        db=db,
+        model=schemas.Model(
+            name=summarization_model_name,
+        ),
+    )
+    crud.create_predictions(db=db, predictions=preds)
+    crud.finalize(
+        db=db,
+        dataset_name=summarization_dataset_name,
+        model_name=summarization_model_name,
+    )
+
+    # 2 groundtruths with 1 annotations, 2 predictions with 1 annotation
+    assert len(db.query(models.Datum).all()) == 2
+    assert len(db.query(models.Annotation).all()) == 4
+    assert (
+        len(
+            db.query(models.Annotation)
+            .where(models.Annotation.model_id.is_(None))
+            .all()
+        )
+        == 2
+    )
+    assert (
+        len(
+            db.query(models.Annotation)
+            .where(models.Annotation.model_id.isnot(None))
+            .all()
+        )
+        == 2
+    )
+    assert len(db.query(models.GroundTruth).all()) == 0
+    assert len(db.query(models.Prediction).all()) == 0
+    assert len(db.query(models.Label).all()) == 0
+
+
+@pytest.fixture
 def two_text_generation_datasets(
     db: Session,
     rag_dataset_name: str,
@@ -342,7 +457,6 @@ def two_text_generation_datasets(
     rag_q0: schemas.Datum,
     rag_q1: schemas.Datum,
     rag_q2: schemas.Datum,
-    rag_references: list[str],
     content_gen_dataset_name: str,
     content_gen_model_name: str,
     content_gen_q0: schemas.Datum,
@@ -359,7 +473,7 @@ def two_text_generation_datasets(
                 dataset_name=rag_dataset_name,
                 datum=datums[i],
                 annotations=[
-                    schemas.Annotation(text=rag_references[i]),
+                    schemas.Annotation(text=RAG_REFERENCES[i]),
                     schemas.Annotation(text="some other text"),
                     schemas.Annotation(text="some final text"),
                 ],
@@ -494,6 +608,34 @@ def mocked_connection(self):
     pass
 
 
+def mocked_answer_correctness(
+    self,
+    query: str,
+    prediction: str,
+    groundtruth_list: list[str],
+):
+    ret_dict = {
+        (
+            RAG_QUERIES[0],
+            RAG_PREDICTIONS[0],
+            tuple([RAG_REFERENCES[0], "some other text", "some final text"]),
+        ): 0.8,
+        (
+            RAG_QUERIES[1],
+            RAG_PREDICTIONS[1],
+            tuple([RAG_REFERENCES[1], "some other text", "some final text"]),
+        ): 1.0,
+        (
+            RAG_QUERIES[2],
+            RAG_PREDICTIONS[2],
+            tuple([RAG_REFERENCES[2], "some other text", "some final text"]),
+        ): 0.0,
+    }
+    if (query, prediction, tuple(groundtruth_list)) in ret_dict:
+        return ret_dict[(query, prediction, tuple(groundtruth_list))]
+    return 0.0
+
+
 def mocked_answer_relevance(
     self,
     query: str,
@@ -522,19 +664,62 @@ def mocked_bias(
     return ret_dict[text]
 
 
-def mocked_coherence(
+def mocked_context_precision(
     self,
-    text: str,
+    query: str,
+    ordered_context_list: list[str],
+    groundtruth_list: list[str],
 ):
     ret_dict = {
-        RAG_PREDICTIONS[0]: 4,
-        RAG_PREDICTIONS[1]: 5,
-        RAG_PREDICTIONS[2]: 4,
-        CONTENT_GEN_PREDICTIONS[0]: 5,
-        CONTENT_GEN_PREDICTIONS[1]: 5,
-        CONTENT_GEN_PREDICTIONS[2]: 5,
+        (
+            RAG_QUERIES[0],
+            tuple(RAG_CONTEXT[0]),
+            tuple([RAG_REFERENCES[0], "some other text", "some final text"]),
+        ): 1.0,
+        (
+            RAG_QUERIES[1],
+            tuple(RAG_CONTEXT[1]),
+            tuple([RAG_REFERENCES[1], "some other text", "some final text"]),
+        ): 1.0,
+        (
+            RAG_QUERIES[2],
+            tuple(RAG_CONTEXT[2]),
+            tuple([RAG_REFERENCES[2], "some other text", "some final text"]),
+        ): 1.0,
     }
-    return ret_dict[text]
+    if (
+        query,
+        tuple(ordered_context_list),
+        tuple(groundtruth_list),
+    ) in ret_dict:
+        return ret_dict[
+            (query, tuple(ordered_context_list), tuple(groundtruth_list))
+        ]
+    return 0.0
+
+
+def mocked_context_recall(
+    self,
+    context_list: list[str],
+    groundtruth_list: list[str],
+):
+    ret_dict = {
+        (
+            tuple(RAG_CONTEXT[0]),
+            tuple([RAG_REFERENCES[0], "some other text", "some final text"]),
+        ): 0.8,
+        (
+            tuple(RAG_CONTEXT[1]),
+            tuple([RAG_REFERENCES[1], "some other text", "some final text"]),
+        ): 0.5,
+        (
+            tuple(RAG_CONTEXT[2]),
+            tuple([RAG_REFERENCES[2], "some other text", "some final text"]),
+        ): 0.2,
+    }
+    if (tuple(context_list), tuple(groundtruth_list)) in ret_dict:
+        return ret_dict[(tuple(context_list), tuple(groundtruth_list))]
+    return 0.0
 
 
 def mocked_context_relevance(
@@ -576,6 +761,18 @@ def mocked_hallucination(
     return ret_dict[(text, tuple(context_list))]
 
 
+def mocked_summary_coherence(
+    self,
+    text: str,
+    summary: str,
+):
+    ret_dict = {
+        (SUMMARIZATION_TEXTS[0], SUMMARIZATION_PREDICTIONS[0]): 4,
+        (SUMMARIZATION_TEXTS[1], SUMMARIZATION_PREDICTIONS[1]): 5,
+    }
+    return ret_dict[(text, summary)]
+
+
 def mocked_toxicity(
     self,
     text: str,
@@ -603,6 +800,10 @@ def mocked_compute_rouge_none(*args, **kwargs):
     mocked_connection,
 )
 @patch(
+    "valor_api.backend.core.llm_clients.WrappedOpenAIClient.answer_correctness",
+    mocked_answer_correctness,
+)
+@patch(
     "valor_api.backend.core.llm_clients.WrappedOpenAIClient.answer_relevance",
     mocked_answer_relevance,
 )
@@ -611,8 +812,12 @@ def mocked_compute_rouge_none(*args, **kwargs):
     mocked_bias,
 )
 @patch(
-    "valor_api.backend.core.llm_clients.WrappedOpenAIClient.coherence",
-    mocked_coherence,
+    "valor_api.backend.core.llm_clients.WrappedOpenAIClient.context_precision",
+    mocked_context_precision,
+)
+@patch(
+    "valor_api.backend.core.llm_clients.WrappedOpenAIClient.context_recall",
+    mocked_context_recall,
 )
 @patch(
     "valor_api.backend.core.llm_clients.WrappedOpenAIClient.context_relevance",
@@ -679,10 +884,12 @@ def test__compute_text_generation_rag(
     prediction_filter = datum_filter.model_copy()
 
     metrics_to_return = [
+        MetricType.AnswerCorrectness,
         MetricType.AnswerRelevance,
         MetricType.Bias,
         MetricType.BLEU,
-        MetricType.Coherence,
+        MetricType.ContextPrecision,
+        MetricType.ContextRecall,
         MetricType.ContextRelevance,
         MetricType.Faithfulness,
         MetricType.Hallucination,
@@ -707,10 +914,12 @@ def test__compute_text_generation_rag(
 
     expected_values = {
         "uid0": {
+            schemas.AnswerCorrectnessMetric: 0.8,
             schemas.AnswerRelevanceMetric: 0.6666666666666666,
             schemas.BiasMetric: 0.0,
             schemas.BLEUMetric: 0.3502270395690205,
-            schemas.CoherenceMetric: 4,
+            schemas.ContextPrecisionMetric: 1.0,
+            schemas.ContextRecallMetric: 0.8,
             schemas.ContextRelevanceMetric: 0.75,
             schemas.FaithfulnessMetric: 0.4,
             schemas.HallucinationMetric: 0.0,
@@ -720,13 +929,16 @@ def test__compute_text_generation_rag(
                 "rougeL": 0.5925925925925926,
                 "rougeLsum": 0.5925925925925926,
             },
+            schemas.SummaryCoherenceMetric: None,
             schemas.ToxicityMetric: 0.0,
         },
         "uid1": {
+            schemas.AnswerCorrectnessMetric: 1.0,
             schemas.AnswerRelevanceMetric: 0.2,
             schemas.BiasMetric: 0.0,
             schemas.BLEUMetric: 1.0,
-            schemas.CoherenceMetric: 5,
+            schemas.ContextPrecisionMetric: 1.0,
+            schemas.ContextRecallMetric: 0.5,
             schemas.ContextRelevanceMetric: 1.0,
             schemas.FaithfulnessMetric: 0.55,
             schemas.HallucinationMetric: 0.0,
@@ -736,13 +948,16 @@ def test__compute_text_generation_rag(
                 "rougeL": 1.0,
                 "rougeLsum": 1.0,
             },
+            schemas.SummaryCoherenceMetric: None,
             schemas.ToxicityMetric: 0.0,
         },
         "uid2": {
+            schemas.AnswerCorrectnessMetric: 0.0,
             schemas.AnswerRelevanceMetric: 0.2,
             schemas.BiasMetric: 0.0,
             schemas.BLEUMetric: 0.05434912989707719,
-            schemas.CoherenceMetric: 4,
+            schemas.ContextPrecisionMetric: 1.0,
+            schemas.ContextRecallMetric: 0.2,
             schemas.ContextRelevanceMetric: 0.25,
             schemas.FaithfulnessMetric: 0.6666666666666666,
             schemas.HallucinationMetric: 0.25,
@@ -752,11 +967,13 @@ def test__compute_text_generation_rag(
                 "rougeL": 0.18666666666666668,
                 "rougeLsum": 0.18666666666666668,
             },
+            schemas.SummaryCoherenceMetric: None,
             schemas.ToxicityMetric: 0.0,
         },
     }
 
     assert metrics
+    assert len(metrics) == len(metrics_to_return) * len(expected_values)
     for metric in metrics:
         assert isinstance(metric.parameters, dict)
         assert isinstance(metric.parameters["datum_uid"], str)
@@ -962,6 +1179,10 @@ def test__compute_text_generation_rag(
     mocked_connection,
 )
 @patch(
+    "valor_api.backend.core.llm_clients.WrappedOpenAIClient.answer_correctness",
+    mocked_answer_correctness,
+)
+@patch(
     "valor_api.backend.core.llm_clients.WrappedOpenAIClient.answer_relevance",
     mocked_answer_relevance,
 )
@@ -970,8 +1191,12 @@ def test__compute_text_generation_rag(
     mocked_bias,
 )
 @patch(
-    "valor_api.backend.core.llm_clients.WrappedOpenAIClient.coherence",
-    mocked_coherence,
+    "valor_api.backend.core.llm_clients.WrappedOpenAIClient.context_precision",
+    mocked_context_precision,
+)
+@patch(
+    "valor_api.backend.core.llm_clients.WrappedOpenAIClient.context_recall",
+    mocked_context_recall,
 )
 @patch(
     "valor_api.backend.core.llm_clients.WrappedOpenAIClient.context_relevance",
@@ -996,10 +1221,12 @@ def test_text_generation_rag(
     rag_data,
 ):
     metrics_to_return = [
+        MetricType.AnswerCorrectness,
         MetricType.AnswerRelevance,
         MetricType.Bias,
         MetricType.BLEU,
-        MetricType.Coherence,
+        MetricType.ContextPrecision,
+        MetricType.ContextRecall,
         MetricType.ContextRelevance,
         MetricType.Faithfulness,
         MetricType.Hallucination,
@@ -1055,10 +1282,12 @@ def test_text_generation_rag(
 
     expected_values = {
         "uid0": {
+            "AnswerCorrectness": 0.8,
             "AnswerRelevance": 0.6666666666666666,
             "Bias": 0.0,
             "BLEU": 0.3502270395690205,
-            "Coherence": 4,
+            "ContextPrecision": 1.0,
+            "ContextRecall": 0.8,
             "ContextRelevance": 0.75,
             "Faithfulness": 0.4,
             "Hallucination": 0.0,
@@ -1071,10 +1300,12 @@ def test_text_generation_rag(
             "Toxicity": 0.0,
         },
         "uid1": {
+            "AnswerCorrectness": 1.0,
             "AnswerRelevance": 0.2,
             "Bias": 0.0,
             "BLEU": 1.0,
-            "Coherence": 5,
+            "ContextPrecision": 1.0,
+            "ContextRecall": 0.5,
             "ContextRelevance": 1.0,
             "Faithfulness": 0.55,
             "Hallucination": 0.0,
@@ -1087,10 +1318,12 @@ def test_text_generation_rag(
             "Toxicity": 0.0,
         },
         "uid2": {
+            "AnswerCorrectness": 0.0,
             "AnswerRelevance": 0.2,
             "Bias": 0.0,
             "BLEU": 0.05434912989707719,
-            "Coherence": 4,
+            "ContextPrecision": 1.0,
+            "ContextRecall": 0.2,
             "ContextRelevance": 0.25,
             "Faithfulness": 0.6666666666666666,
             "Hallucination": 0.25,
@@ -1105,6 +1338,7 @@ def test_text_generation_rag(
     }
 
     assert metrics
+    assert len(metrics) == len(metrics_to_return) * len(expected_values)
     for metric in metrics:
         assert isinstance(metric.parameters, dict)
         assert (
@@ -1136,16 +1370,8 @@ def test_text_generation_rag(
     mocked_connection,
 )
 @patch(
-    "valor_api.backend.core.llm_clients.WrappedOpenAIClient.answer_relevance",
-    mocked_answer_relevance,
-)
-@patch(
     "valor_api.backend.core.llm_clients.WrappedOpenAIClient.bias",
     mocked_bias,
-)
-@patch(
-    "valor_api.backend.core.llm_clients.WrappedOpenAIClient.coherence",
-    mocked_coherence,
 )
 @patch(
     "valor_api.backend.core.llm_clients.WrappedOpenAIClient.toxicity",
@@ -1159,7 +1385,6 @@ def test_text_generation_content_gen(
 ):
     metrics_to_return = [
         MetricType.Bias,
-        MetricType.Coherence,
         MetricType.Toxicity,
     ]
 
@@ -1204,22 +1429,20 @@ def test_text_generation_content_gen(
     expected_values = {
         "uid0": {
             "Bias": 0.2,
-            "Coherence": 5,
             "Toxicity": 0.4,
         },
         "uid1": {
             "Bias": 0.0,
-            "Coherence": 5,
             "Toxicity": 0.0,
         },
         "uid2": {
             "Bias": 0.0,
-            "Coherence": 5,
             "Toxicity": 0.0,
         },
     }
 
     assert metrics
+    assert len(metrics) == len(metrics_to_return) * len(expected_values)
     for metric in metrics:
         assert isinstance(metric.parameters, dict)
         assert (
@@ -1233,6 +1456,85 @@ def test_text_generation_content_gen(
     mocked_connection,
 )
 @patch(
+    "valor_api.backend.core.llm_clients.WrappedOpenAIClient.summary_coherence",
+    mocked_summary_coherence,
+)
+def test_text_generation_summarization(
+    db: Session,
+    summarization_dataset_name: str,
+    summarization_model_name: str,
+    summarization_data,
+):
+    metrics_to_return = [
+        MetricType.SummaryCoherence,
+    ]
+
+    # default request
+    job_request = schemas.EvaluationRequest(
+        dataset_names=[summarization_dataset_name],
+        model_names=[summarization_model_name],
+        parameters=schemas.EvaluationParameters(
+            task_type=TaskType.TEXT_GENERATION,
+            metrics_to_return=metrics_to_return,
+            llm_api_params={
+                "client": "openai",
+                "data": {
+                    "seed": 2024,
+                    "model": "gpt-4o",
+                },
+            },
+        ),
+    )
+
+    # creates evaluation job
+    evaluations = create_or_get_evaluations(db=db, job_request=job_request)
+    assert len(evaluations) == 1
+    assert evaluations[0].status == EvaluationStatus.PENDING
+
+    # computation, normally run as background task
+    _ = compute_text_generation_metrics(
+        db=db,
+        evaluation_id=evaluations[0].id,
+    )
+
+    # get evaluations
+    evaluations = create_or_get_evaluations(db=db, job_request=job_request)
+    assert len(evaluations) == 1
+    assert evaluations[0].status in {
+        EvaluationStatus.RUNNING,
+        EvaluationStatus.DONE,
+    }
+
+    metrics = evaluations[0].metrics
+
+    expected_values = {
+        "uid0": {
+            "SummaryCoherence": 4,
+        },
+        "uid1": {
+            "SummaryCoherence": 5,
+        },
+    }
+
+    assert metrics
+    assert len(metrics) == len(metrics_to_return) * len(expected_values)
+    for metric in metrics:
+        assert isinstance(metric.parameters, dict)
+        assert (
+            expected_values[metric.parameters["datum_uid"]][metric.type]
+            == metric.value
+        )
+
+
+@patch(
+    "valor_api.backend.core.llm_clients.WrappedOpenAIClient.connect",
+    mocked_connection,
+)
+@patch(
+    "valor_api.backend.core.llm_clients.WrappedOpenAIClient.answer_correctness",
+    mocked_answer_correctness,
+)
+@patch(
     "valor_api.backend.core.llm_clients.WrappedOpenAIClient.answer_relevance",
     mocked_answer_relevance,
 )
@@ -1241,8 +1543,12 @@ def test_text_generation_content_gen(
     mocked_bias,
 )
 @patch(
-    "valor_api.backend.core.llm_clients.WrappedOpenAIClient.coherence",
-    mocked_coherence,
+    "valor_api.backend.core.llm_clients.WrappedOpenAIClient.context_precision",
+    mocked_context_precision,
+)
+@patch(
+    "valor_api.backend.core.llm_clients.WrappedOpenAIClient.context_recall",
+    mocked_context_recall,
 )
 @patch(
     "valor_api.backend.core.llm_clients.WrappedOpenAIClient.context_relevance",
@@ -1270,10 +1576,12 @@ def test_text_generation_two_datasets(
 ):
     # test with a RAG dataset
     metrics_to_return = [
+        MetricType.AnswerCorrectness,
         MetricType.AnswerRelevance,
         MetricType.Bias,
         MetricType.BLEU,
-        MetricType.Coherence,
+        MetricType.ContextPrecision,
+        MetricType.ContextRecall,
         MetricType.ContextRelevance,
         MetricType.Faithfulness,
         MetricType.Hallucination,
@@ -1329,10 +1637,12 @@ def test_text_generation_two_datasets(
 
     expected_values = {
         "uid0": {
+            "AnswerCorrectness": 0.8,
             "AnswerRelevance": 0.6666666666666666,
             "Bias": 0.0,
             "BLEU": 0.3502270395690205,
-            "Coherence": 4,
+            "ContextPrecision": 1.0,
+            "ContextRecall": 0.8,
             "ContextRelevance": 0.75,
             "Faithfulness": 0.4,
             "Hallucination": 0.0,
@@ -1345,10 +1655,12 @@ def test_text_generation_two_datasets(
             "Toxicity": 0.0,
         },
         "uid1": {
+            "AnswerCorrectness": 1.0,
             "AnswerRelevance": 0.2,
             "Bias": 0.0,
             "BLEU": 1.0,
-            "Coherence": 5,
+            "ContextPrecision": 1.0,
+            "ContextRecall": 0.5,
             "ContextRelevance": 1.0,
             "Faithfulness": 0.55,
             "Hallucination": 0.0,
@@ -1361,10 +1673,12 @@ def test_text_generation_two_datasets(
             "Toxicity": 0.0,
         },
         "uid2": {
+            "AnswerCorrectness": 0.0,
             "AnswerRelevance": 0.2,
             "Bias": 0.0,
             "BLEU": 0.05434912989707719,
-            "Coherence": 4,
+            "ContextPrecision": 1.0,
+            "ContextRecall": 0.2,
             "ContextRelevance": 0.25,
             "Faithfulness": 0.6666666666666666,
             "Hallucination": 0.25,
@@ -1379,6 +1693,7 @@ def test_text_generation_two_datasets(
     }
 
     assert metrics
+    assert len(metrics) == len(metrics_to_return) * len(expected_values)
     for metric in metrics:
         assert isinstance(metric.parameters, dict)
         assert (
@@ -1389,7 +1704,6 @@ def test_text_generation_two_datasets(
     # test with a content generation dataset
     metrics_to_return = [
         MetricType.Bias,
-        MetricType.Coherence,
         MetricType.Toxicity,
     ]
 
@@ -1434,22 +1748,20 @@ def test_text_generation_two_datasets(
     expected_values = {
         "uid0": {
             "Bias": 0.2,
-            "Coherence": 5,
             "Toxicity": 0.4,
         },
         "uid1": {
             "Bias": 0.0,
-            "Coherence": 5,
             "Toxicity": 0.0,
         },
         "uid2": {
             "Bias": 0.0,
-            "Coherence": 5,
             "Toxicity": 0.0,
         },
     }
 
     assert metrics
+    assert len(metrics) == len(metrics_to_return) * len(expected_values)
     for metric in metrics:
         assert isinstance(metric.parameters, dict)
         assert (

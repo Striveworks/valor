@@ -69,6 +69,40 @@ def _get_metrics(
     return eval_job.metrics
 
 
+def test_answer_correctness_with_openai(
+    client: Client,
+    answer_correctness_gt_questions: list[GroundTruth],
+    answer_correctness_pred_answers: list[Prediction],
+    dataset_name: str,
+    model_name: str,
+):
+    metrics = _get_metrics(
+        dataset_name=dataset_name,
+        model_name=model_name,
+        gt_questions=answer_correctness_gt_questions,
+        pred_answers=answer_correctness_pred_answers,
+        metrics_to_return=[MetricType.AnswerCorrectness],
+        llm_client="openai",
+    )
+
+    expected_metrics = {
+        "uid0": {
+            "AnswerCorrectness": 0.5,
+        },
+        "uid1": {
+            "AnswerCorrectness": 1.0,
+        },
+    }
+
+    # Check that the returned metrics have the right format.
+    for m in metrics:
+        uid = m["parameters"]["datum_uid"]
+        metric_name = m["type"]
+        assert (
+            expected_metrics[uid][metric_name] == m["value"]
+        ), f"Failed for {uid} and {metric_name}"
+
+
 def test_answer_relevance_with_openai(
     client: Client,
     answer_relevance_gt_questions: list[GroundTruth],
@@ -121,10 +155,15 @@ def test_bias_with_openai(
 
     expected_metrics = {
         "uid0": {
-            "Bias": 0.3333333333333333,
+            "Bias": [
+                0.3333333333333333,
+                0.5,
+            ],
         },
         "uid1": {
-            "Bias": 0.0,
+            "Bias": [
+                0.0,
+            ],
         },
     }
 
@@ -133,41 +172,7 @@ def test_bias_with_openai(
         uid = m["parameters"]["datum_uid"]
         metric_name = m["type"]
         assert (
-            expected_metrics[uid][metric_name] == m["value"]
-        ), f"Failed for {uid} and {metric_name}"
-
-
-def test_coherence_with_openai(
-    client: Client,
-    coherence_gt_questions: list[GroundTruth],
-    coherence_pred_answers: list[Prediction],
-    dataset_name: str,
-    model_name: str,
-):
-    metrics = _get_metrics(
-        dataset_name=dataset_name,
-        model_name=model_name,
-        gt_questions=coherence_gt_questions,
-        pred_answers=coherence_pred_answers,
-        metrics_to_return=[MetricType.Coherence],
-        llm_client="openai",
-    )
-
-    expected_metrics = {
-        "uid0": {
-            "Coherence": 1,
-        },
-        "uid1": {
-            "Coherence": 5,
-        },
-    }
-
-    # Check that the returned metrics have the right format.
-    for m in metrics:
-        uid = m["parameters"]["datum_uid"]
-        metric_name = m["type"]
-        assert (
-            expected_metrics[uid][metric_name] == m["value"]
+            m["value"] in expected_metrics[uid][metric_name]
         ), f"Failed for {uid} and {metric_name}"
 
 
@@ -193,6 +198,74 @@ def test_context_relevance_with_openai(
         },
         "uid1": {
             "ContextRelevance": 0.75,
+        },
+    }
+
+    # Check that the returned metrics have the right format.
+    for m in metrics:
+        uid = m["parameters"]["datum_uid"]
+        metric_name = m["type"]
+        assert (
+            expected_metrics[uid][metric_name] == m["value"]
+        ), f"Failed for {uid} and {metric_name}"
+
+
+def test_context_precision_with_openai(
+    client: Client,
+    context_precision_gt_questions: list[GroundTruth],
+    context_precision_pred_answers: list[Prediction],
+    dataset_name: str,
+    model_name: str,
+):
+    metrics = _get_metrics(
+        dataset_name=dataset_name,
+        model_name=model_name,
+        gt_questions=context_precision_gt_questions,
+        pred_answers=context_precision_pred_answers,
+        metrics_to_return=[MetricType.ContextPrecision],
+        llm_client="openai",
+    )
+
+    expected_metrics = {
+        "uid0": {
+            "ContextPrecision": 0.5,
+        },
+        "uid1": {
+            "ContextPrecision": 0.8333333333333333,
+        },
+    }
+
+    # Check that the returned metrics have the right format.
+    for m in metrics:
+        uid = m["parameters"]["datum_uid"]
+        metric_name = m["type"]
+        assert (
+            expected_metrics[uid][metric_name] == m["value"]
+        ), f"Failed for {uid} and {metric_name}"
+
+
+def test_context_recall_with_openai(
+    client: Client,
+    context_recall_gt_questions: list[GroundTruth],
+    context_recall_pred_answers: list[Prediction],
+    dataset_name: str,
+    model_name: str,
+):
+    metrics = _get_metrics(
+        dataset_name=dataset_name,
+        model_name=model_name,
+        gt_questions=context_recall_gt_questions,
+        pred_answers=context_recall_pred_answers,
+        metrics_to_return=[MetricType.ContextRecall],
+        llm_client="openai",
+    )
+
+    expected_metrics = {
+        "uid0": {
+            "ContextRecall": 0.5,
+        },
+        "uid1": {
+            "ContextRecall": 1.0,
         },
     }
 
@@ -273,6 +346,31 @@ def test_hallucination_with_openai(
         ), f"Failed for {uid} and {metric_name}"
 
 
+def test_summary_coherence_with_openai(
+    client: Client,
+    summary_coherence_gt_questions: list[GroundTruth],
+    summary_coherence_pred_answers: list[Prediction],
+    dataset_name: str,
+    model_name: str,
+):
+    metrics = _get_metrics(
+        dataset_name=dataset_name,
+        model_name=model_name,
+        gt_questions=summary_coherence_gt_questions,
+        pred_answers=summary_coherence_pred_answers,
+        metrics_to_return=[MetricType.SummaryCoherence],
+        llm_client="openai",
+    )
+
+    # Check that the returned metrics have the right format.
+    assert len(metrics) == 1
+    assert metrics[0]["parameters"]["datum_uid"] == "uid0"
+    assert metrics[0]["type"] == "SummaryCoherence"
+
+    # Check that the summary coherence was rated >= 3.
+    assert metrics[0]["value"] in {3, 4, 5}
+
+
 def test_toxicity_with_openai(
     client: Client,
     toxicity_gt_questions: list[GroundTruth],
@@ -294,10 +392,44 @@ def test_toxicity_with_openai(
             "Toxicity": 0.0,
         },
         "uid1": {
-            "Toxicity": 0.6666666666666666,
+            "Toxicity": 1.0,
         },
         "uid2": {
             "Toxicity": 0.0,
+        },
+    }
+
+    # Check that the returned metrics have the right format.
+    for m in metrics:
+        uid = m["parameters"]["datum_uid"]
+        metric_name = m["type"]
+        assert (
+            expected_metrics[uid][metric_name] == m["value"]
+        ), f"Failed for {uid} and {metric_name}"
+
+
+def test_answer_correctness_with_mistral(
+    client: Client,
+    answer_correctness_gt_questions: list[GroundTruth],
+    answer_correctness_pred_answers: list[Prediction],
+    dataset_name: str,
+    model_name: str,
+):
+    metrics = _get_metrics(
+        dataset_name=dataset_name,
+        model_name=model_name,
+        gt_questions=answer_correctness_gt_questions,
+        pred_answers=answer_correctness_pred_answers,
+        metrics_to_return=[MetricType.AnswerCorrectness],
+        llm_client="mistral",
+    )
+
+    expected_metrics = {
+        "uid0": {
+            "AnswerCorrectness": 0.5,
+        },
+        "uid1": {
+            "AnswerCorrectness": 1.0,
         },
     }
 
@@ -378,28 +510,62 @@ def test_bias_with_mistral(
         ), f"Failed for {uid} and {metric_name}"
 
 
-def test_coherence_with_mistral(
+def test_context_precision_with_mistral(
     client: Client,
-    coherence_gt_questions: list[GroundTruth],
-    coherence_pred_answers: list[Prediction],
+    context_precision_gt_questions: list[GroundTruth],
+    context_precision_pred_answers: list[Prediction],
     dataset_name: str,
     model_name: str,
 ):
     metrics = _get_metrics(
         dataset_name=dataset_name,
         model_name=model_name,
-        gt_questions=coherence_gt_questions,
-        pred_answers=coherence_pred_answers,
-        metrics_to_return=[MetricType.Coherence],
+        gt_questions=context_precision_gt_questions,
+        pred_answers=context_precision_pred_answers,
+        metrics_to_return=[MetricType.ContextPrecision],
         llm_client="mistral",
     )
 
     expected_metrics = {
         "uid0": {
-            "Coherence": 1,
+            "ContextPrecision": 0.5,
         },
         "uid1": {
-            "Coherence": 5,
+            "ContextPrecision": 0.8333333333333333,
+        },
+    }
+
+    # Check that the returned metrics have the right format.
+    for m in metrics:
+        uid = m["parameters"]["datum_uid"]
+        metric_name = m["type"]
+        assert (
+            expected_metrics[uid][metric_name] == m["value"]
+        ), f"Failed for {uid} and {metric_name}"
+
+
+def test_context_recall_with_mistral(
+    client: Client,
+    context_recall_gt_questions: list[GroundTruth],
+    context_recall_pred_answers: list[Prediction],
+    dataset_name: str,
+    model_name: str,
+):
+    metrics = _get_metrics(
+        dataset_name=dataset_name,
+        model_name=model_name,
+        gt_questions=context_recall_gt_questions,
+        pred_answers=context_recall_pred_answers,
+        metrics_to_return=[MetricType.ContextRecall],
+        llm_client="mistral",
+    )
+
+    expected_metrics = {
+        "uid0": {
+            "ContextRecall": 0.5,
+        },
+        "uid1": {
+            "ContextRecall": 1.0,
         },
     }
 
@@ -514,6 +680,31 @@ def test_hallucination_with_mistral(
         ), f"Failed for {uid} and {metric_name}"
 
 
+def test_summary_coherence_with_mistral(
+    client: Client,
+    summary_coherence_gt_questions: list[GroundTruth],
+    summary_coherence_pred_answers: list[Prediction],
+    dataset_name: str,
+    model_name: str,
+):
+    metrics = _get_metrics(
+        dataset_name=dataset_name,
+        model_name=model_name,
+        gt_questions=summary_coherence_gt_questions,
+        pred_answers=summary_coherence_pred_answers,
+        metrics_to_return=[MetricType.SummaryCoherence],
+        llm_client="mistral",
+    )
+
+    # Check that the returned metrics have the right format.
+    assert len(metrics) == 1
+    assert metrics[0]["parameters"]["datum_uid"] == "uid0"
+    assert metrics[0]["type"] == "SummaryCoherence"
+
+    # Check that the summary coherence was rated >= 3.
+    assert metrics[0]["value"] in {3, 4, 5}
+
+
 def test_toxicity_with_mistral(
     client: Client,
     toxicity_gt_questions: list[GroundTruth],
@@ -535,7 +726,7 @@ def test_toxicity_with_mistral(
             "Toxicity": 0.0,
         },
         "uid1": {
-            "Toxicity": 0.6666666666666666,
+            "Toxicity": 1.0,
         },
         "uid2": {
             "Toxicity": 0.0,

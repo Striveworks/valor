@@ -30,7 +30,7 @@ def _get_joint_df(
 def _get_dtypes_in_series_of_arrays(series: pd.Series):
     """Get the data type inside of a 2D numpy array. Used to check if a np.array contains coordinates or a mask."""
     if not isinstance(series, pd.Series) or not all(
-        series.apply(lambda x: x.ndim == 2)
+        series.map(lambda x: x.ndim == 2)
     ):
         raise ValueError(
             "series must be a pandas Series filled with two-dimensional arrays."
@@ -57,69 +57,62 @@ def _check_if_series_contains_masks(series: pd.Series) -> bool:
     return False
 
 
+def _check_if_series_contains_axis_aligned_bboxes(series: pd.Series) -> bool:
+    """Check if all elements in a pandas.Series are axis-aligned bounding boxes."""
+
+    return series.map(lambda x: x.tolist()).map(geometry.is_axis_aligned).all()
+
+
 def _calculate_iou(
     joint_df: pd.DataFrame,
 ) -> pd.DataFrame:
     """Calculate the IOUs between predictions and groundtruths in a joint dataframe."""
-    if _check_if_series_contains_masks(
-        joint_df.loc[
-            joint_df["converted_geometry_pd"].notnull(),
-            "converted_geometry_pd",
-        ]
-    ):
-        iou_calculation_df = (
-            joint_df.assign(
-                intersection=lambda chain_df: chain_df.apply(
-                    lambda row: (
-                        0
-                        if row["converted_geometry_pd"] is None
-                        or row["converted_geometry_gt"] is None
-                        else np.logical_and(
-                            row["converted_geometry_pd"],
-                            row["converted_geometry_gt"],
-                        ).sum()
-                    ),
-                    axis=1,
-                )
-            )
-            .assign(
-                union_=lambda chain_df: chain_df.apply(
-                    lambda row: (
-                        0
-                        if row["converted_geometry_pd"] is None
-                        or row["converted_geometry_gt"] is None
-                        else np.sum(row["converted_geometry_gt"])
-                        + np.sum(row["converted_geometry_pd"])
-                        - row["intersection"]
-                    ),
-                    axis=1,
-                )
-            )
-            .assign(
-                iou_=lambda chain_df: chain_df["intersection"]
-                / chain_df["union_"]
-            )
-        )
+    filtered_df = joint_df.loc[
+        ~joint_df["converted_geometry_gt"].isnull()
+        & ~joint_df["converted_geometry_pd"].isnull(),
+        ["converted_geometry_gt", "converted_geometry_pd"],
+    ]
 
-        joint_df = joint_df.join(iou_calculation_df["iou_"])
+    if filtered_df.empty:
+        joint_df["iou_"] = 0
+        return joint_df
+
+    if not _check_if_series_contains_masks(
+        filtered_df["converted_geometry_pd"]
+    ):
+        if _check_if_series_contains_axis_aligned_bboxes(
+            filtered_df["converted_geometry_pd"]
+        ) & _check_if_series_contains_axis_aligned_bboxes(
+            filtered_df["converted_geometry_gt"]
+        ):
+            series_of_iou_calculations = (
+                geometry.calculate_axis_aligned_bbox_iou(
+                    filtered_df["converted_geometry_gt"],
+                    filtered_df["converted_geometry_pd"],
+                )
+            )
+
+        else:
+            iou_func = np.vectorize(geometry.calculate_iou)
+
+            series_of_iou_calculations = pd.Series(
+                iou_func(
+                    filtered_df["converted_geometry_gt"],
+                    filtered_df["converted_geometry_pd"],
+                ),
+                index=filtered_df.index,
+            )
+
+        series_of_iou_calculations = series_of_iou_calculations.rename("iou_")
+
+        joint_df = joint_df.join(series_of_iou_calculations)
 
     else:
-        iou_calculation_df = joint_df.loc[
-            ~joint_df["converted_geometry_gt"].isnull()
-            & ~joint_df["converted_geometry_pd"].isnull(),
-            ["converted_geometry_gt", "converted_geometry_pd"],
-        ].apply(
-            lambda row: geometry.calculate_iou(
-                row["converted_geometry_gt"], row["converted_geometry_pd"]
-            ),
-            axis=1,
-        )
 
-        if not iou_calculation_df.empty:
-            iou_calculation_df = iou_calculation_df.rename("iou_")
-            joint_df = joint_df.join(iou_calculation_df)
-        else:
-            joint_df["iou_"] = 0
+        joint_df["iou_"] = geometry.calculate_raster_ious(
+            joint_df["converted_geometry_gt"],
+            joint_df["converted_geometry_pd"],
+        )
 
     return joint_df
 
@@ -161,65 +154,47 @@ def _calculate_label_id_level_metrics(
     ] & (calculation_df["score"] > 0)
 
     # calculate true and false positives
-    calculation_df = (
-        calculation_df.join(
-            calculation_df.groupby(
-                ["label_id", "label", "iou_threshold"], as_index=False
-            )["recall_true_positive_flag"]
-            .cumsum()
-            .rename("rolling_recall_tp")
-        )
-        .join(
-            calculation_df.groupby(
-                ["label_id", "label", "iou_threshold"], as_index=False
-            )["recall_false_positive_flag"]
-            .cumsum()
-            .rename("rolling_recall_fp")
-        )
-        .join(
-            calculation_df.groupby(
-                ["label_id", "label", "iou_threshold"], as_index=False
-            )["precision_true_positive_flag"]
-            .cumsum()
-            .rename("rolling_precision_tp")
-        )
-        .join(
-            calculation_df.groupby(
-                ["label_id", "label", "iou_threshold"], as_index=False
-            )["precision_false_positive_flag"]
-            .cumsum()
-            .rename("rolling_precision_fp")
-        )
+    columns_to_sum = {
+        "recall_true_positive_flag": "rolling_recall_tp",
+        "recall_false_positive_flag": "rolling_recall_fp",
+        "precision_true_positive_flag": "rolling_precision_tp",
+        "precision_false_positive_flag": "rolling_precision_fp",
+    }
+
+    grouped = calculation_df.groupby(
+        ["label_id", "label", "iou_threshold"], as_index=False
     )
 
+    cumulative_sums = {
+        new_col: grouped[col].cumsum()
+        for col, new_col in columns_to_sum.items()
+    }
+
+    cumulative_sums_df = pd.concat(cumulative_sums, axis=1)
+
+    calculation_df = calculation_df.join(cumulative_sums_df)
+
     # calculate false negatives, then precision / recall
-    calculation_df = (
-        calculation_df.assign(
-            rolling_recall_fn=lambda chain_df: chain_df["gts_per_grouper"]
-            - chain_df["rolling_recall_tp"]
-        )
-        .assign(
-            rolling_precision_fn=lambda chain_df: chain_df["gts_per_grouper"]
-            - chain_df["rolling_precision_tp"]
-        )
-        .assign(
-            precision=lambda chain_df: chain_df["rolling_precision_tp"]
-            / (
-                chain_df["rolling_precision_tp"]
-                + chain_df["rolling_precision_fp"]
-            )
-        )
-        .assign(
-            recall_for_AP=lambda chain_df: chain_df["rolling_precision_tp"]
-            / (
-                chain_df["rolling_precision_tp"]
-                + chain_df["rolling_precision_fn"]
-            )
-        )
-        .assign(
-            recall_for_AR=lambda chain_df: chain_df["rolling_recall_tp"]
-            / (chain_df["rolling_recall_tp"] + chain_df["rolling_recall_fn"])
-        )
+    calculation_df["rolling_recall_fn"] = (
+        calculation_df["gts_per_grouper"] - calculation_df["rolling_recall_tp"]
+    )
+    calculation_df["rolling_precision_fn"] = (
+        calculation_df["gts_per_grouper"]
+        - calculation_df["rolling_precision_tp"]
+    )
+    calculation_df["precision"] = calculation_df["rolling_precision_tp"] / (
+        calculation_df["rolling_precision_tp"]
+        + calculation_df["rolling_precision_fp"]
+    )
+    calculation_df["recall_for_AP"] = calculation_df[
+        "rolling_precision_tp"
+    ] / (
+        calculation_df["rolling_precision_tp"]
+        + calculation_df["rolling_precision_fn"]
+    )
+    calculation_df["recall_for_AR"] = calculation_df["rolling_recall_tp"] / (
+        calculation_df["rolling_recall_tp"]
+        + calculation_df["rolling_recall_fn"]
     )
 
     # fill any predictions that are missing groundtruths with -1
@@ -288,6 +263,7 @@ def _calculate_ap_metrics(
     | metrics.mAPMetricAveragedOverIOUs
 ]:
     """Calculates all AP metrics, including aggregated metrics like mAP."""
+
     ap_metrics_df = (
         calculation_df.loc[
             ~calculation_df[
@@ -325,7 +301,7 @@ def _calculate_ap_metrics(
     ]
 
     # calculate mean AP metrics
-    ap_metrics_df["label_key"] = ap_metrics_df["label"].apply(lambda x: x[0])
+    ap_metrics_df["label_key"] = ap_metrics_df["label"].str[0]
 
     ap_over_ious_df = ap_metrics_df.groupby(
         ["label_id", "label"], as_index=False
@@ -407,7 +383,7 @@ def _calculate_ar_metrics(
     ]
 
     # calculate mAR
-    ar_metrics_df["label_key"] = ar_metrics_df["label"].apply(lambda x: x[0])
+    ar_metrics_df["label_key"] = ar_metrics_df["label"].str[0]
     mar_metrics_df = ar_metrics_df.groupby(["label_key"], as_index=False)[
         "recall_for_AR"
     ].apply(_calculate_mean_ignoring_negative_one)
@@ -645,6 +621,21 @@ def _calculate_detailed_pr_metrics(
         and enums.MetricType.DetailedPrecisionRecallCurve in metrics_to_return
     ) or (detailed_pr_joint_df is None):
         return []
+
+    if _check_if_series_contains_masks(
+        detailed_pr_joint_df.loc[
+            detailed_pr_joint_df["converted_geometry_gt"].notnull(),
+            "converted_geometry_gt",
+        ]
+    ) or _check_if_series_contains_masks(
+        detailed_pr_joint_df.loc[
+            detailed_pr_joint_df["converted_geometry_pd"].notnull(),
+            "converted_geometry_pd",
+        ]
+    ):
+        raise NotImplementedError(
+            "DetailedPrecisionRecallCurves are not yet implemented when dealing with rasters."
+        )
 
     # add confidence_threshold to the dataframe and sort
     detailed_pr_calc_df = pd.concat(
@@ -1048,22 +1039,44 @@ def _create_detailed_joint_df(
         on=["datum_id", "label_key"],
         how="outer",
         suffixes=("_gt", "_pd"),
-    ).assign(
-        is_label_match=lambda chain_df: (
-            chain_df["label_id_pd"] == chain_df["label_id_gt"]
-        )
     )
+
+    detailed_joint_df["is_label_match"] = (
+        detailed_joint_df["label_id_pd"] == detailed_joint_df["label_id_gt"]
+    )
+
     detailed_joint_df = _calculate_iou(joint_df=detailed_joint_df)
     return detailed_joint_df
 
 
 def create_detection_evaluation_inputs(
-    groundtruths,
-    predictions,
-    metrics_to_return,
-    label_map,
-    convert_annotations_to_type,
-):
+    groundtruths: list[schemas.GroundTruth] | pd.DataFrame,
+    predictions: list[schemas.Prediction] | pd.DataFrame,
+    metrics_to_return: list[enums.MetricType],
+    label_map: dict[schemas.Label, schemas.Label],
+    convert_annotations_to_type: enums.AnnotationType | None,
+) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame | None]:
+    """
+    Creates and validates the inputs needed to run a detection evaluation.
+
+    Parameters
+    ----------
+    groundtruths : list[schemas.GroundTruth] | pd.DataFrame
+        A list or pandas DataFrame describing the groundtruths.
+    predictions : list[schemas.GroundTruth] | pd.DataFrame
+        A list or pandas DataFrame describing the predictions.
+    metrics_to_return : list[enums.MetricType]
+        A list of metrics to calculate during the evaluation.
+    label_map : dict[schemas.Label, schemas.Label]
+        A mapping from one label schema to another.
+    convert_annotations_to_type : AnnotationType, optional
+        The target annotation type to convert the data to.
+
+    Returns
+    -------
+    tuple[pd.DataFrame, pd.DataFrame]
+        A tuple of input dataframes.
+    """
 
     groundtruth_df = utilities.create_validated_groundtruth_df(
         groundtruths, task_type=enums.TaskType.OBJECT_DETECTION
@@ -1092,17 +1105,16 @@ def create_detection_evaluation_inputs(
         target_type=convert_annotations_to_type,
     )
 
+    # apply label map
     groundtruth_df, prediction_df = utilities.replace_labels_using_label_map(
         groundtruth_df=groundtruth_df,
         prediction_df=prediction_df,
         label_map=label_map,
     )
+
     # add label as a column
     for df in (groundtruth_df, prediction_df):
-        df.loc[:, "label"] = df.apply(
-            lambda chain_df: (chain_df["label_key"], chain_df["label_value"]),
-            axis=1,
-        )
+        df["label"] = list(zip(df["label_key"], df["label_value"]))
 
     joint_df = _get_joint_df(
         groundtruth_df=groundtruth_df,
@@ -1252,16 +1264,17 @@ def compute_detection_metrics(
 
     metrics_to_output = []
 
-    # add iou_threshold to the dataframe and sort
-    calculation_df = pd.concat(
-        [
-            joint_df.assign(iou_threshold=threshold)
-            for threshold in iou_thresholds_to_compute
-        ],
-        ignore_index=True,
-    ).sort_values(
+    dfs = [
+        joint_df.copy().assign(iou_threshold=threshold)
+        for threshold in iou_thresholds_to_compute
+    ]
+
+    calculation_df = pd.concat(dfs, ignore_index=True)
+
+    calculation_df.sort_values(
         by=["label_id", "label", "iou_threshold", "score", "iou_"],
         ascending=False,
+        inplace=True,
     )
 
     # calculate metrics

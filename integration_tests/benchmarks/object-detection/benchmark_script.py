@@ -1,6 +1,5 @@
 import json
 import os
-import re
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
@@ -17,10 +16,13 @@ connect("http://0.0.0.0:8000")
 client = Client()
 
 
-def time_it(fn, *args, **kwargs):
-    start = time()
-    fn(*args, **kwargs)
-    return time() - start
+def time_it(fn):
+    def wrapper(*args, **kwargs):
+        start = time()
+        results = fn(*args, **kwargs)
+        return (time() - start, results)
+
+    return wrapper
 
 
 def download_data_if_not_exists(
@@ -51,9 +53,18 @@ def download_data_if_not_exists(
     else:
         print(f"{file_name} already exists locally.")
 
+    # sort file by datum uid
+    with open(file_path, "r") as f:
+        lines = [x for x in f]
+    with open(file_path, "w") as f:
+        for line in sorted(
+            lines, key=lambda x: int(json.loads(x)["datum"]["uid"])
+        ):
+            f.write(line)
+
 
 def write_results_to_file(write_path: Path, results: list[dict]):
-    """Write results to results.json"""
+    """Write results to manager_results.json"""
     current_datetime = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
     if os.path.isfile(write_path):
         with open(write_path, "r") as file:
@@ -68,6 +79,7 @@ def write_results_to_file(write_path: Path, results: list[dict]):
         json.dump(data, file, indent=4)
 
 
+@time_it
 def ingest_groundtruths(
     dataset: Dataset,
     path: Path,
@@ -85,7 +97,7 @@ def ingest_groundtruths(
             count += 1
             if count >= limit and limit > 0:
                 break
-            elif len(chunks) < chunk_size:
+            elif len(chunks) < chunk_size or chunk_size == -1:
                 continue
 
             dataset.add_groundtruths(chunks, timeout=timeout)
@@ -94,32 +106,26 @@ def ingest_groundtruths(
             dataset.add_groundtruths(chunks, timeout=timeout)
 
 
+@time_it
 def ingest_predictions(
     dataset: Dataset,
     model: Model,
-    datum_uids: list[str],
     path: Path,
     limit: int,
     chunk_size: int,
     timeout: int | None,
 ):
-    pattern = re.compile(r'"uid":\s*"(\d+)"')
     with open(path, "r") as f:
         count = 0
         chunks = []
         for line in f:
-            match = pattern.search(line)
-            if not match:
-                continue
-            elif match.group(1) not in datum_uids:
-                continue
             pd_dict = json.loads(line)
             pd = Prediction.decode_value(pd_dict)
             chunks.append(pd)
             count += 1
             if count >= limit and limit > 0:
                 break
-            elif len(chunks) < chunk_size:
+            elif len(chunks) < chunk_size or chunk_size == -1:
                 continue
 
             model.add_predictions(dataset, chunks, timeout=timeout)
@@ -191,46 +197,96 @@ def run_detailed_pr_curve_evaluation(
 
 
 @dataclass
-class DataBenchmark:
-    dtype: str
-    ingestion: float
-    finalization: float
-    deletion: float
-
-    def result(self) -> dict[str, float | str]:
-        return {
-            "dtype": self.dtype,
-            "ingestion": round(self.ingestion, 2),
-            "finalization": round(self.finalization, 2),
-            "deletion": round(self.deletion, 2),
-        }
-
-
-@dataclass
-class EvaluationBenchmark:
+class Benchmark:
     limit: int
-    gt_stats: DataBenchmark
-    pd_stats: DataBenchmark
     n_datums: int
     n_annotations: int
     n_labels: int
+    gt_type: AnnotationType
+    pd_type: AnnotationType
+    chunk_size: int
+    gt_ingest: float
+    gt_finalization: float
+    gt_deletion: float
+    pd_ingest: float
+    pd_finalization: float
+    pd_deletion: float
     eval_base: float
     eval_base_pr: float
     eval_base_pr_detail: float
 
-    def result(self) -> dict[str, float | str | dict[str, str | float]]:
+    def result(self) -> dict:
         return {
             "limit": self.limit,
-            "groundtruths": self.gt_stats.result(),
-            "predictions": self.pd_stats.result(),
-            "evaluation": {
-                "number_of_datums": self.n_datums,
-                "number_of_annotations": self.n_annotations,
-                "number_of_labels": self.n_labels,
-                "base": round(self.eval_base, 2),
-                "base+pr": round(self.eval_base_pr, 2),
-                "base+pr+detailed": round(self.eval_base_pr_detail, 2),
+            "chunk_size": self.chunk_size,
+            "n_datums": self.n_datums,
+            "n_annotations": self.n_annotations,
+            "n_labels": self.n_labels,
+            "dtype": {
+                "groundtruth": self.gt_type.value,
+                "prediction": self.pd_type.value,
             },
+            "base": {
+                "ingestion": {
+                    "dataset": f"{round(self.gt_ingest, 2)} seconds",
+                    "model": f"{round(self.pd_ingest, 2)} seconds",
+                },
+                "finalization": {
+                    "dataset": f"{round(self.gt_finalization, 2)} seconds",
+                    "model": f"{round(self.pd_finalization, 2)} seconds",
+                },
+                "evaluation": {
+                    "preprocessing": "0.0 seconds",
+                    "computation": f"{round(self.eval_base, 2)} seconds",
+                    "total": f"{round(self.eval_base, 2)} seconds",
+                },
+                "deletion": {
+                    "dataset": f"{round(self.gt_deletion, 2)} seconds",
+                    "model": f"{round(self.pd_deletion, 2)} seconds",
+                },
+            },
+            "base+pr": {
+                "ingestion": {
+                    "dataset": f"{round(self.gt_ingest, 2)} seconds",
+                    "model": f"{round(self.pd_ingest, 2)} seconds",
+                },
+                "finalization": {
+                    "dataset": f"{round(self.gt_finalization, 2)} seconds",
+                    "model": f"{round(self.pd_finalization, 2)} seconds",
+                },
+                "evaluation": {
+                    "preprocessing": "0.0 seconds",
+                    "computation": f"{round(self.eval_base_pr, 2)} seconds",
+                    "total": f"{round(self.eval_base_pr, 2)} seconds",
+                },
+                "deletion": {
+                    "dataset": f"{round(self.gt_deletion, 2)} seconds",
+                    "model": f"{round(self.pd_deletion, 2)} seconds",
+                },
+            }
+            if self.eval_base_pr > -1
+            else {},
+            "base+pr+detailed": {
+                "ingestion": {
+                    "dataset": f"{round(self.gt_ingest, 2)} seconds",
+                    "model": f"{round(self.pd_ingest, 2)} seconds",
+                },
+                "finalization": {
+                    "dataset": f"{round(self.gt_finalization, 2)} seconds",
+                    "model": f"{round(self.pd_finalization, 2)} seconds",
+                },
+                "evaluation": {
+                    "preprocessing": "0.0 seconds",
+                    "computation": f"{round(self.eval_base_pr_detail, 2)} seconds",
+                    "total": f"{round(self.eval_base_pr_detail, 2)} seconds",
+                },
+                "deletion": {
+                    "dataset": f"{round(self.gt_deletion, 2)} seconds",
+                    "model": f"{round(self.pd_deletion, 2)} seconds",
+                },
+            }
+            if self.eval_base_pr_detail > -1
+            else {},
         }
 
 
@@ -238,8 +294,8 @@ def run_benchmarking_analysis(
     limits_to_test: list[int],
     combinations: list[tuple[AnnotationType, AnnotationType]] | None = None,
     results_file: str = "results.json",
-    ingestion_chunk_size: int = 100,
-    ingestion_chunk_timeout: int = 30,
+    chunk_size: int = -1,
+    ingestion_timeout: int = 30,
     evaluation_timeout: int = 30,
     compute_pr: bool = True,
     compute_detailed: bool = True,
@@ -306,49 +362,66 @@ def run_benchmarking_analysis(
                 client.delete_model("yolo")
                 raise e
 
-            # gt ingestion
-            gt_ingest_time = time_it(
-                ingest_groundtruths,
+            # === Ingestion ===
+            gt_ingest_time, _ = ingest_groundtruths(
                 dataset=dataset,
                 path=current_directory / Path(gt_filename),
                 limit=limit,
-                chunk_size=ingestion_chunk_size,
-                timeout=ingestion_chunk_timeout,
-            )
-
-            # gt finalization
-            gt_finalization_time = time_it(dataset.finalize)
-
-            # pd ingestion
-            datum_uids = [datum.uid for datum in dataset.get_datums()]
-            pd_ingest_time = time_it(
-                ingest_predictions,
+                chunk_size=chunk_size,
+                timeout=ingestion_timeout,
+            )  # type: ignore - time_it wrapper
+            gt_finalization_time, _ = time_it(dataset.finalize)()
+            pd_ingest_time, _ = ingest_predictions(
                 dataset=dataset,
                 model=model,
-                datum_uids=datum_uids,
                 path=current_directory / Path(pd_filename),
                 limit=limit,
-                chunk_size=ingestion_chunk_size,
-                timeout=ingestion_chunk_timeout,
+                chunk_size=chunk_size,
+                timeout=ingestion_timeout,
+            )  # type: ignore - time_it wrapper
+            pd_finalization_time, _ = time_it(model.finalize_inferences)(
+                dataset
             )
 
-            # model finalization
-            pd_finalization_time = time_it(model.finalize_inferences, dataset)
-
-            # run evaluations
-            eval_pr = None
-            eval_detail = None
-            eval_base = run_base_evaluation(
+            # === Base Evaluation ===
+            base_results = run_base_evaluation(
                 dset=dataset, model=model, timeout=evaluation_timeout
             )
+            assert base_results.meta
+            n_datums = base_results.meta["datums"]
+            n_annotations = base_results.meta["annotations"]
+            n_labels = base_results.meta["labels"]
+            base = base_results.meta["duration"]
+            if base > evaluation_timeout and evaluation_timeout != -1:
+                raise TimeoutError(
+                    f"Base evaluation timed out with {n_datums} datums."
+                )
+
+            # === PR Evaluation ===
+            pr = -1
             if compute_pr:
-                eval_pr = run_pr_curve_evaluation(
+                pr_results = run_pr_curve_evaluation(
                     dset=dataset, model=model, timeout=evaluation_timeout
                 )
+                assert pr_results.meta
+                pr = pr_results.meta["duration"]
+                if pr > evaluation_timeout and evaluation_timeout != -1:
+                    raise TimeoutError(
+                        f"PR evaluation timed out with {n_datums} datums."
+                    )
+
+            # === Detailed Evaluation ===
+            detailed = -1
             if compute_detailed:
-                eval_detail = run_detailed_pr_curve_evaluation(
+                detailed_results = run_detailed_pr_curve_evaluation(
                     dset=dataset, model=model, timeout=evaluation_timeout
                 )
+                assert detailed_results.meta
+                detailed = detailed_results.meta["duration"]
+                if detailed > evaluation_timeout and evaluation_timeout != -1:
+                    raise TimeoutError(
+                        f"Detailed evaluation timed out with {n_datums} datums."
+                    )
 
             # delete model
             start = time()
@@ -361,28 +434,23 @@ def run_benchmarking_analysis(
             gt_deletion_time = time() - start
 
             results.append(
-                EvaluationBenchmark(
+                Benchmark(
                     limit=limit,
-                    gt_stats=DataBenchmark(
-                        dtype=gt_type,
-                        ingestion=gt_ingest_time,
-                        finalization=gt_finalization_time,
-                        deletion=gt_deletion_time,
-                    ),
-                    pd_stats=DataBenchmark(
-                        dtype=pd_type,
-                        ingestion=pd_ingest_time,
-                        finalization=pd_finalization_time,
-                        deletion=pd_deletion_time,
-                    ),
-                    n_datums=eval_base.meta["datums"],
-                    n_annotations=eval_base.meta["annotations"],
-                    n_labels=eval_base.meta["labels"],
-                    eval_base=eval_base.meta["duration"],
-                    eval_base_pr=eval_pr.meta["duration"] if eval_pr else -1,
-                    eval_base_pr_detail=(
-                        eval_detail.meta["duration"] if eval_detail else -1
-                    ),
+                    n_datums=n_datums,
+                    n_annotations=n_annotations,
+                    n_labels=n_labels,
+                    gt_type=gt_type,
+                    pd_type=pd_type,
+                    chunk_size=chunk_size,
+                    gt_ingest=gt_ingest_time,
+                    gt_finalization=gt_finalization_time,
+                    gt_deletion=gt_deletion_time,
+                    pd_ingest=pd_ingest_time,
+                    pd_finalization=pd_finalization_time,
+                    pd_deletion=pd_deletion_time,
+                    eval_base=base,
+                    eval_base_pr=pr,
+                    eval_base_pr_detail=detailed,
                 ).result()
             )
 
@@ -391,25 +459,23 @@ def run_benchmarking_analysis(
 
 if __name__ == "__main__":
 
-    # # run bounding box benchmark
-    # run_benchmarking_analysis(
-    #     combinations=[
-    #         (AnnotationType.BOX, AnnotationType.BOX),
-    #     ],
-    #     evaluation_timeout=40,
-    #     ingestion_chunk_size=100,
-    #     limits_to_test=[50, 50],
-    # )
+    # run bounding box benchmark
+    run_benchmarking_analysis(
+        combinations=[
+            (AnnotationType.BOX, AnnotationType.BOX),
+        ],
+        chunk_size=250,
+        limits_to_test=[5000, 5000],
+    )
 
-    # # run polygon benchmark
-    # run_benchmarking_analysis(
-    #     combinations=[
-    #         (AnnotationType.POLYGON, AnnotationType.POLYGON),
-    #     ],
-    #     evaluation_timeout=40,
-    #     ingestion_chunk_size=100,
-    #     limits_to_test=[50, 50],
-    # )
+    # run polygon benchmark
+    run_benchmarking_analysis(
+        combinations=[
+            (AnnotationType.POLYGON, AnnotationType.POLYGON),
+        ],
+        chunk_size=250,
+        limits_to_test=[5000, 5000],
+    )
 
     # run multipolygon benchmark
     run_benchmarking_analysis(
@@ -417,7 +483,7 @@ if __name__ == "__main__":
             (AnnotationType.MULTIPOLYGON, AnnotationType.RASTER),
         ],
         evaluation_timeout=0,
-        ingestion_chunk_size=10,
+        chunk_size=10,
         limits_to_test=[1, 1],
         compute_pr=False,
         compute_detailed=False,

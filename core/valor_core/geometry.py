@@ -1,10 +1,74 @@
 import numpy as np
+import pandas as pd
 import shapely.affinity
 from shapely.geometry import Polygon as ShapelyPolygon
 
 # turn off "invalid value encountered in scalar divide" warning
 # when dividing by 0 or NaN, the returned value will be NaN. we'll then handle those NaNs later in the evaluation code
 np.seterr(divide="ignore", invalid="ignore")
+
+
+def _calculate_area_and_boundaries_of_bbox_series(array):
+    """Calculate the area and boundaries for each bbox represented in a numpy array."""
+    xmin = np.min(array[:, :, 0], axis=1)
+    xmax = np.max(array[:, :, 0], axis=1)
+    ymin = np.min(array[:, :, 1], axis=1)
+    ymax = np.max(array[:, :, 1], axis=1)
+
+    area = (ymax - ymin) * (xmax - xmin)
+
+    return area, (xmin, xmax, ymin, ymax)
+
+
+def calculate_axis_aligned_bbox_iou(
+    series_of_bboxes1: pd.Series, series_of_bboxes2: pd.Series
+) -> pd.Series:
+    """
+    Calculate the IOU between two series of axis-aligned bounding boxes.
+
+    Parameters
+    ----------
+    series_of_bboxes1 : pd.Series
+        Series of bounding boxes, where each element is an array-like object representing a bounding box.
+    series_of_bboxes2 : pd.Series
+        Series of bounding boxes with the same format as series1.
+
+    Returns
+    -------
+    pd.Series
+        Series containing the IOU for each pair of bounding boxes.
+    """
+    # convert series to NumPy arrays for vectorized operations. note that this output has a different shape than using .to_numpy()
+    series1 = np.array(series_of_bboxes1.tolist())
+    series2 = np.array(series_of_bboxes2.tolist())
+
+    s1_area, (
+        s1_xmin,
+        s1_xmax,
+        s1_ymin,
+        s1_ymax,
+    ) = _calculate_area_and_boundaries_of_bbox_series(series1)
+    s2_area, (
+        s2_xmin,
+        s2_xmax,
+        s2_ymin,
+        s2_ymax,
+    ) = _calculate_area_and_boundaries_of_bbox_series(series2)
+
+    intersection_width = np.clip(
+        np.minimum(s1_xmax, s2_xmax) - np.maximum(s1_xmin, s2_xmin), 0, None
+    )
+    intersection_height = np.clip(
+        np.minimum(s1_ymax, s2_ymax) - np.maximum(s1_ymin, s2_ymin), 0, None
+    )
+
+    intersection = intersection_height * intersection_width
+    union = s1_area + s2_area - intersection
+
+    iou = intersection / union
+
+    # the indexes of series_of_bboxes1 and series_of_bboxes2 are the same, so it doesn't matter which you use
+    return pd.Series(iou, index=series_of_bboxes1.index)
 
 
 def calculate_iou(
@@ -75,6 +139,12 @@ def is_axis_aligned(bbox: list[tuple[float, float]]) -> bool:
     bool
         True if the bounding box is axis-aligned, otherwise False.
     """
+
+    if isinstance(bbox, np.ndarray):
+        raise ValueError(
+            "Please make sure your bounding box is a list, otherwise is_axis_aligned may not work correctly."
+        )
+
     return all(
         x1 == x2 or y1 == y2
         for (x1, y1), (x2, y2) in zip(bbox, bbox[1:] + bbox[:1])
@@ -137,3 +207,39 @@ def is_rotated(bbox: list[tuple[float, float]]) -> bool:
         True if the bounding box is rotated, otherwise False.
     """
     return not is_axis_aligned(bbox) and not is_skewed(bbox)
+
+
+def calculate_raster_ious(series1: pd.Series, series2: pd.Series) -> pd.Series:
+    """
+    Calculate the IOUs between two series of rasters.
+
+    Parameters
+    ----------
+    series1 : pd.Series
+        The first series of rasters.
+    series2: pd.Series
+        The second series of rasters.
+
+    Returns
+    ----------
+    pd.Series
+        A Series of IOUs.
+    """
+
+    if len(series1) != len(series2):
+        raise ValueError(
+            "Series of rasters must be the same length to calculate IOUs."
+        )
+
+    intersection_ = pd.Series(
+        [np.logical_and(x, y).sum() for x, y in zip(series1, series2)]
+    )
+
+    union_ = pd.Series(
+        [np.logical_or(x, y).sum() for x, y in zip(series1, series2)]
+    )
+
+    if (intersection_ > union_).any():
+        raise ValueError("Intersection can't be greater than union.")
+
+    return intersection_ / union_

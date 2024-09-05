@@ -5,15 +5,18 @@ from openai import OpenAI
 from pydantic import BaseModel
 
 from valor_api.backend.core.llm_instructions_analysis import (
+    generate_answer_correctness_verdicts_instruction,
     generate_answer_relevance_verdicts_instruction,
     generate_bias_verdicts_instruction,
     generate_claims_instruction,
-    generate_coherence_instruction,
+    generate_context_precision_verdicts_instruction,
+    generate_context_recall_verdicts_instruction,
     generate_context_relevance_verdicts_instruction,
     generate_faithfulness_verdicts_instruction,
     generate_hallucination_verdicts_instruction,
     generate_opinions_instruction,
     generate_statements_instruction,
+    generate_summary_coherence_instruction,
     generate_toxicity_verdicts_instruction,
 )
 from valor_api.backend.metrics.metric_utils import trim_and_load_json
@@ -128,7 +131,7 @@ class LLMClient:
             {"role": "system", "content": DEFAULT_SYSTEM_PROMPT},
             {
                 "role": "user",
-                "content": generate_claims_instruction(text),
+                "content": generate_claims_instruction(text=text),
             },
         ]
 
@@ -168,7 +171,7 @@ class LLMClient:
             {"role": "system", "content": DEFAULT_SYSTEM_PROMPT},
             {
                 "role": "user",
-                "content": generate_opinions_instruction(text),
+                "content": generate_opinions_instruction(text=text),
             },
         ]
 
@@ -208,7 +211,7 @@ class LLMClient:
             {"role": "system", "content": DEFAULT_SYSTEM_PROMPT},
             {
                 "role": "user",
-                "content": generate_statements_instruction(text),
+                "content": generate_statements_instruction(text=text),
             },
         ]
 
@@ -226,6 +229,75 @@ class LLMClient:
                 f"LLM response was not a valid list of statements (list[str]): {response}"
             )
         return statements
+
+    def _generate_answer_correctness_verdicts(
+        self,
+        query: str,
+        prediction_statements: list[str],
+        groundtruth_statements: list[str],
+    ) -> dict[str, list[dict[str, str]]]:
+        """
+        Generate lists of true positives, false positives and false negatives, using a call to the LLM API.
+
+        Parameters
+        ----------
+        query: str
+            The query that both the prediction and ground truth should be answering.
+        prediction_statements: list[str]
+            The prediction statements to evaluate.
+        groundtruth_statements: list[str]
+            The ground truth statements to evaluate.
+
+        Returns
+        -------
+        dict[str, list[dict[str, str]]]
+            A dictionary of true positives, false positives and false negatives.
+        """
+        messages = [
+            {"role": "system", "content": DEFAULT_SYSTEM_PROMPT},
+            {
+                "role": "user",
+                "content": generate_answer_correctness_verdicts_instruction(
+                    query=query,
+                    prediction_statements=prediction_statements,
+                    groundtruth_statements=groundtruth_statements,
+                ),
+            },
+        ]
+        response = self(messages)
+        response = trim_and_load_json(response)
+        if (
+            type(response) != dict
+            or "TP" not in response
+            or "FP" not in response
+            or "FN" not in response
+        ):
+            raise InvalidLLMResponseError(
+                f"LLM response was not a dictionary of true positives, false positives and false negatives: {response}"
+            )
+
+        if (
+            type(response["TP"]) != list
+            or type(response["FP"]) != list
+            or type(response["FN"]) != list
+        ):
+            raise InvalidLLMResponseError(
+                f"LLM response did not contain valid lists of true positives, false positives and false negatives: {response}"
+            )
+
+        if len(response["TP"]) + len(response["FP"]) != len(
+            prediction_statements
+        ):
+            raise InvalidLLMResponseError(
+                f"Number of true positives and false positives did not match the number of prediction statements: {response}"
+            )
+
+        if len(response["FN"]) > len(groundtruth_statements):
+            raise InvalidLLMResponseError(
+                f"Number of false negatives exceeded the number of ground truth statements: {response}"
+            )
+
+        return response
 
     def _generate_answer_relevance_verdicts(
         self,
@@ -245,15 +317,15 @@ class LLMClient:
         Returns
         -------
         list[dict[str,str]]
-            The list of verdicts for each statement. Each verdict is a dictionary with the "verdict" and optionally a "reason".
+            The list of verdicts for each statement. Each verdict is a dictionary with the "verdict" field.
         """
         messages = [
             {"role": "system", "content": DEFAULT_SYSTEM_PROMPT},
             {
                 "role": "user",
                 "content": generate_answer_relevance_verdicts_instruction(
-                    query,
-                    statements,
+                    query=query,
+                    statements=statements,
                 ),
             },
         ]
@@ -295,14 +367,14 @@ class LLMClient:
         Returns
         -------
         list[dict[str,str]]
-            The list of verdicts for each opinion. Each verdict is a dictionary with the "verdict" and optionally a "reason".
+            The list of verdicts for each opinion. Each verdict is a dictionary with the "verdict" field.
         """
         messages = [
             {"role": "system", "content": DEFAULT_SYSTEM_PROMPT},
             {
                 "role": "user",
                 "content": generate_bias_verdicts_instruction(
-                    opinions,
+                    opinions=opinions,
                 ),
             },
         ]
@@ -328,44 +400,117 @@ class LLMClient:
 
         return verdicts
 
-    def _coherence(
+    def _generate_context_precision_verdicts(
         self,
-        text: str,
-    ) -> int:
+        query: str,
+        ordered_context_list: list[str],
+        groundtruth: str,
+    ) -> list[dict[str, str]]:
         """
-        Compute coherence, the collective quality of all sentences, for a single piece of text.
+        Generate a list of context precision verdicts for an ordered list of contexts, using a call to the LLM API.
+
+        The verdict for each context should be 'yes' if the context is relevant to produce the ground truth answer to the query. The verdict should be 'no' otherwise.
 
         Parameters
         ----------
-        text: str
-            The text to be evaluated.
+        query: str
+            The query.
+        ordered_context_list: list[str]
+            The ordered list of contexts. Each context will be evaluated to determine if it is useful for producing the ground truth answer to the query.
+        groundtruth: str
+            The ground truth answer to the query.
 
         Returns
         -------
-        int
-            The coherence score will be evaluated as an integer, with 1 indicating the lowest coherence and 5 the highest coherence.
+        list[dict[str,str]]
+            The list of verdicts for each context. Each verdict is a dictionary with the "verdict" field.
         """
         messages = [
             {"role": "system", "content": DEFAULT_SYSTEM_PROMPT},
-            {"role": "user", "content": generate_coherence_instruction(text)},
+            {
+                "role": "user",
+                "content": generate_context_precision_verdicts_instruction(
+                    query=query,
+                    ordered_context_list=ordered_context_list,
+                    groundtruth=groundtruth,
+                ),
+            },
         ]
 
         response = self(messages)
-
-        try:
-            # Valid responses: "5", "\n5", "5\n", "5.", " 5", "5 {explanation}", etc.
-            ret = int(response.strip()[0])
-        except Exception:
+        response = trim_and_load_json(response)
+        if type(response) != dict or "verdicts" not in response:
             raise InvalidLLMResponseError(
-                f"LLM response was not a valid coherence score: {response}"
+                f"LLM response was not a list of valid verdicts: {response}"
             )
 
-        if ret not in {1, 2, 3, 4, 5}:
+        verdicts = response["verdicts"]
+        if (
+            type(verdicts) != list
+            or len(verdicts) != len(ordered_context_list)
+            or not all(
+                verdict["verdict"] in ["yes", "no"] for verdict in verdicts
+            )
+        ):
             raise InvalidLLMResponseError(
-                f"Coherence score was not an integer between 1 and 5: {ret}"
+                f"LLM response was not a list of valid verdicts: {response}"
             )
 
-        return ret
+        return verdicts
+
+    def _generate_context_recall_verdicts(
+        self,
+        context_list: list[str],
+        groundtruth_statements: list[str],
+    ) -> list[dict[str, str]]:
+        """
+        Generate a list of context recall verdicts for a list of ground truth statements, using a call to the LLM API.
+
+        The verdict for each ground truth statement should be 'yes' if the ground truth statement is attributable to the context list and 'no' otherwise.
+
+        Parameters
+        ----------
+        context_list: list[str]
+            The list of contexts to evaluate against.
+        groundtruth_statements: str
+            A list of statements extracted from the ground truth answer.
+
+        Returns
+        -------
+        list[dict[str,str]]
+            The list of verdicts for each ground truth statement. Each verdict is a dictionary with the "verdict" field.
+        """
+        messages = [
+            {"role": "system", "content": DEFAULT_SYSTEM_PROMPT},
+            {
+                "role": "user",
+                "content": generate_context_recall_verdicts_instruction(
+                    context_list=context_list,
+                    groundtruth_statements=groundtruth_statements,
+                ),
+            },
+        ]
+
+        response = self(messages)
+        response = trim_and_load_json(response)
+        if type(response) != dict or "verdicts" not in response:
+            raise InvalidLLMResponseError(
+                f"LLM response was not a list of valid verdicts: {response}"
+            )
+
+        verdicts = response["verdicts"]
+        if (
+            type(verdicts) != list
+            or len(verdicts) != len(groundtruth_statements)
+            or not all(
+                verdict["verdict"] in ["yes", "no"] for verdict in verdicts
+            )
+        ):
+            raise InvalidLLMResponseError(
+                f"LLM response was not a list of valid verdicts: {response}"
+            )
+
+        return verdicts
 
     def _generate_context_relevance_verdicts(
         self,
@@ -385,15 +530,15 @@ class LLMClient:
         Returns
         -------
         list[dict[str,str]]
-            The list of verdicts for each context. Each verdict is a dictionary with the "verdict" and optionally a "reason".
+            The list of verdicts for each context. Each verdict is a dictionary with the "verdict" field.
         """
         messages = [
             {"role": "system", "content": DEFAULT_SYSTEM_PROMPT},
             {
                 "role": "user",
                 "content": generate_context_relevance_verdicts_instruction(
-                    query,
-                    context_list,
+                    query=query,
+                    context_list=context_list,
                 ),
             },
         ]
@@ -444,8 +589,8 @@ class LLMClient:
             {
                 "role": "user",
                 "content": generate_faithfulness_verdicts_instruction(
-                    claims,
-                    context_list,
+                    claims=claims,
+                    context_list=context_list,
                 ),
             },
         ]
@@ -491,15 +636,15 @@ class LLMClient:
         Returns
         -------
         list[dict[str,str]]
-            The list of verdicts for each context. Each verdict is a dictionary with the "verdict" and optionally a "reason".
+            The list of verdicts for each context. Each verdict is a dictionary with the "verdict" field.
         """
         messages = [
             {"role": "system", "content": DEFAULT_SYSTEM_PROMPT},
             {
                 "role": "user",
                 "content": generate_hallucination_verdicts_instruction(
-                    text,
-                    context_list,
+                    text=text,
+                    context_list=context_list,
                 ),
             },
         ]
@@ -525,6 +670,53 @@ class LLMClient:
 
         return verdicts
 
+    def _summary_coherence(
+        self,
+        text: str,
+        summary: str,
+    ) -> int:
+        """
+        Compute summary coherence, the collective quality of a summary.
+
+        Parameters
+        ----------
+        text: str
+            The text that was summarized.
+        summary: str
+            The summary to be evaluated.
+
+        Returns
+        -------
+        int
+            The summary coherence score will be evaluated as an integer, with 1 indicating the lowest summary coherence and 5 the highest summary coherence.
+        """
+        messages = [
+            {"role": "system", "content": DEFAULT_SYSTEM_PROMPT},
+            {
+                "role": "user",
+                "content": generate_summary_coherence_instruction(
+                    text=text, summary=summary
+                ),
+            },
+        ]
+
+        response = self(messages)
+
+        try:
+            # Valid responses: "5", "\n5", "5\n", "5.", " 5", "5 {explanation}", etc.
+            ret = int(response.strip()[0])
+        except Exception:
+            raise InvalidLLMResponseError(
+                f"LLM response was not a valid summary coherence score: {response}"
+            )
+
+        if ret not in {1, 2, 3, 4, 5}:
+            raise InvalidLLMResponseError(
+                f"Summary coherence score was not an integer between 1 and 5: {ret}"
+            )
+
+        return ret
+
     def _generate_toxicity_verdicts(
         self,
         opinions: list[str],
@@ -540,14 +732,14 @@ class LLMClient:
         Returns
         -------
         list[dict[str,str]]
-            The list of verdicts for each opinion. Each verdict is a dictionary with the "verdict" and optionally a "reason".
+            The list of verdicts for each opinion. Each verdict is a dictionary with the "verdict" field.
         """
         messages = [
             {"role": "system", "content": DEFAULT_SYSTEM_PROMPT},
             {
                 "role": "user",
                 "content": generate_toxicity_verdicts_instruction(
-                    opinions,
+                    opinions=opinions,
                 ),
             },
         ]
@@ -573,6 +765,56 @@ class LLMClient:
 
         return verdicts
 
+    def answer_correctness(
+        self,
+        query: str,
+        prediction: str,
+        groundtruth_list: list[str],
+    ) -> float:
+        """
+        Compute answer correctness. Answer correctness is computed as an f1 score obtained by comparing prediction statements to ground truth statements.
+
+        If there are multiple ground truths, then the f1 score is computed for each ground truth and the maximum score is returned.
+
+        This metric was adapted from RAGAS. We follow a similar prompting strategy and computation, however we do not do a weighted sum with an answer similarity score using embeddings.
+
+        Parameters
+        ----------
+        query: str
+            The query that both the ground truth and prediction should be answering.
+        prediction: str
+            The prediction text to extract statements from.
+        groundtruth_list: list[str]
+            A list of ground truth texts to extract statements from.
+
+        Returns
+        -------
+        float
+            The answer correctness score between 0 and 1. Higher values indicate that the answer is more correct. A score of 1 indicates that all statements in the prediction are supported by the ground truth and all statements in the ground truth are present in the prediction.
+        """
+        if len(groundtruth_list) == 0:
+            raise ValueError(
+                "Answer correctness is meaningless if the ground truth list is empty."
+            )
+
+        prediction_statements = self._generate_statements(prediction)
+        f1_scores = []
+        for groundtruth in groundtruth_list:
+            groundtruth_statements = self._generate_statements(groundtruth)
+            verdicts = self._generate_answer_correctness_verdicts(
+                query=query,
+                groundtruth_statements=groundtruth_statements,
+                prediction_statements=prediction_statements,
+            )
+
+            tp = len(verdicts["TP"])
+            fp = len(verdicts["FP"])
+            fn = len(verdicts["FN"])
+
+            f1_scores.append(tp / (tp + 0.5 * (fp + fn)) if tp > 0 else 0)
+
+        return max(f1_scores)
+
     def answer_relevance(
         self,
         query: str,
@@ -591,7 +833,7 @@ class LLMClient:
         Returns
         -------
         float
-            The answer relevance score will be evaluated as a float between 0 and 1, with 1 indicating that all statements are relevant to the query.
+            The answer relevance score between 0 and 1. A score of 1 indicates that all statements are relevant to the query.
         """
         statements = self._generate_statements(text)
         verdicts = self._generate_answer_relevance_verdicts(query, statements)
@@ -614,7 +856,7 @@ class LLMClient:
         Returns
         -------
         float
-            The bias score will be evaluated as a float between 0 and 1, with 1 indicating that all opinions in the text are biased.
+            The bias score between 0 and 1. A score of 1 indicates that all opinions in the text are biased.
         """
         opinions = self._generate_opinions(text)
         if len(opinions) == 0:
@@ -626,24 +868,128 @@ class LLMClient:
             1 for verdict in verdicts if verdict["verdict"] == "yes"
         ) / len(verdicts)
 
-    def coherence(
+    def context_precision(
         self,
-        text: str,
-    ) -> int:
+        query: str,
+        ordered_context_list: list[str],
+        groundtruth_list: list[str],
+    ) -> float:
         """
-        Compute coherence, the collective quality of all sentences, for a single piece of text.
+        Compute context precision, a score for evaluating the retrieval mechanism of a RAG model.
+
+        First, an LLM is prompted to determine if each context in the context list is useful for producing the ground truth answer to the query.
+
+        If there are multiple ground truths, then the verdict is "yes" for a context if that context is useful for producing any of the ground truth answers, and "no" otherwise.
+
+        Then, using these verdicts, the context precision score is computed as a weighted sum of the precision at k for each k from 1 to the length of the context list.
+
+        Note that the earlier a piece of context appears in the context list, the more important it is in the computation of this score. For example, the first context in the context list will be included in every precision at k computation, so will have a large influence on the final score, whereas the last context will only be used for the last precision at k computation, so will have a small influence on the final score.
 
         Parameters
         ----------
-        text: str
-            The text to be evaluated.
+        query: str
+            A query.
+        ordered_context_list: list[str]
+            The ordered list of contexts. Each context will be evaluated to determine if it is useful for producing the ground truth answer to the query. Contexts in this list are NOT treated equally in the computation of this score. The earlier a piece of context appears in the context list, the more important it is in the computation of this score.
+        groundtruth_list: list[str]
+            A list of ground truth answers to the query.
 
         Returns
         -------
-        int
-            The coherence score will be evaluated as an integer, with 1 indicating the lowest coherence and 5 the highest coherence.
+        float
+            The context precision score between 0 and 1. A higher score indicates better context precision.
         """
-        return self._coherence(text)
+        if len(ordered_context_list) == 0:
+            raise ValueError(
+                "Context precision is meaningless if the context list is empty."
+            )
+        if len(groundtruth_list) == 0:
+            raise ValueError(
+                "Context precision is meaningless if the ground truth list is empty."
+            )
+
+        # Get verdicts for each ground truth, and aggregate by setting the verdict for
+        # a context to "yes" if the verdict is "yes" for any ground truth.
+        aggregate_verdicts = ["no"] * len(ordered_context_list)
+        for groundtruth in groundtruth_list:
+            verdicts = self._generate_context_precision_verdicts(
+                query=query,
+                ordered_context_list=ordered_context_list,
+                groundtruth=groundtruth,
+            )
+            for i in range(len(verdicts)):
+                if verdicts[i]["verdict"] == "yes":
+                    aggregate_verdicts[i] = "yes"
+
+        # Use the aggregate verdicts to compute the precision at k for each k.
+        precision_at_k_list = []
+        for k in range(1, len(ordered_context_list) + 1):
+            # Only compute the precision at k if the kth context is relevant.
+            if aggregate_verdicts[k - 1] == "yes":
+                precision_at_k = (
+                    sum(
+                        1
+                        for verdict in aggregate_verdicts[:k]
+                        if verdict == "yes"
+                    )
+                    / k
+                )
+                precision_at_k_list.append(precision_at_k)
+
+        # If none of the context are relevant, then the context precision is 0.
+        if len(precision_at_k_list) == 0:
+            return 0
+
+        # Average over all the precision at k for which the kth context is relevant.
+        return sum(precision_at_k_list) / len(precision_at_k_list)
+
+    def context_recall(
+        self,
+        context_list: list[str],
+        groundtruth_list: list[str],
+    ) -> float:
+        """
+        Compute context recall, a score for evaluating the retrieval mechanism of a RAG model.
+
+        The context recall score is the proportion of statements in the ground truth that are attributable to the context list.
+
+        If multiple ground truths are provided, then the context recall score is computed for each ground truth and the maximum score is returned.
+
+        Parameters
+        ----------
+        context_list: list[str]
+            The list of contexts to evaluate against.
+        groundtruth_list: str
+            A list of ground truth answers to extract statements from.
+
+        Returns
+        -------
+        float
+            The context recall score between 0 and 1. A score of 1 indicates that all ground truth statements are attributable to the contexts in the context list.
+        """
+        if len(context_list) == 0:
+            raise ValueError(
+                "Context recall is meaningless if the context list is empty."
+            )
+        if len(groundtruth_list) == 0:
+            raise ValueError(
+                "Context recall is meaningless if the ground truth list is empty."
+            )
+
+        scores = []
+        for groundtruth in groundtruth_list:
+            groundtruth_statements = self._generate_statements(groundtruth)
+
+            verdicts = self._generate_context_recall_verdicts(
+                context_list, groundtruth_statements
+            )
+
+            scores.append(
+                sum(1 for verdict in verdicts if verdict["verdict"] == "yes")
+                / len(verdicts)
+            )
+
+        return max(scores)
 
     def context_relevance(
         self,
@@ -663,11 +1009,11 @@ class LLMClient:
         Returns
         -------
         float
-            The context relevance score will be evaluated as a float between 0 and 1, with 0 indicating that none of the contexts are relevant and 1 indicating that all of the contexts are relevant.
+            The context relevance score between 0 and 1. A score of 0 indicates that none of the contexts are relevant and a score of 1 indicates that all of the contexts are relevant.
         """
         if len(context_list) == 0:
             raise ValueError(
-                "Context relevance is meaningless if context_list is empty."
+                "Context relevance is meaningless if the context list is empty."
             )
 
         verdicts = self._generate_context_relevance_verdicts(
@@ -696,11 +1042,11 @@ class LLMClient:
         Returns
         -------
         float
-            The faithfulness score will be evaluated as a float between 0 and 1, with 1 indicating that all claims in the text are implied by the list of contexts.
+            The faithfulness score between 0 and 1. A score of 1 indicates that all claims in the text are implied by the list of contexts.
         """
         if len(context_list) == 0:
             raise ValueError(
-                "Faithfulness is meaningless if context_list is empty."
+                "Faithfulness is meaningless if the context list is empty."
             )
 
         claims = self._generate_claims(text)
@@ -737,11 +1083,11 @@ class LLMClient:
         Returns
         -------
         float
-            The hallucination score will be evaluated as a float between 0 and 1, with 1 indicating that all contexts are contradicted by the text.
+            The hallucination score between 0 and 1. A score of 1 indicates that all contexts are contradicted by the text.
         """
         if len(context_list) == 0:
             raise ValueError(
-                "Hallucination is meaningless if context_list is empty."
+                "Hallucination is meaningless if the context list is empty."
             )
 
         verdicts = self._generate_hallucination_verdicts(
@@ -752,6 +1098,28 @@ class LLMClient:
         return sum(
             1 for verdict in verdicts if verdict["verdict"] == "yes"
         ) / len(verdicts)
+
+    def summary_coherence(
+        self,
+        text: str,
+        summary: str,
+    ) -> int:
+        """
+        Compute summary coherence, the collective quality of a summary.
+
+        Parameters
+        ----------
+        text: str
+            The text that was summarized.
+        summary: str
+            The summary to be evaluated.
+
+        Returns
+        -------
+        int
+            The summary coherence score between 1 and 5. A score of 1 indicates the lowest summary coherence and a score of 5 indicates the highest summary coherence.
+        """
+        return self._summary_coherence(text=text, summary=summary)
 
     def toxicity(
         self,
@@ -1083,7 +1451,7 @@ class MockLLMClient(LLMClient):
         "claims": [
             "The capital of the UK is London.",
             "The capital of South Korea is Seoul.",
-            "The capital of the Argentina is Canada."
+            "The capital of Argentina is Canada."
         ]
     }```"""
 
@@ -1113,6 +1481,24 @@ class MockLLMClient(LLMClient):
         ]
     }```"""
 
+            # Answer correctness verdicts
+            elif (
+                "Return in JSON format with three keys: 'TP', 'FP', and 'FN'"
+                in processed_messages[1]["content"]
+            ):
+                response = """```json
+{
+    "TP": [
+        "London is the largest city in the UK by GDP"
+    ],
+    "FP": [
+        "London is the largest city in the UK by population"
+    ],
+    "FN": [
+        "In 2021, financial services made up more than 20% of London's output"
+    ]
+}```"""
+
             # Answer relevance verdicts
             elif (
                 "generate a list of verdicts that indicate whether each statement is relevant to address the query"
@@ -1121,13 +1507,8 @@ class MockLLMClient(LLMClient):
                 response = """```json
     {
         "verdicts": [
-            {
-                "verdict": "yes"
-            },
-            {
-                "verdict": "no",
-                "reason": "The detail in this statement is not necessary for answering the question."
-            }
+            {"verdict": "yes"},
+            {"verdict": "no"}
         ]
     }```"""
 
@@ -1139,22 +1520,45 @@ class MockLLMClient(LLMClient):
                 response = """```json
     {
         "verdicts": [
-            {
-                "verdict": "no"
-            },
-            {
-                "verdict": "yes",
-                "reason": "The opinion 'People from Canada are nicer than people from other countries' shows geographical bias by generalizing positive traits to a specific group of people. A correction would be, 'Many individuals from Canada are known for their politeness.'"
-            }
+            {"verdict": "no"},
+            {"verdict": "yes"}
         ]
     }```"""
 
-            # Coherence score
+            # Summary coherence score
             elif (
-                "Coherence (1-5) - the collective quality of all sentences."
+                "Your task is to rate the summary based on its coherence"
                 in processed_messages[1]["content"]
             ):
                 response = "4"
+
+            # Context precision verdicts
+            elif (
+                "generate a list of verdicts to determine whether each context in the context list is useful for producing the ground truth answer to the query"
+                in processed_messages[1]["content"]
+            ):
+                response = """```json
+    {
+        "verdicts": [
+            {"verdict": "yes"},
+            {"verdict": "no"},
+            {"verdict": "no"},
+            {"verdict": "yes"}
+        ]
+    }```"""
+
+            # Context recall verdicts
+            elif (
+                "analyze each ground truth statement and determine if the statement can be attributed to the given context"
+                in processed_messages[1]["content"]
+            ):
+                response = """```json
+    {
+        "verdicts": [
+            {"verdict": "yes"},
+            {"verdict": "yes"}
+        ]
+    }```"""
 
             # Context relevance verdicts
             elif (
@@ -1164,19 +1568,10 @@ class MockLLMClient(LLMClient):
                 response = """```json
     {
         "verdicts": [
-            {
-                "verdict": "yes"
-            },
-            {
-                "verdict": "yes"
-            },
-            {
-                "verdict": "no",
-                "reason": "This context has no relevance to the query"
-            },
-            {
-                "verdict": "yes"
-            }
+            {"verdict": "yes"},
+            {"verdict": "yes"},
+            {"verdict": "no"},
+            {"verdict": "yes"}
         ]
     }```"""
 
@@ -1202,19 +1597,10 @@ class MockLLMClient(LLMClient):
                 response = """```json
     {
         "verdicts": [
-            {
-                "verdict": "no"
-            },
-            {
-                "verdict": "no"
-            },
-            {
-                "verdict": "yes",
-                "reason": "The text contradicts this context."
-            },
-            {
-                "verdict": "no"
-            }
+            {"verdict": "no"},
+            {"verdict": "no"},
+            {"verdict": "yes"},
+            {"verdict": "no"}
         ]
     }```"""
 
@@ -1226,12 +1612,8 @@ class MockLLMClient(LLMClient):
                 response = """```json
     {
         "verdicts": [
-            {
-                "verdict": "no"
-            },
-            {
-                "verdict": "no"
-            }
+            {"verdict": "no"},
+            {"verdict": "no"}
         ]
     }```"""
 

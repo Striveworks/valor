@@ -747,6 +747,42 @@ class mIOUMetric(BaseModel):
         }
 
 
+class AnswerCorrectnessMetric(BaseModel):
+    """
+    Describes an answer correctness metric.
+
+    Attributes
+    ----------
+    value : float
+        The answer correctness score between 0 and 1, with higher values indicating that the answer is more correct. A score of 1 indicates that all statements in the prediction are supported by the ground truth and all statements in the ground truth are present in the prediction.
+    parameters : dict
+        Any parameters associated with the metric, as well as any datum or prediction parameters that are relevant to the metric.
+    """
+
+    value: float
+    parameters: dict
+
+    def db_mapping(self, evaluation_id: int) -> dict:
+        """
+        Creates a mapping for use when uploading the metric to the database.
+
+        Parameters
+        ----------
+        evaluation_id : int
+            The evaluation id.
+
+        Returns
+        ----------
+        A mapping dictionary.
+        """
+        return {
+            "value": self.value,
+            "parameters": self.parameters,
+            "type": "AnswerCorrectness",
+            "evaluation_id": evaluation_id,
+        }
+
+
 class AnswerRelevanceMetric(BaseModel):
     """
     Describes an answer relevance metric.
@@ -855,19 +891,19 @@ class BiasMetric(BaseModel):
         }
 
 
-class CoherenceMetric(BaseModel):
+class ContextPrecisionMetric(BaseModel):
     """
-    Describes a coherence metric.
+    Describes a context precision metric.
 
     Attributes
     ----------
-    value : int
-        The coherence score for a datum. This is an integer with 1 being the lowest coherence and 5 the highest coherence.
+    value : float
+        The context precision score for a datum. This is a float between 0 and 1, with 0 indicating that none of the contexts are useful to arrive at the ground truth answer to the query and 1 indicating that all contexts are useful to arrive at the ground truth answer to the query. The score is more heavily influenced by earlier contexts in the list of contexts than later contexts.
     parameters : dict
         Any parameters associated with the metric, as well as any datum or prediction parameters that are relevant to the metric.
     """
 
-    value: int
+    value: float
     parameters: dict
 
     def db_mapping(self, evaluation_id: int) -> dict:
@@ -886,7 +922,43 @@ class CoherenceMetric(BaseModel):
         return {
             "value": self.value,
             "parameters": self.parameters,
-            "type": "Coherence",
+            "type": "ContextPrecision",
+            "evaluation_id": evaluation_id,
+        }
+
+
+class ContextRecallMetric(BaseModel):
+    """
+    Describes a context recall metric.
+
+    Attributes
+    ----------
+    value : float
+        The context recall score for a datum. This is a float between 0 and 1, with 1 indicating that all ground truth statements are attributable to the context list.
+    parameters : dict
+        Any parameters associated with the metric, as well as any datum or prediction parameters that are relevant to the metric.
+    """
+
+    value: float
+    parameters: dict
+
+    def db_mapping(self, evaluation_id: int) -> dict:
+        """
+        Creates a mapping for use when uploading the metric to the database.
+
+        Parameters
+        ----------
+        evaluation_id : int
+            The evaluation id.
+
+        Returns
+        ----------
+        A mapping dictionary.
+        """
+        return {
+            "value": self.value,
+            "parameters": self.parameters,
+            "type": "ContextRecall",
             "evaluation_id": evaluation_id,
         }
 
@@ -1031,6 +1103,42 @@ class ROUGEMetric(BaseModel):
             "value": self.value,
             "parameters": self.parameters,
             "type": "ROUGE",
+            "evaluation_id": evaluation_id,
+        }
+
+
+class SummaryCoherenceMetric(BaseModel):
+    """
+    Describes a summary coherence metric.
+
+    Attributes
+    ----------
+    value : int
+        The summary coherence score for a datum. This is an integer with 1 being the lowest summary coherence and 5 the highest summary coherence.
+    parameters : dict
+        Any parameters associated with the metric, as well as any datum or prediction parameters that are relevant to the metric.
+    """
+
+    value: int
+    parameters: dict
+
+    def db_mapping(self, evaluation_id: int) -> dict:
+        """
+        Creates a mapping for use when uploading the metric to the database.
+
+        Parameters
+        ----------
+        evaluation_id : int
+            The evaluation id.
+
+        Returns
+        ----------
+        A mapping dictionary.
+        """
+        return {
+            "value": self.value,
+            "parameters": self.parameters,
+            "type": "SummaryCoherence",
             "evaluation_id": evaluation_id,
         }
 
