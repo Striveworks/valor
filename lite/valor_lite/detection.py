@@ -643,7 +643,7 @@ def _get_bbox_extrema(
     )
 
 
-class DetectionManager:
+class Manager:
     def __init__(self):
 
         # metadata
@@ -1083,70 +1083,6 @@ class DetectionManager:
         # clear ingestion cache
         del self.pairs
 
-    def compute_ap(
-        self,
-        iou_thresholds: list[float] = [0.5, 0.75, 0.9],
-    ) -> list[AP]:
-
-        # return self.compute_all(iou_thresholds=iou_thresholds)[MetricType.AP]
-        if not self._lock:
-            raise RuntimeError("Data not finalized.")
-
-        metrics = _compute_average_precision(
-            data=self.detailed_pairs,
-            label_counts=self._label_cache,
-            iou_thresholds=np.array(iou_thresholds),
-        )
-
-        return [
-            AP(
-                values=[
-                    ValueAtIoU(
-                        iou=iou_thresholds[iou_idx],
-                        value=value,
-                    )
-                    for iou_idx, value in enumerate(metrics[:, row])
-                ],
-                label=self.index_to_label[label_idx],
-            )
-            for label_idx, row in enumerate(range(metrics.shape[1]))
-            if int(self._label_cache[label_idx][0]) > 0.0
-        ]
-
-    def compute_ar(
-        self,
-        iou_thresholds: list[float] = [0.5, 0.75, 0.9],
-        score_thresholds: list[float] = [0.0],
-    ) -> list[AR]:
-
-        # return self.compute_all(iou_thresholds=iou_thresholds, score_thresholds=score_thresholds)[MetricType.AR]
-
-        if not self._lock:
-            raise RuntimeError("Data not finalized.")
-
-        metrics = _compute_average_recall(
-            data=self.detailed_pairs,
-            label_counts=self._label_cache,
-            iou_thresholds=np.array(iou_thresholds),
-            score_thresholds=np.array(score_thresholds),
-        )
-
-        return [
-            AR(
-                ious=iou_thresholds,
-                values=[
-                    ValueAtScore(
-                        score=score_thresholds[score_idx],
-                        value=value,
-                    )
-                    for score_idx, value in enumerate(metrics[:, row])
-                ],
-                label=self.index_to_label[label_idx],
-            )
-            for label_idx, row in enumerate(range(metrics.shape[1]))
-            if int(self._label_cache[label_idx][0]) > 0.0
-        ]
-
     def compute_pr_curve(
         self,
         iou_thresholds: list[float] = [0.5],
@@ -1266,7 +1202,7 @@ class DetectionManager:
                 results.append(curve)
         return results
 
-    def compute_all(
+    def evaluate(
         self,
         iou_thresholds: list[float] = [0.5, 0.75, 0.9],
         score_thresholds: list[float] = [0.0],
@@ -1363,12 +1299,6 @@ class DetectionManager:
             MetricType.AR: ar_metrics,
             MetricType.mAR: mar_metrics,
         }
-
-    def evaluate(
-        self,
-        metrics: list[MetricType],
-    ):
-        return list()
 
     def benchmark_iou(self):
         if not self.pairs:

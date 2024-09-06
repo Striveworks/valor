@@ -1,7 +1,10 @@
 import numpy as np
-from valor_lite import DetectionManager as Manager
 from valor_lite import schemas
-from valor_lite.detection import _compute_average_precision
+from valor_lite.detection import (
+    Manager,
+    MetricType,
+    _compute_average_precision,
+)
 
 
 def test__compute_average_precision():
@@ -61,9 +64,9 @@ def test_ap_using_torch_metrics_example(
     assert manager.n_groundtruths == 20
     assert manager.n_predictions == 19
 
-    ap_metrics = manager.compute_ap(
+    ap_metrics = manager.evaluate(
         iou_thresholds=[0.5, 0.75],
-    )
+    )[MetricType.AP]
 
     expected_metrics = [
         {
@@ -129,9 +132,9 @@ def test_ap_metrics(
     )
     manager.finalize()
 
-    ap_metrics = manager.compute_ap(
+    ap_metrics = manager.evaluate(
         iou_thresholds=[0.1, 0.6],
-    )
+    )[MetricType.AP]
 
     expected_metrics = [
         {
@@ -179,7 +182,7 @@ def test_evaluate_detection_false_negatives_single_image_baseline(
         predictions=predictions,
     )
     manager.finalize()
-    ap_metrics = manager.compute_ap(iou_thresholds=[0.5])
+    ap_metrics = manager.evaluate(iou_thresholds=[0.5])[MetricType.AP]
 
     assert len(ap_metrics) == 1
     assert ap_metrics[0].to_dict() == {
@@ -211,7 +214,7 @@ def test_evaluate_detection_false_negatives_single_image(
         predictions=predictions,
     )
     manager.finalize()
-    ap_metrics = manager.compute_ap(iou_thresholds=[0.5])
+    ap_metrics = manager.evaluate(iou_thresholds=[0.5])[MetricType.AP]
 
     assert len(ap_metrics) == 1
     assert ap_metrics[0].to_dict() == {
@@ -247,7 +250,7 @@ def test_evaluate_detection_false_negatives_two_images_one_empty_low_confidence_
         predictions=predictions,
     )
     manager.finalize()
-    ap_metrics = manager.compute_ap(iou_thresholds=[0.5])
+    ap_metrics = manager.evaluate(iou_thresholds=[0.5])[MetricType.AP]
 
     assert len(ap_metrics) == 1
     assert ap_metrics[0].to_dict() == {
@@ -281,7 +284,7 @@ def test_evaluate_detection_false_negatives_two_images_one_empty_high_confidence
         predictions=predictions,
     )
     manager.finalize()
-    ap_metrics = manager.compute_ap(iou_thresholds=[0.5])
+    ap_metrics = manager.evaluate(iou_thresholds=[0.5])[MetricType.AP]
 
     assert len(ap_metrics) == 1
     assert ap_metrics[0].to_dict() == {
@@ -315,7 +318,7 @@ def test_evaluate_detection_false_negatives_two_images_one_only_with_different_c
         predictions=predictions,
     )
     manager.finalize()
-    ap_metrics = manager.compute_ap(iou_thresholds=[0.5])
+    ap_metrics = manager.evaluate(iou_thresholds=[0.5])[MetricType.AP]
 
     expected_metrics = [
         {
@@ -366,7 +369,7 @@ def test_evaluate_detection_false_negatives_two_images_one_only_with_different_c
         predictions=predictions,
     )
     manager.finalize()
-    ap_metrics = manager.compute_ap(iou_thresholds=[0.5])
+    ap_metrics = manager.evaluate(iou_thresholds=[0.5])[MetricType.AP]
 
     expected_metrics = [
         {

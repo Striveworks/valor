@@ -1,7 +1,6 @@
 import numpy as np
-from valor_lite import DetectionManager as Manager
 from valor_lite import schemas
-from valor_lite.detection import _compute_average_recall
+from valor_lite.detection import Manager, MetricType, _compute_average_recall
 
 
 def test__compute_average_recall():
@@ -68,10 +67,10 @@ def test_ar_using_torch_metrics_example(
     score_thresholds = [0.0]
     iou_thresholds = [0.5, 0.55, 0.6, 0.65, 0.7, 0.75, 0.8, 0.85, 0.9, 0.95]
 
-    ar_metrics = manager.compute_ar(
+    ar_metrics = manager.evaluate(
         iou_thresholds=iou_thresholds,
         score_thresholds=score_thresholds,
-    )
+    )[MetricType.AR]
 
     expected_metrics = [
         {

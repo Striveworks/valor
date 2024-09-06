@@ -8,7 +8,7 @@ from time import time
 
 import requests
 from tqdm import tqdm
-from valor_lite import DetectionManager as Manager
+from valor_lite.detection import Manager
 
 
 class AnnotationType(str, Enum):
@@ -127,22 +127,6 @@ def ingest(
                 accumulated_time += timer
 
     return accumulated_time
-
-
-@time_it
-def run_base_evaluation(manager: Manager):
-    """Run a base evaluation (with no PR curves) using Manager."""
-    return manager.compute_ap()
-
-
-# def run_pr_curve_evaluation(manager: Manager):
-#     """Run a base evaluation with PrecisionRecallCurve included using Manager."""
-#     return manager.evaluate()
-
-
-# def run_detailed_pr_curve_evaluation(manager: Manager):
-#     """Run a base evaluation with PrecisionRecallCurve and DetailedPrecisionRecallCurve included using Manager."""
-#     return manager.evaluate()
 
 
 @dataclass
@@ -269,7 +253,7 @@ def run_benchmarking_analysis(
                 )
 
             # evaluate
-            eval_time, _ = time_it(manager.compute_all)()
+            eval_time, _ = time_it(manager.evaluate)()
             if eval_time > evaluation_timeout and evaluation_timeout != -1:
                 raise TimeoutError(
                     f"Base evaluation timed out with {manager.n_datums} datums."

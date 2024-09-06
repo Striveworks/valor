@@ -1,7 +1,5 @@
 import numpy as np
-from valor_lite import DetectionManager as Manager
-from valor_lite import enums, schemas
-from valor_lite.detection import _compute_detailed_pr_curve
+from valor_lite.detection import Manager, _compute_detailed_pr_curve
 
 
 def test__compute_detailed_pr_curve():
@@ -57,7 +55,7 @@ def test__compute_detailed_pr_curve():
     """
     assert np.isclose(result[95:], np.array([0, 0, 0, 2, 2, 1])).all()
 
-    ### compute with examples
+    # compute with examples
 
     """
 
