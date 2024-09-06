@@ -164,10 +164,16 @@ class Benchmark:
                 "prediction": self.pd_type.value,
             },
             "chunk_size": self.chunk_size,
-            "data_loading": f"{round(self.ingestion - self.preprocessing, 2)} seconds",
-            "conversion": f"{round(self.preprocessing, 2)} seconds",
-            "finalization": f"{round(self.precomputation, 2)} seconds",
-            "evaluation": f"{round(self.evaluation, 2)} seconds",
+            "ingestion": {
+                "loading_from_file": f"{round(self.ingestion - self.preprocessing, 2)} seconds",
+                "conversion_to_numpy_rows": f"{round(self.preprocessing, 2)} seconds",
+                "total": f"{round(self.ingestion, 2)} seconds",
+            },
+            "computation": {
+                "iou_computation": f"{round(self.precomputation, 2)} seconds",
+                "metric_computation": f"{round(self.evaluation, 2)} seconds",
+                "total": f"{round(self.precomputation + self.evaluation, 2)} seconds",
+            },
         }
 
 
