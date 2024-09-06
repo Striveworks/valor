@@ -55,6 +55,19 @@ class AP:
 
 
 @dataclass
+class mAP:
+    values: list[ValueAtIoU]
+    label_key: str
+
+    def to_dict(self) -> dict:
+        return {
+            "type": "mAP",
+            "values": {str(value.iou): value.value for value in self.values},
+            "label_key": self.label_key,
+        }
+
+
+@dataclass
 class ValueAtScore:
     value: float
     score: float
@@ -75,6 +88,21 @@ class AR:
                 "key": self.label[0],
                 "value": self.label[1],
             },
+        }
+
+
+@dataclass
+class mAR:
+    ious: list[float]
+    values: list[ValueAtScore]
+    label_key: str
+
+    def to_dict(self) -> dict:
+        return {
+            "type": "mAR",
+            "ious": self.ious,
+            "values": {str(value.score): value.value for value in self.values},
+            "label_key": self.label_key,
         }
 
 
@@ -222,7 +250,7 @@ def _compute_average_precision(
     n_labels = label_counts.shape[0]
     n_ious = iou_thresholds.shape[0]
 
-    mask_score = data[:, 6] > 0.0
+    mask_score = data[:, 6] > 1e-9
     mask_labels_match = np.isclose(data[:, 4], data[:, 5])
     mask_gt_exists = data[:, 1] >= 0.0
 
@@ -238,6 +266,7 @@ def _compute_average_precision(
 
     for iou_idx in range(n_ious):
 
+        # create true-positive mask
         mask_iou = data[:, 3] >= iou_thresholds[iou_idx]
         mask = mask_score & mask_iou & mask_labels_match & mask_gt_exists
         tp_candidates = data[mask]
@@ -249,25 +278,20 @@ def _compute_average_precision(
         true_positives_mask = np.zeros(n_rows, dtype=bool)
         true_positives_mask[mask] = mask_gt_unique
 
+        # count tp and total
         for pd_label in np.unique(pd_labels):
             mask_pd_label = pd_labels == pd_label
-
-            # count ground truths
             gt_count[iou_idx][mask_pd_label] = label_counts[pd_label][0]
-
-            # count total predictions
             total_count[iou_idx][mask_pd_label] = np.arange(
                 1, mask_pd_label.sum() + 1
             )
-
-            # count tp
             mask_tp = mask_pd_label & true_positives_mask
             tp_count[iou_idx][mask_tp] = np.arange(1, mask_tp.sum() + 1)
 
+    # calculate precision-recall points
     precision = np.divide(tp_count, total_count, where=total_count > 0)
     recall = np.divide(tp_count, gt_count, where=gt_count > 0)
     recall_index = np.floor(recall * 100.0).astype(int)
-
     for iou_idx in range(n_ious):
         p = precision[iou_idx]
         r = recall_index[iou_idx]
@@ -275,7 +299,7 @@ def _compute_average_precision(
             pr_curve[iou_idx, pd_labels, r], p
         )
 
-    # interpolate the PR-Curve
+    # calculate average precision
     average_precision = np.zeros((n_ious, n_labels))
     running_max = np.zeros((n_ious, n_labels))
     for recall in range(100, -1, -1):
@@ -314,6 +338,7 @@ def _compute_average_recall(
 
         for iou_idx in range(n_ious):
 
+            # create true-positive mask
             mask_iou = data[:, 3] >= iou_thresholds[iou_idx]
             mask = mask_score & mask_iou & mask_labels_match & mask_gt_exists
             tp_candidates = data[mask]
@@ -325,6 +350,7 @@ def _compute_average_recall(
             true_positives_mask = np.zeros(n_rows, dtype=bool)
             true_positives_mask[mask] = mask_gt_unique
 
+            # calculate recall
             unique_pd_labels = np.unique(pd_labels)
             gt_count = label_counts[unique_pd_labels, 0]
             tp_count = np.bincount(pd_labels, weights=true_positives_mask)
@@ -334,12 +360,12 @@ def _compute_average_recall(
     return average_recall / n_ious
 
 
-def _compute_metrics(
+def _compute_ap_ar(
     data: np.ndarray,
     label_counts: np.ndarray,
     iou_thresholds: np.ndarray,
     score_thresholds: np.ndarray,
-) -> np.ndarray:
+) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
 
     data = _compute_ranked_pairs(data, label_counts)
 
@@ -348,79 +374,110 @@ def _compute_metrics(
     n_ious = iou_thresholds.shape[0]
     n_scores = score_thresholds.shape[0]
 
+    mask_score_nonzero = data[:, 6] > 1e-9
     mask_labels_match = np.isclose(data[:, 4], data[:, 5])
     mask_gt_exists = data[:, 1] >= 0.0
 
-    pr_curve = np.zeros((n_scores, n_ious, n_labels, 101))
+    pr_curve = np.zeros((n_ious, n_labels, 101))
     average_recall = np.zeros((n_scores, n_labels))
+    pd_labels = data[:, 5].astype(int)
+    unique_pd_labels = np.unique(pd_labels)
+    gt_count = label_counts[unique_pd_labels, 0]
+    running_total_count = np.zeros(
+        (n_ious, n_rows),
+        dtype=np.int32,
+    )
+    running_tp_count = np.zeros_like(running_total_count)
+    running_gt_count = np.zeros_like(running_total_count)
 
-    for score_idx in range(n_scores):
+    for iou_idx in range(n_ious):
 
-        mask_score_1 = data[:, 6] > 1e-9
-        mask_score_2 = data[:, 6] >= score_thresholds[score_idx]
-        mask_score = mask_score_1 & mask_score_2
-
-        total_count = np.zeros(
-            (n_ious, n_rows),
-            dtype=np.int32,
+        mask_iou = data[:, 3] >= iou_thresholds[iou_idx]
+        mask = (
+            mask_score_nonzero & mask_iou & mask_labels_match & mask_gt_exists
         )
-        tp_count = np.zeros_like(total_count)
-        gt_count = np.zeros_like(total_count)
-        pd_labels = data[:, 5].astype(int)
 
-        for iou_idx in range(n_ious):
+        for score_idx in range(n_scores):
 
-            mask_iou = data[:, 3] >= iou_thresholds[iou_idx]
-            mask = mask_score & mask_iou & mask_labels_match & mask_gt_exists
-            tp_candidates = data[mask]
+            mask_score_thresh = data[:, 6] >= score_thresholds[score_idx]
+
+            # create true-positive mask score treshold
+            tp_candidates = data[mask & mask_score_thresh]
             _, indices_gt_unique = np.unique(
                 tp_candidates[:, [0, 1, 4]], axis=0, return_index=True
             )
             mask_gt_unique = np.zeros(tp_candidates.shape[0], dtype=bool)
             mask_gt_unique[indices_gt_unique] = True
             true_positives_mask = np.zeros(n_rows, dtype=bool)
-            true_positives_mask[mask] = mask_gt_unique
+            true_positives_mask[mask & mask_score_thresh] = mask_gt_unique
 
-            for pd_label in np.unique(pd_labels):
-                mask_pd_label = pd_labels == pd_label
+            # calculate recall for AR
+            tp_count = np.bincount(pd_labels, weights=true_positives_mask)
+            tp_count = tp_count[unique_pd_labels]
+            average_recall[score_idx][unique_pd_labels] += tp_count / gt_count
 
-                # count ground truths
-                gt_count[iou_idx][mask_pd_label] = label_counts[pd_label][0]
+        # create true-positive mask score treshold
+        tp_candidates = data[mask]
+        _, indices_gt_unique = np.unique(
+            tp_candidates[:, [0, 1, 4]], axis=0, return_index=True
+        )
+        mask_gt_unique = np.zeros(tp_candidates.shape[0], dtype=bool)
+        mask_gt_unique[indices_gt_unique] = True
+        true_positives_mask = np.zeros(n_rows, dtype=bool)
+        true_positives_mask[mask] = mask_gt_unique
 
-                # count total predictions
-                total_count[iou_idx][mask_pd_label] = np.arange(
-                    1, mask_pd_label.sum() + 1
-                )
-
-                # count tp
-                mask_tp = mask_pd_label & true_positives_mask
-                tp_count[iou_idx][mask_tp] = np.arange(1, mask_tp.sum() + 1)
-                average_recall[score_idx][pd_label] += (
-                    mask_tp.sum() / label_counts[pd_label][0]
-                )
-
-        precision = np.divide(tp_count, total_count, where=total_count > 0)
-        recall = np.divide(tp_count, gt_count, where=gt_count > 0)
-        recall_index = np.floor(recall * 100.0).astype(int)
-
-        for iou_idx in range(n_ious):
-            p = precision[iou_idx]
-            r = recall_index[iou_idx]
-            pr_curve[score_idx, iou_idx, pd_labels, r] = np.maximum(
-                pr_curve[score_idx, iou_idx, pd_labels, r], p
+        # count running tp and total for AP
+        for pd_label in unique_pd_labels:
+            mask_pd_label = pd_labels == pd_label
+            running_gt_count[iou_idx][mask_pd_label] = label_counts[pd_label][
+                0
+            ]
+            running_total_count[iou_idx][mask_pd_label] = np.arange(
+                1, mask_pd_label.sum() + 1
+            )
+            mask_tp = mask_pd_label & true_positives_mask
+            running_tp_count[iou_idx][mask_tp] = np.arange(
+                1, mask_tp.sum() + 1
             )
 
-    # interpolate the PR-Curve
-    average_precision = np.zeros((n_scores, n_ious, n_labels))
-    running_max = np.zeros((n_scores, n_ious, n_labels))
+    # calculate running precision-recall points for AP
+    precision = np.divide(
+        running_tp_count, running_total_count, where=running_total_count > 0
+    )
+    recall = np.divide(
+        running_tp_count, running_gt_count, where=running_gt_count > 0
+    )
+    recall_index = np.floor(recall * 100.0).astype(int)
+    for iou_idx in range(n_ious):
+        p = precision[iou_idx]
+        r = recall_index[iou_idx]
+        pr_curve[iou_idx, pd_labels, r] = np.maximum(
+            pr_curve[iou_idx, pd_labels, r], p
+        )
+
+    # calculate average precision
+    average_precision = np.zeros((n_ious, n_labels))
+    running_max = np.zeros((n_ious, n_labels))
     for recall in range(100, -1, -1):
-        precision = pr_curve[:, :, :, recall]
+        precision = pr_curve[:, :, recall]
         running_max = np.maximum(precision, running_max)
         average_precision += running_max
-    # return average_precision / 101.0
+    average_precision = average_precision / 101.0
 
+    # calculate average recall
     average_recall /= n_ious
-    return average_recall
+
+    # calculate mAP and mAR
+    label_keys = label_counts[unique_pd_labels, 2]
+    mAP = np.ones((n_ious, label_keys.shape[0])) * -1.0
+    mAR = np.ones((n_ious, label_keys.shape[0])) * -1.0
+    for key in np.unique(label_keys):
+        labels = unique_pd_labels[label_keys == key]
+        key_idx = int(key)
+        mAP[:, key_idx] = average_precision[:, labels].mean(axis=1)
+        mAR[:, key_idx] = average_recall[:, labels].mean(axis=1)
+
+    return average_precision, average_recall, mAP, mAR
 
 
 @numba.njit(parallel=False)
@@ -591,12 +648,16 @@ class DetectionManager:
         self.label_to_index = dict()
         self.index_to_label = dict()
 
+        # label key reference
+        self.index_to_label_key = dict()
+        self.label_key_to_index = dict()
+        self.label_index_to_label_key_index = dict()
+
         # ingestion caches
         self.pairs = list()
 
         # computation caches
-        self._label_counts = np.empty((1, 2))
-        self._pairs_sorted_by_label = list()
+        self._label_cache = np.empty((1, 3))
 
     def __setattr__(self, __name: str, __value: Any) -> None:
         if "_lock" not in self.__dict__:
@@ -609,6 +670,7 @@ class DetectionManager:
             "index_to_uid",
             "label_to_index",
             "index_to_label",
+            "index_to_label_key",
             "n_datums",
             "n_groundtruths",
             "n_predictions",
@@ -690,11 +752,23 @@ class DetectionManager:
             ]
             plabels_set = set(plabels)
 
+            # update label index
             label_id = len(self.index_to_label)
+            label_key_id = len(self.index_to_label_key)
             for label in glabels_set.union(plabels_set):
                 if label not in self.label_to_index:
                     self.label_to_index[label] = label_id
                     self.index_to_label[label_id] = label
+
+                    # update label key index
+                    if label[0] not in self.label_key_to_index:
+                        self.label_key_to_index[label[0]] = label_key_id
+                        self.index_to_label_key[label_key_id] = label[0]
+                        label_key_id += 1
+
+                    self.label_index_to_label_key_index[
+                        label_id
+                    ] = self.label_key_to_index[label[0]]
                     label_id += 1
 
             for item in glabels_set:
@@ -840,10 +914,21 @@ class DetectionManager:
             plabels_set = set(plabels)
 
             label_id = len(self.index_to_label)
+            label_key_id = len(self.index_to_label_key)
             for label in glabels_set.union(plabels_set):
                 if label not in self.label_to_index:
                     self.label_to_index[label] = label_id
                     self.index_to_label[label_id] = label
+
+                    # update label key index
+                    if label[0] not in self.label_key_to_index:
+                        self.label_key_to_index[label[0]] = label_key_id
+                        self.index_to_label_key[label_key_id] = label[0]
+                        label_key_id += 1
+
+                    self.label_index_to_label_key_index[
+                        label_id
+                    ] = self.label_key_to_index[label[0]]
                     label_id += 1
 
             for item in glabels_set:
@@ -961,11 +1046,12 @@ class DetectionManager:
         if self.pairs is None:
             raise ValueError
 
-        self._label_counts = np.array(
+        self._label_cache = np.array(
             [
                 [
                     float(self.gt_counts.get(label_id, 0)),
                     float(self.pd_counts.get(label_id, 0)),
+                    float(self.label_index_to_label_key_index[label_id]),
                 ]
                 for label_id in range(len(self.index_to_label))
             ]
@@ -987,12 +1073,14 @@ class DetectionManager:
         self,
         iou_thresholds: list[float] = [0.5, 0.75, 0.9],
     ) -> list[AP]:
+
+        # return self.compute_all(iou_thresholds=iou_thresholds)[MetricType.AP]
         if not self._lock:
             raise RuntimeError("Data not finalized.")
 
         metrics = _compute_average_precision(
             data=self.detailed_pairs,
-            label_counts=self._label_counts,
+            label_counts=self._label_cache,
             iou_thresholds=np.array(iou_thresholds),
         )
 
@@ -1008,7 +1096,7 @@ class DetectionManager:
                 label=self.index_to_label[label_idx],
             )
             for label_idx, row in enumerate(range(metrics.shape[1]))
-            if int(self._label_counts[label_idx][0]) > 0.0
+            if int(self._label_cache[label_idx][0]) > 0.0
         ]
 
     def compute_ar(
@@ -1017,12 +1105,14 @@ class DetectionManager:
         score_thresholds: list[float] = [0.0],
     ) -> list[AR]:
 
+        # return self.compute_all(iou_thresholds=iou_thresholds, score_thresholds=score_thresholds)[MetricType.AR]
+
         if not self._lock:
             raise RuntimeError("Data not finalized.")
 
         metrics = _compute_average_recall(
             data=self.detailed_pairs,
-            label_counts=self._label_counts,
+            label_counts=self._label_cache,
             iou_thresholds=np.array(iou_thresholds),
             score_thresholds=np.array(score_thresholds),
         )
@@ -1040,7 +1130,7 @@ class DetectionManager:
                 label=self.index_to_label[label_idx],
             )
             for label_idx, row in enumerate(range(metrics.shape[1]))
-            if int(self._label_counts[label_idx][0]) > 0.0
+            if int(self._label_cache[label_idx][0]) > 0.0
         ]
 
     def compute_pr_curve(
@@ -1067,7 +1157,7 @@ class DetectionManager:
 
         metrics = _compute_detailed_pr_curve(
             pairs_sorted_by_label,
-            label_counts=self._label_counts,
+            label_counts=self._label_cache,
             iou_thresholds=np.array(iou_thresholds),
             n_samples=n_samples,
         )
@@ -1161,6 +1251,104 @@ class DetectionManager:
                     )
                 results.append(curve)
         return results
+
+    def compute_all(
+        self,
+        iou_thresholds: list[float] = [0.5, 0.75, 0.9],
+        score_thresholds: list[float] = [0.0],
+    ) -> dict[MetricType, list[AP] | list[AR] | list[mAP] | list[mAR]]:
+
+        if not self._lock:
+            raise RuntimeError("Data not finalized.")
+
+        (
+            average_precision,
+            average_recall,
+            mean_average_precision,
+            mean_average_recall,
+        ) = _compute_ap_ar(
+            data=self.detailed_pairs,
+            label_counts=self._label_cache,
+            iou_thresholds=np.array(iou_thresholds),
+            score_thresholds=np.array(score_thresholds),
+        )
+
+        ap_metrics = [
+            AP(
+                values=[
+                    ValueAtIoU(
+                        iou=iou_thresholds[iou_idx],
+                        value=value,
+                    )
+                    for iou_idx, value in enumerate(average_precision[:, row])
+                ],
+                label=self.index_to_label[label_idx],
+            )
+            for label_idx, row in enumerate(range(average_precision.shape[1]))
+            if int(self._label_cache[label_idx][0]) > 0.0
+        ]
+
+        map_metrics = [
+            mAP(
+                values=[
+                    ValueAtIoU(
+                        iou=iou_thresholds[iou_idx],
+                        value=value,
+                    )
+                    for iou_idx, value in enumerate(
+                        mean_average_precision[:, row]
+                    )
+                ],
+                label_key=self.index_to_label_key[label_key_idx],
+            )
+            for label_key_idx, row in enumerate(
+                range(mean_average_precision.shape[1])
+            )
+            if label_key_idx < -0.5
+        ]
+
+        ar_metrics = [
+            AR(
+                ious=iou_thresholds,
+                values=[
+                    ValueAtScore(
+                        score=score_thresholds[score_idx],
+                        value=value,
+                    )
+                    for score_idx, value in enumerate(average_recall[:, row])
+                ],
+                label=self.index_to_label[label_idx],
+            )
+            for label_idx, row in enumerate(range(average_recall.shape[1]))
+            if int(self._label_cache[label_idx][0]) > 0.0
+        ]
+
+        mar_metrics = [
+            mAR(
+                ious=iou_thresholds,
+                values=[
+                    ValueAtScore(
+                        score=score_thresholds[score_idx],
+                        value=value,
+                    )
+                    for score_idx, value in enumerate(
+                        mean_average_recall[:, row]
+                    )
+                ],
+                label_key=self.index_to_label_key[label_key_idx],
+            )
+            for label_key_idx, row in enumerate(
+                range(mean_average_recall.shape[1])
+            )
+            if label_key_idx < -0.5
+        ]
+
+        return {
+            MetricType.AP: ap_metrics,
+            MetricType.mAP: map_metrics,
+            MetricType.AR: ar_metrics,
+            MetricType.mAR: mar_metrics,
+        }
 
     def evaluate(
         self,
