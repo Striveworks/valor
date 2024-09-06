@@ -47,77 +47,111 @@ class MetricType(str, Enum):
 
 
 @dataclass
-class ValueAtIoU:
+class Metric:
+    type: str
     value: float
-    iou: float
+    parameters: dict
+
+    def to_dict(self) -> dict:
+        return {
+            "type": self.type,
+            "value": self.value,
+            "parameters": self.parameters,
+        }
 
 
 @dataclass
 class AP:
-    values: list[ValueAtIoU]
+    value: float
+    iou_threshold: float
     label: tuple[str, str]
 
-    def to_dict(self) -> dict:
-        return {
-            "type": "AP",
-            "values": {str(value.iou): value.value for value in self.values},
-            "label": {
-                "key": self.label[0],
-                "value": self.label[1],
+    @property
+    def metric(self) -> Metric:
+        return Metric(
+            type=type(self).__name__,
+            value=self.value,
+            parameters={
+                "iou_threshold": self.iou_threshold,
+                "label": {
+                    "key": self.label[0],
+                    "value": self.label[1],
+                },
             },
-        }
+        )
+
+    def to_dict(self) -> dict:
+        return self.metric.to_dict()
 
 
 @dataclass
 class mAP:
-    values: list[ValueAtIoU]
+    value: float
+    iou_threshold: float
     label_key: str
 
+    @property
+    def metric(self) -> Metric:
+        return Metric(
+            type=type(self).__name__,
+            value=self.value,
+            parameters={
+                "iou_threshold": self.iou_threshold,
+                "label_key": self.label_key,
+            },
+        )
+
     def to_dict(self) -> dict:
-        return {
-            "type": "mAP",
-            "values": {str(value.iou): value.value for value in self.values},
-            "label_key": self.label_key,
-        }
-
-
-@dataclass
-class ValueAtScore:
-    value: float
-    score: float
+        return self.metric.to_dict()
 
 
 @dataclass
 class AR:
+    value: float
+    score_threshold: float
     ious: list[float]
-    values: list[ValueAtScore]
     label: tuple[str, str]
 
-    def to_dict(self) -> dict:
-        return {
-            "type": "AR",
-            "ious": self.ious,
-            "values": {str(value.score): value.value for value in self.values},
-            "label": {
-                "key": self.label[0],
-                "value": self.label[1],
+    @property
+    def metric(self) -> Metric:
+        return Metric(
+            type=type(self).__name__,
+            value=self.value,
+            parameters={
+                "score_threshold": self.score_threshold,
+                "ious": self.ious,
+                "label": {
+                    "key": self.label[0],
+                    "value": self.label[1],
+                },
             },
-        }
+        )
+
+    def to_dict(self) -> dict:
+        return self.metric.to_dict()
 
 
 @dataclass
 class mAR:
+    value: float
+    score_threshold: float
     ious: list[float]
-    values: list[ValueAtScore]
     label_key: str
 
+    @property
+    def metric(self) -> Metric:
+        return Metric(
+            type=type(self).__name__,
+            value=self.value,
+            parameters={
+                "score_threshold": self.score_threshold,
+                "ious": self.ious,
+                "label_key": self.label_key,
+            },
+        )
+
     def to_dict(self) -> dict:
-        return {
-            "type": "mAR",
-            "ious": self.ious,
-            "values": {str(value.score): value.value for value in self.values},
-            "label_key": self.label_key,
-        }
+        return self.metric.to_dict()
 
 
 @dataclass
@@ -1225,72 +1259,52 @@ class Manager:
 
         ap_metrics = [
             AP(
-                values=[
-                    ValueAtIoU(
-                        iou=iou_thresholds[iou_idx],
-                        value=value,
-                    )
-                    for iou_idx, value in enumerate(average_precision[:, row])
-                ],
+                value=value,
+                iou_threshold=iou_thresholds[iou_idx],
                 label=self.index_to_label[label_idx],
             )
             for label_idx, row in enumerate(range(average_precision.shape[1]))
             if int(self._label_cache[label_idx][0]) > 0.0
+            for iou_idx, value in enumerate(average_precision[:, row])
         ]
 
         map_metrics = [
             mAP(
-                values=[
-                    ValueAtIoU(
-                        iou=iou_thresholds[iou_idx],
-                        value=value,
-                    )
-                    for iou_idx, value in enumerate(
-                        mean_average_precision[:, row]
-                    )
-                ],
+                value=value,
+                iou_threshold=iou_thresholds[iou_idx],
                 label_key=self.index_to_label_key[label_key_idx],
             )
             for label_key_idx, row in enumerate(
                 range(mean_average_precision.shape[1])
             )
             if label_key_idx < -0.5
+            for iou_idx, value in enumerate(mean_average_precision[:, row])
         ]
 
         ar_metrics = [
             AR(
+                value=value,
                 ious=iou_thresholds,
-                values=[
-                    ValueAtScore(
-                        score=score_thresholds[score_idx],
-                        value=value,
-                    )
-                    for score_idx, value in enumerate(average_recall[:, row])
-                ],
+                score_threshold=score_thresholds[score_idx],
                 label=self.index_to_label[label_idx],
             )
             for label_idx, row in enumerate(range(average_recall.shape[1]))
             if int(self._label_cache[label_idx][0]) > 0.0
+            for score_idx, value in enumerate(average_recall[:, row])
         ]
 
         mar_metrics = [
             mAR(
+                value=value,
                 ious=iou_thresholds,
-                values=[
-                    ValueAtScore(
-                        score=score_thresholds[score_idx],
-                        value=value,
-                    )
-                    for score_idx, value in enumerate(
-                        mean_average_recall[:, row]
-                    )
-                ],
+                score_threshold=score_thresholds[score_idx],
                 label_key=self.index_to_label_key[label_key_idx],
             )
             for label_key_idx, row in enumerate(
                 range(mean_average_recall.shape[1])
             )
             if label_key_idx < -0.5
+            for score_idx, value in enumerate(mean_average_recall[:, row])
         ]
 
         return {

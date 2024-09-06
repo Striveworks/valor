@@ -75,33 +75,48 @@ def test_ar_using_torch_metrics_example(
     expected_metrics = [
         {
             "type": "AR",
-            "ious": iou_thresholds,
-            "values": {"0.0": 0.45},
-            "label": {"key": "class", "value": "2"},
+            "value": 0.45,
+            "parameters": {
+                "ious": iou_thresholds,
+                "score_threshold": 0.0,
+                "label": {"key": "class", "value": "2"},
+            },
         },
         {
             "type": "AR",
-            "ious": iou_thresholds,
-            "values": {"0.0": 0.5800000000000001},
-            "label": {"key": "class", "value": "49"},
+            "value": 0.5800000000000001,
+            "parameters": {
+                "ious": iou_thresholds,
+                "score_threshold": 0.0,
+                "label": {"key": "class", "value": "49"},
+            },
         },
         {
             "type": "AR",
-            "ious": iou_thresholds,
-            "values": {"0.0": 0.78},
-            "label": {"key": "class", "value": "0"},
+            "value": 0.78,
+            "parameters": {
+                "ious": iou_thresholds,
+                "score_threshold": 0.0,
+                "label": {"key": "class", "value": "0"},
+            },
         },
         {
             "type": "AR",
-            "ious": iou_thresholds,
-            "values": {"0.0": 0.8},
-            "label": {"key": "class", "value": "1"},
+            "value": 0.8,
+            "parameters": {
+                "ious": iou_thresholds,
+                "score_threshold": 0.0,
+                "label": {"key": "class", "value": "1"},
+            },
         },
         {
             "type": "AR",
-            "ious": iou_thresholds,
-            "values": {"0.0": 0.65},
-            "label": {"key": "class", "value": "4"},
+            "value": 0.65,
+            "parameters": {
+                "ious": iou_thresholds,
+                "score_threshold": 0.0,
+                "label": {"key": "class", "value": "4"},
+            },
         },
     ]
     actual_metrics = [m.to_dict() for m in ar_metrics]

@@ -71,28 +71,83 @@ def test_ap_using_torch_metrics_example(
     expected_metrics = [
         {
             "type": "AP",
-            "values": {"0.5": 1.0, "0.75": 0.7227722772277229},
-            "label": {"key": "class", "value": "0"},
+            "value": 1.0,
+            "parameters": {
+                "iou_threshold": 0.5,
+                "label": {"key": "class", "value": "0"},
+            },
         },
         {
             "type": "AP",
-            "values": {"0.5": 1.0, "0.75": 1.0},
-            "label": {"key": "class", "value": "1"},
+            "value": 0.7227722772277229,
+            "parameters": {
+                "iou_threshold": 0.75,
+                "label": {"key": "class", "value": "0"},
+            },
         },
         {
             "type": "AP",
-            "values": {"0.5": 0.504950495049505, "0.75": 0.504950495049505},
-            "label": {"key": "class", "value": "2"},
+            "value": 1.0,
+            "parameters": {
+                "iou_threshold": 0.5,
+                "label": {"key": "class", "value": "1"},
+            },
         },
         {
             "type": "AP",
-            "values": {"0.5": 1.0, "0.75": 1.0},
-            "label": {"key": "class", "value": "4"},
+            "value": 1.0,
+            "parameters": {
+                "iou_threshold": 0.75,
+                "label": {"key": "class", "value": "1"},
+            },
         },
         {
             "type": "AP",
-            "values": {"0.5": 0.7909790979097909, "0.75": 0.5756718528995757},
-            "label": {"key": "class", "value": "49"},
+            "value": 0.504950495049505,
+            "parameters": {
+                "iou_threshold": 0.5,
+                "label": {"key": "class", "value": "2"},
+            },
+        },
+        {
+            "type": "AP",
+            "value": 0.504950495049505,
+            "parameters": {
+                "iou_threshold": 0.75,
+                "label": {"key": "class", "value": "2"},
+            },
+        },
+        {
+            "type": "AP",
+            "value": 1.0,
+            "parameters": {
+                "iou_threshold": 0.5,
+                "label": {"key": "class", "value": "4"},
+            },
+        },
+        {
+            "type": "AP",
+            "value": 1.0,
+            "parameters": {
+                "iou_threshold": 0.75,
+                "label": {"key": "class", "value": "4"},
+            },
+        },
+        {
+            "type": "AP",
+            "value": 0.7909790979097909,
+            "parameters": {
+                "iou_threshold": 0.5,
+                "label": {"key": "class", "value": "49"},
+            },
+        },
+        {
+            "type": "AP",
+            "value": 0.5756718528995757,
+            "parameters": {
+                "iou_threshold": 0.75,
+                "label": {"key": "class", "value": "49"},
+            },
         },
     ]
     actual_metrics = [m.to_dict() for m in ap_metrics]
@@ -139,13 +194,35 @@ def test_ap_metrics(
     expected_metrics = [
         {
             "type": "AP",
-            "values": {"0.1": 0.0, "0.6": 0.0},
-            "label": {"key": "k2", "value": "v2"},
+            "value": 0.0,
+            "parameters": {
+                "iou_threshold": 0.1,
+                "label": {"key": "k2", "value": "v2"},
+            },
         },
         {
             "type": "AP",
-            "values": {"0.1": 0.504950495049505, "0.6": 0.504950495049505},
-            "label": {"key": "k1", "value": "v1"},
+            "value": 0.0,
+            "parameters": {
+                "iou_threshold": 0.6,
+                "label": {"key": "k2", "value": "v2"},
+            },
+        },
+        {
+            "type": "AP",
+            "value": 0.504950495049505,
+            "parameters": {
+                "iou_threshold": 0.1,
+                "label": {"key": "k1", "value": "v1"},
+            },
+        },
+        {
+            "type": "AP",
+            "value": 0.504950495049505,
+            "parameters": {
+                "iou_threshold": 0.6,
+                "label": {"key": "k1", "value": "v1"},
+            },
         },
     ]
     actual_metrics = [m.to_dict() for m in ap_metrics]
@@ -187,10 +264,13 @@ def test_evaluate_detection_false_negatives_single_image_baseline(
     assert len(ap_metrics) == 1
     assert ap_metrics[0].to_dict() == {
         "type": "AP",
-        "values": {"0.5": 1.0},
-        "label": {
-            "key": "key",
-            "value": "value",
+        "value": 1.0,
+        "parameters": {
+            "iou_threshold": 0.5,
+            "label": {
+                "key": "key",
+                "value": "value",
+            },
         },
     }
 
@@ -219,10 +299,13 @@ def test_evaluate_detection_false_negatives_single_image(
     assert len(ap_metrics) == 1
     assert ap_metrics[0].to_dict() == {
         "type": "AP",
-        "values": {"0.5": 0.5},
-        "label": {
-            "key": "key",
-            "value": "value",
+        "value": 0.5,
+        "parameters": {
+            "iou_threshold": 0.5,
+            "label": {
+                "key": "key",
+                "value": "value",
+            },
         },
     }
 
@@ -255,10 +338,13 @@ def test_evaluate_detection_false_negatives_two_images_one_empty_low_confidence_
     assert len(ap_metrics) == 1
     assert ap_metrics[0].to_dict() == {
         "type": "AP",
-        "values": {"0.5": 1.0},
-        "label": {
-            "key": "key",
-            "value": "value",
+        "value": 1.0,
+        "parameters": {
+            "iou_threshold": 0.5,
+            "label": {
+                "key": "key",
+                "value": "value",
+            },
         },
     }
 
@@ -289,10 +375,13 @@ def test_evaluate_detection_false_negatives_two_images_one_empty_high_confidence
     assert len(ap_metrics) == 1
     assert ap_metrics[0].to_dict() == {
         "type": "AP",
-        "values": {"0.5": 0.5},
-        "label": {
-            "key": "key",
-            "value": "value",
+        "value": 0.5,
+        "parameters": {
+            "iou_threshold": 0.5,
+            "label": {
+                "key": "key",
+                "value": "value",
+            },
         },
     }
 
@@ -323,18 +412,24 @@ def test_evaluate_detection_false_negatives_two_images_one_only_with_different_c
     expected_metrics = [
         {
             "type": "AP",
-            "values": {"0.5": 1.0},
-            "label": {
-                "key": "key",
-                "value": "value",
+            "value": 1.0,
+            "parameters": {
+                "iou_threshold": 0.5,
+                "label": {
+                    "key": "key",
+                    "value": "value",
+                },
             },
         },
         {
             "type": "AP",
-            "values": {"0.5": 0.0},
-            "label": {
-                "key": "key",
-                "value": "other value",
+            "value": 0.0,
+            "parameters": {
+                "iou_threshold": 0.5,
+                "label": {
+                    "key": "key",
+                    "value": "other value",
+                },
             },
         },
     ]
@@ -374,18 +469,24 @@ def test_evaluate_detection_false_negatives_two_images_one_only_with_different_c
     expected_metrics = [
         {
             "type": "AP",
-            "values": {"0.5": 0.5},
-            "label": {
-                "key": "key",
-                "value": "value",
+            "value": 0.5,
+            "parameters": {
+                "iou_threshold": 0.5,
+                "label": {
+                    "key": "key",
+                    "value": "value",
+                },
             },
         },
         {
             "type": "AP",
-            "values": {"0.5": 0.0},
-            "label": {
-                "key": "key",
-                "value": "other value",
+            "value": 0.0,
+            "parameters": {
+                "iou_threshold": 0.5,
+                "label": {
+                    "key": "key",
+                    "value": "other value",
+                },
             },
         },
     ]
