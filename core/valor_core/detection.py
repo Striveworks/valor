@@ -136,7 +136,7 @@ def _calculate_iou(
         else:
             iou_func = np.vectorize(geometry.calculate_iou)
 
-            series_of_iou_calculations = pl.Series(
+            series_of_iou_calculations = pd.Series(
                 iou_func(
                     filtered_df["converted_geometry_gt"],
                     filtered_df["converted_geometry_pd"],
@@ -408,16 +408,8 @@ def _calculate_ap_metrics(
         ]
     )
 
-    # TODO figure out how to not treat labels like strings. this was causing an issue when joining on label. might be as easy as using tuple instead of list?
     # TODO ctrl + f for "lambda s" and "lambda x"
     ap_metrics_df = ap_metrics_df.with_columns(
-        pl.col("label")
-        .map_elements(
-            lambda x: x.strip("[]").split(", "),
-            return_dtype=pl.List(pl.Utf8),
-        )
-        .alias("label")
-    ).with_columns(
         pl.col("label")
         .map_elements(
             lambda x: x[0],
@@ -505,37 +497,49 @@ def _calculate_ar_metrics(
 
     # get the max recall_for_AR for each threshold, then take the mean across thresholds
     ar_metrics_df = (
-        calculation_df.groupby(
-            ["label_id", "label", "iou_threshold"], as_index=False
-        )["recall_for_AR"]
-        .max()
-        .groupby(["label_id", "label"], as_index=False)["recall_for_AR"]
-        .mean()
+        calculation_df.group_by(["label_id", "label", "iou_threshold"])
+        .agg(pl.col("recall_for_AR").max().alias("recall_for_AR"))
+        .group_by(["label_id", "label"])
+        .agg(pl.col("recall_for_AR").mean().alias("recall_for_AR"))
     )
 
     ious_ = set(iou_thresholds_to_compute)
+
+    # TODO
+    ar_metrics_df = ar_metrics_df.with_columns(
+        pl.col("label")
+        .map_elements(
+            lambda x: x[0],
+            return_dtype=pl.Utf8,
+        )
+        .alias("label_key")
+    )
+
     ar_metrics = [
         metrics.ARMetric(
             ious=ious_,
             value=row["recall_for_AR"],
             label=schemas.Label(key=row["label"][0], value=row["label"][1]),
         )
-        for row in ar_metrics_df.to_dict(orient="records")
+        for row in ar_metrics_df.to_dicts()
     ]
 
     # calculate mAR
-    ar_metrics_df["label_key"] = ar_metrics_df["label"].str[0]
-    mar_metrics_df = ar_metrics_df.groupby(["label_key"], as_index=False)[
-        "recall_for_AR"
-    ].apply(_calculate_mean_ignoring_negative_one)
+    mar_metrics_df = ar_metrics_df.group_by(["label_key"]).agg(
+        [
+            pl.col("recall_for_AR")
+            .map_elements(lambda x: _calculate_mean_ignoring_negative_one(x))
+            .alias("mean_recall_for_AR")
+        ]
+    )
 
     mar_metrics = [
         metrics.mARMetric(
             ious=ious_,
-            value=row["recall_for_AR"],
+            value=row["mean_recall_for_AR"],
             label_key=row["label_key"],
         )
-        for row in mar_metrics_df.to_dict(orient="records")
+        for row in mar_metrics_df.rows(named=True)
     ]
 
     return ar_metrics + mar_metrics
@@ -750,7 +754,7 @@ def _add_samples_to_dataframe(
 
 
 def _calculate_detailed_pr_metrics(
-    detailed_pr_joint_df: pl.DataFrame | None,
+    detailed_pr_joint_df: pd.DataFrame | None,  # TODO
     metrics_to_return: list[enums.MetricType],
     pr_curve_iou_threshold: float,
     pr_curve_max_examples: int,
@@ -843,7 +847,8 @@ def _calculate_detailed_pr_metrics(
             .to_dict()
         )
 
-        mask = pl.Series(False, index=detailed_pr_calc_df.index)
+        # TODO search for pd
+        mask = pd.Series(False, index=detailed_pr_calc_df.index)
 
         for (
             threshold,
@@ -882,7 +887,7 @@ def _calculate_detailed_pr_metrics(
             .to_dict()
         )
 
-        mask = pl.Series(False, index=detailed_pr_calc_df.index)
+        mask = pd.Series(False, index=detailed_pr_calc_df.index)
 
         for (
             threshold,
@@ -929,7 +934,7 @@ def _calculate_detailed_pr_metrics(
             .to_dict()
         )
 
-        mask = pl.Series(False, index=detailed_pr_calc_df.index)
+        mask = pd.Series(False, index=detailed_pr_calc_df.index)
 
         for (
             threshold,
@@ -947,9 +952,9 @@ def _calculate_detailed_pr_metrics(
             ~mask & detailed_pr_calc_df["false_negative_flag"]
         )
     else:
-        detailed_pr_calc_df[
-            "no_predictions_false_negative_flag"
-        ] = detailed_pr_calc_df["false_negative_flag"]
+        detailed_pr_calc_df["no_predictions_false_negative_flag"] = (
+            detailed_pr_calc_df["false_negative_flag"]
+        )
 
     # next, we sum up the occurences of each classification and merge them together into one dataframe
     true_positives = (
@@ -1361,8 +1366,9 @@ def create_detection_evaluation_inputs(
 
 
 def compute_detection_metrics(
-    joint_df: pl.DataFrame,
-    detailed_joint_df: pl.DataFrame | None,
+    joint_df: pd.DataFrame,
+    pl_joint_df: pl.DataFrame,
+    detailed_joint_df: pd.DataFrame | None,
     metrics_to_return: list[enums.MetricType],
     iou_thresholds_to_compute: list[float],
     iou_thresholds_to_return: list[float],
@@ -1406,7 +1412,7 @@ def compute_detection_metrics(
     metrics_to_output = []
 
     dfs = [
-        joint_df.with_columns(pl.lit(threshold).alias("iou_threshold"))
+        pl_joint_df.with_columns(pl.lit(threshold).alias("iou_threshold"))
         for threshold in iou_thresholds_to_compute
     ]
 
@@ -1567,48 +1573,31 @@ def evaluate_detection(
         convert_annotations_to_type=convert_annotations_to_type,
     )
 
-    # TODO eventually make it so joint_df is natively created as a polars DF, rather than being converted
-    joint_df = pl.from_pandas(joint_df)
-
-    # TODO
-    joint_df = joint_df.with_columns(
-        pl.format(
-            "[{}]", pl.col("label").cast(pl.List(pl.Utf8)).list.join(", ")
-        ).alias("label")
-    )
-
-    if detailed_joint_df is not None:
-        detailed_joint_df = pl.from_pandas(detailed_joint_df)
-        detailed_joint_df = detailed_joint_df.with_columns(
-            pl.format(
-                "[{}]", pl.col("label").cast(pl.List(pl.Utf8)).list.join(", ")
-            ).alias("label")
-        )
-
     # add the number of groundtruth observations per grouper
     number_of_groundtruths_per_label_df = (
         groundtruth_df.groupby(["label"], as_index=False)["id"]
         .nunique()
         .rename({"id": "gts_per_grouper"}, axis=1)
     )
-
-    # TODO don't use from_pandas anywhere
-    number_of_groundtruths_per_label_df = pl.from_pandas(
-        number_of_groundtruths_per_label_df
-    )
-    number_of_groundtruths_per_label_df = (
-        number_of_groundtruths_per_label_df.with_columns(
-            pl.format(
-                "[{}]", pl.col("label").cast(pl.List(pl.Utf8)).list.join(", ")
-            ).alias("label")
-        )
-    )
-
-    joint_df = joint_df.join(
+    joint_df = pd.merge(
+        joint_df,
         number_of_groundtruths_per_label_df,
         on=["label"],
         how="outer",
     )
+    # TODO eventually make it so joint_df is natively created as a polars DF, rather than being converted
+    pl_joint_df = pl.from_pandas(joint_df)
+
+    def _hash_label_column(df: pl.DataFrame):
+        # polars doesn't allow us to join on list[str], and doesn't accept tuple[str] as a valid column type
+        # hash label column so we can join on it
+        return df.with_columns(
+            pl.format(
+                "[{}]", pl.col("label").cast(pl.List(pl.Utf8)).list.join(", ")
+            )
+            .hash()
+            .alias("label_hash")
+        )
 
     (
         missing_pred_labels,
@@ -1633,6 +1622,7 @@ def evaluate_detection(
 
     metrics = compute_detection_metrics(
         joint_df=joint_df,
+        pl_joint_df=pl_joint_df,
         detailed_joint_df=detailed_joint_df,
         metrics_to_return=metrics_to_return,
         iou_thresholds_to_compute=iou_thresholds_to_compute,

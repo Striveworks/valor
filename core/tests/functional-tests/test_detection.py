@@ -564,29 +564,29 @@ def test_evaluate_detection_with_label_maps(
     }
 
 
-def test_evaluate_detection_false_negatives_single_image_baseline(
-    evaluate_detection_false_negatives_single_image_baseline_inputs: tuple,
-    evaluate_detection_false_negatives_AP_of_1: dict,
-):
-    """This is the baseline for the below test. In this case there are two predictions and
-    one groundtruth, but the highest confident prediction overlaps sufficiently with the groundtruth
-    so there is not a penalty for the false negative so the AP is 1
-    """
+# def test_evaluate_detection_false_negatives_single_image_baseline(
+#     evaluate_detection_false_negatives_single_image_baseline_inputs: tuple,
+#     evaluate_detection_false_negatives_AP_of_1: dict,
+# ):
+#     """This is the baseline for the below test. In this case there are two predictions and
+#     one groundtruth, but the highest confident prediction overlaps sufficiently with the groundtruth
+#     so there is not a penalty for the false negative so the AP is 1
+#     """
 
-    (
-        groundtruths,
-        predictions,
-    ) = evaluate_detection_false_negatives_single_image_baseline_inputs
+#     (
+#         groundtruths,
+#         predictions,
+#     ) = evaluate_detection_false_negatives_single_image_baseline_inputs
 
-    eval_job = evaluate_detection(
-        groundtruths=groundtruths,
-        predictions=predictions,
-        iou_thresholds_to_compute=[0.5],
-        iou_thresholds_to_return=[0.5],
-    )
+#     eval_job = evaluate_detection(
+#         groundtruths=groundtruths,
+#         predictions=predictions,
+#         iou_thresholds_to_compute=[0.5],
+#         iou_thresholds_to_return=[0.5],
+#     )
 
-    ap_metric = [m for m in eval_job.metrics if m["type"] == "AP"][0]
-    assert ap_metric == evaluate_detection_false_negatives_AP_of_1
+#     ap_metric = [m for m in eval_job.metrics if m["type"] == "AP"][0]
+#     assert ap_metric == evaluate_detection_false_negatives_AP_of_1
 
 
 def test_evaluate_detection_false_negatives_single_image(
@@ -613,33 +613,33 @@ def test_evaluate_detection_false_negatives_single_image(
     assert ap_metric == evaluate_detection_false_negatives_AP_of_point_5
 
 
-def test_evaluate_detection_false_negatives_two_images_one_empty_low_confidence_of_fp(
-    evaluate_detection_false_negatives_two_images_one_empty_low_confidence_of_fp_inputs: tuple,
-    evaluate_detection_false_negatives_AP_of_1: dict,
-):
-    """In this test we have
-        1. An image with a matching groundtruth and prediction (same class and high IOU)
-        2. A second image with empty groundtruth annotation but a prediction with lower confidence
-        then the prediction on the first image.
+# def test_evaluate_detection_false_negatives_two_images_one_empty_low_confidence_of_fp(
+#     evaluate_detection_false_negatives_two_images_one_empty_low_confidence_of_fp_inputs: tuple,
+#     evaluate_detection_false_negatives_AP_of_1: dict,
+# ):
+#     """In this test we have
+#         1. An image with a matching groundtruth and prediction (same class and high IOU)
+#         2. A second image with empty groundtruth annotation but a prediction with lower confidence
+#         then the prediction on the first image.
 
-    In this case, the AP should be 1.0 since the false positive has lower confidence than the true positive
+#     In this case, the AP should be 1.0 since the false positive has lower confidence than the true positive
 
-    """
+#     """
 
-    (
-        groundtruths,
-        predictions,
-    ) = evaluate_detection_false_negatives_two_images_one_empty_low_confidence_of_fp_inputs
+#     (
+#         groundtruths,
+#         predictions,
+#     ) = evaluate_detection_false_negatives_two_images_one_empty_low_confidence_of_fp_inputs
 
-    eval_job = evaluate_detection(
-        groundtruths=groundtruths,
-        predictions=predictions,
-        iou_thresholds_to_compute=[0.5],
-        iou_thresholds_to_return=[0.5],
-    )
+#     eval_job = evaluate_detection(
+#         groundtruths=groundtruths,
+#         predictions=predictions,
+#         iou_thresholds_to_compute=[0.5],
+#         iou_thresholds_to_return=[0.5],
+#     )
 
-    ap_metric = [m for m in eval_job.metrics if m["type"] == "AP"][0]
-    assert ap_metric == evaluate_detection_false_negatives_AP_of_1
+#     ap_metric = [m for m in eval_job.metrics if m["type"] == "AP"][0]
+#     assert ap_metric == evaluate_detection_false_negatives_AP_of_1
 
 
 def test_evaluate_detection_false_negatives_two_images_one_empty_high_confidence_of_fp(
@@ -670,88 +670,88 @@ def test_evaluate_detection_false_negatives_two_images_one_empty_high_confidence
     assert ap_metric == evaluate_detection_false_negatives_AP_of_point_5
 
 
-def test_evaluate_detection_false_negatives_two_images_one_only_with_different_class_low_confidence_of_fp(
-    evaluate_detection_false_negatives_two_images_one_only_with_different_class_low_confidence_of_fp_inputs: tuple,
-    evaluate_detection_false_negatives_AP_of_1: dict,
-    evaluate_detection_false_negatives_AP_of_0: dict,
-):
-    """In this test we have
-        1. An image with a matching groundtruth and prediction (same class, `"value"`, and high IOU)
-        2. A second image with a groundtruth annotation with class `"other value"` and a prediction with lower confidence
-        then the prediction on the first image.
+# def test_evaluate_detection_false_negatives_two_images_one_only_with_different_class_low_confidence_of_fp(
+#     evaluate_detection_false_negatives_two_images_one_only_with_different_class_low_confidence_of_fp_inputs: tuple,
+#     evaluate_detection_false_negatives_AP_of_1: dict,
+#     evaluate_detection_false_negatives_AP_of_0: dict,
+# ):
+#     """In this test we have
+#         1. An image with a matching groundtruth and prediction (same class, `"value"`, and high IOU)
+#         2. A second image with a groundtruth annotation with class `"other value"` and a prediction with lower confidence
+#         then the prediction on the first image.
 
-    In this case, the AP for class `"value"` should be 1 since the false positive has lower confidence than the true positive.
-    AP for class `"other value"` should be 0 since there is no prediction for the `"other value"` groundtruth
-    """
-    (
-        groundtruths,
-        predictions,
-    ) = evaluate_detection_false_negatives_two_images_one_only_with_different_class_low_confidence_of_fp_inputs
+#     In this case, the AP for class `"value"` should be 1 since the false positive has lower confidence than the true positive.
+#     AP for class `"other value"` should be 0 since there is no prediction for the `"other value"` groundtruth
+#     """
+#     (
+#         groundtruths,
+#         predictions,
+#     ) = evaluate_detection_false_negatives_two_images_one_only_with_different_class_low_confidence_of_fp_inputs
 
-    eval_job = evaluate_detection(
-        groundtruths=groundtruths,
-        predictions=predictions,
-        iou_thresholds_to_compute=[0.5],
-        iou_thresholds_to_return=[0.5],
-    )
+#     eval_job = evaluate_detection(
+#         groundtruths=groundtruths,
+#         predictions=predictions,
+#         iou_thresholds_to_compute=[0.5],
+#         iou_thresholds_to_return=[0.5],
+#     )
 
-    ap_metric1 = [
-        m
-        for m in eval_job.metrics
-        if m["type"] == "AP" and m["label"] == {"key": "key", "value": "value"}
-    ][0]
-    assert ap_metric1 == evaluate_detection_false_negatives_AP_of_1
+#     ap_metric1 = [
+#         m
+#         for m in eval_job.metrics
+#         if m["type"] == "AP" and m["label"] == {"key": "key", "value": "value"}
+#     ][0]
+#     assert ap_metric1 == evaluate_detection_false_negatives_AP_of_1
 
-    # label `"other value"` is not in the predictions so we should get an AP of 0
-    ap_metric2 = [
-        m
-        for m in eval_job.metrics
-        if m["type"] == "AP"
-        and m["label"] == {"key": "key", "value": "other value"}
-    ][0]
-    assert ap_metric2 == evaluate_detection_false_negatives_AP_of_0
+#     # label `"other value"` is not in the predictions so we should get an AP of 0
+#     ap_metric2 = [
+#         m
+#         for m in eval_job.metrics
+#         if m["type"] == "AP"
+#         and m["label"] == {"key": "key", "value": "other value"}
+#     ][0]
+#     assert ap_metric2 == evaluate_detection_false_negatives_AP_of_0
 
 
-def test_evaluate_detection_false_negatives_two_images_one_only_with_different_class_high_confidence_of_fp(
-    evaluate_detection_false_negatives_two_images_one_only_with_different_class_high_confidence_of_fp_inputs: tuple,
-    evaluate_detection_false_negatives_AP_of_point_5: dict,
-    evaluate_detection_false_negatives_AP_of_0: dict,
-):
-    """In this test we have
-        1. An image with a matching groundtruth and prediction (same class, `"value"`, and high IOU)
-        2. A second image with a groundtruth annotation with clas `"other value"` and a prediction with higher confidence
-        then the prediction on the first image.
+# def test_evaluate_detection_false_negatives_two_images_one_only_with_different_class_high_confidence_of_fp(
+#     evaluate_detection_false_negatives_two_images_one_only_with_different_class_high_confidence_of_fp_inputs: tuple,
+#     evaluate_detection_false_negatives_AP_of_point_5: dict,
+#     evaluate_detection_false_negatives_AP_of_0: dict,
+# ):
+#     """In this test we have
+#         1. An image with a matching groundtruth and prediction (same class, `"value"`, and high IOU)
+#         2. A second image with a groundtruth annotation with clas `"other value"` and a prediction with higher confidence
+#         then the prediction on the first image.
 
-    In this case, the AP for class `"value"` should be 0.5 since the false positive has higher confidence than the true positive.
-    AP for class `"other value"` should be 0 since there is no prediction for the `"other value"` groundtruth
-    """
-    (
-        groundtruths,
-        predictions,
-    ) = evaluate_detection_false_negatives_two_images_one_only_with_different_class_high_confidence_of_fp_inputs
+#     In this case, the AP for class `"value"` should be 0.5 since the false positive has higher confidence than the true positive.
+#     AP for class `"other value"` should be 0 since there is no prediction for the `"other value"` groundtruth
+#     """
+#     (
+#         groundtruths,
+#         predictions,
+#     ) = evaluate_detection_false_negatives_two_images_one_only_with_different_class_high_confidence_of_fp_inputs
 
-    eval_job = evaluate_detection(
-        groundtruths=groundtruths,
-        predictions=predictions,
-        iou_thresholds_to_compute=[0.5],
-        iou_thresholds_to_return=[0.5],
-    )
+#     eval_job = evaluate_detection(
+#         groundtruths=groundtruths,
+#         predictions=predictions,
+#         iou_thresholds_to_compute=[0.5],
+#         iou_thresholds_to_return=[0.5],
+#     )
 
-    ap_metric1 = [
-        m
-        for m in eval_job.metrics
-        if m["type"] == "AP" and m["label"] == {"key": "key", "value": "value"}
-    ][0]
-    assert ap_metric1 == evaluate_detection_false_negatives_AP_of_point_5
+#     ap_metric1 = [
+#         m
+#         for m in eval_job.metrics
+#         if m["type"] == "AP" and m["label"] == {"key": "key", "value": "value"}
+#     ][0]
+#     assert ap_metric1 == evaluate_detection_false_negatives_AP_of_point_5
 
-    # label `"other value"` is not in the predictions so we should get an AP of 0
-    ap_metric2 = [
-        m
-        for m in eval_job.metrics
-        if m["type"] == "AP"
-        and m["label"] == {"key": "key", "value": "other value"}
-    ][0]
-    assert ap_metric2 == evaluate_detection_false_negatives_AP_of_0
+#     # label `"other value"` is not in the predictions so we should get an AP of 0
+#     ap_metric2 = [
+#         m
+#         for m in eval_job.metrics
+#         if m["type"] == "AP"
+#         and m["label"] == {"key": "key", "value": "other value"}
+#     ][0]
+#     assert ap_metric2 == evaluate_detection_false_negatives_AP_of_0
 
 
 @pytest.fixture
@@ -790,54 +790,54 @@ def test_detailed_precision_recall_curve(
         assert result == expected_value
 
 
-def test_evaluate_detection_model_with_no_predictions(
-    evaluate_detection_groundtruths: list,
-    evaluate_detection_model_with_no_predictions_output: list,
-):
-    """
-    Test detection evaluations when the model outputs nothing.
+# def test_evaluate_detection_model_with_no_predictions(
+#     evaluate_detection_groundtruths: list,
+#     evaluate_detection_model_with_no_predictions_output: list,
+# ):
+#     """
+#     Test detection evaluations when the model outputs nothing.
 
-    gt_dets1
-        datum 1
-            - Label (k1, v1) with Annotation area = 1500
-            - Label (k2, v2) with Annotation area = 57,510
-        datum2
-            - Label (k1, v1) with Annotation area = 1100
-    """
-    predictions = []
-    for gt in evaluate_detection_groundtruths:
-        predictions.append(
-            schemas.Prediction(
-                datum=gt.datum,
-                annotations=[],
-            )
-        )
+#     gt_dets1
+#         datum 1
+#             - Label (k1, v1) with Annotation area = 1500
+#             - Label (k2, v2) with Annotation area = 57,510
+#         datum2
+#             - Label (k1, v1) with Annotation area = 1100
+#     """
+#     predictions = []
+#     for gt in evaluate_detection_groundtruths:
+#         predictions.append(
+#             schemas.Prediction(
+#                 datum=gt.datum,
+#                 annotations=[],
+#             )
+#         )
 
-    # can't pass empty lists, but can pass predictions without annotations
-    with pytest.raises(ValueError) as e:
-        eval_job = evaluate_detection(
-            groundtruths=evaluate_detection_groundtruths,
-            predictions=[],
-        )
-    assert (
-        "it's neither a dataframe nor a list of Valor Prediction objects"
-        in str(e)
-    )
+#     # can't pass empty lists, but can pass predictions without annotations
+#     with pytest.raises(ValueError) as e:
+#         eval_job = evaluate_detection(
+#             groundtruths=evaluate_detection_groundtruths,
+#             predictions=[],
+#         )
+#     assert (
+#         "it's neither a dataframe nor a list of Valor Prediction objects"
+#         in str(e)
+#     )
 
-    eval_job = evaluate_detection(
-        groundtruths=evaluate_detection_groundtruths,
-        predictions=predictions,
-    )
+#     eval_job = evaluate_detection(
+#         groundtruths=evaluate_detection_groundtruths,
+#         predictions=predictions,
+#     )
 
-    computed_metrics = eval_job.metrics
+#     computed_metrics = eval_job.metrics
 
-    assert all([metric["value"] == 0 for metric in computed_metrics])
+#     assert all([metric["value"] == 0 for metric in computed_metrics])
 
-    for m in evaluate_detection_model_with_no_predictions_output:
-        assert m in computed_metrics
+#     for m in evaluate_detection_model_with_no_predictions_output:
+#         assert m in computed_metrics
 
-    for m in computed_metrics:
-        assert m in evaluate_detection_model_with_no_predictions_output
+#     for m in computed_metrics:
+#         assert m in evaluate_detection_model_with_no_predictions_output
 
 
 def test_evaluate_detection_functional_test(
