@@ -23,7 +23,6 @@ from valor_lite.enums import MetricType
 # pd label  12
 # pd score  13
 
-
 # datum id  0
 # gt        1
 # pd        2
@@ -48,6 +47,30 @@ class AP:
         return {
             "type": "AP",
             "values": {str(value.iou): value.value for value in self.values},
+            "label": {
+                "key": self.label[0],
+                "value": self.label[1],
+            },
+        }
+
+
+@dataclass
+class ValueAtScore:
+    value: float
+    score: float
+
+
+@dataclass
+class AR:
+    ious: list[float]
+    values: list[ValueAtScore]
+    label: tuple[str, str]
+
+    def to_dict(self) -> dict:
+        return {
+            "type": "AR",
+            "ious": self.ious,
+            "values": {str(value.score): value.value for value in self.values},
             "label": {
                 "key": self.label[0],
                 "value": self.label[1],
@@ -111,7 +134,7 @@ class PrecisionRecallCurve:
 def _compute_iou(data: list[np.ndarray]) -> list[np.ndarray]:
 
     results = list()
-    for datum_idx in numba.prange(len(data)):
+    for datum_idx in range(len(data)):
         datum = data[datum_idx]
 
         xmin1, xmax1, ymin1, ymax1 = (
@@ -158,10 +181,9 @@ def _compute_iou(data: list[np.ndarray]) -> list[np.ndarray]:
     return results
 
 
-def _compute_average_precision(
+def _compute_ranked_pairs(
     data: np.ndarray,
     label_counts: np.ndarray,
-    iou_thresholds: np.ndarray,
 ) -> np.ndarray:
 
     # remove null predictions
@@ -185,7 +207,16 @@ def _compute_average_precision(
 
     # only keep the highest ranked pair
     _, indices = np.unique(data[:, [0, 2]], axis=0, return_index=True)
-    data = data[np.sort(indices)]
+    return data[np.sort(indices)]
+
+
+def _compute_average_precision(
+    data: np.ndarray,
+    label_counts: np.ndarray,
+    iou_thresholds: np.ndarray,
+) -> np.ndarray:
+
+    data = _compute_ranked_pairs(data, label_counts)
 
     n_rows = data.shape[0]
     n_labels = label_counts.shape[0]
@@ -196,10 +227,7 @@ def _compute_average_precision(
     mask_gt_exists = data[:, 1] >= 0.0
 
     total_count = np.zeros(
-        (
-            n_ious,
-            n_rows,
-        ),
+        (n_ious, n_rows),
         dtype=np.int32,
     )
     tp_count = np.zeros_like(total_count)
@@ -212,11 +240,11 @@ def _compute_average_precision(
 
         mask_iou = data[:, 3] >= iou_thresholds[iou_idx]
         mask = mask_score & mask_iou & mask_labels_match & mask_gt_exists
-        tp_canidates = data[mask]
+        tp_candidates = data[mask]
         _, indices_gt_unique = np.unique(
-            tp_canidates[:, [0, 1, 4]], axis=0, return_index=True
+            tp_candidates[:, [0, 1, 4]], axis=0, return_index=True
         )
-        mask_gt_unique = np.zeros(tp_canidates.shape[0], dtype=bool)
+        mask_gt_unique = np.zeros(tp_candidates.shape[0], dtype=bool)
         mask_gt_unique[indices_gt_unique] = True
         true_positives_mask = np.zeros(n_rows, dtype=bool)
         true_positives_mask[mask] = mask_gt_unique
@@ -240,19 +268,21 @@ def _compute_average_precision(
     recall = np.divide(tp_count, gt_count, where=gt_count > 0)
     recall_index = np.floor(recall * 100.0).astype(int)
 
-    pr_curve[:, pd_labels, recall_index] = np.maximum(
-        pr_curve[:, pd_labels, recall_index], precision
-    )
+    for iou_idx in range(n_ious):
+        p = precision[iou_idx]
+        r = recall_index[iou_idx]
+        pr_curve[iou_idx, pd_labels, r] = np.maximum(
+            pr_curve[iou_idx, pd_labels, r], p
+        )
 
     # interpolate the PR-Curve
-    results = np.zeros((n_ious, n_labels))
+    average_precision = np.zeros((n_ious, n_labels))
     running_max = np.zeros((n_ious, n_labels))
     for recall in range(100, -1, -1):
         precision = pr_curve[:, :, recall]
         running_max = np.maximum(precision, running_max)
-        # print(recall, running_max)
-        results += running_max
-    return results / 101.0
+        average_precision += running_max
+    return average_precision / 101.0
 
 
 def _compute_average_recall(
@@ -262,89 +292,135 @@ def _compute_average_recall(
     score_thresholds: np.ndarray,
 ) -> np.ndarray:
 
-    # remove null predictions
-    data = data[data[:, 2] >= 0.0]
-
-    # sort by gt_id, iou, score
-    indices = np.lexsort(
-        (
-            data[:, 1],
-            -data[:, 3],
-            -data[:, 6],
-        )
-    )
-    data = data[indices]
-
-    # remove ignored predictions
-    for idx, count in enumerate(label_counts[:, 0]):
-        if count > 0:
-            continue
-        data = data[data[:, 5] != idx]
-
-    # only keep the highest ranked pair
-    _, indices = np.unique(data[:, [0, 2]], axis=0, return_index=True)
-    data = data[np.sort(indices)]
+    data = _compute_ranked_pairs(data, label_counts)
 
     n_rows = data.shape[0]
     n_labels = label_counts.shape[0]
     n_ious = iou_thresholds.shape[0]
     n_scores = score_thresholds.shape[0]
 
-    recall = np.zeros((n_scores, n_ious, n_labels))
-
     mask_labels_match = np.isclose(data[:, 4], data[:, 5])
     mask_gt_exists = data[:, 1] >= 0.0
 
+    average_recall = np.zeros((n_scores, n_labels))
+
     for score_idx in range(n_scores):
 
-        mask_score_1 = data[:, 6] >= score_thresholds[score_idx]
-        mask_score_2 = np.isclose(data[:, 6], score_thresholds[score_idx])
-        mask_score_3 = score_thresholds[score_idx] > 1e-9
-        mask_score = mask_score_1 | (mask_score_2 & mask_score_3)
+        mask_score_1 = data[:, 6] > 1e-9
+        mask_score_2 = data[:, 6] >= score_thresholds[score_idx]
+        mask_score = mask_score_1 & mask_score_2
+
+        pd_labels = data[:, 5].astype(int)
 
         for iou_idx in range(n_ious):
 
             mask_iou = data[:, 3] >= iou_thresholds[iou_idx]
             mask = mask_score & mask_iou & mask_labels_match & mask_gt_exists
+            tp_candidates = data[mask]
+            _, indices_gt_unique = np.unique(
+                tp_candidates[:, [0, 1, 4]], axis=0, return_index=True
+            )
+            mask_gt_unique = np.zeros(tp_candidates.shape[0], dtype=bool)
+            mask_gt_unique[indices_gt_unique] = True
+            true_positives_mask = np.zeros(n_rows, dtype=bool)
+            true_positives_mask[mask] = mask_gt_unique
 
-        tp_canidates = data[mask]
-        _, indices_gt_unique = np.unique(
-            tp_canidates[:, [0, 1, 4]], axis=0, return_index=True
+            unique_pd_labels = np.unique(pd_labels)
+            gt_count = label_counts[unique_pd_labels, 0]
+            tp_count = np.bincount(pd_labels, weights=true_positives_mask)
+            tp_count = tp_count[unique_pd_labels]
+            average_recall[score_idx][unique_pd_labels] += tp_count / gt_count
+
+    return average_recall / n_ious
+
+
+def _compute_metrics(
+    data: np.ndarray,
+    label_counts: np.ndarray,
+    iou_thresholds: np.ndarray,
+    score_thresholds: np.ndarray,
+) -> np.ndarray:
+
+    data = _compute_ranked_pairs(data, label_counts)
+
+    n_rows = data.shape[0]
+    n_labels = label_counts.shape[0]
+    n_ious = iou_thresholds.shape[0]
+    n_scores = score_thresholds.shape[0]
+
+    mask_labels_match = np.isclose(data[:, 4], data[:, 5])
+    mask_gt_exists = data[:, 1] >= 0.0
+
+    pr_curve = np.zeros((n_scores, n_ious, n_labels, 101))
+    average_recall = np.zeros((n_scores, n_labels))
+
+    for score_idx in range(n_scores):
+
+        mask_score_1 = data[:, 6] > 1e-9
+        mask_score_2 = data[:, 6] >= score_thresholds[score_idx]
+        mask_score = mask_score_1 & mask_score_2
+
+        total_count = np.zeros(
+            (n_ious, n_rows),
+            dtype=np.int32,
         )
-        mask_gt_unique = np.zeros(tp_canidates.shape[0], dtype=bool)
-        mask_gt_unique[indices_gt_unique] = True
-        true_positives_mask = np.zeros(n_rows, dtype=bool)
-        true_positives_mask[mask] = mask_gt_unique
-
-        total_count = np.zeros((n_rows,), dtype=np.int32)
         tp_count = np.zeros_like(total_count)
         gt_count = np.zeros_like(total_count)
         pd_labels = data[:, 5].astype(int)
 
-        for pd_label in np.unique(pd_labels):
-            mask_pd_label = pd_labels == pd_label
-            gt_count[mask_pd_label] = label_counts[pd_label][0]
-            total_count[mask_pd_label] = np.arange(1, mask_pd_label.sum() + 1)
-            mask_tp = mask_pd_label & true_positives_mask
-            tp_count[mask_tp] = np.arange(1, mask_tp.sum() + 1)
+        for iou_idx in range(n_ious):
+
+            mask_iou = data[:, 3] >= iou_thresholds[iou_idx]
+            mask = mask_score & mask_iou & mask_labels_match & mask_gt_exists
+            tp_candidates = data[mask]
+            _, indices_gt_unique = np.unique(
+                tp_candidates[:, [0, 1, 4]], axis=0, return_index=True
+            )
+            mask_gt_unique = np.zeros(tp_candidates.shape[0], dtype=bool)
+            mask_gt_unique[indices_gt_unique] = True
+            true_positives_mask = np.zeros(n_rows, dtype=bool)
+            true_positives_mask[mask] = mask_gt_unique
+
+            for pd_label in np.unique(pd_labels):
+                mask_pd_label = pd_labels == pd_label
+
+                # count ground truths
+                gt_count[iou_idx][mask_pd_label] = label_counts[pd_label][0]
+
+                # count total predictions
+                total_count[iou_idx][mask_pd_label] = np.arange(
+                    1, mask_pd_label.sum() + 1
+                )
+
+                # count tp
+                mask_tp = mask_pd_label & true_positives_mask
+                tp_count[iou_idx][mask_tp] = np.arange(1, mask_tp.sum() + 1)
+                average_recall[score_idx][pd_label] += (
+                    mask_tp.sum() / label_counts[pd_label][0]
+                )
 
         precision = np.divide(tp_count, total_count, where=total_count > 0)
         recall = np.divide(tp_count, gt_count, where=gt_count > 0)
         recall_index = np.floor(recall * 100.0).astype(int)
 
-        pr_curve[iou_idx, pd_labels, recall_index] = np.maximum(
-            pr_curve[iou_idx, pd_labels, recall_index], precision
-        )
+        for iou_idx in range(n_ious):
+            p = precision[iou_idx]
+            r = recall_index[iou_idx]
+            pr_curve[score_idx, iou_idx, pd_labels, r] = np.maximum(
+                pr_curve[score_idx, iou_idx, pd_labels, r], p
+            )
 
     # interpolate the PR-Curve
-    results = np.zeros((n_ious, n_labels))
-    running_max = np.zeros((n_ious, n_labels))
+    average_precision = np.zeros((n_scores, n_ious, n_labels))
+    running_max = np.zeros((n_scores, n_ious, n_labels))
     for recall in range(100, -1, -1):
-        precision = pr_curve[:, :, recall]
+        precision = pr_curve[:, :, :, recall]
         running_max = np.maximum(precision, running_max)
-        # print(recall, running_max)
-        results += running_max
-    return results / 101.0
+        average_precision += running_max
+    # return average_precision / 101.0
+
+    average_recall /= n_ious
+    return average_recall
 
 
 @numba.njit(parallel=False)
@@ -928,6 +1004,38 @@ class DetectionManager:
                         value=value,
                     )
                     for iou_idx, value in enumerate(metrics[:, row])
+                ],
+                label=self.index_to_label[label_idx],
+            )
+            for label_idx, row in enumerate(range(metrics.shape[1]))
+            if int(self._label_counts[label_idx][0]) > 0.0
+        ]
+
+    def compute_ar(
+        self,
+        iou_thresholds: list[float] = [0.5, 0.75, 0.9],
+        score_thresholds: list[float] = [0.0],
+    ) -> list[AR]:
+
+        if not self._lock:
+            raise RuntimeError("Data not finalized.")
+
+        metrics = _compute_average_recall(
+            data=self.detailed_pairs,
+            label_counts=self._label_counts,
+            iou_thresholds=np.array(iou_thresholds),
+            score_thresholds=np.array(score_thresholds),
+        )
+
+        return [
+            AR(
+                ious=iou_thresholds,
+                values=[
+                    ValueAtScore(
+                        score=score_thresholds[score_idx],
+                        value=value,
+                    )
+                    for score_idx, value in enumerate(metrics[:, row])
                 ],
                 label=self.index_to_label[label_idx],
             )

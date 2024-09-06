@@ -1,10 +1,10 @@
 import numpy as np
 from valor_lite import DetectionManager as Manager
 from valor_lite import schemas
-from valor_lite.detection import _compute_ap
+from valor_lite.detection import _compute_average_precision
 
 
-def test__compute_ap():
+def test__compute_average_precision():
 
     sorted_pairs = np.array(
         [
@@ -20,7 +20,7 @@ def test__compute_ap():
     label_counts = np.array([[1, 5]])
     iou_thresholds = np.array([0.1, 0.6])
 
-    results = _compute_ap(
+    results = _compute_average_precision(
         sorted_pairs,
         label_counts=label_counts,
         iou_thresholds=iou_thresholds,
