@@ -1,6 +1,6 @@
 import time
 from dataclasses import dataclass, field
-
+import polars as pl
 import pandas as pd
 from valor_core import classification, detection, enums, schemas, utilities
 
@@ -215,9 +215,9 @@ class ValorDetectionManager:
 
         for label, value in ids_per_label.items():
             if label in self.unique_groundtruth_labels.keys():
-                self.unique_groundtruth_labels[
-                    label
-                ] = self.unique_groundtruth_labels[label].union(value)
+                self.unique_groundtruth_labels[label] = (
+                    self.unique_groundtruth_labels[label].union(value)
+                )
             else:
                 self.unique_groundtruth_labels[label] = value
 
@@ -262,6 +262,7 @@ class ValorDetectionManager:
 
         metrics = detection.compute_detection_metrics(
             joint_df=self.joint_df,
+            pl_joint_df=pl.from_pandas(joint_df),
             detailed_joint_df=self.detailed_joint_df,
             metrics_to_return=self.metrics_to_return,
             iou_thresholds_to_compute=self.iou_thresholds_to_compute,
@@ -497,9 +498,9 @@ class ValorClassificationManager:
 
         for label, value in ids_per_label.items():
             if label in self.unique_groundtruth_labels.keys():
-                self.unique_groundtruth_labels[
-                    label
-                ] = self.unique_groundtruth_labels[label].union(value)
+                self.unique_groundtruth_labels[label] = (
+                    self.unique_groundtruth_labels[label].union(value)
+                )
             else:
                 self.unique_groundtruth_labels[label] = value
 
