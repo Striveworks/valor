@@ -8,7 +8,7 @@ from typing import Any
 import numpy as np
 import PIL.ImageDraw as ImageDraw
 from PIL import Image
-from valor_core import enums
+from valor_lite import enums
 
 
 def _generate_type_error(received_value: Any, expected_type: str):
