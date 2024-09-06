@@ -8,7 +8,7 @@ from typing import Any
 import numpy as np
 import PIL.ImageDraw as ImageDraw
 from PIL import Image
-from valor_core import enums, geometry
+from valor_core import enums
 
 
 def _generate_type_error(received_value: Any, expected_type: str):
@@ -168,8 +168,8 @@ def _validate_type_box(v: Any) -> None:
             "Boxes are defined by five points with the first and last being equal."
         )
 
-    if geometry.is_skewed(v[0]):
-        raise NotImplementedError("Skewed boxes are not implemented yet.")
+    # if geometry.is_skewed(v[0]):
+    #     raise NotImplementedError("Skewed boxes are not implemented yet.")
 
 
 def _validate_geojson(geojson: dict) -> None:
