@@ -1,12 +1,12 @@
 from collections import defaultdict
 from dataclasses import dataclass
+from enum import Enum
 from typing import Any
 
 import numba
 import numpy as np
 from tqdm import tqdm
 from valor_lite import schemas
-from valor_lite.enums import MetricType
 
 # datum id  0
 # gt        1
@@ -30,6 +30,20 @@ from valor_lite.enums import MetricType
 # gt label  4
 # pd label  5
 # score     6
+
+
+class MetricType(str, Enum):
+
+    Accuracy = ("Accuracy",)
+    Precision = ("Precision",)
+    Recall = ("Recall",)
+    AP = "AP"
+    AR = "AR"
+    mAP = "mAP"
+    mAR = "mAR"
+    APAveragedOverIOUs = "APAveragedOverIOUs"
+    mAPAveragedOverIOUs = "mAPAveragedOverIOUs"
+    PrecisionRecallCurve = "PrecisionRecallCurve"
 
 
 @dataclass

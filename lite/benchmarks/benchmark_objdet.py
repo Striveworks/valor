@@ -2,13 +2,21 @@ import json
 import os
 from dataclasses import dataclass
 from datetime import datetime
+from enum import Enum
 from pathlib import Path
 from time import time
 
 import requests
 from tqdm import tqdm
 from valor_lite import DetectionManager as Manager
-from valor_lite.enums import AnnotationType
+
+
+class AnnotationType(str, Enum):
+    NONE = "none"
+    BOX = "box"
+    POLYGON = "polygon"
+    MULTIPOLYGON = "multipolygon"
+    RASTER = "raster"
 
 
 def time_it(fn):
