@@ -65,23 +65,26 @@ class Detection:
 
 
 class MetricType(str, Enum):
-
-    Accuracy = ("Accuracy",)
-    Precision = ("Precision",)
-    Recall = ("Recall",)
+    TP = "TruePositiveCount"
+    FP = "FalsePositiveCount"
+    FN = "FalseNegativeCount"
+    Accuracy = "Accuracy"
+    Precision = "Precision"
+    Recall = "Recall"
+    F1 = "F1"
     AP = "AP"
     AR = "AR"
     mAP = "mAP"
     mAR = "mAR"
     APAveragedOverIOUs = "APAveragedOverIOUs"
     mAPAveragedOverIOUs = "mAPAveragedOverIOUs"
-    PrecisionRecallCurve = "PrecisionRecallCurve"
+    DetailedPrecisionRecallCurve = "DetailedPrecisionRecallCurve"
 
 
 @dataclass
 class Metric:
     type: str
-    value: float
+    value: float | dict
     parameters: dict
 
     def to_dict(self) -> dict:
@@ -90,6 +93,86 @@ class Metric:
             "value": self.value,
             "parameters": self.parameters,
         }
+
+
+@dataclass
+class CountingClassMetric:
+    value: int
+    label: tuple[str, str]
+    iou_threhsold: float
+    score_threshold: float
+
+    @property
+    def metric(self) -> Metric:
+        return Metric(
+            type=type(self).__name__,
+            value=self.value,
+            parameters={
+                "iou_threshold": self.iou_threhsold,
+                "score_threshold": self.score_threshold,
+                "label": {
+                    "key": self.label[0],
+                    "value": self.label[1],
+                },
+            },
+        )
+
+    def to_dict(self) -> dict:
+        return self.metric.to_dict()
+
+
+@dataclass
+class ClassMetric:
+    value: float
+    label: tuple[str, str]
+    iou_threhsold: float
+    score_threshold: float
+
+    @property
+    def metric(self) -> Metric:
+        return Metric(
+            type=type(self).__name__,
+            value=self.value,
+            parameters={
+                "iou_threshold": self.iou_threhsold,
+                "score_threshold": self.score_threshold,
+                "label": {
+                    "key": self.label[0],
+                    "value": self.label[1],
+                },
+            },
+        )
+
+    def to_dict(self) -> dict:
+        return self.metric.to_dict()
+
+
+class Precision(ClassMetric):
+    pass
+
+
+class Recall(ClassMetric):
+    pass
+
+
+class Accuracy(ClassMetric):
+    pass
+
+
+class F1(ClassMetric):
+    pass
+
+
+class TruePositiveCount(CountingClassMetric):
+    pass
+
+
+class FalsePositiveCount(CountingClassMetric):
+    pass
+
+
+class FalseNegativeCount(CountingClassMetric):
+    pass
 
 
 @dataclass
@@ -202,7 +285,7 @@ class CountWithExamples:
 
 
 @dataclass
-class PrecisionRecallCurvePoint:
+class DetailedPrecisionRecallPoint:
     score: float
     tp: CountWithExamples
     fp_misclassification: CountWithExamples
@@ -222,9 +305,9 @@ class PrecisionRecallCurvePoint:
 
 
 @dataclass
-class PrecisionRecallCurve:
+class DetailedPrecisionRecallCurve:
     iou: float
-    value: list[PrecisionRecallCurvePoint]
+    value: list[DetailedPrecisionRecallPoint]
     label: tuple[str, str]
 
     def to_dict(self) -> dict:
@@ -235,7 +318,7 @@ class PrecisionRecallCurve:
                 "key": self.label[0],
                 "value": self.label[1],
             },
-            "type": "PrecisionRecallCurve",
+            "type": "DetailedPrecisionRecallCurve",
         }
 
 
@@ -445,7 +528,7 @@ def _compute_ap_ar(
     label_counts: np.ndarray,
     iou_thresholds: np.ndarray,
     score_thresholds: np.ndarray,
-) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
 
     data = _compute_ranked_pairs(data, label_counts)
 
@@ -454,12 +537,10 @@ def _compute_ap_ar(
     n_ious = iou_thresholds.shape[0]
     n_scores = score_thresholds.shape[0]
 
-    mask_score_nonzero = data[:, 6] > 1e-9
-    mask_labels_match = np.isclose(data[:, 4], data[:, 5])
-    mask_gt_exists = data[:, 1] >= 0.0
-
-    pr_curve = np.zeros((n_ious, n_labels, 101))
+    average_precision = np.zeros((n_ious, n_labels))
     average_recall = np.zeros((n_scores, n_labels))
+    precision_recall = np.zeros((n_ious, n_scores, n_labels, 7))
+
     pd_labels = data[:, 5].astype(int)
     unique_pd_labels = np.unique(pd_labels)
     gt_count = label_counts[unique_pd_labels, 0]
@@ -469,6 +550,11 @@ def _compute_ap_ar(
     )
     running_tp_count = np.zeros_like(running_total_count)
     running_gt_count = np.zeros_like(running_total_count)
+    pr_curve = np.zeros((n_ious, n_labels, 101))
+
+    mask_score_nonzero = data[:, 6] > 1e-9
+    mask_labels_match = np.isclose(data[:, 4], data[:, 5])
+    mask_gt_exists = data[:, 1] >= 0.0
 
     for iou_idx in range(n_ious):
 
@@ -481,7 +567,7 @@ def _compute_ap_ar(
 
             mask_score_thresh = data[:, 6] >= score_thresholds[score_idx]
 
-            # create true-positive mask score treshold
+            # create true-positive mask score threshold
             tp_candidates = data[mask & mask_score_thresh]
             _, indices_gt_unique = np.unique(
                 tp_candidates[:, [0, 1, 4]], axis=0, return_index=True
@@ -491,12 +577,45 @@ def _compute_ap_ar(
             true_positives_mask = np.zeros(n_rows, dtype=bool)
             true_positives_mask[mask & mask_score_thresh] = mask_gt_unique
 
-            # calculate recall for AR
-            tp_count = np.bincount(pd_labels, weights=true_positives_mask)
+            # calculate intermediates
+            pd_count = np.bincount(pd_labels)
+            pd_count = pd_count[unique_pd_labels]
+            tp_count = np.bincount(
+                pd_labels,
+                weights=true_positives_mask,
+            )
             tp_count = tp_count[unique_pd_labels]
-            average_recall[score_idx][unique_pd_labels] += tp_count / gt_count
 
-        # create true-positive mask score treshold
+            # calculate component metrics
+            precision = tp_count / pd_count
+            recall = tp_count / gt_count
+            fp_count = pd_count - tp_count
+            fn_count = gt_count - tp_count
+            f1_score = np.divide(
+                np.multiply(precision, recall),
+                (precision + recall),
+                where=(precision + recall) > 1e-9,
+            )
+            accuracy = tp_count / (gt_count + pd_count)
+            precision_recall[iou_idx][score_idx][
+                unique_pd_labels
+            ] = np.concatenate(
+                (
+                    tp_count[:, np.newaxis],
+                    fp_count[:, np.newaxis],
+                    fn_count[:, np.newaxis],
+                    precision[:, np.newaxis],
+                    recall[:, np.newaxis],
+                    f1_score[:, np.newaxis],
+                    accuracy[:, np.newaxis],
+                ),
+                axis=1,
+            )
+
+            # calculate recall for AR
+            average_recall[score_idx][unique_pd_labels] += recall
+
+        # create true-positive mask score threshold
         tp_candidates = data[mask]
         _, indices_gt_unique = np.unique(
             tp_candidates[:, [0, 1, 4]], axis=0, return_index=True
@@ -536,7 +655,6 @@ def _compute_ap_ar(
         )
 
     # calculate average precision
-    average_precision = np.zeros((n_ious, n_labels))
     running_max = np.zeros((n_ious, n_labels))
     for recall in range(100, -1, -1):
         precision = pr_curve[:, :, recall]
@@ -557,7 +675,13 @@ def _compute_ap_ar(
         mAP[:, key_idx] = average_precision[:, labels].mean(axis=1)
         mAR[:, key_idx] = average_recall[:, labels].mean(axis=1)
 
-    return average_precision, average_recall, mAP, mAR
+    return (
+        average_precision,
+        average_recall,
+        mAP,
+        mAR,
+        precision_recall,
+    )
 
 
 def _compute_pr_curve(
@@ -665,12 +789,6 @@ def _compute_pr_curve(
             detailed_pr_curve[
                 iou_idx, score_idx, :, fn_misprd_idx
             ] = fn_misprd_count
-
-            # tp_examples = tp_slice[:n_samples, 0]
-            # fp_misclf_examples = fp_misclf_slice[:n_samples, 0]
-            # fp_halluc_examples = fp_halluc_slice[:n_samples, 0]
-            # fn_misclf_examples = fn_misclf_slice[:n_samples, 0]
-            # fn_misprd_examples = fn_misprd_slice[:n_samples, 0]
 
             if n_samples > 0:
                 for label_idx in range(n_labels):
@@ -1331,7 +1449,7 @@ class Manager:
             score / 100.0 for score in range(1, 101)
         ],
         n_samples: int = 0,
-    ) -> list[PrecisionRecallCurve]:
+    ) -> list[DetailedPrecisionRecallCurve]:
         if not self._lock:
             raise RuntimeError("Data not finalized.")
 
@@ -1353,14 +1471,14 @@ class Manager:
         for label_idx in range(len(metrics)):
             n_ious, n_scores, _, _ = metrics.shape
             for iou_idx in range(n_ious):
-                curve = PrecisionRecallCurve(
+                curve = DetailedPrecisionRecallCurve(
                     iou=iou_thresholds[iou_idx],
                     value=list(),
                     label=self.index_to_label[label_idx],
                 )
                 for score_idx in range(n_scores):
                     curve.value.append(
-                        PrecisionRecallCurvePoint(
+                        DetailedPrecisionRecallPoint(
                             score=(score_idx + 1) / 100.0,
                             tp=CountWithExamples(
                                 value=metrics[iou_idx][score_idx][label_idx][
@@ -1437,7 +1555,7 @@ class Manager:
         self,
         iou_thresholds: list[float] = [0.5, 0.75, 0.9],
         score_thresholds: list[float] = [0.0],
-    ) -> dict[MetricType, list[AP] | list[AR] | list[mAP] | list[mAR]]:
+    ) -> dict[MetricType, list]:
 
         if not self._lock:
             raise RuntimeError("Data not finalized.")
@@ -1447,6 +1565,7 @@ class Manager:
             average_recall,
             mean_average_precision,
             mean_average_recall,
+            precision_recall,
         ) = _compute_ap_ar(
             data=self.detailed_pairs,
             label_counts=self._label_cache,
@@ -1454,7 +1573,9 @@ class Manager:
             score_thresholds=np.array(score_thresholds),
         )
 
-        ap_metrics = [
+        metrics = defaultdict(list)
+
+        metrics[MetricType.AP] = [
             AP(
                 value=value,
                 iou_threshold=iou_thresholds[iou_idx],
@@ -1465,7 +1586,7 @@ class Manager:
             for iou_idx, value in enumerate(average_precision[:, row])
         ]
 
-        map_metrics = [
+        metrics[MetricType.mAP] = [
             mAP(
                 value=value,
                 iou_threshold=iou_thresholds[iou_idx],
@@ -1478,7 +1599,7 @@ class Manager:
             for iou_idx, value in enumerate(mean_average_precision[:, row])
         ]
 
-        ar_metrics = [
+        metrics[MetricType.AR] = [
             AR(
                 value=value,
                 ious=iou_thresholds,
@@ -1490,7 +1611,7 @@ class Manager:
             for score_idx, value in enumerate(average_recall[:, row])
         ]
 
-        mar_metrics = [
+        metrics[MetricType.mAR] = [
             mAR(
                 value=value,
                 ious=iou_thresholds,
@@ -1504,12 +1625,59 @@ class Manager:
             for score_idx, value in enumerate(mean_average_recall[:, row])
         ]
 
-        return {
-            MetricType.AP: ap_metrics,
-            MetricType.mAP: map_metrics,
-            MetricType.AR: ar_metrics,
-            MetricType.mAR: mar_metrics,
-        }
+        for iou_idx, iou_threshold in enumerate(iou_thresholds):
+            for score_idx, score_threshold in enumerate(score_thresholds):
+                for label_idx, label in self.index_to_label.items():
+                    row = precision_recall[iou_idx][score_idx][label_idx]
+                    kwargs = {
+                        "label": label,
+                        "iou_threhsold": iou_threshold,
+                        "score_threshold": score_threshold,
+                    }
+                    metrics[MetricType.TP].append(
+                        TruePositiveCount(
+                            value=int(row[0]),
+                            **kwargs,
+                        )
+                    )
+                    metrics[MetricType.FP].append(
+                        FalsePositiveCount(
+                            value=int(row[1]),
+                            **kwargs,
+                        )
+                    )
+                    metrics[MetricType.FN].append(
+                        FalseNegativeCount(
+                            value=int(row[2]),
+                            **kwargs,
+                        )
+                    )
+                    metrics[MetricType.Precision].append(
+                        Precision(
+                            value=row[3],
+                            **kwargs,
+                        )
+                    )
+                    metrics[MetricType.Recall].append(
+                        Recall(
+                            value=row[4],
+                            **kwargs,
+                        )
+                    )
+                    metrics[MetricType.F1].append(
+                        F1(
+                            value=row[5],
+                            **kwargs,
+                        )
+                    )
+                    metrics[MetricType.Accuracy].append(
+                        Accuracy(
+                            value=row[6],
+                            **kwargs,
+                        )
+                    )
+
+        return metrics
 
     def benchmark_iou(self):
         if not self.pairs:
