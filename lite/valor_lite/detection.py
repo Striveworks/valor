@@ -561,11 +561,12 @@ def _compute_ap_ar(
 
 
 def _compute_pr_curve(
-    data: list[np.ndarray],
+    data: np.ndarray,
     label_counts: np.ndarray,
     iou_thresholds: np.ndarray,
+    score_thresholds: np.ndarray,
     n_samples: int,
-) -> list[np.ndarray]:
+) -> np.ndarray:
 
     """
     0  label
@@ -577,120 +578,162 @@ def _compute_pr_curve(
     5  fn - hallucination
     """
 
+    n_rows = data.shape[0]
+    n_labels = label_counts.shape[0]
     n_ious = iou_thresholds.shape[0]
+    n_scores = score_thresholds.shape[0]
+    n_metrics = 5 * (n_samples + 1)
 
-    w = 5 * (n_samples + 1) + 1
-    tp_idx = 1
+    tp_idx = 0
     fp_misclf_idx = tp_idx + n_samples + 1
-    fp_hall_idx = fp_misclf_idx + n_samples + 1
-    fn_misclf_idx = fp_hall_idx + n_samples + 1
+    fp_halluc_idx = fp_misclf_idx + n_samples + 1
+    fn_misclf_idx = fp_halluc_idx + n_samples + 1
     fn_misprd_idx = fn_misclf_idx + n_samples + 1
 
-    results = [
-        np.empty((len(iou_thresholds), 100, w)) for i in range(len(data))
-    ]
-    for label_idx in range(len(data)):
-        result = np.zeros((len(iou_thresholds), 100, w))
-        datum = data[label_idx]
-        n_rows = datum.shape[0]
-        for iou_idx in range(n_ious):
-            for score_idx in range(100):
+    detailed_pr_curve = np.ones((n_ious, n_scores, n_labels, n_metrics)) * -1.0
 
-                examples = np.ones((5, n_samples)) * -1.0
-                tp_example_idx = 0
-                fp_misclf_example_idx = 0
-                fp_halluc_example_idx = 0
-                fn_misclf_example_idx = 0
-                fn_misprd_example_idx = 0
+    mask_gt_exists = data[:, 1] > -0.5
+    mask_pd_exists = data[:, 2] > -0.5
+    mask_label_match = np.isclose(data[:, 4], data[:, 5])
 
-                score_threshold = (score_idx + 1) / 100.0
-                tp, fp_misclf, fp_hall, fn_misclf, fn_misprd = 0, 0, 0, 0, 0
-                for row in range(n_rows):
+    for iou_idx in range(n_ious):
+        mask_iou = data[:, 3] >= iou_thresholds[iou_idx]
 
-                    gt_exists = datum[row][1] > -0.5
-                    pd_exists = datum[row][2] > -0.5
-                    iou = datum[row][3]
-                    gt_label = int(datum[row][4])
-                    pd_label = int(datum[row][5])
-                    score = datum[row][6]
+        for score_idx in range(n_scores):
+            mask_score = data[:, 6] >= score_thresholds[score_idx]
 
-                    tp_conditional = (
-                        gt_exists
-                        and pd_exists
-                        and iou >= iou_thresholds[iou_idx]
-                        and score >= score_threshold
-                        and gt_label == pd_label
-                        and gt_label == label_idx
-                    )
-                    fp_misclf_conditional = (
-                        gt_exists
-                        and pd_exists
-                        and iou >= iou_thresholds[iou_idx]
-                        and score >= score_threshold
-                        and gt_label != pd_label
-                        and pd_label == label_idx
-                    )
-                    fn_misclf_conditional = (
-                        gt_exists
-                        and pd_exists
-                        and iou >= iou_thresholds[iou_idx]
-                        and score <= score_threshold
-                        and gt_label == pd_label
-                        and gt_label == label_idx
-                    )
+            mask_tp = (
+                mask_gt_exists
+                & mask_pd_exists
+                & mask_iou
+                & mask_score
+                & mask_label_match
+            )
+            mask_fp_misclf = (
+                mask_gt_exists
+                & mask_pd_exists
+                & mask_iou
+                & mask_score
+                & ~mask_label_match
+            )
+            mask_fn_misclf = (
+                mask_gt_exists
+                & mask_pd_exists
+                & mask_iou
+                & ~mask_score
+                & mask_label_match
+            )
+            mask_fp_halluc = (
+                ~(mask_tp | mask_fp_misclf | mask_fn_misclf) & mask_pd_exists
+            )
+            mask_fn_misprd = (
+                ~(mask_tp | mask_fp_misclf | mask_fn_misclf) & mask_gt_exists
+            )
 
-                    if tp_conditional:
-                        tp += 1
-                        if tp_example_idx < n_samples:
-                            examples[0][tp_example_idx] = datum[row][0]
-                            tp_example_idx += 1
-                    elif fp_misclf_conditional:
-                        fp_misclf += 1
-                        if fp_misclf_example_idx < n_samples:
-                            examples[1][fp_misclf_example_idx] = datum[row][0]
-                            fp_misclf_example_idx += 1
-                    elif fn_misclf_conditional:
-                        fn_misclf += 1
-                        if fn_misclf_example_idx < n_samples:
-                            examples[3][fn_misclf_example_idx] = datum[row][0]
-                            fn_misclf_example_idx += 1
-                    elif pd_exists:
-                        fp_hall += 1
-                        if fp_halluc_example_idx < n_samples:
-                            examples[2][fp_halluc_example_idx] = datum[row][0]
-                            fp_halluc_example_idx += 1
-                    elif gt_exists:
-                        fn_misprd += 1
-                        if fn_misprd_example_idx < n_samples:
-                            examples[4][fn_misprd_example_idx] = datum[row][0]
-                            fn_misprd_example_idx += 1
+            tp_slice = data[mask_tp]
+            fp_misclf_slice = data[mask_fp_misclf]
+            fp_halluc_slice = data[mask_fp_halluc]
+            fn_misclf_slice = data[mask_fn_misclf]
+            fn_misprd_slice = data[mask_fn_misprd]
 
-                result[iou_idx][score_idx][0] = label_idx
-                result[iou_idx][score_idx][tp_idx] = tp
-                result[iou_idx][score_idx][fp_misclf_idx] = fp_misclf
-                result[iou_idx][score_idx][fp_hall_idx] = fp_hall
-                result[iou_idx][score_idx][fn_misclf_idx] = fn_misclf
-                result[iou_idx][score_idx][fn_misprd_idx] = fn_misprd
+            tp_count = np.bincount(
+                tp_slice[:, 5].astype(int), minlength=n_labels
+            )
+            fp_misclf_count = np.bincount(
+                fp_misclf_slice[:, 5].astype(int), minlength=n_labels
+            )
+            fp_halluc_count = np.bincount(
+                fp_halluc_slice[:, 5].astype(int), minlength=n_labels
+            )
+            fn_misclf_count = np.bincount(
+                fn_misclf_slice[:, 4].astype(int), minlength=n_labels
+            )
+            fn_misprd_count = np.bincount(
+                fn_misprd_slice[:, 4].astype(int), minlength=n_labels
+            )
 
-                if n_samples > 0:
-                    result[iou_idx][score_idx][
-                        tp_idx + 1 : fp_misclf_idx
-                    ] = examples[0]
-                    result[iou_idx][score_idx][
-                        fp_misclf_idx + 1 : fp_hall_idx
-                    ] = examples[1]
-                    result[iou_idx][score_idx][
-                        fp_hall_idx + 1 : fn_misclf_idx
-                    ] = examples[2]
-                    result[iou_idx][score_idx][
-                        fn_misclf_idx + 1 : fn_misprd_idx
-                    ] = examples[3]
-                    result[iou_idx][score_idx][fn_misprd_idx + 1 :] = examples[
-                        4
-                    ]
+            detailed_pr_curve[iou_idx, score_idx, :, tp_idx] = tp_count
+            detailed_pr_curve[
+                iou_idx, score_idx, :, fp_misclf_idx
+            ] = fp_misclf_count
+            detailed_pr_curve[
+                iou_idx, score_idx, :, fp_halluc_idx
+            ] = fp_halluc_count
+            detailed_pr_curve[
+                iou_idx, score_idx, :, fn_misclf_idx
+            ] = fn_misclf_count
+            detailed_pr_curve[
+                iou_idx, score_idx, :, fn_misprd_idx
+            ] = fn_misprd_count
 
-        results[label_idx] = result
-    return results
+            # tp_examples = tp_slice[:n_samples, 0]
+            # fp_misclf_examples = fp_misclf_slice[:n_samples, 0]
+            # fp_halluc_examples = fp_halluc_slice[:n_samples, 0]
+            # fn_misclf_examples = fn_misclf_slice[:n_samples, 0]
+            # fn_misprd_examples = fn_misprd_slice[:n_samples, 0]
+
+            if n_samples > 0:
+                for label_idx in range(n_labels):
+                    tp_examples = tp_slice[
+                        tp_slice[:, 5].astype(int) == label_idx
+                    ][:n_samples, 0]
+                    fp_misclf_examples = fp_misclf_slice[
+                        fp_misclf_slice[:, 5].astype(int) == label_idx
+                    ][:n_samples, 0]
+                    fp_halluc_examples = fp_halluc_slice[
+                        fp_halluc_slice[:, 5].astype(int) == label_idx
+                    ][:n_samples, 0]
+                    fn_misclf_examples = fn_misclf_slice[
+                        fn_misclf_slice[:, 4].astype(int) == label_idx
+                    ][:n_samples, 0]
+                    fn_misprd_examples = fn_misprd_slice[
+                        fn_misprd_slice[:, 4].astype(int) == label_idx
+                    ][:n_samples, 0]
+
+                    detailed_pr_curve[
+                        iou_idx,
+                        score_idx,
+                        label_idx,
+                        tp_idx + 1 : tp_idx + 1 + tp_examples.shape[0],
+                    ] = tp_examples
+                    detailed_pr_curve[
+                        iou_idx,
+                        score_idx,
+                        label_idx,
+                        fp_misclf_idx
+                        + 1 : fp_misclf_idx
+                        + 1
+                        + fp_misclf_examples.shape[0],
+                    ] = fp_misclf_examples
+                    detailed_pr_curve[
+                        iou_idx,
+                        score_idx,
+                        label_idx,
+                        fp_halluc_idx
+                        + 1 : fp_halluc_idx
+                        + 1
+                        + fp_halluc_examples.shape[0],
+                    ] = fp_halluc_examples
+                    detailed_pr_curve[
+                        iou_idx,
+                        score_idx,
+                        label_idx,
+                        fn_misclf_idx
+                        + 1 : fn_misclf_idx
+                        + 1
+                        + fn_misclf_examples.shape[0],
+                    ] = fn_misclf_examples
+                    detailed_pr_curve[
+                        iou_idx,
+                        score_idx,
+                        label_idx,
+                        fn_misprd_idx
+                        + 1 : fn_misprd_idx
+                        + 1
+                        + fn_misprd_examples.shape[0],
+                    ] = fn_misprd_examples
+
+    return detailed_pr_curve
 
 
 def _get_bbox_extrema(
@@ -1284,42 +1327,31 @@ class Manager:
     def compute_pr_curve(
         self,
         iou_thresholds: list[float] = [0.5],
+        score_thresholds: list[float] = [
+            score / 100.0 for score in range(1, 101)
+        ],
         n_samples: int = 0,
     ) -> list[PrecisionRecallCurve]:
         if not self._lock:
             raise RuntimeError("Data not finalized.")
 
-        # indices = np.lexsort(
-        #     (
-        #         self.detailed_pairs[:, 1],
-        #         -self.detailed_pairs[:, 3],
-        #         -self.detailed_pairs[:, 6],
-        #     )
-        # )
-        # data = self.detailed_pairs[indices]
-        data = self.detailed_pairs
-
-        pairs_sorted_by_label = [
-            data[(data[:, 4] == label_id) | (data[:, 5] == label_id)]
-            for label_id in range(len(self.index_to_label))
-        ]
-
         metrics = _compute_pr_curve(
-            pairs_sorted_by_label,
+            self.detailed_pairs,
             label_counts=self._label_cache,
             iou_thresholds=np.array(iou_thresholds),
+            score_thresholds=np.array(score_thresholds),
             n_samples=n_samples,
         )
 
-        tp_idx = 1
+        tp_idx = 0
         fp_misclf_idx = tp_idx + n_samples + 1
-        fp_hall_idx = fp_misclf_idx + n_samples + 1
-        fn_misclf_idx = fp_hall_idx + n_samples + 1
+        fp_halluc_idx = fp_misclf_idx + n_samples + 1
+        fn_misclf_idx = fp_halluc_idx + n_samples + 1
         fn_misprd_idx = fn_misclf_idx + n_samples + 1
 
         results = list()
         for label_idx in range(len(metrics)):
-            n_ious, n_scores, _ = metrics[label_idx].shape
+            n_ious, n_scores, _, _ = metrics.shape
             for iou_idx in range(n_ious):
                 curve = PrecisionRecallCurve(
                     iou=iou_thresholds[iou_idx],
@@ -1331,68 +1363,68 @@ class Manager:
                         PrecisionRecallCurvePoint(
                             score=(score_idx + 1) / 100.0,
                             tp=CountWithExamples(
-                                value=metrics[label_idx][iou_idx][score_idx][
+                                value=metrics[iou_idx][score_idx][label_idx][
                                     tp_idx
                                 ],
                                 examples=[
                                     self.index_to_uid[int(datum_idx)]
-                                    for datum_idx in metrics[label_idx][
-                                        iou_idx
-                                    ][score_idx][tp_idx + 1 : fp_misclf_idx]
+                                    for datum_idx in metrics[iou_idx][
+                                        score_idx
+                                    ][label_idx][tp_idx + 1 : fp_misclf_idx]
                                     if int(datum_idx) >= 0
                                 ],
                             ),
                             fp_misclassification=CountWithExamples(
-                                value=metrics[label_idx][iou_idx][score_idx][
+                                value=metrics[iou_idx][score_idx][label_idx][
                                     fp_misclf_idx
                                 ],
                                 examples=[
                                     self.index_to_uid[int(datum_idx)]
-                                    for datum_idx in metrics[label_idx][
-                                        iou_idx
-                                    ][score_idx][
-                                        fp_misclf_idx + 1 : fp_hall_idx
+                                    for datum_idx in metrics[iou_idx][
+                                        score_idx
+                                    ][label_idx][
+                                        fp_misclf_idx + 1 : fp_halluc_idx
                                     ]
                                     if int(datum_idx) >= 0
                                 ],
                             ),
                             fp_hallucination=CountWithExamples(
-                                value=metrics[label_idx][iou_idx][score_idx][
-                                    fp_hall_idx
+                                value=metrics[iou_idx][score_idx][label_idx][
+                                    fp_halluc_idx
                                 ],
                                 examples=[
                                     self.index_to_uid[int(datum_idx)]
-                                    for datum_idx in metrics[label_idx][
-                                        iou_idx
-                                    ][score_idx][
-                                        fp_hall_idx + 1 : fn_misclf_idx
+                                    for datum_idx in metrics[iou_idx][
+                                        score_idx
+                                    ][label_idx][
+                                        fp_halluc_idx + 1 : fn_misclf_idx
                                     ]
                                     if int(datum_idx) >= 0
                                 ],
                             ),
                             fn_misclassification=CountWithExamples(
-                                value=metrics[label_idx][iou_idx][score_idx][
+                                value=metrics[iou_idx][score_idx][label_idx][
                                     fn_misclf_idx
                                 ],
                                 examples=[
                                     self.index_to_uid[int(datum_idx)]
-                                    for datum_idx in metrics[label_idx][
-                                        iou_idx
-                                    ][score_idx][
+                                    for datum_idx in metrics[iou_idx][
+                                        score_idx
+                                    ][label_idx][
                                         fn_misclf_idx + 1 : fn_misprd_idx
                                     ]
                                     if int(datum_idx) >= 0
                                 ],
                             ),
                             fn_missing_prediction=CountWithExamples(
-                                value=metrics[label_idx][iou_idx][score_idx][
+                                value=metrics[iou_idx][score_idx][label_idx][
                                     fn_misprd_idx
                                 ],
                                 examples=[
                                     self.index_to_uid[int(datum_idx)]
-                                    for datum_idx in metrics[label_idx][
-                                        iou_idx
-                                    ][score_idx][fn_misprd_idx + 1 :]
+                                    for datum_idx in metrics[iou_idx][
+                                        score_idx
+                                    ][label_idx][fn_misprd_idx + 1 :]
                                     if int(datum_idx) >= 0
                                 ],
                             ),

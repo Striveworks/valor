@@ -252,6 +252,12 @@ def run_benchmarking_analysis(
                     f"Base precomputation timed out with limit of {limit}."
                 )
 
+            # test detailed pr curve
+            detailed_pr_curve_time, _ = time_it(
+                manager.compute_pr_curve
+            )()  # (score_thresholds=[0.1,0.5,0.9])
+            print(round(detailed_pr_curve_time, 5), "seconds")
+
             # evaluate
             eval_time, _ = time_it(manager.evaluate)()
             if eval_time > evaluation_timeout and evaluation_timeout != -1:
