@@ -1,5 +1,5 @@
 import pytest
-from valor_core import enums
+from valor_lite.detection import MetricType
 
 
 @pytest.fixture
@@ -937,12 +937,12 @@ def evaluate_detection_expected():
         "parameters": {
             "label_map": {},
             "metrics_to_return": [
-                enums.MetricType.AP,
-                enums.MetricType.AR,
-                enums.MetricType.mAP,
-                enums.MetricType.APAveragedOverIOUs,
-                enums.MetricType.mAR,
-                enums.MetricType.mAPAveragedOverIOUs,
+                MetricType.AP,
+                MetricType.AR,
+                MetricType.mAP,
+                MetricType.APAveragedOverIOUs,
+                MetricType.mAR,
+                MetricType.mAPAveragedOverIOUs,
             ],
             "iou_thresholds_to_compute": [0.1, 0.6],
             "iou_thresholds_to_return": [0.1, 0.6],

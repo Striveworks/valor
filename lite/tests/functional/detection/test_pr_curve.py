@@ -1,8 +1,8 @@
 import numpy as np
-from valor_lite.detection import Manager, _compute_detailed_pr_curve
+from valor_lite.detection import Manager, _compute_pr_curve
 
 
-def test__compute_detailed_pr_curve():
+def test__compute_pr_curve():
     sorted_pairs = np.array(
         [
             # dt,  gt,  pd,  iou,  gl,  pl, score,
@@ -14,7 +14,7 @@ def test__compute_detailed_pr_curve():
         ]
     )
 
-    results = _compute_detailed_pr_curve(
+    results = _compute_pr_curve(
         data=[sorted_pairs],
         label_counts=np.array([[1, 5]]),
         iou_thresholds=np.array([0.5]),
@@ -74,7 +74,7 @@ def test__compute_detailed_pr_curve():
     ... examples
     """
 
-    results = _compute_detailed_pr_curve(
+    results = _compute_pr_curve(
         data=[sorted_pairs],
         label_counts=np.array([[1, 5]]),
         iou_thresholds=np.array([0.5]),

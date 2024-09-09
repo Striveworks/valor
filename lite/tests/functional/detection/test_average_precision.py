@@ -1,5 +1,4 @@
 import numpy as np
-from valor_lite import schemas
 from valor_lite.detection import (
     Manager,
     MetricType,
@@ -49,15 +48,13 @@ def test_ap_using_torch_metrics_example(
     https://github.com/Lightning-AI/metrics/blob/107dbfd5fb158b7ae6d76281df44bd94c836bfce/tests/unittests/detection/test_map.py#L231
     """
     manager = Manager()
-    manager.add_data(
+    manager.add_data_from_valor_core(
         groundtruths=evaluate_detection_functional_test_groundtruths,
         predictions=evaluate_detection_functional_test_predictions,
     )
     manager.finalize()
 
-    assert manager.ignored_prediction_labels == [
-        schemas.Label(key="class", value="3")
-    ]
+    assert manager.ignored_prediction_labels == [("class", "3")]
     assert manager.missing_prediction_labels == []
     assert manager.n_datums == 4
     assert manager.n_labels == 6
@@ -181,7 +178,7 @@ def test_ap_metrics(
     """
 
     manager = Manager()
-    manager.add_data(
+    manager.add_data_from_valor_core(
         groundtruths=evaluate_detection_groundtruths,
         predictions=evaluate_detection_predictions,
     )
@@ -254,7 +251,7 @@ def test_evaluate_detection_false_negatives_single_image_baseline(
     ) = evaluate_detection_false_negatives_single_image_baseline_inputs
 
     manager = Manager()
-    manager.add_data(
+    manager.add_data_from_valor_core(
         groundtruths=groundtruths,
         predictions=predictions,
     )
@@ -289,7 +286,7 @@ def test_evaluate_detection_false_negatives_single_image(
     ) = evaluate_detection_false_negatives_single_image_inputs
 
     manager = Manager()
-    manager.add_data(
+    manager.add_data_from_valor_core(
         groundtruths=groundtruths,
         predictions=predictions,
     )
@@ -328,7 +325,7 @@ def test_evaluate_detection_false_negatives_two_images_one_empty_low_confidence_
     ) = evaluate_detection_false_negatives_two_images_one_empty_low_confidence_of_fp_inputs
 
     manager = Manager()
-    manager.add_data(
+    manager.add_data_from_valor_core(
         groundtruths=groundtruths,
         predictions=predictions,
     )
@@ -365,7 +362,7 @@ def test_evaluate_detection_false_negatives_two_images_one_empty_high_confidence
     ) = evaluate_detection_false_negatives_two_images_one_empty_high_confidence_of_fp_inputs
 
     manager = Manager()
-    manager.add_data(
+    manager.add_data_from_valor_core(
         groundtruths=groundtruths,
         predictions=predictions,
     )
@@ -402,7 +399,7 @@ def test_evaluate_detection_false_negatives_two_images_one_only_with_different_c
         predictions,
     ) = evaluate_detection_false_negatives_two_images_one_only_with_different_class_low_confidence_of_fp_inputs
     manager = Manager()
-    manager.add_data(
+    manager.add_data_from_valor_core(
         groundtruths=groundtruths,
         predictions=predictions,
     )
@@ -459,7 +456,7 @@ def test_evaluate_detection_false_negatives_two_images_one_only_with_different_c
     ) = evaluate_detection_false_negatives_two_images_one_only_with_different_class_high_confidence_of_fp_inputs
 
     manager = Manager()
-    manager.add_data(
+    manager.add_data_from_valor_core(
         groundtruths=groundtruths,
         predictions=predictions,
     )

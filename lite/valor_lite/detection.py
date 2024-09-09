@@ -3,25 +3,26 @@ from dataclasses import dataclass
 from enum import Enum
 from typing import Any
 
-import numba
 import numpy as np
 from tqdm import tqdm
 from valor_lite import schemas
 
-# datum id  0
-# gt        1
-# pd        2
-# gt xmin   3
-# gt xmax   4
-# gt ymin   5
-# gt ymax   6
-# pd xmin   7
-# pd xmax   8
-# pd ymin   9
-# pd ymax   10
-# gt label  11
-# pd label  12
-# pd score  13
+"""
+Usage
+-----
+
+manager = Manager()
+manager.add_data(
+    groundtruths=groundtruths,
+    predictions=predictions,
+)
+manager.finalize()
+
+metrics = manager.evaluate(iou_thresholds=[0.5])
+
+ap_metrics = metrics[MetricType.AP]
+ar_metrics = metrics[MetricType.AR]
+"""
 
 # datum id  0
 # gt        1
@@ -30,6 +31,37 @@ from valor_lite import schemas
 # gt label  4
 # pd label  5
 # score     6
+
+
+@dataclass
+class BoundingBox:
+    xmin: float
+    xmax: float
+    ymin: float
+    ymax: float
+    labels: list[tuple[str, str]]
+    scores: list[float] | None = None
+
+    def __post_init__(self):
+        if self.scores is not None:
+            if len(self.labels) != len(self.scores):
+                raise ValueError
+
+    @property
+    def extrema(self) -> tuple[float, float, float, float]:
+        return (self.xmin, self.xmax, self.ymin, self.ymax)
+
+
+@dataclass
+class Detection:
+    uid: str
+    groundtruths: list[BoundingBox]
+    predictions: list[BoundingBox]
+
+    def __post_init__(self):
+        for prediction in self.predictions:
+            if prediction.scores is None:
+                raise ValueError
 
 
 class MetricType(str, Enum):
@@ -528,8 +560,7 @@ def _compute_ap_ar(
     return average_precision, average_recall, mAP, mAR
 
 
-@numba.njit(parallel=False)
-def _compute_detailed_pr_curve(
+def _compute_pr_curve(
     data: list[np.ndarray],
     label_counts: np.ndarray,
     iou_thresholds: np.ndarray,
@@ -558,7 +589,7 @@ def _compute_detailed_pr_curve(
     results = [
         np.empty((len(iou_thresholds), 100, w)) for i in range(len(data))
     ]
-    for label_idx in numba.prange(len(data)):
+    for label_idx in range(len(data)):
         result = np.zeros((len(iou_thresholds), 100, w))
         datum = data[label_idx]
         n_rows = datum.shape[0]
@@ -731,27 +762,19 @@ class Manager:
         return super().__setattr__(__name, __value)
 
     @property
-    def ignored_prediction_labels(self) -> list[schemas.Label]:
+    def ignored_prediction_labels(self) -> list[tuple[str, str]]:
         glabels = set(self.gt_counts.keys())
         plabels = set(self.pd_counts.keys())
         return [
-            schemas.Label(
-                key=self.index_to_label[idx][0],
-                value=self.index_to_label[idx][1],
-            )
-            for idx in (plabels - glabels)
+            self.index_to_label[label_id] for label_id in (plabels - glabels)
         ]
 
     @property
-    def missing_prediction_labels(self) -> list[schemas.Label]:
+    def missing_prediction_labels(self) -> list[tuple[str, str]]:
         glabels = set(self.gt_counts.keys())
         plabels = set(self.pd_counts.keys())
         return [
-            schemas.Label(
-                key=self.index_to_label[idx][0],
-                value=self.index_to_label[idx][1],
-            )
-            for idx in (glabels - plabels)
+            self.index_to_label[label_id] for label_id in (glabels - plabels)
         ]
 
     @property
@@ -766,6 +789,147 @@ class Manager:
         }
 
     def add_data(
+        self,
+        detections: list[Detection],
+    ):
+        for detection in tqdm(detections):
+
+            # update datum uids
+            uid = detection.uid
+            if uid not in self.uid_to_index:
+                index = len(self.uid_to_index)
+                self.uid_to_index[uid] = index
+                self.index_to_uid[index] = uid
+            uid_index = self.uid_to_index[uid]
+
+            # update labels
+            glabels = [
+                glabel
+                for gann in detection.groundtruths
+                for glabel in gann.labels
+            ]
+            glabels_set = set(glabels)
+
+            plabels = [
+                plabel
+                for pann in detection.predictions
+                for plabel in pann.labels
+            ]
+            plabels_set = set(plabels)
+
+            label_id = len(self.index_to_label)
+            label_key_id = len(self.index_to_label_key)
+            for label in glabels_set.union(plabels_set):
+                if label not in self.label_to_index:
+                    self.label_to_index[label] = label_id
+                    self.index_to_label[label_id] = label
+
+                    # update label key index
+                    if label[0] not in self.label_key_to_index:
+                        self.label_key_to_index[label[0]] = label_key_id
+                        self.index_to_label_key[label_key_id] = label[0]
+                        label_key_id += 1
+
+                    self.label_index_to_label_key_index[
+                        label_id
+                    ] = self.label_key_to_index[label[0]]
+                    label_id += 1
+
+            # count label occurences
+            for item in glabels_set:
+                self.gt_counts[self.label_to_index[item]] += glabels.count(
+                    item
+                )
+            for item in plabels_set:
+                self.pd_counts[self.label_to_index[item]] += plabels.count(
+                    item
+                )
+
+            # populate numpy array
+            if detection.groundtruths and detection.predictions:
+                new_data = np.array(
+                    [
+                        [
+                            float(uid_index),
+                            float(gidx),
+                            float(pidx),
+                            *gann.extrema,
+                            *pann.extrema,
+                            float(self.label_to_index[glabel]),
+                            float(self.label_to_index[plabel]),
+                            float(pscore),
+                        ]
+                        for pidx, pann in enumerate(detection.predictions)
+                        for plabel, pscore in zip(pann.labels, pann.scores)
+                        for gidx, gann in enumerate(detection.groundtruths)
+                        for glabel in gann.labels
+                    ]
+                )
+            elif detection.groundtruths:
+                new_data = np.array(
+                    [
+                        [
+                            float(uid_index),
+                            float(gidx),
+                            -1.0,
+                            *gann.extrema,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            float(self.label_to_index[glabel]),
+                            -1.0,
+                            -1.0,
+                        ]
+                        for gidx, gann in enumerate(detection.groundtruths)
+                        for glabel in gann.labels
+                    ]
+                )
+            elif detection.predictions:
+                new_data = np.array(
+                    [
+                        [
+                            float(uid_index),
+                            -1.0,
+                            float(pidx),
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            *pann.extrema,
+                            -1.0,
+                            float(self.label_to_index[plabel]),
+                            float(pscore),
+                        ]
+                        for pidx, pann in enumerate(detection.predictions)
+                        for plabel, pscore in zip(pann.labels, pann.scores)
+                    ]
+                )
+            else:
+                new_data = np.array(
+                    [
+                        [
+                            float(uid_index),
+                            -1.0,
+                            -1.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            -1.0,
+                            -1.0,
+                            -1.0,
+                        ]
+                    ]
+                )
+
+            self.pairs.append(new_data)
+
+    def add_data_from_valor_core(
         self,
         groundtruths: list[schemas.GroundTruth],
         predictions: list[schemas.Prediction],
@@ -931,7 +1095,7 @@ class Manager:
 
             self.pairs.append(new_data)
 
-    def add_data_from_dict(
+    def add_data_from_valor_dict(
         self,
         groundtruths: list[dict],
         predictions: list[dict],
@@ -1125,21 +1289,22 @@ class Manager:
         if not self._lock:
             raise RuntimeError("Data not finalized.")
 
-        indices = np.lexsort(
-            (
-                self.detailed_pairs[:, 1],
-                -self.detailed_pairs[:, 3],
-                -self.detailed_pairs[:, 6],
-            )
-        )
-        data = self.detailed_pairs[indices]
+        # indices = np.lexsort(
+        #     (
+        #         self.detailed_pairs[:, 1],
+        #         -self.detailed_pairs[:, 3],
+        #         -self.detailed_pairs[:, 6],
+        #     )
+        # )
+        # data = self.detailed_pairs[indices]
+        data = self.detailed_pairs
 
         pairs_sorted_by_label = [
             data[(data[:, 4] == label_id) | (data[:, 5] == label_id)]
             for label_id in range(len(self.index_to_label))
         ]
 
-        metrics = _compute_detailed_pr_curve(
+        metrics = _compute_pr_curve(
             pairs_sorted_by_label,
             label_counts=self._label_cache,
             iou_thresholds=np.array(iou_thresholds),

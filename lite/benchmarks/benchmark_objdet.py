@@ -113,7 +113,7 @@ def ingest(
                 elif len(groundtruths) < chunk_size or chunk_size == -1:
                     continue
 
-                timer, _ = time_it(manager.add_data_from_dict)(
+                timer, _ = time_it(manager.add_data_from_valor_dict)(
                     groundtruths, predictions
                 )
                 accumulated_time += timer
@@ -121,7 +121,7 @@ def ingest(
                 predictions = []
 
             if groundtruths:
-                timer, _ = time_it(manager.add_data_from_dict)(
+                timer, _ = time_it(manager.add_data_from_valor_dict)(
                     groundtruths, predictions
                 )
                 accumulated_time += timer

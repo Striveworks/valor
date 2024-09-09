@@ -1,5 +1,4 @@
 import numpy as np
-from valor_lite import schemas
 from valor_lite.detection import Manager, MetricType, _compute_average_recall
 
 
@@ -49,15 +48,13 @@ def test_ar_using_torch_metrics_example(
     https://github.com/Lightning-AI/metrics/blob/107dbfd5fb158b7ae6d76281df44bd94c836bfce/tests/unittests/detection/test_map.py#L231
     """
     manager = Manager()
-    manager.add_data(
+    manager.add_data_from_valor_core(
         groundtruths=evaluate_detection_functional_test_groundtruths,
         predictions=evaluate_detection_functional_test_predictions,
     )
     manager.finalize()
 
-    assert manager.ignored_prediction_labels == [
-        schemas.Label(key="class", value="3")
-    ]
+    assert manager.ignored_prediction_labels == [("class", "3")]
     assert manager.missing_prediction_labels == []
     assert manager.n_datums == 4
     assert manager.n_labels == 6
