@@ -1,9 +1,5 @@
 import numpy as np
-from valor_lite.detection import (
-    Manager,
-    MetricType,
-    _compute_average_precision,
-)
+from valor_lite.detection import DataLoader, MetricType, _compute_metrics
 
 
 def test__compute_average_precision():
@@ -19,13 +15,15 @@ def test__compute_average_precision():
         ]
     )
 
-    label_counts = np.array([[1, 5]])
+    label_counts = np.array([[1, 5, 0]])
     iou_thresholds = np.array([0.1, 0.6])
+    score_thresholds = np.array([0.0])
 
-    results = _compute_average_precision(
+    (results, _, _, _, _, _,) = _compute_metrics(
         sorted_pairs,
         label_counts=label_counts,
         iou_thresholds=iou_thresholds,
+        score_thresholds=score_thresholds,
     )
 
     expected = np.array(
@@ -47,21 +45,21 @@ def test_ap_using_torch_metrics_example(
     cf with torch metrics/pycocotools results listed here:
     https://github.com/Lightning-AI/metrics/blob/107dbfd5fb158b7ae6d76281df44bd94c836bfce/tests/unittests/detection/test_map.py#L231
     """
-    manager = Manager()
+    manager = DataLoader()
     manager.add_data_from_valor_core(
         groundtruths=evaluate_detection_functional_test_groundtruths,
         predictions=evaluate_detection_functional_test_predictions,
     )
-    manager.finalize()
+    evaluator = manager.finalize()
 
-    assert manager.ignored_prediction_labels == [("class", "3")]
-    assert manager.missing_prediction_labels == []
-    assert manager.n_datums == 4
-    assert manager.n_labels == 6
-    assert manager.n_groundtruths == 20
-    assert manager.n_predictions == 19
+    assert evaluator.ignored_prediction_labels == [("class", "3")]
+    assert evaluator.missing_prediction_labels == []
+    assert evaluator.n_datums == 4
+    assert evaluator.n_labels == 6
+    assert evaluator.n_groundtruths == 20
+    assert evaluator.n_predictions == 19
 
-    ap_metrics = manager.evaluate(
+    ap_metrics = evaluator.evaluate(
         iou_thresholds=[0.5, 0.75],
     )[MetricType.AP]
 
@@ -177,14 +175,14 @@ def test_ap_metrics(
             - Label (k1, v1) with Annotation area = 1100
     """
 
-    manager = Manager()
+    manager = DataLoader()
     manager.add_data_from_valor_core(
         groundtruths=evaluate_detection_groundtruths,
         predictions=evaluate_detection_predictions,
     )
-    manager.finalize()
+    evaluator = manager.finalize()
 
-    ap_metrics = manager.evaluate(
+    ap_metrics = evaluator.evaluate(
         iou_thresholds=[0.1, 0.6],
     )[MetricType.AP]
 
@@ -229,12 +227,12 @@ def test_ap_metrics(
     for m in expected_metrics:
         assert m in actual_metrics
 
-    assert manager.ignored_prediction_labels == []
-    assert manager.missing_prediction_labels == []
-    assert manager.n_datums == 2
-    assert manager.n_labels == 2
-    assert manager.n_groundtruths == 3
-    assert manager.n_predictions == 2
+    assert evaluator.ignored_prediction_labels == []
+    assert evaluator.missing_prediction_labels == []
+    assert evaluator.n_datums == 2
+    assert evaluator.n_labels == 2
+    assert evaluator.n_groundtruths == 3
+    assert evaluator.n_predictions == 2
 
 
 def test_evaluate_detection_false_negatives_single_image_baseline(
@@ -250,13 +248,13 @@ def test_evaluate_detection_false_negatives_single_image_baseline(
         predictions,
     ) = evaluate_detection_false_negatives_single_image_baseline_inputs
 
-    manager = Manager()
+    manager = DataLoader()
     manager.add_data_from_valor_core(
         groundtruths=groundtruths,
         predictions=predictions,
     )
-    manager.finalize()
-    ap_metrics = manager.evaluate(iou_thresholds=[0.5])[MetricType.AP]
+    evaluator = manager.finalize()
+    ap_metrics = evaluator.evaluate(iou_thresholds=[0.5])[MetricType.AP]
 
     assert len(ap_metrics) == 1
     assert ap_metrics[0].to_dict() == {
@@ -285,13 +283,14 @@ def test_evaluate_detection_false_negatives_single_image(
         predictions,
     ) = evaluate_detection_false_negatives_single_image_inputs
 
-    manager = Manager()
+    manager = DataLoader()
     manager.add_data_from_valor_core(
         groundtruths=groundtruths,
         predictions=predictions,
     )
-    manager.finalize()
-    ap_metrics = manager.evaluate(iou_thresholds=[0.5])[MetricType.AP]
+    evaluator = manager.finalize()
+
+    ap_metrics = evaluator.evaluate(iou_thresholds=[0.5])[MetricType.AP]
 
     assert len(ap_metrics) == 1
     assert ap_metrics[0].to_dict() == {
@@ -324,13 +323,14 @@ def test_evaluate_detection_false_negatives_two_images_one_empty_low_confidence_
         predictions,
     ) = evaluate_detection_false_negatives_two_images_one_empty_low_confidence_of_fp_inputs
 
-    manager = Manager()
+    manager = DataLoader()
     manager.add_data_from_valor_core(
         groundtruths=groundtruths,
         predictions=predictions,
     )
-    manager.finalize()
-    ap_metrics = manager.evaluate(iou_thresholds=[0.5])[MetricType.AP]
+    evaluator = manager.finalize()
+
+    ap_metrics = evaluator.evaluate(iou_thresholds=[0.5])[MetricType.AP]
 
     assert len(ap_metrics) == 1
     assert ap_metrics[0].to_dict() == {
@@ -361,13 +361,13 @@ def test_evaluate_detection_false_negatives_two_images_one_empty_high_confidence
         predictions,
     ) = evaluate_detection_false_negatives_two_images_one_empty_high_confidence_of_fp_inputs
 
-    manager = Manager()
+    manager = DataLoader()
     manager.add_data_from_valor_core(
         groundtruths=groundtruths,
         predictions=predictions,
     )
-    manager.finalize()
-    ap_metrics = manager.evaluate(iou_thresholds=[0.5])[MetricType.AP]
+    evaluator = manager.finalize()
+    ap_metrics = evaluator.evaluate(iou_thresholds=[0.5])[MetricType.AP]
 
     assert len(ap_metrics) == 1
     assert ap_metrics[0].to_dict() == {
@@ -398,13 +398,13 @@ def test_evaluate_detection_false_negatives_two_images_one_only_with_different_c
         groundtruths,
         predictions,
     ) = evaluate_detection_false_negatives_two_images_one_only_with_different_class_low_confidence_of_fp_inputs
-    manager = Manager()
+    manager = DataLoader()
     manager.add_data_from_valor_core(
         groundtruths=groundtruths,
         predictions=predictions,
     )
-    manager.finalize()
-    ap_metrics = manager.evaluate(iou_thresholds=[0.5])[MetricType.AP]
+    evaluator = manager.finalize()
+    ap_metrics = evaluator.evaluate(iou_thresholds=[0.5])[MetricType.AP]
 
     expected_metrics = [
         {
@@ -455,13 +455,13 @@ def test_evaluate_detection_false_negatives_two_images_one_only_with_different_c
         predictions,
     ) = evaluate_detection_false_negatives_two_images_one_only_with_different_class_high_confidence_of_fp_inputs
 
-    manager = Manager()
+    manager = DataLoader()
     manager.add_data_from_valor_core(
         groundtruths=groundtruths,
         predictions=predictions,
     )
-    manager.finalize()
-    ap_metrics = manager.evaluate(iou_thresholds=[0.5])[MetricType.AP]
+    evaluator = manager.finalize()
+    ap_metrics = evaluator.evaluate(iou_thresholds=[0.5])[MetricType.AP]
 
     expected_metrics = [
         {

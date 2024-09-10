@@ -19,26 +19,26 @@ def test__compute_iou():
     # pd label  12
     # pd score  13
 
-    box1 = (0.0, 10.0, 0.0, 10.0)
-    box2 = (5.0, 10.0, 0.0, 10.0)
-    box3 = (0.0, 5.0, 5.0, 10.0)
-    box4 = (5.0, 15.0, 0.0, 10.0)
-    box5 = (0.0, 15.0, 0.0, 10.0)
+    box1 = np.array([0.0, 10.0, 0.0, 10.0])
+    box2 = np.array([5.0, 10.0, 0.0, 10.0])
+    box3 = np.array([0.0, 5.0, 5.0, 10.0])
+    box4 = np.array([5.0, 15.0, 0.0, 10.0])
+    box5 = np.array([0.0, 15.0, 0.0, 10.0])
 
     pairs = np.array(
         [
-            # dt,  gt,  pd,  gbox,  pbox,  gl,  pl, score,
-            [0.0, 0.0, 0.0, *box1, *box1, 0.0, 0.0, 1.0],
-            [0.0, 0.0, 1.0, *box1, *box2, 0.0, 0.0, 1.0],
-            [0.0, 0.0, 2.0, *box1, *box3, 0.0, 0.0, 1.0],
-            [0.0, 0.0, 3.0, *box1, *box4, 0.0, 0.0, 1.0],
-            [0.0, 0.0, 4.0, *box1, *box5, 0.0, 0.0, 1.0],
+            np.concatenate((box1, box1)),
+            np.concatenate((box1, box2)),
+            np.concatenate((box1, box3)),
+            np.concatenate((box1, box4)),
+            np.concatenate((box1, box5)),
         ]
     )
-    iou_pairs = _compute_iou([pairs])
 
-    assert iou_pairs[0][0][3] == 1.0
-    assert iou_pairs[0][1][3] == 0.5
-    assert iou_pairs[0][2][3] == 0.25
-    assert round(iou_pairs[0][3][3], 5) == 0.33333
-    assert round(iou_pairs[0][4][3], 5) == 0.66667
+    ious = _compute_iou(pairs)
+    assert len(ious) == 5
+    assert ious[0] == 1.0
+    assert ious[1] == 0.5
+    assert ious[2] == 0.25
+    assert round(ious[3], 5) == 0.33333
+    assert round(ious[4], 5) == 0.66667

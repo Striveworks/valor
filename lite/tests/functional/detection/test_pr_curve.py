@@ -1,8 +1,8 @@
 import numpy as np
-from valor_lite.detection import Manager, _compute_pr_curve
+from valor_lite.detection import DataLoader, _compute_detailed_pr_curve
 
 
-def test__compute_pr_curve():
+def test__compute_detailed_pr_curve():
     sorted_pairs = np.array(
         [
             # dt,  gt,  pd,  iou,  gl,  pl, score,
@@ -17,7 +17,7 @@ def test__compute_pr_curve():
     iou_thresholds = np.array([0.5])
     score_thresholds = np.array([score / 100.0 for score in range(1, 101)])
 
-    results = _compute_pr_curve(
+    results = _compute_detailed_pr_curve(
         data=sorted_pairs,
         label_counts=label_counts,
         iou_thresholds=iou_thresholds,
@@ -79,7 +79,7 @@ def test__compute_pr_curve():
 
     n_samples = 2
 
-    results = _compute_pr_curve(
+    results = _compute_detailed_pr_curve(
         data=sorted_pairs,
         label_counts=label_counts,
         iou_thresholds=iou_thresholds,
@@ -209,25 +209,25 @@ def test__compute_pr_curve():
 
 #     expected_outputs, _ = detailed_precision_recall_curve_outputs
 
-#     manager = Manager(
+#     Dataloader = Dataloader(
 #         metrics_to_return=[enums.MetricType.DetailedPrecisionRecallCurve],
 #     )
 
-#     manager.add_data(
+#     Dataloader.add_data(
 #         groundtruths=evaluate_detection_detailed_pr_curve_groundtruths,
 #         predictions=evaluate_detection_detailed_pr_curve_predictions,
 #     )
 
 #     # check that ious have been precomputed
-#     assert "iou_" in manager.joint_df.columns
+#     assert "iou_" in Dataloader.joint_df.columns
 #     assert all(
 #         [
 #             col not in ["raster", "bounding_box"]
-#             for col in manager.joint_df.columns
+#             for col in Dataloader.joint_df.columns
 #         ]
 #     )
 
-#     eval_job = manager.evaluate()
+#     eval_job = Dataloader.evaluate()
 #     for key, expected_value in expected_outputs.items():
 #         result = eval_job.metrics[0]["value"]
 #         for k in key:
@@ -235,17 +235,17 @@ def test__compute_pr_curve():
 #         assert result == expected_value
 
 #     # repeat tests using a lower IOU threshold
-#     manager = Manager(
+#     Dataloader = Dataloader(
 #         metrics_to_return=[enums.MetricType.DetailedPrecisionRecallCurve],
 #         pr_curve_iou_threshold=0.45,
 #     )
 
-#     manager.add_data(
+#     Dataloader.add_data(
 #         groundtruths=evaluate_detection_detailed_pr_curve_groundtruths,
 #         predictions=evaluate_detection_detailed_pr_curve_predictions,
 #     )
 
-#     eval_job_low_iou_threshold = manager.evaluate()
+#     eval_job_low_iou_threshold = Dataloader.evaluate()
 
 #     for key, expected_value in expected_outputs.items():
 #         result = eval_job_low_iou_threshold.metrics[0]["value"]
@@ -277,11 +277,11 @@ def test__compute_pr_curve():
 #             )
 #         )
 
-#     manager = Manager()
+#     Dataloader = Dataloader()
 
 #     # can't pass empty lists, but can pass predictions without annotations
 #     with pytest.raises(ValueError) as e:
-#         manager.add_data(
+#         Dataloader.add_data(
 #             groundtruths=evaluate_detection_groundtruths,
 #             predictions=[],
 #         )
@@ -290,21 +290,21 @@ def test__compute_pr_curve():
 #         in str(e)
 #     )
 
-#     manager.add_data(
+#     Dataloader.add_data(
 #         groundtruths=evaluate_detection_groundtruths,
 #         predictions=predictions,
 #     )
 
 #     # check that ious have been precomputed
-#     assert "iou_" in manager.joint_df.columns
+#     assert "iou_" in Dataloader.joint_df.columns
 #     assert all(
 #         [
 #             col not in ["raster", "bounding_box"]
-#             for col in manager.joint_df.columns
+#             for col in Dataloader.joint_df.columns
 #         ]
 #     )
 
-#     eval_job = manager.evaluate()
+#     eval_job = Dataloader.evaluate()
 
 #     computed_metrics = eval_job.metrics
 
@@ -331,21 +331,21 @@ def test__compute_pr_curve():
 #         higher_iou_threshold_detailed_pr_expected_answers,
 #     ) = evaluate_detection_functional_test_outputs
 
-#     manager = Manager()
-#     manager.add_data(
+#     Dataloader = Dataloader()
+#     Dataloader.add_data(
 #         groundtruths=evaluate_detection_functional_test_groundtruths,
 #         predictions=evaluate_detection_functional_test_predictions,
 #     )
-#     manager.finalize()
+#     Dataloader.finalize()
 
 #     ap_metrics = translate_ap_metrics(
-#         manager.compute_ap(
+#         Dataloader.compute_ap(
 #             iou_thresholds=[0.5, 0.75]
 #         )
 #     )
 
 #     pr_curves = translate_pr_curves(
-#         manager.compute_pr_curve(
+#         Dataloader.compute_pr_curve(
 #             iou_thresholds=[0.5],
 #             n_samples=1,
 #         )
@@ -442,7 +442,7 @@ def test__compute_pr_curve():
 #     )
 
 #     # raise the iou threshold
-#     manager = Manager(
+#     Dataloader = Dataloader(
 #         metrics_to_return=[
 #             enums.MetricType.PrecisionRecallCurve,
 #             enums.MetricType.DetailedPrecisionRecallCurve,
@@ -451,21 +451,21 @@ def test__compute_pr_curve():
 #         pr_curve_max_examples=1,
 #     )
 
-#     manager.add_data(
+#     Dataloader.add_data(
 #         groundtruths=evaluate_detection_functional_test_groundtruths,
 #         predictions=evaluate_detection_functional_test_predictions,
 #     )
 
 #     # check that ious have been precomputed
-#     assert "iou_" in manager.joint_df.columns
+#     assert "iou_" in Dataloader.joint_df.columns
 #     assert all(
 #         [
 #             col not in ["raster", "bounding_box"]
-#             for col in manager.joint_df.columns
+#             for col in Dataloader.joint_df.columns
 #         ]
 #     )
 
-#     eval_job_higher_threshold = manager.evaluate()
+#     eval_job_higher_threshold = Dataloader.evaluate()
 
 #     pr_metrics = [
 #         m
@@ -529,7 +529,7 @@ def test__compute_pr_curve():
 #     )
 
 #     # repeat the above, but with a higher pr_max_curves_example
-#     manager = Manager(
+#     Dataloader = Dataloader(
 #         metrics_to_return=[
 #             enums.MetricType.PrecisionRecallCurve,
 #             enums.MetricType.DetailedPrecisionRecallCurve,
@@ -538,21 +538,21 @@ def test__compute_pr_curve():
 #         pr_curve_max_examples=3,
 #     )
 
-#     manager.add_data(
+#     Dataloader.add_data(
 #         groundtruths=evaluate_detection_functional_test_groundtruths,
 #         predictions=evaluate_detection_functional_test_predictions,
 #     )
 
 #     # check that ious have been precomputed
-#     assert "iou_" in manager.joint_df.columns
+#     assert "iou_" in Dataloader.joint_df.columns
 #     assert all(
 #         [
 #             col not in ["raster", "bounding_box"]
-#             for col in manager.joint_df.columns
+#             for col in Dataloader.joint_df.columns
 #         ]
 #     )
 
-#     eval_job_higher_threshold = manager.evaluate()
+#     eval_job_higher_threshold = Dataloader.evaluate()
 
 #     pr_metrics = [
 #         m
@@ -616,7 +616,7 @@ def test__compute_pr_curve():
 #     )
 
 #     # test behavior if pr_curve_max_examples == 0
-#     manager = Manager(
+#     Dataloader = Dataloader(
 #         metrics_to_return=[
 #             enums.MetricType.PrecisionRecallCurve,
 #             enums.MetricType.DetailedPrecisionRecallCurve,
@@ -625,21 +625,21 @@ def test__compute_pr_curve():
 #         pr_curve_max_examples=0,
 #     )
 
-#     manager.add_data(
+#     Dataloader.add_data(
 #         groundtruths=evaluate_detection_functional_test_groundtruths,
 #         predictions=evaluate_detection_functional_test_predictions,
 #     )
 
 #     # check that ious have been precomputed
-#     assert "iou_" in manager.joint_df.columns
+#     assert "iou_" in Dataloader.joint_df.columns
 #     assert all(
 #         [
 #             col not in ["raster", "bounding_box"]
-#             for col in manager.joint_df.columns
+#             for col in Dataloader.joint_df.columns
 #         ]
 #     )
 
-#     eval_job_higher_threshold = manager.evaluate()
+#     eval_job_higher_threshold = Dataloader.evaluate()
 
 #     pr_metrics = [
 #         m

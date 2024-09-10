@@ -8,7 +8,7 @@ from time import time
 
 import requests
 from tqdm import tqdm
-from valor_lite.detection import Manager
+from valor_lite.detection import DataLoader
 
 
 class AnnotationType(str, Enum):
@@ -84,7 +84,7 @@ def write_results_to_file(write_path: Path, results: list[dict]):
 
 @time_it
 def ingest(
-    manager: Manager,
+    manager: DataLoader,
     gt_path: Path,
     pd_path: Path,
     limit: int,
@@ -162,7 +162,7 @@ class Benchmark:
                 "total": f"{round(self.ingestion, 2)} seconds",
             },
             "computation": {
-                "iou_computation": f"{round(self.precomputation, 2)} seconds",
+                "ranking_pairs": f"{round(self.precomputation, 2)} seconds",
                 "metric_computation": f"{round(self.evaluation, 2)} seconds",
                 "total": f"{round(self.precomputation + self.evaluation, 2)} seconds",
             },
@@ -234,7 +234,7 @@ def run_benchmarking_analysis(
             pd_filename = prediction_caches[pd_type]
 
             # === Base Evaluation ===
-            manager = Manager()
+            manager = DataLoader()
 
             # ingest + preprocess
             (ingest_time, preprocessing_time,) = ingest(
@@ -245,7 +245,7 @@ def run_benchmarking_analysis(
                 chunk_size=chunk_size,
             )  # type: ignore - time_it wrapper
 
-            finalization_time, _ = time_it(manager.finalize)()
+            finalization_time, evaluator = time_it(manager.finalize)()
 
             if ingest_time > ingestion_timeout and ingestion_timeout != -1:
                 raise TimeoutError(
@@ -253,25 +253,25 @@ def run_benchmarking_analysis(
                 )
 
             # test detailed pr curve
-            detailed_pr_curve_time, _ = time_it(
-                manager.compute_pr_curve
-            )()  # (score_thresholds=[0.1,0.5,0.9])
-            print(round(detailed_pr_curve_time, 5), "seconds")
+            # detailed_pr_curve_time, _ = time_it(
+            #     evaluator.compute_detailed_pr_curve
+            # )()  # (score_thresholds=[0.1,0.5,0.9])
+            # print(round(detailed_pr_curve_time, 5), "seconds")
 
             # evaluate
-            eval_time, _ = time_it(manager.evaluate)()
+            eval_time, _ = time_it(evaluator.evaluate)()
             if eval_time > evaluation_timeout and evaluation_timeout != -1:
                 raise TimeoutError(
-                    f"Base evaluation timed out with {manager.n_datums} datums."
+                    f"Base evaluation timed out with {evaluator.n_datums} datums."
                 )
 
             results.append(
                 Benchmark(
                     limit=limit,
-                    n_datums=manager.n_datums,
-                    n_groundtruths=manager.n_groundtruths,
-                    n_predictions=manager.n_predictions,
-                    n_labels=manager.n_labels,
+                    n_datums=evaluator.n_datums,
+                    n_groundtruths=evaluator.n_groundtruths,
+                    n_predictions=evaluator.n_predictions,
+                    n_labels=evaluator.n_labels,
                     gt_type=gt_type,
                     pd_type=pd_type,
                     chunk_size=chunk_size,
