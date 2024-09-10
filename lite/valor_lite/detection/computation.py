@@ -52,7 +52,7 @@ def _compute_ranked_pairs_for_datum(
     label_counts: np.ndarray,
 ) -> np.ndarray:
     """
-    Computes
+    Computes ranked pairs for a datum.
     """
 
     # remove null predictions
@@ -69,16 +69,18 @@ def _compute_ranked_pairs_for_datum(
     data = data[indices]
 
     # remove ignored predictions
-    for idx, count in enumerate(label_counts[:, 0]):
+    for label_idx, count in enumerate(label_counts[:, 0]):
         if count > 0:
             continue
-        data = data[data[:, 5] != idx]
+        data = data[data[:, 5] != label_idx]
 
     # only keep the highest ranked pair
-    _, indices = np.unique(data[:, [0, 2]], axis=0, return_index=True)
+    _, indices = np.unique(data[:, [0, 2, 5]], axis=0, return_index=True)
 
     # np.unique orders its results by value, we need to sort the indices to maintain the results of the lexsort
-    return data[np.sort(indices)]
+    data = data[indices, :]
+
+    return data
 
 
 def compute_ranked_pairs(
@@ -267,10 +269,10 @@ def compute_metrics(
 
     # calculate mAP and mAR
     label_key_mapping = label_counts[unique_pd_labels, 2]
-    label_keys = np.unique(label_key_mapping)
+    label_keys = np.unique(label_counts[:, 2])
     mAP = np.ones((n_ious, label_keys.shape[0])) * -1.0
     mAR = np.ones((n_scores, label_keys.shape[0])) * -1.0
-    for key in label_keys:
+    for key in np.unique(label_key_mapping):
         labels = unique_pd_labels[label_key_mapping == key]
         key_idx = int(key)
         mAP[:, key_idx] = average_precision[:, labels].mean(axis=1)
@@ -304,7 +306,6 @@ def compute_detailed_pr_curve(
     5  fn - hallucination
     """
 
-    n_rows = data.shape[0]
     n_labels = label_counts.shape[0]
     n_ious = iou_thresholds.shape[0]
     n_scores = score_thresholds.shape[0]

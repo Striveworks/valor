@@ -3,7 +3,7 @@ from collections import defaultdict
 import numpy as np
 from numpy.typing import NDArray
 from tqdm import tqdm
-from valor_lite import schemas
+from valor_lite import valor_core_schemas as schemas
 from valor_lite.detection.annotation import Detection
 from valor_lite.detection.computation import (
     compute_detailed_pr_curve,
@@ -187,13 +187,13 @@ class Evaluator:
 
         metrics[MetricType.AP] = [
             AP(
-                value=value,
+                value=average_precision[iou_idx][label_idx],
                 iou_threshold=iou_thresholds[iou_idx],
                 label=self.index_to_label[label_idx],
             )
-            for label_idx, row in enumerate(range(average_precision.shape[1]))
+            for iou_idx in range(average_precision.shape[0])
+            for label_idx in range(average_precision.shape[1])
             if int(self._label_metadata[label_idx][0]) > 0.0
-            for iou_idx, value in enumerate(average_precision[:, row])
         ]
 
         metrics[MetricType.mAP] = [
@@ -204,18 +204,19 @@ class Evaluator:
             )
             for iou_idx in range(mean_average_precision.shape[0])
             for label_key_idx in range(mean_average_precision.shape[1])
+            if mean_average_precision[iou_idx][label_key_idx] >= 0.0
         ]
 
         metrics[MetricType.AR] = [
             AR(
-                value=value,
+                value=average_recall[score_idx][label_idx],
                 ious=iou_thresholds,
                 score_threshold=score_thresholds[score_idx],
                 label=self.index_to_label[label_idx],
             )
-            for label_idx, row in enumerate(range(average_recall.shape[1]))
+            for score_idx in range(average_recall.shape[0])
+            for label_idx in range(average_recall.shape[1])
             if int(self._label_metadata[label_idx][0]) > 0.0
-            for score_idx, value in enumerate(average_recall[:, row])
         ]
 
         metrics[MetricType.mAR] = [
@@ -227,6 +228,7 @@ class Evaluator:
             )
             for score_idx in range(mean_average_recall.shape[0])
             for label_key_idx in range(mean_average_recall.shape[1])
+            if mean_average_recall[score_idx][label_key_idx] >= 0.0
         ]
 
         metrics[MetricType.PrecisionRecallCurve] = [
@@ -484,6 +486,7 @@ class DataLoader:
                         for plabel, pscore in zip(pann.labels, pann.scores)
                         for gidx, gann in enumerate(detection.groundtruths)
                         for glabel in gann.labels
+                        if glabel[0] == plabel[0]
                     ]
                 )
             elif detection.groundtruths:
@@ -653,6 +656,7 @@ class DataLoader:
                         for plabel in pann.labels
                         for gidx, gann in enumerate(groundtruth.annotations)
                         for glabel in gann.labels
+                        if glabel.key == plabel.key
                     ]
                 )
             elif groundtruth.annotations:
@@ -841,6 +845,7 @@ class DataLoader:
                         for plabel in pann["labels"]
                         for gidx, gann in enumerate(groundtruth["annotations"])
                         for glabel in gann["labels"]
+                        if glabel["key"] == plabel["key"]
                     ]
                 )
             elif groundtruth["annotations"]:
