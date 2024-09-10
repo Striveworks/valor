@@ -389,10 +389,16 @@ def _compute_iou(data: NDArray[np.floating]) -> NDArray[np.floating]:
     return iou
 
 
-def __compute_ranked_pairs(
+def _compute_ranked_pairs_for_datum(
     data: np.ndarray,
     label_counts: np.ndarray,
 ) -> np.ndarray:
+    """
+    Computes
+    """
+
+    # remove null predictions
+    data = data[data[:, 2] >= 0.0]
 
     # sort by gt_id, iou, score
     indices = np.lexsort(
@@ -423,15 +429,21 @@ def _compute_ranked_pairs(
 ) -> NDArray[np.floating]:
     pairs = np.concatenate(
         [
-            __compute_ranked_pairs(
-                datum[datum[:, 2] >= 0.0],  # mask out null predictions
+            _compute_ranked_pairs_for_datum(
+                datum,
                 label_counts=label_counts,
             )
             for datum in data
         ],
         axis=0,
     )
-    return __compute_ranked_pairs(pairs, label_counts=label_counts)
+    indices = np.lexsort(
+        (
+            -pairs[:, 3],  # iou
+            -pairs[:, 6],  # score
+        )
+    )
+    return pairs[indices]
 
 
 def _compute_metrics(
