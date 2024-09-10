@@ -1247,7 +1247,7 @@ class DataLoader:
             if detection.groundtruths and detection.predictions:
                 boxes = np.array(
                     [
-                        np.concatenate((gann.extrema, pann.extrema), axis=1)
+                        np.concatenate((gann.extrema, pann.extrema), axis=0)
                         for pann in detection.predictions
                         for gann in detection.groundtruths
                     ]

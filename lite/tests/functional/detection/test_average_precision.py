@@ -1,5 +1,12 @@
 import numpy as np
-from valor_lite.detection import DataLoader, MetricType, _compute_metrics
+from valor_lite.detection import (
+    DataLoader,
+    Detection,
+    MetricType,
+    _compute_metrics,
+)
+
+from .inputs import torchmetrics_detections
 
 
 def test__compute_average_precision():
@@ -38,18 +45,14 @@ def test__compute_average_precision():
 
 
 def test_ap_using_torch_metrics_example(
-    evaluate_detection_functional_test_groundtruths,
-    evaluate_detection_functional_test_predictions,
+    torchmetrics_detections: list[Detection],
 ):
     """
     cf with torch metrics/pycocotools results listed here:
     https://github.com/Lightning-AI/metrics/blob/107dbfd5fb158b7ae6d76281df44bd94c836bfce/tests/unittests/detection/test_map.py#L231
     """
     manager = DataLoader()
-    manager.add_data_from_valor_core(
-        groundtruths=evaluate_detection_functional_test_groundtruths,
-        predictions=evaluate_detection_functional_test_predictions,
-    )
+    manager.add_data(torchmetrics_detections)
     evaluator = manager.finalize()
 
     assert evaluator.ignored_prediction_labels == [("class", "3")]
