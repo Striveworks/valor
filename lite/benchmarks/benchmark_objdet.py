@@ -158,7 +158,7 @@ class Benchmark:
             "chunk_size": self.chunk_size,
             "ingestion": {
                 "loading_from_file": f"{round(self.ingestion - self.preprocessing, 2)} seconds",
-                "conversion_to_numpy_rows": f"{round(self.preprocessing, 2)} seconds",
+                "numpy_conversion+IoU": f"{round(self.preprocessing, 2)} seconds",
                 "total": f"{round(self.ingestion, 2)} seconds",
             },
             "computation": {
