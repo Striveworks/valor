@@ -1159,8 +1159,8 @@ class DataLoader:
 
             # update metadata
             self._evaluator.n_datums += 1
-            self._evaluator.n_groundtruths += len(groundtruth.annotations)
-            self._evaluator.n_predictions += len(prediction.annotations)
+            self._evaluator.n_groundtruths += len(detection.groundtruths)
+            self._evaluator.n_predictions += len(detection.predictions)
 
             # update datum uids
             uid = detection.uid
@@ -1475,8 +1475,8 @@ class DataLoader:
 
             # update metadata
             self._evaluator.n_datums += 1
-            self._evaluator.n_groundtruths += len(groundtruth.annotations)
-            self._evaluator.n_predictions += len(prediction.annotations)
+            self._evaluator.n_groundtruths += len(groundtruth["annotations"])
+            self._evaluator.n_predictions += len(prediction["annotations"])
 
             # update datum uids
             uid = groundtruth["datum"]["uid"]
