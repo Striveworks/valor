@@ -3,7 +3,7 @@ from valor_lite.detection import (
     DataLoader,
     Detection,
     MetricType,
-    _compute_metrics,
+    compute_metrics,
 )
 
 
@@ -25,7 +25,7 @@ def test__compute_average_recall():
     iou_thresholds = np.array([0.1, 0.6])
     score_thresholds = np.array([0.5, 0.93, 0.98])
 
-    (_, ar_results, _, mar_results, _, _,) = _compute_metrics(
+    (_, ar_results, _, mar_results, _, _,) = compute_metrics(
         sorted_pairs,
         label_counts=label_counts,
         iou_thresholds=iou_thresholds,

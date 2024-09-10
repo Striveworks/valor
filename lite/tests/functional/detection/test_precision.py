@@ -1,51 +1,7 @@
-import numpy as np
-from valor_lite.detection import (
-    DataLoader,
-    Detection,
-    MetricType,
-    compute_metrics,
-)
+from valor_lite.detection import DataLoader, Detection, MetricType
 
 
-def test__compute_average_precision():
-
-    sorted_pairs = np.array(
-        [
-            # dt,  gt,  pd,  iou,  gl,  pl, score,
-            [0.0, 0.0, 2.0, 0.25, 0.0, 0.0, 0.95],
-            [0.0, 0.0, 3.0, 0.33333, 0.0, 0.0, 0.9],
-            [0.0, 0.0, 4.0, 0.66667, 0.0, 0.0, 0.65],
-            [0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.1],
-            [0.0, 0.0, 1.0, 0.5, 0.0, 0.0, 0.01],
-        ]
-    )
-
-    label_counts = np.array([[1, 5, 0]])
-    iou_thresholds = np.array([0.1, 0.6])
-    score_thresholds = np.array([0.0])
-
-    (ap_results, _, map_results, _, _, _,) = compute_metrics(
-        sorted_pairs,
-        label_counts=label_counts,
-        iou_thresholds=iou_thresholds,
-        score_thresholds=score_thresholds,
-    )
-
-    expected_ap = np.array(
-        [
-            [1.0],  # iou = 0.1
-            [1 / 3],  # iou = 0.6
-        ]
-    )
-    assert expected_ap.shape == ap_results.shape
-    assert np.isclose(ap_results, expected_ap).all()
-
-    # since only one class, ap == map
-    assert expected_ap.shape == map_results.shape
-    assert np.isclose(map_results, expected_ap).all()
-
-
-def test_ap_metrics(basic_detections: list[Detection]):
+def test_precision_metrics(basic_detections: list[Detection]):
     """
     Basic object detection test.
 
@@ -69,6 +25,7 @@ def test_ap_metrics(basic_detections: list[Detection]):
 
     metrics = evaluator.evaluate(
         iou_thresholds=[0.1, 0.6],
+        score_thresholds=[0.0, 0.5],
     )
 
     assert evaluator.ignored_prediction_labels == []
@@ -78,38 +35,78 @@ def test_ap_metrics(basic_detections: list[Detection]):
     assert evaluator.n_groundtruths == 3
     assert evaluator.n_predictions == 2
 
-    # test AP
-    actual_metrics = [m.to_dict() for m in metrics[MetricType.AP]]
+    # test Precision
+    actual_metrics = [m.to_dict() for m in metrics[MetricType.Precision]]
     expected_metrics = [
         {
-            "type": "AP",
+            "type": "Precision",
             "value": 0.0,
             "parameters": {
                 "iou": 0.1,
+                "score": 0.0,
                 "label": {"key": "k2", "value": "v2"},
             },
         },
         {
-            "type": "AP",
+            "type": "Precision",
             "value": 0.0,
             "parameters": {
                 "iou": 0.6,
+                "score": 0.0,
                 "label": {"key": "k2", "value": "v2"},
             },
         },
         {
-            "type": "AP",
-            "value": 0.504950495049505,
+            "type": "Precision",
+            "value": 1.0,
             "parameters": {
                 "iou": 0.1,
+                "score": 0.0,
                 "label": {"key": "k1", "value": "v1"},
             },
         },
         {
-            "type": "AP",
-            "value": 0.504950495049505,
+            "type": "Precision",
+            "value": 1.0,
             "parameters": {
                 "iou": 0.6,
+                "score": 0.0,
+                "label": {"key": "k1", "value": "v1"},
+            },
+        },
+        {
+            "type": "Precision",
+            "value": 0.0,
+            "parameters": {
+                "iou": 0.1,
+                "score": 0.5,
+                "label": {"key": "k2", "value": "v2"},
+            },
+        },
+        {
+            "type": "Precision",
+            "value": 0.0,
+            "parameters": {
+                "iou": 0.6,
+                "score": 0.5,
+                "label": {"key": "k2", "value": "v2"},
+            },
+        },
+        {
+            "type": "Precision",
+            "value": 0.0,
+            "parameters": {
+                "iou": 0.1,
+                "score": 0.5,
+                "label": {"key": "k1", "value": "v1"},
+            },
+        },
+        {
+            "type": "Precision",
+            "value": 0.0,
+            "parameters": {
+                "iou": 0.6,
+                "score": 0.5,
                 "label": {"key": "k1", "value": "v1"},
             },
         },
@@ -119,186 +116,8 @@ def test_ap_metrics(basic_detections: list[Detection]):
     for m in expected_metrics:
         assert m in actual_metrics
 
-    # test mAP
-    actual_metrics = [m.to_dict() for m in metrics[MetricType.mAP]]
-    expected_metrics = [
-        {
-            "type": "mAP",
-            "value": 0.504950495049505,
-            "parameters": {
-                "iou": 0.1,
-                "label_key": "k1",
-            },
-        },
-        {
-            "type": "mAP",
-            "value": 0.504950495049505,
-            "parameters": {
-                "iou": 0.6,
-                "label_key": "k1",
-            },
-        },
-        {
-            "type": "mAP",
-            "value": 0.0,
-            "parameters": {
-                "iou": 0.1,
-                "label_key": "k2",
-            },
-        },
-        {
-            "type": "mAP",
-            "value": 0.0,
-            "parameters": {
-                "iou": 0.6,
-                "label_key": "k2",
-            },
-        },
-    ]
-    for m in actual_metrics:
-        assert m in expected_metrics
-    for m in expected_metrics:
-        assert m in actual_metrics
 
-
-def test_ap_using_torch_metrics_example(
-    torchmetrics_detections: list[Detection],
-):
-    """
-    cf with torch metrics/pycocotools results listed here:
-    https://github.com/Lightning-AI/metrics/blob/107dbfd5fb158b7ae6d76281df44bd94c836bfce/tests/unittests/detection/test_map.py#L231
-    """
-    manager = DataLoader()
-    manager.add_data(torchmetrics_detections)
-    evaluator = manager.finalize()
-
-    assert evaluator.ignored_prediction_labels == [("class", "3")]
-    assert evaluator.missing_prediction_labels == []
-    assert evaluator.n_datums == 4
-    assert evaluator.n_labels == 6
-    assert evaluator.n_groundtruths == 20
-    assert evaluator.n_predictions == 19
-
-    metrics = evaluator.evaluate(
-        iou_thresholds=[0.5, 0.75],
-    )
-
-    # test AP
-    actual_metrics = [m.to_dict() for m in metrics[MetricType.AP]]
-    expected_metrics = [
-        {
-            "type": "AP",
-            "value": 1.0,
-            "parameters": {
-                "iou": 0.5,
-                "label": {"key": "class", "value": "0"},
-            },
-        },
-        {
-            "type": "AP",
-            "value": 0.7227722772277229,
-            "parameters": {
-                "iou": 0.75,
-                "label": {"key": "class", "value": "0"},
-            },
-        },
-        {
-            "type": "AP",
-            "value": 1.0,
-            "parameters": {
-                "iou": 0.5,
-                "label": {"key": "class", "value": "1"},
-            },
-        },
-        {
-            "type": "AP",
-            "value": 1.0,
-            "parameters": {
-                "iou": 0.75,
-                "label": {"key": "class", "value": "1"},
-            },
-        },
-        {
-            "type": "AP",
-            "value": 0.504950495049505,
-            "parameters": {
-                "iou": 0.5,
-                "label": {"key": "class", "value": "2"},
-            },
-        },
-        {
-            "type": "AP",
-            "value": 0.504950495049505,
-            "parameters": {
-                "iou": 0.75,
-                "label": {"key": "class", "value": "2"},
-            },
-        },
-        {
-            "type": "AP",
-            "value": 1.0,
-            "parameters": {
-                "iou": 0.5,
-                "label": {"key": "class", "value": "4"},
-            },
-        },
-        {
-            "type": "AP",
-            "value": 1.0,
-            "parameters": {
-                "iou": 0.75,
-                "label": {"key": "class", "value": "4"},
-            },
-        },
-        {
-            "type": "AP",
-            "value": 0.7909790979097909,
-            "parameters": {
-                "iou": 0.5,
-                "label": {"key": "class", "value": "49"},
-            },
-        },
-        {
-            "type": "AP",
-            "value": 0.5756718528995757,
-            "parameters": {
-                "iou": 0.75,
-                "label": {"key": "class", "value": "49"},
-            },
-        },
-    ]
-    for m in actual_metrics:
-        assert m in expected_metrics
-    for m in expected_metrics:
-        assert m in actual_metrics
-
-    # test mAP
-    actual_metrics = [m.to_dict() for m in metrics[MetricType.mAP]]
-    expected_metrics = [
-        {
-            "type": "mAP",
-            "value": 0.8591859185918592,
-            "parameters": {
-                "iou": 0.5,
-                "label_key": "class",
-            },
-        },
-        {
-            "type": "mAP",
-            "value": 0.7606789250353607,
-            "parameters": {
-                "iou": 0.75,
-                "label_key": "class",
-            },
-        },
-    ]
-    for m in actual_metrics:
-        assert m in expected_metrics
-    for m in expected_metrics:
-        assert m in actual_metrics
-
-
-def test_ap_false_negatives_single_datum_baseline(
+def test_precision_false_negatives_single_datum_baseline(
     false_negatives_single_datum_baseline_detections: list[Detection],
 ):
     """This is the baseline for the below test. In this case there are two predictions and
@@ -309,29 +128,45 @@ def test_ap_false_negatives_single_datum_baseline(
     manager = DataLoader()
     manager.add_data(false_negatives_single_datum_baseline_detections)
     evaluator = manager.finalize()
-    metrics = evaluator.evaluate(iou_thresholds=[0.5])
 
-    actual_metrics = [m.to_dict() for m in metrics[MetricType.AP]]
+    metrics = evaluator.evaluate(
+        iou_thresholds=[0.5], score_thresholds=[0.0, 0.9]
+    )
+
+    actual_metrics = [m.to_dict() for m in metrics[MetricType.Precision]]
     expected_metrics = [
         {
-            "type": "AP",
-            "value": 1.0,
+            "type": "Precision",
+            "value": 0.5,
             "parameters": {
                 "iou": 0.5,
+                "score": 0.0,
                 "label": {
                     "key": "key",
                     "value": "value",
                 },
             },
-        }
+        },
+        {
+            "type": "Precision",
+            "value": 0.0,
+            "parameters": {
+                "iou": 0.5,
+                "score": 0.9,
+                "label": {
+                    "key": "key",
+                    "value": "value",
+                },
+            },
+        },
     ]
-    for m in expected_metrics:
-        assert m in actual_metrics
     for m in actual_metrics:
         assert m in expected_metrics
+    for m in expected_metrics:
+        assert m in actual_metrics
 
 
-def test_ap_false_negatives_single_datum(
+def test_precision_false_negatives_single_datum(
     false_negatives_single_datum_detections: list[Detection],
 ):
     """Tests fix for a bug where high confidence false negative was not being penalized. The
@@ -342,15 +177,16 @@ def test_ap_false_negatives_single_datum(
     manager = DataLoader()
     manager.add_data(false_negatives_single_datum_detections)
     evaluator = manager.finalize()
-    metrics = evaluator.evaluate(iou_thresholds=[0.5])
+    metrics = evaluator.evaluate(iou_thresholds=[0.5], score_thresholds=[0.0])
 
-    actual_metrics = [m.to_dict() for m in metrics[MetricType.AP]]
+    actual_metrics = [m.to_dict() for m in metrics[MetricType.Precision]]
     expected_metrics = [
         {
-            "type": "AP",
+            "type": "Precision",
             "value": 0.5,
             "parameters": {
                 "iou": 0.5,
+                "score": 0.0,
                 "label": {
                     "key": "key",
                     "value": "value",
@@ -364,7 +200,7 @@ def test_ap_false_negatives_single_datum(
         assert m in expected_metrics
 
 
-def test_ap_false_negatives_two_datums_one_empty_low_confidence_of_fp(
+def test_precision_false_negatives_two_datums_one_empty_low_confidence_of_fp(
     false_negatives_two_datums_one_empty_low_confidence_of_fp_detections: list[
         Detection
     ],
@@ -383,15 +219,16 @@ def test_ap_false_negatives_two_datums_one_empty_low_confidence_of_fp(
         false_negatives_two_datums_one_empty_low_confidence_of_fp_detections
     )
     evaluator = manager.finalize()
-    metrics = evaluator.evaluate(iou_thresholds=[0.5])
+    metrics = evaluator.evaluate(iou_thresholds=[0.5], score_thresholds=[0.0])
 
-    actual_metrics = [m.to_dict() for m in metrics[MetricType.AP]]
+    actual_metrics = [m.to_dict() for m in metrics[MetricType.Precision]]
     expected_metrics = [
         {
-            "type": "AP",
-            "value": 1.0,
+            "type": "Precision",
+            "value": 0.5,
             "parameters": {
                 "iou": 0.5,
+                "score": 0.0,
                 "label": {
                     "key": "key",
                     "value": "value",
@@ -405,7 +242,7 @@ def test_ap_false_negatives_two_datums_one_empty_low_confidence_of_fp(
         assert m in expected_metrics
 
 
-def test_ap_false_negatives_two_datums_one_empty_high_confidence_of_fp(
+def test_precision_false_negatives_two_datums_one_empty_high_confidence_of_fp(
     false_negatives_two_datums_one_empty_high_confidence_of_fp_detections: list[
         Detection
     ],
@@ -423,15 +260,16 @@ def test_ap_false_negatives_two_datums_one_empty_high_confidence_of_fp(
         false_negatives_two_datums_one_empty_high_confidence_of_fp_detections
     )
     evaluator = manager.finalize()
-    metrics = evaluator.evaluate(iou_thresholds=[0.5])
+    metrics = evaluator.evaluate(iou_thresholds=[0.5], score_thresholds=[0.0])
 
-    actual_metrics = [m.to_dict() for m in metrics[MetricType.AP]]
+    actual_metrics = [m.to_dict() for m in metrics[MetricType.Precision]]
     expected_metrics = [
         {
-            "type": "AP",
+            "type": "Precision",
             "value": 0.5,
             "parameters": {
                 "iou": 0.5,
+                "score": 0.0,
                 "label": {
                     "key": "key",
                     "value": "value",
@@ -445,7 +283,7 @@ def test_ap_false_negatives_two_datums_one_empty_high_confidence_of_fp(
         assert m in expected_metrics
 
 
-def test_ap_false_negatives_two_datums_one_only_with_different_class_low_confidence_of_fp(
+def test_precision_false_negatives_two_datums_one_only_with_different_class_low_confidence_of_fp(
     false_negatives_two_datums_one_only_with_different_class_low_confidence_of_fp_detections: list[
         Detection
     ],
@@ -463,15 +301,16 @@ def test_ap_false_negatives_two_datums_one_only_with_different_class_low_confide
         false_negatives_two_datums_one_only_with_different_class_low_confidence_of_fp_detections
     )
     evaluator = manager.finalize()
-    metrics = evaluator.evaluate(iou_thresholds=[0.5])
+    metrics = evaluator.evaluate(iou_thresholds=[0.5], score_thresholds=[0.0])
 
-    actual_metrics = [m.to_dict() for m in metrics[MetricType.AP]]
+    actual_metrics = [m.to_dict() for m in metrics[MetricType.Precision]]
     expected_metrics = [
         {
-            "type": "AP",
-            "value": 1.0,
+            "type": "Precision",
+            "value": 0.5,
             "parameters": {
                 "iou": 0.5,
+                "score": 0.0,
                 "label": {
                     "key": "key",
                     "value": "value",
@@ -479,10 +318,11 @@ def test_ap_false_negatives_two_datums_one_only_with_different_class_low_confide
             },
         },
         {
-            "type": "AP",
+            "type": "Precision",
             "value": 0.0,
             "parameters": {
                 "iou": 0.5,
+                "score": 0.0,
                 "label": {
                     "key": "key",
                     "value": "other value",
@@ -496,7 +336,7 @@ def test_ap_false_negatives_two_datums_one_only_with_different_class_low_confide
         assert m in expected_metrics
 
 
-def test_ap_false_negatives_two_datums_one_only_with_different_class_high_confidence_of_fp(
+def test_precision_false_negatives_two_datums_one_only_with_different_class_high_confidence_of_fp(
     false_negatives_two_images_one_only_with_different_class_high_confidence_of_fp_detections: list[
         Detection
     ],
@@ -514,15 +354,16 @@ def test_ap_false_negatives_two_datums_one_only_with_different_class_high_confid
         false_negatives_two_images_one_only_with_different_class_high_confidence_of_fp_detections
     )
     evaluator = manager.finalize()
-    metrics = evaluator.evaluate(iou_thresholds=[0.5])
+    metrics = evaluator.evaluate(iou_thresholds=[0.5], score_thresholds=[0.0])
 
-    actual_metrics = [m.to_dict() for m in metrics[MetricType.AP]]
+    actual_metrics = [m.to_dict() for m in metrics[MetricType.Precision]]
     expected_metrics = [
         {
-            "type": "AP",
+            "type": "Precision",
             "value": 0.5,
             "parameters": {
                 "iou": 0.5,
+                "score": 0.0,
                 "label": {
                     "key": "key",
                     "value": "value",
@@ -530,10 +371,11 @@ def test_ap_false_negatives_two_datums_one_only_with_different_class_high_confid
             },
         },
         {
-            "type": "AP",
+            "type": "Precision",
             "value": 0.0,
             "parameters": {
                 "iou": 0.5,
+                "score": 0.0,
                 "label": {
                     "key": "key",
                     "value": "other value",

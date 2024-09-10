@@ -114,7 +114,7 @@ def ingest(
                     continue
 
                 timer, _ = time_it(manager.add_data_from_valor_dict)(
-                    groundtruths, predictions
+                    groundtruths, predictions, True
                 )
                 accumulated_time += timer
                 groundtruths = []
@@ -122,7 +122,7 @@ def ingest(
 
             if groundtruths:
                 timer, _ = time_it(manager.add_data_from_valor_dict)(
-                    groundtruths, predictions
+                    groundtruths, predictions, True
                 )
                 accumulated_time += timer
 
