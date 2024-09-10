@@ -52,15 +52,30 @@ class BoundingBox:
                 raise ValueError
 
     @property
-    def extrema(self) -> NDArray[np.floating]:
-        return np.array([self.xmin, self.xmax, self.ymin, self.ymax])
+    def extrema(self) -> tuple[float, float, float, float]:
+        return (self.xmin, self.xmax, self.ymin, self.ymax)
+
+
+@dataclass
+class Bitmask:
+    mask: NDArray[np.bool_]
+    labels: list[tuple[str, str]]
+    scores: list[float] | None = None
+
+    def __post_init__(self):
+        if self.scores is not None:
+            if len(self.labels) != len(self.scores):
+                raise ValueError
+
+    def to_box(self) -> BoundingBox:
+        raise NotImplementedError
 
 
 @dataclass
 class Detection:
     uid: str
-    groundtruths: list[BoundingBox]
-    predictions: list[BoundingBox]
+    groundtruths: list[BoundingBox] | list[Bitmask]
+    predictions: list[BoundingBox] | list[Bitmask]
 
     def __post_init__(self):
         for prediction in self.predictions:
@@ -113,8 +128,8 @@ class CountingClassMetric:
             type=type(self).__name__,
             value=self.value,
             parameters={
-                "iou_threshold": self.iou_threhsold,
-                "score_threshold": self.score_threshold,
+                "iou": self.iou_threhsold,
+                "score": self.score_threshold,
                 "label": {
                     "key": self.label[0],
                     "value": self.label[1],
@@ -139,8 +154,8 @@ class ClassMetric:
             type=type(self).__name__,
             value=self.value,
             parameters={
-                "iou_threshold": self.iou_threhsold,
-                "score_threshold": self.score_threshold,
+                "iou": self.iou_threhsold,
+                "score": self.score_threshold,
                 "label": {
                     "key": self.label[0],
                     "value": self.label[1],
@@ -192,7 +207,7 @@ class AP:
             type=type(self).__name__,
             value=self.value,
             parameters={
-                "iou_threshold": self.iou_threshold,
+                "iou": self.iou_threshold,
                 "label": {
                     "key": self.label[0],
                     "value": self.label[1],
@@ -216,7 +231,7 @@ class mAP:
             type=type(self).__name__,
             value=self.value,
             parameters={
-                "iou_threshold": self.iou_threshold,
+                "iou": self.iou_threshold,
                 "label_key": self.label_key,
             },
         )
@@ -238,7 +253,7 @@ class AR:
             type=type(self).__name__,
             value=self.value,
             parameters={
-                "score_threshold": self.score_threshold,
+                "score": self.score_threshold,
                 "ious": self.ious,
                 "label": {
                     "key": self.label[0],
@@ -264,7 +279,7 @@ class mAR:
             type=type(self).__name__,
             value=self.value,
             parameters={
-                "score_threshold": self.score_threshold,
+                "score": self.score_threshold,
                 "ious": self.ious,
                 "label_key": self.label_key,
             },
@@ -290,7 +305,7 @@ class InterpolatedPrecisionRecallCurve:
             type=type(self).__name__,
             value=self.precision,
             parameters={
-                "iou_threshold": self.iou_threshold,
+                "iou": self.iou_threshold,
                 "label": {"key": self.label[0], "value": self.label[1]},
             },
         )
@@ -607,11 +622,12 @@ def _compute_metrics(
     average_recall /= n_ious
 
     # calculate mAP and mAR
-    label_keys = label_counts[unique_pd_labels, 2]
+    label_key_mapping = label_counts[unique_pd_labels, 2]
+    label_keys = np.unique(label_key_mapping)
     mAP = np.ones((n_ious, label_keys.shape[0])) * -1.0
     mAR = np.ones((n_scores, label_keys.shape[0])) * -1.0
-    for key in np.unique(label_keys):
-        labels = unique_pd_labels[label_keys == key]
+    for key in label_keys:
+        labels = unique_pd_labels[label_key_mapping == key]
         key_idx = int(key)
         mAP[:, key_idx] = average_precision[:, labels].mean(axis=1)
         mAR[:, key_idx] = average_recall[:, labels].mean(axis=1)
@@ -961,15 +977,12 @@ class Evaluator:
 
         metrics[MetricType.mAP] = [
             mAP(
-                value=value,
+                value=mean_average_precision[iou_idx][label_key_idx],
                 iou_threshold=iou_thresholds[iou_idx],
                 label_key=self.index_to_label_key[label_key_idx],
             )
-            for label_key_idx, row in enumerate(
-                range(mean_average_precision.shape[1])
-            )
-            if label_key_idx < -0.5
-            for iou_idx, value in enumerate(mean_average_precision[:, row])
+            for iou_idx in range(mean_average_precision.shape[0])
+            for label_key_idx in range(mean_average_precision.shape[1])
         ]
 
         metrics[MetricType.AR] = [
@@ -986,16 +999,13 @@ class Evaluator:
 
         metrics[MetricType.mAR] = [
             mAR(
-                value=value,
+                value=mean_average_recall[score_idx][label_key_idx],
                 ious=iou_thresholds,
                 score_threshold=score_thresholds[score_idx],
                 label_key=self.index_to_label_key[label_key_idx],
             )
-            for label_key_idx, row in enumerate(
-                range(mean_average_recall.shape[1])
-            )
-            if label_key_idx < -0.5
-            for score_idx, value in enumerate(mean_average_recall[:, row])
+            for score_idx in range(mean_average_recall.shape[0])
+            for label_key_idx in range(mean_average_recall.shape[1])
         ]
 
         metrics[MetricType.PrecisionRecallCurve] = [
@@ -1247,7 +1257,7 @@ class DataLoader:
             if detection.groundtruths and detection.predictions:
                 boxes = np.array(
                     [
-                        np.concatenate((gann.extrema, pann.extrema), axis=0)
+                        np.array([*gann.extrema, *pann.extrema])
                         for pann in detection.predictions
                         for gann in detection.groundtruths
                     ]
