@@ -1157,6 +1157,11 @@ class DataLoader:
     ):
         for detection in tqdm(detections, disable=show_progress):
 
+            # update metadata
+            self._evaluator.n_datums += 1
+            self._evaluator.n_groundtruths += len(groundtruth.annotations)
+            self._evaluator.n_predictions += len(prediction.annotations)
+
             # update datum uids
             uid = detection.uid
             if uid not in self._evaluator.uid_to_index:
@@ -1467,6 +1472,11 @@ class DataLoader:
         predictions: list[dict],
     ):
         for groundtruth, prediction in tqdm(zip(groundtruths, predictions)):
+
+            # update metadata
+            self._evaluator.n_datums += 1
+            self._evaluator.n_groundtruths += len(groundtruth.annotations)
+            self._evaluator.n_predictions += len(prediction.annotations)
 
             # update datum uids
             uid = groundtruth["datum"]["uid"]
