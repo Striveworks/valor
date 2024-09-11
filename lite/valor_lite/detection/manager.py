@@ -460,7 +460,6 @@ class DataLoader:
                 ] += plabels.count(item)
 
             # populate numpy array
-
             keyed_groundtruths = defaultdict(list)
             keyed_predictions = defaultdict(list)
             for gidx, gann in enumerate(detection.groundtruths):
