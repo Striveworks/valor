@@ -460,83 +460,100 @@ class DataLoader:
                 ] += plabels.count(item)
 
             # populate numpy array
-            if detection.groundtruths and detection.predictions:
+
+            keyed_groundtruths = defaultdict(list)
+            keyed_predictions = defaultdict(list)
+            for gidx, gann in enumerate(detection.groundtruths):
+                for glabel in gann.labels:
+                    keyed_groundtruths[glabel[0]].append(
+                        (
+                            gidx,
+                            self._evaluator.label_to_index[glabel],
+                            gann.extrema,
+                        )
+                    )
+            for pidx, pann in enumerate(detection.predictions):
+                for plabel, pscore in zip(pann.labels, pann.scores):
+                    keyed_predictions[plabel[0]].append(
+                        (
+                            pidx,
+                            self._evaluator.label_to_index[plabel],
+                            pscore,
+                            pann.extrema,
+                        )
+                    )
+
+            gt_keys = set(keyed_groundtruths.keys())
+            pd_keys = set(keyed_predictions.keys())
+            joint_keys = gt_keys.intersection(pd_keys)
+            gt_unique_keys = gt_keys - pd_keys
+            pd_unique_keys = pd_keys - gt_keys
+
+            pairs = list()
+            for key in joint_keys:
                 boxes = np.array(
                     [
-                        np.array([*gann.extrema, *pann.extrema])
-                        for pann in detection.predictions
-                        for gann in detection.groundtruths
+                        np.array([*gextrema, *pextrema])
+                        for _, _, _, pextrema in keyed_predictions[key]
+                        for _, _, gextrema in keyed_groundtruths[key]
                     ]
                 )
                 ious = compute_iou(boxes)
-                new_data = np.array(
+                pairs.extend(
                     [
-                        [
-                            float(uid_index),
-                            float(gidx),
-                            float(pidx),
-                            float(
-                                ious[pidx * len(detection.groundtruths) + gidx]
-                            ),
-                            float(self._evaluator.label_to_index[glabel]),
-                            float(self._evaluator.label_to_index[plabel]),
-                            float(pscore),
-                        ]
-                        for pidx, pann in enumerate(detection.predictions)
-                        for plabel, pscore in zip(pann.labels, pann.scores)
-                        for gidx, gann in enumerate(detection.groundtruths)
-                        for glabel in gann.labels
-                        if glabel[0] == plabel[0]
+                        np.array(
+                            [
+                                float(uid_index),
+                                float(gidx),
+                                float(pidx),
+                                ious[
+                                    pidx * len(keyed_groundtruths[key]) + gidx
+                                ],
+                                float(glabel),
+                                float(plabel),
+                                float(score),
+                            ]
+                        )
+                        for pidx, plabel, score, _ in keyed_predictions[key]
+                        for gidx, glabel, _ in keyed_groundtruths[key]
                     ]
                 )
-            elif detection.groundtruths:
-                new_data = np.array(
+            for key in gt_unique_keys:
+                pairs.extend(
                     [
-                        [
-                            float(uid_index),
-                            float(gidx),
-                            -1.0,
-                            0.0,
-                            float(self._evaluator.label_to_index[glabel]),
-                            -1.0,
-                            -1.0,
-                        ]
-                        for gidx, gann in enumerate(detection.groundtruths)
-                        for glabel in gann.labels
+                        np.array(
+                            [
+                                float(uid_index),
+                                float(gidx),
+                                -1.0,
+                                0.0,
+                                float(glabel),
+                                -1.0,
+                                -1.0,
+                            ]
+                        )
+                        for gidx, glabel, _ in keyed_groundtruths[key]
                     ]
                 )
-            elif detection.predictions:
-                new_data = np.array(
+            for key in pd_unique_keys:
+                pairs.extend(
                     [
-                        [
-                            float(uid_index),
-                            -1.0,
-                            float(pidx),
-                            0.0,
-                            -1.0,
-                            float(self._evaluator.label_to_index[plabel]),
-                            float(pscore),
-                        ]
-                        for pidx, pann in enumerate(detection.predictions)
-                        for plabel, pscore in zip(pann.labels, pann.scores)
-                    ]
-                )
-            else:
-                new_data = np.array(
-                    [
-                        [
-                            float(uid_index),
-                            -1.0,
-                            -1.0,
-                            0.0,
-                            -1.0,
-                            -1.0,
-                            -1.0,
-                        ]
+                        np.array(
+                            [
+                                float(uid_index),
+                                -1.0,
+                                float(pidx),
+                                0.0,
+                                -1.0,
+                                float(plabel),
+                                float(score),
+                            ]
+                        )
+                        for pidx, plabel, score, _ in keyed_predictions[key]
                     ]
                 )
 
-            self.pairs.append(new_data)
+            self.pairs.append(np.array(pairs))
 
     def add_data_from_valor_core(
         self,
@@ -909,6 +926,8 @@ class DataLoader:
 
         if self.pairs is None:
             raise ValueError
+
+        self.pairs = [pair for pair in self.pairs if pair.size > 0]
 
         self._evaluator._label_metadata = np.array(
             [
