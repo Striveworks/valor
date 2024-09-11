@@ -9,7 +9,6 @@ dependencies = [
     "requests",
     "Pillow >= 9.1.0",
     "numpy",
-    "numba",
     "importlib_metadata; python_version < '3.8'",
     "tqdm",
     "packaging",
