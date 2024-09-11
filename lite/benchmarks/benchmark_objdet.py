@@ -158,14 +158,11 @@ class Benchmark:
             "chunk_size": self.chunk_size,
             "ingestion": {
                 "loading_from_file": f"{round(self.ingestion - self.preprocessing, 2)} seconds",
-                "numpy_conversion+IoU": f"{round(self.preprocessing, 2)} seconds",
-                "total": f"{round(self.ingestion, 2)} seconds",
-            },
-            "computation": {
+                "numpy_conversion + IoU": f"{round(self.preprocessing, 2)} seconds",
                 "ranking_pairs": f"{round(self.precomputation, 2)} seconds",
-                "metric_computation": f"{round(self.evaluation, 2)} seconds",
-                "total": f"{round(self.precomputation + self.evaluation, 2)} seconds",
+                "total": f"{round(self.ingestion + self.precomputation, 2)} seconds",
             },
+            "evaluation": f"{round(self.evaluation, 2)} seconds",
         }
 
 
