@@ -1,5 +1,5 @@
 [project]
-name = "valor-eval"
+name = "valor-lite"
 dynamic = ["version"]
 description = "Compute valor metrics directly in your client."
 readme = "README.md"
@@ -11,7 +11,6 @@ dependencies = [
     "tqdm",
     "requests",
     "numpy",
-    "numba"
 ]
 
 [project.urls]
