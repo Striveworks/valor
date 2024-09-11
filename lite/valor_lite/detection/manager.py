@@ -114,34 +114,36 @@ class Evaluator:
         """
         Creates a boolean mask that can be passed to an evaluation.
         """
-
-        mask = np.ones_like(self._ranked_pairs, dtype=np.bool_)
+        n_rows = self._ranked_pairs.shape[0]
+        mask = np.ones(n_rows, dtype=np.bool_)
         if datum_uids is not None:
             indices = np.array([self.uid_to_index[uid] for uid in datum_uids])
-            mask &= self._ranked_pairs[:, 0].astype(int) == indices
+            mask_datum = np.zeros_like(mask, dtype=np.bool_)
+            mask_datum[self._ranked_pairs[:, 0].astype(int) == indices] = True
+            mask &= mask_datum
 
         if labels is not None:
             indices = np.array(
                 [self.label_to_index[label] for label in labels]
             )
-            mask &= (
+            mask_groundtruth_labels = np.zeros_like(mask, dtype=np.bool_)
+            mask_groundtruth_labels[
                 self._ranked_pairs[:, 4].astype(int) == indices
-            )  # groundtruth filter
-            mask &= (
-                self._ranked_pairs[:, 5].astype(int) == indices
-            )  # prediction filter
+            ] = True
+            mask &= mask_groundtruth_labels
 
         if label_keys is not None:
             key_indices = np.array(
                 [self.label_key_to_index[key] for key in label_keys]
             )
-            label_indices = np.where(self._label_metadata[:, 2] == key_indices)
-            mask &= (
+            label_indices = np.where(
+                np.isclose(self._label_metadata[:, 2], key_indices)
+            )[0]
+            mask_groundtruth_label_keys = np.zeros_like(mask, dtype=np.bool_)
+            mask_groundtruth_label_keys[
                 self._ranked_pairs[:, 4].astype(int) == label_indices
-            )  # groundtruth filter
-            mask &= (
-                self._ranked_pairs[:, 5].astype(int) == label_indices
-            )  # prediction filter
+            ] = True
+            mask &= mask_groundtruth_label_keys
 
         return mask
 

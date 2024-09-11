@@ -1,4 +1,3 @@
-import numpy as np
 from valor_lite.detection import DataLoader, Detection, MetricType
 
 
@@ -7,16 +6,16 @@ def test_recall_metrics(basic_detections: list[Detection]):
     Basic object detection test.
 
     groundtruths
-        datum 1
+        datum uid1
             box 1 - label (k1, v1) - tp
             box 3 - label (k2, v2) - fn missing prediction
-        datum 2
+        datum uid2
             box 2 - label (k1, v1) - fn misclassification
 
     predictions
-        datum 1
+        datum uid1
             box 1 - label (k1, v1) - score 0.3 - tp
-        datum 2
+        datum uid2
             box 2 - label (k2, v2) - score 0.98 - fp
     """
 
