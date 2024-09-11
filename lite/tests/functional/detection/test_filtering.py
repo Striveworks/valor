@@ -1,5 +1,5 @@
 import numpy as np
-from valor_lite.detection import DataLoader, Detection
+from valor_lite.detection import DataLoader, Detection, MetricType
 
 
 def test_filtering(basic_detections: list[Detection]):
@@ -34,33 +34,79 @@ def test_filtering(basic_detections: list[Detection]):
         )
     ).all()
 
+    assert (
+        evaluator._label_metadata_per_datum
+        == np.array(
+            [
+                [
+                    [1, 1],
+                    [1, 0],
+                ],
+                [
+                    [1, 0],
+                    [0, 1],
+                ],
+            ]
+        )
+    ).all()
+
+    assert (
+        evaluator._label_metadata == np.array([[2, 1, 0], [1, 1, 1]])
+    ).all()
+
     # test datum filtering
 
-    mask = evaluator.create_filter(datum_uids=["uid1"])
-    assert (mask == np.array([False, True])).all()
+    filter_ = evaluator.create_filter(datum_uids=["uid1"])
+    assert (filter_.mask == np.array([False, True])).all()
+    assert (filter_.label_metadata == np.array([[1, 1, 0], [1, 0, 1]])).all()
 
-    mask = evaluator.create_filter(datum_uids=["uid2"])
-    assert (mask == np.array([True, False])).all()
+    filter_ = evaluator.create_filter(datum_uids=["uid2"])
+    assert (filter_.mask == np.array([True, False])).all()
 
     # test label filtering
 
-    mask = evaluator.create_filter(labels=[("k1", "v1")])
-    assert (mask == np.array([False, True])).all()
+    filter_ = evaluator.create_filter(labels=[("k1", "v1")])
+    assert (filter_.mask == np.array([False, True])).all()
 
-    mask = evaluator.create_filter(labels=[("k2", "v2")])
-    assert (mask == np.array([False, False])).all()
+    filter_ = evaluator.create_filter(labels=[("k2", "v2")])
+    assert (filter_.mask == np.array([False, False])).all()
 
     # test label key filtering
 
-    mask = evaluator.create_filter(label_keys=["k1"])
-    assert (mask == np.array([False, True])).all()
+    filter_ = evaluator.create_filter(label_keys=["k1"])
+    assert (filter_.mask == np.array([False, True])).all()
 
-    mask = evaluator.create_filter(label_keys=["k2"])
-    assert (mask == np.array([False, False])).all()
+    filter_ = evaluator.create_filter(label_keys=["k2"])
+    assert (filter_.mask == np.array([False, False])).all()
 
     # test combo
-    mask = evaluator.create_filter(
+    filter_ = evaluator.create_filter(
         datum_uids=["uid1"],
         label_keys=["k1"],
     )
-    assert (mask == np.array([False, True])).all()
+    assert (filter_.mask == np.array([False, True])).all()
+
+    # test evaluation
+    filter_ = evaluator.create_filter(datum_uids=["uid1"])
+    metrics = evaluator.evaluate(
+        iou_thresholds=[0.5],
+        filter_=filter_,
+    )
+
+    actual_metrics = [m.to_dict() for m in metrics[MetricType.AP]]
+    expected_metrics = [
+        {
+            "type": "AP",
+            "value": 1.0,
+            "parameters": {"iou": 0.5, "label": {"key": "k1", "value": "v1"}},
+        },
+        {
+            "type": "AP",
+            "value": 0.0,
+            "parameters": {"iou": 0.5, "label": {"key": "k2", "value": "v2"}},
+        },
+    ]
+    for m in actual_metrics:
+        assert m in expected_metrics
+    for m in expected_metrics:
+        assert m in actual_metrics

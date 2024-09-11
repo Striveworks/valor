@@ -1,4 +1,5 @@
 from collections import defaultdict
+from dataclasses import dataclass
 
 import numpy as np
 from numpy.typing import NDArray
@@ -49,6 +50,12 @@ filtered_metrics = evaluator.evaluate(iou_thresholds=[0.5], filter_mask=filter_m
 """
 
 
+@dataclass
+class Filter:
+    mask: NDArray[np.bool_]
+    label_metadata: NDArray[np.int32]
+
+
 class Evaluator:
     def __init__(self):
 
@@ -57,8 +64,6 @@ class Evaluator:
         self.n_groundtruths = 0
         self.n_predictions = 0
         self.n_labels = 0
-        self.gt_counts = defaultdict(int)
-        self.pd_counts = defaultdict(int)
 
         # datum reference
         self.uid_to_index: dict[str, int] = dict()
@@ -77,19 +82,20 @@ class Evaluator:
         self._detailed_pairs = np.empty((1, 7))
         self._ranked_pairs = np.empty((1, 7))
         self._label_metadata = np.empty((1, 3))
+        self._label_metadata_per_datum = np.empty((1, 1, 2), dtype=np.int32)
 
     @property
     def ignored_prediction_labels(self) -> list[tuple[str, str]]:
-        glabels = set(self.gt_counts.keys())
-        plabels = set(self.pd_counts.keys())
+        glabels = set(np.where(self._label_metadata[:, 0] > 0)[0])
+        plabels = set(np.where(self._label_metadata[:, 1] > 0)[0])
         return [
             self.index_to_label[label_id] for label_id in (plabels - glabels)
         ]
 
     @property
     def missing_prediction_labels(self) -> list[tuple[str, str]]:
-        glabels = set(self.gt_counts.keys())
-        plabels = set(self.pd_counts.keys())
+        glabels = set(np.where(self._label_metadata[:, 0] > 0)[0])
+        plabels = set(np.where(self._label_metadata[:, 1] > 0)[0])
         return [
             self.index_to_label[label_id] for label_id in (glabels - plabels)
         ]
@@ -110,27 +116,42 @@ class Evaluator:
         datum_uids: list[str] | None = None,
         labels: list[tuple[str, str]] | None = None,
         label_keys: list[str] | None = None,
-    ) -> NDArray[np.bool_]:
+    ) -> Filter:
         """
         Creates a boolean mask that can be passed to an evaluation.
         """
         n_rows = self._ranked_pairs.shape[0]
-        mask = np.ones(n_rows, dtype=np.bool_)
+
+        n_datums = self._label_metadata_per_datum.shape[1]
+        n_labels = self._label_metadata_per_datum.shape[2]
+
+        mask_pairs = np.ones(n_rows, dtype=np.bool_)
+        mask_datums = np.ones(n_datums, dtype=np.bool_)
+        mask_labels = np.ones(n_labels, dtype=np.bool_)
+
         if datum_uids is not None:
-            indices = np.array([self.uid_to_index[uid] for uid in datum_uids])
-            mask_datum = np.zeros_like(mask, dtype=np.bool_)
-            mask_datum[self._ranked_pairs[:, 0].astype(int) == indices] = True
-            mask &= mask_datum
+            indices = np.array(
+                [self.uid_to_index[uid] for uid in datum_uids], dtype=np.int32
+            )
+            mask = np.zeros_like(mask_pairs, dtype=np.bool_)
+            mask[self._ranked_pairs[:, 0].astype(int) == indices] = True
+            mask_pairs &= mask
+
+            mask = np.zeros_like(mask_datums, dtype=np.bool_)
+            mask[indices] = True
+            mask_datums &= mask
 
         if labels is not None:
             indices = np.array(
                 [self.label_to_index[label] for label in labels]
             )
-            mask_groundtruth_labels = np.zeros_like(mask, dtype=np.bool_)
-            mask_groundtruth_labels[
-                self._ranked_pairs[:, 4].astype(int) == indices
-            ] = True
-            mask &= mask_groundtruth_labels
+            mask = np.zeros_like(mask_pairs, dtype=np.bool_)
+            mask[self._ranked_pairs[:, 4].astype(int) == indices] = True
+            mask_pairs &= mask
+
+            mask = np.zeros_like(mask_labels, dtype=np.bool_)
+            mask[indices] = True
+            mask_labels &= mask
 
         if label_keys is not None:
             key_indices = np.array(
@@ -139,19 +160,35 @@ class Evaluator:
             label_indices = np.where(
                 np.isclose(self._label_metadata[:, 2], key_indices)
             )[0]
-            mask_groundtruth_label_keys = np.zeros_like(mask, dtype=np.bool_)
-            mask_groundtruth_label_keys[
-                self._ranked_pairs[:, 4].astype(int) == label_indices
-            ] = True
-            mask &= mask_groundtruth_label_keys
+            mask = np.zeros_like(mask_pairs, dtype=np.bool_)
+            mask[self._ranked_pairs[:, 4].astype(int) == label_indices] = True
+            mask_pairs &= mask
 
-        return mask
+            mask = np.zeros_like(mask_labels, dtype=np.bool_)
+            mask[label_indices] = True
+            mask_labels &= mask
+
+        mask = mask_datums[:, np.newaxis] & mask_labels[np.newaxis, :]
+        label_metadata_per_datum = self._label_metadata_per_datum.copy()
+        label_metadata_per_datum[:, ~mask] = 0
+
+        label_metadata = np.zeros_like(self._label_metadata, dtype=np.int32)
+        label_metadata[:, :2] = np.sum(
+            label_metadata_per_datum,
+            axis=1,
+        )
+        label_metadata[:, 2] = self._label_metadata[:, 2]
+
+        return Filter(
+            mask=mask_pairs,
+            label_metadata=label_metadata,
+        )
 
     def evaluate(
         self,
         iou_thresholds: list[float] = [0.5, 0.75, 0.9],
         score_thresholds: list[float] = [0.5],
-        filter_mask: NDArray[np.bool_] | None = None,
+        filter_: Filter | None = None,
     ) -> dict[MetricType, list]:
         """
         Runs evaluation over cached data.
@@ -167,8 +204,10 @@ class Evaluator:
         """
 
         data = self._ranked_pairs
-        if filter_mask is not None:
-            data = data[filter_mask]
+        label_metadata = self._label_metadata
+        if filter_ is not None:
+            data = data[filter_.mask]
+            label_metadata = filter_.label_metadata
 
         (
             average_precision,
@@ -179,7 +218,7 @@ class Evaluator:
             pr_curves,
         ) = compute_metrics(
             data=self._ranked_pairs,
-            label_counts=self._label_metadata,
+            label_counts=label_metadata,
             iou_thresholds=np.array(iou_thresholds),
             score_thresholds=np.array(score_thresholds),
         )
@@ -393,6 +432,8 @@ class DataLoader:
     def __init__(self):
         self._evaluator = Evaluator()
         self.pairs = list()
+        self.groundtruth_count = defaultdict(lambda: defaultdict(int))
+        self.prediction_count = defaultdict(lambda: defaultdict(int))
 
     def _add_datum(self, uid: str) -> int:
         if uid not in self._evaluator.uid_to_index:
@@ -446,11 +487,11 @@ class DataLoader:
             for gidx, gann in enumerate(detection.groundtruths):
                 for glabel in gann.labels:
                     label_idx, label_key_idx = self._add_label(glabel)
-                    self._evaluator.gt_counts[label_idx] += 1
+                    self.groundtruth_count[label_idx][uid_index] += 1
                     keyed_groundtruths[label_key_idx].append(
                         (
                             gidx,
-                            self._evaluator.label_to_index[glabel],
+                            label_idx,
                             gann.extrema,
                         )
                     )
@@ -459,11 +500,11 @@ class DataLoader:
                     raise ValueError
                 for plabel, pscore in zip(pann.labels, pann.scores):
                     label_idx, label_key_idx = self._add_label(plabel)
-                    self._evaluator.pd_counts[label_idx] += 1
+                    self.prediction_count[label_idx][uid_index] += 1
                     keyed_predictions[label_key_idx].append(
                         (
                             pidx,
-                            self._evaluator.label_to_index[plabel],
+                            label_idx,
                             pscore,
                             pann.extrema,
                         )
@@ -571,11 +612,11 @@ class DataLoader:
                 for valor_label in gann["labels"]:
                     glabel = (valor_label["key"], valor_label["value"])
                     label_idx, label_key_idx = self._add_label(glabel)
-                    self._evaluator.gt_counts[label_idx] += 1
+                    self.groundtruth_count[label_idx][uid_index] += 1
                     keyed_groundtruths[label_key_idx].append(
                         (
                             gidx,
-                            self._evaluator.label_to_index[glabel],
+                            label_idx,
                             _get_bbox_extrema(gann["bounding_box"]),
                         )
                     )
@@ -584,11 +625,11 @@ class DataLoader:
                     plabel = (valor_label["key"], valor_label["value"])
                     pscore = valor_label["score"]
                     label_idx, label_key_idx = self._add_label(plabel)
-                    self._evaluator.pd_counts[label_idx] += 1
+                    self.prediction_count[label_idx][uid_index] += 1
                     keyed_predictions[label_key_idx].append(
                         (
                             pidx,
-                            self._evaluator.label_to_index[plabel],
+                            label_idx,
                             pscore,
                             _get_bbox_extrema(pann["bounding_box"]),
                         )
@@ -673,21 +714,56 @@ class DataLoader:
 
         self.pairs = [pair for pair in self.pairs if pair.size > 0]
 
+        n_datums = self._evaluator.n_datums
+        n_labels = len(self._evaluator.index_to_label)
+
+        self._evaluator.n_labels = n_labels
+
+        self._evaluator._label_metadata_per_datum = np.zeros(
+            (2, n_datums, n_labels), dtype=np.int32
+        )
+        for datum_idx in range(n_datums):
+            for label_idx in range(n_labels):
+                gt_count = (
+                    self.groundtruth_count[label_idx].get(datum_idx, 0)
+                    if label_idx in self.groundtruth_count
+                    else 0
+                )
+                pd_count = (
+                    self.prediction_count[label_idx].get(datum_idx, 0)
+                    if label_idx in self.prediction_count
+                    else 0
+                )
+                self._evaluator._label_metadata_per_datum[
+                    :, datum_idx, label_idx
+                ] = np.array([gt_count, pd_count])
+
         self._evaluator._label_metadata = np.array(
             [
                 [
-                    float(self._evaluator.gt_counts.get(label_id, 0)),
-                    float(self._evaluator.pd_counts.get(label_id, 0)),
+                    float(
+                        np.sum(
+                            self._evaluator._label_metadata_per_datum[
+                                0, :, label_idx
+                            ]
+                        )
+                    ),
+                    float(
+                        np.sum(
+                            self._evaluator._label_metadata_per_datum[
+                                1, :, label_idx
+                            ]
+                        )
+                    ),
                     float(
                         self._evaluator.label_index_to_label_key_index[
-                            label_id
+                            label_idx
                         ]
                     ),
                 ]
-                for label_id in range(len(self._evaluator.index_to_label))
+                for label_idx in range(n_labels)
             ]
         )
-        self._evaluator.n_labels = self._evaluator._label_metadata.shape[0]
 
         self._evaluator._detailed_pairs = np.concatenate(
             self.pairs,
