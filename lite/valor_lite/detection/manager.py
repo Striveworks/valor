@@ -3,7 +3,6 @@ from collections import defaultdict
 import numpy as np
 from numpy.typing import NDArray
 from tqdm import tqdm
-from valor_lite import valor_core_schemas as schemas
 from valor_lite.detection.annotation import Detection
 from valor_lite.detection.computation import (
     compute_detailed_pr_curve,
@@ -393,6 +392,36 @@ class DataLoader:
         self._evaluator = Evaluator()
         self.pairs = list()
 
+    def _add_datum(self, uid: str) -> int:
+        if uid not in self._evaluator.uid_to_index:
+            index = len(self._evaluator.uid_to_index)
+            self._evaluator.uid_to_index[uid] = index
+            self._evaluator.index_to_uid[index] = uid
+        return self._evaluator.uid_to_index[uid]
+
+    def _add_label(self, label: tuple[str, str]) -> tuple[int, int]:
+        label_id = len(self._evaluator.index_to_label)
+        label_key_id = len(self._evaluator.index_to_label_key)
+        if label not in self._evaluator.label_to_index:
+            self._evaluator.label_to_index[label] = label_id
+            self._evaluator.index_to_label[label_id] = label
+
+            # update label key index
+            if label[0] not in self._evaluator.label_key_to_index:
+                self._evaluator.label_key_to_index[label[0]] = label_key_id
+                self._evaluator.index_to_label_key[label_key_id] = label[0]
+                label_key_id += 1
+
+            self._evaluator.label_index_to_label_key_index[
+                label_id
+            ] = self._evaluator.label_key_to_index[label[0]]
+            label_id += 1
+
+        return (
+            self._evaluator.label_to_index[label],
+            self._evaluator.label_key_to_index[label[0]],
+        )
+
     def add_data(
         self,
         detections: list[Detection],
@@ -406,65 +435,17 @@ class DataLoader:
             self._evaluator.n_groundtruths += len(detection.groundtruths)
             self._evaluator.n_predictions += len(detection.predictions)
 
-            # update datum uids
-            uid = detection.uid
-            if uid not in self._evaluator.uid_to_index:
-                index = len(self._evaluator.uid_to_index)
-                self._evaluator.uid_to_index[uid] = index
-                self._evaluator.index_to_uid[index] = uid
-            uid_index = self._evaluator.uid_to_index[uid]
+            # update datum uid index
+            uid_index = self._add_datum(uid=detection.uid)
 
-            # update labels
-            glabels = [
-                glabel
-                for gann in detection.groundtruths
-                for glabel in gann.labels
-            ]
-            glabels_set = set(glabels)
-            plabels = [
-                plabel
-                for pann in detection.predictions
-                for plabel in pann.labels
-            ]
-            plabels_set = set(plabels)
-            label_id = len(self._evaluator.index_to_label)
-            label_key_id = len(self._evaluator.index_to_label_key)
-            for label in glabels_set.union(plabels_set):
-                if label not in self._evaluator.label_to_index:
-                    self._evaluator.label_to_index[label] = label_id
-                    self._evaluator.index_to_label[label_id] = label
-
-                    # update label key index
-                    if label[0] not in self._evaluator.label_key_to_index:
-                        self._evaluator.label_key_to_index[
-                            label[0]
-                        ] = label_key_id
-                        self._evaluator.index_to_label_key[
-                            label_key_id
-                        ] = label[0]
-                        label_key_id += 1
-
-                    self._evaluator.label_index_to_label_key_index[
-                        label_id
-                    ] = self._evaluator.label_key_to_index[label[0]]
-                    label_id += 1
-
-            # count label occurences
-            for item in glabels_set:
-                self._evaluator.gt_counts[
-                    self._evaluator.label_to_index[item]
-                ] += glabels.count(item)
-            for item in plabels_set:
-                self._evaluator.pd_counts[
-                    self._evaluator.label_to_index[item]
-                ] += plabels.count(item)
-
-            # populate numpy array
+            # cache labels and annotations
             keyed_groundtruths = defaultdict(list)
             keyed_predictions = defaultdict(list)
             for gidx, gann in enumerate(detection.groundtruths):
                 for glabel in gann.labels:
-                    keyed_groundtruths[glabel[0]].append(
+                    label_idx, label_key_idx = self._add_label(glabel)
+                    self._evaluator.gt_counts[label_idx] += 1
+                    keyed_groundtruths[label_key_idx].append(
                         (
                             gidx,
                             self._evaluator.label_to_index[glabel],
@@ -472,8 +453,12 @@ class DataLoader:
                         )
                     )
             for pidx, pann in enumerate(detection.predictions):
+                if pann.scores is None:
+                    raise ValueError
                 for plabel, pscore in zip(pann.labels, pann.scores):
-                    keyed_predictions[plabel[0]].append(
+                    label_idx, label_key_idx = self._add_label(plabel)
+                    self._evaluator.pd_counts[label_idx] += 1
+                    keyed_predictions[label_key_idx].append(
                         (
                             pidx,
                             self._evaluator.label_to_index[plabel],
@@ -554,372 +539,130 @@ class DataLoader:
 
             self.pairs.append(np.array(pairs))
 
-    def add_data_from_valor_core(
-        self,
-        groundtruths: list[schemas.GroundTruth],
-        predictions: list[schemas.Prediction],
-        show_progress: bool = False,
-    ):
-        disable_tqdm = not show_progress
-        for groundtruth, prediction in tqdm(
-            zip(groundtruths, predictions), disable=disable_tqdm
-        ):
-
-            # update metadata
-            self._evaluator.n_datums += 1
-            self._evaluator.n_groundtruths += len(groundtruth.annotations)
-            self._evaluator.n_predictions += len(prediction.annotations)
-
-            # update datum uids
-            uid = groundtruth.datum.uid
-            if uid not in self._evaluator.uid_to_index:
-                index = len(self._evaluator.uid_to_index)
-                self._evaluator.uid_to_index[uid] = index
-                self._evaluator.index_to_uid[index] = uid
-            uid_index = self._evaluator.uid_to_index[uid]
-
-            # update labels
-            glabels = [
-                (glabel.key, glabel.value)
-                for gann in groundtruth.annotations
-                for glabel in gann.labels
-            ]
-            glabels_set = set(glabels)
-
-            plabels = [
-                (plabel.key, plabel.value)
-                for pann in prediction.annotations
-                for plabel in pann.labels
-            ]
-            plabels_set = set(plabels)
-
-            # update label index
-            label_id = len(self._evaluator.index_to_label)
-            label_key_id = len(self._evaluator.index_to_label_key)
-            for label in glabels_set.union(plabels_set):
-                if label not in self._evaluator.label_to_index:
-                    self._evaluator.label_to_index[label] = label_id
-                    self._evaluator.index_to_label[label_id] = label
-
-                    # update label key index
-                    if label[0] not in self._evaluator.label_key_to_index:
-                        self._evaluator.label_key_to_index[
-                            label[0]
-                        ] = label_key_id
-                        self._evaluator.index_to_label_key[
-                            label_key_id
-                        ] = label[0]
-                        label_key_id += 1
-
-                    self._evaluator.label_index_to_label_key_index[
-                        label_id
-                    ] = self._evaluator.label_key_to_index[label[0]]
-                    label_id += 1
-
-            for item in glabels_set:
-                self._evaluator.gt_counts[
-                    self._evaluator.label_to_index[item]
-                ] += glabels.count(item)
-            for item in plabels_set:
-                self._evaluator.pd_counts[
-                    self._evaluator.label_to_index[item]
-                ] += plabels.count(item)
-
-            if groundtruth.annotations and prediction.annotations:
-                boxes = np.array(
-                    [
-                        np.array(
-                            [
-                                gann.bounding_box.xmin,
-                                gann.bounding_box.xmax,
-                                gann.bounding_box.ymin,
-                                gann.bounding_box.ymax,
-                                pann.bounding_box.xmin,
-                                pann.bounding_box.xmax,
-                                pann.bounding_box.ymin,
-                                pann.bounding_box.ymax,
-                            ]
-                        )
-                        for pann in prediction.annotations
-                        for gann in groundtruth.annotations
-                    ]
-                )
-                ious = compute_iou(boxes)
-                new_data = np.array(
-                    [
-                        [
-                            float(uid_index),
-                            float(gidx),
-                            float(pidx),
-                            float(
-                                ious[
-                                    pidx * len(groundtruth.annotations) + gidx
-                                ]
-                            ),
-                            float(
-                                self._evaluator.label_to_index[
-                                    (glabel.key, glabel.value)
-                                ]
-                            ),
-                            float(
-                                self._evaluator.label_to_index[
-                                    (plabel.key, plabel.value)
-                                ]
-                            ),
-                            float(plabel.score),
-                        ]
-                        for pidx, pann in enumerate(prediction.annotations)
-                        for plabel in pann.labels
-                        for gidx, gann in enumerate(groundtruth.annotations)
-                        for glabel in gann.labels
-                        if glabel.key == plabel.key
-                    ]
-                )
-            elif groundtruth.annotations:
-                new_data = np.array(
-                    [
-                        [
-                            float(uid_index),
-                            float(gidx),
-                            -1.0,
-                            0.0,
-                            float(
-                                self._evaluator.label_to_index[
-                                    (glabel.key, glabel.value)
-                                ]
-                            ),
-                            -1.0,
-                            -1.0,
-                        ]
-                        for gidx, gann in enumerate(groundtruth.annotations)
-                        for glabel in gann.labels
-                    ]
-                )
-            elif prediction.annotations:
-                new_data = np.array(
-                    [
-                        [
-                            float(uid_index),
-                            -1.0,
-                            float(pidx),
-                            0.0,
-                            -1.0,
-                            float(
-                                self._evaluator.label_to_index[
-                                    (plabel.key, plabel.value)
-                                ]
-                            ),
-                            float(plabel.score),
-                        ]
-                        for pidx, pann in enumerate(prediction.annotations)
-                        for plabel in pann.labels
-                    ]
-                )
-            else:
-                new_data = np.array(
-                    [
-                        [
-                            float(uid_index),
-                            -1.0,
-                            -1.0,
-                            0.0,
-                            -1.0,
-                            -1.0,
-                            -1.0,
-                        ]
-                    ]
-                )
-
-            self.pairs.append(new_data)
-
     def add_data_from_valor_dict(
         self,
-        groundtruths: list[dict],
-        predictions: list[dict],
+        detections: list[tuple[dict, dict]],
         show_progress: bool = False,
     ):
         def _get_bbox_extrema(
             data: list[list[list[float]]],
-        ) -> NDArray[np.floating]:
-
+        ) -> tuple[float, float, float, float]:
             x = [point[0] for shape in data for point in shape]
             y = [point[1] for shape in data for point in shape]
-
-            return np.array(
-                [
-                    min(x),
-                    max(x),
-                    min(y),
-                    max(y),
-                ]
-            )
+            return (min(x), max(x), min(y), max(y))
 
         disable_tqdm = not show_progress
-        for groundtruth, prediction in tqdm(
-            zip(groundtruths, predictions), disable=disable_tqdm
-        ):
+        for groundtruth, prediction in tqdm(detections, disable=disable_tqdm):
 
             # update metadata
             self._evaluator.n_datums += 1
             self._evaluator.n_groundtruths += len(groundtruth["annotations"])
             self._evaluator.n_predictions += len(prediction["annotations"])
 
-            # update datum uids
-            uid = groundtruth["datum"]["uid"]
-            if uid not in self._evaluator.uid_to_index:
-                index = len(self._evaluator.uid_to_index)
-                self._evaluator.uid_to_index[uid] = index
-                self._evaluator.index_to_uid[index] = uid
-            uid_index = self._evaluator.uid_to_index[uid]
+            # update datum uid index
+            uid_index = self._add_datum(uid=groundtruth["datum"]["uid"])
 
-            # update labels
-            glabels = [
-                (glabel["key"], glabel["value"])
-                for gann in groundtruth["annotations"]
-                for glabel in gann["labels"]
-            ]
-            glabels_set = set(glabels)
+            # cache labels and annotations
+            keyed_groundtruths = defaultdict(list)
+            keyed_predictions = defaultdict(list)
+            for gidx, gann in enumerate(groundtruth["annotations"]):
+                for valor_label in gann["labels"]:
+                    glabel = (valor_label["key"], valor_label["value"])
+                    label_idx, label_key_idx = self._add_label(glabel)
+                    self._evaluator.gt_counts[label_idx] += 1
+                    keyed_groundtruths[label_key_idx].append(
+                        (
+                            gidx,
+                            self._evaluator.label_to_index[glabel],
+                            _get_bbox_extrema(gann["bounding_box"]),
+                        )
+                    )
+            for pidx, pann in enumerate(prediction["annotations"]):
+                for valor_label in pann["labels"]:
+                    plabel = (valor_label["key"], valor_label["value"])
+                    pscore = valor_label["score"]
+                    label_idx, label_key_idx = self._add_label(plabel)
+                    self._evaluator.pd_counts[label_idx] += 1
+                    keyed_predictions[label_key_idx].append(
+                        (
+                            pidx,
+                            self._evaluator.label_to_index[plabel],
+                            pscore,
+                            _get_bbox_extrema(pann["bounding_box"]),
+                        )
+                    )
 
-            plabels = [
-                (plabel["key"], plabel["value"])
-                for pann in prediction["annotations"]
-                for plabel in pann["labels"]
-            ]
-            plabels_set = set(plabels)
+            gt_keys = set(keyed_groundtruths.keys())
+            pd_keys = set(keyed_predictions.keys())
+            joint_keys = gt_keys.intersection(pd_keys)
+            gt_unique_keys = gt_keys - pd_keys
+            pd_unique_keys = pd_keys - gt_keys
 
-            label_id = len(self._evaluator.index_to_label)
-            label_key_id = len(self._evaluator.index_to_label_key)
-            for label in glabels_set.union(plabels_set):
-                if label not in self._evaluator.label_to_index:
-                    self._evaluator.label_to_index[label] = label_id
-                    self._evaluator.index_to_label[label_id] = label
-
-                    # update label key index
-                    if label[0] not in self._evaluator.label_key_to_index:
-                        self._evaluator.label_key_to_index[
-                            label[0]
-                        ] = label_key_id
-                        self._evaluator.index_to_label_key[
-                            label_key_id
-                        ] = label[0]
-                        label_key_id += 1
-
-                    self._evaluator.label_index_to_label_key_index[
-                        label_id
-                    ] = self._evaluator.label_key_to_index[label[0]]
-                    label_id += 1
-
-            for item in glabels_set:
-                self._evaluator.gt_counts[
-                    self._evaluator.label_to_index[item]
-                ] += glabels.count(item)
-            for item in plabels_set:
-                self._evaluator.pd_counts[
-                    self._evaluator.label_to_index[item]
-                ] += plabels.count(item)
-
-            if groundtruth["annotations"] and prediction["annotations"]:
+            pairs = list()
+            for key in joint_keys:
                 boxes = np.array(
                     [
-                        np.concatenate(
-                            (
-                                _get_bbox_extrema(gann["bounding_box"]),
-                                _get_bbox_extrema(pann["bounding_box"]),
-                            ),
-                            axis=0,
-                        )
-                        for pann in prediction["annotations"]
-                        for gann in groundtruth["annotations"]
+                        np.array([*gextrema, *pextrema])
+                        for _, _, _, pextrema in keyed_predictions[key]
+                        for _, _, gextrema in keyed_groundtruths[key]
                     ]
                 )
                 ious = compute_iou(boxes)
-                new_data = np.array(
+                pairs.extend(
                     [
-                        [
-                            float(uid_index),
-                            float(gidx),
-                            float(pidx),
-                            float(
+                        np.array(
+                            [
+                                float(uid_index),
+                                float(gidx),
+                                float(pidx),
                                 ious[
-                                    pidx * len(groundtruth["annotations"])
-                                    + gidx
-                                ]
-                            ),
-                            float(
-                                self._evaluator.label_to_index[
-                                    (glabel["key"], glabel["value"])
-                                ]
-                            ),
-                            float(
-                                self._evaluator.label_to_index[
-                                    (plabel["key"], plabel["value"])
-                                ]
-                            ),
-                            float(plabel["score"]),
-                        ]
-                        for pidx, pann in enumerate(prediction["annotations"])
-                        for plabel in pann["labels"]
-                        for gidx, gann in enumerate(groundtruth["annotations"])
-                        for glabel in gann["labels"]
-                        if glabel["key"] == plabel["key"]
+                                    pidx * len(keyed_groundtruths[key]) + gidx
+                                ],
+                                float(glabel),
+                                float(plabel),
+                                float(score),
+                            ]
+                        )
+                        for pidx, plabel, score, _ in keyed_predictions[key]
+                        for gidx, glabel, _ in keyed_groundtruths[key]
                     ]
                 )
-            elif groundtruth["annotations"]:
-                new_data = np.array(
+            for key in gt_unique_keys:
+                pairs.extend(
                     [
-                        [
-                            float(uid_index),
-                            float(gidx),
-                            -1.0,
-                            0.0,
-                            float(
-                                self._evaluator.label_to_index[
-                                    (glabel["key"], glabel["value"])
-                                ]
-                            ),
-                            -1.0,
-                            -1.0,
-                        ]
-                        for gidx, gann in enumerate(groundtruth["annotations"])
-                        for glabel in gann["labels"]
+                        np.array(
+                            [
+                                float(uid_index),
+                                float(gidx),
+                                -1.0,
+                                0.0,
+                                float(glabel),
+                                -1.0,
+                                -1.0,
+                            ]
+                        )
+                        for gidx, glabel, _ in keyed_groundtruths[key]
                     ]
                 )
-            elif prediction["annotations"]:
-                new_data = np.array(
+            for key in pd_unique_keys:
+                pairs.extend(
                     [
-                        [
-                            float(uid_index),
-                            -1.0,
-                            float(pidx),
-                            0.0,
-                            -1.0,
-                            float(
-                                self._evaluator.label_to_index[
-                                    (plabel["key"], plabel["value"])
-                                ]
-                            ),
-                            float(plabel["score"]),
-                        ]
-                        for pidx, pann in enumerate(prediction["annotations"])
-                        for plabel in pann["labels"]
-                    ]
-                )
-            else:
-                new_data = np.array(
-                    [
-                        [
-                            float(uid_index),
-                            -1.0,
-                            -1.0,
-                            0.0,
-                            -1.0,
-                            -1.0,
-                            -1.0,
-                        ]
+                        np.array(
+                            [
+                                float(uid_index),
+                                -1.0,
+                                float(pidx),
+                                0.0,
+                                -1.0,
+                                float(plabel),
+                                float(score),
+                            ]
+                        )
+                        for pidx, plabel, score, _ in keyed_predictions[key]
                     ]
                 )
 
-            self.pairs.append(new_data)
+            self.pairs.append(np.array(pairs))
 
     def finalize(self) -> Evaluator:
 
