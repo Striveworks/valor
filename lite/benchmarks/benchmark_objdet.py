@@ -143,6 +143,7 @@ class Benchmark:
     preprocessing: float
     precomputation: float
     evaluation: float
+    detailed_curves: list[tuple[int, float]]
 
     def result(self) -> dict:
         return {
@@ -162,7 +163,16 @@ class Benchmark:
                 "ranking_pairs": f"{round(self.precomputation, 2)} seconds",
                 "total": f"{round(self.ingestion + self.precomputation, 2)} seconds",
             },
-            "evaluation": f"{round(self.evaluation, 2)} seconds",
+            "base_evaluation": f"{round(self.evaluation, 2)} seconds",
+            "detailed_pr_curve": [
+                {
+                    "score_thresholds": [x / 10.0 for x in range(1, 11)],
+                    "iou_thresholds": [0.5],
+                    "n_samples": curve[0],
+                    "computation": f"{round(curve[1], 2)} seconds",
+                }
+                for curve in self.detailed_curves
+            ],
         }
 
 
@@ -249,11 +259,15 @@ def run_benchmarking_analysis(
                     f"Base precomputation timed out with limit of {limit}."
                 )
 
-            # test detailed pr curve
-            # detailed_pr_curve_time, _ = time_it(
-            #     evaluator.compute_detailed_pr_curve
-            # )()  # (score_thresholds=[0.1,0.5,0.9])
-            # print(round(detailed_pr_curve_time, 5), "seconds")
+            # test detailed pr curve with no samples
+            detailed_pr_curve_time_no_samples, _ = time_it(
+                evaluator.compute_detailed_pr_curve
+            )()
+
+            # test detailed pr curve with 3 samples
+            detailed_pr_curve_time_three_samples, _ = time_it(
+                evaluator.compute_detailed_pr_curve
+            )(n_samples=3)
 
             # evaluate
             eval_time, metrics = time_it(evaluator.evaluate)()
@@ -277,6 +291,10 @@ def run_benchmarking_analysis(
                     preprocessing=preprocessing_time,
                     precomputation=finalization_time,
                     evaluation=eval_time,
+                    detailed_curves=[
+                        (0, detailed_pr_curve_time_no_samples),
+                        (3, detailed_pr_curve_time_three_samples),
+                    ],
                 ).result()
             )
 

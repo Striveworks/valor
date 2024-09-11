@@ -323,39 +323,24 @@ def compute_detailed_pr_curve(
     mask_pd_exists = data[:, 2] > -0.5
     mask_label_match = np.isclose(data[:, 4], data[:, 5])
 
+    mask_gt_pd_exists = mask_gt_exists & mask_pd_exists
+    mask_gt_pd_match = mask_gt_pd_exists & mask_label_match
+    mask_gt_pd_mismatch = mask_gt_pd_exists & ~mask_label_match
+
     for iou_idx in range(n_ious):
         mask_iou = data[:, 3] >= iou_thresholds[iou_idx]
-
+        mask_gt_pd_match_iou = mask_gt_pd_match & mask_iou
+        mask_gt_pd_mismatch_iou = mask_gt_pd_mismatch & mask_iou
         for score_idx in range(n_scores):
             mask_score = data[:, 6] >= score_thresholds[score_idx]
-
-            mask_tp = (
-                mask_gt_exists
-                & mask_pd_exists
-                & mask_iou
-                & mask_score
-                & mask_label_match
+            mask_tp = mask_gt_pd_match_iou & mask_score
+            mask_fp_misclf = mask_gt_pd_mismatch_iou & mask_score
+            mask_fn_misclf = mask_gt_pd_match_iou & ~mask_score
+            mask_halluc_missing = ~(
+                mask_gt_pd_match_iou | (mask_gt_pd_mismatch & mask_score)
             )
-            mask_fp_misclf = (
-                mask_gt_exists
-                & mask_pd_exists
-                & mask_iou
-                & mask_score
-                & ~mask_label_match
-            )
-            mask_fn_misclf = (
-                mask_gt_exists
-                & mask_pd_exists
-                & mask_iou
-                & ~mask_score
-                & mask_label_match
-            )
-            mask_fp_halluc = (
-                ~(mask_tp | mask_fp_misclf | mask_fn_misclf) & mask_pd_exists
-            )
-            mask_fn_misprd = (
-                ~(mask_tp | mask_fp_misclf | mask_fn_misclf) & mask_gt_exists
-            )
+            mask_fp_halluc = mask_halluc_missing & mask_pd_exists
+            mask_fn_misprd = mask_halluc_missing & mask_gt_exists
 
             tp_slice = data[mask_tp]
             fp_misclf_slice = data[mask_fp_misclf]

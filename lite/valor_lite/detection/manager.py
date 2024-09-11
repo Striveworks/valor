@@ -298,12 +298,12 @@ class Evaluator:
         self,
         iou_thresholds: list[float] = [0.5],
         score_thresholds: list[float] = [
-            score / 100.0 for score in range(1, 101)
+            score / 10.0 for score in range(1, 11)
         ],
         n_samples: int = 0,
     ) -> list[DetailedPrecisionRecallCurve]:
 
-        if not self._detailed_pairs:
+        if self._detailed_pairs is None:
             raise ValueError
 
         metrics = compute_detailed_pr_curve(
