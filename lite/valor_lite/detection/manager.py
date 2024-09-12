@@ -16,6 +16,8 @@ from valor_lite.detection.metric import (
     AR,
     F1,
     Accuracy,
+    APAveragedOverIOUs,
+    ARAveragedOverScores,
     DetailedPrecisionRecallCurve,
     DetailedPrecisionRecallPoint,
     FalseNegativeCount,
@@ -26,7 +28,9 @@ from valor_lite.detection.metric import (
     Recall,
     TruePositiveCount,
     mAP,
+    mAPAveragedOverIOUs,
     mAR,
+    mARAveragedOverScores,
 )
 
 """
@@ -236,7 +240,7 @@ class Evaluator:
         metrics[MetricType.AP] = [
             AP(
                 value=average_precision[iou_idx][label_idx],
-                iou_threshold=iou_thresholds[iou_idx],
+                iou=iou_thresholds[iou_idx],
                 label=self.index_to_label[label_idx],
             )
             for iou_idx in range(average_precision.shape[0])
@@ -247,12 +251,32 @@ class Evaluator:
         metrics[MetricType.mAP] = [
             mAP(
                 value=mean_average_precision[iou_idx][label_key_idx],
-                iou_threshold=iou_thresholds[iou_idx],
+                iou=iou_thresholds[iou_idx],
                 label_key=self.index_to_label_key[label_key_idx],
             )
             for iou_idx in range(mean_average_precision.shape[0])
             for label_key_idx in range(mean_average_precision.shape[1])
             if mean_average_precision[iou_idx][label_key_idx] >= 0.0
+        ]
+
+        metrics[MetricType.APAveragedOverIOUs] = [
+            APAveragedOverIOUs(
+                value=average_precision_average_over_ious[label_idx],
+                ious=iou_thresholds,
+                label=self.index_to_label[label_idx],
+            )
+            for label_idx in range(self.n_labels)
+        ]
+
+        metrics[MetricType.mAPAveragedOverIOUs] = [
+            mAPAveragedOverIOUs(
+                value=mean_average_precision_average_over_ious[label_key_idx],
+                ious=iou_thresholds,
+                label_key=self.index_to_label_key[label_key_idx],
+            )
+            for label_key_idx in range(
+                mean_average_precision_average_over_ious.shape[0]
+            )
         ]
 
         metrics[MetricType.AR] = [
@@ -279,10 +303,32 @@ class Evaluator:
             if mean_average_recall[score_idx][label_key_idx] >= 0.0
         ]
 
+        metrics[MetricType.ARAveragedOverScores] = [
+            ARAveragedOverScores(
+                value=average_recall_averaged_over_scores[label_idx],
+                scores=score_thresholds,
+                ious=iou_thresholds,
+                label=self.index_to_label[label_idx],
+            )
+            for label_idx in range(self.n_labels)
+        ]
+
+        metrics[MetricType.mARAveragedOverScores] = [
+            mARAveragedOverScores(
+                value=mean_average_recall_averaged_over_scores[label_key_idx],
+                scores=score_thresholds,
+                ious=iou_thresholds,
+                label_key=self.index_to_label_key[label_key_idx],
+            )
+            for label_key_idx in range(
+                mean_average_recall_averaged_over_scores.shape[0]
+            )
+        ]
+
         metrics[MetricType.PrecisionRecallCurve] = [
             InterpolatedPrecisionRecallCurve(
                 precision=list(pr_curves[iou_idx][label_idx]),
-                iou_threshold=iou_threshold,
+                iou=iou_threshold,
                 label=label,
             )
             for iou_idx, iou_threshold in enumerate(iou_thresholds)

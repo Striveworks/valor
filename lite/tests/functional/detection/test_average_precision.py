@@ -105,22 +105,6 @@ def test_ap_metrics(basic_detections: list[Detection]):
     expected_metrics = [
         {
             "type": "AP",
-            "value": 0.0,
-            "parameters": {
-                "iou": 0.1,
-                "label": {"key": "k2", "value": "v2"},
-            },
-        },
-        {
-            "type": "AP",
-            "value": 0.0,
-            "parameters": {
-                "iou": 0.6,
-                "label": {"key": "k2", "value": "v2"},
-            },
-        },
-        {
-            "type": "AP",
             "value": 0.504950495049505,
             "parameters": {
                 "iou": 0.1,
@@ -133,6 +117,22 @@ def test_ap_metrics(basic_detections: list[Detection]):
             "parameters": {
                 "iou": 0.6,
                 "label": {"key": "k1", "value": "v1"},
+            },
+        },
+        {
+            "type": "AP",
+            "value": 0.0,
+            "parameters": {
+                "iou": 0.1,
+                "label": {"key": "k2", "value": "v2"},
+            },
+        },
+        {
+            "type": "AP",
+            "value": 0.0,
+            "parameters": {
+                "iou": 0.6,
+                "label": {"key": "k2", "value": "v2"},
             },
         },
     ]
@@ -173,6 +173,60 @@ def test_ap_metrics(basic_detections: list[Detection]):
             "value": 0.0,
             "parameters": {
                 "iou": 0.6,
+                "label_key": "k2",
+            },
+        },
+    ]
+    for m in actual_metrics:
+        assert m in expected_metrics
+    for m in expected_metrics:
+        assert m in actual_metrics
+
+    # test AP Averaged Over IoUs
+    actual_metrics = [
+        m.to_dict() for m in metrics[MetricType.APAveragedOverIOUs]
+    ]
+    expected_metrics = [
+        {
+            "type": "APAveragedOverIOUs",
+            "value": 0.504950495049505,
+            "parameters": {
+                "ious": [0.1, 0.6],
+                "label": {"key": "k1", "value": "v1"},
+            },
+        },
+        {
+            "type": "APAveragedOverIOUs",
+            "value": 0.0,
+            "parameters": {
+                "ious": [0.1, 0.6],
+                "label": {"key": "k2", "value": "v2"},
+            },
+        },
+    ]
+    for m in actual_metrics:
+        assert m in expected_metrics
+    for m in expected_metrics:
+        assert m in actual_metrics
+
+    # test mAP Averaged Over IoUs
+    actual_metrics = [
+        m.to_dict() for m in metrics[MetricType.mAPAveragedOverIOUs]
+    ]
+    expected_metrics = [
+        {
+            "type": "mAPAveragedOverIOUs",
+            "value": 0.504950495049505,
+            "parameters": {
+                "ious": [0.1, 0.6],
+                "label_key": "k1",
+            },
+        },
+        {
+            "type": "mAPAveragedOverIOUs",
+            "value": 0.0,
+            "parameters": {
+                "ious": [0.1, 0.6],
                 "label_key": "k2",
             },
         },

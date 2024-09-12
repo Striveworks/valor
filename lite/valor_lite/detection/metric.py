@@ -119,7 +119,7 @@ class FalseNegativeCount(CountingClassMetric):
 @dataclass
 class AP:
     value: float
-    iou_threshold: float
+    iou: float
     label: tuple[str, str]
 
     @property
@@ -128,7 +128,7 @@ class AP:
             type=type(self).__name__,
             value=self.value,
             parameters={
-                "iou": self.iou_threshold,
+                "iou": self.iou,
                 "label": {
                     "key": self.label[0],
                     "value": self.label[1],
@@ -143,7 +143,7 @@ class AP:
 @dataclass
 class mAP:
     value: float
-    iou_threshold: float
+    iou: float
     label_key: str
 
     @property
@@ -152,7 +152,7 @@ class mAP:
             type=type(self).__name__,
             value=self.value,
             parameters={
-                "iou": self.iou_threshold,
+                "iou": self.iou,
                 "label_key": self.label_key,
             },
         )
@@ -162,9 +162,9 @@ class mAP:
 
 
 @dataclass
-class APAveragedOverIoUs:
+class APAveragedOverIOUs:
     value: float
-    iou_thresholds: list[float]
+    ious: list[float]
     label: tuple[str, str]
 
     @property
@@ -173,7 +173,7 @@ class APAveragedOverIoUs:
             type=type(self).__name__,
             value=self.value,
             parameters={
-                "ious": self.iou_thresholds,
+                "ious": self.ious,
                 "label": {
                     "key": self.label[0],
                     "value": self.label[1],
@@ -186,9 +186,9 @@ class APAveragedOverIoUs:
 
 
 @dataclass
-class mAPAveragedOverIoUs:
+class mAPAveragedOverIOUs:
     value: float
-    iou_thresholds: list[float]
+    ious: list[float]
     label_key: str
 
     @property
@@ -197,7 +197,7 @@ class mAPAveragedOverIoUs:
             type=type(self).__name__,
             value=self.value,
             parameters={
-                "ious": self.iou_thresholds,
+                "ious": self.ious,
                 "label_key": self.label_key,
             },
         )
@@ -311,7 +311,7 @@ class InterpolatedPrecisionRecallCurve:
     """
 
     precision: list[float]
-    iou_threshold: float
+    iou: float
     label: tuple[str, str]
 
     @property
@@ -320,7 +320,7 @@ class InterpolatedPrecisionRecallCurve:
             type=type(self).__name__,
             value=self.precision,
             parameters={
-                "iou": self.iou_threshold,
+                "iou": self.iou,
                 "label": {"key": self.label[0], "value": self.label[1]},
             },
         )
