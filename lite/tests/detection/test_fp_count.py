@@ -1,7 +1,7 @@
 from valor_lite.detection import DataLoader, Detection, MetricType
 
 
-def test_recall_metrics(basic_detections: list[Detection]):
+def test_fp_metrics(basic_detections: list[Detection]):
     """
     Basic object detection test.
 
@@ -35,30 +35,12 @@ def test_recall_metrics(basic_detections: list[Detection]):
     assert evaluator.n_groundtruths == 3
     assert evaluator.n_predictions == 2
 
-    # test Recall
-    actual_metrics = [m.to_dict() for m in metrics[MetricType.Recall]]
+    # test FP
+    actual_metrics = [m.to_dict() for m in metrics[MetricType.FP]]
     expected_metrics = [
         {
-            "type": "Recall",
-            "value": 0.0,
-            "parameters": {
-                "iou": 0.1,
-                "score": 0.0,
-                "label": {"key": "k2", "value": "v2"},
-            },
-        },
-        {
-            "type": "Recall",
-            "value": 0.0,
-            "parameters": {
-                "iou": 0.6,
-                "score": 0.0,
-                "label": {"key": "k2", "value": "v2"},
-            },
-        },
-        {
-            "type": "Recall",
-            "value": 0.5,
+            "type": "FalsePositiveCount",
+            "value": 0,
             "parameters": {
                 "iou": 0.1,
                 "score": 0.0,
@@ -66,8 +48,8 @@ def test_recall_metrics(basic_detections: list[Detection]):
             },
         },
         {
-            "type": "Recall",
-            "value": 0.5,
+            "type": "FalsePositiveCount",
+            "value": 0,
             "parameters": {
                 "iou": 0.6,
                 "score": 0.0,
@@ -75,26 +57,8 @@ def test_recall_metrics(basic_detections: list[Detection]):
             },
         },
         {
-            "type": "Recall",
-            "value": 0.0,
-            "parameters": {
-                "iou": 0.1,
-                "score": 0.5,
-                "label": {"key": "k2", "value": "v2"},
-            },
-        },
-        {
-            "type": "Recall",
-            "value": 0.0,
-            "parameters": {
-                "iou": 0.6,
-                "score": 0.5,
-                "label": {"key": "k2", "value": "v2"},
-            },
-        },
-        {
-            "type": "Recall",
-            "value": 0.0,
+            "type": "FalsePositiveCount",
+            "value": 0,
             "parameters": {
                 "iou": 0.1,
                 "score": 0.5,
@@ -102,12 +66,48 @@ def test_recall_metrics(basic_detections: list[Detection]):
             },
         },
         {
-            "type": "Recall",
-            "value": 0.0,
+            "type": "FalsePositiveCount",
+            "value": 0,
             "parameters": {
                 "iou": 0.6,
                 "score": 0.5,
                 "label": {"key": "k1", "value": "v1"},
+            },
+        },
+        {
+            "type": "FalsePositiveCount",
+            "value": 1,
+            "parameters": {
+                "iou": 0.1,
+                "score": 0.0,
+                "label": {"key": "k2", "value": "v2"},
+            },
+        },
+        {
+            "type": "FalsePositiveCount",
+            "value": 1,
+            "parameters": {
+                "iou": 0.6,
+                "score": 0.0,
+                "label": {"key": "k2", "value": "v2"},
+            },
+        },
+        {
+            "type": "FalsePositiveCount",
+            "value": 1,
+            "parameters": {
+                "iou": 0.1,
+                "score": 0.5,
+                "label": {"key": "k2", "value": "v2"},
+            },
+        },
+        {
+            "type": "FalsePositiveCount",
+            "value": 1,
+            "parameters": {
+                "iou": 0.6,
+                "score": 0.5,
+                "label": {"key": "k2", "value": "v2"},
             },
         },
     ]
@@ -117,7 +117,7 @@ def test_recall_metrics(basic_detections: list[Detection]):
         assert m in actual_metrics
 
 
-def test_recall_false_negatives_single_datum_baseline(
+def test_fp_false_negatives_single_datum_baseline(
     false_negatives_single_datum_baseline_detections: list[Detection],
 ):
     """This is the baseline for the below test. In this case there are two predictions and
@@ -133,11 +133,11 @@ def test_recall_false_negatives_single_datum_baseline(
         iou_thresholds=[0.5], score_thresholds=[0.0, 0.9]
     )
 
-    actual_metrics = [m.to_dict() for m in metrics[MetricType.Recall]]
+    actual_metrics = [m.to_dict() for m in metrics[MetricType.FP]]
     expected_metrics = [
         {
-            "type": "Recall",
-            "value": 1.0,
+            "type": "FalsePositiveCount",
+            "value": 1,
             "parameters": {
                 "iou": 0.5,
                 "score": 0.0,
@@ -148,8 +148,8 @@ def test_recall_false_negatives_single_datum_baseline(
             },
         },
         {
-            "type": "Recall",
-            "value": 0.0,
+            "type": "FalsePositiveCount",
+            "value": 0,
             "parameters": {
                 "iou": 0.5,
                 "score": 0.9,
@@ -166,7 +166,7 @@ def test_recall_false_negatives_single_datum_baseline(
         assert m in actual_metrics
 
 
-def test_recall_false_negatives_single_datum(
+def test_fp_false_negatives_single_datum(
     false_negatives_single_datum_detections: list[Detection],
 ):
     """Tests where high confidence false negative was not being penalized. The
@@ -179,11 +179,11 @@ def test_recall_false_negatives_single_datum(
     evaluator = manager.finalize()
     metrics = evaluator.evaluate(iou_thresholds=[0.5], score_thresholds=[0.0])
 
-    actual_metrics = [m.to_dict() for m in metrics[MetricType.Recall]]
+    actual_metrics = [m.to_dict() for m in metrics[MetricType.FP]]
     expected_metrics = [
         {
-            "type": "Recall",
-            "value": 1.0,
+            "type": "FalsePositiveCount",
+            "value": 1,
             "parameters": {
                 "iou": 0.5,
                 "score": 0.0,
@@ -194,13 +194,13 @@ def test_recall_false_negatives_single_datum(
             },
         }
     ]
-    for m in expected_metrics:
-        assert m in actual_metrics
     for m in actual_metrics:
         assert m in expected_metrics
+    for m in expected_metrics:
+        assert m in actual_metrics
 
 
-def test_recall_false_negatives_two_datums_one_empty_low_confidence_of_fp(
+def test_fp_false_negatives_two_datums_one_empty_low_confidence_of_fp(
     false_negatives_two_datums_one_empty_low_confidence_of_fp_detections: list[
         Detection
     ],
@@ -221,11 +221,11 @@ def test_recall_false_negatives_two_datums_one_empty_low_confidence_of_fp(
     evaluator = manager.finalize()
     metrics = evaluator.evaluate(iou_thresholds=[0.5], score_thresholds=[0.0])
 
-    actual_metrics = [m.to_dict() for m in metrics[MetricType.Recall]]
+    actual_metrics = [m.to_dict() for m in metrics[MetricType.FP]]
     expected_metrics = [
         {
-            "type": "Recall",
-            "value": 1.0,
+            "type": "FalsePositiveCount",
+            "value": 1,
             "parameters": {
                 "iou": 0.5,
                 "score": 0.0,
@@ -236,13 +236,13 @@ def test_recall_false_negatives_two_datums_one_empty_low_confidence_of_fp(
             },
         }
     ]
-    for m in expected_metrics:
-        assert m in actual_metrics
     for m in actual_metrics:
         assert m in expected_metrics
+    for m in expected_metrics:
+        assert m in actual_metrics
 
 
-def test_recall_false_negatives_two_datums_one_empty_high_confidence_of_fp(
+def test_fp_false_negatives_two_datums_one_empty_high_confidence_of_fp(
     false_negatives_two_datums_one_empty_high_confidence_of_fp_detections: list[
         Detection
     ],
@@ -262,11 +262,11 @@ def test_recall_false_negatives_two_datums_one_empty_high_confidence_of_fp(
     evaluator = manager.finalize()
     metrics = evaluator.evaluate(iou_thresholds=[0.5], score_thresholds=[0.0])
 
-    actual_metrics = [m.to_dict() for m in metrics[MetricType.Recall]]
+    actual_metrics = [m.to_dict() for m in metrics[MetricType.FP]]
     expected_metrics = [
         {
-            "type": "Recall",
-            "value": 1.0,
+            "type": "FalsePositiveCount",
+            "value": 1,
             "parameters": {
                 "iou": 0.5,
                 "score": 0.0,
@@ -283,7 +283,7 @@ def test_recall_false_negatives_two_datums_one_empty_high_confidence_of_fp(
         assert m in expected_metrics
 
 
-def test_recall_false_negatives_two_datums_one_only_with_different_class_low_confidence_of_fp(
+def test_fp_false_negatives_two_datums_one_only_with_different_class_low_confidence_of_fp(
     false_negatives_two_datums_one_only_with_different_class_low_confidence_of_fp_detections: list[
         Detection
     ],
@@ -303,11 +303,11 @@ def test_recall_false_negatives_two_datums_one_only_with_different_class_low_con
     evaluator = manager.finalize()
     metrics = evaluator.evaluate(iou_thresholds=[0.5], score_thresholds=[0.0])
 
-    actual_metrics = [m.to_dict() for m in metrics[MetricType.Recall]]
+    actual_metrics = [m.to_dict() for m in metrics[MetricType.FP]]
     expected_metrics = [
         {
-            "type": "Recall",
-            "value": 1.0,
+            "type": "FalsePositiveCount",
+            "value": 1,
             "parameters": {
                 "iou": 0.5,
                 "score": 0.0,
@@ -318,8 +318,8 @@ def test_recall_false_negatives_two_datums_one_only_with_different_class_low_con
             },
         },
         {
-            "type": "Recall",
-            "value": 0.0,
+            "type": "FalsePositiveCount",
+            "value": 0,
             "parameters": {
                 "iou": 0.5,
                 "score": 0.0,
@@ -336,7 +336,7 @@ def test_recall_false_negatives_two_datums_one_only_with_different_class_low_con
         assert m in expected_metrics
 
 
-def test_recall_false_negatives_two_datums_one_only_with_different_class_high_confidence_of_fp(
+def test_fp_false_negatives_two_datums_one_only_with_different_class_high_confidence_of_fp(
     false_negatives_two_images_one_only_with_different_class_high_confidence_of_fp_detections: list[
         Detection
     ],
@@ -356,11 +356,11 @@ def test_recall_false_negatives_two_datums_one_only_with_different_class_high_co
     evaluator = manager.finalize()
     metrics = evaluator.evaluate(iou_thresholds=[0.5], score_thresholds=[0.0])
 
-    actual_metrics = [m.to_dict() for m in metrics[MetricType.Recall]]
+    actual_metrics = [m.to_dict() for m in metrics[MetricType.FP]]
     expected_metrics = [
         {
-            "type": "Recall",
-            "value": 1.0,
+            "type": "FalsePositiveCount",
+            "value": 1,
             "parameters": {
                 "iou": 0.5,
                 "score": 0.0,
@@ -371,8 +371,8 @@ def test_recall_false_negatives_two_datums_one_only_with_different_class_high_co
             },
         },
         {
-            "type": "Recall",
-            "value": 0.0,
+            "type": "FalsePositiveCount",
+            "value": 0,
             "parameters": {
                 "iou": 0.5,
                 "score": 0.0,

@@ -153,7 +153,7 @@ def compute_metrics(
 
     pd_labels = data[:, 5].astype(int)
     unique_pd_labels = np.unique(pd_labels)
-    gt_count = label_counts[unique_pd_labels, 0]
+    gt_count = label_counts[:, 0]
     running_total_count = np.zeros(
         (n_ious, n_rows),
         dtype=np.float64,
@@ -163,55 +163,83 @@ def compute_metrics(
     pr_curve = np.zeros((n_ious, n_labels, 101))
 
     mask_score_nonzero = data[:, 6] > 1e-9
-    mask_labels_match = np.isclose(data[:, 4], data[:, 5])
     mask_gt_exists = data[:, 1] >= 0.0
+    mask_labels_match = np.isclose(data[:, 4], data[:, 5])
+
+    mask_gt_exists_labels_match = mask_gt_exists & mask_labels_match
+
+    mask_tp = mask_score_nonzero & mask_gt_exists_labels_match
+    mask_fp = mask_score_nonzero
+    mask_fn = mask_gt_exists_labels_match
 
     for iou_idx in range(n_ious):
-
         mask_iou = data[:, 3] >= iou_thresholds[iou_idx]
-        mask = (
-            mask_score_nonzero & mask_iou & mask_labels_match & mask_gt_exists
+
+        mask_tp_outer = mask_tp & mask_iou
+        mask_fp_outer = mask_fp & (
+            (~mask_gt_exists_labels_match & mask_iou) | ~mask_iou
         )
+        mask_fn_outer = mask_fn & mask_iou
 
         for score_idx in range(n_scores):
-
             mask_score_thresh = data[:, 6] >= score_thresholds[score_idx]
 
+            mask_tp_inner = mask_tp_outer & mask_score_thresh
+            mask_fp_inner = mask_fp_outer & mask_score_thresh
+            mask_fn_inner = mask_fn_outer & ~mask_score_thresh
+
             # create true-positive mask score threshold
-            tp_candidates = data[mask & mask_score_thresh]
+            tp_candidates = data[mask_tp_inner]
             _, indices_gt_unique = np.unique(
                 tp_candidates[:, [0, 1, 4]], axis=0, return_index=True
             )
             mask_gt_unique = np.zeros(tp_candidates.shape[0], dtype=bool)
             mask_gt_unique[indices_gt_unique] = True
             true_positives_mask = np.zeros(n_rows, dtype=bool)
-            true_positives_mask[mask & mask_score_thresh] = mask_gt_unique
+            true_positives_mask[mask_tp_inner] = mask_gt_unique
 
             # calculate intermediates
-            pd_count = np.bincount(pd_labels)
-            pd_count = pd_count[unique_pd_labels]
+            pd_count = np.bincount(pd_labels, minlength=n_labels).astype(float)
             tp_count = np.bincount(
                 pd_labels,
                 weights=true_positives_mask,
+                minlength=n_labels,
             ).astype(float)
-            tp_count = tp_count[unique_pd_labels].astype(float)
+
+            fp_count = np.bincount(
+                pd_labels[mask_fp_inner],
+                minlength=n_labels,
+            ).astype(float)
+
+            fn_count = np.bincount(
+                pd_labels[mask_fn_inner],
+                minlength=n_labels,
+            )
 
             # calculate component metrics
             recall = np.zeros_like(tp_count)
             precision = np.zeros_like(tp_count)
             np.divide(tp_count, gt_count, where=gt_count > 1e-9, out=recall)
             np.divide(tp_count, pd_count, where=pd_count > 1e-9, out=precision)
-            fp_count = pd_count - tp_count
             fn_count = gt_count - tp_count
-            f1_score = np.divide(
+
+            f1_score = np.zeros_like(precision)
+            np.divide(
                 np.multiply(precision, recall),
                 (precision + recall),
                 where=(precision + recall) > 1e-9,
+                out=f1_score,
             )
-            accuracy = tp_count / (gt_count + pd_count)
-            precision_recall[iou_idx][score_idx][
-                unique_pd_labels
-            ] = np.concatenate(
+
+            accuracy = np.zeros_like(tp_count)
+            np.divide(
+                tp_count,
+                (gt_count + pd_count),
+                where=(gt_count + pd_count) > 1e-9,
+                out=accuracy,
+            )
+
+            precision_recall[iou_idx][score_idx] = np.concatenate(
                 (
                     tp_count[:, np.newaxis],
                     fp_count[:, np.newaxis],
@@ -225,28 +253,28 @@ def compute_metrics(
             )
 
             # calculate recall for AR
-            average_recall[score_idx][unique_pd_labels] += recall
+            average_recall[score_idx] += recall
 
         # create true-positive mask score threshold
-        tp_candidates = data[mask]
+        tp_candidates = data[mask_tp_outer]
         _, indices_gt_unique = np.unique(
             tp_candidates[:, [0, 1, 4]], axis=0, return_index=True
         )
         mask_gt_unique = np.zeros(tp_candidates.shape[0], dtype=bool)
         mask_gt_unique[indices_gt_unique] = True
         true_positives_mask = np.zeros(n_rows, dtype=bool)
-        true_positives_mask[mask] = mask_gt_unique
+        true_positives_mask[mask_tp_outer] = mask_gt_unique
 
         # count running tp and total for AP
-        for idx, pd_label in enumerate(unique_pd_labels):
+        for pd_label in unique_pd_labels:
             mask_pd_label = pd_labels == pd_label
-            running_gt_count[iou_idx][mask_pd_label] = gt_count[idx]
+            running_gt_count[iou_idx][mask_pd_label] = gt_count[pd_label]
             running_total_count[iou_idx][mask_pd_label] = np.arange(
                 1, mask_pd_label.sum() + 1
             )
-            mask_tp = mask_pd_label & true_positives_mask
-            running_tp_count[iou_idx][mask_tp] = np.arange(
-                1, mask_tp.sum() + 1
+            mask_tp_for_counting = mask_pd_label & true_positives_mask
+            running_tp_count[iou_idx][mask_tp_for_counting] = np.arange(
+                1, mask_tp_for_counting.sum() + 1
             )
 
     # calculate running precision-recall points for AP

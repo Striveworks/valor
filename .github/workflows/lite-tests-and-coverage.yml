@@ -22,7 +22,8 @@ jobs:
       - name: run object detection tests and report coverage
         run: |
           pip install -e ".[test]"
-          COVERAGE_FILE=.coverage.detection python -m coverage run --omit "tests/*"  -m pytest -v tests/detection
+          COVERAGE_FILE=.coverage.functional python -m coverage run --omit "tests/*"  -m pytest -v tests/detection/functional
+          COVERAGE_FILE=.coverage.unit python -m coverage run --omit "tests/*"  -m pytest -v tests/detection/unit
           python -m coverage combine
           python -m coverage report -m
           python -m coverage json

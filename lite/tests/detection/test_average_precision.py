@@ -410,7 +410,7 @@ def test_ap_false_negatives_single_datum_baseline(
 def test_ap_false_negatives_single_datum(
     false_negatives_single_datum_detections: list[Detection],
 ):
-    """Tests fix for a bug where high confidence false negative was not being penalized. The
+    """Tests where high confidence false negative was not being penalized. The
     difference between this test and the above is that here the prediction with higher confidence
     does not sufficiently overlap the groundtruth and so is penalized and we get an AP of 0.5
     """
@@ -579,7 +579,7 @@ def test_ap_false_negatives_two_datums_one_only_with_different_class_high_confid
 ):
     """In this test we have
         1. An image with a matching groundtruth and prediction (same class, `"value"`, and high IOU)
-        2. A second image with a groundtruth annotation with clas `"other value"` and a prediction with higher confidence
+        2. A second image with a groundtruth annotation with class `"other value"` and a prediction with higher confidence
         then the prediction on the first image.
 
     In this case, the AP for class `"value"` should be 0.5 since the false positive has higher confidence than the true positive.
