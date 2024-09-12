@@ -117,12 +117,26 @@ class Evaluator:
 
     def create_filter(
         self,
-        datum_uids: list[str] | None = None,
-        labels: list[tuple[str, str]] | None = None,
-        label_keys: list[str] | None = None,
+        datum_uids: list[str] | NDArray[np.int32] | None = None,
+        labels: list[tuple[str, str]] | NDArray[np.int32] | None = None,
+        label_keys: list[str] | NDArray[np.int32] | None = None,
     ) -> Filter:
         """
         Creates a boolean mask that can be passed to an evaluation.
+
+        Parameters
+        ----------
+        datum_uids : list[str] | NDArray[np.int32], optional
+            An optional list of string uids or a numpy array of uid indices.
+        labels : list[tuple[str, str]] | NDArray[np.int32], optional
+            An optional list of labels or a numpy array of label indices.
+        label_keys : list[str] | NDArray[np.int32], optional
+            An optional list of label keys or a numpy array of label key indices.
+
+        Returns
+        -------
+        Filter
+            A filter object that can be passed to the `evaluate` method.
         """
         n_rows = self._ranked_pairs.shape[0]
 
@@ -134,35 +148,41 @@ class Evaluator:
         mask_labels = np.ones(n_labels, dtype=np.bool_)
 
         if datum_uids is not None:
-            indices = np.array(
-                [self.uid_to_index[uid] for uid in datum_uids], dtype=np.int32
-            )
+            if isinstance(datum_uids, list):
+                datum_uids = np.array(
+                    [self.uid_to_index[uid] for uid in datum_uids],
+                    dtype=np.int32,
+                )
             mask = np.zeros_like(mask_pairs, dtype=np.bool_)
-            mask[np.isin(self._ranked_pairs[:, 0].astype(int), indices)] = True
+            mask[
+                np.isin(self._ranked_pairs[:, 0].astype(int), datum_uids)
+            ] = True
             mask_pairs &= mask
 
             mask = np.zeros_like(mask_datums, dtype=np.bool_)
-            mask[indices] = True
+            mask[datum_uids] = True
             mask_datums &= mask
 
         if labels is not None:
-            indices = np.array(
-                [self.label_to_index[label] for label in labels]
-            )
+            if isinstance(labels, list):
+                labels = np.array(
+                    [self.label_to_index[label] for label in labels]
+                )
             mask = np.zeros_like(mask_pairs, dtype=np.bool_)
-            mask[np.isin(self._ranked_pairs[:, 4].astype(int), indices)] = True
+            mask[np.isin(self._ranked_pairs[:, 4].astype(int), labels)] = True
             mask_pairs &= mask
 
             mask = np.zeros_like(mask_labels, dtype=np.bool_)
-            mask[indices] = True
+            mask[labels] = True
             mask_labels &= mask
 
         if label_keys is not None:
-            key_indices = np.array(
-                [self.label_key_to_index[key] for key in label_keys]
-            )
+            if isinstance(label_keys, list):
+                label_keys = np.array(
+                    [self.label_key_to_index[key] for key in label_keys]
+                )
             label_indices = np.where(
-                np.isclose(self._label_metadata[:, 2], key_indices)
+                np.isclose(self._label_metadata[:, 2], label_keys)
             )[0]
             mask = np.zeros_like(mask_pairs, dtype=np.bool_)
             mask[
@@ -190,6 +210,9 @@ class Evaluator:
         return Filter(
             indices=np.where(mask_pairs)[0],
             label_metadata=label_metadata,
+            # uids=datum_uids,
+            # labels=labels,
+            # label_keys=label_keys,
         )
 
     def evaluate(
