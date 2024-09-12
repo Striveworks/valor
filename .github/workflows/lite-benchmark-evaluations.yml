@@ -1,4 +1,4 @@
-name: Run numpy benchmarks
+name: Run valor-lite benchmarks
 
 on:
   push:
