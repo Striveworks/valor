@@ -210,10 +210,18 @@ class Evaluator:
             label_metadata = filter_.label_metadata
 
         (
-            average_precision,
-            average_recall,
-            mean_average_precision,
-            mean_average_recall,
+            (
+                average_precision,
+                mean_average_precision,
+                average_precision_average_over_ious,
+                mean_average_precision_average_over_ious,
+            ),
+            (
+                average_recall,
+                mean_average_recall,
+                average_recall_averaged_over_scores,
+                mean_average_recall_averaged_over_scores,
+            ),
             precision_recall,
             pr_curves,
         ) = compute_metrics(
@@ -251,7 +259,7 @@ class Evaluator:
             AR(
                 value=average_recall[score_idx][label_idx],
                 ious=iou_thresholds,
-                score_threshold=score_thresholds[score_idx],
+                score=score_thresholds[score_idx],
                 label=self.index_to_label[label_idx],
             )
             for score_idx in range(average_recall.shape[0])
@@ -263,7 +271,7 @@ class Evaluator:
             mAR(
                 value=mean_average_recall[score_idx][label_key_idx],
                 ious=iou_thresholds,
-                score_threshold=score_thresholds[score_idx],
+                score=score_thresholds[score_idx],
                 label_key=self.index_to_label_key[label_key_idx],
             )
             for score_idx in range(mean_average_recall.shape[0])
@@ -287,8 +295,8 @@ class Evaluator:
                     row = precision_recall[iou_idx][score_idx][label_idx]
                     kwargs = {
                         "label": label,
-                        "iou_threhsold": iou_threshold,
-                        "score_threshold": score_threshold,
+                        "iou": iou_threshold,
+                        "score": score_threshold,
                     }
                     metrics[MetricType.TP].append(
                         TruePositiveCount(

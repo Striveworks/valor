@@ -24,12 +24,18 @@ def test__compute_average_precision():
     iou_thresholds = np.array([0.1, 0.6])
     score_thresholds = np.array([0.0])
 
-    (ap_results, _, map_results, _, _, _,) = compute_metrics(
+    (results, _, _, _,) = compute_metrics(
         sorted_pairs,
         label_counts=label_counts,
         iou_thresholds=iou_thresholds,
         score_thresholds=score_thresholds,
     )
+    (
+        average_precision,
+        mean_average_precision,
+        average_precision_averaged_over_ious,
+        mean_average_precision_averaged_over_ious,
+    ) = results
 
     expected_ap = np.array(
         [
@@ -37,12 +43,28 @@ def test__compute_average_precision():
             [1 / 3],  # iou = 0.6
         ]
     )
-    assert expected_ap.shape == ap_results.shape
-    assert np.isclose(ap_results, expected_ap).all()
+    assert expected_ap.shape == average_precision.shape
+    assert np.isclose(average_precision, expected_ap).all()
 
     # since only one class, ap == map
-    assert expected_ap.shape == map_results.shape
-    assert np.isclose(map_results, expected_ap).all()
+    assert expected_ap.shape == mean_average_precision.shape
+    assert np.isclose(mean_average_precision, expected_ap).all()
+
+    expected_average = np.array([2 / 3])
+
+    assert average_precision_averaged_over_ious.shape == expected_average.shape
+    assert np.isclose(
+        average_precision_averaged_over_ious, expected_average
+    ).all()
+
+    # since only one class, ap == map
+    assert (
+        mean_average_precision_averaged_over_ious.shape
+        == expected_average.shape
+    )
+    assert np.isclose(
+        mean_average_precision_averaged_over_ious, expected_average
+    ).all()
 
 
 def test_ap_metrics(basic_detections: list[Detection]):

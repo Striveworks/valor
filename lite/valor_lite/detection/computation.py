@@ -112,21 +112,30 @@ def compute_metrics(
     iou_thresholds: np.ndarray,
     score_thresholds: np.ndarray,
 ) -> tuple[
-    np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray
+    tuple[
+        NDArray[np.floating],
+        NDArray[np.floating],
+        NDArray[np.floating],
+        NDArray[np.floating],
+    ],
+    tuple[
+        NDArray[np.floating],
+        NDArray[np.floating],
+        NDArray[np.floating],
+        NDArray[np.floating],
+    ],
+    NDArray[np.floating],
+    NDArray[np.floating],
 ]:
     """
     Computes Object Detection metrics.
 
     Returns
     -------
-    np.ndarray
-        Average Precision.
-    np.ndarray
-        Average Recall.
-    np.ndarray
-        mAP.
-    np.ndarray
-        mAR.
+    tuple[NDArray, NDArray, NDArray NDArray]
+        Average Precision results.
+    tuple[NDArray, NDArray, NDArray NDArray]
+        Average Recall results.
     np.ndarray
         Precision, Recall, TP, FP, FN, F1 Score, Accuracy.
     np.ndarray
@@ -278,11 +287,30 @@ def compute_metrics(
         mAP[:, key_idx] = average_precision[:, labels].mean(axis=1)
         mAR[:, key_idx] = average_recall[:, labels].mean(axis=1)
 
-    return (
+    # calculate AP and mAP averaged over iou thresholds
+    APAveragedOverIoUs = average_precision.mean(axis=0)
+    mAPAveragedOverIoUs = mAP.mean(axis=0)
+
+    # calculate AR and mAR averaged over score thresholds
+    ARAveragedOverIoUs = average_recall.mean(axis=0)
+    mARAveragedOverIoUs = mAR.mean(axis=0)
+
+    ap_results = (
         average_precision,
-        average_recall,
         mAP,
+        APAveragedOverIoUs,
+        mAPAveragedOverIoUs,
+    )
+    ar_results = (
+        average_recall,
         mAR,
+        ARAveragedOverIoUs,
+        mARAveragedOverIoUs,
+    )
+
+    return (
+        ap_results,
+        ar_results,
         precision_recall,
         pr_curve,
     )

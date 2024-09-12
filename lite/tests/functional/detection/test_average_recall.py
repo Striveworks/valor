@@ -25,12 +25,18 @@ def test__compute_average_recall():
     iou_thresholds = np.array([0.1, 0.6])
     score_thresholds = np.array([0.5, 0.93, 0.98])
 
-    (_, ar_results, _, mar_results, _, _,) = compute_metrics(
+    (_, results, _, _,) = compute_metrics(
         sorted_pairs,
         label_counts=label_counts,
         iou_thresholds=iou_thresholds,
         score_thresholds=score_thresholds,
     )
+    (
+        average_recall,
+        mean_average_recall,
+        average_recall_averaged_over_scores,
+        mean_average_recall_averaged_over_scores,
+    ) = results
 
     expected = np.array(
         [
@@ -39,8 +45,8 @@ def test__compute_average_recall():
             [0.0, 0.0],
         ]
     )
-    assert expected.shape == ar_results.shape
-    assert np.isclose(ar_results, expected).all()
+    assert expected.shape == average_recall.shape
+    assert np.isclose(average_recall, expected).all()
 
     expected = np.array(
         [
@@ -49,8 +55,20 @@ def test__compute_average_recall():
             [0.0],
         ]
     )
-    assert expected.shape == mar_results.shape
-    assert np.isclose(mar_results, expected).all()
+    assert expected.shape == mean_average_recall.shape
+    assert np.isclose(mean_average_recall, expected).all()
+
+    expected = np.array(
+        [1 / 3, 1 / 3],
+    )
+    assert expected.shape == average_recall_averaged_over_scores.shape
+    assert np.isclose(average_recall_averaged_over_scores, expected).all()
+
+    expected = np.array(
+        [1 / 3],
+    )
+    assert expected.shape == mean_average_recall_averaged_over_scores.shape
+    assert np.isclose(mean_average_recall_averaged_over_scores, expected).all()
 
 
 def test_ar_using_torch_metrics_example(

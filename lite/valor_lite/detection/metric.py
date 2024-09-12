@@ -16,6 +16,8 @@ class MetricType(str, Enum):
     mAR = "mAR"
     APAveragedOverIOUs = "APAveragedOverIOUs"
     mAPAveragedOverIOUs = "mAPAveragedOverIOUs"
+    ARAveragedOverScores = "ARAveragedOverScores"
+    mARAveragedOverScores = "mARAveragedOverScores"
     PrecisionRecallCurve = "PrecisionRecallCurve"
     DetailedPrecisionRecallCurve = "DetailedPrecisionRecallCurve"
 
@@ -38,8 +40,8 @@ class Metric:
 class CountingClassMetric:
     value: int
     label: tuple[str, str]
-    iou_threhsold: float
-    score_threshold: float
+    iou: float
+    score: float
 
     @property
     def metric(self) -> Metric:
@@ -47,8 +49,8 @@ class CountingClassMetric:
             type=type(self).__name__,
             value=self.value,
             parameters={
-                "iou": self.iou_threhsold,
-                "score": self.score_threshold,
+                "iou": self.iou,
+                "score": self.score,
                 "label": {
                     "key": self.label[0],
                     "value": self.label[1],
@@ -64,8 +66,8 @@ class CountingClassMetric:
 class ClassMetric:
     value: float
     label: tuple[str, str]
-    iou_threhsold: float
-    score_threshold: float
+    iou: float
+    score: float
 
     @property
     def metric(self) -> Metric:
@@ -73,8 +75,8 @@ class ClassMetric:
             type=type(self).__name__,
             value=self.value,
             parameters={
-                "iou": self.iou_threhsold,
-                "score": self.score_threshold,
+                "iou": self.iou,
+                "score": self.score,
                 "label": {
                     "key": self.label[0],
                     "value": self.label[1],
@@ -160,9 +162,54 @@ class mAP:
 
 
 @dataclass
+class APAveragedOverIoUs:
+    value: float
+    iou_thresholds: list[float]
+    label: tuple[str, str]
+
+    @property
+    def metric(self) -> Metric:
+        return Metric(
+            type=type(self).__name__,
+            value=self.value,
+            parameters={
+                "ious": self.iou_thresholds,
+                "label": {
+                    "key": self.label[0],
+                    "value": self.label[1],
+                },
+            },
+        )
+
+    def to_dict(self) -> dict:
+        return self.metric.to_dict()
+
+
+@dataclass
+class mAPAveragedOverIoUs:
+    value: float
+    iou_thresholds: list[float]
+    label_key: str
+
+    @property
+    def metric(self) -> Metric:
+        return Metric(
+            type=type(self).__name__,
+            value=self.value,
+            parameters={
+                "ious": self.iou_thresholds,
+                "label_key": self.label_key,
+            },
+        )
+
+    def to_dict(self) -> dict:
+        return self.metric.to_dict()
+
+
+@dataclass
 class AR:
     value: float
-    score_threshold: float
+    score: float
     ious: list[float]
     label: tuple[str, str]
 
@@ -172,7 +219,7 @@ class AR:
             type=type(self).__name__,
             value=self.value,
             parameters={
-                "score": self.score_threshold,
+                "score": self.score,
                 "ious": self.ious,
                 "label": {
                     "key": self.label[0],
@@ -188,7 +235,7 @@ class AR:
 @dataclass
 class mAR:
     value: float
-    score_threshold: float
+    score: float
     ious: list[float]
     label_key: str
 
@@ -198,7 +245,56 @@ class mAR:
             type=type(self).__name__,
             value=self.value,
             parameters={
-                "score": self.score_threshold,
+                "score": self.score,
+                "ious": self.ious,
+                "label_key": self.label_key,
+            },
+        )
+
+    def to_dict(self) -> dict:
+        return self.metric.to_dict()
+
+
+@dataclass
+class ARAveragedOverScores:
+    value: float
+    scores: list[float]
+    ious: list[float]
+    label: tuple[str, str]
+
+    @property
+    def metric(self) -> Metric:
+        return Metric(
+            type=type(self).__name__,
+            value=self.value,
+            parameters={
+                "scores": self.scores,
+                "ious": self.ious,
+                "label": {
+                    "key": self.label[0],
+                    "value": self.label[1],
+                },
+            },
+        )
+
+    def to_dict(self) -> dict:
+        return self.metric.to_dict()
+
+
+@dataclass
+class mARAveragedOverScores:
+    value: float
+    scores: list[float]
+    ious: list[float]
+    label_key: str
+
+    @property
+    def metric(self) -> Metric:
+        return Metric(
+            type=type(self).__name__,
+            value=self.value,
+            parameters={
+                "scores": self.scores,
                 "ious": self.ious,
                 "label_key": self.label_key,
             },
