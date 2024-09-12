@@ -2,7 +2,7 @@ from dataclasses import replace
 
 import numpy as np
 import pytest
-from valor_lite.detection import DataLoader, Detection, MetricType
+from valor_lite.detection import BoundingBox, DataLoader, Detection, MetricType
 
 
 @pytest.fixture
@@ -26,6 +26,32 @@ def four_detections(basic_detections: list[Detection]) -> list[Detection]:
     det4.uid = "uid4"
 
     return [det1, det2, det3, det4]
+
+
+def generate_random_detections(n, n_boxes, labels) -> list[Detection]:
+    from random import choice, uniform
+
+    def bbox(is_prediction):
+        xmin, ymin = uniform(0, 10), uniform(0, 10)
+        xmax, ymax = uniform(xmin, 15), uniform(ymin, 15)
+        kw = {"scores": [uniform(0, 1)]} if is_prediction else {}
+        return BoundingBox(
+            xmin,
+            xmax,
+            ymin,
+            ymax,
+            [("cl", choice(labels))],
+            **kw,
+        )
+
+    return [
+        Detection(
+            uid=f"uid{i}",
+            groundtruths=[bbox(is_prediction=False) for _ in range(n_boxes)],
+            predictions=[bbox(is_prediction=True) for _ in range(n_boxes)],
+        )
+        for i in range(n)
+    ]
 
 
 def test_filtering_one_detection(one_detection: list[Detection]):
@@ -363,3 +389,11 @@ def test_filtering_four_detections(four_detections: list[Detection]):
         assert m in expected_metrics
     for m in expected_metrics:
         assert m in actual_metrics
+
+
+def test_filtering_random_detections():
+    loader = DataLoader()
+    loader.add_data(generate_random_detections(13, 4, "abc"))
+    evaluator = loader.finalize()
+    f = evaluator.create_filter(datum_uids=["uid1"])
+    evaluator.evaluate(filter_=f)

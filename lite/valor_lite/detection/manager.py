@@ -177,9 +177,11 @@ class Evaluator:
         label_metadata_per_datum[:, ~mask] = 0
 
         label_metadata = np.zeros_like(self._label_metadata, dtype=np.int32)
-        label_metadata[:, :2] = np.sum(
-            label_metadata_per_datum,
-            axis=1,
+        label_metadata[:, :2] = np.transpose(
+            np.sum(
+                label_metadata_per_datum,
+                axis=1,
+            )
         )
         label_metadata[:, 2] = self._label_metadata[:, 2]
 

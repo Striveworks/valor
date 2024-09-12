@@ -156,7 +156,7 @@ def compute_metrics(
     gt_count = label_counts[unique_pd_labels, 0]
     running_total_count = np.zeros(
         (n_ious, n_rows),
-        dtype=np.int32,
+        dtype=np.float64,
     )
     running_tp_count = np.zeros_like(running_total_count)
     running_gt_count = np.zeros_like(running_total_count)
@@ -197,8 +197,10 @@ def compute_metrics(
             tp_count = tp_count[unique_pd_labels]
 
             # calculate component metrics
-            precision = tp_count / pd_count
-            recall = tp_count / gt_count
+            recall = np.zeros_like(tp_count)
+            precision = np.zeros_like(tp_count)
+            precision = np.divide(tp_count, pd_count, where=pd_count > 1e-9)
+            recall = np.divide(tp_count, gt_count, where=gt_count > 1e-9)
             fp_count = pd_count - tp_count
             fn_count = gt_count - tp_count
             f1_score = np.divide(
@@ -248,11 +250,19 @@ def compute_metrics(
             )
 
     # calculate running precision-recall points for AP
-    precision = np.divide(
-        running_tp_count, running_total_count, where=running_total_count > 0
+    precision = np.zeros_like(running_total_count)
+    np.divide(
+        running_tp_count,
+        running_total_count,
+        where=running_total_count > 1e-9,
+        out=precision,
     )
-    recall = np.divide(
-        running_tp_count, running_gt_count, where=running_gt_count > 0
+    recall = np.zeros_like(running_total_count)
+    np.divide(
+        running_tp_count,
+        running_gt_count,
+        where=running_gt_count > 1e-9,
+        out=recall,
     )
     recall_index = np.floor(recall * 100.0).astype(int)
     for iou_idx in range(n_ious):
