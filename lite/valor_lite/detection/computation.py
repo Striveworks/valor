@@ -199,8 +199,8 @@ def compute_metrics(
             # calculate component metrics
             recall = np.zeros_like(tp_count)
             precision = np.zeros_like(tp_count)
-            precision = np.divide(tp_count, pd_count, where=pd_count > 1e-9)
-            recall = np.divide(tp_count, gt_count, where=gt_count > 1e-9)
+            np.divide(tp_count, gt_count, where=gt_count > 1e-9, out=recall)
+            np.divide(tp_count, pd_count, where=pd_count > 1e-9, out=precision)
             fp_count = pd_count - tp_count
             fn_count = gt_count - tp_count
             f1_score = np.divide(
