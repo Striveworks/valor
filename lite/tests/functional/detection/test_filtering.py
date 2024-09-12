@@ -28,7 +28,9 @@ def four_detections(basic_detections: list[Detection]) -> list[Detection]:
     return [det1, det2, det3, det4]
 
 
-def generate_random_detections(n, n_boxes, labels) -> list[Detection]:
+def generate_random_detections(
+    n_detections: int, n_boxes: int, labels: str
+) -> list[Detection]:
     from random import choice, uniform
 
     def bbox(is_prediction):
@@ -50,7 +52,7 @@ def generate_random_detections(n, n_boxes, labels) -> list[Detection]:
             groundtruths=[bbox(is_prediction=False) for _ in range(n_boxes)],
             predictions=[bbox(is_prediction=True) for _ in range(n_boxes)],
         )
-        for i in range(n)
+        for i in range(n_detections)
     ]
 
 

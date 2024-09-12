@@ -129,7 +129,7 @@ class Evaluator:
         n_datums = self._label_metadata_per_datum.shape[1]
         n_labels = self._label_metadata_per_datum.shape[2]
 
-        mask_pairs = np.ones(n_rows, dtype=np.bool_)
+        mask_pairs = np.ones((n_rows, 1), dtype=np.bool_)
         mask_datums = np.ones(n_datums, dtype=np.bool_)
         mask_labels = np.ones(n_labels, dtype=np.bool_)
 
@@ -138,7 +138,7 @@ class Evaluator:
                 [self.uid_to_index[uid] for uid in datum_uids], dtype=np.int32
             )
             mask = np.zeros_like(mask_pairs, dtype=np.bool_)
-            mask[self._ranked_pairs[:, 0].astype(int) == indices] = True
+            mask[np.isin(self._ranked_pairs[:, 0].astype(int), indices)] = True
             mask_pairs &= mask
 
             mask = np.zeros_like(mask_datums, dtype=np.bool_)
@@ -150,7 +150,7 @@ class Evaluator:
                 [self.label_to_index[label] for label in labels]
             )
             mask = np.zeros_like(mask_pairs, dtype=np.bool_)
-            mask[self._ranked_pairs[:, 4].astype(int) == indices] = True
+            mask[np.isin(self._ranked_pairs[:, 4].astype(int), indices)] = True
             mask_pairs &= mask
 
             mask = np.zeros_like(mask_labels, dtype=np.bool_)
@@ -165,7 +165,9 @@ class Evaluator:
                 np.isclose(self._label_metadata[:, 2], key_indices)
             )[0]
             mask = np.zeros_like(mask_pairs, dtype=np.bool_)
-            mask[self._ranked_pairs[:, 4].astype(int) == label_indices] = True
+            mask[
+                np.isin(self._ranked_pairs[:, 4].astype(int), label_indices)
+            ] = True
             mask_pairs &= mask
 
             mask = np.zeros_like(mask_labels, dtype=np.bool_)
@@ -765,10 +767,9 @@ class DataLoader:
 
     def finalize(self) -> Evaluator:
 
-        if self.pairs is None:
-            raise ValueError
-
         self.pairs = [pair for pair in self.pairs if pair.size > 0]
+        if len(self.pairs) == 0:
+            raise ValueError("No data available to create evaluator.")
 
         n_datums = self._evaluator.n_datums
         n_labels = len(self._evaluator.index_to_label)

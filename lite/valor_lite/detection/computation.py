@@ -193,8 +193,8 @@ def compute_metrics(
             tp_count = np.bincount(
                 pd_labels,
                 weights=true_positives_mask,
-            )
-            tp_count = tp_count[unique_pd_labels]
+            ).astype(float)
+            tp_count = tp_count[unique_pd_labels].astype(float)
 
             # calculate component metrics
             recall = np.zeros_like(tp_count)
