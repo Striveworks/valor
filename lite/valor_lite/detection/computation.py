@@ -236,11 +236,9 @@ def compute_metrics(
         true_positives_mask[mask] = mask_gt_unique
 
         # count running tp and total for AP
-        for pd_label in unique_pd_labels:
+        for idx, pd_label in enumerate(unique_pd_labels):
             mask_pd_label = pd_labels == pd_label
-            running_gt_count[iou_idx][mask_pd_label] = label_counts[pd_label][
-                0
-            ]
+            running_gt_count[iou_idx][mask_pd_label] = gt_count[idx]
             running_total_count[iou_idx][mask_pd_label] = np.arange(
                 1, mask_pd_label.sum() + 1
             )

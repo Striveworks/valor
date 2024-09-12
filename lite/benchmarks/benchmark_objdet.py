@@ -166,9 +166,8 @@ class Benchmark:
             "base_evaluation": f"{round(self.evaluation, 2)} seconds",
             "detailed_pr_curve": [
                 {
-                    "score_thresholds": [x / 10.0 for x in range(1, 11)],
-                    "iou_thresholds": [0.5],
-                    "n_samples": curve[0],
+                    "n_points": 10,
+                    "n_examples": curve[0],
                     "computation": f"{round(curve[1], 2)} seconds",
                 }
                 for curve in self.detailed_curves

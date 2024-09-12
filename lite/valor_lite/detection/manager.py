@@ -56,7 +56,7 @@ filtered_metrics = evaluator.evaluate(iou_thresholds=[0.5], filter_mask=filter_m
 
 @dataclass
 class Filter:
-    mask: NDArray[np.bool_]
+    indices: NDArray[np.int32]
     label_metadata: NDArray[np.int32]
 
 
@@ -184,7 +184,7 @@ class Evaluator:
         label_metadata[:, 2] = self._label_metadata[:, 2]
 
         return Filter(
-            mask=mask_pairs,
+            indices=np.where(mask_pairs)[0],
             label_metadata=label_metadata,
         )
 
@@ -210,7 +210,7 @@ class Evaluator:
         data = self._ranked_pairs
         label_metadata = self._label_metadata
         if filter_ is not None:
-            data = data[filter_.mask]
+            data = data[filter_.indices]
             label_metadata = filter_.label_metadata
 
         (
@@ -229,7 +229,7 @@ class Evaluator:
             precision_recall,
             pr_curves,
         ) = compute_metrics(
-            data=self._ranked_pairs,
+            data=data,
             label_counts=label_metadata,
             iou_thresholds=np.array(iou_thresholds),
             score_thresholds=np.array(score_thresholds),
