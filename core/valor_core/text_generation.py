@@ -580,6 +580,7 @@ def evaluate_text_generation(
     unique_datum_counts = len(set([p.datum.uid for p in predictions]))
 
     # Generate a list of data tuples, where each prediction is matched with its corresponding datum and the associated groundtruths.
+    # TODO consider changing to dataframe
     data = []
     for prediction in predictions:
         datum = prediction.datum
