@@ -1676,6 +1676,8 @@ def test_evaluate_detection_with_label_maps_and_ValorDetectionManager(
         "pr_curve_iou_threshold": 0.5,
         "pr_curve_max_examples": 1,
         "convert_annotations_to_type": None,
+        "llm_api_params": None,
+        "metric_params": None,
     }
 
     metrics = eval_job.metrics

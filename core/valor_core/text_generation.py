@@ -249,7 +249,7 @@ def _compute_text_generation_metrics(
     data: list[tuple[str, list[str], int, str, list[str]]],
     metrics_to_return: list[MetricType] = [],
     llm_api_params: dict[str, str | dict] | None = None,
-    metric_params: dict = {},
+    metric_params: dict[str, dict] = {},
 ) -> list[
     metrics.AnswerCorrectnessMetric
     | metrics.AnswerRelevanceMetric
@@ -553,7 +553,7 @@ def evaluate_text_generation(
     metrics_to_return: list[MetricType],
     groundtruths: list[schemas.GroundTruth] = [],
     llm_api_params: dict[str, str | dict] | None = None,
-    metric_params: dict = {},
+    metric_params: dict[str, dict] = {},
 ) -> evaluation.Evaluation:
     """
 
@@ -613,6 +613,8 @@ def evaluate_text_generation(
     return evaluation.Evaluation(
         parameters=evaluation.EvaluationParameters(
             metrics_to_return=metrics_to_return,
+            llm_api_params=llm_api_params,
+            metric_params=metric_params,
         ),
         metrics=[metric.to_dict() for metric in metrics],
         meta={

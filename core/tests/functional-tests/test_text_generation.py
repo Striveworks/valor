@@ -6,6 +6,7 @@ from valor_core.enums import MetricType, ROUGEType
 from valor_core.text_generation import (
     _calculate_rouge_scores,
     _calculate_sentence_bleu,
+    _setup_llm_client,
     evaluate_text_generation,
 )
 
@@ -454,6 +455,93 @@ def mocked_compute_rouge_none(*args, **kwargs):
     mocked_connection,
 )
 @patch(
+    "valor_core.llm_clients.WrappedMistralAIClient.connect",
+    mocked_connection,
+)
+def test__setup_llm_client():
+    # Valid call with openai.
+    _ = _setup_llm_client(
+        llm_api_params={
+            "client": "openai",
+            "data": {
+                "seed": 2024,
+                "model": "gpt-4o",
+            },
+        },
+    )
+
+    # Valid call with mistral.
+    _ = _setup_llm_client(
+        llm_api_params={
+            "client": "mistral",
+            "data": {
+                "model": "mistral-small-latest",
+            },
+        },
+    )
+
+    # Need to specify the client or api_url (api_url has not been implemented)
+    with pytest.raises(ValueError):
+        _ = _setup_llm_client(
+            llm_api_params={
+                "data": {
+                    "seed": 2024,
+                    "model": "gpt-4o",
+                },
+            },
+        )
+
+    # Cannot specify both a client and api_url.
+    with pytest.raises(ValueError):
+        _ = _setup_llm_client(
+            llm_api_params={
+                "client": "openai",
+                "api_url": "openai.com",
+                "data": {
+                    "seed": 2024,
+                    "model": "gpt-4o",
+                },
+            },
+        )
+
+    # Support is not implemented for api_url.
+    with pytest.raises(NotImplementedError):
+        _ = _setup_llm_client(
+            llm_api_params={
+                "api_url": "openai.com",
+                "data": {
+                    "seed": 2024,
+                    "model": "gpt-4o",
+                },
+            },
+        )
+
+    # Test that an invalid client raises an error.
+    with pytest.raises(ValueError):
+        _ = _setup_llm_client(
+            llm_api_params={
+                "client": "invalid_client",
+                "data": {
+                    "model": "model",
+                },
+            },
+        )
+
+    # data should be a dictionary.
+    with pytest.raises(ValueError):
+        _ = _setup_llm_client(
+            llm_api_params={
+                "client": "openai",
+                "data": "gpt-4o",
+            },
+        )
+
+
+@patch(
+    "valor_core.llm_clients.WrappedOpenAIClient.connect",
+    mocked_connection,
+)
+@patch(
     "valor_core.llm_clients.WrappedOpenAIClient.answer_correctness",
     mocked_answer_correctness,
 )
@@ -497,12 +585,12 @@ def mocked_compute_rouge_none(*args, **kwargs):
     "valor_core.llm_clients.WrappedMistralAIClient.answer_relevance",
     mocked_answer_relevance,
 )
-def test__compute_text_generation_rag(
+def test_evaluate_text_generation_rag(
     rag_gts: list[schemas.GroundTruth],
     rag_preds: list[schemas.Prediction],
 ):
     """
-    Tests the _compute_text_generation function.
+    Tests the evaluate_text_generation function for RAG.
     """
     metrics_to_return = [
         MetricType.AnswerCorrectness,
@@ -658,77 +746,6 @@ def test__compute_text_generation_rag(
         },
     )
 
-    # Need to specify the client or api_url (api_url has not been implemented)
-    with pytest.raises(ValueError):
-        _ = evaluate_text_generation(
-            predictions=rag_preds,
-            groundtruths=rag_gts,
-            metrics_to_return=metrics_to_return,
-            llm_api_params={
-                "data": {
-                    "seed": 2024,
-                    "model": "gpt-4o",
-                },
-            },
-        )
-
-    # Cannot specify both a client and api_url.
-    with pytest.raises(ValueError):
-        _ = evaluate_text_generation(
-            predictions=rag_preds,
-            groundtruths=rag_gts,
-            metrics_to_return=metrics_to_return,
-            llm_api_params={
-                "client": "openai",
-                "api_url": "openai.com",
-                "data": {
-                    "seed": 2024,
-                    "model": "gpt-4o",
-                },
-            },
-        )
-
-    # Support is not implemented for api_url.
-    with pytest.raises(NotImplementedError):
-        _ = evaluate_text_generation(
-            predictions=rag_preds,
-            groundtruths=rag_gts,
-            metrics_to_return=metrics_to_return,
-            llm_api_params={
-                "api_url": "openai.com",
-                "data": {
-                    "seed": 2024,
-                    "model": "gpt-4o",
-                },
-            },
-        )
-
-    # Test that an invalid client raises an error.
-    with pytest.raises(ValueError):
-        _ = evaluate_text_generation(
-            predictions=rag_preds,
-            groundtruths=rag_gts,
-            metrics_to_return=metrics_to_return,
-            llm_api_params={
-                "client": "invalid_client",
-                "data": {
-                    "model": "model",
-                },
-            },
-        )
-
-    # data should be a dictionary.
-    with pytest.raises(ValueError):
-        _ = evaluate_text_generation(
-            predictions=rag_preds,
-            groundtruths=rag_gts,
-            metrics_to_return=metrics_to_return,
-            llm_api_params={
-                "client": "openai",
-                "data": "gpt-4o",
-            },
-        )
-
     # BLEU metric parameters should be a dictionary.
     with pytest.raises(ValueError):
         _ = evaluate_text_generation(
@@ -743,7 +760,7 @@ def test__compute_text_generation_rag(
                 },
             },
             metric_params={
-                "BLEU": [0.25, 0.25, 0.25, 0.25],
+                "BLEU": [0.25, 0.25, 0.25, 0.25],  # type: ignore - testing
             },
         )
 
@@ -761,7 +778,7 @@ def test__compute_text_generation_rag(
                 },
             },
             metric_params={
-                "ROUGE": ["use_stemmer"],
+                "ROUGE": ["use_stemmer"],  # type: ignore - testing
             },
         )
 
@@ -786,10 +803,13 @@ def test__compute_text_generation_rag(
     "valor_core.llm_clients.WrappedOpenAIClient.toxicity",
     mocked_toxicity,
 )
-def test_text_generation_content_gen(
+def test_evaluate_text_generation_content_gen(
     content_gen_gts: list[schemas.GroundTruth],
     content_gen_preds: list[schemas.Prediction],
 ):
+    """
+    Tests the evaluate_text_generation function for content generation.
+    """
     metrics_to_return = [
         MetricType.Bias,
         MetricType.Toxicity,
@@ -845,10 +865,13 @@ def test_text_generation_content_gen(
     "valor_core.llm_clients.WrappedOpenAIClient.summary_coherence",
     mocked_summary_coherence,
 )
-def test_text_generation_summarization(
+def test_evaluate_text_generation_summarization(
     summarization_gts: list[schemas.GroundTruth],
     summarization_preds: list[schemas.Prediction],
 ):
+    """
+    Tests the evaluate_text_generation function for summarization.
+    """
     metrics_to_return = [
         MetricType.SummaryCoherence,
     ]

@@ -25,6 +25,10 @@ class EvaluationParameters:
             The IOU threshold to use when calculating precision-recall curves for object detection tasks. Defaults to 0.5.
     pr_curve_max_examples: int
         The maximum number of datum examples to store when calculating PR curves.
+    llm_api_params: dict[str, str | dict], optional
+        A dictionary of parameters for the LLM API. Only required by some text generation metrics.
+    metric_params: dict, optional
+        A dictionary of optional parameters to pass in to specific metrics.
     """
 
     label_map: dict[schemas.Label, schemas.Label] | None = None
@@ -35,6 +39,8 @@ class EvaluationParameters:
     recall_score_threshold: float = 0.0
     pr_curve_iou_threshold: float = 0.5
     pr_curve_max_examples: int = 1
+    llm_api_params: dict[str, str | dict] | None = None
+    metric_params: dict[str, dict] | None = None
 
     def __post_init__(self):
         """Validate instantiated class."""
@@ -104,6 +110,46 @@ class EvaluationParameters:
             raise TypeError(
                 f"Expected 'pr_curve_max_examples' to be of type 'int', got {type(self.pr_curve_max_examples).__name__}"
             )
+
+        if self.llm_api_params is not None:
+            if not isinstance(self.llm_api_params, dict):
+                raise TypeError(
+                    f"Expected 'llm_api_params' to be of type 'dict' or 'None', got {type(self.llm_api_params).__name__}"
+                )
+            if not all(
+                isinstance(key, str) for key in self.llm_api_params.keys()
+            ):
+                raise TypeError(
+                    "All keys in 'llm_api_params' must be of type 'str'"
+                )
+
+            if not all(
+                isinstance(value, (str, dict))
+                for value in self.llm_api_params.values()
+            ):
+                raise TypeError(
+                    "All values in 'llm_api_params' must be of type 'str' or 'dict'"
+                )
+
+        if self.metric_params is not None:
+            if not isinstance(self.metric_params, dict):
+                raise TypeError(
+                    f"Expected 'metric_params' to be of type 'dict' or 'None', got {type(self.llm_api_params).__name__}"
+                )
+            if not all(
+                isinstance(key, str) for key in self.metric_params.keys()
+            ):
+                raise TypeError(
+                    "All keys in 'metric_params' must be of type 'str'"
+                )
+
+            if not all(
+                isinstance(value, (str, dict))
+                for value in self.metric_params.values()
+            ):
+                raise TypeError(
+                    "All values in 'metric_params' must be of type 'dict'"
+                )
 
 
 @dataclass

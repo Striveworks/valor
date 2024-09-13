@@ -1422,6 +1422,12 @@ class Annotation:
     ...     raster=Raster(...),
     ...     is_instance=False # or None
     ... )
+
+    Text Generation Annotation with text and context_list. Not all text generation tasks require both text and context.
+    >>> annotation = Annotation(
+    ...     text="Abraham Lincoln was the 16th President of the United States.",
+    ...     context_list=["Lincoln was elected the 16th president of the United States in 1860.", "Abraham Lincoln was born on February 12, 1809, in a one-room log cabin on the Sinking Spring Farm in Hardin County, Kentucky."],
+    ... )
     """
 
     labels: list[Label] | None = None
