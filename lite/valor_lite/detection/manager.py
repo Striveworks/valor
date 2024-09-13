@@ -22,9 +22,9 @@ from valor_lite.detection.metric import (
     DetailedPrecisionRecallPoint,
     FalseNegativeCount,
     FalsePositiveCount,
-    InterpolatedPrecisionRecallCurve,
     MetricType,
     Precision,
+    PrecisionRecallCurve,
     Recall,
     TruePositiveCount,
     mAP,
@@ -353,13 +353,14 @@ class Evaluator:
         ]
 
         metrics[MetricType.PrecisionRecallCurve] = [
-            InterpolatedPrecisionRecallCurve(
+            PrecisionRecallCurve(
                 precision=list(pr_curves[iou_idx][label_idx]),
                 iou=iou_threshold,
                 label=label,
             )
             for iou_idx, iou_threshold in enumerate(iou_thresholds)
             for label_idx, label in self.index_to_label.items()
+            if label_metadata[label_idx][0] > 0
         ]
 
         for iou_idx, iou_threshold in enumerate(iou_thresholds):
@@ -454,7 +455,7 @@ class Evaluator:
                 for score_idx in range(n_scores):
                     curve.value.append(
                         DetailedPrecisionRecallPoint(
-                            score=(score_idx + 1) / 100.0,
+                            score=score_thresholds[score_idx],
                             tp=metrics[iou_idx][score_idx][label_idx][tp_idx],
                             tp_examples=[
                                 self.index_to_uid[int(datum_idx)]

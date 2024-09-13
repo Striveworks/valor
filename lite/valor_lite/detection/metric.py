@@ -305,7 +305,7 @@ class mARAveragedOverScores:
 
 
 @dataclass
-class InterpolatedPrecisionRecallCurve:
+class PrecisionRecallCurve:
     """
     Interpolated over recalls 0.0, 0.01, ..., 1.0.
     """

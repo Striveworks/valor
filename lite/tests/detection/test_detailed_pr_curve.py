@@ -1,5 +1,17 @@
 import numpy as np
-from valor_lite.detection import compute_detailed_pr_curve
+import pytest
+from valor_lite.detection import (
+    DataLoader,
+    Detection,
+    Evaluator,
+    compute_detailed_pr_curve,
+)
+
+
+def test_detailed_pr_curve_no_data():
+    evaluator = Evaluator()
+    with pytest.raises(ValueError):
+        evaluator.compute_detailed_pr_curve()
 
 
 def test_compute_detailed_pr_curve():
@@ -200,6 +212,172 @@ def test_compute_detailed_pr_curve():
     ).all()  # fn misprd
 
 
+def test_detailed_pr_curve_using_torch_metrics_example(
+    torchmetrics_detections: list[Detection],
+):
+    """
+    cf with torch metrics/pycocotools results listed here:
+    https://github.com/Lightning-AI/metrics/blob/107dbfd5fb158b7ae6d76281df44bd94c836bfce/tests/unittests/detection/test_map.py#L231
+    """
+    manager = DataLoader()
+    manager.add_data(torchmetrics_detections)
+    evaluator = manager.finalize()
+
+    assert evaluator.ignored_prediction_labels == [("class", "3")]
+    assert evaluator.missing_prediction_labels == []
+    assert evaluator.n_datums == 4
+    assert evaluator.n_labels == 6
+    assert evaluator.n_groundtruths == 20
+    assert evaluator.n_predictions == 19
+
+    metrics = evaluator.compute_detailed_pr_curve(
+        iou_thresholds=[0.5, 0.75],
+        score_thresholds=[0.25, 0.75],
+        n_samples=1,
+    )
+
+    # test DetailedPrecisionRecallCurve
+    actual_metrics = [m.to_dict() for m in metrics]
+    expected_metrics = [
+        {
+            "value": [
+                {
+                    "score": 0.25,
+                    "tp": 1.0,
+                    "fp_misclassification": 0.0,
+                    "fp_hallucination": 0.0,
+                    "fn_misclassification": 1.0,
+                    "fn_missing_prediction": 0.0,
+                    "tp_examples": ["2"],
+                    "fp_misclassification_examples": [],
+                    "fp_hallucination_examples": [],
+                    "fn_misclassification_examples": ["0"],
+                    "fn_missing_prediction_examples": [],
+                },
+                {
+                    "score": 0.75,
+                    "tp": 0.0,
+                    "fp_misclassification": 0.0,
+                    "fp_hallucination": 6.0,
+                    "fn_misclassification": 2.0,
+                    "fn_missing_prediction": 4.0,
+                    "tp_examples": [],
+                    "fp_misclassification_examples": [],
+                    "fp_hallucination_examples": ["2"],
+                    "fn_misclassification_examples": ["0"],
+                    "fn_missing_prediction_examples": ["2"],
+                },
+            ],
+            "iou": 0.5,
+            "label": {"key": "class", "value": "4"},
+            "type": "DetailedPrecisionRecallCurve",
+        },
+        {
+            "value": [
+                {
+                    "score": 0.25,
+                    "tp": 1.0,
+                    "fp_misclassification": 0.0,
+                    "fp_hallucination": 0.0,
+                    "fn_misclassification": 1.0,
+                    "fn_missing_prediction": 0.0,
+                    "tp_examples": ["2"],
+                    "fp_misclassification_examples": [],
+                    "fp_hallucination_examples": [],
+                    "fn_misclassification_examples": ["0"],
+                    "fn_missing_prediction_examples": [],
+                },
+                {
+                    "score": 0.75,
+                    "tp": 0.0,
+                    "fp_misclassification": 0.0,
+                    "fp_hallucination": 6.0,
+                    "fn_misclassification": 2.0,
+                    "fn_missing_prediction": 4.0,
+                    "tp_examples": [],
+                    "fp_misclassification_examples": [],
+                    "fp_hallucination_examples": ["2"],
+                    "fn_misclassification_examples": ["0"],
+                    "fn_missing_prediction_examples": ["2"],
+                },
+            ],
+            "iou": 0.75,
+            "label": {"key": "class", "value": "4"},
+            "type": "DetailedPrecisionRecallCurve",
+        },
+        {
+            "value": [
+                {
+                    "score": 0.25,
+                    "tp": 1.0,
+                    "fp_misclassification": 0.0,
+                    "fp_hallucination": 1.0,
+                    "fn_misclassification": 0.0,
+                    "fn_missing_prediction": 1.0,
+                    "tp_examples": ["1"],
+                    "fp_misclassification_examples": [],
+                    "fp_hallucination_examples": ["1"],
+                    "fn_misclassification_examples": [],
+                    "fn_missing_prediction_examples": ["1"],
+                },
+                {
+                    "score": 0.75,
+                    "tp": 0.0,
+                    "fp_misclassification": 0.0,
+                    "fp_hallucination": 1.0,
+                    "fn_misclassification": 1.0,
+                    "fn_missing_prediction": 3.0,
+                    "tp_examples": [],
+                    "fp_misclassification_examples": [],
+                    "fp_hallucination_examples": ["1"],
+                    "fn_misclassification_examples": ["1"],
+                    "fn_missing_prediction_examples": ["1"],
+                },
+            ],
+            "iou": 0.5,
+            "label": {"key": "class", "value": "2"},
+            "type": "DetailedPrecisionRecallCurve",
+        },
+        {
+            "value": [
+                {
+                    "score": 0.25,
+                    "tp": 1.0,
+                    "fp_misclassification": 0.0,
+                    "fp_hallucination": 1.0,
+                    "fn_misclassification": 0.0,
+                    "fn_missing_prediction": 1.0,
+                    "tp_examples": ["1"],
+                    "fp_misclassification_examples": [],
+                    "fp_hallucination_examples": ["1"],
+                    "fn_misclassification_examples": [],
+                    "fn_missing_prediction_examples": ["1"],
+                },
+                {
+                    "score": 0.75,
+                    "tp": 0.0,
+                    "fp_misclassification": 0.0,
+                    "fp_hallucination": 1.0,
+                    "fn_misclassification": 1.0,
+                    "fn_missing_prediction": 3.0,
+                    "tp_examples": [],
+                    "fp_misclassification_examples": [],
+                    "fp_hallucination_examples": ["1"],
+                    "fn_misclassification_examples": ["1"],
+                    "fn_missing_prediction_examples": ["1"],
+                },
+            ],
+            "iou": 0.75,
+            "label": {"key": "class", "value": "2"},
+            "type": "DetailedPrecisionRecallCurve",
+        },
+    ]
+    for m in actual_metrics:
+        assert m in expected_metrics
+    for m in expected_metrics:
+        assert m in actual_metrics
+
+
 # @pytest.fixture
 # def test_detailed_precision_recall_curve(
 #     evaluate_detection_detailed_pr_curve_groundtruths: list,
@@ -210,7 +388,7 @@ def test_compute_detailed_pr_curve():
 #     expected_outputs, _ = detailed_precision_recall_curve_outputs
 
 #     Dataloader = Dataloader(
-#         metrics_to_return=[enums.MetricType.DetailedPrecisionRecallCurve],
+#         metrics_to_return=[enums.MetricType.DetailedDetailedPrecisionRecallCurve],
 #     )
 
 #     Dataloader.add_data(
@@ -236,7 +414,7 @@ def test_compute_detailed_pr_curve():
 
 #     # repeat tests using a lower IOU threshold
 #     Dataloader = Dataloader(
-#         metrics_to_return=[enums.MetricType.DetailedPrecisionRecallCurve],
+#         metrics_to_return=[enums.MetricType.DetailedDetailedPrecisionRecallCurve],
 #         pr_curve_iou_threshold=0.45,
 #     )
 
@@ -358,8 +536,8 @@ def test_compute_detailed_pr_curve():
 #             enums.MetricType.APAveragedOverIOUs,
 #             enums.MetricType.mAR,
 #             enums.MetricType.mAPAveragedOverIOUs,
-#             enums.MetricType.PrecisionRecallCurve,
 #             enums.MetricType.DetailedPrecisionRecallCurve,
+#             enums.MetricType.DetailedDetailedPrecisionRecallCurve,
 #         ],
 #         pr_curve_iou_threshold=0.5,
 #         pr_curve_max_examples=1,
@@ -370,7 +548,7 @@ def test_compute_detailed_pr_curve():
 #         m
 #         for m in eval_job.metrics
 #         if m["type"]
-#         not in ["PrecisionRecallCurve", "DetailedPrecisionRecallCurve"]
+#         not in ["DetailedPrecisionRecallCurve", "DetailedDetailedPrecisionRecallCurve"]
 #     ]
 
 #     # round all metrics to the third decimal place
@@ -378,12 +556,12 @@ def test_compute_detailed_pr_curve():
 #         metrics[i]["value"] = round(m["value"], 3)
 
 #     pr_metrics = [
-#         m for m in eval_job.metrics if m["type"] == "PrecisionRecallCurve"
+#         m for m in eval_job.metrics if m["type"] == "DetailedPrecisionRecallCurve"
 #     ]
 #     detailed_pr_metrics = [
 #         m
 #         for m in eval_job.metrics
-#         if m["type"] == "DetailedPrecisionRecallCurve"
+#         if m["type"] == "DetailedDetailedPrecisionRecallCurve"
 #     ]
 
 #     for m in metrics:
@@ -444,8 +622,8 @@ def test_compute_detailed_pr_curve():
 #     # raise the iou threshold
 #     Dataloader = Dataloader(
 #         metrics_to_return=[
-#             enums.MetricType.PrecisionRecallCurve,
 #             enums.MetricType.DetailedPrecisionRecallCurve,
+#             enums.MetricType.DetailedDetailedPrecisionRecallCurve,
 #         ],
 #         pr_curve_iou_threshold=0.9,
 #         pr_curve_max_examples=1,
@@ -470,12 +648,12 @@ def test_compute_detailed_pr_curve():
 #     pr_metrics = [
 #         m
 #         for m in eval_job_higher_threshold.metrics
-#         if m["type"] == "PrecisionRecallCurve"
+#         if m["type"] == "DetailedPrecisionRecallCurve"
 #     ]
 #     detailed_pr_metrics = [
 #         m
 #         for m in eval_job_higher_threshold.metrics
-#         if m["type"] == "DetailedPrecisionRecallCurve"
+#         if m["type"] == "DetailedDetailedPrecisionRecallCurve"
 #     ]
 
 #     for (
@@ -531,8 +709,8 @@ def test_compute_detailed_pr_curve():
 #     # repeat the above, but with a higher pr_max_curves_example
 #     Dataloader = Dataloader(
 #         metrics_to_return=[
-#             enums.MetricType.PrecisionRecallCurve,
 #             enums.MetricType.DetailedPrecisionRecallCurve,
+#             enums.MetricType.DetailedDetailedPrecisionRecallCurve,
 #         ],
 #         pr_curve_iou_threshold=0.9,
 #         pr_curve_max_examples=3,
@@ -557,12 +735,12 @@ def test_compute_detailed_pr_curve():
 #     pr_metrics = [
 #         m
 #         for m in eval_job_higher_threshold.metrics
-#         if m["type"] == "PrecisionRecallCurve"
+#         if m["type"] == "DetailedPrecisionRecallCurve"
 #     ]
 #     detailed_pr_metrics = [
 #         m
 #         for m in eval_job_higher_threshold.metrics
-#         if m["type"] == "DetailedPrecisionRecallCurve"
+#         if m["type"] == "DetailedDetailedPrecisionRecallCurve"
 #     ]
 
 #     for (
@@ -618,8 +796,8 @@ def test_compute_detailed_pr_curve():
 #     # test behavior if pr_curve_max_examples == 0
 #     Dataloader = Dataloader(
 #         metrics_to_return=[
-#             enums.MetricType.PrecisionRecallCurve,
 #             enums.MetricType.DetailedPrecisionRecallCurve,
+#             enums.MetricType.DetailedDetailedPrecisionRecallCurve,
 #         ],
 #         pr_curve_iou_threshold=0.9,
 #         pr_curve_max_examples=0,
@@ -644,12 +822,12 @@ def test_compute_detailed_pr_curve():
 #     pr_metrics = [
 #         m
 #         for m in eval_job_higher_threshold.metrics
-#         if m["type"] == "PrecisionRecallCurve"
+#         if m["type"] == "DetailedPrecisionRecallCurve"
 #     ]
 #     detailed_pr_metrics = [
 #         m
 #         for m in eval_job_higher_threshold.metrics
-#         if m["type"] == "DetailedPrecisionRecallCurve"
+#         if m["type"] == "DetailedDetailedPrecisionRecallCurve"
 #     ]
 
 #     for (
