@@ -1632,3 +1632,30 @@ def test_evaluate_detection_pr_fp(evaluate_detection_pr_fp_inputs):
         ]["count"]
         == 0
     )
+
+
+def test_correct_deassignment_of_true_positive_boolean(
+    check_correct_deassignment_of_true_positive_boolean_inputs: tuple,
+    check_correct_deassignment_of_true_positive_boolean_outputs: list,
+):
+    """
+    Test a bug where multiple predictions for a single groundtruth / label could both be considered true positives as long as there was at least one other prediction in between them.
+    For this test, only the first prediction in calculation_df should be considered a true positive; all the others should be marked as false positives.
+    """
+
+    (
+        groundtruths,
+        predictions,
+    ) = check_correct_deassignment_of_true_positive_boolean_inputs
+    metrics = evaluate_detection(
+        groundtruths=groundtruths,
+        predictions=predictions,
+        iou_thresholds_to_compute=[0.5],
+        iou_thresholds_to_return=[0.5],
+    ).metrics
+
+    expected = check_correct_deassignment_of_true_positive_boolean_outputs
+    for m in metrics:
+        assert m in expected
+    for m in expected:
+        assert m in metrics
