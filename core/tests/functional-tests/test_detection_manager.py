@@ -381,7 +381,7 @@ def test_evaluate_detection_false_negatives_two_images_one_only_with_different_c
 ):
     """In this test we have
         1. An image with a matching groundtruth and prediction (same class, `"value"`, and high IOU)
-        2. A second image with a groundtruth annotation with class `"other value"` and a prediction with higher confidence
+        2. A second image with a groundtruth annotation with clas `"other value"` and a prediction with higher confidence
         then the prediction on the first image.
 
     In this case, the AP for class `"value"` should be 0.5 since the false positive has higher confidence than the true positive.
