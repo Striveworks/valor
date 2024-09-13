@@ -1,5 +1,6 @@
 from .classification import evaluate_classification
 from .detection import evaluate_detection
+from .evaluation import Evaluation
 from .managers import ValorDetectionManager
 from .metrics import (
     AccuracyMetric,
@@ -22,7 +23,6 @@ from .schemas import (
     Annotation,
     Box,
     Datum,
-    Evaluation,
     GroundTruth,
     Label,
     LineString,

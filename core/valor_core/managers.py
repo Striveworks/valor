@@ -2,7 +2,14 @@ import time
 from dataclasses import dataclass, field
 
 import pandas as pd
-from valor_core import classification, detection, enums, schemas, utilities
+from valor_core import (
+    classification,
+    detection,
+    enums,
+    evaluation,
+    schemas,
+    utilities,
+)
 
 
 @dataclass
@@ -235,7 +242,7 @@ class ValorDetectionManager:
 
         Returns
         -------
-        schemas.Evaluation
+        evaluation.Evaluation
             An evaluation object containing metrics, confusion matrices, and metadata.
 
         Raises
@@ -287,8 +294,8 @@ class ValorDetectionManager:
             )
         ]
 
-        return schemas.Evaluation(
-            parameters=schemas.EvaluationParameters(
+        return evaluation.Evaluation(
+            parameters=evaluation.EvaluationParameters(
                 label_map=self.label_map,
                 metrics_to_return=self.metrics_to_return,
                 iou_thresholds_to_compute=self.iou_thresholds_to_compute,
@@ -518,7 +525,7 @@ class ValorClassificationManager:
 
         Returns
         -------
-        schemas.Evaluation
+        evaluation.Evaluation
             An evaluation object containing metrics, confusion matrices, and metadata.
 
         Raises
@@ -570,8 +577,8 @@ class ValorClassificationManager:
             )
         ]
 
-        return schemas.Evaluation(
-            parameters=schemas.EvaluationParameters(
+        return evaluation.Evaluation(
+            parameters=evaluation.EvaluationParameters(
                 label_map=self.label_map,
                 metrics_to_return=self.metrics_to_return,
                 pr_curve_max_examples=self.pr_curve_max_examples,

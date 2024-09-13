@@ -1,7 +1,7 @@
 import copy
 
 import pytest
-from valor_core import enums, schemas
+from valor_core import enums, evaluation, schemas
 
 
 @pytest.fixture
@@ -342,32 +342,32 @@ def test_prediction():
 
 
 def test_EvaluationParameters():
-    schemas.EvaluationParameters()
+    evaluation.EvaluationParameters()
 
-    schemas.EvaluationParameters(
+    evaluation.EvaluationParameters(
         iou_thresholds_to_compute=[0.2, 0.6],
         iou_thresholds_to_return=[],
     )
 
-    schemas.EvaluationParameters(
+    evaluation.EvaluationParameters(
         iou_thresholds_to_compute=[],
         iou_thresholds_to_return=[],
     )
 
     # If no llm-guided metrics are requested, then llm_api_params is not required.
-    schemas.EvaluationParameters(
+    evaluation.EvaluationParameters(
         metrics_to_return=[
             enums.MetricType.AP,
             enums.MetricType.AR,
         ],
     )
 
-    schemas.EvaluationParameters(
+    evaluation.EvaluationParameters(
         convert_annotations_to_type=enums.AnnotationType.BOX,
     )
 
     with pytest.raises(TypeError):
-        schemas.EvaluationParameters(
+        evaluation.EvaluationParameters(
             label_map=[
                 [["class_name", "maine coon cat"], ["class", "cat"]],
                 [["class", "siamese cat"], ["class", "cat"]],
@@ -376,7 +376,7 @@ def test_EvaluationParameters():
         )
 
     with pytest.raises(TypeError):
-        schemas.EvaluationParameters(label_map={"bad": "inputs"})  # type: ignore
+        evaluation.EvaluationParameters(label_map={"bad": "inputs"})  # type: ignore
 
     with pytest.raises(TypeError):
-        schemas.EvaluationParameters(metrics_to_return={"bad": "inputs"})  # type: ignore
+        evaluation.EvaluationParameters(metrics_to_return={"bad": "inputs"})  # type: ignore
