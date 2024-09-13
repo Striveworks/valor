@@ -1,5 +1,4 @@
 import numpy as np
-import pytest
 from valor_lite.detection import (
     DataLoader,
     Detection,
@@ -10,8 +9,9 @@ from valor_lite.detection import (
 
 def test_detailed_pr_curve_no_data():
     evaluator = Evaluator()
-    with pytest.raises(ValueError):
-        evaluator.compute_detailed_pr_curve()
+    curves = evaluator.compute_detailed_pr_curve()
+    assert isinstance(curves, list)
+    assert len(curves) == 0
 
 
 def test_compute_detailed_pr_curve():

@@ -83,10 +83,10 @@ class Evaluator:
         self.label_index_to_label_key_index: dict[int, int] = dict()
 
         # computation caches
-        self._detailed_pairs = np.empty((1, 7))
-        self._ranked_pairs = np.empty((1, 7))
-        self._label_metadata = np.empty((1, 3))
-        self._label_metadata_per_datum = np.empty((1, 1, 2), dtype=np.int32)
+        self._detailed_pairs = np.array([])
+        self._ranked_pairs = np.array([])
+        self._label_metadata = np.array([])
+        self._label_metadata_per_datum = np.array([])
 
     @property
     def ignored_prediction_labels(self) -> list[tuple[str, str]]:
@@ -426,8 +426,9 @@ class Evaluator:
         n_samples: int = 0,
     ) -> list[DetailedPrecisionRecallCurve]:
 
-        if self._detailed_pairs is None:
-            raise ValueError
+        print(self._detailed_pairs)
+        if self._detailed_pairs.size == 0:
+            return list()
 
         metrics = compute_detailed_pr_curve(
             self._detailed_pairs,
