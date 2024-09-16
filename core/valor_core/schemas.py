@@ -1447,7 +1447,7 @@ class Annotation:
         if self.labels is not None:
             if not isinstance(self.labels, list):
                 raise TypeError(
-                    f"Expected 'labels' to be of type 'list', got {type(self.labels).__name__}"
+                    f"Expected 'labels' to be of type 'list' or 'None', got {type(self.labels).__name__}"
                 )
             if not all(isinstance(label, Label) for label in self.labels):
                 raise TypeError(
@@ -1688,7 +1688,7 @@ class Evaluation:
                 f"Expected 'metrics' to be of type 'list', got {type(self.metrics).__name__}"
             )
         if not all(isinstance(metric, dict) for metric in self.metrics):
-            raise TypeError("All items in 'metrics' must be of type 'dict'.")
+            raise TypeError("All items in 'metrics' must be of type 'dict'")
 
         if not isinstance(self.confusion_matrices, (list, type(None))):
             raise TypeError(
