@@ -23,3 +23,12 @@ def test_valor_integration():
 
     assert len(loader.pairs) == 1
     assert loader.pairs[0].shape == (281, 7)
+
+    assert set(loader._evaluator.label_key_to_index.keys()) == {
+        "iscrowd",
+        "name",
+        "supercategory",
+        "unused_class",
+    }
+    assert len(loader._evaluator.index_to_label) == 17
+    assert loader._evaluator.n_datums == 1
