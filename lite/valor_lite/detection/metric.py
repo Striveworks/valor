@@ -1,11 +1,11 @@
 from dataclasses import dataclass
 from enum import Enum
 
+from valor_lite.schemas import Metric
+
 
 class MetricType(str, Enum):
-    TP = "TruePositiveCount"
-    FP = "FalsePositiveCount"
-    FN = "FalseNegativeCount"
+    ConfusionMatrix = "ConfusionMatrix"
     Accuracy = "Accuracy"
     Precision = "Precision"
     Recall = "Recall"
@@ -23,22 +23,10 @@ class MetricType(str, Enum):
 
 
 @dataclass
-class Metric:
-    type: str
-    value: float | dict | list
-    parameters: dict
-
-    def to_dict(self) -> dict:
-        return {
-            "type": self.type,
-            "value": self.value,
-            "parameters": self.parameters,
-        }
-
-
-@dataclass
-class CountingClassMetric:
-    value: int
+class ConfusionMatrix:
+    tp: int
+    fp: int
+    fn: int
     label: tuple[str, str]
     iou: float
     score: float
@@ -47,7 +35,11 @@ class CountingClassMetric:
     def metric(self) -> Metric:
         return Metric(
             type=type(self).__name__,
-            value=self.value,
+            value={
+                "tp": self.tp,
+                "fp": self.fp,
+                "fn": self.fn,
+            },
             parameters={
                 "iou": self.iou,
                 "score": self.score,
@@ -101,18 +93,6 @@ class Accuracy(ClassMetric):
 
 
 class F1(ClassMetric):
-    pass
-
-
-class TruePositiveCount(CountingClassMetric):
-    pass
-
-
-class FalsePositiveCount(CountingClassMetric):
-    pass
-
-
-class FalseNegativeCount(CountingClassMetric):
     pass
 
 
