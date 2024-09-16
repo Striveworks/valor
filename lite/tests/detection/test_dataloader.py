@@ -6,3 +6,7 @@ def test_no_data():
     loader = DataLoader()
     with pytest.raises(ValueError):
         loader.finalize()
+
+
+def test_valor_integration():
+    pass

@@ -579,8 +579,6 @@ class DataLoader:
                         )
                     )
             for pidx, pann in enumerate(detection.predictions):
-                if pann.scores is None:
-                    raise ValueError
                 for plabel, pscore in zip(pann.labels, pann.scores):
                     label_idx, label_key_idx = self._add_label(plabel)
                     self.prediction_count[label_idx][uid_index] += 1

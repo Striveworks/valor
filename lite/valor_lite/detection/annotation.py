@@ -1,4 +1,4 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 import numpy as np
 from numpy.typing import NDArray
@@ -11,12 +11,13 @@ class BoundingBox:
     ymin: float
     ymax: float
     labels: list[tuple[str, str]]
-    scores: list[float] | None = None
+    scores: list[float] = field(default_factory=list)
 
     def __post_init__(self):
-        if self.scores is not None:
-            if len(self.labels) != len(self.scores):
-                raise ValueError
+        if len(self.scores) > 0 and len(self.labels) != len(self.scores):
+            raise ValueError(
+                "If scores are defined, there must be a 1:1 pairing with labels."
+            )
 
     @property
     def extrema(self) -> tuple[float, float, float, float]:
@@ -27,12 +28,13 @@ class BoundingBox:
 class Bitmask:
     mask: NDArray[np.bool_]
     labels: list[tuple[str, str]]
-    scores: list[float] | None = None
+    scores: list[float] = field(default_factory=list)
 
     def __post_init__(self):
-        if self.scores is not None:
-            if len(self.labels) != len(self.scores):
-                raise ValueError
+        if len(self.scores) > 0 and len(self.labels) != len(self.scores):
+            raise ValueError(
+                "If scores are defined, there must be a 1:1 pairing with labels."
+            )
 
     def to_box(self) -> BoundingBox:
         raise NotImplementedError
@@ -46,5 +48,7 @@ class Detection:
 
     def __post_init__(self):
         for prediction in self.predictions:
-            if prediction.scores is None:
-                raise ValueError
+            if len(prediction.scores) != len(prediction.labels):
+                raise ValueError(
+                    "Predictions must provide a score for every label."
+                )
