@@ -221,9 +221,6 @@ def test_ar_using_torch_metrics_example(
         },
     ]
     for m in actual_metrics:
-        import json
-
-        print(json.dumps(m, indent=3))
         assert m in expected_metrics
     for m in expected_metrics:
         assert m in actual_metrics

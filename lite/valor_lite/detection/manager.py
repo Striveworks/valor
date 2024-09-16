@@ -426,7 +426,6 @@ class Evaluator:
         n_samples: int = 0,
     ) -> list[DetailedPrecisionRecallCurve]:
 
-        print(self._detailed_pairs)
         if self._detailed_pairs.size == 0:
             return list()
 
