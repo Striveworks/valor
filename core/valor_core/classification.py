@@ -3,7 +3,7 @@ from collections import defaultdict
 
 import numpy as np
 import pandas as pd
-from valor_core import enums, evaluation, metrics, schemas, utilities
+from valor_core import enums, metrics, schemas, utilities
 
 
 def _calculate_confusion_matrix_df(
@@ -1286,7 +1286,7 @@ def evaluate_classification(
     label_map: dict[schemas.Label, schemas.Label] | None = None,
     metrics_to_return: list[enums.MetricType] | None = None,
     pr_curve_max_examples: int = 1,
-) -> evaluation.Evaluation:
+) -> schemas.Evaluation:
     """
     Evaluate an object detection task using some set of groundtruths and predictions.
 
@@ -1318,7 +1318,7 @@ def evaluate_classification(
 
     Returns
     -------
-    evaluation.Evaluation
+    schemas.Evaluation
         An Evaluation object containing:
         - parameters: EvaluationParameters used for the calculation.
         - metrics: List of dictionaries representing the calculated classification metrics.
@@ -1373,8 +1373,8 @@ def evaluate_classification(
         pr_curve_max_examples=pr_curve_max_examples,
     )
 
-    return evaluation.Evaluation(
-        parameters=evaluation.EvaluationParameters(
+    return schemas.Evaluation(
+        parameters=schemas.EvaluationParameters(
             metrics_to_return=metrics_to_return,
             label_map=label_map,
             pr_curve_max_examples=pr_curve_max_examples,

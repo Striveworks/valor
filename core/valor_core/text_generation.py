@@ -4,7 +4,7 @@ from collections import defaultdict
 import evaluate
 from nltk.tokenize import RegexpTokenizer
 from nltk.translate import bleu_score
-from valor_core import enums, evaluation, metrics, schemas, utilities
+from valor_core import enums, metrics, schemas, utilities
 from valor_core.enums import MetricType, ROUGEType
 from valor_core.llm_clients import (
     LLMClient,
@@ -554,7 +554,7 @@ def evaluate_text_generation(
     groundtruths: list[schemas.GroundTruth] = [],
     llm_api_params: dict[str, str | dict] | None = None,
     metric_params: dict[str, dict] = {},
-) -> evaluation.Evaluation:
+) -> schemas.Evaluation:
     """
 
     Parameters
@@ -610,8 +610,8 @@ def evaluate_text_generation(
         metric_params=metric_params,
     )
 
-    return evaluation.Evaluation(
-        parameters=evaluation.EvaluationParameters(
+    return schemas.Evaluation(
+        parameters=schemas.EvaluationParameters(
             metrics_to_return=metrics_to_return,
             llm_api_params=llm_api_params,
             metric_params=metric_params,

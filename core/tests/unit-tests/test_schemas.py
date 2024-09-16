@@ -1,7 +1,7 @@
 import copy
 
 import pytest
-from valor_core import enums, evaluation, schemas
+from valor_core import enums, schemas
 
 
 @pytest.fixture
@@ -381,19 +381,19 @@ def test_prediction():
 
 
 def test_EvaluationParameters():
-    evaluation.EvaluationParameters()
+    schemas.EvaluationParameters()
 
-    evaluation.EvaluationParameters(
+    schemas.EvaluationParameters(
         iou_thresholds_to_compute=[0.2, 0.6],
         iou_thresholds_to_return=[],
     )
 
-    evaluation.EvaluationParameters(
+    schemas.EvaluationParameters(
         iou_thresholds_to_compute=[],
         iou_thresholds_to_return=[],
     )
 
-    evaluation.EvaluationParameters(
+    schemas.EvaluationParameters(
         metrics_to_return=[
             enums.MetricType.AP,
             enums.MetricType.AR,
@@ -401,7 +401,7 @@ def test_EvaluationParameters():
     )
 
     # Typical evaluation parameters for a text generation task
-    evaluation.EvaluationParameters(
+    schemas.EvaluationParameters(
         metrics_to_return=[
             enums.MetricType.AnswerCorrectness,
             enums.MetricType.BLEU,
@@ -423,12 +423,12 @@ def test_EvaluationParameters():
         },
     )
 
-    evaluation.EvaluationParameters(
+    schemas.EvaluationParameters(
         convert_annotations_to_type=enums.AnnotationType.BOX,
     )
 
     with pytest.raises(TypeError):
-        evaluation.EvaluationParameters(
+        schemas.EvaluationParameters(
             label_map=[
                 [["class_name", "maine coon cat"], ["class", "cat"]],
                 [["class", "siamese cat"], ["class", "cat"]],
@@ -437,7 +437,7 @@ def test_EvaluationParameters():
         )
 
     with pytest.raises(TypeError):
-        evaluation.EvaluationParameters(label_map={"bad": "inputs"})  # type: ignore
+        schemas.EvaluationParameters(label_map={"bad": "inputs"})  # type: ignore
 
     with pytest.raises(TypeError):
-        evaluation.EvaluationParameters(metrics_to_return={"bad": "inputs"})  # type: ignore
+        schemas.EvaluationParameters(metrics_to_return={"bad": "inputs"})  # type: ignore

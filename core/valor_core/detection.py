@@ -5,7 +5,7 @@ from collections import defaultdict
 
 import numpy as np
 import pandas as pd
-from valor_core import enums, evaluation, geometry, metrics, schemas, utilities
+from valor_core import enums, geometry, metrics, schemas, utilities
 
 pd.set_option("display.max_columns", None)
 
@@ -1335,7 +1335,7 @@ def evaluate_detection(
     recall_score_threshold: float = 0.0,
     pr_curve_iou_threshold: float = 0.5,
     pr_curve_max_examples: int = 1,
-) -> evaluation.Evaluation:
+) -> schemas.Evaluation:
     """
     Evaluate an object detection task using some set of groundtruths and predictions.
 
@@ -1382,7 +1382,7 @@ def evaluate_detection(
 
     Returns
     -------
-    evaluation.Evaluation
+    schemas.Evaluation
         An Evaluation object containing the calculated metrics and other details.
 
     Raises
@@ -1481,8 +1481,8 @@ def evaluate_detection(
         pr_curve_max_examples=pr_curve_max_examples,
     )
 
-    return evaluation.Evaluation(
-        parameters=evaluation.EvaluationParameters(
+    return schemas.Evaluation(
+        parameters=schemas.EvaluationParameters(
             label_map=label_map,
             metrics_to_return=metrics_to_return,
             iou_thresholds_to_compute=iou_thresholds_to_compute,
