@@ -29,34 +29,6 @@ from .metric import (
     mARAveragedOverScores,
 )
 
-# from .valor_lite import (
-#     Bitmask,
-#     BoundingBox,
-#     Detection,
-#     MetricType,
-#     Metric,
-#     Precision,
-#     Recall,
-#     Accuracy,
-#     F1,
-#     TruePositiveCount,
-#     FalsePositiveCount,
-#     FalseNegativeCount,
-#     AP,
-#     mAP,
-#     AR,
-#     mAR,
-#     PrecisionRecallCurve,
-#     DetailedPrecisionRecallPoint,
-#     DetailedPrecisionRecallCurve,
-#     compute_iou,
-#     compute_ranked_pairs,
-#     compute_metrics,
-#     compute_detailed_pr_curve,
-#     DataLoader,
-#     Evaluator,
-# )
-
 __all__ = [
     "Bitmask",
     "BoundingBox",
