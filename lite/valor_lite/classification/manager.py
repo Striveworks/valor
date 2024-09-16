@@ -74,7 +74,6 @@ class Evaluator:
 
         # computation caches
         self._detailed_pairs = np.array([])
-        self._ranked_pairs = np.array([])
         self._label_metadata = np.array([])
         self._label_metadata_per_datum = np.array([])
 
@@ -128,7 +127,7 @@ class Evaluator:
         Filter
             A filter object that can be passed to the `evaluate` method.
         """
-        n_rows = self._ranked_pairs.shape[0]
+        n_rows = self._detailed_pairs.shape[0]
 
         n_datums = self._label_metadata_per_datum.shape[1]
         n_labels = self._label_metadata_per_datum.shape[2]
@@ -145,7 +144,7 @@ class Evaluator:
                 )
             mask = np.zeros_like(mask_pairs, dtype=np.bool_)
             mask[
-                np.isin(self._ranked_pairs[:, 0].astype(int), datum_uids)
+                np.isin(self._detailed_pairs[:, 0].astype(int), datum_uids)
             ] = True
             mask_pairs &= mask
 
@@ -159,7 +158,9 @@ class Evaluator:
                     [self.label_to_index[label] for label in labels]
                 )
             mask = np.zeros_like(mask_pairs, dtype=np.bool_)
-            mask[np.isin(self._ranked_pairs[:, 3].astype(int), labels)] = True
+            mask[
+                np.isin(self._detailed_pairs[:, 1].astype(int), labels)
+            ] = True
             mask_pairs &= mask
 
             mask = np.zeros_like(mask_labels, dtype=np.bool_)
@@ -176,7 +177,7 @@ class Evaluator:
             )[0]
             mask = np.zeros_like(mask_pairs, dtype=np.bool_)
             mask[
-                np.isin(self._ranked_pairs[:, 3].astype(int), label_indices)
+                np.isin(self._detailed_pairs[:, 1].astype(int), label_indices)
             ] = True
             mask_pairs &= mask
 
@@ -218,7 +219,7 @@ class Evaluator:
             A boolean mask that filters the cached data.
         """
 
-        data = self._ranked_pairs
+        data = self._detailed_pairs
         label_metadata = self._label_metadata
         if filter_ is not None:
             data = data[filter_.indices]
@@ -386,7 +387,6 @@ class Evaluator:
 class DataLoader:
     def __init__(self):
         self._evaluator = Evaluator()
-        self.pairs = list()
         self.groundtruth_count = defaultdict(lambda: defaultdict(int))
         self.prediction_count = defaultdict(lambda: defaultdict(int))
 
@@ -439,23 +439,17 @@ class DataLoader:
             # cache labels and annotations
             keyed_groundtruths = defaultdict(list)
             keyed_predictions = defaultdict(list)
-            for gidx, gann in enumerate(classification.groundtruths):
+            for gann in classification.groundtruths:
                 for glabel in gann.labels:
                     label_idx, label_key_idx = self._add_label(glabel)
                     self.groundtruth_count[label_idx][uid_index] += 1
-                    keyed_groundtruths[label_key_idx].append(
-                        (
-                            gidx,
-                            label_idx,
-                        )
-                    )
-            for pidx, pann in enumerate(classification.predictions):
+                    keyed_groundtruths[label_key_idx].append(label_idx)
+            for pann in classification.predictions:
                 for plabel, pscore in zip(pann.labels, pann.scores):
                     label_idx, label_key_idx = self._add_label(plabel)
                     self.prediction_count[label_idx][uid_index] += 1
                     keyed_predictions[label_key_idx].append(
                         (
-                            pidx,
                             label_idx,
                             pscore,
                         )
@@ -474,15 +468,13 @@ class DataLoader:
                         np.array(
                             [
                                 float(uid_index),
-                                float(gidx),
-                                float(pidx),
                                 float(glabel),
                                 float(plabel),
                                 float(score),
                             ]
                         )
-                        for pidx, plabel, score, _ in keyed_predictions[key]
-                        for gidx, glabel, _ in keyed_groundtruths[key]
+                        for plabel, score in keyed_predictions[key]
+                        for glabel in keyed_groundtruths[key]
                     ]
                 )
             for key in gt_unique_keys:
@@ -491,14 +483,12 @@ class DataLoader:
                         np.array(
                             [
                                 float(uid_index),
-                                float(gidx),
-                                -1.0,
                                 float(glabel),
                                 -1.0,
                                 -1.0,
                             ]
                         )
-                        for gidx, glabel, _ in keyed_groundtruths[key]
+                        for glabel in keyed_groundtruths[key]
                     ]
                 )
             for key in pd_unique_keys:
@@ -508,17 +498,21 @@ class DataLoader:
                             [
                                 float(uid_index),
                                 -1.0,
-                                float(pidx),
-                                -1.0,
                                 float(plabel),
                                 float(score),
                             ]
                         )
-                        for pidx, plabel, score, _ in keyed_predictions[key]
+                        for plabel, score in keyed_predictions[key]
                     ]
                 )
 
-            self.pairs.append(np.array(pairs))
+            self._evaluator._detailed_pairs = np.concatenate(
+                [
+                    self._evaluator._detailed_pairs,
+                    np.array(pairs),
+                ],
+                axis=0,
+            )
 
     def add_data_from_valor_dict(
         self,
@@ -542,18 +536,13 @@ class DataLoader:
             # cache labels and annotations
             keyed_groundtruths = defaultdict(list)
             keyed_predictions = defaultdict(list)
-            for gidx, gann in enumerate(groundtruth["annotations"]):
+            for gann in groundtruth["annotations"]:
                 for valor_label in gann["labels"]:
                     glabel = (valor_label["key"], valor_label["value"])
                     label_idx, label_key_idx = self._add_label(glabel)
                     self.groundtruth_count[label_idx][uid_index] += 1
-                    keyed_groundtruths[label_key_idx].append(
-                        (
-                            gidx,
-                            label_idx,
-                        )
-                    )
-            for pidx, pann in enumerate(prediction["annotations"]):
+                    keyed_groundtruths[label_key_idx].append(label_idx)
+            for pann in prediction["annotations"]:
                 for valor_label in pann["labels"]:
                     plabel = (valor_label["key"], valor_label["value"])
                     pscore = valor_label["score"]
@@ -561,7 +550,6 @@ class DataLoader:
                     self.prediction_count[label_idx][uid_index] += 1
                     keyed_predictions[label_key_idx].append(
                         (
-                            pidx,
                             label_idx,
                             pscore,
                         )
@@ -580,15 +568,13 @@ class DataLoader:
                         np.array(
                             [
                                 float(uid_index),
-                                float(gidx),
-                                float(pidx),
                                 float(glabel),
                                 float(plabel),
                                 float(score),
                             ]
                         )
-                        for pidx, plabel, score, _ in keyed_predictions[key]
-                        for gidx, glabel, _ in keyed_groundtruths[key]
+                        for plabel, score in keyed_predictions[key]
+                        for glabel in keyed_groundtruths[key]
                     ]
                 )
             for key in gt_unique_keys:
@@ -597,14 +583,12 @@ class DataLoader:
                         np.array(
                             [
                                 float(uid_index),
-                                float(gidx),
-                                -1.0,
                                 float(glabel),
                                 -1.0,
                                 -1.0,
                             ]
                         )
-                        for gidx, glabel, _ in keyed_groundtruths[key]
+                        for glabel in keyed_groundtruths[key]
                     ]
                 )
             for key in pd_unique_keys:
@@ -614,13 +598,11 @@ class DataLoader:
                             [
                                 float(uid_index),
                                 -1.0,
-                                float(pidx),
-                                -1.0,
                                 float(plabel),
                                 float(score),
                             ]
                         )
-                        for pidx, plabel, score, _ in keyed_predictions[key]
+                        for plabel, score in keyed_predictions[key]
                     ]
                 )
 
@@ -634,8 +616,7 @@ class DataLoader:
 
     def finalize(self) -> Evaluator:
 
-        self.pairs = [pair for pair in self.pairs if pair.size > 0]
-        if len(self.pairs) == 0:
+        if self._evaluator._detailed_pairs.size == 0:
             raise ValueError("No data available to create evaluator.")
 
         n_datums = self._evaluator.n_datums
@@ -688,5 +669,11 @@ class DataLoader:
                 for label_idx in range(n_labels)
             ]
         )
+
+        # sort by score
+        indices = np.argsort(-self._evaluator._detailed_pairs[:, 3])
+        self._evaluator._detailed_pairs = self._evaluator._detailed_pairs[
+            indices
+        ]
 
         return self._evaluator

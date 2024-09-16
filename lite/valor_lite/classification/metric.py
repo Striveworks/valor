@@ -12,10 +12,7 @@ class MetricType(Enum):
     ROCAUC = "ROCAUC"
     PrecisionRecallCurve = "PrecisionRecallCurve"
     DetailedPrecisionRecallCurve = "DetailedPrecisionRecallCurve"
-    TP = "TruePositiveCount"
-    FP = "FalsePositiveCount"
-    FN = "FalseNegativeCount"
-    TN = "TrueNegativeCount"
+    Counting = "Counts"
 
 
 @dataclass
@@ -34,8 +31,8 @@ class Counts:
             value={
                 "tp": self.tp,
                 "fp": self.fp,
-                "tn": self.tn,
                 "fn": self.fn,
+                "tn": self.tn,
             },
             parameters={
                 "score": self.score,
