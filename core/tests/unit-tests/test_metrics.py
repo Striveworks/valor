@@ -1,5 +1,6 @@
 import pytest
 from valor_core import metrics, schemas
+from valor_core.enums import ROUGEType
 
 
 def test_APMetric():
@@ -285,3 +286,376 @@ def test_DetailedPrecisionRecallCurve():
         "value": {"v1": {0.25: {"tp": {"total": 3}}}},
         "type": "DetailedPrecisionRecallCurve",
     }
+
+
+def test_AnswerCorrectnessMetric():
+    m = metrics.AnswerCorrectnessMetric(
+        value=0.5,
+        parameters={
+            "datum_uid": "uid1",
+            "prediction": "text",
+        },
+    )
+
+    assert m.to_dict() == {
+        "parameters": {
+            "datum_uid": "uid1",
+            "prediction": "text",
+        },
+        "value": 0.5,
+        "type": "AnswerCorrectness",
+    }
+
+    with pytest.raises(TypeError):
+        metrics.AnswerCorrectnessMetric(value=1)  # type: ignore - testing
+
+    with pytest.raises(TypeError):
+        metrics.AnswerCorrectnessMetric(value=1.3)  # type: ignore - testing
+
+    with pytest.raises(TypeError):
+        metrics.AnswerCorrectnessMetric(value="value")  # type: ignore - testing
+
+
+def test_AnswerRelevanceMetric():
+    m = metrics.AnswerRelevanceMetric(
+        value=0.5,
+        parameters={
+            "datum_uid": "uid1",
+            "prediction": "text",
+        },
+    )
+
+    assert m.to_dict() == {
+        "parameters": {
+            "datum_uid": "uid1",
+            "prediction": "text",
+        },
+        "value": 0.5,
+        "type": "AnswerRelevance",
+    }
+
+    with pytest.raises(TypeError):
+        metrics.AnswerRelevanceMetric(value=1)  # type: ignore - testing
+
+    with pytest.raises(TypeError):
+        metrics.AnswerRelevanceMetric(value=1.3)  # type: ignore - testing
+
+    with pytest.raises(TypeError):
+        metrics.AnswerRelevanceMetric(value="value")  # type: ignore - testing
+
+
+def test_BiasMetric():
+    m = metrics.BiasMetric(
+        value=0.5,
+        parameters={
+            "datum_uid": "uid1",
+            "prediction": "text",
+        },
+    )
+
+    assert m.to_dict() == {
+        "parameters": {
+            "datum_uid": "uid1",
+            "prediction": "text",
+        },
+        "value": 0.5,
+        "type": "Bias",
+    }
+
+    with pytest.raises(TypeError):
+        metrics.BiasMetric(value=1)  # type: ignore - testing
+
+    with pytest.raises(TypeError):
+        metrics.BiasMetric(value=1.3)  # type: ignore - testing
+
+    with pytest.raises(TypeError):
+        metrics.BiasMetric(value="value")  # type: ignore - testing
+
+
+def test_BLEUMetric():
+    m = metrics.BLEUMetric(
+        value=0.5,
+        parameters={
+            "datum_uid": "uid1",
+            "prediction": "text",
+            "weights": [0.25, 0.25, 0.25, 0.25],
+        },
+    )
+
+    assert m.to_dict() == {
+        "parameters": {
+            "datum_uid": "uid1",
+            "prediction": "text",
+            "weights": [0.25, 0.25, 0.25, 0.25],
+        },
+        "value": 0.5,
+        "type": "BLEU",
+    }
+
+    with pytest.raises(TypeError):
+        metrics.BLEUMetric(value=1)  # type: ignore - testing
+
+    with pytest.raises(TypeError):
+        metrics.BLEUMetric(value=1.3)  # type: ignore - testing
+
+    with pytest.raises(TypeError):
+        metrics.BLEUMetric(value="value")  # type: ignore - testing
+
+
+def test_ContextPrecisionMetric():
+    m = metrics.ContextPrecisionMetric(
+        value=0.5,
+        parameters={
+            "datum_uid": "uid1",
+            "context_list": ["context1", "context2"],
+        },
+    )
+
+    assert m.to_dict() == {
+        "parameters": {
+            "datum_uid": "uid1",
+            "context_list": ["context1", "context2"],
+        },
+        "value": 0.5,
+        "type": "ContextPrecision",
+    }
+
+    with pytest.raises(TypeError):
+        metrics.ContextPrecisionMetric(value=1)  # type: ignore - testing
+
+    with pytest.raises(TypeError):
+        metrics.ContextPrecisionMetric(value=1.3)  # type: ignore - testing
+
+    with pytest.raises(TypeError):
+        metrics.ContextPrecisionMetric(value="value")  # type: ignore - testing
+
+
+def test_ContextRecallMetric():
+    m = metrics.ContextRecallMetric(
+        value=0.5,
+        parameters={
+            "datum_uid": "uid1",
+            "context_list": ["context1", "context2"],
+        },
+    )
+
+    assert m.to_dict() == {
+        "parameters": {
+            "datum_uid": "uid1",
+            "context_list": ["context1", "context2"],
+        },
+        "value": 0.5,
+        "type": "ContextRecall",
+    }
+
+    with pytest.raises(TypeError):
+        metrics.ContextRecallMetric(value=1)  # type: ignore - testing
+
+    with pytest.raises(TypeError):
+        metrics.ContextRecallMetric(value=1.3)  # type: ignore - testing
+
+    with pytest.raises(TypeError):
+        metrics.ContextRecallMetric(value="value")  # type: ignore - testing
+
+
+def test_ContextRelevanceMetric():
+    m = metrics.ContextRelevanceMetric(
+        value=0.5,
+        parameters={
+            "datum_uid": "uid1",
+            "context_list": ["context1", "context2"],
+        },
+    )
+
+    assert m.to_dict() == {
+        "parameters": {
+            "datum_uid": "uid1",
+            "context_list": ["context1", "context2"],
+        },
+        "value": 0.5,
+        "type": "ContextRelevance",
+    }
+
+    with pytest.raises(TypeError):
+        metrics.ContextRelevanceMetric(value=1)  # type: ignore - testing
+
+    with pytest.raises(TypeError):
+        metrics.ContextRelevanceMetric(value=1.3)  # type: ignore - testing
+
+    with pytest.raises(TypeError):
+        metrics.ContextRelevanceMetric(value="value")  # type: ignore - testing
+
+
+def test_FaithfulnessMetric():
+    m = metrics.FaithfulnessMetric(
+        value=0.5,
+        parameters={
+            "datum_uid": "uid1",
+            "prediction": "text",
+            "context_list": ["context1", "context2"],
+        },
+    )
+
+    assert m.to_dict() == {
+        "parameters": {
+            "datum_uid": "uid1",
+            "prediction": "text",
+            "context_list": ["context1", "context2"],
+        },
+        "value": 0.5,
+        "type": "Faithfulness",
+    }
+
+    with pytest.raises(TypeError):
+        metrics.FaithfulnessMetric(value=1)  # type: ignore - testing
+
+    with pytest.raises(TypeError):
+        metrics.FaithfulnessMetric(value=1.3)  # type: ignore - testing
+
+    with pytest.raises(TypeError):
+        metrics.FaithfulnessMetric(value="value")  # type: ignore - testing
+
+
+def test_HallucinationMetric():
+    m = metrics.HallucinationMetric(
+        value=0.5,
+        parameters={
+            "datum_uid": "uid1",
+            "prediction": "text",
+            "context_list": ["context1", "context2"],
+        },
+    )
+
+    assert m.to_dict() == {
+        "parameters": {
+            "datum_uid": "uid1",
+            "prediction": "text",
+            "context_list": ["context1", "context2"],
+        },
+        "value": 0.5,
+        "type": "Hallucination",
+    }
+
+    with pytest.raises(TypeError):
+        metrics.HallucinationMetric(value=1)  # type: ignore - testing
+
+    with pytest.raises(TypeError):
+        metrics.HallucinationMetric(value=1.3)  # type: ignore - testing
+
+    with pytest.raises(TypeError):
+        metrics.HallucinationMetric(value="value")  # type: ignore - testing
+
+
+def test_ROUGEMetric():
+    m = metrics.ROUGEMetric(
+        value={
+            "rouge1": 0.8,
+            "rouge2": 0.6,
+            "rougeL": 0.5,
+            "rougeLsum": 0.7,
+        },
+        parameters={
+            "datum_uid": "uid1",
+            "prediction": "text",
+            "rouge_types": [
+                ROUGEType.ROUGE1,
+                ROUGEType.ROUGE2,
+                ROUGEType.ROUGEL,
+                ROUGEType.ROUGELSUM,
+            ],
+            "use_stemmer": False,
+        },
+    )
+
+    assert m.to_dict() == {
+        "parameters": {
+            "datum_uid": "uid1",
+            "prediction": "text",
+            "rouge_types": [
+                ROUGEType.ROUGE1,
+                ROUGEType.ROUGE2,
+                ROUGEType.ROUGEL,
+                ROUGEType.ROUGELSUM,
+            ],
+            "use_stemmer": False,
+        },
+        "value": {
+            "rouge1": 0.8,
+            "rouge2": 0.6,
+            "rougeL": 0.5,
+            "rougeLsum": 0.7,
+        },
+        "type": "ROUGE",
+    }
+
+    with pytest.raises(TypeError):
+        metrics.ROUGEMetric(value=1)  # type: ignore - testing
+
+    with pytest.raises(TypeError):
+        metrics.ROUGEMetric(
+            value={
+                "rouge1": 0.8,
+                "rouge2": 1.2,
+                "rougeL": 0.5,
+                "rougeLsum": 0.7,
+            },
+        )  # type: ignore - testing
+
+    with pytest.raises(TypeError):
+        metrics.ROUGEMetric(value="value")  # type: ignore - testing
+
+
+def test_SummaryCoherenceMetric():
+    m = metrics.SummaryCoherenceMetric(
+        value=2,
+        parameters={
+            "datum_uid": "uid1",
+            "prediction": "text",
+        },
+    )
+
+    assert m.to_dict() == {
+        "parameters": {
+            "datum_uid": "uid1",
+            "prediction": "text",
+        },
+        "value": 2,
+        "type": "SummaryCoherence",
+    }
+
+    with pytest.raises(TypeError):
+        metrics.SummaryCoherenceMetric(value=0.7)  # type: ignore - testing
+
+    with pytest.raises(TypeError):
+        metrics.SummaryCoherenceMetric(value=2.5)  # type: ignore - testing
+
+    with pytest.raises(TypeError):
+        metrics.SummaryCoherenceMetric(value="value")  # type: ignore - testing
+
+
+def test_ToxicityMetric():
+    m = metrics.ToxicityMetric(
+        value=0.5,
+        parameters={
+            "datum_uid": "uid1",
+            "prediction": "text",
+        },
+    )
+
+    assert m.to_dict() == {
+        "parameters": {
+            "datum_uid": "uid1",
+            "prediction": "text",
+        },
+        "value": 0.5,
+        "type": "Toxicity",
+    }
+
+    with pytest.raises(TypeError):
+        metrics.ToxicityMetric(value=1)  # type: ignore - testing
+
+    with pytest.raises(TypeError):
+        metrics.ToxicityMetric(value=1.3)  # type: ignore - testing
+
+    with pytest.raises(TypeError):
+        metrics.ToxicityMetric(value="value")  # type: ignore - testing

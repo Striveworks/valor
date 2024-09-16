@@ -715,6 +715,10 @@ class AnswerCorrectnessMetric(_TextGenerationMetricBase):
             raise TypeError(
                 f"Expected value to be a float, got {type(self.value).__name__}"
             )
+        if not 0 <= self.value <= 1:
+            raise ValueError(
+                "Expected value to be between 0 and 1, got {self.value}"
+            )
 
 
 class AnswerRelevanceMetric(_TextGenerationMetricBase):
@@ -737,6 +741,10 @@ class AnswerRelevanceMetric(_TextGenerationMetricBase):
         if not isinstance(self.value, float):
             raise TypeError(
                 f"Expected value to be a float, got {type(self.value).__name__}"
+            )
+        if not 0 <= self.value <= 1:
+            raise ValueError(
+                "Expected value to be between 0 and 1, got {self.value}"
             )
 
 
@@ -761,6 +769,10 @@ class BLEUMetric(_TextGenerationMetricBase):
             raise TypeError(
                 f"Expected value to be a float, got {type(self.value).__name__}"
             )
+        if not 0 <= self.value <= 1:
+            raise ValueError(
+                "Expected value to be between 0 and 1, got {self.value}"
+            )
 
 
 class BiasMetric(_TextGenerationMetricBase):
@@ -783,6 +795,10 @@ class BiasMetric(_TextGenerationMetricBase):
         if not isinstance(self.value, float):
             raise TypeError(
                 f"Expected value to be a float, got {type(self.value).__name__}"
+            )
+        if not 0 <= self.value <= 1:
+            raise ValueError(
+                "Expected value to be between 0 and 1, got {self.value}"
             )
 
 
@@ -807,6 +823,10 @@ class ContextPrecisionMetric(_TextGenerationMetricBase):
             raise TypeError(
                 f"Expected value to be a float, got {type(self.value).__name__}"
             )
+        if not 0 <= self.value <= 1:
+            raise ValueError(
+                "Expected value to be between 0 and 1, got {self.value}"
+            )
 
 
 class ContextRecallMetric(_TextGenerationMetricBase):
@@ -829,6 +849,10 @@ class ContextRecallMetric(_TextGenerationMetricBase):
         if not isinstance(self.value, float):
             raise TypeError(
                 f"Expected value to be a float, got {type(self.value).__name__}"
+            )
+        if not 0 <= self.value <= 1:
+            raise ValueError(
+                "Expected value to be between 0 and 1, got {self.value}"
             )
 
 
@@ -853,6 +877,10 @@ class ContextRelevanceMetric(_TextGenerationMetricBase):
             raise TypeError(
                 f"Expected value to be a float, got {type(self.value).__name__}"
             )
+        if not 0 <= self.value <= 1:
+            raise ValueError(
+                "Expected value to be between 0 and 1, got {self.value}"
+            )
 
 
 class FaithfulnessMetric(_TextGenerationMetricBase):
@@ -876,6 +904,10 @@ class FaithfulnessMetric(_TextGenerationMetricBase):
             raise TypeError(
                 f"Expected value to be a float, got {type(self.value).__name__}"
             )
+        if not 0 <= self.value <= 1:
+            raise ValueError(
+                "Expected value to be between 0 and 1, got {self.value}"
+            )
 
 
 class HallucinationMetric(_TextGenerationMetricBase):
@@ -898,6 +930,10 @@ class HallucinationMetric(_TextGenerationMetricBase):
         if not isinstance(self.value, float):
             raise TypeError(
                 f"Expected value to be a float, got {type(self.value).__name__}"
+            )
+        if not 0 <= self.value <= 1:
+            raise ValueError(
+                "Expected value to be between 0 and 1, got {self.value}"
             )
 
 
@@ -930,6 +966,10 @@ class ROUGEMetric(_TextGenerationMetricBase):
             raise TypeError(
                 f"Expected values in value to be floats, got {type(next(iter(self.value.values()))).__name__}"
             )
+        if not all(0 <= v <= 1 for v in self.value.values()):
+            raise ValueError(
+                "Expected values in value to be between 0 and 1, got {self.value}"
+            )
 
 
 class SummaryCoherenceMetric(_TextGenerationMetricBase):
@@ -953,6 +993,10 @@ class SummaryCoherenceMetric(_TextGenerationMetricBase):
             raise TypeError(
                 f"Expected value to be a int, got {type(self.value).__name__}"
             )
+        if self.value not in [1, 2, 3, 4, 5]:
+            raise ValueError(
+                "Expected value to be between 1 and 5, got {self.value}"
+            )
 
 
 class ToxicityMetric(_TextGenerationMetricBase):
@@ -975,4 +1019,8 @@ class ToxicityMetric(_TextGenerationMetricBase):
         if not isinstance(self.value, float):
             raise TypeError(
                 f"Expected value to be a float, got {type(self.value).__name__}"
+            )
+        if not 0 <= self.value <= 1:
+            raise ValueError(
+                "Expected value to be between 0 and 1, got {self.value}"
             )
