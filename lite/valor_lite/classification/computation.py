@@ -68,6 +68,11 @@ def compute_metrics(
     #     pd_labels[~mask_matching_labels], minlength=n_labels
     # )
 
+    # calculate reciever-operating-characteristic (ROC) curve
+    cumulative_tp = np.cumsum(mask_matching_labels)
+    cumulative_fp = np.cumsum(~mask_matching_labels)
+
+    # calculate metrics at each score threshold
     for score_idx in range(n_scores):
         mask_score_threshold = data[:, 3] >= score_thresholds[score_idx]
         mask_score = mask_score_nonzero & mask_score_threshold
