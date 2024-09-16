@@ -272,7 +272,7 @@ class Evaluator:
             )
             for iou_idx in range(average_precision.shape[0])
             for label_idx in range(average_precision.shape[1])
-            if int(self._label_metadata[label_idx][0]) > 0.0
+            if int(label_metadata[label_idx][0]) > 0
         ]
 
         metrics[MetricType.mAP] = [
@@ -283,7 +283,6 @@ class Evaluator:
             )
             for iou_idx in range(mean_average_precision.shape[0])
             for label_key_idx in range(mean_average_precision.shape[1])
-            if mean_average_precision[iou_idx][label_key_idx] >= 0.0
         ]
 
         metrics[MetricType.APAveragedOverIOUs] = [
@@ -293,6 +292,7 @@ class Evaluator:
                 label=self.index_to_label[label_idx],
             )
             for label_idx in range(self.n_labels)
+            if int(label_metadata[label_idx][0]) > 0
         ]
 
         metrics[MetricType.mAPAveragedOverIOUs] = [
@@ -315,7 +315,7 @@ class Evaluator:
             )
             for score_idx in range(average_recall.shape[0])
             for label_idx in range(average_recall.shape[1])
-            if int(self._label_metadata[label_idx][0]) > 0.0
+            if int(label_metadata[label_idx][0]) > 0
         ]
 
         metrics[MetricType.mAR] = [
@@ -327,7 +327,6 @@ class Evaluator:
             )
             for score_idx in range(mean_average_recall.shape[0])
             for label_key_idx in range(mean_average_recall.shape[1])
-            if mean_average_recall[score_idx][label_key_idx] >= 0.0
         ]
 
         metrics[MetricType.ARAveragedOverScores] = [
@@ -338,6 +337,7 @@ class Evaluator:
                 label=self.index_to_label[label_idx],
             )
             for label_idx in range(self.n_labels)
+            if int(label_metadata[label_idx][0]) > 0
         ]
 
         metrics[MetricType.mARAveragedOverScores] = [
@@ -360,7 +360,7 @@ class Evaluator:
             )
             for iou_idx, iou_threshold in enumerate(iou_thresholds)
             for label_idx, label in self.index_to_label.items()
-            if label_metadata[label_idx][0] > 0
+            if int(label_metadata[label_idx][0]) > 0
         ]
 
         for iou_idx, iou_threshold in enumerate(iou_thresholds):

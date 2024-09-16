@@ -97,6 +97,7 @@ def test_ar_using_torch_metrics_example(
         score_thresholds=score_thresholds,
     )
 
+    # test AR
     actual_metrics = [m.to_dict() for m in metrics[MetricType.AR]]
     expected_metrics = [
         {
@@ -150,6 +151,7 @@ def test_ar_using_torch_metrics_example(
     for m in expected_metrics:
         assert m in actual_metrics
 
+    # test mAR
     actual_metrics = [m.to_dict() for m in metrics[MetricType.mAR]]
     expected_metrics = [
         {
@@ -158,6 +160,85 @@ def test_ar_using_torch_metrics_example(
             "parameters": {
                 "ious": iou_thresholds,
                 "score": 0.0,
+                "label_key": "class",
+            },
+        }
+    ]
+    for m in actual_metrics:
+        assert m in expected_metrics
+    for m in expected_metrics:
+        assert m in actual_metrics
+
+    # test ARAveragedOverScores
+    actual_metrics = [
+        m.to_dict() for m in metrics[MetricType.ARAveragedOverScores]
+    ]
+    expected_metrics = [
+        {
+            "type": "ARAveragedOverScores",
+            "value": 0.45,
+            "parameters": {
+                "ious": iou_thresholds,
+                "scores": [0.0],
+                "label": {"key": "class", "value": "2"},
+            },
+        },
+        {
+            "type": "ARAveragedOverScores",
+            "value": 0.5800000000000001,
+            "parameters": {
+                "ious": iou_thresholds,
+                "scores": [0.0],
+                "label": {"key": "class", "value": "49"},
+            },
+        },
+        {
+            "type": "ARAveragedOverScores",
+            "value": 0.78,
+            "parameters": {
+                "ious": iou_thresholds,
+                "scores": [0.0],
+                "label": {"key": "class", "value": "0"},
+            },
+        },
+        {
+            "type": "ARAveragedOverScores",
+            "value": 0.8,
+            "parameters": {
+                "ious": iou_thresholds,
+                "scores": [0.0],
+                "label": {"key": "class", "value": "1"},
+            },
+        },
+        {
+            "type": "ARAveragedOverScores",
+            "value": 0.65,
+            "parameters": {
+                "ious": iou_thresholds,
+                "scores": [0.0],
+                "label": {"key": "class", "value": "4"},
+            },
+        },
+    ]
+    for m in actual_metrics:
+        import json
+
+        print(json.dumps(m, indent=3))
+        assert m in expected_metrics
+    for m in expected_metrics:
+        assert m in actual_metrics
+
+    # test mARAveragedOverScores
+    actual_metrics = [
+        m.to_dict() for m in metrics[MetricType.mARAveragedOverScores]
+    ]
+    expected_metrics = [
+        {
+            "type": "mARAveragedOverScores",
+            "value": 0.652,
+            "parameters": {
+                "ious": iou_thresholds,
+                "scores": [0.0],
                 "label_key": "class",
             },
         }
