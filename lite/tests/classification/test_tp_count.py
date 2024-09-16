@@ -32,4 +32,13 @@ def test_compute_tp_count():
         score_thresholds=score_thresholds,
     )
 
-    print(metrics)
+    (
+        counts,
+        precision,
+        recall,
+        accuracy,
+        f1_score,
+        rocauc,
+    ) = metrics
+
+    print(rocauc)

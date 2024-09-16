@@ -7,12 +7,64 @@ from numpy.typing import NDArray
 # 3 score
 
 
+def _compute_rocauc(
+    pd_label_keys: NDArray[np.int32],
+    mask_gt_exists: NDArray[np.bool_],
+    mask_matching_labels: NDArray[np.bool_],
+    n_label_keys: int,
+) -> NDArray[np.floating]:
+
+    positive_count = np.bincount(
+        pd_label_keys[mask_gt_exists & mask_matching_labels],
+        minlength=n_label_keys,
+    )
+    negative_count = np.bincount(
+        pd_label_keys[mask_gt_exists & ~mask_matching_labels],
+        minlength=n_label_keys,
+    )
+
+    unique_pd_labels, pd_label_indices = np.unique(
+        pd_label_keys, return_inverse=True
+    )
+    mask_pd_labels = pd_label_indices[:, np.newaxis] == np.arange(
+        unique_pd_labels.size
+    )
+
+    cumulative_tp = np.cumsum(
+        mask_pd_labels & mask_matching_labels[:, np.newaxis], axis=0
+    )
+    cumulative_fp = np.cumsum(
+        mask_pd_labels & ~mask_matching_labels[:, np.newaxis], axis=0
+    )
+
+    fpr = np.zeros_like(cumulative_fp, dtype=np.float64)
+    np.divide(
+        cumulative_fp,
+        negative_count,
+        where=negative_count > 1e-9,
+        out=fpr,
+    )
+
+    tpr = np.zeros_like(cumulative_tp, dtype=np.float64)
+    np.divide(
+        cumulative_tp,
+        positive_count,
+        where=positive_count > 1e-9,
+        out=tpr,
+    )
+
+    fpr_indices = np.argsort(fpr, axis=0)
+
+    return np.trapz(y=tpr[fpr_indices], x=fpr[fpr_indices], axis=0)
+
+
 def compute_metrics(
     data: NDArray[np.floating],
     label_metadata: NDArray[np.int32],
     score_thresholds: NDArray[np.floating],
 ) -> tuple[
     NDArray[np.int32],
+    NDArray[np.floating],
     NDArray[np.floating],
     NDArray[np.floating],
     NDArray[np.floating],
@@ -42,6 +94,8 @@ def compute_metrics(
         Accuracy
     NDArray[np.floating]
         F1 Score
+    NDArray[np.floating]
+        ROCAUC.
     """
 
     n_labels = label_metadata.shape[0]
@@ -54,25 +108,22 @@ def compute_metrics(
     f1_score = np.zeros_like(recall)
 
     pd_labels = data[:, 2].astype(int)
-    total_count = np.bincount(pd_labels, minlength=n_labels)
 
     mask_gt_exists = data[:, 1] >= 0.0
     mask_pd_exists = data[:, 2] >= 0.0
     mask_matching_labels = np.isclose(data[:, 1], data[:, 2])
     mask_score_nonzero = ~np.isclose(data[:, 3], 0.0)
 
-    # positive_count = np.bincount(
-    #     pd_labels[mask_matching_labels], minlength=n_labels
-    # )
-    # negative_count = np.bincount(
-    #     pd_labels[~mask_matching_labels], minlength=n_labels
-    # )
-
     # calculate reciever-operating-characteristic (ROC) curve
-    cumulative_tp = np.cumsum(mask_matching_labels)
-    cumulative_fp = np.cumsum(~mask_matching_labels)
+    rocauc = _compute_rocauc(
+        pd_labels=pd_labels,
+        mask_gt_exists=mask_gt_exists,
+        mask_matching_labels=mask_matching_labels,
+        n_labels=n_labels,
+    )
 
     # calculate metrics at each score threshold
+    total_count = np.bincount(pd_labels[mask_pd_exists], minlength=n_labels)
     for score_idx in range(n_scores):
         mask_score_threshold = data[:, 3] >= score_thresholds[score_idx]
         mask_score = mask_score_nonzero & mask_score_threshold
@@ -143,6 +194,7 @@ def compute_metrics(
         recall,
         accuracy,
         f1_score,
+        rocauc,
     )
 
 
