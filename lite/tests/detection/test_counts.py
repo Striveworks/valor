@@ -1,7 +1,7 @@
 from valor_lite.detection import DataLoader, Detection, MetricType
 
 
-def test_confusion_matrix_metrics(basic_detections: list[Detection]):
+def test_counts_metrics(basic_detections: list[Detection]):
     """
     Basic object detection test.
 
@@ -35,11 +35,11 @@ def test_confusion_matrix_metrics(basic_detections: list[Detection]):
     assert evaluator.n_groundtruths == 3
     assert evaluator.n_predictions == 2
 
-    # test ConfusionMatrix
-    actual_metrics = [m.to_dict() for m in metrics[MetricType.ConfusionMatrix]]
+    # test Counts
+    actual_metrics = [m.to_dict() for m in metrics[MetricType.Counts]]
     expected_metrics = [
         {
-            "type": "ConfusionMatrix",
+            "type": "Counts",
             "value": {
                 "tp": 0,
                 "fp": 1,
@@ -52,7 +52,7 @@ def test_confusion_matrix_metrics(basic_detections: list[Detection]):
             },
         },
         {
-            "type": "ConfusionMatrix",
+            "type": "Counts",
             "value": {
                 "tp": 0,
                 "fp": 1,
@@ -65,7 +65,7 @@ def test_confusion_matrix_metrics(basic_detections: list[Detection]):
             },
         },
         {
-            "type": "ConfusionMatrix",
+            "type": "Counts",
             "value": {
                 "tp": 1,
                 "fp": 0,
@@ -78,7 +78,7 @@ def test_confusion_matrix_metrics(basic_detections: list[Detection]):
             },
         },
         {
-            "type": "ConfusionMatrix",
+            "type": "Counts",
             "value": {
                 "tp": 1,
                 "fp": 0,
@@ -91,7 +91,7 @@ def test_confusion_matrix_metrics(basic_detections: list[Detection]):
             },
         },
         {
-            "type": "ConfusionMatrix",
+            "type": "Counts",
             "value": {
                 "tp": 0,
                 "fp": 1,
@@ -104,7 +104,7 @@ def test_confusion_matrix_metrics(basic_detections: list[Detection]):
             },
         },
         {
-            "type": "ConfusionMatrix",
+            "type": "Counts",
             "value": {
                 "tp": 0,
                 "fp": 1,
@@ -117,7 +117,7 @@ def test_confusion_matrix_metrics(basic_detections: list[Detection]):
             },
         },
         {
-            "type": "ConfusionMatrix",
+            "type": "Counts",
             "value": {
                 "tp": 0,
                 "fp": 0,
@@ -130,7 +130,7 @@ def test_confusion_matrix_metrics(basic_detections: list[Detection]):
             },
         },
         {
-            "type": "ConfusionMatrix",
+            "type": "Counts",
             "value": {
                 "tp": 0,
                 "fp": 0,
@@ -149,7 +149,7 @@ def test_confusion_matrix_metrics(basic_detections: list[Detection]):
         assert m in actual_metrics
 
 
-def test_confusion_matrix_false_negatives_single_datum_baseline(
+def test_counts_false_negatives_single_datum_baseline(
     false_negatives_single_datum_baseline_detections: list[Detection],
 ):
     """This is the baseline for the below test. In this case there are two predictions and
@@ -165,10 +165,10 @@ def test_confusion_matrix_false_negatives_single_datum_baseline(
         iou_thresholds=[0.5], score_thresholds=[0.0, 0.9]
     )
 
-    actual_metrics = [m.to_dict() for m in metrics[MetricType.ConfusionMatrix]]
+    actual_metrics = [m.to_dict() for m in metrics[MetricType.Counts]]
     expected_metrics = [
         {
-            "type": "ConfusionMatrix",
+            "type": "Counts",
             "value": {
                 "tp": 1,
                 "fp": 1,
@@ -184,7 +184,7 @@ def test_confusion_matrix_false_negatives_single_datum_baseline(
             },
         },
         {
-            "type": "ConfusionMatrix",
+            "type": "Counts",
             "value": {
                 "tp": 0,
                 "fp": 0,
@@ -206,7 +206,7 @@ def test_confusion_matrix_false_negatives_single_datum_baseline(
         assert m in actual_metrics
 
 
-def test_confusion_matrix_false_negatives_single_datum(
+def test_counts_false_negatives_single_datum(
     false_negatives_single_datum_detections: list[Detection],
 ):
     """Tests where high confidence false negative was not being penalized. The
@@ -219,10 +219,10 @@ def test_confusion_matrix_false_negatives_single_datum(
     evaluator = manager.finalize()
     metrics = evaluator.evaluate(iou_thresholds=[0.5], score_thresholds=[0.0])
 
-    actual_metrics = [m.to_dict() for m in metrics[MetricType.ConfusionMatrix]]
+    actual_metrics = [m.to_dict() for m in metrics[MetricType.Counts]]
     expected_metrics = [
         {
-            "type": "ConfusionMatrix",
+            "type": "Counts",
             "value": {
                 "tp": 1,
                 "fp": 1,
@@ -244,7 +244,7 @@ def test_confusion_matrix_false_negatives_single_datum(
         assert m in actual_metrics
 
 
-def test_confusion_matrix_false_negatives_two_datums_one_empty_low_confidence_of_fp(
+def test_counts_false_negatives_two_datums_one_empty_low_confidence_of_fp(
     false_negatives_two_datums_one_empty_low_confidence_of_fp_detections: list[
         Detection
     ],
@@ -265,10 +265,10 @@ def test_confusion_matrix_false_negatives_two_datums_one_empty_low_confidence_of
     evaluator = manager.finalize()
     metrics = evaluator.evaluate(iou_thresholds=[0.5], score_thresholds=[0.0])
 
-    actual_metrics = [m.to_dict() for m in metrics[MetricType.ConfusionMatrix]]
+    actual_metrics = [m.to_dict() for m in metrics[MetricType.Counts]]
     expected_metrics = [
         {
-            "type": "ConfusionMatrix",
+            "type": "Counts",
             "value": {
                 "tp": 1,
                 "fp": 1,
@@ -290,7 +290,7 @@ def test_confusion_matrix_false_negatives_two_datums_one_empty_low_confidence_of
         assert m in expected_metrics
 
 
-def test_confusion_matrix_false_negatives_two_datums_one_empty_high_confidence_of_fp(
+def test_counts_false_negatives_two_datums_one_empty_high_confidence_of_fp(
     false_negatives_two_datums_one_empty_high_confidence_of_fp_detections: list[
         Detection
     ],
@@ -310,10 +310,10 @@ def test_confusion_matrix_false_negatives_two_datums_one_empty_high_confidence_o
     evaluator = manager.finalize()
     metrics = evaluator.evaluate(iou_thresholds=[0.5], score_thresholds=[0.0])
 
-    actual_metrics = [m.to_dict() for m in metrics[MetricType.ConfusionMatrix]]
+    actual_metrics = [m.to_dict() for m in metrics[MetricType.Counts]]
     expected_metrics = [
         {
-            "type": "ConfusionMatrix",
+            "type": "Counts",
             "value": {
                 "tp": 1,
                 "fp": 1,
@@ -335,7 +335,7 @@ def test_confusion_matrix_false_negatives_two_datums_one_empty_high_confidence_o
         assert m in expected_metrics
 
 
-def test_confusion_matrix_false_negatives_two_datums_one_only_with_different_class_low_confidence_of_fp(
+def test_counts_false_negatives_two_datums_one_only_with_different_class_low_confidence_of_fp(
     false_negatives_two_datums_one_only_with_different_class_low_confidence_of_fp_detections: list[
         Detection
     ],
@@ -355,10 +355,10 @@ def test_confusion_matrix_false_negatives_two_datums_one_only_with_different_cla
     evaluator = manager.finalize()
     metrics = evaluator.evaluate(iou_thresholds=[0.5], score_thresholds=[0.0])
 
-    actual_metrics = [m.to_dict() for m in metrics[MetricType.ConfusionMatrix]]
+    actual_metrics = [m.to_dict() for m in metrics[MetricType.Counts]]
     expected_metrics = [
         {
-            "type": "ConfusionMatrix",
+            "type": "Counts",
             "value": {
                 "tp": 1,
                 "fp": 1,
@@ -374,7 +374,7 @@ def test_confusion_matrix_false_negatives_two_datums_one_only_with_different_cla
             },
         },
         {
-            "type": "ConfusionMatrix",
+            "type": "Counts",
             "value": {
                 "tp": 0,
                 "fp": 0,
@@ -396,7 +396,7 @@ def test_confusion_matrix_false_negatives_two_datums_one_only_with_different_cla
         assert m in expected_metrics
 
 
-def test_confusion_matrix_false_negatives_two_datums_one_only_with_different_class_high_confidence_of_fp(
+def test_counts_false_negatives_two_datums_one_only_with_different_class_high_confidence_of_fp(
     false_negatives_two_images_one_only_with_different_class_high_confidence_of_fp_detections: list[
         Detection
     ],
@@ -416,10 +416,10 @@ def test_confusion_matrix_false_negatives_two_datums_one_only_with_different_cla
     evaluator = manager.finalize()
     metrics = evaluator.evaluate(iou_thresholds=[0.5], score_thresholds=[0.0])
 
-    actual_metrics = [m.to_dict() for m in metrics[MetricType.ConfusionMatrix]]
+    actual_metrics = [m.to_dict() for m in metrics[MetricType.Counts]]
     expected_metrics = [
         {
-            "type": "ConfusionMatrix",
+            "type": "Counts",
             "value": {
                 "tp": 1,
                 "fp": 1,
@@ -435,7 +435,7 @@ def test_confusion_matrix_false_negatives_two_datums_one_only_with_different_cla
             },
         },
         {
-            "type": "ConfusionMatrix",
+            "type": "Counts",
             "value": {
                 "tp": 0,
                 "fp": 0,

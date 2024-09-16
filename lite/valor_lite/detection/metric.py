@@ -5,7 +5,7 @@ from valor_lite.schemas import Metric
 
 
 class MetricType(str, Enum):
-    ConfusionMatrix = "ConfusionMatrix"
+    Counts = "Counts"
     Accuracy = "Accuracy"
     Precision = "Precision"
     Recall = "Recall"
@@ -23,7 +23,7 @@ class MetricType(str, Enum):
 
 
 @dataclass
-class ConfusionMatrix:
+class Counts:
     tp: int
     fp: int
     fn: int
