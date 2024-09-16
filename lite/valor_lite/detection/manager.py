@@ -18,7 +18,7 @@ from valor_lite.detection.metric import (
     Accuracy,
     APAveragedOverIOUs,
     ARAveragedOverScores,
-    ConfusionMatrix,
+    Counts,
     DetailedPrecisionRecallCurve,
     DetailedPrecisionRecallPoint,
     MetricType,
@@ -370,8 +370,8 @@ class Evaluator:
                         "iou": iou_threshold,
                         "score": score_threshold,
                     }
-                    metrics[MetricType.ConfusionMatrix].append(
-                        ConfusionMatrix(
+                    metrics[MetricType.Counts].append(
+                        Counts(
                             tp=int(row[0]),
                             fp=int(row[1]),
                             fn=int(row[2]),
