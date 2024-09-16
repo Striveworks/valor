@@ -4,8 +4,8 @@ from dataclasses import dataclass
 @dataclass
 class Classification:
     uid: str
-    groundtruths: list[tuple[str, str]] | list[str]
-    predictions: list[tuple[str, str]] | list[str]
+    groundtruths: list[tuple[str, str]]
+    predictions: list[tuple[str, str]]
     scores: list[float]
 
     def __post_init__(self):
