@@ -2,7 +2,14 @@ import time
 from dataclasses import dataclass, field
 
 import pandas as pd
-from valor_core import classification, detection, enums, schemas, utilities
+from valor_core import (
+    classification,
+    detection,
+    enums,
+    schemas,
+    text_generation,
+    utilities,
+)
 
 
 @dataclass
@@ -590,3 +597,116 @@ class ValorClassificationManager:
                 "duration": time.time() - start_time,
             },
         )
+
+
+@dataclass
+class ValorTextGenerationStreamingManager:
+    """
+    Manages the evaluation of text generation predictions streamed in one at a time or in batches.
+
+    The streaming manager does not support ground truths, as ground truths are not available in real time.
+
+    Attributes
+    ----------
+    metrics_to_return : list[enums.MetricType]
+        A list of metrics to calculate during the evaluation.
+    llm_api_params : dict[str, str | dict], optional
+        The parameters to setup the client with.
+    joint_df : pd.DataFrame
+        A DataFrame containing merged datum and prediction data.
+    unique_annotation_ids : set[int]
+        A set of unique annotation IDs across prediction data.
+    """
+
+    metrics_to_return: list[enums.MetricType]
+    llm_api_params: dict[str, str | dict]
+    joint_df: pd.DataFrame = field(
+        default_factory=lambda: pd.DataFrame(
+            [],
+            [
+                "datum_uid",
+                "datum_id",
+                "datum_text",
+                "prediction_id",
+                "prediction_annotation_id",
+                "prediction_text",
+                "prediction_context_list",
+            ],
+        )
+    )
+    unique_annotation_ids: set[int] = field(default_factory=set)
+    _locked = False
+
+    def __post_init__(self):
+        """Validates parameters and locks the class attributes to prevent modification after initialization."""
+        utilities.validate_metrics_to_return(
+            metrics_to_return=self.metrics_to_return,
+            task_type=enums.TaskType.TEXT_GENERATION,
+        )
+        non_text_comparison_metrics = {
+            enums.MetricType.AnswerRelevance,
+            enums.MetricType.Bias,
+            enums.MetricType.ContextRelevance,
+            enums.MetricType.Faithfulness,
+            enums.MetricType.Hallucination,
+            enums.MetricType.SummaryCoherence,
+            enums.MetricType.Toxicity,
+        }
+        if not set(self.metrics_to_return).issubset(
+            non_text_comparison_metrics
+        ):
+            raise ValueError(
+                f"The following text generation metrics require groundtruths: '{set(self.metrics_to_return) - non_text_comparison_metrics}'"
+            )
+        self._locked = True
+
+    def __setattr__(self, key, value):
+        """Overrides attribute setting to enforce immutability after initialization."""
+        if (
+            key
+            in [
+                "metrics_to_return",
+                "llm_api_params",
+            ]
+        ) and self._locked:
+            raise AttributeError(
+                f"Cannot manually modify '{key}' after instantiation."
+            )
+        super().__setattr__(key, value)
+
+    def add_and_evaluate_prediction(
+        self,
+        predictions: list[schemas.Prediction],
+    ) -> schemas.Evaluation:
+        """
+        Adds a prediction or batch of predictions and evaluates them.
+
+        Parameters
+        ----------
+        predictions : list[schemas.Prediction]
+            A list of Prediction objects.
+
+        Returns
+        -------
+        schemas.Evaluation
+            An evaluation object containing metrics and metadata.
+        """
+        if not (
+            isinstance(predictions, list)
+            and all([isinstance(x, schemas.Prediction) for x in predictions])
+        ):
+            raise TypeError(
+                "predictions should be a list of schemas.Prediction objects."
+            )
+        if not len(predictions) > 0:
+            raise ValueError(
+                "No predictions were provided. Please provide at least one prediction."
+            )
+
+        eval = text_generation.evaluate_text_generation(
+            predictions=predictions,
+            metrics_to_return=self.metrics_to_return,
+            llm_api_params=self.llm_api_params,
+        )
+
+        return eval

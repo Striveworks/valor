@@ -637,7 +637,6 @@ def test_evaluate_text_generation_rag(
                 "rougeL": 0.5925925925925926,
                 "rougeLsum": 0.5925925925925926,
             },
-            "SummaryCoherence": None,
             "Toxicity": 0.0,
         },
         "uid1": {
@@ -656,7 +655,6 @@ def test_evaluate_text_generation_rag(
                 "rougeL": 1.0,
                 "rougeLsum": 1.0,
             },
-            "SummaryCoherence": None,
             "Toxicity": 0.0,
         },
         "uid2": {
@@ -675,7 +673,6 @@ def test_evaluate_text_generation_rag(
                 "rougeL": 0.18666666666666668,
                 "rougeLsum": 0.18666666666666668,
             },
-            "SummaryCoherence": None,
             "Toxicity": 0.0,
         },
     }

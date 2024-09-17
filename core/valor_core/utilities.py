@@ -209,6 +209,14 @@ def validate_metrics_to_return(
                 f"The following metrics are not supported for object detection: '{set(metrics_to_return) - enums.MetricType.object_detection()}'"
             )
 
+    if task_type == enums.TaskType.TEXT_GENERATION:
+        if not set(metrics_to_return).issubset(
+            enums.MetricType.text_generation()
+        ):
+            raise ValueError(
+                f"The following metrics are not supported for text generation: '{set(metrics_to_return) - enums.MetricType.text_generation()}'"
+            )
+
 
 def validate_parameters(
     recall_score_threshold: float | None = None,
