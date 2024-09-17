@@ -65,61 +65,60 @@ def test__compute_rocauc():
 
     animals_and_colors = np.array(
         [
-            # animals
+            # (animal, bird)
             [0, 0, 0, 0.6],
-            [0, 0, 1, 0.2],
-            [0, 0, 2, 0.2],
-            [1, 1, 0, 0.0],
-            [1, 1, 1, 0.1],
-            [1, 1, 2, 0.9],
-            [2, 0, 0, 0.15],
-            [2, 0, 1, 0.05],
-            [2, 0, 2, 0.8],
-            [3, 0, 0, 0.15],
-            [3, 0, 1, 0.75],
-            [3, 0, 2, 0.1],
-            [4, 2, 0, 0.0],
-            [4, 2, 1, 0.0],
-            [4, 2, 2, 1.0],
             [5, 1, 0, 0.2],
+            [2, 0, 0, 0.15],
+            [3, 0, 0, 0.15],
+            [1, 1, 0, 0.0],
+            [4, 2, 0, 0.0],
+            # (animal, dog)
+            [3, 0, 1, 0.75],
             [5, 1, 1, 0.4],
+            [0, 0, 1, 0.2],
+            [1, 1, 1, 0.1],
+            [2, 0, 1, 0.05],
+            [4, 2, 1, 0.0],
+            # (animal, cat)
+            [4, 2, 2, 1.0],
+            [1, 1, 2, 0.9],
+            [2, 0, 2, 0.8],
             [5, 1, 2, 0.4],
-            # colors
-            [0, 3, 3, 0.65],
-            [0, 3, 4, 0.1],
-            [0, 3, 5, 0.2],
-            [0, 3, 6, 0.05],
-            [1, 3, 3, 0.3],
-            [1, 3, 4, 0.0],
-            [1, 3, 5, 0.5],
-            [1, 3, 6, 0.2],
-            [2, 4, 3, 0.2],
-            [2, 4, 4, 0.4],
-            [2, 4, 5, 0.1],
-            [2, 4, 6, 0.3],
+            [0, 0, 2, 0.2],
+            [3, 0, 2, 0.1],
+            # (color, white)
             [3, 5, 3, 1.0],
-            [3, 5, 4, 0.0],
-            [3, 5, 5, 0.0],
-            [3, 5, 6, 0.0],
-            [4, 6, 3, 0.0],
-            [4, 6, 4, 0.8],
-            [4, 6, 5, 0.2],
-            [4, 6, 6, 0.0],
+            [0, 3, 3, 0.65],
+            [1, 3, 3, 0.3],
+            [2, 4, 3, 0.2],
             [5, 4, 3, 0.06],
+            [4, 6, 3, 0.0],
+            # (color, red)
             [5, 4, 4, 0.9],
+            [4, 6, 4, 0.8],
+            [0, 3, 4, 0.1],
+            [2, 4, 4, 0.4],
+            [1, 3, 4, 0.0],
+            [3, 5, 4, 0.0],
+            # (color, blue)
+            [1, 3, 5, 0.5],
+            [0, 3, 5, 0.2],
+            [4, 6, 5, 0.2],
+            [2, 4, 5, 0.1],
             [5, 4, 5, 0.01],
+            [3, 5, 5, 0.0],
+            # (color, black)
+            [2, 4, 6, 0.3],
+            [1, 3, 6, 0.2],
+            [0, 3, 6, 0.05],
             [5, 4, 6, 0.03],
+            [3, 5, 6, 0.0],
+            [4, 6, 6, 0.0],
         ],
         dtype=np.float64,
     )
-
-    # sort by score, descending
-    sorted_indices = np.argsort(-animals_and_colors[:, 3])
-    animals_and_colors = np.take_along_axis(
-        animals_and_colors, sorted_indices[:, np.newaxis], axis=0
-    )
-
-    print(animals_and_colors)
+    indices = np.argsort(-animals_and_colors[:, -1], axis=0)
+    animals_and_colors = animals_and_colors[indices]
 
     # create args
     label_metadata = np.array(
@@ -134,22 +133,12 @@ def test__compute_rocauc():
         ],
         dtype=np.int32,
     )
-    gt_labels = animals_and_colors[:, 1].astype(int)
-    pd_labels = animals_and_colors[:, 2].astype(int)
-    mask_pd_exists = animals_and_colors[:, 2] >= 0.0
-    mask_matching_labels = np.isclose(
-        animals_and_colors[:, 1], animals_and_colors[:, 2]
-    )
 
     # compute ROCAUC and mROCAUC
     rocauc, mean_rocauc = _compute_rocauc(
         data=animals_and_colors,
-        n_rows=animals_and_colors.shape[0],
-        gt_labels=gt_labels,
-        pd_labels=pd_labels,
-        mask_pd_exists=mask_pd_exists,
-        mask_matching_labels=mask_matching_labels,
         label_metadata=label_metadata,
+        n_datums=6,
     )
 
     # test ROCAUC
