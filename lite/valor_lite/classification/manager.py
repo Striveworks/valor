@@ -10,16 +10,12 @@ from valor_lite.classification.computation import (
     compute_metrics,
 )
 from valor_lite.classification.metric import (
-    F1,
     ROCAUC,
-    Accuracy,
-    Counts,
+    BinaryClassificationMetrics,
     DetailedPrecisionRecallCurve,
     DetailedPrecisionRecallPoint,
     MetricType,
-    Precision,
-    PrecisionRecallCurve,
-    Recall,
+    mROCAUC,
 )
 
 """
@@ -224,7 +220,15 @@ class Evaluator:
             data = data[filter_.indices]
             label_metadata = filter_.label_metadata
 
-        (counts, precision, recall, accuracy, f1_score,) = compute_metrics(
+        (
+            counts,
+            precision,
+            recall,
+            accuracy,
+            f1_score,
+            rocauc,
+            mean_rocauc,
+        ) = compute_metrics(
             data=data,
             label_metadata=label_metadata,
             score_thresholds=np.array(score_thresholds),
@@ -232,14 +236,21 @@ class Evaluator:
 
         metrics = defaultdict(list)
 
-        # metrics[MetricType.PrecisionRecallCurve] = [
-        #     PrecisionRecallCurve(
-        #         precision=list(pr_curves[label_idx]),
-        #         label=label,
-        #     )
-        #     for label_idx, label in self.index_to_label.items()
-        #     if int(label_metadata[label_idx][0]) > 0
-        # ]
+        metrics[MetricType.ROCAUC] = [
+            ROCAUC(
+                value=rocauc[label_idx],
+                label=self.index_to_label[label_idx],
+            )
+            for label_idx in range(label_metadata.shape[0])
+        ]
+
+        metrics[MetricType.mROCAUC] = [
+            mROCAUC(
+                value=rocauc[label_key_idx],
+                label_key=self.index_to_label_key[label_key_idx],
+            )
+            for label_key_idx in range(len(self.label_key_to_index))
+        ]
 
         for score_idx, score_threshold in enumerate(score_thresholds):
             for label_idx, label in self.index_to_label.items():
@@ -248,36 +259,16 @@ class Evaluator:
                     "label": label,
                     "score": score_threshold,
                 }
-                metrics[MetricType.Counts].append(
-                    Counts(
+                metrics[MetricType.BinaryClassificationMetrics].append(
+                    BinaryClassificationMetrics(
                         tp=int(row[0]),
                         fp=int(row[1]),
                         fn=int(row[2]),
                         tn=int(row[3]),
-                        **kwargs,
-                    )
-                )
-                metrics[MetricType.Precision].append(
-                    Precision(
-                        value=precision[score_idx][label_idx],
-                        **kwargs,
-                    )
-                )
-                metrics[MetricType.Recall].append(
-                    Recall(
-                        value=recall[score_idx][label_idx],
-                        **kwargs,
-                    )
-                )
-                metrics[MetricType.F1].append(
-                    F1(
-                        value=f1_score[score_idx][label_idx],
-                        **kwargs,
-                    )
-                )
-                metrics[MetricType.Accuracy].append(
-                    Accuracy(
-                        value=accuracy[score_idx][label_idx],
+                        precision=precision[score_idx][label_idx],
+                        recall=recall[score_idx][label_idx],
+                        accuracy=accuracy[score_idx][label_idx],
+                        f1=f1_score[score_idx][label_idx],
                         **kwargs,
                     )
                 )

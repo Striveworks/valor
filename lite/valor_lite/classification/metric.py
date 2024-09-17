@@ -5,24 +5,24 @@ from valor_lite.schemas import Metric
 
 
 class MetricType(Enum):
-    Accuracy = "Accuracy"
-    Precision = "Precision"
-    Recall = "Recall"
-    F1 = "F1"
+    BinaryClassificationMetrics = "BinaryClassificationMetrics"
     ROCAUC = "ROCAUC"
     PrecisionRecallCurve = "PrecisionRecallCurve"
     DetailedPrecisionRecallCurve = "DetailedPrecisionRecallCurve"
-    Counts = "Counts"
 
 
 @dataclass
-class Counts:
+class BinaryClassificationMetrics:
     tp: int
     fp: int
-    tn: int
     fn: int
-    label: tuple[str, str]
+    tn: int
+    precision: float
+    recall: float
+    accuracy: float
+    f1: float
     score: float
+    label: tuple[str, str]
 
     @property
     def metric(self) -> Metric:
@@ -33,6 +33,10 @@ class Counts:
                 "fp": self.fp,
                 "fn": self.fn,
                 "tn": self.tn,
+                "precision": self.precision,
+                "recall": self.recall,
+                "accuracy": self.accuracy,
+                "f1": self.f1,
             },
             parameters={
                 "score": self.score,
@@ -45,46 +49,6 @@ class Counts:
 
     def to_dict(self) -> dict:
         return self.metric.to_dict()
-
-
-@dataclass
-class ClassMetric:
-    value: float
-    label: tuple[str, str]
-    score: float
-
-    @property
-    def metric(self) -> Metric:
-        return Metric(
-            type=type(self).__name__,
-            value=self.value,
-            parameters={
-                "score": self.score,
-                "label": {
-                    "key": self.label[0],
-                    "value": self.label[1],
-                },
-            },
-        )
-
-    def to_dict(self) -> dict:
-        return self.metric.to_dict()
-
-
-class Precision(ClassMetric):
-    pass
-
-
-class Recall(ClassMetric):
-    pass
-
-
-class Accuracy(ClassMetric):
-    pass
-
-
-class F1(ClassMetric):
-    pass
 
 
 @dataclass
@@ -121,31 +85,6 @@ class mROCAUC:
             value=self.value,
             parameters={
                 "label_key": self.label_key,
-            },
-        )
-
-    def to_dict(self) -> dict:
-        return self.metric.to_dict()
-
-
-@dataclass
-class PrecisionRecallCurve:
-    """
-    Interpolated over recalls 0.0, 0.01, ..., 1.0.
-    """
-
-    precision: list[float]
-    iou: float
-    label: tuple[str, str]
-
-    @property
-    def metric(self) -> Metric:
-        return Metric(
-            type=type(self).__name__,
-            value=self.precision,
-            parameters={
-                "iou": self.iou,
-                "label": {"key": self.label[0], "value": self.label[1]},
             },
         )
 
