@@ -556,6 +556,7 @@ def evaluate_text_generation(
     metric_params: dict[str, dict] = {},
 ) -> schemas.Evaluation:
     """
+    Validates the parameters and formats the predictions and ground truths, then computes the text generation metrics.
 
     Parameters
     ----------
@@ -569,12 +570,21 @@ def evaluate_text_generation(
         A dictionary of parameters for the LLM API.
     metric_params : dict, optional
         A dictionary of optional parameters to pass in to specific metrics.
+
+    Returns
+    ----------
+    schemas.Evaluation
+        An evaluation object containing the computed metrics and metadata.
     """
     start_time = time.time()
 
     utilities.validate_metrics_to_return(
         metrics_to_return=metrics_to_return,
         task_type=enums.TaskType.TEXT_GENERATION,
+    )
+    utilities.validate_metric_parameters(
+        metrics_to_return=metrics_to_return,
+        metric_params=metric_params,
     )
 
     unique_datum_counts = len(set([p.datum.uid for p in predictions]))

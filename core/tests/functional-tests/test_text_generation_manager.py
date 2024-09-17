@@ -3,6 +3,16 @@ from unittest.mock import patch
 import pytest
 from valor_core import managers, schemas
 from valor_core.enums import MetricType
+from valor_core.exceptions import MismatchingTextGenerationDataError
+
+LLM_API_PARAMS = {
+    "client": "openai",
+    "data": {
+        "seed": 2024,
+        "model": "gpt-4o",
+    },
+}
+
 
 RAG_QUERIES = [
     """Did John Adams get along with Alexander Hamilton?""",
@@ -212,17 +222,6 @@ def test_evaluate_text_generation_rag(
         MetricType.Toxicity,
     ]
 
-    manager = managers.ValorTextGenerationStreamingManager(
-        metrics_to_return=metrics_to_return,
-        llm_api_params={
-            "client": "openai",
-            "data": {
-                "seed": 2024,
-                "model": "gpt-4o",
-            },
-        },
-    )
-
     expected_values = {
         "uid0": {
             "AnswerRelevance": 0.6666666666666666,
@@ -272,6 +271,10 @@ def test_evaluate_text_generation_rag(
     }
 
     # Test adding metrics one at a time.
+    manager = managers.ValorTextGenerationStreamingManager(
+        metrics_to_return=metrics_to_return,
+        llm_api_params=LLM_API_PARAMS,
+    )
     metrics = []
     for pred in rag_preds:
         eval = manager.add_and_evaluate_prediction(predictions=[pred])
@@ -290,6 +293,10 @@ def test_evaluate_text_generation_rag(
         )
 
     # Test adding metrics as differently sized batches.
+    manager = managers.ValorTextGenerationStreamingManager(
+        metrics_to_return=metrics_to_return,
+        llm_api_params=LLM_API_PARAMS,
+    )
     metrics = []
     eval = manager.add_and_evaluate_prediction(predictions=rag_preds[:2])
     metrics.extend(eval.metrics)
@@ -306,4 +313,76 @@ def test_evaluate_text_generation_rag(
                 metric["type"]
             )
             == metric["value"]
+        )
+
+    # Adding two different predictions with the same datum uid but different datum text or metadata should raise an error.
+    pred0_modified_text = schemas.Prediction(
+        datum=schemas.Datum(
+            uid="uid0",
+            text="This is a different piece of text.",
+            metadata={
+                "category": "history",
+            },
+        ),
+        annotations=[
+            schemas.Annotation(
+                text=RAG_PREDICTIONS[0],
+                context_list=RAG_CONTEXT[0],
+            )
+        ],
+    )
+    pred0_no_metadata = schemas.Prediction(
+        datum=schemas.Datum(
+            uid="uid0",
+            text=RAG_QUERIES[0],
+            metadata=None,  # Lacks the metadata field.
+        ),
+        annotations=[
+            schemas.Annotation(
+                text=RAG_PREDICTIONS[0],
+                context_list=RAG_CONTEXT[0],
+            )
+        ],
+    )
+
+    # Error should be caught when the second prediction is added.
+    with pytest.raises(MismatchingTextGenerationDataError):
+        manager = managers.ValorTextGenerationStreamingManager(
+            metrics_to_return=metrics_to_return,
+            llm_api_params=LLM_API_PARAMS,
+        )
+        _ = manager.add_and_evaluate_prediction(predictions=[rag_preds[0]])
+        _ = manager.add_and_evaluate_prediction(
+            predictions=[pred0_modified_text]
+        )
+
+    # Error should be caught even though both predictions are new.
+    with pytest.raises(MismatchingTextGenerationDataError):
+        manager = managers.ValorTextGenerationStreamingManager(
+            metrics_to_return=metrics_to_return,
+            llm_api_params=LLM_API_PARAMS,
+        )
+        _ = manager.add_and_evaluate_prediction(
+            predictions=[rag_preds[0], pred0_modified_text]
+        )
+
+    # Error should be caught when the second prediction is added.
+    with pytest.raises(MismatchingTextGenerationDataError):
+        manager = managers.ValorTextGenerationStreamingManager(
+            metrics_to_return=metrics_to_return,
+            llm_api_params=LLM_API_PARAMS,
+        )
+        _ = manager.add_and_evaluate_prediction(predictions=[rag_preds[0]])
+        _ = manager.add_and_evaluate_prediction(
+            predictions=[pred0_no_metadata]
+        )
+
+    # Error should be caught even though both predictions are new.
+    with pytest.raises(MismatchingTextGenerationDataError):
+        manager = managers.ValorTextGenerationStreamingManager(
+            metrics_to_return=metrics_to_return,
+            llm_api_params=LLM_API_PARAMS,
+        )
+        _ = manager.add_and_evaluate_prediction(
+            predictions=[rag_preds[0], pred0_no_metadata]
         )

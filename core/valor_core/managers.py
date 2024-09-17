@@ -10,6 +10,7 @@ from valor_core import (
     text_generation,
     utilities,
 )
+from valor_core.exceptions import MismatchingTextGenerationDataError
 
 
 @dataclass
@@ -612,6 +613,8 @@ class ValorTextGenerationStreamingManager:
         A list of metrics to calculate during the evaluation.
     llm_api_params : dict[str, str | dict], optional
         The parameters to setup the client with.
+    metric_params: dict, optional
+        A dictionary of optional parameters to pass in to specific metrics.
     joint_df : pd.DataFrame
         A DataFrame containing merged datum and prediction data.
     unique_annotation_ids : set[int]
@@ -620,25 +623,39 @@ class ValorTextGenerationStreamingManager:
 
     metrics_to_return: list[enums.MetricType]
     llm_api_params: dict[str, str | dict]
-    joint_df: pd.DataFrame = field(
-        default_factory=lambda: pd.DataFrame(
-            [],
-            [
-                "datum_uid",
-                "datum_id",
-                "datum_text",
-                "prediction_id",
-                "prediction_annotation_id",
-                "prediction_text",
-                "prediction_context_list",
-            ],
-        )
-    )
+    metric_params: dict[str, dict] = field(default_factory=dict)
+    joint_df: pd.DataFrame = field(default_factory=lambda: pd.DataFrame([]))
+    datum_uids: set = field(default_factory=set)
     unique_annotation_ids: set[int] = field(default_factory=set)
     _locked = False
 
     def __post_init__(self):
-        """Validates parameters and locks the class attributes to prevent modification after initialization."""
+        """
+        Validates parameters and locks the class attributes to prevent modification after initialization.
+
+        Initializes the joint_df.
+        """
+        self.validate_metrics_to_return()
+        self.initialize_joint_df()
+        self._locked = True
+
+    def __setattr__(self, key, value):
+        """Overrides attribute setting to enforce immutability after initialization."""
+        if (
+            key
+            in [
+                "metrics_to_return",
+                "llm_api_params",
+                "metric_params",
+            ]
+        ) and self._locked:
+            raise AttributeError(
+                f"Cannot manually modify '{key}' after instantiation."
+            )
+        super().__setattr__(key, value)
+
+    def validate_metrics_to_return(self):
+        """Validates that all metrics are text generation metrics and are not text comparison metrics."""
         utilities.validate_metrics_to_return(
             metrics_to_return=self.metrics_to_return,
             task_type=enums.TaskType.TEXT_GENERATION,
@@ -658,21 +675,22 @@ class ValorTextGenerationStreamingManager:
             raise ValueError(
                 f"The following text generation metrics require groundtruths: '{set(self.metrics_to_return) - non_text_comparison_metrics}'"
             )
-        self._locked = True
 
-    def __setattr__(self, key, value):
-        """Overrides attribute setting to enforce immutability after initialization."""
-        if (
-            key
-            in [
-                "metrics_to_return",
-                "llm_api_params",
+    def initialize_joint_df(self):
+        """Adds a column to the joint_df for each metric."""
+        self.joint_df = pd.DataFrame(
+            [],
+            columns=[
+                "datum_uid",
+                "datum_text",
+                "datum_metadata",
+                "prediction_id",
+                "prediction_annotation_id",
+                "prediction_text",
+                "prediction_context_list",
             ]
-        ) and self._locked:
-            raise AttributeError(
-                f"Cannot manually modify '{key}' after instantiation."
-            )
-        super().__setattr__(key, value)
+            + [metric._name_ for metric in self.metrics_to_return],
+        )
 
     def add_and_evaluate_prediction(
         self,
@@ -703,10 +721,88 @@ class ValorTextGenerationStreamingManager:
                 "No predictions were provided. Please provide at least one prediction."
             )
 
+        for pred in predictions:
+            # If self.joint_df has no rows, skip the next check
+            if not self.joint_df.empty and pred.datum.uid in self.datum_uids:
+                rows = self.joint_df[
+                    self.joint_df["datum_uid"] == pred.datum.uid
+                ]
+                if not (
+                    all(rows["datum_text"] == pred.datum.text)
+                    and all(rows["datum_metadata"] == pred.datum.metadata)
+                ):
+                    raise MismatchingTextGenerationDataError(
+                        f"The provided prediction does not match the existing data for this datum_uid {pred.datum.uid}."
+                    )
+
+            for pred2 in predictions:
+                if pred.datum.uid == pred2.datum.uid and (
+                    pred.datum.text != pred2.datum.text
+                    or pred.datum.metadata != pred2.datum.metadata
+                ):
+                    raise MismatchingTextGenerationDataError(
+                        f"Two predictions with the same datum_uid {pred.datum.uid} have different datum text or metadata."
+                    )
+
         eval = text_generation.evaluate_text_generation(
             predictions=predictions,
             metrics_to_return=self.metrics_to_return,
             llm_api_params=self.llm_api_params,
         )
+
+        for pred in predictions:
+            self.joint_df = pd.concat(
+                [
+                    self.joint_df,
+                    pd.DataFrame(
+                        [
+                            {
+                                "datum_uid": pred.datum.uid,
+                                "datum_text": pred.datum.text,
+                                "datum_metadata": pred.datum.metadata,
+                                "prediction_id": hash(pred.datum.uid)
+                                + hash(str(pred)),
+                                "prediction_annotation_id": hash(
+                                    pred.datum.uid
+                                )
+                                + hash(str(pred))
+                                + hash(str(annotation)),
+                                "prediction_text": annotation.text,
+                                "prediction_context_list": annotation.context_list,
+                            }
+                            for annotation in pred.annotations
+                        ],
+                    ),
+                ],
+                ignore_index=True,
+            )
+
+        # TODO need better matching for the metric to the correct row
+        for m in eval.metrics:
+            metric_name = m["type"]
+            value = m["value"]
+            datum_uid = m["parameters"]["datum_uid"]
+            prediction_text = m["parameters"].get("prediction", None)
+            prediction_context_list = m["parameters"].get("context_list", None)
+
+            if prediction_text is not None:
+                if prediction_context_list is not None:
+                    self.joint_df.loc[
+                        self.joint_df["datum_uid"] == datum_uid,
+                        metric_name,
+                    ] = value
+                else:
+                    self.joint_df.loc[
+                        self.joint_df["datum_uid"] == datum_uid,
+                        metric_name,
+                    ] = value
+            else:
+                assert prediction_context_list is not None
+                self.joint_df.loc[
+                    self.joint_df["datum_uid"] == datum_uid,
+                    metric_name,
+                ] = value
+
+        self.datum_uids.update([pred.datum.uid for pred in predictions])
 
         return eval

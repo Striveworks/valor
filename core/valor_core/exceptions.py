@@ -4,3 +4,11 @@ class InvalidLLMResponseError(Exception):
     """
 
     pass
+
+
+class MismatchingTextGenerationDataError(Exception):
+    """
+    Raised when datums with the same uid but different texts are added to the ValorTextGenerationStreamingManager.
+    """
+
+    pass

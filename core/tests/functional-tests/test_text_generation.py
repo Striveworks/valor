@@ -617,6 +617,11 @@ def test_evaluate_text_generation_rag(
                 "model": "gpt-4o",
             },
         },
+        metric_params={
+            "ROUGE": {
+                "use_stemmer": False,
+            },
+        },
     )
     metrics = eval.metrics
 
@@ -693,7 +698,7 @@ def test_evaluate_text_generation_rag(
     _ = evaluate_text_generation(
         predictions=rag_preds,
         groundtruths=rag_gts,
-        metrics_to_return=[MetricType.AnswerRelevance],
+        metrics_to_return=[MetricType.AnswerRelevance, MetricType.BLEU],
         llm_api_params={
             "client": "mistral",
             "data": {
@@ -703,14 +708,6 @@ def test_evaluate_text_generation_rag(
         metric_params={
             "BLEU": {
                 "weights": [0.5, 0.25, 0.25, 0],
-            },
-            "ROUGE": {
-                "rouge_types": [
-                    ROUGEType.ROUGE1,
-                    ROUGEType.ROUGE2,
-                    ROUGEType.ROUGEL,
-                ],
-                "use_stemmer": True,
             },
         },
     )
@@ -739,6 +736,19 @@ def test_evaluate_text_generation_rag(
             "client": "mock",
             "data": {
                 "model": "some model",
+            },
+        },
+        metric_params={
+            "BLEU": {
+                "weights": [0.5, 0.25, 0.25, 0],
+            },
+            "ROUGE": {
+                "rouge_types": [
+                    ROUGEType.ROUGE1,
+                    ROUGEType.ROUGE2,
+                    ROUGEType.ROUGEL,
+                ],
+                "use_stemmer": True,
             },
         },
     )
@@ -776,6 +786,66 @@ def test_evaluate_text_generation_rag(
             },
             metric_params={
                 "ROUGE": ["use_stemmer"],  # type: ignore - testing
+            },
+        )
+
+    # "BLEU" is in metric_params but is not in metrics_to_return
+    with pytest.raises(ValueError):
+        _ = evaluate_text_generation(
+            predictions=rag_preds,
+            groundtruths=rag_gts,
+            metrics_to_return=[MetricType.AnswerRelevance],
+            llm_api_params={
+                "client": "openai",
+                "data": {
+                    "seed": 2024,
+                    "model": "gpt-4o",
+                },
+            },
+            metric_params={
+                "BLEU": {
+                    "weights": [0.5, 0.25, 0.25, 0],
+                },
+            },
+        )
+
+    # blue weights should all be non-negative
+    with pytest.raises(ValueError):
+        _ = evaluate_text_generation(
+            predictions=rag_preds,
+            groundtruths=rag_gts,
+            metrics_to_return=metrics_to_return,
+            llm_api_params={
+                "client": "openai",
+                "data": {
+                    "seed": 2024,
+                    "model": "gpt-4o",
+                },
+            },
+            metric_params={
+                "BLEU": {
+                    "weights": [0.5, 0.25, -0.25, 0.5],
+                },
+            },
+        )
+
+    # blue weights should sum to 1
+    with pytest.raises(ValueError):
+        _ = evaluate_text_generation(
+            predictions=rag_preds,
+            groundtruths=rag_gts,
+            metrics_to_return=metrics_to_return,
+            llm_api_params={
+                "client": "openai",
+                "data": {
+                    "seed": 2024,
+                    "model": "gpt-4o",
+                },
+            },
+            metric_params={
+                "BLEU": {
+                    "weights": [0.5, 0.4, 0.3, 0.2],
+                },
             },
         )
 
