@@ -90,6 +90,42 @@ class F1(ClassMetric):
 @dataclass
 class ROCAUC:
     value: float
+    label: tuple[str, str]
+
+    @property
+    def metric(self) -> Metric:
+        return Metric(
+            type=type(self).__name__,
+            value=self.value,
+            parameters={
+                "label": {
+                    "key": self.label[0],
+                    "value": self.label[1],
+                },
+            },
+        )
+
+    def to_dict(self) -> dict:
+        return self.metric.to_dict()
+
+
+@dataclass
+class mROCAUC:
+    value: float
+    label_key: str
+
+    @property
+    def metric(self) -> Metric:
+        return Metric(
+            type=type(self).__name__,
+            value=self.value,
+            parameters={
+                "label_key": self.label_key,
+            },
+        )
+
+    def to_dict(self) -> dict:
+        return self.metric.to_dict()
 
 
 @dataclass
