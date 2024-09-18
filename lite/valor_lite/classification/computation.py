@@ -81,7 +81,7 @@ def _compute_rocauc(
     np.maximum.accumulate(tpr, axis=1, out=tpr)
 
     # compute rocauc
-    rocauc = np.trapz(x=fpr, y=tpr, axis=1)  # type: ignore - "trapz" is not a known attribute of module "numpy"
+    rocauc = np.trapz(x=fpr, y=tpr, axis=1)  # type: ignore - numpy will be switching to `trapezoid` in the future.
 
     # compute mean rocauc
     summed_rocauc = np.bincount(label_metadata[:, 2], weights=rocauc)
