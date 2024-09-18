@@ -163,6 +163,8 @@ def mocked_hallucination(
         (RAG_PREDICTIONS[0], tuple(RAG_CONTEXT[0])): 0.0,
         (RAG_PREDICTIONS[1], tuple(RAG_CONTEXT[1])): 0.0,
         (RAG_PREDICTIONS[2], tuple(RAG_CONTEXT[2])): 0.25,
+        ("Generated text 1.", tuple(RAG_CONTEXT[0])): 0.75,
+        ("Generated text 2.", tuple(RAG_CONTEXT[0])): 0.25,
     }
     return ret_dict[(text, tuple(context_list))]
 
@@ -207,7 +209,7 @@ def mocked_toxicity(
     "valor_core.llm_clients.WrappedOpenAIClient.toxicity",
     mocked_toxicity,
 )
-def test_evaluate_text_generation_rag(
+def test_ValorTextGenerationStreamingManager_rag(
     rag_preds: list[schemas.Prediction],
 ):
     """
@@ -280,7 +282,6 @@ def test_evaluate_text_generation_rag(
         eval = manager.add_and_evaluate_prediction(predictions=[pred])
         metrics.extend(eval.metrics)
 
-    assert metrics
     assert len(metrics) == len(metrics_to_return) * len(expected_values)
     for metric in metrics:
         assert isinstance(metric["parameters"], dict)
@@ -291,6 +292,20 @@ def test_evaluate_text_generation_rag(
             )
             == metric["value"]
         )
+
+    # Test the get_results method using the same manager as above.
+    results_df = manager.get_results()
+    assert set(metrics_to_return).issubset(results_df.columns)
+    assert len(results_df) == sum(
+        [len(pred.annotations) for pred in rag_preds]
+    )
+    for _, row in results_df.iterrows():
+        for m in metrics_to_return:
+            metric_name = m._name_
+            assert (
+                expected_values[row["datum_uid"]].get(metric_name)
+                == row[metric_name]
+            )
 
     # Test adding metrics as differently sized batches.
     manager = managers.ValorTextGenerationStreamingManager(
@@ -303,7 +318,6 @@ def test_evaluate_text_generation_rag(
     eval = manager.add_and_evaluate_prediction(predictions=[rag_preds[2]])
     metrics.extend(eval.metrics)
 
-    assert metrics
     assert len(metrics) == len(metrics_to_return) * len(expected_values)
     for metric in metrics:
         assert isinstance(metric["parameters"], dict)
@@ -312,6 +326,101 @@ def test_evaluate_text_generation_rag(
             expected_values[metric["parameters"]["datum_uid"]].get(
                 metric["type"]
             )
+            == metric["value"]
+        )
+
+    # Test adding two prediction annotations in the same prediction for the same datum.
+    pred0_two_ann = schemas.Prediction(
+        datum=schemas.Datum(
+            uid="uid0",
+            text=RAG_QUERIES[0],
+            metadata={
+                "category": "history",
+            },
+        ),
+        annotations=[
+            schemas.Annotation(
+                text="Generated text 1.",
+                context_list=RAG_CONTEXT[0],
+            ),
+            schemas.Annotation(
+                text="Generated text 2.",
+                context_list=RAG_CONTEXT[0],
+            ),
+        ],
+    )
+    manager = managers.ValorTextGenerationStreamingManager(
+        metrics_to_return=[MetricType.Hallucination],
+        llm_api_params=LLM_API_PARAMS,
+    )
+    metrics = []
+    eval = manager.add_and_evaluate_prediction(predictions=[pred0_two_ann])
+    metrics.extend(eval.metrics)
+
+    expected_values = {
+        "Generated text 1.": 0.75,
+        "Generated text 2.": 0.25,
+    }
+
+    assert len(metrics) == 2
+    for metric in metrics:
+        assert isinstance(metric["parameters"], dict)
+        assert isinstance(metric["parameters"]["datum_uid"], str)
+        assert (
+            expected_values[metric["parameters"]["prediction"]]
+            == metric["value"]
+        )
+
+    # Test adding two prediction annotations in different predictions for the same datum.
+    pred0_1 = schemas.Prediction(
+        datum=schemas.Datum(
+            uid="uid0",
+            text=RAG_QUERIES[0],
+            metadata={
+                "category": "history",
+            },
+        ),
+        annotations=[
+            schemas.Annotation(
+                text="Generated text 1.",
+                context_list=RAG_CONTEXT[0],
+            ),
+        ],
+    )
+    pred0_2 = schemas.Prediction(
+        datum=schemas.Datum(
+            uid="uid0",
+            text=RAG_QUERIES[0],
+            metadata={
+                "category": "history",
+            },
+        ),
+        annotations=[
+            schemas.Annotation(
+                text="Generated text 2.",
+                context_list=RAG_CONTEXT[0],
+            ),
+        ],
+    )
+    manager = managers.ValorTextGenerationStreamingManager(
+        metrics_to_return=[MetricType.Hallucination],
+        llm_api_params=LLM_API_PARAMS,
+    )
+    metrics = []
+    eval = manager.add_and_evaluate_prediction(predictions=[pred0_1, pred0_2])
+    metrics.extend(eval.metrics)
+
+    expected_values = {
+        "Generated text 1.": 0.75,
+        "Generated text 2.": 0.25,
+    }
+
+    assert len(metrics) == 2
+    for metric in metrics:
+        assert isinstance(metric["parameters"], dict)
+        assert isinstance(metric["parameters"]["datum_uid"], str)
+        assert (
+            expected_values[metric["parameters"]["prediction"]]
             == metric["value"]
         )
 

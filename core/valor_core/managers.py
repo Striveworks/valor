@@ -617,8 +617,8 @@ class ValorTextGenerationStreamingManager:
         A dictionary of optional parameters to pass in to specific metrics.
     joint_df : pd.DataFrame
         A DataFrame containing merged datum and prediction data.
-    unique_annotation_ids : set[int]
-        A set of unique annotation IDs across prediction data.
+    datum_uids : set
+        A set of user specified unique identifiers for the data samples.
     """
 
     metrics_to_return: list[enums.MetricType]
@@ -626,7 +626,6 @@ class ValorTextGenerationStreamingManager:
     metric_params: dict[str, dict] = field(default_factory=dict)
     joint_df: pd.DataFrame = field(default_factory=lambda: pd.DataFrame([]))
     datum_uids: set = field(default_factory=set)
-    unique_annotation_ids: set[int] = field(default_factory=set)
     _locked = False
 
     def __post_init__(self):
@@ -635,8 +634,8 @@ class ValorTextGenerationStreamingManager:
 
         Initializes the joint_df.
         """
-        self.validate_metrics_to_return()
-        self.initialize_joint_df()
+        self._validate_metrics_to_return()
+        self._initialize_joint_df()
         self._locked = True
 
     def __setattr__(self, key, value):
@@ -654,7 +653,7 @@ class ValorTextGenerationStreamingManager:
             )
         super().__setattr__(key, value)
 
-    def validate_metrics_to_return(self):
+    def _validate_metrics_to_return(self):
         """Validates that all metrics are text generation metrics and are not text comparison metrics."""
         utilities.validate_metrics_to_return(
             metrics_to_return=self.metrics_to_return,
@@ -676,7 +675,7 @@ class ValorTextGenerationStreamingManager:
                 f"The following text generation metrics require groundtruths: '{set(self.metrics_to_return) - non_text_comparison_metrics}'"
             )
 
-    def initialize_joint_df(self):
+    def _initialize_joint_df(self):
         """Adds a column to the joint_df for each metric."""
         self.joint_df = pd.DataFrame(
             [],
@@ -760,13 +759,6 @@ class ValorTextGenerationStreamingManager:
                                 "datum_uid": pred.datum.uid,
                                 "datum_text": pred.datum.text,
                                 "datum_metadata": pred.datum.metadata,
-                                "prediction_id": hash(pred.datum.uid)
-                                + hash(str(pred)),
-                                "prediction_annotation_id": hash(
-                                    pred.datum.uid
-                                )
-                                + hash(str(pred))
-                                + hash(str(annotation)),
                                 "prediction_text": annotation.text,
                                 "prediction_context_list": annotation.context_list,
                             }
@@ -777,7 +769,30 @@ class ValorTextGenerationStreamingManager:
                 ignore_index=True,
             )
 
-        # TODO need better matching for the metric to the correct row
+        # Conditions for matching computed metrics to the correct row.
+        def conditions(
+            row, datum_uid, prediction_text=None, prediction_context_list=None
+        ):
+            if prediction_text is not None:
+                if prediction_context_list is not None:
+                    return (
+                        row["datum_uid"] == datum_uid
+                        and row["prediction_text"] == prediction_text
+                        and row["prediction_context_list"]
+                        == prediction_context_list
+                    )
+                else:
+                    return (
+                        row["datum_uid"] == datum_uid
+                        and row["prediction_text"] == prediction_text
+                    )
+            else:
+                return (
+                    row["datum_uid"] == datum_uid
+                    and row["prediction_context_list"]
+                    == prediction_context_list
+                )
+
         for m in eval.metrics:
             metric_name = m["type"]
             value = m["value"]
@@ -785,24 +800,27 @@ class ValorTextGenerationStreamingManager:
             prediction_text = m["parameters"].get("prediction", None)
             prediction_context_list = m["parameters"].get("context_list", None)
 
-            if prediction_text is not None:
-                if prediction_context_list is not None:
-                    self.joint_df.loc[
-                        self.joint_df["datum_uid"] == datum_uid,
-                        metric_name,
-                    ] = value
-                else:
-                    self.joint_df.loc[
-                        self.joint_df["datum_uid"] == datum_uid,
-                        metric_name,
-                    ] = value
-            else:
-                assert prediction_context_list is not None
-                self.joint_df.loc[
-                    self.joint_df["datum_uid"] == datum_uid,
-                    metric_name,
-                ] = value
+            # Set the metric value of the correct row.
+            conditional_series = self.joint_df.apply(
+                conditions,
+                axis=1,
+                args=(datum_uid, prediction_text, prediction_context_list),
+            )
+            self.joint_df.loc[conditional_series, metric_name] = value
 
         self.datum_uids.update([pred.datum.uid for pred in predictions])
 
         return eval
+
+    def get_results(
+        self,
+    ) -> pd.DataFrame:
+        """
+        Returns the joint_df with all predictions and computed metrics.
+
+        Returns
+        -------
+        pd.DataFrame
+            A DataFrame containing all predictions and computed metrics.
+        """
+        return self.joint_df
