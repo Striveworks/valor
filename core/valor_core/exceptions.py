@@ -6,9 +6,9 @@ class InvalidLLMResponseError(Exception):
     pass
 
 
-class MismatchingTextGenerationDataError(Exception):
+class MismatchingTextGenerationDatumError(Exception):
     """
-    Raised when datums with the same uid but different texts are added to the ValorTextGenerationStreamingManager.
+    Raised when datums with the same uid but different text or metadata are added to the ValorTextGenerationStreamingManager.
     """
 
     pass

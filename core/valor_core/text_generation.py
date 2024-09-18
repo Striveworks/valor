@@ -548,6 +548,35 @@ def _compute_text_generation_metrics(
     return output
 
 
+def is_text_gen_task(
+    ann: schemas.Annotation,
+) -> bool:
+    """
+    Checks if the annotation is a text generation annotation.
+
+    Parameters
+    ----------
+    ann : schemas.Annotation
+        The annotation to check.
+
+    Returns
+    ----------
+    bool
+        True if the annotation is a text generation annotation, False otherwise.
+    """
+    if (
+        (ann.text is not None or ann.context_list is not None)
+        and ann.labels is None
+        and ann.bounding_box is None
+        and ann.polygon is None
+        and ann.raster is None
+        and ann.embedding is None
+    ):
+        return True
+    else:
+        return False
+
+
 def evaluate_text_generation(
     predictions: list[schemas.Prediction],
     metrics_to_return: list[MetricType],
@@ -590,19 +619,21 @@ def evaluate_text_generation(
     unique_datum_counts = len(set([p.datum.uid for p in predictions]))
 
     # Generate a list of data tuples, where each prediction is matched with its corresponding datum and the associated groundtruths.
-    # TODO consider changing to dataframe
     data = []
     for prediction in predictions:
         datum = prediction.datum
         for pred_annotation in prediction.annotations:
-            # TODO if enums.TaskType.TEXT_GENERATION in pred_annotation.implied_task_types:
+            if not is_text_gen_task(pred_annotation):
+                continue
             groundtruth_annotations = []
             for gt in groundtruths:
                 if gt.datum == datum:
-                    groundtruth_annotations += gt.annotations
+                    groundtruth_annotations.extend(gt.annotations)
             groundtruth_texts = [
-                gt_annotation.text for gt_annotation in groundtruth_annotations
-            ]  # TODO if enums.TaskType.TEXT_GENERATION in gt_annotation.implied_task_types
+                gt_annotation.text
+                for gt_annotation in groundtruth_annotations
+                if is_text_gen_task(gt_annotation)
+            ]
             data.append(
                 (
                     pred_annotation.text,

@@ -10,7 +10,7 @@ from valor_core import (
     text_generation,
     utilities,
 )
-from valor_core.exceptions import MismatchingTextGenerationDataError
+from valor_core.exceptions import MismatchingTextGenerationDatumError
 
 
 @dataclass
@@ -672,7 +672,7 @@ class ValorTextGenerationStreamingManager:
             non_text_comparison_metrics
         ):
             raise ValueError(
-                f"The following text generation metrics require groundtruths: '{set(self.metrics_to_return) - non_text_comparison_metrics}'"
+                f"The following text generation metrics either require groundtruths or have not been added to the ValorTextGenerationStreamingManager: '{set(self.metrics_to_return) - non_text_comparison_metrics}'"
             )
 
     def _initialize_joint_df(self):
@@ -730,7 +730,7 @@ class ValorTextGenerationStreamingManager:
                     all(rows["datum_text"] == pred.datum.text)
                     and all(rows["datum_metadata"] == pred.datum.metadata)
                 ):
-                    raise MismatchingTextGenerationDataError(
+                    raise MismatchingTextGenerationDatumError(
                         f"The provided prediction does not match the existing data for this datum_uid {pred.datum.uid}."
                     )
 
@@ -739,7 +739,7 @@ class ValorTextGenerationStreamingManager:
                     pred.datum.text != pred2.datum.text
                     or pred.datum.metadata != pred2.datum.metadata
                 ):
-                    raise MismatchingTextGenerationDataError(
+                    raise MismatchingTextGenerationDatumError(
                         f"Two predictions with the same datum_uid {pred.datum.uid} have different datum text or metadata."
                     )
 
@@ -773,6 +773,11 @@ class ValorTextGenerationStreamingManager:
         def conditions(
             row, datum_uid, prediction_text=None, prediction_context_list=None
         ):
+            assert (
+                prediction_text is not None
+                or prediction_context_list is not None
+            )
+
             if prediction_text is not None:
                 if prediction_context_list is not None:
                     return (

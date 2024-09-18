@@ -1,9 +1,10 @@
+import copy
 from unittest.mock import patch
 
 import pytest
 from valor_core import managers, schemas
 from valor_core.enums import MetricType
-from valor_core.exceptions import MismatchingTextGenerationDataError
+from valor_core.exceptions import MismatchingTextGenerationDatumError
 
 LLM_API_PARAMS = {
     "client": "openai",
@@ -163,8 +164,8 @@ def mocked_hallucination(
         (RAG_PREDICTIONS[0], tuple(RAG_CONTEXT[0])): 0.0,
         (RAG_PREDICTIONS[1], tuple(RAG_CONTEXT[1])): 0.0,
         (RAG_PREDICTIONS[2], tuple(RAG_CONTEXT[2])): 0.25,
-        ("Generated text 1.", tuple(RAG_CONTEXT[0])): 0.75,
-        ("Generated text 2.", tuple(RAG_CONTEXT[0])): 0.25,
+        ("Generated text 0.", tuple(RAG_CONTEXT[0])): 0.75,
+        ("Generated text 1.", tuple(RAG_CONTEXT[0])): 0.25,
     }
     return ret_dict[(text, tuple(context_list))]
 
@@ -228,46 +229,25 @@ def test_ValorTextGenerationStreamingManager_rag(
         "uid0": {
             "AnswerRelevance": 0.6666666666666666,
             "Bias": 0.0,
-            "BLEU": 0.3502270395690205,
             "ContextRelevance": 0.75,
             "Faithfulness": 0.4,
             "Hallucination": 0.0,
-            "ROUGE": {
-                "rouge1": 0.5925925925925926,
-                "rouge2": 0.5569620253164557,
-                "rougeL": 0.5925925925925926,
-                "rougeLsum": 0.5925925925925926,
-            },
             "Toxicity": 0.0,
         },
         "uid1": {
             "AnswerRelevance": 0.2,
             "Bias": 0.0,
-            "BLEU": 1.0,
             "ContextRelevance": 1.0,
             "Faithfulness": 0.55,
             "Hallucination": 0.0,
-            "ROUGE": {
-                "rouge1": 1.0,
-                "rouge2": 1.0,
-                "rougeL": 1.0,
-                "rougeLsum": 1.0,
-            },
             "Toxicity": 0.0,
         },
         "uid2": {
             "AnswerRelevance": 0.2,
             "Bias": 0.0,
-            "BLEU": 0.05434912989707719,
             "ContextRelevance": 0.25,
             "Faithfulness": 0.6666666666666666,
             "Hallucination": 0.25,
-            "ROUGE": {
-                "rouge1": 0.18666666666666668,
-                "rouge2": 0.0821917808219178,
-                "rougeL": 0.18666666666666668,
-                "rougeLsum": 0.18666666666666668,
-            },
             "Toxicity": 0.0,
         },
     }
@@ -330,25 +310,18 @@ def test_ValorTextGenerationStreamingManager_rag(
         )
 
     # Test adding two prediction annotations in the same prediction for the same datum.
-    pred0_two_ann = schemas.Prediction(
-        datum=schemas.Datum(
-            uid="uid0",
-            text=RAG_QUERIES[0],
-            metadata={
-                "category": "history",
-            },
+    pred0_two_ann = copy.deepcopy(rag_preds[0])
+    pred0_two_ann.annotations = [
+        schemas.Annotation(
+            text="Generated text 0.",
+            context_list=RAG_CONTEXT[0],
         ),
-        annotations=[
-            schemas.Annotation(
-                text="Generated text 1.",
-                context_list=RAG_CONTEXT[0],
-            ),
-            schemas.Annotation(
-                text="Generated text 2.",
-                context_list=RAG_CONTEXT[0],
-            ),
-        ],
-    )
+        schemas.Annotation(
+            text="Generated text 1.",
+            context_list=RAG_CONTEXT[0],
+        ),
+    ]
+
     manager = managers.ValorTextGenerationStreamingManager(
         metrics_to_return=[MetricType.Hallucination],
         llm_api_params=LLM_API_PARAMS,
@@ -358,8 +331,8 @@ def test_ValorTextGenerationStreamingManager_rag(
     metrics.extend(eval.metrics)
 
     expected_values = {
-        "Generated text 1.": 0.75,
-        "Generated text 2.": 0.25,
+        "Generated text 0.": 0.75,
+        "Generated text 1.": 0.25,
     }
 
     assert len(metrics) == 2
@@ -372,47 +345,32 @@ def test_ValorTextGenerationStreamingManager_rag(
         )
 
     # Test adding two prediction annotations in different predictions for the same datum.
-    pred0_1 = schemas.Prediction(
-        datum=schemas.Datum(
-            uid="uid0",
-            text=RAG_QUERIES[0],
-            metadata={
-                "category": "history",
-            },
+    pred0_0 = copy.deepcopy(rag_preds[0])
+    pred0_0.annotations = [
+        schemas.Annotation(
+            text="Generated text 0.",
+            context_list=RAG_CONTEXT[0],
         ),
-        annotations=[
-            schemas.Annotation(
-                text="Generated text 1.",
-                context_list=RAG_CONTEXT[0],
-            ),
-        ],
-    )
-    pred0_2 = schemas.Prediction(
-        datum=schemas.Datum(
-            uid="uid0",
-            text=RAG_QUERIES[0],
-            metadata={
-                "category": "history",
-            },
+    ]
+    pred0_1 = copy.deepcopy(rag_preds[0])
+    pred0_1.annotations = [
+        schemas.Annotation(
+            text="Generated text 1.",
+            context_list=RAG_CONTEXT[0],
         ),
-        annotations=[
-            schemas.Annotation(
-                text="Generated text 2.",
-                context_list=RAG_CONTEXT[0],
-            ),
-        ],
-    )
+    ]
+
     manager = managers.ValorTextGenerationStreamingManager(
         metrics_to_return=[MetricType.Hallucination],
         llm_api_params=LLM_API_PARAMS,
     )
     metrics = []
-    eval = manager.add_and_evaluate_prediction(predictions=[pred0_1, pred0_2])
+    eval = manager.add_and_evaluate_prediction(predictions=[pred0_0, pred0_1])
     metrics.extend(eval.metrics)
 
     expected_values = {
-        "Generated text 1.": 0.75,
-        "Generated text 2.": 0.25,
+        "Generated text 0.": 0.75,
+        "Generated text 1.": 0.25,
     }
 
     assert len(metrics) == 2
@@ -425,37 +383,14 @@ def test_ValorTextGenerationStreamingManager_rag(
         )
 
     # Adding two different predictions with the same datum uid but different datum text or metadata should raise an error.
-    pred0_modified_text = schemas.Prediction(
-        datum=schemas.Datum(
-            uid="uid0",
-            text="This is a different piece of text.",
-            metadata={
-                "category": "history",
-            },
-        ),
-        annotations=[
-            schemas.Annotation(
-                text=RAG_PREDICTIONS[0],
-                context_list=RAG_CONTEXT[0],
-            )
-        ],
-    )
-    pred0_no_metadata = schemas.Prediction(
-        datum=schemas.Datum(
-            uid="uid0",
-            text=RAG_QUERIES[0],
-            metadata=None,  # Lacks the metadata field.
-        ),
-        annotations=[
-            schemas.Annotation(
-                text=RAG_PREDICTIONS[0],
-                context_list=RAG_CONTEXT[0],
-            )
-        ],
-    )
+    pred0_modified_text = copy.deepcopy(rag_preds[0])
+    pred0_modified_text.datum.text = "This is a different piece of text."
+
+    pred0_no_metadata = copy.deepcopy(rag_preds[0])
+    pred0_no_metadata.datum.metadata = None
 
     # Error should be caught when the second prediction is added.
-    with pytest.raises(MismatchingTextGenerationDataError):
+    with pytest.raises(MismatchingTextGenerationDatumError):
         manager = managers.ValorTextGenerationStreamingManager(
             metrics_to_return=metrics_to_return,
             llm_api_params=LLM_API_PARAMS,
@@ -466,7 +401,7 @@ def test_ValorTextGenerationStreamingManager_rag(
         )
 
     # Error should be caught even though both predictions are new.
-    with pytest.raises(MismatchingTextGenerationDataError):
+    with pytest.raises(MismatchingTextGenerationDatumError):
         manager = managers.ValorTextGenerationStreamingManager(
             metrics_to_return=metrics_to_return,
             llm_api_params=LLM_API_PARAMS,
@@ -476,7 +411,7 @@ def test_ValorTextGenerationStreamingManager_rag(
         )
 
     # Error should be caught when the second prediction is added.
-    with pytest.raises(MismatchingTextGenerationDataError):
+    with pytest.raises(MismatchingTextGenerationDatumError):
         manager = managers.ValorTextGenerationStreamingManager(
             metrics_to_return=metrics_to_return,
             llm_api_params=LLM_API_PARAMS,
@@ -487,7 +422,7 @@ def test_ValorTextGenerationStreamingManager_rag(
         )
 
     # Error should be caught even though both predictions are new.
-    with pytest.raises(MismatchingTextGenerationDataError):
+    with pytest.raises(MismatchingTextGenerationDatumError):
         manager = managers.ValorTextGenerationStreamingManager(
             metrics_to_return=metrics_to_return,
             llm_api_params=LLM_API_PARAMS,
