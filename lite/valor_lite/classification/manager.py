@@ -254,46 +254,45 @@ class Evaluator:
             for label_key_idx in range(len(self.label_key_to_index))
         ]
 
-        for score_idx, score_threshold in enumerate(score_thresholds):
-            for label_idx, label in self.index_to_label.items():
-                row = counts[score_idx][label_idx]
-                kwargs = {
-                    "label": label,
-                    "score_threshold": score_threshold,
-                }
-                metrics[MetricType.Counts].append(
-                    Counts(
-                        tp=int(row[0]),
-                        fp=int(row[1]),
-                        fn=int(row[2]),
-                        tn=int(row[3]),
-                        **kwargs,
-                    )
+        for label_idx, label in self.index_to_label.items():
+            kwargs = {
+                "label": label,
+                "score_thresholds": score_thresholds,
+            }
+            row = counts[:, label_idx]
+            metrics[MetricType.Counts].append(
+                Counts(
+                    tp=row[:, 0].tolist(),
+                    fp=row[:, 1].tolist(),
+                    fn=row[:, 2].tolist(),
+                    tn=row[:, 3].tolist(),
+                    **kwargs,
                 )
-                metrics[MetricType.Precision].append(
-                    Precision(
-                        value=precision[score_idx][label_idx],
-                        **kwargs,
-                    )
+            )
+            metrics[MetricType.Precision].append(
+                Precision(
+                    value=precision[:, label_idx].tolist(),
+                    **kwargs,
                 )
-                metrics[MetricType.Recall].append(
-                    Recall(
-                        value=recall[score_idx][label_idx],
-                        **kwargs,
-                    )
+            )
+            metrics[MetricType.Recall].append(
+                Recall(
+                    value=recall[:, label_idx].tolist(),
+                    **kwargs,
                 )
-                metrics[MetricType.Accuracy].append(
-                    Accuracy(
-                        value=accuracy[score_idx][label_idx],
-                        **kwargs,
-                    )
+            )
+            metrics[MetricType.Accuracy].append(
+                Accuracy(
+                    value=accuracy[:, label_idx].tolist(),
+                    **kwargs,
                 )
-                metrics[MetricType.F1].append(
-                    F1(
-                        value=f1_score[score_idx][label_idx],
-                        **kwargs,
-                    )
+            )
+            metrics[MetricType.F1].append(
+                F1(
+                    value=f1_score[:, label_idx].tolist(),
+                    **kwargs,
                 )
+            )
 
         return metrics
 
@@ -675,7 +674,7 @@ class DataLoader:
         # verify that all predictions contain all labels
         if not np.isclose(
             self._evaluator._label_metadata[0, 1],
-            self._evaluator._label_metadata[0, 1],
+            self._evaluator._label_metadata[:, 1],
         ).all():
             raise ValueError
 

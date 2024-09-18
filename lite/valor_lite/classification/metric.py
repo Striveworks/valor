@@ -18,11 +18,11 @@ class MetricType(Enum):
 
 @dataclass
 class Counts:
-    tp: int
-    fp: int
-    fn: int
-    tn: int
-    score_threshold: float
+    tp: list[int]
+    fp: list[int]
+    fn: list[int]
+    tn: list[int]
+    score_thresholds: list[float]
     label: tuple[str, str]
 
     @property
@@ -36,7 +36,7 @@ class Counts:
                 "tn": self.tn,
             },
             parameters={
-                "score_threshold": self.score_threshold,
+                "score_thresholds": self.score_thresholds,
                 "label": {
                     "key": self.label[0],
                     "value": self.label[1],
@@ -50,8 +50,8 @@ class Counts:
 
 @dataclass
 class _ThresholdValue:
-    value: float
-    score_threshold: float
+    value: list[float]
+    score_thresholds: list[float]
     label: tuple[str, str]
 
     @property
@@ -60,7 +60,7 @@ class _ThresholdValue:
             type=type(self).__name__,
             value=self.value,
             parameters={
-                "score_threshold": self.score_threshold,
+                "score_thresholds": self.score_thresholds,
                 "label": {
                     "key": self.label[0],
                     "value": self.label[1],

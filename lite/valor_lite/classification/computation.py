@@ -133,9 +133,9 @@ def compute_metrics(
     NDArray[np.int32]
         TP, FP, FN, TN counts.
     NDArray[np.floating]
-        Recall.
-    NDArray[np.floating]
         Precision.
+    NDArray[np.floating]
+        Recall.
     NDArray[np.floating]
         Accuracy
     NDArray[np.floating]
@@ -163,7 +163,6 @@ def compute_metrics(
 
     # calculate metrics at each score threshold
     counts = np.zeros((n_scores, n_labels, 4), dtype=np.int32)
-    total_count = np.bincount(pd_labels, minlength=n_labels)
     for score_idx in range(n_scores):
         mask_score_threshold = data[:, 2] >= score_thresholds[score_idx]
         mask_score = mask_score_nonzero & mask_score_threshold
@@ -199,14 +198,13 @@ def compute_metrics(
         counts[:, :, 0],
         (counts[:, :, 0] + counts[:, :, 1]),
         where=(counts[:, :, 0] + counts[:, :, 1]) > 1e-9,
-        out=recall,
+        out=precision,
     )
 
     accuracy = np.zeros_like(recall)
     np.divide(
         (counts[:, :, 0] + counts[:, :, 3]),
-        total_count,
-        where=total_count > 1e-9,
+        n_datums,
         out=accuracy,
     )
 
