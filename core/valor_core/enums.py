@@ -15,10 +15,10 @@ class TaskType(str, Enum):
     OBJECT_DETECTION = "object-detection"
     SEMANTIC_SEGMENTATION = "semantic-segmentation"
     EMBEDDING = "embedding"
+    TEXT_GENERATION = "text-generation"
 
 
 class MetricType(str, Enum):
-
     Accuracy = ("Accuracy",)
     Precision = ("Precision",)
     Recall = ("Recall",)
@@ -34,6 +34,18 @@ class MetricType(str, Enum):
     mIOU = "mIOU"
     PrecisionRecallCurve = "PrecisionRecallCurve"
     DetailedPrecisionRecallCurve = "DetailedPrecisionRecallCurve"
+    AnswerCorrectness = "AnswerCorrectness"
+    AnswerRelevance = "AnswerRelevance"
+    Bias = "Bias"
+    BLEU = "BLEU"
+    ContextPrecision = "ContextPrecision"
+    ContextRecall = "ContextRecall"
+    ContextRelevance = "ContextRelevance"
+    Faithfulness = "Faithfulness"
+    Hallucination = "Hallucination"
+    ROUGE = "ROUGE"
+    SummaryCoherence = "SummaryCoherence"
+    Toxicity = "Toxicity"
 
     @classmethod
     def classification(cls) -> set["MetricType"]:
@@ -75,3 +87,30 @@ class MetricType(str, Enum):
             cls.IOU,
             cls.mIOU,
         }
+
+    @classmethod
+    def text_generation(cls) -> set["MetricType"]:
+        """
+        MetricTypes for text-generation tasks.
+        """
+        return {
+            cls.AnswerCorrectness,
+            cls.AnswerRelevance,
+            cls.Bias,
+            cls.BLEU,
+            cls.ContextPrecision,
+            cls.ContextRecall,
+            cls.ContextRelevance,
+            cls.Faithfulness,
+            cls.Hallucination,
+            cls.ROUGE,
+            cls.SummaryCoherence,
+            cls.Toxicity,
+        }
+
+
+class ROUGEType(str, Enum):
+    ROUGE1 = "rouge1"
+    ROUGE2 = "rouge2"
+    ROUGEL = "rougeL"
+    ROUGELSUM = "rougeLsum"

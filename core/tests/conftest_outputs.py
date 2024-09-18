@@ -950,6 +950,8 @@ def evaluate_detection_expected():
             "pr_curve_iou_threshold": 0.5,
             "pr_curve_max_examples": 1,
             "convert_annotations_to_type": None,
+            "llm_api_params": None,
+            "metric_params": None,
         },
         "confusion_matrices": [],
         "ignored_pred_labels": [],
