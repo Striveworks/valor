@@ -5,23 +5,24 @@ from valor_lite.schemas import Metric
 
 
 class MetricType(Enum):
-    BinaryClassificationMetrics = "BinaryClassificationMetrics"
+    Counts = "Counts"
     ROCAUC = "ROCAUC"
+    mROCAUC = "mROCAUC"
     PrecisionRecallCurve = "PrecisionRecallCurve"
     DetailedPrecisionRecallCurve = "DetailedPrecisionRecallCurve"
+    Precision = "Precision"
+    Recall = "Recall"
+    Accuracy = "Accuracy"
+    F1 = "F1"
 
 
 @dataclass
-class BinaryClassificationMetrics:
+class Counts:
     tp: int
     fp: int
     fn: int
     tn: int
-    precision: float
-    recall: float
-    accuracy: float
-    f1: float
-    score: float
+    score_threshold: float
     label: tuple[str, str]
 
     @property
@@ -33,13 +34,9 @@ class BinaryClassificationMetrics:
                 "fp": self.fp,
                 "fn": self.fn,
                 "tn": self.tn,
-                "precision": self.precision,
-                "recall": self.recall,
-                "accuracy": self.accuracy,
-                "f1": self.f1,
             },
             parameters={
-                "score": self.score,
+                "score_threshold": self.score_threshold,
                 "label": {
                     "key": self.label[0],
                     "value": self.label[1],
@@ -49,6 +46,46 @@ class BinaryClassificationMetrics:
 
     def to_dict(self) -> dict:
         return self.metric.to_dict()
+
+
+@dataclass
+class _ThresholdValue:
+    value: float
+    score_threshold: float
+    label: tuple[str, str]
+
+    @property
+    def metric(self) -> Metric:
+        return Metric(
+            type=type(self).__name__,
+            value=self.value,
+            parameters={
+                "score_threshold": self.score_threshold,
+                "label": {
+                    "key": self.label[0],
+                    "value": self.label[1],
+                },
+            },
+        )
+
+    def to_dict(self) -> dict:
+        return self.metric.to_dict()
+
+
+class Precision(_ThresholdValue):
+    pass
+
+
+class Recall(_ThresholdValue):
+    pass
+
+
+class Accuracy(_ThresholdValue):
+    pass
+
+
+class F1(_ThresholdValue):
+    pass
 
 
 @dataclass

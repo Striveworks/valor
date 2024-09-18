@@ -1,5 +1,6 @@
 from .annotation import Classification
 from .computation import compute_metrics
+from .manager import DataLoader, Evaluator
 from .metric import (
     F1,
     ROCAUC,
@@ -9,7 +10,6 @@ from .metric import (
     DetailedPrecisionRecallPoint,
     MetricType,
     Precision,
-    PrecisionRecallCurve,
     Recall,
     mROCAUC,
 )
@@ -25,7 +25,8 @@ __all__ = [
     "F1",
     "ROCAUC",
     "mROCAUC",
-    "PrecisionRecallCurve",
     "DetailedPrecisionRecallPoint",
     "DetailedPrecisionRecallCurve",
+    "DataLoader",
+    "Evaluator",
 ]

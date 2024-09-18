@@ -5,16 +5,16 @@ import numpy as np
 from numpy.typing import NDArray
 from tqdm import tqdm
 from valor_lite.classification.annotation import Classification
-from valor_lite.classification.computation import (
-    compute_detailed_pr_curve,
-    compute_metrics,
-)
+from valor_lite.classification.computation import compute_metrics
 from valor_lite.classification.metric import (
+    F1,
     ROCAUC,
-    BinaryClassificationMetrics,
+    Accuracy,
+    Counts,
     DetailedPrecisionRecallCurve,
-    DetailedPrecisionRecallPoint,
     MetricType,
+    Precision,
+    Recall,
     mROCAUC,
 )
 
@@ -69,8 +69,9 @@ class Evaluator:
 
         # computation caches
         self._detailed_pairs = np.array([])
-        self._label_metadata = np.array([])
-        self._label_metadata_per_datum = np.array([])
+        self._compact_pairs = np.array([])
+        self._label_metadata = np.array([], dtype=np.int32)
+        self._label_metadata_per_datum = np.array([], dtype=np.int32)
 
     @property
     def ignored_prediction_labels(self) -> list[tuple[str, str]]:
@@ -214,7 +215,7 @@ class Evaluator:
             A boolean mask that filters the cached data.
         """
 
-        data = self._detailed_pairs
+        data = self._compact_pairs
         label_metadata = self._label_metadata
         if filter_ is not None:
             data = data[filter_.indices]
@@ -232,6 +233,7 @@ class Evaluator:
             data=data,
             label_metadata=label_metadata,
             score_thresholds=np.array(score_thresholds),
+            n_datums=self.n_datums,  # FIXME - This currently breaks filtering
         )
 
         metrics = defaultdict(list)
@@ -246,7 +248,7 @@ class Evaluator:
 
         metrics[MetricType.mROCAUC] = [
             mROCAUC(
-                value=rocauc[label_key_idx],
+                value=mean_rocauc[label_key_idx],
                 label_key=self.index_to_label_key[label_key_idx],
             )
             for label_key_idx in range(len(self.label_key_to_index))
@@ -257,32 +259,52 @@ class Evaluator:
                 row = counts[score_idx][label_idx]
                 kwargs = {
                     "label": label,
-                    "score": score_threshold,
+                    "score_threshold": score_threshold,
                 }
-                metrics[MetricType.BinaryClassificationMetrics].append(
-                    BinaryClassificationMetrics(
+                metrics[MetricType.Counts].append(
+                    Counts(
                         tp=int(row[0]),
                         fp=int(row[1]),
                         fn=int(row[2]),
                         tn=int(row[3]),
-                        precision=precision[score_idx][label_idx],
-                        recall=recall[score_idx][label_idx],
-                        accuracy=accuracy[score_idx][label_idx],
-                        f1=f1_score[score_idx][label_idx],
+                        **kwargs,
+                    )
+                )
+                metrics[MetricType.Precision].append(
+                    Precision(
+                        value=precision[score_idx][label_idx],
+                        **kwargs,
+                    )
+                )
+                metrics[MetricType.Recall].append(
+                    Recall(
+                        value=recall[score_idx][label_idx],
+                        **kwargs,
+                    )
+                )
+                metrics[MetricType.Accuracy].append(
+                    Accuracy(
+                        value=accuracy[score_idx][label_idx],
+                        **kwargs,
+                    )
+                )
+                metrics[MetricType.F1].append(
+                    F1(
+                        value=f1_score[score_idx][label_idx],
                         **kwargs,
                     )
                 )
 
         return metrics
 
-    # def compute_detailed_pr_curve(
-    #     self,
-    #     iou_thresholds: list[float] = [0.5],
-    #     score_thresholds: list[float] = [
-    #         score / 10.0 for score in range(1, 11)
-    #     ],
-    #     n_samples: int = 0,
-    # ) -> list[DetailedPrecisionRecallCurve]:
+    def compute_detailed_pr_curve(
+        self,
+        score_thresholds: list[float] = [
+            score / 10.0 for score in range(1, 11)
+        ],
+        n_samples: int = 0,
+    ) -> list[DetailedPrecisionRecallCurve]:
+        return list()
 
     #     if self._detailed_pairs.size == 0:
     #         return list()
@@ -487,13 +509,16 @@ class DataLoader:
                     ]
                 )
 
-            self._evaluator._detailed_pairs = np.concatenate(
-                [
-                    self._evaluator._detailed_pairs,
-                    np.array(pairs),
-                ],
-                axis=0,
-            )
+            if self._evaluator._detailed_pairs.size == 0:
+                self._evaluator._detailed_pairs = np.array(pairs)
+            else:
+                self._evaluator._detailed_pairs = np.concatenate(
+                    [
+                        self._evaluator._detailed_pairs,
+                        np.array(pairs),
+                    ],
+                    axis=0,
+                )
 
     def add_data_from_valor_dict(
         self,
@@ -587,13 +612,16 @@ class DataLoader:
                     ]
                 )
 
-            self._evaluator._detailed_pairs = np.concatenate(
-                [
-                    self._evaluator._detailed_pairs,
-                    np.array(pairs),
-                ],
-                axis=0,
-            )
+            if self._evaluator._detailed_pairs.size == 0:
+                self._evaluator._detailed_pairs = np.array(pairs)
+            else:
+                self._evaluator._detailed_pairs = np.concatenate(
+                    [
+                        self._evaluator._detailed_pairs,
+                        np.array(pairs),
+                    ],
+                    axis=0,
+                )
 
     def finalize(self) -> Evaluator:
 
@@ -627,33 +655,44 @@ class DataLoader:
         self._evaluator._label_metadata = np.array(
             [
                 [
-                    float(
-                        np.sum(
-                            self._evaluator._label_metadata_per_datum[
-                                0, :, label_idx
-                            ]
-                        )
-                    ),
-                    float(
-                        np.sum(
-                            self._evaluator._label_metadata_per_datum[
-                                1, :, label_idx
-                            ]
-                        )
-                    ),
-                    float(
-                        self._evaluator.label_index_to_label_key_index[
-                            label_idx
+                    np.sum(
+                        self._evaluator._label_metadata_per_datum[
+                            0, :, label_idx
                         ]
                     ),
+                    np.sum(
+                        self._evaluator._label_metadata_per_datum[
+                            1, :, label_idx
+                        ]
+                    ),
+                    self._evaluator.label_index_to_label_key_index[label_idx],
                 ]
                 for label_idx in range(n_labels)
-            ]
+            ],
+            dtype=np.int32,
         )
 
-        # sort by score
-        indices = np.argsort(-self._evaluator._detailed_pairs[:, 3])
-        self._evaluator._detailed_pairs = self._evaluator._detailed_pairs[
+        # verify that all predictions contain all labels
+        if not np.isclose(
+            self._evaluator._label_metadata[0, 1],
+            self._evaluator._label_metadata[0, 1],
+        ).all():
+            raise ValueError
+
+        # remove datums for compact representation
+        self._evaluator._compact_pairs = self._evaluator._detailed_pairs[
+            :, 1:
+        ].copy()
+
+        # sort compact pairs by groundtruth, prediction, score
+        indices = np.lexsort(
+            (
+                self._evaluator._compact_pairs[:, 0],
+                self._evaluator._compact_pairs[:, 1],
+                -self._evaluator._compact_pairs[:, 2],
+            )
+        )
+        self._evaluator._compact_pairs = self._evaluator._compact_pairs[
             indices
         ]
 

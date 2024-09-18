@@ -1,4 +1,5 @@
 import numpy as np
+from valor_lite.classification import Classification, DataLoader, MetricType
 from valor_lite.classification.computation import _compute_rocauc
 
 
@@ -63,57 +64,58 @@ def test__compute_rocauc():
     ```
     """
 
+    # groundtruth, prediction, score
     animals_and_colors = np.array(
         [
             # (animal, bird)
-            [0, 0, 0, 0.6],
-            [5, 1, 0, 0.2],
-            [2, 0, 0, 0.15],
-            [3, 0, 0, 0.15],
-            [1, 1, 0, 0.0],
-            [4, 2, 0, 0.0],
+            [0, 0, 0.6],
+            [1, 0, 0.2],
+            [0, 0, 0.15],
+            [0, 0, 0.15],
+            [1, 0, 0.0],
+            [2, 0, 0.0],
             # (animal, dog)
-            [3, 0, 1, 0.75],
-            [5, 1, 1, 0.4],
-            [0, 0, 1, 0.2],
-            [1, 1, 1, 0.1],
-            [2, 0, 1, 0.05],
-            [4, 2, 1, 0.0],
+            [0, 1, 0.75],
+            [1, 1, 0.4],
+            [0, 1, 0.2],
+            [1, 1, 0.1],
+            [0, 1, 0.05],
+            [2, 1, 0.0],
             # (animal, cat)
-            [4, 2, 2, 1.0],
-            [1, 1, 2, 0.9],
-            [2, 0, 2, 0.8],
-            [5, 1, 2, 0.4],
-            [0, 0, 2, 0.2],
-            [3, 0, 2, 0.1],
+            [2, 2, 1.0],
+            [1, 2, 0.9],
+            [0, 2, 0.8],
+            [1, 2, 0.4],
+            [0, 2, 0.2],
+            [0, 2, 0.1],
             # (color, white)
-            [3, 5, 3, 1.0],
-            [0, 3, 3, 0.65],
-            [1, 3, 3, 0.3],
-            [2, 4, 3, 0.2],
-            [5, 4, 3, 0.06],
-            [4, 6, 3, 0.0],
+            [5, 3, 1.0],
+            [3, 3, 0.65],
+            [3, 3, 0.3],
+            [4, 3, 0.2],
+            [4, 3, 0.06],
+            [6, 3, 0.0],
             # (color, red)
-            [5, 4, 4, 0.9],
-            [4, 6, 4, 0.8],
-            [0, 3, 4, 0.1],
-            [2, 4, 4, 0.4],
-            [1, 3, 4, 0.0],
-            [3, 5, 4, 0.0],
+            [4, 4, 0.9],
+            [6, 4, 0.8],
+            [3, 4, 0.1],
+            [4, 4, 0.4],
+            [3, 4, 0.0],
+            [5, 4, 0.0],
             # (color, blue)
-            [1, 3, 5, 0.5],
-            [0, 3, 5, 0.2],
-            [4, 6, 5, 0.2],
-            [2, 4, 5, 0.1],
-            [5, 4, 5, 0.01],
-            [3, 5, 5, 0.0],
+            [3, 5, 0.5],
+            [3, 5, 0.2],
+            [6, 5, 0.2],
+            [4, 5, 0.1],
+            [4, 5, 0.01],
+            [5, 5, 0.0],
             # (color, black)
-            [2, 4, 6, 0.3],
-            [1, 3, 6, 0.2],
-            [0, 3, 6, 0.05],
-            [5, 4, 6, 0.03],
-            [3, 5, 6, 0.0],
-            [4, 6, 6, 0.0],
+            [4, 6, 0.3],
+            [3, 6, 0.2],
+            [3, 6, 0.05],
+            [4, 6, 0.03],
+            [5, 6, 0.0],
+            [6, 6, 0.0],
         ],
         dtype=np.float64,
     )
@@ -156,3 +158,93 @@ def test__compute_rocauc():
     assert (
         mean_rocauc == np.array([0.8009259259259259, 0.43125])  # animal, color
     ).all()
+
+
+def test_rocauc_with_example(classifications: list[Classification]):
+
+    loader = DataLoader()
+    loader.add_data(classifications)
+    evaluator = loader.finalize()
+
+    metrics = evaluator.evaluate()
+
+    # test ROCAUC
+    actual_metrics = [m.to_dict() for m in metrics[MetricType.ROCAUC]]
+    expected_metrics = [
+        {
+            "type": "ROCAUC",
+            "value": 0.7777777777777778,
+            "parameters": {
+                "label": {"key": "animal", "value": "bird"},
+            },
+        },
+        {
+            "type": "ROCAUC",
+            "value": 0.625,
+            "parameters": {
+                "label": {"key": "animal", "value": "dog"},
+            },
+        },
+        {
+            "type": "ROCAUC",
+            "value": 1.0,
+            "parameters": {
+                "label": {"key": "animal", "value": "cat"},
+            },
+        },
+        {
+            "type": "ROCAUC",
+            "value": 0.75,
+            "parameters": {
+                "label": {"key": "color", "value": "white"},
+            },
+        },
+        {
+            "type": "ROCAUC",
+            "value": 0.875,
+            "parameters": {
+                "label": {"key": "color", "value": "red"},
+            },
+        },
+        {
+            "type": "ROCAUC",
+            "value": 0.0,
+            "parameters": {
+                "label": {"key": "color", "value": "blue"},
+            },
+        },
+        {
+            "type": "ROCAUC",
+            "value": 0.09999999999999998,
+            "parameters": {
+                "label": {"key": "color", "value": "black"},
+            },
+        },
+    ]
+    for m in actual_metrics:
+        assert m in expected_metrics
+    for m in expected_metrics:
+        assert m in actual_metrics
+
+    # test mROCAUC
+    actual_metrics = [m.to_dict() for m in metrics[MetricType.mROCAUC]]
+    expected_metrics = [
+        {
+            "type": "mROCAUC",
+            "value": 0.8009259259259259,
+            "parameters": {
+                "label_key": "animal",
+            },
+        },
+        {
+            "type": "mROCAUC",
+            "value": 0.43125,
+            "parameters": {
+                "label_key": "color",
+            },
+        },
+    ]
+    for m in actual_metrics:
+        assert m in expected_metrics
+    for m in expected_metrics:
+        assert m in actual_metrics
