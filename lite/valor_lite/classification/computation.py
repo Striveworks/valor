@@ -204,7 +204,7 @@ def compute_metrics(
     accuracy = np.zeros_like(recall)
     np.divide(
         (counts[:, :, 0] + counts[:, :, 3]),
-        n_datums,
+        float(n_datums),
         out=accuracy,
     )
 
