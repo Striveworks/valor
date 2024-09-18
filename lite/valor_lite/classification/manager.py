@@ -671,13 +671,6 @@ class DataLoader:
             dtype=np.int32,
         )
 
-        # verify that all predictions contain all labels
-        if not np.isclose(
-            self._evaluator._label_metadata[0, 1],
-            self._evaluator._label_metadata[:, 1],
-        ).all():
-            raise ValueError
-
         # remove datums for compact representation
         self._evaluator._compact_pairs = self._evaluator._detailed_pairs[
             :, 1:
