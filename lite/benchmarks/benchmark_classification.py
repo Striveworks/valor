@@ -139,14 +139,14 @@ class Benchmark:
                 "total": f"{round(self.ingestion + self.precomputation, 2)} seconds",
             },
             "base_evaluation": f"{round(self.evaluation, 2)} seconds",
-            # "detailed_pr_curve": [
-            #     {
-            #         "n_points": 10,
-            #         "n_examples": curve[0],
-            #         "computation": f"{round(curve[1], 2)} seconds",
-            #     }
-            #     for curve in self.detailed_curves
-            # ],
+            "detailed_pr_curve": [
+                {
+                    "n_points": 10,
+                    "n_examples": curve[0],
+                    "computation": f"{round(curve[1], 2)} seconds",
+                }
+                for curve in self.detailed_curves
+            ],
         }
 
 
@@ -197,12 +197,12 @@ def run_benchmarking_analysis(
 
         # test detailed pr curve with no samples
         detailed_pr_curve_time_no_samples, _ = time_it(
-            evaluator.compute_detailed_pr_curve
+            evaluator.compute_detailed_counts
         )()
 
         # test detailed pr curve with 3 samples
         detailed_pr_curve_time_three_samples, _ = time_it(
-            evaluator.compute_detailed_pr_curve
+            evaluator.compute_detailed_counts
         )(n_samples=3)
 
         # evaluate
