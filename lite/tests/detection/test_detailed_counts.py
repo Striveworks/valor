@@ -1,10 +1,6 @@
 import numpy as np
-from valor_lite.detection import (
-    DataLoader,
-    Detection,
-    Evaluator,
-    compute_detailed_counts,
-)
+from valor_lite.detection import DataLoader, Detection, Evaluator
+from valor_lite.detection.computation import compute_detailed_counts
 
 
 def test_detailed_pr_curve_no_data():
@@ -25,13 +21,13 @@ def test_compute_detailed_counts():
             [4.0, 5.0, -1.0, 0.5, 0.0, -1.0, -1.0],
         ]
     )
-    label_counts = np.array([[3, 4], [1, 0]])
+    label_metadata = np.array([[3, 4], [1, 0]])
     iou_thresholds = np.array([0.5])
     score_thresholds = np.array([score / 100.0 for score in range(1, 101)])
 
     results = compute_detailed_counts(
         data=sorted_pairs,
-        label_counts=label_counts,
+        label_metadata=label_metadata,
         iou_thresholds=iou_thresholds,
         score_thresholds=score_thresholds,
         n_samples=0,
@@ -93,7 +89,7 @@ def test_compute_detailed_counts():
 
     results = compute_detailed_counts(
         data=sorted_pairs,
-        label_counts=label_counts,
+        label_metadata=label_metadata,
         iou_thresholds=iou_thresholds,
         score_thresholds=score_thresholds,
         n_samples=n_samples,
@@ -229,6 +225,15 @@ def test_detailed_pr_curve_using_torch_metrics_example(
     assert evaluator.n_labels == 6
     assert evaluator.n_groundtruths == 20
     assert evaluator.n_predictions == 19
+
+    raw = compute_detailed_counts(
+        data=evaluator._detailed_pairs,
+        label_metadata=evaluator._label_metadata,
+        iou_thresholds=np.array([0.5, 0.75]),
+        score_thresholds=np.array([0.25, 0.75]),
+        n_samples=0,
+    )
+    print(raw)
 
     metrics = evaluator.compute_detailed_counts(
         iou_thresholds=[0.5, 0.75],
@@ -463,9 +468,6 @@ def test_detailed_pr_curve_using_torch_metrics_example(
         },
     ]
     for m in actual_metrics:
-        import json
-
-        print(json.dumps(m, indent=4))
         assert m in expected_metrics
     for m in expected_metrics:
         assert m in actual_metrics

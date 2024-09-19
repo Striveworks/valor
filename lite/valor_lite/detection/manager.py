@@ -34,12 +34,12 @@ from valor_lite.detection.metric import (
 Usage
 -----
 
-manager = DataLoader()
-manager.add_data(
+loader = DataLoader()
+loader.add_data(
     groundtruths=groundtruths,
     predictions=predictions,
 )
-evaluator = manager.finalize()
+evaluator = loader.finalize()
 
 metrics = evaluator.evaluate(iou_thresholds=[0.5])
 
@@ -207,9 +207,6 @@ class Evaluator:
         return Filter(
             indices=np.where(mask_pairs)[0],
             label_metadata=label_metadata,
-            # uids=datum_uids,
-            # labels=labels,
-            # label_keys=label_keys,
         )
 
     def evaluate(
@@ -254,7 +251,7 @@ class Evaluator:
             pr_curves,
         ) = compute_metrics(
             data=data,
-            label_counts=label_metadata,
+            label_metadata=label_metadata,
             iou_thresholds=np.array(iou_thresholds),
             score_thresholds=np.array(score_thresholds),
         )
@@ -435,7 +432,7 @@ class Evaluator:
 
         metrics = compute_detailed_counts(
             self._detailed_pairs,
-            label_counts=self._label_metadata,
+            label_metadata=self._label_metadata,
             iou_thresholds=np.array(iou_thresholds),
             score_thresholds=np.array(score_thresholds),
             n_samples=n_samples,
@@ -876,7 +873,7 @@ class DataLoader:
 
         self._evaluator._ranked_pairs = compute_ranked_pairs(
             self.pairs,
-            label_counts=self._evaluator._label_metadata,
+            label_metadata=self._evaluator._label_metadata,
         )
 
         return self._evaluator

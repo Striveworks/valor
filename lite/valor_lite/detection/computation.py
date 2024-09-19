@@ -49,7 +49,7 @@ def compute_iou(data: NDArray[np.floating]) -> NDArray[np.floating]:
 
 def _compute_ranked_pairs_for_datum(
     data: np.ndarray,
-    label_counts: np.ndarray,
+    label_metadata: np.ndarray,
 ) -> np.ndarray:
     """
     Computes ranked pairs for a datum.
@@ -69,7 +69,7 @@ def _compute_ranked_pairs_for_datum(
     data = data[indices]
 
     # remove ignored predictions
-    for label_idx, count in enumerate(label_counts[:, 0]):
+    for label_idx, count in enumerate(label_metadata[:, 0]):
         if count > 0:
             continue
         data = data[data[:, 5] != label_idx]
@@ -85,13 +85,13 @@ def _compute_ranked_pairs_for_datum(
 
 def compute_ranked_pairs(
     data: list[NDArray[np.floating]],
-    label_counts: NDArray[np.integer],
+    label_metadata: NDArray[np.integer],
 ) -> NDArray[np.floating]:
     pairs = np.concatenate(
         [
             _compute_ranked_pairs_for_datum(
                 datum,
-                label_counts=label_counts,
+                label_metadata=label_metadata,
             )
             for datum in data
         ],
@@ -108,7 +108,7 @@ def compute_ranked_pairs(
 
 def compute_metrics(
     data: np.ndarray,
-    label_counts: np.ndarray,
+    label_metadata: np.ndarray,
     iou_thresholds: np.ndarray,
     score_thresholds: np.ndarray,
 ) -> tuple[
@@ -143,7 +143,7 @@ def compute_metrics(
     """
 
     n_rows = data.shape[0]
-    n_labels = label_counts.shape[0]
+    n_labels = label_metadata.shape[0]
     n_ious = iou_thresholds.shape[0]
     n_scores = score_thresholds.shape[0]
 
@@ -153,7 +153,7 @@ def compute_metrics(
 
     pd_labels = data[:, 5].astype(int)
     unique_pd_labels = np.unique(pd_labels)
-    gt_count = label_counts[:, 0]
+    gt_count = label_metadata[:, 0]
     running_total_count = np.zeros(
         (n_ious, n_rows),
         dtype=np.float64,
@@ -313,8 +313,8 @@ def compute_metrics(
     average_recall /= n_ious
 
     # calculate mAP and mAR
-    label_key_mapping = label_counts[unique_pd_labels, 2]
-    label_keys = np.unique(label_counts[:, 2])
+    label_key_mapping = label_metadata[unique_pd_labels, 2]
+    label_keys = np.unique(label_metadata[:, 2])
     mAP = np.ones((n_ious, label_keys.shape[0])) * -1.0
     mAR = np.ones((n_scores, label_keys.shape[0])) * -1.0
     for key in np.unique(label_key_mapping):
@@ -354,7 +354,7 @@ def compute_metrics(
 
 def compute_detailed_counts(
     data: np.ndarray,
-    label_counts: np.ndarray,
+    label_metadata: np.ndarray,
     iou_thresholds: np.ndarray,
     score_thresholds: np.ndarray,
     n_samples: int,
@@ -370,7 +370,7 @@ def compute_detailed_counts(
     5  fn - hallucination
     """
 
-    n_labels = label_counts.shape[0]
+    n_labels = label_metadata.shape[0]
     n_ious = iou_thresholds.shape[0]
     n_scores = score_thresholds.shape[0]
     n_metrics = 5 * (n_samples + 1)
@@ -396,15 +396,19 @@ def compute_detailed_counts(
         mask_gt_pd_match_iou = mask_gt_pd_match & mask_iou
         mask_gt_pd_mismatch_iou = mask_gt_pd_mismatch & mask_iou
         for score_idx in range(n_scores):
+
             mask_score = data[:, 6] >= score_thresholds[score_idx]
             mask_tp = mask_gt_pd_match_iou & mask_score
+
             mask_fp_misclf = mask_gt_pd_mismatch_iou & mask_score
-            mask_fn_misclf = mask_gt_pd_match_iou & ~mask_score
-            mask_halluc_missing = ~(
-                mask_gt_pd_match_iou | (mask_gt_pd_mismatch & mask_score)
+            mask_fp_halluc = (mask_gt_pd_mismatch & ~mask_iou & mask_score) | (
+                mask_pd_exists & ~mask_gt_exists
             )
-            mask_fp_halluc = mask_halluc_missing & mask_pd_exists
-            mask_fn_misprd = mask_halluc_missing & mask_gt_exists
+
+            mask_fn_misclf = mask_gt_pd_match_iou & ~mask_score
+            mask_fn_misprd = (mask_gt_pd_match & ~mask_iou & ~mask_score) | (
+                ~mask_pd_exists & mask_gt_exists
+            )
 
             tp_slice = data[mask_tp]
             fp_misclf_slice = data[mask_fp_misclf]
