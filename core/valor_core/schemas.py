@@ -1218,6 +1218,8 @@ class Datum:
     ----------
     uid : str
         The UID of the datum.
+    text : str, optional
+        If the datum is a piece of text, then this field should contain the text.
     metadata : dict[str, Any]
         A dictionary of metadata that describes the datum.
 
@@ -1226,9 +1228,11 @@ class Datum:
     >>> Datum(uid="uid1")
     >>> Datum(uid="uid1", metadata={})
     >>> Datum(uid="uid1", metadata={"foo": "bar", "pi": 3.14})
+    >>> Datum(uid="uid2", text="What is the capital of Kenya?")
     """
 
     uid: str | None = None
+    text: str | None = None
     metadata: dict | None = None
 
     def __post_init__(
@@ -1239,6 +1243,10 @@ class Datum:
         if not isinstance(self.uid, (str, type(None))):
             raise TypeError(
                 f"Expected 'uid' to be of type 'str' or 'None', got {type(self.uid).__name__}"
+            )
+        if not isinstance(self.text, (str, type(None))):
+            raise TypeError(
+                f"Expected 'text' to be of type 'str' or 'None', got {type(self.text).__name__}"
             )
         if not isinstance(self.metadata, (dict, type(None))):
             raise TypeError(
@@ -1364,6 +1372,10 @@ class Annotation:
         A boolean describing whether we should treat the Raster attached to an annotation as an instance segmentation or not. If set to true, then the Annotation will be validated for use in object detection tasks. If set to false, then the Annotation will be validated for use in semantic segmentation tasks.
     implied_task_types: list[str], optional
         The validated task types that are applicable to each Annotation. Doesn't need to bet set by the user.
+    text: str, optional
+        A piece of text to assign to the 'Annotation'.
+    context_list: list[str], optional
+        A list of contexts to assign to the 'Annotation'.
 
     Examples
     --------
@@ -1410,9 +1422,15 @@ class Annotation:
     ...     raster=Raster(...),
     ...     is_instance=False # or None
     ... )
+
+    Text Generation Annotation with text and context_list. Not all text generation tasks require both text and context.
+    >>> annotation = Annotation(
+    ...     text="Abraham Lincoln was the 16th President of the United States.",
+    ...     context_list=["Lincoln was elected the 16th president of the United States in 1860.", "Abraham Lincoln was born on February 12, 1809, in a one-room log cabin on the Sinking Spring Farm in Hardin County, Kentucky."],
+    ... )
     """
 
-    labels: list[Label]
+    labels: list[Label] | None = None
     metadata: dict | None = None
     bounding_box: Box | None = None
     polygon: Polygon | Box | None = None
@@ -1420,16 +1438,21 @@ class Annotation:
     embedding: Embedding | None = None
     is_instance: bool | None = None
     implied_task_types: list[str] | None = None
+    text: str | None = None
+    context_list: list[str] | None = None
 
     def __post_init__(self):
         """Validate instantiated class."""
 
-        if not isinstance(self.labels, list):
-            raise TypeError(
-                f"Expected 'labels' to be of type 'list', got {type(self.labels).__name__}"
-            )
-        if not all(isinstance(label, Label) for label in self.labels):
-            raise TypeError("All items in 'labels' must be of type 'Label'")
+        if self.labels is not None:
+            if not isinstance(self.labels, list):
+                raise TypeError(
+                    f"Expected 'labels' to be of type 'list' or 'None', got {type(self.labels).__name__}"
+                )
+            if not all(isinstance(label, Label) for label in self.labels):
+                raise TypeError(
+                    "All items in 'labels' must be of type 'Label'"
+                )
 
         if not isinstance(self.metadata, (dict, type(None))):
             raise TypeError(
@@ -1472,6 +1495,24 @@ class Annotation:
                 "All items in 'implied_task_types' must be of type 'str'"
             )
 
+        if not isinstance(self.text, (str, type(None))):
+            raise TypeError(
+                f"Expected 'text' to be of type 'str' or 'None', got {type(self.text).__name__}"
+            )
+
+        if self.context_list is not None:
+            if not isinstance(self.context_list, list):
+                raise TypeError(
+                    f"Expected 'context_list' to be of type 'list' or 'None', got {type(self.context_list).__name__}"
+                )
+
+            if not all(
+                isinstance(context, str) for context in self.context_list
+            ):
+                raise TypeError(
+                    "All items in 'context_list' must be of type 'str'"
+                )
+
 
 @dataclass
 class EvaluationParameters:
@@ -1494,6 +1535,10 @@ class EvaluationParameters:
             The IOU threshold to use when calculating precision-recall curves for object detection tasks. Defaults to 0.5.
     pr_curve_max_examples: int
         The maximum number of datum examples to store when calculating PR curves.
+    llm_api_params: dict[str, str | dict], optional
+        A dictionary of parameters for the LLM API. Only required by some text generation metrics.
+    metric_params: dict[str, dict], optional
+        A dictionary of optional parameters to pass in to specific metrics.
     """
 
     label_map: dict[Label, Label] | None = None
@@ -1504,6 +1549,8 @@ class EvaluationParameters:
     recall_score_threshold: float = 0.0
     pr_curve_iou_threshold: float = 0.5
     pr_curve_max_examples: int = 1
+    llm_api_params: dict[str, str | dict] | None = None
+    metric_params: dict[str, dict] | None = None
 
     def __post_init__(self):
         """Validate instantiated class."""
@@ -1574,14 +1621,54 @@ class EvaluationParameters:
                 f"Expected 'pr_curve_max_examples' to be of type 'int', got {type(self.pr_curve_max_examples).__name__}"
             )
 
+        if self.llm_api_params is not None:
+            if not isinstance(self.llm_api_params, dict):
+                raise TypeError(
+                    f"Expected 'llm_api_params' to be of type 'dict' or 'None', got {type(self.llm_api_params).__name__}"
+                )
+            if not all(
+                isinstance(key, str) for key in self.llm_api_params.keys()
+            ):
+                raise TypeError(
+                    "All keys in 'llm_api_params' must be of type 'str'"
+                )
+
+            if not all(
+                isinstance(value, (str, dict))
+                for value in self.llm_api_params.values()
+            ):
+                raise TypeError(
+                    "All values in 'llm_api_params' must be of type 'str' or 'dict'"
+                )
+
+        if self.metric_params is not None:
+            if not isinstance(self.metric_params, dict):
+                raise TypeError(
+                    f"Expected 'metric_params' to be of type 'dict' or 'None', got {type(self.llm_api_params).__name__}"
+                )
+            if not all(
+                isinstance(key, str) for key in self.metric_params.keys()
+            ):
+                raise TypeError(
+                    "All keys in 'metric_params' must be of type 'str'"
+                )
+
+            if not all(
+                isinstance(value, dict)
+                for value in self.metric_params.values()
+            ):
+                raise TypeError(
+                    "All values in 'metric_params' must be of type 'dict'"
+                )
+
 
 @dataclass
 class Evaluation:
     parameters: EvaluationParameters
     metrics: list[dict]
-    confusion_matrices: list[dict] | None
-    ignored_pred_labels: list[tuple[str, str]] | None
-    missing_pred_labels: list[tuple[str, str]] | None
+    confusion_matrices: list[dict] | None = None
+    ignored_pred_labels: list[tuple[str, str]] | None = None
+    missing_pred_labels: list[tuple[str, str]] | None = None
     meta: dict | None = None
 
     def __str__(self) -> str:

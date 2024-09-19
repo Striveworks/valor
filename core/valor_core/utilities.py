@@ -1,6 +1,10 @@
+import json
+from typing import Any
+
 import numpy as np
 import pandas as pd
 from valor_core import enums, schemas
+from valor_core.exceptions import InvalidLLMResponseError
 
 
 def concatenate_df_if_not_empty(
@@ -204,6 +208,41 @@ def validate_metrics_to_return(
             raise ValueError(
                 f"The following metrics are not supported for object detection: '{set(metrics_to_return) - enums.MetricType.object_detection()}'"
             )
+
+    if task_type == enums.TaskType.TEXT_GENERATION:
+        if not set(metrics_to_return).issubset(
+            enums.MetricType.text_generation()
+        ):
+            raise ValueError(
+                f"The following metrics are not supported for text generation: '{set(metrics_to_return) - enums.MetricType.text_generation()}'"
+            )
+
+
+def validate_metric_parameters(
+    metrics_to_return: list[enums.MetricType],
+    metric_params: dict[str, dict],
+):
+    # check that the keys of metric parameters are all in metrics_to_return
+    if not set(metric_params.keys()).issubset(
+        [metric.value for metric in metrics_to_return]
+    ):
+        raise ValueError(
+            "The keys of metric_params must be a subset of the metrics_to_return."
+        )
+
+    if enums.MetricType.BLEU in metric_params:
+        bleu_params = metric_params[enums.MetricType.BLEU.value]
+        if "weights" in bleu_params:
+            bleu_weights = bleu_params["weights"]
+            if not all(
+                isinstance(weight, (int, float)) and 0 <= weight
+                for weight in bleu_weights
+            ):
+                raise ValueError(
+                    "BLEU metric weights must be a list of non-negative integers or floats."
+                )
+            if sum(bleu_weights) != 1:
+                raise ValueError("BLEU metric weights must sum to 1.")
 
 
 def validate_parameters(
@@ -534,56 +573,84 @@ def _convert_groundtruth_or_prediction_to_dataframe(
             ann_embeding = ann.embedding
             ann_polygon = ann.polygon
             ann_is_instance = ann.is_instance
+            ann_text = ann.text
+            ann_context_list = ann.context_list
 
-            for k, label in enumerate(ann.labels):
+            if ann.labels is not None:
+                for k, label in enumerate(ann.labels):
+                    id_ = (
+                        str(ann_id) + str(i) + str(j) + str(k)
+                    )  # we use indices here, rather than a hash() so that the IDs are sequential. this prevents randomness when two predictions share the same score
+                    label_key = label.key
+                    label_value = label.value
+                    label_score = label.score
+                    label_id = hash(label_key + label_value)
+
+                    # only include scores for predictions
+                    if isinstance(obj, schemas.Prediction):
+                        output.append(
+                            {
+                                "datum_uid": datum_uid,
+                                "datum_id": datum_id,
+                                "datum_metadata": datum_metadata,
+                                "annotation_id": ann_id,
+                                "annotation_metadata": ann_metadata,
+                                "bounding_box": ann_bbox,
+                                "raster": ann_raster,
+                                "embedding": ann_embeding,
+                                "polygon": ann_polygon,
+                                "is_instance": ann_is_instance,
+                                "text": ann_text,
+                                "context_list": ann_context_list,
+                                "label_key": label_key,
+                                "label_value": label_value,
+                                "score": label_score,
+                                "label_id": label_id,
+                                "id": id_,
+                            }
+                        )
+                    else:
+                        output.append(
+                            {
+                                "datum_uid": datum_uid,
+                                "datum_id": datum_id,
+                                "datum_metadata": datum_metadata,
+                                "annotation_id": ann_id,
+                                "annotation_metadata": ann_metadata,
+                                "bounding_box": ann_bbox,
+                                "raster": ann_raster,
+                                "embedding": ann_embeding,
+                                "polygon": ann_polygon,
+                                "is_instance": ann_is_instance,
+                                "text": ann_text,
+                                "context_list": ann_context_list,
+                                "label_key": label_key,
+                                "label_value": label_value,
+                                "label_id": label_id,
+                                "id": id_,
+                            }
+                        )
+            else:
                 id_ = (
-                    str(ann_id) + str(i) + str(j) + str(k)
+                    str(ann_id) + str(i) + str(j) + "0"
                 )  # we use indices here, rather than a hash() so that the IDs are sequential. this prevents randomness when two predictions share the same score
-                label_key = label.key
-                label_value = label.value
-                label_score = label.score
-                label_id = hash(label_key + label_value)
-
-                # only include scores for predictions
-                if isinstance(obj, schemas.Prediction):
-                    output.append(
-                        {
-                            "datum_uid": datum_uid,
-                            "datum_id": datum_id,
-                            "datum_metadata": datum_metadata,
-                            "annotation_id": ann_id,
-                            "annotation_metadata": ann_metadata,
-                            "bounding_box": ann_bbox,
-                            "raster": ann_raster,
-                            "embedding": ann_embeding,
-                            "polygon": ann_polygon,
-                            "is_instance": ann_is_instance,
-                            "label_key": label_key,
-                            "label_value": label_value,
-                            "score": label_score,
-                            "label_id": label_id,
-                            "id": id_,
-                        }
-                    )
-                else:
-                    output.append(
-                        {
-                            "datum_uid": datum_uid,
-                            "datum_id": datum_id,
-                            "datum_metadata": datum_metadata,
-                            "annotation_id": ann_id,
-                            "annotation_metadata": ann_metadata,
-                            "bounding_box": ann_bbox,
-                            "raster": ann_raster,
-                            "embedding": ann_embeding,
-                            "polygon": ann_polygon,
-                            "is_instance": ann_is_instance,
-                            "label_key": label_key,
-                            "label_value": label_value,
-                            "label_id": label_id,
-                            "id": id_,
-                        }
-                    )
+                output.append(
+                    {
+                        "datum_uid": datum_uid,
+                        "datum_id": datum_id,
+                        "datum_metadata": datum_metadata,
+                        "annotation_id": ann_id,
+                        "annotation_metadata": ann_metadata,
+                        "bounding_box": ann_bbox,
+                        "raster": ann_raster,
+                        "embedding": ann_embeding,
+                        "polygon": ann_polygon,
+                        "is_instance": ann_is_instance,
+                        "text": ann_text,
+                        "context_list": ann_context_list,
+                        "id": id_,
+                    }
+                )
 
     return (
         pd.DataFrame(output)
@@ -601,6 +668,8 @@ def _convert_groundtruth_or_prediction_to_dataframe(
                 "embedding",
                 "polygon",
                 "is_instance",
+                "text",
+                "context_list",
                 "label_key",
                 "label_value",
                 "score",
@@ -683,6 +752,8 @@ def _identify_implied_task_types(
         & df.get("polygon", null_placeholder_column).isnull()
         & df.get("raster", null_placeholder_column).isnull()
         & df.get("embedding", null_placeholder_column).isnull()
+        & df.get("text", null_placeholder_column).isnull()
+        & df.get("context_list", null_placeholder_column).isnull()
     ].index
 
     # object detection tasks have is_instance=True & one of (bounding_box, polygon, raster)
@@ -703,6 +774,8 @@ def _identify_implied_task_types(
         )
         & df.get("is_instance", null_placeholder_column).isin([True])
         & df.get("embedding", null_placeholder_column).isnull()
+        & df.get("text", null_placeholder_column).isnull()
+        & df.get("context_list", null_placeholder_column).isnull()
     ].index
 
     # semantic segmentation tasks only support rasters
@@ -714,6 +787,24 @@ def _identify_implied_task_types(
         & df.get("raster", null_placeholder_column).notnull()
         & df.get("embedding", null_placeholder_column).isnull()
         & df.get("is_instance", null_placeholder_column).isin([None, False])
+        & df.get("text", null_placeholder_column).isnull()
+        & df.get("context_list", null_placeholder_column).isnull()
+    ].index
+
+    # text generation tasks only support text and context, and require at least one of them
+    text_generation_rows = df[
+        df.get("label_key", null_placeholder_column).isnull()
+        & df.get("label_value", null_placeholder_column).isnull()
+        & df.get("bounding_box", null_placeholder_column).isnull()
+        & df.get("polygon", null_placeholder_column).isnull()
+        & df.get("raster", null_placeholder_column).isnull()
+        & df.get("embedding", null_placeholder_column).isnull()
+        & (
+            df[[col for col in ["text", "context_list"] if col in df.columns]]
+            .notna()
+            .sum(axis=1)
+            .isin([1, 2])
+        )
     ].index
 
     # empty annotations shouldn't contain anything
@@ -724,6 +815,8 @@ def _identify_implied_task_types(
         & df.get("polygon", null_placeholder_column).isnull()
         & df.get("raster", null_placeholder_column).isnull()
         & df.get("embedding", null_placeholder_column).isnull()
+        & df.get("text", null_placeholder_column).isnull()
+        & df.get("context_list", null_placeholder_column).isnull()
     ].index
 
     if not classification_rows.empty:
@@ -740,6 +833,11 @@ def _identify_implied_task_types(
         df.loc[
             semantic_segmentation_rows, "implied_task_type"
         ] = enums.TaskType.SEMANTIC_SEGMENTATION
+
+    if not text_generation_rows.empty:
+        df.loc[
+            text_generation_rows, "implied_task_type"
+        ] = enums.TaskType.TEXT_GENERATION
 
     if not empty_rows.empty:
         df.loc[empty_rows, "implied_task_type"] = enums.TaskType.EMPTY
@@ -1050,3 +1148,35 @@ def convert_annotations_to_common_type(
     )
 
     return (groundtruth_df, prediction_df)
+
+
+def trim_and_load_json(input_string: str) -> Any:
+    """
+    Trims and loads input_string as a json. Adapted from DeepEval https://github.com/confident-ai/deepeval/blob/dc117a5ea2160dbb61909c537908a41f7da4dfe7/deepeval/metrics/utils.py#L50
+
+    Parameters
+    ----------
+    input_string : str
+        The input string to trim and load as a json.
+
+    Returns
+    -------
+    Any
+        The json object.
+    """
+    start = input_string.find("{")
+    end = input_string.rfind("}") + 1
+
+    if end == 0 and start != -1:
+        input_string = input_string + "}"
+        end = len(input_string)
+
+    jsonStr = input_string[start:end] if start != -1 and end != 0 else ""
+
+    try:
+        return json.loads(jsonStr)
+    except json.JSONDecodeError as e:
+        raise InvalidLLMResponseError(
+            "Evaluation LLM outputted an invalid JSON. Please use a better evaluation model. JSONDecodeError: "
+            + str(e)
+        )

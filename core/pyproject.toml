@@ -13,7 +13,12 @@ dependencies = [
     "pandas-stubs",
     "tqdm",
     "requests",
-    "shapely"
+    "shapely",
+    "openai",
+    "mistralai >= 1.0",
+    "nltk",
+    "rouge_score",
+    "evaluate"
 ]
 
 [project.urls]
