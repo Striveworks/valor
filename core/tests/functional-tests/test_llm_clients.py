@@ -3,18 +3,30 @@ import os
 from unittest.mock import MagicMock
 
 import pytest
-from mistralai.models import (
-    AssistantMessage,
-    ChatCompletionChoice,
-    ChatCompletionResponse,
-    UsageInfo,
-)
-from mistralai.models.sdkerror import SDKError as MistralSDKError
-from openai import OpenAIError
-from openai.types.chat import ChatCompletionMessage
-from openai.types.chat.chat_completion import ChatCompletion, Choice
-from openai.types.completion_usage import CompletionUsage
-from pydantic import ValidationError
+
+try:
+    from mistralai.models import (
+        AssistantMessage,
+        ChatCompletionChoice,
+        ChatCompletionResponse,
+        UsageInfo,
+    )
+    from mistralai.models.sdkerror import SDKError as MistralSDKError
+
+    MISTRALAI_INSTALLED = True
+except ImportError:
+    MISTRALAI_INSTALLED = False
+
+try:
+    from openai import OpenAIError
+    from openai.types.chat import ChatCompletionMessage
+    from openai.types.chat.chat_completion import ChatCompletion, Choice
+    from openai.types.completion_usage import CompletionUsage
+
+    OPENAI_INSTALLED = True
+except ImportError:
+    OPENAI_INSTALLED = False
+
 from valor_core.exceptions import InvalidLLMResponseError
 from valor_core.llm_clients import (
     LLMClient,
@@ -1319,28 +1331,32 @@ def test_LLMClient(monkeypatch):
         client.toxicity("some text")
 
 
+@pytest.mark.skipif(
+    not OPENAI_INSTALLED,
+    reason="Openai is not installed.",
+)
 def test_WrappedOpenAIClient():
-    def _create_bad_request(model, messages, seed) -> ChatCompletion:
+    def _create_bad_request(model, messages, seed):
         raise ValueError
 
     def _create_mock_chat_completion_with_bad_length(
         model, messages, seed
-    ) -> ChatCompletion:
-        return ChatCompletion(
+    ) -> ChatCompletion:  # type: ignore - test is not run if openai is not installed
+        return ChatCompletion(  # type: ignore - test is not run if openai is not installed
             id="foo",
             model="gpt-3.5-turbo",
             object="chat.completion",
             choices=[
-                Choice(
+                Choice(  # type: ignore - test is not run if openai is not installed
                     finish_reason="length",
                     index=0,
-                    message=ChatCompletionMessage(
+                    message=ChatCompletionMessage(  # type: ignore - test is not run if openai is not installed
                         content="some response",
                         role="assistant",
                     ),
                 )
             ],
-            usage=CompletionUsage(
+            usage=CompletionUsage(  # type: ignore - test is not run if openai is not installed
                 completion_tokens=1, prompt_tokens=2, total_tokens=3
             ),
             created=int(datetime.datetime.now().timestamp()),
@@ -1348,43 +1364,43 @@ def test_WrappedOpenAIClient():
 
     def _create_mock_chat_completion_with_content_filter(
         model, messages, seed
-    ) -> ChatCompletion:
-        return ChatCompletion(
+    ) -> ChatCompletion:  # type: ignore - test is not run if openai is not installed
+        return ChatCompletion(  # type: ignore - test is not run if openai is not installed
             id="foo",
             model="gpt-3.5-turbo",
             object="chat.completion",
             choices=[
-                Choice(
+                Choice(  # type: ignore - test is not run if openai is not installed
                     finish_reason="content_filter",
                     index=0,
-                    message=ChatCompletionMessage(
+                    message=ChatCompletionMessage(  # type: ignore - test is not run if openai is not installed
                         content="some response",
                         role="assistant",
                     ),
                 )
             ],
-            usage=CompletionUsage(
+            usage=CompletionUsage(  # type: ignore - test is not run if openai is not installed
                 completion_tokens=1, prompt_tokens=2, total_tokens=3
             ),
             created=int(datetime.datetime.now().timestamp()),
         )
 
-    def _create_mock_chat_completion(model, messages, seed) -> ChatCompletion:
-        return ChatCompletion(
+    def _create_mock_chat_completion(model, messages, seed) -> ChatCompletion:  # type: ignore - test is not run if openai is not installed
+        return ChatCompletion(  # type: ignore - test is not run if openai is not installed
             id="foo",
             model="gpt-3.5-turbo",
             object="chat.completion",
             choices=[
-                Choice(
+                Choice(  # type: ignore - test is not run if openai is not installed
                     finish_reason="stop",
                     index=0,
-                    message=ChatCompletionMessage(
+                    message=ChatCompletionMessage(  # type: ignore - test is not run if openai is not installed
                         content="some response",
                         role="assistant",
                     ),
                 )
             ],
-            usage=CompletionUsage(
+            usage=CompletionUsage(  # type: ignore - test is not run if openai is not installed
                 completion_tokens=1, prompt_tokens=2, total_tokens=3
             ),
             created=int(datetime.datetime.now().timestamp()),
@@ -1392,22 +1408,22 @@ def test_WrappedOpenAIClient():
 
     def _create_mock_chat_completion_none_content(
         model, messages, seed
-    ) -> ChatCompletion:
-        return ChatCompletion(
+    ) -> ChatCompletion:  # type: ignore - test is not run if openai is not installed
+        return ChatCompletion(  # type: ignore - test is not run if openai is not installed
             id="foo",
             model="gpt-3.5-turbo",
             object="chat.completion",
             choices=[
-                Choice(
+                Choice(  # type: ignore - test is not run if openai is not installed
                     finish_reason="stop",
                     index=0,
-                    message=ChatCompletionMessage(
+                    message=ChatCompletionMessage(  # type: ignore - test is not run if openai is not installed
                         content=None,
                         role="assistant",
                     ),
                 )
             ],
-            usage=CompletionUsage(
+            usage=CompletionUsage(  # type: ignore - test is not run if openai is not installed
                 completion_tokens=1, prompt_tokens=2, total_tokens=3
             ),
             created=int(datetime.datetime.now().timestamp()),
@@ -1420,7 +1436,7 @@ def test_WrappedOpenAIClient():
     fake_message = [
         {"role": "system", "content": "You are a helpful assistant."}
     ]
-    with pytest.raises(OpenAIError):
+    with pytest.raises(OpenAIError):  # type: ignore - test is not run if openai is not installed
         client.connect()
         client(fake_message)
 
@@ -1466,23 +1482,27 @@ def test_WrappedOpenAIClient():
     assert client(fake_message) == ""
 
 
+@pytest.mark.skipif(
+    not MISTRALAI_INSTALLED,
+    reason="MistralAI is not installed.",
+)
 def test_WrappedMistralAIClient():
-    def _create_bad_request(model, messages) -> ChatCompletion:
+    def _create_bad_request(model, messages):
         raise ValueError
 
     def _create_mock_chat_completion_with_bad_length(
         model,
         messages,
-    ) -> ChatCompletionResponse:
-        return ChatCompletionResponse(
+    ) -> ChatCompletionResponse:  # type: ignore - test is not run if mistralai is not installed
+        return ChatCompletionResponse(  # type: ignore - test is not run if mistralai is not installed
             id="foo",
             model="gpt-3.5-turbo",
             object="chat.completion",
             choices=[
-                ChatCompletionChoice(
+                ChatCompletionChoice(  # type: ignore - test is not run if mistralai is not installed
                     finish_reason="length",
                     index=0,
-                    message=AssistantMessage(
+                    message=AssistantMessage(  # type: ignore - test is not run if mistralai is not installed
                         role="assistant",
                         content="some response",
                         name=None,  # type: ignore - mistralai issue
@@ -1492,23 +1512,23 @@ def test_WrappedMistralAIClient():
                 )
             ],
             created=int(datetime.datetime.now().timestamp()),
-            usage=UsageInfo(
+            usage=UsageInfo(  # type: ignore - test is not run if mistralai is not installed
                 prompt_tokens=2, total_tokens=4, completion_tokens=199
             ),
         )
 
     def _create_mock_chat_completion(
         model, messages
-    ) -> ChatCompletionResponse:
-        return ChatCompletionResponse(
+    ) -> ChatCompletionResponse:  # type: ignore - test is not run if mistralai is not installed
+        return ChatCompletionResponse(  # type: ignore - test is not run if mistralai is not installed
             id="foo",
             model="gpt-3.5-turbo",
             object="chat.completion",
             choices=[
-                ChatCompletionChoice(
+                ChatCompletionChoice(  # type: ignore - test is not run if mistralai is not installed
                     finish_reason="stop",
                     index=0,
-                    message=AssistantMessage(
+                    message=AssistantMessage(  # type: ignore - test is not run if mistralai is not installed
                         role="assistant",
                         content="some response",
                         name=None,  # type: ignore - mistralai issue
@@ -1518,7 +1538,7 @@ def test_WrappedMistralAIClient():
                 )
             ],
             created=int(datetime.datetime.now().timestamp()),
-            usage=UsageInfo(
+            usage=UsageInfo(  # type: ignore - test is not run if mistralai is not installed
                 prompt_tokens=2, total_tokens=4, completion_tokens=199
             ),
         )
@@ -1528,7 +1548,7 @@ def test_WrappedMistralAIClient():
         api_key="invalid_key", model_name="model_name"
     )
     fake_message = [{"role": "assistant", "content": "content"}]
-    with pytest.raises(MistralSDKError):
+    with pytest.raises(MistralSDKError):  # type: ignore - test is not run if mistralai is not installed
         client.connect()
         client(fake_message)
 
@@ -1588,7 +1608,7 @@ def test_process_message():
     WrappedMistralAIClient()._process_messages(messages=messages)
     MockLLMClient()._process_messages(messages=messages)
 
-    # The clients should raise a ValidationError because "content" is missing in the second message.
+    # The clients should raise a ValueError because "content" is missing in the second message.
     messages = [
         {
             "role": "system",
@@ -1603,9 +1623,9 @@ def test_process_message():
             "content": "The weather is sunny.",
         },
     ]
-    with pytest.raises(ValidationError):
+    with pytest.raises(ValueError):
         WrappedOpenAIClient()._process_messages(messages=messages)
-    with pytest.raises(ValidationError):
+    with pytest.raises(ValueError):
         WrappedMistralAIClient()._process_messages(messages=messages)
-    with pytest.raises(ValidationError):
+    with pytest.raises(ValueError):
         MockLLMClient()._process_messages(messages=messages)
