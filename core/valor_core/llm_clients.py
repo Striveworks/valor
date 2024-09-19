@@ -52,6 +52,10 @@ def validate_messages(messages: list[dict[str, str]]):
         raise ValueError(
             'messages must be a list of dictionaries with "role" and "content" keys.'
         )
+    if not all(isinstance(message["role"], str) for message in messages):
+        raise ValueError("All roles in messages must be strings.")
+    if not all(isinstance(message["content"], str) for message in messages):
+        raise ValueError("All content in messages must be strings.")
 
 
 class LLMClient:
