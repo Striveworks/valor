@@ -231,10 +231,12 @@ def test_counts_unit(
         assert m in actual_metrics
 
 
-def test_counts_with_example(classifications: list[Classification]):
+def test_counts_with_example(
+    classifications_two_categeories: list[Classification],
+):
 
     loader = DataLoader()
-    loader.add_data(classifications)
+    loader.add_data(classifications_two_categeories)
     evaluator = loader.finalize()
 
     metrics = evaluator.evaluate(score_thresholds=[0.5])

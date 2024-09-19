@@ -115,10 +115,12 @@ def test_recall_basic(basic_classifications: list[Classification]):
         assert m in actual_metrics
 
 
-def test_recall_with_example(classifications: list[Classification]):
+def test_recall_with_example(
+    classifications_two_categeories: list[Classification],
+):
 
     loader = DataLoader()
-    loader.add_data(classifications)
+    loader.add_data(classifications_two_categeories)
     evaluator = loader.finalize()
 
     metrics = evaluator.evaluate(score_thresholds=[0.5])

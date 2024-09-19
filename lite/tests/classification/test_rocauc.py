@@ -160,10 +160,12 @@ def test__compute_rocauc():
     ).all()
 
 
-def test_rocauc_with_example(classifications: list[Classification]):
+def test_rocauc_with_example(
+    classifications_two_categeories: list[Classification],
+):
 
     loader = DataLoader()
-    loader.add_data(classifications)
+    loader.add_data(classifications_two_categeories)
     evaluator = loader.finalize()
 
     metrics = evaluator.evaluate()

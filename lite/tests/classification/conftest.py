@@ -119,7 +119,7 @@ def classifications_from_api_unit_tests() -> list[Classification]:
 
 
 @pytest.fixture
-def classifications() -> list[Classification]:
+def classifications_two_categeories() -> list[Classification]:
     animal_gts = ["bird", "dog", "bird", "bird", "cat", "dog"]
     animal_pds = [
         {"bird": 0.6, "dog": 0.2, "cat": 0.2},
