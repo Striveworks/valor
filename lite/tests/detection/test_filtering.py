@@ -142,12 +142,18 @@ def test_filtering_one_detection(one_detection: list[Detection]):
         {
             "type": "AP",
             "value": 1.0,
-            "parameters": {"iou": 0.5, "label": {"key": "k1", "value": "v1"}},
+            "parameters": {
+                "iou_threshold": 0.5,
+                "label": {"key": "k1", "value": "v1"},
+            },
         },
         {
             "type": "AP",
             "value": 0.0,
-            "parameters": {"iou": 0.5, "label": {"key": "k2", "value": "v2"}},
+            "parameters": {
+                "iou_threshold": 0.5,
+                "label": {"key": "k2", "value": "v2"},
+            },
         },
     ]
     for m in actual_metrics:
@@ -252,12 +258,18 @@ def test_filtering_two_detections(two_detections: list[Detection]):
         {
             "type": "AP",
             "value": 1.0,
-            "parameters": {"iou": 0.5, "label": {"key": "k1", "value": "v1"}},
+            "parameters": {
+                "iou_threshold": 0.5,
+                "label": {"key": "k1", "value": "v1"},
+            },
         },
         {
             "type": "AP",
             "value": 0.0,
-            "parameters": {"iou": 0.5, "label": {"key": "k2", "value": "v2"}},
+            "parameters": {
+                "iou_threshold": 0.5,
+                "label": {"key": "k2", "value": "v2"},
+            },
         },
     ]
     for m in actual_metrics:
@@ -379,12 +391,18 @@ def test_filtering_four_detections(four_detections: list[Detection]):
         {
             "type": "AP",
             "value": 1.0,
-            "parameters": {"iou": 0.5, "label": {"key": "k1", "value": "v1"}},
+            "parameters": {
+                "iou_threshold": 0.5,
+                "label": {"key": "k1", "value": "v1"},
+            },
         },
         {
             "type": "AP",
             "value": 0.0,
-            "parameters": {"iou": 0.5, "label": {"key": "k2", "value": "v2"}},
+            "parameters": {
+                "iou_threshold": 0.5,
+                "label": {"key": "k2", "value": "v2"},
+            },
         },
     ]
     for m in actual_metrics:

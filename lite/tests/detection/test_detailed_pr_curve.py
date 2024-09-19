@@ -242,7 +242,7 @@ def test_detailed_pr_curve_using_torch_metrics_example(
         {
             "value": [
                 {
-                    "score": 0.25,
+                    "score_threshold": 0.25,
                     "tp": 1.0,
                     "fp_misclassification": 0.0,
                     "fp_hallucination": 0.0,
@@ -255,7 +255,7 @@ def test_detailed_pr_curve_using_torch_metrics_example(
                     "fn_missing_prediction_examples": [],
                 },
                 {
-                    "score": 0.75,
+                    "score_threshold": 0.75,
                     "tp": 0.0,
                     "fp_misclassification": 0.0,
                     "fp_hallucination": 6.0,
@@ -268,14 +268,14 @@ def test_detailed_pr_curve_using_torch_metrics_example(
                     "fn_missing_prediction_examples": ["2"],
                 },
             ],
-            "iou": 0.5,
+            "iou_threshold": 0.5,
             "label": {"key": "class", "value": "4"},
             "type": "DetailedPrecisionRecallCurve",
         },
         {
             "value": [
                 {
-                    "score": 0.25,
+                    "score_threshold": 0.25,
                     "tp": 1.0,
                     "fp_misclassification": 0.0,
                     "fp_hallucination": 0.0,
@@ -288,7 +288,7 @@ def test_detailed_pr_curve_using_torch_metrics_example(
                     "fn_missing_prediction_examples": [],
                 },
                 {
-                    "score": 0.75,
+                    "score_threshold": 0.75,
                     "tp": 0.0,
                     "fp_misclassification": 0.0,
                     "fp_hallucination": 6.0,
@@ -301,14 +301,14 @@ def test_detailed_pr_curve_using_torch_metrics_example(
                     "fn_missing_prediction_examples": ["2"],
                 },
             ],
-            "iou": 0.75,
+            "iou_threshold": 0.75,
             "label": {"key": "class", "value": "4"},
             "type": "DetailedPrecisionRecallCurve",
         },
         {
             "value": [
                 {
-                    "score": 0.25,
+                    "score_threshold": 0.25,
                     "tp": 1.0,
                     "fp_misclassification": 0.0,
                     "fp_hallucination": 1.0,
@@ -321,7 +321,7 @@ def test_detailed_pr_curve_using_torch_metrics_example(
                     "fn_missing_prediction_examples": ["1"],
                 },
                 {
-                    "score": 0.75,
+                    "score_threshold": 0.75,
                     "tp": 0.0,
                     "fp_misclassification": 0.0,
                     "fp_hallucination": 1.0,
@@ -334,14 +334,14 @@ def test_detailed_pr_curve_using_torch_metrics_example(
                     "fn_missing_prediction_examples": ["1"],
                 },
             ],
-            "iou": 0.5,
+            "iou_threshold": 0.5,
             "label": {"key": "class", "value": "2"},
             "type": "DetailedPrecisionRecallCurve",
         },
         {
             "value": [
                 {
-                    "score": 0.25,
+                    "score_threshold": 0.25,
                     "tp": 1.0,
                     "fp_misclassification": 0.0,
                     "fp_hallucination": 1.0,
@@ -354,7 +354,7 @@ def test_detailed_pr_curve_using_torch_metrics_example(
                     "fn_missing_prediction_examples": ["1"],
                 },
                 {
-                    "score": 0.75,
+                    "score_threshold": 0.75,
                     "tp": 0.0,
                     "fp_misclassification": 0.0,
                     "fp_hallucination": 1.0,
@@ -367,7 +367,7 @@ def test_detailed_pr_curve_using_torch_metrics_example(
                     "fn_missing_prediction_examples": ["1"],
                 },
             ],
-            "iou": 0.75,
+            "iou_threshold": 0.75,
             "label": {"key": "class", "value": "2"},
             "type": "DetailedPrecisionRecallCurve",
         },

@@ -265,7 +265,7 @@ class Evaluator:
         metrics[MetricType.AP] = [
             AP(
                 value=average_precision[iou_idx][label_idx],
-                iou=iou_thresholds[iou_idx],
+                iou_threshold=iou_thresholds[iou_idx],
                 label=self.index_to_label[label_idx],
             )
             for iou_idx in range(average_precision.shape[0])
@@ -276,7 +276,7 @@ class Evaluator:
         metrics[MetricType.mAP] = [
             mAP(
                 value=mean_average_precision[iou_idx][label_key_idx],
-                iou=iou_thresholds[iou_idx],
+                iou_threshold=iou_thresholds[iou_idx],
                 label_key=self.index_to_label_key[label_key_idx],
             )
             for iou_idx in range(mean_average_precision.shape[0])
@@ -286,7 +286,7 @@ class Evaluator:
         metrics[MetricType.APAveragedOverIOUs] = [
             APAveragedOverIOUs(
                 value=average_precision_average_over_ious[label_idx],
-                ious=iou_thresholds,
+                iou_thresholds=iou_thresholds,
                 label=self.index_to_label[label_idx],
             )
             for label_idx in range(self.n_labels)
@@ -296,7 +296,7 @@ class Evaluator:
         metrics[MetricType.mAPAveragedOverIOUs] = [
             mAPAveragedOverIOUs(
                 value=mean_average_precision_average_over_ious[label_key_idx],
-                ious=iou_thresholds,
+                iou_thresholds=iou_thresholds,
                 label_key=self.index_to_label_key[label_key_idx],
             )
             for label_key_idx in range(
@@ -307,8 +307,8 @@ class Evaluator:
         metrics[MetricType.AR] = [
             AR(
                 value=average_recall[score_idx][label_idx],
-                ious=iou_thresholds,
-                score=score_thresholds[score_idx],
+                iou_thresholds=iou_thresholds,
+                score_threshold=score_thresholds[score_idx],
                 label=self.index_to_label[label_idx],
             )
             for score_idx in range(average_recall.shape[0])
@@ -319,8 +319,8 @@ class Evaluator:
         metrics[MetricType.mAR] = [
             mAR(
                 value=mean_average_recall[score_idx][label_key_idx],
-                ious=iou_thresholds,
-                score=score_thresholds[score_idx],
+                iou_thresholds=iou_thresholds,
+                score_threshold=score_thresholds[score_idx],
                 label_key=self.index_to_label_key[label_key_idx],
             )
             for score_idx in range(mean_average_recall.shape[0])
@@ -330,8 +330,8 @@ class Evaluator:
         metrics[MetricType.ARAveragedOverScores] = [
             ARAveragedOverScores(
                 value=average_recall_averaged_over_scores[label_idx],
-                scores=score_thresholds,
-                ious=iou_thresholds,
+                score_thresholds=score_thresholds,
+                iou_thresholds=iou_thresholds,
                 label=self.index_to_label[label_idx],
             )
             for label_idx in range(self.n_labels)
@@ -341,8 +341,8 @@ class Evaluator:
         metrics[MetricType.mARAveragedOverScores] = [
             mARAveragedOverScores(
                 value=mean_average_recall_averaged_over_scores[label_key_idx],
-                scores=score_thresholds,
-                ious=iou_thresholds,
+                score_thresholds=score_thresholds,
+                iou_thresholds=iou_thresholds,
                 label_key=self.index_to_label_key[label_key_idx],
             )
             for label_key_idx in range(
@@ -353,7 +353,7 @@ class Evaluator:
         metrics[MetricType.PrecisionRecallCurve] = [
             PrecisionRecallCurve(
                 precision=list(pr_curves[iou_idx][label_idx]),
-                iou=iou_threshold,
+                iou_threshold=iou_threshold,
                 label=label,
             )
             for iou_idx, iou_threshold in enumerate(iou_thresholds)
@@ -361,14 +361,14 @@ class Evaluator:
             if int(label_metadata[label_idx][0]) > 0
         ]
 
-        for iou_idx, iou_threshold in enumerate(iou_thresholds):
+        for label_idx, label in self.index_to_label.items():
             for score_idx, score_threshold in enumerate(score_thresholds):
-                for label_idx, label in self.index_to_label.items():
+                for iou_idx, iou_threshold in enumerate(iou_thresholds):
                     row = precision_recall[iou_idx][score_idx][label_idx]
                     kwargs = {
                         "label": label,
-                        "iou": iou_threshold,
-                        "score": score_threshold,
+                        "iou_threshold": iou_threshold,
+                        "score_threshold": score_threshold,
                     }
                     metrics[MetricType.Counts].append(
                         Counts(
@@ -436,14 +436,14 @@ class Evaluator:
             n_ious, n_scores, _, _ = metrics.shape
             for iou_idx in range(n_ious):
                 curve = DetailedPrecisionRecallCurve(
-                    iou=iou_thresholds[iou_idx],
+                    iou_threshold=iou_thresholds[iou_idx],
                     value=list(),
                     label=self.index_to_label[label_idx],
                 )
                 for score_idx in range(n_scores):
                     curve.value.append(
                         DetailedPrecisionRecallPoint(
-                            score=score_thresholds[score_idx],
+                            score_threshold=score_thresholds[score_idx],
                             tp=metrics[iou_idx][score_idx][label_idx][tp_idx],
                             tp_examples=[
                                 self.index_to_uid[int(datum_idx)]

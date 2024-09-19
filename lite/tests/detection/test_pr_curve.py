@@ -94,7 +94,7 @@ def test_pr_curve_using_torch_metrics_example(
             "type": "PrecisionRecallCurve",
             "value": a,
             "parameters": {
-                "iou": 0.5,
+                "iou_threshold": 0.5,
                 "label": {"key": "class", "value": "0"},
             },
         },
@@ -102,7 +102,7 @@ def test_pr_curve_using_torch_metrics_example(
             "type": "PrecisionRecallCurve",
             "value": d,
             "parameters": {
-                "iou": 0.75,
+                "iou_threshold": 0.75,
                 "label": {"key": "class", "value": "0"},
             },
         },
@@ -110,7 +110,7 @@ def test_pr_curve_using_torch_metrics_example(
             "type": "PrecisionRecallCurve",
             "value": a,
             "parameters": {
-                "iou": 0.5,
+                "iou_threshold": 0.5,
                 "label": {"key": "class", "value": "1"},
             },
         },
@@ -118,7 +118,7 @@ def test_pr_curve_using_torch_metrics_example(
             "type": "PrecisionRecallCurve",
             "value": a,
             "parameters": {
-                "iou": 0.75,
+                "iou_threshold": 0.75,
                 "label": {"key": "class", "value": "1"},
             },
         },
@@ -126,7 +126,7 @@ def test_pr_curve_using_torch_metrics_example(
             "type": "PrecisionRecallCurve",
             "value": b,
             "parameters": {
-                "iou": 0.5,
+                "iou_threshold": 0.5,
                 "label": {"key": "class", "value": "2"},
             },
         },
@@ -134,7 +134,7 @@ def test_pr_curve_using_torch_metrics_example(
             "type": "PrecisionRecallCurve",
             "value": b,
             "parameters": {
-                "iou": 0.75,
+                "iou_threshold": 0.75,
                 "label": {"key": "class", "value": "2"},
             },
         },
@@ -142,7 +142,7 @@ def test_pr_curve_using_torch_metrics_example(
             "type": "PrecisionRecallCurve",
             "value": a,
             "parameters": {
-                "iou": 0.5,
+                "iou_threshold": 0.5,
                 "label": {"key": "class", "value": "4"},
             },
         },
@@ -150,7 +150,7 @@ def test_pr_curve_using_torch_metrics_example(
             "type": "PrecisionRecallCurve",
             "value": a,
             "parameters": {
-                "iou": 0.75,
+                "iou_threshold": 0.75,
                 "label": {"key": "class", "value": "4"},
             },
         },
@@ -158,7 +158,7 @@ def test_pr_curve_using_torch_metrics_example(
             "type": "PrecisionRecallCurve",
             "value": c,
             "parameters": {
-                "iou": 0.5,
+                "iou_threshold": 0.5,
                 "label": {"key": "class", "value": "49"},
             },
         },
@@ -166,7 +166,7 @@ def test_pr_curve_using_torch_metrics_example(
             "type": "PrecisionRecallCurve",
             "value": e,
             "parameters": {
-                "iou": 0.75,
+                "iou_threshold": 0.75,
                 "label": {"key": "class", "value": "49"},
             },
         },

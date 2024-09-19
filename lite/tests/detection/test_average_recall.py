@@ -104,8 +104,8 @@ def test_ar_using_torch_metrics_example(
             "type": "AR",
             "value": 0.45,
             "parameters": {
-                "ious": iou_thresholds,
-                "score": 0.0,
+                "iou_thresholds": iou_thresholds,
+                "score_threshold": 0.0,
                 "label": {"key": "class", "value": "2"},
             },
         },
@@ -113,8 +113,8 @@ def test_ar_using_torch_metrics_example(
             "type": "AR",
             "value": 0.5800000000000001,
             "parameters": {
-                "ious": iou_thresholds,
-                "score": 0.0,
+                "iou_thresholds": iou_thresholds,
+                "score_threshold": 0.0,
                 "label": {"key": "class", "value": "49"},
             },
         },
@@ -122,8 +122,8 @@ def test_ar_using_torch_metrics_example(
             "type": "AR",
             "value": 0.78,
             "parameters": {
-                "ious": iou_thresholds,
-                "score": 0.0,
+                "iou_thresholds": iou_thresholds,
+                "score_threshold": 0.0,
                 "label": {"key": "class", "value": "0"},
             },
         },
@@ -131,8 +131,8 @@ def test_ar_using_torch_metrics_example(
             "type": "AR",
             "value": 0.8,
             "parameters": {
-                "ious": iou_thresholds,
-                "score": 0.0,
+                "iou_thresholds": iou_thresholds,
+                "score_threshold": 0.0,
                 "label": {"key": "class", "value": "1"},
             },
         },
@@ -140,8 +140,8 @@ def test_ar_using_torch_metrics_example(
             "type": "AR",
             "value": 0.65,
             "parameters": {
-                "ious": iou_thresholds,
-                "score": 0.0,
+                "iou_thresholds": iou_thresholds,
+                "score_threshold": 0.0,
                 "label": {"key": "class", "value": "4"},
             },
         },
@@ -158,8 +158,8 @@ def test_ar_using_torch_metrics_example(
             "type": "mAR",
             "value": 0.652,
             "parameters": {
-                "ious": iou_thresholds,
-                "score": 0.0,
+                "iou_thresholds": iou_thresholds,
+                "score_threshold": 0.0,
                 "label_key": "class",
             },
         }
@@ -178,8 +178,8 @@ def test_ar_using_torch_metrics_example(
             "type": "ARAveragedOverScores",
             "value": 0.45,
             "parameters": {
-                "ious": iou_thresholds,
-                "scores": [0.0],
+                "iou_thresholds": iou_thresholds,
+                "score_thresholds": [0.0],
                 "label": {"key": "class", "value": "2"},
             },
         },
@@ -187,8 +187,8 @@ def test_ar_using_torch_metrics_example(
             "type": "ARAveragedOverScores",
             "value": 0.5800000000000001,
             "parameters": {
-                "ious": iou_thresholds,
-                "scores": [0.0],
+                "iou_thresholds": iou_thresholds,
+                "score_thresholds": [0.0],
                 "label": {"key": "class", "value": "49"},
             },
         },
@@ -196,8 +196,8 @@ def test_ar_using_torch_metrics_example(
             "type": "ARAveragedOverScores",
             "value": 0.78,
             "parameters": {
-                "ious": iou_thresholds,
-                "scores": [0.0],
+                "iou_thresholds": iou_thresholds,
+                "score_thresholds": [0.0],
                 "label": {"key": "class", "value": "0"},
             },
         },
@@ -205,8 +205,8 @@ def test_ar_using_torch_metrics_example(
             "type": "ARAveragedOverScores",
             "value": 0.8,
             "parameters": {
-                "ious": iou_thresholds,
-                "scores": [0.0],
+                "iou_thresholds": iou_thresholds,
+                "score_thresholds": [0.0],
                 "label": {"key": "class", "value": "1"},
             },
         },
@@ -214,8 +214,8 @@ def test_ar_using_torch_metrics_example(
             "type": "ARAveragedOverScores",
             "value": 0.65,
             "parameters": {
-                "ious": iou_thresholds,
-                "scores": [0.0],
+                "iou_thresholds": iou_thresholds,
+                "score_thresholds": [0.0],
                 "label": {"key": "class", "value": "4"},
             },
         },
@@ -234,8 +234,8 @@ def test_ar_using_torch_metrics_example(
             "type": "mARAveragedOverScores",
             "value": 0.652,
             "parameters": {
-                "ious": iou_thresholds,
-                "scores": [0.0],
+                "iou_thresholds": iou_thresholds,
+                "score_thresholds": [0.0],
                 "label_key": "class",
             },
         }

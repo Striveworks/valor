@@ -107,7 +107,7 @@ def test_ap_metrics(basic_detections: list[Detection]):
             "type": "AP",
             "value": 0.504950495049505,
             "parameters": {
-                "iou": 0.1,
+                "iou_threshold": 0.1,
                 "label": {"key": "k1", "value": "v1"},
             },
         },
@@ -115,7 +115,7 @@ def test_ap_metrics(basic_detections: list[Detection]):
             "type": "AP",
             "value": 0.504950495049505,
             "parameters": {
-                "iou": 0.6,
+                "iou_threshold": 0.6,
                 "label": {"key": "k1", "value": "v1"},
             },
         },
@@ -123,7 +123,7 @@ def test_ap_metrics(basic_detections: list[Detection]):
             "type": "AP",
             "value": 0.0,
             "parameters": {
-                "iou": 0.1,
+                "iou_threshold": 0.1,
                 "label": {"key": "k2", "value": "v2"},
             },
         },
@@ -131,7 +131,7 @@ def test_ap_metrics(basic_detections: list[Detection]):
             "type": "AP",
             "value": 0.0,
             "parameters": {
-                "iou": 0.6,
+                "iou_threshold": 0.6,
                 "label": {"key": "k2", "value": "v2"},
             },
         },
@@ -148,7 +148,7 @@ def test_ap_metrics(basic_detections: list[Detection]):
             "type": "mAP",
             "value": 0.504950495049505,
             "parameters": {
-                "iou": 0.1,
+                "iou_threshold": 0.1,
                 "label_key": "k1",
             },
         },
@@ -156,7 +156,7 @@ def test_ap_metrics(basic_detections: list[Detection]):
             "type": "mAP",
             "value": 0.504950495049505,
             "parameters": {
-                "iou": 0.6,
+                "iou_threshold": 0.6,
                 "label_key": "k1",
             },
         },
@@ -164,7 +164,7 @@ def test_ap_metrics(basic_detections: list[Detection]):
             "type": "mAP",
             "value": 0.0,
             "parameters": {
-                "iou": 0.1,
+                "iou_threshold": 0.1,
                 "label_key": "k2",
             },
         },
@@ -172,7 +172,7 @@ def test_ap_metrics(basic_detections: list[Detection]):
             "type": "mAP",
             "value": 0.0,
             "parameters": {
-                "iou": 0.6,
+                "iou_threshold": 0.6,
                 "label_key": "k2",
             },
         },
@@ -191,7 +191,7 @@ def test_ap_metrics(basic_detections: list[Detection]):
             "type": "APAveragedOverIOUs",
             "value": 0.504950495049505,
             "parameters": {
-                "ious": [0.1, 0.6],
+                "iou_thresholds": [0.1, 0.6],
                 "label": {"key": "k1", "value": "v1"},
             },
         },
@@ -199,7 +199,7 @@ def test_ap_metrics(basic_detections: list[Detection]):
             "type": "APAveragedOverIOUs",
             "value": 0.0,
             "parameters": {
-                "ious": [0.1, 0.6],
+                "iou_thresholds": [0.1, 0.6],
                 "label": {"key": "k2", "value": "v2"},
             },
         },
@@ -218,7 +218,7 @@ def test_ap_metrics(basic_detections: list[Detection]):
             "type": "mAPAveragedOverIOUs",
             "value": 0.504950495049505,
             "parameters": {
-                "ious": [0.1, 0.6],
+                "iou_thresholds": [0.1, 0.6],
                 "label_key": "k1",
             },
         },
@@ -226,7 +226,7 @@ def test_ap_metrics(basic_detections: list[Detection]):
             "type": "mAPAveragedOverIOUs",
             "value": 0.0,
             "parameters": {
-                "ious": [0.1, 0.6],
+                "iou_thresholds": [0.1, 0.6],
                 "label_key": "k2",
             },
         },
@@ -266,7 +266,7 @@ def test_ap_using_torch_metrics_example(
             "type": "AP",
             "value": 1.0,
             "parameters": {
-                "iou": 0.5,
+                "iou_threshold": 0.5,
                 "label": {"key": "class", "value": "0"},
             },
         },
@@ -274,7 +274,7 @@ def test_ap_using_torch_metrics_example(
             "type": "AP",
             "value": 0.7227722772277229,
             "parameters": {
-                "iou": 0.75,
+                "iou_threshold": 0.75,
                 "label": {"key": "class", "value": "0"},
             },
         },
@@ -282,7 +282,7 @@ def test_ap_using_torch_metrics_example(
             "type": "AP",
             "value": 1.0,
             "parameters": {
-                "iou": 0.5,
+                "iou_threshold": 0.5,
                 "label": {"key": "class", "value": "1"},
             },
         },
@@ -290,7 +290,7 @@ def test_ap_using_torch_metrics_example(
             "type": "AP",
             "value": 1.0,
             "parameters": {
-                "iou": 0.75,
+                "iou_threshold": 0.75,
                 "label": {"key": "class", "value": "1"},
             },
         },
@@ -298,7 +298,7 @@ def test_ap_using_torch_metrics_example(
             "type": "AP",
             "value": 0.504950495049505,
             "parameters": {
-                "iou": 0.5,
+                "iou_threshold": 0.5,
                 "label": {"key": "class", "value": "2"},
             },
         },
@@ -306,7 +306,7 @@ def test_ap_using_torch_metrics_example(
             "type": "AP",
             "value": 0.504950495049505,
             "parameters": {
-                "iou": 0.75,
+                "iou_threshold": 0.75,
                 "label": {"key": "class", "value": "2"},
             },
         },
@@ -314,7 +314,7 @@ def test_ap_using_torch_metrics_example(
             "type": "AP",
             "value": 1.0,
             "parameters": {
-                "iou": 0.5,
+                "iou_threshold": 0.5,
                 "label": {"key": "class", "value": "4"},
             },
         },
@@ -322,7 +322,7 @@ def test_ap_using_torch_metrics_example(
             "type": "AP",
             "value": 1.0,
             "parameters": {
-                "iou": 0.75,
+                "iou_threshold": 0.75,
                 "label": {"key": "class", "value": "4"},
             },
         },
@@ -330,7 +330,7 @@ def test_ap_using_torch_metrics_example(
             "type": "AP",
             "value": 0.7909790979097909,
             "parameters": {
-                "iou": 0.5,
+                "iou_threshold": 0.5,
                 "label": {"key": "class", "value": "49"},
             },
         },
@@ -338,7 +338,7 @@ def test_ap_using_torch_metrics_example(
             "type": "AP",
             "value": 0.5756718528995757,
             "parameters": {
-                "iou": 0.75,
+                "iou_threshold": 0.75,
                 "label": {"key": "class", "value": "49"},
             },
         },
@@ -355,7 +355,7 @@ def test_ap_using_torch_metrics_example(
             "type": "mAP",
             "value": 0.8591859185918592,
             "parameters": {
-                "iou": 0.5,
+                "iou_threshold": 0.5,
                 "label_key": "class",
             },
         },
@@ -363,7 +363,7 @@ def test_ap_using_torch_metrics_example(
             "type": "mAP",
             "value": 0.7606789250353607,
             "parameters": {
-                "iou": 0.75,
+                "iou_threshold": 0.75,
                 "label_key": "class",
             },
         },
@@ -393,7 +393,7 @@ def test_ap_false_negatives_single_datum_baseline(
             "type": "AP",
             "value": 1.0,
             "parameters": {
-                "iou": 0.5,
+                "iou_threshold": 0.5,
                 "label": {
                     "key": "key",
                     "value": "value",
@@ -426,7 +426,7 @@ def test_ap_false_negatives_single_datum(
             "type": "AP",
             "value": 0.5,
             "parameters": {
-                "iou": 0.5,
+                "iou_threshold": 0.5,
                 "label": {
                     "key": "key",
                     "value": "value",
@@ -467,7 +467,7 @@ def test_ap_false_negatives_two_datums_one_empty_low_confidence_of_fp(
             "type": "AP",
             "value": 1.0,
             "parameters": {
-                "iou": 0.5,
+                "iou_threshold": 0.5,
                 "label": {
                     "key": "key",
                     "value": "value",
@@ -507,7 +507,7 @@ def test_ap_false_negatives_two_datums_one_empty_high_confidence_of_fp(
             "type": "AP",
             "value": 0.5,
             "parameters": {
-                "iou": 0.5,
+                "iou_threshold": 0.5,
                 "label": {
                     "key": "key",
                     "value": "value",
@@ -547,7 +547,7 @@ def test_ap_false_negatives_two_datums_one_only_with_different_class_low_confide
             "type": "AP",
             "value": 1.0,
             "parameters": {
-                "iou": 0.5,
+                "iou_threshold": 0.5,
                 "label": {
                     "key": "key",
                     "value": "value",
@@ -558,7 +558,7 @@ def test_ap_false_negatives_two_datums_one_only_with_different_class_low_confide
             "type": "AP",
             "value": 0.0,
             "parameters": {
-                "iou": 0.5,
+                "iou_threshold": 0.5,
                 "label": {
                     "key": "key",
                     "value": "other value",
@@ -598,7 +598,7 @@ def test_ap_false_negatives_two_datums_one_only_with_different_class_high_confid
             "type": "AP",
             "value": 0.5,
             "parameters": {
-                "iou": 0.5,
+                "iou_threshold": 0.5,
                 "label": {
                     "key": "key",
                     "value": "value",
@@ -609,7 +609,7 @@ def test_ap_false_negatives_two_datums_one_only_with_different_class_high_confid
             "type": "AP",
             "value": 0.0,
             "parameters": {
-                "iou": 0.5,
+                "iou_threshold": 0.5,
                 "label": {
                     "key": "key",
                     "value": "other value",

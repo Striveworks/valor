@@ -42,8 +42,8 @@ def test_recall_metrics(basic_detections: list[Detection]):
             "type": "Recall",
             "value": 0.0,
             "parameters": {
-                "iou": 0.1,
-                "score": 0.0,
+                "iou_threshold": 0.1,
+                "score_threshold": 0.0,
                 "label": {"key": "k2", "value": "v2"},
             },
         },
@@ -51,8 +51,8 @@ def test_recall_metrics(basic_detections: list[Detection]):
             "type": "Recall",
             "value": 0.0,
             "parameters": {
-                "iou": 0.6,
-                "score": 0.0,
+                "iou_threshold": 0.6,
+                "score_threshold": 0.0,
                 "label": {"key": "k2", "value": "v2"},
             },
         },
@@ -60,8 +60,8 @@ def test_recall_metrics(basic_detections: list[Detection]):
             "type": "Recall",
             "value": 0.5,
             "parameters": {
-                "iou": 0.1,
-                "score": 0.0,
+                "iou_threshold": 0.1,
+                "score_threshold": 0.0,
                 "label": {"key": "k1", "value": "v1"},
             },
         },
@@ -69,8 +69,8 @@ def test_recall_metrics(basic_detections: list[Detection]):
             "type": "Recall",
             "value": 0.5,
             "parameters": {
-                "iou": 0.6,
-                "score": 0.0,
+                "iou_threshold": 0.6,
+                "score_threshold": 0.0,
                 "label": {"key": "k1", "value": "v1"},
             },
         },
@@ -78,8 +78,8 @@ def test_recall_metrics(basic_detections: list[Detection]):
             "type": "Recall",
             "value": 0.0,
             "parameters": {
-                "iou": 0.1,
-                "score": 0.5,
+                "iou_threshold": 0.1,
+                "score_threshold": 0.5,
                 "label": {"key": "k2", "value": "v2"},
             },
         },
@@ -87,8 +87,8 @@ def test_recall_metrics(basic_detections: list[Detection]):
             "type": "Recall",
             "value": 0.0,
             "parameters": {
-                "iou": 0.6,
-                "score": 0.5,
+                "iou_threshold": 0.6,
+                "score_threshold": 0.5,
                 "label": {"key": "k2", "value": "v2"},
             },
         },
@@ -96,8 +96,8 @@ def test_recall_metrics(basic_detections: list[Detection]):
             "type": "Recall",
             "value": 0.0,
             "parameters": {
-                "iou": 0.1,
-                "score": 0.5,
+                "iou_threshold": 0.1,
+                "score_threshold": 0.5,
                 "label": {"key": "k1", "value": "v1"},
             },
         },
@@ -105,8 +105,8 @@ def test_recall_metrics(basic_detections: list[Detection]):
             "type": "Recall",
             "value": 0.0,
             "parameters": {
-                "iou": 0.6,
-                "score": 0.5,
+                "iou_threshold": 0.6,
+                "score_threshold": 0.5,
                 "label": {"key": "k1", "value": "v1"},
             },
         },
@@ -139,8 +139,8 @@ def test_recall_false_negatives_single_datum_baseline(
             "type": "Recall",
             "value": 1.0,
             "parameters": {
-                "iou": 0.5,
-                "score": 0.0,
+                "iou_threshold": 0.5,
+                "score_threshold": 0.0,
                 "label": {
                     "key": "key",
                     "value": "value",
@@ -151,8 +151,8 @@ def test_recall_false_negatives_single_datum_baseline(
             "type": "Recall",
             "value": 0.0,
             "parameters": {
-                "iou": 0.5,
-                "score": 0.9,
+                "iou_threshold": 0.5,
+                "score_threshold": 0.9,
                 "label": {
                     "key": "key",
                     "value": "value",
@@ -185,8 +185,8 @@ def test_recall_false_negatives_single_datum(
             "type": "Recall",
             "value": 1.0,
             "parameters": {
-                "iou": 0.5,
-                "score": 0.0,
+                "iou_threshold": 0.5,
+                "score_threshold": 0.0,
                 "label": {
                     "key": "key",
                     "value": "value",
@@ -227,8 +227,8 @@ def test_recall_false_negatives_two_datums_one_empty_low_confidence_of_fp(
             "type": "Recall",
             "value": 1.0,
             "parameters": {
-                "iou": 0.5,
-                "score": 0.0,
+                "iou_threshold": 0.5,
+                "score_threshold": 0.0,
                 "label": {
                     "key": "key",
                     "value": "value",
@@ -268,8 +268,8 @@ def test_recall_false_negatives_two_datums_one_empty_high_confidence_of_fp(
             "type": "Recall",
             "value": 1.0,
             "parameters": {
-                "iou": 0.5,
-                "score": 0.0,
+                "iou_threshold": 0.5,
+                "score_threshold": 0.0,
                 "label": {
                     "key": "key",
                     "value": "value",
@@ -309,8 +309,8 @@ def test_recall_false_negatives_two_datums_one_only_with_different_class_low_con
             "type": "Recall",
             "value": 1.0,
             "parameters": {
-                "iou": 0.5,
-                "score": 0.0,
+                "iou_threshold": 0.5,
+                "score_threshold": 0.0,
                 "label": {
                     "key": "key",
                     "value": "value",
@@ -321,8 +321,8 @@ def test_recall_false_negatives_two_datums_one_only_with_different_class_low_con
             "type": "Recall",
             "value": 0.0,
             "parameters": {
-                "iou": 0.5,
-                "score": 0.0,
+                "iou_threshold": 0.5,
+                "score_threshold": 0.0,
                 "label": {
                     "key": "key",
                     "value": "other value",
@@ -362,8 +362,8 @@ def test_recall_false_negatives_two_datums_one_only_with_different_class_high_co
             "type": "Recall",
             "value": 1.0,
             "parameters": {
-                "iou": 0.5,
-                "score": 0.0,
+                "iou_threshold": 0.5,
+                "score_threshold": 0.0,
                 "label": {
                     "key": "key",
                     "value": "value",
@@ -374,8 +374,8 @@ def test_recall_false_negatives_two_datums_one_only_with_different_class_high_co
             "type": "Recall",
             "value": 0.0,
             "parameters": {
-                "iou": 0.5,
-                "score": 0.0,
+                "iou_threshold": 0.5,
+                "score_threshold": 0.0,
                 "label": {
                     "key": "key",
                     "value": "other value",
