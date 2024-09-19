@@ -172,6 +172,65 @@ def test_counts_basic(basic_classifications: list[Classification]):
         assert m in actual_metrics
 
 
+def test_counts_unit(
+    classifications_from_api_unit_tests: list[Classification],
+):
+
+    loader = DataLoader()
+    loader.add_data(classifications_from_api_unit_tests)
+    evaluator = loader.finalize()
+
+    metrics = evaluator.evaluate(score_thresholds=[0.5])
+
+    # test Counts
+    actual_metrics = [m.to_dict() for m in metrics[MetricType.Counts]]
+    expected_metrics = [
+        {
+            "type": "Counts",
+            "value": {
+                "tp": [1],
+                "fp": [0],
+                "fn": [2],
+                "tn": [3],
+            },
+            "parameters": {
+                "score_thresholds": [0.5],
+                "label": {"key": "class", "value": "0"},
+            },
+        },
+        {
+            "type": "Counts",
+            "value": {
+                "tp": [1],
+                "fp": [3],
+                "fn": [0],
+                "tn": [2],
+            },
+            "parameters": {
+                "score_thresholds": [0.5],
+                "label": {"key": "class", "value": "1"},
+            },
+        },
+        {
+            "type": "Counts",
+            "value": {
+                "tp": [0],
+                "fp": [1],
+                "fn": [2],
+                "tn": [3],
+            },
+            "parameters": {
+                "score_thresholds": [0.5],
+                "label": {"key": "class", "value": "2"},
+            },
+        },
+    ]
+    for m in actual_metrics:
+        assert m in expected_metrics
+    for m in expected_metrics:
+        assert m in actual_metrics
+
+
 def test_counts_with_example(classifications: list[Classification]):
 
     loader = DataLoader()

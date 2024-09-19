@@ -3,7 +3,7 @@ from valor_lite.classification import Classification
 
 
 @pytest.fixture
-def basic_classifications():
+def basic_classifications() -> list[Classification]:
     return [
         Classification(
             uid="uid0",
@@ -42,7 +42,84 @@ def basic_classifications():
 
 
 @pytest.fixture
-def classifications():
+def classifications_from_api_unit_tests() -> list[Classification]:
+    """c.f. with
+
+    ```
+    from sklearn.metrics import classification_report
+
+    y_true = [0, 0, 0, 1, 2, 2]
+    y_pred = [0, 1, 2, 1, 1, 1]
+
+    print(classification_report(y_true, y_pred))
+    ```
+    """
+    return [
+        Classification(
+            uid="uid0",
+            groundtruths=[("class", "0")],
+            predictions=[
+                ("class", "0"),
+                ("class", "1"),
+                ("class", "2"),
+            ],
+            scores=[1.0, 0.0, 0.0],
+        ),
+        Classification(
+            uid="uid1",
+            groundtruths=[("class", "0")],
+            predictions=[
+                ("class", "0"),
+                ("class", "1"),
+                ("class", "2"),
+            ],
+            scores=[0.0, 1.0, 0.0],
+        ),
+        Classification(
+            uid="uid2",
+            groundtruths=[("class", "0")],
+            predictions=[
+                ("class", "0"),
+                ("class", "1"),
+                ("class", "2"),
+            ],
+            scores=[0.0, 0.0, 1.0],
+        ),
+        Classification(
+            uid="uid3",
+            groundtruths=[("class", "1")],
+            predictions=[
+                ("class", "0"),
+                ("class", "1"),
+                ("class", "2"),
+            ],
+            scores=[0.0, 1.0, 0.0],
+        ),
+        Classification(
+            uid="uid4",
+            groundtruths=[("class", "2")],
+            predictions=[
+                ("class", "0"),
+                ("class", "1"),
+                ("class", "2"),
+            ],
+            scores=[0.0, 1.0, 0.0],
+        ),
+        Classification(
+            uid="uid5",
+            groundtruths=[("class", "2")],
+            predictions=[
+                ("class", "0"),
+                ("class", "1"),
+                ("class", "2"),
+            ],
+            scores=[0.0, 1.0, 0.0],
+        ),
+    ]
+
+
+@pytest.fixture
+def classifications() -> list[Classification]:
     animal_gts = ["bird", "dog", "bird", "bird", "cat", "dog"]
     animal_pds = [
         {"bird": 0.6, "dog": 0.2, "cat": 0.2},
