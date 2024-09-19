@@ -352,7 +352,7 @@ def compute_metrics(
     )
 
 
-def compute_detailed_pr_curve(
+def compute_detailed_counts(
     data: np.ndarray,
     label_counts: np.ndarray,
     iou_thresholds: np.ndarray,

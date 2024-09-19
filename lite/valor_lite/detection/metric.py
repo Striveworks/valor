@@ -19,7 +19,7 @@ class MetricType(str, Enum):
     ARAveragedOverScores = "ARAveragedOverScores"
     mARAveragedOverScores = "mARAveragedOverScores"
     PrecisionRecallCurve = "PrecisionRecallCurve"
-    DetailedPrecisionRecallCurve = "DetailedPrecisionRecallCurve"
+    DetailedCounts = "DetailedCounts"
 
 
 @dataclass
@@ -310,48 +310,46 @@ class PrecisionRecallCurve:
 
 
 @dataclass
-class DetailedPrecisionRecallPoint:
-    score_threshold: float
-    tp: int
-    fp_misclassification: int
-    fp_hallucination: int
-    fn_misclassification: int
-    fn_missing_prediction: int
-    tp_examples: list[str]
-    fp_misclassification_examples: list[str]
-    fp_hallucination_examples: list[str]
-    fn_misclassification_examples: list[str]
-    fn_missing_prediction_examples: list[str]
-
-    def to_dict(self) -> dict:
-        return {
-            "score_threshold": self.score_threshold,
-            "tp": self.tp,
-            "fp_misclassification": self.fp_misclassification,
-            "fp_hallucination": self.fp_hallucination,
-            "fn_misclassification": self.fn_misclassification,
-            "fn_missing_prediction": self.fn_missing_prediction,
-            "tp_examples": self.tp_examples,
-            "fp_misclassification_examples": self.fp_misclassification_examples,
-            "fp_hallucination_examples": self.fp_hallucination_examples,
-            "fn_misclassification_examples": self.fn_misclassification_examples,
-            "fn_missing_prediction_examples": self.fn_missing_prediction_examples,
-        }
-
-
-@dataclass
-class DetailedPrecisionRecallCurve:
+class DetailedCounts:
+    tp: list[int]
+    fp_misclassification: list[int]
+    fp_hallucination: list[int]
+    fn_misclassification: list[int]
+    fn_missing_prediction: list[int]
+    tp_examples: list[list[str]]
+    fp_misclassification_examples: list[list[str]]
+    fp_hallucination_examples: list[list[str]]
+    fn_misclassification_examples: list[list[str]]
+    fn_missing_prediction_examples: list[list[str]]
+    score_thresholds: list[float]
     iou_threshold: float
-    value: list[DetailedPrecisionRecallPoint]
     label: tuple[str, str]
 
-    def to_dict(self) -> dict:
-        return {
-            "value": [pt.to_dict() for pt in self.value],
-            "iou_threshold": self.iou_threshold,
-            "label": {
-                "key": self.label[0],
-                "value": self.label[1],
+    @property
+    def metric(self) -> Metric:
+        return Metric(
+            type=type(self).__name__,
+            value={
+                "tp": self.tp,
+                "fp_misclassification": self.fp_misclassification,
+                "fp_hallucination": self.fp_hallucination,
+                "fn_misclassification": self.fn_misclassification,
+                "fn_missing_prediction": self.fn_missing_prediction,
+                "tp_examples": self.tp_examples,
+                "fp_misclassification_examples": self.fp_misclassification_examples,
+                "fp_hallucination_examples": self.fp_hallucination_examples,
+                "fn_misclassification_examples": self.fn_misclassification_examples,
+                "fn_missing_prediction_examples": self.fn_missing_prediction_examples,
             },
-            "type": "DetailedPrecisionRecallCurve",
-        }
+            parameters={
+                "score_thresholds": self.score_thresholds,
+                "iou_threshold": self.iou_threshold,
+                "label": {
+                    "key": self.label[0],
+                    "value": self.label[1],
+                },
+            },
+        )
+
+    def to_dict(self) -> dict:
+        return self.metric.to_dict()

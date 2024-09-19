@@ -3,18 +3,18 @@ from valor_lite.detection import (
     DataLoader,
     Detection,
     Evaluator,
-    compute_detailed_pr_curve,
+    compute_detailed_counts,
 )
 
 
 def test_detailed_pr_curve_no_data():
     evaluator = Evaluator()
-    curves = evaluator.compute_detailed_pr_curve()
+    curves = evaluator.compute_detailed_counts()
     assert isinstance(curves, list)
     assert len(curves) == 0
 
 
-def test_compute_detailed_pr_curve():
+def test_compute_detailed_counts():
     sorted_pairs = np.array(
         [
             # dt,  gt,  pd,  iou,  gl,  pl, score,
@@ -29,7 +29,7 @@ def test_compute_detailed_pr_curve():
     iou_thresholds = np.array([0.5])
     score_thresholds = np.array([score / 100.0 for score in range(1, 101)])
 
-    results = compute_detailed_pr_curve(
+    results = compute_detailed_counts(
         data=sorted_pairs,
         label_counts=label_counts,
         iou_thresholds=iou_thresholds,
@@ -91,7 +91,7 @@ def test_compute_detailed_pr_curve():
 
     n_samples = 2
 
-    results = compute_detailed_pr_curve(
+    results = compute_detailed_counts(
         data=sorted_pairs,
         label_counts=label_counts,
         iou_thresholds=iou_thresholds,
@@ -230,149 +230,242 @@ def test_detailed_pr_curve_using_torch_metrics_example(
     assert evaluator.n_groundtruths == 20
     assert evaluator.n_predictions == 19
 
-    metrics = evaluator.compute_detailed_pr_curve(
+    metrics = evaluator.compute_detailed_counts(
         iou_thresholds=[0.5, 0.75],
         score_thresholds=[0.25, 0.75],
         n_samples=1,
     )
 
-    # test DetailedPrecisionRecallCurve
-    actual_metrics = [m.to_dict() for m in metrics]
+    assert len(metrics) == 5
+
+    # test DetailedCounts for
+    actual_metrics = [mm.to_dict() for m in metrics for mm in m]
     expected_metrics = [
         {
-            "value": [
-                {
-                    "score_threshold": 0.25,
-                    "tp": 1.0,
-                    "fp_misclassification": 0.0,
-                    "fp_hallucination": 0.0,
-                    "fn_misclassification": 1.0,
-                    "fn_missing_prediction": 0.0,
-                    "tp_examples": ["2"],
-                    "fp_misclassification_examples": [],
-                    "fp_hallucination_examples": [],
-                    "fn_misclassification_examples": ["0"],
-                    "fn_missing_prediction_examples": [],
-                },
-                {
-                    "score_threshold": 0.75,
-                    "tp": 0.0,
-                    "fp_misclassification": 0.0,
-                    "fp_hallucination": 6.0,
-                    "fn_misclassification": 2.0,
-                    "fn_missing_prediction": 4.0,
-                    "tp_examples": [],
-                    "fp_misclassification_examples": [],
-                    "fp_hallucination_examples": ["2"],
-                    "fn_misclassification_examples": ["0"],
-                    "fn_missing_prediction_examples": ["2"],
-                },
-            ],
-            "iou_threshold": 0.5,
-            "label": {"key": "class", "value": "4"},
-            "type": "DetailedPrecisionRecallCurve",
+            "type": "DetailedCounts",
+            "value": {
+                "tp": [1, 0],
+                "fp_misclassification": [0, 0],
+                "fp_hallucination": [0, 6],
+                "fn_misclassification": [1, 2],
+                "fn_missing_prediction": [0, 4],
+                "tp_examples": [["2"], []],
+                "fp_misclassification_examples": [[], []],
+                "fp_hallucination_examples": [[], ["2"]],
+                "fn_misclassification_examples": [["0"], ["0"]],
+                "fn_missing_prediction_examples": [[], ["2"]],
+            },
+            "parameters": {
+                "score_thresholds": [0.25, 0.75],
+                "iou_threshold": 0.5,
+                "label": {"key": "class", "value": "4"},
+            },
         },
         {
-            "value": [
-                {
-                    "score_threshold": 0.25,
-                    "tp": 1.0,
-                    "fp_misclassification": 0.0,
-                    "fp_hallucination": 0.0,
-                    "fn_misclassification": 1.0,
-                    "fn_missing_prediction": 0.0,
-                    "tp_examples": ["2"],
-                    "fp_misclassification_examples": [],
-                    "fp_hallucination_examples": [],
-                    "fn_misclassification_examples": ["0"],
-                    "fn_missing_prediction_examples": [],
-                },
-                {
-                    "score_threshold": 0.75,
-                    "tp": 0.0,
-                    "fp_misclassification": 0.0,
-                    "fp_hallucination": 6.0,
-                    "fn_misclassification": 2.0,
-                    "fn_missing_prediction": 4.0,
-                    "tp_examples": [],
-                    "fp_misclassification_examples": [],
-                    "fp_hallucination_examples": ["2"],
-                    "fn_misclassification_examples": ["0"],
-                    "fn_missing_prediction_examples": ["2"],
-                },
-            ],
-            "iou_threshold": 0.75,
-            "label": {"key": "class", "value": "4"},
-            "type": "DetailedPrecisionRecallCurve",
+            "type": "DetailedCounts",
+            "value": {
+                "tp": [1, 0],
+                "fp_misclassification": [0, 0],
+                "fp_hallucination": [0, 6],
+                "fn_misclassification": [1, 2],
+                "fn_missing_prediction": [0, 4],
+                "tp_examples": [["2"], []],
+                "fp_misclassification_examples": [[], []],
+                "fp_hallucination_examples": [[], ["2"]],
+                "fn_misclassification_examples": [["0"], ["0"]],
+                "fn_missing_prediction_examples": [[], ["2"]],
+            },
+            "parameters": {
+                "score_thresholds": [0.25, 0.75],
+                "iou_threshold": 0.75,
+                "label": {"key": "class", "value": "4"},
+            },
         },
         {
-            "value": [
-                {
-                    "score_threshold": 0.25,
-                    "tp": 1.0,
-                    "fp_misclassification": 0.0,
-                    "fp_hallucination": 1.0,
-                    "fn_misclassification": 0.0,
-                    "fn_missing_prediction": 1.0,
-                    "tp_examples": ["1"],
-                    "fp_misclassification_examples": [],
-                    "fp_hallucination_examples": ["1"],
-                    "fn_misclassification_examples": [],
-                    "fn_missing_prediction_examples": ["1"],
-                },
-                {
-                    "score_threshold": 0.75,
-                    "tp": 0.0,
-                    "fp_misclassification": 0.0,
-                    "fp_hallucination": 1.0,
-                    "fn_misclassification": 1.0,
-                    "fn_missing_prediction": 3.0,
-                    "tp_examples": [],
-                    "fp_misclassification_examples": [],
-                    "fp_hallucination_examples": ["1"],
-                    "fn_misclassification_examples": ["1"],
-                    "fn_missing_prediction_examples": ["1"],
-                },
-            ],
-            "iou_threshold": 0.5,
-            "label": {"key": "class", "value": "2"},
-            "type": "DetailedPrecisionRecallCurve",
+            "type": "DetailedCounts",
+            "value": {
+                "tp": [1, 0],
+                "fp_misclassification": [0, 0],
+                "fp_hallucination": [1, 1],
+                "fn_misclassification": [0, 1],
+                "fn_missing_prediction": [1, 3],
+                "tp_examples": [["1"], []],
+                "fp_misclassification_examples": [[], []],
+                "fp_hallucination_examples": [["1"], ["1"]],
+                "fn_misclassification_examples": [[], ["1"]],
+                "fn_missing_prediction_examples": [["1"], ["1"]],
+            },
+            "parameters": {
+                "score_thresholds": [0.25, 0.75],
+                "iou_threshold": 0.5,
+                "label": {"key": "class", "value": "2"},
+            },
         },
         {
-            "value": [
-                {
-                    "score_threshold": 0.25,
-                    "tp": 1.0,
-                    "fp_misclassification": 0.0,
-                    "fp_hallucination": 1.0,
-                    "fn_misclassification": 0.0,
-                    "fn_missing_prediction": 1.0,
-                    "tp_examples": ["1"],
-                    "fp_misclassification_examples": [],
-                    "fp_hallucination_examples": ["1"],
-                    "fn_misclassification_examples": [],
-                    "fn_missing_prediction_examples": ["1"],
-                },
-                {
-                    "score_threshold": 0.75,
-                    "tp": 0.0,
-                    "fp_misclassification": 0.0,
-                    "fp_hallucination": 1.0,
-                    "fn_misclassification": 1.0,
-                    "fn_missing_prediction": 3.0,
-                    "tp_examples": [],
-                    "fp_misclassification_examples": [],
-                    "fp_hallucination_examples": ["1"],
-                    "fn_misclassification_examples": ["1"],
-                    "fn_missing_prediction_examples": ["1"],
-                },
-            ],
-            "iou_threshold": 0.75,
-            "label": {"key": "class", "value": "2"},
-            "type": "DetailedPrecisionRecallCurve",
+            "type": "DetailedCounts",
+            "value": {
+                "tp": [1, 0],
+                "fp_misclassification": [0, 0],
+                "fp_hallucination": [1, 1],
+                "fn_misclassification": [0, 1],
+                "fn_missing_prediction": [1, 3],
+                "tp_examples": [["1"], []],
+                "fp_misclassification_examples": [[], []],
+                "fp_hallucination_examples": [["1"], ["1"]],
+                "fn_misclassification_examples": [[], ["1"]],
+                "fn_missing_prediction_examples": [["1"], ["1"]],
+            },
+            "parameters": {
+                "score_thresholds": [0.25, 0.75],
+                "iou_threshold": 0.75,
+                "label": {"key": "class", "value": "2"},
+            },
+        },
+        {
+            "type": "DetailedCounts",
+            "value": {
+                "tp": [1, 0],
+                "fp_misclassification": [0, 0],
+                "fp_hallucination": [1, 1],
+                "fn_misclassification": [0, 1],
+                "fn_missing_prediction": [1, 3],
+                "tp_examples": [["1"], []],
+                "fp_misclassification_examples": [[], []],
+                "fp_hallucination_examples": [["1"], ["1"]],
+                "fn_misclassification_examples": [[], ["1"]],
+                "fn_missing_prediction_examples": [["1"], ["1"]],
+            },
+            "parameters": {
+                "score_thresholds": [0.25, 0.75],
+                "iou_threshold": 0.75,
+                "label": {"key": "class", "value": "2"},
+            },
+        },
+        {
+            "type": "DetailedCounts",
+            "value": {
+                "tp": [1, 0],
+                "fp_misclassification": [0, 0],
+                "fp_hallucination": [0, 6],
+                "fn_misclassification": [0, 1],
+                "fn_missing_prediction": [0, 4],
+                "tp_examples": [["2"], []],
+                "fp_misclassification_examples": [[], []],
+                "fp_hallucination_examples": [[], ["2"]],
+                "fn_misclassification_examples": [[], ["2"]],
+                "fn_missing_prediction_examples": [[], ["2"]],
+            },
+            "parameters": {
+                "score_thresholds": [0.25, 0.75],
+                "iou_threshold": 0.5,
+                "label": {"key": "class", "value": "1"},
+            },
+        },
+        {
+            "type": "DetailedCounts",
+            "value": {
+                "tp": [1, 0],
+                "fp_misclassification": [0, 0],
+                "fp_hallucination": [0, 6],
+                "fn_misclassification": [0, 1],
+                "fn_missing_prediction": [0, 4],
+                "tp_examples": [["2"], []],
+                "fp_misclassification_examples": [[], []],
+                "fp_hallucination_examples": [[], ["2"]],
+                "fn_misclassification_examples": [[], ["2"]],
+                "fn_missing_prediction_examples": [[], ["2"]],
+            },
+            "parameters": {
+                "score_thresholds": [0.25, 0.75],
+                "iou_threshold": 0.75,
+                "label": {"key": "class", "value": "1"},
+            },
+        },
+        {
+            "type": "DetailedCounts",
+            "value": {
+                "tp": [5, 2],
+                "fp_misclassification": [0, 0],
+                "fp_hallucination": [20, 26],
+                "fn_misclassification": [0, 3],
+                "fn_missing_prediction": [20, 30],
+                "tp_examples": [["2"], ["2"]],
+                "fp_misclassification_examples": [[], []],
+                "fp_hallucination_examples": [["2"], ["2"]],
+                "fn_misclassification_examples": [[], ["2"]],
+                "fn_missing_prediction_examples": [["2"], ["2"]],
+            },
+            "parameters": {
+                "score_thresholds": [0.25, 0.75],
+                "iou_threshold": 0.5,
+                "label": {"key": "class", "value": "0"},
+            },
+        },
+        {
+            "type": "DetailedCounts",
+            "value": {
+                "tp": [4, 2],
+                "fp_misclassification": [0, 0],
+                "fp_hallucination": [21, 27],
+                "fn_misclassification": [0, 2],
+                "fn_missing_prediction": [21, 31],
+                "tp_examples": [["2"], ["2"]],
+                "fp_misclassification_examples": [[], []],
+                "fp_hallucination_examples": [["2"], ["2"]],
+                "fn_misclassification_examples": [[], ["2"]],
+                "fn_missing_prediction_examples": [["2"], ["2"]],
+            },
+            "parameters": {
+                "score_thresholds": [0.25, 0.75],
+                "iou_threshold": 0.75,
+                "label": {"key": "class", "value": "0"},
+            },
+        },
+        {
+            "type": "DetailedCounts",
+            "value": {
+                "tp": [6, 2],
+                "fp_misclassification": [0, 0],
+                "fp_hallucination": [79, 79],
+                "fn_misclassification": [5, 9],
+                "fn_missing_prediction": [79, 79],
+                "tp_examples": [["3"], ["3"]],
+                "fp_misclassification_examples": [[], []],
+                "fp_hallucination_examples": [["3"], ["3"]],
+                "fn_misclassification_examples": [["3"], ["3"]],
+                "fn_missing_prediction_examples": [["3"], ["3"]],
+            },
+            "parameters": {
+                "score_thresholds": [0.25, 0.75],
+                "iou_threshold": 0.5,
+                "label": {"key": "class", "value": "49"},
+            },
+        },
+        {
+            "type": "DetailedCounts",
+            "value": {
+                "tp": [5, 2],
+                "fp_misclassification": [0, 0],
+                "fp_hallucination": [84, 84],
+                "fn_misclassification": [1, 4],
+                "fn_missing_prediction": [84, 84],
+                "tp_examples": [["3"], ["3"]],
+                "fp_misclassification_examples": [[], []],
+                "fp_hallucination_examples": [["3"], ["3"]],
+                "fn_misclassification_examples": [["3"], ["3"]],
+                "fn_missing_prediction_examples": [["3"], ["3"]],
+            },
+            "parameters": {
+                "score_thresholds": [0.25, 0.75],
+                "iou_threshold": 0.75,
+                "label": {"key": "class", "value": "49"},
+            },
         },
     ]
     for m in actual_metrics:
+        import json
+
+        print(json.dumps(m, indent=4))
         assert m in expected_metrics
     for m in expected_metrics:
         assert m in actual_metrics
