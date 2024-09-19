@@ -31,39 +31,6 @@ from valor_core.utilities import trim_and_load_json
 DEFAULT_SYSTEM_PROMPT = "You are a helpful assistant."
 
 
-# @dataclass
-# class Message:
-#     role: str
-#     content: str
-
-#     def __post_init__(self):
-#         """Validate instantiated class."""
-#         if not isinstance(self.role, str):
-#             raise ValueError(
-#                 f"role must be a string, got {type(self.role)} instead."
-#             )
-#         if not isinstance(self.content, str):
-#             raise ValueError(
-#                 f"content must be a string, got {type(self.content)} instead."
-#             )
-
-
-# @dataclass
-# class Messages:
-#     messages: list[Message]
-
-#     def __post_init__(self):
-#         """Validate instantiated class."""
-#         if not isinstance(self.messages, list):
-#             raise ValueError(
-#                 f"messages must be a list, got {type(self.messages)} instead."
-#             )
-#         if not all(isinstance(message, Message) for message in self.messages):
-#             raise ValueError(
-#                 "messages must be a list of Message objects."
-#            )
-
-
 def validate_messages(messages: list[dict[str, str]]):
     """
     Validate that the input is a list of dictionaries with "role" and "content" keys.
