@@ -151,7 +151,7 @@ def classifications_two_categeories() -> list[Classification]:
 
     return [
         Classification(
-            uid=str(idx),
+            uid=f"uid{idx}",
             groundtruths=[("animal", gt[0]), ("color", gt[1])],
             predictions=[
                 (key, value)

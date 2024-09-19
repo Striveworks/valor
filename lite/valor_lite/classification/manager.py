@@ -5,13 +5,16 @@ import numpy as np
 from numpy.typing import NDArray
 from tqdm import tqdm
 from valor_lite.classification.annotation import Classification
-from valor_lite.classification.computation import compute_metrics
+from valor_lite.classification.computation import (
+    compute_detailed_counts,
+    compute_metrics,
+)
 from valor_lite.classification.metric import (
     F1,
     ROCAUC,
     Accuracy,
     Counts,
-    DetailedPrecisionRecallCurve,
+    DetailedCounts,
     MetricType,
     Precision,
     Recall,
@@ -217,6 +220,7 @@ class Evaluator:
             A boolean mask that filters the cached data.
         """
 
+        # apply filters
         data = self._detailed_pairs
         label_metadata = self._label_metadata
         n_datums = self.n_datums
@@ -303,94 +307,108 @@ class Evaluator:
 
         return metrics
 
-    def compute_detailed_pr_curve(
+    def compute_detailed_counts(
         self,
         score_thresholds: list[float] = [
             score / 10.0 for score in range(1, 11)
         ],
         n_samples: int = 0,
-    ) -> list[DetailedPrecisionRecallCurve]:
-        return list()
+        filter_: Filter | None = None,
+    ) -> list[DetailedCounts]:
 
-    #     if self._detailed_pairs.size == 0:
-    #         return list()
+        # apply filters
+        data = self._detailed_pairs
+        label_metadata = self._label_metadata
+        if filter_ is not None:
+            data = data[filter_.indices]
+            label_metadata = filter_.label_metadata
 
-    #     metrics = compute_detailed_pr_curve(
-    #         self._detailed_pairs,
-    #         label_counts=self._label_metadata,
-    #         score_thresholds=np.array(score_thresholds),
-    #         n_samples=n_samples,
-    #     )
+        metrics = compute_detailed_counts(
+            data=data,
+            label_metadata=label_metadata,
+            score_thresholds=np.array(score_thresholds),
+            n_samples=n_samples,
+        )
 
-    #     tp_idx = 0
-    #     fp_misclf_idx = tp_idx + n_samples + 1
-    #     fp_halluc_idx = fp_misclf_idx + n_samples + 1
-    #     fn_misclf_idx = fp_halluc_idx + n_samples + 1
-    #     fn_misprd_idx = fn_misclf_idx + n_samples + 1
+        tp_idx = 0
+        fp_misclf_idx = tp_idx + n_samples + 1
+        fn_misclf_idx = fp_misclf_idx + n_samples + 1
+        fn_misprd_idx = fn_misclf_idx + n_samples + 1
+        tn_idx = fn_misprd_idx + n_samples + 1
 
-    #     results = list()
-    #     for label_idx in range(len(metrics)):
-    #         n_scores, _, _ = metrics.shape
-    #         curve = DetailedPrecisionRecallCurve(
-    #             value=list(),
-    #             label=self.index_to_label[label_idx],
-    #         )
-    #         for score_idx in range(n_scores):
-    #             curve.value.append(
-    #                 DetailedPrecisionRecallPoint(
-    #                     score=score_thresholds[score_idx],
-    #                     tp=metrics[score_idx][label_idx][tp_idx],
-    #                     tp_examples=[
-    #                         self.index_to_uid[int(datum_idx)]
-    #                         for datum_idx in metrics[score_idx][label_idx][
-    #                             tp_idx + 1 : fp_misclf_idx
-    #                         ]
-    #                         if int(datum_idx) >= 0
-    #                     ],
-    #                     fp_misclassification=metrics[score_idx][label_idx][
-    #                         fp_misclf_idx
-    #                     ],
-    #                     fp_misclassification_examples=[
-    #                         self.index_to_uid[int(datum_idx)]
-    #                         for datum_idx in metrics[score_idx][label_idx][
-    #                             fp_misclf_idx + 1 : fp_halluc_idx
-    #                         ]
-    #                         if int(datum_idx) >= 0
-    #                     ],
-    #                     fp_hallucination=metrics[score_idx][label_idx][
-    #                         fp_halluc_idx
-    #                     ],
-    #                     fp_hallucination_examples=[
-    #                         self.index_to_uid[int(datum_idx)]
-    #                         for datum_idx in metrics[score_idx][label_idx][
-    #                             fp_halluc_idx + 1 : fn_misclf_idx
-    #                         ]
-    #                         if int(datum_idx) >= 0
-    #                     ],
-    #                     fn_misclassification=metrics[score_idx][label_idx][
-    #                         fn_misclf_idx
-    #                     ],
-    #                     fn_misclassification_examples=[
-    #                         self.index_to_uid[int(datum_idx)]
-    #                         for datum_idx in metrics[score_idx][label_idx][
-    #                             fn_misclf_idx + 1 : fn_misprd_idx
-    #                         ]
-    #                         if int(datum_idx) >= 0
-    #                     ],
-    #                     fn_missing_prediction=metrics[score_idx][label_idx][
-    #                         fn_misprd_idx
-    #                     ],
-    #                     fn_missing_prediction_examples=[
-    #                         self.index_to_uid[int(datum_idx)]
-    #                         for datum_idx in metrics[score_idx][label_idx][
-    #                             fn_misprd_idx + 1 :
-    #                         ]
-    #                         if int(datum_idx) >= 0
-    #                     ],
-    #                 )
-    #             )
-    #         results.append(curve)
-    #     return results
+        n_scores, n_labels, _ = metrics.shape
+        return [
+            DetailedCounts(
+                tp=metrics[:, label_idx, tp_idx].astype(int).tolist(),
+                tp_examples=[
+                    [
+                        self.index_to_uid[int(datum_idx)]
+                        for datum_idx in metrics[
+                            score_idx, label_idx, tp_idx + 1 : fp_misclf_idx
+                        ]
+                        if int(datum_idx) >= 0
+                    ]
+                    for score_idx in range(n_scores)
+                ],
+                fp_misclassification=metrics[:, label_idx, fp_misclf_idx]
+                .astype(int)
+                .tolist(),
+                fp_misclassification_examples=[
+                    [
+                        self.index_to_uid[int(datum_idx)]
+                        for datum_idx in metrics[
+                            score_idx,
+                            label_idx,
+                            fp_misclf_idx + 1 : fn_misclf_idx,
+                        ]
+                        if int(datum_idx) >= 0
+                    ]
+                    for score_idx in range(n_scores)
+                ],
+                fn_misclassification=metrics[:, label_idx, fn_misclf_idx]
+                .astype(int)
+                .tolist(),
+                fn_misclassification_examples=[
+                    [
+                        self.index_to_uid[int(datum_idx)]
+                        for datum_idx in metrics[
+                            score_idx,
+                            label_idx,
+                            fn_misclf_idx + 1 : fn_misprd_idx,
+                        ]
+                        if int(datum_idx) >= 0
+                    ]
+                    for score_idx in range(n_scores)
+                ],
+                fn_missing_prediction=metrics[:, label_idx, fn_misprd_idx]
+                .astype(int)
+                .tolist(),
+                fn_missing_prediction_examples=[
+                    [
+                        self.index_to_uid[int(datum_idx)]
+                        for datum_idx in metrics[
+                            score_idx, label_idx, fn_misprd_idx + 1 : tn_idx
+                        ]
+                        if int(datum_idx) >= 0
+                    ]
+                    for score_idx in range(n_scores)
+                ],
+                tn=metrics[:, label_idx, tn_idx].astype(int).tolist(),
+                tn_examples=[
+                    [
+                        self.index_to_uid[int(datum_idx)]
+                        for datum_idx in metrics[
+                            score_idx, label_idx, tn_idx + 1 :
+                        ]
+                        if int(datum_idx) >= 0
+                    ]
+                    for score_idx in range(n_scores)
+                ],
+                scores=score_thresholds,
+                label=self.index_to_label[label_idx],
+            )
+            for label_idx in range(n_labels)
+        ]
 
 
 class DataLoader:

@@ -8,8 +8,7 @@ class MetricType(Enum):
     Counts = "Counts"
     ROCAUC = "ROCAUC"
     mROCAUC = "mROCAUC"
-    PrecisionRecallCurve = "PrecisionRecallCurve"
-    DetailedPrecisionRecallCurve = "DetailedPrecisionRecallCurve"
+    DetailedCounts = "DetailedCounts"
     Precision = "Precision"
     Recall = "Recall"
     Accuracy = "Accuracy"
@@ -130,48 +129,40 @@ class mROCAUC:
 
 
 @dataclass
-class DetailedPrecisionRecallPoint:
-    score: float
-    tp: int
-    fp_misclassification: int
-    fp_hallucination: int
-    fn_misclassification: int
-    fn_missing_prediction: int
-    tp_examples: list[str]
-    fp_misclassification_examples: list[str]
-    fp_hallucination_examples: list[str]
-    fn_misclassification_examples: list[str]
-    fn_missing_prediction_examples: list[str]
-
-    def to_dict(self) -> dict:
-        return {
-            "score": self.score,
-            "tp": self.tp,
-            "fp_misclassification": self.fp_misclassification,
-            "fp_hallucination": self.fp_hallucination,
-            "fn_misclassification": self.fn_misclassification,
-            "fn_missing_prediction": self.fn_missing_prediction,
-            "tp_examples": self.tp_examples,
-            "fp_misclassification_examples": self.fp_misclassification_examples,
-            "fp_hallucination_examples": self.fp_hallucination_examples,
-            "fn_misclassification_examples": self.fn_misclassification_examples,
-            "fn_missing_prediction_examples": self.fn_missing_prediction_examples,
-        }
-
-
-@dataclass
-class DetailedPrecisionRecallCurve:
-    iou: float
-    value: list[DetailedPrecisionRecallPoint]
+class DetailedCounts:
+    tp: list[int]
+    fp_misclassification: list[int]
+    fn_misclassification: list[int]
+    fn_missing_prediction: list[int]
+    tn: list[int]
+    tp_examples: list[list[str]]
+    fp_misclassification_examples: list[list[str]]
+    fn_misclassification_examples: list[list[str]]
+    fn_missing_prediction_examples: list[list[str]]
+    tn_examples: list[list[str]]
     label: tuple[str, str]
+    scores: list[float]
 
     def to_dict(self) -> dict:
         return {
-            "value": [pt.to_dict() for pt in self.value],
-            "iou": self.iou,
-            "label": {
-                "key": self.label[0],
-                "value": self.label[1],
+            "value": {
+                "tp": self.tp,
+                "fp_misclassification": self.fp_misclassification,
+                "fn_misclassification": self.fn_misclassification,
+                "fn_missing_prediction": self.fn_missing_prediction,
+                "tn": self.tn,
+                "tp_examples": self.tp_examples,
+                "fp_misclassification_examples": self.fp_misclassification_examples,
+                "fn_misclassification_examples": self.fn_misclassification_examples,
+                "fn_missing_prediction_examples": self.fn_missing_prediction_examples,
+                "tn_examples": self.tn_examples,
             },
-            "type": "DetailedPrecisionRecallCurve",
+            "label": {
+                "score_thresholds": self.scores,
+                "label": {
+                    "key": self.label[0],
+                    "value": self.label[1],
+                },
+            },
+            "type": type(self).__name__,
         }
