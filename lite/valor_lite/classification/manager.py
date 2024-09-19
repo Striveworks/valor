@@ -485,61 +485,33 @@ class DataLoader:
             gt_keys = set(keyed_groundtruths.keys())
             pd_keys = set(keyed_predictions.keys())
             joint_keys = gt_keys.intersection(pd_keys)
+
             gt_unique_keys = gt_keys - pd_keys
             pd_unique_keys = pd_keys - gt_keys
+            if gt_unique_keys or pd_unique_keys:
+                raise ValueError()
 
-            pairs = list()
-            for key in joint_keys:
-                pairs.extend(
-                    [
-                        np.array(
-                            [
-                                float(uid_index),
-                                float(glabel),
-                                float(plabel),
-                                float(score),
-                            ]
-                        )
-                        for plabel, score in keyed_predictions[key]
-                        for glabel in keyed_groundtruths[key]
-                    ]
-                )
-            for key in gt_unique_keys:
-                pairs.extend(
-                    [
-                        np.array(
-                            [
-                                float(uid_index),
-                                float(glabel),
-                                -1.0,
-                                -1.0,
-                            ]
-                        )
-                        for glabel in keyed_groundtruths[key]
-                    ]
-                )
-            for key in pd_unique_keys:
-                pairs.extend(
-                    [
-                        np.array(
-                            [
-                                float(uid_index),
-                                -1.0,
-                                float(plabel),
-                                float(score),
-                            ]
-                        )
-                        for plabel, score in keyed_predictions[key]
-                    ]
-                )
+            pairs = np.array(
+                [
+                    (
+                        float(uid_index),
+                        float(glabel),
+                        float(plabel),
+                        float(score),
+                    )
+                    for key in joint_keys
+                    for plabel, score in keyed_predictions[key]
+                    for glabel in keyed_groundtruths[key]
+                ]
+            )
 
             if self._evaluator._detailed_pairs.size == 0:
-                self._evaluator._detailed_pairs = np.array(pairs)
+                self._evaluator._detailed_pairs = pairs
             else:
                 self._evaluator._detailed_pairs = np.concatenate(
                     [
                         self._evaluator._detailed_pairs,
-                        np.array(pairs),
+                        pairs,
                     ],
                     axis=0,
                 )
@@ -588,61 +560,33 @@ class DataLoader:
             gt_keys = set(keyed_groundtruths.keys())
             pd_keys = set(keyed_predictions.keys())
             joint_keys = gt_keys.intersection(pd_keys)
+
             gt_unique_keys = gt_keys - pd_keys
             pd_unique_keys = pd_keys - gt_keys
+            if gt_unique_keys or pd_unique_keys:
+                raise ValueError()
 
-            pairs = list()
-            for key in joint_keys:
-                pairs.extend(
-                    [
-                        np.array(
-                            [
-                                float(uid_index),
-                                float(glabel),
-                                float(plabel),
-                                float(score),
-                            ]
-                        )
-                        for plabel, score in keyed_predictions[key]
-                        for glabel in keyed_groundtruths[key]
-                    ]
-                )
-            for key in gt_unique_keys:
-                pairs.extend(
-                    [
-                        np.array(
-                            [
-                                float(uid_index),
-                                float(glabel),
-                                -1.0,
-                                -1.0,
-                            ]
-                        )
-                        for glabel in keyed_groundtruths[key]
-                    ]
-                )
-            for key in pd_unique_keys:
-                pairs.extend(
-                    [
-                        np.array(
-                            [
-                                float(uid_index),
-                                -1.0,
-                                float(plabel),
-                                float(score),
-                            ]
-                        )
-                        for plabel, score in keyed_predictions[key]
-                    ]
-                )
+            pairs = np.array(
+                [
+                    (
+                        float(uid_index),
+                        float(glabel),
+                        float(plabel),
+                        float(score),
+                    )
+                    for key in joint_keys
+                    for plabel, score in keyed_predictions[key]
+                    for glabel in keyed_groundtruths[key]
+                ]
+            )
 
             if self._evaluator._detailed_pairs.size == 0:
-                self._evaluator._detailed_pairs = np.array(pairs)
+                self._evaluator._detailed_pairs = pairs
             else:
                 self._evaluator._detailed_pairs = np.concatenate(
                     [
                         self._evaluator._detailed_pairs,
-                        np.array(pairs),
+                        pairs,
                     ],
                     axis=0,
                 )
