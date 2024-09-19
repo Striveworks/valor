@@ -1,5 +1,5 @@
 [project]
-name = "valor-core"
+name = "valor-lite"
 dynamic = ["version"]
 description = "Compute valor metrics directly in your client."
 readme = "README.md"
@@ -7,16 +7,10 @@ requires-python = ">=3.10"
 license = { file = "LICENSE" }
 dependencies = [
     "Pillow >= 9.1.0",
-    "numpy",
     "importlib_metadata; python_version < '3.8'",
-    "pandas>=2.2.2",
-    "pandas-stubs",
     "tqdm",
     "requests",
-    "shapely",
-    "nltk",
-    "rouge_score",
-    "evaluate"
+    "numpy",
 ]
 
 [project.urls]
@@ -27,8 +21,6 @@ requires = ["setuptools>=61.0", "setuptools_scm[toml]>=6.2"]
 build-backend = "setuptools.build_meta"
 
 [project.optional-dependencies]
-mistral = ["mistralai >= 1.0"]
-openai = ["openai"]
 test = ["pytest", "coverage"]
 
 [tool.black]

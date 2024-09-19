@@ -54,6 +54,16 @@ def raster() -> schemas.Raster:
     return schemas.Raster.decode_value(mask)
 
 
+@pytest.fixture
+def text() -> str:
+    return "Test string."
+
+
+@pytest.fixture
+def context_list() -> list[str]:
+    return ["context1", "context2", "context3"]
+
+
 def test_label():
     # valid
     l1 = schemas.Label(key="test", value="value")
@@ -158,10 +168,13 @@ def test_label_score():
     assert not b6
 
 
-def test_datum():
+def test_datum(
+    text: str,
+):
     schemas.Datum(uid="123")
     schemas.Datum(uid="123", metadata={})
     schemas.Datum(uid="123", metadata={"name": 1})
+    schemas.Datum(uid="123", text=text)
 
     with pytest.raises(TypeError):
         schemas.Datum(uid=123)  # type: ignore
@@ -169,6 +182,8 @@ def test_datum():
         schemas.Datum(uid="123", metadata=1)  # type: ignore
     with pytest.raises(TypeError):
         schemas.Datum(uid="123", metadata=[1])  # type: ignore
+    with pytest.raises(TypeError):
+        schemas.Datum(uid="123", text=55)  # type: ignore
 
 
 def test_annotation(
@@ -176,6 +191,8 @@ def test_annotation(
     polygon: schemas.Polygon,
     raster: schemas.Raster,
     labels: list[schemas.Label],
+    text: str,
+    context_list: list[str],
     metadata: dict[str, dict[str, str | float]],
 ):
     # valid
@@ -208,6 +225,16 @@ def test_annotation(
         labels=labels,
         polygon=bbox,  # bbox is a constrained polygon so this is valid usage
     )
+    schemas.Annotation(
+        text=text,
+    )
+    schemas.Annotation(
+        text=text,
+        context_list=context_list,
+    )
+    schemas.Annotation(
+        context_list=context_list,
+    )  # Some text generation metrics only use the prediction context list and not the prediction text.
 
     # test `__post_init__`
     with pytest.raises(TypeError):
@@ -224,6 +251,18 @@ def test_annotation(
         schemas.Annotation(
             labels=labels,
             metadata=[1234],  # type: ignore - testing
+        )
+    with pytest.raises(TypeError):
+        schemas.Annotation(
+            text=["This should not be a list."],  # type: ignore - testing
+        )
+    with pytest.raises(TypeError):
+        schemas.Annotation(
+            context_list="This should be a list of strings.",  # type: ignore - testing
+        )
+    with pytest.raises(TypeError):
+        schemas.Annotation(
+            context_list=[1, 2],  # type: ignore - testing
         )
 
 
@@ -354,12 +393,34 @@ def test_EvaluationParameters():
         iou_thresholds_to_return=[],
     )
 
-    # If no llm-guided metrics are requested, then llm_api_params is not required.
     schemas.EvaluationParameters(
         metrics_to_return=[
             enums.MetricType.AP,
             enums.MetricType.AR,
         ],
+    )
+
+    # Typical evaluation parameters for a text generation task
+    schemas.EvaluationParameters(
+        metrics_to_return=[
+            enums.MetricType.AnswerCorrectness,
+            enums.MetricType.BLEU,
+            enums.MetricType.ContextPrecision,
+            enums.MetricType.ContextRecall,
+        ],
+        llm_api_params={
+            "client": "openai",
+            "api_key": "test_key",
+            "data": {
+                "seed": 2024,
+                "model": "gpt-4o",
+            },
+        },
+        metric_params={
+            "BLEU": {
+                "weights": [0.5, 0.3, 0.1, 0.1],
+            },
+        },
     )
 
     schemas.EvaluationParameters(
