@@ -313,15 +313,11 @@ class Evaluator:
             score / 10.0 for score in range(1, 11)
         ],
         n_samples: int = 0,
-        filter_: Filter | None = None,
     ) -> list[DetailedCounts]:
 
         # apply filters
         data = self._detailed_pairs
         label_metadata = self._label_metadata
-        if filter_ is not None:
-            data = data[filter_.indices]
-            label_metadata = filter_.label_metadata
 
         metrics = compute_detailed_counts(
             data=data,
