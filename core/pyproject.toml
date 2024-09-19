@@ -14,8 +14,6 @@ dependencies = [
     "tqdm",
     "requests",
     "shapely",
-    "openai",
-    "mistralai >= 1.0",
     "nltk",
     "rouge_score",
     "evaluate"
@@ -29,6 +27,8 @@ requires = ["setuptools>=61.0", "setuptools_scm[toml]>=6.2"]
 build-backend = "setuptools.build_meta"
 
 [project.optional-dependencies]
+mistral = ["mistralai >= 1.0"]
+openai = ["openai"]
 test = ["pytest", "coverage"]
 
 [tool.black]
