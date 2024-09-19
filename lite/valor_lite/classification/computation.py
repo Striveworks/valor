@@ -6,13 +6,22 @@ from numpy.typing import NDArray
 # 2 score
 
 
-def _compute_rocauc(
-    data: NDArray[np.float64],
+def compute_metrics(
+    data: NDArray[np.floating],
     label_metadata: NDArray[np.int32],
+    score_thresholds: NDArray[np.floating],
     n_datums: int,
-) -> tuple[NDArray[np.floating], NDArray[np.floating]]:
+) -> tuple[
+    NDArray[np.int32],
+    NDArray[np.floating],
+    NDArray[np.floating],
+    NDArray[np.floating],
+    NDArray[np.floating],
+    NDArray[np.floating],
+    NDArray[np.floating],
+]:
     """
-    Computes ROCAUC.
+    Computes classification metrics.
 
     Takes data with form:
 
@@ -20,11 +29,43 @@ def _compute_rocauc(
     Index 1 - Prediction Label Index
     Index 2 - Score
 
+    Parameters
+    ----------
+    data : NDArray[np.floating]
+        A sorted array of classification pairs.
+    label_metadata : NDArray[np.int32]
+        An array containing metadata related to labels.
+    score_thresholds : NDArray[np.floating]
+        An array contains score thresholds to compute metrics over.
+
+    Returns
+    -------
+    NDArray[np.int32]
+        TP, FP, FN, TN counts.
+    NDArray[np.floating]
+        Precision.
+    NDArray[np.floating]
+        Recall.
+    NDArray[np.floating]
+        Accuracy
+    NDArray[np.floating]
+        F1 Score
+    NDArray[np.floating]
+        ROCAUC.
+    NDArray[np.floating]
+        mROCAUC.
     """
+
     n_labels = label_metadata.shape[0]
     n_label_keys = np.unique(label_metadata[:, 2]).size
+    n_scores = score_thresholds.shape[0]
 
     pd_labels = data[:, 1].astype(int)
+
+    mask_matching_labels = np.isclose(data[:, 0], data[:, 1])
+    mask_score_nonzero = ~np.isclose(data[:, 2], 0.0)
+
+    # ==== calculate ROCAUC ====
 
     count_labels_per_key = np.bincount(label_metadata[:, 2])
     count_groundtruths_per_key = np.bincount(
@@ -37,8 +78,6 @@ def _compute_rocauc(
     negative_count = (
         count_groundtruths_per_key[label_metadata[:, 2]] - label_metadata[:, 0]
     )
-
-    mask_matching_labels = np.isclose(data[:, 0], data[:, 1])
 
     true_positives = np.zeros((n_labels, n_datums), dtype=np.int32)
     false_positives = np.zeros_like(true_positives)
@@ -93,75 +132,7 @@ def _compute_rocauc(
         out=mean_rocauc,
     )
 
-    return (rocauc, mean_rocauc)
-
-
-def compute_metrics(
-    data: NDArray[np.floating],
-    label_metadata: NDArray[np.int32],
-    score_thresholds: NDArray[np.floating],
-    n_datums: int,
-) -> tuple[
-    NDArray[np.int32],
-    NDArray[np.floating],
-    NDArray[np.floating],
-    NDArray[np.floating],
-    NDArray[np.floating],
-    NDArray[np.floating],
-    NDArray[np.floating],
-]:
-    """
-    Computes classification metrics.
-
-    Takes data with form:
-
-    Index 0 - GroundTruth Label Index
-    Index 1 - Prediction Label Index
-    Index 2 - Score
-
-    Parameters
-    ----------
-    data : NDArray[np.floating]
-        A sorted array of classification pairs.
-    label_metadata : NDArray[np.int32]
-        An array containing metadata related to labels.
-    score_thresholds : NDArray[np.floating]
-        An array contains score thresholds to compute metrics over.
-
-    Returns
-    -------
-    NDArray[np.int32]
-        TP, FP, FN, TN counts.
-    NDArray[np.floating]
-        Precision.
-    NDArray[np.floating]
-        Recall.
-    NDArray[np.floating]
-        Accuracy
-    NDArray[np.floating]
-        F1 Score
-    NDArray[np.floating]
-        ROCAUC.
-    NDArray[np.floating]
-        mROCAUC.
-    """
-
-    n_labels = label_metadata.shape[0]
-    n_scores = score_thresholds.shape[0]
-
-    pd_labels = data[:, 1].astype(int)
-
-    mask_matching_labels = np.isclose(data[:, 0], data[:, 1])
-    mask_score_nonzero = ~np.isclose(data[:, 2], 0.0)
-
-    # calculate ROCAUC
-    rocauc, mean_rocauc = _compute_rocauc(
-        data=data,
-        label_metadata=label_metadata,
-        n_datums=n_datums,
-    )
-
-    # calculate metrics at each score threshold
+    # === calculate metrics at various score thresholds ===
     counts = np.zeros((n_scores, n_labels, 4), dtype=np.int32)
     for score_idx in range(n_scores):
         mask_score_threshold = data[:, 2] >= score_thresholds[score_idx]

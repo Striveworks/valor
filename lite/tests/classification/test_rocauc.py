@@ -1,9 +1,9 @@
 import numpy as np
 from valor_lite.classification import Classification, DataLoader, MetricType
-from valor_lite.classification.computation import _compute_rocauc
+from valor_lite.classification.computation import compute_metrics
 
 
-def test__compute_rocauc():
+def test_compute_rocauc():
     """
     Test ROC auc computation. This agrees with scikit-learn: the code (whose data
     comes from classification_test_data)
@@ -137,10 +137,11 @@ def test__compute_rocauc():
     )
 
     # compute ROCAUC and mROCAUC
-    rocauc, mean_rocauc = _compute_rocauc(
+    (_, _, _, _, _, rocauc, mean_rocauc) = compute_metrics(
         data=animals_and_colors,
         label_metadata=label_metadata,
         n_datums=6,
+        score_thresholds=np.array([]),
     )
 
     # test ROCAUC
