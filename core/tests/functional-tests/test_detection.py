@@ -515,6 +515,8 @@ def test_evaluate_detection_with_label_maps(
         "pr_curve_iou_threshold": 0.5,
         "pr_curve_max_examples": 1,
         "convert_annotations_to_type": None,
+        "llm_api_params": None,
+        "metric_params": None,
     }
 
     metrics = eval_job.metrics
@@ -1367,6 +1369,8 @@ def test_evaluate_detection_rotated_bboxes_with_shapely(
             "pr_curve_iou_threshold": 0.5,
             "pr_curve_max_examples": 1,
             "convert_annotations_to_type": None,
+            "llm_api_params": None,
+            "metric_params": None,
         },
         "confusion_matrices": [],
         "ignored_pred_labels": [],

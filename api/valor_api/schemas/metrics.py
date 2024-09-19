@@ -826,7 +826,7 @@ class BLEUMetric(BaseModel):
     Attributes
     ----------
     value : float
-        The BLEU score for an individual datapoint, which is a JSON containing individual ROUGE scores calculated in different ways.
+        The BLEU score for an individual datapoint.
     parameters : dict[str, str | list[int | float]]
         The parameters associated with the metric.
     """
