@@ -43,6 +43,7 @@ filtered_metrics = evaluator.evaluate(filter_mask=filter_mask)
 class Filter:
     indices: NDArray[np.int32]
     label_metadata: NDArray[np.int32]
+    n_datums: int
 
 
 class Evaluator:
@@ -69,7 +70,6 @@ class Evaluator:
 
         # computation caches
         self._detailed_pairs = np.array([])
-        self._compact_pairs = np.array([])
         self._label_metadata = np.array([], dtype=np.int32)
         self._label_metadata_per_datum = np.array([], dtype=np.int32)
 
@@ -193,10 +193,12 @@ class Evaluator:
             )
         )
         label_metadata[:, 2] = self._label_metadata[:, 2]
+        n_datums = int(np.sum(label_metadata[:, 0]))
 
         return Filter(
             indices=np.where(mask_pairs)[0],
             label_metadata=label_metadata,
+            n_datums=n_datums,
         )
 
     def evaluate(
@@ -215,11 +217,16 @@ class Evaluator:
             A boolean mask that filters the cached data.
         """
 
-        data = self._compact_pairs
+        data = self._detailed_pairs
         label_metadata = self._label_metadata
+        n_datums = self.n_datums
         if filter_ is not None:
             data = data[filter_.indices]
             label_metadata = filter_.label_metadata
+            n_datums = filter_.n_datums
+
+        # datum idx is not required for base metrics
+        compact_data = data[:, 1:]
 
         (
             counts,
@@ -230,10 +237,10 @@ class Evaluator:
             rocauc,
             mean_rocauc,
         ) = compute_metrics(
-            data=data,
+            data=compact_data,
             label_metadata=label_metadata,
             score_thresholds=np.array(score_thresholds),
-            n_datums=self.n_datums,  # FIXME - This currently breaks filtering
+            n_datums=n_datums,
         )
 
         metrics = defaultdict(list)
@@ -671,20 +678,15 @@ class DataLoader:
             dtype=np.int32,
         )
 
-        # remove datums for compact representation
-        self._evaluator._compact_pairs = self._evaluator._detailed_pairs[
-            :, 1:
-        ].copy()
-
-        # sort compact pairs by groundtruth, prediction, score
+        # sort pairs by groundtruth, prediction, score
         indices = np.lexsort(
             (
-                self._evaluator._compact_pairs[:, 0],
-                self._evaluator._compact_pairs[:, 1],
-                -self._evaluator._compact_pairs[:, 2],
+                self._evaluator._detailed_pairs[:, 1],
+                self._evaluator._detailed_pairs[:, 2],
+                -self._evaluator._detailed_pairs[:, 3],
             )
         )
-        self._evaluator._compact_pairs = self._evaluator._compact_pairs[
+        self._evaluator._detailed_pairs = self._evaluator._detailed_pairs[
             indices
         ]
 

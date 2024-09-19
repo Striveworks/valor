@@ -38,20 +38,20 @@ def _compute_rocauc(
         count_groundtruths_per_key[label_metadata[:, 2]] - label_metadata[:, 0]
     )
 
-    mask_pd_exists = data[:, 1] >= 0.0
     mask_matching_labels = np.isclose(data[:, 0], data[:, 1])
-    mask_true_positives = mask_pd_exists & mask_matching_labels
-    mask_false_positives = mask_pd_exists & ~mask_matching_labels
 
     true_positives = np.zeros((n_labels, n_datums), dtype=np.int32)
     false_positives = np.zeros_like(true_positives)
     scores = np.zeros_like(true_positives, dtype=np.float64)
+
     for label_idx in range(n_labels):
         if label_metadata[label_idx, 1] == 0:
             continue
+
         mask_pds = pd_labels == label_idx
-        true_positives[label_idx] = mask_true_positives[mask_pds]
-        false_positives[label_idx] = mask_false_positives[mask_pds]
+
+        true_positives[label_idx] = mask_matching_labels[mask_pds]
+        false_positives[label_idx] = ~mask_matching_labels[mask_pds]
         scores[label_idx] = data[mask_pds, 2]
 
     cumulative_fp = np.cumsum(false_positives, axis=1)
