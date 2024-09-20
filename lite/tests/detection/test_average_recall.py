@@ -71,6 +71,153 @@ def test__compute_average_recall():
     assert np.isclose(mean_average_recall_averaged_over_scores, expected).all()
 
 
+def test_ar_metrics(basic_detections: list[Detection]):
+    """
+    Basic object detection test.
+
+    groundtruths
+        datum uid1
+            box 1 - label (k1, v1) - tp
+            box 3 - label (k2, v2) - fn missing prediction
+        datum uid2
+            box 2 - label (k1, v1) - fn misclassification
+
+    predictions
+        datum uid1
+            box 1 - label (k1, v1) - score 0.3 - tp
+        datum uid2
+            box 2 - label (k2, v2) - score 0.98 - fp
+    """
+
+    manager = DataLoader()
+    manager.add_data(basic_detections)
+    evaluator = manager.finalize()
+
+    metrics = evaluator.evaluate(
+        iou_thresholds=[0.1, 0.6],
+        score_thresholds=[0.0],
+    )
+
+    assert evaluator.ignored_prediction_labels == []
+    assert evaluator.missing_prediction_labels == []
+    assert evaluator.n_datums == 2
+    assert evaluator.n_labels == 2
+    assert evaluator.n_groundtruths == 3
+    assert evaluator.n_predictions == 2
+
+    # test AR
+    actual_metrics = [m.to_dict() for m in metrics[MetricType.AR]]
+    expected_metrics = [
+        {
+            "type": "AR",
+            "value": 0.5,
+            "parameters": {
+                "score_threshold": 0.0,
+                "iou_thresholds": [0.1, 0.6],
+                "label": {"key": "k1", "value": "v1"},
+            },
+        },
+        {
+            "type": "AR",
+            "value": 0.0,
+            "parameters": {
+                "score_threshold": 0.0,
+                "iou_thresholds": [0.1, 0.6],
+                "label": {"key": "k2", "value": "v2"},
+            },
+        },
+    ]
+    for m in actual_metrics:
+        assert m in expected_metrics
+    for m in expected_metrics:
+        assert m in actual_metrics
+
+    # test mAR
+    actual_metrics = [m.to_dict() for m in metrics[MetricType.mAR]]
+    expected_metrics = [
+        {
+            "type": "mAR",
+            "value": 0.5,
+            "parameters": {
+                "score_threshold": 0.0,
+                "iou_thresholds": [0.1, 0.6],
+                "label_key": "k1",
+            },
+        },
+        {
+            "type": "mAR",
+            "value": 0.0,
+            "parameters": {
+                "score_threshold": 0.0,
+                "iou_thresholds": [0.1, 0.6],
+                "label_key": "k2",
+            },
+        },
+    ]
+    for m in actual_metrics:
+        assert m in expected_metrics
+    for m in expected_metrics:
+        assert m in actual_metrics
+
+    # test AR Averaged Over IoUs
+    actual_metrics = [
+        m.to_dict() for m in metrics[MetricType.ARAveragedOverScores]
+    ]
+    expected_metrics = [
+        {
+            "type": "ARAveragedOverScores",
+            "value": 0.5,
+            "parameters": {
+                "score_thresholds": [0.0],
+                "iou_thresholds": [0.1, 0.6],
+                "label": {"key": "k1", "value": "v1"},
+            },
+        },
+        {
+            "type": "ARAveragedOverScores",
+            "value": 0.0,
+            "parameters": {
+                "score_thresholds": [0.0],
+                "iou_thresholds": [0.1, 0.6],
+                "label": {"key": "k2", "value": "v2"},
+            },
+        },
+    ]
+    for m in actual_metrics:
+        assert m in expected_metrics
+    for m in expected_metrics:
+        assert m in actual_metrics
+
+    # test mAR Averaged Over IoUs
+    actual_metrics = [
+        m.to_dict() for m in metrics[MetricType.mARAveragedOverScores]
+    ]
+    expected_metrics = [
+        {
+            "type": "mARAveragedOverScores",
+            "value": 0.5,
+            "parameters": {
+                "score_thresholds": [0.0],
+                "iou_thresholds": [0.1, 0.6],
+                "label_key": "k1",
+            },
+        },
+        {
+            "type": "mARAveragedOverScores",
+            "value": 0.0,
+            "parameters": {
+                "score_thresholds": [0.0],
+                "iou_thresholds": [0.1, 0.6],
+                "label_key": "k2",
+            },
+        },
+    ]
+    for m in actual_metrics:
+        assert m in expected_metrics
+    for m in expected_metrics:
+        assert m in actual_metrics
+
+
 def test_ar_using_torch_metrics_example(
     torchmetrics_detections: list[Detection],
 ):
