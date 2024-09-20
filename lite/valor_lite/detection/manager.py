@@ -525,19 +525,6 @@ class Evaluator:
                         ]
                         for score_idx in range(n_scores)
                     ],
-                    tn=metrics[iou_idx, :, label_idx, tn_idx]
-                    .astype(int)
-                    .tolist(),
-                    tn_examples=[
-                        [
-                            self.index_to_uid[int(datum_idx)]
-                            for datum_idx in metrics[iou_idx][score_idx][
-                                label_idx
-                            ][tn_idx + 1 :]
-                            if int(datum_idx) >= 0
-                        ]
-                        for score_idx in range(n_scores)
-                    ],
                 )
                 for iou_idx in range(n_ious)
             ]

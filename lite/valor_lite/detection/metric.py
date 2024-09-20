@@ -316,13 +316,11 @@ class DetailedCounts:
     fp_hallucination: list[int]
     fn_misclassification: list[int]
     fn_missing_prediction: list[int]
-    tn: list[int]
     tp_examples: list[list[str]]
     fp_misclassification_examples: list[list[str]]
     fp_hallucination_examples: list[list[str]]
     fn_misclassification_examples: list[list[str]]
     fn_missing_prediction_examples: list[list[str]]
-    tn_examples: list[list[str]]
     score_thresholds: list[float]
     iou_threshold: float
     label: tuple[str, str]
@@ -337,13 +335,13 @@ class DetailedCounts:
                 "fp_hallucination": self.fp_hallucination,
                 "fn_misclassification": self.fn_misclassification,
                 "fn_missing_prediction": self.fn_missing_prediction,
-                "tn": self.tn,
+                "tn": None,
                 "tp_examples": self.tp_examples,
                 "fp_misclassification_examples": self.fp_misclassification_examples,
                 "fp_hallucination_examples": self.fp_hallucination_examples,
                 "fn_misclassification_examples": self.fn_misclassification_examples,
                 "fn_missing_prediction_examples": self.fn_missing_prediction_examples,
-                "tn_examples": self.tn_examples,
+                "tn_examples": None,
             },
             parameters={
                 "score_thresholds": self.score_thresholds,
