@@ -558,7 +558,7 @@ def test_detailed_counts_fp_hallucination_edge_case(
 
     assert len(metrics) == 1
 
-    # test DetailedCounts for
+    # test DetailedCounts
     actual_metrics = [mm.to_dict() for m in metrics for mm in m]
     expected_metrics = [
         {
