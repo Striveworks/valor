@@ -21,13 +21,13 @@ def test__compute_average_recall():
         ]
     )
 
-    label_counts = np.array([[2, 5, 0], [1, 1, 0]])
+    label_metadata = np.array([[2, 5, 0], [1, 1, 0]])
     iou_thresholds = np.array([0.1, 0.6])
     score_thresholds = np.array([0.5, 0.93, 0.98])
 
     (_, results, _, _,) = compute_metrics(
         sorted_pairs,
-        label_counts=label_counts,
+        label_metadata=label_metadata,
         iou_thresholds=iou_thresholds,
         score_thresholds=score_thresholds,
     )

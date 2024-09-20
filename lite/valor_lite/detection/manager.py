@@ -443,6 +443,7 @@ class Evaluator:
         fp_halluc_idx = fp_misclf_idx + n_samples + 1
         fn_misclf_idx = fp_halluc_idx + n_samples + 1
         fn_misprd_idx = fn_misclf_idx + n_samples + 1
+        tn_idx = fn_misprd_idx + n_samples + 1
 
         n_ious, n_scores, n_labels, _ = metrics.shape
         return [
@@ -519,7 +520,20 @@ class Evaluator:
                             self.index_to_uid[int(datum_idx)]
                             for datum_idx in metrics[iou_idx][score_idx][
                                 label_idx
-                            ][fn_misprd_idx + 1 :]
+                            ][fn_misprd_idx + 1 : tn_idx]
+                            if int(datum_idx) >= 0
+                        ]
+                        for score_idx in range(n_scores)
+                    ],
+                    tn=metrics[iou_idx, :, label_idx, tn_idx]
+                    .astype(int)
+                    .tolist(),
+                    tn_examples=[
+                        [
+                            self.index_to_uid[int(datum_idx)]
+                            for datum_idx in metrics[iou_idx][score_idx][
+                                label_idx
+                            ][tn_idx + 1 :]
                             if int(datum_idx) >= 0
                         ]
                         for score_idx in range(n_scores)
