@@ -419,8 +419,10 @@ def compute_detailed_counts(
                 & mask_datums_with_positives
             )
 
-            mask_fn_misprd = ~mask_pd_exists | (
-                mask_iou & ~mask_score & ~mask_datums_with_positives
+            mask_fn_misprd = (
+                ~mask_pd_exists
+                | (mask_iou & ~mask_score & ~mask_datums_with_positives)
+                | (~mask_iou & mask_gt_exists)
             )
 
             mask_tn = (

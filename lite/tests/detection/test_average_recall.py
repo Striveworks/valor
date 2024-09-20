@@ -244,3 +244,44 @@ def test_ar_using_torch_metrics_example(
         assert m in expected_metrics
     for m in expected_metrics:
         assert m in actual_metrics
+
+
+def test_ar_true_positive_deassignment(
+    detections_tp_deassignment_edge_case: list[Detection],
+):
+
+    manager = DataLoader()
+    manager.add_data(detections_tp_deassignment_edge_case)
+    evaluator = manager.finalize()
+
+    assert evaluator.ignored_prediction_labels == []
+    assert evaluator.missing_prediction_labels == []
+    assert evaluator.n_datums == 1
+    assert evaluator.n_labels == 1
+    assert evaluator.n_groundtruths == 2
+    assert evaluator.n_predictions == 4
+
+    metrics = evaluator.evaluate(
+        iou_thresholds=[0.5],
+        score_thresholds=[0.5],
+    )
+
+    assert len(metrics) == 14
+
+    # test AR
+    actual_metrics = [m.to_dict() for m in metrics[MetricType.AR]]
+    expected_metrics = [
+        {
+            "type": "AR",
+            "value": 0.5,
+            "parameters": {
+                "score_threshold": 0.5,
+                "iou_thresholds": [0.5],
+                "label": {"key": "k1", "value": "v1"},
+            },
+        },
+    ]
+    for m in actual_metrics:
+        assert m in expected_metrics
+    for m in expected_metrics:
+        assert m in actual_metrics

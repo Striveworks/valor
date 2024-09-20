@@ -315,7 +315,7 @@ def test_detailed_counts_using_torch_metrics_example(
                 "fp_misclassification": [0, 0],
                 "fp_hallucination": [6, 0],
                 "fn_misclassification": [0, 1],
-                "fn_missing_prediction": [1, 1],
+                "fn_missing_prediction": [7, 7],
                 "tn": [0, 6],
                 "tp_examples": [["2"], []],
                 "fp_misclassification_examples": [[], []],
@@ -337,7 +337,7 @@ def test_detailed_counts_using_torch_metrics_example(
                 "fp_misclassification": [0, 0],
                 "fp_hallucination": [6, 0],
                 "fn_misclassification": [0, 1],
-                "fn_missing_prediction": [1, 1],
+                "fn_missing_prediction": [7, 7],
                 "tn": [0, 6],
                 "tp_examples": [["2"], []],
                 "fp_misclassification_examples": [[], []],
@@ -359,13 +359,13 @@ def test_detailed_counts_using_torch_metrics_example(
                 "fp_misclassification": [0, 0],
                 "fp_hallucination": [1, 0],
                 "fn_misclassification": [0, 0],
-                "fn_missing_prediction": [0, 2],
+                "fn_missing_prediction": [2, 4],
                 "tn": [0, 1],
                 "tp_examples": [["1"], []],
                 "fp_misclassification_examples": [[], []],
                 "fp_hallucination_examples": [["1"], []],
                 "fn_misclassification_examples": [[], []],
-                "fn_missing_prediction_examples": [[], ["1"]],
+                "fn_missing_prediction_examples": [["1"], ["1"]],
                 "tn_examples": [[], ["1"]],
             },
             "parameters": {
@@ -381,13 +381,13 @@ def test_detailed_counts_using_torch_metrics_example(
                 "fp_misclassification": [0, 0],
                 "fp_hallucination": [1, 0],
                 "fn_misclassification": [0, 0],
-                "fn_missing_prediction": [0, 2],
+                "fn_missing_prediction": [2, 4],
                 "tn": [0, 1],
                 "tp_examples": [["1"], []],
                 "fp_misclassification_examples": [[], []],
                 "fp_hallucination_examples": [["1"], []],
                 "fn_misclassification_examples": [[], []],
-                "fn_missing_prediction_examples": [[], ["1"]],
+                "fn_missing_prediction_examples": [["1"], ["1"]],
                 "tn_examples": [[], ["1"]],
             },
             "parameters": {
@@ -403,13 +403,13 @@ def test_detailed_counts_using_torch_metrics_example(
                 "fp_misclassification": [0, 0],
                 "fp_hallucination": [6, 0],
                 "fn_misclassification": [0, 1],
-                "fn_missing_prediction": [0, 0],
+                "fn_missing_prediction": [6, 6],
                 "tn": [0, 6],
                 "tp_examples": [["2"], []],
                 "fp_misclassification_examples": [[], []],
                 "fp_hallucination_examples": [["2"], []],
                 "fn_misclassification_examples": [[], ["2"]],
-                "fn_missing_prediction_examples": [[], []],
+                "fn_missing_prediction_examples": [["2"], ["2"]],
                 "tn_examples": [[], ["2"]],
             },
             "parameters": {
@@ -425,13 +425,13 @@ def test_detailed_counts_using_torch_metrics_example(
                 "fp_misclassification": [0, 0],
                 "fp_hallucination": [6, 0],
                 "fn_misclassification": [0, 1],
-                "fn_missing_prediction": [0, 0],
+                "fn_missing_prediction": [6, 6],
                 "tn": [0, 6],
                 "tp_examples": [["2"], []],
                 "fp_misclassification_examples": [[], []],
                 "fp_hallucination_examples": [["2"], []],
                 "fn_misclassification_examples": [[], ["2"]],
-                "fn_missing_prediction_examples": [[], []],
+                "fn_missing_prediction_examples": [["2"], ["2"]],
                 "tn_examples": [[], ["2"]],
             },
             "parameters": {
@@ -447,13 +447,13 @@ def test_detailed_counts_using_torch_metrics_example(
                 "fp_misclassification": [0, 0],
                 "fp_hallucination": [30, 12],
                 "fn_misclassification": [0, 3],
-                "fn_missing_prediction": [0, 0],
+                "fn_missing_prediction": [30, 30],
                 "tn": [0, 18],
                 "tp_examples": [["2"], ["2"]],
                 "fp_misclassification_examples": [[], []],
                 "fp_hallucination_examples": [["2"], ["2"]],
                 "fn_misclassification_examples": [[], ["2"]],
-                "fn_missing_prediction_examples": [[], []],
+                "fn_missing_prediction_examples": [["2"], ["2"]],
                 "tn_examples": [[], ["2"]],
             },
             "parameters": {
@@ -469,13 +469,13 @@ def test_detailed_counts_using_torch_metrics_example(
                 "fp_misclassification": [0, 0],
                 "fp_hallucination": [31, 12],
                 "fn_misclassification": [0, 2],
-                "fn_missing_prediction": [0, 0],
+                "fn_missing_prediction": [31, 31],
                 "tn": [0, 19],
                 "tp_examples": [["2"], ["2"]],
                 "fp_misclassification_examples": [[], []],
                 "fp_hallucination_examples": [["2"], ["2"]],
                 "fn_misclassification_examples": [[], ["2"]],
-                "fn_missing_prediction_examples": [[], []],
+                "fn_missing_prediction_examples": [["2"], ["2"]],
                 "tn_examples": [[], ["2"]],
             },
             "parameters": {
@@ -491,13 +491,13 @@ def test_detailed_counts_using_torch_metrics_example(
                 "fp_misclassification": [0, 0],
                 "fp_hallucination": [54, 18],
                 "fn_misclassification": [5, 9],
-                "fn_missing_prediction": [0, 0],
+                "fn_missing_prediction": [79, 79],
                 "tn": [25, 61],
                 "tp_examples": [["3"], ["3"]],
                 "fp_misclassification_examples": [[], []],
                 "fp_hallucination_examples": [["3"], ["3"]],
                 "fn_misclassification_examples": [["3"], ["3"]],
-                "fn_missing_prediction_examples": [[], []],
+                "fn_missing_prediction_examples": [["3"], ["3"]],
                 "tn_examples": [["3"], ["3"]],
             },
             "parameters": {
@@ -513,13 +513,13 @@ def test_detailed_counts_using_torch_metrics_example(
                 "fp_misclassification": [0, 0],
                 "fp_hallucination": [55, 18],
                 "fn_misclassification": [1, 4],
-                "fn_missing_prediction": [0, 0],
+                "fn_missing_prediction": [84, 84],
                 "tn": [29, 66],
                 "tp_examples": [["3"], ["3"]],
                 "fp_misclassification_examples": [[], []],
                 "fp_hallucination_examples": [["3"], ["3"]],
                 "fn_misclassification_examples": [["3"], ["3"]],
-                "fn_missing_prediction_examples": [[], []],
+                "fn_missing_prediction_examples": [["3"], ["3"]],
                 "tn_examples": [["3"], ["3"]],
             },
             "parameters": {
@@ -535,505 +535,56 @@ def test_detailed_counts_using_torch_metrics_example(
         assert m in actual_metrics
 
 
-# @pytest.fixture
-# def test_detailed_precision_recall_curve(
-#     evaluate_detection_detailed_counts_groundtruths: list,
-#     evaluate_detection_detailed_counts_predictions: list,
-#     detailed_precision_recall_curve_outputs: tuple,
-# ):
+def test_detailed_counts_fp_hallucination_edge_case(
+    detections_fp_hallucination_edge_case: list[Detection],
+):
 
-#     expected_outputs, _ = detailed_precision_recall_curve_outputs
+    manager = DataLoader()
+    manager.add_data(detections_fp_hallucination_edge_case)
+    evaluator = manager.finalize()
 
-#     Dataloader = Dataloader(
-#         metrics_to_return=[enums.MetricType.DetailedDetailedPrecisionRecallCurve],
-#     )
+    assert evaluator.ignored_prediction_labels == []
+    assert evaluator.missing_prediction_labels == []
+    assert evaluator.n_datums == 2
+    assert evaluator.n_labels == 1
+    assert evaluator.n_groundtruths == 2
+    assert evaluator.n_predictions == 2
 
-#     Dataloader.add_data(
-#         groundtruths=evaluate_detection_detailed_counts_groundtruths,
-#         predictions=evaluate_detection_detailed_counts_predictions,
-#     )
+    metrics = evaluator.compute_detailed_counts(
+        iou_thresholds=[0.5],
+        score_thresholds=[0.5, 0.85],
+        n_samples=1,
+    )
 
-#     # check that ious have been precomputed
-#     assert "iou_" in Dataloader.joint_df.columns
-#     assert all(
-#         [
-#             col not in ["raster", "bounding_box"]
-#             for col in Dataloader.joint_df.columns
-#         ]
-#     )
+    assert len(metrics) == 1
 
-#     eval_job = Dataloader.evaluate()
-#     for key, expected_value in expected_outputs.items():
-#         result = eval_job.metrics[0]["value"]
-#         for k in key:
-#             result = result[k]
-#         assert result == expected_value
-
-#     # repeat tests using a lower IOU threshold
-#     Dataloader = Dataloader(
-#         metrics_to_return=[enums.MetricType.DetailedDetailedPrecisionRecallCurve],
-#         counts_iou_threshold=0.45,
-#     )
-
-#     Dataloader.add_data(
-#         groundtruths=evaluate_detection_detailed_counts_groundtruths,
-#         predictions=evaluate_detection_detailed_counts_predictions,
-#     )
-
-#     eval_job_low_iou_threshold = Dataloader.evaluate()
-
-#     for key, expected_value in expected_outputs.items():
-#         result = eval_job_low_iou_threshold.metrics[0]["value"]
-#         for k in key:
-#             result = result[k]
-#         assert result == expected_value
-
-
-# def test_evaluate_detection_model_with_no_predictions(
-#     evaluate_detection_groundtruths: list,
-#     evaluate_detection_model_with_no_predictions_output: list,
-# ):
-#     """
-#     Test detection evaluations when the model outputs nothing.
-
-#     gt_dets1
-#         datum 1
-#             - Label (k1, v1) with Annotation area = 1500
-#             - Label (k2, v2) with Annotation area = 57,510
-#         datum2
-#             - Label (k1, v1) with Annotation area = 1100
-#     """
-#     predictions = []
-#     for gt in evaluate_detection_groundtruths:
-#         predictions.append(
-#             schemas.Prediction(
-#                 datum=gt.datum,
-#                 annotations=[],
-#             )
-#         )
-
-#     Dataloader = Dataloader()
-
-#     # can't pass empty lists, but can pass predictions without annotations
-#     with pytest.raises(ValueError) as e:
-#         Dataloader.add_data(
-#             groundtruths=evaluate_detection_groundtruths,
-#             predictions=[],
-#         )
-#     assert (
-#         "it's neither a dataframe nor a list of Valor Prediction objects"
-#         in str(e)
-#     )
-
-#     Dataloader.add_data(
-#         groundtruths=evaluate_detection_groundtruths,
-#         predictions=predictions,
-#     )
-
-#     # check that ious have been precomputed
-#     assert "iou_" in Dataloader.joint_df.columns
-#     assert all(
-#         [
-#             col not in ["raster", "bounding_box"]
-#             for col in Dataloader.joint_df.columns
-#         ]
-#     )
-
-#     eval_job = Dataloader.evaluate()
-
-#     computed_metrics = eval_job.metrics
-
-#     assert all([metric["value"] == 0 for metric in computed_metrics])
-
-#     for m in evaluate_detection_model_with_no_predictions_output:
-#         assert m in computed_metrics
-
-#     for m in computed_metrics:
-#         assert m in evaluate_detection_model_with_no_predictions_output
-
-
-# def test_evaluate_detection_functional_test(
-#     evaluate_detection_functional_test_groundtruths: list,
-#     evaluate_detection_functional_test_predictions: list,
-#     evaluate_detection_functional_test_outputs: tuple,
-# ):
-
-#     (
-#         expected_metrics,
-#         pr_expected_answers,
-#         detailed_pr_expected_answers,
-#         higher_iou_threshold_pr_expected_answers,
-#         higher_iou_threshold_detailed_pr_expected_answers,
-#     ) = evaluate_detection_functional_test_outputs
-
-#     Dataloader = Dataloader()
-#     Dataloader.add_data(
-#         groundtruths=evaluate_detection_functional_test_groundtruths,
-#         predictions=evaluate_detection_functional_test_predictions,
-#     )
-#     Dataloader.finalize()
-
-#     ap_metrics = translate_ap_metrics(
-#         Dataloader.compute_ap(
-#             iou_thresholds=[0.5, 0.75]
-#         )
-#     )
-
-#     countss = translate_countss(
-#         Dataloader.compute_counts(
-#             iou_thresholds=[0.5],
-#             n_samples=1,
-#         )
-#     )
-
-#         metrics_to_return=[
-#             enums.MetricType.AP,
-#             enums.MetricType.AR,
-#             enums.MetricType.mAP,
-#             enums.MetricType.APAveragedOverIOUs,
-#             enums.MetricType.mAR,
-#             enums.MetricType.mAPAveragedOverIOUs,
-#             enums.MetricType.DetailedPrecisionRecallCurve,
-#             enums.MetricType.DetailedDetailedPrecisionRecallCurve,
-#         ],
-#         counts_iou_threshold=0.5,
-#         counts_max_examples=1,
-#     )
-
-
-#     metrics = [
-#         m
-#         for m in eval_job.metrics
-#         if m["type"]
-#         not in ["DetailedPrecisionRecallCurve", "DetailedDetailedPrecisionRecallCurve"]
-#     ]
-
-#     # round all metrics to the third decimal place
-#     for i, m in enumerate(metrics):
-#         metrics[i]["value"] = round(m["value"], 3)
-
-#     pr_metrics = [
-#         m for m in eval_job.metrics if m["type"] == "DetailedPrecisionRecallCurve"
-#     ]
-#     detailed_pr_metrics = [
-#         m
-#         for m in eval_job.metrics
-#         if m["type"] == "DetailedDetailedPrecisionRecallCurve"
-#     ]
-
-#     for m in metrics:
-#         assert m in expected_metrics
-#     for m in metrics:
-#         assert m in eval_job.metrics
-
-#     for (
-#         _,
-#         value,
-#         threshold,
-#         metric,
-#     ), expected_value in pr_expected_answers.items():
-#         assert (
-#             pr_metrics[0]["value"][value][threshold][metric] == expected_value
-#         )
-
-#     for (
-#         value,
-#         threshold,
-#         metric,
-#     ), expected_output in detailed_pr_expected_answers.items():
-#         model_output = detailed_pr_metrics[0]["value"][value][threshold][
-#             metric
-#         ]
-#         assert isinstance(model_output, dict)
-#         assert model_output["total"] == expected_output["total"]
-#         assert all(
-#             [
-#                 model_output["observations"][key]["count"]  # type: ignore - we know this element is a dict
-#                 == expected_output[key]
-#                 for key in [
-#                     key
-#                     for key in expected_output.keys()
-#                     if key not in ["total"]
-#                 ]
-#             ]
-#         )
-
-#     # spot check number of examples
-#     assert (
-#         len(
-#             detailed_pr_metrics[0]["value"]["0"][0.95]["fn"]["observations"]["no_predictions"][  # type: ignore - we know this element is a dict
-#                 "examples"
-#             ]
-#         )
-#         == 1
-#     )
-#     assert (
-#         len(
-#             detailed_pr_metrics[0]["value"]["49"][0.05]["tp"]["observations"]["all"][  # type: ignore - we know this element is a dict
-#                 "examples"
-#             ]
-#         )
-#         == 1
-#     )
-
-#     # raise the iou threshold
-#     Dataloader = Dataloader(
-#         metrics_to_return=[
-#             enums.MetricType.DetailedPrecisionRecallCurve,
-#             enums.MetricType.DetailedDetailedPrecisionRecallCurve,
-#         ],
-#         counts_iou_threshold=0.9,
-#         counts_max_examples=1,
-#     )
-
-#     Dataloader.add_data(
-#         groundtruths=evaluate_detection_functional_test_groundtruths,
-#         predictions=evaluate_detection_functional_test_predictions,
-#     )
-
-#     # check that ious have been precomputed
-#     assert "iou_" in Dataloader.joint_df.columns
-#     assert all(
-#         [
-#             col not in ["raster", "bounding_box"]
-#             for col in Dataloader.joint_df.columns
-#         ]
-#     )
-
-#     eval_job_higher_threshold = Dataloader.evaluate()
-
-#     pr_metrics = [
-#         m
-#         for m in eval_job_higher_threshold.metrics
-#         if m["type"] == "DetailedPrecisionRecallCurve"
-#     ]
-#     detailed_pr_metrics = [
-#         m
-#         for m in eval_job_higher_threshold.metrics
-#         if m["type"] == "DetailedDetailedPrecisionRecallCurve"
-#     ]
-
-#     for (
-#         key,
-#         value,
-#         threshold,
-#         metric,
-#     ), expected_count in higher_iou_threshold_pr_expected_answers.items():
-#         actual_count = pr_metrics[0]["value"][value][threshold][metric]
-#         assert actual_count == expected_count
-
-#     for (
-#         value,
-#         threshold,
-#         metric,
-#     ), expected_output in (
-#         higher_iou_threshold_detailed_pr_expected_answers.items()
-#     ):
-#         model_output = detailed_pr_metrics[0]["value"][value][threshold][
-#             metric
-#         ]
-#         assert isinstance(model_output, dict)
-#         assert model_output["total"] == expected_output["total"]
-#         assert all(
-#             [
-#                 model_output["observations"][key]["count"]  # type: ignore - we know this element is a dict
-#                 == expected_output[key]
-#                 for key in [
-#                     key
-#                     for key in expected_output.keys()
-#                     if key not in ["total"]
-#                 ]
-#             ]
-#         )
-
-#     assert (
-#         len(
-#             detailed_pr_metrics[0]["value"]["0"][0.95]["fn"]["observations"]["no_predictions"][  # type: ignore - we know this element is a dict
-#                 "examples"
-#             ]
-#         )
-#         == 1
-#     )
-#     assert (
-#         len(
-#             detailed_pr_metrics[0]["value"]["49"][0.05]["tp"]["observations"]["all"][  # type: ignore - we know this element is a dict
-#                 "examples"
-#             ]
-#         )
-#         == 1
-#     )
-
-#     # repeat the above, but with a higher pr_max_curves_example
-#     Dataloader = Dataloader(
-#         metrics_to_return=[
-#             enums.MetricType.DetailedPrecisionRecallCurve,
-#             enums.MetricType.DetailedDetailedPrecisionRecallCurve,
-#         ],
-#         counts_iou_threshold=0.9,
-#         counts_max_examples=3,
-#     )
-
-#     Dataloader.add_data(
-#         groundtruths=evaluate_detection_functional_test_groundtruths,
-#         predictions=evaluate_detection_functional_test_predictions,
-#     )
-
-#     # check that ious have been precomputed
-#     assert "iou_" in Dataloader.joint_df.columns
-#     assert all(
-#         [
-#             col not in ["raster", "bounding_box"]
-#             for col in Dataloader.joint_df.columns
-#         ]
-#     )
-
-#     eval_job_higher_threshold = Dataloader.evaluate()
-
-#     pr_metrics = [
-#         m
-#         for m in eval_job_higher_threshold.metrics
-#         if m["type"] == "DetailedPrecisionRecallCurve"
-#     ]
-#     detailed_pr_metrics = [
-#         m
-#         for m in eval_job_higher_threshold.metrics
-#         if m["type"] == "DetailedDetailedPrecisionRecallCurve"
-#     ]
-
-#     for (
-#         key,
-#         value,
-#         threshold,
-#         metric,
-#     ), expected_count in higher_iou_threshold_pr_expected_answers.items():
-#         actual_count = pr_metrics[0]["value"][value][threshold][metric]
-#         assert actual_count == expected_count
-
-#     for (
-#         value,
-#         threshold,
-#         metric,
-#     ), expected_output in (
-#         higher_iou_threshold_detailed_pr_expected_answers.items()
-#     ):
-#         model_output = detailed_pr_metrics[0]["value"][value][threshold][
-#             metric
-#         ]
-#         assert isinstance(model_output, dict)
-#         assert model_output["total"] == expected_output["total"]
-#         assert all(
-#             [
-#                 model_output["observations"][key]["count"]  # type: ignore - we know this element is a dict
-#                 == expected_output[key]
-#                 for key in [
-#                     key
-#                     for key in expected_output.keys()
-#                     if key not in ["total"]
-#                 ]
-#             ]
-#         )
-
-#     assert (
-#         len(
-#             detailed_pr_metrics[0]["value"]["0"][0.95]["fn"]["observations"]["no_predictions"][  # type: ignore - we know this element is a dict
-#                 "examples"
-#             ]
-#         )
-#         == 3
-#     )
-#     assert (
-#         len(
-#             detailed_pr_metrics[0]["value"]["49"][0.05]["tp"]["observations"]["all"][  # type: ignore - we know this element is a dict
-#                 "examples"
-#             ]
-#         )
-#         == 2
-#     )
-
-#     # test behavior if counts_max_examples == 0
-#     Dataloader = Dataloader(
-#         metrics_to_return=[
-#             enums.MetricType.DetailedPrecisionRecallCurve,
-#             enums.MetricType.DetailedDetailedPrecisionRecallCurve,
-#         ],
-#         counts_iou_threshold=0.9,
-#         counts_max_examples=0,
-#     )
-
-#     Dataloader.add_data(
-#         groundtruths=evaluate_detection_functional_test_groundtruths,
-#         predictions=evaluate_detection_functional_test_predictions,
-#     )
-
-#     # check that ious have been precomputed
-#     assert "iou_" in Dataloader.joint_df.columns
-#     assert all(
-#         [
-#             col not in ["raster", "bounding_box"]
-#             for col in Dataloader.joint_df.columns
-#         ]
-#     )
-
-#     eval_job_higher_threshold = Dataloader.evaluate()
-
-#     pr_metrics = [
-#         m
-#         for m in eval_job_higher_threshold.metrics
-#         if m["type"] == "DetailedPrecisionRecallCurve"
-#     ]
-#     detailed_pr_metrics = [
-#         m
-#         for m in eval_job_higher_threshold.metrics
-#         if m["type"] == "DetailedDetailedPrecisionRecallCurve"
-#     ]
-
-#     for (
-#         key,
-#         value,
-#         threshold,
-#         metric,
-#     ), expected_count in higher_iou_threshold_pr_expected_answers.items():
-#         actual_count = pr_metrics[0]["value"][value][threshold][metric]
-#         assert actual_count == expected_count
-
-#     for (
-#         value,
-#         threshold,
-#         metric,
-#     ), expected_output in (
-#         higher_iou_threshold_detailed_pr_expected_answers.items()
-#     ):
-#         model_output = detailed_pr_metrics[0]["value"][value][threshold][
-#             metric
-#         ]
-#         assert isinstance(model_output, dict)
-#         assert model_output["total"] == expected_output["total"]
-#         assert all(
-#             [
-#                 model_output["observations"][key]["count"]  # type: ignore - we know this element is a dict
-#                 == expected_output[key]
-#                 for key in [
-#                     key
-#                     for key in expected_output.keys()
-#                     if key not in ["total"]
-#                 ]
-#             ]
-#         )
-
-#     # spot check number of examples
-#     assert (
-#         len(
-#             detailed_pr_metrics[0]["value"]["0"][0.95]["fn"]["observations"]["no_predictions"][  # type: ignore - we know this element is a dict
-#                 "examples"
-#             ]
-#         )
-#         == 0
-#     )
-#     assert (
-#         len(
-#             detailed_pr_metrics[0]["value"]["49"][0.05]["tp"]["observations"]["all"][  # type: ignore - we know this element is a dict
-#                 "examples"
-#             ]
-#         )
-#         == 0
-#     )
+    # test DetailedCounts for
+    actual_metrics = [mm.to_dict() for m in metrics for mm in m]
+    expected_metrics = [
+        {
+            "type": "DetailedCounts",
+            "value": {
+                "tp": [1, 0],
+                "fp_misclassification": [0, 0],
+                "fp_hallucination": [1, 0],
+                "fn_misclassification": [0, 0],
+                "fn_missing_prediction": [1, 2],
+                "tn": [0, 1],
+                "tp_examples": [["uid1"], []],
+                "fp_misclassification_examples": [[], []],
+                "fp_hallucination_examples": [["uid2"], []],
+                "fn_misclassification_examples": [[], []],
+                "fn_missing_prediction_examples": [["uid2"], ["uid1"]],
+                "tn_examples": [[], ["uid2"]],
+            },
+            "parameters": {
+                "score_thresholds": [0.5, 0.85],
+                "iou_threshold": 0.5,
+                "label": {"key": "k1", "value": "v1"},
+            },
+        },
+    ]
+    for m in actual_metrics:
+        assert m in expected_metrics
+    for m in expected_metrics:
+        assert m in actual_metrics

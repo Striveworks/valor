@@ -502,3 +502,112 @@ def false_negatives_two_images_one_only_with_different_class_high_confidence_of_
             ],
         ),
     ]
+
+
+@pytest.fixture
+def detections_fp_hallucination_edge_case() -> list[Detection]:
+    return [
+        Detection(
+            uid="uid1",
+            groundtruths=[
+                BoundingBox(
+                    xmin=0,
+                    xmax=5,
+                    ymin=0,
+                    ymax=5,
+                    labels=[("k1", "v1")],
+                )
+            ],
+            predictions=[
+                BoundingBox(
+                    xmin=0,
+                    xmax=5,
+                    ymin=0,
+                    ymax=5,
+                    labels=[("k1", "v1")],
+                    scores=[0.8],
+                )
+            ],
+        ),
+        Detection(
+            uid="uid2",
+            groundtruths=[
+                BoundingBox(
+                    xmin=0,
+                    xmax=5,
+                    ymin=0,
+                    ymax=5,
+                    labels=[("k1", "v1")],
+                )
+            ],
+            predictions=[
+                BoundingBox(
+                    xmin=10,
+                    xmax=20,
+                    ymin=10,
+                    ymax=20,
+                    labels=[("k1", "v1")],
+                    scores=[0.8],
+                )
+            ],
+        ),
+    ]
+
+
+@pytest.fixture
+def detections_tp_deassignment_edge_case() -> list[Detection]:
+    return [
+        Detection(
+            uid="uid0",
+            groundtruths=[
+                BoundingBox(
+                    xmin=10,
+                    xmax=20,
+                    ymin=10,
+                    ymax=20,
+                    labels=[("k1", "v1")],
+                ),
+                BoundingBox(
+                    xmin=10,
+                    xmax=15,
+                    ymin=20,
+                    ymax=25,
+                    labels=[("k1", "v1")],
+                ),
+            ],
+            predictions=[
+                BoundingBox(
+                    xmin=10,
+                    xmax=20,
+                    ymin=10,
+                    ymax=20,
+                    labels=[("k1", "v1")],
+                    scores=[0.78],
+                ),
+                BoundingBox(
+                    xmin=10,
+                    xmax=20,
+                    ymin=12,
+                    ymax=22,
+                    labels=[("k1", "v1")],
+                    scores=[0.96],
+                ),
+                BoundingBox(
+                    xmin=10,
+                    xmax=20,
+                    ymin=12,
+                    ymax=22,
+                    labels=[("k1", "v1")],
+                    scores=[0.96],
+                ),
+                BoundingBox(
+                    xmin=101,
+                    xmax=102,
+                    ymin=101,
+                    ymax=102,
+                    labels=[("k1", "v1")],
+                    scores=[0.87],
+                ),
+            ],
+        ),
+    ]
