@@ -164,7 +164,7 @@ class Benchmark:
                 "total": f"{round(self.ingestion + self.precomputation, 2)} seconds",
             },
             "base_evaluation": f"{round(self.evaluation, 2)} seconds",
-            "detailed_pr_curve": [
+            "detailed_evaluation": [
                 {
                     "n_points": 10,
                     "n_examples": curve[0],
@@ -258,14 +258,14 @@ def run_benchmarking_analysis(
                     f"Base precomputation timed out with limit of {limit}."
                 )
 
-            # test detailed pr curve with no samples
-            detailed_pr_curve_time_no_samples, _ = time_it(
-                evaluator.compute_detailed_pr_curve
+            # test detailed counts with no samples
+            detailed_counts_time_no_samples, _ = time_it(
+                evaluator.compute_detailed_counts
             )()
 
-            # test detailed pr curve with 3 samples
-            detailed_pr_curve_time_three_samples, _ = time_it(
-                evaluator.compute_detailed_pr_curve
+            # test detailed counts with 3 samples
+            detailed_counts_time_three_samples, _ = time_it(
+                evaluator.compute_detailed_counts
             )(n_samples=3)
 
             # evaluate
@@ -291,8 +291,8 @@ def run_benchmarking_analysis(
                     precomputation=finalization_time,
                     evaluation=eval_time,
                     detailed_curves=[
-                        (0, detailed_pr_curve_time_no_samples),
-                        (3, detailed_pr_curve_time_three_samples),
+                        (0, detailed_counts_time_no_samples),
+                        (3, detailed_counts_time_three_samples),
                     ],
                 ).result()
             )
