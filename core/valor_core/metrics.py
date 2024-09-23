@@ -713,7 +713,7 @@ class AnswerCorrectnessMetric(_TextGenerationMetricBase):
         super().__post_init__()
         if not isinstance(self.value, (int, float)):
             raise TypeError(
-                f"Expected value to be an int or float, got {type(self.value).__name__}"
+                f"Expected value to be int or float, got {type(self.value).__name__}"
             )
         if not 0 <= self.value <= 1:
             raise ValueError(
@@ -740,7 +740,7 @@ class AnswerRelevanceMetric(_TextGenerationMetricBase):
         super().__post_init__()
         if not isinstance(self.value, (int, float)):
             raise TypeError(
-                f"Expected value to be an int or float, got {type(self.value).__name__}"
+                f"Expected value to be int or float, got {type(self.value).__name__}"
             )
         if not 0 <= self.value <= 1:
             raise ValueError(
@@ -767,7 +767,7 @@ class BLEUMetric(_TextGenerationMetricBase):
         super().__post_init__()
         if not isinstance(self.value, (int, float)):
             raise TypeError(
-                f"Expected value to be an int or float, got {type(self.value).__name__}"
+                f"Expected value to be int or float, got {type(self.value).__name__}"
             )
         if not 0 <= self.value <= 1:
             raise ValueError(
@@ -794,7 +794,7 @@ class BiasMetric(_TextGenerationMetricBase):
         super().__post_init__()
         if not isinstance(self.value, (int, float)):
             raise TypeError(
-                f"Expected value to be an int or float, got {type(self.value).__name__}"
+                f"Expected value to be int or float, got {type(self.value).__name__}"
             )
         if not 0 <= self.value <= 1:
             raise ValueError(
@@ -821,7 +821,7 @@ class ContextPrecisionMetric(_TextGenerationMetricBase):
         super().__post_init__()
         if not isinstance(self.value, (int, float)):
             raise TypeError(
-                f"Expected value to be an int or float, got {type(self.value).__name__}"
+                f"Expected value to be int or float, got {type(self.value).__name__}"
             )
         if not 0 <= self.value <= 1:
             raise ValueError(
@@ -848,7 +848,7 @@ class ContextRecallMetric(_TextGenerationMetricBase):
         super().__post_init__()
         if not isinstance(self.value, (int, float)):
             raise TypeError(
-                f"Expected value to be an int or float, got {type(self.value).__name__}"
+                f"Expected value to be int or float, got {type(self.value).__name__}"
             )
         if not 0 <= self.value <= 1:
             raise ValueError(
@@ -875,7 +875,7 @@ class ContextRelevanceMetric(_TextGenerationMetricBase):
         super().__post_init__()
         if not isinstance(self.value, (int, float)):
             raise TypeError(
-                f"Expected value to be an int or float, got {type(self.value).__name__}"
+                f"Expected value to be int or float, got {type(self.value).__name__}"
             )
         if not 0 <= self.value <= 1:
             raise ValueError(
@@ -902,7 +902,7 @@ class FaithfulnessMetric(_TextGenerationMetricBase):
         super().__post_init__()
         if not isinstance(self.value, (int, float)):
             raise TypeError(
-                f"Expected value to be an int or float, got {type(self.value).__name__}"
+                f"Expected value to be int or float, got {type(self.value).__name__}"
             )
         if not 0 <= self.value <= 1:
             raise ValueError(
@@ -929,7 +929,7 @@ class HallucinationMetric(_TextGenerationMetricBase):
         super().__post_init__()
         if not isinstance(self.value, (int, float)):
             raise TypeError(
-                f"Expected value to be an int or float, got {type(self.value).__name__}"
+                f"Expected value to be int or float, got {type(self.value).__name__}"
             )
         if not 0 <= self.value <= 1:
             raise ValueError(
@@ -964,7 +964,7 @@ class ROUGEMetric(_TextGenerationMetricBase):
             )
         if not all(isinstance(v, (int, float)) for v in self.value.values()):
             raise TypeError(
-                f"Expected the values in self.value to be ints or floats, got {type(next(iter(self.value.values()))).__name__}"
+                f"Expected the values in self.value to be int or float, got {type(next(iter(self.value.values()))).__name__}"
             )
         if not all(0 <= v <= 1 for v in self.value.values()):
             raise ValueError(
@@ -991,7 +991,7 @@ class SummaryCoherenceMetric(_TextGenerationMetricBase):
         super().__post_init__()
         if not isinstance(self.value, int):
             raise TypeError(
-                f"Expected value to be a int, got {type(self.value).__name__}"
+                f"Expected value to be int, got {type(self.value).__name__}"
             )
         if self.value not in [1, 2, 3, 4, 5]:
             raise ValueError(
@@ -1018,7 +1018,7 @@ class ToxicityMetric(_TextGenerationMetricBase):
         super().__post_init__()
         if not isinstance(self.value, (int, float)):
             raise TypeError(
-                f"Expected value to be an int or float, got {type(self.value).__name__}"
+                f"Expected value to be int or float, got {type(self.value).__name__}"
             )
         if not 0 <= self.value <= 1:
             raise ValueError(
