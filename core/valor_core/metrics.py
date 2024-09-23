@@ -700,7 +700,7 @@ class AnswerCorrectnessMetric(_TextGenerationMetricBase):
 
     Attributes
     ----------
-    value : float
+    value : int | float
         The answer correctness score between 0 and 1, with higher values indicating that the answer is more correct. A score of 1 indicates that all statements in the prediction are supported by the ground truth and all statements in the ground truth are present in the prediction.
     parameters : dict
         Any parameters associated with the metric, as well as any datum or prediction parameters that are relevant to the metric.
@@ -711,9 +711,9 @@ class AnswerCorrectnessMetric(_TextGenerationMetricBase):
     def __post_init__(self):
         """Validate instantiated class."""
         super().__post_init__()
-        if not isinstance(self.value, float):
+        if not isinstance(self.value, (int, float)):
             raise TypeError(
-                f"Expected value to be a float, got {type(self.value).__name__}"
+                f"Expected value to be an int or float, got {type(self.value).__name__}"
             )
         if not 0 <= self.value <= 1:
             raise ValueError(
@@ -727,7 +727,7 @@ class AnswerRelevanceMetric(_TextGenerationMetricBase):
 
     Attributes
     ----------
-    value : float
+    value : int | float
         The number of statements in the answer that are relevant to the query divided by the total number of statements in the answer.
     parameters : dict
         Any parameters associated with the metric, as well as any datum or prediction parameters that are relevant to the metric.
@@ -738,9 +738,9 @@ class AnswerRelevanceMetric(_TextGenerationMetricBase):
     def __post_init__(self):
         """Validate instantiated class."""
         super().__post_init__()
-        if not isinstance(self.value, float):
+        if not isinstance(self.value, (int, float)):
             raise TypeError(
-                f"Expected value to be a float, got {type(self.value).__name__}"
+                f"Expected value to be an int or float, got {type(self.value).__name__}"
             )
         if not 0 <= self.value <= 1:
             raise ValueError(
@@ -754,7 +754,7 @@ class BLEUMetric(_TextGenerationMetricBase):
 
     Attributes
     ----------
-    value : float
+    value : int | float
         The BLEU score for an individual datapoint.
     parameters : dict
         Any parameters associated with the metric, as well as any datum or prediction parameters that are relevant to the metric.
@@ -765,9 +765,9 @@ class BLEUMetric(_TextGenerationMetricBase):
     def __post_init__(self):
         """Validate instantiated class."""
         super().__post_init__()
-        if not isinstance(self.value, float):
+        if not isinstance(self.value, (int, float)):
             raise TypeError(
-                f"Expected value to be a float, got {type(self.value).__name__}"
+                f"Expected value to be an int or float, got {type(self.value).__name__}"
             )
         if not 0 <= self.value <= 1:
             raise ValueError(
@@ -781,7 +781,7 @@ class BiasMetric(_TextGenerationMetricBase):
 
     Attributes
     ----------
-    value : float
+    value : int | float
         The bias score for a datum. This is a float between 0 and 1, with 1 indicating that all opinions in the datum text are biased and 0 indicating that there is no bias.
     parameters : dict
         Any parameters associated with the metric, as well as any datum or prediction parameters that are relevant to the metric.
@@ -792,9 +792,9 @@ class BiasMetric(_TextGenerationMetricBase):
     def __post_init__(self):
         """Validate instantiated class."""
         super().__post_init__()
-        if not isinstance(self.value, float):
+        if not isinstance(self.value, (int, float)):
             raise TypeError(
-                f"Expected value to be a float, got {type(self.value).__name__}"
+                f"Expected value to be an int or float, got {type(self.value).__name__}"
             )
         if not 0 <= self.value <= 1:
             raise ValueError(
@@ -808,7 +808,7 @@ class ContextPrecisionMetric(_TextGenerationMetricBase):
 
     Attributes
     ----------
-    value : float
+    value : int | float
         The context precision score for a datum. This is a float between 0 and 1, with 0 indicating that none of the contexts are useful to arrive at the ground truth answer to the query and 1 indicating that all contexts are useful to arrive at the ground truth answer to the query. The score is more heavily influenced by earlier contexts in the list of contexts than later contexts.
     parameters : dict
         Any parameters associated with the metric, as well as any datum or prediction parameters that are relevant to the metric.
@@ -819,9 +819,9 @@ class ContextPrecisionMetric(_TextGenerationMetricBase):
     def __post_init__(self):
         """Validate instantiated class."""
         super().__post_init__()
-        if not isinstance(self.value, float):
+        if not isinstance(self.value, (int, float)):
             raise TypeError(
-                f"Expected value to be a float, got {type(self.value).__name__}"
+                f"Expected value to be an int or float, got {type(self.value).__name__}"
             )
         if not 0 <= self.value <= 1:
             raise ValueError(
@@ -835,7 +835,7 @@ class ContextRecallMetric(_TextGenerationMetricBase):
 
     Attributes
     ----------
-    value : float
+    value : int | float
         The context recall score for a datum. This is a float between 0 and 1, with 1 indicating that all ground truth statements are attributable to the context list.
     parameters : dict
         Any parameters associated with the metric, as well as any datum or prediction parameters that are relevant to the metric.
@@ -846,9 +846,9 @@ class ContextRecallMetric(_TextGenerationMetricBase):
     def __post_init__(self):
         """Validate instantiated class."""
         super().__post_init__()
-        if not isinstance(self.value, float):
+        if not isinstance(self.value, (int, float)):
             raise TypeError(
-                f"Expected value to be a float, got {type(self.value).__name__}"
+                f"Expected value to be an int or float, got {type(self.value).__name__}"
             )
         if not 0 <= self.value <= 1:
             raise ValueError(
@@ -862,7 +862,7 @@ class ContextRelevanceMetric(_TextGenerationMetricBase):
 
     Attributes
     ----------
-    value : float
+    value : int | float
         The context relevance score for a datum. This is a float between 0 and 1, with 0 indicating that none of the contexts are relevant and 1 indicating that all of the contexts are relevant.
     parameters : dict
         Any parameters associated with the metric, as well as any datum or prediction parameters that are relevant to the metric.
@@ -873,9 +873,9 @@ class ContextRelevanceMetric(_TextGenerationMetricBase):
     def __post_init__(self):
         """Validate instantiated class."""
         super().__post_init__()
-        if not isinstance(self.value, float):
+        if not isinstance(self.value, (int, float)):
             raise TypeError(
-                f"Expected value to be a float, got {type(self.value).__name__}"
+                f"Expected value to be an int or float, got {type(self.value).__name__}"
             )
         if not 0 <= self.value <= 1:
             raise ValueError(
@@ -889,7 +889,7 @@ class FaithfulnessMetric(_TextGenerationMetricBase):
 
     Attributes
     ----------
-    value : float
+    value : int | float
         The faithfulness score for a datum. This is a float between 0 and 1, with 1 indicating that all claims in the text are implied by the contexts.
     parameters : dict
         Any parameters associated with the metric, as well as any datum or prediction parameters that are relevant to the metric.
@@ -900,9 +900,9 @@ class FaithfulnessMetric(_TextGenerationMetricBase):
     def __post_init__(self):
         """Validate instantiated class."""
         super().__post_init__()
-        if not isinstance(self.value, float):
+        if not isinstance(self.value, (int, float)):
             raise TypeError(
-                f"Expected value to be a float, got {type(self.value).__name__}"
+                f"Expected value to be an int or float, got {type(self.value).__name__}"
             )
         if not 0 <= self.value <= 1:
             raise ValueError(
@@ -916,7 +916,7 @@ class HallucinationMetric(_TextGenerationMetricBase):
 
     Attributes
     ----------
-    value : float
+    value : int | float
         The hallucination score for a datum. This is a float between 0 and 1, with 1 indicating that all contexts are contradicted by the text.
     parameters : dict
         Any parameters associated with the metric, as well as any datum or prediction parameters that are relevant to the metric.
@@ -927,9 +927,9 @@ class HallucinationMetric(_TextGenerationMetricBase):
     def __post_init__(self):
         """Validate instantiated class."""
         super().__post_init__()
-        if not isinstance(self.value, float):
+        if not isinstance(self.value, (int, float)):
             raise TypeError(
-                f"Expected value to be a float, got {type(self.value).__name__}"
+                f"Expected value to be an int or float, got {type(self.value).__name__}"
             )
         if not 0 <= self.value <= 1:
             raise ValueError(
@@ -943,7 +943,7 @@ class ROUGEMetric(_TextGenerationMetricBase):
 
     Attributes
     ----------
-    value : dict[str, float]
+    value : dict[str, int | float]
         A JSON containing individual ROUGE scores calculated in different ways. `rouge1` is unigram-based scoring, `rouge2` is bigram-based scoring, `rougeL` is scoring based on sentences (i.e., splitting on "." and ignoring "\n"), and `rougeLsum` is scoring based on splitting the text using "\n".
     parameters : dict
         Any parameters associated with the metric, as well as any datum or prediction parameters that are relevant to the metric.
@@ -962,9 +962,9 @@ class ROUGEMetric(_TextGenerationMetricBase):
             raise TypeError(
                 f"Expected keys in value to be strings, got {type(next(iter(self.value.keys()))).__name__}"
             )
-        if not all(isinstance(v, float) for v in self.value.values()):
+        if not all(isinstance(v, (int, float)) for v in self.value.values()):
             raise TypeError(
-                f"Expected values in value to be floats, got {type(next(iter(self.value.values()))).__name__}"
+                f"Expected the values in self.value to be ints or floats, got {type(next(iter(self.value.values()))).__name__}"
             )
         if not all(0 <= v <= 1 for v in self.value.values()):
             raise ValueError(
@@ -1005,8 +1005,8 @@ class ToxicityMetric(_TextGenerationMetricBase):
 
     Attributes
     ----------
-    value : float
-        The toxicity score for a datum. This is a float between 0 and 1, with 1 indicating that all opinions in the datum text are toxic and 0 indicating that there is no toxicity.
+    value : int | float
+        The toxicity score for a datum. This is a value between 0 and 1, with 1 indicating that all opinions in the datum text are toxic and 0 indicating that there is no toxicity.
     parameters : dict
         Any parameters associated with the metric, as well as any datum or prediction parameters that are relevant to the metric.
     """
@@ -1016,9 +1016,9 @@ class ToxicityMetric(_TextGenerationMetricBase):
     def __post_init__(self):
         """Validate instantiated class."""
         super().__post_init__()
-        if not isinstance(self.value, float):
+        if not isinstance(self.value, (int, float)):
             raise TypeError(
-                f"Expected value to be a float, got {type(self.value).__name__}"
+                f"Expected value to be an int or float, got {type(self.value).__name__}"
             )
         if not 0 <= self.value <= 1:
             raise ValueError(
