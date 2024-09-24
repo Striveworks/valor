@@ -69,10 +69,22 @@ def test_compute_detailed_counts():
     ).all()
 
 
-def test_detailed_counts_basic(basic_classifications: list[Classification]):
+def test_detailed_counts_basic(classifications_basic: list[Classification]):
     loader = DataLoader()
-    loader.add_data(basic_classifications)
+    loader.add_data(classifications_basic)
     evaluator = loader.finalize()
+
+    assert evaluator.metadata == {
+        "n_datums": 3,
+        "n_groundtruths": 3,
+        "n_predictions": 12,
+        "n_labels": 4,
+        "ignored_prediction_labels": [
+            ("class", "1"),
+            ("class", "2"),
+        ],
+        "missing_prediction_labels": [],
+    }
 
     metrics = evaluator.compute_detailed_counts(
         score_thresholds=[0.25, 0.75],

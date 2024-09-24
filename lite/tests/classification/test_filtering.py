@@ -8,32 +8,32 @@ from valor_lite.classification import Classification, DataLoader, MetricType
 
 @pytest.fixture
 def one_classification(
-    basic_classifications: list[Classification],
+    classifications_basic: list[Classification],
 ) -> list[Classification]:
-    assert len(basic_classifications) == 3
-    return [basic_classifications[0]]
+    assert len(classifications_basic) == 3
+    return [classifications_basic[0]]
 
 
 @pytest.fixture
 def three_classifications(
-    basic_classifications: list[Classification],
+    classifications_basic: list[Classification],
 ) -> list[Classification]:
-    assert len(basic_classifications) == 3
-    return basic_classifications
+    assert len(classifications_basic) == 3
+    return classifications_basic
 
 
 @pytest.fixture
 def six_classifications(
-    basic_classifications: list[Classification],
+    classifications_basic: list[Classification],
 ) -> list[Classification]:
-    assert len(basic_classifications) == 3
-    clf1 = basic_classifications[0]
-    clf2 = basic_classifications[1]
-    clf3 = basic_classifications[2]
+    assert len(classifications_basic) == 3
+    clf1 = classifications_basic[0]
+    clf2 = classifications_basic[1]
+    clf3 = classifications_basic[2]
 
-    clf4 = replace(basic_classifications[0])
-    clf5 = replace(basic_classifications[1])
-    clf6 = replace(basic_classifications[2])
+    clf4 = replace(classifications_basic[0])
+    clf5 = replace(classifications_basic[1])
+    clf6 = replace(classifications_basic[2])
 
     clf4.uid = "uid4"
     clf5.uid = "uid5"
@@ -70,15 +70,15 @@ def test_filtering_one_classification(
     manager.add_data(one_classification)
     evaluator = manager.finalize()
 
-    assert evaluator._detailed_pairs.shape == (4, 4)
+    assert evaluator._detailed_pairs.shape == (4, 5)
     assert (
         evaluator._detailed_pairs
         == np.array(
             [
-                [0.0, 0.0, 0.0, 1.0],
-                [0.0, 0.0, 1.0, 0.0],
-                [0.0, 0.0, 2.0, 0.0],
-                [0.0, 0.0, 3.0, 0.0],
+                [0.0, 0.0, 0.0, 1.0, 1.0],
+                [0.0, 0.0, 1.0, 0.0, 0.0],
+                [0.0, 0.0, 2.0, 0.0, 0.0],
+                [0.0, 0.0, 3.0, 0.0, 0.0],
             ]
         )
     ).all()
@@ -136,6 +136,8 @@ def test_filtering_one_classification(
     # test evaluation
     filter_ = evaluator.create_filter(datum_uids=["uid0"])
     metrics = evaluator.evaluate(
+        score_thresholds=[0.5],
+        hardmax=False,
         filter_=filter_,
     )
 
@@ -208,23 +210,23 @@ def test_filtering_three_classifications(
     manager.add_data(three_classifications)
     evaluator = manager.finalize()
 
-    assert evaluator._detailed_pairs.shape == (12, 4)
+    assert evaluator._detailed_pairs.shape == (12, 5)
     assert (
         evaluator._detailed_pairs
         == np.array(
             [
-                [0.0, 0.0, 0.0, 1.0],
-                [1.0, 0.0, 2.0, 1.0],
-                [2.0, 3.0, 3.0, 0.3],
-                [1.0, 0.0, 0.0, 0.0],
-                [2.0, 3.0, 0.0, 0.0],
-                [0.0, 0.0, 1.0, 0.0],
-                [1.0, 0.0, 1.0, 0.0],
-                [2.0, 3.0, 1.0, 0.0],
-                [0.0, 0.0, 2.0, 0.0],
-                [2.0, 3.0, 2.0, 0.0],
-                [0.0, 0.0, 3.0, 0.0],
-                [1.0, 0.0, 3.0, 0.0],
+                [0.0, 0.0, 0.0, 1.0, 1.0],
+                [1.0, 0.0, 2.0, 1.0, 1.0],
+                [2.0, 3.0, 3.0, 0.3, 1.0],
+                [1.0, 0.0, 0.0, 0.0, 0.0],
+                [2.0, 3.0, 0.0, 0.0, 0.0],
+                [0.0, 0.0, 1.0, 0.0, 0.0],
+                [1.0, 0.0, 1.0, 0.0, 0.0],
+                [2.0, 3.0, 1.0, 0.0, 0.0],
+                [0.0, 0.0, 2.0, 0.0, 0.0],
+                [2.0, 3.0, 2.0, 0.0, 0.0],
+                [0.0, 0.0, 3.0, 0.0, 0.0],
+                [1.0, 0.0, 3.0, 0.0, 0.0],
             ]
         )
     ).all()
@@ -293,6 +295,8 @@ def test_filtering_three_classifications(
     # test evaluation
     filter_ = evaluator.create_filter(datum_uids=["uid0"])
     metrics = evaluator.evaluate(
+        score_thresholds=[0.5],
+        hardmax=False,
         filter_=filter_,
     )
 
@@ -365,35 +369,35 @@ def test_filtering_six_classifications(
     manager.add_data(six_classifications)
     evaluator = manager.finalize()
 
-    assert evaluator._detailed_pairs.shape == (24, 4)
+    assert evaluator._detailed_pairs.shape == (24, 5)
     assert (
         evaluator._detailed_pairs
         == np.array(
             [
-                [0.0, 0.0, 0.0, 1.0],
-                [3.0, 0.0, 0.0, 1.0],
-                [1.0, 0.0, 2.0, 1.0],
-                [4.0, 0.0, 2.0, 1.0],
-                [2.0, 3.0, 3.0, 0.3],
-                [5.0, 3.0, 3.0, 0.3],
-                [1.0, 0.0, 0.0, 0.0],
-                [4.0, 0.0, 0.0, 0.0],
-                [2.0, 3.0, 0.0, 0.0],
-                [5.0, 3.0, 0.0, 0.0],
-                [0.0, 0.0, 1.0, 0.0],
-                [1.0, 0.0, 1.0, 0.0],
-                [3.0, 0.0, 1.0, 0.0],
-                [4.0, 0.0, 1.0, 0.0],
-                [2.0, 3.0, 1.0, 0.0],
-                [5.0, 3.0, 1.0, 0.0],
-                [0.0, 0.0, 2.0, 0.0],
-                [3.0, 0.0, 2.0, 0.0],
-                [2.0, 3.0, 2.0, 0.0],
-                [5.0, 3.0, 2.0, 0.0],
-                [0.0, 0.0, 3.0, 0.0],
-                [1.0, 0.0, 3.0, 0.0],
-                [3.0, 0.0, 3.0, 0.0],
-                [4.0, 0.0, 3.0, 0.0],
+                [0.0, 0.0, 0.0, 1.0, 1.0],
+                [3.0, 0.0, 0.0, 1.0, 1.0],
+                [1.0, 0.0, 2.0, 1.0, 1.0],
+                [4.0, 0.0, 2.0, 1.0, 1.0],
+                [2.0, 3.0, 3.0, 0.3, 1.0],
+                [5.0, 3.0, 3.0, 0.3, 1.0],
+                [1.0, 0.0, 0.0, 0.0, 0.0],
+                [4.0, 0.0, 0.0, 0.0, 0.0],
+                [2.0, 3.0, 0.0, 0.0, 0.0],
+                [5.0, 3.0, 0.0, 0.0, 0.0],
+                [0.0, 0.0, 1.0, 0.0, 0.0],
+                [1.0, 0.0, 1.0, 0.0, 0.0],
+                [3.0, 0.0, 1.0, 0.0, 0.0],
+                [4.0, 0.0, 1.0, 0.0, 0.0],
+                [2.0, 3.0, 1.0, 0.0, 0.0],
+                [5.0, 3.0, 1.0, 0.0, 0.0],
+                [0.0, 0.0, 2.0, 0.0, 0.0],
+                [3.0, 0.0, 2.0, 0.0, 0.0],
+                [2.0, 3.0, 2.0, 0.0, 0.0],
+                [5.0, 3.0, 2.0, 0.0, 0.0],
+                [0.0, 0.0, 3.0, 0.0, 0.0],
+                [1.0, 0.0, 3.0, 0.0, 0.0],
+                [3.0, 0.0, 3.0, 0.0, 0.0],
+                [4.0, 0.0, 3.0, 0.0, 0.0],
             ]
         )
     ).all()
@@ -470,6 +474,8 @@ def test_filtering_six_classifications(
     filter_ = evaluator.create_filter(datum_uids=["uid0"])
 
     metrics = evaluator.evaluate(
+        score_thresholds=[0.5],
+        hardmax=False,
         filter_=filter_,
     )
 
@@ -539,4 +545,4 @@ def test_filtering_random_classifications():
     loader.add_data(generate_random_classifications(13, 2, 10))
     evaluator = loader.finalize()
     f = evaluator.create_filter(datum_uids=["uid0"])
-    evaluator.evaluate(filter_=f)
+    evaluator.evaluate(score_thresholds=[0.5], hardmax=False, filter_=f)

@@ -38,7 +38,7 @@ def _compute_rocauc(
 
         true_positives[label_idx] = mask_matching_labels[mask_pds]
         false_positives[label_idx] = ~mask_matching_labels[mask_pds]
-        scores[label_idx] = data[mask_pds, 2]
+        scores[label_idx] = data[mask_pds, 3]
 
     cumulative_fp = np.cumsum(false_positives, axis=1)
     cumulative_tp = np.cumsum(true_positives, axis=1)
@@ -86,6 +86,7 @@ def compute_metrics(
     data: NDArray[np.floating],
     label_metadata: NDArray[np.int32],
     score_thresholds: NDArray[np.floating],
+    hardmax: bool,
     n_datums: int,
 ) -> tuple[
     NDArray[np.int32],
@@ -99,11 +100,13 @@ def compute_metrics(
     """
     Computes classification metrics.
 
-    Takes data with shape (N, 3):
+    Takes data with shape (N, 5):
 
-    Index 0 - GroundTruth Label Index
-    Index 1 - Prediction Label Index
-    Index 2 - Score
+    Index 0 - Datum Index
+    Index 1 - GroundTruth Label Index
+    Index 2 - Prediction Label Index
+    Index 3 - Score
+    Index 4 - Hard-Max Score
 
     Parameters
     ----------
@@ -113,6 +116,10 @@ def compute_metrics(
         An array containing metadata related to labels.
     score_thresholds : NDArray[np.floating]
         A 1-D array contains score thresholds to compute metrics over.
+    hardmax : bool
+        Option to only allow a single positive prediction per label key.
+    n_datums : int
+        The number of datums being operated over.
 
     Returns
     -------
@@ -136,10 +143,12 @@ def compute_metrics(
     n_label_keys = np.unique(label_metadata[:, 2]).size
     n_scores = score_thresholds.shape[0]
 
-    pd_labels = data[:, 1].astype(int)
+    gt_labels = data[:, 1].astype(int)
+    pd_labels = data[:, 2].astype(int)
 
-    mask_matching_labels = np.isclose(data[:, 0], data[:, 1])
-    mask_score_nonzero = ~np.isclose(data[:, 2], 0.0)
+    mask_matching_labels = np.isclose(data[:, 1], data[:, 2])
+    mask_score_nonzero = ~np.isclose(data[:, 3], 0.0)
+    mask_hardmax = data[:, 4] > 0.5
 
     # calculate ROCAUC
     rocauc, mean_rocauc = _compute_rocauc(
@@ -155,13 +164,19 @@ def compute_metrics(
     # calculate metrics at various score thresholds
     counts = np.zeros((n_scores, n_labels, 4), dtype=np.int32)
     for score_idx in range(n_scores):
-        mask_score_threshold = data[:, 2] >= score_thresholds[score_idx]
+        mask_score_threshold = data[:, 3] >= score_thresholds[score_idx]
         mask_score = mask_score_nonzero & mask_score_threshold
+
+        if hardmax:
+            mask_score &= mask_hardmax
 
         mask_tp = mask_matching_labels & mask_score
         mask_fp = ~mask_matching_labels & mask_score
-        mask_fn = mask_matching_labels & ~mask_score
+        mask_fn = (mask_matching_labels & ~mask_score) | mask_fp
         mask_tn = ~mask_matching_labels & ~mask_score
+
+        fn = np.unique(data[mask_fn][:, [0, 1]].astype(int), axis=0)
+        tn = np.unique(data[mask_tn][:, [0, 1]].astype(int), axis=0)
 
         counts[score_idx, :, 0] = np.bincount(
             pd_labels[mask_tp], minlength=n_labels
@@ -169,12 +184,8 @@ def compute_metrics(
         counts[score_idx, :, 1] = np.bincount(
             pd_labels[mask_fp], minlength=n_labels
         )
-        counts[score_idx, :, 2] = np.bincount(
-            pd_labels[mask_fn], minlength=n_labels
-        )
-        counts[score_idx, :, 3] = np.bincount(
-            pd_labels[mask_tn], minlength=n_labels
-        )
+        counts[score_idx, :, 2] = np.bincount(fn[:, 1], minlength=n_labels)
+        counts[score_idx, :, 3] = np.bincount(tn[:, 1], minlength=n_labels)
 
     recall = np.zeros((n_scores, n_labels), dtype=np.float64)
     np.divide(
@@ -227,12 +238,13 @@ def compute_detailed_counts(
     """
     Compute detailed counts.
 
-    Takes data with shape (N, 4):
+    Takes data with shape (N, 5):
 
     Index 0 - Datum Index
     Index 1 - GroundTruth Label Index
     Index 2 - Prediction Label Index
     Index 3 - Score
+    Index 4 - Hard Max Score
 
     Outputs an array with shape (N_Scores, N_Labels, 5 * n_samples + 5):
 

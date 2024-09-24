@@ -3,7 +3,7 @@ from valor_lite.classification import Classification
 
 
 @pytest.fixture
-def basic_classifications() -> list[Classification]:
+def classifications_basic() -> list[Classification]:
     return [
         Classification(
             uid="uid0",
@@ -163,4 +163,73 @@ def classifications_two_categeories() -> list[Classification]:
             ],
         )
         for idx, (gt, pd) in enumerate(zip(joint_gts, joint_pds))
+    ]
+
+
+@pytest.fixture
+def classifications_image_example() -> list[Classification]:
+    return [
+        Classification(
+            uid="uid5",
+            groundtruths=[
+                ("k4", "v4"),
+                ("k5", "v5"),
+            ],
+            predictions=[
+                ("k4", "v1"),
+                ("k4", "v8"),
+                ("k5", "v1"),
+            ],
+            scores=[0.47, 0.53, 1.0],
+        ),
+        Classification(
+            uid="uid6",
+            groundtruths=[
+                ("k4", "v4"),
+            ],
+            predictions=[("k4", "v4"), ("k4", "v5")],
+            scores=[0.71, 0.29],
+        ),
+        Classification(
+            uid="uid8",
+            groundtruths=[
+                ("k3", "v3"),
+            ],
+            predictions=[
+                ("k3", "v1"),
+            ],
+            scores=[
+                1.0,
+            ],
+        ),
+    ]
+
+
+@pytest.fixture
+def classifications_tabular_example() -> list[Classification]:
+    gt_clfs_tabular = [1, 1, 2, 0, 0, 0, 1, 1, 1, 1]
+    pred_clfs_tabular = [
+        [0.37, 0.35, 0.28],
+        [0.24, 0.61, 0.15],
+        [0.03, 0.88, 0.09],
+        [0.97, 0.03, 0.0],
+        [1.0, 0.0, 0.0],
+        [1.0, 0.0, 0.0],
+        [0.01, 0.96, 0.03],
+        [0.28, 0.02, 0.7],
+        [0.78, 0.21, 0.01],
+        [0.45, 0.11, 0.44],
+    ]
+    return [
+        Classification(
+            uid=f"uid{i}",
+            groundtruths=[("class", str(gt_label))],
+            predictions=[
+                ("class", str(pd_label)) for pd_label, _ in enumerate(pds)
+            ],
+            scores=pds,
+        )
+        for i, (gt_label, pds) in enumerate(
+            zip(gt_clfs_tabular, pred_clfs_tabular)
+        )
     ]

@@ -219,7 +219,8 @@ class Evaluator:
 
     def evaluate(
         self,
-        score_thresholds: list[float] = [0.5],
+        score_thresholds: list[float] = [0.0],
+        hardmax: bool = True,
         filter_: Filter | None = None,
     ) -> dict[MetricType, list]:
         """
@@ -247,9 +248,6 @@ class Evaluator:
             label_metadata = filter_.label_metadata
             n_datums = filter_.n_datums
 
-        # datum idx is not required for base metrics
-        compact_data = data[:, 1:]
-
         (
             counts,
             precision,
@@ -259,9 +257,10 @@ class Evaluator:
             rocauc,
             mean_rocauc,
         ) = compute_metrics(
-            data=compact_data,
+            data=data,
             label_metadata=label_metadata,
             score_thresholds=np.array(score_thresholds),
+            hardmax=hardmax,
             n_datums=n_datums,
         )
 
@@ -284,6 +283,7 @@ class Evaluator:
         ]
 
         for label_idx, label in self.index_to_label.items():
+
             kwargs = {
                 "label": label,
                 "score_thresholds": score_thresholds,
@@ -298,6 +298,11 @@ class Evaluator:
                     **kwargs,
                 )
             )
+
+            # if no groundtruths exists for a label, skip it.
+            if label_metadata[label_idx, 0] == 0:
+                continue
+
             metrics[MetricType.Precision].append(
                 Precision(
                     value=precision[:, label_idx].tolist(),
@@ -542,8 +547,8 @@ class DataLoader:
                 label_idx, label_key_idx = self._add_label(glabel)
                 self.groundtruth_count[label_idx][uid_index] += 1
                 keyed_groundtruths[label_key_idx].append(label_idx)
-            for plabel, pscore in zip(
-                classification.predictions, classification.scores
+            for idx, (plabel, pscore) in enumerate(
+                zip(classification.predictions, classification.scores)
             ):
                 label_idx, label_key_idx = self._add_label(plabel)
                 self.prediction_count[label_idx][uid_index] += 1
@@ -565,27 +570,30 @@ class DataLoader:
                     "Label keys must match between ground truths and predictions."
                 )
 
-            pairs = np.array(
-                [
-                    (
-                        float(uid_index),
-                        float(glabel),
-                        float(plabel),
-                        float(score),
-                    )
-                    for key in joint_keys
-                    for plabel, score in keyed_predictions[key]
-                    for glabel in keyed_groundtruths[key]
-                ]
-            )
+            pairs = list()
+            for key in joint_keys:
+                hardmax_idx = np.argmax(
+                    [score for _, score in keyed_predictions[key]]
+                )
+                for idx, (plabel, score) in enumerate(keyed_predictions[key]):
+                    for glabel in keyed_groundtruths[key]:
+                        pairs.append(
+                            (
+                                float(uid_index),
+                                float(glabel),
+                                float(plabel),
+                                float(score),
+                                float(hardmax_idx == idx),
+                            )
+                        )
 
             if self._evaluator._detailed_pairs.size == 0:
-                self._evaluator._detailed_pairs = pairs
+                self._evaluator._detailed_pairs = np.array(pairs)
             else:
                 self._evaluator._detailed_pairs = np.concatenate(
                     [
                         self._evaluator._detailed_pairs,
-                        pairs,
+                        np.array(pairs),
                     ],
                     axis=0,
                 )
@@ -650,27 +658,30 @@ class DataLoader:
             if gt_unique_keys or pd_unique_keys:
                 raise ValueError()
 
-            pairs = np.array(
-                [
-                    (
-                        float(uid_index),
-                        float(glabel),
-                        float(plabel),
-                        float(score),
-                    )
-                    for key in joint_keys
-                    for plabel, score in keyed_predictions[key]
-                    for glabel in keyed_groundtruths[key]
-                ]
-            )
+            pairs = list()
+            for key in joint_keys:
+                hardmax_idx = np.argmax(
+                    [score for _, score in keyed_predictions[key]]
+                )
+                for idx, (plabel, score) in enumerate(keyed_predictions[key]):
+                    for glabel in keyed_groundtruths[key]:
+                        pairs.append(
+                            (
+                                float(uid_index),
+                                float(glabel),
+                                float(plabel),
+                                float(score),
+                                float(hardmax_idx == idx),
+                            )
+                        )
 
             if self._evaluator._detailed_pairs.size == 0:
-                self._evaluator._detailed_pairs = pairs
+                self._evaluator._detailed_pairs = np.array(pairs)
             else:
                 self._evaluator._detailed_pairs = np.concatenate(
                     [
                         self._evaluator._detailed_pairs,
-                        pairs,
+                        np.array(pairs),
                     ],
                     axis=0,
                 )

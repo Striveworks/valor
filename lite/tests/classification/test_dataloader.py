@@ -22,7 +22,7 @@ def test_valor_integration():
     loader.add_data_from_valor_dict([(gt, pd)])
     loader.finalize()
 
-    assert loader._evaluator._detailed_pairs.shape == (10, 4)
+    assert loader._evaluator._detailed_pairs.shape == (10, 5)
 
     assert set(loader._evaluator.label_key_to_index.keys()) == {
         "class_label",
