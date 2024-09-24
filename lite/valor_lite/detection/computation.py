@@ -58,6 +58,12 @@ def _compute_ranked_pairs_for_datum(
     # remove null predictions
     data = data[data[:, 2] >= 0.0]
 
+    # find best fits for prediction
+    mask_label_match = data[:, 4] == data[:, 5]
+    matched_predicitons = np.unique(data[mask_label_match, 2].astype(int))
+    mask_unmatched_predictions = ~np.isin(data[:, 2], matched_predicitons)
+    data = data[mask_label_match | mask_unmatched_predictions]
+
     # sort by gt_id, iou, score
     indices = np.lexsort(
         (
