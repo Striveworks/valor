@@ -611,3 +611,64 @@ def detections_tp_deassignment_edge_case() -> list[Detection]:
             ],
         ),
     ]
+
+
+@pytest.fixture
+def detection_ranked_pair_ordering() -> Detection:
+
+    gts = {
+        "boxes": [
+            (2, 10, 2, 10),
+            (2, 10, 2, 10),
+            (2, 10, 2, 10),
+        ],
+        "label_values": ["label1", "label2", "label3"],
+    }
+
+    # labels 1 and 2 have IOU==1, labels 3 and 4 have IOU==0
+    preds = {
+        "boxes": [
+            (2, 10, 2, 10),
+            (2, 10, 2, 10),
+            (0, 1, 0, 1),
+            (0, 1, 0, 1),
+        ],
+        "label_values": ["label1", "label2", "label3", "label4"],
+        "scores": [
+            0.3,
+            0.93,
+            0.92,
+            0.94,
+        ],
+    }
+
+    groundtruths = [
+        BoundingBox(
+            xmin=xmin,
+            xmax=xmax,
+            ymin=ymin,
+            ymax=ymax,
+            labels=[("class", label_value)],
+        )
+        for (xmin, xmax, ymin, ymax), label_value in zip(
+            gts["boxes"], gts["label_values"]
+        )
+    ]
+
+    predictions = [
+        BoundingBox(
+            xmin=xmin,
+            xmax=xmax,
+            ymin=ymin,
+            ymax=ymax,
+            labels=[("class", label_value)],
+            scores=[score],
+        )
+        for (xmin, xmax, ymin, ymax), label_value, score in zip(
+            preds["boxes"], preds["label_values"], preds["scores"]
+        )
+    ]
+
+    return Detection(
+        uid="uid1", groundtruths=groundtruths, predictions=predictions
+    )
