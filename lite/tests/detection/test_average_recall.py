@@ -89,9 +89,9 @@ def test_ar_metrics(basic_detections: list[Detection]):
             box 2 - label (k2, v2) - score 0.98 - fp
     """
 
-    manager = DataLoader()
-    manager.add_data(basic_detections)
-    evaluator = manager.finalize()
+    loader = DataLoader()
+    loader.add_data(basic_detections)
+    evaluator = loader.finalize()
 
     metrics = evaluator.evaluate(
         iou_thresholds=[0.1, 0.6],
@@ -225,9 +225,9 @@ def test_ar_using_torch_metrics_example(
     cf with torch metrics/pycocotools results listed here:
     https://github.com/Lightning-AI/metrics/blob/107dbfd5fb158b7ae6d76281df44bd94c836bfce/tests/unittests/detection/test_map.py#L231
     """
-    manager = DataLoader()
-    manager.add_data(torchmetrics_detections)
-    evaluator = manager.finalize()
+    loader = DataLoader()
+    loader.add_data(torchmetrics_detections)
+    evaluator = loader.finalize()
 
     assert evaluator.ignored_prediction_labels == [("class", "3")]
     assert evaluator.missing_prediction_labels == []
@@ -397,9 +397,9 @@ def test_ar_true_positive_deassignment(
     detections_tp_deassignment_edge_case: list[Detection],
 ):
 
-    manager = DataLoader()
-    manager.add_data(detections_tp_deassignment_edge_case)
-    evaluator = manager.finalize()
+    loader = DataLoader()
+    loader.add_data(detections_tp_deassignment_edge_case)
+    evaluator = loader.finalize()
 
     assert evaluator.ignored_prediction_labels == []
     assert evaluator.missing_prediction_labels == []

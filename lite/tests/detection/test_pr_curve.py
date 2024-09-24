@@ -43,9 +43,9 @@ def test_pr_curve_using_torch_metrics_example(
     cf with torch metrics/pycocotools results listed here:
     https://github.com/Lightning-AI/metrics/blob/107dbfd5fb158b7ae6d76281df44bd94c836bfce/tests/unittests/detection/test_map.py#L231
     """
-    manager = DataLoader()
-    manager.add_data(torchmetrics_detections)
-    evaluator = manager.finalize()
+    loader = DataLoader()
+    loader.add_data(torchmetrics_detections)
+    evaluator = loader.finalize()
 
     assert evaluator.ignored_prediction_labels == [("class", "3")]
     assert evaluator.missing_prediction_labels == []

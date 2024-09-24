@@ -85,9 +85,9 @@ def test_ap_metrics(basic_detections: list[Detection]):
             box 2 - label (k2, v2) - score 0.98 - fp
     """
 
-    manager = DataLoader()
-    manager.add_data(basic_detections)
-    evaluator = manager.finalize()
+    loader = DataLoader()
+    loader.add_data(basic_detections)
+    evaluator = loader.finalize()
 
     metrics = evaluator.evaluate(
         iou_thresholds=[0.1, 0.6],
@@ -244,9 +244,9 @@ def test_ap_using_torch_metrics_example(
     cf with torch metrics/pycocotools results listed here:
     https://github.com/Lightning-AI/metrics/blob/107dbfd5fb158b7ae6d76281df44bd94c836bfce/tests/unittests/detection/test_map.py#L231
     """
-    manager = DataLoader()
-    manager.add_data(torchmetrics_detections)
-    evaluator = manager.finalize()
+    loader = DataLoader()
+    loader.add_data(torchmetrics_detections)
+    evaluator = loader.finalize()
 
     assert evaluator.ignored_prediction_labels == [("class", "3")]
     assert evaluator.missing_prediction_labels == []
@@ -382,9 +382,9 @@ def test_ap_false_negatives_single_datum_baseline(
     so there is not a penalty for the false negative so the AP is 1
     """
 
-    manager = DataLoader()
-    manager.add_data(false_negatives_single_datum_baseline_detections)
-    evaluator = manager.finalize()
+    loader = DataLoader()
+    loader.add_data(false_negatives_single_datum_baseline_detections)
+    evaluator = loader.finalize()
     metrics = evaluator.evaluate(iou_thresholds=[0.5])
 
     actual_metrics = [m.to_dict() for m in metrics[MetricType.AP]]
@@ -415,9 +415,9 @@ def test_ap_false_negatives_single_datum(
     does not sufficiently overlap the groundtruth and so is penalized and we get an AP of 0.5
     """
 
-    manager = DataLoader()
-    manager.add_data(false_negatives_single_datum_detections)
-    evaluator = manager.finalize()
+    loader = DataLoader()
+    loader.add_data(false_negatives_single_datum_detections)
+    evaluator = loader.finalize()
     metrics = evaluator.evaluate(iou_thresholds=[0.5])
 
     actual_metrics = [m.to_dict() for m in metrics[MetricType.AP]]
@@ -454,11 +454,11 @@ def test_ap_false_negatives_two_datums_one_empty_low_confidence_of_fp(
 
     """
 
-    manager = DataLoader()
-    manager.add_data(
+    loader = DataLoader()
+    loader.add_data(
         false_negatives_two_datums_one_empty_low_confidence_of_fp_detections
     )
-    evaluator = manager.finalize()
+    evaluator = loader.finalize()
     metrics = evaluator.evaluate(iou_thresholds=[0.5])
 
     actual_metrics = [m.to_dict() for m in metrics[MetricType.AP]]
@@ -494,11 +494,11 @@ def test_ap_false_negatives_two_datums_one_empty_high_confidence_of_fp(
     In this case, the AP should be 0.5 since the false positive has higher confidence than the true positive
     """
 
-    manager = DataLoader()
-    manager.add_data(
+    loader = DataLoader()
+    loader.add_data(
         false_negatives_two_datums_one_empty_high_confidence_of_fp_detections
     )
-    evaluator = manager.finalize()
+    evaluator = loader.finalize()
     metrics = evaluator.evaluate(iou_thresholds=[0.5])
 
     actual_metrics = [m.to_dict() for m in metrics[MetricType.AP]]
@@ -534,11 +534,11 @@ def test_ap_false_negatives_two_datums_one_only_with_different_class_low_confide
     In this case, the AP for class `"value"` should be 1 since the false positive has lower confidence than the true positive.
     AP for class `"other value"` should be 0 since there is no prediction for the `"other value"` groundtruth
     """
-    manager = DataLoader()
-    manager.add_data(
+    loader = DataLoader()
+    loader.add_data(
         false_negatives_two_datums_one_only_with_different_class_low_confidence_of_fp_detections
     )
-    evaluator = manager.finalize()
+    evaluator = loader.finalize()
     metrics = evaluator.evaluate(iou_thresholds=[0.5])
 
     actual_metrics = [m.to_dict() for m in metrics[MetricType.AP]]
@@ -585,11 +585,11 @@ def test_ap_false_negatives_two_datums_one_only_with_different_class_high_confid
     In this case, the AP for class `"value"` should be 0.5 since the false positive has higher confidence than the true positive.
     AP for class `"other value"` should be 0 since there is no prediction for the `"other value"` groundtruth
     """
-    manager = DataLoader()
-    manager.add_data(
+    loader = DataLoader()
+    loader.add_data(
         false_negatives_two_images_one_only_with_different_class_high_confidence_of_fp_detections
     )
-    evaluator = manager.finalize()
+    evaluator = loader.finalize()
     metrics = evaluator.evaluate(iou_thresholds=[0.5])
 
     actual_metrics = [m.to_dict() for m in metrics[MetricType.AP]]
@@ -625,9 +625,9 @@ def test_ap_false_negatives_two_datums_one_only_with_different_class_high_confid
 
 def test_ap_ranked_pair_ordering(detection_ranked_pair_ordering: Detection):
 
-    manager = DataLoader()
-    manager.add_data(detections=[detection_ranked_pair_ordering])
-    evaluator = manager.finalize()
+    loader = DataLoader()
+    loader.add_data(detections=[detection_ranked_pair_ordering])
+    evaluator = loader.finalize()
 
     metrics = evaluator.evaluate(iou_thresholds=[0.5, 0.75])
 
@@ -765,9 +765,9 @@ def test_ap_true_positive_deassignment(
     detections_tp_deassignment_edge_case: list[Detection],
 ):
 
-    manager = DataLoader()
-    manager.add_data(detections_tp_deassignment_edge_case)
-    evaluator = manager.finalize()
+    loader = DataLoader()
+    loader.add_data(detections_tp_deassignment_edge_case)
+    evaluator = loader.finalize()
 
     assert evaluator.ignored_prediction_labels == []
     assert evaluator.missing_prediction_labels == []

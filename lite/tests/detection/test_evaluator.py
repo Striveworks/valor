@@ -8,9 +8,9 @@ def test_metadata_using_torch_metrics_example(
     cf with torch metrics/pycocotools results listed here:
     https://github.com/Lightning-AI/metrics/blob/107dbfd5fb158b7ae6d76281df44bd94c836bfce/tests/unittests/detection/test_map.py#L231
     """
-    manager = DataLoader()
-    manager.add_data(torchmetrics_detections)
-    evaluator = manager.finalize()
+    loader = DataLoader()
+    loader.add_data(torchmetrics_detections)
+    evaluator = loader.finalize()
 
     assert evaluator.ignored_prediction_labels == [("class", "3")]
     assert evaluator.missing_prediction_labels == []
@@ -33,9 +33,9 @@ def test_metadata_using_torch_metrics_example(
 
 def test_no_groundtruths(detections_no_groundtruths):
 
-    manager = DataLoader()
-    manager.add_data(detections_no_groundtruths)
-    evaluator = manager.finalize()
+    loader = DataLoader()
+    loader.add_data(detections_no_groundtruths)
+    evaluator = loader.finalize()
 
     assert evaluator.ignored_prediction_labels == [("k1", "v1"), ("k2", "v2")]
     assert evaluator.missing_prediction_labels == []
@@ -54,9 +54,9 @@ def test_no_groundtruths(detections_no_groundtruths):
 
 def test_no_predictions(detections_no_predictions):
 
-    manager = DataLoader()
-    manager.add_data(detections_no_predictions)
-    evaluator = manager.finalize()
+    loader = DataLoader()
+    loader.add_data(detections_no_predictions)
+    evaluator = loader.finalize()
 
     assert evaluator.ignored_prediction_labels == []
     assert evaluator.missing_prediction_labels == [("k1", "v1"), ("k2", "v2")]

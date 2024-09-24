@@ -249,6 +249,362 @@ def test_compute_detailed_counts():
     ).all()  # fn misprd
 
 
+def test_detailed_counts(detections_for_detailed_counting):
+    loader = DataLoader()
+    loader.add_data(detections_for_detailed_counting)
+    evaluator = loader.finalize()
+
+    assert evaluator.ignored_prediction_labels == [
+        ("k1", "not_v2"),
+        ("k1", "hallucination"),
+    ]
+    assert evaluator.missing_prediction_labels == [
+        ("k1", "missed_detection"),
+        ("k1", "v2"),
+    ]
+    assert evaluator.n_datums == 2
+    assert evaluator.n_labels == 6
+    assert evaluator.n_groundtruths == 4
+    assert evaluator.n_predictions == 4
+
+    metrics = evaluator.compute_detailed_counts(
+        iou_thresholds=[0.5],
+        score_thresholds=[0.05, 0.3, 0.35, 0.45, 0.55, 0.95],
+        n_samples=1,
+    )
+
+    # test DetailedCounts
+    actual_metrics = [mm.to_dict() for m in metrics for mm in m]
+    expected_metrics = [
+        {
+            "type": "DetailedCounts",
+            "value": {
+                "tp": [1, 1, 1, 1, 0, 0],
+                "fp_misclassification": [0, 0, 0, 0, 0, 0],
+                "fp_hallucination": [0, 0, 0, 0, 0, 0],
+                "fn_misclassification": [0, 0, 0, 0, 0, 0],
+                "fn_missing_prediction": [0, 0, 0, 0, 1, 1],
+                "tn": None,
+                "tp_examples": [
+                    ["uid1"],
+                    ["uid1"],
+                    ["uid1"],
+                    ["uid1"],
+                    [],
+                    [],
+                ],
+                "fp_misclassification_examples": [
+                    [],
+                    [],
+                    [],
+                    [],
+                    [],
+                    [],
+                ],
+                "fp_hallucination_examples": [[], [], [], [], [], []],
+                "fn_misclassification_examples": [
+                    [],
+                    [],
+                    [],
+                    [],
+                    [],
+                    [],
+                ],
+                "fn_missing_prediction_examples": [
+                    [],
+                    [],
+                    [],
+                    [],
+                    ["uid1"],
+                    ["uid1"],
+                ],
+                "tn_examples": None,
+            },
+            "parameters": {
+                "score_thresholds": [
+                    0.05,
+                    0.3,
+                    0.35,
+                    0.45,
+                    0.55,
+                    0.95,
+                ],
+                "iou_threshold": 0.5,
+                "label": {"key": "k1", "value": "v1"},
+            },
+        },
+        {
+            "type": "DetailedCounts",
+            "value": {
+                "tp": [0, 0, 0, 0, 0, 0],
+                "fp_misclassification": [0, 0, 0, 0, 0, 0],
+                "fp_hallucination": [0, 0, 0, 0, 0, 0],
+                "fn_misclassification": [0, 0, 0, 0, 0, 0],
+                "fn_missing_prediction": [1, 1, 1, 1, 1, 1],
+                "tn": None,
+                "tp_examples": [[], [], [], [], [], []],
+                "fp_misclassification_examples": [
+                    [],
+                    [],
+                    [],
+                    [],
+                    [],
+                    [],
+                ],
+                "fp_hallucination_examples": [[], [], [], [], [], []],
+                "fn_misclassification_examples": [
+                    [],
+                    [],
+                    [],
+                    [],
+                    [],
+                    [],
+                ],
+                "fn_missing_prediction_examples": [
+                    ["uid1"],
+                    ["uid1"],
+                    ["uid1"],
+                    ["uid1"],
+                    ["uid1"],
+                    ["uid1"],
+                ],
+                "tn_examples": None,
+            },
+            "parameters": {
+                "score_thresholds": [
+                    0.05,
+                    0.3,
+                    0.35,
+                    0.45,
+                    0.55,
+                    0.95,
+                ],
+                "iou_threshold": 0.5,
+                "label": {"key": "k1", "value": "missed_detection"},
+            },
+        },
+        {
+            "type": "DetailedCounts",
+            "value": {
+                "tp": [0, 0, 0, 0, 0, 0],
+                "fp_misclassification": [0, 0, 0, 0, 0, 0],
+                "fp_hallucination": [0, 0, 0, 0, 0, 0],
+                "fn_misclassification": [0, 0, 0, 0, 0, 0],
+                "fn_missing_prediction": [1, 1, 1, 1, 1, 1],
+                "tn": None,
+                "tp_examples": [[], [], [], [], [], []],
+                "fp_misclassification_examples": [
+                    [],
+                    [],
+                    [],
+                    [],
+                    [],
+                    [],
+                ],
+                "fp_hallucination_examples": [[], [], [], [], [], []],
+                "fn_misclassification_examples": [
+                    [],
+                    [],
+                    [],
+                    [],
+                    [],
+                    [],
+                ],
+                "fn_missing_prediction_examples": [
+                    ["uid1"],
+                    ["uid1"],
+                    ["uid1"],
+                    ["uid1"],
+                    ["uid1"],
+                    ["uid1"],
+                ],
+                "tn_examples": None,
+            },
+            "parameters": {
+                "score_thresholds": [
+                    0.05,
+                    0.3,
+                    0.35,
+                    0.45,
+                    0.55,
+                    0.95,
+                ],
+                "iou_threshold": 0.5,
+                "label": {"key": "k1", "value": "v2"},
+            },
+        },
+        {
+            "type": "DetailedCounts",
+            "value": {
+                "tp": [0, 0, 0, 0, 0, 0],
+                "fp_misclassification": [0, 0, 0, 0, 0, 0],
+                "fp_hallucination": [1, 1, 1, 1, 0, 0],
+                "fn_misclassification": [0, 0, 0, 0, 0, 0],
+                "fn_missing_prediction": [1, 1, 1, 1, 1, 1],
+                "tn": None,
+                "tp_examples": [[], [], [], [], [], []],
+                "fp_misclassification_examples": [
+                    [],
+                    [],
+                    [],
+                    [],
+                    [],
+                    [],
+                ],
+                "fp_hallucination_examples": [
+                    ["uid2"],
+                    ["uid2"],
+                    ["uid2"],
+                    ["uid2"],
+                    [],
+                    [],
+                ],
+                "fn_misclassification_examples": [
+                    [],
+                    [],
+                    [],
+                    [],
+                    [],
+                    [],
+                ],
+                "fn_missing_prediction_examples": [
+                    ["uid2"],
+                    ["uid2"],
+                    ["uid2"],
+                    ["uid2"],
+                    ["uid2"],
+                    ["uid2"],
+                ],
+                "tn_examples": None,
+            },
+            "parameters": {
+                "score_thresholds": [
+                    0.05,
+                    0.3,
+                    0.35,
+                    0.45,
+                    0.55,
+                    0.95,
+                ],
+                "iou_threshold": 0.5,
+                "label": {"key": "k1", "value": "low_iou"},
+            },
+        },
+        {
+            "type": "DetailedCounts",
+            "value": {
+                "tp": [0, 0, 0, 0, 0, 0],
+                "fp_misclassification": [0, 0, 0, 0, 0, 0],
+                "fp_hallucination": [1, 1, 0, 0, 0, 0],
+                "fn_misclassification": [0, 0, 0, 0, 0, 0],
+                "fn_missing_prediction": [0, 0, 0, 0, 0, 0],
+                "tn": None,
+                "tp_examples": [[], [], [], [], [], []],
+                "fp_misclassification_examples": [
+                    [],
+                    [],
+                    [],
+                    [],
+                    [],
+                    [],
+                ],
+                "fp_hallucination_examples": [
+                    ["uid1"],
+                    ["uid1"],
+                    [],
+                    [],
+                    [],
+                    [],
+                ],
+                "fn_misclassification_examples": [
+                    [],
+                    [],
+                    [],
+                    [],
+                    [],
+                    [],
+                ],
+                "fn_missing_prediction_examples": [
+                    [],
+                    [],
+                    [],
+                    [],
+                    [],
+                    [],
+                ],
+                "tn_examples": None,
+            },
+            "parameters": {
+                "score_thresholds": [
+                    0.05,
+                    0.3,
+                    0.35,
+                    0.45,
+                    0.55,
+                    0.95,
+                ],
+                "iou_threshold": 0.5,
+                "label": {"key": "k1", "value": "not_v2"},
+            },
+        },
+        {
+            "type": "DetailedCounts",
+            "value": {
+                "tp": [0, 0, 0, 0, 0, 0],
+                "fp_misclassification": [0, 0, 0, 0, 0, 0],
+                "fp_hallucination": [1, 0, 0, 0, 0, 0],
+                "fn_misclassification": [0, 0, 0, 0, 0, 0],
+                "fn_missing_prediction": [0, 0, 0, 0, 0, 0],
+                "tn": None,
+                "tp_examples": [[], [], [], [], [], []],
+                "fp_misclassification_examples": [
+                    [],
+                    [],
+                    [],
+                    [],
+                    [],
+                    [],
+                ],
+                "fp_hallucination_examples": [["uid1"], [], [], [], [], []],
+                "fn_misclassification_examples": [
+                    [],
+                    [],
+                    [],
+                    [],
+                    [],
+                    [],
+                ],
+                "fn_missing_prediction_examples": [
+                    [],
+                    [],
+                    [],
+                    [],
+                    [],
+                    [],
+                ],
+                "tn_examples": None,
+            },
+            "parameters": {
+                "score_thresholds": [
+                    0.05,
+                    0.3,
+                    0.35,
+                    0.45,
+                    0.55,
+                    0.95,
+                ],
+                "iou_threshold": 0.5,
+                "label": {"key": "k1", "value": "hallucination"},
+            },
+        },
+    ]
+
+    for m in actual_metrics:
+        assert m in expected_metrics
+    for m in expected_metrics:
+        assert m in actual_metrics
+
+
 def test_detailed_counts_using_torch_metrics_example(
     torchmetrics_detections: list[Detection],
 ):
@@ -256,11 +612,10 @@ def test_detailed_counts_using_torch_metrics_example(
     cf with torch metrics/pycocotools results listed here:
     https://github.com/Lightning-AI/metrics/blob/107dbfd5fb158b7ae6d76281df44bd94c836bfce/tests/unittests/detection/test_map.py#L231
     """
-    manager = DataLoader()
-    manager.add_data(torchmetrics_detections)
-    evaluator = manager.finalize()
+    loader = DataLoader()
+    loader.add_data(torchmetrics_detections)
+    evaluator = loader.finalize()
 
-    print(evaluator.label_to_index[("class", "49")])
     assert evaluator.ignored_prediction_labels == [("class", "3")]
     assert evaluator.missing_prediction_labels == []
     assert evaluator.n_datums == 4
@@ -274,9 +629,9 @@ def test_detailed_counts_using_torch_metrics_example(
         n_samples=1,
     )
 
-    assert len(metrics) == 5
+    assert len(metrics) == 6
 
-    # test DetailedCounts for
+    # test DetailedCounts
     actual_metrics = [mm.to_dict() for m in metrics for mm in m]
     expected_metrics = [
         {
@@ -922,6 +1277,158 @@ def test_detailed_counts_using_torch_metrics_example(
                 "label": {"key": "class", "value": "49"},
             },
         },
+        {
+            "type": "DetailedCounts",
+            "value": {
+                "tp": [0, 0, 0, 0, 0, 0, 0, 0],
+                "fp_misclassification": [1, 1, 0, 0, 0, 0, 0, 0],
+                "fp_hallucination": [0, 0, 0, 0, 0, 0, 0, 0],
+                "fn_misclassification": [0, 0, 0, 0, 0, 0, 0, 0],
+                "fn_missing_prediction": [0, 0, 0, 0, 0, 0, 0, 0],
+                "tn": None,
+                "tp_examples": [
+                    [],
+                    [],
+                    [],
+                    [],
+                    [],
+                    [],
+                    [],
+                    [],
+                ],
+                "fp_misclassification_examples": [
+                    ["1"],
+                    ["1"],
+                    [],
+                    [],
+                    [],
+                    [],
+                    [],
+                    [],
+                ],
+                "fp_hallucination_examples": [
+                    [],
+                    [],
+                    [],
+                    [],
+                    [],
+                    [],
+                    [],
+                    [],
+                ],
+                "fn_misclassification_examples": [
+                    [],
+                    [],
+                    [],
+                    [],
+                    [],
+                    [],
+                    [],
+                    [],
+                ],
+                "fn_missing_prediction_examples": [
+                    [],
+                    [],
+                    [],
+                    [],
+                    [],
+                    [],
+                    [],
+                    [],
+                ],
+                "tn_examples": None,
+            },
+            "parameters": {
+                "score_thresholds": [
+                    0.05,
+                    0.25,
+                    0.35,
+                    0.55,
+                    0.75,
+                    0.8,
+                    0.85,
+                    0.95,
+                ],
+                "iou_threshold": 0.5,
+                "label": {"key": "class", "value": "3"},
+            },
+        },
+        {
+            "type": "DetailedCounts",
+            "value": {
+                "tp": [0, 0, 0, 0, 0, 0, 0, 0],
+                "fp_misclassification": [0, 0, 0, 0, 0, 0, 0, 0],
+                "fp_hallucination": [1, 1, 0, 0, 0, 0, 0, 0],
+                "fn_misclassification": [0, 0, 0, 0, 0, 0, 0, 0],
+                "fn_missing_prediction": [0, 0, 0, 0, 0, 0, 0, 0],
+                "tn": None,
+                "tp_examples": [
+                    [],
+                    [],
+                    [],
+                    [],
+                    [],
+                    [],
+                    [],
+                    [],
+                ],
+                "fp_misclassification_examples": [
+                    [],
+                    [],
+                    [],
+                    [],
+                    [],
+                    [],
+                    [],
+                    [],
+                ],
+                "fp_hallucination_examples": [
+                    ["1"],
+                    ["1"],
+                    [],
+                    [],
+                    [],
+                    [],
+                    [],
+                    [],
+                ],
+                "fn_misclassification_examples": [
+                    [],
+                    [],
+                    [],
+                    [],
+                    [],
+                    [],
+                    [],
+                    [],
+                ],
+                "fn_missing_prediction_examples": [
+                    [],
+                    [],
+                    [],
+                    [],
+                    [],
+                    [],
+                    [],
+                    [],
+                ],
+                "tn_examples": None,
+            },
+            "parameters": {
+                "score_thresholds": [
+                    0.05,
+                    0.25,
+                    0.35,
+                    0.55,
+                    0.75,
+                    0.8,
+                    0.85,
+                    0.95,
+                ],
+                "iou_threshold": 0.9,
+                "label": {"key": "class", "value": "3"},
+            },
+        },
     ]
 
     for m in actual_metrics:
@@ -934,9 +1441,9 @@ def test_detailed_counts_fp_hallucination_edge_case(
     detections_fp_hallucination_edge_case: list[Detection],
 ):
 
-    manager = DataLoader()
-    manager.add_data(detections_fp_hallucination_edge_case)
-    evaluator = manager.finalize()
+    loader = DataLoader()
+    loader.add_data(detections_fp_hallucination_edge_case)
+    evaluator = loader.finalize()
 
     assert evaluator.ignored_prediction_labels == []
     assert evaluator.missing_prediction_labels == []

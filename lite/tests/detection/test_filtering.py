@@ -70,9 +70,9 @@ def test_filtering_one_detection(one_detection: list[Detection]):
             box 1 - label (k1, v1) - score 0.3 - tp
     """
 
-    manager = DataLoader()
-    manager.add_data(one_detection)
-    evaluator = manager.finalize()
+    loader = DataLoader()
+    loader.add_data(one_detection)
+    evaluator = loader.finalize()
 
     assert (
         evaluator._ranked_pairs
@@ -180,9 +180,9 @@ def test_filtering_two_detections(two_detections: list[Detection]):
             box 2 - label (k2, v2) - score 0.98 - fp
     """
 
-    manager = DataLoader()
-    manager.add_data(two_detections)
-    evaluator = manager.finalize()
+    loader = DataLoader()
+    loader.add_data(two_detections)
+    evaluator = loader.finalize()
 
     assert (
         evaluator._ranked_pairs
@@ -305,9 +305,9 @@ def test_filtering_four_detections(four_detections: list[Detection]):
             box 2 - label (k2, v2) - score 0.98 - fp
     """
 
-    manager = DataLoader()
-    manager.add_data(four_detections)
-    evaluator = manager.finalize()
+    loader = DataLoader()
+    loader.add_data(four_detections)
+    evaluator = loader.finalize()
 
     assert (
         evaluator._ranked_pairs

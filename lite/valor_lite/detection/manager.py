@@ -528,7 +528,6 @@ class Evaluator:
                 for iou_idx in range(n_ious)
             ]
             for label_idx in range(n_labels)
-            if self._label_metadata[label_idx, 0] > 1e-9
         ]
 
 
