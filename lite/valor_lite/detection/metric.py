@@ -19,7 +19,7 @@ class MetricType(str, Enum):
     ARAveragedOverScores = "ARAveragedOverScores"
     mARAveragedOverScores = "mARAveragedOverScores"
     PrecisionRecallCurve = "PrecisionRecallCurve"
-    DetailedPrecisionRecallCurve = "DetailedPrecisionRecallCurve"
+    DetailedCounts = "DetailedCounts"
 
 
 @dataclass
@@ -28,8 +28,8 @@ class Counts:
     fp: int
     fn: int
     label: tuple[str, str]
-    iou: float
-    score: float
+    iou_threshold: float
+    score_threshold: float
 
     @property
     def metric(self) -> Metric:
@@ -41,8 +41,8 @@ class Counts:
                 "fn": self.fn,
             },
             parameters={
-                "iou": self.iou,
-                "score": self.score,
+                "iou_threshold": self.iou_threshold,
+                "score_threshold": self.score_threshold,
                 "label": {
                     "key": self.label[0],
                     "value": self.label[1],
@@ -58,8 +58,8 @@ class Counts:
 class ClassMetric:
     value: float
     label: tuple[str, str]
-    iou: float
-    score: float
+    iou_threshold: float
+    score_threshold: float
 
     @property
     def metric(self) -> Metric:
@@ -67,8 +67,8 @@ class ClassMetric:
             type=type(self).__name__,
             value=self.value,
             parameters={
-                "iou": self.iou,
-                "score": self.score,
+                "iou_threshold": self.iou_threshold,
+                "score_threshold": self.score_threshold,
                 "label": {
                     "key": self.label[0],
                     "value": self.label[1],
@@ -99,7 +99,7 @@ class F1(ClassMetric):
 @dataclass
 class AP:
     value: float
-    iou: float
+    iou_threshold: float
     label: tuple[str, str]
 
     @property
@@ -108,7 +108,7 @@ class AP:
             type=type(self).__name__,
             value=self.value,
             parameters={
-                "iou": self.iou,
+                "iou_threshold": self.iou_threshold,
                 "label": {
                     "key": self.label[0],
                     "value": self.label[1],
@@ -123,7 +123,7 @@ class AP:
 @dataclass
 class mAP:
     value: float
-    iou: float
+    iou_threshold: float
     label_key: str
 
     @property
@@ -132,7 +132,7 @@ class mAP:
             type=type(self).__name__,
             value=self.value,
             parameters={
-                "iou": self.iou,
+                "iou_threshold": self.iou_threshold,
                 "label_key": self.label_key,
             },
         )
@@ -144,7 +144,7 @@ class mAP:
 @dataclass
 class APAveragedOverIOUs:
     value: float
-    ious: list[float]
+    iou_thresholds: list[float]
     label: tuple[str, str]
 
     @property
@@ -153,7 +153,7 @@ class APAveragedOverIOUs:
             type=type(self).__name__,
             value=self.value,
             parameters={
-                "ious": self.ious,
+                "iou_thresholds": self.iou_thresholds,
                 "label": {
                     "key": self.label[0],
                     "value": self.label[1],
@@ -168,7 +168,7 @@ class APAveragedOverIOUs:
 @dataclass
 class mAPAveragedOverIOUs:
     value: float
-    ious: list[float]
+    iou_thresholds: list[float]
     label_key: str
 
     @property
@@ -177,7 +177,7 @@ class mAPAveragedOverIOUs:
             type=type(self).__name__,
             value=self.value,
             parameters={
-                "ious": self.ious,
+                "iou_thresholds": self.iou_thresholds,
                 "label_key": self.label_key,
             },
         )
@@ -189,8 +189,8 @@ class mAPAveragedOverIOUs:
 @dataclass
 class AR:
     value: float
-    score: float
-    ious: list[float]
+    score_threshold: float
+    iou_thresholds: list[float]
     label: tuple[str, str]
 
     @property
@@ -199,8 +199,8 @@ class AR:
             type=type(self).__name__,
             value=self.value,
             parameters={
-                "score": self.score,
-                "ious": self.ious,
+                "score_threshold": self.score_threshold,
+                "iou_thresholds": self.iou_thresholds,
                 "label": {
                     "key": self.label[0],
                     "value": self.label[1],
@@ -215,8 +215,8 @@ class AR:
 @dataclass
 class mAR:
     value: float
-    score: float
-    ious: list[float]
+    score_threshold: float
+    iou_thresholds: list[float]
     label_key: str
 
     @property
@@ -225,8 +225,8 @@ class mAR:
             type=type(self).__name__,
             value=self.value,
             parameters={
-                "score": self.score,
-                "ious": self.ious,
+                "score_threshold": self.score_threshold,
+                "iou_thresholds": self.iou_thresholds,
                 "label_key": self.label_key,
             },
         )
@@ -238,8 +238,8 @@ class mAR:
 @dataclass
 class ARAveragedOverScores:
     value: float
-    scores: list[float]
-    ious: list[float]
+    score_thresholds: list[float]
+    iou_thresholds: list[float]
     label: tuple[str, str]
 
     @property
@@ -248,8 +248,8 @@ class ARAveragedOverScores:
             type=type(self).__name__,
             value=self.value,
             parameters={
-                "scores": self.scores,
-                "ious": self.ious,
+                "score_thresholds": self.score_thresholds,
+                "iou_thresholds": self.iou_thresholds,
                 "label": {
                     "key": self.label[0],
                     "value": self.label[1],
@@ -264,8 +264,8 @@ class ARAveragedOverScores:
 @dataclass
 class mARAveragedOverScores:
     value: float
-    scores: list[float]
-    ious: list[float]
+    score_thresholds: list[float]
+    iou_thresholds: list[float]
     label_key: str
 
     @property
@@ -274,8 +274,8 @@ class mARAveragedOverScores:
             type=type(self).__name__,
             value=self.value,
             parameters={
-                "scores": self.scores,
-                "ious": self.ious,
+                "score_thresholds": self.score_thresholds,
+                "iou_thresholds": self.iou_thresholds,
                 "label_key": self.label_key,
             },
         )
@@ -291,7 +291,7 @@ class PrecisionRecallCurve:
     """
 
     precision: list[float]
-    iou: float
+    iou_threshold: float
     label: tuple[str, str]
 
     @property
@@ -300,7 +300,7 @@ class PrecisionRecallCurve:
             type=type(self).__name__,
             value=self.precision,
             parameters={
-                "iou": self.iou,
+                "iou_threshold": self.iou_threshold,
                 "label": {"key": self.label[0], "value": self.label[1]},
             },
         )
@@ -310,48 +310,48 @@ class PrecisionRecallCurve:
 
 
 @dataclass
-class DetailedPrecisionRecallPoint:
-    score: float
-    tp: int
-    fp_misclassification: int
-    fp_hallucination: int
-    fn_misclassification: int
-    fn_missing_prediction: int
-    tp_examples: list[str]
-    fp_misclassification_examples: list[str]
-    fp_hallucination_examples: list[str]
-    fn_misclassification_examples: list[str]
-    fn_missing_prediction_examples: list[str]
-
-    def to_dict(self) -> dict:
-        return {
-            "score": self.score,
-            "tp": self.tp,
-            "fp_misclassification": self.fp_misclassification,
-            "fp_hallucination": self.fp_hallucination,
-            "fn_misclassification": self.fn_misclassification,
-            "fn_missing_prediction": self.fn_missing_prediction,
-            "tp_examples": self.tp_examples,
-            "fp_misclassification_examples": self.fp_misclassification_examples,
-            "fp_hallucination_examples": self.fp_hallucination_examples,
-            "fn_misclassification_examples": self.fn_misclassification_examples,
-            "fn_missing_prediction_examples": self.fn_missing_prediction_examples,
-        }
-
-
-@dataclass
-class DetailedPrecisionRecallCurve:
-    iou: float
-    value: list[DetailedPrecisionRecallPoint]
+class DetailedCounts:
+    tp: list[int]
+    fp_misclassification: list[int]
+    fp_hallucination: list[int]
+    fn_misclassification: list[int]
+    fn_missing_prediction: list[int]
+    tp_examples: list[list[str]]
+    fp_misclassification_examples: list[list[str]]
+    fp_hallucination_examples: list[list[str]]
+    fn_misclassification_examples: list[list[str]]
+    fn_missing_prediction_examples: list[list[str]]
+    score_thresholds: list[float]
+    iou_threshold: float
     label: tuple[str, str]
 
-    def to_dict(self) -> dict:
-        return {
-            "value": [pt.to_dict() for pt in self.value],
-            "iou": self.iou,
-            "label": {
-                "key": self.label[0],
-                "value": self.label[1],
+    @property
+    def metric(self) -> Metric:
+        return Metric(
+            type=type(self).__name__,
+            value={
+                "tp": self.tp,
+                "fp_misclassification": self.fp_misclassification,
+                "fp_hallucination": self.fp_hallucination,
+                "fn_misclassification": self.fn_misclassification,
+                "fn_missing_prediction": self.fn_missing_prediction,
+                "tn": None,
+                "tp_examples": self.tp_examples,
+                "fp_misclassification_examples": self.fp_misclassification_examples,
+                "fp_hallucination_examples": self.fp_hallucination_examples,
+                "fn_misclassification_examples": self.fn_misclassification_examples,
+                "fn_missing_prediction_examples": self.fn_missing_prediction_examples,
+                "tn_examples": None,
             },
-            "type": "DetailedPrecisionRecallCurve",
-        }
+            parameters={
+                "score_thresholds": self.score_thresholds,
+                "iou_threshold": self.iou_threshold,
+                "label": {
+                    "key": self.label[0],
+                    "value": self.label[1],
+                },
+            },
+        )
+
+    def to_dict(self) -> dict:
+        return self.metric.to_dict()

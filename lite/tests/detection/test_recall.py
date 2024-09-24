@@ -19,9 +19,9 @@ def test_recall_metrics(basic_detections: list[Detection]):
             box 2 - label (k2, v2) - score 0.98 - fp
     """
 
-    manager = DataLoader()
-    manager.add_data(basic_detections)
-    evaluator = manager.finalize()
+    loader = DataLoader()
+    loader.add_data(basic_detections)
+    evaluator = loader.finalize()
 
     metrics = evaluator.evaluate(
         iou_thresholds=[0.1, 0.6],
@@ -42,8 +42,8 @@ def test_recall_metrics(basic_detections: list[Detection]):
             "type": "Recall",
             "value": 0.0,
             "parameters": {
-                "iou": 0.1,
-                "score": 0.0,
+                "iou_threshold": 0.1,
+                "score_threshold": 0.0,
                 "label": {"key": "k2", "value": "v2"},
             },
         },
@@ -51,8 +51,8 @@ def test_recall_metrics(basic_detections: list[Detection]):
             "type": "Recall",
             "value": 0.0,
             "parameters": {
-                "iou": 0.6,
-                "score": 0.0,
+                "iou_threshold": 0.6,
+                "score_threshold": 0.0,
                 "label": {"key": "k2", "value": "v2"},
             },
         },
@@ -60,8 +60,8 @@ def test_recall_metrics(basic_detections: list[Detection]):
             "type": "Recall",
             "value": 0.5,
             "parameters": {
-                "iou": 0.1,
-                "score": 0.0,
+                "iou_threshold": 0.1,
+                "score_threshold": 0.0,
                 "label": {"key": "k1", "value": "v1"},
             },
         },
@@ -69,8 +69,8 @@ def test_recall_metrics(basic_detections: list[Detection]):
             "type": "Recall",
             "value": 0.5,
             "parameters": {
-                "iou": 0.6,
-                "score": 0.0,
+                "iou_threshold": 0.6,
+                "score_threshold": 0.0,
                 "label": {"key": "k1", "value": "v1"},
             },
         },
@@ -78,8 +78,8 @@ def test_recall_metrics(basic_detections: list[Detection]):
             "type": "Recall",
             "value": 0.0,
             "parameters": {
-                "iou": 0.1,
-                "score": 0.5,
+                "iou_threshold": 0.1,
+                "score_threshold": 0.5,
                 "label": {"key": "k2", "value": "v2"},
             },
         },
@@ -87,8 +87,8 @@ def test_recall_metrics(basic_detections: list[Detection]):
             "type": "Recall",
             "value": 0.0,
             "parameters": {
-                "iou": 0.6,
-                "score": 0.5,
+                "iou_threshold": 0.6,
+                "score_threshold": 0.5,
                 "label": {"key": "k2", "value": "v2"},
             },
         },
@@ -96,8 +96,8 @@ def test_recall_metrics(basic_detections: list[Detection]):
             "type": "Recall",
             "value": 0.0,
             "parameters": {
-                "iou": 0.1,
-                "score": 0.5,
+                "iou_threshold": 0.1,
+                "score_threshold": 0.5,
                 "label": {"key": "k1", "value": "v1"},
             },
         },
@@ -105,8 +105,8 @@ def test_recall_metrics(basic_detections: list[Detection]):
             "type": "Recall",
             "value": 0.0,
             "parameters": {
-                "iou": 0.6,
-                "score": 0.5,
+                "iou_threshold": 0.6,
+                "score_threshold": 0.5,
                 "label": {"key": "k1", "value": "v1"},
             },
         },
@@ -125,9 +125,9 @@ def test_recall_false_negatives_single_datum_baseline(
     so there is not a penalty for the false negative so the AP is 1
     """
 
-    manager = DataLoader()
-    manager.add_data(false_negatives_single_datum_baseline_detections)
-    evaluator = manager.finalize()
+    loader = DataLoader()
+    loader.add_data(false_negatives_single_datum_baseline_detections)
+    evaluator = loader.finalize()
 
     metrics = evaluator.evaluate(
         iou_thresholds=[0.5], score_thresholds=[0.0, 0.9]
@@ -139,8 +139,8 @@ def test_recall_false_negatives_single_datum_baseline(
             "type": "Recall",
             "value": 1.0,
             "parameters": {
-                "iou": 0.5,
-                "score": 0.0,
+                "iou_threshold": 0.5,
+                "score_threshold": 0.0,
                 "label": {
                     "key": "key",
                     "value": "value",
@@ -151,8 +151,8 @@ def test_recall_false_negatives_single_datum_baseline(
             "type": "Recall",
             "value": 0.0,
             "parameters": {
-                "iou": 0.5,
-                "score": 0.9,
+                "iou_threshold": 0.5,
+                "score_threshold": 0.9,
                 "label": {
                     "key": "key",
                     "value": "value",
@@ -174,9 +174,9 @@ def test_recall_false_negatives_single_datum(
     does not sufficiently overlap the groundtruth and so is penalized and we get an AP of 0.5
     """
 
-    manager = DataLoader()
-    manager.add_data(false_negatives_single_datum_detections)
-    evaluator = manager.finalize()
+    loader = DataLoader()
+    loader.add_data(false_negatives_single_datum_detections)
+    evaluator = loader.finalize()
     metrics = evaluator.evaluate(iou_thresholds=[0.5], score_thresholds=[0.0])
 
     actual_metrics = [m.to_dict() for m in metrics[MetricType.Recall]]
@@ -185,8 +185,8 @@ def test_recall_false_negatives_single_datum(
             "type": "Recall",
             "value": 1.0,
             "parameters": {
-                "iou": 0.5,
-                "score": 0.0,
+                "iou_threshold": 0.5,
+                "score_threshold": 0.0,
                 "label": {
                     "key": "key",
                     "value": "value",
@@ -214,11 +214,11 @@ def test_recall_false_negatives_two_datums_one_empty_low_confidence_of_fp(
 
     """
 
-    manager = DataLoader()
-    manager.add_data(
+    loader = DataLoader()
+    loader.add_data(
         false_negatives_two_datums_one_empty_low_confidence_of_fp_detections
     )
-    evaluator = manager.finalize()
+    evaluator = loader.finalize()
     metrics = evaluator.evaluate(iou_thresholds=[0.5], score_thresholds=[0.0])
 
     actual_metrics = [m.to_dict() for m in metrics[MetricType.Recall]]
@@ -227,8 +227,8 @@ def test_recall_false_negatives_two_datums_one_empty_low_confidence_of_fp(
             "type": "Recall",
             "value": 1.0,
             "parameters": {
-                "iou": 0.5,
-                "score": 0.0,
+                "iou_threshold": 0.5,
+                "score_threshold": 0.0,
                 "label": {
                     "key": "key",
                     "value": "value",
@@ -255,11 +255,11 @@ def test_recall_false_negatives_two_datums_one_empty_high_confidence_of_fp(
     In this case, the AP should be 0.5 since the false positive has higher confidence than the true positive
     """
 
-    manager = DataLoader()
-    manager.add_data(
+    loader = DataLoader()
+    loader.add_data(
         false_negatives_two_datums_one_empty_high_confidence_of_fp_detections
     )
-    evaluator = manager.finalize()
+    evaluator = loader.finalize()
     metrics = evaluator.evaluate(iou_thresholds=[0.5], score_thresholds=[0.0])
 
     actual_metrics = [m.to_dict() for m in metrics[MetricType.Recall]]
@@ -268,8 +268,8 @@ def test_recall_false_negatives_two_datums_one_empty_high_confidence_of_fp(
             "type": "Recall",
             "value": 1.0,
             "parameters": {
-                "iou": 0.5,
-                "score": 0.0,
+                "iou_threshold": 0.5,
+                "score_threshold": 0.0,
                 "label": {
                     "key": "key",
                     "value": "value",
@@ -296,11 +296,11 @@ def test_recall_false_negatives_two_datums_one_only_with_different_class_low_con
     In this case, the AP for class `"value"` should be 1 since the false positive has lower confidence than the true positive.
     AP for class `"other value"` should be 0 since there is no prediction for the `"other value"` groundtruth
     """
-    manager = DataLoader()
-    manager.add_data(
+    loader = DataLoader()
+    loader.add_data(
         false_negatives_two_datums_one_only_with_different_class_low_confidence_of_fp_detections
     )
-    evaluator = manager.finalize()
+    evaluator = loader.finalize()
     metrics = evaluator.evaluate(iou_thresholds=[0.5], score_thresholds=[0.0])
 
     actual_metrics = [m.to_dict() for m in metrics[MetricType.Recall]]
@@ -309,8 +309,8 @@ def test_recall_false_negatives_two_datums_one_only_with_different_class_low_con
             "type": "Recall",
             "value": 1.0,
             "parameters": {
-                "iou": 0.5,
-                "score": 0.0,
+                "iou_threshold": 0.5,
+                "score_threshold": 0.0,
                 "label": {
                     "key": "key",
                     "value": "value",
@@ -321,8 +321,8 @@ def test_recall_false_negatives_two_datums_one_only_with_different_class_low_con
             "type": "Recall",
             "value": 0.0,
             "parameters": {
-                "iou": 0.5,
-                "score": 0.0,
+                "iou_threshold": 0.5,
+                "score_threshold": 0.0,
                 "label": {
                     "key": "key",
                     "value": "other value",
@@ -349,11 +349,11 @@ def test_recall_false_negatives_two_datums_one_only_with_different_class_high_co
     In this case, the AP for class `"value"` should be 0.5 since the false positive has higher confidence than the true positive.
     AP for class `"other value"` should be 0 since there is no prediction for the `"other value"` groundtruth
     """
-    manager = DataLoader()
-    manager.add_data(
+    loader = DataLoader()
+    loader.add_data(
         false_negatives_two_images_one_only_with_different_class_high_confidence_of_fp_detections
     )
-    evaluator = manager.finalize()
+    evaluator = loader.finalize()
     metrics = evaluator.evaluate(iou_thresholds=[0.5], score_thresholds=[0.0])
 
     actual_metrics = [m.to_dict() for m in metrics[MetricType.Recall]]
@@ -362,8 +362,8 @@ def test_recall_false_negatives_two_datums_one_only_with_different_class_high_co
             "type": "Recall",
             "value": 1.0,
             "parameters": {
-                "iou": 0.5,
-                "score": 0.0,
+                "iou_threshold": 0.5,
+                "score_threshold": 0.0,
                 "label": {
                     "key": "key",
                     "value": "value",
@@ -374,8 +374,8 @@ def test_recall_false_negatives_two_datums_one_only_with_different_class_high_co
             "type": "Recall",
             "value": 0.0,
             "parameters": {
-                "iou": 0.5,
-                "score": 0.0,
+                "iou_threshold": 0.5,
+                "score_threshold": 0.0,
                 "label": {
                     "key": "key",
                     "value": "other value",

@@ -6,7 +6,7 @@ from numpy.typing import NDArray
 from tqdm import tqdm
 from valor_lite.detection.annotation import Detection
 from valor_lite.detection.computation import (
-    compute_detailed_pr_curve,
+    compute_detailed_counts,
     compute_iou,
     compute_metrics,
     compute_ranked_pairs,
@@ -19,8 +19,7 @@ from valor_lite.detection.metric import (
     APAveragedOverIOUs,
     ARAveragedOverScores,
     Counts,
-    DetailedPrecisionRecallCurve,
-    DetailedPrecisionRecallPoint,
+    DetailedCounts,
     MetricType,
     Precision,
     PrecisionRecallCurve,
@@ -35,12 +34,12 @@ from valor_lite.detection.metric import (
 Usage
 -----
 
-manager = DataLoader()
-manager.add_data(
+loader = DataLoader()
+loader.add_data(
     groundtruths=groundtruths,
     predictions=predictions,
 )
-evaluator = manager.finalize()
+evaluator = loader.finalize()
 
 metrics = evaluator.evaluate(iou_thresholds=[0.5])
 
@@ -120,7 +119,7 @@ class Evaluator:
         label_keys: list[str] | NDArray[np.int32] | None = None,
     ) -> Filter:
         """
-        Creates a boolean mask that can be passed to an evaluation.
+        Creates a filter that can be passed to an evaluation.
 
         Parameters
         ----------
@@ -208,9 +207,6 @@ class Evaluator:
         return Filter(
             indices=np.where(mask_pairs)[0],
             label_metadata=label_metadata,
-            # uids=datum_uids,
-            # labels=labels,
-            # label_keys=label_keys,
         )
 
     def evaluate(
@@ -255,7 +251,7 @@ class Evaluator:
             pr_curves,
         ) = compute_metrics(
             data=data,
-            label_counts=label_metadata,
+            label_metadata=label_metadata,
             iou_thresholds=np.array(iou_thresholds),
             score_thresholds=np.array(score_thresholds),
         )
@@ -265,7 +261,7 @@ class Evaluator:
         metrics[MetricType.AP] = [
             AP(
                 value=average_precision[iou_idx][label_idx],
-                iou=iou_thresholds[iou_idx],
+                iou_threshold=iou_thresholds[iou_idx],
                 label=self.index_to_label[label_idx],
             )
             for iou_idx in range(average_precision.shape[0])
@@ -276,7 +272,7 @@ class Evaluator:
         metrics[MetricType.mAP] = [
             mAP(
                 value=mean_average_precision[iou_idx][label_key_idx],
-                iou=iou_thresholds[iou_idx],
+                iou_threshold=iou_thresholds[iou_idx],
                 label_key=self.index_to_label_key[label_key_idx],
             )
             for iou_idx in range(mean_average_precision.shape[0])
@@ -286,7 +282,7 @@ class Evaluator:
         metrics[MetricType.APAveragedOverIOUs] = [
             APAveragedOverIOUs(
                 value=average_precision_average_over_ious[label_idx],
-                ious=iou_thresholds,
+                iou_thresholds=iou_thresholds,
                 label=self.index_to_label[label_idx],
             )
             for label_idx in range(self.n_labels)
@@ -296,7 +292,7 @@ class Evaluator:
         metrics[MetricType.mAPAveragedOverIOUs] = [
             mAPAveragedOverIOUs(
                 value=mean_average_precision_average_over_ious[label_key_idx],
-                ious=iou_thresholds,
+                iou_thresholds=iou_thresholds,
                 label_key=self.index_to_label_key[label_key_idx],
             )
             for label_key_idx in range(
@@ -307,8 +303,8 @@ class Evaluator:
         metrics[MetricType.AR] = [
             AR(
                 value=average_recall[score_idx][label_idx],
-                ious=iou_thresholds,
-                score=score_thresholds[score_idx],
+                iou_thresholds=iou_thresholds,
+                score_threshold=score_thresholds[score_idx],
                 label=self.index_to_label[label_idx],
             )
             for score_idx in range(average_recall.shape[0])
@@ -319,8 +315,8 @@ class Evaluator:
         metrics[MetricType.mAR] = [
             mAR(
                 value=mean_average_recall[score_idx][label_key_idx],
-                ious=iou_thresholds,
-                score=score_thresholds[score_idx],
+                iou_thresholds=iou_thresholds,
+                score_threshold=score_thresholds[score_idx],
                 label_key=self.index_to_label_key[label_key_idx],
             )
             for score_idx in range(mean_average_recall.shape[0])
@@ -330,8 +326,8 @@ class Evaluator:
         metrics[MetricType.ARAveragedOverScores] = [
             ARAveragedOverScores(
                 value=average_recall_averaged_over_scores[label_idx],
-                scores=score_thresholds,
-                ious=iou_thresholds,
+                score_thresholds=score_thresholds,
+                iou_thresholds=iou_thresholds,
                 label=self.index_to_label[label_idx],
             )
             for label_idx in range(self.n_labels)
@@ -341,8 +337,8 @@ class Evaluator:
         metrics[MetricType.mARAveragedOverScores] = [
             mARAveragedOverScores(
                 value=mean_average_recall_averaged_over_scores[label_key_idx],
-                scores=score_thresholds,
-                ious=iou_thresholds,
+                score_thresholds=score_thresholds,
+                iou_thresholds=iou_thresholds,
                 label_key=self.index_to_label_key[label_key_idx],
             )
             for label_key_idx in range(
@@ -353,7 +349,7 @@ class Evaluator:
         metrics[MetricType.PrecisionRecallCurve] = [
             PrecisionRecallCurve(
                 precision=list(pr_curves[iou_idx][label_idx]),
-                iou=iou_threshold,
+                iou_threshold=iou_threshold,
                 label=label,
             )
             for iou_idx, iou_threshold in enumerate(iou_thresholds)
@@ -361,14 +357,14 @@ class Evaluator:
             if int(label_metadata[label_idx][0]) > 0
         ]
 
-        for iou_idx, iou_threshold in enumerate(iou_thresholds):
+        for label_idx, label in self.index_to_label.items():
             for score_idx, score_threshold in enumerate(score_thresholds):
-                for label_idx, label in self.index_to_label.items():
+                for iou_idx, iou_threshold in enumerate(iou_thresholds):
                     row = precision_recall[iou_idx][score_idx][label_idx]
                     kwargs = {
                         "label": label,
-                        "iou": iou_threshold,
-                        "score": score_threshold,
+                        "iou_threshold": iou_threshold,
+                        "score_threshold": score_threshold,
                     }
                     metrics[MetricType.Counts].append(
                         Counts(
@@ -405,21 +401,38 @@ class Evaluator:
 
         return metrics
 
-    def compute_detailed_pr_curve(
+    def compute_detailed_counts(
         self,
         iou_thresholds: list[float] = [0.5],
         score_thresholds: list[float] = [
             score / 10.0 for score in range(1, 11)
         ],
         n_samples: int = 0,
-    ) -> list[DetailedPrecisionRecallCurve]:
+    ) -> list[list[DetailedCounts]]:
+        """
+        Computes detailed counting metrics.
+
+        Parameters
+        ----------
+        iou_thresholds : list[float], default=[0.5]
+            List of IoU thresholds to compute metrics for.
+        score_thresholds : list[float], default=[0.1,0.2,...,1.0]
+            List of confidence thresholds to compute metrics for.
+        n_samples : int, default=0
+            Number of datum samples to return per metric.
+
+        Returns
+        -------
+        list[list[DetailedCounts]]
+            Outer list is indexed by label, inner list is by IoU.
+        """
 
         if self._detailed_pairs.size == 0:
             return list()
 
-        metrics = compute_detailed_pr_curve(
+        metrics = compute_detailed_counts(
             self._detailed_pairs,
-            label_counts=self._label_metadata,
+            label_metadata=self._label_metadata,
             iou_thresholds=np.array(iou_thresholds),
             score_thresholds=np.array(score_thresholds),
             n_samples=n_samples,
@@ -431,71 +444,91 @@ class Evaluator:
         fn_misclf_idx = fp_halluc_idx + n_samples + 1
         fn_misprd_idx = fn_misclf_idx + n_samples + 1
 
-        results = list()
-        for label_idx in range(len(metrics)):
-            n_ious, n_scores, _, _ = metrics.shape
-            for iou_idx in range(n_ious):
-                curve = DetailedPrecisionRecallCurve(
-                    iou=iou_thresholds[iou_idx],
-                    value=list(),
+        n_ious, n_scores, n_labels, _ = metrics.shape
+        return [
+            [
+                DetailedCounts(
+                    iou_threshold=iou_thresholds[iou_idx],
                     label=self.index_to_label[label_idx],
+                    score_thresholds=score_thresholds,
+                    tp=metrics[iou_idx, :, label_idx, tp_idx]
+                    .astype(int)
+                    .tolist(),
+                    tp_examples=[
+                        [
+                            self.index_to_uid[int(datum_idx)]
+                            for datum_idx in metrics[iou_idx][score_idx][
+                                label_idx
+                            ][tp_idx + 1 : fp_misclf_idx]
+                            if int(datum_idx) >= 0
+                        ]
+                        for score_idx in range(n_scores)
+                    ],
+                    fp_misclassification=metrics[
+                        iou_idx, :, label_idx, fp_misclf_idx
+                    ]
+                    .astype(int)
+                    .tolist(),
+                    fp_misclassification_examples=[
+                        [
+                            self.index_to_uid[int(datum_idx)]
+                            for datum_idx in metrics[iou_idx][score_idx][
+                                label_idx
+                            ][fp_misclf_idx + 1 : fp_halluc_idx]
+                            if int(datum_idx) >= 0
+                        ]
+                        for score_idx in range(n_scores)
+                    ],
+                    fp_hallucination=metrics[
+                        iou_idx, :, label_idx, fp_halluc_idx
+                    ]
+                    .astype(int)
+                    .tolist(),
+                    fp_hallucination_examples=[
+                        [
+                            self.index_to_uid[int(datum_idx)]
+                            for datum_idx in metrics[iou_idx][score_idx][
+                                label_idx
+                            ][fp_halluc_idx + 1 : fn_misclf_idx]
+                            if int(datum_idx) >= 0
+                        ]
+                        for score_idx in range(n_scores)
+                    ],
+                    fn_misclassification=metrics[
+                        iou_idx, :, label_idx, fn_misclf_idx
+                    ]
+                    .astype(int)
+                    .tolist(),
+                    fn_misclassification_examples=[
+                        [
+                            self.index_to_uid[int(datum_idx)]
+                            for datum_idx in metrics[iou_idx][score_idx][
+                                label_idx
+                            ][fn_misclf_idx + 1 : fn_misprd_idx]
+                            if int(datum_idx) >= 0
+                        ]
+                        for score_idx in range(n_scores)
+                    ],
+                    fn_missing_prediction=metrics[
+                        iou_idx, :, label_idx, fn_misprd_idx
+                    ]
+                    .astype(int)
+                    .tolist(),
+                    fn_missing_prediction_examples=[
+                        [
+                            self.index_to_uid[int(datum_idx)]
+                            for datum_idx in metrics[iou_idx][score_idx][
+                                label_idx
+                            ][fn_misprd_idx + 1 :]
+                            if int(datum_idx) >= 0
+                        ]
+                        for score_idx in range(n_scores)
+                    ],
                 )
-                for score_idx in range(n_scores):
-                    curve.value.append(
-                        DetailedPrecisionRecallPoint(
-                            score=score_thresholds[score_idx],
-                            tp=metrics[iou_idx][score_idx][label_idx][tp_idx],
-                            tp_examples=[
-                                self.index_to_uid[int(datum_idx)]
-                                for datum_idx in metrics[iou_idx][score_idx][
-                                    label_idx
-                                ][tp_idx + 1 : fp_misclf_idx]
-                                if int(datum_idx) >= 0
-                            ],
-                            fp_misclassification=metrics[iou_idx][score_idx][
-                                label_idx
-                            ][fp_misclf_idx],
-                            fp_misclassification_examples=[
-                                self.index_to_uid[int(datum_idx)]
-                                for datum_idx in metrics[iou_idx][score_idx][
-                                    label_idx
-                                ][fp_misclf_idx + 1 : fp_halluc_idx]
-                                if int(datum_idx) >= 0
-                            ],
-                            fp_hallucination=metrics[iou_idx][score_idx][
-                                label_idx
-                            ][fp_halluc_idx],
-                            fp_hallucination_examples=[
-                                self.index_to_uid[int(datum_idx)]
-                                for datum_idx in metrics[iou_idx][score_idx][
-                                    label_idx
-                                ][fp_halluc_idx + 1 : fn_misclf_idx]
-                                if int(datum_idx) >= 0
-                            ],
-                            fn_misclassification=metrics[iou_idx][score_idx][
-                                label_idx
-                            ][fn_misclf_idx],
-                            fn_misclassification_examples=[
-                                self.index_to_uid[int(datum_idx)]
-                                for datum_idx in metrics[iou_idx][score_idx][
-                                    label_idx
-                                ][fn_misclf_idx + 1 : fn_misprd_idx]
-                                if int(datum_idx) >= 0
-                            ],
-                            fn_missing_prediction=metrics[iou_idx][score_idx][
-                                label_idx
-                            ][fn_misprd_idx],
-                            fn_missing_prediction_examples=[
-                                self.index_to_uid[int(datum_idx)]
-                                for datum_idx in metrics[iou_idx][score_idx][
-                                    label_idx
-                                ][fn_misprd_idx + 1 :]
-                                if int(datum_idx) >= 0
-                            ],
-                        )
-                    )
-                results.append(curve)
-        return results
+                for iou_idx in range(n_ious)
+            ]
+            for label_idx in range(n_labels)
+        ]
 
 
 class DataLoader:
@@ -839,7 +872,7 @@ class DataLoader:
 
         self._evaluator._ranked_pairs = compute_ranked_pairs(
             self.pairs,
-            label_counts=self._evaluator._label_metadata,
+            label_metadata=self._evaluator._label_metadata,
         )
 
         return self._evaluator

@@ -502,3 +502,329 @@ def false_negatives_two_images_one_only_with_different_class_high_confidence_of_
             ],
         ),
     ]
+
+
+@pytest.fixture
+def detections_fp_hallucination_edge_case() -> list[Detection]:
+    return [
+        Detection(
+            uid="uid1",
+            groundtruths=[
+                BoundingBox(
+                    xmin=0,
+                    xmax=5,
+                    ymin=0,
+                    ymax=5,
+                    labels=[("k1", "v1")],
+                )
+            ],
+            predictions=[
+                BoundingBox(
+                    xmin=0,
+                    xmax=5,
+                    ymin=0,
+                    ymax=5,
+                    labels=[("k1", "v1")],
+                    scores=[0.8],
+                )
+            ],
+        ),
+        Detection(
+            uid="uid2",
+            groundtruths=[
+                BoundingBox(
+                    xmin=0,
+                    xmax=5,
+                    ymin=0,
+                    ymax=5,
+                    labels=[("k1", "v1")],
+                )
+            ],
+            predictions=[
+                BoundingBox(
+                    xmin=10,
+                    xmax=20,
+                    ymin=10,
+                    ymax=20,
+                    labels=[("k1", "v1")],
+                    scores=[0.8],
+                )
+            ],
+        ),
+    ]
+
+
+@pytest.fixture
+def detections_tp_deassignment_edge_case() -> list[Detection]:
+    return [
+        Detection(
+            uid="uid0",
+            groundtruths=[
+                BoundingBox(
+                    xmin=10,
+                    xmax=20,
+                    ymin=10,
+                    ymax=20,
+                    labels=[("k1", "v1")],
+                ),
+                BoundingBox(
+                    xmin=10,
+                    xmax=15,
+                    ymin=20,
+                    ymax=25,
+                    labels=[("k1", "v1")],
+                ),
+            ],
+            predictions=[
+                BoundingBox(
+                    xmin=10,
+                    xmax=20,
+                    ymin=10,
+                    ymax=20,
+                    labels=[("k1", "v1")],
+                    scores=[0.78],
+                ),
+                BoundingBox(
+                    xmin=10,
+                    xmax=20,
+                    ymin=12,
+                    ymax=22,
+                    labels=[("k1", "v1")],
+                    scores=[0.96],
+                ),
+                BoundingBox(
+                    xmin=10,
+                    xmax=20,
+                    ymin=12,
+                    ymax=22,
+                    labels=[("k1", "v1")],
+                    scores=[0.96],
+                ),
+                BoundingBox(
+                    xmin=101,
+                    xmax=102,
+                    ymin=101,
+                    ymax=102,
+                    labels=[("k1", "v1")],
+                    scores=[0.87],
+                ),
+            ],
+        ),
+    ]
+
+
+@pytest.fixture
+def detection_ranked_pair_ordering() -> Detection:
+
+    gts = {
+        "boxes": [
+            (2, 10, 2, 10),
+            (2, 10, 2, 10),
+            (2, 10, 2, 10),
+        ],
+        "label_values": ["label1", "label2", "label3"],
+    }
+
+    # labels 1 and 2 have IOU==1, labels 3 and 4 have IOU==0
+    preds = {
+        "boxes": [
+            (2, 10, 2, 10),
+            (2, 10, 2, 10),
+            (0, 1, 0, 1),
+            (0, 1, 0, 1),
+        ],
+        "label_values": ["label1", "label2", "label3", "label4"],
+        "scores": [
+            0.3,
+            0.93,
+            0.92,
+            0.94,
+        ],
+    }
+
+    groundtruths = [
+        BoundingBox(
+            xmin=xmin,
+            xmax=xmax,
+            ymin=ymin,
+            ymax=ymax,
+            labels=[("class", label_value)],
+        )
+        for (xmin, xmax, ymin, ymax), label_value in zip(
+            gts["boxes"], gts["label_values"]
+        )
+    ]
+
+    predictions = [
+        BoundingBox(
+            xmin=xmin,
+            xmax=xmax,
+            ymin=ymin,
+            ymax=ymax,
+            labels=[("class", label_value)],
+            scores=[score],
+        )
+        for (xmin, xmax, ymin, ymax), label_value, score in zip(
+            preds["boxes"], preds["label_values"], preds["scores"]
+        )
+    ]
+
+    return Detection(
+        uid="uid1", groundtruths=groundtruths, predictions=predictions
+    )
+
+
+@pytest.fixture
+def detections_no_groundtruths() -> list[Detection]:
+    return [
+        Detection(
+            uid="uid",
+            groundtruths=[],
+            predictions=[
+                BoundingBox(
+                    xmin=0,
+                    xmax=10,
+                    ymin=0,
+                    ymax=10,
+                    labels=[("k1", "v1")],
+                    scores=[1.0],
+                ),
+                BoundingBox(
+                    xmin=0,
+                    xmax=10,
+                    ymin=0,
+                    ymax=10,
+                    labels=[("k2", "v2")],
+                    scores=[1.0],
+                ),
+            ],
+        ),
+        Detection(
+            uid="uid",
+            groundtruths=[],
+            predictions=[
+                BoundingBox(
+                    xmin=0,
+                    xmax=10,
+                    ymin=0,
+                    ymax=10,
+                    labels=[("k1", "v1")],
+                    scores=[1.0],
+                ),
+            ],
+        ),
+    ]
+
+
+@pytest.fixture
+def detections_no_predictions() -> list[Detection]:
+    return [
+        Detection(
+            uid="uid",
+            groundtruths=[
+                BoundingBox(
+                    xmin=0, xmax=10, ymin=0, ymax=10, labels=[("k1", "v1")]
+                ),
+                BoundingBox(
+                    xmin=0, xmax=10, ymin=0, ymax=10, labels=[("k2", "v2")]
+                ),
+            ],
+            predictions=[],
+        ),
+        Detection(
+            uid="uid",
+            groundtruths=[
+                BoundingBox(
+                    xmin=0, xmax=10, ymin=0, ymax=10, labels=[("k1", "v1")]
+                ),
+            ],
+            predictions=[],
+        ),
+    ]
+
+
+@pytest.fixture
+def detections_for_detailed_counting(
+    rect1: tuple[float, float, float, float],
+    rect2: tuple[float, float, float, float],
+    rect3: tuple[float, float, float, float],
+    rect4: tuple[float, float, float, float],
+    rect5: tuple[float, float, float, float],
+) -> list[Detection]:
+
+    return [
+        Detection(
+            uid="uid1",
+            groundtruths=[
+                BoundingBox(
+                    xmin=rect1[0],
+                    xmax=rect1[1],
+                    ymin=rect1[2],
+                    ymax=rect1[3],
+                    labels=[("k1", "v1")],
+                ),
+                BoundingBox(
+                    xmin=rect2[0],
+                    xmax=rect2[1],
+                    ymin=rect2[2],
+                    ymax=rect2[3],
+                    labels=[("k1", "missed_detection")],
+                ),
+                BoundingBox(
+                    xmin=rect3[0],
+                    xmax=rect3[1],
+                    ymin=rect3[2],
+                    ymax=rect3[3],
+                    labels=[("k1", "v2")],
+                ),
+            ],
+            predictions=[
+                BoundingBox(
+                    xmin=rect1[0],
+                    xmax=rect1[1],
+                    ymin=rect1[2],
+                    ymax=rect1[3],
+                    labels=[("k1", "v1")],
+                    scores=[0.5],
+                ),
+                BoundingBox(
+                    xmin=rect5[0],
+                    xmax=rect5[1],
+                    ymin=rect5[2],
+                    ymax=rect5[3],
+                    labels=[("k1", "not_v2")],
+                    scores=[0.3],
+                ),
+                BoundingBox(
+                    xmin=rect4[0],
+                    xmax=rect4[1],
+                    ymin=rect4[2],
+                    ymax=rect4[3],
+                    labels=[("k1", "hallucination")],
+                    scores=[0.1],
+                ),
+            ],
+        ),
+        Detection(
+            uid="uid2",
+            groundtruths=[
+                BoundingBox(
+                    xmin=rect1[0],
+                    xmax=rect1[1],
+                    ymin=rect1[2],
+                    ymax=rect1[3],
+                    labels=[("k1", "low_iou")],
+                ),
+            ],
+            predictions=[
+                BoundingBox(
+                    xmin=rect2[0],
+                    xmax=rect2[1],
+                    ymin=rect2[2],
+                    ymax=rect2[3],
+                    labels=[("k1", "low_iou")],
+                    scores=[0.5],
+                ),
+            ],
+        ),
+    ]
