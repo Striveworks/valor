@@ -672,3 +672,72 @@ def detection_ranked_pair_ordering() -> Detection:
     return Detection(
         uid="uid1", groundtruths=groundtruths, predictions=predictions
     )
+
+
+@pytest.fixture
+def detections_no_groundtruths() -> list[Detection]:
+    return [
+        Detection(
+            uid="uid",
+            groundtruths=[],
+            predictions=[
+                BoundingBox(
+                    xmin=0,
+                    xmax=10,
+                    ymin=0,
+                    ymax=10,
+                    labels=[("k1", "v1")],
+                    scores=[1.0],
+                ),
+                BoundingBox(
+                    xmin=0,
+                    xmax=10,
+                    ymin=0,
+                    ymax=10,
+                    labels=[("k2", "v2")],
+                    scores=[1.0],
+                ),
+            ],
+        ),
+        Detection(
+            uid="uid",
+            groundtruths=[],
+            predictions=[
+                BoundingBox(
+                    xmin=0,
+                    xmax=10,
+                    ymin=0,
+                    ymax=10,
+                    labels=[("k1", "v1")],
+                    scores=[1.0],
+                ),
+            ],
+        ),
+    ]
+
+
+@pytest.fixture
+def detections_no_predictions() -> list[Detection]:
+    return [
+        Detection(
+            uid="uid",
+            groundtruths=[
+                BoundingBox(
+                    xmin=0, xmax=10, ymin=0, ymax=10, labels=[("k1", "v1")]
+                ),
+                BoundingBox(
+                    xmin=0, xmax=10, ymin=0, ymax=10, labels=[("k2", "v2")]
+                ),
+            ],
+            predictions=[],
+        ),
+        Detection(
+            uid="uid",
+            groundtruths=[
+                BoundingBox(
+                    xmin=0, xmax=10, ymin=0, ymax=10, labels=[("k1", "v1")]
+                ),
+            ],
+            predictions=[],
+        ),
+    ]

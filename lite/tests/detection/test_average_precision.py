@@ -635,7 +635,7 @@ def test_ap_ranked_pair_ordering(detection_ranked_pair_ordering: Detection):
     expected_metrics = [
         {
             "parameters": {
-                "iou": 0.5,
+                "iou_threshold": 0.5,
                 "label": {"key": "class", "value": "label1"},
             },
             "value": 1.0,
@@ -643,7 +643,7 @@ def test_ap_ranked_pair_ordering(detection_ranked_pair_ordering: Detection):
         },
         {
             "parameters": {
-                "iou": 0.75,
+                "iou_threshold": 0.75,
                 "label": {"key": "class", "value": "label1"},
             },
             "value": 1.0,
@@ -651,7 +651,7 @@ def test_ap_ranked_pair_ordering(detection_ranked_pair_ordering: Detection):
         },
         {
             "parameters": {
-                "iou": 0.5,
+                "iou_threshold": 0.5,
                 "label": {"key": "class", "value": "label2"},
             },
             "value": 1.0,
@@ -659,7 +659,7 @@ def test_ap_ranked_pair_ordering(detection_ranked_pair_ordering: Detection):
         },
         {
             "parameters": {
-                "iou": 0.75,
+                "iou_threshold": 0.75,
                 "label": {"key": "class", "value": "label2"},
             },
             "value": 1.0,
@@ -667,7 +667,7 @@ def test_ap_ranked_pair_ordering(detection_ranked_pair_ordering: Detection):
         },
         {
             "parameters": {
-                "iou": 0.5,
+                "iou_threshold": 0.5,
                 "label": {"key": "class", "value": "label3"},
             },
             "value": 0.0,
@@ -675,7 +675,7 @@ def test_ap_ranked_pair_ordering(detection_ranked_pair_ordering: Detection):
         },
         {
             "parameters": {
-                "iou": 0.75,
+                "iou_threshold": 0.75,
                 "label": {"key": "class", "value": "label3"},
             },
             "value": 0.0,
@@ -690,12 +690,12 @@ def test_ap_ranked_pair_ordering(detection_ranked_pair_ordering: Detection):
     actual_metrics = [m.to_dict() for m in metrics[MetricType.mAP]]
     expected_metrics = [
         {
-            "parameters": {"label_key": "class", "iou": 0.5},
+            "parameters": {"label_key": "class", "iou_threshold": 0.5},
             "value": 0.6666666666666666,
             "type": "mAP",
         },
         {
-            "parameters": {"label_key": "class", "iou": 0.75},
+            "parameters": {"label_key": "class", "iou_threshold": 0.75},
             "value": 0.6666666666666666,
             "type": "mAP",
         },
@@ -712,14 +712,14 @@ def test_ap_ranked_pair_ordering(detection_ranked_pair_ordering: Detection):
         {
             "parameters": {
                 "label": {"key": "class", "value": "label1"},
-                "ious": [0.5, 0.75],
+                "iou_thresholds": [0.5, 0.75],
             },
             "value": 1.0,
             "type": "APAveragedOverIOUs",
         },
         {
             "parameters": {
-                "ious": [0.5, 0.75],
+                "iou_thresholds": [0.5, 0.75],
                 "label": {"key": "class", "value": "label2"},
             },
             "value": 1.0,
@@ -727,7 +727,7 @@ def test_ap_ranked_pair_ordering(detection_ranked_pair_ordering: Detection):
         },
         {
             "parameters": {
-                "ious": [0.5, 0.75],
+                "iou_thresholds": [0.5, 0.75],
                 "label": {"key": "class", "value": "label3"},
             },
             "value": 0.0,
@@ -746,7 +746,7 @@ def test_ap_ranked_pair_ordering(detection_ranked_pair_ordering: Detection):
         {
             "parameters": {
                 "label_key": "class",
-                "ious": [
+                "iou_thresholds": [
                     0.5,
                     0.75,
                 ],
@@ -792,6 +792,73 @@ def test_ap_true_positive_deassignment(
             "parameters": {
                 "iou_threshold": 0.5,
                 "label": {"key": "k1", "value": "v1"},
+            },
+        },
+    ]
+    for m in actual_metrics:
+        assert m in expected_metrics
+    for m in expected_metrics:
+        assert m in actual_metrics
+
+
+def test_ap_no_groundtruths(detections_no_groundtruths):
+
+    manager = DataLoader()
+    manager.add_data(detections_no_groundtruths)
+    evaluator = manager.finalize()
+
+    assert evaluator.ignored_prediction_labels == [("k1", "v1"), ("k2", "v2")]
+    assert evaluator.missing_prediction_labels == []
+    assert evaluator.n_datums == 2
+    assert evaluator.n_labels == 2
+    assert evaluator.n_groundtruths == 0
+    assert evaluator.n_predictions == 3
+
+    metrics = evaluator.evaluate(
+        iou_thresholds=[0.5],
+        score_thresholds=[0.5],
+    )
+
+    assert len(metrics[MetricType.AP]) == 0
+
+
+def test_ap_no_predictions(detections_no_predictions):
+
+    manager = DataLoader()
+    manager.add_data(detections_no_predictions)
+    evaluator = manager.finalize()
+
+    assert evaluator.ignored_prediction_labels == []
+    assert evaluator.missing_prediction_labels == [("k1", "v1"), ("k2", "v2")]
+    assert evaluator.n_datums == 2
+    assert evaluator.n_labels == 2
+    assert evaluator.n_groundtruths == 3
+    assert evaluator.n_predictions == 0
+
+    metrics = evaluator.evaluate(
+        iou_thresholds=[0.5],
+        score_thresholds=[0.5],
+    )
+
+    assert len(metrics[MetricType.AP]) == 2
+
+    # test AP
+    actual_metrics = [m.to_dict() for m in metrics[MetricType.AP]]
+    expected_metrics = [
+        {
+            "type": "AP",
+            "value": 0.0,
+            "parameters": {
+                "iou_threshold": 0.5,
+                "label": {"key": "k1", "value": "v1"},
+            },
+        },
+        {
+            "type": "AP",
+            "value": 0.0,
+            "parameters": {
+                "iou_threshold": 0.5,
+                "label": {"key": "k2", "value": "v2"},
             },
         },
     ]
