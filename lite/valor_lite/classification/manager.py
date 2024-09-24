@@ -50,6 +50,10 @@ class Filter:
 
 
 class Evaluator:
+    """
+    Classification Evaluator
+    """
+
     def __init__(self):
 
         # metadata
@@ -78,6 +82,9 @@ class Evaluator:
 
     @property
     def ignored_prediction_labels(self) -> list[tuple[str, str]]:
+        """
+        Prediction labels that are not present in the ground truth set.
+        """
         glabels = set(np.where(self._label_metadata[:, 0] > 0)[0])
         plabels = set(np.where(self._label_metadata[:, 1] > 0)[0])
         return [
@@ -86,6 +93,9 @@ class Evaluator:
 
     @property
     def missing_prediction_labels(self) -> list[tuple[str, str]]:
+        """
+        Ground truth labels that are not present in the prediction set.
+        """
         glabels = set(np.where(self._label_metadata[:, 0] > 0)[0])
         plabels = set(np.where(self._label_metadata[:, 1] > 0)[0])
         return [
@@ -94,6 +104,9 @@ class Evaluator:
 
     @property
     def metadata(self) -> dict:
+        """
+        Evaluation metadata.
+        """
         return {
             "n_datums": self.n_datums,
             "n_groundtruths": self.n_groundtruths,
@@ -210,14 +223,19 @@ class Evaluator:
         filter_: Filter | None = None,
     ) -> dict[MetricType, list]:
         """
-        Runs evaluation over cached data.
+        Performs an evaluation and returns metrics.
 
         Parameters
         ----------
         score_thresholds : list[float]
-            A list of score thresholds to compute over.
-        filter_mask : NDArray[bool], optional
-            A boolean mask that filters the cached data.
+            A list of score thresholds to compute metrics over.
+        filter_ : Filter, optional
+            An optional filter object.
+
+        Returns
+        -------
+        dict[MetricType, list]
+            A dictionary mapping MetricType enumerations to lists of computed metrics.
         """
 
         # apply filters
@@ -314,6 +332,21 @@ class Evaluator:
         ],
         n_samples: int = 0,
     ) -> list[DetailedCounts]:
+        """
+        Computes the detailed counts metric.
+
+        Parameters
+        ----------
+        score_thresholds : list[float]
+            A list of score thresholds to compute metrics over.
+        n_samples : int, default=0
+            The number of examples to return per count.
+
+        Returns
+        -------
+        list[DetailedCounts]
+            A list of DetailedCounts per label.
+        """
 
         # apply filters
         data = self._detailed_pairs
@@ -408,12 +441,29 @@ class Evaluator:
 
 
 class DataLoader:
+    """
+    Classification DataLoader.
+    """
+
     def __init__(self):
         self._evaluator = Evaluator()
         self.groundtruth_count = defaultdict(lambda: defaultdict(int))
         self.prediction_count = defaultdict(lambda: defaultdict(int))
 
     def _add_datum(self, uid: str) -> int:
+        """
+        Helper function for adding a datum to the cache.
+
+        Parameters
+        ----------
+        uid : str
+            The datum uid.
+
+        Returns
+        -------
+        int
+            The datum index.
+        """
         if uid not in self._evaluator.uid_to_index:
             index = len(self._evaluator.uid_to_index)
             self._evaluator.uid_to_index[uid] = index
@@ -421,6 +471,21 @@ class DataLoader:
         return self._evaluator.uid_to_index[uid]
 
     def _add_label(self, label: tuple[str, str]) -> tuple[int, int]:
+        """
+        Helper function for adding a label to the cache.
+
+        Parameters
+        ----------
+        label : tuple[str, str]
+            The label as a tuple in format (key, value).
+
+        Returns
+        -------
+        int
+            Label index.
+        int
+            Label key index.
+        """
         label_id = len(self._evaluator.index_to_label)
         label_key_id = len(self._evaluator.index_to_label_key)
         if label not in self._evaluator.label_to_index:
@@ -448,6 +513,17 @@ class DataLoader:
         classifications: list[Classification],
         show_progress: bool = False,
     ):
+        """
+        Adds classifications to the cache.
+
+        Parameters
+        ----------
+        classifications : list[Classification]
+            A list of Classification objects.
+        show_progress : bool, default=False
+            Toggle for tqdm progress bar.
+        """
+
         disable_tqdm = not show_progress
         for classification in tqdm(classifications, disable=disable_tqdm):
 
@@ -519,6 +595,16 @@ class DataLoader:
         classifications: list[tuple[dict, dict]],
         show_progress: bool = False,
     ):
+        """
+        Adds Valor-format classifications to the cache.
+
+        Parameters
+        ----------
+        classifications : list[tuple[dict, dict]]
+            A list of groundtruth, prediction pairs in Valor-format dictionaries.
+        show_progress : bool, default=False
+            Toggle for tqdm progress bar.
+        """
 
         disable_tqdm = not show_progress
         for groundtruth, prediction in tqdm(
@@ -590,6 +676,14 @@ class DataLoader:
                 )
 
     def finalize(self) -> Evaluator:
+        """
+        Performs data finalization and some preprocessing steps.
+
+        Returns
+        -------
+        Evaluator
+            A ready-to-use evaluator object.
+        """
 
         if self._evaluator._detailed_pairs.size == 0:
             raise ValueError("No data available to create evaluator.")
