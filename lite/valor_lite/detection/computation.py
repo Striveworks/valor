@@ -374,14 +374,13 @@ def compute_detailed_counts(
     n_labels = label_metadata.shape[0]
     n_ious = iou_thresholds.shape[0]
     n_scores = score_thresholds.shape[0]
-    n_metrics = 6 * (n_samples + 1)
+    n_metrics = 5 * (n_samples + 1)
 
     tp_idx = 0
     fp_misclf_idx = tp_idx + n_samples + 1
     fp_halluc_idx = fp_misclf_idx + n_samples + 1
     fn_misclf_idx = fp_halluc_idx + n_samples + 1
     fn_misprd_idx = fn_misclf_idx + n_samples + 1
-    tn_idx = fn_misprd_idx + n_samples + 1
 
     detailed_pr_curve = np.ones((n_ious, n_scores, n_labels, n_metrics)) * -1.0
 
@@ -460,14 +459,12 @@ def compute_detailed_counts(
                 mask_groundtruths_without_passing_ious
                 | mask_groundtruths_without_passing_score
             )
-            mask_tn = mask_predictions_without_passing_ious & ~mask_score
 
             tp = np.unique(data[mask_tp][:, [0, 2, 5]], axis=0)
             fp_misclf = np.unique(data[mask_fp_misclf][:, [0, 2, 5]], axis=0)
             fp_halluc = np.unique(data[mask_fp_halluc][:, [0, 2, 5]], axis=0)
             fn_misclf = np.unique(data[mask_fn_misclf][:, [0, 1, 4]], axis=0)
             fn_misprd = np.unique(data[mask_fn_misprd][:, [0, 1, 4]], axis=0)
-            tn = np.unique(data[mask_tn][:, [0, 1, 4]], axis=0)
 
             tp_count = np.bincount(tp[:, 2].astype(int), minlength=n_labels)
             fp_misclf_count = np.bincount(
@@ -482,7 +479,6 @@ def compute_detailed_counts(
             fn_misprd_count = np.bincount(
                 fn_misprd[:, 2].astype(int), minlength=n_labels
             )
-            tn_count = np.bincount(tn[:, 2].astype(int), minlength=n_labels)
 
             detailed_pr_curve[iou_idx, score_idx, :, tp_idx] = tp_count
             detailed_pr_curve[
@@ -497,7 +493,6 @@ def compute_detailed_counts(
             detailed_pr_curve[
                 iou_idx, score_idx, :, fn_misprd_idx
             ] = fn_misprd_count
-            detailed_pr_curve[iou_idx, score_idx, :, tn_idx] = tn_count
 
             if n_samples > 0:
                 for label_idx in range(n_labels):
@@ -516,9 +511,6 @@ def compute_detailed_counts(
                     fn_misprd_examples = fn_misprd[
                         fn_misprd[:, 2].astype(int) == label_idx
                     ][:n_samples, 0]
-                    tn_examples = tn[tn[:, 2].astype(int) == label_idx][
-                        :n_samples, 0
-                    ]
 
                     detailed_pr_curve[
                         iou_idx,
@@ -562,11 +554,5 @@ def compute_detailed_counts(
                         + 1
                         + fn_misprd_examples.shape[0],
                     ] = fn_misprd_examples
-                    detailed_pr_curve[
-                        iou_idx,
-                        score_idx,
-                        label_idx,
-                        tn_idx + 1 : tn_idx + 1 + tn_examples.shape[0],
-                    ] = tn_examples
 
     return detailed_pr_curve

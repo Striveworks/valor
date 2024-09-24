@@ -35,7 +35,7 @@ def test_compute_detailed_counts():
     )
 
     assert len(results) == 1
-    assert results.shape == (1, 100, 2, 6)  # iou, score, label, metrics
+    assert results.shape == (1, 100, 2, 5)  # iou, score, label, metrics
 
     """
     @ iou=0.5, score<0.1
@@ -44,11 +44,8 @@ def test_compute_detailed_counts():
     1x fp hallucination
     0x fn misclassification
     1x fn missing prediction
-    0x tn
     """
-    assert np.isclose(
-        results[0, :10, 0, :], np.array([3, 1, 1, 0, 1, 0])
-    ).all()
+    assert np.isclose(results[0, :10, 0, :], np.array([3, 1, 1, 0, 1])).all()
 
     """
     @ iou=0.5, 0.1 <= score < 0.65
@@ -57,11 +54,8 @@ def test_compute_detailed_counts():
     1x fp hallucination
     1x fn misclassification
     2x fn missing prediction
-    0x tn
     """
-    assert np.isclose(
-        results[0, 10:65, 0, :], np.array([1, 1, 1, 1, 2, 0])
-    ).all()
+    assert np.isclose(results[0, 10:65, 0, :], np.array([1, 1, 1, 1, 2])).all()
 
     """
     @ iou=0.5, 0.65 <= score < 0.9
@@ -70,11 +64,8 @@ def test_compute_detailed_counts():
     0x fp hallucination
     1x fn misclassification
     2x fn missing prediction
-    1x tn
     """
-    assert np.isclose(
-        results[0, 65:90, 0, :], np.array([1, 1, 0, 1, 2, 1])
-    ).all()
+    assert np.isclose(results[0, 65:90, 0, :], np.array([1, 1, 0, 1, 2])).all()
 
     """
     @ iou=0.5, score>=0.9
@@ -83,11 +74,8 @@ def test_compute_detailed_counts():
     0x fp hallucination
     0x fn misclassification
     4x fn missing prediction
-    2x tn
     """
-    assert np.isclose(
-        results[0, 90:, 0, :], np.array([0, 0, 0, 0, 4, 1])
-    ).all()
+    assert np.isclose(results[0, 90:, 0, :], np.array([0, 0, 0, 0, 4])).all()
 
     # compute with examples
 
@@ -118,23 +106,21 @@ def test_compute_detailed_counts():
     )
 
     assert len(results) == 1
-    assert results.shape == (1, 100, 2, 18)  # iou, score, label, metrics
+    assert results.shape == (1, 100, 2, 15)  # iou, score, label, metrics
 
     tp_idx = 0
     fp_misclf_idx = tp_idx + n_samples + 1
     fp_halluc_idx = fp_misclf_idx + n_samples + 1
     fn_misclf_idx = fp_halluc_idx + n_samples + 1
     fn_misprd_idx = fn_misclf_idx + n_samples + 1
-    tn_idx = fn_misprd_idx + n_samples + 1
 
-    metric_indices = np.zeros((18,), dtype=bool)
+    metric_indices = np.zeros((15,), dtype=bool)
     for index in [
         tp_idx,
         fp_misclf_idx,
         fp_halluc_idx,
         fn_misclf_idx,
         fn_misprd_idx,
-        tn_idx,
     ]:
         metric_indices[index] = True
 
@@ -145,14 +131,13 @@ def test_compute_detailed_counts():
     1x fp hallucination
     0x fn misclassification
     1x fn missing prediction
-    0x tn
     """
     assert np.isclose(
         results[0, :10, 0, metric_indices],
-        np.array([3, 1, 1, 0, 1, 0])[:, np.newaxis],
+        np.array([3, 1, 1, 0, 1])[:, np.newaxis],
     ).all()  # metrics
     assert np.isclose(
-        results[0, :10, 0, tp_idx + 1 : fp_misclf_idx], np.array([0.0, 3.0])
+        results[0, :10, 0, tp_idx + 1 : fp_misclf_idx], np.array([0.0, 1.0])
     ).all()  # tp
     assert np.isclose(
         results[0, :10, 0, fp_misclf_idx + 1 : fp_halluc_idx],
@@ -167,11 +152,8 @@ def test_compute_detailed_counts():
         np.array([-1.0, -1.0]),
     ).all()  # fn misclf
     assert np.isclose(
-        results[0, :10, 0, fn_misprd_idx + 1 : tn_idx], np.array([4.0, -1.0])
+        results[0, :10, 0, fn_misprd_idx + 1 :], np.array([4.0, -1.0])
     ).all()  # fn misprd
-    assert np.isclose(
-        results[0, :10, 0, tn_idx + 1 :], np.array([-1.0, -1.0])
-    ).all()  # tn
 
     """
     @ iou=0.5, 0.1 <= score < 0.65
@@ -180,11 +162,10 @@ def test_compute_detailed_counts():
     1x fp hallucination
     1x fn misclassification
     2x fn missing prediction
-    0x tn
     """
     assert np.isclose(
         results[0, 10:65, 0, metric_indices],
-        np.array([1, 1, 1, 1, 2, 0])[:, np.newaxis],
+        np.array([1, 1, 1, 1, 2])[:, np.newaxis],
     ).all()
     assert np.isclose(
         results[0, 10:65, 0, tp_idx + 1 : fp_misclf_idx], np.array([0.0, -1.0])
@@ -202,11 +183,8 @@ def test_compute_detailed_counts():
         np.array([1.0, -1.0]),
     ).all()  # fn misclf
     assert np.isclose(
-        results[0, 10:65, 0, fn_misprd_idx + 1 : tn_idx], np.array([3.0, 4.0])
+        results[0, 10:65, 0, fn_misprd_idx + 1 :], np.array([3.0, 4.0])
     ).all()  # fn misprd
-    assert np.isclose(
-        results[0, 10:65, 0, tn_idx + 1 :], np.array([-1.0, -1.0])
-    ).all()  # tn
 
     """
     @ iou=0.5, 0.65 <= score < 0.9
@@ -215,11 +193,10 @@ def test_compute_detailed_counts():
     0x fp hallucination
     1x fn misclassification
     2x fn missing prediction
-    1x tn
     """
     assert np.isclose(
         results[0, 65:90, 0, metric_indices],
-        np.array([1, 1, 0, 1, 2, 1])[:, np.newaxis],
+        np.array([1, 1, 0, 1, 2])[:, np.newaxis],
     ).all()
     assert np.isclose(
         results[0, 65:90, 0, tp_idx + 1 : fp_misclf_idx], np.array([0.0, -1.0])
@@ -237,11 +214,8 @@ def test_compute_detailed_counts():
         np.array([1.0, -1.0]),
     ).all()  # fn misclf
     assert np.isclose(
-        results[0, 65:90, 0, fn_misprd_idx + 1 : tn_idx], np.array([3.0, 4.0])
+        results[0, 65:90, 0, fn_misprd_idx + 1 :], np.array([3.0, 4.0])
     ).all()  # fn misprd
-    assert np.isclose(
-        results[0, 65:90, 0, tn_idx + 1 :], np.array([-1.0, -1.0])
-    ).all()  # tn
 
     """
     @ iou=0.5, score>=0.9
@@ -250,11 +224,10 @@ def test_compute_detailed_counts():
     0x fp hallucination
     0x fn misclassification
     4x fn missing prediction
-    1x tn
     """
     assert np.isclose(
         results[0, 95:, 0, metric_indices],
-        np.array([0, 0, 0, 0, 4, 1])[:, np.newaxis],
+        np.array([0, 0, 0, 0, 4])[:, np.newaxis],
     ).all()
     assert np.isclose(
         results[0, 95:, 0, tp_idx + 1 : fp_misclf_idx], np.array([-1.0, -1.0])
@@ -272,11 +245,8 @@ def test_compute_detailed_counts():
         np.array([-1.0, -1.0]),
     ).all()  # fn misclf
     assert np.isclose(
-        results[0, 95:, 0, fn_misprd_idx + 1 : tn_idx], np.array([0.0, 1.0])
+        results[0, 95:, 0, fn_misprd_idx + 1 :], np.array([0.0, 1.0])
     ).all()  # fn misprd
-    assert np.isclose(
-        results[0, :10, 0, tn_idx + 1 :], np.array([-1.0, -1.0])
-    ).all()  # tn
 
 
 def test_detailed_counts_using_torch_metrics_example(
