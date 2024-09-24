@@ -1,6 +1,6 @@
 from .annotation import Bitmask, BoundingBox, Detection
 from .computation import (
-    compute_detailed_pr_curve,
+    compute_detailed_counts,
     compute_iou,
     compute_metrics,
     compute_ranked_pairs,
@@ -14,8 +14,7 @@ from .metric import (
     APAveragedOverIOUs,
     ARAveragedOverScores,
     Counts,
-    DetailedPrecisionRecallCurve,
-    DetailedPrecisionRecallPoint,
+    DetailedCounts,
     MetricType,
     Precision,
     PrecisionRecallCurve,
@@ -45,12 +44,11 @@ __all__ = [
     "ARAveragedOverScores",
     "mARAveragedOverScores",
     "PrecisionRecallCurve",
-    "DetailedPrecisionRecallPoint",
-    "DetailedPrecisionRecallCurve",
+    "DetailedCounts",
     "compute_iou",
     "compute_ranked_pairs",
     "compute_metrics",
-    "compute_detailed_pr_curve",
+    "compute_detailed_counts",
     "DataLoader",
     "Evaluator",
 ]
