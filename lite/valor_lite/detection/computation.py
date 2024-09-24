@@ -1,16 +1,38 @@
 import numpy as np
 from numpy.typing import NDArray
 
-# datum id  0
-# gt        1
-# pd        2
-# iou       3
-# gt label  4
-# pd label  5
-# score     6
-
 
 def compute_iou(data: NDArray[np.floating]) -> NDArray[np.floating]:
+    """
+    Computes intersection-over-union (IoU) for axis-aligned bounding boxes.
+
+    Takes data with shape (N, 8):
+
+    Index 0 - xmin for Box 1
+    Index 1 - xmax for Box 1
+    Index 2 - ymin for Box 1
+    Index 3 - ymax for Box 1
+    Index 4 - xmin for Box 2
+    Index 5 - xmax for Box 2
+    Index 6 - ymin for Box 2
+    Index 7 - ymax for Box 2
+
+    Returns data with shape (N, 1):
+
+    Index 0 - IoU
+
+    Parameters
+    ----------
+    data : NDArray[np.floating]
+        A sorted array of classification pairs.
+    label_metadata : NDArray[np.int32]
+        An array containing metadata related to labels.
+
+    Returns
+    -------
+    NDArray[np.floating]
+        Compute IoU's.
+    """
 
     xmin1, xmax1, ymin1, ymax1 = (
         data[:, 0],
@@ -93,6 +115,33 @@ def compute_ranked_pairs(
     data: list[NDArray[np.floating]],
     label_metadata: NDArray[np.integer],
 ) -> NDArray[np.floating]:
+    """
+    Performs pair ranking on input data.
+
+    Takes data with shape (N, 7):
+
+    Index 0 - Datum Index
+    Index 1 - GroundTruth Index
+    Index 2 - Prediction Index
+    Index 3 - IoU
+    Index 4 - GroundTruth Label Index
+    Index 5 - Prediction Label Index
+    Index 6 - Score
+
+    Returns data with shape (N - M, 7)
+
+    Parameters
+    ----------
+    data : NDArray[np.floating]
+        A sorted array of classification pairs.
+    label_metadata : NDArray[np.int32]
+        An array containing metadata related to labels.
+
+    Returns
+    -------
+    NDArray[np.floating]
+        A filtered array containing only ranked pairs.
+    """
     pairs = np.concatenate(
         [
             _compute_ranked_pairs_for_datum(
@@ -135,6 +184,27 @@ def compute_metrics(
 ]:
     """
     Computes Object Detection metrics.
+
+    Takes data with shape (N, 7):
+
+    Index 0 - Datum Index
+    Index 1 - GroundTruth Index
+    Index 2 - Prediction Index
+    Index 3 - IoU
+    Index 4 - GroundTruth Label Index
+    Index 5 - Prediction Label Index
+    Index 6 - Score
+
+    Parameters
+    ----------
+    data : NDArray[np.floating]
+        A sorted array of classification pairs.
+    label_metadata : NDArray[np.int32]
+        An array containing metadata related to labels.
+    iou_thresholds : NDArray[np.floating]
+        A 1-D array containing IoU thresholds.
+    score_thresholds : NDArray[np.floating]
+        A 1-D array containing score thresholds.
 
     Returns
     -------
@@ -365,16 +435,49 @@ def compute_detailed_counts(
     score_thresholds: np.ndarray,
     n_samples: int,
 ) -> np.ndarray:
-
     """
-    0  label
-    1  tp
-    ...
-    2  fp - 1
-    3  fp - 2
-    4  fn - misclassification
-    5  fn - hallucination
-    6  tn
+    Compute detailed counts.
+
+    Takes data with shape (N, 7):
+
+    Index 0 - Datum Index
+    Index 1 - GroundTruth Index
+    Index 2 - Prediction Index
+    Index 3 - IoU
+    Index 4 - GroundTruth Label Index
+    Index 5 - Prediction Label Index
+    Index 6 - Score
+
+    Outputs an array with shape (N_IoUs, N_Score, N_Labels, 5 * n_samples + 5):
+
+    Index 0 - True Positive Count
+    ... Datum ID Examples
+    Index n_samples + 1 - False Positive Misclassification Count
+    ... Datum ID Examples
+    Index 2 * n_samples + 2 - False Positive Hallucination Count
+    ... Datum ID Examples
+    Index 3 * n_samples + 3 - False Negative Misclassification Count
+    ... Datum ID Examples
+    Index 4 * n_samples + 4 - False Negative Missing Prediction Count
+    ... Datum ID Examples
+
+    Parameters
+    ----------
+    data : NDArray[np.floating]
+        A sorted array of classification pairs.
+    label_metadata : NDArray[np.int32]
+        An array containing metadata related to labels.
+    iou_thresholds : NDArray[np.floating]
+        A 1-D array containing IoU thresholds.
+    score_thresholds : NDArray[np.floating]
+        A 1-D array containing score thresholds.
+    n_samples : int
+        The number of examples to return per count.
+
+    Returns
+    -------
+    NDArray[np.floating]
+        The detailed counts with optional examples.
     """
 
     n_labels = label_metadata.shape[0]

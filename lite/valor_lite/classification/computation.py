@@ -242,9 +242,9 @@ def compute_detailed_counts(
     ... Datum ID Examples
     Index 2N + 2 - False Negative Misclassification Count
     ... Datum ID Examples
-    Index 2N + 2 - False Negative Missing Prediction Count
+    Index 3N + 3 - False Negative Missing Prediction Count
     ... Datum ID Examples
-    Index 2N + 2 - True Negative Count
+    Index 4N + 4 - True Negative Count
     ... Datum ID Examples
 
     Parameters
@@ -254,7 +254,7 @@ def compute_detailed_counts(
     label_metadata : NDArray[np.int32]
         An array containing metadata related to labels.
     score_thresholds : NDArray[np.floating]
-        An array contains score thresholds to compute metrics over.
+        An array containing score thresholds.
     n_samples : int
         The number of examples to return per count.
 
