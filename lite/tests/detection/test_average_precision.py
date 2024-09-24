@@ -401,10 +401,10 @@ def test_ap_false_negatives_single_datum_baseline(
             },
         }
     ]
-    for m in expected_metrics:
-        assert m in actual_metrics
     for m in actual_metrics:
         assert m in expected_metrics
+    for m in expected_metrics:
+        assert m in actual_metrics
 
 
 def test_ap_false_negatives_single_datum(
@@ -434,10 +434,10 @@ def test_ap_false_negatives_single_datum(
             },
         }
     ]
-    for m in expected_metrics:
-        assert m in actual_metrics
     for m in actual_metrics:
         assert m in expected_metrics
+    for m in expected_metrics:
+        assert m in actual_metrics
 
 
 def test_ap_false_negatives_two_datums_one_empty_low_confidence_of_fp(
@@ -475,10 +475,10 @@ def test_ap_false_negatives_two_datums_one_empty_low_confidence_of_fp(
             },
         }
     ]
-    for m in expected_metrics:
-        assert m in actual_metrics
     for m in actual_metrics:
         assert m in expected_metrics
+    for m in expected_metrics:
+        assert m in actual_metrics
 
 
 def test_ap_false_negatives_two_datums_one_empty_high_confidence_of_fp(
@@ -515,10 +515,10 @@ def test_ap_false_negatives_two_datums_one_empty_high_confidence_of_fp(
             },
         }
     ]
-    for m in expected_metrics:
-        assert m in actual_metrics
     for m in actual_metrics:
         assert m in expected_metrics
+    for m in expected_metrics:
+        assert m in actual_metrics
 
 
 def test_ap_false_negatives_two_datums_one_only_with_different_class_low_confidence_of_fp(
@@ -566,10 +566,10 @@ def test_ap_false_negatives_two_datums_one_only_with_different_class_low_confide
             },
         },
     ]
-    for m in expected_metrics:
-        assert m in actual_metrics
     for m in actual_metrics:
         assert m in expected_metrics
+    for m in expected_metrics:
+        assert m in actual_metrics
 
 
 def test_ap_false_negatives_two_datums_one_only_with_different_class_high_confidence_of_fp(
@@ -617,7 +617,145 @@ def test_ap_false_negatives_two_datums_one_only_with_different_class_high_confid
             },
         },
     ]
-    for m in expected_metrics:
-        assert m in actual_metrics
     for m in actual_metrics:
         assert m in expected_metrics
+    for m in expected_metrics:
+        assert m in actual_metrics
+
+
+def test_ap_ranked_pair_ordering(detection_ranked_pair_ordering: Detection):
+
+    manager = DataLoader()
+    manager.add_data(detections=[detection_ranked_pair_ordering])
+    evaluator = manager.finalize()
+
+    metrics = evaluator.evaluate(iou_thresholds=[0.5, 0.75])
+
+    actual_metrics = [m.to_dict() for m in metrics[MetricType.AP]]
+    expected_metrics = [
+        {
+            "parameters": {
+                "iou": 0.5,
+                "label": {"key": "class", "value": "label1"},
+            },
+            "value": 1.0,
+            "type": "AP",
+        },
+        {
+            "parameters": {
+                "iou": 0.75,
+                "label": {"key": "class", "value": "label1"},
+            },
+            "value": 1.0,
+            "type": "AP",
+        },
+        {
+            "parameters": {
+                "iou": 0.5,
+                "label": {"key": "class", "value": "label2"},
+            },
+            "value": 1.0,
+            "type": "AP",
+        },
+        {
+            "parameters": {
+                "iou": 0.75,
+                "label": {"key": "class", "value": "label2"},
+            },
+            "value": 1.0,
+            "type": "AP",
+        },
+        {
+            "parameters": {
+                "iou": 0.5,
+                "label": {"key": "class", "value": "label3"},
+            },
+            "value": 0.0,
+            "type": "AP",
+        },
+        {
+            "parameters": {
+                "iou": 0.75,
+                "label": {"key": "class", "value": "label3"},
+            },
+            "value": 0.0,
+            "type": "AP",
+        },
+    ]
+    for m in actual_metrics:
+        assert m in expected_metrics
+    for m in expected_metrics:
+        assert m in actual_metrics
+
+    actual_metrics = [m.to_dict() for m in metrics[MetricType.mAP]]
+    expected_metrics = [
+        {
+            "parameters": {"label_key": "class", "iou": 0.5},
+            "value": 0.6666666666666666,
+            "type": "mAP",
+        },
+        {
+            "parameters": {"label_key": "class", "iou": 0.75},
+            "value": 0.6666666666666666,
+            "type": "mAP",
+        },
+    ]
+    for m in actual_metrics:
+        assert m in expected_metrics
+    for m in expected_metrics:
+        assert m in actual_metrics
+
+    actual_metrics = [
+        m.to_dict() for m in metrics[MetricType.APAveragedOverIOUs]
+    ]
+    expected_metrics = [
+        {
+            "parameters": {
+                "label": {"key": "class", "value": "label1"},
+                "ious": [0.5, 0.75],
+            },
+            "value": 1.0,
+            "type": "APAveragedOverIOUs",
+        },
+        {
+            "parameters": {
+                "ious": [0.5, 0.75],
+                "label": {"key": "class", "value": "label2"},
+            },
+            "value": 1.0,
+            "type": "APAveragedOverIOUs",
+        },
+        {
+            "parameters": {
+                "ious": [0.5, 0.75],
+                "label": {"key": "class", "value": "label3"},
+            },
+            "value": 0.0,
+            "type": "APAveragedOverIOUs",
+        },
+    ]
+    for m in actual_metrics:
+        assert m in expected_metrics
+    for m in expected_metrics:
+        assert m in actual_metrics
+
+    actual_metrics = [
+        m.to_dict() for m in metrics[MetricType.mAPAveragedOverIOUs]
+    ]
+    expected_metrics = [
+        {
+            "parameters": {
+                "label_key": "class",
+                "ious": [
+                    0.5,
+                    0.75,
+                ],
+            },
+            "value": 0.6666666666666666,
+            "type": "mAPAveragedOverIOUs",
+        },
+    ]
+    for m in actual_metrics:
+        assert m in expected_metrics
+    for m in expected_metrics:
+        assert m in actual_metrics

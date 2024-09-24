@@ -194,10 +194,10 @@ def test_precision_false_negatives_single_datum(
             },
         }
     ]
-    for m in expected_metrics:
-        assert m in actual_metrics
     for m in actual_metrics:
         assert m in expected_metrics
+    for m in expected_metrics:
+        assert m in actual_metrics
 
 
 def test_precision_false_negatives_two_datums_one_empty_low_confidence_of_fp(
@@ -236,10 +236,10 @@ def test_precision_false_negatives_two_datums_one_empty_low_confidence_of_fp(
             },
         }
     ]
-    for m in expected_metrics:
-        assert m in actual_metrics
     for m in actual_metrics:
         assert m in expected_metrics
+    for m in expected_metrics:
+        assert m in actual_metrics
 
 
 def test_precision_false_negatives_two_datums_one_empty_high_confidence_of_fp(
@@ -277,10 +277,10 @@ def test_precision_false_negatives_two_datums_one_empty_high_confidence_of_fp(
             },
         }
     ]
-    for m in expected_metrics:
-        assert m in actual_metrics
     for m in actual_metrics:
         assert m in expected_metrics
+    for m in expected_metrics:
+        assert m in actual_metrics
 
 
 def test_precision_false_negatives_two_datums_one_only_with_different_class_low_confidence_of_fp(
@@ -330,10 +330,10 @@ def test_precision_false_negatives_two_datums_one_only_with_different_class_low_
             },
         },
     ]
-    for m in expected_metrics:
-        assert m in actual_metrics
     for m in actual_metrics:
         assert m in expected_metrics
+    for m in expected_metrics:
+        assert m in actual_metrics
 
 
 def test_precision_false_negatives_two_datums_one_only_with_different_class_high_confidence_of_fp(
@@ -383,7 +383,7 @@ def test_precision_false_negatives_two_datums_one_only_with_different_class_high
             },
         },
     ]
-    for m in expected_metrics:
-        assert m in actual_metrics
     for m in actual_metrics:
         assert m in expected_metrics
+    for m in expected_metrics:
+        assert m in actual_metrics
