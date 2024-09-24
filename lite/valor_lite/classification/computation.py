@@ -1,72 +1,19 @@
 import numpy as np
 from numpy.typing import NDArray
 
-# 0 gt label index
-# 1 pd label index
-# 2 score
 
-
-def compute_metrics(
+def _compute_rocauc(
     data: NDArray[np.floating],
     label_metadata: NDArray[np.int32],
-    score_thresholds: NDArray[np.floating],
     n_datums: int,
-) -> tuple[
-    NDArray[np.int32],
-    NDArray[np.floating],
-    NDArray[np.floating],
-    NDArray[np.floating],
-    NDArray[np.floating],
-    NDArray[np.floating],
-    NDArray[np.floating],
-]:
+    n_labels: int,
+    n_label_keys: int,
+    mask_matching_labels: NDArray[np.bool_],
+    pd_labels: NDArray[np.int32],
+):
     """
-    Computes classification metrics.
-
-    Takes data with form:
-
-    Index 0 - GroundTruth Label Index
-    Index 1 - Prediction Label Index
-    Index 2 - Score
-
-    Parameters
-    ----------
-    data : NDArray[np.floating]
-        A sorted array of classification pairs.
-    label_metadata : NDArray[np.int32]
-        An array containing metadata related to labels.
-    score_thresholds : NDArray[np.floating]
-        An array contains score thresholds to compute metrics over.
-
-    Returns
-    -------
-    NDArray[np.int32]
-        TP, FP, FN, TN counts.
-    NDArray[np.floating]
-        Precision.
-    NDArray[np.floating]
-        Recall.
-    NDArray[np.floating]
-        Accuracy
-    NDArray[np.floating]
-        F1 Score
-    NDArray[np.floating]
-        ROCAUC.
-    NDArray[np.floating]
-        mROCAUC.
+    Compute ROCAUC and mean ROCAUC.
     """
-
-    n_labels = label_metadata.shape[0]
-    n_label_keys = np.unique(label_metadata[:, 2]).size
-    n_scores = score_thresholds.shape[0]
-
-    pd_labels = data[:, 1].astype(int)
-
-    mask_matching_labels = np.isclose(data[:, 0], data[:, 1])
-    mask_score_nonzero = ~np.isclose(data[:, 2], 0.0)
-
-    # ==== calculate ROCAUC ====
-
     count_labels_per_key = np.bincount(label_metadata[:, 2])
     count_groundtruths_per_key = np.bincount(
         label_metadata[:, 2],
@@ -132,7 +79,80 @@ def compute_metrics(
         out=mean_rocauc,
     )
 
-    # === calculate metrics at various score thresholds ===
+    return rocauc, mean_rocauc
+
+
+def compute_metrics(
+    data: NDArray[np.floating],
+    label_metadata: NDArray[np.int32],
+    score_thresholds: NDArray[np.floating],
+    n_datums: int,
+) -> tuple[
+    NDArray[np.int32],
+    NDArray[np.floating],
+    NDArray[np.floating],
+    NDArray[np.floating],
+    NDArray[np.floating],
+    NDArray[np.floating],
+    NDArray[np.floating],
+]:
+    """
+    Computes classification metrics.
+
+    Takes data with form:
+
+    Index 0 - GroundTruth Label Index
+    Index 1 - Prediction Label Index
+    Index 2 - Score
+
+    Parameters
+    ----------
+    data : NDArray[np.floating]
+        A sorted array of classification pairs.
+    label_metadata : NDArray[np.int32]
+        An array containing metadata related to labels.
+    score_thresholds : NDArray[np.floating]
+        An array contains score thresholds to compute metrics over.
+
+    Returns
+    -------
+    NDArray[np.int32]
+        TP, FP, FN, TN counts.
+    NDArray[np.floating]
+        Precision.
+    NDArray[np.floating]
+        Recall.
+    NDArray[np.floating]
+        Accuracy
+    NDArray[np.floating]
+        F1 Score
+    NDArray[np.floating]
+        ROCAUC.
+    NDArray[np.floating]
+        mROCAUC.
+    """
+
+    n_labels = label_metadata.shape[0]
+    n_label_keys = np.unique(label_metadata[:, 2]).size
+    n_scores = score_thresholds.shape[0]
+
+    pd_labels = data[:, 1].astype(int)
+
+    mask_matching_labels = np.isclose(data[:, 0], data[:, 1])
+    mask_score_nonzero = ~np.isclose(data[:, 2], 0.0)
+
+    # calculate ROCAUC
+    rocauc, mean_rocauc = _compute_rocauc(
+        data=data,
+        label_metadata=label_metadata,
+        n_datums=n_datums,
+        n_labels=n_labels,
+        n_label_keys=n_label_keys,
+        mask_matching_labels=mask_matching_labels,
+        pd_labels=pd_labels,
+    )
+
+    # calculate metrics at various score thresholds
     counts = np.zeros((n_scores, n_labels, 4), dtype=np.int32)
     for score_idx in range(n_scores):
         mask_score_threshold = data[:, 2] >= score_thresholds[score_idx]
@@ -205,15 +225,43 @@ def compute_detailed_counts(
     n_samples: int,
 ) -> NDArray[np.floating]:
     """
+    Compute detailed counts.
+
     Takes data with form:
 
-    Input
-    -----
-    [[datum index, gt label index, pd label index, score]]
+    Index 0 - Datum Index
+    Index 1 - GroundTruth Label Index
+    Index 2 - Prediction Label Index
+    Index 3 - Score
 
-    Output
-    ------
-    [[label, tp, tp_example1, ..., fp_misclf, ..., fn_misclf, ..., fn_misprd, ...., tn, ...]]
+    Outputs an array with form:
+
+    Index 0 - True Positive Count
+    ... Datum ID Examples
+    Index N + 1 - False Positive Misclassification Count
+    ... Datum ID Examples
+    Index 2N + 2 - False Negative Misclassification Count
+    ... Datum ID Examples
+    Index 2N + 2 - False Negative Missing Prediction Count
+    ... Datum ID Examples
+    Index 2N + 2 - True Negative Count
+    ... Datum ID Examples
+
+    Parameters
+    ----------
+    data : NDArray[np.floating]
+        A sorted array of classification pairs.
+    label_metadata : NDArray[np.int32]
+        An array containing metadata related to labels.
+    score_thresholds : NDArray[np.floating]
+        An array contains score thresholds to compute metrics over.
+    n_samples : int
+        The number of examples to return per count.
+
+    Returns
+    -------
+    NDArray[np.floating]
+        The detailed counts with optional examples.
     """
 
     n_labels = label_metadata.shape[0]
@@ -221,10 +269,10 @@ def compute_detailed_counts(
     n_metrics = 5 * (n_samples + 1)
 
     tp_idx = 0
-    fp_misclf_idx = tp_idx + n_samples + 1
-    fn_misclf_idx = fp_misclf_idx + n_samples + 1
-    fn_misprd_idx = fn_misclf_idx + n_samples + 1
-    tn_idx = fn_misprd_idx + n_samples + 1
+    fp_misclf_idx = n_samples + 1
+    fn_misclf_idx = 2 * n_samples + 2
+    fn_misprd_idx = 3 * n_samples + 3
+    tn_idx = 4 * n_samples + 4
 
     detailed_pr_curve = np.ones((n_scores, n_labels, n_metrics)) * -1.0
 

@@ -327,10 +327,10 @@ class Evaluator:
         )
 
         tp_idx = 0
-        fp_misclf_idx = tp_idx + n_samples + 1
-        fn_misclf_idx = fp_misclf_idx + n_samples + 1
-        fn_misprd_idx = fn_misclf_idx + n_samples + 1
-        tn_idx = fn_misprd_idx + n_samples + 1
+        fp_misclf_idx = 1 * n_samples + 1
+        fn_misclf_idx = 2 * n_samples + 2
+        fn_misprd_idx = 3 * n_samples + 3
+        tn_idx = 4 * n_samples + 4
 
         n_scores, n_labels, _ = metrics.shape
         return [
@@ -485,7 +485,9 @@ class DataLoader:
             gt_unique_keys = gt_keys - pd_keys
             pd_unique_keys = pd_keys - gt_keys
             if gt_unique_keys or pd_unique_keys:
-                raise ValueError()
+                raise ValueError(
+                    "Label keys must match between ground truths and predictions."
+                )
 
             pairs = np.array(
                 [
