@@ -99,7 +99,7 @@ def compute_metrics(
     """
     Computes classification metrics.
 
-    Takes data with form:
+    Takes data with shape (N, 3):
 
     Index 0 - GroundTruth Label Index
     Index 1 - Prediction Label Index
@@ -112,7 +112,7 @@ def compute_metrics(
     label_metadata : NDArray[np.int32]
         An array containing metadata related to labels.
     score_thresholds : NDArray[np.floating]
-        An array contains score thresholds to compute metrics over.
+        A 1-D array contains score thresholds to compute metrics over.
 
     Returns
     -------
@@ -227,24 +227,24 @@ def compute_detailed_counts(
     """
     Compute detailed counts.
 
-    Takes data with form:
+    Takes data with shape (N, 4):
 
     Index 0 - Datum Index
     Index 1 - GroundTruth Label Index
     Index 2 - Prediction Label Index
     Index 3 - Score
 
-    Outputs an array with form:
+    Outputs an array with shape (N_Scores, N_Labels, 5 * n_samples + 5):
 
     Index 0 - True Positive Count
     ... Datum ID Examples
-    Index N + 1 - False Positive Misclassification Count
+    Index n_samples + 1 - False Positive Misclassification Count
     ... Datum ID Examples
-    Index 2N + 2 - False Negative Misclassification Count
+    Index 2 * n_samples + 2 - False Negative Misclassification Count
     ... Datum ID Examples
-    Index 3N + 3 - False Negative Missing Prediction Count
+    Index 3 * n_samples + 3 - False Negative Missing Prediction Count
     ... Datum ID Examples
-    Index 4N + 4 - True Negative Count
+    Index 4 * n_samples + 4 - True Negative Count
     ... Datum ID Examples
 
     Parameters
@@ -254,7 +254,7 @@ def compute_detailed_counts(
     label_metadata : NDArray[np.int32]
         An array containing metadata related to labels.
     score_thresholds : NDArray[np.floating]
-        An array containing score thresholds.
+        A 1-D array containing score thresholds.
     n_samples : int
         The number of examples to return per count.
 
