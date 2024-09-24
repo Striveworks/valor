@@ -395,16 +395,15 @@ def compute_detailed_counts(
     mask_gt_pd_match = mask_gt_pd_exists & mask_label_match
     mask_gt_pd_mismatch = mask_gt_pd_exists & ~mask_label_match
 
+    groundtruths = data[:, [0, 1]].astype(int)
+    predictions = data[:, [0, 2]].astype(int)
     for iou_idx in range(n_ious):
         mask_iou_threshold = data[:, 3] >= iou_thresholds[iou_idx]
         mask_iou = mask_iou_nonzero & mask_iou_threshold
 
-        groundtruths_slice = data[:, [0, 1]].astype(int)
-        groundtruths_with_pairs = np.unique(
-            groundtruths_slice[mask_iou], axis=0
-        )
+        groundtruths_with_pairs = np.unique(groundtruths[mask_iou], axis=0)
         mask_groundtruths_with_passing_ious = (
-            groundtruths_slice.reshape(-1, 1, 2)
+            groundtruths.reshape(-1, 1, 2)
             == groundtruths_with_pairs.reshape(1, -1, 2)
         ).all(axis=2)
         mask_groundtruths_with_passing_ious = (
@@ -414,12 +413,11 @@ def compute_detailed_counts(
             ~mask_groundtruths_with_passing_ious & mask_gt_exists
         )
 
-        predictions_slice = data[:, [0, 2]].astype(int)
         predictions_with_passing_ious = np.unique(
-            predictions_slice[mask_iou], axis=0
+            predictions[mask_iou], axis=0
         )
         mask_predictions_with_passing_ious = (
-            predictions_slice.reshape(-1, 1, 2)
+            predictions.reshape(-1, 1, 2)
             == predictions_with_passing_ious.reshape(1, -1, 2)
         ).all(axis=2)
         mask_predictions_with_passing_ious = (
@@ -433,12 +431,11 @@ def compute_detailed_counts(
             mask_score_threshold = data[:, 6] >= score_thresholds[score_idx]
             mask_score = mask_score_nonzero & mask_score_threshold
 
-            groundtruths_slice = data[:, [0, 1]].astype(int)
             groundtruths_with_passing_score = np.unique(
-                groundtruths_slice[mask_iou & mask_score], axis=0
+                groundtruths[mask_iou & mask_score], axis=0
             )
             mask_groundtruths_with_passing_score = (
-                groundtruths_slice.reshape(-1, 1, 2)
+                groundtruths.reshape(-1, 1, 2)
                 == groundtruths_with_passing_score.reshape(1, -1, 2)
             ).all(axis=2)
             mask_groundtruths_with_passing_score = (
@@ -449,9 +446,7 @@ def compute_detailed_counts(
             )
 
             mask_tp = mask_score & mask_iou & mask_gt_pd_match
-
             mask_fp_misclf = mask_score & mask_iou & mask_gt_pd_mismatch
-
             mask_fn_misclf = mask_iou & (
                 (
                     ~mask_score
@@ -460,41 +455,34 @@ def compute_detailed_counts(
                 )
                 | (mask_score & mask_gt_pd_mismatch)
             )
-
             mask_fp_halluc = mask_score & mask_predictions_without_passing_ious
-            fp_halluc = np.unique(data[mask_fp_halluc][:, [0, 2, 5]], axis=0)
-
             mask_fn_misprd = (
                 mask_groundtruths_without_passing_ious
                 | mask_groundtruths_without_passing_score
             )
-            fn_misprd = np.unique(data[mask_fn_misprd][:, [0, 1, 4]], axis=0)
-
             mask_tn = mask_predictions_without_passing_ious & ~mask_score
 
-            tp_slice = data[mask_tp]
-            fp_misclf_slice = data[mask_fp_misclf]
-            fn_misclf_slice = data[mask_fn_misclf]
-            tn_slice = data[mask_tn]
+            tp = np.unique(data[mask_tp][:, [0, 2, 5]], axis=0)
+            fp_misclf = np.unique(data[mask_fp_misclf][:, [0, 2, 5]], axis=0)
+            fp_halluc = np.unique(data[mask_fp_halluc][:, [0, 2, 5]], axis=0)
+            fn_misclf = np.unique(data[mask_fn_misclf][:, [0, 1, 4]], axis=0)
+            fn_misprd = np.unique(data[mask_fn_misprd][:, [0, 1, 4]], axis=0)
+            tn = np.unique(data[mask_tn][:, [0, 1, 4]], axis=0)
 
-            tp_count = np.bincount(
-                tp_slice[:, 5].astype(int), minlength=n_labels
-            )
+            tp_count = np.bincount(tp[:, 2].astype(int), minlength=n_labels)
             fp_misclf_count = np.bincount(
-                fp_misclf_slice[:, 5].astype(int), minlength=n_labels
+                fp_misclf[:, 2].astype(int), minlength=n_labels
             )
             fp_halluc_count = np.bincount(
                 fp_halluc[:, 2].astype(int), minlength=n_labels
             )
             fn_misclf_count = np.bincount(
-                fn_misclf_slice[:, 4].astype(int), minlength=n_labels
+                fn_misclf[:, 2].astype(int), minlength=n_labels
             )
             fn_misprd_count = np.bincount(
                 fn_misprd[:, 2].astype(int), minlength=n_labels
             )
-            tn_count = np.bincount(
-                tn_slice[:, 5].astype(int), minlength=n_labels
-            )
+            tn_count = np.bincount(tn[:, 2].astype(int), minlength=n_labels)
 
             detailed_pr_curve[iou_idx, score_idx, :, tp_idx] = tp_count
             detailed_pr_curve[
@@ -513,24 +501,24 @@ def compute_detailed_counts(
 
             if n_samples > 0:
                 for label_idx in range(n_labels):
-                    tp_examples = tp_slice[
-                        tp_slice[:, 5].astype(int) == label_idx
-                    ][:n_samples, 0]
-                    fp_misclf_examples = fp_misclf_slice[
-                        fp_misclf_slice[:, 5].astype(int) == label_idx
+                    tp_examples = tp[tp[:, 2].astype(int) == label_idx][
+                        :n_samples, 0
+                    ]
+                    fp_misclf_examples = fp_misclf[
+                        fp_misclf[:, 2].astype(int) == label_idx
                     ][:n_samples, 0]
                     fp_halluc_examples = fp_halluc[
                         fp_halluc[:, 2].astype(int) == label_idx
                     ][:n_samples, 0]
-                    fn_misclf_examples = fn_misclf_slice[
-                        fn_misclf_slice[:, 4].astype(int) == label_idx
+                    fn_misclf_examples = fn_misclf[
+                        fn_misclf[:, 2].astype(int) == label_idx
                     ][:n_samples, 0]
                     fn_misprd_examples = fn_misprd[
                         fn_misprd[:, 2].astype(int) == label_idx
                     ][:n_samples, 0]
-                    tn_examples = tn_slice[
-                        tn_slice[:, 4].astype(int) == label_idx
-                    ][:n_samples, 0]
+                    tn_examples = tn[tn[:, 2].astype(int) == label_idx][
+                        :n_samples, 0
+                    ]
 
                     detailed_pr_curve[
                         iou_idx,

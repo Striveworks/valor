@@ -290,6 +290,7 @@ def test_detailed_counts_using_torch_metrics_example(
     manager.add_data(torchmetrics_detections)
     evaluator = manager.finalize()
 
+    print(evaluator.label_to_index[("class", "49")])
     assert evaluator.ignored_prediction_labels == [("class", "3")]
     assert evaluator.missing_prediction_labels == []
     assert evaluator.n_datums == 4
@@ -811,7 +812,7 @@ def test_detailed_counts_using_torch_metrics_example(
         {
             "type": "DetailedCounts",
             "value": {
-                "tp": [11, 6, 4, 3, 2, 1, 1, 0],
+                "tp": [9, 6, 4, 3, 2, 1, 1, 0],
                 "fp_misclassification": [0, 0, 0, 0, 0, 0, 0, 0],
                 "fp_hallucination": [0, 0, 0, 0, 0, 0, 0, 0],
                 "fn_misclassification": [0, 1, 1, 1, 0, 0, 0, 0],
