@@ -119,7 +119,7 @@ class Evaluator:
         label_keys: list[str] | NDArray[np.int32] | None = None,
     ) -> Filter:
         """
-        Creates a boolean mask that can be passed to an evaluation.
+        Creates a filter that can be passed to an evaluation.
 
         Parameters
         ----------
