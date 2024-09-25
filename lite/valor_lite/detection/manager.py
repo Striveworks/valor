@@ -1,10 +1,15 @@
 from collections import defaultdict
 from dataclasses import dataclass
-
+from typing import Type
 import numpy as np
 from numpy.typing import NDArray
 from tqdm import tqdm
-from valor_lite.detection.annotation import Detection
+from valor_lite.detection.annotation import (
+    Bitmask,
+    BoundingBox,
+    Detection,
+    Polygon,
+)
 from valor_lite.detection.computation import (
     compute_detailed_counts,
     compute_iou,
@@ -49,6 +54,90 @@ ar_metrics = metrics[MetricType.AR]
 filter_mask = evaluator.create_filter(datum_uids=["uid1", "uid2"])
 filtered_metrics = evaluator.evaluate(iou_thresholds=[0.5], filter_mask=filter_mask)
 """
+
+
+# TODO check test coverage
+def _get_annotation_annotation_type(
+    detection: Detection,
+) -> Type[BoundingBox] | Type[Polygon] | Type[Bitmask]:
+    """Check that a detection only contains one type of annotation type, and return that specific type."""
+    types = set(
+        type(annotation)
+        for annotation in detection.groundtruths + detection.predictions
+    )
+
+    if (not len(types) == 1) or (
+        not all(
+            [
+                issubclass(type_, (BoundingBox, Bitmask, Polygon))
+                for type_ in types
+            ]
+        )
+    ):
+        raise ValueError(
+            "Annotations must be a list of BoundingBox, Bitmask, or Polygon objects. Only one representation type per detection is allowed."
+        )
+
+    return list(types)[0]
+
+
+def _get_annotation_annotation_type_from_valor_dict(
+    detection: dict,
+) -> Type[BoundingBox] | Type[Polygon] | Type[Bitmask]:
+    """Check that a detection only contains one type of annotation type for a valor dictionary, and return that specific type."""
+    contains_bbox = detection["annotations"][0]["bounding_box"] is not None
+    contains_bitmask = detection["annotations"][0]["raster"] is not None
+    contains_polygon = detection["annotations"][0]["polygon"] is not None
+
+    if sum([contains_bbox, contains_bitmask, contains_polygon]) > 1:
+        raise ValueError(
+            "Annotations must be a list of BoundingBox, Bitmask, or Polygon objects. Only one representation type per detection is allowed."
+        )
+
+    return (
+        BoundingBox
+        if contains_bbox
+        else Bitmask if contains_bitmask else Polygon
+    )
+
+
+def _get_annotation_representation(
+    obj: BoundingBox | Bitmask | Polygon,
+) -> np.ndarray | tuple | Polygon:  # TODO fix return type
+    """Get the correct representation of an annotation object."""
+
+    representation = (
+        obj.extrema
+        if isinstance(obj, BoundingBox)
+        else (obj.mask if isinstance(obj, Bitmask) else obj.shape)
+    )
+
+    return representation
+
+
+def _get_annotation_data(
+    keyed_groundtruths: dict,
+    keyed_predictions: dict,
+    annotation_type: Type[BoundingBox] | Type[Polygon] | Type[Bitmask],
+    key=int,
+) -> np.ndarray:
+    """Create an array of annotation pairs for use when calculating IOU."""
+    if annotation_type == BoundingBox:
+        return np.array(
+            [
+                np.array([*gextrema, *pextrema])
+                for _, _, _, pextrema in keyed_predictions[key]
+                for _, _, gextrema in keyed_groundtruths[key]
+            ]
+        )
+    else:
+        return np.array(
+            [
+                np.array([groundtruth_obj, prediction_obj])
+                for _, _, _, prediction_obj in keyed_predictions[key]
+                for _, _, groundtruth_obj in keyed_groundtruths[key]
+            ]
+        )
 
 
 @dataclass
@@ -151,9 +240,9 @@ class Evaluator:
                     dtype=np.int32,
                 )
             mask = np.zeros_like(mask_pairs, dtype=np.bool_)
-            mask[
-                np.isin(self._ranked_pairs[:, 0].astype(int), datum_uids)
-            ] = True
+            mask[np.isin(self._ranked_pairs[:, 0].astype(int), datum_uids)] = (
+                True
+            )
             mask_pairs &= mask
 
             mask = np.zeros_like(mask_datums, dtype=np.bool_)
@@ -558,9 +647,9 @@ class DataLoader:
                 self._evaluator.index_to_label_key[label_key_id] = label[0]
                 label_key_id += 1
 
-            self._evaluator.label_index_to_label_key_index[
-                label_id
-            ] = self._evaluator.label_key_to_index[label[0]]
+            self._evaluator.label_index_to_label_key_index[label_id] = (
+                self._evaluator.label_key_to_index[label[0]]
+            )
             label_id += 1
 
         return (
@@ -587,46 +676,59 @@ class DataLoader:
             # cache labels and annotations
             keyed_groundtruths = defaultdict(list)
             keyed_predictions = defaultdict(list)
+            annotation_type = _get_annotation_annotation_type(
+                detection=detection
+            )
             for gidx, gann in enumerate(detection.groundtruths):
                 for glabel in gann.labels:
                     label_idx, label_key_idx = self._add_label(glabel)
                     self.groundtruth_count[label_idx][uid_index] += 1
+                    representation = _get_annotation_representation(obj=gann)
                     keyed_groundtruths[label_key_idx].append(
                         (
                             gidx,
                             label_idx,
-                            gann.extrema,
+                            representation,
                         )
                     )
+
             for pidx, pann in enumerate(detection.predictions):
                 for plabel, pscore in zip(pann.labels, pann.scores):
                     label_idx, label_key_idx = self._add_label(plabel)
                     self.prediction_count[label_idx][uid_index] += 1
+                    representation = _get_annotation_representation(
+                        obj=pann,
+                    )
                     keyed_predictions[label_key_idx].append(
                         (
                             pidx,
                             label_idx,
                             pscore,
-                            pann.extrema,
+                            representation,
                         )
                     )
 
             gt_keys = set(keyed_groundtruths.keys())
             pd_keys = set(keyed_predictions.keys())
+            annotation_type = _get_annotation_annotation_type(detection)
             joint_keys = gt_keys.intersection(pd_keys)
             gt_unique_keys = gt_keys - pd_keys
             pd_unique_keys = pd_keys - gt_keys
 
             pairs = list()
             for key in joint_keys:
-                boxes = np.array(
-                    [
-                        np.array([*gextrema, *pextrema])
-                        for _, _, _, pextrema in keyed_predictions[key]
-                        for _, _, gextrema in keyed_groundtruths[key]
-                    ]
+
+                data = _get_annotation_data(
+                    keyed_groundtruths=keyed_groundtruths,
+                    keyed_predictions=keyed_predictions,
+                    key=key,
+                    annotation_type=annotation_type,
                 )
-                ious = compute_iou(boxes)
+
+                ious = compute_iou(
+                    data=data,
+                    annotation_type=annotation_type,
+                )
                 pairs.extend(
                     [
                         np.array(
@@ -697,7 +799,6 @@ class DataLoader:
 
         disable_tqdm = not show_progress
         for groundtruth, prediction in tqdm(detections, disable=disable_tqdm):
-
             # update metadata
             self._evaluator.n_datums += 1
             self._evaluator.n_groundtruths += len(groundtruth["annotations"])
@@ -709,6 +810,17 @@ class DataLoader:
             # cache labels and annotations
             keyed_groundtruths = defaultdict(list)
             keyed_predictions = defaultdict(list)
+            gt_annotation_type = (
+                _get_annotation_annotation_type_from_valor_dict(groundtruth)
+            )
+            pd_annotation_type = (
+                _get_annotation_annotation_type_from_valor_dict(groundtruth)
+            )
+
+            if gt_annotation_type != pd_annotation_type:
+                raise ValueError(
+                    "Groundtruths and predictions must be represented by the same annotation type."
+                )
             for gidx, gann in enumerate(groundtruth["annotations"]):
                 for valor_label in gann["labels"]:
                     glabel = (valor_label["key"], valor_label["value"])
@@ -744,14 +856,17 @@ class DataLoader:
 
             pairs = list()
             for key in joint_keys:
-                boxes = np.array(
-                    [
-                        np.array([*gextrema, *pextrema])
-                        for _, _, _, pextrema in keyed_predictions[key]
-                        for _, _, gextrema in keyed_groundtruths[key]
-                    ]
+                data = _get_annotation_data(
+                    keyed_groundtruths=keyed_groundtruths,
+                    keyed_predictions=keyed_predictions,
+                    key=key,
+                    annotation_type=gt_annotation_type,
                 )
-                ious = compute_iou(boxes)
+
+                ious = compute_iou(
+                    data=data,
+                    annotation_type=gt_annotation_type,
+                )
                 pairs.extend(
                     [
                         np.array(

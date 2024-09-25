@@ -1,5 +1,8 @@
+from typing import Type
+
 import numpy as np
 from numpy.typing import NDArray
+from valor_lite.detection.annotation import Bitmask, BoundingBox, Polygon
 
 # datum id  0
 # gt        1
@@ -10,7 +13,8 @@ from numpy.typing import NDArray
 # score     6
 
 
-def compute_iou(data: NDArray[np.floating]) -> NDArray[np.floating]:
+# TODO docstrings
+def _compute_bbox_iou(data: NDArray[np.floating]) -> NDArray[np.floating]:
 
     xmin1, xmax1, ymin1, ymax1 = (
         data[:, 0],
@@ -45,6 +49,51 @@ def compute_iou(data: NDArray[np.floating]) -> NDArray[np.floating]:
         intersection_area[valid_union_mask] / union_area[valid_union_mask]
     )
     return iou
+
+
+# TODO docstrings
+def _compute_bitmask_iou(data: NDArray[np.floating]) -> NDArray[np.floating]:
+    intersection_ = np.array([np.logical_and(x, y).sum() for x, y in data])
+    union_ = np.array([np.logical_or(x, y).sum() for x, y in data])
+
+    if (intersection_ > union_).any():
+        raise ValueError("Intersection can't be greater than union.")
+
+    return intersection_ / union_
+
+
+# TODO docstrings
+def _compute_polygon_iou(
+    data: np.ndarray,
+) -> NDArray[np.floating]:
+    intersection_ = np.array(
+        [poly1.intersection(poly2).area for poly1, poly2 in data]
+    )
+    union_ = np.array(
+        [
+            poly1.area + poly2.area - intersection_[i]
+            for i, (poly1, poly2) in enumerate(data)
+        ]
+    )
+
+    if (intersection_ > union_).any():
+        raise ValueError("Intersection can't be greater than union.")
+
+    return intersection_ / union_
+
+
+# TODO docstrings
+def compute_iou(
+    data: NDArray[np.floating],
+    annotation_type: Type[BoundingBox] | Type[Polygon] | Type[Bitmask],
+) -> NDArray[np.floating]:
+
+    if issubclass(annotation_type, BoundingBox):  # TODO fix
+        return _compute_bbox_iou(data=data)
+    elif annotation_type == Bitmask:
+        return _compute_bitmask_iou(data=data)
+    else:
+        return _compute_polygon_iou(data=data)
 
 
 def _compute_ranked_pairs_for_datum(
@@ -365,7 +414,6 @@ def compute_detailed_counts(
     score_thresholds: np.ndarray,
     n_samples: int,
 ) -> np.ndarray:
-
     """
     0  label
     1  tp
@@ -487,18 +535,18 @@ def compute_detailed_counts(
             )
 
             detailed_pr_curve[iou_idx, score_idx, :, tp_idx] = tp_count
-            detailed_pr_curve[
-                iou_idx, score_idx, :, fp_misclf_idx
-            ] = fp_misclf_count
-            detailed_pr_curve[
-                iou_idx, score_idx, :, fp_halluc_idx
-            ] = fp_halluc_count
-            detailed_pr_curve[
-                iou_idx, score_idx, :, fn_misclf_idx
-            ] = fn_misclf_count
-            detailed_pr_curve[
-                iou_idx, score_idx, :, fn_misprd_idx
-            ] = fn_misprd_count
+            detailed_pr_curve[iou_idx, score_idx, :, fp_misclf_idx] = (
+                fp_misclf_count
+            )
+            detailed_pr_curve[iou_idx, score_idx, :, fp_halluc_idx] = (
+                fp_halluc_count
+            )
+            detailed_pr_curve[iou_idx, score_idx, :, fn_misclf_idx] = (
+                fn_misclf_count
+            )
+            detailed_pr_curve[iou_idx, score_idx, :, fn_misprd_idx] = (
+                fn_misprd_count
+            )
 
             if n_samples > 0:
                 for label_idx in range(n_labels):

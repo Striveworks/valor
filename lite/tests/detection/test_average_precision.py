@@ -24,7 +24,12 @@ def test__compute_average_precision():
     iou_thresholds = np.array([0.1, 0.6])
     score_thresholds = np.array([0.0])
 
-    (results, _, _, _,) = compute_metrics(
+    (
+        results,
+        _,
+        _,
+        _,
+    ) = compute_metrics(
         sorted_pairs,
         label_metadata=label_metadata,
         iou_thresholds=iou_thresholds,
@@ -799,3 +804,6 @@ def test_ap_true_positive_deassignment(
         assert m in expected_metrics
     for m in expected_metrics:
         assert m in actual_metrics
+
+
+# TODO missing tests, see issues

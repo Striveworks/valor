@@ -47,7 +47,7 @@ def test_Bitmask():
     mask[:5, :5] = True
 
     # groundtruth
-    gt = Bitmask(mask=mask, labels=[("k", "v")])
+    _ = Bitmask(mask=mask, labels=[("k", "v")])
 
     # prediction
     Bitmask(
@@ -69,10 +69,6 @@ def test_Bitmask():
             labels=[("k", "v1"), ("k", "v2")],
             scores=[0.7],
         )
-
-    # test `to_box` function
-    with pytest.raises(NotImplementedError):
-        gt.to_box()
 
 
 def test_Detection():
@@ -103,3 +99,6 @@ def test_Detection():
             groundtruths=[gt],
             predictions=[gt],
         )
+
+
+# TODO missing schema tests

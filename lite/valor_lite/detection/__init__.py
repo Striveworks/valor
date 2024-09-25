@@ -1,4 +1,4 @@
-from .annotation import Bitmask, BoundingBox, Detection
+from .annotation import Bitmask, BoundingBox, Detection, Polygon
 from .computation import (
     compute_detailed_counts,
     compute_iou,
@@ -29,6 +29,7 @@ __all__ = [
     "Bitmask",
     "BoundingBox",
     "Detection",
+    "Polygon",
     "MetricType",
     "Counts",
     "Precision",
