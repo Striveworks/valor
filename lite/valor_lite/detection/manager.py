@@ -83,25 +83,29 @@ def _get_annotation_annotation_type(
 
 
 def _get_annotation_annotation_type_from_valor_dict(
-    detection: dict,
-) -> Type[BoundingBox] | Type[Polygon] | Type[Bitmask]:
+    groundtruth_or_prediction_dict: dict,
+) -> Type[BoundingBox] | Type[Polygon] | Type[Bitmask] | None:
     """Check that a detection only contains one type of annotation type for a valor dictionary, and return that specific type."""
+
+    if not groundtruth_or_prediction_dict["annotations"]:
+        return None
+
     contains_bbox = sum(
         [
             annotation["bounding_box"] is not None
-            for annotation in detection["annotations"]
+            for annotation in groundtruth_or_prediction_dict["annotations"]
         ]
     )
     contains_bitmask = sum(
         [
             annotation["raster"] is not None
-            for annotation in detection["annotations"]
+            for annotation in groundtruth_or_prediction_dict["annotations"]
         ]
     )
     contains_polygon = sum(
         [
             annotation["polygon"] is not None
-            for annotation in detection["annotations"]
+            for annotation in groundtruth_or_prediction_dict["annotations"]
         ]
     )
 
@@ -142,7 +146,7 @@ def _get_annotation_representation(
 def _get_annotation_data(
     keyed_groundtruths: dict,
     keyed_predictions: dict,
-    annotation_type: Type[BoundingBox] | Type[Polygon] | Type[Bitmask],
+    annotation_type: Type[BoundingBox] | Type[Polygon] | Type[Bitmask] | None,
     key=int,
 ) -> np.ndarray:
     """Create an array of annotation pairs for use when calculating IOU."""
@@ -918,7 +922,11 @@ class DataLoader:
                 _get_annotation_annotation_type_from_valor_dict(prediction)
             )
 
-            if gt_annotation_type != pd_annotation_type:
+            if (
+                pd_annotation_type
+                and gt_annotation_type
+                and (gt_annotation_type != pd_annotation_type)
+            ):
                 raise ValueError(
                     "Groundtruths and predictions must be represented by the same annotation type."
                 )
@@ -961,12 +969,12 @@ class DataLoader:
                     keyed_groundtruths=keyed_groundtruths,
                     keyed_predictions=keyed_predictions,
                     key=key,
-                    annotation_type=gt_annotation_type,
+                    annotation_type=gt_annotation_type or pd_annotation_type,
                 )
 
                 ious = compute_iou(
                     data=data,
-                    annotation_type=gt_annotation_type,
+                    annotation_type=gt_annotation_type or pd_annotation_type,
                 )
                 pairs.extend(
                     [
