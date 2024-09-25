@@ -1478,7 +1478,7 @@ def test_detailed_counts_using_torch_metrics_example(
                 "tp": [9, 6, 4, 3, 2, 1, 1, 0],
                 "fp_misclassification": [0, 0, 0, 0, 0, 0, 0, 0],
                 "fp_hallucination": [0, 0, 0, 0, 0, 0, 0, 0],
-                "fn_misclassification": [0, 1, 1, 1, 0, 0, 0, 0],
+                "fn_misclassification": [0, 0, 0, 0, 0, 0, 0, 0],
                 "fn_missing_prediction": [1, 4, 6, 7, 8, 9, 9, 10],
                 "tn": None,
                 "tp_examples": [
@@ -1504,9 +1504,9 @@ def test_detailed_counts_using_torch_metrics_example(
                 "fp_hallucination_examples": [[], [], [], [], [], [], [], []],
                 "fn_misclassification_examples": [
                     [],
-                    ["3"],
-                    ["3"],
-                    ["3"],
+                    [],
+                    [],
+                    [],
                     [],
                     [],
                     [],
@@ -1770,6 +1770,9 @@ def test_detailed_counts_using_torch_metrics_example(
     ]
 
     for m in actual_metrics:
+        import json
+
+        print(json.dumps(m, indent=4))
         assert m in expected_metrics
     for m in expected_metrics:
         assert m in actual_metrics
@@ -1861,9 +1864,9 @@ def test_detailed_counts_ranked_pair_ordering(
             "type": "DetailedCounts",
             "value": {
                 "tp": [1],
-                "fp_misclassification": [1],
+                "fp_misclassification": [0],
                 "fp_hallucination": [0],
-                "fn_misclassification": [1],
+                "fn_misclassification": [0],
                 "fn_missing_prediction": [0],
                 "tn": None,
                 "tp_examples": [[]],
@@ -1883,9 +1886,9 @@ def test_detailed_counts_ranked_pair_ordering(
             "type": "DetailedCounts",
             "value": {
                 "tp": [1],
-                "fp_misclassification": [1],
+                "fp_misclassification": [0],
                 "fp_hallucination": [0],
-                "fn_misclassification": [1],
+                "fn_misclassification": [0],
                 "fn_missing_prediction": [0],
                 "tn": None,
                 "tp_examples": [[]],

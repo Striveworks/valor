@@ -155,7 +155,7 @@ def compute_metrics(
 
     average_precision = np.zeros((n_ious, n_labels))
     average_recall = np.zeros((n_scores, n_labels))
-    precision_recall = np.zeros((n_ious, n_scores, n_labels, 7))
+    counts = np.zeros((n_ious, n_scores, n_labels, 7))
 
     pd_labels = data[:, 5].astype(int)
     unique_pd_labels = np.unique(pd_labels)
@@ -245,7 +245,7 @@ def compute_metrics(
                 out=accuracy,
             )
 
-            precision_recall[iou_idx][score_idx] = np.concatenate(
+            counts[iou_idx][score_idx] = np.concatenate(
                 (
                     tp_count[:, np.newaxis],
                     fp_count[:, np.newaxis],
@@ -353,7 +353,7 @@ def compute_metrics(
     return (
         ap_results,
         ar_results,
-        precision_recall,
+        counts,
         pr_curve,
     )
 
@@ -466,11 +466,34 @@ def compute_detailed_counts(
                 | mask_groundtruths_without_passing_score
             )
 
-            tp = np.unique(data[mask_tp][:, [0, 2, 5]], axis=0)
+            tp_pds = np.unique(data[mask_tp][:, [0, 2, 5]], axis=0)
+            tp_gts = np.unique(data[mask_tp][:, [0, 1, 4]], axis=0)
             fp_misclf = np.unique(data[mask_fp_misclf][:, [0, 2, 5]], axis=0)
             fp_halluc = np.unique(data[mask_fp_halluc][:, [0, 2, 5]], axis=0)
             fn_misclf = np.unique(data[mask_fn_misclf][:, [0, 1, 4]], axis=0)
             fn_misprd = np.unique(data[mask_fn_misprd][:, [0, 1, 4]], axis=0)
+
+            mask_fp_misclf_is_tp = (
+                (fp_misclf.reshape(-1, 1, 3) == tp_pds.reshape(1, -1, 3))
+                .all(axis=2)
+                .any(axis=1)
+            )
+            mask_fp_halluc_is_tp = (
+                (fp_halluc.reshape(-1, 1, 3) == tp_pds.reshape(1, -1, 3))
+                .all(axis=2)
+                .any(axis=1)
+            )
+            mask_fn_misclf_is_tp = (
+                (fn_misclf.reshape(-1, 1, 3) == tp_gts.reshape(1, -1, 3))
+                .all(axis=2)
+                .any(axis=1)
+            )
+
+            tp = tp_pds
+            fp_misclf = fp_misclf[~mask_fp_misclf_is_tp]
+            fp_halluc = fp_halluc[~mask_fp_halluc_is_tp]
+            fn_misclf = fn_misclf[~mask_fn_misclf_is_tp]
+            fn_misprd = fn_misprd
 
             tp_count = np.bincount(tp[:, 2].astype(int), minlength=n_labels)
             fp_misclf_count = np.bincount(
