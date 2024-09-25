@@ -629,6 +629,17 @@ def test_ap_ranked_pair_ordering(detection_ranked_pair_ordering: Detection):
     loader.add_data(detections=[detection_ranked_pair_ordering])
     evaluator = loader.finalize()
 
+    assert evaluator.metadata == {
+        "ignored_prediction_labels": [
+            ("class", "label4"),
+        ],
+        "missing_prediction_labels": [],
+        "n_datums": 1,
+        "n_groundtruths": 3,
+        "n_labels": 4,
+        "n_predictions": 4,
+    }
+
     metrics = evaluator.evaluate(iou_thresholds=[0.5, 0.75])
 
     actual_metrics = [m.to_dict() for m in metrics[MetricType.AP]]

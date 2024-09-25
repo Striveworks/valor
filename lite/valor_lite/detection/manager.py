@@ -229,7 +229,7 @@ class Evaluator:
         filter_: Filter | None = None,
     ) -> dict[MetricType, list]:
         """
-        Perform an evaluation and returns metrics.
+        Performs an evaluation and returns metrics.
 
         Parameters
         ----------
@@ -378,6 +378,10 @@ class Evaluator:
         for label_idx, label in self.index_to_label.items():
             for score_idx, score_threshold in enumerate(score_thresholds):
                 for iou_idx, iou_threshold in enumerate(iou_thresholds):
+
+                    if label_metadata[label_idx, 0] == 0:
+                        continue
+
                     row = precision_recall[iou_idx][score_idx][label_idx]
                     kwargs = {
                         "label": label,
@@ -392,6 +396,7 @@ class Evaluator:
                             **kwargs,
                         )
                     )
+
                     metrics[MetricType.Precision].append(
                         Precision(
                             value=row[3],
