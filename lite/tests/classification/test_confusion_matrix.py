@@ -52,8 +52,6 @@ def test_confusion_matrix_computation():
         hardmax=False,
     )
 
-    print(confusion)
-
     # score threshold, prediction label, groundtruth label
     assert confusion.shape == (2, 4, 4)
 
@@ -614,9 +612,6 @@ def test_confusion_matrix_zero_count_check(
         },
     ]
     for m in actual_metrics:
-        import json
-
-        print(json.dumps(m, indent=4))
         assert m in expected_metrics
     for m in expected_metrics:
         assert m in actual_metrics
