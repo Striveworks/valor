@@ -449,34 +449,49 @@ def test_ar_ranked_pair_ordering(detection_ranked_pair_ordering: Detection):
     loader.add_data(detections=[detection_ranked_pair_ordering])
     evaluator = loader.finalize()
 
-    metrics = evaluator.evaluate(iou_thresholds=[0.5, 0.75])
+    assert evaluator.metadata == {
+        "ignored_prediction_labels": [
+            ("class", "label4"),
+        ],
+        "missing_prediction_labels": [],
+        "n_datums": 1,
+        "n_groundtruths": 3,
+        "n_labels": 4,
+        "n_predictions": 4,
+    }
+
+    metrics = evaluator.evaluate(
+        iou_thresholds=[0.5, 0.75], score_thresholds=[0.0]
+    )
 
     actual_metrics = [m.to_dict() for m in metrics[MetricType.AR]]
     expected_metrics = expected_metrics = [
         {
-            "label": {"key": "class", "value": "label1"},
-            "parameters": {
-                "ious": [0.5, 0.55, 0.6, 0.65, 0.7, 0.75, 0.8, 0.85, 0.9, 0.95]
-            },
+           "type": "AR",
             "value": 1.0,
-            "type": "AR",
+            "parameters": {
+                "score_threshold": 0.0,
+                "iou_thresholds": [0.5, 0.75],
+                "label": {"key": "class", "value": "label1"},
+            },
         },
         {
-            "label": {"key": "class", "value": "label4"},
-            "parameters": {
-                "ious": [0.5, 0.55, 0.6, 0.65, 0.7, 0.75, 0.8, 0.85, 0.9, 0.95]
-            },
-            "value": -1.0,
             "type": "AR",
+            "value": 1.0,
+            "parameters": {
+                "score_threshold": 0.0,
+                "iou_thresholds": [0.5, 0.75],
+                "label": {"key": "class", "value": "label2"},
+            },
         },
         {
-            "label": {"key": "class", "value": "label2"},
-            "parameters": {
-                "ious": [0.5, 0.55, 0.6, 0.65, 0.7, 0.75, 0.8, 0.85, 0.9, 0.95]
-            },
-            "value": 1.0,
             "type": "AR",
-        },
+            "value": 0.0,
+            "parameters": {
+                "score_threshold": 0.0,
+                "iou_thresholds": [0.5, 0.75],
+                "label": {"key": "class", "value": "label3"},
+            },
         {
             "label": {"key": "class", "value": "label3"},
             "parameters": {
@@ -540,14 +555,6 @@ def test_ar_ranked_pair_ordering_with_bitmasks(
             "type": "AR",
         },
         {
-            "label": {"key": "class", "value": "label4"},
-            "parameters": {
-                "ious": [0.5, 0.55, 0.6, 0.65, 0.7, 0.75, 0.8, 0.85, 0.9, 0.95]
-            },
-            "value": -1.0,
-            "type": "AR",
-        },
-        {
             "label": {"key": "class", "value": "label2"},
             "parameters": {
                 "ious": [0.5, 0.55, 0.6, 0.65, 0.7, 0.75, 0.8, 0.85, 0.9, 0.95]
@@ -570,25 +577,15 @@ def test_ar_ranked_pair_ordering_with_bitmasks(
         assert m in actual_metrics
 
     actual_metrics = [m.to_dict() for m in metrics[MetricType.mAR]]
-    expected_metrics = [
+    expected_metrics = expected_metrics = [
         {
-            "parameters": {
-                "label_key": "class",
-                "ious": [
-                    0.5,
-                    0.55,
-                    0.6,
-                    0.65,
-                    0.7,
-                    0.75,
-                    0.8,
-                    0.85,
-                    0.9,
-                    0.95,
-                ],
-            },
-            "value": 0.667,
             "type": "mAR",
+            "value": 0.6666666666666666,
+            "parameters": {
+                "score_threshold": 0.0,
+                "iou_thresholds": [0.5, 0.75],
+                "label_key": "class",
+            },
         },
     ]
     for m in actual_metrics:
