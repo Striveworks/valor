@@ -260,9 +260,7 @@ def classifications_no_predictions() -> list[Classification]:
 
 
 @pytest.fixture
-def classifications_multiple_predictions_per_groundtruth() -> list[
-    Classification
-]:
+def classifications_multiclass() -> list[Classification]:
     return [
         Classification(
             uid="uid0",

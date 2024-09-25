@@ -564,3 +564,15 @@ def test_counts_with_tabular_example(
         assert m in expected_metrics
     for m in expected_metrics:
         assert m in actual_metrics
+
+
+def test_counts_true_negatives_check(
+    classifications_multiclass_true_negatives_check: list[Classification],
+):
+    raise NotImplementedError
+
+
+def test_counts_zero_count_check(
+    classifications_multiclass_zero_count: list[Classification],
+):
+    raise NotImplementedError

@@ -408,3 +408,251 @@ def test_detailed_counts_with_example(
         assert m in expected_metrics
     for m in expected_metrics:
         assert m in actual_metrics
+
+
+def test_detailed_counts_mutliclass(
+    classifications_multiclass: list[Classification],
+):
+    loader = DataLoader()
+    loader.add_data(classifications_multiclass)
+    evaluator = loader.finalize()
+
+    metrics = evaluator.compute_detailed_counts(
+        score_thresholds=[0.05, 0.1, 0.3, 0.85],
+        n_samples=5,
+    )
+
+    # test DetailedCounts
+    actual_metrics = [m.to_dict() for m in metrics]
+    expected_metrics = [
+        {
+            "value": {
+                "tp": [2, 2, 1, 0],
+                "fp_misclassification": [3, 3, 2, 0],
+                "fn_misclassification": [0, 0, 1, 0],
+                "fn_missing_prediction": [0, 0, 0, 2],
+                "tn": [0, 0, 1, 3],
+                "tp_examples": [
+                    ["uid0", "uid2"],
+                    ["uid0", "uid2"],
+                    ["uid0"],
+                    [],
+                ],
+                "fp_misclassification_examples": [
+                    ["uid1", "uid4", "uid3"],
+                    ["uid1", "uid4", "uid3"],
+                    ["uid1", "uid4"],
+                    [],
+                ],
+                "fn_misclassification_examples": [[], [], ["uid2"], []],
+                "fn_missing_prediction_examples": [
+                    [],
+                    [],
+                    [],
+                    ["uid0", "uid2"],
+                ],
+                "tn_examples": [[], [], ["uid3"], ["uid1", "uid4", "uid3"]],
+            },
+            "label": {
+                "score_thresholds": [0.05, 0.1, 0.3, 0.85],
+                "label": {"key": "class_label", "value": "cat"},
+            },
+            "type": "DetailedCounts",
+        },
+        {
+            "value": {
+                "tp": [1, 1, 1, 0],
+                "fp_misclassification": [4, 4, 2, 0],
+                "fn_misclassification": [0, 0, 0, 0],
+                "fn_missing_prediction": [0, 0, 0, 1],
+                "tn": [0, 0, 2, 4],
+                "tp_examples": [["uid4"], ["uid4"], ["uid4"], []],
+                "fp_misclassification_examples": [
+                    ["uid2", "uid0", "uid3", "uid1"],
+                    ["uid2", "uid0", "uid3", "uid1"],
+                    ["uid2", "uid0"],
+                    [],
+                ],
+                "fn_misclassification_examples": [[], [], [], []],
+                "fn_missing_prediction_examples": [[], [], [], ["uid4"]],
+                "tn_examples": [
+                    [],
+                    [],
+                    ["uid3", "uid1"],
+                    ["uid2", "uid0", "uid3", "uid1"],
+                ],
+            },
+            "label": {
+                "score_thresholds": [0.05, 0.1, 0.3, 0.85],
+                "label": {"key": "class_label", "value": "dog"},
+            },
+            "type": "DetailedCounts",
+        },
+        {
+            "value": {
+                "tp": [2, 2, 2, 0],
+                "fp_misclassification": [3, 2, 1, 0],
+                "fn_misclassification": [0, 0, 0, 0],
+                "fn_missing_prediction": [0, 0, 0, 2],
+                "tn": [0, 1, 2, 3],
+                "tp_examples": [
+                    ["uid3", "uid1"],
+                    ["uid3", "uid1"],
+                    ["uid3", "uid1"],
+                    [],
+                ],
+                "fp_misclassification_examples": [
+                    ["uid2", "uid0", "uid4"],
+                    ["uid2", "uid0"],
+                    ["uid2"],
+                    [],
+                ],
+                "fn_misclassification_examples": [[], [], [], []],
+                "fn_missing_prediction_examples": [
+                    [],
+                    [],
+                    [],
+                    ["uid3", "uid1"],
+                ],
+                "tn_examples": [
+                    [],
+                    ["uid4"],
+                    ["uid0", "uid4"],
+                    ["uid2", "uid0", "uid4"],
+                ],
+            },
+            "label": {
+                "score_thresholds": [0.05, 0.1, 0.3, 0.85],
+                "label": {"key": "class_label", "value": "bee"},
+            },
+            "type": "DetailedCounts",
+        },
+    ]
+    for m in actual_metrics:
+        assert m in expected_metrics
+    for m in expected_metrics:
+        assert m in actual_metrics
+
+
+def test_detailed_counts_true_negatives_check(
+    classifications_multiclass_true_negatives_check: list[Classification],
+):
+    loader = DataLoader()
+    loader.add_data(classifications_multiclass_true_negatives_check)
+    evaluator = loader.finalize()
+
+    metrics = evaluator.compute_detailed_counts(
+        score_thresholds=[0.05, 0.15, 0.95],
+        n_samples=6,
+    )
+
+    # test DetailedCounts
+    actual_metrics = [m.to_dict() for m in metrics]
+    expected_metrics = [
+        {
+            "value": {
+                "tp": [1, 0, 0],
+                "fp_misclassification": [0, 0, 0],
+                "fn_misclassification": [0, 1, 0],
+                "fn_missing_prediction": [0, 0, 1],
+                "tn": [0, 0, 0],
+                "tp_examples": [[], [], []],
+                "fp_misclassification_examples": [[], [], []],
+                "fn_misclassification_examples": [[], [], []],
+                "fn_missing_prediction_examples": [[], [], []],
+                "tn_examples": [[], [], []],
+            },
+            "label": {
+                "score_thresholds": [0.05, 0.15, 0.95],
+                "label": {"key": "k", "value": "ant"},
+            },
+            "type": "DetailedCounts",
+        },
+    ]
+    for m in actual_metrics:
+        import json
+
+        print(json.dumps(m, indent=4))
+        assert m in expected_metrics
+    for m in expected_metrics:
+        assert m in actual_metrics
+
+
+def test_detailed_counts_zero_count_check(
+    classifications_multiclass_zero_count: list[Classification],
+):
+
+    loader = DataLoader()
+    loader.add_data(classifications_multiclass_zero_count)
+    evaluator = loader.finalize()
+
+    metrics = evaluator.compute_detailed_counts(
+        score_thresholds=[0.05, 0.2, 0.95],
+        n_samples=0,
+    )
+
+    # test DetailedCounts
+    actual_metrics = [m.to_dict() for m in metrics]
+    expected_metrics = [
+        {
+            "value": {
+                "tp": [1, 0, 0],
+                "fp_misclassification": [0, 0, 0],
+                "fn_misclassification": [0, 1, 0],
+                "fn_missing_prediction": [0, 0, 1],
+                "tn": [0, 0, 0],
+                "tp_examples": [[], [], []],
+                "fp_misclassification_examples": [[], [], []],
+                "fn_misclassification_examples": [[], [], []],
+                "fn_missing_prediction_examples": [[], [], []],
+                "tn_examples": [[], [], []],
+            },
+            "label": {
+                "score_thresholds": [0.05, 0.2, 0.95],
+                "label": {"key": "k", "value": "ant"},
+            },
+            "type": "DetailedCounts",
+        },
+        {
+            "value": {
+                "tp": [0, 0, 0],
+                "fp_misclassification": [1, 1, 0],
+                "fn_misclassification": [0, 0, 0],
+                "fn_missing_prediction": [0, 0, 0],
+                "tn": [0, 0, 1],
+                "tp_examples": [[], [], []],
+                "fp_misclassification_examples": [[], [], []],
+                "fn_misclassification_examples": [[], [], []],
+                "fn_missing_prediction_examples": [[], [], []],
+                "tn_examples": [[], [], []],
+            },
+            "label": {
+                "score_thresholds": [0.05, 0.2, 0.95],
+                "label": {"key": "k", "value": "bee"},
+            },
+            "type": "DetailedCounts",
+        },
+        {
+            "value": {
+                "tp": [0, 0, 0],
+                "fp_misclassification": [1, 1, 0],
+                "fn_misclassification": [0, 0, 0],
+                "fn_missing_prediction": [0, 0, 0],
+                "tn": [0, 0, 1],
+                "tp_examples": [[], [], []],
+                "fp_misclassification_examples": [[], [], []],
+                "fn_misclassification_examples": [[], [], []],
+                "fn_missing_prediction_examples": [[], [], []],
+                "tn_examples": [[], [], []],
+            },
+            "label": {
+                "score_thresholds": [0.05, 0.2, 0.95],
+                "label": {"key": "k", "value": "cat"},
+            },
+            "type": "DetailedCounts",
+        },
+    ]
+    for m in actual_metrics:
+        assert m in expected_metrics
+    for m in expected_metrics:
+        assert m in actual_metrics

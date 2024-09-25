@@ -1,7 +1,7 @@
 import json
 
 import pytest
-from valor_lite.classification import DataLoader
+from valor_lite.classification import Classification, DataLoader
 
 
 def test_no_data():
@@ -31,5 +31,14 @@ def test_valor_integration():
     assert loader._evaluator.n_datums == 1
 
 
-def test_mismatch_label_keys():
-    raise NotImplementedError
+def test_mismatch_label_keys(
+    classifications_no_groundtruths: list[Classification],
+    classifications_no_predictions: list[Classification],
+):
+    loader = DataLoader()
+
+    with pytest.raises(ValueError):
+        loader.add_data(classifications_no_groundtruths)
+
+    with pytest.raises(ValueError):
+        loader.add_data(classifications_no_predictions)
