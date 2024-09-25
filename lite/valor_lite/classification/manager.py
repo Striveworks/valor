@@ -13,6 +13,7 @@ from valor_lite.classification.metric import (
     F1,
     ROCAUC,
     Accuracy,
+    ConfusionMatrix,
     Counts,
     DetailedCounts,
     MetricType,
@@ -256,6 +257,7 @@ class Evaluator:
             f1_score,
             rocauc,
             mean_rocauc,
+            confusion,
         ) = compute_metrics(
             data=data,
             label_metadata=label_metadata,
@@ -282,11 +284,35 @@ class Evaluator:
             for label_key_idx in range(len(self.label_key_to_index))
         ]
 
+        metrics[MetricType.ConfusionMatrix] = [
+            ConfusionMatrix(
+                counts={
+                    pd_label[1]: {
+                        gt_label[1]: int(
+                            confusion[score_idx, pd_label_idx, gt_label_idx]
+                        )
+                        for gt_label_idx, gt_label in self.index_to_label.items()
+                        if self.label_index_to_label_key_index[gt_label_idx]
+                        == label_key_idx
+                    }
+                    for pd_label_idx, pd_label in self.index_to_label.items()
+                    if self.label_index_to_label_key_index[pd_label_idx]
+                    == label_key_idx
+                },
+                label_key=label_key,
+                score_threshold=score_thresholds[score_idx],
+                hardmax=hardmax,
+            )
+            for score_idx in range(len(score_thresholds))
+            for label_key, label_key_idx in self.label_key_to_index.items()
+        ]
+
         for label_idx, label in self.index_to_label.items():
 
             kwargs = {
                 "label": label,
                 "score_thresholds": score_thresholds,
+                "hardmax": hardmax,
             }
             row = counts[:, label_idx]
             metrics[MetricType.Counts].append(

@@ -96,6 +96,7 @@ def compute_metrics(
     NDArray[np.floating],
     NDArray[np.floating],
     NDArray[np.floating],
+    NDArray[np.int32],
 ]:
     """
     Computes classification metrics.
@@ -137,6 +138,8 @@ def compute_metrics(
         ROCAUC.
     NDArray[np.floating]
         mROCAUC.
+    NDArray[np.int32]
+        Confusion Matrix.
     """
 
     n_labels = label_metadata.shape[0]
@@ -161,6 +164,7 @@ def compute_metrics(
     )
 
     # calculate metrics at various score thresholds
+    confusion = np.zeros((n_scores, n_labels, n_labels), dtype=np.int32)
     counts = np.zeros((n_scores, n_labels, 4), dtype=np.int32)
     for score_idx in range(n_scores):
         mask_score_threshold = data[:, 3] >= score_thresholds[score_idx]
@@ -168,6 +172,16 @@ def compute_metrics(
 
         if hardmax:
             mask_score &= mask_hardmax
+
+        confusion_pairs, confusion_counts = np.unique(
+            data[mask_score][:, [1, 2]].astype(int), axis=0, return_counts=True
+        )
+        for idx in range(confusion_pairs.shape[0]):
+            confusion[
+                score_idx,
+                confusion_pairs[idx, 1],
+                confusion_pairs[idx, 0],
+            ] = confusion_counts[idx]
 
         mask_tp = mask_matching_labels & mask_score
         mask_fp = ~mask_matching_labels & mask_score
@@ -225,6 +239,7 @@ def compute_metrics(
         f1_score,
         rocauc,
         mean_rocauc,
+        confusion,
     )
 
 

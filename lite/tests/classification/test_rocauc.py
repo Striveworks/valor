@@ -137,7 +137,7 @@ def test_compute_rocauc():
     )
 
     # compute ROCAUC and mROCAUC
-    (_, _, _, _, _, rocauc, mean_rocauc) = compute_metrics(
+    (_, _, _, _, _, rocauc, mean_rocauc, _) = compute_metrics(
         data=animals_and_colors,
         label_metadata=label_metadata,
         n_datums=6,

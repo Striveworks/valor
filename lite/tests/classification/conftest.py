@@ -336,18 +336,6 @@ def classifications_multiclass() -> list[Classification]:
 
 
 @pytest.fixture
-def classifications_multiclass_zero_count() -> list[Classification]:
-    return [
-        Classification(
-            uid="uid1",
-            groundtruths=[("k", "ant")],
-            predictions=[("k", "ant"), ("k", "bee"), ("k", "cat")],
-            scores=[0.15, 0.48, 0.37],
-        )
-    ]
-
-
-@pytest.fixture
 def classifications_multiclass_true_negatives_check() -> list[Classification]:
     return [
         Classification(
@@ -362,4 +350,16 @@ def classifications_multiclass_true_negatives_check() -> list[Classification]:
             predictions=[("k2", "egg"), ("k2", "milk"), ("k2", "flour")],
             scores=[0.15, 0.48, 0.37],
         ),
+    ]
+
+
+@pytest.fixture
+def classifications_multiclass_zero_count() -> list[Classification]:
+    return [
+        Classification(
+            uid="uid1",
+            groundtruths=[("k", "ant")],
+            predictions=[("k", "ant"), ("k", "bee"), ("k", "cat")],
+            scores=[0.15, 0.48, 0.37],
+        )
     ]

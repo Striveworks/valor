@@ -153,6 +153,7 @@ def test_filtering_one_classification(
             },
             "parameters": {
                 "score_thresholds": [0.5],
+                "hardmax": False,
                 "label": {"key": "class", "value": "0"},
             },
         },
@@ -166,6 +167,7 @@ def test_filtering_one_classification(
             },
             "parameters": {
                 "score_thresholds": [0.5],
+                "hardmax": False,
                 "label": {"key": "class", "value": "1"},
             },
         },
@@ -179,6 +181,7 @@ def test_filtering_one_classification(
             },
             "parameters": {
                 "score_thresholds": [0.5],
+                "hardmax": False,
                 "label": {"key": "class", "value": "2"},
             },
         },
@@ -192,6 +195,7 @@ def test_filtering_one_classification(
             },
             "parameters": {
                 "score_thresholds": [0.5],
+                "hardmax": False,
                 "label": {"key": "class", "value": "3"},
             },
         },
@@ -312,6 +316,7 @@ def test_filtering_three_classifications(
             },
             "parameters": {
                 "score_thresholds": [0.5],
+                "hardmax": False,
                 "label": {"key": "class", "value": "0"},
             },
         },
@@ -325,6 +330,7 @@ def test_filtering_three_classifications(
             },
             "parameters": {
                 "score_thresholds": [0.5],
+                "hardmax": False,
                 "label": {"key": "class", "value": "1"},
             },
         },
@@ -338,6 +344,7 @@ def test_filtering_three_classifications(
             },
             "parameters": {
                 "score_thresholds": [0.5],
+                "hardmax": False,
                 "label": {"key": "class", "value": "2"},
             },
         },
@@ -351,6 +358,7 @@ def test_filtering_three_classifications(
             },
             "parameters": {
                 "score_thresholds": [0.5],
+                "hardmax": False,
                 "label": {"key": "class", "value": "3"},
             },
         },
@@ -491,6 +499,7 @@ def test_filtering_six_classifications(
             },
             "parameters": {
                 "score_thresholds": [0.5],
+                "hardmax": False,
                 "label": {"key": "class", "value": "0"},
             },
         },
@@ -504,6 +513,7 @@ def test_filtering_six_classifications(
             },
             "parameters": {
                 "score_thresholds": [0.5],
+                "hardmax": False,
                 "label": {"key": "class", "value": "1"},
             },
         },
@@ -517,6 +527,7 @@ def test_filtering_six_classifications(
             },
             "parameters": {
                 "score_thresholds": [0.5],
+                "hardmax": False,
                 "label": {"key": "class", "value": "2"},
             },
         },
@@ -530,6 +541,7 @@ def test_filtering_six_classifications(
             },
             "parameters": {
                 "score_thresholds": [0.5],
+                "hardmax": False,
                 "label": {"key": "class", "value": "3"},
             },
         },

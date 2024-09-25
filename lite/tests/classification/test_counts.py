@@ -44,7 +44,7 @@ def test_counts_computation():
 
     score_thresholds = np.array([0.25, 0.75], dtype=np.float64)
 
-    (counts, _, _, _, _, _, _,) = compute_metrics(
+    (counts, _, _, _, _, _, _, _) = compute_metrics(
         data=data,
         label_metadata=label_metadata,
         score_thresholds=score_thresholds,
@@ -136,6 +136,7 @@ def test_counts_basic(classifications_basic: list[Classification]):
             },
             "parameters": {
                 "score_thresholds": [0.25, 0.75],
+                "hardmax": True,
                 "label": {"key": "class", "value": "0"},
             },
         },
@@ -149,6 +150,7 @@ def test_counts_basic(classifications_basic: list[Classification]):
             },
             "parameters": {
                 "score_thresholds": [0.25, 0.75],
+                "hardmax": True,
                 "label": {"key": "class", "value": "1"},
             },
         },
@@ -162,6 +164,7 @@ def test_counts_basic(classifications_basic: list[Classification]):
             },
             "parameters": {
                 "score_thresholds": [0.25, 0.75],
+                "hardmax": True,
                 "label": {"key": "class", "value": "2"},
             },
         },
@@ -175,6 +178,7 @@ def test_counts_basic(classifications_basic: list[Classification]):
             },
             "parameters": {
                 "score_thresholds": [0.25, 0.75],
+                "hardmax": True,
                 "label": {"key": "class", "value": "3"},
             },
         },
@@ -208,6 +212,7 @@ def test_counts_unit(
             },
             "parameters": {
                 "score_thresholds": [0.5],
+                "hardmax": True,
                 "label": {"key": "class", "value": "0"},
             },
         },
@@ -221,6 +226,7 @@ def test_counts_unit(
             },
             "parameters": {
                 "score_thresholds": [0.5],
+                "hardmax": True,
                 "label": {"key": "class", "value": "1"},
             },
         },
@@ -234,6 +240,7 @@ def test_counts_unit(
             },
             "parameters": {
                 "score_thresholds": [0.5],
+                "hardmax": True,
                 "label": {"key": "class", "value": "2"},
             },
         },
@@ -267,6 +274,7 @@ def test_counts_with_example(
             },
             "parameters": {
                 "score_thresholds": [0.5],
+                "hardmax": True,
                 "label": {"key": "animal", "value": "bird"},
             },
         },
@@ -280,6 +288,7 @@ def test_counts_with_example(
             },
             "parameters": {
                 "score_thresholds": [0.5],
+                "hardmax": True,
                 "label": {"key": "animal", "value": "dog"},
             },
         },
@@ -293,6 +302,7 @@ def test_counts_with_example(
             },
             "parameters": {
                 "score_thresholds": [0.5],
+                "hardmax": True,
                 "label": {"key": "animal", "value": "cat"},
             },
         },
@@ -306,6 +316,7 @@ def test_counts_with_example(
             },
             "parameters": {
                 "score_thresholds": [0.5],
+                "hardmax": True,
                 "label": {"key": "color", "value": "white"},
             },
         },
@@ -319,6 +330,7 @@ def test_counts_with_example(
             },
             "parameters": {
                 "score_thresholds": [0.5],
+                "hardmax": True,
                 "label": {"key": "color", "value": "red"},
             },
         },
@@ -332,6 +344,7 @@ def test_counts_with_example(
             },
             "parameters": {
                 "score_thresholds": [0.5],
+                "hardmax": True,
                 "label": {"key": "color", "value": "blue"},
             },
         },
@@ -345,6 +358,7 @@ def test_counts_with_example(
             },
             "parameters": {
                 "score_thresholds": [0.5],
+                "hardmax": True,
                 "label": {"key": "color", "value": "black"},
             },
         },
@@ -396,6 +410,7 @@ def test_counts_with_image_example(
             },
             "parameters": {
                 "score_thresholds": [0.0],
+                "hardmax": True,
                 "label": {"key": "k3", "value": "v1"},
             },
         },
@@ -409,6 +424,7 @@ def test_counts_with_image_example(
             },
             "parameters": {
                 "score_thresholds": [0.0],
+                "hardmax": True,
                 "label": {"key": "k3", "value": "v3"},
             },
         },
@@ -423,6 +439,7 @@ def test_counts_with_image_example(
             },
             "parameters": {
                 "score_thresholds": [0.0],
+                "hardmax": True,
                 "label": {"key": "k4", "value": "v1"},
             },
         },
@@ -436,6 +453,7 @@ def test_counts_with_image_example(
             },
             "parameters": {
                 "score_thresholds": [0.0],
+                "hardmax": True,
                 "label": {"key": "k4", "value": "v4"},
             },
         },
@@ -449,6 +467,7 @@ def test_counts_with_image_example(
             },
             "parameters": {
                 "score_thresholds": [0.0],
+                "hardmax": True,
                 "label": {"key": "k4", "value": "v5"},
             },
         },
@@ -462,6 +481,7 @@ def test_counts_with_image_example(
             },
             "parameters": {
                 "score_thresholds": [0.0],
+                "hardmax": True,
                 "label": {"key": "k4", "value": "v8"},
             },
         },
@@ -476,6 +496,7 @@ def test_counts_with_image_example(
             },
             "parameters": {
                 "score_thresholds": [0.0],
+                "hardmax": True,
                 "label": {"key": "k5", "value": "v1"},
             },
         },
@@ -489,6 +510,7 @@ def test_counts_with_image_example(
             },
             "parameters": {
                 "score_thresholds": [0.0],
+                "hardmax": True,
                 "label": {"key": "k5", "value": "v5"},
             },
         },
@@ -530,6 +552,7 @@ def test_counts_with_tabular_example(
             },
             "parameters": {
                 "score_thresholds": [0.0],
+                "hardmax": True,
                 "label": {"key": "class", "value": "0"},
             },
         },
@@ -543,6 +566,7 @@ def test_counts_with_tabular_example(
             },
             "parameters": {
                 "score_thresholds": [0.0],
+                "hardmax": True,
                 "label": {"key": "class", "value": "1"},
             },
         },
@@ -556,6 +580,7 @@ def test_counts_with_tabular_example(
             },
             "parameters": {
                 "score_thresholds": [0.0],
+                "hardmax": True,
                 "label": {"key": "class", "value": "2"},
             },
         },
@@ -596,6 +621,7 @@ def test_counts_mutliclass(
             },
             "parameters": {
                 "score_thresholds": [0.05, 0.1, 0.3, 0.85],
+                "hardmax": True,
                 "label": {"key": "class_label", "value": "cat"},
             },
             "type": "Counts",
@@ -609,6 +635,7 @@ def test_counts_mutliclass(
             },
             "parameters": {
                 "score_thresholds": [0.05, 0.1, 0.3, 0.85],
+                "hardmax": True,
                 "label": {"key": "class_label", "value": "dog"},
             },
             "type": "Counts",
@@ -622,6 +649,7 @@ def test_counts_mutliclass(
             },
             "parameters": {
                 "score_thresholds": [0.05, 0.1, 0.3, 0.85],
+                "hardmax": True,
                 "label": {"key": "class_label", "value": "bee"},
             },
             "type": "Counts",
@@ -670,6 +698,7 @@ def test_counts_true_negatives_check(
             },
             "parameters": {
                 "score_thresholds": [0.05, 0.15, 0.95],
+                "hardmax": True,
                 "label": {"key": "k1", "value": "ant"},
             },
             "type": "Counts",
@@ -683,6 +712,7 @@ def test_counts_true_negatives_check(
             },
             "parameters": {
                 "score_thresholds": [0.05, 0.15, 0.95],
+                "hardmax": True,
                 "label": {"key": "k1", "value": "bee"},
             },
             "type": "Counts",
@@ -696,6 +726,7 @@ def test_counts_true_negatives_check(
             },
             "parameters": {
                 "score_thresholds": [0.05, 0.15, 0.95],
+                "hardmax": True,
                 "label": {"key": "k1", "value": "cat"},
             },
             "type": "Counts",
@@ -709,6 +740,7 @@ def test_counts_true_negatives_check(
             },
             "parameters": {
                 "score_thresholds": [0.05, 0.15, 0.95],
+                "hardmax": True,
                 "label": {"key": "k2", "value": "egg"},
             },
             "type": "Counts",
@@ -722,6 +754,7 @@ def test_counts_true_negatives_check(
             },
             "parameters": {
                 "score_thresholds": [0.05, 0.15, 0.95],
+                "hardmax": True,
                 "label": {"key": "k2", "value": "milk"},
             },
             "type": "Counts",
@@ -735,6 +768,7 @@ def test_counts_true_negatives_check(
             },
             "parameters": {
                 "score_thresholds": [0.05, 0.15, 0.95],
+                "hardmax": True,
                 "label": {"key": "k2", "value": "flour"},
             },
             "type": "Counts",
@@ -780,6 +814,7 @@ def test_counts_zero_count_check(
             },
             "parameters": {
                 "score_thresholds": [0.05, 0.2, 0.95],
+                "hardmax": True,
                 "label": {"key": "k", "value": "ant"},
             },
             "type": "Counts",
@@ -793,6 +828,7 @@ def test_counts_zero_count_check(
             },
             "parameters": {
                 "score_thresholds": [0.05, 0.2, 0.95],
+                "hardmax": True,
                 "label": {"key": "k", "value": "bee"},
             },
             "type": "Counts",
@@ -806,6 +842,7 @@ def test_counts_zero_count_check(
             },
             "parameters": {
                 "score_thresholds": [0.05, 0.2, 0.95],
+                "hardmax": True,
                 "label": {"key": "k", "value": "cat"},
             },
             "type": "Counts",

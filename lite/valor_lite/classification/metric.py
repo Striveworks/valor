@@ -13,6 +13,7 @@ class MetricType(Enum):
     Recall = "Recall"
     Accuracy = "Accuracy"
     F1 = "F1"
+    ConfusionMatrix = "ConfusionMatrix"
 
 
 @dataclass
@@ -22,6 +23,7 @@ class Counts:
     fn: list[int]
     tn: list[int]
     score_thresholds: list[float]
+    hardmax: bool
     label: tuple[str, str]
 
     @property
@@ -36,6 +38,7 @@ class Counts:
             },
             parameters={
                 "score_thresholds": self.score_thresholds,
+                "hardmax": self.hardmax,
                 "label": {
                     "key": self.label[0],
                     "value": self.label[1],
@@ -48,9 +51,37 @@ class Counts:
 
 
 @dataclass
+class ConfusionMatrix:
+    """
+    Confusion matrix mapping predictions to ground truths.
+    """
+
+    counts: dict[str, dict[str, int]]
+    label_key: str
+    score_threshold: float
+    hardmax: bool
+
+    @property
+    def metric(self) -> Metric:
+        return Metric(
+            type=type(self).__name__,
+            value=self.counts,
+            parameters={
+                "score_threshold": self.score_threshold,
+                "hardmax": self.hardmax,
+                "label_key": self.label_key,
+            },
+        )
+
+    def to_dict(self) -> dict:
+        return self.metric.to_dict()
+
+
+@dataclass
 class _ThresholdValue:
     value: list[float]
     score_thresholds: list[float]
+    hardmax: bool
     label: tuple[str, str]
 
     @property
@@ -60,6 +91,7 @@ class _ThresholdValue:
             value=self.value,
             parameters={
                 "score_thresholds": self.score_thresholds,
+                "hardmax": self.hardmax,
                 "label": {
                     "key": self.label[0],
                     "value": self.label[1],

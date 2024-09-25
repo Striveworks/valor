@@ -44,7 +44,7 @@ def test_precision_computation():
 
     score_thresholds = np.array([0.25, 0.75], dtype=np.float64)
 
-    (_, precision, _, _, _, _, _,) = compute_metrics(
+    (_, precision, _, _, _, _, _, _) = compute_metrics(
         data=data,
         label_metadata=label_metadata,
         score_thresholds=score_thresholds,
@@ -94,6 +94,7 @@ def test_precision_basic(classifications_basic: list[Classification]):
             "value": [1.0, 1.0],
             "parameters": {
                 "score_thresholds": [0.25, 0.75],
+                "hardmax": True,
                 "label": {"key": "class", "value": "0"},
             },
         },
@@ -102,6 +103,7 @@ def test_precision_basic(classifications_basic: list[Classification]):
             "value": [1.0, 0.0],
             "parameters": {
                 "score_thresholds": [0.25, 0.75],
+                "hardmax": True,
                 "label": {"key": "class", "value": "3"},
             },
         },
@@ -129,6 +131,7 @@ def test_precision_with_example(
             "value": [1.0],
             "parameters": {
                 "score_thresholds": [0.5],
+                "hardmax": True,
                 "label": {"key": "animal", "value": "bird"},
             },
         },
@@ -137,6 +140,7 @@ def test_precision_with_example(
             "value": [0.0],
             "parameters": {
                 "score_thresholds": [0.5],
+                "hardmax": True,
                 "label": {"key": "animal", "value": "dog"},
             },
         },
@@ -145,6 +149,7 @@ def test_precision_with_example(
             "value": [1 / 3],
             "parameters": {
                 "score_thresholds": [0.5],
+                "hardmax": True,
                 "label": {"key": "animal", "value": "cat"},
             },
         },
@@ -153,6 +158,7 @@ def test_precision_with_example(
             "value": [0.5],
             "parameters": {
                 "score_thresholds": [0.5],
+                "hardmax": True,
                 "label": {"key": "color", "value": "white"},
             },
         },
@@ -161,6 +167,7 @@ def test_precision_with_example(
             "value": [0.5],
             "parameters": {
                 "score_thresholds": [0.5],
+                "hardmax": True,
                 "label": {"key": "color", "value": "red"},
             },
         },
@@ -169,6 +176,7 @@ def test_precision_with_example(
             "value": [0.0],
             "parameters": {
                 "score_thresholds": [0.5],
+                "hardmax": True,
                 "label": {"key": "color", "value": "blue"},
             },
         },
@@ -177,6 +185,7 @@ def test_precision_with_example(
             "value": [0.0],
             "parameters": {
                 "score_thresholds": [0.5],
+                "hardmax": True,
                 "label": {"key": "color", "value": "black"},
             },
         },
@@ -222,6 +231,7 @@ def test_precision_with_image_example(
             "value": [1.0],
             "parameters": {
                 "score_thresholds": [0.0],
+                "hardmax": True,
                 "label": {"key": "k4", "value": "v4"},
             },
         },
@@ -230,6 +240,7 @@ def test_precision_with_image_example(
             "value": [0.0],
             "parameters": {
                 "score_thresholds": [0.0],
+                "hardmax": True,
                 "label": {"key": "k5", "value": "v5"},
             },
         },
@@ -238,6 +249,7 @@ def test_precision_with_image_example(
             "value": [0.0],
             "parameters": {
                 "score_thresholds": [0.0],
+                "hardmax": True,
                 "label": {"key": "k3", "value": "v3"},
             },
         },
@@ -274,6 +286,7 @@ def test_precision_with_tabular_example(
             "value": [0.5],
             "parameters": {
                 "score_thresholds": [0.0],
+                "hardmax": True,
                 "label": {"key": "class", "value": "0"},
             },
         },
@@ -282,6 +295,7 @@ def test_precision_with_tabular_example(
             "value": [0.6666666666666666],
             "parameters": {
                 "score_thresholds": [0.0],
+                "hardmax": True,
                 "label": {"key": "class", "value": "1"},
             },
         },
@@ -290,6 +304,7 @@ def test_precision_with_tabular_example(
             "value": [0.0],
             "parameters": {
                 "score_thresholds": [0.0],
+                "hardmax": True,
                 "label": {"key": "class", "value": "2"},
             },
         },
