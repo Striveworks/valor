@@ -432,3 +432,77 @@ def test_ar_true_positive_deassignment(
         assert m in expected_metrics
     for m in expected_metrics:
         assert m in actual_metrics
+
+
+def test_ar_ranked_pair_ordering(detection_ranked_pair_ordering: Detection):
+
+    loader = DataLoader()
+    loader.add_data(detections=[detection_ranked_pair_ordering])
+    evaluator = loader.finalize()
+
+    assert evaluator.metadata == {
+        "ignored_prediction_labels": [
+            ("class", "label4"),
+        ],
+        "missing_prediction_labels": [],
+        "n_datums": 1,
+        "n_groundtruths": 3,
+        "n_labels": 4,
+        "n_predictions": 4,
+    }
+
+    metrics = evaluator.evaluate(
+        iou_thresholds=[0.5, 0.75], score_thresholds=[0.0]
+    )
+
+    actual_metrics = [m.to_dict() for m in metrics[MetricType.AR]]
+    expected_metrics = expected_metrics = [
+        {
+            "type": "AR",
+            "value": 1.0,
+            "parameters": {
+                "score_threshold": 0.0,
+                "iou_thresholds": [0.5, 0.75],
+                "label": {"key": "class", "value": "label1"},
+            },
+        },
+        {
+            "type": "AR",
+            "value": 1.0,
+            "parameters": {
+                "score_threshold": 0.0,
+                "iou_thresholds": [0.5, 0.75],
+                "label": {"key": "class", "value": "label2"},
+            },
+        },
+        {
+            "type": "AR",
+            "value": 0.0,
+            "parameters": {
+                "score_threshold": 0.0,
+                "iou_thresholds": [0.5, 0.75],
+                "label": {"key": "class", "value": "label3"},
+            },
+        },
+    ]
+    for m in actual_metrics:
+        assert m in expected_metrics
+    for m in expected_metrics:
+        assert m in actual_metrics
+
+    actual_metrics = [m.to_dict() for m in metrics[MetricType.mAR]]
+    expected_metrics = expected_metrics = [
+        {
+            "type": "mAR",
+            "value": 0.6666666666666666,
+            "parameters": {
+                "score_threshold": 0.0,
+                "iou_thresholds": [0.5, 0.75],
+                "label_key": "class",
+            },
+        },
+    ]
+    for m in actual_metrics:
+        assert m in expected_metrics
+    for m in expected_metrics:
+        assert m in actual_metrics
