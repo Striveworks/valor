@@ -1,7 +1,10 @@
 from valor_lite.detection import DataLoader, Detection, MetricType
 
 
-def test_recall_metrics(basic_detections: list[Detection]):
+def test_recall_metrics(
+    basic_detections: list[Detection],
+    basic_rotated_detections: list[Detection],
+):
     """
     Basic object detection test.
 
@@ -18,103 +21,103 @@ def test_recall_metrics(basic_detections: list[Detection]):
         datum uid2
             box 2 - label (k2, v2) - score 0.98 - fp
     """
+    for input_ in [basic_detections, basic_rotated_detections]:
+        manager = DataLoader()
+        manager.add_data(input_)
+        evaluator = manager.finalize()
 
-    manager = DataLoader()
-    manager.add_data(basic_detections)
-    evaluator = manager.finalize()
+        metrics = evaluator.evaluate(
+            iou_thresholds=[0.1, 0.6],
+            score_thresholds=[0.0, 0.5],
+        )
 
-    metrics = evaluator.evaluate(
-        iou_thresholds=[0.1, 0.6],
-        score_thresholds=[0.0, 0.5],
-    )
+        assert evaluator.ignored_prediction_labels == []
+        assert evaluator.missing_prediction_labels == []
+        assert evaluator.n_datums == 2
+        assert evaluator.n_labels == 2
+        assert evaluator.n_groundtruths == 3
+        assert evaluator.n_predictions == 2
 
-    assert evaluator.ignored_prediction_labels == []
-    assert evaluator.missing_prediction_labels == []
-    assert evaluator.n_datums == 2
-    assert evaluator.n_labels == 2
-    assert evaluator.n_groundtruths == 3
-    assert evaluator.n_predictions == 2
-
-    # test Recall
-    actual_metrics = [m.to_dict() for m in metrics[MetricType.Recall]]
-    expected_metrics = [
-        {
-            "type": "Recall",
-            "value": 0.0,
-            "parameters": {
-                "iou": 0.1,
-                "score": 0.0,
-                "label": {"key": "k2", "value": "v2"},
+        # test Recall
+        actual_metrics = [m.to_dict() for m in metrics[MetricType.Recall]]
+        expected_metrics = [
+            {
+                "type": "Recall",
+                "value": 0.0,
+                "parameters": {
+                    "iou": 0.1,
+                    "score": 0.0,
+                    "label": {"key": "k2", "value": "v2"},
+                },
             },
-        },
-        {
-            "type": "Recall",
-            "value": 0.0,
-            "parameters": {
-                "iou": 0.6,
-                "score": 0.0,
-                "label": {"key": "k2", "value": "v2"},
+            {
+                "type": "Recall",
+                "value": 0.0,
+                "parameters": {
+                    "iou": 0.6,
+                    "score": 0.0,
+                    "label": {"key": "k2", "value": "v2"},
+                },
             },
-        },
-        {
-            "type": "Recall",
-            "value": 0.5,
-            "parameters": {
-                "iou": 0.1,
-                "score": 0.0,
-                "label": {"key": "k1", "value": "v1"},
+            {
+                "type": "Recall",
+                "value": 0.5,
+                "parameters": {
+                    "iou": 0.1,
+                    "score": 0.0,
+                    "label": {"key": "k1", "value": "v1"},
+                },
             },
-        },
-        {
-            "type": "Recall",
-            "value": 0.5,
-            "parameters": {
-                "iou": 0.6,
-                "score": 0.0,
-                "label": {"key": "k1", "value": "v1"},
+            {
+                "type": "Recall",
+                "value": 0.5,
+                "parameters": {
+                    "iou": 0.6,
+                    "score": 0.0,
+                    "label": {"key": "k1", "value": "v1"},
+                },
             },
-        },
-        {
-            "type": "Recall",
-            "value": 0.0,
-            "parameters": {
-                "iou": 0.1,
-                "score": 0.5,
-                "label": {"key": "k2", "value": "v2"},
+            {
+                "type": "Recall",
+                "value": 0.0,
+                "parameters": {
+                    "iou": 0.1,
+                    "score": 0.5,
+                    "label": {"key": "k2", "value": "v2"},
+                },
             },
-        },
-        {
-            "type": "Recall",
-            "value": 0.0,
-            "parameters": {
-                "iou": 0.6,
-                "score": 0.5,
-                "label": {"key": "k2", "value": "v2"},
+            {
+                "type": "Recall",
+                "value": 0.0,
+                "parameters": {
+                    "iou": 0.6,
+                    "score": 0.5,
+                    "label": {"key": "k2", "value": "v2"},
+                },
             },
-        },
-        {
-            "type": "Recall",
-            "value": 0.0,
-            "parameters": {
-                "iou": 0.1,
-                "score": 0.5,
-                "label": {"key": "k1", "value": "v1"},
+            {
+                "type": "Recall",
+                "value": 0.0,
+                "parameters": {
+                    "iou": 0.1,
+                    "score": 0.5,
+                    "label": {"key": "k1", "value": "v1"},
+                },
             },
-        },
-        {
-            "type": "Recall",
-            "value": 0.0,
-            "parameters": {
-                "iou": 0.6,
-                "score": 0.5,
-                "label": {"key": "k1", "value": "v1"},
+            {
+                "type": "Recall",
+                "value": 0.0,
+                "parameters": {
+                    "iou": 0.6,
+                    "score": 0.5,
+                    "label": {"key": "k1", "value": "v1"},
+                },
             },
-        },
-    ]
-    for m in actual_metrics:
-        assert m in expected_metrics
-    for m in expected_metrics:
-        assert m in actual_metrics
+        ]
+        for m in actual_metrics:
+            assert m in expected_metrics
+        for m in expected_metrics:
+            assert m in actual_metrics
 
 
 def test_recall_false_negatives_single_datum_baseline(

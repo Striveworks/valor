@@ -1,12 +1,17 @@
 from collections import defaultdict
 from dataclasses import dataclass
-
+from typing import Type
 import numpy as np
 from numpy.typing import NDArray
 from tqdm import tqdm
-from valor_lite.detection.annotation import Detection
+from valor_lite.detection.annotation import (
+    Bitmask,
+    BoundingBox,
+    Detection,
+    Polygon,
+)
 from valor_lite.detection.computation import (
-    compute_detailed_pr_curve,
+    compute_detailed_counts,
     compute_iou,
     compute_metrics,
     compute_ranked_pairs,
@@ -19,8 +24,7 @@ from valor_lite.detection.metric import (
     APAveragedOverIOUs,
     ARAveragedOverScores,
     Counts,
-    DetailedPrecisionRecallCurve,
-    DetailedPrecisionRecallPoint,
+    DetailedCounts,
     MetricType,
     Precision,
     PrecisionRecallCurve,
@@ -35,12 +39,12 @@ from valor_lite.detection.metric import (
 Usage
 -----
 
-manager = DataLoader()
-manager.add_data(
+loader = DataLoader()
+loader.add_data(
     groundtruths=groundtruths,
     predictions=predictions,
 )
-evaluator = manager.finalize()
+evaluator = loader.finalize()
 
 metrics = evaluator.evaluate(iou_thresholds=[0.5])
 
@@ -50,6 +54,90 @@ ar_metrics = metrics[MetricType.AR]
 filter_mask = evaluator.create_filter(datum_uids=["uid1", "uid2"])
 filtered_metrics = evaluator.evaluate(iou_thresholds=[0.5], filter_mask=filter_mask)
 """
+
+
+# TODO check test coverage
+def _get_annotation_annotation_type(
+    detection: Detection,
+) -> Type[BoundingBox] | Type[Polygon] | Type[Bitmask]:
+    """Check that a detection only contains one type of annotation type, and return that specific type."""
+    types = set(
+        type(annotation)
+        for annotation in detection.groundtruths + detection.predictions
+    )
+
+    if (not len(types) == 1) or (
+        not all(
+            [
+                issubclass(type_, (BoundingBox, Bitmask, Polygon))
+                for type_ in types
+            ]
+        )
+    ):
+        raise ValueError(
+            "Annotations must be a list of BoundingBox, Bitmask, or Polygon objects. Only one representation type per detection is allowed."
+        )
+
+    return list(types)[0]
+
+
+def _get_annotation_annotation_type_from_valor_dict(
+    detection: dict,
+) -> Type[BoundingBox] | Type[Polygon] | Type[Bitmask]:
+    """Check that a detection only contains one type of annotation type for a valor dictionary, and return that specific type."""
+    contains_bbox = detection["annotations"][0]["bounding_box"] is not None
+    contains_bitmask = detection["annotations"][0]["raster"] is not None
+    contains_polygon = detection["annotations"][0]["polygon"] is not None
+
+    if sum([contains_bbox, contains_bitmask, contains_polygon]) > 1:
+        raise ValueError(
+            "Annotations must be a list of BoundingBox, Bitmask, or Polygon objects. Only one representation type per detection is allowed."
+        )
+
+    return (
+        BoundingBox
+        if contains_bbox
+        else Bitmask if contains_bitmask else Polygon
+    )
+
+
+def _get_annotation_representation(
+    obj: BoundingBox | Bitmask | Polygon,
+) -> np.ndarray | tuple | Polygon:  # TODO fix return type
+    """Get the correct representation of an annotation object."""
+
+    representation = (
+        obj.extrema
+        if isinstance(obj, BoundingBox)
+        else (obj.mask if isinstance(obj, Bitmask) else obj.shape)
+    )
+
+    return representation
+
+
+def _get_annotation_data(
+    keyed_groundtruths: dict,
+    keyed_predictions: dict,
+    annotation_type: Type[BoundingBox] | Type[Polygon] | Type[Bitmask],
+    key=int,
+) -> np.ndarray:
+    """Create an array of annotation pairs for use when calculating IOU."""
+    if annotation_type == BoundingBox:
+        return np.array(
+            [
+                np.array([*gextrema, *pextrema])
+                for _, _, _, pextrema in keyed_predictions[key]
+                for _, _, gextrema in keyed_groundtruths[key]
+            ]
+        )
+    else:
+        return np.array(
+            [
+                np.array([groundtruth_obj, prediction_obj])
+                for _, _, _, prediction_obj in keyed_predictions[key]
+                for _, _, groundtruth_obj in keyed_groundtruths[key]
+            ]
+        )
 
 
 @dataclass
@@ -120,7 +208,7 @@ class Evaluator:
         label_keys: list[str] | NDArray[np.int32] | None = None,
     ) -> Filter:
         """
-        Creates a boolean mask that can be passed to an evaluation.
+        Creates a filter that can be passed to an evaluation.
 
         Parameters
         ----------
@@ -152,9 +240,9 @@ class Evaluator:
                     dtype=np.int32,
                 )
             mask = np.zeros_like(mask_pairs, dtype=np.bool_)
-            mask[
-                np.isin(self._ranked_pairs[:, 0].astype(int), datum_uids)
-            ] = True
+            mask[np.isin(self._ranked_pairs[:, 0].astype(int), datum_uids)] = (
+                True
+            )
             mask_pairs &= mask
 
             mask = np.zeros_like(mask_datums, dtype=np.bool_)
@@ -208,9 +296,6 @@ class Evaluator:
         return Filter(
             indices=np.where(mask_pairs)[0],
             label_metadata=label_metadata,
-            # uids=datum_uids,
-            # labels=labels,
-            # label_keys=label_keys,
         )
 
     def evaluate(
@@ -255,7 +340,7 @@ class Evaluator:
             pr_curves,
         ) = compute_metrics(
             data=data,
-            label_counts=label_metadata,
+            label_metadata=label_metadata,
             iou_thresholds=np.array(iou_thresholds),
             score_thresholds=np.array(score_thresholds),
         )
@@ -265,7 +350,7 @@ class Evaluator:
         metrics[MetricType.AP] = [
             AP(
                 value=average_precision[iou_idx][label_idx],
-                iou=iou_thresholds[iou_idx],
+                iou_threshold=iou_thresholds[iou_idx],
                 label=self.index_to_label[label_idx],
             )
             for iou_idx in range(average_precision.shape[0])
@@ -276,7 +361,7 @@ class Evaluator:
         metrics[MetricType.mAP] = [
             mAP(
                 value=mean_average_precision[iou_idx][label_key_idx],
-                iou=iou_thresholds[iou_idx],
+                iou_threshold=iou_thresholds[iou_idx],
                 label_key=self.index_to_label_key[label_key_idx],
             )
             for iou_idx in range(mean_average_precision.shape[0])
@@ -286,7 +371,7 @@ class Evaluator:
         metrics[MetricType.APAveragedOverIOUs] = [
             APAveragedOverIOUs(
                 value=average_precision_average_over_ious[label_idx],
-                ious=iou_thresholds,
+                iou_thresholds=iou_thresholds,
                 label=self.index_to_label[label_idx],
             )
             for label_idx in range(self.n_labels)
@@ -296,7 +381,7 @@ class Evaluator:
         metrics[MetricType.mAPAveragedOverIOUs] = [
             mAPAveragedOverIOUs(
                 value=mean_average_precision_average_over_ious[label_key_idx],
-                ious=iou_thresholds,
+                iou_thresholds=iou_thresholds,
                 label_key=self.index_to_label_key[label_key_idx],
             )
             for label_key_idx in range(
@@ -307,8 +392,8 @@ class Evaluator:
         metrics[MetricType.AR] = [
             AR(
                 value=average_recall[score_idx][label_idx],
-                ious=iou_thresholds,
-                score=score_thresholds[score_idx],
+                iou_thresholds=iou_thresholds,
+                score_threshold=score_thresholds[score_idx],
                 label=self.index_to_label[label_idx],
             )
             for score_idx in range(average_recall.shape[0])
@@ -319,8 +404,8 @@ class Evaluator:
         metrics[MetricType.mAR] = [
             mAR(
                 value=mean_average_recall[score_idx][label_key_idx],
-                ious=iou_thresholds,
-                score=score_thresholds[score_idx],
+                iou_thresholds=iou_thresholds,
+                score_threshold=score_thresholds[score_idx],
                 label_key=self.index_to_label_key[label_key_idx],
             )
             for score_idx in range(mean_average_recall.shape[0])
@@ -330,8 +415,8 @@ class Evaluator:
         metrics[MetricType.ARAveragedOverScores] = [
             ARAveragedOverScores(
                 value=average_recall_averaged_over_scores[label_idx],
-                scores=score_thresholds,
-                ious=iou_thresholds,
+                score_thresholds=score_thresholds,
+                iou_thresholds=iou_thresholds,
                 label=self.index_to_label[label_idx],
             )
             for label_idx in range(self.n_labels)
@@ -341,8 +426,8 @@ class Evaluator:
         metrics[MetricType.mARAveragedOverScores] = [
             mARAveragedOverScores(
                 value=mean_average_recall_averaged_over_scores[label_key_idx],
-                scores=score_thresholds,
-                ious=iou_thresholds,
+                score_thresholds=score_thresholds,
+                iou_thresholds=iou_thresholds,
                 label_key=self.index_to_label_key[label_key_idx],
             )
             for label_key_idx in range(
@@ -353,7 +438,7 @@ class Evaluator:
         metrics[MetricType.PrecisionRecallCurve] = [
             PrecisionRecallCurve(
                 precision=list(pr_curves[iou_idx][label_idx]),
-                iou=iou_threshold,
+                iou_threshold=iou_threshold,
                 label=label,
             )
             for iou_idx, iou_threshold in enumerate(iou_thresholds)
@@ -361,14 +446,14 @@ class Evaluator:
             if int(label_metadata[label_idx][0]) > 0
         ]
 
-        for iou_idx, iou_threshold in enumerate(iou_thresholds):
+        for label_idx, label in self.index_to_label.items():
             for score_idx, score_threshold in enumerate(score_thresholds):
-                for label_idx, label in self.index_to_label.items():
+                for iou_idx, iou_threshold in enumerate(iou_thresholds):
                     row = precision_recall[iou_idx][score_idx][label_idx]
                     kwargs = {
                         "label": label,
-                        "iou": iou_threshold,
-                        "score": score_threshold,
+                        "iou_threshold": iou_threshold,
+                        "score_threshold": score_threshold,
                     }
                     metrics[MetricType.Counts].append(
                         Counts(
@@ -405,21 +490,38 @@ class Evaluator:
 
         return metrics
 
-    def compute_detailed_pr_curve(
+    def compute_detailed_counts(
         self,
         iou_thresholds: list[float] = [0.5],
         score_thresholds: list[float] = [
             score / 10.0 for score in range(1, 11)
         ],
         n_samples: int = 0,
-    ) -> list[DetailedPrecisionRecallCurve]:
+    ) -> list[list[DetailedCounts]]:
+        """
+        Computes detailed counting metrics.
+
+        Parameters
+        ----------
+        iou_thresholds : list[float], default=[0.5]
+            List of IoU thresholds to compute metrics for.
+        score_thresholds : list[float], default=[0.1,0.2,...,1.0]
+            List of confidence thresholds to compute metrics for.
+        n_samples : int, default=0
+            Number of datum samples to return per metric.
+
+        Returns
+        -------
+        list[list[DetailedCounts]]
+            Outer list is indexed by label, inner list is by IoU.
+        """
 
         if self._detailed_pairs.size == 0:
             return list()
 
-        metrics = compute_detailed_pr_curve(
+        metrics = compute_detailed_counts(
             self._detailed_pairs,
-            label_counts=self._label_metadata,
+            label_metadata=self._label_metadata,
             iou_thresholds=np.array(iou_thresholds),
             score_thresholds=np.array(score_thresholds),
             n_samples=n_samples,
@@ -431,71 +533,91 @@ class Evaluator:
         fn_misclf_idx = fp_halluc_idx + n_samples + 1
         fn_misprd_idx = fn_misclf_idx + n_samples + 1
 
-        results = list()
-        for label_idx in range(len(metrics)):
-            n_ious, n_scores, _, _ = metrics.shape
-            for iou_idx in range(n_ious):
-                curve = DetailedPrecisionRecallCurve(
-                    iou=iou_thresholds[iou_idx],
-                    value=list(),
+        n_ious, n_scores, n_labels, _ = metrics.shape
+        return [
+            [
+                DetailedCounts(
+                    iou_threshold=iou_thresholds[iou_idx],
                     label=self.index_to_label[label_idx],
+                    score_thresholds=score_thresholds,
+                    tp=metrics[iou_idx, :, label_idx, tp_idx]
+                    .astype(int)
+                    .tolist(),
+                    tp_examples=[
+                        [
+                            self.index_to_uid[int(datum_idx)]
+                            for datum_idx in metrics[iou_idx][score_idx][
+                                label_idx
+                            ][tp_idx + 1 : fp_misclf_idx]
+                            if int(datum_idx) >= 0
+                        ]
+                        for score_idx in range(n_scores)
+                    ],
+                    fp_misclassification=metrics[
+                        iou_idx, :, label_idx, fp_misclf_idx
+                    ]
+                    .astype(int)
+                    .tolist(),
+                    fp_misclassification_examples=[
+                        [
+                            self.index_to_uid[int(datum_idx)]
+                            for datum_idx in metrics[iou_idx][score_idx][
+                                label_idx
+                            ][fp_misclf_idx + 1 : fp_halluc_idx]
+                            if int(datum_idx) >= 0
+                        ]
+                        for score_idx in range(n_scores)
+                    ],
+                    fp_hallucination=metrics[
+                        iou_idx, :, label_idx, fp_halluc_idx
+                    ]
+                    .astype(int)
+                    .tolist(),
+                    fp_hallucination_examples=[
+                        [
+                            self.index_to_uid[int(datum_idx)]
+                            for datum_idx in metrics[iou_idx][score_idx][
+                                label_idx
+                            ][fp_halluc_idx + 1 : fn_misclf_idx]
+                            if int(datum_idx) >= 0
+                        ]
+                        for score_idx in range(n_scores)
+                    ],
+                    fn_misclassification=metrics[
+                        iou_idx, :, label_idx, fn_misclf_idx
+                    ]
+                    .astype(int)
+                    .tolist(),
+                    fn_misclassification_examples=[
+                        [
+                            self.index_to_uid[int(datum_idx)]
+                            for datum_idx in metrics[iou_idx][score_idx][
+                                label_idx
+                            ][fn_misclf_idx + 1 : fn_misprd_idx]
+                            if int(datum_idx) >= 0
+                        ]
+                        for score_idx in range(n_scores)
+                    ],
+                    fn_missing_prediction=metrics[
+                        iou_idx, :, label_idx, fn_misprd_idx
+                    ]
+                    .astype(int)
+                    .tolist(),
+                    fn_missing_prediction_examples=[
+                        [
+                            self.index_to_uid[int(datum_idx)]
+                            for datum_idx in metrics[iou_idx][score_idx][
+                                label_idx
+                            ][fn_misprd_idx + 1 :]
+                            if int(datum_idx) >= 0
+                        ]
+                        for score_idx in range(n_scores)
+                    ],
                 )
-                for score_idx in range(n_scores):
-                    curve.value.append(
-                        DetailedPrecisionRecallPoint(
-                            score=score_thresholds[score_idx],
-                            tp=metrics[iou_idx][score_idx][label_idx][tp_idx],
-                            tp_examples=[
-                                self.index_to_uid[int(datum_idx)]
-                                for datum_idx in metrics[iou_idx][score_idx][
-                                    label_idx
-                                ][tp_idx + 1 : fp_misclf_idx]
-                                if int(datum_idx) >= 0
-                            ],
-                            fp_misclassification=metrics[iou_idx][score_idx][
-                                label_idx
-                            ][fp_misclf_idx],
-                            fp_misclassification_examples=[
-                                self.index_to_uid[int(datum_idx)]
-                                for datum_idx in metrics[iou_idx][score_idx][
-                                    label_idx
-                                ][fp_misclf_idx + 1 : fp_halluc_idx]
-                                if int(datum_idx) >= 0
-                            ],
-                            fp_hallucination=metrics[iou_idx][score_idx][
-                                label_idx
-                            ][fp_halluc_idx],
-                            fp_hallucination_examples=[
-                                self.index_to_uid[int(datum_idx)]
-                                for datum_idx in metrics[iou_idx][score_idx][
-                                    label_idx
-                                ][fp_halluc_idx + 1 : fn_misclf_idx]
-                                if int(datum_idx) >= 0
-                            ],
-                            fn_misclassification=metrics[iou_idx][score_idx][
-                                label_idx
-                            ][fn_misclf_idx],
-                            fn_misclassification_examples=[
-                                self.index_to_uid[int(datum_idx)]
-                                for datum_idx in metrics[iou_idx][score_idx][
-                                    label_idx
-                                ][fn_misclf_idx + 1 : fn_misprd_idx]
-                                if int(datum_idx) >= 0
-                            ],
-                            fn_missing_prediction=metrics[iou_idx][score_idx][
-                                label_idx
-                            ][fn_misprd_idx],
-                            fn_missing_prediction_examples=[
-                                self.index_to_uid[int(datum_idx)]
-                                for datum_idx in metrics[iou_idx][score_idx][
-                                    label_idx
-                                ][fn_misprd_idx + 1 :]
-                                if int(datum_idx) >= 0
-                            ],
-                        )
-                    )
-                results.append(curve)
-        return results
+                for iou_idx in range(n_ious)
+            ]
+            for label_idx in range(n_labels)
+        ]
 
 
 class DataLoader:
@@ -525,9 +647,9 @@ class DataLoader:
                 self._evaluator.index_to_label_key[label_key_id] = label[0]
                 label_key_id += 1
 
-            self._evaluator.label_index_to_label_key_index[
-                label_id
-            ] = self._evaluator.label_key_to_index[label[0]]
+            self._evaluator.label_index_to_label_key_index[label_id] = (
+                self._evaluator.label_key_to_index[label[0]]
+            )
             label_id += 1
 
         return (
@@ -554,46 +676,59 @@ class DataLoader:
             # cache labels and annotations
             keyed_groundtruths = defaultdict(list)
             keyed_predictions = defaultdict(list)
+            annotation_type = _get_annotation_annotation_type(
+                detection=detection
+            )
             for gidx, gann in enumerate(detection.groundtruths):
                 for glabel in gann.labels:
                     label_idx, label_key_idx = self._add_label(glabel)
                     self.groundtruth_count[label_idx][uid_index] += 1
+                    representation = _get_annotation_representation(obj=gann)
                     keyed_groundtruths[label_key_idx].append(
                         (
                             gidx,
                             label_idx,
-                            gann.extrema,
+                            representation,
                         )
                     )
+
             for pidx, pann in enumerate(detection.predictions):
                 for plabel, pscore in zip(pann.labels, pann.scores):
                     label_idx, label_key_idx = self._add_label(plabel)
                     self.prediction_count[label_idx][uid_index] += 1
+                    representation = _get_annotation_representation(
+                        obj=pann,
+                    )
                     keyed_predictions[label_key_idx].append(
                         (
                             pidx,
                             label_idx,
                             pscore,
-                            pann.extrema,
+                            representation,
                         )
                     )
 
             gt_keys = set(keyed_groundtruths.keys())
             pd_keys = set(keyed_predictions.keys())
+            annotation_type = _get_annotation_annotation_type(detection)
             joint_keys = gt_keys.intersection(pd_keys)
             gt_unique_keys = gt_keys - pd_keys
             pd_unique_keys = pd_keys - gt_keys
 
             pairs = list()
             for key in joint_keys:
-                boxes = np.array(
-                    [
-                        np.array([*gextrema, *pextrema])
-                        for _, _, _, pextrema in keyed_predictions[key]
-                        for _, _, gextrema in keyed_groundtruths[key]
-                    ]
+
+                data = _get_annotation_data(
+                    keyed_groundtruths=keyed_groundtruths,
+                    keyed_predictions=keyed_predictions,
+                    key=key,
+                    annotation_type=annotation_type,
                 )
-                ious = compute_iou(boxes)
+
+                ious = compute_iou(
+                    data=data,
+                    annotation_type=annotation_type,
+                )
                 pairs.extend(
                     [
                         np.array(
@@ -664,7 +799,6 @@ class DataLoader:
 
         disable_tqdm = not show_progress
         for groundtruth, prediction in tqdm(detections, disable=disable_tqdm):
-
             # update metadata
             self._evaluator.n_datums += 1
             self._evaluator.n_groundtruths += len(groundtruth["annotations"])
@@ -676,6 +810,17 @@ class DataLoader:
             # cache labels and annotations
             keyed_groundtruths = defaultdict(list)
             keyed_predictions = defaultdict(list)
+            gt_annotation_type = (
+                _get_annotation_annotation_type_from_valor_dict(groundtruth)
+            )
+            pd_annotation_type = (
+                _get_annotation_annotation_type_from_valor_dict(groundtruth)
+            )
+
+            if gt_annotation_type != pd_annotation_type:
+                raise ValueError(
+                    "Groundtruths and predictions must be represented by the same annotation type."
+                )
             for gidx, gann in enumerate(groundtruth["annotations"]):
                 for valor_label in gann["labels"]:
                     glabel = (valor_label["key"], valor_label["value"])
@@ -711,14 +856,17 @@ class DataLoader:
 
             pairs = list()
             for key in joint_keys:
-                boxes = np.array(
-                    [
-                        np.array([*gextrema, *pextrema])
-                        for _, _, _, pextrema in keyed_predictions[key]
-                        for _, _, gextrema in keyed_groundtruths[key]
-                    ]
+                data = _get_annotation_data(
+                    keyed_groundtruths=keyed_groundtruths,
+                    keyed_predictions=keyed_predictions,
+                    key=key,
+                    annotation_type=gt_annotation_type,
                 )
-                ious = compute_iou(boxes)
+
+                ious = compute_iou(
+                    data=data,
+                    annotation_type=gt_annotation_type,
+                )
                 pairs.extend(
                     [
                         np.array(
@@ -839,7 +987,7 @@ class DataLoader:
 
         self._evaluator._ranked_pairs = compute_ranked_pairs(
             self.pairs,
-            label_counts=self._evaluator._label_metadata,
+            label_metadata=self._evaluator._label_metadata,
         )
 
         return self._evaluator

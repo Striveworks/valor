@@ -70,10 +70,6 @@ def test_Bitmask():
             scores=[0.7],
         )
 
-    # test `to_box` function
-    with pytest.raises(NotImplementedError):
-        gt.to_box()
-
 
 def test_Detection():
 
@@ -103,3 +99,6 @@ def test_Detection():
             groundtruths=[gt],
             predictions=[gt],
         )
+
+
+# TODO missing Polygon tests

@@ -24,7 +24,12 @@ def test__compute_average_precision():
     iou_thresholds = np.array([0.1, 0.6])
     score_thresholds = np.array([0.0])
 
-    (results, _, _, _,) = compute_metrics(
+    (
+        results,
+        _,
+        _,
+        _,
+    ) = compute_metrics(
         sorted_pairs,
         label_counts=label_counts,
         iou_thresholds=iou_thresholds,
