@@ -915,7 +915,7 @@ class DataLoader:
                 _get_annotation_annotation_type_from_valor_dict(groundtruth)
             )
             pd_annotation_type = (
-                _get_annotation_annotation_type_from_valor_dict(groundtruth)
+                _get_annotation_annotation_type_from_valor_dict(prediction)
             )
 
             if gt_annotation_type != pd_annotation_type:

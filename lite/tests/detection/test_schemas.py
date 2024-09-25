@@ -99,6 +99,13 @@ def test_Polygon(rect1_rotated_5_degrees_around_origin):
             labels=[("k", "v1"), ("k", "v2")],
             scores=[0.7],
         )
+    # test that we throw a type error if the shape isn't a shapely.geometry.Polygon
+    with pytest.raises(TypeError):
+        Polygon(
+            shape=np.zeros((10, 10), dtype=np.bool_),  # type: ignore - purposefully throwing error
+            labels=[("k", "v1"), ("k", "v2")],
+            scores=[0.7],
+        )
 
 
 def test_Detection():

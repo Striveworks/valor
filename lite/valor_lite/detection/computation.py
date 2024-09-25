@@ -96,9 +96,6 @@ def _compute_bitmask_iou(data: NDArray[np.floating]) -> NDArray[np.floating]:
     intersection_ = np.array([np.logical_and(x, y).sum() for x, y in data])
     union_ = np.array([np.logical_or(x, y).sum() for x, y in data])
 
-    if (intersection_ > union_).any():
-        raise ValueError("Intersection can't be greater than union.")
-
     return intersection_ / union_
 
 
@@ -136,9 +133,6 @@ def _compute_polygon_iou(
             for i, (poly1, poly2) in enumerate(data)
         ]
     )
-
-    if (intersection_ > union_).any():
-        raise ValueError("Intersection can't be greater than union.")
 
     return intersection_ / union_
 
