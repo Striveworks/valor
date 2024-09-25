@@ -143,7 +143,6 @@ def compute_metrics(
     n_label_keys = np.unique(label_metadata[:, 2]).size
     n_scores = score_thresholds.shape[0]
 
-    gt_labels = data[:, 1].astype(int)
     pd_labels = data[:, 2].astype(int)
 
     mask_matching_labels = np.isclose(data[:, 1], data[:, 2])
@@ -176,7 +175,7 @@ def compute_metrics(
         mask_tn = ~mask_matching_labels & ~mask_score
 
         fn = np.unique(data[mask_fn][:, [0, 1]].astype(int), axis=0)
-        tn = np.unique(data[mask_tn][:, [0, 1]].astype(int), axis=0)
+        tn = np.unique(data[mask_tn][:, [0, 2]].astype(int), axis=0)
 
         counts[score_idx, :, 0] = np.bincount(
             pd_labels[mask_tp], minlength=n_labels
