@@ -86,11 +86,32 @@ def _get_annotation_annotation_type_from_valor_dict(
     detection: dict,
 ) -> Type[BoundingBox] | Type[Polygon] | Type[Bitmask]:
     """Check that a detection only contains one type of annotation type for a valor dictionary, and return that specific type."""
-    contains_bbox = detection["annotations"][0]["bounding_box"] is not None
-    contains_bitmask = detection["annotations"][0]["raster"] is not None
-    contains_polygon = detection["annotations"][0]["polygon"] is not None
+    contains_bbox = sum(
+        [
+            annotation["bounding_box"] is not None
+            for annotation in detection["annotations"]
+        ]
+    )
+    contains_bitmask = sum(
+        [
+            annotation["raster"] is not None
+            for annotation in detection["annotations"]
+        ]
+    )
+    contains_polygon = sum(
+        [
+            annotation["polygon"] is not None
+            for annotation in detection["annotations"]
+        ]
+    )
 
-    if sum([contains_bbox, contains_bitmask, contains_polygon]) > 1:
+    if (
+        sum(
+            val == 0
+            for val in [contains_bbox, contains_bitmask, contains_polygon]
+        )
+        == 1
+    ):
         raise ValueError(
             "Annotations must be a list of BoundingBox, Bitmask, or Polygon objects. Only one annotation type per detection is allowed."
         )
