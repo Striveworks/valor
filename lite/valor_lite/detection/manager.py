@@ -58,6 +58,10 @@ class Filter:
 
 
 class Evaluator:
+    """
+    Object Detection Evaluator
+    """
+
     def __init__(self):
 
         # metadata
@@ -87,6 +91,9 @@ class Evaluator:
 
     @property
     def ignored_prediction_labels(self) -> list[tuple[str, str]]:
+        """
+        Prediction labels that are not present in the ground truth set.
+        """
         glabels = set(np.where(self._label_metadata[:, 0] > 0)[0])
         plabels = set(np.where(self._label_metadata[:, 1] > 0)[0])
         return [
@@ -95,6 +102,9 @@ class Evaluator:
 
     @property
     def missing_prediction_labels(self) -> list[tuple[str, str]]:
+        """
+        Ground truth labels that are not present in the prediction set.
+        """
         glabels = set(np.where(self._label_metadata[:, 0] > 0)[0])
         plabels = set(np.where(self._label_metadata[:, 1] > 0)[0])
         return [
@@ -103,6 +113,9 @@ class Evaluator:
 
     @property
     def metadata(self) -> dict:
+        """
+        Evaluation metadata.
+        """
         return {
             "n_datums": self.n_datums,
             "n_groundtruths": self.n_groundtruths,
@@ -216,16 +229,21 @@ class Evaluator:
         filter_: Filter | None = None,
     ) -> dict[MetricType, list]:
         """
-        Runs evaluation over cached data.
+        Performs an evaluation and returns metrics.
 
         Parameters
         ----------
         iou_thresholds : list[float]
-            A list of iou thresholds to compute over.
+            A list of IoU thresholds to compute metrics over.
         score_thresholds : list[float]
-            A list of score thresholds to compute over.
-        filter_mask : NDArray[bool], optional
-            A boolean mask that filters the cached data.
+            A list of score thresholds to compute metrics over.
+        filter_ : Filter, optional
+            An optional filter object.
+
+        Returns
+        -------
+        dict[MetricType, list]
+            A dictionary mapping MetricType enumerations to lists of computed metrics.
         """
 
         data = self._ranked_pairs
@@ -537,6 +555,10 @@ class Evaluator:
 
 
 class DataLoader:
+    """
+    Object Detection DataLoader
+    """
+
     def __init__(self):
         self._evaluator = Evaluator()
         self.pairs = list()
@@ -544,6 +566,19 @@ class DataLoader:
         self.prediction_count = defaultdict(lambda: defaultdict(int))
 
     def _add_datum(self, uid: str) -> int:
+        """
+        Helper function for adding a datum to the cache.
+
+        Parameters
+        ----------
+        uid : str
+            The datum uid.
+
+        Returns
+        -------
+        int
+            The datum index.
+        """
         if uid not in self._evaluator.uid_to_index:
             index = len(self._evaluator.uid_to_index)
             self._evaluator.uid_to_index[uid] = index
@@ -551,6 +586,22 @@ class DataLoader:
         return self._evaluator.uid_to_index[uid]
 
     def _add_label(self, label: tuple[str, str]) -> tuple[int, int]:
+        """
+        Helper function for adding a label to the cache.
+
+        Parameters
+        ----------
+        label : tuple[str, str]
+            The label as a tuple in format (key, value).
+
+        Returns
+        -------
+        int
+            Label index.
+        int
+            Label key index.
+        """
+
         label_id = len(self._evaluator.index_to_label)
         label_key_id = len(self._evaluator.index_to_label_key)
         if label not in self._evaluator.label_to_index:
@@ -578,6 +629,16 @@ class DataLoader:
         detections: list[Detection],
         show_progress: bool = False,
     ):
+        """
+        Adds detections to the cache.
+
+        Parameters
+        ----------
+        detections : list[Detection]
+            A list of Detection objects.
+        show_progress : bool, default=False
+            Toggle for tqdm progress bar.
+        """
         disable_tqdm = not show_progress
         for detection in tqdm(detections, disable=disable_tqdm):
 
@@ -693,6 +754,17 @@ class DataLoader:
         detections: list[tuple[dict, dict]],
         show_progress: bool = False,
     ):
+        """
+        Adds Valor-format detections to the cache.
+
+        Parameters
+        ----------
+        detections : list[tuple[dict, dict]]
+            A list of groundtruth, prediction pairs in Valor-format dictionaries.
+        show_progress : bool, default=False
+            Toggle for tqdm progress bar.
+        """
+
         def _get_bbox_extrema(
             data: list[list[list[float]]],
         ) -> tuple[float, float, float, float]:
@@ -814,6 +886,14 @@ class DataLoader:
             self.pairs.append(np.array(pairs))
 
     def finalize(self) -> Evaluator:
+        """
+        Performs data finalization and some preprocessing steps.
+
+        Returns
+        -------
+        Evaluator
+            A ready-to-use evaluator object.
+        """
 
         self.pairs = [pair for pair in self.pairs if pair.size > 0]
         if len(self.pairs) == 0:
