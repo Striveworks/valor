@@ -478,11 +478,6 @@ def compute_detailed_counts(
                 .all(axis=2)
                 .any(axis=1)
             )
-            mask_fp_halluc_is_tp = (
-                (fp_halluc.reshape(-1, 1, 3) == tp_pds.reshape(1, -1, 3))
-                .all(axis=2)
-                .any(axis=1)
-            )
             mask_fn_misclf_is_tp = (
                 (fn_misclf.reshape(-1, 1, 3) == tp_gts.reshape(1, -1, 3))
                 .all(axis=2)
@@ -491,7 +486,7 @@ def compute_detailed_counts(
 
             tp = tp_pds
             fp_misclf = fp_misclf[~mask_fp_misclf_is_tp]
-            fp_halluc = fp_halluc[~mask_fp_halluc_is_tp]
+            fp_halluc = fp_halluc
             fn_misclf = fn_misclf[~mask_fn_misclf_is_tp]
             fn_misprd = fn_misprd
 
