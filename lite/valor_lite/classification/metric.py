@@ -157,7 +157,7 @@ class DetailedCounts:
                 "fn_missing_prediction_examples": self.fn_missing_prediction_examples,
                 "tn_examples": self.tn_examples,
             },
-            "label": {
+            "parameters": {
                 "score_thresholds": self.scores,
                 "label": {
                     "key": self.label[0],

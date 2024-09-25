@@ -107,7 +107,7 @@ def test_detailed_counts_basic(classifications_basic: list[Classification]):
                 "fn_missing_prediction_examples": [[], []],
                 "tn_examples": [["uid2"], ["uid2"]],
             },
-            "label": {
+            "parameters": {
                 "score_thresholds": [0.25, 0.75],
                 "label": {"key": "class", "value": "0"},
             },
@@ -126,7 +126,7 @@ def test_detailed_counts_basic(classifications_basic: list[Classification]):
                 "fn_missing_prediction_examples": [[], []],
                 "tn_examples": [["uid0"], ["uid0"]],
             },
-            "label": {
+            "parameters": {
                 "score_thresholds": [0.25, 0.75],
                 "label": {"key": "class", "value": "1"},
             },
@@ -145,7 +145,7 @@ def test_detailed_counts_basic(classifications_basic: list[Classification]):
                 "fn_missing_prediction_examples": [[], []],
                 "tn_examples": [["uid0"], ["uid0"]],
             },
-            "label": {
+            "parameters": {
                 "score_thresholds": [0.25, 0.75],
                 "label": {"key": "class", "value": "2"},
             },
@@ -164,7 +164,7 @@ def test_detailed_counts_basic(classifications_basic: list[Classification]):
                 "fn_missing_prediction_examples": [[], ["uid2"]],
                 "tn_examples": [["uid0"], ["uid0"]],
             },
-            "label": {
+            "parameters": {
                 "score_thresholds": [0.25, 0.75],
                 "label": {"key": "class", "value": "3"},
             },
@@ -203,7 +203,7 @@ def test_detailed_counts_unit(
                 "fn_missing_prediction_examples": [[]],
                 "tn_examples": [[]],
             },
-            "label": {
+            "parameters": {
                 "score_thresholds": [0.5],
                 "label": {"key": "class", "value": "0"},
             },
@@ -222,7 +222,7 @@ def test_detailed_counts_unit(
                 "fn_missing_prediction_examples": [[]],
                 "tn_examples": [[]],
             },
-            "label": {
+            "parameters": {
                 "score_thresholds": [0.5],
                 "label": {"key": "class", "value": "1"},
             },
@@ -241,7 +241,7 @@ def test_detailed_counts_unit(
                 "fn_missing_prediction_examples": [[]],
                 "tn_examples": [[]],
             },
-            "label": {
+            "parameters": {
                 "score_thresholds": [0.5],
                 "label": {"key": "class", "value": "2"},
             },
@@ -283,7 +283,7 @@ def test_detailed_counts_with_example(
                 "fn_missing_prediction_examples": [[]],
                 "tn_examples": [["uid5", "uid1", "uid4"]],
             },
-            "label": {
+            "parameters": {
                 "score_thresholds": [0.5],
                 "label": {"key": "animal", "value": "bird"},
             },
@@ -302,7 +302,7 @@ def test_detailed_counts_with_example(
                 "fn_missing_prediction_examples": [[]],
                 "tn_examples": [["uid0", "uid2", "uid4"]],
             },
-            "label": {
+            "parameters": {
                 "score_thresholds": [0.5],
                 "label": {"key": "animal", "value": "dog"},
             },
@@ -321,7 +321,7 @@ def test_detailed_counts_with_example(
                 "fn_missing_prediction_examples": [[]],
                 "tn_examples": [["uid5", "uid0", "uid3"]],
             },
-            "label": {
+            "parameters": {
                 "score_thresholds": [0.5],
                 "label": {"key": "animal", "value": "cat"},
             },
@@ -340,7 +340,7 @@ def test_detailed_counts_with_example(
                 "fn_missing_prediction_examples": [[]],
                 "tn_examples": [["uid2", "uid5", "uid4"]],
             },
-            "label": {
+            "parameters": {
                 "score_thresholds": [0.5],
                 "label": {"key": "color", "value": "white"},
             },
@@ -359,7 +359,7 @@ def test_detailed_counts_with_example(
                 "fn_missing_prediction_examples": [[]],
                 "tn_examples": [["uid0", "uid1", "uid3"]],
             },
-            "label": {
+            "parameters": {
                 "score_thresholds": [0.5],
                 "label": {"key": "color", "value": "red"},
             },
@@ -378,7 +378,7 @@ def test_detailed_counts_with_example(
                 "fn_missing_prediction_examples": [[]],
                 "tn_examples": [["uid0", "uid4", "uid2", "uid5"]],
             },
-            "label": {
+            "parameters": {
                 "score_thresholds": [0.5],
                 "label": {"key": "color", "value": "blue"},
             },
@@ -397,7 +397,7 @@ def test_detailed_counts_with_example(
                 "fn_missing_prediction_examples": [[]],
                 "tn_examples": [["uid2", "uid1", "uid0", "uid5", "uid3"]],
             },
-            "label": {
+            "parameters": {
                 "score_thresholds": [0.5],
                 "label": {"key": "color", "value": "black"},
             },
@@ -462,7 +462,7 @@ def test_detailed_counts_mutliclass(
                 ],
                 "tn_examples": [[], [], ["uid3"], ["uid1", "uid4", "uid3"]],
             },
-            "label": {
+            "parameters": {
                 "score_thresholds": [0.05, 0.1, 0.3, 0.85],
                 "label": {"key": "class_label", "value": "cat"},
             },
@@ -491,7 +491,7 @@ def test_detailed_counts_mutliclass(
                     ["uid2", "uid0", "uid3", "uid1"],
                 ],
             },
-            "label": {
+            "parameters": {
                 "score_thresholds": [0.05, 0.1, 0.3, 0.85],
                 "label": {"key": "class_label", "value": "dog"},
             },
@@ -530,7 +530,7 @@ def test_detailed_counts_mutliclass(
                     ["uid2", "uid0", "uid4"],
                 ],
             },
-            "label": {
+            "parameters": {
                 "score_thresholds": [0.05, 0.1, 0.3, 0.85],
                 "label": {"key": "class_label", "value": "bee"},
             },
@@ -585,7 +585,7 @@ def test_detailed_counts_true_negatives_check(
                 "fn_missing_prediction_examples": [[], [], ["uid1"]],
                 "tn_examples": [[], [], []],
             },
-            "label": {
+            "parameters": {
                 "score_thresholds": [0.05, 0.15, 0.95],
                 "label": {"key": "k1", "value": "ant"},
             },
@@ -604,7 +604,7 @@ def test_detailed_counts_true_negatives_check(
                 "fn_missing_prediction_examples": [[], [], []],
                 "tn_examples": [[], [], ["uid1"]],
             },
-            "label": {
+            "parameters": {
                 "score_thresholds": [0.05, 0.15, 0.95],
                 "label": {"key": "k1", "value": "bee"},
             },
@@ -623,7 +623,7 @@ def test_detailed_counts_true_negatives_check(
                 "fn_missing_prediction_examples": [[], [], []],
                 "tn_examples": [[], [], ["uid1"]],
             },
-            "label": {
+            "parameters": {
                 "score_thresholds": [0.05, 0.15, 0.95],
                 "label": {"key": "k1", "value": "cat"},
             },
@@ -642,7 +642,7 @@ def test_detailed_counts_true_negatives_check(
                 "fn_missing_prediction_examples": [[], [], ["uid2"]],
                 "tn_examples": [[], [], []],
             },
-            "label": {
+            "parameters": {
                 "score_thresholds": [0.05, 0.15, 0.95],
                 "label": {"key": "k2", "value": "egg"},
             },
@@ -661,7 +661,7 @@ def test_detailed_counts_true_negatives_check(
                 "fn_missing_prediction_examples": [[], [], []],
                 "tn_examples": [[], [], ["uid2"]],
             },
-            "label": {
+            "parameters": {
                 "score_thresholds": [0.05, 0.15, 0.95],
                 "label": {"key": "k2", "value": "milk"},
             },
@@ -680,7 +680,7 @@ def test_detailed_counts_true_negatives_check(
                 "fn_missing_prediction_examples": [[], [], []],
                 "tn_examples": [[], [], ["uid2"]],
             },
-            "label": {
+            "parameters": {
                 "score_thresholds": [0.05, 0.15, 0.95],
                 "label": {"key": "k2", "value": "flour"},
             },
@@ -734,7 +734,7 @@ def test_detailed_counts_zero_count_check(
                 "fn_missing_prediction_examples": [[], [], []],
                 "tn_examples": [[], [], []],
             },
-            "label": {
+            "parameters": {
                 "score_thresholds": [0.05, 0.2, 0.95],
                 "label": {"key": "k", "value": "ant"},
             },
@@ -753,7 +753,7 @@ def test_detailed_counts_zero_count_check(
                 "fn_missing_prediction_examples": [[], [], []],
                 "tn_examples": [[], [], []],
             },
-            "label": {
+            "parameters": {
                 "score_thresholds": [0.05, 0.2, 0.95],
                 "label": {"key": "k", "value": "bee"},
             },
@@ -772,7 +772,7 @@ def test_detailed_counts_zero_count_check(
                 "fn_missing_prediction_examples": [[], [], []],
                 "tn_examples": [[], [], []],
             },
-            "label": {
+            "parameters": {
                 "score_thresholds": [0.05, 0.2, 0.95],
                 "label": {"key": "k", "value": "cat"},
             },

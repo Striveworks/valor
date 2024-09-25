@@ -566,7 +566,7 @@ def test_counts_with_tabular_example(
         assert m in actual_metrics
 
 
-def test_detailed_counts_mutliclass(
+def test_counts_mutliclass(
     classifications_multiclass: list[Classification],
 ):
     loader = DataLoader()
@@ -589,12 +589,12 @@ def test_detailed_counts_mutliclass(
     expected_metrics = [
         {
             "value": {
-                "tp": [2, 2, 1, 0],
-                "fp": [3, 3, 2, 0],
-                "fn": [0, 0, 1, 2],
-                "tn": [0, 0, 1, 3],
+                "tp": [1, 1, 1, 0],
+                "fp": [0, 0, 0, 0],
+                "fn": [1, 1, 1, 2],
+                "tn": [3, 3, 3, 3],
             },
-            "label": {
+            "parameters": {
                 "score_thresholds": [0.05, 0.1, 0.3, 0.85],
                 "label": {"key": "class_label", "value": "cat"},
             },
@@ -603,11 +603,11 @@ def test_detailed_counts_mutliclass(
         {
             "value": {
                 "tp": [1, 1, 1, 0],
-                "fp": [4, 4, 2, 0],
+                "fp": [0, 0, 0, 0],
                 "fn": [0, 0, 0, 1],
-                "tn": [0, 0, 2, 4],
+                "tn": [4, 4, 4, 4],
             },
-            "label": {
+            "parameters": {
                 "score_thresholds": [0.05, 0.1, 0.3, 0.85],
                 "label": {"key": "class_label", "value": "dog"},
             },
@@ -616,11 +616,11 @@ def test_detailed_counts_mutliclass(
         {
             "value": {
                 "tp": [2, 2, 2, 0],
-                "fp": [3, 2, 1, 0],
+                "fp": [1, 1, 1, 0],
                 "fn": [0, 0, 0, 2],
-                "tn": [0, 1, 2, 3],
+                "tn": [2, 2, 2, 3],
             },
-            "label": {
+            "parameters": {
                 "score_thresholds": [0.05, 0.1, 0.3, 0.85],
                 "label": {"key": "class_label", "value": "bee"},
             },
@@ -633,7 +633,7 @@ def test_detailed_counts_mutliclass(
         assert m in actual_metrics
 
 
-def test_detailed_counts_true_negatives_check(
+def test_counts_true_negatives_check(
     classifications_multiclass_true_negatives_check: list[Classification],
 ):
     loader = DataLoader()
@@ -663,12 +663,12 @@ def test_detailed_counts_true_negatives_check(
     expected_metrics = [
         {
             "value": {
-                "tp": [1, 1, 0],
+                "tp": [0, 0, 0],
                 "fp": [0, 0, 0],
-                "fn": [0, 0, 1],
+                "fn": [1, 1, 1],
                 "tn": [0, 0, 0],
             },
-            "label": {
+            "parameters": {
                 "score_thresholds": [0.05, 0.15, 0.95],
                 "label": {"key": "k1", "value": "ant"},
             },
@@ -681,7 +681,7 @@ def test_detailed_counts_true_negatives_check(
                 "fn": [0, 0, 0],
                 "tn": [0, 0, 1],
             },
-            "label": {
+            "parameters": {
                 "score_thresholds": [0.05, 0.15, 0.95],
                 "label": {"key": "k1", "value": "bee"},
             },
@@ -690,11 +690,11 @@ def test_detailed_counts_true_negatives_check(
         {
             "value": {
                 "tp": [0, 0, 0],
-                "fp": [1, 1, 0],
+                "fp": [0, 0, 0],
                 "fn": [0, 0, 0],
-                "tn": [0, 0, 1],
+                "tn": [1, 1, 1],
             },
-            "label": {
+            "parameters": {
                 "score_thresholds": [0.05, 0.15, 0.95],
                 "label": {"key": "k1", "value": "cat"},
             },
@@ -702,12 +702,12 @@ def test_detailed_counts_true_negatives_check(
         },
         {
             "value": {
-                "tp": [1, 1, 0],
+                "tp": [0, 0, 0],
                 "fp": [0, 0, 0],
-                "fn": [0, 0, 1],
+                "fn": [1, 1, 1],
                 "tn": [0, 0, 0],
             },
-            "label": {
+            "parameters": {
                 "score_thresholds": [0.05, 0.15, 0.95],
                 "label": {"key": "k2", "value": "egg"},
             },
@@ -720,7 +720,7 @@ def test_detailed_counts_true_negatives_check(
                 "fn": [0, 0, 0],
                 "tn": [0, 0, 1],
             },
-            "label": {
+            "parameters": {
                 "score_thresholds": [0.05, 0.15, 0.95],
                 "label": {"key": "k2", "value": "milk"},
             },
@@ -729,11 +729,11 @@ def test_detailed_counts_true_negatives_check(
         {
             "value": {
                 "tp": [0, 0, 0],
-                "fp": [1, 1, 0],
+                "fp": [0, 0, 0],
                 "fn": [0, 0, 0],
-                "tn": [0, 0, 1],
+                "tn": [1, 1, 1],
             },
-            "label": {
+            "parameters": {
                 "score_thresholds": [0.05, 0.15, 0.95],
                 "label": {"key": "k2", "value": "flour"},
             },
@@ -741,12 +741,15 @@ def test_detailed_counts_true_negatives_check(
         },
     ]
     for m in actual_metrics:
+        import json
+
+        print(json.dumps(m, indent=4))
         assert m in expected_metrics
     for m in expected_metrics:
         assert m in actual_metrics
 
 
-def test_detailed_counts_zero_count_check(
+def test_counts_zero_count_check(
     classifications_multiclass_zero_count: list[Classification],
 ):
 
@@ -773,12 +776,12 @@ def test_detailed_counts_zero_count_check(
     expected_metrics = [
         {
             "value": {
-                "tp": [1, 0, 0],
+                "tp": [0, 0, 0],
                 "fp": [0, 0, 0],
-                "fn": [0, 1, 1],
+                "fn": [1, 1, 1],
                 "tn": [0, 0, 0],
             },
-            "label": {
+            "parameters": {
                 "score_thresholds": [0.05, 0.2, 0.95],
                 "label": {"key": "k", "value": "ant"},
             },
@@ -791,7 +794,7 @@ def test_detailed_counts_zero_count_check(
                 "fn": [0, 0, 0],
                 "tn": [0, 0, 1],
             },
-            "label": {
+            "parameters": {
                 "score_thresholds": [0.05, 0.2, 0.95],
                 "label": {"key": "k", "value": "bee"},
             },
@@ -800,11 +803,11 @@ def test_detailed_counts_zero_count_check(
         {
             "value": {
                 "tp": [0, 0, 0],
-                "fp": [1, 1, 0],
+                "fp": [0, 0, 0],
                 "fn": [0, 0, 0],
-                "tn": [0, 0, 1],
+                "tn": [1, 1, 1],
             },
-            "label": {
+            "parameters": {
                 "score_thresholds": [0.05, 0.2, 0.95],
                 "label": {"key": "k", "value": "cat"},
             },
