@@ -1828,3 +1828,125 @@ def test_detailed_counts_fp_hallucination_edge_case(
         assert m in expected_metrics
     for m in expected_metrics:
         assert m in actual_metrics
+
+
+def test_detailed_counts_ranked_pair_ordering(
+    detection_ranked_pair_ordering: Detection,
+):
+
+    loader = DataLoader()
+    loader.add_data(detections=[detection_ranked_pair_ordering])
+    evaluator = loader.finalize()
+
+    assert evaluator.metadata == {
+        "ignored_prediction_labels": [
+            ("class", "label4"),
+        ],
+        "missing_prediction_labels": [],
+        "n_datums": 1,
+        "n_groundtruths": 3,
+        "n_labels": 4,
+        "n_predictions": 4,
+    }
+
+    metrics = evaluator.compute_detailed_counts(
+        iou_thresholds=[0.5],
+        score_thresholds=[0.0],
+        n_samples=0,
+    )
+
+    actual_metrics = [mm.to_dict() for m in metrics for mm in m]
+    expected_metrics = [
+        {
+            "type": "DetailedCounts",
+            "value": {
+                "tp": [1],
+                "fp_misclassification": [1],
+                "fp_hallucination": [0],
+                "fn_misclassification": [1],
+                "fn_missing_prediction": [0],
+                "tn": None,
+                "tp_examples": [[]],
+                "fp_misclassification_examples": [[]],
+                "fp_hallucination_examples": [[]],
+                "fn_misclassification_examples": [[]],
+                "fn_missing_prediction_examples": [[]],
+                "tn_examples": None,
+            },
+            "parameters": {
+                "score_thresholds": [0.0],
+                "iou_threshold": 0.5,
+                "label": {"key": "class", "value": "label1"},
+            },
+        },
+        {
+            "type": "DetailedCounts",
+            "value": {
+                "tp": [1],
+                "fp_misclassification": [1],
+                "fp_hallucination": [0],
+                "fn_misclassification": [1],
+                "fn_missing_prediction": [0],
+                "tn": None,
+                "tp_examples": [[]],
+                "fp_misclassification_examples": [[]],
+                "fp_hallucination_examples": [[]],
+                "fn_misclassification_examples": [[]],
+                "fn_missing_prediction_examples": [[]],
+                "tn_examples": None,
+            },
+            "parameters": {
+                "score_thresholds": [0.0],
+                "iou_threshold": 0.5,
+                "label": {"key": "class", "value": "label2"},
+            },
+        },
+        {
+            "type": "DetailedCounts",
+            "value": {
+                "tp": [0],
+                "fp_misclassification": [0],
+                "fp_hallucination": [1],
+                "fn_misclassification": [1],
+                "fn_missing_prediction": [0],
+                "tn": None,
+                "tp_examples": [[]],
+                "fp_misclassification_examples": [[]],
+                "fp_hallucination_examples": [[]],
+                "fn_misclassification_examples": [[]],
+                "fn_missing_prediction_examples": [[]],
+                "tn_examples": None,
+            },
+            "parameters": {
+                "score_thresholds": [0.0],
+                "iou_threshold": 0.5,
+                "label": {"key": "class", "value": "label3"},
+            },
+        },
+        {
+            "type": "DetailedCounts",
+            "value": {
+                "tp": [0],
+                "fp_misclassification": [0],
+                "fp_hallucination": [1],
+                "fn_misclassification": [0],
+                "fn_missing_prediction": [0],
+                "tn": None,
+                "tp_examples": [[]],
+                "fp_misclassification_examples": [[]],
+                "fp_hallucination_examples": [[]],
+                "fn_misclassification_examples": [[]],
+                "fn_missing_prediction_examples": [[]],
+                "tn_examples": None,
+            },
+            "parameters": {
+                "score_thresholds": [0.0],
+                "iou_threshold": 0.5,
+                "label": {"key": "class", "value": "label4"},
+            },
+        },
+    ]
+    for m in actual_metrics:
+        assert m in expected_metrics
+    for m in expected_metrics:
+        assert m in actual_metrics
