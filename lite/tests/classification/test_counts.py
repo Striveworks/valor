@@ -566,13 +566,252 @@ def test_counts_with_tabular_example(
         assert m in actual_metrics
 
 
-def test_counts_true_negatives_check(
+def test_detailed_counts_mutliclass(
+    classifications_multiclass: list[Classification],
+):
+    loader = DataLoader()
+    loader.add_data(classifications_multiclass)
+    evaluator = loader.finalize()
+
+    assert evaluator.metadata == {
+        "ignored_prediction_labels": [],
+        "missing_prediction_labels": [],
+        "n_datums": 5,
+        "n_groundtruths": 5,
+        "n_labels": 3,
+        "n_predictions": 15,
+    }
+
+    metrics = evaluator.evaluate(score_thresholds=[0.05, 0.1, 0.3, 0.85])
+
+    # test Counts
+    actual_metrics = [m.to_dict() for m in metrics[MetricType.Counts]]
+    expected_metrics = [
+        {
+            "value": {
+                "tp": [2, 2, 1, 0],
+                "fp": [3, 3, 2, 0],
+                "fn": [0, 0, 1, 2],
+                "tn": [0, 0, 1, 3],
+            },
+            "label": {
+                "score_thresholds": [0.05, 0.1, 0.3, 0.85],
+                "label": {"key": "class_label", "value": "cat"},
+            },
+            "type": "Counts",
+        },
+        {
+            "value": {
+                "tp": [1, 1, 1, 0],
+                "fp": [4, 4, 2, 0],
+                "fn": [0, 0, 0, 1],
+                "tn": [0, 0, 2, 4],
+            },
+            "label": {
+                "score_thresholds": [0.05, 0.1, 0.3, 0.85],
+                "label": {"key": "class_label", "value": "dog"},
+            },
+            "type": "Counts",
+        },
+        {
+            "value": {
+                "tp": [2, 2, 2, 0],
+                "fp": [3, 2, 1, 0],
+                "fn": [0, 0, 0, 2],
+                "tn": [0, 1, 2, 3],
+            },
+            "label": {
+                "score_thresholds": [0.05, 0.1, 0.3, 0.85],
+                "label": {"key": "class_label", "value": "bee"},
+            },
+            "type": "Counts",
+        },
+    ]
+    for m in actual_metrics:
+        assert m in expected_metrics
+    for m in expected_metrics:
+        assert m in actual_metrics
+
+
+def test_detailed_counts_true_negatives_check(
     classifications_multiclass_true_negatives_check: list[Classification],
 ):
-    raise NotImplementedError
+    loader = DataLoader()
+    loader.add_data(classifications_multiclass_true_negatives_check)
+    evaluator = loader.finalize()
+
+    assert evaluator.metadata == {
+        "ignored_prediction_labels": [
+            ("k1", "bee"),
+            ("k1", "cat"),
+            ("k2", "milk"),
+            ("k2", "flour"),
+        ],
+        "missing_prediction_labels": [],
+        "n_datums": 2,
+        "n_groundtruths": 2,
+        "n_labels": 6,
+        "n_predictions": 6,
+    }
+
+    metrics = evaluator.evaluate(
+        score_thresholds=[0.05, 0.15, 0.95],
+    )
+
+    # test Counts
+    actual_metrics = [m.to_dict() for m in metrics[MetricType.Counts]]
+    expected_metrics = [
+        {
+            "value": {
+                "tp": [1, 1, 0],
+                "fp": [0, 0, 0],
+                "fn": [0, 0, 1],
+                "tn": [0, 0, 0],
+            },
+            "label": {
+                "score_thresholds": [0.05, 0.15, 0.95],
+                "label": {"key": "k1", "value": "ant"},
+            },
+            "type": "Counts",
+        },
+        {
+            "value": {
+                "tp": [0, 0, 0],
+                "fp": [1, 1, 0],
+                "fn": [0, 0, 0],
+                "tn": [0, 0, 1],
+            },
+            "label": {
+                "score_thresholds": [0.05, 0.15, 0.95],
+                "label": {"key": "k1", "value": "bee"},
+            },
+            "type": "Counts",
+        },
+        {
+            "value": {
+                "tp": [0, 0, 0],
+                "fp": [1, 1, 0],
+                "fn": [0, 0, 0],
+                "tn": [0, 0, 1],
+            },
+            "label": {
+                "score_thresholds": [0.05, 0.15, 0.95],
+                "label": {"key": "k1", "value": "cat"},
+            },
+            "type": "Counts",
+        },
+        {
+            "value": {
+                "tp": [1, 1, 0],
+                "fp": [0, 0, 0],
+                "fn": [0, 0, 1],
+                "tn": [0, 0, 0],
+            },
+            "label": {
+                "score_thresholds": [0.05, 0.15, 0.95],
+                "label": {"key": "k2", "value": "egg"},
+            },
+            "type": "Counts",
+        },
+        {
+            "value": {
+                "tp": [0, 0, 0],
+                "fp": [1, 1, 0],
+                "fn": [0, 0, 0],
+                "tn": [0, 0, 1],
+            },
+            "label": {
+                "score_thresholds": [0.05, 0.15, 0.95],
+                "label": {"key": "k2", "value": "milk"},
+            },
+            "type": "Counts",
+        },
+        {
+            "value": {
+                "tp": [0, 0, 0],
+                "fp": [1, 1, 0],
+                "fn": [0, 0, 0],
+                "tn": [0, 0, 1],
+            },
+            "label": {
+                "score_thresholds": [0.05, 0.15, 0.95],
+                "label": {"key": "k2", "value": "flour"},
+            },
+            "type": "Counts",
+        },
+    ]
+    for m in actual_metrics:
+        assert m in expected_metrics
+    for m in expected_metrics:
+        assert m in actual_metrics
 
 
-def test_counts_zero_count_check(
+def test_detailed_counts_zero_count_check(
     classifications_multiclass_zero_count: list[Classification],
 ):
-    raise NotImplementedError
+
+    loader = DataLoader()
+    loader.add_data(classifications_multiclass_zero_count)
+    evaluator = loader.finalize()
+
+    assert evaluator.metadata == {
+        "ignored_prediction_labels": [
+            ("k", "bee"),
+            ("k", "cat"),
+        ],
+        "missing_prediction_labels": [],
+        "n_datums": 1,
+        "n_groundtruths": 1,
+        "n_labels": 3,
+        "n_predictions": 3,
+    }
+
+    metrics = evaluator.evaluate(score_thresholds=[0.05, 0.2, 0.95])
+
+    # test Counts
+    actual_metrics = [m.to_dict() for m in metrics[MetricType.Counts]]
+    expected_metrics = [
+        {
+            "value": {
+                "tp": [1, 0, 0],
+                "fp": [0, 0, 0],
+                "fn": [0, 1, 1],
+                "tn": [0, 0, 0],
+            },
+            "label": {
+                "score_thresholds": [0.05, 0.2, 0.95],
+                "label": {"key": "k", "value": "ant"},
+            },
+            "type": "Counts",
+        },
+        {
+            "value": {
+                "tp": [0, 0, 0],
+                "fp": [1, 1, 0],
+                "fn": [0, 0, 0],
+                "tn": [0, 0, 1],
+            },
+            "label": {
+                "score_thresholds": [0.05, 0.2, 0.95],
+                "label": {"key": "k", "value": "bee"},
+            },
+            "type": "Counts",
+        },
+        {
+            "value": {
+                "tp": [0, 0, 0],
+                "fp": [1, 1, 0],
+                "fn": [0, 0, 0],
+                "tn": [0, 0, 1],
+            },
+            "label": {
+                "score_thresholds": [0.05, 0.2, 0.95],
+                "label": {"key": "k", "value": "cat"},
+            },
+            "type": "Counts",
+        },
+    ]
+    for m in actual_metrics:
+        assert m in expected_metrics
+    for m in expected_metrics:
+        assert m in actual_metrics

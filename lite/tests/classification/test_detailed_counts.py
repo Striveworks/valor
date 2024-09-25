@@ -417,6 +417,15 @@ def test_detailed_counts_mutliclass(
     loader.add_data(classifications_multiclass)
     evaluator = loader.finalize()
 
+    assert evaluator.metadata == {
+        "ignored_prediction_labels": [],
+        "missing_prediction_labels": [],
+        "n_datums": 5,
+        "n_groundtruths": 5,
+        "n_labels": 3,
+        "n_predictions": 15,
+    }
+
     metrics = evaluator.compute_detailed_counts(
         score_thresholds=[0.05, 0.1, 0.3, 0.85],
         n_samples=5,
@@ -541,6 +550,20 @@ def test_detailed_counts_true_negatives_check(
     loader.add_data(classifications_multiclass_true_negatives_check)
     evaluator = loader.finalize()
 
+    assert evaluator.metadata == {
+        "ignored_prediction_labels": [
+            ("k1", "bee"),
+            ("k1", "cat"),
+            ("k2", "milk"),
+            ("k2", "flour"),
+        ],
+        "missing_prediction_labels": [],
+        "n_datums": 2,
+        "n_groundtruths": 2,
+        "n_labels": 6,
+        "n_predictions": 6,
+    }
+
     metrics = evaluator.compute_detailed_counts(
         score_thresholds=[0.05, 0.15, 0.95],
         n_samples=6,
@@ -551,28 +574,120 @@ def test_detailed_counts_true_negatives_check(
     expected_metrics = [
         {
             "value": {
-                "tp": [1, 0, 0],
+                "tp": [1, 1, 0],
                 "fp_misclassification": [0, 0, 0],
-                "fn_misclassification": [0, 1, 0],
+                "fn_misclassification": [0, 0, 0],
                 "fn_missing_prediction": [0, 0, 1],
                 "tn": [0, 0, 0],
-                "tp_examples": [[], [], []],
+                "tp_examples": [["uid1"], ["uid1"], []],
                 "fp_misclassification_examples": [[], [], []],
                 "fn_misclassification_examples": [[], [], []],
-                "fn_missing_prediction_examples": [[], [], []],
+                "fn_missing_prediction_examples": [[], [], ["uid1"]],
                 "tn_examples": [[], [], []],
             },
             "label": {
                 "score_thresholds": [0.05, 0.15, 0.95],
-                "label": {"key": "k", "value": "ant"},
+                "label": {"key": "k1", "value": "ant"},
+            },
+            "type": "DetailedCounts",
+        },
+        {
+            "value": {
+                "tp": [0, 0, 0],
+                "fp_misclassification": [1, 1, 0],
+                "fn_misclassification": [0, 0, 0],
+                "fn_missing_prediction": [0, 0, 0],
+                "tn": [0, 0, 1],
+                "tp_examples": [[], [], []],
+                "fp_misclassification_examples": [["uid1"], ["uid1"], []],
+                "fn_misclassification_examples": [[], [], []],
+                "fn_missing_prediction_examples": [[], [], []],
+                "tn_examples": [[], [], ["uid1"]],
+            },
+            "label": {
+                "score_thresholds": [0.05, 0.15, 0.95],
+                "label": {"key": "k1", "value": "bee"},
+            },
+            "type": "DetailedCounts",
+        },
+        {
+            "value": {
+                "tp": [0, 0, 0],
+                "fp_misclassification": [1, 1, 0],
+                "fn_misclassification": [0, 0, 0],
+                "fn_missing_prediction": [0, 0, 0],
+                "tn": [0, 0, 1],
+                "tp_examples": [[], [], []],
+                "fp_misclassification_examples": [["uid1"], ["uid1"], []],
+                "fn_misclassification_examples": [[], [], []],
+                "fn_missing_prediction_examples": [[], [], []],
+                "tn_examples": [[], [], ["uid1"]],
+            },
+            "label": {
+                "score_thresholds": [0.05, 0.15, 0.95],
+                "label": {"key": "k1", "value": "cat"},
+            },
+            "type": "DetailedCounts",
+        },
+        {
+            "value": {
+                "tp": [1, 1, 0],
+                "fp_misclassification": [0, 0, 0],
+                "fn_misclassification": [0, 0, 0],
+                "fn_missing_prediction": [0, 0, 1],
+                "tn": [0, 0, 0],
+                "tp_examples": [["uid2"], ["uid2"], []],
+                "fp_misclassification_examples": [[], [], []],
+                "fn_misclassification_examples": [[], [], []],
+                "fn_missing_prediction_examples": [[], [], ["uid2"]],
+                "tn_examples": [[], [], []],
+            },
+            "label": {
+                "score_thresholds": [0.05, 0.15, 0.95],
+                "label": {"key": "k2", "value": "egg"},
+            },
+            "type": "DetailedCounts",
+        },
+        {
+            "value": {
+                "tp": [0, 0, 0],
+                "fp_misclassification": [1, 1, 0],
+                "fn_misclassification": [0, 0, 0],
+                "fn_missing_prediction": [0, 0, 0],
+                "tn": [0, 0, 1],
+                "tp_examples": [[], [], []],
+                "fp_misclassification_examples": [["uid2"], ["uid2"], []],
+                "fn_misclassification_examples": [[], [], []],
+                "fn_missing_prediction_examples": [[], [], []],
+                "tn_examples": [[], [], ["uid2"]],
+            },
+            "label": {
+                "score_thresholds": [0.05, 0.15, 0.95],
+                "label": {"key": "k2", "value": "milk"},
+            },
+            "type": "DetailedCounts",
+        },
+        {
+            "value": {
+                "tp": [0, 0, 0],
+                "fp_misclassification": [1, 1, 0],
+                "fn_misclassification": [0, 0, 0],
+                "fn_missing_prediction": [0, 0, 0],
+                "tn": [0, 0, 1],
+                "tp_examples": [[], [], []],
+                "fp_misclassification_examples": [["uid2"], ["uid2"], []],
+                "fn_misclassification_examples": [[], [], []],
+                "fn_missing_prediction_examples": [[], [], []],
+                "tn_examples": [[], [], ["uid2"]],
+            },
+            "label": {
+                "score_thresholds": [0.05, 0.15, 0.95],
+                "label": {"key": "k2", "value": "flour"},
             },
             "type": "DetailedCounts",
         },
     ]
     for m in actual_metrics:
-        import json
-
-        print(json.dumps(m, indent=4))
         assert m in expected_metrics
     for m in expected_metrics:
         assert m in actual_metrics
@@ -585,6 +700,18 @@ def test_detailed_counts_zero_count_check(
     loader = DataLoader()
     loader.add_data(classifications_multiclass_zero_count)
     evaluator = loader.finalize()
+
+    assert evaluator.metadata == {
+        "ignored_prediction_labels": [
+            ("k", "bee"),
+            ("k", "cat"),
+        ],
+        "missing_prediction_labels": [],
+        "n_datums": 1,
+        "n_groundtruths": 1,
+        "n_labels": 3,
+        "n_predictions": 3,
+    }
 
     metrics = evaluator.compute_detailed_counts(
         score_thresholds=[0.05, 0.2, 0.95],

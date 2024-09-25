@@ -357,7 +357,7 @@ def classifications_multiclass_true_negatives_check() -> list[Classification]:
             scores=[0.15, 0.48, 0.37],
         ),
         Classification(
-            uid="uid1",
+            uid="uid2",
             groundtruths=[("k2", "egg")],
             predictions=[("k2", "egg"), ("k2", "milk"), ("k2", "flour")],
             scores=[0.15, 0.48, 0.37],
