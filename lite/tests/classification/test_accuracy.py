@@ -244,9 +244,6 @@ def test_accuracy_with_image_example(
         },
     ]
     for m in actual_metrics:
-        import json
-
-        print(json.dumps(m, indent=4))
         assert m in expected_metrics
     for m in expected_metrics:
         assert m in actual_metrics
@@ -275,7 +272,7 @@ def test_accuracy_with_tabular_example(
     expected_metrics = [
         {
             "type": "Accuracy",
-            "value": [0.9],
+            "value": [0.7],
             "parameters": {
                 "score_thresholds": [0.0],
                 "label": {"key": "class", "value": "0"},
@@ -283,7 +280,7 @@ def test_accuracy_with_tabular_example(
         },
         {
             "type": "Accuracy",
-            "value": [1.0],
+            "value": [0.5],
             "parameters": {
                 "score_thresholds": [0.0],
                 "label": {"key": "class", "value": "1"},

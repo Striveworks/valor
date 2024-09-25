@@ -29,3 +29,7 @@ def test_valor_integration():
     }
     assert len(loader._evaluator.index_to_label) == 11
     assert loader._evaluator.n_datums == 1
+
+
+def test_mismatch_label_keys():
+    raise NotImplementedError

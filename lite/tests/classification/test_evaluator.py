@@ -23,3 +23,11 @@ def test_metadata_using_classification_example(
         "n_groundtruths": 12,
         "n_predictions": 7 * 6,
     }
+
+
+def test_evaluate_no_groundtruths():
+    raise NotImplementedError
+
+
+def test_evaluate_no_predictions():
+    raise NotImplementedError

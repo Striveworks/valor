@@ -385,17 +385,71 @@ def test_counts_with_image_example(
     # test Counts
     actual_metrics = [m.to_dict() for m in metrics[MetricType.Counts]]
     expected_metrics = [
+        # k3
         {
             "type": "Counts",
             "value": {
-                "tp": [1],
-                "fp": [0],
+                "tp": [0],
+                "fp": [1],
                 "fn": [0],
                 "tn": [0],
             },
             "parameters": {
                 "score_thresholds": [0.0],
+                "label": {"key": "k3", "value": "v1"},
+            },
+        },
+        {
+            "type": "Counts",
+            "value": {
+                "tp": [0],
+                "fp": [0],
+                "fn": [1],
+                "tn": [0],
+            },
+            "parameters": {
+                "score_thresholds": [0.0],
+                "label": {"key": "k3", "value": "v3"},
+            },
+        },
+        # k4
+        {
+            "type": "Counts",
+            "value": {
+                "tp": [0],
+                "fp": [0],
+                "fn": [0],
+                "tn": [1],
+            },
+            "parameters": {
+                "score_thresholds": [0.0],
+                "label": {"key": "k4", "value": "v1"},
+            },
+        },
+        {
+            "type": "Counts",
+            "value": {
+                "tp": [1],
+                "fp": [0],
+                "fn": [1],
+                "tn": [0],
+            },
+            "parameters": {
+                "score_thresholds": [0.0],
                 "label": {"key": "k4", "value": "v4"},
+            },
+        },
+        {
+            "type": "Counts",
+            "value": {
+                "tp": [0],
+                "fp": [0],
+                "fn": [0],
+                "tn": [1],
+            },
+            "parameters": {
+                "score_thresholds": [0.0],
+                "label": {"key": "k4", "value": "v5"},
             },
         },
         {
@@ -411,6 +465,20 @@ def test_counts_with_image_example(
                 "label": {"key": "k4", "value": "v8"},
             },
         },
+        # k5
+        {
+            "type": "Counts",
+            "value": {
+                "tp": [0],
+                "fp": [1],
+                "fn": [0],
+                "tn": [0],
+            },
+            "parameters": {
+                "score_thresholds": [0.0],
+                "label": {"key": "k5", "value": "v1"},
+            },
+        },
         {
             "type": "Counts",
             "value": {
@@ -424,50 +492,8 @@ def test_counts_with_image_example(
                 "label": {"key": "k5", "value": "v5"},
             },
         },
-        {
-            "type": "Counts",
-            "value": {
-                "tp": [0],
-                "fp": [0],
-                "fn": [1],
-                "tn": [3],
-            },
-            "parameters": {
-                "score_thresholds": [0.0],
-                "label": {"key": "k5", "value": "v1"},
-            },
-        },
-        {
-            "type": "Counts",
-            "value": {
-                "tp": [0],
-                "fp": [0],
-                "fn": [1],
-                "tn": [3],
-            },
-            "parameters": {
-                "score_thresholds": [0.0],
-                "label": {"key": "k3", "value": "v3"},
-            },
-        },
-        {
-            "type": "Counts",
-            "value": {
-                "tp": [0],
-                "fp": [1],
-                "fn": [0],
-                "tn": [3],
-            },
-            "parameters": {
-                "score_thresholds": [0.0],
-                "label": {"key": "k3", "value": "v1"},
-            },
-        },
     ]
     for m in actual_metrics:
-        import json
-
-        print(json.dumps(m, indent=4))
         assert m in expected_metrics
     for m in expected_metrics:
         assert m in actual_metrics
@@ -535,9 +561,6 @@ def test_counts_with_tabular_example(
         },
     ]
     for m in actual_metrics:
-        import json
-
-        print(json.dumps(m, indent=4))
         assert m in expected_metrics
     for m in expected_metrics:
         assert m in actual_metrics

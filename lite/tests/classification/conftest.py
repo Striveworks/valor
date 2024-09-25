@@ -233,3 +233,135 @@ def classifications_tabular_example() -> list[Classification]:
             zip(gt_clfs_tabular, pred_clfs_tabular)
         )
     ]
+
+
+@pytest.fixture
+def classifications_no_groundtruths() -> list[Classification]:
+    return [
+        Classification(
+            uid="uid1",
+            groundtruths=[],
+            predictions=[("k1", "v1"), ("k1", "v2")],
+            scores=[0.8, 0.2],
+        )
+    ]
+
+
+@pytest.fixture
+def classifications_no_predictions() -> list[Classification]:
+    return [
+        Classification(
+            uid="uid1",
+            groundtruths=[("k1", "v1"), ("k2", "v2")],
+            predictions=[],
+            scores=[],
+        )
+    ]
+
+
+@pytest.fixture
+def classifications_multiple_predictions_per_groundtruth() -> list[
+    Classification
+]:
+    return [
+        Classification(
+            uid="uid0",
+            groundtruths=[("class_label", "cat")],
+            predictions=[
+                ("class_label", "cat"),
+                ("class_label", "dog"),
+                ("class_label", "bee"),
+            ],
+            scores=[
+                0.44598543489942505,
+                0.3255517969601126,
+                0.22846276814046224,
+            ],
+        ),
+        Classification(
+            uid="uid1",
+            groundtruths=[("class_label", "bee")],
+            predictions=[
+                ("class_label", "cat"),
+                ("class_label", "dog"),
+                ("class_label", "bee"),
+            ],
+            scores=[
+                0.4076893257212283,
+                0.14780458563955237,
+                0.4445060886392194,
+            ],
+        ),
+        Classification(
+            uid="uid2",
+            groundtruths=[("class_label", "cat")],
+            predictions=[
+                ("class_label", "cat"),
+                ("class_label", "dog"),
+                ("class_label", "bee"),
+            ],
+            scores=[
+                0.25060075263871917,
+                0.3467428086425673,
+                0.4026564387187136,
+            ],
+        ),
+        Classification(
+            uid="uid3",
+            groundtruths=[("class_label", "bee")],
+            predictions=[
+                ("class_label", "cat"),
+                ("class_label", "dog"),
+                ("class_label", "bee"),
+            ],
+            scores=[
+                0.2003514145616792,
+                0.2485912151889644,
+                0.5510573702493565,
+            ],
+        ),
+        Classification(
+            uid="uid4",
+            groundtruths=[("class_label", "dog")],
+            predictions=[
+                ("class_label", "cat"),
+                ("class_label", "dog"),
+                ("class_label", "bee"),
+            ],
+            scores=[
+                0.33443897813714385,
+                0.5890646197236098,
+                0.07649640213924616,
+            ],
+        ),
+    ]
+
+
+@pytest.fixture
+def classifications_multiclass_zero_count() -> list[Classification]:
+    return [
+        Classification(
+            uid="uid1",
+            groundtruths=[("k", "ant")],
+            predictions=[("k", "ant"), ("k", "bee"), ("k", "cat")],
+            scores=[0.15, 0.48, 0.37],
+        )
+    ]
+
+
+@pytest.fixture
+def classifications_multiclass_true_negatives_check() -> list[Classification]:
+    return [
+        Classification(
+            uid="uid1",
+            groundtruths=[("k1", "ant")],
+            predictions=[("k1", "ant"), ("k1", "bee"), ("k1", "cat")],
+            scores=[0.15, 0.48, 0.37],
+        ),
+        Classification(
+            uid="uid1",
+            groundtruths=[("k2", "egg")],
+            predictions=[("k2", "egg"), ("k2", "milk"), ("k2", "flour")],
+            scores=[0.15, 0.48, 0.37],
+        ),
+    ]
