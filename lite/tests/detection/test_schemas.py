@@ -1,6 +1,7 @@
 import numpy as np
 import pytest
-from valor_lite.detection import Bitmask, BoundingBox, Detection
+from shapely.geometry import Polygon as ShapelyPolygon
+from valor_lite.detection import Bitmask, BoundingBox, Detection, Polygon
 
 
 def test_BoundingBox():
@@ -71,6 +72,35 @@ def test_Bitmask():
         )
 
 
+def test_Polygon(rect1_rotated_5_degrees_around_origin):
+
+    shape = ShapelyPolygon(rect1_rotated_5_degrees_around_origin)
+
+    # groundtruth
+    _ = Polygon(shape=shape, labels=[("k", "v")])
+
+    # prediction
+    Polygon(
+        shape=shape,
+        labels=[("k", "v")],
+        scores=[0.7],
+    )
+
+    # test score-label matching
+    with pytest.raises(ValueError):
+        Polygon(
+            shape=shape,
+            labels=[("k", "v")],
+            scores=[0.7, 0.1],
+        )
+    with pytest.raises(ValueError):
+        Polygon(
+            shape=shape,
+            labels=[("k", "v1"), ("k", "v2")],
+            scores=[0.7],
+        )
+
+
 def test_Detection():
 
     # groundtruth
@@ -99,6 +129,3 @@ def test_Detection():
             groundtruths=[gt],
             predictions=[gt],
         )
-
-
-# TODO missing schema tests

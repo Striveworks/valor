@@ -5,36 +5,34 @@ from numpy.typing import NDArray
 from valor_lite.detection.annotation import Bitmask, BoundingBox, Polygon
 
 
-def compute_iou(data: NDArray[np.floating]) -> NDArray[np.floating]:
+def _compute_bbox_iou(data: NDArray[np.floating]) -> NDArray[np.floating]:
     """
     Computes intersection-over-union (IoU) for axis-aligned bounding boxes.
 
     Takes data with shape (N, 8):
 
-    Index 0 - xmin for Box 1
-    Index 1 - xmax for Box 1
-    Index 2 - ymin for Box 1
-    Index 3 - ymax for Box 1
-    Index 4 - xmin for Box 2
-    Index 5 - xmax for Box 2
-    Index 6 - ymin for Box 2
-    Index 7 - ymax for Box 2
+        Index 0 - xmin for Box 1
+        Index 1 - xmax for Box 1
+        Index 2 - ymin for Box 1
+        Index 3 - ymax for Box 1
+        Index 4 - xmin for Box 2
+        Index 5 - xmax for Box 2
+        Index 6 - ymin for Box 2
+        Index 7 - ymax for Box 2
 
     Returns data with shape (N, 1):
 
-    Index 0 - IoU
+        Index 0 - IoU
 
     Parameters
     ----------
     data : NDArray[np.floating]
-        A sorted array of classification pairs.
-    label_metadata : NDArray[np.int32]
-        An array containing metadata related to labels.
+        A sorted array of bounding box pairs.
 
     Returns
     -------
     NDArray[np.floating]
-        Compute IoU's.
+        Computed IoU's.
     """
 
     xmin1, xmax1, ymin1, ymax1 = (
@@ -72,8 +70,29 @@ def compute_iou(data: NDArray[np.floating]) -> NDArray[np.floating]:
     return iou
 
 
-# TODO docstrings
 def _compute_bitmask_iou(data: NDArray[np.floating]) -> NDArray[np.floating]:
+    """
+    Computes intersection-over-union (IoU) for bitmasks.
+
+    Takes data with shape (N, 2):
+
+        Index 0 - first bitmask
+        Index 1 - second bitmask
+
+    Returns data with shape (N, 1):
+
+        Index 0 - IoU
+
+    Parameters
+    ----------
+    data : NDArray[np.floating]
+        A sorted array of bitmask pairs.
+
+    Returns
+    -------
+    NDArray[np.floating]
+        Computed IoU's.
+    """
     intersection_ = np.array([np.logical_and(x, y).sum() for x, y in data])
     union_ = np.array([np.logical_or(x, y).sum() for x, y in data])
 
@@ -83,10 +102,31 @@ def _compute_bitmask_iou(data: NDArray[np.floating]) -> NDArray[np.floating]:
     return intersection_ / union_
 
 
-# TODO docstrings
 def _compute_polygon_iou(
     data: np.ndarray,
 ) -> NDArray[np.floating]:
+    """
+    Computes intersection-over-union (IoU) for shapely polygons.
+
+    Takes data with shape (N, 2):
+
+        Index 0 - first polygon
+        Index 1 - second polygon
+
+    Returns data with shape (N, 1):
+
+        Index 0 - IoU
+
+    Parameters
+    ----------
+    data : NDArray[np.floating]
+        A sorted array of polygon pairs.
+
+    Returns
+    -------
+    NDArray[np.floating]
+        Computed IoU's.
+    """
     intersection_ = np.array(
         [poly1.intersection(poly2).area for poly1, poly2 in data]
     )
@@ -103,13 +143,25 @@ def _compute_polygon_iou(
     return intersection_ / union_
 
 
-# TODO docstrings
 def compute_iou(
     data: NDArray[np.floating],
     annotation_type: Type[BoundingBox] | Type[Polygon] | Type[Bitmask],
 ) -> NDArray[np.floating]:
+    """
+    Computes intersection-over-union (IoU) calculations for various annotation types.
 
-    if issubclass(annotation_type, BoundingBox):  # TODO fix
+    Parameters
+    ----------
+    data : NDArray[np.floating]
+        A sorted array of bounding box, bitmask, or polygon pairs.
+
+    Returns
+    -------
+    NDArray[np.floating]
+        Computed IoU's.
+    """
+
+    if annotation_type == BoundingBox:
         return _compute_bbox_iou(data=data)
     elif annotation_type == Bitmask:
         return _compute_bitmask_iou(data=data)
@@ -181,7 +233,7 @@ def compute_ranked_pairs(
     Parameters
     ----------
     data : NDArray[np.floating]
-        A sorted array of classification pairs.
+        A sorted array summarizing the IOU calculations of one or more pairs.
     label_metadata : NDArray[np.int32]
         An array containing metadata related to labels.
 
@@ -246,7 +298,7 @@ def compute_metrics(
     Parameters
     ----------
     data : NDArray[np.floating]
-        A sorted array of classification pairs.
+        A sorted array summarizing the IOU calculations of one or more pairs.
     label_metadata : NDArray[np.int32]
         An array containing metadata related to labels.
     iou_thresholds : NDArray[np.floating]
@@ -512,7 +564,7 @@ def compute_detailed_counts(
     Parameters
     ----------
     data : NDArray[np.floating]
-        A sorted array of classification pairs.
+        A sorted array summarizing the IOU calculations of one or more pairs.
     label_metadata : NDArray[np.int32]
         An array containing metadata related to labels.
     iou_thresholds : NDArray[np.floating]
@@ -656,18 +708,18 @@ def compute_detailed_counts(
             )
 
             detailed_pr_curve[iou_idx, score_idx, :, tp_idx] = tp_count
-            detailed_pr_curve[iou_idx, score_idx, :, fp_misclf_idx] = (
-                fp_misclf_count
-            )
-            detailed_pr_curve[iou_idx, score_idx, :, fp_halluc_idx] = (
-                fp_halluc_count
-            )
-            detailed_pr_curve[iou_idx, score_idx, :, fn_misclf_idx] = (
-                fn_misclf_count
-            )
-            detailed_pr_curve[iou_idx, score_idx, :, fn_misprd_idx] = (
-                fn_misprd_count
-            )
+            detailed_pr_curve[
+                iou_idx, score_idx, :, fp_misclf_idx
+            ] = fp_misclf_count
+            detailed_pr_curve[
+                iou_idx, score_idx, :, fp_halluc_idx
+            ] = fp_halluc_count
+            detailed_pr_curve[
+                iou_idx, score_idx, :, fn_misclf_idx
+            ] = fn_misclf_count
+            detailed_pr_curve[
+                iou_idx, score_idx, :, fn_misprd_idx
+            ] = fn_misprd_count
 
             if n_samples > 0:
                 for label_idx in range(n_labels):

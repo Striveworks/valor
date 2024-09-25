@@ -1,8 +1,10 @@
 from collections import defaultdict
 from dataclasses import dataclass
 from typing import Type
+
 import numpy as np
 from numpy.typing import NDArray
+from shapely.geometry import Polygon as ShapelyPolygon
 from tqdm import tqdm
 from valor_lite.detection.annotation import (
     Bitmask,
@@ -56,7 +58,6 @@ filtered_metrics = evaluator.evaluate(iou_thresholds=[0.5], filter_mask=filter_m
 """
 
 
-# TODO check test coverage
 def _get_annotation_annotation_type(
     detection: Detection,
 ) -> Type[BoundingBox] | Type[Polygon] | Type[Bitmask]:
@@ -75,7 +76,7 @@ def _get_annotation_annotation_type(
         )
     ):
         raise ValueError(
-            "Annotations must be a list of BoundingBox, Bitmask, or Polygon objects. Only one representation type per detection is allowed."
+            "Annotations must be a list of BoundingBox, Bitmask, or Polygon objects. Only one annotation type per detection is allowed."
         )
 
     return list(types)[0]
@@ -91,19 +92,21 @@ def _get_annotation_annotation_type_from_valor_dict(
 
     if sum([contains_bbox, contains_bitmask, contains_polygon]) > 1:
         raise ValueError(
-            "Annotations must be a list of BoundingBox, Bitmask, or Polygon objects. Only one representation type per detection is allowed."
+            "Annotations must be a list of BoundingBox, Bitmask, or Polygon objects. Only one annotation type per detection is allowed."
         )
 
     return (
         BoundingBox
         if contains_bbox
-        else Bitmask if contains_bitmask else Polygon
+        else Bitmask
+        if contains_bitmask
+        else Polygon
     )
 
 
 def _get_annotation_representation(
     obj: BoundingBox | Bitmask | Polygon,
-) -> np.ndarray | tuple | Polygon:  # TODO fix return type
+) -> tuple[float, float, float, float] | NDArray[np.bool_] | ShapelyPolygon:
     """Get the correct representation of an annotation object."""
 
     representation = (
@@ -253,9 +256,9 @@ class Evaluator:
                     dtype=np.int32,
                 )
             mask = np.zeros_like(mask_pairs, dtype=np.bool_)
-            mask[np.isin(self._ranked_pairs[:, 0].astype(int), datum_uids)] = (
-                True
-            )
+            mask[
+                np.isin(self._ranked_pairs[:, 0].astype(int), datum_uids)
+            ] = True
             mask_pairs &= mask
 
             mask = np.zeros_like(mask_datums, dtype=np.bool_)
@@ -543,7 +546,7 @@ class Evaluator:
             return list()
 
         metrics = compute_detailed_counts(
-            self._detailed_pairs,
+            data=self._detailed_pairs,
             label_metadata=self._label_metadata,
             iou_thresholds=np.array(iou_thresholds),
             score_thresholds=np.array(score_thresholds),
@@ -703,9 +706,9 @@ class DataLoader:
                 self._evaluator.index_to_label_key[label_key_id] = label[0]
                 label_key_id += 1
 
-            self._evaluator.label_index_to_label_key_index[label_id] = (
-                self._evaluator.label_key_to_index[label[0]]
-            )
+            self._evaluator.label_index_to_label_key_index[
+                label_id
+            ] = self._evaluator.label_key_to_index[label[0]]
             label_id += 1
 
         return (

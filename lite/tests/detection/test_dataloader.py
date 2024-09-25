@@ -1,7 +1,15 @@
 import json
 
+import numpy as np
 import pytest
-from valor_lite.detection import DataLoader
+from shapely.geometry import Polygon as ShapelyPolygon
+from valor_lite.detection import (
+    Bitmask,
+    BoundingBox,
+    DataLoader,
+    Detection,
+    Polygon,
+)
 
 
 def test_no_data():
@@ -32,3 +40,78 @@ def test_valor_integration():
     }
     assert len(loader._evaluator.index_to_label) == 17
     assert loader._evaluator.n_datums == 1
+
+
+def test_mixed_annotations(
+    rect1: tuple[float, float, float, float],
+    rect1_rotated_5_degrees_around_origin: tuple[float, float, float, float],
+):
+    """Check that we throw an error if the user tries to mix annotation types."""
+    mixed_detections = [
+        Detection(
+            uid="uid1",
+            groundtruths=[
+                BoundingBox(
+                    xmin=rect1[0],
+                    xmax=rect1[1],
+                    ymin=rect1[2],
+                    ymax=rect1[3],
+                    labels=[("k1", "v1")],
+                ),
+            ],
+            predictions=[
+                Polygon(
+                    shape=ShapelyPolygon(
+                        rect1_rotated_5_degrees_around_origin
+                    ),
+                    labels=[("k1", "v1")],
+                    scores=[0.3],
+                ),
+            ],
+        ),
+        Detection(
+            uid="uid1",
+            groundtruths=[
+                BoundingBox(
+                    xmin=rect1[0],
+                    xmax=rect1[1],
+                    ymin=rect1[2],
+                    ymax=rect1[3],
+                    labels=[("k1", "v1")],
+                ),
+            ],
+            predictions=[
+                Bitmask(
+                    mask=np.ones((80, 32), dtype=bool),
+                    labels=[("k1", "v1")],
+                    scores=[0.3],
+                ),
+            ],
+        ),
+        Detection(
+            uid="uid1",
+            groundtruths=[
+                Bitmask(
+                    mask=np.ones((80, 32), dtype=bool),
+                    labels=[("k1", "v1")],
+                    scores=[0.3],
+                ),
+            ],
+            predictions=[
+                Polygon(
+                    shape=ShapelyPolygon(
+                        rect1_rotated_5_degrees_around_origin
+                    ),
+                    labels=[("k1", "v1")],
+                    scores=[0.3],
+                ),
+            ],
+        ),
+    ]
+
+    loader = DataLoader()
+
+    for input_ in mixed_detections:
+        with pytest.raises(ValueError) as e:
+            loader.add_data([input_])
+        assert "Only one annotation type per detection is allowed" in str(e)

@@ -1,7 +1,7 @@
-import pytest
-from valor_lite.detection import BoundingBox, Detection, Polygon, Bitmask
 import numpy as np
+import pytest
 from shapely.geometry import Polygon as ShapelyPolygon
+from valor_lite.detection import Bitmask, BoundingBox, Detection, Polygon
 
 
 @pytest.fixture
@@ -786,6 +786,7 @@ def detection_ranked_pair_ordering_with_bitmasks() -> Detection:
             np.ones((80, 32), dtype=bool),
             np.ones((80, 32), dtype=bool),
             np.zeros((80, 32), dtype=bool),
+            np.zeros((80, 32), dtype=bool),
         ],
         "label_values": ["label1", "label2", "label3", "label4"],
         "scores": [
@@ -795,8 +796,6 @@ def detection_ranked_pair_ordering_with_bitmasks() -> Detection:
             0.94,
         ],
     }
-    # TODO double check that all the tests in the ticket were implemented
-    # TODO check code coverage
     groundtruths = [
         Bitmask(
             mask=mask,
@@ -821,26 +820,27 @@ def detection_ranked_pair_ordering_with_bitmasks() -> Detection:
     )
 
 
-# TODO fix this test, then add it to the for loops of the other tests
 @pytest.fixture
-def detection_ranked_pair_ordering_with_polygons() -> Detection:
-
+def detection_ranked_pair_ordering_with_polygons(
+    rect1_rotated_5_degrees_around_origin: list[tuple[float, float]],
+    rect3_rotated_5_degrees_around_origin: list[tuple[float, float]],
+) -> Detection:
     gts = {
-        "boxes": [
-            (2, 10, 2, 10),
-            (2, 10, 2, 10),
-            (2, 10, 2, 10),
+        "polygons": [
+            rect1_rotated_5_degrees_around_origin,
+            rect1_rotated_5_degrees_around_origin,
+            rect1_rotated_5_degrees_around_origin,
         ],
         "label_values": ["label1", "label2", "label3"],
     }
 
     # labels 1 and 2 have IOU==1, labels 3 and 4 have IOU==0
     preds = {
-        "boxes": [
-            (2, 10, 2, 10),
-            (2, 10, 2, 10),
-            (0, 1, 0, 1),
-            (0, 1, 0, 1),
+        "polygons": [
+            rect1_rotated_5_degrees_around_origin,
+            rect1_rotated_5_degrees_around_origin,
+            rect3_rotated_5_degrees_around_origin,
+            rect3_rotated_5_degrees_around_origin,
         ],
         "label_values": ["label1", "label2", "label3", "label4"],
         "scores": [
@@ -852,29 +852,21 @@ def detection_ranked_pair_ordering_with_polygons() -> Detection:
     }
 
     groundtruths = [
-        BoundingBox(
-            xmin=xmin,
-            xmax=xmax,
-            ymin=ymin,
-            ymax=ymax,
+        Polygon(
+            shape=ShapelyPolygon(polygon),
             labels=[("class", label_value)],
         )
-        for (xmin, xmax, ymin, ymax), label_value in zip(
-            gts["boxes"], gts["label_values"]
-        )
+        for polygon, label_value in zip(gts["polygons"], gts["label_values"])
     ]
 
     predictions = [
-        BoundingBox(
-            xmin=xmin,
-            xmax=xmax,
-            ymin=ymin,
-            ymax=ymax,
+        Polygon(
+            shape=ShapelyPolygon(polygon),
             labels=[("class", label_value)],
             scores=[score],
         )
-        for (xmin, xmax, ymin, ymax), label_value, score in zip(
-            preds["boxes"], preds["label_values"], preds["scores"]
+        for polygon, label_value, score in zip(
+            preds["polygons"], preds["label_values"], preds["scores"]
         )
     ]
 

@@ -22,89 +22,26 @@ def test_counts_metrics(
             box 2 - label (k2, v2) - score 0.98 - fp
     """
 
-    loader = DataLoader()
-    loader.add_data(basic_detections)
-    evaluator = loader.finalize()
+    for input_ in [basic_detections, basic_rotated_detections]:
+        loader = DataLoader()
+        loader.add_data(input_)
+        evaluator = loader.finalize()
 
-    metrics = evaluator.evaluate(
-        iou_thresholds=[0.1, 0.6],
-        score_thresholds=[0.0, 0.5],
-    )
+        metrics = evaluator.evaluate(
+            iou_thresholds=[0.1, 0.6],
+            score_thresholds=[0.0, 0.5],
+        )
 
-    assert evaluator.ignored_prediction_labels == []
-    assert evaluator.missing_prediction_labels == []
-    assert evaluator.n_datums == 2
-    assert evaluator.n_labels == 2
-    assert evaluator.n_groundtruths == 3
-    assert evaluator.n_predictions == 2
+        assert evaluator.ignored_prediction_labels == []
+        assert evaluator.missing_prediction_labels == []
+        assert evaluator.n_datums == 2
+        assert evaluator.n_labels == 2
+        assert evaluator.n_groundtruths == 3
+        assert evaluator.n_predictions == 2
 
-    # test Counts
-    actual_metrics = [m.to_dict() for m in metrics[MetricType.Counts]]
-    expected_metrics = [
-        {
-            "type": "Counts",
-            "value": {
-                "tp": 1,
-                "fp": 0,
-                "fn": 1,
-            },
-            "parameters": {
-                "iou_threshold": 0.1,
-                "score_threshold": 0.0,
-                "label": {"key": "k1", "value": "v1"},
-            },
-        },
-        {
-            "type": "Counts",
-            "value": {
-                "tp": 1,
-                "fp": 0,
-                "fn": 1,
-            },
-            "parameters": {
-                "iou_threshold": 0.6,
-                "score_threshold": 0.0,
-                "label": {"key": "k1", "value": "v1"},
-            },
-        },
-        {
-            "type": "Counts",
-            "value": {
-                "tp": 0,
-                "fp": 0,
-                "fn": 2,
-            },
-            "parameters": {
-                "iou_threshold": 0.1,
-                "score_threshold": 0.5,
-                "label": {"key": "k1", "value": "v1"},
-            },
-        },
-        {
-            "type": "Counts",
-            "value": {
-                "tp": 0,
-                "fp": 0,
-                "fn": 2,
-            },
-            "parameters": {
-                "iou_threshold": 0.6,
-                "score_threshold": 0.5,
-                "label": {"key": "k1", "value": "v1"},
-            },
-        },
-        {
-            "type": "Counts",
-            "value": {
-                "tp": 0,
-                "fp": 1,
-                "fn": 1,
-            },
-            "parameters": {
-                "iou_threshold": 0.1,
-                "score_threshold": 0.0,
-                "label": {"key": "k2", "value": "v2"},
-            },
+        # test Counts
+        actual_metrics = [m.to_dict() for m in metrics[MetricType.Counts]]
+        expected_metrics = [
             {
                 "type": "Counts",
                 "value": {
@@ -118,36 +55,96 @@ def test_counts_metrics(
                     "label": {"key": "k1", "value": "v1"},
                 },
             },
-            "parameters": {
-                "iou_threshold": 0.6,
-                "score_threshold": 0.0,
-                "label": {"key": "k2", "value": "v2"},
+            {
+                "type": "Counts",
+                "value": {
+                    "tp": 1,
+                    "fp": 0,
+                    "fn": 1,
+                },
+                "parameters": {
+                    "iou_threshold": 0.6,
+                    "score_threshold": 0.0,
+                    "label": {"key": "k1", "value": "v1"},
+                },
             },
-        },
-        {
-            "type": "Counts",
-            "value": {
-                "tp": 0,
-                "fp": 1,
-                "fn": 1,
+            {
+                "type": "Counts",
+                "value": {
+                    "tp": 0,
+                    "fp": 0,
+                    "fn": 2,
+                },
+                "parameters": {
+                    "iou_threshold": 0.1,
+                    "score_threshold": 0.5,
+                    "label": {"key": "k1", "value": "v1"},
+                },
             },
-            "parameters": {
-                "iou_threshold": 0.1,
-                "score_threshold": 0.5,
-                "label": {"key": "k2", "value": "v2"},
+            {
+                "type": "Counts",
+                "value": {
+                    "tp": 0,
+                    "fp": 0,
+                    "fn": 2,
+                },
+                "parameters": {
+                    "iou_threshold": 0.6,
+                    "score_threshold": 0.5,
+                    "label": {"key": "k1", "value": "v1"},
+                },
             },
-        },
-        {
-            "type": "Counts",
-            "value": {
-                "tp": 0,
-                "fp": 1,
-                "fn": 1,
+            {
+                "type": "Counts",
+                "value": {
+                    "tp": 0,
+                    "fp": 1,
+                    "fn": 1,
+                },
+                "parameters": {
+                    "iou_threshold": 0.1,
+                    "score_threshold": 0.0,
+                    "label": {"key": "k2", "value": "v2"},
+                },
             },
-            "parameters": {
-                "iou_threshold": 0.6,
-                "score_threshold": 0.5,
-                "label": {"key": "k2", "value": "v2"},
+            {
+                "type": "Counts",
+                "value": {
+                    "tp": 0,
+                    "fp": 1,
+                    "fn": 1,
+                },
+                "parameters": {
+                    "iou_threshold": 0.6,
+                    "score_threshold": 0.0,
+                    "label": {"key": "k2", "value": "v2"},
+                },
+            },
+            {
+                "type": "Counts",
+                "value": {
+                    "tp": 0,
+                    "fp": 1,
+                    "fn": 1,
+                },
+                "parameters": {
+                    "iou_threshold": 0.1,
+                    "score_threshold": 0.5,
+                    "label": {"key": "k2", "value": "v2"},
+                },
+            },
+            {
+                "type": "Counts",
+                "value": {
+                    "tp": 0,
+                    "fp": 1,
+                    "fn": 1,
+                },
+                "parameters": {
+                    "iou_threshold": 0.6,
+                    "score_threshold": 0.5,
+                    "label": {"key": "k2", "value": "v2"},
+                },
             },
         ]
         for m in actual_metrics:
@@ -463,88 +460,95 @@ def test_counts_false_negatives_two_datums_one_only_with_different_class_high_co
     for m in actual_metrics:
         assert m in expected_metrics
 
-# TODO add bitmask test
+
 def test_counts_ranked_pair_ordering(
     detection_ranked_pair_ordering: Detection,
+    detection_ranked_pair_ordering_with_bitmasks: Detection,
+    detection_ranked_pair_ordering_with_polygons: Detection,
 ):
 
-    loader = DataLoader()
-    loader.add_data(detections=[detection_ranked_pair_ordering])
-    evaluator = loader.finalize()
+    for input_ in [
+        detection_ranked_pair_ordering,
+        detection_ranked_pair_ordering_with_bitmasks,
+        detection_ranked_pair_ordering_with_polygons,
+    ]:
+        loader = DataLoader()
+        loader.add_data(detections=[input_])
+        evaluator = loader.finalize()
 
-    assert evaluator.metadata == {
-        "ignored_prediction_labels": [
-            ("class", "label4"),
-        ],
-        "missing_prediction_labels": [],
-        "n_datums": 1,
-        "n_groundtruths": 3,
-        "n_labels": 4,
-        "n_predictions": 4,
-    }
+        assert evaluator.metadata == {
+            "ignored_prediction_labels": [
+                ("class", "label4"),
+            ],
+            "missing_prediction_labels": [],
+            "n_datums": 1,
+            "n_groundtruths": 3,
+            "n_labels": 4,
+            "n_predictions": 4,
+        }
 
-    metrics = evaluator.evaluate(
-        iou_thresholds=[0.5, 0.75], score_thresholds=[0.0]
-    )
+        metrics = evaluator.evaluate(
+            iou_thresholds=[0.5, 0.75], score_thresholds=[0.0]
+        )
 
-    actual_metrics = [m.to_dict() for m in metrics[MetricType.Counts]]
-    expected_metrics = [
-        {
-            "type": "Counts",
-            "value": {"tp": 1, "fp": 0, "fn": 0},
-            "parameters": {
-                "iou_threshold": 0.5,
-                "score_threshold": 0.0,
-                "label": {"key": "class", "value": "label1"},
+        actual_metrics = [m.to_dict() for m in metrics[MetricType.Counts]]
+        expected_metrics = [
+            {
+                "type": "Counts",
+                "value": {"tp": 1, "fp": 0, "fn": 0},
+                "parameters": {
+                    "iou_threshold": 0.5,
+                    "score_threshold": 0.0,
+                    "label": {"key": "class", "value": "label1"},
+                },
             },
-        },
-        {
-            "type": "Counts",
-            "value": {"tp": 1, "fp": 0, "fn": 0},
-            "parameters": {
-                "iou_threshold": 0.75,
-                "score_threshold": 0.0,
-                "label": {"key": "class", "value": "label1"},
+            {
+                "type": "Counts",
+                "value": {"tp": 1, "fp": 0, "fn": 0},
+                "parameters": {
+                    "iou_threshold": 0.75,
+                    "score_threshold": 0.0,
+                    "label": {"key": "class", "value": "label1"},
+                },
             },
-        },
-        {
-            "type": "Counts",
-            "value": {"tp": 1, "fp": 0, "fn": 0},
-            "parameters": {
-                "iou_threshold": 0.5,
-                "score_threshold": 0.0,
-                "label": {"key": "class", "value": "label2"},
+            {
+                "type": "Counts",
+                "value": {"tp": 1, "fp": 0, "fn": 0},
+                "parameters": {
+                    "iou_threshold": 0.5,
+                    "score_threshold": 0.0,
+                    "label": {"key": "class", "value": "label2"},
+                },
             },
-        },
-        {
-            "type": "Counts",
-            "value": {"tp": 1, "fp": 0, "fn": 0},
-            "parameters": {
-                "iou_threshold": 0.75,
-                "score_threshold": 0.0,
-                "label": {"key": "class", "value": "label2"},
+            {
+                "type": "Counts",
+                "value": {"tp": 1, "fp": 0, "fn": 0},
+                "parameters": {
+                    "iou_threshold": 0.75,
+                    "score_threshold": 0.0,
+                    "label": {"key": "class", "value": "label2"},
+                },
             },
-        },
-        {
-            "type": "Counts",
-            "value": {"tp": 0, "fp": 1, "fn": 1},
-            "parameters": {
-                "iou_threshold": 0.5,
-                "score_threshold": 0.0,
-                "label": {"key": "class", "value": "label3"},
+            {
+                "type": "Counts",
+                "value": {"tp": 0, "fp": 1, "fn": 1},
+                "parameters": {
+                    "iou_threshold": 0.5,
+                    "score_threshold": 0.0,
+                    "label": {"key": "class", "value": "label3"},
+                },
             },
-        },
-        {
-            "type": "Counts",
-            "value": {"tp": 0, "fp": 1, "fn": 1},
-            "parameters": {
-                "iou_threshold": 0.75,
-                "score_threshold": 0.0,
-                "label": {"key": "class", "value": "label3"},
+            {
+                "type": "Counts",
+                "value": {"tp": 0, "fp": 1, "fn": 1},
+                "parameters": {
+                    "iou_threshold": 0.75,
+                    "score_threshold": 0.0,
+                    "label": {"key": "class", "value": "label3"},
+                },
             },
-        },
-    ]
-    for m in actual_metrics:
-        assert m in expected_metrics
-    for m in expected_metrics:
-        assert m in actual_metrics
+        ]
+        for m in actual_metrics:
+            assert m in expected_metrics
+        for m in expected_metrics:
+            assert m in actual_metrics
