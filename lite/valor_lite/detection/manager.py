@@ -228,8 +228,10 @@ class Evaluator:
 
     def evaluate(
         self,
+        metrics_to_return: list[MetricType] = MetricType.base_metrics(),
         iou_thresholds: list[float] = [0.5, 0.75, 0.9],
         score_thresholds: list[float] = [0.5],
+        number_of_examples: int = 0,
         filter_: Filter | None = None,
     ) -> dict[MetricType, list]:
         """
@@ -237,10 +239,14 @@ class Evaluator:
 
         Parameters
         ----------
+        metrics_to_return : list[MetricType]
+            A list of metrics to return in the results.
         iou_thresholds : list[float]
             A list of IoU thresholds to compute metrics over.
         score_thresholds : list[float]
             A list of score thresholds to compute metrics over.
+        number_of_examples : int, default=0
+            Number of annotation examples to return in DetailedCounts.
         filter_ : Filter, optional
             An optional filter object.
 
@@ -426,16 +432,27 @@ class Evaluator:
                         )
                     )
 
+        if MetricType.DetailedCounts in metrics_to_return:
+            metrics[MetricType.DetailedCounts] = self._compute_detailed_counts(
+                iou_thresholds=iou_thresholds,
+                score_thresholds=score_thresholds,
+                n_samples=number_of_examples,
+            )
+
+        for metric in set(metrics.keys()):
+            if metric not in metrics_to_return:
+                del metrics[metric]
+
         return metrics
 
-    def compute_detailed_counts(
+    def _compute_detailed_counts(
         self,
         iou_thresholds: list[float] = [0.5],
         score_thresholds: list[float] = [
             score / 10.0 for score in range(1, 11)
         ],
         n_samples: int = 0,
-    ) -> list[list[DetailedCounts]]:
+    ) -> list[DetailedCounts]:
         """
         Computes detailed counting metrics.
 
@@ -515,68 +532,62 @@ class Evaluator:
 
         n_ious, n_scores, n_labels, _ = metrics.shape
         return [
-            [
-                DetailedCounts(
-                    iou_threshold=iou_thresholds[iou_idx],
-                    label=self.index_to_label[label_idx],
-                    score_thresholds=score_thresholds,
-                    tp=metrics[iou_idx, :, label_idx, tp_idx]
-                    .astype(int)
-                    .tolist(),
-                    fp_misclassification=metrics[
-                        iou_idx, :, label_idx, fp_misclf_idx
-                    ]
-                    .astype(int)
-                    .tolist(),
-                    fp_hallucination=metrics[
-                        iou_idx, :, label_idx, fp_halluc_idx
-                    ]
-                    .astype(int)
-                    .tolist(),
-                    fn_misclassification=metrics[
-                        iou_idx, :, label_idx, fn_misclf_idx
-                    ]
-                    .astype(int)
-                    .tolist(),
-                    fn_missing_prediction=metrics[
-                        iou_idx, :, label_idx, fn_misprd_idx
-                    ]
-                    .astype(int)
-                    .tolist(),
-                    tp_examples=_unpack_examples(
-                        iou_idx=iou_idx,
-                        label_idx=label_idx,
-                        type_idx=tp_idx,
-                        example_source=self.prediction_examples,
-                    ),
-                    fp_misclassification_examples=_unpack_examples(
-                        iou_idx=iou_idx,
-                        label_idx=label_idx,
-                        type_idx=fp_misclf_idx,
-                        example_source=self.prediction_examples,
-                    ),
-                    fp_hallucination_examples=_unpack_examples(
-                        iou_idx=iou_idx,
-                        label_idx=label_idx,
-                        type_idx=fp_halluc_idx,
-                        example_source=self.prediction_examples,
-                    ),
-                    fn_misclassification_examples=_unpack_examples(
-                        iou_idx=iou_idx,
-                        label_idx=label_idx,
-                        type_idx=fn_misclf_idx,
-                        example_source=self.groundtruth_examples,
-                    ),
-                    fn_missing_prediction_examples=_unpack_examples(
-                        iou_idx=iou_idx,
-                        label_idx=label_idx,
-                        type_idx=fn_misprd_idx,
-                        example_source=self.groundtruth_examples,
-                    ),
-                )
-                for iou_idx in range(n_ious)
-            ]
+            DetailedCounts(
+                iou_threshold=iou_thresholds[iou_idx],
+                label=self.index_to_label[label_idx],
+                score_thresholds=score_thresholds,
+                tp=metrics[iou_idx, :, label_idx, tp_idx].astype(int).tolist(),
+                fp_misclassification=metrics[
+                    iou_idx, :, label_idx, fp_misclf_idx
+                ]
+                .astype(int)
+                .tolist(),
+                fp_hallucination=metrics[iou_idx, :, label_idx, fp_halluc_idx]
+                .astype(int)
+                .tolist(),
+                fn_misclassification=metrics[
+                    iou_idx, :, label_idx, fn_misclf_idx
+                ]
+                .astype(int)
+                .tolist(),
+                fn_missing_prediction=metrics[
+                    iou_idx, :, label_idx, fn_misprd_idx
+                ]
+                .astype(int)
+                .tolist(),
+                tp_examples=_unpack_examples(
+                    iou_idx=iou_idx,
+                    label_idx=label_idx,
+                    type_idx=tp_idx,
+                    example_source=self.prediction_examples,
+                ),
+                fp_misclassification_examples=_unpack_examples(
+                    iou_idx=iou_idx,
+                    label_idx=label_idx,
+                    type_idx=fp_misclf_idx,
+                    example_source=self.prediction_examples,
+                ),
+                fp_hallucination_examples=_unpack_examples(
+                    iou_idx=iou_idx,
+                    label_idx=label_idx,
+                    type_idx=fp_halluc_idx,
+                    example_source=self.prediction_examples,
+                ),
+                fn_misclassification_examples=_unpack_examples(
+                    iou_idx=iou_idx,
+                    label_idx=label_idx,
+                    type_idx=fn_misclf_idx,
+                    example_source=self.groundtruth_examples,
+                ),
+                fn_missing_prediction_examples=_unpack_examples(
+                    iou_idx=iou_idx,
+                    label_idx=label_idx,
+                    type_idx=fn_misprd_idx,
+                    example_source=self.groundtruth_examples,
+                ),
+            )
             for label_idx in range(n_labels)
+            for iou_idx in range(n_ious)
         ]
 
 

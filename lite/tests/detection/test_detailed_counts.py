@@ -1,11 +1,11 @@
 import numpy as np
-from valor_lite.detection import DataLoader, Detection, Evaluator
+from valor_lite.detection import DataLoader, Detection, Evaluator, MetricType
 from valor_lite.detection.computation import compute_detailed_counts
 
 
 def test_detailed_counts_no_data():
     evaluator = Evaluator()
-    curves = evaluator.compute_detailed_counts()
+    curves = evaluator._compute_detailed_counts()
     assert isinstance(curves, list)
     assert len(curves) == 0
 
@@ -278,10 +278,11 @@ def test_detailed_counts(
     assert evaluator.n_groundtruths == 4
     assert evaluator.n_predictions == 4
 
-    metrics = evaluator.compute_detailed_counts(
+    metrics = evaluator.evaluate(
         iou_thresholds=[0.5],
         score_thresholds=[0.05, 0.3, 0.35, 0.45, 0.55, 0.95],
-        n_samples=1,
+        number_of_examples=1,
+        metrics_to_return=[MetricType.DetailedCounts],
     )
 
     uid1_rect1 = ("uid1", rect1)
@@ -293,7 +294,7 @@ def test_detailed_counts(
     uid2_rect2 = ("uid2", rect2)
 
     # test DetailedCounts
-    actual_metrics = [mm.to_dict() for m in metrics for mm in m]
+    actual_metrics = [m.to_dict() for m in metrics[MetricType.DetailedCounts]]
     expected_metrics = [
         {
             "type": "DetailedCounts",
@@ -521,14 +522,15 @@ def test_detailed_counts(
 
     # test at lower IoU threshold
 
-    metrics = evaluator.compute_detailed_counts(
+    metrics = evaluator.evaluate(
         iou_thresholds=[0.45],
         score_thresholds=[0.05, 0.3, 0.35, 0.45, 0.55, 0.95],
-        n_samples=1,
+        number_of_examples=1,
+        metrics_to_return=[MetricType.DetailedCounts],
     )
 
     # test DetailedCounts
-    actual_metrics = [mm.to_dict() for m in metrics for mm in m]
+    actual_metrics = [m.to_dict() for m in metrics[MetricType.DetailedCounts]]
     expected_metrics = [
         {
             "type": "DetailedCounts",
@@ -781,13 +783,14 @@ def test_detailed_counts_using_torch_metrics_example(
     assert evaluator.n_groundtruths == 20
     assert evaluator.n_predictions == 19
 
-    metrics = evaluator.compute_detailed_counts(
+    metrics = evaluator.evaluate(
         iou_thresholds=[0.5, 0.9],
         score_thresholds=[0.05, 0.25, 0.35, 0.55, 0.75, 0.8, 0.85, 0.95],
-        n_samples=1,
+        number_of_examples=1,
+        metrics_to_return=[MetricType.DetailedCounts],
     )
 
-    assert len(metrics) == 6
+    assert len(metrics[MetricType.DetailedCounts]) == 12
 
     uid0_gt_0 = ("0", (214.125, 562.5, 41.28125, 285.0))
     uid1_gt_0 = ("1", (13.0, 549.0, 22.75, 632.5))
@@ -814,7 +817,7 @@ def test_detailed_counts_using_torch_metrics_example(
     uid3_pd_4 = ("3", (75.3125, 91.875, 23.015625, 50.84375))
 
     # test DetailedCounts
-    actual_metrics = [mm.to_dict() for m in metrics for mm in m]
+    actual_metrics = [m.to_dict() for m in metrics[MetricType.DetailedCounts]]
     expected_metrics = [
         {
             "type": "DetailedCounts",
@@ -1628,16 +1631,17 @@ def test_detailed_counts_fp_hallucination_edge_case(
     assert evaluator.n_groundtruths == 2
     assert evaluator.n_predictions == 2
 
-    metrics = evaluator.compute_detailed_counts(
+    metrics = evaluator.evaluate(
         iou_thresholds=[0.5],
         score_thresholds=[0.5, 0.85],
-        n_samples=1,
+        number_of_examples=1,
+        metrics_to_return=[MetricType.DetailedCounts],
     )
 
-    assert len(metrics) == 1
+    assert len(metrics[MetricType.DetailedCounts]) == 1
 
     # test DetailedCounts
-    actual_metrics = [mm.to_dict() for m in metrics for mm in m]
+    actual_metrics = [m.to_dict() for m in metrics[MetricType.DetailedCounts]]
     expected_metrics = [
         {
             "type": "DetailedCounts",
@@ -1691,13 +1695,14 @@ def test_detailed_counts_ranked_pair_ordering(
         "n_predictions": 4,
     }
 
-    metrics = evaluator.compute_detailed_counts(
+    metrics = evaluator.evaluate(
         iou_thresholds=[0.5],
         score_thresholds=[0.0],
-        n_samples=0,
+        number_of_examples=0,
+        metrics_to_return=[MetricType.DetailedCounts],
     )
 
-    actual_metrics = [mm.to_dict() for m in metrics for mm in m]
+    actual_metrics = [m.to_dict() for m in metrics[MetricType.DetailedCounts]]
     expected_metrics = [
         {
             "type": "DetailedCounts",
