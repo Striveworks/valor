@@ -21,6 +21,25 @@ class MetricType(str, Enum):
     PrecisionRecallCurve = "PrecisionRecallCurve"
     DetailedCounts = "DetailedCounts"
 
+    @classmethod
+    def base_metrics(cls):
+        return [
+            cls.Counts,
+            cls.Accuracy,
+            cls.Precision,
+            cls.Recall,
+            cls.F1,
+            cls.AP,
+            cls.AR,
+            cls.mAP,
+            cls.mAR,
+            cls.APAveragedOverIOUs,
+            cls.mAPAveragedOverIOUs,
+            cls.ARAveragedOverScores,
+            cls.mARAveragedOverScores,
+            cls.PrecisionRecallCurve,
+        ]
+
 
 @dataclass
 class Counts:
