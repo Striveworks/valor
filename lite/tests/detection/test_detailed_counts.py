@@ -5,7 +5,7 @@ from valor_lite.detection.computation import compute_detailed_counts
 
 def test_detailed_counts_no_data():
     evaluator = Evaluator()
-    curves = evaluator.compute_detailed_counts()
+    curves = evaluator._compute_detailed_counts()
     assert isinstance(curves, list)
     assert len(curves) == 0
 

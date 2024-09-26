@@ -228,21 +228,25 @@ class Evaluator:
 
     def evaluate(
         self,
+        metrics_to_return: list[MetricType] = MetricType.base_metrics(),
         iou_thresholds: list[float] = [0.5, 0.75, 0.9],
         score_thresholds: list[float] = [0.5],
         number_of_examples: int = 0,
         filter_: Filter | None = None,
-        metrics_to_return: list[MetricType] = MetricType.base_metrics(),
     ) -> dict[MetricType, list]:
         """
         Performs an evaluation and returns metrics.
 
         Parameters
         ----------
+        metrics_to_return : list[MetricType]
+            A list of metrics to return in the results.
         iou_thresholds : list[float]
             A list of IoU thresholds to compute metrics over.
         score_thresholds : list[float]
             A list of score thresholds to compute metrics over.
+        number_of_examples : int, default=0
+            Number of annotation examples to return in DetailedCounts.
         filter_ : Filter, optional
             An optional filter object.
 
@@ -429,15 +433,19 @@ class Evaluator:
                     )
 
         if MetricType.DetailedCounts in metrics_to_return:
-            metrics[MetricType.DetailedCounts] = self.compute_detailed_counts(
+            metrics[MetricType.DetailedCounts] = self._compute_detailed_counts(
                 iou_thresholds=iou_thresholds,
                 score_thresholds=score_thresholds,
                 n_samples=number_of_examples,
             )
 
+        for metric in set(metrics.keys()):
+            if metric not in metrics_to_return:
+                del metrics[metric]
+
         return metrics
 
-    def compute_detailed_counts(
+    def _compute_detailed_counts(
         self,
         iou_thresholds: list[float] = [0.5],
         score_thresholds: list[float] = [
