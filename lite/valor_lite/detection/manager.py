@@ -74,6 +74,10 @@ class Evaluator:
         self.uid_to_index: dict[str, int] = dict()
         self.index_to_uid: dict[int, str] = dict()
 
+        # annotation reference
+        self.groundtruth_examples: dict[int, NDArray[np.float16]] = dict()
+        self.prediction_examples: dict[int, NDArray[np.float16]] = dict()
+
         # label reference
         self.label_to_index: dict[tuple[str, str], int] = dict()
         self.index_to_label: dict[int, tuple[str, str]] = dict()
@@ -84,10 +88,10 @@ class Evaluator:
         self.label_index_to_label_key_index: dict[int, int] = dict()
 
         # computation caches
-        self._detailed_pairs = np.array([])
-        self._ranked_pairs = np.array([])
-        self._label_metadata = np.array([])
-        self._label_metadata_per_datum = np.array([])
+        self._detailed_pairs: NDArray[np.floating] = np.array([])
+        self._ranked_pairs: NDArray[np.floating] = np.array([])
+        self._label_metadata: NDArray[np.int32] = np.array([])
+        self._label_metadata_per_datum: NDArray[np.int32] = np.array([])
 
     @property
     def ignored_prediction_labels(self) -> list[tuple[str, str]]:
@@ -462,10 +466,52 @@ class Evaluator:
         )
 
         tp_idx = 0
-        fp_misclf_idx = tp_idx + n_samples + 1
-        fp_halluc_idx = fp_misclf_idx + n_samples + 1
-        fn_misclf_idx = fp_halluc_idx + n_samples + 1
-        fn_misprd_idx = fn_misclf_idx + n_samples + 1
+        fp_misclf_idx = 2 * n_samples + 1
+        fp_halluc_idx = 4 * n_samples + 2
+        fn_misclf_idx = 6 * n_samples + 3
+        fn_misprd_idx = 8 * n_samples + 4
+
+        def _unpack_examples(
+            iou_idx: int,
+            label_idx: int,
+            type_idx: int,
+            example_source: dict[int, NDArray[np.float16]],
+        ) -> list[list[tuple[str, tuple[float, float, float, float]]]]:
+            """
+            Unpacks metric examples from computation.
+            """
+            type_idx += 1
+
+            results = list()
+            for score_idx in range(n_scores):
+                examples = list()
+                for example_idx in range(n_samples):
+                    datum_idx = metrics[
+                        iou_idx,
+                        score_idx,
+                        label_idx,
+                        type_idx + example_idx * 2,
+                    ]
+                    annotation_idx = metrics[
+                        iou_idx,
+                        score_idx,
+                        label_idx,
+                        type_idx + example_idx * 2 + 1,
+                    ]
+                    if datum_idx >= 0:
+                        examples.append(
+                            (
+                                self.index_to_uid[datum_idx],
+                                tuple(
+                                    example_source[datum_idx][
+                                        annotation_idx
+                                    ].tolist()
+                                ),
+                            )
+                        )
+                results.append(examples)
+
+            return results
 
         n_ious, n_scores, n_labels, _ = metrics.shape
         return [
@@ -477,76 +523,56 @@ class Evaluator:
                     tp=metrics[iou_idx, :, label_idx, tp_idx]
                     .astype(int)
                     .tolist(),
-                    tp_examples=[
-                        [
-                            self.index_to_uid[int(datum_idx)]
-                            for datum_idx in metrics[iou_idx][score_idx][
-                                label_idx
-                            ][tp_idx + 1 : fp_misclf_idx]
-                            if int(datum_idx) >= 0
-                        ]
-                        for score_idx in range(n_scores)
-                    ],
                     fp_misclassification=metrics[
                         iou_idx, :, label_idx, fp_misclf_idx
                     ]
                     .astype(int)
                     .tolist(),
-                    fp_misclassification_examples=[
-                        [
-                            self.index_to_uid[int(datum_idx)]
-                            for datum_idx in metrics[iou_idx][score_idx][
-                                label_idx
-                            ][fp_misclf_idx + 1 : fp_halluc_idx]
-                            if int(datum_idx) >= 0
-                        ]
-                        for score_idx in range(n_scores)
-                    ],
                     fp_hallucination=metrics[
                         iou_idx, :, label_idx, fp_halluc_idx
                     ]
                     .astype(int)
                     .tolist(),
-                    fp_hallucination_examples=[
-                        [
-                            self.index_to_uid[int(datum_idx)]
-                            for datum_idx in metrics[iou_idx][score_idx][
-                                label_idx
-                            ][fp_halluc_idx + 1 : fn_misclf_idx]
-                            if int(datum_idx) >= 0
-                        ]
-                        for score_idx in range(n_scores)
-                    ],
                     fn_misclassification=metrics[
                         iou_idx, :, label_idx, fn_misclf_idx
                     ]
                     .astype(int)
                     .tolist(),
-                    fn_misclassification_examples=[
-                        [
-                            self.index_to_uid[int(datum_idx)]
-                            for datum_idx in metrics[iou_idx][score_idx][
-                                label_idx
-                            ][fn_misclf_idx + 1 : fn_misprd_idx]
-                            if int(datum_idx) >= 0
-                        ]
-                        for score_idx in range(n_scores)
-                    ],
                     fn_missing_prediction=metrics[
                         iou_idx, :, label_idx, fn_misprd_idx
                     ]
                     .astype(int)
                     .tolist(),
-                    fn_missing_prediction_examples=[
-                        [
-                            self.index_to_uid[int(datum_idx)]
-                            for datum_idx in metrics[iou_idx][score_idx][
-                                label_idx
-                            ][fn_misprd_idx + 1 :]
-                            if int(datum_idx) >= 0
-                        ]
-                        for score_idx in range(n_scores)
-                    ],
+                    tp_examples=_unpack_examples(
+                        iou_idx=iou_idx,
+                        label_idx=label_idx,
+                        type_idx=tp_idx,
+                        example_source=self.prediction_examples,
+                    ),
+                    fp_misclassification_examples=_unpack_examples(
+                        iou_idx=iou_idx,
+                        label_idx=label_idx,
+                        type_idx=fp_misclf_idx,
+                        example_source=self.prediction_examples,
+                    ),
+                    fp_hallucination_examples=_unpack_examples(
+                        iou_idx=iou_idx,
+                        label_idx=label_idx,
+                        type_idx=fp_halluc_idx,
+                        example_source=self.prediction_examples,
+                    ),
+                    fn_misclassification_examples=_unpack_examples(
+                        iou_idx=iou_idx,
+                        label_idx=label_idx,
+                        type_idx=fn_misclf_idx,
+                        example_source=self.groundtruth_examples,
+                    ),
+                    fn_missing_prediction_examples=_unpack_examples(
+                        iou_idx=iou_idx,
+                        label_idx=label_idx,
+                        type_idx=fn_misprd_idx,
+                        example_source=self.groundtruth_examples,
+                    ),
                 )
                 for iou_idx in range(n_ious)
             ]
@@ -650,10 +676,21 @@ class DataLoader:
             # update datum uid index
             uid_index = self._add_datum(uid=detection.uid)
 
+            # initialize bounding box examples
+            self._evaluator.groundtruth_examples[uid_index] = np.zeros(
+                (len(detection.groundtruths), 4), dtype=np.float16
+            )
+            self._evaluator.prediction_examples[uid_index] = np.zeros(
+                (len(detection.predictions), 4), dtype=np.float16
+            )
+
             # cache labels and annotations
             keyed_groundtruths = defaultdict(list)
             keyed_predictions = defaultdict(list)
             for gidx, gann in enumerate(detection.groundtruths):
+                self._evaluator.groundtruth_examples[uid_index][
+                    gidx
+                ] = np.array(gann.extrema)
                 for glabel in gann.labels:
                     label_idx, label_key_idx = self._add_label(glabel)
                     self.groundtruth_count[label_idx][uid_index] += 1
@@ -665,6 +702,9 @@ class DataLoader:
                         )
                     )
             for pidx, pann in enumerate(detection.predictions):
+                self._evaluator.prediction_examples[uid_index][
+                    pidx
+                ] = np.array(pann.extrema)
                 for plabel, pscore in zip(pann.labels, pann.scores):
                     label_idx, label_key_idx = self._add_label(plabel)
                     self.prediction_count[label_idx][uid_index] += 1
@@ -783,10 +823,21 @@ class DataLoader:
             # update datum uid index
             uid_index = self._add_datum(uid=groundtruth["datum"]["uid"])
 
+            # initialize bounding box examples
+            self._evaluator.groundtruth_examples[uid_index] = np.zeros(
+                (len(groundtruth["annotations"]), 4), dtype=np.float16
+            )
+            self._evaluator.prediction_examples[uid_index] = np.zeros(
+                (len(prediction["annotations"]), 4), dtype=np.float16
+            )
+
             # cache labels and annotations
             keyed_groundtruths = defaultdict(list)
             keyed_predictions = defaultdict(list)
             for gidx, gann in enumerate(groundtruth["annotations"]):
+                self._evaluator.groundtruth_examples[uid_index][
+                    gidx
+                ] = np.array(_get_bbox_extrema(gann["bounding_box"]))
                 for valor_label in gann["labels"]:
                     glabel = (valor_label["key"], valor_label["value"])
                     label_idx, label_key_idx = self._add_label(glabel)
@@ -799,6 +850,9 @@ class DataLoader:
                         )
                     )
             for pidx, pann in enumerate(prediction["annotations"]):
+                self._evaluator.prediction_examples[uid_index][
+                    pidx
+                ] = np.array(_get_bbox_extrema(pann["bounding_box"]))
                 for valor_label in pann["labels"]:
                     plabel = (valor_label["key"], valor_label["value"])
                     pscore = valor_label["score"]

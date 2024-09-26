@@ -71,8 +71,9 @@ def test_Bitmask():
         )
 
     # test `to_box` function
-    with pytest.raises(NotImplementedError):
-        gt.to_box()
+    box = gt.to_box()
+    assert box
+    assert box.extrema == (0, 4, 0, 4)
 
 
 def test_Detection():
