@@ -471,12 +471,15 @@ class Evaluator:
         fn_misclf_idx = 6 * n_samples + 3
         fn_misprd_idx = 8 * n_samples + 4
 
-        def unpack_examples(
+        def _unpack_examples(
             iou_idx: int,
             label_idx: int,
             type_idx: int,
             example_source: dict[int, NDArray[np.float16]],
-        ) -> list[list[tuple[str, float, float, float, float]]]:
+        ) -> list[list[tuple[str, tuple[float, float, float, float]]]]:
+            """
+            Unpacks metric examples from computation.
+            """
             type_idx += 1
 
             results = list()
@@ -499,9 +502,11 @@ class Evaluator:
                         examples.append(
                             (
                                 self.index_to_uid[datum_idx],
-                                *example_source[datum_idx][
-                                    annotation_idx
-                                ].tolist(),
+                                tuple(
+                                    example_source[datum_idx][
+                                        annotation_idx
+                                    ].tolist()
+                                ),
                             )
                         )
                 results.append(examples)
@@ -538,31 +543,31 @@ class Evaluator:
                     ]
                     .astype(int)
                     .tolist(),
-                    tp_examples=unpack_examples(
+                    tp_examples=_unpack_examples(
                         iou_idx=iou_idx,
                         label_idx=label_idx,
                         type_idx=tp_idx,
                         example_source=self.prediction_examples,
                     ),
-                    fp_misclassification_examples=unpack_examples(
+                    fp_misclassification_examples=_unpack_examples(
                         iou_idx=iou_idx,
                         label_idx=label_idx,
                         type_idx=fp_misclf_idx,
                         example_source=self.prediction_examples,
                     ),
-                    fp_hallucination_examples=unpack_examples(
+                    fp_hallucination_examples=_unpack_examples(
                         iou_idx=iou_idx,
                         label_idx=label_idx,
                         type_idx=fp_halluc_idx,
                         example_source=self.prediction_examples,
                     ),
-                    fn_misclassification_examples=unpack_examples(
+                    fn_misclassification_examples=_unpack_examples(
                         iou_idx=iou_idx,
                         label_idx=label_idx,
                         type_idx=fn_misclf_idx,
                         example_source=self.groundtruth_examples,
                     ),
-                    fn_missing_prediction_examples=unpack_examples(
+                    fn_missing_prediction_examples=_unpack_examples(
                         iou_idx=iou_idx,
                         label_idx=label_idx,
                         type_idx=fn_misprd_idx,

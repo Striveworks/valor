@@ -316,18 +316,18 @@ class DetailedCounts:
     fp_hallucination: list[int]
     fn_misclassification: list[int]
     fn_missing_prediction: list[int]
-    tp_examples: list[list[tuple[str, float, float, float, float]]]
+    tp_examples: list[list[tuple[str, tuple[float, float, float, float]]]]
     fp_misclassification_examples: list[
-        list[tuple[str, float, float, float, float]]
+        list[tuple[str, tuple[float, float, float, float]]]
     ]
     fp_hallucination_examples: list[
-        list[tuple[str, float, float, float, float]]
+        list[tuple[str, tuple[float, float, float, float]]]
     ]
     fn_misclassification_examples: list[
-        list[tuple[str, float, float, float, float]]
+        list[tuple[str, tuple[float, float, float, float]]]
     ]
     fn_missing_prediction_examples: list[
-        list[tuple[str, float, float, float, float]]
+        list[tuple[str, tuple[float, float, float, float]]]
     ]
     score_thresholds: list[float]
     iou_threshold: float
