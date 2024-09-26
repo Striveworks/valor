@@ -884,7 +884,7 @@ class LLMClient:
         """
         opinions = self._generate_opinions(text)
         if len(opinions) == 0:
-            return 0
+            return 0.0
 
         verdicts = self._generate_bias_verdicts(opinions)
 
@@ -1164,7 +1164,7 @@ class LLMClient:
         """
         opinions = self._generate_opinions(text)
         if len(opinions) == 0:
-            return 0
+            return 0.0
 
         verdicts = self._generate_toxicity_verdicts(opinions)
 
