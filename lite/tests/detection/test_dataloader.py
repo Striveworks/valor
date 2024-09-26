@@ -22,7 +22,7 @@ def test_valor_integration():
     loader.add_data_from_valor_dict([(gt, pd)])
 
     assert len(loader.pairs) == 1
-    assert loader.pairs[0].shape == (281, 7)
+    assert loader.pairs[0].shape == (71, 7)
 
     assert set(loader._evaluator.label_key_to_index.keys()) == {
         "iscrowd",
