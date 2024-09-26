@@ -70,6 +70,11 @@ def test_Bitmask():
             labels=[("k", "v1"), ("k", "v2")],
             scores=[0.7],
         )
+        
+    # test `to_box` function
+    box = gt.to_box()
+    assert box
+    assert box.extrema == (0, 4, 0, 4)
 
 
 def test_Polygon(rect1_rotated_5_degrees_around_origin):
@@ -106,7 +111,6 @@ def test_Polygon(rect1_rotated_5_degrees_around_origin):
             labels=[("k", "v1"), ("k", "v2")],
             scores=[0.7],
         )
-
 
 def test_Detection():
 

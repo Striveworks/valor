@@ -191,6 +191,10 @@ class Evaluator:
         self.uid_to_index: dict[str, int] = dict()
         self.index_to_uid: dict[int, str] = dict()
 
+        # annotation reference
+        self.groundtruth_examples: dict[int, NDArray[np.float16]] = dict()
+        self.prediction_examples: dict[int, NDArray[np.float16]] = dict()
+
         # label reference
         self.label_to_index: dict[tuple[str, str], int] = dict()
         self.index_to_label: dict[int, tuple[str, str]] = dict()
@@ -201,10 +205,10 @@ class Evaluator:
         self.label_index_to_label_key_index: dict[int, int] = dict()
 
         # computation caches
-        self._detailed_pairs = np.array([])
-        self._ranked_pairs = np.array([])
-        self._label_metadata = np.array([])
-        self._label_metadata_per_datum = np.array([])
+        self._detailed_pairs: NDArray[np.floating] = np.array([])
+        self._ranked_pairs: NDArray[np.floating] = np.array([])
+        self._label_metadata: NDArray[np.int32] = np.array([])
+        self._label_metadata_per_datum: NDArray[np.int32] = np.array([])
 
     @property
     def ignored_prediction_labels(self) -> list[tuple[str, str]]:
@@ -579,10 +583,52 @@ class Evaluator:
         )
 
         tp_idx = 0
-        fp_misclf_idx = tp_idx + n_samples + 1
-        fp_halluc_idx = fp_misclf_idx + n_samples + 1
-        fn_misclf_idx = fp_halluc_idx + n_samples + 1
-        fn_misprd_idx = fn_misclf_idx + n_samples + 1
+        fp_misclf_idx = 2 * n_samples + 1
+        fp_halluc_idx = 4 * n_samples + 2
+        fn_misclf_idx = 6 * n_samples + 3
+        fn_misprd_idx = 8 * n_samples + 4
+
+        def _unpack_examples(
+            iou_idx: int,
+            label_idx: int,
+            type_idx: int,
+            example_source: dict[int, NDArray[np.float16]],
+        ) -> list[list[tuple[str, tuple[float, float, float, float]]]]:
+            """
+            Unpacks metric examples from computation.
+            """
+            type_idx += 1
+
+            results = list()
+            for score_idx in range(n_scores):
+                examples = list()
+                for example_idx in range(n_samples):
+                    datum_idx = metrics[
+                        iou_idx,
+                        score_idx,
+                        label_idx,
+                        type_idx + example_idx * 2,
+                    ]
+                    annotation_idx = metrics[
+                        iou_idx,
+                        score_idx,
+                        label_idx,
+                        type_idx + example_idx * 2 + 1,
+                    ]
+                    if datum_idx >= 0:
+                        examples.append(
+                            (
+                                self.index_to_uid[datum_idx],
+                                tuple(
+                                    example_source[datum_idx][
+                                        annotation_idx
+                                    ].tolist()
+                                ),
+                            )
+                        )
+                results.append(examples)
+
+            return results
 
         n_ious, n_scores, n_labels, _ = metrics.shape
         return [
@@ -594,76 +640,56 @@ class Evaluator:
                     tp=metrics[iou_idx, :, label_idx, tp_idx]
                     .astype(int)
                     .tolist(),
-                    tp_examples=[
-                        [
-                            self.index_to_uid[int(datum_idx)]
-                            for datum_idx in metrics[iou_idx][score_idx][
-                                label_idx
-                            ][tp_idx + 1 : fp_misclf_idx]
-                            if int(datum_idx) >= 0
-                        ]
-                        for score_idx in range(n_scores)
-                    ],
                     fp_misclassification=metrics[
                         iou_idx, :, label_idx, fp_misclf_idx
                     ]
                     .astype(int)
                     .tolist(),
-                    fp_misclassification_examples=[
-                        [
-                            self.index_to_uid[int(datum_idx)]
-                            for datum_idx in metrics[iou_idx][score_idx][
-                                label_idx
-                            ][fp_misclf_idx + 1 : fp_halluc_idx]
-                            if int(datum_idx) >= 0
-                        ]
-                        for score_idx in range(n_scores)
-                    ],
                     fp_hallucination=metrics[
                         iou_idx, :, label_idx, fp_halluc_idx
                     ]
                     .astype(int)
                     .tolist(),
-                    fp_hallucination_examples=[
-                        [
-                            self.index_to_uid[int(datum_idx)]
-                            for datum_idx in metrics[iou_idx][score_idx][
-                                label_idx
-                            ][fp_halluc_idx + 1 : fn_misclf_idx]
-                            if int(datum_idx) >= 0
-                        ]
-                        for score_idx in range(n_scores)
-                    ],
                     fn_misclassification=metrics[
                         iou_idx, :, label_idx, fn_misclf_idx
                     ]
                     .astype(int)
                     .tolist(),
-                    fn_misclassification_examples=[
-                        [
-                            self.index_to_uid[int(datum_idx)]
-                            for datum_idx in metrics[iou_idx][score_idx][
-                                label_idx
-                            ][fn_misclf_idx + 1 : fn_misprd_idx]
-                            if int(datum_idx) >= 0
-                        ]
-                        for score_idx in range(n_scores)
-                    ],
                     fn_missing_prediction=metrics[
                         iou_idx, :, label_idx, fn_misprd_idx
                     ]
                     .astype(int)
                     .tolist(),
-                    fn_missing_prediction_examples=[
-                        [
-                            self.index_to_uid[int(datum_idx)]
-                            for datum_idx in metrics[iou_idx][score_idx][
-                                label_idx
-                            ][fn_misprd_idx + 1 :]
-                            if int(datum_idx) >= 0
-                        ]
-                        for score_idx in range(n_scores)
-                    ],
+                    tp_examples=_unpack_examples(
+                        iou_idx=iou_idx,
+                        label_idx=label_idx,
+                        type_idx=tp_idx,
+                        example_source=self.prediction_examples,
+                    ),
+                    fp_misclassification_examples=_unpack_examples(
+                        iou_idx=iou_idx,
+                        label_idx=label_idx,
+                        type_idx=fp_misclf_idx,
+                        example_source=self.prediction_examples,
+                    ),
+                    fp_hallucination_examples=_unpack_examples(
+                        iou_idx=iou_idx,
+                        label_idx=label_idx,
+                        type_idx=fp_halluc_idx,
+                        example_source=self.prediction_examples,
+                    ),
+                    fn_misclassification_examples=_unpack_examples(
+                        iou_idx=iou_idx,
+                        label_idx=label_idx,
+                        type_idx=fn_misclf_idx,
+                        example_source=self.groundtruth_examples,
+                    ),
+                    fn_missing_prediction_examples=_unpack_examples(
+                        iou_idx=iou_idx,
+                        label_idx=label_idx,
+                        type_idx=fn_misprd_idx,
+                        example_source=self.groundtruth_examples,
+                    ),
                 )
                 for iou_idx in range(n_ious)
             ]
@@ -678,7 +704,7 @@ class DataLoader:
 
     def __init__(self):
         self._evaluator = Evaluator()
-        self.pairs = list()
+        self.pairs: list[NDArray[np.floating]] = list()
         self.groundtruth_count = defaultdict(lambda: defaultdict(int))
         self.prediction_count = defaultdict(lambda: defaultdict(int))
 
@@ -741,6 +767,125 @@ class DataLoader:
             self._evaluator.label_key_to_index[label[0]],
         )
 
+    def _add_data(
+        self,
+        uid_index: int,
+        keyed_groundtruths: dict,
+        keyed_predictions: dict,
+    ):
+        gt_keys = set(keyed_groundtruths.keys())
+        pd_keys = set(keyed_predictions.keys())
+        joint_keys = gt_keys.intersection(pd_keys)
+        gt_unique_keys = gt_keys - pd_keys
+        pd_unique_keys = pd_keys - gt_keys
+
+        pairs = list()
+        for key in joint_keys:
+            n_predictions = len(keyed_predictions[key])
+            n_groundtruths = len(keyed_groundtruths[key])
+            boxes = np.array(
+                [
+                    np.array([*gextrema, *pextrema])
+                    for _, _, _, pextrema in keyed_predictions[key]
+                    for _, _, gextrema in keyed_groundtruths[key]
+                ]
+            )
+            ious = compute_iou(boxes)
+            mask_nonzero_iou = (ious > 1e-9).reshape(
+                (n_predictions, n_groundtruths)
+            )
+            mask_ious_halluc = ~(mask_nonzero_iou.any(axis=1))
+            mask_ious_misprd = ~(mask_nonzero_iou.any(axis=0))
+
+            pairs.extend(
+                [
+                    np.array(
+                        [
+                            float(uid_index),
+                            float(gidx),
+                            float(pidx),
+                            ious[pidx * len(keyed_groundtruths[key]) + gidx],
+                            float(glabel),
+                            float(plabel),
+                            float(score),
+                        ]
+                    )
+                    for pidx, plabel, score, _ in keyed_predictions[key]
+                    for gidx, glabel, _ in keyed_groundtruths[key]
+                    if ious[pidx * len(keyed_groundtruths[key]) + gidx] > 1e-9
+                ]
+            )
+            pairs.extend(
+                [
+                    np.array(
+                        [
+                            float(uid_index),
+                            -1.0,
+                            float(pidx),
+                            0.0,
+                            -1.0,
+                            float(plabel),
+                            float(score),
+                        ]
+                    )
+                    for pidx, plabel, score, _ in keyed_predictions[key]
+                    if mask_ious_halluc[pidx]
+                ]
+            )
+            pairs.extend(
+                [
+                    np.array(
+                        [
+                            float(uid_index),
+                            float(gidx),
+                            -1.0,
+                            0.0,
+                            float(glabel),
+                            -1.0,
+                            -1.0,
+                        ]
+                    )
+                    for gidx, glabel, _ in keyed_groundtruths[key]
+                    if mask_ious_misprd[gidx]
+                ]
+            )
+        for key in gt_unique_keys:
+            pairs.extend(
+                [
+                    np.array(
+                        [
+                            float(uid_index),
+                            float(gidx),
+                            -1.0,
+                            0.0,
+                            float(glabel),
+                            -1.0,
+                            -1.0,
+                        ]
+                    )
+                    for gidx, glabel, _ in keyed_groundtruths[key]
+                ]
+            )
+        for key in pd_unique_keys:
+            pairs.extend(
+                [
+                    np.array(
+                        [
+                            float(uid_index),
+                            -1.0,
+                            float(pidx),
+                            0.0,
+                            -1.0,
+                            float(plabel),
+                            float(score),
+                        ]
+                    )
+                    for pidx, plabel, score, _ in keyed_predictions[key]
+                ]
+            )
+
+        self.pairs.append(np.array(pairs))
+
     def add_data(
         self,
         detections: list[Detection],
@@ -767,6 +912,14 @@ class DataLoader:
             # update datum uid index
             uid_index = self._add_datum(uid=detection.uid)
 
+            # initialize bounding box examples
+            self._evaluator.groundtruth_examples[uid_index] = np.zeros(
+                (len(detection.groundtruths), 4), dtype=np.float16
+            )
+            self._evaluator.prediction_examples[uid_index] = np.zeros(
+                (len(detection.predictions), 4), dtype=np.float16
+            )
+
             # cache labels and annotations
             keyed_groundtruths = defaultdict(list)
             keyed_predictions = defaultdict(list)
@@ -774,6 +927,9 @@ class DataLoader:
                 detection=detection
             )
             for gidx, gann in enumerate(detection.groundtruths):
+                self._evaluator.groundtruth_examples[uid_index][
+                    gidx
+                ] = np.array(gann.extrema)
                 for glabel in gann.labels:
                     label_idx, label_key_idx = self._add_label(glabel)
                     self.groundtruth_count[label_idx][uid_index] += 1
@@ -787,6 +943,9 @@ class DataLoader:
                     )
 
             for pidx, pann in enumerate(detection.predictions):
+                self._evaluator.prediction_examples[uid_index][
+                    pidx
+                ] = np.array(pann.extrema)
                 for plabel, pscore in zip(pann.labels, pann.scores):
                     label_idx, label_key_idx = self._add_label(plabel)
                     self.prediction_count[label_idx][uid_index] += 1
@@ -801,83 +960,90 @@ class DataLoader:
                             representation,
                         )
                     )
+# TODO
+# <<<<<<< add_rasters_to_lite
+#             gt_keys = set(keyed_groundtruths.keys())
+#             pd_keys = set(keyed_predictions.keys())
+#             annotation_type = _get_annotation_annotation_type(detection)
+#             joint_keys = gt_keys.intersection(pd_keys)
+#             gt_unique_keys = gt_keys - pd_keys
+#             pd_unique_keys = pd_keys - gt_keys
 
-            gt_keys = set(keyed_groundtruths.keys())
-            pd_keys = set(keyed_predictions.keys())
-            annotation_type = _get_annotation_annotation_type(detection)
-            joint_keys = gt_keys.intersection(pd_keys)
-            gt_unique_keys = gt_keys - pd_keys
-            pd_unique_keys = pd_keys - gt_keys
+#             pairs = list()
+#             for key in joint_keys:
 
-            pairs = list()
-            for key in joint_keys:
+#                 data = _get_annotation_data(
+#                     keyed_groundtruths=keyed_groundtruths,
+#                     keyed_predictions=keyed_predictions,
+#                     key=key,
+#                     annotation_type=annotation_type,
+#                 )
 
-                data = _get_annotation_data(
-                    keyed_groundtruths=keyed_groundtruths,
-                    keyed_predictions=keyed_predictions,
-                    key=key,
-                    annotation_type=annotation_type,
-                )
+#                 ious = compute_iou(
+#                     data=data,
+#                     annotation_type=annotation_type,
+#                 )
+#                 pairs.extend(
+#                     [
+#                         np.array(
+#                             [
+#                                 float(uid_index),
+#                                 float(gidx),
+#                                 float(pidx),
+#                                 ious[
+#                                     pidx * len(keyed_groundtruths[key]) + gidx
+#                                 ],
+#                                 float(glabel),
+#                                 float(plabel),
+#                                 float(score),
+#                             ]
+#                         )
+#                         for pidx, plabel, score, _ in keyed_predictions[key]
+#                         for gidx, glabel, _ in keyed_groundtruths[key]
+#                     ]
+#                 )
+#             for key in gt_unique_keys:
+#                 pairs.extend(
+#                     [
+#                         np.array(
+#                             [
+#                                 float(uid_index),
+#                                 float(gidx),
+#                                 -1.0,
+#                                 0.0,
+#                                 float(glabel),
+#                                 -1.0,
+#                                 -1.0,
+#                             ]
+#                         )
+#                         for gidx, glabel, _ in keyed_groundtruths[key]
+#                     ]
+#                 )
+#             for key in pd_unique_keys:
+#                 pairs.extend(
+#                     [
+#                         np.array(
+#                             [
+#                                 float(uid_index),
+#                                 -1.0,
+#                                 float(pidx),
+#                                 0.0,
+#                                 -1.0,
+#                                 float(plabel),
+#                                 float(score),
+#                             ]
+#                         )
+#                         for pidx, plabel, score, _ in keyed_predictions[key]
+#                     ]
+#                 )
 
-                ious = compute_iou(
-                    data=data,
-                    annotation_type=annotation_type,
-                )
-                pairs.extend(
-                    [
-                        np.array(
-                            [
-                                float(uid_index),
-                                float(gidx),
-                                float(pidx),
-                                ious[
-                                    pidx * len(keyed_groundtruths[key]) + gidx
-                                ],
-                                float(glabel),
-                                float(plabel),
-                                float(score),
-                            ]
-                        )
-                        for pidx, plabel, score, _ in keyed_predictions[key]
-                        for gidx, glabel, _ in keyed_groundtruths[key]
-                    ]
-                )
-            for key in gt_unique_keys:
-                pairs.extend(
-                    [
-                        np.array(
-                            [
-                                float(uid_index),
-                                float(gidx),
-                                -1.0,
-                                0.0,
-                                float(glabel),
-                                -1.0,
-                                -1.0,
-                            ]
-                        )
-                        for gidx, glabel, _ in keyed_groundtruths[key]
-                    ]
-                )
-            for key in pd_unique_keys:
-                pairs.extend(
-                    [
-                        np.array(
-                            [
-                                float(uid_index),
-                                -1.0,
-                                float(pidx),
-                                0.0,
-                                -1.0,
-                                float(plabel),
-                                float(score),
-                            ]
-                        )
-                        for pidx, plabel, score, _ in keyed_predictions[key]
-                    ]
-                )
-
-            self.pairs.append(np.array(pairs))
+#             self.pairs.append(np.array(pairs))
+# =======
+            self._add_data(
+                uid_index=uid_index,
+                keyed_groundtruths=keyed_groundtruths,
+                keyed_predictions=keyed_predictions,
+            )
 
     def add_data_from_valor_dict(
         self,
@@ -912,6 +1078,14 @@ class DataLoader:
             # update datum uid index
             uid_index = self._add_datum(uid=groundtruth["datum"]["uid"])
 
+            # initialize bounding box examples
+            self._evaluator.groundtruth_examples[uid_index] = np.zeros(
+                (len(groundtruth["annotations"]), 4), dtype=np.float16
+            )
+            self._evaluator.prediction_examples[uid_index] = np.zeros(
+                (len(prediction["annotations"]), 4), dtype=np.float16
+            )
+
             # cache labels and annotations
             keyed_groundtruths = defaultdict(list)
             keyed_predictions = defaultdict(list)
@@ -931,6 +1105,9 @@ class DataLoader:
                     "Groundtruths and predictions must be represented by the same annotation type."
                 )
             for gidx, gann in enumerate(groundtruth["annotations"]):
+                self._evaluator.groundtruth_examples[uid_index][
+                    gidx
+                ] = np.array(_get_bbox_extrema(gann["bounding_box"]))
                 for valor_label in gann["labels"]:
                     glabel = (valor_label["key"], valor_label["value"])
                     label_idx, label_key_idx = self._add_label(glabel)
@@ -943,6 +1120,9 @@ class DataLoader:
                         )
                     )
             for pidx, pann in enumerate(prediction["annotations"]):
+                self._evaluator.prediction_examples[uid_index][
+                    pidx
+                ] = np.array(_get_bbox_extrema(pann["bounding_box"]))
                 for valor_label in pann["labels"]:
                     plabel = (valor_label["key"], valor_label["value"])
                     pscore = valor_label["score"]
@@ -957,80 +1137,86 @@ class DataLoader:
                         )
                     )
 
-            gt_keys = set(keyed_groundtruths.keys())
-            pd_keys = set(keyed_predictions.keys())
-            joint_keys = gt_keys.intersection(pd_keys)
-            gt_unique_keys = gt_keys - pd_keys
-            pd_unique_keys = pd_keys - gt_keys
+                    # TODO
+#             gt_keys = set(keyed_groundtruths.keys())
+#             pd_keys = set(keyed_predictions.keys())
+#             joint_keys = gt_keys.intersection(pd_keys)
+#             gt_unique_keys = gt_keys - pd_keys
+#             pd_unique_keys = pd_keys - gt_keys
 
-            pairs = list()
-            for key in joint_keys:
-                data = _get_annotation_data(
-                    keyed_groundtruths=keyed_groundtruths,
-                    keyed_predictions=keyed_predictions,
-                    key=key,
-                    annotation_type=gt_annotation_type or pd_annotation_type,
-                )
+#             pairs = list()
+#             for key in joint_keys:
+#                 data = _get_annotation_data(
+#                     keyed_groundtruths=keyed_groundtruths,
+#                     keyed_predictions=keyed_predictions,
+#                     key=key,
+#                     annotation_type=gt_annotation_type or pd_annotation_type,
+#                 )
 
-                ious = compute_iou(
-                    data=data,
-                    annotation_type=gt_annotation_type or pd_annotation_type,
-                )
-                pairs.extend(
-                    [
-                        np.array(
-                            [
-                                float(uid_index),
-                                float(gidx),
-                                float(pidx),
-                                ious[
-                                    pidx * len(keyed_groundtruths[key]) + gidx
-                                ],
-                                float(glabel),
-                                float(plabel),
-                                float(score),
-                            ]
-                        )
-                        for pidx, plabel, score, _ in keyed_predictions[key]
-                        for gidx, glabel, _ in keyed_groundtruths[key]
-                    ]
-                )
-            for key in gt_unique_keys:
-                pairs.extend(
-                    [
-                        np.array(
-                            [
-                                float(uid_index),
-                                float(gidx),
-                                -1.0,
-                                0.0,
-                                float(glabel),
-                                -1.0,
-                                -1.0,
-                            ]
-                        )
-                        for gidx, glabel, _ in keyed_groundtruths[key]
-                    ]
-                )
-            for key in pd_unique_keys:
-                pairs.extend(
-                    [
-                        np.array(
-                            [
-                                float(uid_index),
-                                -1.0,
-                                float(pidx),
-                                0.0,
-                                -1.0,
-                                float(plabel),
-                                float(score),
-                            ]
-                        )
-                        for pidx, plabel, score, _ in keyed_predictions[key]
-                    ]
-                )
+#                 ious = compute_iou(
+#                     data=data,
+#                     annotation_type=gt_annotation_type or pd_annotation_type,
+#                 )
+#                 pairs.extend(
+#                     [
+#                         np.array(
+#                             [
+#                                 float(uid_index),
+#                                 float(gidx),
+#                                 float(pidx),
+#                                 ious[
+#                                     pidx * len(keyed_groundtruths[key]) + gidx
+#                                 ],
+#                                 float(glabel),
+#                                 float(plabel),
+#                                 float(score),
+#                             ]
+#                         )
+#                         for pidx, plabel, score, _ in keyed_predictions[key]
+#                         for gidx, glabel, _ in keyed_groundtruths[key]
+#                     ]
+#                 )
+#             for key in gt_unique_keys:
+#                 pairs.extend(
+#                     [
+#                         np.array(
+#                             [
+#                                 float(uid_index),
+#                                 float(gidx),
+#                                 -1.0,
+#                                 0.0,
+#                                 float(glabel),
+#                                 -1.0,
+#                                 -1.0,
+#                             ]
+#                         )
+#                         for gidx, glabel, _ in keyed_groundtruths[key]
+#                     ]
+#                 )
+#             for key in pd_unique_keys:
+#                 pairs.extend(
+#                     [
+#                         np.array(
+#                             [
+#                                 float(uid_index),
+#                                 -1.0,
+#                                 float(pidx),
+#                                 0.0,
+#                                 -1.0,
+#                                 float(plabel),
+#                                 float(score),
+#                             ]
+#                         )
+#                         for pidx, plabel, score, _ in keyed_predictions[key]
+#                     ]
+#                 )
 
-            self.pairs.append(np.array(pairs))
+#             self.pairs.append(np.array(pairs))
+            self._add_data(
+                uid_index=uid_index,
+                keyed_groundtruths=keyed_groundtruths,
+                keyed_predictions=keyed_predictions,
+            )
 
     def finalize(self) -> Evaluator:
         """

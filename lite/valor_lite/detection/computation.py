@@ -164,9 +164,9 @@ def compute_iou(
 
 
 def _compute_ranked_pairs_for_datum(
-    data: np.ndarray,
-    label_metadata: np.ndarray,
-) -> np.ndarray:
+    data: NDArray[np.floating],
+    label_metadata: NDArray[np.int32],
+) -> NDArray[np.floating]:
     """
     Computes ranked pairs for a datum.
     """
@@ -207,7 +207,7 @@ def _compute_ranked_pairs_for_datum(
 
 def compute_ranked_pairs(
     data: list[NDArray[np.floating]],
-    label_metadata: NDArray[np.integer],
+    label_metadata: NDArray[np.int32],
 ) -> NDArray[np.floating]:
     """
     Performs pair ranking on input data.
@@ -236,23 +236,22 @@ def compute_ranked_pairs(
     NDArray[np.floating]
         A filtered array containing only ranked pairs.
     """
-    pairs = np.concatenate(
-        [
-            _compute_ranked_pairs_for_datum(
-                datum,
-                label_metadata=label_metadata,
-            )
-            for datum in data
-        ],
-        axis=0,
-    )
+
+    ranked_pairs_by_datum = [
+        _compute_ranked_pairs_for_datum(
+            data=datum,
+            label_metadata=label_metadata,
+        )
+        for datum in data
+    ]
+    ranked_pairs = np.concatenate(ranked_pairs_by_datum, axis=0)
     indices = np.lexsort(
         (
-            -pairs[:, 3],  # iou
-            -pairs[:, 6],  # score
+            -ranked_pairs[:, 3],  # iou
+            -ranked_pairs[:, 6],  # score
         )
     )
-    return pairs[indices]
+    return ranked_pairs[indices]
 
 
 def compute_metrics(
@@ -523,12 +522,12 @@ def compute_metrics(
 
 
 def compute_detailed_counts(
-    data: np.ndarray,
-    label_metadata: np.ndarray,
-    iou_thresholds: np.ndarray,
-    score_thresholds: np.ndarray,
+    data: NDArray[np.floating],
+    label_metadata: NDArray[np.int32],
+    iou_thresholds: NDArray[np.floating],
+    score_thresholds: NDArray[np.floating],
     n_samples: int,
-) -> np.ndarray:
+) -> NDArray[np.int32]:
     """
     Compute detailed counts.
 
@@ -546,13 +545,13 @@ def compute_detailed_counts(
 
     Index 0 - True Positive Count
     ... Datum ID Examples
-    Index n_samples + 1 - False Positive Misclassification Count
+    Index 2 * n_samples + 1 - False Positive Misclassification Count
     ... Datum ID Examples
-    Index 2 * n_samples + 2 - False Positive Hallucination Count
+    Index 4 * n_samples + 2 - False Positive Hallucination Count
     ... Datum ID Examples
-    Index 3 * n_samples + 3 - False Negative Misclassification Count
+    Index 6 * n_samples + 3 - False Negative Misclassification Count
     ... Datum ID Examples
-    Index 4 * n_samples + 4 - False Negative Missing Prediction Count
+    Index 8 * n_samples + 4 - False Negative Missing Prediction Count
     ... Datum ID Examples
 
     Parameters
@@ -570,22 +569,24 @@ def compute_detailed_counts(
 
     Returns
     -------
-    NDArray[np.floating]
+    NDArray[np.int32]
         The detailed counts with optional examples.
     """
 
     n_labels = label_metadata.shape[0]
     n_ious = iou_thresholds.shape[0]
     n_scores = score_thresholds.shape[0]
-    n_metrics = 5 * (n_samples + 1)
+    n_metrics = 5 * (2 * n_samples + 1)
 
     tp_idx = 0
-    fp_misclf_idx = tp_idx + n_samples + 1
-    fp_halluc_idx = fp_misclf_idx + n_samples + 1
-    fn_misclf_idx = fp_halluc_idx + n_samples + 1
-    fn_misprd_idx = fn_misclf_idx + n_samples + 1
+    fp_misclf_idx = 2 * n_samples + 1
+    fp_halluc_idx = 4 * n_samples + 2
+    fn_misclf_idx = 6 * n_samples + 3
+    fn_misprd_idx = 8 * n_samples + 4
 
-    detailed_pr_curve = np.ones((n_ious, n_scores, n_labels, n_metrics)) * -1.0
+    detailed_pr_curve = -1 * np.ones(
+        (n_ious, n_scores, n_labels, n_metrics), dtype=np.int32
+    )
 
     mask_gt_exists = data[:, 1] > -0.5
     mask_pd_exists = data[:, 2] > -0.5
@@ -603,13 +604,14 @@ def compute_detailed_counts(
         mask_iou_threshold = data[:, 3] >= iou_thresholds[iou_idx]
         mask_iou = mask_iou_nonzero & mask_iou_threshold
 
-        groundtruths_with_pairs = np.unique(groundtruths[mask_iou], axis=0)
+        groundtruths_passing_ious = np.unique(groundtruths[mask_iou], axis=0)
         mask_groundtruths_with_passing_ious = (
-            groundtruths.reshape(-1, 1, 2)
-            == groundtruths_with_pairs.reshape(1, -1, 2)
-        ).all(axis=2)
-        mask_groundtruths_with_passing_ious = (
-            mask_groundtruths_with_passing_ious.any(axis=1)
+            (
+                groundtruths.reshape(-1, 1, 2)
+                == groundtruths_passing_ious.reshape(1, -1, 2)
+            )
+            .all(axis=2)
+            .any(axis=1)
         )
         mask_groundtruths_without_passing_ious = (
             ~mask_groundtruths_with_passing_ious & mask_gt_exists
@@ -619,11 +621,12 @@ def compute_detailed_counts(
             predictions[mask_iou], axis=0
         )
         mask_predictions_with_passing_ious = (
-            predictions.reshape(-1, 1, 2)
-            == predictions_with_passing_ious.reshape(1, -1, 2)
-        ).all(axis=2)
-        mask_predictions_with_passing_ious = (
-            mask_predictions_with_passing_ious.any(axis=1)
+            (
+                predictions.reshape(-1, 1, 2)
+                == predictions_with_passing_ious.reshape(1, -1, 2)
+            )
+            .all(axis=2)
+            .any(axis=1)
         )
         mask_predictions_without_passing_ious = (
             ~mask_predictions_with_passing_ious & mask_pd_exists
@@ -637,11 +640,12 @@ def compute_detailed_counts(
                 groundtruths[mask_iou & mask_score], axis=0
             )
             mask_groundtruths_with_passing_score = (
-                groundtruths.reshape(-1, 1, 2)
-                == groundtruths_with_passing_score.reshape(1, -1, 2)
-            ).all(axis=2)
-            mask_groundtruths_with_passing_score = (
-                mask_groundtruths_with_passing_score.any(axis=1)
+                (
+                    groundtruths.reshape(-1, 1, 2)
+                    == groundtruths_with_passing_score.reshape(1, -1, 2)
+                )
+                .all(axis=2)
+                .any(axis=1)
             )
             mask_groundtruths_without_passing_score = (
                 ~mask_groundtruths_with_passing_score & mask_gt_exists
@@ -717,21 +721,41 @@ def compute_detailed_counts(
 
             if n_samples > 0:
                 for label_idx in range(n_labels):
-                    tp_examples = tp[tp[:, 2].astype(int) == label_idx][
-                        :n_samples, 0
-                    ]
-                    fp_misclf_examples = fp_misclf[
-                        fp_misclf[:, 2].astype(int) == label_idx
-                    ][:n_samples, 0]
-                    fp_halluc_examples = fp_halluc[
-                        fp_halluc[:, 2].astype(int) == label_idx
-                    ][:n_samples, 0]
-                    fn_misclf_examples = fn_misclf[
-                        fn_misclf[:, 2].astype(int) == label_idx
-                    ][:n_samples, 0]
-                    fn_misprd_examples = fn_misprd[
-                        fn_misprd[:, 2].astype(int) == label_idx
-                    ][:n_samples, 0]
+                    tp_examples = (
+                        tp[tp[:, 2].astype(int) == label_idx][
+                            :n_samples, [0, 1]
+                        ]
+                        .astype(int)
+                        .flatten()
+                    )
+                    fp_misclf_examples = (
+                        fp_misclf[fp_misclf[:, 2].astype(int) == label_idx][
+                            :n_samples, [0, 1]
+                        ]
+                        .astype(int)
+                        .flatten()
+                    )
+                    fp_halluc_examples = (
+                        fp_halluc[fp_halluc[:, 2].astype(int) == label_idx][
+                            :n_samples, [0, 1]
+                        ]
+                        .astype(int)
+                        .flatten()
+                    )
+                    fn_misclf_examples = (
+                        fn_misclf[fn_misclf[:, 2].astype(int) == label_idx][
+                            :n_samples, [0, 1]
+                        ]
+                        .astype(int)
+                        .flatten()
+                    )
+                    fn_misprd_examples = (
+                        fn_misprd[fn_misprd[:, 2].astype(int) == label_idx][
+                            :n_samples, [0, 1]
+                        ]
+                        .astype(int)
+                        .flatten()
+                    )
 
                     detailed_pr_curve[
                         iou_idx,

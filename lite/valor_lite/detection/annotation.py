@@ -52,6 +52,21 @@ class Bitmask:
                 "If scores are defined, there must be a 1:1 pairing with labels."
             )
 
+    def to_box(self) -> BoundingBox | None:
+
+        if not self.mask.any():
+            return None
+
+        rows, cols = np.nonzero(self.mask)
+        return BoundingBox(
+            xmin=cols.min(),
+            xmax=cols.max(),
+            ymin=rows.min(),
+            ymax=rows.max(),
+            labels=self.labels,
+            scores=self.scores,
+        )
+
 
 @dataclass
 class Detection:
