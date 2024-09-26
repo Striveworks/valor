@@ -428,6 +428,129 @@ def compute_metrics(
     )
 
 
+def compute_detailed_intermediates(
+    data: NDArray[np.floating],
+    label_metadata: NDArray[np.int32],
+) -> NDArray[np.floating]:
+    """
+    Compute detailed intermediate metrics.
+
+    Takes data with shape (N, 7):
+
+    Index 0 - Datum Index
+    Index 1 - GroundTruth Index
+    Index 2 - Prediction Index
+    Index 3 - IoU
+    Index 4 - GroundTruth Label Index
+    Index 5 - Prediction Label Index
+    Index 6 - Score
+
+    Outputs an array with shape (N - M, 7):
+
+    Index 0 - True Positive Count
+    ... Datum ID Examples
+    Index 2 * n_samples + 1 - False Positive Misclassification Count
+    ... Datum ID Examples
+    Index 4 * n_samples + 2 - False Positive Hallucination Count
+    ... Datum ID Examples
+    Index 6 * n_samples + 3 - False Negative Misclassification Count
+    ... Datum ID Examples
+    Index 8 * n_samples + 4 - False Negative Missing Prediction Count
+    ... Datum ID Examples
+
+    Parameters
+    ----------
+    data : NDArray[np.floating]
+        A sorted array of classification pairs.
+    label_metadata : NDArray[np.int32]
+        An array containing metadata related to labels.
+
+    Returns
+    -------
+    NDArray[np.bool_]
+        The detailed intermediate metrics.
+    """
+
+    n_labels = label_metadata.shape[0]
+
+    mask_gt_exists = data[:, 1] > -0.5
+    mask_pd_exists = data[:, 2] > -0.5
+    mask_label_match = np.isclose(data[:, 4], data[:, 5])
+    mask_score_nonzero = data[:, 6] > 1e-9
+    mask_iou_nonzero = data[:, 3] > 1e-9
+
+    mask_gt_pd_exists = mask_gt_exists & mask_pd_exists
+    mask_gt_pd_match = mask_gt_pd_exists & mask_label_match
+    mask_gt_pd_mismatch = mask_gt_pd_exists & ~mask_label_match
+
+    groundtruths = data[:, [0, 1]].astype(int)
+    predictions = data[:, [0, 2]].astype(int)
+
+    groundtruths_with_pairs = np.unique(groundtruths[mask_iou_nonzero], axis=0)
+    mask_groundtruths_with_passing_ious = (
+        groundtruths.reshape(-1, 1, 2)
+        == groundtruths_with_pairs.reshape(1, -1, 2)
+    ).all(axis=2)
+    mask_groundtruths_with_passing_ious = (
+        mask_groundtruths_with_passing_ious.any(axis=1)
+    )
+    mask_groundtruths_without_passing_ious = (
+        ~mask_groundtruths_with_passing_ious & mask_gt_exists
+    )
+
+    predictions_with_passing_ious = np.unique(
+        predictions[mask_iou_nonzero], axis=0
+    )
+    mask_predictions_with_passing_ious = (
+        predictions.reshape(-1, 1, 2)
+        == predictions_with_passing_ious.reshape(1, -1, 2)
+    ).all(axis=2)
+    mask_predictions_with_passing_ious = (
+        mask_predictions_with_passing_ious.any(axis=1)
+    )
+    mask_predictions_without_passing_ious = (
+        ~mask_predictions_with_passing_ious & mask_pd_exists
+    )
+
+    groundtruths_with_passing_score = np.unique(
+        groundtruths[mask_iou_nonzero & mask_score_nonzero], axis=0
+    )
+    mask_groundtruths_with_passing_score = (
+        groundtruths.reshape(-1, 1, 2)
+        == groundtruths_with_passing_score.reshape(1, -1, 2)
+    ).all(axis=2)
+    mask_groundtruths_with_passing_score = (
+        mask_groundtruths_with_passing_score.any(axis=1)
+    )
+    mask_groundtruths_without_passing_score = (
+        ~mask_groundtruths_with_passing_score & mask_gt_exists
+    )
+
+    mask_tp = mask_score_nonzero & mask_iou_nonzero & mask_gt_pd_match
+    mask_fp_misclf = (
+        mask_score_nonzero & mask_iou_nonzero & mask_gt_pd_mismatch
+    )
+    mask_fn_misclf = mask_iou_nonzero & (
+        (
+            ~mask_score_nonzero
+            & mask_gt_pd_match
+            & mask_groundtruths_with_passing_score
+        )
+        | (mask_score_nonzero & mask_gt_pd_mismatch)
+    )
+    mask_fp_halluc = mask_score_nonzero & mask_predictions_without_passing_ious
+    mask_fn_misprd = (
+        mask_groundtruths_without_passing_ious
+        | mask_groundtruths_without_passing_score
+    )
+
+    return (
+        mask_tp | mask_fp_misclf | mask_fn_misclf,
+        mask_fp_halluc,
+        mask_fn_misprd,
+    )
+
+
 def compute_detailed_counts(
     data: NDArray[np.floating],
     label_metadata: NDArray[np.int32],
