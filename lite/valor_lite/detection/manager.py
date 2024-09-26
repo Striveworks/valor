@@ -587,7 +587,7 @@ class DataLoader:
 
     def __init__(self):
         self._evaluator = Evaluator()
-        self.pairs = list()
+        self.pairs: list[NDArray[np.floating]] = list()
         self.groundtruth_count = defaultdict(lambda: defaultdict(int))
         self.prediction_count = defaultdict(lambda: defaultdict(int))
 
@@ -649,6 +649,125 @@ class DataLoader:
             self._evaluator.label_to_index[label],
             self._evaluator.label_key_to_index[label[0]],
         )
+
+    def _add_data(
+        self,
+        uid_index: int,
+        keyed_groundtruths: dict,
+        keyed_predictions: dict,
+    ):
+        gt_keys = set(keyed_groundtruths.keys())
+        pd_keys = set(keyed_predictions.keys())
+        joint_keys = gt_keys.intersection(pd_keys)
+        gt_unique_keys = gt_keys - pd_keys
+        pd_unique_keys = pd_keys - gt_keys
+
+        pairs = list()
+        for key in joint_keys:
+            n_predictions = len(keyed_predictions[key])
+            n_groundtruths = len(keyed_groundtruths[key])
+            boxes = np.array(
+                [
+                    np.array([*gextrema, *pextrema])
+                    for _, _, _, pextrema in keyed_predictions[key]
+                    for _, _, gextrema in keyed_groundtruths[key]
+                ]
+            )
+            ious = compute_iou(boxes)
+            mask_nonzero_iou = (ious > 1e-9).reshape(
+                (n_predictions, n_groundtruths)
+            )
+            mask_ious_halluc = ~(mask_nonzero_iou.any(axis=1))
+            mask_ious_misprd = ~(mask_nonzero_iou.any(axis=0))
+
+            pairs.extend(
+                [
+                    np.array(
+                        [
+                            float(uid_index),
+                            float(gidx),
+                            float(pidx),
+                            ious[pidx * len(keyed_groundtruths[key]) + gidx],
+                            float(glabel),
+                            float(plabel),
+                            float(score),
+                        ]
+                    )
+                    for pidx, plabel, score, _ in keyed_predictions[key]
+                    for gidx, glabel, _ in keyed_groundtruths[key]
+                    if ious[pidx * len(keyed_groundtruths[key]) + gidx] > 1e-9
+                ]
+            )
+            pairs.extend(
+                [
+                    np.array(
+                        [
+                            float(uid_index),
+                            -1.0,
+                            float(pidx),
+                            0.0,
+                            -1.0,
+                            float(plabel),
+                            float(score),
+                        ]
+                    )
+                    for pidx, plabel, score, _ in keyed_predictions[key]
+                    if mask_ious_halluc[pidx]
+                ]
+            )
+            pairs.extend(
+                [
+                    np.array(
+                        [
+                            float(uid_index),
+                            float(gidx),
+                            -1.0,
+                            0.0,
+                            float(glabel),
+                            -1.0,
+                            -1.0,
+                        ]
+                    )
+                    for gidx, glabel, _ in keyed_groundtruths[key]
+                    if mask_ious_misprd[gidx]
+                ]
+            )
+        for key in gt_unique_keys:
+            pairs.extend(
+                [
+                    np.array(
+                        [
+                            float(uid_index),
+                            float(gidx),
+                            -1.0,
+                            0.0,
+                            float(glabel),
+                            -1.0,
+                            -1.0,
+                        ]
+                    )
+                    for gidx, glabel, _ in keyed_groundtruths[key]
+                ]
+            )
+        for key in pd_unique_keys:
+            pairs.extend(
+                [
+                    np.array(
+                        [
+                            float(uid_index),
+                            -1.0,
+                            float(pidx),
+                            0.0,
+                            -1.0,
+                            float(plabel),
+                            float(score),
+                        ]
+                    )
+                    for pidx, plabel, score, _ in keyed_predictions[key]
+                ]
+            )
+
+        self.pairs.append(np.array(pairs))
 
     def add_data(
         self,
@@ -717,77 +836,11 @@ class DataLoader:
                         )
                     )
 
-            gt_keys = set(keyed_groundtruths.keys())
-            pd_keys = set(keyed_predictions.keys())
-            joint_keys = gt_keys.intersection(pd_keys)
-            gt_unique_keys = gt_keys - pd_keys
-            pd_unique_keys = pd_keys - gt_keys
-
-            pairs = list()
-            for key in joint_keys:
-                boxes = np.array(
-                    [
-                        np.array([*gextrema, *pextrema])
-                        for _, _, _, pextrema in keyed_predictions[key]
-                        for _, _, gextrema in keyed_groundtruths[key]
-                    ]
-                )
-                ious = compute_iou(boxes)
-                pairs.extend(
-                    [
-                        np.array(
-                            [
-                                float(uid_index),
-                                float(gidx),
-                                float(pidx),
-                                ious[
-                                    pidx * len(keyed_groundtruths[key]) + gidx
-                                ],
-                                float(glabel),
-                                float(plabel),
-                                float(score),
-                            ]
-                        )
-                        for pidx, plabel, score, _ in keyed_predictions[key]
-                        for gidx, glabel, _ in keyed_groundtruths[key]
-                    ]
-                )
-            for key in gt_unique_keys:
-                pairs.extend(
-                    [
-                        np.array(
-                            [
-                                float(uid_index),
-                                float(gidx),
-                                -1.0,
-                                0.0,
-                                float(glabel),
-                                -1.0,
-                                -1.0,
-                            ]
-                        )
-                        for gidx, glabel, _ in keyed_groundtruths[key]
-                    ]
-                )
-            for key in pd_unique_keys:
-                pairs.extend(
-                    [
-                        np.array(
-                            [
-                                float(uid_index),
-                                -1.0,
-                                float(pidx),
-                                0.0,
-                                -1.0,
-                                float(plabel),
-                                float(score),
-                            ]
-                        )
-                        for pidx, plabel, score, _ in keyed_predictions[key]
-                    ]
-                )
-
-            self.pairs.append(np.array(pairs))
+            self._add_data(
+                uid_index=uid_index,
+                keyed_groundtruths=keyed_groundtruths,
+                keyed_predictions=keyed_predictions,
+            )
 
     def add_data_from_valor_dict(
         self,
@@ -867,77 +920,11 @@ class DataLoader:
                         )
                     )
 
-            gt_keys = set(keyed_groundtruths.keys())
-            pd_keys = set(keyed_predictions.keys())
-            joint_keys = gt_keys.intersection(pd_keys)
-            gt_unique_keys = gt_keys - pd_keys
-            pd_unique_keys = pd_keys - gt_keys
-
-            pairs = list()
-            for key in joint_keys:
-                boxes = np.array(
-                    [
-                        np.array([*gextrema, *pextrema])
-                        for _, _, _, pextrema in keyed_predictions[key]
-                        for _, _, gextrema in keyed_groundtruths[key]
-                    ]
-                )
-                ious = compute_iou(boxes)
-                pairs.extend(
-                    [
-                        np.array(
-                            [
-                                float(uid_index),
-                                float(gidx),
-                                float(pidx),
-                                ious[
-                                    pidx * len(keyed_groundtruths[key]) + gidx
-                                ],
-                                float(glabel),
-                                float(plabel),
-                                float(score),
-                            ]
-                        )
-                        for pidx, plabel, score, _ in keyed_predictions[key]
-                        for gidx, glabel, _ in keyed_groundtruths[key]
-                    ]
-                )
-            for key in gt_unique_keys:
-                pairs.extend(
-                    [
-                        np.array(
-                            [
-                                float(uid_index),
-                                float(gidx),
-                                -1.0,
-                                0.0,
-                                float(glabel),
-                                -1.0,
-                                -1.0,
-                            ]
-                        )
-                        for gidx, glabel, _ in keyed_groundtruths[key]
-                    ]
-                )
-            for key in pd_unique_keys:
-                pairs.extend(
-                    [
-                        np.array(
-                            [
-                                float(uid_index),
-                                -1.0,
-                                float(pidx),
-                                0.0,
-                                -1.0,
-                                float(plabel),
-                                float(score),
-                            ]
-                        )
-                        for pidx, plabel, score, _ in keyed_predictions[key]
-                    ]
-                )
-
-            self.pairs.append(np.array(pairs))
+            self._add_data(
+                uid_index=uid_index,
+                keyed_groundtruths=keyed_groundtruths,
+                keyed_predictions=keyed_predictions,
+            )
 
     def finalize(self) -> Evaluator:
         """

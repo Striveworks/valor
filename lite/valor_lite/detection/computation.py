@@ -70,9 +70,9 @@ def compute_iou(data: NDArray[np.floating]) -> NDArray[np.floating]:
 
 
 def _compute_ranked_pairs_for_datum(
-    data: np.ndarray,
-    label_metadata: np.ndarray,
-) -> np.ndarray:
+    data: NDArray[np.floating],
+    label_metadata: NDArray[np.int32],
+) -> NDArray[np.floating]:
     """
     Computes ranked pairs for a datum.
     """
@@ -113,7 +113,7 @@ def _compute_ranked_pairs_for_datum(
 
 def compute_ranked_pairs(
     data: list[NDArray[np.floating]],
-    label_metadata: NDArray[np.integer],
+    label_metadata: NDArray[np.int32],
 ) -> NDArray[np.floating]:
     """
     Performs pair ranking on input data.
@@ -142,23 +142,22 @@ def compute_ranked_pairs(
     NDArray[np.floating]
         A filtered array containing only ranked pairs.
     """
-    pairs = np.concatenate(
-        [
-            _compute_ranked_pairs_for_datum(
-                datum,
-                label_metadata=label_metadata,
-            )
-            for datum in data
-        ],
-        axis=0,
-    )
+
+    ranked_pairs_by_datum = [
+        _compute_ranked_pairs_for_datum(
+            data=datum,
+            label_metadata=label_metadata,
+        )
+        for datum in data
+    ]
+    ranked_pairs = np.concatenate(ranked_pairs_by_datum, axis=0)
     indices = np.lexsort(
         (
-            -pairs[:, 3],  # iou
-            -pairs[:, 6],  # score
+            -ranked_pairs[:, 3],  # iou
+            -ranked_pairs[:, 6],  # score
         )
     )
-    return pairs[indices]
+    return ranked_pairs[indices]
 
 
 def compute_metrics(
@@ -511,13 +510,14 @@ def compute_detailed_counts(
         mask_iou_threshold = data[:, 3] >= iou_thresholds[iou_idx]
         mask_iou = mask_iou_nonzero & mask_iou_threshold
 
-        groundtruths_with_pairs = np.unique(groundtruths[mask_iou], axis=0)
+        groundtruths_passing_ious = np.unique(groundtruths[mask_iou], axis=0)
         mask_groundtruths_with_passing_ious = (
-            groundtruths.reshape(-1, 1, 2)
-            == groundtruths_with_pairs.reshape(1, -1, 2)
-        ).all(axis=2)
-        mask_groundtruths_with_passing_ious = (
-            mask_groundtruths_with_passing_ious.any(axis=1)
+            (
+                groundtruths.reshape(-1, 1, 2)
+                == groundtruths_passing_ious.reshape(1, -1, 2)
+            )
+            .all(axis=2)
+            .any(axis=1)
         )
         mask_groundtruths_without_passing_ious = (
             ~mask_groundtruths_with_passing_ious & mask_gt_exists
@@ -527,11 +527,12 @@ def compute_detailed_counts(
             predictions[mask_iou], axis=0
         )
         mask_predictions_with_passing_ious = (
-            predictions.reshape(-1, 1, 2)
-            == predictions_with_passing_ious.reshape(1, -1, 2)
-        ).all(axis=2)
-        mask_predictions_with_passing_ious = (
-            mask_predictions_with_passing_ious.any(axis=1)
+            (
+                predictions.reshape(-1, 1, 2)
+                == predictions_with_passing_ious.reshape(1, -1, 2)
+            )
+            .all(axis=2)
+            .any(axis=1)
         )
         mask_predictions_without_passing_ious = (
             ~mask_predictions_with_passing_ious & mask_pd_exists
@@ -545,11 +546,12 @@ def compute_detailed_counts(
                 groundtruths[mask_iou & mask_score], axis=0
             )
             mask_groundtruths_with_passing_score = (
-                groundtruths.reshape(-1, 1, 2)
-                == groundtruths_with_passing_score.reshape(1, -1, 2)
-            ).all(axis=2)
-            mask_groundtruths_with_passing_score = (
-                mask_groundtruths_with_passing_score.any(axis=1)
+                (
+                    groundtruths.reshape(-1, 1, 2)
+                    == groundtruths_with_passing_score.reshape(1, -1, 2)
+                )
+                .all(axis=2)
+                .any(axis=1)
             )
             mask_groundtruths_without_passing_score = (
                 ~mask_groundtruths_with_passing_score & mask_gt_exists
