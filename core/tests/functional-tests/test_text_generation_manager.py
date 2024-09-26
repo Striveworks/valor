@@ -1,6 +1,7 @@
 import copy
 from unittest.mock import patch
 
+import pandas as pd
 import pytest
 from valor_core import managers, schemas
 from valor_core.enums import MetricType
@@ -309,6 +310,51 @@ def test_ValorTextGenerationStreamingManager_rag(
             == metric["value"]
         )
 
+    # Test with pre-initialized joint_df
+    joint_df = pd.DataFrame(
+        [
+            [
+                "uid0",
+                RAG_QUERIES[0],
+                None,
+                RAG_PREDICTIONS[0],
+                RAG_CONTEXT[0],
+                0.6666666666666666,
+                0.0,
+                0.75,
+                0.4,
+                0.0,
+                0.0,
+            ],
+        ],
+        columns=[
+            "datum_uid",
+            "datum_text",
+            "datum_metadata",
+            "prediction_text",
+            "prediction_context_list",
+        ]
+        + [metric._name_ for metric in metrics_to_return],
+    )
+    manager = managers.ValorTextGenerationStreamingManager(
+        metrics_to_return=metrics_to_return,
+        llm_api_params=LLM_API_PARAMS,
+        joint_df=joint_df,
+    )
+    _ = manager.add_and_evaluate_prediction(predictions=rag_preds[1:3])
+    results_df = manager.get_results()
+    assert set(metrics_to_return).issubset(results_df.columns)
+    assert len(results_df) == sum(
+        [len(pred.annotations) for pred in rag_preds]
+    )
+    for _, row in results_df.iterrows():
+        for m in metrics_to_return:
+            metric_name = m._name_
+            assert (
+                expected_values[row["datum_uid"]].get(metric_name)
+                == row[metric_name]
+            )
+
     # Test adding two prediction annotations in the same prediction for the same datum.
     pred0_two_ann = copy.deepcopy(rag_preds[0])
     pred0_two_ann.annotations = [
@@ -429,4 +475,180 @@ def test_ValorTextGenerationStreamingManager_rag(
         )
         _ = manager.add_and_evaluate_prediction(
             predictions=[rag_preds[0], pred0_no_metadata]
+        )
+
+    # Missing a column name in the joint_df should raise an error.
+    with pytest.raises(ValueError):
+        joint_df = pd.DataFrame(
+            [
+                [
+                    "uid0",
+                    {"category": "history"},
+                    RAG_PREDICTIONS[0],
+                    RAG_CONTEXT[0],
+                    0.6666666666666666,
+                    0.0,
+                    0.75,
+                    0.4,
+                    0.0,
+                    0.0,
+                ],
+            ],
+            columns=[
+                "datum_uid",
+                "datum_metadata",
+                "prediction_text",
+                "prediction_context_list",
+            ]
+            + [metric._name_ for metric in metrics_to_return],
+        )
+        _ = managers.ValorTextGenerationStreamingManager(
+            metrics_to_return=metrics_to_return,
+            llm_api_params=LLM_API_PARAMS,
+            joint_df=joint_df,
+        )
+
+    # Missing a datum_uid.
+    with pytest.raises(ValueError):
+        joint_df = pd.DataFrame(
+            [
+                [
+                    None,
+                    RAG_QUERIES[0],
+                    {"category": "history"},
+                    RAG_PREDICTIONS[0],
+                    RAG_CONTEXT[0],
+                    0.6666666666666666,
+                    0.0,
+                    0.75,
+                    0.4,
+                    0.0,
+                    0.0,
+                ],
+            ],
+            columns=[
+                "datum_uid",
+                "datum_text",
+                "datum_metadata",
+                "prediction_text",
+                "prediction_context_list",
+            ]
+            + [metric._name_ for metric in metrics_to_return],
+        )
+        _ = managers.ValorTextGenerationStreamingManager(
+            metrics_to_return=metrics_to_return,
+            llm_api_params=LLM_API_PARAMS,
+            joint_df=joint_df,
+        )
+
+    # datum_uid should be unique.
+    with pytest.raises(ValueError):
+        joint_df = pd.DataFrame(
+            [
+                [
+                    "uid0",
+                    RAG_QUERIES[0],
+                    {"category": "history"},
+                    RAG_PREDICTIONS[0],
+                    RAG_CONTEXT[0],
+                    0.6666666666666666,
+                    0.0,
+                    0.75,
+                    0.4,
+                    0.0,
+                    0.0,
+                ],
+                [
+                    "uid0",
+                    RAG_QUERIES[1],
+                    {"category": "history"},
+                    RAG_PREDICTIONS[1],
+                    RAG_CONTEXT[1],
+                    0.2,
+                    0.0,
+                    1.0,
+                    0.55,
+                    0.0,
+                    0.0,
+                ],
+            ],
+            columns=[
+                "datum_uid",
+                "datum_text",
+                "datum_metadata",
+                "prediction_text",
+                "prediction_context_list",
+            ]
+            + [metric._name_ for metric in metrics_to_return],
+        )
+        _ = managers.ValorTextGenerationStreamingManager(
+            metrics_to_return=metrics_to_return,
+            llm_api_params=LLM_API_PARAMS,
+            joint_df=joint_df,
+        )
+
+    # At least one of prediction_text and prediction_context_list should be None.
+    with pytest.raises(ValueError):
+        joint_df = pd.DataFrame(
+            [
+                [
+                    "uid0",
+                    RAG_QUERIES[0],
+                    {"category": "history"},
+                    None,
+                    None,
+                    0.6666666666666666,
+                    0.0,
+                    0.75,
+                    0.4,
+                    0.0,
+                    0.0,
+                ],
+            ],
+            columns=[
+                "datum_uid",
+                "datum_text",
+                "datum_metadata",
+                "prediction_text",
+                "prediction_context_list",
+            ]
+            + [metric._name_ for metric in metrics_to_return],
+        )
+        _ = managers.ValorTextGenerationStreamingManager(
+            metrics_to_return=metrics_to_return,
+            llm_api_params=LLM_API_PARAMS,
+            joint_df=joint_df,
+        )
+
+    # The joint_df cannot have null values for any of the requested metrics.
+    with pytest.raises(ValueError):
+        joint_df = pd.DataFrame(
+            [
+                [
+                    "uid0",
+                    RAG_QUERIES[0],
+                    {"category": "history"},
+                    RAG_PREDICTIONS[0],
+                    RAG_CONTEXT[0],
+                    0.6666666666666666,
+                    0.0,
+                    0.75,
+                    0.4,
+                    None,
+                    0.0,
+                ],
+            ],
+            columns=[
+                "datum_uid",
+                "datum_text",
+                "datum_metadata",
+                "prediction_text",
+                "prediction_context_list",
+            ]
+            + [metric._name_ for metric in metrics_to_return],
+        )
+        _ = managers.ValorTextGenerationStreamingManager(
+            metrics_to_return=metrics_to_return,
+            llm_api_params=LLM_API_PARAMS,
+            joint_df=joint_df,
         )
