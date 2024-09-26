@@ -22,9 +22,12 @@ def test_counts_metrics(
             box 2 - label (k2, v2) - score 0.98 - fp
     """
 
-    for input_ in [basic_detections, basic_rotated_detections]:
+    for input_, method in [
+        (basic_detections, DataLoader.add_bounding_boxes),
+        (basic_rotated_detections, DataLoader.add_polygons),
+    ]:
         loader = DataLoader()
-        loader.add_data(input_)
+        method(loader, input_)
         evaluator = loader.finalize()
 
         metrics = evaluator.evaluate(
@@ -162,7 +165,7 @@ def test_counts_false_negatives_single_datum_baseline(
     """
 
     loader = DataLoader()
-    loader.add_data(false_negatives_single_datum_baseline_detections)
+    loader.add_bounding_boxes(false_negatives_single_datum_baseline_detections)
     evaluator = loader.finalize()
 
     metrics = evaluator.evaluate(
@@ -219,7 +222,7 @@ def test_counts_false_negatives_single_datum(
     """
 
     loader = DataLoader()
-    loader.add_data(false_negatives_single_datum_detections)
+    loader.add_bounding_boxes(false_negatives_single_datum_detections)
     evaluator = loader.finalize()
     metrics = evaluator.evaluate(iou_thresholds=[0.5], score_thresholds=[0.0])
 
@@ -263,7 +266,7 @@ def test_counts_false_negatives_two_datums_one_empty_low_confidence_of_fp(
     """
 
     loader = DataLoader()
-    loader.add_data(
+    loader.add_bounding_boxes(
         false_negatives_two_datums_one_empty_low_confidence_of_fp_detections
     )
     evaluator = loader.finalize()
@@ -308,7 +311,7 @@ def test_counts_false_negatives_two_datums_one_empty_high_confidence_of_fp(
     """
 
     loader = DataLoader()
-    loader.add_data(
+    loader.add_bounding_boxes(
         false_negatives_two_datums_one_empty_high_confidence_of_fp_detections
     )
     evaluator = loader.finalize()
@@ -353,7 +356,7 @@ def test_counts_false_negatives_two_datums_one_only_with_different_class_low_con
     AP for class `"other value"` should be 0 since there is no prediction for the `"other value"` groundtruth
     """
     loader = DataLoader()
-    loader.add_data(
+    loader.add_bounding_boxes(
         false_negatives_two_datums_one_only_with_different_class_low_confidence_of_fp_detections
     )
     evaluator = loader.finalize()
@@ -414,7 +417,7 @@ def test_counts_false_negatives_two_datums_one_only_with_different_class_high_co
     AP for class `"other value"` should be 0 since there is no prediction for the `"other value"` groundtruth
     """
     loader = DataLoader()
-    loader.add_data(
+    loader.add_bounding_boxes(
         false_negatives_two_images_one_only_with_different_class_high_confidence_of_fp_detections
     )
     evaluator = loader.finalize()
@@ -467,13 +470,19 @@ def test_counts_ranked_pair_ordering(
     detection_ranked_pair_ordering_with_polygons: Detection,
 ):
 
-    for input_ in [
-        detection_ranked_pair_ordering,
-        detection_ranked_pair_ordering_with_bitmasks,
-        detection_ranked_pair_ordering_with_polygons,
+    for input_, method in [
+        (detection_ranked_pair_ordering, DataLoader.add_bounding_boxes),
+        (
+            detection_ranked_pair_ordering_with_bitmasks,
+            DataLoader.add_bitmasks,
+        ),
+        (
+            detection_ranked_pair_ordering_with_polygons,
+            DataLoader.add_polygons,
+        ),
     ]:
         loader = DataLoader()
-        loader.add_data(detections=[input_])
+        method(loader, detections=[input_])
         evaluator = loader.finalize()
 
         assert evaluator.metadata == {

@@ -48,7 +48,7 @@ def test_Bitmask():
     mask[:5, :5] = True
 
     # groundtruth
-    _ = Bitmask(mask=mask, labels=[("k", "v")])
+    gt = Bitmask(mask=mask, labels=[("k", "v")])
 
     # prediction
     Bitmask(
@@ -70,7 +70,7 @@ def test_Bitmask():
             labels=[("k", "v1"), ("k", "v2")],
             scores=[0.7],
         )
-        
+
     # test `to_box` function
     box = gt.to_box()
     assert box
@@ -111,6 +111,7 @@ def test_Polygon(rect1_rotated_5_degrees_around_origin):
             labels=[("k", "v1"), ("k", "v2")],
             scores=[0.7],
         )
+
 
 def test_Detection():
 

@@ -24,7 +24,12 @@ def test__compute_average_precision():
     iou_thresholds = np.array([0.1, 0.6])
     score_thresholds = np.array([0.0])
 
-    (results, _, _, _,) = compute_metrics(
+    (
+        results,
+        _,
+        _,
+        _,
+    ) = compute_metrics(
         sorted_pairs,
         label_metadata=label_metadata,
         iou_thresholds=iou_thresholds,
@@ -88,9 +93,12 @@ def test_ap_metrics(
             box 2 - label (k2, v2) - score 0.98 - fp
     """
 
-    for input_ in [basic_detections, basic_rotated_detections]:
+    for input_, method in [
+        (basic_detections, DataLoader.add_bounding_boxes),
+        (basic_rotated_detections, DataLoader.add_polygons),
+    ]:
         loader = DataLoader()
-        loader.add_data(input_)
+        method(loader, input_)
         evaluator = loader.finalize()
 
         metrics = evaluator.evaluate(
@@ -249,7 +257,7 @@ def test_ap_using_torch_metrics_example(
     https://github.com/Lightning-AI/metrics/blob/107dbfd5fb158b7ae6d76281df44bd94c836bfce/tests/unittests/detection/test_map.py#L231
     """
     loader = DataLoader()
-    loader.add_data(torchmetrics_detections)
+    loader.add_bounding_boxes(torchmetrics_detections)
     evaluator = loader.finalize()
 
     assert evaluator.ignored_prediction_labels == [("class", "3")]
@@ -387,7 +395,7 @@ def test_ap_false_negatives_single_datum_baseline(
     """
 
     loader = DataLoader()
-    loader.add_data(false_negatives_single_datum_baseline_detections)
+    loader.add_bounding_boxes(false_negatives_single_datum_baseline_detections)
     evaluator = loader.finalize()
     metrics = evaluator.evaluate(iou_thresholds=[0.5])
 
@@ -420,7 +428,7 @@ def test_ap_false_negatives_single_datum(
     """
 
     loader = DataLoader()
-    loader.add_data(false_negatives_single_datum_detections)
+    loader.add_bounding_boxes(false_negatives_single_datum_detections)
     evaluator = loader.finalize()
     metrics = evaluator.evaluate(iou_thresholds=[0.5])
 
@@ -459,7 +467,7 @@ def test_ap_false_negatives_two_datums_one_empty_low_confidence_of_fp(
     """
 
     loader = DataLoader()
-    loader.add_data(
+    loader.add_bounding_boxes(
         false_negatives_two_datums_one_empty_low_confidence_of_fp_detections
     )
     evaluator = loader.finalize()
@@ -499,7 +507,7 @@ def test_ap_false_negatives_two_datums_one_empty_high_confidence_of_fp(
     """
 
     loader = DataLoader()
-    loader.add_data(
+    loader.add_bounding_boxes(
         false_negatives_two_datums_one_empty_high_confidence_of_fp_detections
     )
     evaluator = loader.finalize()
@@ -539,7 +547,7 @@ def test_ap_false_negatives_two_datums_one_only_with_different_class_low_confide
     AP for class `"other value"` should be 0 since there is no prediction for the `"other value"` groundtruth
     """
     loader = DataLoader()
-    loader.add_data(
+    loader.add_bounding_boxes(
         false_negatives_two_datums_one_only_with_different_class_low_confidence_of_fp_detections
     )
     evaluator = loader.finalize()
@@ -590,7 +598,7 @@ def test_ap_false_negatives_two_datums_one_only_with_different_class_high_confid
     AP for class `"other value"` should be 0 since there is no prediction for the `"other value"` groundtruth
     """
     loader = DataLoader()
-    loader.add_data(
+    loader.add_bounding_boxes(
         false_negatives_two_images_one_only_with_different_class_high_confidence_of_fp_detections
     )
     evaluator = loader.finalize()
@@ -632,13 +640,19 @@ def test_ap_ranked_pair_ordering(
     detection_ranked_pair_ordering_with_bitmasks: Detection,
     detection_ranked_pair_ordering_with_polygons: Detection,
 ):
-    for input_ in [
-        detection_ranked_pair_ordering,
-        detection_ranked_pair_ordering_with_bitmasks,
-        detection_ranked_pair_ordering_with_polygons,
+    for input_, method in [
+        (detection_ranked_pair_ordering, DataLoader.add_bounding_boxes),
+        (
+            detection_ranked_pair_ordering_with_bitmasks,
+            DataLoader.add_bitmasks,
+        ),
+        (
+            detection_ranked_pair_ordering_with_polygons,
+            DataLoader.add_polygons,
+        ),
     ]:
         loader = DataLoader()
-        loader.add_data(detections=[input_])
+        method(loader, detections=[input_])
         evaluator = loader.finalize()
 
         assert evaluator.metadata == {
@@ -789,7 +803,7 @@ def test_ap_true_positive_deassignment(
 ):
 
     loader = DataLoader()
-    loader.add_data(detections_tp_deassignment_edge_case)
+    loader.add_bounding_boxes(detections_tp_deassignment_edge_case)
     evaluator = loader.finalize()
 
     assert evaluator.ignored_prediction_labels == []

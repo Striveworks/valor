@@ -46,7 +46,7 @@ def test_fuzz_detections():
         detections = generate_random_detections(n_detections, n_boxes, labels)
 
         loader = DataLoader()
-        loader.add_data(detections)
+        loader.add_bounding_boxes(detections)
         evaluator = loader.finalize()
         evaluator.evaluate(
             iou_thresholds=[0.25, 0.75],
@@ -69,7 +69,7 @@ def test_fuzz_detections_with_filtering():
         detections = generate_random_detections(n_detections, n_boxes, labels)
 
         loader = DataLoader()
-        loader.add_data(detections)
+        loader.add_bounding_boxes(detections)
         evaluator = loader.finalize()
 
         label_key = "class"

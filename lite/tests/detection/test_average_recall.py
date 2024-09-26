@@ -25,7 +25,12 @@ def test__compute_average_recall():
     iou_thresholds = np.array([0.1, 0.6])
     score_thresholds = np.array([0.5, 0.93, 0.98])
 
-    (_, results, _, _,) = compute_metrics(
+    (
+        _,
+        results,
+        _,
+        _,
+    ) = compute_metrics(
         sorted_pairs,
         label_metadata=label_metadata,
         iou_thresholds=iou_thresholds,
@@ -91,9 +96,12 @@ def test_ar_metrics(
         datum uid2
             box 2 - label (k2, v2) - score 0.98 - fp
     """
-    for input_ in [basic_detections, basic_rotated_detections]:
+    for input_, method in [
+        (basic_detections, DataLoader.add_bounding_boxes),
+        (basic_rotated_detections, DataLoader.add_polygons),
+    ]:
         loader = DataLoader()
-        loader.add_data(input_)
+        method(loader, input_)
         evaluator = loader.finalize()
 
         metrics = evaluator.evaluate(
@@ -229,7 +237,7 @@ def test_ar_using_torch_metrics_example(
     https://github.com/Lightning-AI/metrics/blob/107dbfd5fb158b7ae6d76281df44bd94c836bfce/tests/unittests/detection/test_map.py#L231
     """
     loader = DataLoader()
-    loader.add_data(torchmetrics_detections)
+    loader.add_bounding_boxes(torchmetrics_detections)
     evaluator = loader.finalize()
 
     assert evaluator.ignored_prediction_labels == [("class", "3")]
@@ -401,7 +409,7 @@ def test_ar_true_positive_deassignment(
 ):
 
     loader = DataLoader()
-    loader.add_data(detections_tp_deassignment_edge_case)
+    loader.add_bounding_boxes(detections_tp_deassignment_edge_case)
     evaluator = loader.finalize()
 
     assert evaluator.ignored_prediction_labels == []
@@ -443,14 +451,19 @@ def test_ar_ranked_pair_ordering(
     detection_ranked_pair_ordering_with_polygons: Detection,
 ):
 
-    for input_ in [
-        detection_ranked_pair_ordering,
-        detection_ranked_pair_ordering_with_bitmasks,
-        detection_ranked_pair_ordering_with_polygons,
+    for input_, method in [
+        (detection_ranked_pair_ordering, DataLoader.add_bounding_boxes),
+        (
+            detection_ranked_pair_ordering_with_bitmasks,
+            DataLoader.add_bitmasks,
+        ),
+        (
+            detection_ranked_pair_ordering_with_polygons,
+            DataLoader.add_polygons,
+        ),
     ]:
-
         loader = DataLoader()
-        loader.add_data(detections=[input_])
+        method(loader, detections=[input_])
         evaluator = loader.finalize()
 
         assert evaluator.metadata == {

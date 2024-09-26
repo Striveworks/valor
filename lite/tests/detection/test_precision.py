@@ -21,9 +21,12 @@ def test_precision_metrics(
         datum uid2
             box 2 - label (k2, v2) - score 0.98 - fp
     """
-    for input_ in [basic_detections, basic_rotated_detections]:
+    for input_, method in [
+        (basic_detections, DataLoader.add_bounding_boxes),
+        (basic_rotated_detections, DataLoader.add_polygons),
+    ]:
         loader = DataLoader()
-        loader.add_data(input_)
+        method(loader, input_)
         evaluator = loader.finalize()
 
         metrics = evaluator.evaluate(
@@ -129,7 +132,7 @@ def test_precision_false_negatives_single_datum_baseline(
     """
 
     loader = DataLoader()
-    loader.add_data(false_negatives_single_datum_baseline_detections)
+    loader.add_bounding_boxes(false_negatives_single_datum_baseline_detections)
     evaluator = loader.finalize()
 
     metrics = evaluator.evaluate(
@@ -178,7 +181,7 @@ def test_precision_false_negatives_single_datum(
     """
 
     loader = DataLoader()
-    loader.add_data(false_negatives_single_datum_detections)
+    loader.add_bounding_boxes(false_negatives_single_datum_detections)
     evaluator = loader.finalize()
     metrics = evaluator.evaluate(iou_thresholds=[0.5], score_thresholds=[0.0])
 
@@ -218,7 +221,7 @@ def test_precision_false_negatives_two_datums_one_empty_low_confidence_of_fp(
     """
 
     loader = DataLoader()
-    loader.add_data(
+    loader.add_bounding_boxes(
         false_negatives_two_datums_one_empty_low_confidence_of_fp_detections
     )
     evaluator = loader.finalize()
@@ -259,7 +262,7 @@ def test_precision_false_negatives_two_datums_one_empty_high_confidence_of_fp(
     """
 
     loader = DataLoader()
-    loader.add_data(
+    loader.add_bounding_boxes(
         false_negatives_two_datums_one_empty_high_confidence_of_fp_detections
     )
     evaluator = loader.finalize()
@@ -300,7 +303,7 @@ def test_precision_false_negatives_two_datums_one_only_with_different_class_low_
     AP for class `"other value"` should be 0 since there is no prediction for the `"other value"` groundtruth
     """
     loader = DataLoader()
-    loader.add_data(
+    loader.add_bounding_boxes(
         false_negatives_two_datums_one_only_with_different_class_low_confidence_of_fp_detections
     )
     evaluator = loader.finalize()
@@ -353,7 +356,7 @@ def test_precision_false_negatives_two_datums_one_only_with_different_class_high
     AP for class `"other value"` should be 0 since there is no prediction for the `"other value"` groundtruth
     """
     loader = DataLoader()
-    loader.add_data(
+    loader.add_bounding_boxes(
         false_negatives_two_images_one_only_with_different_class_high_confidence_of_fp_detections
     )
     evaluator = loader.finalize()
