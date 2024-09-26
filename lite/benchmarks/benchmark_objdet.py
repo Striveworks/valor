@@ -8,7 +8,7 @@ from time import time
 
 import requests
 from tqdm import tqdm
-from valor_lite.detection import DataLoader
+from valor_lite.detection import DataLoader, MetricType
 
 
 class AnnotationType(str, Enum):
@@ -258,22 +258,46 @@ def run_benchmarking_analysis(
                     f"Base precomputation timed out with limit of {limit}."
                 )
 
-            # test detailed counts with no samples
-            detailed_counts_time_no_samples, _ = time_it(
-                evaluator.compute_detailed_counts
-            )()
-
-            # test detailed counts with 3 samples
-            detailed_counts_time_three_samples, _ = time_it(
-                evaluator.compute_detailed_counts
-            )(n_samples=3)
-
-            # evaluate
+            # evaluate - base metrics only
             eval_time, metrics = time_it(evaluator.evaluate)()
-            # print(metrics)
             if eval_time > evaluation_timeout and evaluation_timeout != -1:
                 raise TimeoutError(
                     f"Base evaluation timed out with {evaluator.n_datums} datums."
+                )
+
+            # evaluate - base metrics + detailed counts with no samples
+            detailed_counts_time_no_samples, metrics = time_it(
+                evaluator.evaluate
+            )(
+                [
+                    MetricType.DetailedCounts,
+                    *MetricType.base_metrics(),
+                ]
+            )
+            if (
+                detailed_counts_time_no_samples > evaluation_timeout
+                and evaluation_timeout != -1
+            ):
+                raise TimeoutError(
+                    f"Detailed evaluation w/ no samples timed out with {evaluator.n_datums} datums."
+                )
+
+            # evaluate - base metrics + detailed counts with 3 samples
+            detailed_counts_time_three_samples, metrics = time_it(
+                evaluator.evaluate
+            )(
+                [
+                    MetricType.DetailedCounts,
+                    *MetricType.base_metrics(),
+                ],
+                number_of_examples=3,
+            )
+            if (
+                detailed_counts_time_three_samples > evaluation_timeout
+                and evaluation_timeout != -1
+            ):
+                raise TimeoutError(
+                    f"Detailed w/ 3 samples evaluation timed out with {evaluator.n_datums} datums."
                 )
 
             results.append(
