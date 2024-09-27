@@ -552,8 +552,8 @@ def compute_detailed_metrics(
     )
     missing_predictions = -1 * np.ones(
         # (datum idx, gt idx) * n_examples + count
-        (n_ious, n_scores, n_labels, 2 * n_examples),
-        np.int32,
+        (n_ious, n_scores, n_labels, 2 * n_examples + 1),
+        dtype=np.int32,
     )
 
     mask_gt_exists = data[:, 1] > -0.5
@@ -679,9 +679,6 @@ def compute_detailed_metrics(
             data[mask_fp_misclf][fp_misclf_indices, [0, 2, 4]].reshape(
                 -1, 1, 3
             )
-            print(tp_indices)
-            print(data[mask_tp][tp_indices, [0, 2, 4]].shape)
-            print(tp_predictions.shape)
             mask_fp_misclf_is_tp = (
                 (
                     data[mask_fp_misclf][fp_misclf_indices, [0, 2, 4]].reshape(
@@ -696,9 +693,9 @@ def compute_detailed_metrics(
             fp_misclf_indices = fp_misclf_indices[~mask_fp_misclf_is_tp]
 
             # get examples
-            tp_examples = data[tp_indices, [0, 1, 2, 6]]
-            fp_misclf_examples = data[fp_misclf_indices, [0, 1, 2, 6]]
-            fp_halluc_examples = data[fp_halluc_indices, [0, 2, 6]]
+            # tp_examples = data[tp_indices, [0, 1, 2, 6]]
+            # fp_misclf_examples = data[fp_misclf_indices, [0, 1, 2, 6]]
+            # fp_halluc_examples = data[fp_halluc_indices, [0, 2, 6]]
 
             # store the results
             confusion_matrix[
