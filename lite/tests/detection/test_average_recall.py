@@ -25,12 +25,7 @@ def test__compute_average_recall():
     iou_thresholds = np.array([0.1, 0.6])
     score_thresholds = np.array([0.5, 0.93, 0.98])
 
-    (
-        _,
-        results,
-        _,
-        _,
-    ) = compute_metrics(
+    (_, results, _, _,) = compute_metrics(
         sorted_pairs,
         label_metadata=label_metadata,
         iou_thresholds=iou_thresholds,
@@ -236,6 +231,7 @@ def test_ar_using_torch_metrics_example(
     cf with torch metrics/pycocotools results listed here:
     https://github.com/Lightning-AI/metrics/blob/107dbfd5fb158b7ae6d76281df44bd94c836bfce/tests/unittests/detection/test_map.py#L231
     """
+
     loader = DataLoader()
     loader.add_bounding_boxes(torchmetrics_detections)
     evaluator = loader.finalize()
