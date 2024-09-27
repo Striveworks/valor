@@ -1219,48 +1219,6 @@ class DataLoader:
             annotation_type=BoundingBox,
         )
 
-    def add_polygons_from_valor_dict(
-        self,
-        detections: list[tuple[dict, dict]],
-        show_progress: bool = False,
-    ):
-        """
-        Adds Valor-format polygon detections to the cache.
-
-        Parameters
-        ----------
-        detections : list[tuple[dict, dict]]
-            A list of groundtruth, prediction pairs in Valor-format dictionaries.
-        show_progress : bool, default=False
-            Toggle for tqdm progress bar.
-        """
-        return self._add_data_from_valor_dict(
-            detections=detections,
-            show_progress=show_progress,
-            annotation_type=Polygon,
-        )
-
-    def add_bitmask_from_valor_dict(
-        self,
-        detections: list[tuple[dict, dict]],
-        show_progress: bool = False,
-    ):
-        """
-        Adds Valor-format bitmask detections to the cache.
-
-        Parameters
-        ----------
-        detections : list[tuple[dict, dict]]
-            A list of groundtruth, prediction pairs in Valor-format dictionaries.
-        show_progress : bool, default=False
-            Toggle for tqdm progress bar.
-        """
-        return self._add_data_from_valor_dict(
-            detections=detections,
-            show_progress=show_progress,
-            annotation_type=Bitmask,
-        )
-
     def finalize(self) -> Evaluator:
         """
         Performs data finalization and some preprocessing steps.
