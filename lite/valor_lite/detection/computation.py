@@ -227,7 +227,7 @@ def compute_ranked_pairs(
 
 def compute_metrics(
     data: NDArray[np.floating],
-    label_metadata: NDArray[np.floating],
+    label_metadata: NDArray[np.int32],
     iou_thresholds: NDArray[np.floating],
     score_thresholds: NDArray[np.floating],
 ) -> tuple[
