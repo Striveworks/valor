@@ -42,6 +42,27 @@ def test_valor_integration():
     assert len(loader._evaluator.index_to_label) == 17
     assert loader._evaluator.n_datums == 1
 
+    # test ability to add bitmask and raster data using a valor dict
+    polygon_json = '{ "datum": { "uid": "139", "text": null, "metadata": { "license": 2, "file_name": "000000000139.jpg", "coco_url": "http://images.cocodataset.org/val2017/000000000139.jpg", "date_captured": "2013-11-21 01:34:01", "flickr_url": "http://farm9.staticflickr.com/8035/8024364858_9c41dc1666_z.jpg", "height": 426, "width": 640 } }, "annotations": [ { "metadata": {}, "labels": [ { "key": "name", "value": "chair", "score": 0.866135835647583 } ], "bounding_box": null, "polygon": [[200.0, 337.0], [215.0, 337.0], [215.0, 346.0], [200.0, 346.0], [200.0, 337.0]], "raster": null, "embedding": null, "text": null, "context_list": null, "is_instance": true, "implied_task_types": null } ] }'
+    bitmask_json = '{ "datum": { "uid": "139", "text": null, "metadata": { "license": 2, "file_name": "000000000139.jpg", "coco_url": "http://images.cocodataset.org/val2017/000000000139.jpg", "date_captured": "2013-11-21 01:34:01", "flickr_url": "http://farm9.staticflickr.com/8035/8024364858_9c41dc1666_z.jpg", "height": 426, "width": 640 } }, "annotations": [ { "metadata": {}, "labels": [ { "key": "name", "value": "chair", "score": 0.866135835647583 } ], "bounding_box": null, "polygon": null, "raster": [["True"]], "embedding": null, "text": null, "context_list": null, "is_instance": true, "implied_task_types": null } ] }'
+
+    for input_, method in (
+        (bitmask_json, DataLoader.add_bitmask_from_valor_dict),
+        (polygon_json, DataLoader.add_polygons_from_valor_dict),
+    ):
+        gt, pd = [json.loads(input_)] * 2
+        loader = DataLoader()
+        method(loader, [(gt, pd)])
+
+        assert len(loader.pairs) == 1
+        assert loader.pairs[0].shape == (1, 7)
+
+        assert set(loader._evaluator.label_key_to_index.keys()) == {
+            "name",
+        }
+        assert len(loader._evaluator.index_to_label) == 1
+        assert loader._evaluator.n_datums == 1
+
 
 def test_mixed_annotations(
     rect1: tuple[float, float, float, float],

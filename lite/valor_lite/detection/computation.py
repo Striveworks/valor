@@ -9,18 +9,18 @@ def _compute_bbox_iou(data: NDArray[np.floating]) -> NDArray[np.floating]:
 
     Takes data with shape (N, 8):
 
-        Index 0 - xmin for Box 1
-        Index 1 - xmax for Box 1
-        Index 2 - ymin for Box 1
-        Index 3 - ymax for Box 1
-        Index 4 - xmin for Box 2
-        Index 5 - xmax for Box 2
-        Index 6 - ymin for Box 2
-        Index 7 - ymax for Box 2
+    Index 0 - xmin for Box 1
+    Index 1 - xmax for Box 1
+    Index 2 - ymin for Box 1
+    Index 3 - ymax for Box 1
+    Index 4 - xmin for Box 2
+    Index 5 - xmax for Box 2
+    Index 6 - ymin for Box 2
+    Index 7 - ymax for Box 2
 
     Returns data with shape (N, 1):
 
-        Index 0 - IoU
+    Index 0 - IoU
 
     Parameters
     ----------
@@ -74,12 +74,12 @@ def _compute_bitmask_iou(data: NDArray[np.floating]) -> NDArray[np.floating]:
 
     Takes data with shape (N, 2):
 
-        Index 0 - first bitmask
-        Index 1 - second bitmask
+    Index 0 - first bitmask
+    Index 1 - second bitmask
 
     Returns data with shape (N, 1):
 
-        Index 0 - IoU
+    Index 0 - IoU
 
     Parameters
     ----------
@@ -105,12 +105,12 @@ def _compute_polygon_iou(
 
     Takes data with shape (N, 2):
 
-        Index 0 - first polygon
-        Index 1 - second polygon
+    Index 0 - first polygon
+    Index 1 - second polygon
 
     Returns data with shape (N, 1):
 
-        Index 0 - IoU
+    Index 0 - IoU
 
     Parameters
     ----------

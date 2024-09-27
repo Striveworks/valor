@@ -84,6 +84,22 @@ def _get_annotation_representation(
     return representation
 
 
+def _get_annotation_representation_from_valor_dict(
+    data: list,
+    annotation_type: type[BoundingBox] | type[Polygon] | type[Bitmask],
+) -> tuple[float, float, float, float] | ShapelyPolygon | NDArray[np.bool_]:
+    """Get the correct representation of an annotation object from a valor dictionary."""
+
+    if issubclass(annotation_type, BoundingBox):
+        x = [point[0] for shape in data for point in shape]
+        y = [point[1] for shape in data for point in shape]
+        return (min(x), max(x), min(y), max(y))
+    if issubclass(annotation_type, Polygon):
+        return ShapelyPolygon(data)
+    else:
+        return np.array(data)
+
+
 def _get_annotation_data(
     keyed_groundtruths: dict,
     keyed_predictions: dict,
@@ -1016,13 +1032,6 @@ class DataLoader:
             Toggle for tqdm progress bar.
         """
 
-        def _get_bbox_extrema(
-            data: list[list[list[float]]],
-        ) -> tuple[float, float, float, float]:
-            x = [point[0] for shape in data for point in shape]
-            y = [point[1] for shape in data for point in shape]
-            return (min(x), max(x), min(y), max(y))
-
         disable_tqdm = not show_progress
         for groundtruth, prediction in tqdm(detections, disable=disable_tqdm):
             # update metadata
@@ -1065,7 +1074,12 @@ class DataLoader:
                 if annotation_type == BoundingBox:
                     self._evaluator.groundtruth_examples[uid_index][
                         gidx
-                    ] = np.array(_get_bbox_extrema(gann["bounding_box"]))
+                    ] = np.array(
+                        _get_annotation_representation_from_valor_dict(
+                            gann[annotation_key],
+                            annotation_type=annotation_type,
+                        ),
+                    )
 
                 for valor_label in gann["labels"]:
                     glabel = (valor_label["key"], valor_label["value"])
@@ -1075,7 +1089,10 @@ class DataLoader:
                         (
                             gidx,
                             label_idx,
-                            _get_bbox_extrema(gann[annotation_key]),
+                            _get_annotation_representation_from_valor_dict(
+                                gann[annotation_key],
+                                annotation_type=annotation_type,
+                            ),
                         )
                     )
             for pidx, pann in enumerate(prediction["annotations"]):
@@ -1086,9 +1103,15 @@ class DataLoader:
                         f"Input JSON doesn't contain {annotation_type} data, or contains data for multiple annotation types."
                     )
 
-                self._evaluator.prediction_examples[uid_index][
-                    pidx
-                ] = np.array(_get_bbox_extrema(pann[annotation_key]))
+                if annotation_type == BoundingBox:
+                    self._evaluator.prediction_examples[uid_index][
+                        pidx
+                    ] = np.array(
+                        _get_annotation_representation_from_valor_dict(
+                            pann[annotation_key],
+                            annotation_type=annotation_type,
+                        )
+                    )
                 for valor_label in pann["labels"]:
                     plabel = (valor_label["key"], valor_label["value"])
                     pscore = valor_label["score"]
@@ -1099,7 +1122,10 @@ class DataLoader:
                             pidx,
                             label_idx,
                             pscore,
-                            _get_bbox_extrema(pann["bounding_box"]),
+                            _get_annotation_representation_from_valor_dict(
+                                pann[annotation_key],
+                                annotation_type=annotation_type,
+                            ),
                         )
                     )
 
@@ -1107,7 +1133,7 @@ class DataLoader:
                 uid_index=uid_index,
                 keyed_groundtruths=keyed_groundtruths,
                 keyed_predictions=keyed_predictions,
-                annotation_type=BoundingBox,
+                annotation_type=annotation_type,
             )
 
     def add_bounding_boxes_from_valor_dict(
