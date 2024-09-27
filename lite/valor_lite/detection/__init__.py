@@ -1,11 +1,10 @@
-from .annotation import Bitmask, BoundingBox, Detection
+from .annotation import Bitmask, BoundingBox, Detection, Polygon
 from .computation import (
     compute_detailed_counts,
-    compute_iou,
     compute_metrics,
     compute_ranked_pairs,
 )
-from .manager import DataLoader, Evaluator
+from .manager import DataLoader, Evaluator, compute_iou
 from .metric import (
     AP,
     AR,
@@ -29,6 +28,7 @@ __all__ = [
     "Bitmask",
     "BoundingBox",
     "Detection",
+    "Polygon",
     "MetricType",
     "Counts",
     "Precision",

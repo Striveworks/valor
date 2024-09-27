@@ -262,7 +262,7 @@ def test_detailed_counts(
     rect5: tuple[float, float, float, float],
 ):
     loader = DataLoader()
-    loader.add_data(detections_for_detailed_counting)
+    loader.add_bounding_boxes(detections_for_detailed_counting)
     evaluator = loader.finalize()
 
     assert evaluator.ignored_prediction_labels == [
@@ -773,7 +773,7 @@ def test_detailed_counts_using_torch_metrics_example(
     https://github.com/Lightning-AI/metrics/blob/107dbfd5fb158b7ae6d76281df44bd94c836bfce/tests/unittests/detection/test_map.py#L231
     """
     loader = DataLoader()
-    loader.add_data(torchmetrics_detections)
+    loader.add_bounding_boxes(torchmetrics_detections)
     evaluator = loader.finalize()
 
     assert evaluator.ignored_prediction_labels == [("class", "3")]
@@ -1621,7 +1621,7 @@ def test_detailed_counts_fp_hallucination_edge_case(
 ):
 
     loader = DataLoader()
-    loader.add_data(detections_fp_hallucination_edge_case)
+    loader.add_bounding_boxes(detections_fp_hallucination_edge_case)
     evaluator = loader.finalize()
 
     assert evaluator.ignored_prediction_labels == []
@@ -1678,114 +1678,130 @@ def test_detailed_counts_fp_hallucination_edge_case(
 
 def test_detailed_counts_ranked_pair_ordering(
     detection_ranked_pair_ordering: Detection,
+    detection_ranked_pair_ordering_with_bitmasks: Detection,
+    detection_ranked_pair_ordering_with_polygons: Detection,
 ):
 
-    loader = DataLoader()
-    loader.add_data(detections=[detection_ranked_pair_ordering])
-    evaluator = loader.finalize()
+    for input_, method in [
+        (detection_ranked_pair_ordering, DataLoader.add_bounding_boxes),
+        (
+            detection_ranked_pair_ordering_with_bitmasks,
+            DataLoader.add_bitmasks,
+        ),
+        (
+            detection_ranked_pair_ordering_with_polygons,
+            DataLoader.add_polygons,
+        ),
+    ]:
+        loader = DataLoader()
+        method(loader, detections=[input_])
 
-    assert evaluator.metadata == {
-        "ignored_prediction_labels": [
-            ("class", "label4"),
-        ],
-        "missing_prediction_labels": [],
-        "n_datums": 1,
-        "n_groundtruths": 3,
-        "n_labels": 4,
-        "n_predictions": 4,
-    }
+        evaluator = loader.finalize()
 
-    metrics = evaluator.evaluate(
-        iou_thresholds=[0.5],
-        score_thresholds=[0.0],
-        number_of_examples=0,
-        metrics_to_return=[MetricType.DetailedCounts],
-    )
+        assert evaluator.metadata == {
+            "ignored_prediction_labels": [
+                ("class", "label4"),
+            ],
+            "missing_prediction_labels": [],
+            "n_datums": 1,
+            "n_groundtruths": 3,
+            "n_labels": 4,
+            "n_predictions": 4,
+        }
 
-    actual_metrics = [m.to_dict() for m in metrics[MetricType.DetailedCounts]]
-    expected_metrics = [
-        {
-            "type": "DetailedCounts",
-            "value": {
-                "tp": [1],
-                "fp_misclassification": [0],
-                "fp_hallucination": [0],
-                "fn_misclassification": [0],
-                "fn_missing_prediction": [0],
-                "tp_examples": [[]],
-                "fp_misclassification_examples": [[]],
-                "fp_hallucination_examples": [[]],
-                "fn_misclassification_examples": [[]],
-                "fn_missing_prediction_examples": [[]],
+        metrics = evaluator.evaluate(
+            iou_thresholds=[0.5],
+            score_thresholds=[0.0],
+            number_of_examples=0,
+            metrics_to_return=[MetricType.DetailedCounts],
+        )
+
+        actual_metrics = [
+            m.to_dict() for m in metrics[MetricType.DetailedCounts]
+        ]
+        expected_metrics = [
+            {
+                "type": "DetailedCounts",
+                "value": {
+                    "tp": [1],
+                    "fp_misclassification": [0],
+                    "fp_hallucination": [0],
+                    "fn_misclassification": [0],
+                    "fn_missing_prediction": [0],
+                    "tp_examples": [[]],
+                    "fp_misclassification_examples": [[]],
+                    "fp_hallucination_examples": [[]],
+                    "fn_misclassification_examples": [[]],
+                    "fn_missing_prediction_examples": [[]],
+                },
+                "parameters": {
+                    "score_thresholds": [0.0],
+                    "iou_threshold": 0.5,
+                    "label": {"key": "class", "value": "label1"},
+                },
             },
-            "parameters": {
-                "score_thresholds": [0.0],
-                "iou_threshold": 0.5,
-                "label": {"key": "class", "value": "label1"},
+            {
+                "type": "DetailedCounts",
+                "value": {
+                    "tp": [1],
+                    "fp_misclassification": [0],
+                    "fp_hallucination": [0],
+                    "fn_misclassification": [0],
+                    "fn_missing_prediction": [0],
+                    "tp_examples": [[]],
+                    "fp_misclassification_examples": [[]],
+                    "fp_hallucination_examples": [[]],
+                    "fn_misclassification_examples": [[]],
+                    "fn_missing_prediction_examples": [[]],
+                },
+                "parameters": {
+                    "score_thresholds": [0.0],
+                    "iou_threshold": 0.5,
+                    "label": {"key": "class", "value": "label2"},
+                },
             },
-        },
-        {
-            "type": "DetailedCounts",
-            "value": {
-                "tp": [1],
-                "fp_misclassification": [0],
-                "fp_hallucination": [0],
-                "fn_misclassification": [0],
-                "fn_missing_prediction": [0],
-                "tp_examples": [[]],
-                "fp_misclassification_examples": [[]],
-                "fp_hallucination_examples": [[]],
-                "fn_misclassification_examples": [[]],
-                "fn_missing_prediction_examples": [[]],
+            {
+                "type": "DetailedCounts",
+                "value": {
+                    "tp": [0],
+                    "fp_misclassification": [0],
+                    "fp_hallucination": [1],
+                    "fn_misclassification": [1],
+                    "fn_missing_prediction": [0],
+                    "tp_examples": [[]],
+                    "fp_misclassification_examples": [[]],
+                    "fp_hallucination_examples": [[]],
+                    "fn_misclassification_examples": [[]],
+                    "fn_missing_prediction_examples": [[]],
+                },
+                "parameters": {
+                    "score_thresholds": [0.0],
+                    "iou_threshold": 0.5,
+                    "label": {"key": "class", "value": "label3"},
+                },
             },
-            "parameters": {
-                "score_thresholds": [0.0],
-                "iou_threshold": 0.5,
-                "label": {"key": "class", "value": "label2"},
+            {
+                "type": "DetailedCounts",
+                "value": {
+                    "tp": [0],
+                    "fp_misclassification": [0],
+                    "fp_hallucination": [1],
+                    "fn_misclassification": [0],
+                    "fn_missing_prediction": [0],
+                    "tp_examples": [[]],
+                    "fp_misclassification_examples": [[]],
+                    "fp_hallucination_examples": [[]],
+                    "fn_misclassification_examples": [[]],
+                    "fn_missing_prediction_examples": [[]],
+                },
+                "parameters": {
+                    "score_thresholds": [0.0],
+                    "iou_threshold": 0.5,
+                    "label": {"key": "class", "value": "label4"},
+                },
             },
-        },
-        {
-            "type": "DetailedCounts",
-            "value": {
-                "tp": [0],
-                "fp_misclassification": [0],
-                "fp_hallucination": [1],
-                "fn_misclassification": [1],
-                "fn_missing_prediction": [0],
-                "tp_examples": [[]],
-                "fp_misclassification_examples": [[]],
-                "fp_hallucination_examples": [[]],
-                "fn_misclassification_examples": [[]],
-                "fn_missing_prediction_examples": [[]],
-            },
-            "parameters": {
-                "score_thresholds": [0.0],
-                "iou_threshold": 0.5,
-                "label": {"key": "class", "value": "label3"},
-            },
-        },
-        {
-            "type": "DetailedCounts",
-            "value": {
-                "tp": [0],
-                "fp_misclassification": [0],
-                "fp_hallucination": [1],
-                "fn_misclassification": [0],
-                "fn_missing_prediction": [0],
-                "tp_examples": [[]],
-                "fp_misclassification_examples": [[]],
-                "fp_hallucination_examples": [[]],
-                "fn_misclassification_examples": [[]],
-                "fn_missing_prediction_examples": [[]],
-            },
-            "parameters": {
-                "score_thresholds": [0.0],
-                "iou_threshold": 0.5,
-                "label": {"key": "class", "value": "label4"},
-            },
-        },
-    ]
-    for m in actual_metrics:
-        assert m in expected_metrics
-    for m in expected_metrics:
-        assert m in actual_metrics
+        ]
+        for m in actual_metrics:
+            assert m in expected_metrics
+        for m in expected_metrics:
+            assert m in actual_metrics
