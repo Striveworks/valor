@@ -97,7 +97,7 @@ def compute_bitmask_iou(data: NDArray[np.floating]) -> NDArray[np.floating]:
 
 
 def compute_polygon_iou(
-    data: np.ndarray,
+    data: NDArray[np.floating],
 ) -> NDArray[np.floating]:
     """
     Computes intersection-over-union (IoU) for shapely polygons.
@@ -226,10 +226,10 @@ def compute_ranked_pairs(
 
 
 def compute_metrics(
-    data: np.ndarray,
-    label_metadata: np.ndarray,
-    iou_thresholds: np.ndarray,
-    score_thresholds: np.ndarray,
+    data: NDArray[np.floating],
+    label_metadata: NDArray[np.floating],
+    iou_thresholds: NDArray[np.floating],
+    score_thresholds: NDArray[np.floating],
 ) -> tuple[
     tuple[
         NDArray[np.floating],
