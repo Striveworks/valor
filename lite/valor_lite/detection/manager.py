@@ -106,7 +106,7 @@ def _get_annotation_data(
     annotation_type: type[BoundingBox] | type[Polygon] | type[Bitmask] | None,
     key=int,
 ) -> np.ndarray:
-    """Create an array of annotation pairs for use when calculating IOU."""
+    """Create an array of annotation pairs for use when calculating IOU. Needed because we unpack bounding box representations, but not bitmask or polygon representations."""
     if annotation_type == BoundingBox:
         return np.array(
             [
@@ -735,13 +735,27 @@ class DataLoader:
             self._evaluator.label_key_to_index[label[0]],
         )
 
-    def _compute_ious_and_cache_data(
+    def _compute_ious_and_cache_pairs(
         self,
         uid_index: int,
         keyed_groundtruths: dict,
         keyed_predictions: dict,
         annotation_type: type[BoundingBox] | type[Polygon] | type[Bitmask],
-    ):
+    ) -> None:
+        """
+        Compute IOUs between groundtruths and preditions before storing as pairs.
+
+        Parameters
+        ----------
+        uid_index: int
+            The index of the detection.
+        keyed_groundtruths: dict
+            A dictionary of groundtruths.
+        keyed_predictions: dict
+            A dictionary of predictions.
+        annotation_type: type[BoundingBox] | type[Polygon] | type[Bitmask]
+            The type of annotation to compute IOUs for.
+        """
         gt_keys = set(keyed_groundtruths.keys())
         pd_keys = set(keyed_predictions.keys())
         joint_keys = gt_keys.intersection(pd_keys)
@@ -943,7 +957,7 @@ class DataLoader:
                         )
                     )
 
-            self._compute_ious_and_cache_data(
+            self._compute_ious_and_cache_pairs(
                 uid_index=uid_index,
                 keyed_groundtruths=keyed_groundtruths,
                 keyed_predictions=keyed_predictions,
@@ -1129,7 +1143,7 @@ class DataLoader:
                         )
                     )
 
-            self._compute_ious_and_cache_data(
+            self._compute_ious_and_cache_pairs(
                 uid_index=uid_index,
                 keyed_groundtruths=keyed_groundtruths,
                 keyed_predictions=keyed_predictions,

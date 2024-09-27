@@ -137,7 +137,7 @@ def _compute_polygon_iou(
 
 def compute_iou(
     data: NDArray[np.floating],
-    annotation_type: type[BoundingBox] | type[Polygon] | type[Bitmask] | None,
+    annotation_type: type[BoundingBox] | type[Polygon] | type[Bitmask],
 ) -> NDArray[np.floating]:
     """
     Computes intersection-over-union (IoU) calculations for various annotation types.
@@ -146,6 +146,9 @@ def compute_iou(
     ----------
     data : NDArray[np.floating]
         A sorted array of bounding box, bitmask, or polygon pairs.
+    annotation_type: type[BoundingBox] | type[Polygon] | type[Bitmask]
+        The type of annotation contained in the data.
+
 
     Returns
     -------
