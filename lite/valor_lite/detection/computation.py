@@ -683,9 +683,7 @@ def compute_detailed_metrics(
             # filter out predictions and groundtruths involved in true-positives
             if tp_indices.size > 0:
                 tp_predictions = np.unique(
-                    data[mask_tp][tp_indices, [0, 2, 4]]
-                    .astype(int)
-                    .reshape(-1, 3),
+                    data[mask_tp][tp_indices, :][:, [0, 2, 4]].astype(int),
                     axis=0,
                 )
                 # tp_groundtruths = np.unique(
@@ -694,13 +692,13 @@ def compute_detailed_metrics(
                 #     .reshape(-1, 3),
                 #     axis=0,
                 # )
-                data[mask_fp_misclf][fp_misclf_indices, [0, 2, 4]].reshape(
-                    -1, 1, 3
-                )
+                data[mask_fp_misclf][fp_misclf_indices, :][
+                    :, [0, 2, 4]
+                ].reshape(-1, 1, 3)
                 mask_fp_misclf_is_tp = (
                     (
-                        data[mask_fp_misclf][
-                            fp_misclf_indices, [0, 2, 4]
+                        data[mask_fp_misclf][fp_misclf_indices][
+                            :, [0, 2, 4]
                         ].reshape(-1, 1, 3)
                         == tp_predictions.reshape(1, -1, 3)
                     )

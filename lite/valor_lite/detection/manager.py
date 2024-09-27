@@ -645,7 +645,7 @@ class Evaluator:
                                     )
                                 ],
                                 "groundtruth": tuple(
-                                    *self.groundtruth_examples[
+                                    self.groundtruth_examples[
                                         int(
                                             confusion_matrix[
                                                 iou_idx,
@@ -658,7 +658,7 @@ class Evaluator:
                                     ].tolist()
                                 ),
                                 "prediction": tuple(
-                                    *self.prediction_examples[
+                                    self.prediction_examples[
                                         int(
                                             confusion_matrix[
                                                 iou_idx,
@@ -681,6 +681,14 @@ class Evaluator:
                                 ),
                             }
                             for example_idx in range(number_of_examples)
+                            if confusion_matrix[
+                                iou_idx,
+                                score_idx,
+                                gt_label_idx,
+                                pd_label_idx,
+                                example_idx * 4 + 1,
+                            ]
+                            >= 0
                         ],
                     }
                     for pd_label_idx in range(number_of_labels)
@@ -735,7 +743,7 @@ class Evaluator:
                                 )
                             ],
                             "prediction": tuple(
-                                *self.prediction_examples[
+                                self.prediction_examples[
                                     int(
                                         hallucinations[
                                             iou_idx,
@@ -756,6 +764,13 @@ class Evaluator:
                             ),
                         }
                         for example_idx in range(number_of_examples)
+                        if hallucinations[
+                            iou_idx,
+                            score_idx,
+                            pd_label_idx,
+                            example_idx * 3 + 1,
+                        ]
+                        >= 0
                     ],
                 }
                 for pd_label_idx in range(number_of_labels)
@@ -803,7 +818,7 @@ class Evaluator:
                                 )
                             ],
                             "groundtruth": tuple(
-                                *self.groundtruth_examples[
+                                self.groundtruth_examples[
                                     int(
                                         missing_predictions[
                                             iou_idx,
@@ -816,6 +831,13 @@ class Evaluator:
                             ),
                         }
                         for example_idx in range(number_of_examples)
+                        if missing_predictions[
+                            iou_idx,
+                            score_idx,
+                            gt_label_idx,
+                            example_idx * 2 + 1,
+                        ]
+                        >= 0
                     ],
                 }
                 for gt_label_idx in range(number_of_labels)
@@ -823,7 +845,7 @@ class Evaluator:
                 == label_key_idx
             }
 
-        n_ious, n_scores, n_labels, _ = confusion_matrix.shape
+        n_ious, n_scores, n_labels, _, _ = confusion_matrix.shape
         return [
             CountsWithExamples(
                 iou_threshold=iou_thresholds[iou_idx],
