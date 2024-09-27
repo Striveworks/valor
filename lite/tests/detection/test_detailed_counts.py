@@ -18,7 +18,7 @@ def test_compute_counts_with_examples():
             [1.0, 1.0, 2.0, 0.55, 1.0, 0.0, 0.9],
             [2.0, -1.0, 4.0, 0.0, -1.0, 0.0, 0.65],
             [3.0, 4.0, 5.0, 1.0, 0.0, 0.0, 0.1],
-            [1.0, 1.0, 3.0, 0.55, 0.0, 0.0, 0.1],
+            [1.0, 2.0, 3.0, 0.55, 0.0, 0.0, 0.1],
             [4.0, 5.0, -1.0, 0.0, 0.0, -1.0, -1.0],
         ]
     )
@@ -26,7 +26,11 @@ def test_compute_counts_with_examples():
     iou_thresholds = np.array([0.5])
     score_thresholds = np.array([score / 100.0 for score in range(1, 101)])
 
-    results = compute_detailed_metrics(
+    (
+        confusion_matrix,
+        hallucinations,
+        missing_predictions,
+    ) = compute_detailed_metrics(
         data=sorted_pairs,
         label_metadata=label_metadata,
         iou_thresholds=iou_thresholds,
@@ -34,8 +38,25 @@ def test_compute_counts_with_examples():
         n_examples=0,
     )
 
-    assert len(results) == 1
-    assert results.shape == (1, 100, 2, 5)  # iou, score, label, metrics
+    assert confusion_matrix.shape == (
+        1,
+        100,
+        2,
+        2,
+        1,
+    )  # iou, score, gt label, pd label, metrics
+    assert hallucinations.shape == (
+        1,
+        100,
+        2,
+        1,
+    )  # iou, score, pd label, metrics
+    assert missing_predictions.shape == (
+        1,
+        100,
+        2,
+        1,
+    )  # iou, score, gt label, metrics
 
     """
     @ iou=0.5, score<0.1
@@ -45,7 +66,16 @@ def test_compute_counts_with_examples():
     0x fn misclassification
     1x fn missing prediction
     """
-    assert np.isclose(results[0, :10, 0, :], np.array([3, 1, 1, 0, 1])).all()
+    assert (
+        confusion_matrix[0, :10, :, :, 0].astype(int)
+        == np.array([[3, -1], [1, -1]])
+    ).all()
+    assert (
+        hallucinations[0, :10, :, 0].astype(int) == np.array([1, -1])
+    ).all()
+    assert (
+        missing_predictions[0, :10, :, 0].astype(int) == np.array([1, -1])
+    ).all()
 
     """
     @ iou=0.5, 0.1 <= score < 0.65
@@ -53,9 +83,18 @@ def test_compute_counts_with_examples():
     1x fp misclassification
     1x fp hallucination
     1x fn misclassification
-    2x fn missing prediction
+    3x fn missing prediction
     """
-    assert np.isclose(results[0, 10:65, 0, :], np.array([1, 1, 1, 1, 2])).all()
+    assert (
+        confusion_matrix[0, 10:65, :, :, 0].astype(int)
+        == np.array([[1, -1], [1, -1]])
+    ).all()
+    assert (
+        hallucinations[0, 10:65, :, 0].astype(int) == np.array([1, -1])
+    ).all()
+    assert (
+        missing_predictions[0, 10:65, :, 0].astype(int) == np.array([3, -1])
+    ).all()
 
     """
     @ iou=0.5, 0.65 <= score < 0.9
@@ -63,9 +102,18 @@ def test_compute_counts_with_examples():
     1x fp misclassification
     0x fp hallucination
     1x fn misclassification
-    2x fn missing prediction
+    3x fn missing prediction
     """
-    assert np.isclose(results[0, 65:90, 0, :], np.array([1, 1, 0, 1, 2])).all()
+    assert (
+        confusion_matrix[0, 65:90, :, :, 0].astype(int)
+        == np.array([[1, -1], [1, -1]])
+    ).all()
+    assert (
+        hallucinations[0, 65:90, :, 0].astype(int) == np.array([-1, -1])
+    ).all()
+    assert (
+        missing_predictions[0, 65:90, :, 0].astype(int) == np.array([3, -1])
+    ).all()
 
     """
     @ iou=0.5, score>=0.9
@@ -75,7 +123,16 @@ def test_compute_counts_with_examples():
     0x fn misclassification
     4x fn missing prediction
     """
-    assert np.isclose(results[0, 90:, 0, :], np.array([0, 0, 0, 0, 4])).all()
+    assert (
+        confusion_matrix[0, 90:, :, :, 0].astype(int)
+        == np.array([[-1, -1], [-1, -1]])
+    ).all()
+    assert (
+        hallucinations[0, 90:, :, 0].astype(int) == np.array([-1, -1])
+    ).all()
+    assert (
+        missing_predictions[0, 90:, :, 0].astype(int) == np.array([4, 1])
+    ).all()
 
     # compute with examples
 
@@ -95,34 +152,38 @@ def test_compute_counts_with_examples():
     ... examples
     """
 
-    n_samples = 2
-
-    results = compute_counts_with_examples(
+    n_examples = 2
+    (
+        confusion_matrix,
+        hallucinations,
+        missing_predictions,
+    ) = compute_detailed_metrics(
         data=sorted_pairs,
         label_metadata=label_metadata,
         iou_thresholds=iou_thresholds,
         score_thresholds=score_thresholds,
-        n_samples=n_samples,
+        n_examples=n_examples,
     )
 
-    assert len(results) == 1
-    assert results.shape == (1, 100, 2, 25)  # iou, score, label, metrics
-
-    tp_idx = 0
-    fp_misclf_idx = 2 * n_samples + 1
-    fp_halluc_idx = 4 * n_samples + 2
-    fn_misclf_idx = 6 * n_samples + 3
-    fn_misprd_idx = 8 * n_samples + 4
-
-    metric_indices = np.zeros((25,), dtype=bool)
-    for index in [
-        tp_idx,
-        fp_misclf_idx,
-        fp_halluc_idx,
-        fn_misclf_idx,
-        fn_misprd_idx,
-    ]:
-        metric_indices[index] = True
+    assert confusion_matrix.shape == (
+        1,
+        100,
+        2,
+        2,
+        1 + 4 * n_examples,
+    )  # iou, score, gt label, pd label, metrics
+    assert hallucinations.shape == (
+        1,
+        100,
+        2,
+        1 + 3 * n_examples,
+    )  # iou, score, pd label, metrics
+    assert missing_predictions.shape == (
+        1,
+        100,
+        2,
+        1 + 2 * n_examples,
+    )  # iou, score, gt label, metrics
 
     """
     @ iou=0.5, score<0.1
@@ -133,10 +194,31 @@ def test_compute_counts_with_examples():
     1x fn missing prediction
     """
 
-    assert np.isclose(
-        results[0, :10, 0, metric_indices],
-        np.array([3, 1, 1, 0, 1])[:, np.newaxis],
-    ).all()  # metrics
+    print(confusion_matrix[0, 0, :, :, :])
+
+    assert (
+        confusion_matrix[0, :10, :, :, 0].astype(int)
+        == np.array([[3, -1], [1, -1]])
+    ).all()
+    assert (
+        confusion_matrix[0, :10, 0, 0, 1:]
+        == np.array([0, 0, 1, 0.9, 3, 4, 5, 0.1], dtype=np.float32)
+    ).all()
+    assert (
+        hallucinations[0, :10, :, 0].astype(int) == np.array([1, -1])
+    ).all()
+    assert (
+        hallucinations[0, :10, 0, 1:]
+        == np.array([0, 0, 1, 0.9, 3, 4, 5, 0.1], dtype=np.float32)
+    ).all()
+    assert (
+        missing_predictions[0, :10, :, 0].astype(int) == np.array([1, -1])
+    ).all()
+    assert (
+        missing_predictions[0, :10, 0, 1:]
+        == np.array([0, 0, 1, 0.9, 3, 4, 5, 0.1], dtype=np.float32)
+    ).all()
+
     assert np.isclose(
         results[0, :10, 0, tp_idx + 1 : fp_misclf_idx], np.array([0, 1, 1, 3])
     ).all()  # tp
