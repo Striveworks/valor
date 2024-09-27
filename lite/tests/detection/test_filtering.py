@@ -490,11 +490,13 @@ def test_filtering_all_detections(four_detections: list[Detection]):
 
     filter_ = evaluator.create_filter(labels=[])
     assert (filter_.indices == np.array([])).all()
+    assert (filter_.label_metadata == np.array([[0, 0, 0], [0, 0, 1]])).all()
 
     # test label key filtering
 
     filter_ = evaluator.create_filter(label_keys=[])
     assert (filter_.indices == np.array([[]])).all()
+    assert (filter_.label_metadata == np.array([[0, 0, 0], [0, 0, 1]])).all()
 
     # test combo
     filter_ = evaluator.create_filter(
@@ -502,6 +504,7 @@ def test_filtering_all_detections(four_detections: list[Detection]):
         label_keys=["k1"],
     )
     assert (filter_.indices == np.array([])).all()
+    assert (filter_.label_metadata == np.array([[0, 0, 0], [0, 0, 1]])).all()
 
     # test evaluation
     filter_ = evaluator.create_filter(datum_uids=[])
