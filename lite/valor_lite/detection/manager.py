@@ -6,7 +6,7 @@ from numpy.typing import NDArray
 from tqdm import tqdm
 from valor_lite.detection.annotation import Detection
 from valor_lite.detection.computation import (
-    compute_detailed_counts,
+    compute_detailed_metrics,
     compute_iou,
     compute_metrics,
     compute_ranked_pairs,
@@ -19,7 +19,7 @@ from valor_lite.detection.metric import (
     APAveragedOverIOUs,
     ARAveragedOverScores,
     Counts,
-    DetailedCounts,
+    CountsWithExamples,
     MetricType,
     Precision,
     PrecisionRecallCurve,
@@ -246,7 +246,7 @@ class Evaluator:
         score_thresholds : list[float]
             A list of score thresholds to compute metrics over.
         number_of_examples : int, default=0
-            Number of annotation examples to return in DetailedCounts.
+            Number of annotation examples to return in CountsWithExamples.
         filter_ : Filter, optional
             An optional filter object.
 
@@ -432,8 +432,8 @@ class Evaluator:
                         )
                     )
 
-        if MetricType.DetailedCounts in metrics_to_return:
-            metrics[MetricType.DetailedCounts] = self._compute_detailed_counts(
+        if MetricType.CountsWithExamples in metrics_to_return:
+            metrics[MetricType.CountsWithExamples] = self._compute_detailed_metrics(
                 iou_thresholds=iou_thresholds,
                 score_thresholds=score_thresholds,
                 n_samples=number_of_examples,
@@ -445,14 +445,14 @@ class Evaluator:
 
         return metrics
 
-    def _compute_detailed_counts(
+    def _compute_detailed_metrics(
         self,
         iou_thresholds: list[float] = [0.5],
         score_thresholds: list[float] = [
             score / 10.0 for score in range(1, 11)
         ],
         n_samples: int = 0,
-    ) -> list[DetailedCounts]:
+    ) -> list[CountsWithExamples]:
         """
         Computes detailed counting metrics.
 
@@ -467,14 +467,18 @@ class Evaluator:
 
         Returns
         -------
-        list[list[DetailedCounts]]
+        list[list[CountsWithExamples]]
             Outer list is indexed by label, inner list is by IoU.
         """
 
         if self._detailed_pairs.size == 0:
             return list()
 
-        metrics = compute_detailed_counts(
+        (
+            confusion_matrix,
+            hallucinations,
+            missing_predictions,
+        ) = compute_detailed_metrics(
             self._detailed_pairs,
             label_metadata=self._label_metadata,
             iou_thresholds=np.array(iou_thresholds),
@@ -482,22 +486,164 @@ class Evaluator:
             n_samples=n_samples,
         )
 
-        tp_idx = 0
-        fp_misclf_idx = 2 * n_samples + 1
-        fp_halluc_idx = 4 * n_samples + 2
-        fn_misclf_idx = 6 * n_samples + 3
-        fn_misprd_idx = 8 * n_samples + 4
-
-        def _unpack_examples(
+        def _unpack_confusion_matrix(
             iou_idx: int,
-            label_idx: int,
-            type_idx: int,
-            example_source: dict[int, NDArray[np.float16]],
-        ) -> list[list[tuple[str, tuple[float, float, float, float]]]]:
+            score_idx: int,
+            number_of_labels: int,
+            number_of_examples: int,
+        ) -> dict[str, dict[str, dict[str, int | list[dict[str, str | float | tuple[float, float, float, float]]]]]]:
             """
             Unpacks metric examples from computation.
             """
-            type_idx += 1
+            return {
+                self.index_to_label[gt_label_idx][0]: {
+                    self.index_to_label[pd_label_idx][0]: {
+                        "count": int(
+                            confusion_matrix[
+                                iou_idx,
+                                score_idx,
+                                gt_label_idx,
+                                pd_label_idx,
+                                0
+                            ]
+                        ),
+                        "examples": [
+                            {
+                                "datum": self.index_to_uid[
+                                    int(
+                                        confusion_matrix[
+                                            iou_idx,
+                                            score_idx,
+                                            gt_label_idx,
+                                            pd_label_idx,
+                                            example_idx * 4 + 1,
+                                        ]
+                                    )
+                                ],
+                                "groundtruth": tuple(
+                                    *self.groundtruth_examples[
+                                        int(
+                                            confusion_matrix[
+                                                iou_idx,
+                                                score_idx,
+                                                gt_label_idx,
+                                                pd_label_idx,
+                                                example_idx * 4 + 2,
+                                            ]
+                                        )
+                                    ].tolist()
+                                ),
+                                "prediction": tuple(
+                                    *self.prediction_examples[
+                                        int(
+                                            confusion_matrix[
+                                                iou_idx,
+                                                score_idx,
+                                                gt_label_idx,
+                                                pd_label_idx,
+                                                example_idx * 4 + 3,
+                                            ]
+                                        )
+                                    ].tolist()
+                                ),
+                                "score": float(
+                                    confusion_matrix[
+                                        iou_idx,
+                                        score_idx,
+                                        gt_label_idx,
+                                        pd_label_idx,
+                                        example_idx * 4 + 4,
+                                    ]
+                                )
+                            }
+                            for example_idx in range(number_of_examples)
+                        ]
+                    }
+                    for pd_label_idx in range(number_of_labels)
+                }
+                for gt_label_idx in range(number_of_labels)
+            }
+
+        def _unpack_hallucinations_and_missing_preidctions(
+            iou_idx: int,
+            score_idx: int,
+            number_of_labels: int,
+            number_of_examples: int,
+        ) -> dict[str, dict[str, dict[str, int | list[dict[str, str | float | tuple[float, float, float, float]]]]]]:
+            """
+            Unpacks metric examples from computation.
+            """
+            return {
+                self.index_to_label[gt_label_idx][0]: {
+                    self.index_to_label[pd_label_idx][0]: {
+                        "count": int(
+                            confusion_matrix[
+                                iou_idx,
+                                score_idx,
+                                gt_label_idx,
+                                pd_label_idx,
+                                0
+                            ]
+                        ),
+                        "examples": [
+                            {
+                                "datum": self.index_to_uid[
+                                    int(
+                                        confusion_matrix[
+                                            iou_idx,
+                                            score_idx,
+                                            gt_label_idx,
+                                            pd_label_idx,
+                                            example_idx * 4 + 1,
+                                        ]
+                                    )
+                                ],
+                                "groundtruth": tuple(
+                                    *self.groundtruth_examples[
+                                        int(
+                                            confusion_matrix[
+                                                iou_idx,
+                                                score_idx,
+                                                gt_label_idx,
+                                                pd_label_idx,
+                                                example_idx * 4 + 2,
+                                            ]
+                                        )
+                                    ].tolist()
+                                ),
+                                "prediction": tuple(
+                                    *self.prediction_examples[
+                                        int(
+                                            confusion_matrix[
+                                                iou_idx,
+                                                score_idx,
+                                                gt_label_idx,
+                                                pd_label_idx,
+                                                example_idx * 4 + 3,
+                                            ]
+                                        )
+                                    ].tolist()
+                                ),
+                                "score": float(
+                                    confusion_matrix[
+                                        iou_idx,
+                                        score_idx,
+                                        gt_label_idx,
+                                        pd_label_idx,
+                                        example_idx * 4 + 4,
+                                    ]
+                                )
+                            }
+                            for example_idx in range(number_of_examples)
+                        ]
+                    }
+                    for pd_label_idx in range(number_of_labels)
+                }
+                for gt_label_idx in range(number_of_labels)
+            }
+
+
+            data =
 
             results = list()
             for score_idx in range(n_scores):
@@ -532,62 +678,14 @@ class Evaluator:
 
         n_ious, n_scores, n_labels, _ = metrics.shape
         return [
-            DetailedCounts(
+            CountsWithExamples(
                 iou_threshold=iou_thresholds[iou_idx],
                 label=self.index_to_label[label_idx],
                 score_thresholds=score_thresholds,
-                tp=metrics[iou_idx, :, label_idx, tp_idx].astype(int).tolist(),
-                fp_misclassification=metrics[
-                    iou_idx, :, label_idx, fp_misclf_idx
-                ]
-                .astype(int)
-                .tolist(),
-                fp_hallucination=metrics[iou_idx, :, label_idx, fp_halluc_idx]
-                .astype(int)
-                .tolist(),
-                fn_misclassification=metrics[
-                    iou_idx, :, label_idx, fn_misclf_idx
-                ]
-                .astype(int)
-                .tolist(),
-                fn_missing_prediction=metrics[
-                    iou_idx, :, label_idx, fn_misprd_idx
-                ]
-                .astype(int)
-                .tolist(),
-                tp_examples=_unpack_examples(
-                    iou_idx=iou_idx,
-                    label_idx=label_idx,
-                    type_idx=tp_idx,
-                    example_source=self.prediction_examples,
-                ),
-                fp_misclassification_examples=_unpack_examples(
-                    iou_idx=iou_idx,
-                    label_idx=label_idx,
-                    type_idx=fp_misclf_idx,
-                    example_source=self.prediction_examples,
-                ),
-                fp_hallucination_examples=_unpack_examples(
-                    iou_idx=iou_idx,
-                    label_idx=label_idx,
-                    type_idx=fp_halluc_idx,
-                    example_source=self.prediction_examples,
-                ),
-                fn_misclassification_examples=_unpack_examples(
-                    iou_idx=iou_idx,
-                    label_idx=label_idx,
-                    type_idx=fn_misclf_idx,
-                    example_source=self.groundtruth_examples,
-                ),
-                fn_missing_prediction_examples=_unpack_examples(
-                    iou_idx=iou_idx,
-                    label_idx=label_idx,
-                    type_idx=fn_misprd_idx,
-                    example_source=self.groundtruth_examples,
-                ),
+                confusion_matrix=
             )
-            for label_idx in range(n_labels)
             for iou_idx in range(n_ious)
+            for score_idx in range(n_scores)
         ]
 
 
