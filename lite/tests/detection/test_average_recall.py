@@ -71,9 +71,12 @@ def test__compute_average_recall():
     assert np.isclose(mean_average_recall_averaged_over_scores, expected).all()
 
 
-def test_ar_metrics(basic_detections: list[Detection]):
+def test_ar_metrics(
+    basic_detections: list[Detection],
+    basic_rotated_detections: list[Detection],
+):
     """
-    Basic object detection test.
+    Basic object detection test, testing both axis-aligned and rotated bounding boxes.
 
     groundtruths
         datum uid1
@@ -88,134 +91,137 @@ def test_ar_metrics(basic_detections: list[Detection]):
         datum uid2
             box 2 - label (k2, v2) - score 0.98 - fp
     """
+    for input_, method in [
+        (basic_detections, DataLoader.add_bounding_boxes),
+        (basic_rotated_detections, DataLoader.add_polygons),
+    ]:
+        loader = DataLoader()
+        method(loader, input_)
+        evaluator = loader.finalize()
 
-    loader = DataLoader()
-    loader.add_data(basic_detections)
-    evaluator = loader.finalize()
+        metrics = evaluator.evaluate(
+            iou_thresholds=[0.1, 0.6],
+            score_thresholds=[0.0],
+        )
 
-    metrics = evaluator.evaluate(
-        iou_thresholds=[0.1, 0.6],
-        score_thresholds=[0.0],
-    )
+        assert evaluator.ignored_prediction_labels == []
+        assert evaluator.missing_prediction_labels == []
+        assert evaluator.n_datums == 2
+        assert evaluator.n_labels == 2
+        assert evaluator.n_groundtruths == 3
+        assert evaluator.n_predictions == 2
 
-    assert evaluator.ignored_prediction_labels == []
-    assert evaluator.missing_prediction_labels == []
-    assert evaluator.n_datums == 2
-    assert evaluator.n_labels == 2
-    assert evaluator.n_groundtruths == 3
-    assert evaluator.n_predictions == 2
+        # test AR
+        actual_metrics = [m.to_dict() for m in metrics[MetricType.AR]]
+        expected_metrics = [
+            {
+                "type": "AR",
+                "value": 0.5,
+                "parameters": {
+                    "score_threshold": 0.0,
+                    "iou_thresholds": [0.1, 0.6],
+                    "label": {"key": "k1", "value": "v1"},
+                },
+            },
+            {
+                "type": "AR",
+                "value": 0.0,
+                "parameters": {
+                    "score_threshold": 0.0,
+                    "iou_thresholds": [0.1, 0.6],
+                    "label": {"key": "k2", "value": "v2"},
+                },
+            },
+        ]
+        for m in actual_metrics:
+            assert m in expected_metrics
+        for m in expected_metrics:
+            assert m in actual_metrics
 
-    # test AR
-    actual_metrics = [m.to_dict() for m in metrics[MetricType.AR]]
-    expected_metrics = [
-        {
-            "type": "AR",
-            "value": 0.5,
-            "parameters": {
-                "score_threshold": 0.0,
-                "iou_thresholds": [0.1, 0.6],
-                "label": {"key": "k1", "value": "v1"},
+        # test mAR
+        actual_metrics = [m.to_dict() for m in metrics[MetricType.mAR]]
+        expected_metrics = [
+            {
+                "type": "mAR",
+                "value": 0.5,
+                "parameters": {
+                    "score_threshold": 0.0,
+                    "iou_thresholds": [0.1, 0.6],
+                    "label_key": "k1",
+                },
             },
-        },
-        {
-            "type": "AR",
-            "value": 0.0,
-            "parameters": {
-                "score_threshold": 0.0,
-                "iou_thresholds": [0.1, 0.6],
-                "label": {"key": "k2", "value": "v2"},
+            {
+                "type": "mAR",
+                "value": 0.0,
+                "parameters": {
+                    "score_threshold": 0.0,
+                    "iou_thresholds": [0.1, 0.6],
+                    "label_key": "k2",
+                },
             },
-        },
-    ]
-    for m in actual_metrics:
-        assert m in expected_metrics
-    for m in expected_metrics:
-        assert m in actual_metrics
+        ]
+        for m in actual_metrics:
+            assert m in expected_metrics
+        for m in expected_metrics:
+            assert m in actual_metrics
 
-    # test mAR
-    actual_metrics = [m.to_dict() for m in metrics[MetricType.mAR]]
-    expected_metrics = [
-        {
-            "type": "mAR",
-            "value": 0.5,
-            "parameters": {
-                "score_threshold": 0.0,
-                "iou_thresholds": [0.1, 0.6],
-                "label_key": "k1",
+        # test AR Averaged Over IoUs
+        actual_metrics = [
+            m.to_dict() for m in metrics[MetricType.ARAveragedOverScores]
+        ]
+        expected_metrics = [
+            {
+                "type": "ARAveragedOverScores",
+                "value": 0.5,
+                "parameters": {
+                    "score_thresholds": [0.0],
+                    "iou_thresholds": [0.1, 0.6],
+                    "label": {"key": "k1", "value": "v1"},
+                },
             },
-        },
-        {
-            "type": "mAR",
-            "value": 0.0,
-            "parameters": {
-                "score_threshold": 0.0,
-                "iou_thresholds": [0.1, 0.6],
-                "label_key": "k2",
+            {
+                "type": "ARAveragedOverScores",
+                "value": 0.0,
+                "parameters": {
+                    "score_thresholds": [0.0],
+                    "iou_thresholds": [0.1, 0.6],
+                    "label": {"key": "k2", "value": "v2"},
+                },
             },
-        },
-    ]
-    for m in actual_metrics:
-        assert m in expected_metrics
-    for m in expected_metrics:
-        assert m in actual_metrics
+        ]
+        for m in actual_metrics:
+            assert m in expected_metrics
+        for m in expected_metrics:
+            assert m in actual_metrics
 
-    # test AR Averaged Over IoUs
-    actual_metrics = [
-        m.to_dict() for m in metrics[MetricType.ARAveragedOverScores]
-    ]
-    expected_metrics = [
-        {
-            "type": "ARAveragedOverScores",
-            "value": 0.5,
-            "parameters": {
-                "score_thresholds": [0.0],
-                "iou_thresholds": [0.1, 0.6],
-                "label": {"key": "k1", "value": "v1"},
+        # test mAR Averaged Over IoUs
+        actual_metrics = [
+            m.to_dict() for m in metrics[MetricType.mARAveragedOverScores]
+        ]
+        expected_metrics = [
+            {
+                "type": "mARAveragedOverScores",
+                "value": 0.5,
+                "parameters": {
+                    "score_thresholds": [0.0],
+                    "iou_thresholds": [0.1, 0.6],
+                    "label_key": "k1",
+                },
             },
-        },
-        {
-            "type": "ARAveragedOverScores",
-            "value": 0.0,
-            "parameters": {
-                "score_thresholds": [0.0],
-                "iou_thresholds": [0.1, 0.6],
-                "label": {"key": "k2", "value": "v2"},
+            {
+                "type": "mARAveragedOverScores",
+                "value": 0.0,
+                "parameters": {
+                    "score_thresholds": [0.0],
+                    "iou_thresholds": [0.1, 0.6],
+                    "label_key": "k2",
+                },
             },
-        },
-    ]
-    for m in actual_metrics:
-        assert m in expected_metrics
-    for m in expected_metrics:
-        assert m in actual_metrics
-
-    # test mAR Averaged Over IoUs
-    actual_metrics = [
-        m.to_dict() for m in metrics[MetricType.mARAveragedOverScores]
-    ]
-    expected_metrics = [
-        {
-            "type": "mARAveragedOverScores",
-            "value": 0.5,
-            "parameters": {
-                "score_thresholds": [0.0],
-                "iou_thresholds": [0.1, 0.6],
-                "label_key": "k1",
-            },
-        },
-        {
-            "type": "mARAveragedOverScores",
-            "value": 0.0,
-            "parameters": {
-                "score_thresholds": [0.0],
-                "iou_thresholds": [0.1, 0.6],
-                "label_key": "k2",
-            },
-        },
-    ]
-    for m in actual_metrics:
-        assert m in expected_metrics
-    for m in expected_metrics:
-        assert m in actual_metrics
+        ]
+        for m in actual_metrics:
+            assert m in expected_metrics
+        for m in expected_metrics:
+            assert m in actual_metrics
 
 
 def test_ar_using_torch_metrics_example(
@@ -225,8 +231,9 @@ def test_ar_using_torch_metrics_example(
     cf with torch metrics/pycocotools results listed here:
     https://github.com/Lightning-AI/metrics/blob/107dbfd5fb158b7ae6d76281df44bd94c836bfce/tests/unittests/detection/test_map.py#L231
     """
+
     loader = DataLoader()
-    loader.add_data(torchmetrics_detections)
+    loader.add_bounding_boxes(torchmetrics_detections)
     evaluator = loader.finalize()
 
     assert evaluator.ignored_prediction_labels == [("class", "3")]
@@ -398,7 +405,7 @@ def test_ar_true_positive_deassignment(
 ):
 
     loader = DataLoader()
-    loader.add_data(detections_tp_deassignment_edge_case)
+    loader.add_bounding_boxes(detections_tp_deassignment_edge_case)
     evaluator = loader.finalize()
 
     assert evaluator.ignored_prediction_labels == []
@@ -434,75 +441,90 @@ def test_ar_true_positive_deassignment(
         assert m in actual_metrics
 
 
-def test_ar_ranked_pair_ordering(detection_ranked_pair_ordering: Detection):
+def test_ar_ranked_pair_ordering(
+    detection_ranked_pair_ordering: Detection,
+    detection_ranked_pair_ordering_with_bitmasks: Detection,
+    detection_ranked_pair_ordering_with_polygons: Detection,
+):
 
-    loader = DataLoader()
-    loader.add_data(detections=[detection_ranked_pair_ordering])
-    evaluator = loader.finalize()
+    for input_, method in [
+        (detection_ranked_pair_ordering, DataLoader.add_bounding_boxes),
+        (
+            detection_ranked_pair_ordering_with_bitmasks,
+            DataLoader.add_bitmasks,
+        ),
+        (
+            detection_ranked_pair_ordering_with_polygons,
+            DataLoader.add_polygons,
+        ),
+    ]:
+        loader = DataLoader()
+        method(loader, detections=[input_])
+        evaluator = loader.finalize()
 
-    assert evaluator.metadata == {
-        "ignored_prediction_labels": [
-            ("class", "label4"),
-        ],
-        "missing_prediction_labels": [],
-        "n_datums": 1,
-        "n_groundtruths": 3,
-        "n_labels": 4,
-        "n_predictions": 4,
-    }
+        assert evaluator.metadata == {
+            "ignored_prediction_labels": [
+                ("class", "label4"),
+            ],
+            "missing_prediction_labels": [],
+            "n_datums": 1,
+            "n_groundtruths": 3,
+            "n_labels": 4,
+            "n_predictions": 4,
+        }
 
-    metrics = evaluator.evaluate(
-        iou_thresholds=[0.5, 0.75], score_thresholds=[0.0]
-    )
+        metrics = evaluator.evaluate(
+            iou_thresholds=[0.5, 0.75], score_thresholds=[0.0]
+        )
 
-    actual_metrics = [m.to_dict() for m in metrics[MetricType.AR]]
-    expected_metrics = expected_metrics = [
-        {
-            "type": "AR",
-            "value": 1.0,
-            "parameters": {
-                "score_threshold": 0.0,
-                "iou_thresholds": [0.5, 0.75],
-                "label": {"key": "class", "value": "label1"},
+        actual_metrics = [m.to_dict() for m in metrics[MetricType.AR]]
+        expected_metrics = expected_metrics = [
+            {
+                "type": "AR",
+                "value": 1.0,
+                "parameters": {
+                    "score_threshold": 0.0,
+                    "iou_thresholds": [0.5, 0.75],
+                    "label": {"key": "class", "value": "label1"},
+                },
             },
-        },
-        {
-            "type": "AR",
-            "value": 1.0,
-            "parameters": {
-                "score_threshold": 0.0,
-                "iou_thresholds": [0.5, 0.75],
-                "label": {"key": "class", "value": "label2"},
+            {
+                "type": "AR",
+                "value": 1.0,
+                "parameters": {
+                    "score_threshold": 0.0,
+                    "iou_thresholds": [0.5, 0.75],
+                    "label": {"key": "class", "value": "label2"},
+                },
             },
-        },
-        {
-            "type": "AR",
-            "value": 0.0,
-            "parameters": {
-                "score_threshold": 0.0,
-                "iou_thresholds": [0.5, 0.75],
-                "label": {"key": "class", "value": "label3"},
+            {
+                "type": "AR",
+                "value": 0.0,
+                "parameters": {
+                    "score_threshold": 0.0,
+                    "iou_thresholds": [0.5, 0.75],
+                    "label": {"key": "class", "value": "label3"},
+                },
             },
-        },
-    ]
-    for m in actual_metrics:
-        assert m in expected_metrics
-    for m in expected_metrics:
-        assert m in actual_metrics
+        ]
+        for m in actual_metrics:
+            assert m in expected_metrics
+        for m in expected_metrics:
+            assert m in actual_metrics
 
-    actual_metrics = [m.to_dict() for m in metrics[MetricType.mAR]]
-    expected_metrics = expected_metrics = [
-        {
-            "type": "mAR",
-            "value": 0.6666666666666666,
-            "parameters": {
-                "score_threshold": 0.0,
-                "iou_thresholds": [0.5, 0.75],
-                "label_key": "class",
+        actual_metrics = [m.to_dict() for m in metrics[MetricType.mAR]]
+        expected_metrics = expected_metrics = [
+            {
+                "type": "mAR",
+                "value": 0.6666666666666666,
+                "parameters": {
+                    "score_threshold": 0.0,
+                    "iou_thresholds": [0.5, 0.75],
+                    "label_key": "class",
+                },
             },
-        },
-    ]
-    for m in actual_metrics:
-        assert m in expected_metrics
-    for m in expected_metrics:
-        assert m in actual_metrics
+        ]
+        for m in actual_metrics:
+            assert m in expected_metrics
+        for m in expected_metrics:
+            assert m in actual_metrics

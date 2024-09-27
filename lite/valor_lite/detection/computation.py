@@ -2,7 +2,7 @@ import numpy as np
 from numpy.typing import NDArray
 
 
-def compute_iou(data: NDArray[np.floating]) -> NDArray[np.floating]:
+def compute_bbox_iou(data: NDArray[np.floating]) -> NDArray[np.floating]:
     """
     Computes intersection-over-union (IoU) for axis-aligned bounding boxes.
 
@@ -24,14 +24,12 @@ def compute_iou(data: NDArray[np.floating]) -> NDArray[np.floating]:
     Parameters
     ----------
     data : NDArray[np.floating]
-        A sorted array of classification pairs.
-    label_metadata : NDArray[np.int32]
-        An array containing metadata related to labels.
+        A sorted array of bounding box pairs.
 
     Returns
     -------
     NDArray[np.floating]
-        Compute IoU's.
+        Computed IoU's.
     """
 
     xmin1, xmax1, ymin1, ymax1 = (
@@ -67,6 +65,73 @@ def compute_iou(data: NDArray[np.floating]) -> NDArray[np.floating]:
         intersection_area[valid_union_mask] / union_area[valid_union_mask]
     )
     return iou
+
+
+def compute_bitmask_iou(data: NDArray[np.floating]) -> NDArray[np.floating]:
+    """
+    Computes intersection-over-union (IoU) for bitmasks.
+
+    Takes data with shape (N, 2):
+
+    Index 0 - first bitmask
+    Index 1 - second bitmask
+
+    Returns data with shape (N, 1):
+
+    Index 0 - IoU
+
+    Parameters
+    ----------
+    data : NDArray[np.floating]
+        A sorted array of bitmask pairs.
+
+    Returns
+    -------
+    NDArray[np.floating]
+        Computed IoU's.
+    """
+    intersection_ = np.array([np.logical_and(x, y).sum() for x, y in data])
+    union_ = np.array([np.logical_or(x, y).sum() for x, y in data])
+
+    return intersection_ / union_
+
+
+def compute_polygon_iou(
+    data: NDArray[np.floating],
+) -> NDArray[np.floating]:
+    """
+    Computes intersection-over-union (IoU) for shapely polygons.
+
+    Takes data with shape (N, 2):
+
+    Index 0 - first polygon
+    Index 1 - second polygon
+
+    Returns data with shape (N, 1):
+
+    Index 0 - IoU
+
+    Parameters
+    ----------
+    data : NDArray[np.floating]
+        A sorted array of polygon pairs.
+
+    Returns
+    -------
+    NDArray[np.floating]
+        Computed IoU's.
+    """
+    intersection_ = np.array(
+        [poly1.intersection(poly2).area for poly1, poly2 in data]
+    )
+    union_ = np.array(
+        [
+            poly1.area + poly2.area - intersection_[i]
+            for i, (poly1, poly2) in enumerate(data)
+        ]
+    )
+
+    return intersection_ / union_
 
 
 def _compute_ranked_pairs_for_datum(
@@ -133,7 +198,7 @@ def compute_ranked_pairs(
     Parameters
     ----------
     data : NDArray[np.floating]
-        A sorted array of classification pairs.
+        A sorted array summarizing the IOU calculations of one or more pairs.
     label_metadata : NDArray[np.int32]
         An array containing metadata related to labels.
 
@@ -161,10 +226,10 @@ def compute_ranked_pairs(
 
 
 def compute_metrics(
-    data: np.ndarray,
-    label_metadata: np.ndarray,
-    iou_thresholds: np.ndarray,
-    score_thresholds: np.ndarray,
+    data: NDArray[np.floating],
+    label_metadata: NDArray[np.int32],
+    iou_thresholds: NDArray[np.floating],
+    score_thresholds: NDArray[np.floating],
 ) -> tuple[
     tuple[
         NDArray[np.floating],
@@ -197,7 +262,7 @@ def compute_metrics(
     Parameters
     ----------
     data : NDArray[np.floating]
-        A sorted array of classification pairs.
+        A sorted array summarizing the IOU calculations of one or more pairs.
     label_metadata : NDArray[np.int32]
         An array containing metadata related to labels.
     iou_thresholds : NDArray[np.floating]
@@ -464,7 +529,7 @@ def compute_detailed_metrics(
     Parameters
     ----------
     data : NDArray[np.floating]
-        A sorted array of classification pairs.
+        A sorted array summarizing the IOU calculations of one or more pairs.
     label_metadata : NDArray[np.int32]
         An array containing metadata related to labels.
     iou_thresholds : NDArray[np.floating]

@@ -1,7 +1,10 @@
 from valor_lite.detection import DataLoader, Detection, MetricType
 
 
-def test_recall_metrics(basic_detections: list[Detection]):
+def test_recall_metrics(
+    basic_detections: list[Detection],
+    basic_rotated_detections: list[Detection],
+):
     """
     Basic object detection test.
 
@@ -18,103 +21,106 @@ def test_recall_metrics(basic_detections: list[Detection]):
         datum uid2
             box 2 - label (k2, v2) - score 0.98 - fp
     """
+    for input_, method in [
+        (basic_detections, DataLoader.add_bounding_boxes),
+        (basic_rotated_detections, DataLoader.add_polygons),
+    ]:
+        loader = DataLoader()
+        method(loader, input_)
+        evaluator = loader.finalize()
 
-    loader = DataLoader()
-    loader.add_data(basic_detections)
-    evaluator = loader.finalize()
+        metrics = evaluator.evaluate(
+            iou_thresholds=[0.1, 0.6],
+            score_thresholds=[0.0, 0.5],
+        )
 
-    metrics = evaluator.evaluate(
-        iou_thresholds=[0.1, 0.6],
-        score_thresholds=[0.0, 0.5],
-    )
+        assert evaluator.ignored_prediction_labels == []
+        assert evaluator.missing_prediction_labels == []
+        assert evaluator.n_datums == 2
+        assert evaluator.n_labels == 2
+        assert evaluator.n_groundtruths == 3
+        assert evaluator.n_predictions == 2
 
-    assert evaluator.ignored_prediction_labels == []
-    assert evaluator.missing_prediction_labels == []
-    assert evaluator.n_datums == 2
-    assert evaluator.n_labels == 2
-    assert evaluator.n_groundtruths == 3
-    assert evaluator.n_predictions == 2
-
-    # test Recall
-    actual_metrics = [m.to_dict() for m in metrics[MetricType.Recall]]
-    expected_metrics = [
-        {
-            "type": "Recall",
-            "value": 0.0,
-            "parameters": {
-                "iou_threshold": 0.1,
-                "score_threshold": 0.0,
-                "label": {"key": "k2", "value": "v2"},
+        # test Recall
+        actual_metrics = [m.to_dict() for m in metrics[MetricType.Recall]]
+        expected_metrics = [
+            {
+                "type": "Recall",
+                "value": 0.0,
+                "parameters": {
+                    "iou_threshold": 0.1,
+                    "score_threshold": 0.0,
+                    "label": {"key": "k2", "value": "v2"},
+                },
             },
-        },
-        {
-            "type": "Recall",
-            "value": 0.0,
-            "parameters": {
-                "iou_threshold": 0.6,
-                "score_threshold": 0.0,
-                "label": {"key": "k2", "value": "v2"},
+            {
+                "type": "Recall",
+                "value": 0.0,
+                "parameters": {
+                    "iou_threshold": 0.6,
+                    "score_threshold": 0.0,
+                    "label": {"key": "k2", "value": "v2"},
+                },
             },
-        },
-        {
-            "type": "Recall",
-            "value": 0.5,
-            "parameters": {
-                "iou_threshold": 0.1,
-                "score_threshold": 0.0,
-                "label": {"key": "k1", "value": "v1"},
+            {
+                "type": "Recall",
+                "value": 0.5,
+                "parameters": {
+                    "iou_threshold": 0.1,
+                    "score_threshold": 0.0,
+                    "label": {"key": "k1", "value": "v1"},
+                },
             },
-        },
-        {
-            "type": "Recall",
-            "value": 0.5,
-            "parameters": {
-                "iou_threshold": 0.6,
-                "score_threshold": 0.0,
-                "label": {"key": "k1", "value": "v1"},
+            {
+                "type": "Recall",
+                "value": 0.5,
+                "parameters": {
+                    "iou_threshold": 0.6,
+                    "score_threshold": 0.0,
+                    "label": {"key": "k1", "value": "v1"},
+                },
             },
-        },
-        {
-            "type": "Recall",
-            "value": 0.0,
-            "parameters": {
-                "iou_threshold": 0.1,
-                "score_threshold": 0.5,
-                "label": {"key": "k2", "value": "v2"},
+            {
+                "type": "Recall",
+                "value": 0.0,
+                "parameters": {
+                    "iou_threshold": 0.1,
+                    "score_threshold": 0.5,
+                    "label": {"key": "k2", "value": "v2"},
+                },
             },
-        },
-        {
-            "type": "Recall",
-            "value": 0.0,
-            "parameters": {
-                "iou_threshold": 0.6,
-                "score_threshold": 0.5,
-                "label": {"key": "k2", "value": "v2"},
+            {
+                "type": "Recall",
+                "value": 0.0,
+                "parameters": {
+                    "iou_threshold": 0.6,
+                    "score_threshold": 0.5,
+                    "label": {"key": "k2", "value": "v2"},
+                },
             },
-        },
-        {
-            "type": "Recall",
-            "value": 0.0,
-            "parameters": {
-                "iou_threshold": 0.1,
-                "score_threshold": 0.5,
-                "label": {"key": "k1", "value": "v1"},
+            {
+                "type": "Recall",
+                "value": 0.0,
+                "parameters": {
+                    "iou_threshold": 0.1,
+                    "score_threshold": 0.5,
+                    "label": {"key": "k1", "value": "v1"},
+                },
             },
-        },
-        {
-            "type": "Recall",
-            "value": 0.0,
-            "parameters": {
-                "iou_threshold": 0.6,
-                "score_threshold": 0.5,
-                "label": {"key": "k1", "value": "v1"},
+            {
+                "type": "Recall",
+                "value": 0.0,
+                "parameters": {
+                    "iou_threshold": 0.6,
+                    "score_threshold": 0.5,
+                    "label": {"key": "k1", "value": "v1"},
+                },
             },
-        },
-    ]
-    for m in actual_metrics:
-        assert m in expected_metrics
-    for m in expected_metrics:
-        assert m in actual_metrics
+        ]
+        for m in actual_metrics:
+            assert m in expected_metrics
+        for m in expected_metrics:
+            assert m in actual_metrics
 
 
 def test_recall_false_negatives_single_datum_baseline(
@@ -126,7 +132,7 @@ def test_recall_false_negatives_single_datum_baseline(
     """
 
     loader = DataLoader()
-    loader.add_data(false_negatives_single_datum_baseline_detections)
+    loader.add_bounding_boxes(false_negatives_single_datum_baseline_detections)
     evaluator = loader.finalize()
 
     metrics = evaluator.evaluate(
@@ -175,7 +181,7 @@ def test_recall_false_negatives_single_datum(
     """
 
     loader = DataLoader()
-    loader.add_data(false_negatives_single_datum_detections)
+    loader.add_bounding_boxes(false_negatives_single_datum_detections)
     evaluator = loader.finalize()
     metrics = evaluator.evaluate(iou_thresholds=[0.5], score_thresholds=[0.0])
 
@@ -215,7 +221,7 @@ def test_recall_false_negatives_two_datums_one_empty_low_confidence_of_fp(
     """
 
     loader = DataLoader()
-    loader.add_data(
+    loader.add_bounding_boxes(
         false_negatives_two_datums_one_empty_low_confidence_of_fp_detections
     )
     evaluator = loader.finalize()
@@ -256,7 +262,7 @@ def test_recall_false_negatives_two_datums_one_empty_high_confidence_of_fp(
     """
 
     loader = DataLoader()
-    loader.add_data(
+    loader.add_bounding_boxes(
         false_negatives_two_datums_one_empty_high_confidence_of_fp_detections
     )
     evaluator = loader.finalize()
@@ -297,7 +303,7 @@ def test_recall_false_negatives_two_datums_one_only_with_different_class_low_con
     AP for class `"other value"` should be 0 since there is no prediction for the `"other value"` groundtruth
     """
     loader = DataLoader()
-    loader.add_data(
+    loader.add_bounding_boxes(
         false_negatives_two_datums_one_only_with_different_class_low_confidence_of_fp_detections
     )
     evaluator = loader.finalize()
@@ -350,7 +356,7 @@ def test_recall_false_negatives_two_datums_one_only_with_different_class_high_co
     AP for class `"other value"` should be 0 since there is no prediction for the `"other value"` groundtruth
     """
     loader = DataLoader()
-    loader.add_data(
+    loader.add_bounding_boxes(
         false_negatives_two_images_one_only_with_different_class_high_confidence_of_fp_detections
     )
     evaluator = loader.finalize()

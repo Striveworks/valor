@@ -1,6 +1,7 @@
 import numpy as np
 import pytest
-from valor_lite.detection import Bitmask, BoundingBox, Detection
+from shapely.geometry import Polygon as ShapelyPolygon
+from valor_lite.detection import Bitmask, BoundingBox, Detection, Polygon
 
 
 def test_BoundingBox():
@@ -70,10 +71,64 @@ def test_Bitmask():
             scores=[0.7],
         )
 
-    # test `to_box` function
+    # test `to_box` method
     box = gt.to_box()
     assert box
     assert box.extrema == (0, 4, 0, 4)
+
+    empty_box = Bitmask(mask=np.array([]), labels=[("k", "v")])
+
+    assert empty_box.to_box() is None
+
+
+def test_Polygon(rect1_rotated_5_degrees_around_origin):
+
+    shape = ShapelyPolygon(rect1_rotated_5_degrees_around_origin)
+
+    # groundtruth
+    gt = Polygon(shape=shape, labels=[("k", "v")])
+
+    # prediction
+    Polygon(
+        shape=shape,
+        labels=[("k", "v")],
+        scores=[0.7],
+    )
+
+    # test score-label matching
+    with pytest.raises(ValueError):
+        Polygon(
+            shape=shape,
+            labels=[("k", "v")],
+            scores=[0.7, 0.1],
+        )
+    with pytest.raises(ValueError):
+        Polygon(
+            shape=shape,
+            labels=[("k", "v1"), ("k", "v2")],
+            scores=[0.7],
+        )
+    # test that we throw a type error if the shape isn't a shapely.geometry.Polygon
+    with pytest.raises(TypeError):
+        Polygon(
+            shape=np.zeros((10, 10), dtype=np.bool_),  # type: ignore - purposefully throwing error
+            labels=[("k", "v1"), ("k", "v2")],
+            scores=[0.7],
+        )
+
+    # test `to_box` method
+    box = gt.to_box()
+    assert box
+    assert box.extrema == (
+        6.475717271011129,
+        58.90012445802815,
+        10.833504408394036,
+        45.07713248852931,
+    )
+
+    empty_box = Polygon(shape=ShapelyPolygon([]), labels=[("k", "v")])
+
+    assert empty_box.to_box() is None
 
 
 def test_Detection():

@@ -2,6 +2,7 @@ from dataclasses import dataclass, field
 
 import numpy as np
 from numpy.typing import NDArray
+from shapely.geometry import Polygon as ShapelyPolygon
 
 
 @dataclass
@@ -22,6 +23,37 @@ class BoundingBox:
     @property
     def extrema(self) -> tuple[float, float, float, float]:
         return (self.xmin, self.xmax, self.ymin, self.ymax)
+
+
+@dataclass
+class Polygon:
+    shape: ShapelyPolygon
+    labels: list[tuple[str, str]]
+    scores: list[float] = field(default_factory=list)
+
+    def __post_init__(self):
+        if not isinstance(self.shape, ShapelyPolygon):
+            raise TypeError("shape must be of type shapely.geometry.Polygon.")
+        if len(self.scores) > 0 and len(self.labels) != len(self.scores):
+            raise ValueError(
+                "If scores are defined, there must be a 1:1 pairing with labels."
+            )
+
+    def to_box(self) -> BoundingBox | None:
+
+        if self.shape.is_empty:
+            return None
+
+        xmin, ymin, xmax, ymax = self.shape.bounds
+
+        return BoundingBox(
+            xmin=xmin,
+            xmax=xmax,
+            ymin=ymin,
+            ymax=ymax,
+            labels=self.labels,
+            scores=self.scores,
+        )
 
 
 @dataclass
@@ -55,8 +87,8 @@ class Bitmask:
 @dataclass
 class Detection:
     uid: str
-    groundtruths: list[BoundingBox]
-    predictions: list[BoundingBox]
+    groundtruths: list[BoundingBox] | list[Bitmask] | list[Polygon]
+    predictions: list[BoundingBox] | list[Bitmask] | list[Polygon]
 
     def __post_init__(self):
         for prediction in self.predictions:

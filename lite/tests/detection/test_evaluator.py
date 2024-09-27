@@ -9,7 +9,7 @@ def test_metadata_using_torch_metrics_example(
     https://github.com/Lightning-AI/metrics/blob/107dbfd5fb158b7ae6d76281df44bd94c836bfce/tests/unittests/detection/test_map.py#L231
     """
     loader = DataLoader()
-    loader.add_data(torchmetrics_detections)
+    loader.add_bounding_boxes(torchmetrics_detections)
     evaluator = loader.finalize()
 
     assert evaluator.ignored_prediction_labels == [("class", "3")]
@@ -34,7 +34,7 @@ def test_metadata_using_torch_metrics_example(
 def test_no_groundtruths(detections_no_groundtruths):
 
     loader = DataLoader()
-    loader.add_data(detections_no_groundtruths)
+    loader.add_bounding_boxes(detections_no_groundtruths)
     evaluator = loader.finalize()
 
     assert evaluator.ignored_prediction_labels == [("k1", "v1"), ("k2", "v2")]
@@ -55,7 +55,7 @@ def test_no_groundtruths(detections_no_groundtruths):
 def test_no_predictions(detections_no_predictions):
 
     loader = DataLoader()
-    loader.add_data(detections_no_predictions)
+    loader.add_bounding_boxes(detections_no_predictions)
     evaluator = loader.finalize()
 
     assert evaluator.ignored_prediction_labels == []
@@ -101,7 +101,7 @@ def test_no_predictions(detections_no_predictions):
 def test_metrics_to_return(basic_detections: list[Detection]):
 
     loader = DataLoader()
-    loader.add_data(basic_detections)
+    loader.add_bounding_boxes(basic_detections)
     evaluator = loader.finalize()
 
     metrics_to_return = [
