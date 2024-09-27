@@ -497,7 +497,7 @@ def compute_detailed_metrics(
     label_metadata: NDArray[np.int32],
     iou_thresholds: NDArray[np.floating],
     score_thresholds: NDArray[np.floating],
-    n_samples: int,
+    n_examples: int,
 ) -> tuple[NDArray[np.floating], NDArray[np.floating], NDArray[np.int32]]:
 
     """
@@ -513,19 +513,6 @@ def compute_detailed_metrics(
     Index 5 - Prediction Label Index
     Index 6 - Score
 
-    Outputs an array with shape (N_IoUs, N_Score, N_Labels, 5 * n_samples + 5):
-
-    Index 0 - True Positive Count
-    ... Datum ID Examples
-    Index 2 * n_samples + 1 - False Positive Misclassification Count
-    ... Datum ID Examples
-    Index 4 * n_samples + 2 - False Positive Hallucination Count
-    ... Datum ID Examples
-    Index 6 * n_samples + 3 - False Negative Misclassification Count
-    ... Datum ID Examples
-    Index 8 * n_samples + 4 - False Negative Missing Prediction Count
-    ... Datum ID Examples
-
     Parameters
     ----------
     data : NDArray[np.floating]
@@ -536,8 +523,8 @@ def compute_detailed_metrics(
         A 1-D array containing IoU thresholds.
     score_thresholds : NDArray[np.floating]
         A 1-D array containing score thresholds.
-    n_samples : int
-        The number of examples to return per count.
+    n_examples : int
+        The maximum number of examples to return per count.
 
     Returns
     -------
@@ -554,18 +541,18 @@ def compute_detailed_metrics(
     n_scores = score_thresholds.shape[0]
 
     confusion_matrix = -1 * np.ones(
-        # (datum idx, gt idx, pd idx, pd score) * n_samples + count
-        (n_ious, n_scores, n_labels, n_labels, 4 * n_samples + 1),
+        # (datum idx, gt idx, pd idx, pd score) * n_examples + count
+        (n_ious, n_scores, n_labels, n_labels, 4 * n_examples + 1),
         dtype=np.float32,
     )
     hallucinations = -1 * np.ones(
-        # (datum idx, pd idx, pd score) * n_samples + count
-        (n_ious, n_scores, n_labels, 3 * n_samples + 1),
+        # (datum idx, pd idx, pd score) * n_examples + count
+        (n_ious, n_scores, n_labels, 3 * n_examples + 1),
         dtype=np.float32,
     )
     missing_predictions = -1 * np.ones(
-        # (datum idx, gt idx) * n_samples + count
-        (n_ious, n_scores, n_labels, 2 * n_samples),
+        # (datum idx, gt idx) * n_examples + count
+        (n_ious, n_scores, n_labels, 2 * n_examples),
         np.int32,
     )
 
@@ -656,11 +643,17 @@ def compute_detailed_metrics(
                 axis=0,
             )
 
-            tp_pds = np.unique(
-                data[mask_tp][tp_indices, [0, 2, 4]].astype(int), axis=0
+            tp_predictions = np.unique(
+                data[mask_tp][tp_indices, [0, 2, 4]]
+                .astype(int)
+                .reshape(-1, 3),
+                axis=0,
             )
-            tp_gts = np.unique(
-                data[mask_tp][tp_indices, [0, 1, 3]].astype(int), axis=0
+            tp_groundtruths = np.unique(
+                data[mask_tp][tp_indices, [0, 1, 3]]
+                .astype(int)
+                .reshape(-1, 3),
+                axis=0,
             )
 
             fp_misclf_labels, fp_misclf_indices, fp_misclf_counts = np.unique(
@@ -683,10 +676,18 @@ def compute_detailed_metrics(
             )
 
             # filter out predictions and groundtruths involved in true-positives
+            data[mask_fp_misclf][fp_misclf_indices, [0, 2, 4]].reshape(
+                -1, 1, 3
+            )
+            print(tp_indices)
+            print(data[mask_tp][tp_indices, [0, 2, 4]].shape)
+            print(tp_predictions.shape)
             mask_fp_misclf_is_tp = (
                 (
-                    fp_misclf_labels[:, [0, 2, 4]].reshape(-1, 1, 3)
-                    == tp_pds.reshape(1, -1, 3)
+                    data[mask_fp_misclf][fp_misclf_indices, [0, 2, 4]].reshape(
+                        -1, 1, 3
+                    )
+                    == tp_predictions.reshape(1, -1, 3)
                 )
                 .all(axis=2)
                 .any(axis=1)
@@ -699,12 +700,13 @@ def compute_detailed_metrics(
             fp_misclf_examples = data[fp_misclf_indices, [0, 1, 2, 6]]
             fp_halluc_examples = data[fp_halluc_indices, [0, 2, 6]]
 
+            # store the results
             confusion_matrix[
                 iou_idx, score_idx, tp_labels, tp_labels, 0
             ] = tp_counts
-            confusion_matrix[
-                iou_idx, score_idx, tp_labels, tp_labels, 1:
-            ] = tp_examples[:n_samples]
+            # confusion_matrix[
+            #     iou_idx, score_idx, tp_labels, tp_labels, 1:
+            # ] = tp_examples[:n_examples]
 
             confusion_matrix[
                 iou_idx,
@@ -713,27 +715,39 @@ def compute_detailed_metrics(
                 fp_misclf_labels[:, 1],
                 0,
             ] = fp_misclf_counts
-            confusion_matrix[
+            # confusion_matrix[
+            #     iou_idx,
+            #     score_idx,
+            #     fp_misclf_labels[:, 0],
+            #     fp_misclf_labels[:, 1],
+            #     1:,
+            # ] = fp_misclf_examples[:n_examples]
+
+            hallucinations[
                 iou_idx,
                 score_idx,
-                fp_misclf_labels[:, 0],
-                fp_misclf_labels[:, 1],
-                1:,
-            ] = fp_misclf_examples[:n_samples]
-
-            hallucinations[
-                iou_idx, score_idx, fp_halluc[:, 2], 0
+                fp_halluc[:, 2],
+                0,
             ] = fp_halluc_counts
-            hallucinations[
-                iou_idx, score_idx, fp_halluc[:, 2], 1:
-            ] = fp_halluc_examples
+            # hallucinations[
+            #     iou_idx,
+            #     score_idx,
+            #     fp_halluc[:, 2],
+            #     1:,
+            # ] = fp_halluc_examples
 
             missing_predictions[
-                iou_idx, score_idx, fn_misprd[:, 2], 0
+                iou_idx,
+                score_idx,
+                fn_misprd[:, 2],
+                0,
             ] = fn_misprd_counts
-            missing_predictions[
-                iou_idx, score_idx, fn_misprd[:, 2], 1:
-            ] = fn_misprd[:, :2]
+            # missing_predictions[
+            #     iou_idx,
+            #     score_idx,
+            #     fn_misprd[:, 2],
+            #     1:,
+            # ] = fn_misprd[:, :2]
 
     return (
         confusion_matrix,

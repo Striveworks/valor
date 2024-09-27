@@ -1,16 +1,16 @@
 import numpy as np
 from valor_lite.detection import DataLoader, Detection, Evaluator, MetricType
-from valor_lite.detection.computation import compute_detailed_counts
+from valor_lite.detection.computation import compute_detailed_metrics
 
 
-def test_detailed_counts_no_data():
+def test_counts_with_examples_no_data():
     evaluator = Evaluator()
-    curves = evaluator._compute_detailed_counts()
+    curves = evaluator._compute_detailed_metrics()
     assert isinstance(curves, list)
     assert len(curves) == 0
 
 
-def test_compute_detailed_counts():
+def test_compute_counts_with_examples():
     sorted_pairs = np.array(
         [
             # dt,  gt,  pd,  iou,  gl,  pl, score,
@@ -26,12 +26,12 @@ def test_compute_detailed_counts():
     iou_thresholds = np.array([0.5])
     score_thresholds = np.array([score / 100.0 for score in range(1, 101)])
 
-    results = compute_detailed_counts(
+    results = compute_detailed_metrics(
         data=sorted_pairs,
         label_metadata=label_metadata,
         iou_thresholds=iou_thresholds,
         score_thresholds=score_thresholds,
-        n_samples=0,
+        n_examples=0,
     )
 
     assert len(results) == 1
@@ -97,7 +97,7 @@ def test_compute_detailed_counts():
 
     n_samples = 2
 
-    results = compute_detailed_counts(
+    results = compute_counts_with_examples(
         data=sorted_pairs,
         label_metadata=label_metadata,
         iou_thresholds=iou_thresholds,
@@ -253,7 +253,7 @@ def test_compute_detailed_counts():
     ).all()  # fn misprd
 
 
-def test_detailed_counts(
+def test_counts_with_examples(
     detections_for_detailed_counting: list[Detection],
     rect1: tuple[float, float, float, float],
     rect2: tuple[float, float, float, float],
@@ -765,7 +765,7 @@ def test_detailed_counts(
         assert m in actual_metrics
 
 
-def test_detailed_counts_using_torch_metrics_example(
+def test_counts_with_examples_using_torch_metrics_example(
     torchmetrics_detections: list[Detection],
 ):
     """
@@ -1616,7 +1616,7 @@ def test_detailed_counts_using_torch_metrics_example(
         assert m in actual_metrics
 
 
-def test_detailed_counts_fp_hallucination_edge_case(
+def test_counts_with_examples_fp_hallucination_edge_case(
     detections_fp_hallucination_edge_case: list[Detection],
 ):
 
@@ -1676,7 +1676,7 @@ def test_detailed_counts_fp_hallucination_edge_case(
         assert m in actual_metrics
 
 
-def test_detailed_counts_ranked_pair_ordering(
+def test_counts_with_examples_ranked_pair_ordering(
     detection_ranked_pair_ordering: Detection,
     detection_ranked_pair_ordering_with_bitmasks: Detection,
     detection_ranked_pair_ordering_with_polygons: Detection,
