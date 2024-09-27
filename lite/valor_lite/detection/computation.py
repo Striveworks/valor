@@ -1,5 +1,3 @@
-from typing import Type
-
 import numpy as np
 from numpy.typing import NDArray
 from valor_lite.detection.annotation import Bitmask, BoundingBox, Polygon
@@ -139,7 +137,7 @@ def _compute_polygon_iou(
 
 def compute_iou(
     data: NDArray[np.floating],
-    annotation_type: Type[BoundingBox] | Type[Polygon] | Type[Bitmask] | None,
+    annotation_type: type[BoundingBox] | type[Polygon] | type[Bitmask] | None,
 ) -> NDArray[np.floating]:
     """
     Computes intersection-over-union (IoU) calculations for various annotation types.

@@ -76,6 +76,10 @@ def test_Bitmask():
     assert box
     assert box.extrema == (0, 4, 0, 4)
 
+    empty_box = Bitmask(mask=np.array([]), labels=[("k", "v")])
+
+    assert empty_box.to_box() is None
+
 
 def test_Polygon(rect1_rotated_5_degrees_around_origin):
 

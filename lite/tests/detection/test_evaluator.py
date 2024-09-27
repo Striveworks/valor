@@ -101,7 +101,7 @@ def test_no_predictions(detections_no_predictions):
 def test_metrics_to_return(basic_detections: list[Detection]):
 
     loader = DataLoader()
-    loader.add_data(basic_detections)
+    loader.add_bounding_boxes(basic_detections)
     evaluator = loader.finalize()
 
     metrics_to_return = [

@@ -1,6 +1,5 @@
 from collections import defaultdict
 from dataclasses import dataclass
-from typing import Type
 
 import numpy as np
 from numpy.typing import NDArray
@@ -42,7 +41,7 @@ Usage
 -----
 
 loader = DataLoader()
-loader.add_data(
+loader.add_bounding_boxes(
     groundtruths=groundtruths,
     predictions=predictions,
 )
@@ -56,10 +55,6 @@ ar_metrics = metrics[MetricType.AR]
 filter_mask = evaluator.create_filter(datum_uids=["uid1", "uid2"])
 filtered_metrics = evaluator.evaluate(iou_thresholds=[0.5], filter_mask=filter_mask)
 """
-
-
-# TODO change "Type" everywhere
-# TODO remove unnecessary functions
 
 
 def _get_annotation_key(
@@ -92,7 +87,7 @@ def _get_annotation_representation(
 def _get_annotation_data(
     keyed_groundtruths: dict,
     keyed_predictions: dict,
-    annotation_type: Type[BoundingBox] | Type[Polygon] | Type[Bitmask] | None,
+    annotation_type: type[BoundingBox] | type[Polygon] | type[Bitmask] | None,
     key=int,
 ) -> np.ndarray:
     """Create an array of annotation pairs for use when calculating IOU."""
@@ -231,9 +226,9 @@ class Evaluator:
                     dtype=np.int32,
                 )
             mask = np.zeros_like(mask_pairs, dtype=np.bool_)
-            mask[np.isin(self._ranked_pairs[:, 0].astype(int), datum_uids)] = (
-                True
-            )
+            mask[
+                np.isin(self._ranked_pairs[:, 0].astype(int), datum_uids)
+            ] = True
             mask_pairs &= mask
 
             mask = np.zeros_like(mask_datums, dtype=np.bool_)
@@ -714,9 +709,9 @@ class DataLoader:
                 self._evaluator.index_to_label_key[label_key_id] = label[0]
                 label_key_id += 1
 
-            self._evaluator.label_index_to_label_key_index[label_id] = (
-                self._evaluator.label_key_to_index[label[0]]
-            )
+            self._evaluator.label_index_to_label_key_index[
+                label_id
+            ] = self._evaluator.label_key_to_index[label[0]]
             label_id += 1
 
         return (
@@ -729,7 +724,7 @@ class DataLoader:
         uid_index: int,
         keyed_groundtruths: dict,
         keyed_predictions: dict,
-        annotation_type: Type[BoundingBox] | Type[Polygon] | Type[Bitmask],
+        annotation_type: type[BoundingBox] | type[Polygon] | type[Bitmask],
     ):
         gt_keys = set(keyed_groundtruths.keys())
         pd_keys = set(keyed_predictions.keys())
@@ -846,7 +841,7 @@ class DataLoader:
     def _add_data(
         self,
         detections: list[Detection],
-        annotation_type: Type[Bitmask] | Type[BoundingBox] | Type[Polygon],
+        annotation_type: type[Bitmask] | type[BoundingBox] | type[Polygon],
         show_progress: bool = False,
     ):
         """
@@ -856,6 +851,8 @@ class DataLoader:
         ----------
         detections : list[Detection]
             A list of Detection objects.
+        annotation_type : type[Bitmask] | type[BoundingBox] | type[Polygon]
+            The annotation type to process.
         show_progress : bool, default=False
             Toggle for tqdm progress bar.
         """
@@ -888,11 +885,10 @@ class DataLoader:
                         f"Expected {annotation_type}, but annotation is of type {type(gann)}."
                     )
 
-                # TODO revisit once metrics_to_return are in
                 if annotation_type == BoundingBox:
-                    self._evaluator.groundtruth_examples[uid_index][gidx] = (
-                        _get_annotation_representation(obj=gann)
-                    )
+                    self._evaluator.groundtruth_examples[uid_index][
+                        gidx
+                    ] = _get_annotation_representation(obj=gann)
 
                 for glabel in gann.labels:
                     label_idx, label_key_idx = self._add_label(glabel)
@@ -912,11 +908,10 @@ class DataLoader:
                         f"Expected {annotation_type}, but annotation is of type {type(pann)}."
                     )
 
-                # TODO  should we throw an error if annotation type isn't bounding box?
                 if annotation_type == BoundingBox:
-                    self._evaluator.prediction_examples[uid_index][pidx] = (
-                        _get_annotation_representation(obj=pann)
-                    )
+                    self._evaluator.prediction_examples[uid_index][
+                        pidx
+                    ] = _get_annotation_representation(obj=pann)
                 for plabel, pscore in zip(pann.labels, pann.scores):
                     label_idx, label_key_idx = self._add_label(plabel)
                     self.prediction_count[label_idx][uid_index] += 1
@@ -1005,7 +1000,7 @@ class DataLoader:
     def _add_data_from_valor_dict(
         self,
         detections: list[tuple[dict, dict]],
-        annotation_type: Type[Bitmask] | Type[BoundingBox] | Type[Polygon],
+        annotation_type: type[Bitmask] | type[BoundingBox] | type[Polygon],
         show_progress: bool = False,
     ):
         """
@@ -1015,9 +1010,10 @@ class DataLoader:
         ----------
         detections : list[tuple[dict, dict]]
             A list of groundtruth, prediction pairs in Valor-format dictionaries.
+        annotation_type : type[Bitmask] | type[BoundingBox] | type[Polygon]
+            The annotation type to process.
         show_progress : bool, default=False
             Toggle for tqdm progress bar.
-        # TODO
         """
 
         def _get_bbox_extrema(
@@ -1066,11 +1062,10 @@ class DataLoader:
                     raise ValueError(
                         f"Input JSON doesn't contain {annotation_type} data, or contains data for multiple annotation types."
                     )
-                # TODO revisit once metrics_to_return are in
                 if annotation_type == BoundingBox:
-                    self._evaluator.groundtruth_examples[uid_index][gidx] = (
-                        np.array(_get_bbox_extrema(gann["bounding_box"]))
-                    )
+                    self._evaluator.groundtruth_examples[uid_index][
+                        gidx
+                    ] = np.array(_get_bbox_extrema(gann["bounding_box"]))
 
                 for valor_label in gann["labels"]:
                     glabel = (valor_label["key"], valor_label["value"])
@@ -1080,9 +1075,7 @@ class DataLoader:
                         (
                             gidx,
                             label_idx,
-                            _get_bbox_extrema(
-                                gann["bounding_box"]
-                            ),  # TODO this isn't right
+                            _get_bbox_extrema(gann[annotation_key]),
                         )
                     )
             for pidx, pann in enumerate(prediction["annotations"]):
@@ -1093,9 +1086,9 @@ class DataLoader:
                         f"Input JSON doesn't contain {annotation_type} data, or contains data for multiple annotation types."
                     )
 
-                self._evaluator.prediction_examples[uid_index][pidx] = (
-                    np.array(_get_bbox_extrema(pann["bounding_box"]))
-                )
+                self._evaluator.prediction_examples[uid_index][
+                    pidx
+                ] = np.array(_get_bbox_extrema(pann[annotation_key]))
                 for valor_label in pann["labels"]:
                     plabel = (valor_label["key"], valor_label["value"])
                     pscore = valor_label["score"]
