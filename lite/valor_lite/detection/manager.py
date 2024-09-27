@@ -272,46 +272,35 @@ class Evaluator:
                     [self.uid_to_index[uid] for uid in datum_uids],
                     dtype=np.int32,
                 )
-            mask = np.zeros_like(mask_pairs, dtype=np.bool_)
-            mask[
-                np.isin(self._ranked_pairs[:, 0].astype(int), datum_uids)
-            ] = True
-            mask_pairs &= mask
-
-            mask = np.zeros_like(mask_datums, dtype=np.bool_)
-            mask[datum_uids] = True
-            mask_datums &= mask
+            mask_pairs[
+                ~np.isin(self._ranked_pairs[:, 0].astype(int), datum_uids)
+            ] = False
+            mask_datums[~np.isin(np.arange(n_datums), datum_uids)] = False
 
         if labels is not None:
             if isinstance(labels, list):
                 labels = np.array(
                     [self.label_to_index[label] for label in labels]
                 )
-            mask = np.zeros_like(mask_pairs, dtype=np.bool_)
-            mask[np.isin(self._ranked_pairs[:, 4].astype(int), labels)] = True
-            mask_pairs &= mask
-
-            mask = np.zeros_like(mask_labels, dtype=np.bool_)
-            mask[labels] = True
-            mask_labels &= mask
+            mask_pairs[
+                ~np.isin(self._ranked_pairs[:, 4].astype(int), labels)
+            ] = False
+            mask_labels[~np.isin(np.arange(n_labels), labels)] = False
 
         if label_keys is not None:
             if isinstance(label_keys, list):
                 label_keys = np.array(
                     [self.label_key_to_index[key] for key in label_keys]
                 )
-            label_indices = np.where(
-                np.isclose(self._label_metadata[:, 2], label_keys)
-            )[0]
-            mask = np.zeros_like(mask_pairs, dtype=np.bool_)
-            mask[
-                np.isin(self._ranked_pairs[:, 4].astype(int), label_indices)
-            ] = True
-            mask_pairs &= mask
-
-            mask = np.zeros_like(mask_labels, dtype=np.bool_)
-            mask[label_indices] = True
-            mask_labels &= mask
+            label_indices = (
+                np.where(np.isclose(self._label_metadata[:, 2], label_keys))[0]
+                if label_keys.size > 0
+                else np.array([])
+            )
+            mask_pairs[
+                ~np.isin(self._ranked_pairs[:, 4].astype(int), label_indices)
+            ] = False
+            mask_labels[~np.isin(np.arange(n_labels), label_indices)] = False
 
         mask = mask_datums[:, np.newaxis] & mask_labels[np.newaxis, :]
         label_metadata_per_datum = self._label_metadata_per_datum.copy()
@@ -399,7 +388,7 @@ class Evaluator:
             )
             for iou_idx in range(average_precision.shape[0])
             for label_idx in range(average_precision.shape[1])
-            if int(label_metadata[label_idx][0]) > 0
+            if int(label_metadata[label_idx, 0]) > 0
         ]
 
         metrics[MetricType.mAP] = [
@@ -419,7 +408,7 @@ class Evaluator:
                 label=self.index_to_label[label_idx],
             )
             for label_idx in range(self.n_labels)
-            if int(label_metadata[label_idx][0]) > 0
+            if int(label_metadata[label_idx, 0]) > 0
         ]
 
         metrics[MetricType.mAPAveragedOverIOUs] = [
@@ -442,7 +431,7 @@ class Evaluator:
             )
             for score_idx in range(average_recall.shape[0])
             for label_idx in range(average_recall.shape[1])
-            if int(label_metadata[label_idx][0]) > 0
+            if int(label_metadata[label_idx, 0]) > 0
         ]
 
         metrics[MetricType.mAR] = [
@@ -464,7 +453,7 @@ class Evaluator:
                 label=self.index_to_label[label_idx],
             )
             for label_idx in range(self.n_labels)
-            if int(label_metadata[label_idx][0]) > 0
+            if int(label_metadata[label_idx, 0]) > 0
         ]
 
         metrics[MetricType.mARAveragedOverScores] = [
@@ -487,15 +476,16 @@ class Evaluator:
             )
             for iou_idx, iou_threshold in enumerate(iou_thresholds)
             for label_idx, label in self.index_to_label.items()
-            if int(label_metadata[label_idx][0]) > 0
+            if int(label_metadata[label_idx, 0]) > 0
         ]
 
         for label_idx, label in self.index_to_label.items():
+
+            if label_metadata[label_idx, 0] == 0:
+                continue
+
             for score_idx, score_threshold in enumerate(score_thresholds):
                 for iou_idx, iou_threshold in enumerate(iou_thresholds):
-
-                    if label_metadata[label_idx, 0] == 0:
-                        continue
 
                     row = precision_recall[iou_idx][score_idx][label_idx]
                     kwargs = {
