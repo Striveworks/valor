@@ -644,13 +644,13 @@ def compute_detailed_metrics(
             )
 
             tp_predictions = np.unique(
-                data[mask_tp][tp_indices, [0, 2, 4]]
+                data[mask_tp][:, [0, 2, 4]]
                 .astype(int)
                 .reshape(-1, 3),
                 axis=0,
             )
             tp_groundtruths = np.unique(
-                data[mask_tp][tp_indices, [0, 1, 3]]
+                data[mask_tp][:, [0, 1, 3]]
                 .astype(int)
                 .reshape(-1, 3),
                 axis=0,
