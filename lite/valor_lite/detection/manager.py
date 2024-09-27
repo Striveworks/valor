@@ -12,9 +12,11 @@ from valor_lite.detection.annotation import (
     Polygon,
 )
 from valor_lite.detection.computation import (
+    compute_bbox_iou,
+    compute_bitmask_iou,
     compute_detailed_counts,
-    compute_iou,
     compute_metrics,
+    compute_polygon_iou,
     compute_ranked_pairs,
 )
 from valor_lite.detection.metric import (
@@ -57,7 +59,7 @@ filtered_metrics = evaluator.evaluate(iou_thresholds=[0.5], filter_mask=filter_m
 """
 
 
-def _get_annotation_key(
+def _get_valor_dict_annotation_key(
     annotation_type: type[BoundingBox] | type[Polygon] | type[Bitmask],
 ) -> str:
     """Get the correct JSON key to extract a given annotation type."""
@@ -71,14 +73,14 @@ def _get_annotation_key(
 
 
 def _get_annotation_representation(
-    obj: BoundingBox | Bitmask | Polygon,
-) -> tuple[float, float, float, float] | NDArray[np.bool_] | ShapelyPolygon:
+    annotation_type: type[BoundingBox] | type[Polygon] | type[Bitmask],
+) -> str:
     """Get the correct representation of an annotation object."""
 
     representation = (
-        obj.extrema
-        if isinstance(obj, BoundingBox)
-        else (obj.mask if isinstance(obj, Bitmask) else obj.shape)
+        "extrema"
+        if issubclass(annotation_type, BoundingBox)
+        else ("mask" if issubclass(annotation_type, Bitmask) else "shape")
     )
 
     return representation
@@ -123,6 +125,35 @@ def _get_annotation_data(
                 for _, _, groundtruth_obj in keyed_groundtruths[key]
             ]
         )
+
+
+def compute_iou(
+    data: NDArray[np.floating],
+    annotation_type: type[BoundingBox] | type[Polygon] | type[Bitmask],
+) -> NDArray[np.floating]:
+    """
+    Computes intersection-over-union (IoU) calculations for various annotation types.
+
+    Parameters
+    ----------
+    data : NDArray[np.floating]
+        A sorted array of bounding box, bitmask, or polygon pairs.
+    annotation_type: type[BoundingBox] | type[Polygon] | type[Bitmask]
+        The type of annotation contained in the data.
+
+
+    Returns
+    -------
+    NDArray[np.floating]
+        Computed IoU's.
+    """
+
+    if annotation_type == BoundingBox:
+        return compute_bbox_iou(data=data)
+    elif annotation_type == Bitmask:
+        return compute_bitmask_iou(data=data)
+    else:
+        return compute_polygon_iou(data=data)
 
 
 @dataclass
@@ -909,21 +940,31 @@ class DataLoader:
             keyed_groundtruths = defaultdict(list)
             keyed_predictions = defaultdict(list)
 
+            representation_property = _get_annotation_representation(
+                annotation_type=annotation_type
+            )
+
             for gidx, gann in enumerate(detection.groundtruths):
                 if not isinstance(gann, annotation_type):
                     raise ValueError(
                         f"Expected {annotation_type}, but annotation is of type {type(gann)}."
                     )
 
-                if annotation_type == BoundingBox:
+                if isinstance(gann, BoundingBox):
                     self._evaluator.groundtruth_examples[uid_index][
                         gidx
-                    ] = _get_annotation_representation(obj=gann)
-
+                    ] = getattr(gann, representation_property)
+                else:
+                    converted_box = gann.to_box()
+                    self._evaluator.groundtruth_examples[uid_index][gidx] = (
+                        getattr(converted_box, "extrema")
+                        if converted_box is not None
+                        else None
+                    )
                 for glabel in gann.labels:
                     label_idx, label_key_idx = self._add_label(glabel)
                     self.groundtruth_count[label_idx][uid_index] += 1
-                    representation = _get_annotation_representation(obj=gann)
+                    representation = getattr(gann, representation_property)
                     keyed_groundtruths[label_key_idx].append(
                         (
                             gidx,
@@ -938,15 +979,22 @@ class DataLoader:
                         f"Expected {annotation_type}, but annotation is of type {type(pann)}."
                     )
 
-                if annotation_type == BoundingBox:
+                if isinstance(pann, BoundingBox):
                     self._evaluator.prediction_examples[uid_index][
                         pidx
-                    ] = _get_annotation_representation(obj=pann)
+                    ] = getattr(pann, representation_property)
+                else:
+                    converted_box = pann.to_box()
+                    self._evaluator.prediction_examples[uid_index][pidx] = (
+                        getattr(converted_box, "extrema")
+                        if converted_box is not None
+                        else None
+                    )
                 for plabel, pscore in zip(pann.labels, pann.scores):
                     label_idx, label_key_idx = self._add_label(plabel)
                     self.prediction_count[label_idx][uid_index] += 1
-                    representation = _get_annotation_representation(
-                        obj=pann,
+                    representation = representation = getattr(
+                        pann, representation_property
                     )
                     keyed_predictions[label_key_idx].append(
                         (
@@ -1068,7 +1116,7 @@ class DataLoader:
             keyed_groundtruths = defaultdict(list)
             keyed_predictions = defaultdict(list)
 
-            annotation_key = _get_annotation_key(
+            annotation_key = _get_valor_dict_annotation_key(
                 annotation_type=annotation_type
             )
             invalid_keys = list(

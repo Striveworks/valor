@@ -71,7 +71,7 @@ def test_Bitmask():
             scores=[0.7],
         )
 
-    # test `to_box` function
+    # test `to_box` method
     box = gt.to_box()
     assert box
     assert box.extrema == (0, 4, 0, 4)
@@ -86,7 +86,7 @@ def test_Polygon(rect1_rotated_5_degrees_around_origin):
     shape = ShapelyPolygon(rect1_rotated_5_degrees_around_origin)
 
     # groundtruth
-    _ = Polygon(shape=shape, labels=[("k", "v")])
+    gt = Polygon(shape=shape, labels=[("k", "v")])
 
     # prediction
     Polygon(
@@ -115,6 +115,20 @@ def test_Polygon(rect1_rotated_5_degrees_around_origin):
             labels=[("k", "v1"), ("k", "v2")],
             scores=[0.7],
         )
+
+    # test `to_box` method
+    box = gt.to_box()
+    assert box
+    assert box.extrema == (
+        6.475717271011129,
+        58.90012445802815,
+        10.833504408394036,
+        45.07713248852931,
+    )
+
+    empty_box = Polygon(shape=ShapelyPolygon([]), labels=[("k", "v")])
+
+    assert empty_box.to_box() is None
 
 
 def test_Detection():

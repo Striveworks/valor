@@ -39,6 +39,22 @@ class Polygon:
                 "If scores are defined, there must be a 1:1 pairing with labels."
             )
 
+    def to_box(self) -> BoundingBox | None:
+
+        if self.shape.is_empty:
+            return None
+
+        xmin, ymin, xmax, ymax = self.shape.bounds
+
+        return BoundingBox(
+            xmin=xmin,
+            xmax=xmax,
+            ymin=ymin,
+            ymax=ymax,
+            labels=self.labels,
+            scores=self.scores,
+        )
+
 
 @dataclass
 class Bitmask:

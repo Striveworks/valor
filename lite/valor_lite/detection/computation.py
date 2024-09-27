@@ -1,9 +1,8 @@
 import numpy as np
 from numpy.typing import NDArray
-from valor_lite.detection.annotation import Bitmask, BoundingBox, Polygon
 
 
-def _compute_bbox_iou(data: NDArray[np.floating]) -> NDArray[np.floating]:
+def compute_bbox_iou(data: NDArray[np.floating]) -> NDArray[np.floating]:
     """
     Computes intersection-over-union (IoU) for axis-aligned bounding boxes.
 
@@ -68,7 +67,7 @@ def _compute_bbox_iou(data: NDArray[np.floating]) -> NDArray[np.floating]:
     return iou
 
 
-def _compute_bitmask_iou(data: NDArray[np.floating]) -> NDArray[np.floating]:
+def compute_bitmask_iou(data: NDArray[np.floating]) -> NDArray[np.floating]:
     """
     Computes intersection-over-union (IoU) for bitmasks.
 
@@ -97,7 +96,7 @@ def _compute_bitmask_iou(data: NDArray[np.floating]) -> NDArray[np.floating]:
     return intersection_ / union_
 
 
-def _compute_polygon_iou(
+def compute_polygon_iou(
     data: np.ndarray,
 ) -> NDArray[np.floating]:
     """
@@ -133,35 +132,6 @@ def _compute_polygon_iou(
     )
 
     return intersection_ / union_
-
-
-def compute_iou(
-    data: NDArray[np.floating],
-    annotation_type: type[BoundingBox] | type[Polygon] | type[Bitmask],
-) -> NDArray[np.floating]:
-    """
-    Computes intersection-over-union (IoU) calculations for various annotation types.
-
-    Parameters
-    ----------
-    data : NDArray[np.floating]
-        A sorted array of bounding box, bitmask, or polygon pairs.
-    annotation_type: type[BoundingBox] | type[Polygon] | type[Bitmask]
-        The type of annotation contained in the data.
-
-
-    Returns
-    -------
-    NDArray[np.floating]
-        Computed IoU's.
-    """
-
-    if annotation_type == BoundingBox:
-        return _compute_bbox_iou(data=data)
-    elif annotation_type == Bitmask:
-        return _compute_bitmask_iou(data=data)
-    else:
-        return _compute_polygon_iou(data=data)
 
 
 def _compute_ranked_pairs_for_datum(

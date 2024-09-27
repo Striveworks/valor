@@ -10,7 +10,7 @@ from valor_lite.detection import (
     Detection,
     Polygon,
 )
-from valor_lite.detection.manager import _get_annotation_key
+from valor_lite.detection.manager import _get_valor_dict_annotation_key
 
 
 def test_no_data():
@@ -180,10 +180,13 @@ def test_mixed_annotations(
     loader.add_bounding_boxes_from_valor_dict([(gt, pd)])
 
 
-def test__get_annotation_key():
+def test__get_valor_dict_annotation_key():
     for annotation_type, expected in (
         (BoundingBox, "bounding_box"),
         (Bitmask, "raster"),
         (Polygon, "polygon"),
     ):
-        assert _get_annotation_key(annotation_type=annotation_type) == expected
+        assert (
+            _get_valor_dict_annotation_key(annotation_type=annotation_type)
+            == expected
+        )
