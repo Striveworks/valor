@@ -12,9 +12,9 @@ from valor_lite.detection.annotation import (
     Polygon,
 )
 from valor_lite.detection.computation import (
-    compute_detailed_metrics,
     compute_bbox_iou,
     compute_bitmask_iou,
+    compute_detailed_metrics,
     compute_metrics,
     compute_polygon_iou,
     compute_ranked_pairs,

@@ -1,10 +1,10 @@
 from .annotation import Bitmask, BoundingBox, Detection, Polygon
 from .computation import (
-    compute_detailed_metrics,
     compute_bbox_iou,
     compute_bitmask_iou,
-    compute_polygon_iou,
+    compute_detailed_metrics,
     compute_metrics,
+    compute_polygon_iou,
     compute_ranked_pairs,
 )
 from .manager import DataLoader, Evaluator, compute_iou
