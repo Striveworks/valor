@@ -114,7 +114,7 @@ def test_metrics_to_return(basic_detections: list[Detection]):
     metrics_to_return = [
         MetricType.AP,
         MetricType.AR,
-        MetricType.CountsWithExamples,
+        MetricType.ConfusionMatrix,
     ]
     metrics = evaluator.evaluate(metrics_to_return)
     assert metrics.keys() == set(metrics_to_return)

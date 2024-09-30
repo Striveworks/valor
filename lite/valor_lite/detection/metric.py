@@ -19,7 +19,7 @@ class MetricType(str, Enum):
     ARAveragedOverScores = "ARAveragedOverScores"
     mARAveragedOverScores = "mARAveragedOverScores"
     PrecisionRecallCurve = "PrecisionRecallCurve"
-    CountsWithExamples = "CountsWithExamples"
+    ConfusionMatrix = "ConfusionMatrix"
 
     @classmethod
     def base_metrics(cls):
@@ -329,7 +329,7 @@ class PrecisionRecallCurve:
 
 
 @dataclass
-class CountsWithExamples:
+class ConfusionMatrix:
     confusion_matrix: dict[
         str,  # ground truth label value
         dict[

@@ -492,7 +492,7 @@ def compute_metrics(
     )
 
 
-def compute_detailed_metrics(
+def compute_confusion_matrix(
     data: NDArray[np.floating],
     label_metadata: NDArray[np.int32],
     iou_thresholds: NDArray[np.floating],

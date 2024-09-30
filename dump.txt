@@ -1,0 +1,1923 @@
+============================= test session starts ==============================
+platform linux -- Python 3.10.12, pytest-8.3.2, pluggy-1.5.0 -- /home/czaloom/valor/.env-valor/bin/python3
+cachedir: .pytest_cache
+rootdir: /home/czaloom/valor/lite
+configfile: pyproject.toml
+plugins: anyio-4.4.0
+collecting ... collected 1 item
+
+lite/tests/detection/test_confusion_matrix.py::test_confusion_matrix_using_torch_metrics_example {
+    "type": "ConfusionMatrix",
+    "value": {
+        "confusion_matrix": {
+            "4": {
+                "4": {
+                    "count": 2,
+                    "examples": [
+                        {
+                            "datum": "0",
+                            "groundtruth": [
+                                214.125,
+                                562.5,
+                                41.28125,
+                                285.0
+                            ],
+                            "prediction": [
+                                258.25,
+                                606.5,
+                                41.28125,
+                                285.0
+                            ],
+                            "score": 0.23600000143051147
+                        }
+                    ]
+                }
+            },
+            "2": {
+                "2": {
+                    "count": 1,
+                    "examples": [
+                        {
+                            "datum": "1",
+                            "groundtruth": [
+                                1.66015625,
+                                270.25,
+                                3.3203125,
+                                275.25
+                            ],
+                            "prediction": [
+                                12.65625,
+                                281.25,
+                                3.3203125,
+                                275.25
+                            ],
+                            "score": 0.7260000109672546
+                        }
+                    ]
+                },
+                "3": {
+                    "count": 1,
+                    "examples": [
+                        {
+                            "datum": "1",
+                            "groundtruth": [
+                                13.0,
+                                549.0,
+                                22.75,
+                                632.5
+                            ],
+                            "prediction": [
+                                61.0,
+                                565.0,
+                                22.75,
+                                632.5
+                            ],
+                            "score": 0.3179999887943268
+                        }
+                    ]
+                }
+            },
+            "1": {
+                "1": {
+                    "count": 1,
+                    "examples": [
+                        {
+                            "datum": "2",
+                            "groundtruth": [
+                                295.5,
+                                314.0,
+                                93.9375,
+                                152.75
+                            ],
+                            "prediction": [
+                                296.5,
+                                315.0,
+                                93.9375,
+                                152.75
+                            ],
+                            "score": 0.40700000524520874
+                        }
+                    ]
+                }
+            },
+            "0": {
+                "0": {
+                    "count": 5,
+                    "examples": [
+                        {
+                            "datum": "3",
+                            "groundtruth": [
+                                72.9375,
+                                91.25,
+                                45.96875,
+                                80.5625
+                            ],
+                            "prediction": [
+                                72.9375,
+                                91.25,
+                                45.96875,
+                                80.5625
+                            ],
+                            "score": 0.5320000052452087
+                        }
+                    ]
+                }
+            },
+            "49": {
+                "49": {
+                    "count": 11,
+                    "examples": []
+                }
+            }
+        },
+        "hallucinations": {},
+        "missing_predictions": {
+            "49": {
+                "count": 4,
+                "examples": [
+                    {
+                        "datum": "3",
+                        "groundtruth": [
+                            56.375,
+                            75.6875,
+                            21.65625,
+                            45.53125
+                        ]
+                    }
+                ]
+            }
+        }
+    },
+    "parameters": {
+        "score_threshold": 0.05,
+        "iou_threshold": 0.5,
+        "label_key": "class"
+    }
+},
+{
+    "type": "ConfusionMatrix",
+    "value": {
+        "confusion_matrix": {
+            "4": {
+                "4": {
+                    "count": 1,
+                    "examples": [
+                        {
+                            "datum": "1",
+                            "groundtruth": [
+                                1.66015625,
+                                270.25,
+                                3.3203125,
+                                275.25
+                            ],
+                            "prediction": [
+                                12.65625,
+                                281.25,
+                                3.3203125,
+                                275.25
+                            ],
+                            "score": 0.7260000109672546
+                        }
+                    ]
+                }
+            },
+            "2": {
+                "2": {
+                    "count": 1,
+                    "examples": [
+                        {
+                            "datum": "2",
+                            "groundtruth": [
+                                61.875,
+                                358.25,
+                                276.25,
+                                379.5
+                            ],
+                            "prediction": [
+                                87.875,
+                                384.25,
+                                276.25,
+                                379.5
+                            ],
+                            "score": 0.5460000038146973
+                        }
+                    ]
+                },
+                "3": {
+                    "count": 1,
+                    "examples": [
+                        {
+                            "datum": "1",
+                            "groundtruth": [
+                                13.0,
+                                549.0,
+                                22.75,
+                                632.5
+                            ],
+                            "prediction": [
+                                61.0,
+                                565.0,
+                                22.75,
+                                632.5
+                            ],
+                            "score": 0.3179999887943268
+                        }
+                    ]
+                }
+            },
+            "1": {
+                "1": {
+                    "count": 1,
+                    "examples": [
+                        {
+                            "datum": "2",
+                            "groundtruth": [
+                                2.75,
+                                162.125,
+                                3.66015625,
+                                316.0
+                            ],
+                            "prediction": [
+                                0.0,
+                                142.125,
+                                3.66015625,
+                                316.0
+                            ],
+                            "score": 0.30000001192092896
+                        }
+                    ]
+                }
+            },
+            "0": {
+                "0": {
+                    "count": 5,
+                    "examples": [
+                        {
+                            "datum": "2",
+                            "groundtruth": [
+                                295.5,
+                                314.0,
+                                93.9375,
+                                152.75
+                            ],
+                            "prediction": [
+                                296.5,
+                                315.0,
+                                93.9375,
+                                152.75
+                            ],
+                            "score": 0.40700000524520874
+                        }
+                    ]
+                }
+            },
+            "49": {
+                "49": {
+                    "count": 6,
+                    "examples": []
+                }
+            }
+        },
+        "hallucinations": {},
+        "missing_predictions": {
+            "4": {
+                "count": 1,
+                "examples": [
+                    {
+                        "datum": "0",
+                        "groundtruth": [
+                            214.125,
+                            562.5,
+                            41.28125,
+                            285.0
+                        ]
+                    }
+                ]
+            },
+            "49": {
+                "count": 21,
+                "examples": [
+                    {
+                        "datum": "3",
+                        "groundtruth": [
+                            63.96875,
+                            84.375,
+                            46.15625,
+                            80.5
+                        ]
+                    }
+                ]
+            }
+        }
+    },
+    "parameters": {
+        "score_threshold": 0.25,
+        "iou_threshold": 0.5,
+        "label_key": "class"
+    }
+},
+{
+    "type": "ConfusionMatrix",
+    "value": {
+        "confusion_matrix": {
+            "4": {
+                "4": {
+                    "count": 1,
+                    "examples": [
+                        {
+                            "datum": "1",
+                            "groundtruth": [
+                                1.66015625,
+                                270.25,
+                                3.3203125,
+                                275.25
+                            ],
+                            "prediction": [
+                                12.65625,
+                                281.25,
+                                3.3203125,
+                                275.25
+                            ],
+                            "score": 0.7260000109672546
+                        }
+                    ]
+                }
+            },
+            "2": {
+                "2": {
+                    "count": 1,
+                    "examples": [
+                        {
+                            "datum": "2",
+                            "groundtruth": [
+                                61.875,
+                                358.25,
+                                276.25,
+                                379.5
+                            ],
+                            "prediction": [
+                                87.875,
+                                384.25,
+                                276.25,
+                                379.5
+                            ],
+                            "score": 0.5460000038146973
+                        }
+                    ]
+                }
+            },
+            "0": {
+                "0": {
+                    "count": 4,
+                    "examples": [
+                        {
+                            "datum": "2",
+                            "groundtruth": [
+                                295.5,
+                                314.0,
+                                93.9375,
+                                152.75
+                            ],
+                            "prediction": [
+                                296.5,
+                                315.0,
+                                93.9375,
+                                152.75
+                            ],
+                            "score": 0.40700000524520874
+                        }
+                    ]
+                }
+            },
+            "49": {
+                "49": {
+                    "count": 4,
+                    "examples": []
+                }
+            }
+        },
+        "hallucinations": {},
+        "missing_predictions": {
+            "4": {
+                "count": 1,
+                "examples": [
+                    {
+                        "datum": "0",
+                        "groundtruth": [
+                            214.125,
+                            562.5,
+                            41.28125,
+                            285.0
+                        ]
+                    }
+                ]
+            },
+            "2": {
+                "count": 2,
+                "examples": [
+                    {
+                        "datum": "1",
+                        "groundtruth": [
+                            13.0,
+                            549.0,
+                            22.75,
+                            632.5
+                        ]
+                    }
+                ]
+            },
+            "1": {
+                "count": 2,
+                "examples": [
+                    {
+                        "datum": "2",
+                        "groundtruth": [
+                            356.5,
+                            372.25,
+                            95.5,
+                            147.5
+                        ]
+                    }
+                ]
+            },
+            "0": {
+                "count": 1,
+                "examples": []
+            },
+            "49": {
+                "count": 28,
+                "examples": []
+            }
+        }
+    },
+    "parameters": {
+        "score_threshold": 0.35,
+        "iou_threshold": 0.5,
+        "label_key": "class"
+    }
+},
+{
+    "type": "ConfusionMatrix",
+    "value": {
+        "confusion_matrix": {
+            "2": {
+                "2": {
+                    "count": 1,
+                    "examples": [
+                        {
+                            "datum": "1",
+                            "groundtruth": [
+                                1.66015625,
+                                270.25,
+                                3.3203125,
+                                275.25
+                            ],
+                            "prediction": [
+                                12.65625,
+                                281.25,
+                                3.3203125,
+                                275.25
+                            ],
+                            "score": 0.7260000109672546
+                        }
+                    ]
+                }
+            },
+            "0": {
+                "0": {
+                    "count": 3,
+                    "examples": [
+                        {
+                            "datum": "2",
+                            "groundtruth": [
+                                327.0,
+                                340.5,
+                                97.0625,
+                                123.0
+                            ],
+                            "prediction": [
+                                329.0,
+                                342.5,
+                                97.0625,
+                                123.0
+                            ],
+                            "score": 0.6110000014305115
+                        }
+                    ]
+                }
+            },
+            "49": {
+                "49": {
+                    "count": 3,
+                    "examples": []
+                }
+            }
+        },
+        "hallucinations": {},
+        "missing_predictions": {
+            "4": {
+                "count": 3,
+                "examples": [
+                    {
+                        "datum": "0",
+                        "groundtruth": [
+                            214.125,
+                            562.5,
+                            41.28125,
+                            285.0
+                        ]
+                    }
+                ]
+            },
+            "2": {
+                "count": 2,
+                "examples": [
+                    {
+                        "datum": "1",
+                        "groundtruth": [
+                            13.0,
+                            549.0,
+                            22.75,
+                            632.5
+                        ]
+                    }
+                ]
+            },
+            "1": {
+                "count": 2,
+                "examples": [
+                    {
+                        "datum": "3",
+                        "groundtruth": [
+                            72.9375,
+                            91.25,
+                            45.96875,
+                            80.5625
+                        ]
+                    }
+                ]
+            },
+            "0": {
+                "count": 2,
+                "examples": []
+            },
+            "49": {
+                "count": 33,
+                "examples": []
+            }
+        }
+    },
+    "parameters": {
+        "score_threshold": 0.55,
+        "iou_threshold": 0.5,
+        "label_key": "class"
+    }
+},
+{
+    "type": "ConfusionMatrix",
+    "value": {
+        "confusion_matrix": {
+            "0": {
+                "0": {
+                    "count": 2,
+                    "examples": [
+                        {
+                            "datum": "2",
+                            "groundtruth": [
+                                462.0,
+                                493.75,
+                                105.0625,
+                                147.0
+                            ],
+                            "prediction": [
+                                464.0,
+                                495.75,
+                                105.0625,
+                                147.0
+                            ],
+                            "score": 0.8050000071525574
+                        }
+                    ]
+                }
+            },
+            "49": {
+                "49": {
+                    "count": 2,
+                    "examples": []
+                }
+            }
+        },
+        "hallucinations": {},
+        "missing_predictions": {
+            "4": {
+                "count": 3,
+                "examples": [
+                    {
+                        "datum": "0",
+                        "groundtruth": [
+                            214.125,
+                            562.5,
+                            41.28125,
+                            285.0
+                        ]
+                    }
+                ]
+            },
+            "2": {
+                "count": 4,
+                "examples": [
+                    {
+                        "datum": "1",
+                        "groundtruth": [
+                            13.0,
+                            549.0,
+                            22.75,
+                            632.5
+                        ]
+                    }
+                ]
+            },
+            "1": {
+                "count": 2,
+                "examples": []
+            },
+            "0": {
+                "count": 3,
+                "examples": []
+            },
+            "49": {
+                "count": 38,
+                "examples": []
+            }
+        }
+    },
+    "parameters": {
+        "score_threshold": 0.75,
+        "iou_threshold": 0.5,
+        "label_key": "class"
+    }
+},
+{
+    "type": "ConfusionMatrix",
+    "value": {
+        "confusion_matrix": {
+            "0": {
+                "0": {
+                    "count": 2,
+                    "examples": [
+                        {
+                            "datum": "2",
+                            "groundtruth": [
+                                462.0,
+                                493.75,
+                                105.0625,
+                                147.0
+                            ],
+                            "prediction": [
+                                464.0,
+                                495.75,
+                                105.0625,
+                                147.0
+                            ],
+                            "score": 0.8050000071525574
+                        }
+                    ]
+                }
+            },
+            "49": {
+                "49": {
+                    "count": 1,
+                    "examples": []
+                }
+            }
+        },
+        "hallucinations": {},
+        "missing_predictions": {
+            "4": {
+                "count": 3,
+                "examples": [
+                    {
+                        "datum": "0",
+                        "groundtruth": [
+                            214.125,
+                            562.5,
+                            41.28125,
+                            285.0
+                        ]
+                    }
+                ]
+            },
+            "2": {
+                "count": 4,
+                "examples": [
+                    {
+                        "datum": "1",
+                        "groundtruth": [
+                            13.0,
+                            549.0,
+                            22.75,
+                            632.5
+                        ]
+                    }
+                ]
+            },
+            "1": {
+                "count": 2,
+                "examples": []
+            },
+            "0": {
+                "count": 3,
+                "examples": []
+            },
+            "49": {
+                "count": 41,
+                "examples": []
+            }
+        }
+    },
+    "parameters": {
+        "score_threshold": 0.8,
+        "iou_threshold": 0.5,
+        "label_key": "class"
+    }
+},
+{
+    "type": "ConfusionMatrix",
+    "value": {
+        "confusion_matrix": {
+            "0": {
+                "0": {
+                    "count": 1,
+                    "examples": [
+                        {
+                            "datum": "2",
+                            "groundtruth": [
+                                277.0,
+                                292.5,
+                                103.8125,
+                                150.75
+                            ],
+                            "prediction": [
+                                276.0,
+                                291.5,
+                                103.8125,
+                                150.75
+                            ],
+                            "score": 0.953000009059906
+                        }
+                    ]
+                }
+            },
+            "49": {
+                "49": {
+                    "count": 1,
+                    "examples": [
+                        {
+                            "datum": "3",
+                            "groundtruth": [
+                                75.3125,
+                                91.875,
+                                23.015625,
+                                50.84375
+                            ],
+                            "prediction": [
+                                75.3125,
+                                91.875,
+                                23.015625,
+                                50.84375
+                            ],
+                            "score": 0.8830000162124634
+                        }
+                    ]
+                }
+            }
+        },
+        "hallucinations": {},
+        "missing_predictions": {
+            "4": {
+                "count": 3,
+                "examples": [
+                    {
+                        "datum": "0",
+                        "groundtruth": [
+                            214.125,
+                            562.5,
+                            41.28125,
+                            285.0
+                        ]
+                    }
+                ]
+            },
+            "2": {
+                "count": 4,
+                "examples": [
+                    {
+                        "datum": "1",
+                        "groundtruth": [
+                            13.0,
+                            549.0,
+                            22.75,
+                            632.5
+                        ]
+                    }
+                ]
+            },
+            "1": {
+                "count": 2,
+                "examples": []
+            },
+            "0": {
+                "count": 4,
+                "examples": []
+            },
+            "49": {
+                "count": 41,
+                "examples": []
+            }
+        }
+    },
+    "parameters": {
+        "score_threshold": 0.85,
+        "iou_threshold": 0.5,
+        "label_key": "class"
+    }
+},
+{
+    "type": "ConfusionMatrix",
+    "value": {
+        "confusion_matrix": {
+            "0": {
+                "0": {
+                    "count": 1,
+                    "examples": [
+                        {
+                            "datum": "2",
+                            "groundtruth": [
+                                277.0,
+                                292.5,
+                                103.8125,
+                                150.75
+                            ],
+                            "prediction": [
+                                276.0,
+                                291.5,
+                                103.8125,
+                                150.75
+                            ],
+                            "score": 0.953000009059906
+                        }
+                    ]
+                }
+            }
+        },
+        "hallucinations": {},
+        "missing_predictions": {
+            "4": {
+                "count": 3,
+                "examples": [
+                    {
+                        "datum": "0",
+                        "groundtruth": [
+                            214.125,
+                            562.5,
+                            41.28125,
+                            285.0
+                        ]
+                    }
+                ]
+            },
+            "2": {
+                "count": 4,
+                "examples": [
+                    {
+                        "datum": "1",
+                        "groundtruth": [
+                            13.0,
+                            549.0,
+                            22.75,
+                            632.5
+                        ]
+                    }
+                ]
+            },
+            "1": {
+                "count": 2,
+                "examples": []
+            },
+            "0": {
+                "count": 4,
+                "examples": []
+            },
+            "49": {
+                "count": 46,
+                "examples": []
+            }
+        }
+    },
+    "parameters": {
+        "score_threshold": 0.95,
+        "iou_threshold": 0.5,
+        "label_key": "class"
+    }
+},
+{
+    "type": "ConfusionMatrix",
+    "value": {
+        "confusion_matrix": {
+            "2": {
+                "2": {
+                    "count": 1,
+                    "examples": [
+                        {
+                            "datum": "1",
+                            "groundtruth": [
+                                1.66015625,
+                                270.25,
+                                3.3203125,
+                                275.25
+                            ],
+                            "prediction": [
+                                12.65625,
+                                281.25,
+                                3.3203125,
+                                275.25
+                            ],
+                            "score": 0.7260000109672546
+                        }
+                    ]
+                }
+            },
+            "0": {
+                "0": {
+                    "count": 1,
+                    "examples": [
+                        {
+                            "datum": "2",
+                            "groundtruth": [
+                                356.5,
+                                372.25,
+                                95.5,
+                                147.5
+                            ],
+                            "prediction": [
+                                356.5,
+                                372.25,
+                                95.5,
+                                147.5
+                            ],
+                            "score": 0.33500000834465027
+                        }
+                    ]
+                }
+            },
+            "49": {
+                "49": {
+                    "count": 2,
+                    "examples": [
+                        {
+                            "datum": "3",
+                            "groundtruth": [
+                                72.9375,
+                                91.25,
+                                45.96875,
+                                80.5625
+                            ],
+                            "prediction": [
+                                72.9375,
+                                91.25,
+                                45.96875,
+                                80.5625
+                            ],
+                            "score": 0.5320000052452087
+                        }
+                    ]
+                }
+            }
+        },
+        "hallucinations": {
+            "4": {
+                "count": 3,
+                "examples": [
+                    {
+                        "datum": "0",
+                        "prediction": [
+                            258.25,
+                            606.5,
+                            41.28125,
+                            285.0
+                        ],
+                        "score": 0.23600000143051147
+                    }
+                ]
+            },
+            "3": {
+                "count": 2,
+                "examples": [
+                    {
+                        "datum": "1",
+                        "prediction": [
+                            61.0,
+                            565.0,
+                            22.75,
+                            632.5
+                        ],
+                        "score": 0.3179999887943268
+                    }
+                ]
+            },
+            "1": {
+                "count": 2,
+                "examples": []
+            },
+            "0": {
+                "count": 4,
+                "examples": []
+            },
+            "49": {
+                "count": 35,
+                "examples": []
+            }
+        },
+        "missing_predictions": {
+            "4": {
+                "count": 3,
+                "examples": [
+                    {
+                        "datum": "0",
+                        "groundtruth": [
+                            214.125,
+                            562.5,
+                            41.28125,
+                            285.0
+                        ]
+                    }
+                ]
+            },
+            "2": {
+                "count": 2,
+                "examples": [
+                    {
+                        "datum": "1",
+                        "groundtruth": [
+                            13.0,
+                            549.0,
+                            22.75,
+                            632.5
+                        ]
+                    }
+                ]
+            },
+            "1": {
+                "count": 2,
+                "examples": [
+                    {
+                        "datum": "3",
+                        "groundtruth": [
+                            81.25,
+                            98.6875,
+                            47.03125,
+                            78.5
+                        ]
+                    }
+                ]
+            },
+            "0": {
+                "count": 4,
+                "examples": []
+            },
+            "49": {
+                "count": 36,
+                "examples": []
+            }
+        }
+    },
+    "parameters": {
+        "score_threshold": 0.05,
+        "iou_threshold": 0.9,
+        "label_key": "class"
+    }
+},
+{
+    "type": "ConfusionMatrix",
+    "value": {
+        "confusion_matrix": {
+            "2": {
+                "2": {
+                    "count": 1,
+                    "examples": [
+                        {
+                            "datum": "1",
+                            "groundtruth": [
+                                1.66015625,
+                                270.25,
+                                3.3203125,
+                                275.25
+                            ],
+                            "prediction": [
+                                12.65625,
+                                281.25,
+                                3.3203125,
+                                275.25
+                            ],
+                            "score": 0.7260000109672546
+                        }
+                    ]
+                }
+            },
+            "0": {
+                "0": {
+                    "count": 1,
+                    "examples": [
+                        {
+                            "datum": "2",
+                            "groundtruth": [
+                                356.5,
+                                372.25,
+                                95.5,
+                                147.5
+                            ],
+                            "prediction": [
+                                356.5,
+                                372.25,
+                                95.5,
+                                147.5
+                            ],
+                            "score": 0.33500000834465027
+                        }
+                    ]
+                }
+            },
+            "49": {
+                "49": {
+                    "count": 2,
+                    "examples": [
+                        {
+                            "datum": "3",
+                            "groundtruth": [
+                                72.9375,
+                                91.25,
+                                45.96875,
+                                80.5625
+                            ],
+                            "prediction": [
+                                72.9375,
+                                91.25,
+                                45.96875,
+                                80.5625
+                            ],
+                            "score": 0.5320000052452087
+                        }
+                    ]
+                }
+            }
+        },
+        "hallucinations": {
+            "4": {
+                "count": 2,
+                "examples": [
+                    {
+                        "datum": "2",
+                        "prediction": [
+                            0.0,
+                            142.125,
+                            3.66015625,
+                            316.0
+                        ],
+                        "score": 0.30000001192092896
+                    }
+                ]
+            },
+            "3": {
+                "count": 2,
+                "examples": [
+                    {
+                        "datum": "2",
+                        "prediction": [
+                            87.875,
+                            384.25,
+                            276.25,
+                            379.5
+                        ],
+                        "score": 0.5460000038146973
+                    }
+                ]
+            },
+            "1": {
+                "count": 2,
+                "examples": [
+                    {
+                        "datum": "3",
+                        "prediction": [
+                            82.25,
+                            99.6875,
+                            47.03125,
+                            78.5
+                        ],
+                        "score": 0.7820000052452087
+                    }
+                ]
+            },
+            "0": {
+                "count": 4,
+                "examples": []
+            },
+            "49": {
+                "count": 19,
+                "examples": []
+            }
+        },
+        "missing_predictions": {
+            "4": {
+                "count": 3,
+                "examples": [
+                    {
+                        "datum": "0",
+                        "groundtruth": [
+                            214.125,
+                            562.5,
+                            41.28125,
+                            285.0
+                        ]
+                    }
+                ]
+            },
+            "2": {
+                "count": 2,
+                "examples": [
+                    {
+                        "datum": "1",
+                        "groundtruth": [
+                            13.0,
+                            549.0,
+                            22.75,
+                            632.5
+                        ]
+                    }
+                ]
+            },
+            "1": {
+                "count": 2,
+                "examples": [
+                    {
+                        "datum": "3",
+                        "groundtruth": [
+                            81.25,
+                            98.6875,
+                            47.03125,
+                            78.5
+                        ]
+                    }
+                ]
+            },
+            "0": {
+                "count": 4,
+                "examples": []
+            },
+            "49": {
+                "count": 36,
+                "examples": []
+            }
+        }
+    },
+    "parameters": {
+        "score_threshold": 0.25,
+        "iou_threshold": 0.9,
+        "label_key": "class"
+    }
+},
+{
+    "type": "ConfusionMatrix",
+    "value": {
+        "confusion_matrix": {
+            "2": {
+                "2": {
+                    "count": 1,
+                    "examples": [
+                        {
+                            "datum": "1",
+                            "groundtruth": [
+                                1.66015625,
+                                270.25,
+                                3.3203125,
+                                275.25
+                            ],
+                            "prediction": [
+                                12.65625,
+                                281.25,
+                                3.3203125,
+                                275.25
+                            ],
+                            "score": 0.7260000109672546
+                        }
+                    ]
+                }
+            },
+            "49": {
+                "49": {
+                    "count": 2,
+                    "examples": [
+                        {
+                            "datum": "3",
+                            "groundtruth": [
+                                72.9375,
+                                91.25,
+                                45.96875,
+                                80.5625
+                            ],
+                            "prediction": [
+                                72.9375,
+                                91.25,
+                                45.96875,
+                                80.5625
+                            ],
+                            "score": 0.5320000052452087
+                        }
+                    ]
+                }
+            }
+        },
+        "hallucinations": {
+            "4": {
+                "count": 2,
+                "examples": [
+                    {
+                        "datum": "2",
+                        "prediction": [
+                            87.875,
+                            384.25,
+                            276.25,
+                            379.5
+                        ],
+                        "score": 0.5460000038146973
+                    }
+                ]
+            },
+            "0": {
+                "count": 4,
+                "examples": [
+                    {
+                        "datum": "3",
+                        "prediction": [
+                            82.25,
+                            99.6875,
+                            47.03125,
+                            78.5
+                        ],
+                        "score": 0.7820000052452087
+                    }
+                ]
+            },
+            "49": {
+                "count": 10,
+                "examples": []
+            }
+        },
+        "missing_predictions": {
+            "4": {
+                "count": 3,
+                "examples": [
+                    {
+                        "datum": "0",
+                        "groundtruth": [
+                            214.125,
+                            562.5,
+                            41.28125,
+                            285.0
+                        ]
+                    }
+                ]
+            },
+            "2": {
+                "count": 2,
+                "examples": [
+                    {
+                        "datum": "1",
+                        "groundtruth": [
+                            13.0,
+                            549.0,
+                            22.75,
+                            632.5
+                        ]
+                    }
+                ]
+            },
+            "1": {
+                "count": 2,
+                "examples": [
+                    {
+                        "datum": "3",
+                        "groundtruth": [
+                            81.25,
+                            98.6875,
+                            47.03125,
+                            78.5
+                        ]
+                    }
+                ]
+            },
+            "0": {
+                "count": 5,
+                "examples": []
+            },
+            "49": {
+                "count": 36,
+                "examples": []
+            }
+        }
+    },
+    "parameters": {
+        "score_threshold": 0.35,
+        "iou_threshold": 0.9,
+        "label_key": "class"
+    }
+},
+{
+    "type": "ConfusionMatrix",
+    "value": {
+        "confusion_matrix": {
+            "2": {
+                "2": {
+                    "count": 1,
+                    "examples": [
+                        {
+                            "datum": "1",
+                            "groundtruth": [
+                                1.66015625,
+                                270.25,
+                                3.3203125,
+                                275.25
+                            ],
+                            "prediction": [
+                                12.65625,
+                                281.25,
+                                3.3203125,
+                                275.25
+                            ],
+                            "score": 0.7260000109672546
+                        }
+                    ]
+                }
+            },
+            "49": {
+                "49": {
+                    "count": 1,
+                    "examples": [
+                        {
+                            "datum": "3",
+                            "groundtruth": [
+                                75.3125,
+                                91.875,
+                                23.015625,
+                                50.84375
+                            ],
+                            "prediction": [
+                                75.3125,
+                                91.875,
+                                23.015625,
+                                50.84375
+                            ],
+                            "score": 0.8830000162124634
+                        }
+                    ]
+                }
+            }
+        },
+        "hallucinations": {
+            "0": {
+                "count": 3,
+                "examples": [
+                    {
+                        "datum": "2",
+                        "prediction": [
+                            329.0,
+                            342.5,
+                            97.0625,
+                            123.0
+                        ],
+                        "score": 0.6110000014305115
+                    }
+                ]
+            },
+            "49": {
+                "count": 10,
+                "examples": []
+            }
+        },
+        "missing_predictions": {
+            "4": {
+                "count": 3,
+                "examples": [
+                    {
+                        "datum": "0",
+                        "groundtruth": [
+                            214.125,
+                            562.5,
+                            41.28125,
+                            285.0
+                        ]
+                    }
+                ]
+            },
+            "2": {
+                "count": 2,
+                "examples": [
+                    {
+                        "datum": "1",
+                        "groundtruth": [
+                            13.0,
+                            549.0,
+                            22.75,
+                            632.5
+                        ]
+                    }
+                ]
+            },
+            "1": {
+                "count": 2,
+                "examples": [
+                    {
+                        "datum": "3",
+                        "groundtruth": [
+                            72.9375,
+                            91.25,
+                            45.96875,
+                            80.5625
+                        ]
+                    }
+                ]
+            },
+            "0": {
+                "count": 5,
+                "examples": []
+            },
+            "49": {
+                "count": 41,
+                "examples": []
+            }
+        }
+    },
+    "parameters": {
+        "score_threshold": 0.55,
+        "iou_threshold": 0.9,
+        "label_key": "class"
+    }
+},
+{
+    "type": "ConfusionMatrix",
+    "value": {
+        "confusion_matrix": {
+            "49": {
+                "49": {
+                    "count": 1,
+                    "examples": [
+                        {
+                            "datum": "3",
+                            "groundtruth": [
+                                75.3125,
+                                91.875,
+                                23.015625,
+                                50.84375
+                            ],
+                            "prediction": [
+                                75.3125,
+                                91.875,
+                                23.015625,
+                                50.84375
+                            ],
+                            "score": 0.8830000162124634
+                        }
+                    ]
+                }
+            }
+        },
+        "hallucinations": {
+            "0": {
+                "count": 2,
+                "examples": [
+                    {
+                        "datum": "2",
+                        "prediction": [
+                            464.0,
+                            495.75,
+                            105.0625,
+                            147.0
+                        ],
+                        "score": 0.8050000071525574
+                    }
+                ]
+            },
+            "49": {
+                "count": 4,
+                "examples": []
+            }
+        },
+        "missing_predictions": {
+            "4": {
+                "count": 3,
+                "examples": [
+                    {
+                        "datum": "0",
+                        "groundtruth": [
+                            214.125,
+                            562.5,
+                            41.28125,
+                            285.0
+                        ]
+                    }
+                ]
+            },
+            "2": {
+                "count": 4,
+                "examples": [
+                    {
+                        "datum": "1",
+                        "groundtruth": [
+                            13.0,
+                            549.0,
+                            22.75,
+                            632.5
+                        ]
+                    }
+                ]
+            },
+            "1": {
+                "count": 2,
+                "examples": []
+            },
+            "0": {
+                "count": 5,
+                "examples": []
+            },
+            "49": {
+                "count": 41,
+                "examples": []
+            }
+        }
+    },
+    "parameters": {
+        "score_threshold": 0.75,
+        "iou_threshold": 0.9,
+        "label_key": "class"
+    }
+},
+{
+    "type": "ConfusionMatrix",
+    "value": {
+        "confusion_matrix": {
+            "49": {
+                "49": {
+                    "count": 1,
+                    "examples": [
+                        {
+                            "datum": "3",
+                            "groundtruth": [
+                                75.3125,
+                                91.875,
+                                23.015625,
+                                50.84375
+                            ],
+                            "prediction": [
+                                75.3125,
+                                91.875,
+                                23.015625,
+                                50.84375
+                            ],
+                            "score": 0.8830000162124634
+                        }
+                    ]
+                }
+            }
+        },
+        "hallucinations": {
+            "0": {
+                "count": 2,
+                "examples": [
+                    {
+                        "datum": "2",
+                        "prediction": [
+                            464.0,
+                            495.75,
+                            105.0625,
+                            147.0
+                        ],
+                        "score": 0.8050000071525574
+                    }
+                ]
+            }
+        },
+        "missing_predictions": {
+            "4": {
+                "count": 3,
+                "examples": [
+                    {
+                        "datum": "0",
+                        "groundtruth": [
+                            214.125,
+                            562.5,
+                            41.28125,
+                            285.0
+                        ]
+                    }
+                ]
+            },
+            "2": {
+                "count": 4,
+                "examples": [
+                    {
+                        "datum": "1",
+                        "groundtruth": [
+                            13.0,
+                            549.0,
+                            22.75,
+                            632.5
+                        ]
+                    }
+                ]
+            },
+            "1": {
+                "count": 2,
+                "examples": []
+            },
+            "0": {
+                "count": 5,
+                "examples": []
+            },
+            "49": {
+                "count": 41,
+                "examples": []
+            }
+        }
+    },
+    "parameters": {
+        "score_threshold": 0.8,
+        "iou_threshold": 0.9,
+        "label_key": "class"
+    }
+},
+{
+    "type": "ConfusionMatrix",
+    "value": {
+        "confusion_matrix": {
+            "49": {
+                "49": {
+                    "count": 1,
+                    "examples": [
+                        {
+                            "datum": "3",
+                            "groundtruth": [
+                                75.3125,
+                                91.875,
+                                23.015625,
+                                50.84375
+                            ],
+                            "prediction": [
+                                75.3125,
+                                91.875,
+                                23.015625,
+                                50.84375
+                            ],
+                            "score": 0.8830000162124634
+                        }
+                    ]
+                }
+            }
+        },
+        "hallucinations": {
+            "0": {
+                "count": 1,
+                "examples": [
+                    {
+                        "datum": "2",
+                        "prediction": [
+                            276.0,
+                            291.5,
+                            103.8125,
+                            150.75
+                        ],
+                        "score": 0.953000009059906
+                    }
+                ]
+            }
+        },
+        "missing_predictions": {
+            "4": {
+                "count": 3,
+                "examples": [
+                    {
+                        "datum": "0",
+                        "groundtruth": [
+                            214.125,
+                            562.5,
+                            41.28125,
+                            285.0
+                        ]
+                    }
+                ]
+            },
+            "2": {
+                "count": 4,
+                "examples": [
+                    {
+                        "datum": "1",
+                        "groundtruth": [
+                            13.0,
+                            549.0,
+                            22.75,
+                            632.5
+                        ]
+                    }
+                ]
+            },
+            "1": {
+                "count": 2,
+                "examples": []
+            },
+            "0": {
+                "count": 5,
+                "examples": []
+            },
+            "49": {
+                "count": 41,
+                "examples": []
+            }
+        }
+    },
+    "parameters": {
+        "score_threshold": 0.85,
+        "iou_threshold": 0.9,
+        "label_key": "class"
+    }
+},
+{
+    "type": "ConfusionMatrix",
+    "value": {
+        "confusion_matrix": {},
+        "hallucinations": {
+            "0": {
+                "count": 1,
+                "examples": [
+                    {
+                        "datum": "2",
+                        "prediction": [
+                            276.0,
+                            291.5,
+                            103.8125,
+                            150.75
+                        ],
+                        "score": 0.953000009059906
+                    }
+                ]
+            }
+        },
+        "missing_predictions": {
+            "4": {
+                "count": 3,
+                "examples": [
+                    {
+                        "datum": "0",
+                        "groundtruth": [
+                            214.125,
+                            562.5,
+                            41.28125,
+                            285.0
+                        ]
+                    }
+                ]
+            },
+            "2": {
+                "count": 4,
+                "examples": [
+                    {
+                        "datum": "1",
+                        "groundtruth": [
+                            13.0,
+                            549.0,
+                            22.75,
+                            632.5
+                        ]
+                    }
+                ]
+            },
+            "1": {
+                "count": 2,
+                "examples": []
+            },
+            "0": {
+                "count": 5,
+                "examples": []
+            },
+            "49": {
+                "count": 46,
+                "examples": []
+            }
+        }
+    },
+    "parameters": {
+        "score_threshold": 0.95,
+        "iou_threshold": 0.9,
+        "label_key": "class"
+    }
+},
+PASSED
+
+============================== 1 passed in 0.03s ===============================
