@@ -636,13 +636,15 @@ def compute_confusion_matrix(
             )
 
             # find unique pairs
-            tp_labels, tp_indices, tp_inverse, tp_counts = np.unique(
-                data[mask_tp][:, 4].astype(int),
+            tps, tp_indices, tp_inverse = np.unique(
+                data[mask_tp][:, [0, 2, 4]].astype(int),
                 return_index=True,
-                return_counts=True,
                 return_inverse=True,
                 axis=0,
             )
+            tp_labels = np.unique(tps[:, 2])
+            tp_counts = np.bincount(tps[:, 2], minlength=n_labels)
+
             (
                 fp_misclf_labels,
                 fp_misclf_indices,
@@ -686,12 +688,6 @@ def compute_confusion_matrix(
                     data[mask_tp][tp_indices, :][:, [0, 2, 4]].astype(int),
                     axis=0,
                 )
-                # tp_groundtruths = np.unique(
-                #     data[mask_tp][tp_indices, [0, 1, 3]]
-                #     .astype(int)
-                #     .reshape(-1, 3),
-                #     axis=0,
-                # )
                 data[mask_fp_misclf][fp_misclf_indices, :][
                     :, [0, 2, 4]
                 ].reshape(-1, 1, 3)
@@ -711,7 +707,7 @@ def compute_confusion_matrix(
             # store the results
             confusion_matrix[
                 iou_idx, score_idx, tp_labels, tp_labels, 0
-            ] = tp_counts
+            ] = tp_counts[tp_labels]
             confusion_matrix[
                 iou_idx,
                 score_idx,
@@ -736,7 +732,7 @@ def compute_confusion_matrix(
             if n_examples > 0:
                 for label_idx in range(n_labels):
 
-                    tp_label_idx = tp_indices[tp_labels == label_idx]
+                    tp_label_idx = tp_indices[tps[:, 2] == label_idx]
                     if tp_label_idx.size > 0:
                         tp_example_indices = np.where(
                             tp_inverse == tp_label_idx

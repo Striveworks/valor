@@ -1129,11 +1129,19 @@ def test_confusion_matrix_using_torch_metrics_example(
 
     uid0_gt_0 = (214.125, 562.5, 41.28125, 285.0)
     uid1_gt_0 = (13.0, 549.0, 22.75, 632.5)
+    uid1_gt_1 = (1.66015625, 270.25, 3.3203125, 275.25)
+    uid2_gt_0 = (61.875, 358.25, 276.25, 379.5)
     uid2_gt_1 = (2.75, 162.125, 3.66015625, 316.0)
     uid2_gt_2 = (295.5, 314.0, 93.9375, 152.75)
+    uid2_gt_3 = (327.0, 340.5, 97.0625, 123.0)
     uid2_gt_4 = (356.5, 372.25, 95.5, 147.5)
+    uid2_gt_5 = (462.0, 493.75, 105.0625, 147.0)
+    uid2_gt_6 = (277.0, 292.5, 103.8125, 150.75)
     uid3_gt_0 = (72.9375, 91.25, 45.96875, 80.5625)
     uid3_gt_1 = (50.15625, 71.25, 45.34375, 79.8125)
+    uid3_gt_2 = (81.25, 98.6875, 47.03125, 78.5)
+    uid3_gt_3 = (63.96875, 84.375, 46.15625, 80.5)
+    uid3_gt_4 = (75.3125, 91.875, 23.015625, 50.84375)
     uid3_gt_5 = (56.375, 75.6875, 21.65625, 45.53125)
 
     uid0_pd_0 = (258.25, 606.5, 41.28125, 285.0)
@@ -1177,12 +1185,7 @@ def test_confusion_matrix_using_torch_metrics_example(
                             "examples": [
                                 {
                                     "datum": "1",
-                                    "groundtruth": [
-                                        1.66015625,
-                                        270.25,
-                                        3.3203125,
-                                        275.25,
-                                    ],
+                                    "groundtruth": uid1_gt_1,
                                     "prediction": uid1_pd_1,
                                     "score": 0.7260000109672546,
                                 }
@@ -1257,12 +1260,7 @@ def test_confusion_matrix_using_torch_metrics_example(
                             "examples": [
                                 {
                                     "datum": "1",
-                                    "groundtruth": [
-                                        1.66015625,
-                                        270.25,
-                                        3.3203125,
-                                        275.25,
-                                    ],
+                                    "groundtruth": uid1_gt_1,
                                     "prediction": uid1_pd_1,
                                     "score": 0.7260000109672546,
                                 }
@@ -1275,12 +1273,7 @@ def test_confusion_matrix_using_torch_metrics_example(
                             "examples": [
                                 {
                                     "datum": "2",
-                                    "groundtruth": [
-                                        61.875,
-                                        358.25,
-                                        276.25,
-                                        379.5,
-                                    ],
+                                    "groundtruth": uid2_gt_0,
                                     "prediction": uid2_pd_0,
                                     "score": 0.5460000038146973,
                                 }
@@ -1342,12 +1335,7 @@ def test_confusion_matrix_using_torch_metrics_example(
                         "examples": [
                             {
                                 "datum": "3",
-                                "groundtruth": [
-                                    63.96875,
-                                    84.375,
-                                    46.15625,
-                                    80.5,
-                                ],
+                                "groundtruth": uid3_gt_3,
                             }
                         ],
                     },
@@ -1369,12 +1357,7 @@ def test_confusion_matrix_using_torch_metrics_example(
                             "examples": [
                                 {
                                     "datum": "1",
-                                    "groundtruth": [
-                                        1.66015625,
-                                        270.25,
-                                        3.3203125,
-                                        275.25,
-                                    ],
+                                    "groundtruth": uid1_gt_1,
                                     "prediction": uid1_pd_1,
                                     "score": 0.7260000109672546,
                                 }
@@ -1387,12 +1370,7 @@ def test_confusion_matrix_using_torch_metrics_example(
                             "examples": [
                                 {
                                     "datum": "2",
-                                    "groundtruth": [
-                                        61.875,
-                                        358.25,
-                                        276.25,
-                                        379.5,
-                                    ],
+                                    "groundtruth": uid2_gt_0,
                                     "prediction": uid2_pd_0,
                                     "score": 0.5460000038146973,
                                 }
@@ -1463,12 +1441,7 @@ def test_confusion_matrix_using_torch_metrics_example(
                             "examples": [
                                 {
                                     "datum": "1",
-                                    "groundtruth": [
-                                        1.66015625,
-                                        270.25,
-                                        3.3203125,
-                                        275.25,
-                                    ],
+                                    "groundtruth": uid1_gt_1,
                                     "prediction": uid1_pd_1,
                                     "score": 0.7260000109672546,
                                 }
@@ -1481,12 +1454,7 @@ def test_confusion_matrix_using_torch_metrics_example(
                             "examples": [
                                 {
                                     "datum": "2",
-                                    "groundtruth": [
-                                        327.0,
-                                        340.5,
-                                        97.0625,
-                                        123.0,
-                                    ],
+                                    "groundtruth": uid2_gt_3,
                                     "prediction": uid2_pd_3,
                                     "score": 0.6110000014305115,
                                 }
@@ -1544,12 +1512,7 @@ def test_confusion_matrix_using_torch_metrics_example(
                             "examples": [
                                 {
                                     "datum": "2",
-                                    "groundtruth": [
-                                        462.0,
-                                        493.75,
-                                        105.0625,
-                                        147.0,
-                                    ],
+                                    "groundtruth": uid2_gt_5,
                                     "prediction": uid2_pd_5,
                                     "score": 0.8050000071525574,
                                 }
@@ -1599,12 +1562,7 @@ def test_confusion_matrix_using_torch_metrics_example(
                             "examples": [
                                 {
                                     "datum": "2",
-                                    "groundtruth": [
-                                        462.0,
-                                        493.75,
-                                        105.0625,
-                                        147.0,
-                                    ],
+                                    "groundtruth": uid2_gt_5,
                                     "prediction": uid2_pd_5,
                                     "score": 0.8050000071525574,
                                 }
@@ -1654,12 +1612,7 @@ def test_confusion_matrix_using_torch_metrics_example(
                             "examples": [
                                 {
                                     "datum": "2",
-                                    "groundtruth": [
-                                        277.0,
-                                        292.5,
-                                        103.8125,
-                                        150.75,
-                                    ],
+                                    "groundtruth": uid2_gt_6,
                                     "prediction": uid2_pd_6,
                                     "score": 0.953000009059906,
                                 }
@@ -1672,12 +1625,7 @@ def test_confusion_matrix_using_torch_metrics_example(
                             "examples": [
                                 {
                                     "datum": "3",
-                                    "groundtruth": [
-                                        75.3125,
-                                        91.875,
-                                        23.015625,
-                                        50.84375,
-                                    ],
+                                    "groundtruth": uid3_gt_4,
                                     "prediction": uid3_pd_4,
                                     "score": 0.8830000162124634,
                                 }
@@ -1726,12 +1674,7 @@ def test_confusion_matrix_using_torch_metrics_example(
                             "examples": [
                                 {
                                     "datum": "2",
-                                    "groundtruth": [
-                                        277.0,
-                                        292.5,
-                                        103.8125,
-                                        150.75,
-                                    ],
+                                    "groundtruth": uid2_gt_6,
                                     "prediction": uid2_pd_6,
                                     "score": 0.953000009059906,
                                 }
@@ -1780,12 +1723,7 @@ def test_confusion_matrix_using_torch_metrics_example(
                             "examples": [
                                 {
                                     "datum": "1",
-                                    "groundtruth": [
-                                        1.66015625,
-                                        270.25,
-                                        3.3203125,
-                                        275.25,
-                                    ],
+                                    "groundtruth": uid1_gt_1,
                                     "prediction": uid1_pd_1,
                                     "score": 0.7260000109672546,
                                 }
@@ -1825,7 +1763,7 @@ def test_confusion_matrix_using_torch_metrics_example(
                         "examples": [
                             {
                                 "datum": "0",
-                                "prediction": [258.25, 606.5, 41.28125, 285.0],
+                                "prediction": uid0_pd_0,
                                 "score": 0.23600000143051147,
                             }
                         ],
@@ -1835,7 +1773,7 @@ def test_confusion_matrix_using_torch_metrics_example(
                         "examples": [
                             {
                                 "datum": "1",
-                                "prediction": [61.0, 565.0, 22.75, 632.5],
+                                "prediction": uid1_pd_0,
                                 "score": 0.3179999887943268,
                             }
                         ],
@@ -1868,12 +1806,7 @@ def test_confusion_matrix_using_torch_metrics_example(
                         "examples": [
                             {
                                 "datum": "3",
-                                "groundtruth": [
-                                    81.25,
-                                    98.6875,
-                                    47.03125,
-                                    78.5,
-                                ],
+                                "groundtruth": uid3_gt_2,
                             }
                         ],
                     },
@@ -1897,12 +1830,7 @@ def test_confusion_matrix_using_torch_metrics_example(
                             "examples": [
                                 {
                                     "datum": "1",
-                                    "groundtruth": [
-                                        1.66015625,
-                                        270.25,
-                                        3.3203125,
-                                        275.25,
-                                    ],
+                                    "groundtruth": uid1_gt_1,
                                     "prediction": uid1_pd_1,
                                     "score": 0.7260000109672546,
                                 }
@@ -1942,12 +1870,7 @@ def test_confusion_matrix_using_torch_metrics_example(
                         "examples": [
                             {
                                 "datum": "2",
-                                "prediction": [
-                                    0.0,
-                                    142.125,
-                                    3.66015625,
-                                    316.0,
-                                ],
+                                "prediction": uid2_pd_1,
                                 "score": 0.30000001192092896,
                             }
                         ],
@@ -1999,12 +1922,7 @@ def test_confusion_matrix_using_torch_metrics_example(
                         "examples": [
                             {
                                 "datum": "3",
-                                "groundtruth": [
-                                    81.25,
-                                    98.6875,
-                                    47.03125,
-                                    78.5,
-                                ],
+                                "groundtruth": uid3_gt_2,
                             }
                         ],
                     },
@@ -2028,12 +1946,7 @@ def test_confusion_matrix_using_torch_metrics_example(
                             "examples": [
                                 {
                                     "datum": "1",
-                                    "groundtruth": [
-                                        1.66015625,
-                                        270.25,
-                                        3.3203125,
-                                        275.25,
-                                    ],
+                                    "groundtruth": uid1_gt_1,
                                     "prediction": uid1_pd_1,
                                     "score": 0.7260000109672546,
                                 }
@@ -2101,12 +2014,7 @@ def test_confusion_matrix_using_torch_metrics_example(
                         "examples": [
                             {
                                 "datum": "3",
-                                "groundtruth": [
-                                    81.25,
-                                    98.6875,
-                                    47.03125,
-                                    78.5,
-                                ],
+                                "groundtruth": uid3_gt_2,
                             }
                         ],
                     },
@@ -2130,12 +2038,7 @@ def test_confusion_matrix_using_torch_metrics_example(
                             "examples": [
                                 {
                                     "datum": "1",
-                                    "groundtruth": [
-                                        1.66015625,
-                                        270.25,
-                                        3.3203125,
-                                        275.25,
-                                    ],
+                                    "groundtruth": uid1_gt_1,
                                     "prediction": uid1_pd_1,
                                     "score": 0.7260000109672546,
                                 }
@@ -2148,12 +2051,7 @@ def test_confusion_matrix_using_torch_metrics_example(
                             "examples": [
                                 {
                                     "datum": "3",
-                                    "groundtruth": [
-                                        75.3125,
-                                        91.875,
-                                        23.015625,
-                                        50.84375,
-                                    ],
+                                    "groundtruth": uid3_gt_4,
                                     "prediction": uid3_pd_4,
                                     "score": 0.8830000162124634,
                                 }
@@ -2222,12 +2120,7 @@ def test_confusion_matrix_using_torch_metrics_example(
                             "examples": [
                                 {
                                     "datum": "3",
-                                    "groundtruth": [
-                                        75.3125,
-                                        91.875,
-                                        23.015625,
-                                        50.84375,
-                                    ],
+                                    "groundtruth": uid3_gt_4,
                                     "prediction": uid3_pd_4,
                                     "score": 0.8830000162124634,
                                 }
@@ -2288,12 +2181,7 @@ def test_confusion_matrix_using_torch_metrics_example(
                             "examples": [
                                 {
                                     "datum": "3",
-                                    "groundtruth": [
-                                        75.3125,
-                                        91.875,
-                                        23.015625,
-                                        50.84375,
-                                    ],
+                                    "groundtruth": uid3_gt_4,
                                     "prediction": uid3_pd_4,
                                     "score": 0.8830000162124634,
                                 }
@@ -2353,12 +2241,7 @@ def test_confusion_matrix_using_torch_metrics_example(
                             "examples": [
                                 {
                                     "datum": "3",
-                                    "groundtruth": [
-                                        75.3125,
-                                        91.875,
-                                        23.015625,
-                                        50.84375,
-                                    ],
+                                    "groundtruth": uid3_gt_4,
                                     "prediction": uid3_pd_4,
                                     "score": 0.8830000162124634,
                                 }
@@ -2465,7 +2348,7 @@ def test_confusion_matrix_using_torch_metrics_example(
         import json
 
         print(json.dumps(m, indent=4) + ",")
-        # assert m in expected_metrics
+        assert m in expected_metrics
     for m in expected_metrics:
         assert m in actual_metrics
 
