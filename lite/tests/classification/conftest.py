@@ -363,3 +363,15 @@ def classifications_multiclass_zero_count() -> list[Classification]:
             scores=[0.15, 0.48, 0.37],
         )
     ]
+
+
+@pytest.fixture
+def classifications_with_label_key_mismatch() -> list[Classification]:
+    return [
+        Classification(
+            uid="uid0",
+            groundtruths=[("k1", "V1")],
+            predictions=[("k2", "v1")],
+            scores=[1.0],
+        )
+    ]

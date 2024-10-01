@@ -280,6 +280,7 @@ class Evaluator:
                 label=self.index_to_label[label_idx],
             )
             for label_idx in range(label_metadata.shape[0])
+            if label_metadata[label_idx, 0] > 0
         ]
 
         metrics[MetricType.mROCAUC] = [

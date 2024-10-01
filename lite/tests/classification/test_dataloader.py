@@ -34,6 +34,7 @@ def test_valor_integration():
 def test_mismatch_label_keys(
     classifications_no_groundtruths: list[Classification],
     classifications_no_predictions: list[Classification],
+    classifications_with_label_key_mismatch: list[Classification],
 ):
     loader = DataLoader()
 
@@ -42,3 +43,7 @@ def test_mismatch_label_keys(
 
     with pytest.raises(ValueError):
         loader.add_data(classifications_no_predictions)
+
+    with pytest.raises(ValueError) as e:
+        loader.add_data(classifications_with_label_key_mismatch)
+    assert "Label keys must match" in str(e)
