@@ -7,7 +7,7 @@ from time import time
 
 import requests
 from tqdm import tqdm
-from valor_lite.classification import DataLoader
+from valor_lite.classification import DataLoader, MetricType
 
 
 def time_it(fn):
@@ -195,20 +195,32 @@ def run_benchmarking_analysis(
                 f"Base precomputation timed out with limit of {limit}."
             )
 
-        # test detailed counts with no samples
-        detailed_counts_time_no_samples, _ = time_it(
-            evaluator.compute_detailed_counts
-        )()
-
-        # test detailed counts with 3 samples
-        detailed_counts_time_three_samples, _ = time_it(
-            evaluator.compute_detailed_counts
-        )(n_samples=3)
-
         # evaluate
-        eval_time, metrics = time_it(evaluator.evaluate)()
-        # print(metrics)
+        eval_time, _ = time_it(evaluator.evaluate)()
         if eval_time > evaluation_timeout and evaluation_timeout != -1:
+            raise TimeoutError(
+                f"Base evaluation timed out with {evaluator.n_datums} datums."
+            )
+
+        detail_no_examples_time, _ = time_it(evaluator.evaluate)(
+            metrics_to_return=[*MetricType.base(), MetricType.ConfusionMatrix],
+        )
+        if (
+            detail_no_examples_time > evaluation_timeout
+            and evaluation_timeout != -1
+        ):
+            raise TimeoutError(
+                f"Base evaluation timed out with {evaluator.n_datums} datums."
+            )
+
+        detail_three_examples_time, _ = time_it(evaluator.evaluate)(
+            metrics_to_return=[*MetricType.base(), MetricType.ConfusionMatrix],
+            number_of_examples=3,
+        )
+        if (
+            detail_three_examples_time > evaluation_timeout
+            and evaluation_timeout != -1
+        ):
             raise TimeoutError(
                 f"Base evaluation timed out with {evaluator.n_datums} datums."
             )
@@ -226,8 +238,8 @@ def run_benchmarking_analysis(
                 precomputation=finalization_time,
                 evaluation=eval_time,
                 detailed_evaluation=[
-                    (0, detailed_counts_time_no_samples),
-                    (3, detailed_counts_time_three_samples),
+                    (0, detail_no_examples_time),
+                    (3, detail_three_examples_time),
                 ],
             ).result()
         )
