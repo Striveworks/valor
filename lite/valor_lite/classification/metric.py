@@ -8,12 +8,23 @@ class MetricType(Enum):
     Counts = "Counts"
     ROCAUC = "ROCAUC"
     mROCAUC = "mROCAUC"
-    DetailedCounts = "DetailedCounts"
     Precision = "Precision"
     Recall = "Recall"
     Accuracy = "Accuracy"
     F1 = "F1"
     ConfusionMatrix = "ConfusionMatrix"
+
+    @classmethod
+    def base(cls):
+        return [
+            cls.Counts,
+            cls.ROCAUC,
+            cls.mROCAUC,
+            cls.Precision,
+            cls.Recall,
+            cls.Accuracy,
+            cls.F1,
+        ]
 
 
 @dataclass
@@ -43,33 +54,6 @@ class Counts:
                     "key": self.label[0],
                     "value": self.label[1],
                 },
-            },
-        )
-
-    def to_dict(self) -> dict:
-        return self.metric.to_dict()
-
-
-@dataclass
-class ConfusionMatrix:
-    """
-    Confusion matrix mapping predictions to ground truths.
-    """
-
-    counts: dict[str, dict[str, int]]
-    label_key: str
-    score_threshold: float
-    hardmax: bool
-
-    @property
-    def metric(self) -> Metric:
-        return Metric(
-            type=type(self).__name__,
-            value=self.counts,
-            parameters={
-                "score_threshold": self.score_threshold,
-                "hardmax": self.hardmax,
-                "label_key": self.label_key,
             },
         )
 
@@ -161,40 +145,47 @@ class mROCAUC:
 
 
 @dataclass
-class DetailedCounts:
-    tp: list[int]
-    fp_misclassification: list[int]
-    fn_misclassification: list[int]
-    fn_missing_prediction: list[int]
-    tn: list[int]
-    tp_examples: list[list[str]]
-    fp_misclassification_examples: list[list[str]]
-    fn_misclassification_examples: list[list[str]]
-    fn_missing_prediction_examples: list[list[str]]
-    tn_examples: list[list[str]]
-    label: tuple[str, str]
-    scores: list[float]
+class ConfusionMatrix:
+    confusion_matrix: dict[
+        str,  # ground truth label value
+        dict[
+            str,  # prediction label value
+            dict[
+                str,  # either `count` or `examples`
+                int
+                | list[
+                    dict[
+                        str,  # either `datum` or `score`
+                        str | float,  # datum uid  # prediction score
+                    ]
+                ],
+            ],
+        ],
+    ]
+    missing_predictions: dict[
+        str,  # ground truth label value
+        dict[
+            str,  # either `count` or `examples`
+            int | list[dict[str, str]],  # count or datum examples
+        ],
+    ]
+    score_threshold: float
+    label_key: str
+    number_of_examples: int
+
+    @property
+    def metric(self) -> Metric:
+        return Metric(
+            type=type(self).__name__,
+            value={
+                "confusion_matrix": self.confusion_matrix,
+                "missing_predictions": self.missing_predictions,
+            },
+            parameters={
+                "score_threshold": self.score_threshold,
+                "label_key": self.label_key,
+            },
+        )
 
     def to_dict(self) -> dict:
-        return {
-            "value": {
-                "tp": self.tp,
-                "fp_misclassification": self.fp_misclassification,
-                "fn_misclassification": self.fn_misclassification,
-                "fn_missing_prediction": self.fn_missing_prediction,
-                "tn": self.tn,
-                "tp_examples": self.tp_examples,
-                "fp_misclassification_examples": self.fp_misclassification_examples,
-                "fn_misclassification_examples": self.fn_misclassification_examples,
-                "fn_missing_prediction_examples": self.fn_missing_prediction_examples,
-                "tn_examples": self.tn_examples,
-            },
-            "parameters": {
-                "score_thresholds": self.scores,
-                "label": {
-                    "key": self.label[0],
-                    "value": self.label[1],
-                },
-            },
-            "type": type(self).__name__,
-        }
+        return self.metric.to_dict()

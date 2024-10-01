@@ -44,7 +44,7 @@ def test_accuracy_computation():
 
     score_thresholds = np.array([0.25, 0.75], dtype=np.float64)
 
-    (_, _, _, accuracy, _, _, _, _) = compute_metrics(
+    (_, _, _, accuracy, _, _, _) = compute_metrics(
         data=data,
         label_metadata=label_metadata,
         score_thresholds=score_thresholds,
@@ -67,9 +67,9 @@ def test_accuracy_computation():
     assert accuracy[1][3] == 2 / 3
 
 
-def test_accuracy_basic(classifications_basic: list[Classification]):
+def test_accuracy_basic(basic_classifications: list[Classification]):
     loader = DataLoader()
-    loader.add_data(classifications_basic)
+    loader.add_data(basic_classifications)
     evaluator = loader.finalize()
 
     assert evaluator.metadata == {

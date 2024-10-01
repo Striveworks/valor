@@ -8,32 +8,32 @@ from valor_lite.classification import Classification, DataLoader, MetricType
 
 @pytest.fixture
 def one_classification(
-    classifications_basic: list[Classification],
+    basic_classifications: list[Classification],
 ) -> list[Classification]:
-    assert len(classifications_basic) == 3
-    return [classifications_basic[0]]
+    assert len(basic_classifications) == 3
+    return [basic_classifications[0]]
 
 
 @pytest.fixture
 def three_classifications(
-    classifications_basic: list[Classification],
+    basic_classifications: list[Classification],
 ) -> list[Classification]:
-    assert len(classifications_basic) == 3
-    return classifications_basic
+    assert len(basic_classifications) == 3
+    return basic_classifications
 
 
 @pytest.fixture
 def six_classifications(
-    classifications_basic: list[Classification],
+    basic_classifications: list[Classification],
 ) -> list[Classification]:
-    assert len(classifications_basic) == 3
-    clf1 = classifications_basic[0]
-    clf2 = classifications_basic[1]
-    clf3 = classifications_basic[2]
+    assert len(basic_classifications) == 3
+    clf1 = basic_classifications[0]
+    clf2 = basic_classifications[1]
+    clf3 = basic_classifications[2]
 
-    clf4 = replace(classifications_basic[0])
-    clf5 = replace(classifications_basic[1])
-    clf6 = replace(classifications_basic[2])
+    clf4 = replace(basic_classifications[0])
+    clf5 = replace(basic_classifications[1])
+    clf6 = replace(basic_classifications[2])
 
     clf4.uid = "uid4"
     clf5.uid = "uid5"

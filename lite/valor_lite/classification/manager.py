@@ -6,7 +6,7 @@ from numpy.typing import NDArray
 from tqdm import tqdm
 from valor_lite.classification.annotation import Classification
 from valor_lite.classification.computation import (
-    compute_detailed_counts,
+    compute_confusion_matrix,
     compute_metrics,
 )
 from valor_lite.classification.metric import (
@@ -15,7 +15,6 @@ from valor_lite.classification.metric import (
     Accuracy,
     ConfusionMatrix,
     Counts,
-    DetailedCounts,
     MetricType,
     Precision,
     Recall,
@@ -220,8 +219,10 @@ class Evaluator:
 
     def evaluate(
         self,
+        metrics_to_return: list[MetricType] = MetricType.base(),
         score_thresholds: list[float] = [0.0],
         hardmax: bool = True,
+        number_of_examples: int = 0,
         filter_: Filter | None = None,
     ) -> dict[MetricType, list]:
         """
@@ -229,8 +230,14 @@ class Evaluator:
 
         Parameters
         ----------
+        metrics_to_return : list[MetricType]
+            A list of metrics to return in the results.
         score_thresholds : list[float]
             A list of score thresholds to compute metrics over.
+        hardmax : bool
+            Toggles whether a hardmax is applied to predictions.
+        number_of_examples : int, default=0
+            Maximum number of annotation examples to return in ConfusionMatrix.
         filter_ : Filter, optional
             An optional filter object.
 
@@ -257,7 +264,6 @@ class Evaluator:
             f1_score,
             rocauc,
             mean_rocauc,
-            confusion,
         ) = compute_metrics(
             data=data,
             label_metadata=label_metadata,
@@ -282,29 +288,6 @@ class Evaluator:
                 label_key=self.index_to_label_key[label_key_idx],
             )
             for label_key_idx in range(len(self.label_key_to_index))
-        ]
-
-        metrics[MetricType.ConfusionMatrix] = [
-            ConfusionMatrix(
-                counts={
-                    pd_label[1]: {
-                        gt_label[1]: int(
-                            confusion[score_idx, pd_label_idx, gt_label_idx]
-                        )
-                        for gt_label_idx, gt_label in self.index_to_label.items()
-                        if self.label_index_to_label_key_index[gt_label_idx]
-                        == label_key_idx
-                    }
-                    for pd_label_idx, pd_label in self.index_to_label.items()
-                    if self.label_index_to_label_key_index[pd_label_idx]
-                    == label_key_idx
-                },
-                label_key=label_key,
-                score_threshold=score_thresholds[score_idx],
-                hardmax=hardmax,
-            )
-            for score_idx in range(len(score_thresholds))
-            for label_key, label_key_idx in self.label_key_to_index.items()
         ]
 
         for label_idx, label in self.index_to_label.items():
@@ -354,120 +337,206 @@ class Evaluator:
                 )
             )
 
+        if MetricType.ConfusionMatrix in metrics_to_return:
+            metrics[
+                MetricType.ConfusionMatrix
+            ] = self._compute_confusion_matrix(
+                data=data,
+                label_metadata=label_metadata,
+                score_thresholds=score_thresholds,
+                hardmax=hardmax,
+                number_of_examples=number_of_examples,
+            )
+
+        for metric in set(metrics.keys()):
+            if metric not in metrics_to_return:
+                del metrics[metric]
+
         return metrics
 
-    def compute_detailed_counts(
+    def _unpack_confusion_matrix(
         self,
-        score_thresholds: list[float] = [
-            score / 10.0 for score in range(1, 11)
+        confusion_matrix: NDArray[np.floating],
+        label_key_idx: int,
+        number_of_labels: int,
+        number_of_examples: int,
+    ) -> dict[
+        str,
+        dict[
+            str,
+            dict[
+                str,
+                int
+                | list[
+                    dict[
+                        str,
+                        str | float,
+                    ]
+                ],
+            ],
         ],
-        n_samples: int = 0,
-    ) -> list[DetailedCounts]:
+    ]:
         """
-        Computes the detailed counts metric.
+        Unpacks a numpy array of confusion matrix counts and examples.
+        """
+
+        datum_idx = lambda gt_label_idx, pd_label_idx, example_idx: int(  # noqa: E731 - lambda fn
+            confusion_matrix[
+                gt_label_idx,
+                pd_label_idx,
+                example_idx * 2 + 1,
+            ]
+        )
+
+        score_idx = lambda gt_label_idx, pd_label_idx, example_idx: float(  # noqa: E731 - lambda fn
+            confusion_matrix[
+                gt_label_idx,
+                pd_label_idx,
+                example_idx * 2 + 2,
+            ]
+        )
+
+        return {
+            self.index_to_label[gt_label_idx][1]: {
+                self.index_to_label[pd_label_idx][1]: {
+                    "count": max(
+                        int(confusion_matrix[gt_label_idx, pd_label_idx, 0]),
+                        0,
+                    ),
+                    "examples": [
+                        {
+                            "datum": self.index_to_uid[
+                                datum_idx(
+                                    gt_label_idx, pd_label_idx, example_idx
+                                )
+                            ],
+                            "score": score_idx(
+                                gt_label_idx, pd_label_idx, example_idx
+                            ),
+                        }
+                        for example_idx in range(number_of_examples)
+                        if datum_idx(gt_label_idx, pd_label_idx, example_idx)
+                        >= 0
+                    ],
+                }
+                for pd_label_idx in range(number_of_labels)
+                if (
+                    self.label_index_to_label_key_index[pd_label_idx]
+                    == label_key_idx
+                )
+            }
+            for gt_label_idx in range(number_of_labels)
+            if (
+                self.label_index_to_label_key_index[gt_label_idx]
+                == label_key_idx
+            )
+        }
+
+    def _unpack_missing_predictions(
+        self,
+        missing_predictions: NDArray[np.int32],
+        label_key_idx: int,
+        number_of_labels: int,
+        number_of_examples: int,
+    ) -> dict[str, dict[str, int | list[dict[str, str]]]]:
+        """
+        Unpacks a numpy array of missing prediction counts and examples.
+        """
+
+        datum_idx = (
+            lambda gt_label_idx, example_idx: int(  # noqa: E731 - lambda fn
+                missing_predictions[
+                    gt_label_idx,
+                    example_idx + 1,
+                ]
+            )
+        )
+
+        return {
+            self.index_to_label[gt_label_idx][1]: {
+                "count": max(
+                    int(missing_predictions[gt_label_idx, 0]),
+                    0,
+                ),
+                "examples": [
+                    {
+                        "datum": self.index_to_uid[
+                            datum_idx(gt_label_idx, example_idx)
+                        ]
+                    }
+                    for example_idx in range(number_of_examples)
+                    if datum_idx(gt_label_idx, example_idx) >= 0
+                ],
+            }
+            for gt_label_idx in range(number_of_labels)
+            if (
+                self.label_index_to_label_key_index[gt_label_idx]
+                == label_key_idx
+            )
+        }
+
+    def _compute_confusion_matrix(
+        self,
+        data: NDArray[np.floating],
+        label_metadata: NDArray[np.int32],
+        score_thresholds: list[float],
+        hardmax: bool,
+        number_of_examples: int,
+    ) -> list[ConfusionMatrix]:
+        """
+        Computes a detailed confusion matrix..
 
         Parameters
         ----------
+        data : NDArray[np.floating]
+            A data array containing classification pairs.
+        label_metadata : NDArray[np.int32]
+            An integer array containing label metadata.
         score_thresholds : list[float]
             A list of score thresholds to compute metrics over.
-        n_samples : int, default=0
+        hardmax : bool
+            Toggles whether a hardmax is applied to predictions.
+        number_of_examples : int, default=0
             The number of examples to return per count.
 
         Returns
         -------
-        list[DetailedCounts]
-            A list of DetailedCounts per label.
+        list[ConfusionMatrix]
+            A list of ConfusionMatrix per label key.
         """
 
-        # apply filters
-        data = self._detailed_pairs
-        label_metadata = self._label_metadata
+        if data.size == 0:
+            return list()
 
-        metrics = compute_detailed_counts(
+        confusion_matrix, missing_predictions = compute_confusion_matrix(
             data=data,
             label_metadata=label_metadata,
             score_thresholds=np.array(score_thresholds),
-            n_samples=n_samples,
+            hardmax=hardmax,
+            n_examples=number_of_examples,
         )
 
-        tp_idx = 0
-        fp_misclf_idx = 1 * n_samples + 1
-        fn_misclf_idx = 2 * n_samples + 2
-        fn_misprd_idx = 3 * n_samples + 3
-        tn_idx = 4 * n_samples + 4
-
-        n_scores, n_labels, _ = metrics.shape
+        n_scores, n_labels, _, _ = confusion_matrix.shape
         return [
-            DetailedCounts(
-                tp=metrics[:, label_idx, tp_idx].astype(int).tolist(),
-                tp_examples=[
-                    [
-                        self.index_to_uid[int(datum_idx)]
-                        for datum_idx in metrics[
-                            score_idx, label_idx, tp_idx + 1 : fp_misclf_idx
-                        ]
-                        if int(datum_idx) >= 0
-                    ]
-                    for score_idx in range(n_scores)
-                ],
-                fp_misclassification=metrics[:, label_idx, fp_misclf_idx]
-                .astype(int)
-                .tolist(),
-                fp_misclassification_examples=[
-                    [
-                        self.index_to_uid[int(datum_idx)]
-                        for datum_idx in metrics[
-                            score_idx,
-                            label_idx,
-                            fp_misclf_idx + 1 : fn_misclf_idx,
-                        ]
-                        if int(datum_idx) >= 0
-                    ]
-                    for score_idx in range(n_scores)
-                ],
-                fn_misclassification=metrics[:, label_idx, fn_misclf_idx]
-                .astype(int)
-                .tolist(),
-                fn_misclassification_examples=[
-                    [
-                        self.index_to_uid[int(datum_idx)]
-                        for datum_idx in metrics[
-                            score_idx,
-                            label_idx,
-                            fn_misclf_idx + 1 : fn_misprd_idx,
-                        ]
-                        if int(datum_idx) >= 0
-                    ]
-                    for score_idx in range(n_scores)
-                ],
-                fn_missing_prediction=metrics[:, label_idx, fn_misprd_idx]
-                .astype(int)
-                .tolist(),
-                fn_missing_prediction_examples=[
-                    [
-                        self.index_to_uid[int(datum_idx)]
-                        for datum_idx in metrics[
-                            score_idx, label_idx, fn_misprd_idx + 1 : tn_idx
-                        ]
-                        if int(datum_idx) >= 0
-                    ]
-                    for score_idx in range(n_scores)
-                ],
-                tn=metrics[:, label_idx, tn_idx].astype(int).tolist(),
-                tn_examples=[
-                    [
-                        self.index_to_uid[int(datum_idx)]
-                        for datum_idx in metrics[
-                            score_idx, label_idx, tn_idx + 1 :
-                        ]
-                        if int(datum_idx) >= 0
-                    ]
-                    for score_idx in range(n_scores)
-                ],
-                scores=score_thresholds,
-                label=self.index_to_label[label_idx],
+            ConfusionMatrix(
+                score_threshold=score_thresholds[score_idx],
+                label_key=label_key,
+                number_of_examples=number_of_examples,
+                confusion_matrix=self._unpack_confusion_matrix(
+                    confusion_matrix=confusion_matrix[score_idx, :, :, :],
+                    label_key_idx=label_key_idx,
+                    number_of_labels=n_labels,
+                    number_of_examples=number_of_examples,
+                ),
+                missing_predictions=self._unpack_missing_predictions(
+                    missing_predictions=missing_predictions[score_idx, :, :],
+                    label_key_idx=label_key_idx,
+                    number_of_labels=n_labels,
+                    number_of_examples=number_of_examples,
+                ),
             )
-            for label_idx in range(n_labels)
+            for label_key_idx, label_key in self.index_to_label_key.items()
+            for score_idx in range(n_scores)
         ]
 
 

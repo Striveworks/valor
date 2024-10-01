@@ -44,7 +44,7 @@ def test_counts_computation():
 
     score_thresholds = np.array([0.25, 0.75], dtype=np.float64)
 
-    (counts, _, _, _, _, _, _, _) = compute_metrics(
+    (counts, _, _, _, _, _, _) = compute_metrics(
         data=data,
         label_metadata=label_metadata,
         score_thresholds=score_thresholds,
@@ -104,9 +104,9 @@ def test_counts_computation():
     assert counts[1][3][3] == 2  # tn
 
 
-def test_counts_basic(classifications_basic: list[Classification]):
+def test_counts_basic(basic_classifications: list[Classification]):
     loader = DataLoader()
-    loader.add_data(classifications_basic)
+    loader.add_data(basic_classifications)
     evaluator = loader.finalize()
 
     assert evaluator.metadata == {
@@ -599,7 +599,7 @@ def test_counts_with_tabular_example(
         assert m in actual_metrics
 
 
-def test_counts_mutliclass(
+def test_counts_multiclass(
     classifications_multiclass: list[Classification],
 ):
     loader = DataLoader()

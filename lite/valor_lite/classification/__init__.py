@@ -5,8 +5,8 @@ from .metric import (
     F1,
     ROCAUC,
     Accuracy,
+    ConfusionMatrix,
     Counts,
-    DetailedCounts,
     MetricType,
     Precision,
     Recall,
@@ -24,7 +24,7 @@ __all__ = [
     "F1",
     "ROCAUC",
     "mROCAUC",
-    "DetailedCounts",
+    "ConfusionMatrix",
     "DataLoader",
     "Evaluator",
 ]

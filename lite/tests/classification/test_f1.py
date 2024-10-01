@@ -44,7 +44,7 @@ def test_f1_score_computation():
 
     score_thresholds = np.array([0.25, 0.75], dtype=np.float64)
 
-    (_, _, _, _, f1_score, _, _, _) = compute_metrics(
+    (_, _, _, _, f1_score, _, _) = compute_metrics(
         data=data,
         label_metadata=label_metadata,
         score_thresholds=score_thresholds,
@@ -67,9 +67,9 @@ def test_f1_score_computation():
     assert f1_score[1][3] == 0.0
 
 
-def test_f1_score_basic(classifications_basic: list[Classification]):
+def test_f1_score_basic(basic_classifications: list[Classification]):
     loader = DataLoader()
-    loader.add_data(classifications_basic)
+    loader.add_data(basic_classifications)
     evaluator = loader.finalize()
 
     assert evaluator.metadata == {

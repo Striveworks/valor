@@ -3,7 +3,7 @@ from valor_lite.classification import Classification
 
 
 @pytest.fixture
-def classifications_basic() -> list[Classification]:
+def basic_classifications() -> list[Classification]:
     return [
         Classification(
             uid="uid0",

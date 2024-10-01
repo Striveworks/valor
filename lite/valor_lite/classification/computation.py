@@ -96,7 +96,6 @@ def compute_metrics(
     NDArray[np.floating],
     NDArray[np.floating],
     NDArray[np.floating],
-    NDArray[np.int32],
 ]:
     """
     Computes classification metrics.
@@ -138,8 +137,6 @@ def compute_metrics(
         ROCAUC.
     NDArray[np.floating]
         mROCAUC.
-    NDArray[np.int32]
-        Confusion Matrix.
     """
 
     n_labels = label_metadata.shape[0]
@@ -164,7 +161,6 @@ def compute_metrics(
     )
 
     # calculate metrics at various score thresholds
-    confusion = np.zeros((n_scores, n_labels, n_labels), dtype=np.int32)
     counts = np.zeros((n_scores, n_labels, 4), dtype=np.int32)
     for score_idx in range(n_scores):
         mask_score_threshold = data[:, 3] >= score_thresholds[score_idx]
@@ -172,16 +168,6 @@ def compute_metrics(
 
         if hardmax:
             mask_score &= mask_hardmax
-
-        confusion_pairs, confusion_counts = np.unique(
-            data[mask_score][:, [1, 2]].astype(int), axis=0, return_counts=True
-        )
-        for idx in range(confusion_pairs.shape[0]):
-            confusion[
-                score_idx,
-                confusion_pairs[idx, 1],
-                confusion_pairs[idx, 0],
-            ] = confusion_counts[idx]
 
         mask_tp = mask_matching_labels & mask_score
         mask_fp = ~mask_matching_labels & mask_score
@@ -239,18 +225,57 @@ def compute_metrics(
         f1_score,
         rocauc,
         mean_rocauc,
-        confusion,
     )
 
 
-def compute_detailed_counts(
+def _count_with_examples(
+    data: NDArray[np.floating],
+    unique_idx: int | list[int],
+    label_idx: int | list[int],
+) -> tuple[NDArray[np.floating], NDArray[np.int32], NDArray[np.int32]]:
+    """
+    Helper function for counting occurences of unique detailed pairs.
+
+    Parameters
+    ----------
+    data : NDArray[np.floating]
+        A masked portion of a detailed pairs array.
+    unique_idx : int | list[int]
+        The index or indices upon which uniqueness is constrained.
+    label_idx : int | list[int]
+        The index or indices within the unique index or indices that encode labels.
+
+    Returns
+    -------
+    NDArray[np.floating]
+        Examples drawn from the data input.
+    NDArray[np.int32]
+        Unique label indices.
+    NDArray[np.int32]
+        Counts for each unique label index.
+    """
+    unique_rows, indices = np.unique(
+        data.astype(int)[:, unique_idx],
+        return_index=True,
+        axis=0,
+    )
+    examples = data[indices]
+    labels, counts = np.unique(
+        unique_rows[:, label_idx], return_counts=True, axis=0
+    )
+    return examples, labels, counts
+
+
+def compute_confusion_matrix(
     data: NDArray[np.floating],
     label_metadata: NDArray[np.int32],
     score_thresholds: NDArray[np.floating],
-    n_samples: int,
-) -> NDArray[np.floating]:
+    hardmax: bool,
+    n_examples: int,
+) -> tuple[NDArray[np.floating], NDArray[np.int32]]:
+
     """
-    Compute detailed counts.
+    Compute detailed confusion matrix.
 
     Takes data with shape (N, 5):
 
@@ -260,145 +285,127 @@ def compute_detailed_counts(
     Index 3 - Score
     Index 4 - Hard Max Score
 
-    Outputs an array with shape (N_Scores, N_Labels, 5 * n_samples + 5):
-
-    Index 0 - True Positive Count
-    ... Datum ID Examples
-    Index n_samples + 1 - False Positive Misclassification Count
-    ... Datum ID Examples
-    Index 2 * n_samples + 2 - False Negative Misclassification Count
-    ... Datum ID Examples
-    Index 3 * n_samples + 3 - False Negative Missing Prediction Count
-    ... Datum ID Examples
-    Index 4 * n_samples + 4 - True Negative Count
-    ... Datum ID Examples
-
     Parameters
     ----------
     data : NDArray[np.floating]
-        A sorted array of classification pairs.
+        A sorted array summarizing the IOU calculations of one or more pairs.
     label_metadata : NDArray[np.int32]
         An array containing metadata related to labels.
+    iou_thresholds : NDArray[np.floating]
+        A 1-D array containing IoU thresholds.
     score_thresholds : NDArray[np.floating]
         A 1-D array containing score thresholds.
-    n_samples : int
-        The number of examples to return per count.
+    n_examples : int
+        The maximum number of examples to return per count.
 
     Returns
     -------
     NDArray[np.floating]
-        The detailed counts with optional examples.
+        Confusion matrix.
+    NDArray[np.int32]
+        Ground truths with missing predictions.
     """
 
     n_labels = label_metadata.shape[0]
     n_scores = score_thresholds.shape[0]
-    n_metrics = 5 * (n_samples + 1)
 
-    tp_idx = 0
-    fp_misclf_idx = n_samples + 1
-    fn_misclf_idx = 2 * n_samples + 2
-    fn_misprd_idx = 3 * n_samples + 3
-    tn_idx = 4 * n_samples + 4
-
-    detailed_pr_curve = np.ones((n_scores, n_labels, n_metrics)) * -1.0
+    confusion_matrix = -1 * np.ones(
+        (n_scores, n_labels, n_labels, 2 * n_examples + 1),
+        dtype=np.float32,
+    )
+    missing_predictions = -1 * np.ones(
+        (n_scores, n_labels, n_examples + 1),
+        dtype=np.int32,
+    )
 
     mask_label_match = np.isclose(data[:, 1], data[:, 2])
-    mask_score_nonzero = data[:, 3] > 1e-9
+    mask_score = data[:, 3] > 1e-9
+
+    groundtruths = data[:, [0, 1]].astype(int)
 
     for score_idx in range(n_scores):
-        mask_score_threshold = data[:, 3] >= score_thresholds[score_idx]
-        mask_score = mask_score_threshold & mask_score_nonzero
-
-        datums_with_predictions_above_threshold = np.unique(
-            data[:, 0][mask_score].astype(int)
-        )
-        mask_pd_exists = np.isin(
-            data[:, 0].astype(int), datums_with_predictions_above_threshold
-        )
-
-        mask_fn = mask_label_match & ~mask_score
+        mask_score &= data[:, 3] >= score_thresholds[score_idx]
+        if hardmax:
+            mask_score &= data[:, 4] > 0.5
 
         mask_tp = mask_label_match & mask_score
-        mask_fp_misclf = ~mask_label_match & mask_score
-        mask_fn_misclf = mask_fn & mask_pd_exists
-        mask_fn_misprd = mask_fn & ~mask_pd_exists
-        mask_tn = ~mask_label_match & ~mask_score
-
-        tp_slice = data[mask_tp]
-        fp_misclf_slice = data[mask_fp_misclf]
-        fn_misclf_slice = data[mask_fn_misclf]
-        fn_misprd_slice = data[mask_fn_misprd]
-        tn_slice = data[mask_tn]
-
-        tp_count = np.bincount(tp_slice[:, 2].astype(int), minlength=n_labels)
-        fp_misclf_count = np.bincount(
-            fp_misclf_slice[:, 2].astype(int), minlength=n_labels
+        mask_misclf = ~mask_label_match & mask_score
+        mask_misprd = ~(
+            (
+                groundtruths.reshape(-1, 1, 2)
+                == groundtruths[mask_score].reshape(1, -1, 2)
+            )
+            .all(axis=2)
+            .any(axis=1)
         )
-        fn_misclf_count = np.bincount(
-            fn_misclf_slice[:, 1].astype(int), minlength=n_labels
-        )
-        fn_misprd_count = np.bincount(
-            fn_misprd_slice[:, 1].astype(int), minlength=n_labels
-        )
-        tn_count = np.bincount(tn_slice[:, 2].astype(int), minlength=n_labels)
 
-        detailed_pr_curve[score_idx, :, tp_idx] = tp_count
-        detailed_pr_curve[score_idx, :, fp_misclf_idx] = fp_misclf_count
-        detailed_pr_curve[score_idx, :, fn_misclf_idx] = fn_misclf_count
-        detailed_pr_curve[score_idx, :, fn_misprd_idx] = fn_misprd_count
-        detailed_pr_curve[score_idx, :, tn_idx] = tn_count
+        tp_examples, tp_labels, tp_counts = _count_with_examples(
+            data=data[mask_tp],
+            unique_idx=[0, 2],
+            label_idx=1,
+        )
+        misclf_examples, misclf_labels, misclf_counts = _count_with_examples(
+            data=data[mask_misclf],
+            unique_idx=[0, 1, 2],
+            label_idx=[1, 2],
+        )
+        misprd_examples, misprd_labels, misprd_counts = _count_with_examples(
+            data=data[mask_misprd],
+            unique_idx=[0, 1],
+            label_idx=1,
+        )
 
-        if n_samples > 0:
+        confusion_matrix[score_idx, tp_labels, tp_labels, 0] = tp_counts
+        confusion_matrix[
+            score_idx, misclf_labels[:, 0], misclf_labels[:, 1], 0
+        ] = misclf_counts
+
+        missing_predictions[score_idx, misprd_labels, 0] = misprd_counts
+
+        if n_examples > 0:
             for label_idx in range(n_labels):
-                tp_examples = tp_slice[
-                    tp_slice[:, 2].astype(int) == label_idx
-                ][:n_samples, 0]
-                fp_misclf_examples = fp_misclf_slice[
-                    fp_misclf_slice[:, 2].astype(int) == label_idx
-                ][:n_samples, 0]
-                fn_misclf_examples = fn_misclf_slice[
-                    fn_misclf_slice[:, 1].astype(int) == label_idx
-                ][:n_samples, 0]
-                fn_misprd_examples = fn_misprd_slice[
-                    fn_misprd_slice[:, 1].astype(int) == label_idx
-                ][:n_samples, 0]
-                tn_examples = tn_slice[
-                    tn_slice[:, 2].astype(int) == label_idx
-                ][:n_samples, 0]
+                # true-positive examples
+                mask_tp_label = tp_examples[:, 2] == label_idx
+                if mask_tp_label.sum() > 0:
+                    tp_label_examples = tp_examples[mask_tp_label][:n_examples]
+                    confusion_matrix[
+                        score_idx,
+                        label_idx,
+                        label_idx,
+                        1 : 2 * tp_label_examples.shape[0] + 1,
+                    ] = tp_label_examples[:, [0, 3]].flatten()
 
-                detailed_pr_curve[
-                    score_idx,
-                    label_idx,
-                    tp_idx + 1 : tp_idx + 1 + tp_examples.shape[0],
-                ] = tp_examples
-                detailed_pr_curve[
-                    score_idx,
-                    label_idx,
-                    fp_misclf_idx
-                    + 1 : fp_misclf_idx
-                    + 1
-                    + fp_misclf_examples.shape[0],
-                ] = fp_misclf_examples
-                detailed_pr_curve[
-                    score_idx,
-                    label_idx,
-                    fn_misclf_idx
-                    + 1 : fn_misclf_idx
-                    + 1
-                    + fn_misclf_examples.shape[0],
-                ] = fn_misclf_examples
-                detailed_pr_curve[
-                    score_idx,
-                    label_idx,
-                    fn_misprd_idx
-                    + 1 : fn_misprd_idx
-                    + 1
-                    + fn_misprd_examples.shape[0],
-                ] = fn_misprd_examples
-                detailed_pr_curve[
-                    score_idx,
-                    label_idx,
-                    tn_idx + 1 : tn_idx + 1 + tn_examples.shape[0],
-                ] = tn_examples
+                # misclassification examples
+                mask_misclf_gt_label = misclf_examples[:, 1] == label_idx
+                if mask_misclf_gt_label.sum() > 0:
+                    for pd_label_idx in range(n_labels):
+                        mask_misclf_pd_label = (
+                            misclf_examples[:, 2] == pd_label_idx
+                        )
+                        mask_misclf_label_combo = (
+                            mask_misclf_gt_label & mask_misclf_pd_label
+                        )
+                        if mask_misclf_label_combo.sum() > 0:
+                            misclf_label_examples = misclf_examples[
+                                mask_misclf_label_combo
+                            ][:n_examples]
+                            confusion_matrix[
+                                score_idx,
+                                label_idx,
+                                pd_label_idx,
+                                1 : 2 * misclf_label_examples.shape[0] + 1,
+                            ] = misclf_label_examples[:, [0, 3]].flatten()
 
-    return detailed_pr_curve
+                # missing prediction examples
+                mask_misprd_label = misprd_examples[:, 1] == label_idx
+                if misprd_examples.size > 0:
+                    misprd_label_examples = misprd_examples[mask_misprd_label][
+                        :n_examples
+                    ]
+                    missing_predictions[
+                        score_idx,
+                        label_idx,
+                        1 : misprd_label_examples.shape[0] + 1,
+                    ] = misprd_label_examples[:, 0].flatten()
+
+    return confusion_matrix, missing_predictions

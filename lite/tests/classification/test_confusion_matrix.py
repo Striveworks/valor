@@ -1,32 +1,28 @@
 import numpy as np
-from valor_lite.classification import (
-    Classification,
-    DataLoader,
-    MetricType,
-    compute_metrics,
-)
+from valor_lite.classification import Classification, DataLoader, MetricType
+from valor_lite.classification.computation import compute_confusion_matrix
 
 
-def test_confusion_matrix_computation():
+def test_compute_confusion_matrix():
 
     # groundtruth, prediction, score
     data = np.array(
         [
             # datum 0
-            [0, 0, 0, 1.0, 1],  # tp
-            [0, 0, 1, 0.0, 0],  # tn
-            [0, 0, 2, 0.0, 0],  # tn
-            [0, 0, 3, 0.0, 0],  # tn
+            [0, 0, 0, 1.0, 1.0],  # tp
+            [0, 0, 1, 0.0, 0.0],  # tn
+            [0, 0, 2, 0.0, 0.0],  # tn
+            [0, 0, 3, 0.0, 0.0],  # tn
             # datum 1
-            [1, 0, 0, 0.0, 0],  # fn
-            [1, 0, 1, 0.0, 0],  # tn
-            [1, 0, 2, 1.0, 1],  # fp
-            [1, 0, 3, 0.0, 0],  # tn
+            [1, 0, 0, 0.0, 0.0],  # fn
+            [1, 0, 1, 0.0, 0.0],  # tn
+            [1, 0, 2, 1.0, 1.0],  # fp
+            [1, 0, 3, 0.0, 0.0],  # tn
             # datum 2
-            [2, 3, 0, 0.0, 0],  # tn
-            [2, 3, 1, 0.0, 0],  # tn
-            [2, 3, 2, 0.0, 0],  # tn
-            [2, 3, 3, 0.3, 1],  # fn for score threshold > 0.3
+            [2, 3, 0, 0.0, 0.0],  # tn
+            [2, 3, 1, 0.0, 0.0],  # tn
+            [2, 3, 2, 0.0, 0.0],  # tn
+            [2, 3, 3, 0.3, 1.0],  # fn for score threshold > 0.3
         ],
         dtype=np.float64,
     )
@@ -44,69 +40,69 @@ def test_confusion_matrix_computation():
 
     score_thresholds = np.array([0.25, 0.75], dtype=np.float64)
 
-    (_, _, _, _, _, _, _, confusion) = compute_metrics(
+    confusion_matrix, missing_predictions = compute_confusion_matrix(
         data=data,
         label_metadata=label_metadata,
         score_thresholds=score_thresholds,
-        n_datums=3,
-        hardmax=False,
+        hardmax=True,
+        n_examples=0,
     )
 
-    # score threshold, prediction label, groundtruth label
-    assert confusion.shape == (2, 4, 4)
+    assert confusion_matrix.shape == (2, 4, 4, 1)
+    assert (
+        # score >= 0.25
+        confusion_matrix[0, :, :, 0]
+        == np.array(
+            [
+                [1.0, -1.0, 1.0, -1.0],
+                [-1.0, -1.0, -1.0, -1.0],
+                [-1.0, -1.0, -1.0, -1.0],
+                [-1.0, -1.0, -1.0, 1.0],
+            ]
+        )
+    ).all()
+    assert (
+        # score >= 0.75
+        confusion_matrix[1, :, :, 0]
+        == np.array(
+            [
+                [1.0, -1.0, 1.0, -1.0],
+                [-1.0, -1.0, -1.0, -1.0],
+                [-1.0, -1.0, -1.0, -1.0],
+                [-1.0, -1.0, -1.0, -1.0],
+            ]
+        )
+    ).all()
 
-    # label 0
-    # score >= 0.25
-    assert confusion[0][0][0] == 1
-    assert confusion[0][0][1] == 0
-    assert confusion[0][0][2] == 0
-    assert confusion[0][0][3] == 0
-    # score >= 0.75
-    assert confusion[1][0][0] == 1
-    assert confusion[1][0][1] == 0
-    assert confusion[1][0][2] == 0
-    assert confusion[1][0][3] == 0
-
-    # label 1
-    # score >= 0.25
-    assert confusion[0][1][0] == 0
-    assert confusion[0][1][1] == 0
-    assert confusion[0][1][2] == 0
-    assert confusion[0][1][3] == 0
-    # score >= 0.75
-    assert confusion[1][1][0] == 0
-    assert confusion[1][1][1] == 0
-    assert confusion[1][1][2] == 0
-    assert confusion[1][1][3] == 0
-
-    # label 2
-    # score >= 0.25
-    assert confusion[0][2][0] == 1
-    assert confusion[0][2][1] == 0
-    assert confusion[0][2][2] == 0
-    assert confusion[0][2][3] == 0
-    # score >= 0.75
-    assert confusion[1][2][0] == 1
-    assert confusion[1][2][1] == 0
-    assert confusion[1][2][2] == 0
-    assert confusion[1][2][3] == 0
-
-    # label 3
-    # score >= 0.25
-    assert confusion[0][3][0] == 0
-    assert confusion[0][3][1] == 0
-    assert confusion[0][3][2] == 0
-    assert confusion[0][3][3] == 1
-    # score >= 0.75
-    assert confusion[1][3][0] == 0
-    assert confusion[1][3][1] == 0
-    assert confusion[1][3][2] == 0
-    assert confusion[1][3][3] == 0
+    assert missing_predictions.shape == (2, 4, 1)
+    assert (
+        # score >= 0.25
+        missing_predictions[0, :, 0]
+        == np.array([-1.0, -1.0, -1.0, -1.0])
+    ).all()
+    assert (
+        # score >= 0.75
+        missing_predictions[1, :, 0]
+        == np.array([-1.0, -1.0, -1.0, 1.0])
+    ).all()
 
 
-def test_confusion_matrix_basic(classifications_basic: list[Classification]):
+def _filter_elements_with_zero_count(cm: dict, mp: dict):
+    labels = list(mp.keys())
+
+    for gt_label in labels:
+        if mp[gt_label]["count"] == 0:
+            mp.pop(gt_label)
+        for pd_label in labels:
+            if cm[gt_label][pd_label]["count"] == 0:
+                cm[gt_label].pop(pd_label)
+        if len(cm[gt_label]) == 0:
+            cm.pop(gt_label)
+
+
+def test_confusion_matrix_basic(basic_classifications: list[Classification]):
     loader = DataLoader()
-    loader.add_data(classifications_basic)
+    loader.add_data(basic_classifications)
     evaluator = loader.finalize()
 
     assert evaluator.metadata == {
@@ -121,7 +117,11 @@ def test_confusion_matrix_basic(classifications_basic: list[Classification]):
         "missing_prediction_labels": [],
     }
 
-    metrics = evaluator.evaluate(score_thresholds=[0.25, 0.75])
+    metrics = evaluator.evaluate(
+        metrics_to_return=[MetricType.ConfusionMatrix],
+        score_thresholds=[0.25, 0.75],
+        number_of_examples=1,
+    )
 
     # test ConfusionMatrix
     actual_metrics = [m.to_dict() for m in metrics[MetricType.ConfusionMatrix]]
@@ -129,39 +129,63 @@ def test_confusion_matrix_basic(classifications_basic: list[Classification]):
         {
             "type": "ConfusionMatrix",
             "value": {
-                "0": {"0": 1, "1": 0, "2": 0, "3": 0},
-                "1": {"0": 0, "1": 0, "2": 0, "3": 0},
-                "2": {"0": 1, "1": 0, "2": 0, "3": 0},
-                "3": {"0": 0, "1": 0, "2": 0, "3": 1},
+                "confusion_matrix": {
+                    "0": {
+                        "0": {
+                            "count": 1,
+                            "examples": [{"datum": "uid0", "score": 1.0}],
+                        },
+                        "2": {
+                            "count": 1,
+                            "examples": [{"datum": "uid1", "score": 1.0}],
+                        },
+                    },
+                    "3": {
+                        "3": {
+                            "count": 1,
+                            "examples": [
+                                {"datum": "uid2", "score": 0.30000001192092896}
+                            ],
+                        }
+                    },
+                },
+                "missing_predictions": {},
             },
-            "parameters": {
-                "score_threshold": 0.25,
-                "hardmax": True,
-                "label_key": "class",
-            },
+            "parameters": {"score_threshold": 0.25, "label_key": "class"},
         },
         {
             "type": "ConfusionMatrix",
             "value": {
-                "0": {"0": 1, "1": 0, "2": 0, "3": 0},
-                "1": {"0": 0, "1": 0, "2": 0, "3": 0},
-                "2": {"0": 1, "1": 0, "2": 0, "3": 0},
-                "3": {"0": 0, "1": 0, "2": 0, "3": 0},
+                "confusion_matrix": {
+                    "0": {
+                        "0": {
+                            "count": 1,
+                            "examples": [{"datum": "uid0", "score": 1.0}],
+                        },
+                        "2": {
+                            "count": 1,
+                            "examples": [{"datum": "uid1", "score": 1.0}],
+                        },
+                    }
+                },
+                "missing_predictions": {
+                    "3": {"count": 1, "examples": [{"datum": "uid2"}]}
+                },
             },
-            "parameters": {
-                "score_threshold": 0.75,
-                "hardmax": True,
-                "label_key": "class",
-            },
+            "parameters": {"score_threshold": 0.75, "label_key": "class"},
         },
     ]
     for m in actual_metrics:
+        _filter_elements_with_zero_count(
+            cm=m["value"]["confusion_matrix"],
+            mp=m["value"]["missing_predictions"],
+        )
         assert m in expected_metrics
     for m in expected_metrics:
         assert m in actual_metrics
 
 
-def test_confusion_matrix_api_unit_test(
+def test_confusion_matrix_unit(
     classifications_from_api_unit_tests: list[Classification],
 ):
 
@@ -169,7 +193,9 @@ def test_confusion_matrix_api_unit_test(
     loader.add_data(classifications_from_api_unit_tests)
     evaluator = loader.finalize()
 
-    metrics = evaluator.evaluate(score_thresholds=[0.5])
+    metrics = evaluator.evaluate(
+        metrics_to_return=[MetricType.ConfusionMatrix], score_thresholds=[0.5]
+    )
 
     # test ConfusionMatrix
     actual_metrics = [m.to_dict() for m in metrics[MetricType.ConfusionMatrix]]
@@ -177,18 +203,25 @@ def test_confusion_matrix_api_unit_test(
         {
             "type": "ConfusionMatrix",
             "value": {
-                "0": {"0": 1, "1": 0, "2": 0},
-                "1": {"0": 1, "1": 1, "2": 2},
-                "2": {"0": 1, "1": 0, "2": 0},
+                "confusion_matrix": {
+                    "0": {
+                        "0": {"count": 1, "examples": []},
+                        "1": {"count": 1, "examples": []},
+                        "2": {"count": 1, "examples": []},
+                    },
+                    "1": {"1": {"count": 1, "examples": []}},
+                    "2": {"1": {"count": 2, "examples": []}},
+                },
+                "missing_predictions": {},
             },
-            "parameters": {
-                "score_threshold": 0.5,
-                "hardmax": True,
-                "label_key": "class",
-            },
-        }
+            "parameters": {"score_threshold": 0.5, "label_key": "class"},
+        },
     ]
     for m in actual_metrics:
+        _filter_elements_with_zero_count(
+            cm=m["value"]["confusion_matrix"],
+            mp=m["value"]["missing_predictions"],
+        )
         assert m in expected_metrics
     for m in expected_metrics:
         assert m in actual_metrics
@@ -202,7 +235,11 @@ def test_confusion_matrix_with_example(
     loader.add_data(classifications_two_categeories)
     evaluator = loader.finalize()
 
-    metrics = evaluator.evaluate(score_thresholds=[0.5])
+    metrics = evaluator.evaluate(
+        metrics_to_return=[MetricType.ConfusionMatrix],
+        score_thresholds=[0.5],
+        number_of_examples=6,
+    )
 
     # test ConfusionMatrix
     actual_metrics = [m.to_dict() for m in metrics[MetricType.ConfusionMatrix]]
@@ -210,189 +247,103 @@ def test_confusion_matrix_with_example(
         {
             "type": "ConfusionMatrix",
             "value": {
-                "bird": {"bird": 1, "dog": 0, "cat": 0},
-                "dog": {"bird": 1, "dog": 0, "cat": 0},
-                "cat": {"bird": 1, "dog": 1, "cat": 1},
+                "confusion_matrix": {
+                    "bird": {
+                        "bird": {
+                            "count": 1,
+                            "examples": [
+                                {"datum": "uid0", "score": 0.6000000238418579}
+                            ],
+                        },
+                        "dog": {
+                            "count": 1,
+                            "examples": [{"datum": "uid3", "score": 0.75}],
+                        },
+                        "cat": {
+                            "count": 1,
+                            "examples": [
+                                {"datum": "uid2", "score": 0.800000011920929}
+                            ],
+                        },
+                    },
+                    "dog": {
+                        "cat": {
+                            "count": 1,
+                            "examples": [
+                                {"datum": "uid1", "score": 0.8999999761581421}
+                            ],
+                        }
+                    },
+                    "cat": {
+                        "cat": {
+                            "count": 1,
+                            "examples": [{"datum": "uid4", "score": 1.0}],
+                        }
+                    },
+                },
+                "missing_predictions": {
+                    "dog": {"count": 1, "examples": [{"datum": "uid5"}]}
+                },
             },
-            "parameters": {
-                "score_threshold": 0.5,
-                "hardmax": True,
-                "label_key": "animal",
-            },
+            "parameters": {"score_threshold": 0.5, "label_key": "animal"},
         },
         {
             "type": "ConfusionMatrix",
             "value": {
-                "white": {"white": 1, "red": 0, "blue": 1, "black": 0},
-                "red": {"white": 0, "red": 1, "blue": 0, "black": 1},
-                "blue": {"white": 1, "red": 0, "blue": 0, "black": 0},
-                "black": {"white": 0, "red": 0, "blue": 0, "black": 0},
+                "confusion_matrix": {
+                    "white": {
+                        "white": {
+                            "count": 1,
+                            "examples": [
+                                {"datum": "uid0", "score": 0.6499999761581421}
+                            ],
+                        },
+                        "blue": {
+                            "count": 1,
+                            "examples": [{"datum": "uid1", "score": 0.5}],
+                        },
+                    },
+                    "red": {
+                        "red": {
+                            "count": 1,
+                            "examples": [
+                                {"datum": "uid5", "score": 0.8999999761581421}
+                            ],
+                        }
+                    },
+                    "blue": {
+                        "white": {
+                            "count": 1,
+                            "examples": [{"datum": "uid3", "score": 1.0}],
+                        }
+                    },
+                    "black": {
+                        "red": {
+                            "count": 1,
+                            "examples": [
+                                {"datum": "uid4", "score": 0.800000011920929}
+                            ],
+                        }
+                    },
+                },
+                "missing_predictions": {
+                    "red": {"count": 1, "examples": [{"datum": "uid2"}]}
+                },
             },
-            "parameters": {
-                "score_threshold": 0.5,
-                "hardmax": True,
-                "label_key": "color",
-            },
+            "parameters": {"score_threshold": 0.5, "label_key": "color"},
         },
     ]
     for m in actual_metrics:
+        _filter_elements_with_zero_count(
+            cm=m["value"]["confusion_matrix"],
+            mp=m["value"]["missing_predictions"],
+        )
         assert m in expected_metrics
     for m in expected_metrics:
         assert m in actual_metrics
 
 
-def test_confusion_matrix_with_image_example(
-    classifications_image_example: list[Classification],
-):
-    loader = DataLoader()
-    loader.add_data(classifications_image_example)
-    evaluator = loader.finalize()
-
-    assert evaluator.metadata == {
-        "n_datums": 3,
-        "n_groundtruths": 4,
-        "n_predictions": 6,
-        "n_labels": 8,
-        "ignored_prediction_labels": [
-            ("k4", "v1"),
-            ("k4", "v8"),
-            ("k5", "v1"),
-            ("k4", "v5"),
-            ("k3", "v1"),
-        ],
-        "missing_prediction_labels": [
-            ("k5", "v5"),
-            ("k3", "v3"),
-        ],
-    }
-
-    metrics = evaluator.evaluate()
-
-    # test ConfusionMatrix
-    actual_metrics = [m.to_dict() for m in metrics[MetricType.ConfusionMatrix]]
-    expected_metrics = [
-        # k3
-        {
-            "type": "ConfusionMatrix",
-            "value": {
-                "v1": {
-                    "v1": 0,
-                    "v3": 1,
-                },
-                "v3": {
-                    "v1": 0,
-                    "v3": 0,
-                },
-            },
-            "parameters": {
-                "score_threshold": 0.0,
-                "hardmax": True,
-                "label_key": "k3",
-            },
-        },
-        # k4
-        {
-            "type": "ConfusionMatrix",
-            "value": {
-                "v1": {
-                    "v1": 0,
-                    "v4": 0,
-                    "v5": 0,
-                    "v8": 0,
-                },
-                "v4": {
-                    "v1": 0,
-                    "v4": 1,
-                    "v5": 0,
-                    "v8": 0,
-                },
-                "v5": {
-                    "v1": 0,
-                    "v4": 0,
-                    "v5": 0,
-                    "v8": 0,
-                },
-                "v8": {
-                    "v1": 0,
-                    "v4": 1,
-                    "v5": 0,
-                    "v8": 0,
-                },
-            },
-            "parameters": {
-                "score_threshold": 0.0,
-                "hardmax": True,
-                "label_key": "k4",
-            },
-        },
-        # k5
-        {
-            "type": "ConfusionMatrix",
-            "value": {
-                "v1": {
-                    "v1": 0,
-                    "v5": 1,
-                },
-                "v5": {
-                    "v1": 0,
-                    "v5": 0,
-                },
-            },
-            "parameters": {
-                "score_threshold": 0.0,
-                "hardmax": True,
-                "label_key": "k5",
-            },
-        },
-    ]
-    for m in actual_metrics:
-        assert m in expected_metrics
-    for m in expected_metrics:
-        assert m in actual_metrics
-
-
-def test_confusion_matrix_with_tabular_example(
-    classifications_tabular_example: list[Classification],
-):
-    loader = DataLoader()
-    loader.add_data(classifications_tabular_example)
-    evaluator = loader.finalize()
-
-    assert evaluator.metadata == {
-        "n_datums": 10,
-        "n_groundtruths": 10,
-        "n_predictions": 30,
-        "n_labels": 3,
-        "ignored_prediction_labels": [],
-        "missing_prediction_labels": [],
-    }
-
-    metrics = evaluator.evaluate()
-
-    # test ConfusionMatrix
-    actual_metrics = [m.to_dict() for m in metrics[MetricType.ConfusionMatrix]]
-    expected_metrics = [
-        {
-            "type": "ConfusionMatrix",
-            "value": {
-                "0": {"0": 3, "1": 3, "2": 0},
-                "1": {"0": 0, "1": 2, "2": 1},
-                "2": {"0": 0, "1": 1, "2": 0},
-            },
-            "parameters": {
-                "score_threshold": 0.0,
-                "hardmax": True,
-                "label_key": "class",
-            },
-        }
-    ]
-    for m in actual_metrics:
-        assert m in expected_metrics
-    for m in expected_metrics:
-        assert m in actual_metrics
-
-
-def test_confusion_matrix_mutliclass(
+def test_confusion_matrix_multiclass(
     classifications_multiclass: list[Classification],
 ):
     loader = DataLoader()
@@ -408,7 +359,11 @@ def test_confusion_matrix_mutliclass(
         "n_predictions": 15,
     }
 
-    metrics = evaluator.evaluate(score_thresholds=[0.05, 0.1, 0.3, 0.85])
+    metrics = evaluator.evaluate(
+        metrics_to_return=[MetricType.ConfusionMatrix],
+        score_thresholds=[0.05, 0.5, 0.85],
+        number_of_examples=5,
+    )
 
     # test ConfusionMatrix
     actual_metrics = [m.to_dict() for m in metrics[MetricType.ConfusionMatrix]]
@@ -416,63 +371,113 @@ def test_confusion_matrix_mutliclass(
         {
             "type": "ConfusionMatrix",
             "value": {
-                "cat": {"cat": 1, "dog": 0, "bee": 0},
-                "dog": {"cat": 0, "dog": 1, "bee": 0},
-                "bee": {"cat": 1, "dog": 0, "bee": 2},
+                "confusion_matrix": {
+                    "cat": {
+                        "cat": {
+                            "count": 1,
+                            "examples": [
+                                {"datum": "uid0", "score": 0.44598543643951416}
+                            ],
+                        },
+                        "bee": {
+                            "count": 1,
+                            "examples": [
+                                {"datum": "uid2", "score": 0.4026564359664917}
+                            ],
+                        },
+                    },
+                    "dog": {
+                        "dog": {
+                            "count": 1,
+                            "examples": [
+                                {"datum": "uid4", "score": 0.5890645980834961}
+                            ],
+                        }
+                    },
+                    "bee": {
+                        "bee": {
+                            "count": 2,
+                            "examples": [
+                                {
+                                    "datum": "uid1",
+                                    "score": 0.44450607895851135,
+                                },
+                                {"datum": "uid3", "score": 0.5510573983192444},
+                            ],
+                        }
+                    },
+                },
+                "missing_predictions": {},
             },
             "parameters": {
                 "score_threshold": 0.05,
-                "hardmax": True,
                 "label_key": "class_label",
             },
         },
         {
             "type": "ConfusionMatrix",
             "value": {
-                "cat": {"cat": 1, "dog": 0, "bee": 0},
-                "dog": {"cat": 0, "dog": 1, "bee": 0},
-                "bee": {"cat": 1, "dog": 0, "bee": 2},
+                "confusion_matrix": {
+                    "dog": {
+                        "dog": {
+                            "count": 1,
+                            "examples": [
+                                {"datum": "uid4", "score": 0.5890645980834961}
+                            ],
+                        }
+                    },
+                    "bee": {
+                        "bee": {
+                            "count": 1,
+                            "examples": [
+                                {"datum": "uid3", "score": 0.5510573983192444}
+                            ],
+                        }
+                    },
+                },
+                "missing_predictions": {
+                    "cat": {
+                        "count": 2,
+                        "examples": [{"datum": "uid0"}, {"datum": "uid2"}],
+                    },
+                    "bee": {"count": 1, "examples": [{"datum": "uid1"}]},
+                },
             },
-            "parameters": {
-                "score_threshold": 0.1,
-                "hardmax": True,
-                "label_key": "class_label",
-            },
+            "parameters": {"score_threshold": 0.5, "label_key": "class_label"},
         },
         {
             "type": "ConfusionMatrix",
             "value": {
-                "cat": {"cat": 1, "dog": 0, "bee": 0},
-                "dog": {"cat": 0, "dog": 1, "bee": 0},
-                "bee": {"cat": 1, "dog": 0, "bee": 2},
-            },
-            "parameters": {
-                "score_threshold": 0.3,
-                "hardmax": True,
-                "label_key": "class_label",
-            },
-        },
-        {
-            "type": "ConfusionMatrix",
-            "value": {
-                "cat": {"cat": 0, "dog": 0, "bee": 0},
-                "dog": {"cat": 0, "dog": 0, "bee": 0},
-                "bee": {"cat": 0, "dog": 0, "bee": 0},
+                "confusion_matrix": {},
+                "missing_predictions": {
+                    "cat": {
+                        "count": 2,
+                        "examples": [{"datum": "uid0"}, {"datum": "uid2"}],
+                    },
+                    "dog": {"count": 1, "examples": [{"datum": "uid4"}]},
+                    "bee": {
+                        "count": 2,
+                        "examples": [{"datum": "uid1"}, {"datum": "uid3"}],
+                    },
+                },
             },
             "parameters": {
                 "score_threshold": 0.85,
-                "hardmax": True,
                 "label_key": "class_label",
             },
         },
     ]
     for m in actual_metrics:
+        _filter_elements_with_zero_count(
+            cm=m["value"]["confusion_matrix"],
+            mp=m["value"]["missing_predictions"],
+        )
         assert m in expected_metrics
     for m in expected_metrics:
         assert m in actual_metrics
 
 
-def test_confusion_matrix_true_negatives_check(
+def test_confusion_matrix_without_hardmax(
     classifications_multiclass_true_negatives_check: list[Classification],
 ):
     loader = DataLoader()
@@ -494,7 +499,10 @@ def test_confusion_matrix_true_negatives_check(
     }
 
     metrics = evaluator.evaluate(
-        score_thresholds=[0.47, 0.49],
+        metrics_to_return=[MetricType.ConfusionMatrix],
+        score_thresholds=[0.05, 0.4, 0.5],
+        number_of_examples=6,
+        hardmax=False,
     )
 
     # test ConfusionMatrix
@@ -503,115 +511,135 @@ def test_confusion_matrix_true_negatives_check(
         {
             "type": "ConfusionMatrix",
             "value": {
-                "ant": {"ant": 0, "bee": 0, "cat": 0},
-                "bee": {"ant": 1, "bee": 0, "cat": 0},
-                "cat": {"ant": 0, "bee": 0, "cat": 0},
+                "confusion_matrix": {
+                    "ant": {
+                        "ant": {
+                            "count": 1,
+                            "examples": [
+                                {"datum": "uid1", "score": 0.15000000596046448}
+                            ],
+                        },
+                        "bee": {
+                            "count": 1,
+                            "examples": [
+                                {"datum": "uid1", "score": 0.47999998927116394}
+                            ],
+                        },
+                        "cat": {
+                            "count": 1,
+                            "examples": [
+                                {"datum": "uid1", "score": 0.3700000047683716}
+                            ],
+                        },
+                    }
+                },
+                "missing_predictions": {},
             },
-            "parameters": {
-                "score_threshold": 0.47,
-                "hardmax": True,
-                "label_key": "k1",
-            },
+            "parameters": {"score_threshold": 0.05, "label_key": "k1"},
         },
         {
             "type": "ConfusionMatrix",
             "value": {
-                "egg": {"egg": 0, "milk": 0, "flour": 0},
-                "milk": {"egg": 1, "milk": 0, "flour": 0},
-                "flour": {"egg": 0, "milk": 0, "flour": 0},
+                "confusion_matrix": {
+                    "ant": {
+                        "bee": {
+                            "count": 1,
+                            "examples": [
+                                {"datum": "uid1", "score": 0.47999998927116394}
+                            ],
+                        }
+                    }
+                },
+                "missing_predictions": {},
             },
-            "parameters": {
-                "score_threshold": 0.47,
-                "hardmax": True,
-                "label_key": "k2",
-            },
+            "parameters": {"score_threshold": 0.4, "label_key": "k1"},
         },
         {
             "type": "ConfusionMatrix",
             "value": {
-                "ant": {"ant": 0, "bee": 0, "cat": 0},
-                "bee": {"ant": 0, "bee": 0, "cat": 0},
-                "cat": {"ant": 0, "bee": 0, "cat": 0},
+                "confusion_matrix": {},
+                "missing_predictions": {
+                    "ant": {
+                        "count": 1,
+                        "examples": [
+                            {
+                                "datum": "uid1",
+                            }
+                        ],
+                    }
+                },
             },
-            "parameters": {
-                "score_threshold": 0.49,
-                "hardmax": True,
-                "label_key": "k1",
-            },
+            "parameters": {"score_threshold": 0.5, "label_key": "k1"},
         },
         {
             "type": "ConfusionMatrix",
             "value": {
-                "egg": {"egg": 0, "milk": 0, "flour": 0},
-                "milk": {"egg": 0, "milk": 0, "flour": 0},
-                "flour": {"egg": 0, "milk": 0, "flour": 0},
+                "confusion_matrix": {
+                    "egg": {
+                        "egg": {
+                            "count": 1,
+                            "examples": [
+                                {"datum": "uid2", "score": 0.15000000596046448}
+                            ],
+                        },
+                        "milk": {
+                            "count": 1,
+                            "examples": [
+                                {"datum": "uid2", "score": 0.47999998927116394}
+                            ],
+                        },
+                        "flour": {
+                            "count": 1,
+                            "examples": [
+                                {"datum": "uid2", "score": 0.3700000047683716}
+                            ],
+                        },
+                    }
+                },
+                "missing_predictions": {},
             },
-            "parameters": {
-                "score_threshold": 0.49,
-                "hardmax": True,
-                "label_key": "k2",
+            "parameters": {"score_threshold": 0.05, "label_key": "k2"},
+        },
+        {
+            "type": "ConfusionMatrix",
+            "value": {
+                "confusion_matrix": {
+                    "egg": {
+                        "milk": {
+                            "count": 1,
+                            "examples": [
+                                {"datum": "uid2", "score": 0.47999998927116394}
+                            ],
+                        },
+                    }
+                },
+                "missing_predictions": {},
             },
+            "parameters": {"score_threshold": 0.4, "label_key": "k2"},
+        },
+        {
+            "type": "ConfusionMatrix",
+            "value": {
+                "confusion_matrix": {},
+                "missing_predictions": {
+                    "egg": {
+                        "count": 1,
+                        "examples": [
+                            {
+                                "datum": "uid2",
+                            }
+                        ],
+                    }
+                },
+            },
+            "parameters": {"score_threshold": 0.5, "label_key": "k2"},
         },
     ]
     for m in actual_metrics:
-        assert m in expected_metrics
-    for m in expected_metrics:
-        assert m in actual_metrics
-
-
-def test_confusion_matrix_zero_count_check(
-    classifications_multiclass_zero_count: list[Classification],
-):
-
-    loader = DataLoader()
-    loader.add_data(classifications_multiclass_zero_count)
-    evaluator = loader.finalize()
-
-    assert evaluator.metadata == {
-        "ignored_prediction_labels": [
-            ("k", "bee"),
-            ("k", "cat"),
-        ],
-        "missing_prediction_labels": [],
-        "n_datums": 1,
-        "n_groundtruths": 1,
-        "n_labels": 3,
-        "n_predictions": 3,
-    }
-
-    metrics = evaluator.evaluate(score_thresholds=[0.47, 0.49])
-
-    # test ConfusionMatrix
-    actual_metrics = [m.to_dict() for m in metrics[MetricType.ConfusionMatrix]]
-    expected_metrics = [
-        {
-            "type": "ConfusionMatrix",
-            "value": {
-                "ant": {"ant": 0, "bee": 0, "cat": 0},
-                "bee": {"ant": 1, "bee": 0, "cat": 0},
-                "cat": {"ant": 0, "bee": 0, "cat": 0},
-            },
-            "parameters": {
-                "score_threshold": 0.47,
-                "hardmax": True,
-                "label_key": "k",
-            },
-        },
-        {
-            "type": "ConfusionMatrix",
-            "value": {
-                "ant": {"ant": 0, "bee": 0, "cat": 0},
-                "bee": {"ant": 0, "bee": 0, "cat": 0},
-                "cat": {"ant": 0, "bee": 0, "cat": 0},
-            },
-            "parameters": {
-                "score_threshold": 0.49,
-                "hardmax": True,
-                "label_key": "k",
-            },
-        },
-    ]
-    for m in actual_metrics:
+        _filter_elements_with_zero_count(
+            cm=m["value"]["confusion_matrix"],
+            mp=m["value"]["missing_predictions"],
+        )
         assert m in expected_metrics
     for m in expected_metrics:
         assert m in actual_metrics
