@@ -121,70 +121,70 @@ def test_precision_with_example(
     loader.add_data(classifications_two_categeories)
     evaluator = loader.finalize()
 
-    metrics = evaluator.evaluate(score_thresholds=[0.5])
+    metrics = evaluator.evaluate(score_thresholds=[0.0, 0.5])
 
     # test Precision
     actual_metrics = [m.to_dict() for m in metrics[MetricType.Precision]]
     expected_metrics = [
         {
             "type": "Precision",
-            "value": [1.0],
+            "value": [1.0, 1.0],
             "parameters": {
-                "score_thresholds": [0.5],
+                "score_thresholds": [0.0, 0.5],
                 "hardmax": True,
                 "label": {"key": "animal", "value": "bird"},
             },
         },
         {
             "type": "Precision",
-            "value": [0.0],
+            "value": [0.0, 0.0],
             "parameters": {
-                "score_thresholds": [0.5],
+                "score_thresholds": [0.0, 0.5],
                 "hardmax": True,
                 "label": {"key": "animal", "value": "dog"},
             },
         },
         {
             "type": "Precision",
-            "value": [1 / 3],
+            "value": [0.25, 1 / 3],
             "parameters": {
-                "score_thresholds": [0.5],
+                "score_thresholds": [0.0, 0.5],
                 "hardmax": True,
                 "label": {"key": "animal", "value": "cat"},
             },
         },
         {
             "type": "Precision",
-            "value": [0.5],
+            "value": [0.5, 0.5],
             "parameters": {
-                "score_thresholds": [0.5],
+                "score_thresholds": [0.0, 0.5],
                 "hardmax": True,
                 "label": {"key": "color", "value": "white"},
             },
         },
         {
             "type": "Precision",
-            "value": [0.5],
+            "value": [2 / 3, 0.5],
             "parameters": {
-                "score_thresholds": [0.5],
+                "score_thresholds": [0.0, 0.5],
                 "hardmax": True,
                 "label": {"key": "color", "value": "red"},
             },
         },
         {
             "type": "Precision",
-            "value": [0.0],
+            "value": [0.0, 0.0],
             "parameters": {
-                "score_thresholds": [0.5],
+                "score_thresholds": [0.0, 0.5],
                 "hardmax": True,
                 "label": {"key": "color", "value": "blue"},
             },
         },
         {
             "type": "Precision",
-            "value": [0.0],
+            "value": [0.0, 0.0],
             "parameters": {
-                "score_thresholds": [0.5],
+                "score_thresholds": [0.0, 0.5],
                 "hardmax": True,
                 "label": {"key": "color", "value": "black"},
             },
