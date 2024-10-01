@@ -158,7 +158,8 @@ def compute_iou(
 
 @dataclass
 class Filter:
-    indices: NDArray[np.int32]
+    ranked_indices: NDArray[np.int32]
+    detailed_indices: NDArray[np.int32]
     label_metadata: NDArray[np.int32]
 
 
@@ -257,12 +258,14 @@ class Evaluator:
         Filter
             A filter object that can be passed to the `evaluate` method.
         """
-        n_rows = self._ranked_pairs.shape[0]
 
         n_datums = self._label_metadata_per_datum.shape[1]
         n_labels = self._label_metadata_per_datum.shape[2]
 
-        mask_pairs = np.ones((n_rows, 1), dtype=np.bool_)
+        mask_ranked = np.ones((self._ranked_pairs.shape[0], 1), dtype=np.bool_)
+        mask_detailed = np.ones(
+            (self._detailed_pairs.shape[0], 1), dtype=np.bool_
+        )
         mask_datums = np.ones(n_datums, dtype=np.bool_)
         mask_labels = np.ones(n_labels, dtype=np.bool_)
 
@@ -272,8 +275,11 @@ class Evaluator:
                     [self.uid_to_index[uid] for uid in datum_uids],
                     dtype=np.int32,
                 )
-            mask_pairs[
+            mask_ranked[
                 ~np.isin(self._ranked_pairs[:, 0].astype(int), datum_uids)
+            ] = False
+            mask_detailed[
+                ~np.isin(self._detailed_pairs[:, 0].astype(int), datum_uids)
             ] = False
             mask_datums[~np.isin(np.arange(n_datums), datum_uids)] = False
 
@@ -282,8 +288,11 @@ class Evaluator:
                 labels = np.array(
                     [self.label_to_index[label] for label in labels]
                 )
-            mask_pairs[
+            mask_ranked[
                 ~np.isin(self._ranked_pairs[:, 4].astype(int), labels)
+            ] = False
+            mask_detailed[
+                ~np.isin(self._detailed_pairs[:, 4].astype(int), labels)
             ] = False
             mask_labels[~np.isin(np.arange(n_labels), labels)] = False
 
@@ -297,14 +306,19 @@ class Evaluator:
                 if label_keys.size > 0
                 else np.array([])
             )
-            mask_pairs[
+            mask_ranked[
                 ~np.isin(self._ranked_pairs[:, 4].astype(int), label_indices)
+            ] = False
+            mask_detailed[
+                ~np.isin(self._detailed_pairs[:, 4].astype(int), label_indices)
             ] = False
             mask_labels[~np.isin(np.arange(n_labels), label_indices)] = False
 
-        mask = mask_datums[:, np.newaxis] & mask_labels[np.newaxis, :]
+        mask_label_metadata = (
+            mask_datums[:, np.newaxis] & mask_labels[np.newaxis, :]
+        )
         label_metadata_per_datum = self._label_metadata_per_datum.copy()
-        label_metadata_per_datum[:, ~mask] = 0
+        label_metadata_per_datum[:, ~mask_label_metadata] = 0
 
         label_metadata = np.zeros_like(self._label_metadata, dtype=np.int32)
         label_metadata[:, :2] = np.transpose(
@@ -316,7 +330,8 @@ class Evaluator:
         label_metadata[:, 2] = self._label_metadata[:, 2]
 
         return Filter(
-            indices=np.where(mask_pairs)[0],
+            ranked_indices=np.where(mask_ranked)[0],
+            detailed_indices=np.where(mask_detailed)[0],
             label_metadata=label_metadata,
         )
 
@@ -350,10 +365,12 @@ class Evaluator:
             A dictionary mapping MetricType enumerations to lists of computed metrics.
         """
 
-        data = self._ranked_pairs
+        ranked_pairs = self._ranked_pairs
+        detailed_pairs = self._detailed_pairs
         label_metadata = self._label_metadata
         if filter_ is not None:
-            data = data[filter_.indices]
+            ranked_pairs = ranked_pairs[filter_.ranked_indices]
+            detailed_pairs = detailed_pairs[filter_.detailed_indices]
             label_metadata = filter_.label_metadata
 
         (
@@ -372,7 +389,7 @@ class Evaluator:
             precision_recall,
             pr_curves,
         ) = compute_metrics(
-            data=data,
+            data=ranked_pairs,
             label_metadata=label_metadata,
             iou_thresholds=np.array(iou_thresholds),
             score_thresholds=np.array(score_thresholds),
@@ -531,6 +548,8 @@ class Evaluator:
             metrics[
                 MetricType.ConfusionMatrix
             ] = self._compute_confusion_matrix(
+                data=detailed_pairs,
+                label_metadata=label_metadata,
                 iou_thresholds=iou_thresholds,
                 score_thresholds=score_thresholds,
                 number_of_examples=number_of_examples,
@@ -544,6 +563,8 @@ class Evaluator:
 
     def _compute_confusion_matrix(
         self,
+        data: NDArray[np.floating],
+        label_metadata: NDArray[np.int32],
         iou_thresholds: list[float] = [0.5],
         score_thresholds: list[float] = [
             score / 10.0 for score in range(1, 11)
@@ -568,7 +589,7 @@ class Evaluator:
             Outer list is indexed by label, inner list is by IoU.
         """
 
-        if self._detailed_pairs.size == 0:
+        if data.size == 0:
             return list()
 
         (
@@ -576,8 +597,8 @@ class Evaluator:
             hallucinations,
             missing_predictions,
         ) = compute_confusion_matrix(
-            self._detailed_pairs,
-            label_metadata=self._label_metadata,
+            data=data,
+            label_metadata=label_metadata,
             iou_thresholds=np.array(iou_thresholds),
             score_thresholds=np.array(score_thresholds),
             n_examples=number_of_examples,
