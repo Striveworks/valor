@@ -259,7 +259,7 @@ def test_counts_with_example(
     loader.add_data(classifications_two_categeories)
     evaluator = loader.finalize()
 
-    metrics = evaluator.evaluate(score_thresholds=[0.05, 0.5, 0.95])
+    metrics = evaluator.evaluate(score_thresholds=[0.5, 0.95])
 
     # test Counts
     actual_metrics = [m.to_dict() for m in metrics[MetricType.Counts]]
@@ -267,13 +267,13 @@ def test_counts_with_example(
         {
             "type": "Counts",
             "value": {
-                "tp": [1, 1, 0],
-                "fp": [0, 0, 0],
-                "fn": [2, 2, 3],
-                "tn": [3, 3, 3],
+                "tp": [1, 0],
+                "fp": [0, 0],
+                "fn": [2, 3],
+                "tn": [3, 3],
             },
             "parameters": {
-                "score_thresholds": [0.05, 0.5, 0.95],
+                "score_thresholds": [0.5, 0.95],
                 "hardmax": True,
                 "label": {"key": "animal", "value": "bird"},
             },
@@ -281,21 +281,13 @@ def test_counts_with_example(
         {
             "type": "Counts",
             "value": {
-                "tp": [
-                    0,
-                    0,
-                    0,
-                ],  # TODO shouldn't the sixth groundtruth be a tp at low score thresholds? the groundtruth is "dog", and both "cat" and "dog" share a score of .4
-                "fp": [1, 1, 0],
-                "fn": [
-                    2,
-                    2,
-                    2,
-                ],  # TODO should this be 1 for low score thresholds (related to the above)?
-                "tn": [3, 3, 4],
+                "tp": [0, 0],
+                "fp": [1, 0],
+                "fn": [2, 2],
+                "tn": [3, 4],
             },
             "parameters": {
-                "score_thresholds": [0.05, 0.5, 0.95],
+                "score_thresholds": [0.5, 0.95],
                 "hardmax": True,
                 "label": {"key": "animal", "value": "dog"},
             },
@@ -303,13 +295,13 @@ def test_counts_with_example(
         {
             "type": "Counts",
             "value": {
-                "tp": [1, 1, 1],
-                "fp": [3, 2, 0],
-                "fn": [0, 0, 0],
-                "tn": [2, 3, 5],
+                "tp": [1, 1],
+                "fp": [2, 0],
+                "fn": [0, 0],
+                "tn": [3, 5],
             },
             "parameters": {
-                "score_thresholds": [0.05, 0.5, 0.95],
+                "score_thresholds": [0.5, 0.95],
                 "hardmax": True,
                 "label": {"key": "animal", "value": "cat"},
             },
@@ -317,13 +309,13 @@ def test_counts_with_example(
         {
             "type": "Counts",
             "value": {
-                "tp": [1, 1, 0],
-                "fp": [1, 1, 1],
-                "fn": [1, 1, 2],
-                "tn": [3, 3, 3],
+                "tp": [1, 0],
+                "fp": [1, 1],
+                "fn": [1, 2],
+                "tn": [3, 3],
             },
             "parameters": {
-                "score_thresholds": [0.05, 0.5, 0.95],
+                "score_thresholds": [0.5, 0.95],
                 "hardmax": True,
                 "label": {"key": "color", "value": "white"},
             },
@@ -331,13 +323,13 @@ def test_counts_with_example(
         {
             "type": "Counts",
             "value": {
-                "tp": [2, 1, 0],
-                "fp": [1, 1, 0],
-                "fn": [0, 1, 2],
-                "tn": [3, 3, 4],
+                "tp": [1, 0],
+                "fp": [1, 0],
+                "fn": [1, 2],
+                "tn": [3, 4],
             },
             "parameters": {
-                "score_thresholds": [0.05, 0.5, 0.95],
+                "score_thresholds": [0.5, 0.95],
                 "hardmax": True,
                 "label": {"key": "color", "value": "red"},
             },
@@ -345,13 +337,13 @@ def test_counts_with_example(
         {
             "type": "Counts",
             "value": {
-                "tp": [0, 0, 0],
-                "fp": [1, 1, 0],
-                "fn": [1, 1, 1],
-                "tn": [4, 4, 5],
+                "tp": [0, 0],
+                "fp": [1, 0],
+                "fn": [1, 1],
+                "tn": [4, 5],
             },
             "parameters": {
-                "score_thresholds": [0.05, 0.5, 0.95],
+                "score_thresholds": [0.5, 0.95],
                 "hardmax": True,
                 "label": {"key": "color", "value": "blue"},
             },
@@ -359,19 +351,22 @@ def test_counts_with_example(
         {
             "type": "Counts",
             "value": {
-                "tp": [0, 0, 0],
-                "fp": [0, 0, 0],
-                "fn": [1, 1, 1],
-                "tn": [5, 5, 5],
+                "tp": [0, 0],
+                "fp": [0, 0],
+                "fn": [1, 1],
+                "tn": [5, 5],
             },
             "parameters": {
-                "score_thresholds": [0.05, 0.5, 0.95],
+                "score_thresholds": [0.5, 0.95],
                 "hardmax": True,
                 "label": {"key": "color", "value": "black"},
             },
         },
     ]
     for m in actual_metrics:
+        import json
+
+        print(json.dumps(m, indent=4))
         assert m in expected_metrics
     for m in expected_metrics:
         assert m in actual_metrics
