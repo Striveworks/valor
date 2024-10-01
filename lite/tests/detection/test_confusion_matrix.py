@@ -439,7 +439,6 @@ def test_confusion_matrix(
         metrics_to_return=[MetricType.ConfusionMatrix],
     )
 
-    # test ConfusionMatrix
     actual_metrics = [m.to_dict() for m in metrics[MetricType.ConfusionMatrix]]
     expected_metrics = [
         {
@@ -756,7 +755,6 @@ def test_confusion_matrix(
         metrics_to_return=[MetricType.ConfusionMatrix],
     )
 
-    # test ConfusionMatrix
     actual_metrics = [m.to_dict() for m in metrics[MetricType.ConfusionMatrix]]
     expected_metrics = [
         {
@@ -1131,7 +1129,6 @@ def test_confusion_matrix_using_torch_metrics_example(
 
     assert len(metrics[MetricType.ConfusionMatrix]) == 16
 
-    # test ConfusionMatrix
     actual_metrics = [m.to_dict() for m in metrics[MetricType.ConfusionMatrix]]
     expected_metrics = [
         {
@@ -1543,7 +1540,6 @@ def test_confusion_matrix_fp_hallucination_edge_case(
 
     assert len(metrics[MetricType.ConfusionMatrix]) == 2
 
-    # test ConfusionMatrix
     actual_metrics = [m.to_dict() for m in metrics[MetricType.ConfusionMatrix]]
     expected_metrics = [
         {

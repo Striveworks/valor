@@ -492,6 +492,44 @@ def compute_metrics(
     )
 
 
+def _count_with_examples(
+    data: NDArray[np.floating],
+    unique_idx: int | list[int],
+    label_idx: int | list[int],
+) -> tuple[NDArray[np.floating], NDArray[np.int32], NDArray[np.int32]]:
+    """
+    Helper function for counting occurences of unique detailed pairs.
+
+    Parameters
+    ----------
+    data : NDArray[np.floating]
+        A masked portion of a detailed pairs array.
+    unique_idx : int | list[int]
+        The index or indices upon which uniqueness is constrained.
+    label_idx : int | list[int]
+        The index or indices within the unique index or indices that encode labels.
+
+    Returns
+    -------
+    NDArray[np.floating]
+        Examples drawn from the data input.
+    NDArray[np.int32]
+        Unique label indices.
+    NDArray[np.int32]
+        Counts for each unique label index.
+    """
+    unique_rows, indices = np.unique(
+        data.astype(int)[:, unique_idx],
+        return_index=True,
+        axis=0,
+    )
+    examples = data[indices]
+    labels, counts = np.unique(
+        unique_rows[:, label_idx], return_counts=True, axis=0
+    )
+    return examples, labels, counts
+
+
 def compute_confusion_matrix(
     data: NDArray[np.floating],
     label_metadata: NDArray[np.int32],
@@ -659,31 +697,19 @@ def compute_confusion_matrix(
                 ~mask_gts_with_tp_override & ~mask_pds_with_tp_override
             )
 
-            def _count(
-                x: NDArray[np.floating],
-                unique_idx: int | list[int],
-                label_idx: int | list[int],
-            ):
-                unique_rows, indices = np.unique(
-                    x.astype(int)[:, unique_idx],
-                    return_index=True,
-                    axis=0,
-                )
-                examples = x[indices]
-                labels, counts = np.unique(
-                    unique_rows[:, label_idx], return_counts=True, axis=0
-                )
-                return examples, labels, counts
-
             # count true positives
-            tp_examples, tp_labels, tp_counts = _count(
+            tp_examples, tp_labels, tp_counts = _count_with_examples(
                 data[mask_tp],
                 unique_idx=[0, 2, 5],
                 label_idx=2,
             )
 
             # count misclassifications
-            misclf_examples, misclf_labels, misclf_counts = _count(
+            (
+                misclf_examples,
+                misclf_labels,
+                misclf_counts,
+            ) = _count_with_examples(
                 data[mask_misclf], unique_idx=[0, 1, 2, 4, 5], label_idx=[3, 4]
             )
 
@@ -692,14 +718,18 @@ def compute_confusion_matrix(
                 halluc_examples,
                 halluc_labels,
                 halluc_counts,
-            ) = _count(data[mask_halluc], unique_idx=[0, 2, 5], label_idx=2)
+            ) = _count_with_examples(
+                data[mask_halluc], unique_idx=[0, 2, 5], label_idx=2
+            )
 
             # count missing predictions
             (
                 misprd_examples,
                 misprd_labels,
                 misprd_counts,
-            ) = _count(data[mask_misprd], unique_idx=[0, 1, 4], label_idx=2)
+            ) = _count_with_examples(
+                data[mask_misprd], unique_idx=[0, 1, 4], label_idx=2
+            )
 
             # store the counts
             confusion_matrix[
