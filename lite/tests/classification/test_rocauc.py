@@ -254,7 +254,7 @@ def test_rocauc_with_example(
         assert m in actual_metrics
 
 
-def test_rocacu_with_image_example(
+def test_rocauc_with_image_example(
     classifications_image_example: list[Classification],
 ):
     loader = DataLoader()
@@ -303,7 +303,7 @@ def test_rocacu_with_image_example(
         assert m in actual_metrics
 
 
-def test_rocacu_with_tabular_example(
+def test_rocauc_with_tabular_example(
     classifications_tabular_example: list[Classification],
 ):
     loader = DataLoader()
