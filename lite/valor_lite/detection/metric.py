@@ -19,7 +19,26 @@ class MetricType(str, Enum):
     ARAveragedOverScores = "ARAveragedOverScores"
     mARAveragedOverScores = "mARAveragedOverScores"
     PrecisionRecallCurve = "PrecisionRecallCurve"
-    DetailedCounts = "DetailedCounts"
+    ConfusionMatrix = "ConfusionMatrix"
+
+    @classmethod
+    def base_metrics(cls):
+        return [
+            cls.Counts,
+            cls.Accuracy,
+            cls.Precision,
+            cls.Recall,
+            cls.F1,
+            cls.AP,
+            cls.AR,
+            cls.mAP,
+            cls.mAR,
+            cls.APAveragedOverIOUs,
+            cls.mAPAveragedOverIOUs,
+            cls.ARAveragedOverScores,
+            cls.mARAveragedOverScores,
+            cls.PrecisionRecallCurve,
+        ]
 
 
 @dataclass
@@ -310,46 +329,78 @@ class PrecisionRecallCurve:
 
 
 @dataclass
-class DetailedCounts:
-    tp: list[int]
-    fp_misclassification: list[int]
-    fp_hallucination: list[int]
-    fn_misclassification: list[int]
-    fn_missing_prediction: list[int]
-    tp_examples: list[list[str]]
-    fp_misclassification_examples: list[list[str]]
-    fp_hallucination_examples: list[list[str]]
-    fn_misclassification_examples: list[list[str]]
-    fn_missing_prediction_examples: list[list[str]]
-    score_thresholds: list[float]
+class ConfusionMatrix:
+    confusion_matrix: dict[
+        str,  # ground truth label value
+        dict[
+            str,  # prediction label value
+            dict[
+                str,  # either `count` or `examples`
+                int
+                | list[
+                    dict[
+                        str,  # either `datum`, `groundtruth`, `prediction` or score
+                        str  # datum uid
+                        | tuple[
+                            float, float, float, float
+                        ]  # bounding box (xmin, xmax, ymin, ymax)
+                        | float,  # prediction score
+                    ]
+                ],
+            ],
+        ],
+    ]
+    hallucinations: dict[
+        str,  # prediction label value
+        dict[
+            str,  # either `count` or `examples`
+            int
+            | list[
+                dict[
+                    str,  # either `datum`, `prediction` or score
+                    str  # datum uid
+                    | float  # prediction score
+                    | tuple[
+                        float, float, float, float
+                    ],  # bounding box (xmin, xmax, ymin, ymax)
+                ]
+            ],
+        ],
+    ]
+    missing_predictions: dict[
+        str,  # ground truth label value
+        dict[
+            str,  # either `count` or `examples`
+            int
+            | list[
+                dict[
+                    str,  # either `datum` or `groundtruth`
+                    str  # datum uid
+                    | tuple[
+                        float, float, float, float
+                    ],  # bounding box (xmin, xmax, ymin, ymax)
+                ]
+            ],
+        ],
+    ]
+    score_threshold: float
     iou_threshold: float
-    label: tuple[str, str]
+    label_key: str
+    number_of_examples: int
 
     @property
     def metric(self) -> Metric:
         return Metric(
             type=type(self).__name__,
             value={
-                "tp": self.tp,
-                "fp_misclassification": self.fp_misclassification,
-                "fp_hallucination": self.fp_hallucination,
-                "fn_misclassification": self.fn_misclassification,
-                "fn_missing_prediction": self.fn_missing_prediction,
-                "tn": None,
-                "tp_examples": self.tp_examples,
-                "fp_misclassification_examples": self.fp_misclassification_examples,
-                "fp_hallucination_examples": self.fp_hallucination_examples,
-                "fn_misclassification_examples": self.fn_misclassification_examples,
-                "fn_missing_prediction_examples": self.fn_missing_prediction_examples,
-                "tn_examples": None,
+                "confusion_matrix": self.confusion_matrix,
+                "hallucinations": self.hallucinations,
+                "missing_predictions": self.missing_predictions,
             },
             parameters={
-                "score_thresholds": self.score_thresholds,
+                "score_threshold": self.score_threshold,
                 "iou_threshold": self.iou_threshold,
-                "label": {
-                    "key": self.label[0],
-                    "value": self.label[1],
-                },
+                "label_key": self.label_key,
             },
         )
 

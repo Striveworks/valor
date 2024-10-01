@@ -1,5 +1,7 @@
+import numpy as np
 import pytest
-from valor_lite.detection import BoundingBox, Detection
+from shapely.geometry import Polygon as ShapelyPolygon
+from valor_lite.detection import Bitmask, BoundingBox, Detection, Polygon
 
 
 @pytest.fixture
@@ -30,6 +32,42 @@ def rect4() -> tuple[float, float, float, float]:
 def rect5() -> tuple[float, float, float, float]:
     """Box with partial overlap to rect3."""
     return (87, 158, 10, 400)
+
+
+@pytest.fixture
+def rect1_rotated_5_degrees_around_origin() -> list[tuple[float, float]]:
+    """Box with area = 1500."""
+    return [
+        (9.090389553440874, 10.833504408394036),
+        (58.90012445802815, 15.191291545776945),
+        (56.28545217559841, 45.07713248852931),
+        (6.475717271011129, 40.7193453511464),
+        (9.090389553440874, 10.833504408394036),
+    ]
+
+
+@pytest.fixture
+def rect2_rotated_5_degrees_around_origin() -> list[tuple[float, float]]:
+    """Box with area = 1100."""
+    return [
+        (14.942920471376183, 1.3073361412148725),
+        (69.7336288664222, 6.1009019923360714),
+        (67.99051401146903, 26.024795954170983),
+        (13.19980561642302, 21.231230103049782),
+        (14.942920471376183, 1.3073361412148725),
+    ]
+
+
+@pytest.fixture
+def rect3_rotated_5_degrees_around_origin() -> list[tuple[float, float]]:
+    """Box with area = 57,510."""
+    return [
+        (85.79738130650527, 17.544496599963715),
+        (156.52720487101922, 23.732554335047446),
+        (85.9310532454161, 830.6502597893614),
+        (15.20122968090216, 824.4622020542777),
+        (85.79738130650527, 17.544496599963715),
+    ]
 
 
 @pytest.fixture
@@ -85,6 +123,62 @@ def basic_detections(
                     xmax=rect2[1],
                     ymin=rect2[2],
                     ymax=rect2[3],
+                    labels=[("k2", "v2")],
+                    scores=[0.98],
+                ),
+            ],
+        ),
+    ]
+
+
+@pytest.fixture
+def basic_rotated_detections(
+    rect1_rotated_5_degrees_around_origin: tuple[float, float, float, float],
+    rect2_rotated_5_degrees_around_origin: tuple[float, float, float, float],
+    rect3_rotated_5_degrees_around_origin: tuple[float, float, float, float],
+) -> list[Detection]:
+    return [
+        Detection(
+            uid="uid1",
+            groundtruths=[
+                Polygon(
+                    shape=ShapelyPolygon(
+                        rect1_rotated_5_degrees_around_origin
+                    ),
+                    labels=[("k1", "v1")],
+                ),
+                Polygon(
+                    shape=ShapelyPolygon(
+                        rect3_rotated_5_degrees_around_origin
+                    ),
+                    labels=[("k2", "v2")],
+                ),
+            ],
+            predictions=[
+                Polygon(
+                    shape=ShapelyPolygon(
+                        rect1_rotated_5_degrees_around_origin
+                    ),
+                    labels=[("k1", "v1")],
+                    scores=[0.3],
+                ),
+            ],
+        ),
+        Detection(
+            uid="uid2",
+            groundtruths=[
+                Polygon(
+                    shape=ShapelyPolygon(
+                        rect2_rotated_5_degrees_around_origin
+                    ),
+                    labels=[("k1", "v1")],
+                ),
+            ],
+            predictions=[
+                Polygon(
+                    shape=ShapelyPolygon(
+                        rect2_rotated_5_degrees_around_origin
+                    ),
                     labels=[("k2", "v2")],
                     scores=[0.98],
                 ),
@@ -309,9 +403,9 @@ def false_negatives_single_datum_detections() -> list[Detection]:
 
 
 @pytest.fixture
-def false_negatives_two_datums_one_empty_low_confidence_of_fp_detections() -> list[
-    Detection
-]:
+def false_negatives_two_datums_one_empty_low_confidence_of_fp_detections() -> (
+    list[Detection]
+):
 
     return [
         Detection(
@@ -354,9 +448,9 @@ def false_negatives_two_datums_one_empty_low_confidence_of_fp_detections() -> li
 
 
 @pytest.fixture
-def false_negatives_two_datums_one_empty_high_confidence_of_fp_detections() -> list[
-    Detection
-]:
+def false_negatives_two_datums_one_empty_high_confidence_of_fp_detections() -> (
+    list[Detection]
+):
 
     return [
         Detection(
@@ -399,9 +493,9 @@ def false_negatives_two_datums_one_empty_high_confidence_of_fp_detections() -> l
 
 
 @pytest.fixture
-def false_negatives_two_datums_one_only_with_different_class_low_confidence_of_fp_detections() -> list[
-    Detection
-]:
+def false_negatives_two_datums_one_only_with_different_class_low_confidence_of_fp_detections() -> (
+    list[Detection]
+):
 
     return [
         Detection(
@@ -452,9 +546,9 @@ def false_negatives_two_datums_one_only_with_different_class_low_confidence_of_f
 
 
 @pytest.fixture
-def false_negatives_two_images_one_only_with_different_class_high_confidence_of_fp_detections() -> list[
-    Detection
-]:
+def false_negatives_two_images_one_only_with_different_class_high_confidence_of_fp_detections() -> (
+    list[Detection]
+):
 
     return [
         Detection(
@@ -666,6 +760,113 @@ def detection_ranked_pair_ordering() -> Detection:
         )
         for (xmin, xmax, ymin, ymax), label_value, score in zip(
             preds["boxes"], preds["label_values"], preds["scores"]
+        )
+    ]
+
+    return Detection(
+        uid="uid1", groundtruths=groundtruths, predictions=predictions
+    )
+
+
+@pytest.fixture
+def detection_ranked_pair_ordering_with_bitmasks() -> Detection:
+
+    gts = {
+        "bitmasks": [
+            np.ones((80, 32), dtype=bool),
+            np.ones((80, 32), dtype=bool),
+            np.ones((80, 32), dtype=bool),
+        ],
+        "label_values": ["label1", "label2", "label3"],
+    }
+
+    # labels 1 and 2 have IOU==1, labels 3 and 4 have IOU==0
+    preds = {
+        "bitmasks": [
+            np.ones((80, 32), dtype=bool),
+            np.ones((80, 32), dtype=bool),
+            np.zeros((80, 32), dtype=bool),
+            np.zeros((80, 32), dtype=bool),
+        ],
+        "label_values": ["label1", "label2", "label3", "label4"],
+        "scores": [
+            0.3,
+            0.93,
+            0.92,
+            0.94,
+        ],
+    }
+    groundtruths = [
+        Bitmask(
+            mask=mask,
+            labels=[("class", label_value)],
+        )
+        for mask, label_value in zip(gts["bitmasks"], gts["label_values"])
+    ]
+
+    predictions = [
+        Bitmask(
+            mask=mask,
+            labels=[("class", label_value)],
+            scores=[score],
+        )
+        for mask, label_value, score in zip(
+            preds["bitmasks"], preds["label_values"], preds["scores"]
+        )
+    ]
+
+    return Detection(
+        uid="uid1", groundtruths=groundtruths, predictions=predictions
+    )
+
+
+@pytest.fixture
+def detection_ranked_pair_ordering_with_polygons(
+    rect1_rotated_5_degrees_around_origin: list[tuple[float, float]],
+    rect3_rotated_5_degrees_around_origin: list[tuple[float, float]],
+) -> Detection:
+    gts = {
+        "polygons": [
+            rect1_rotated_5_degrees_around_origin,
+            rect1_rotated_5_degrees_around_origin,
+            rect1_rotated_5_degrees_around_origin,
+        ],
+        "label_values": ["label1", "label2", "label3"],
+    }
+
+    # labels 1 and 2 have IOU==1, labels 3 and 4 have IOU==0
+    preds = {
+        "polygons": [
+            rect1_rotated_5_degrees_around_origin,
+            rect1_rotated_5_degrees_around_origin,
+            rect3_rotated_5_degrees_around_origin,
+            rect3_rotated_5_degrees_around_origin,
+        ],
+        "label_values": ["label1", "label2", "label3", "label4"],
+        "scores": [
+            0.3,
+            0.93,
+            0.92,
+            0.94,
+        ],
+    }
+
+    groundtruths = [
+        Polygon(
+            shape=ShapelyPolygon(polygon),
+            labels=[("class", label_value)],
+        )
+        for polygon, label_value in zip(gts["polygons"], gts["label_values"])
+    ]
+
+    predictions = [
+        Polygon(
+            shape=ShapelyPolygon(polygon),
+            labels=[("class", label_value)],
+            scores=[score],
+        )
+        for polygon, label_value, score in zip(
+            preds["polygons"], preds["label_values"], preds["scores"]
         )
     ]
 

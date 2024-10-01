@@ -1,8 +1,10 @@
-from .annotation import Bitmask, BoundingBox, Detection
+from .annotation import Bitmask, BoundingBox, Detection, Polygon
 from .computation import (
-    compute_detailed_counts,
-    compute_iou,
+    compute_bbox_iou,
+    compute_bitmask_iou,
+    compute_confusion_matrix,
     compute_metrics,
+    compute_polygon_iou,
     compute_ranked_pairs,
 )
 from .manager import DataLoader, Evaluator
@@ -13,8 +15,8 @@ from .metric import (
     Accuracy,
     APAveragedOverIOUs,
     ARAveragedOverScores,
+    ConfusionMatrix,
     Counts,
-    DetailedCounts,
     MetricType,
     Precision,
     PrecisionRecallCurve,
@@ -29,6 +31,7 @@ __all__ = [
     "Bitmask",
     "BoundingBox",
     "Detection",
+    "Polygon",
     "MetricType",
     "Counts",
     "Precision",
@@ -44,11 +47,13 @@ __all__ = [
     "ARAveragedOverScores",
     "mARAveragedOverScores",
     "PrecisionRecallCurve",
-    "DetailedCounts",
-    "compute_iou",
+    "ConfusionMatrix",
+    "compute_bbox_iou",
+    "compute_bitmask_iou",
+    "compute_polygon_iou",
     "compute_ranked_pairs",
     "compute_metrics",
-    "compute_detailed_counts",
+    "compute_confusion_matrix",
     "DataLoader",
     "Evaluator",
 ]
