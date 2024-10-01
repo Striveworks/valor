@@ -252,3 +252,103 @@ def test_rocauc_with_example(
         assert m in expected_metrics
     for m in expected_metrics:
         assert m in actual_metrics
+
+
+def test_rocacu_with_image_example(
+    classifications_image_example: list[Classification],
+):
+    loader = DataLoader()
+    loader.add_data(classifications_image_example)
+    loader.finalize()
+    evaluator = loader.finalize()
+    evaluator.evaluate()
+
+    metrics = evaluator.evaluate()
+
+    actual_metrics = [m.to_dict() for m in metrics[MetricType.ROCAUC]]
+    expected_metrics = [
+        {
+            "type": "ROCAUC",
+            "value": 0.0,
+            "parameters": {"label": {"key": "k4", "value": "v4"}},
+        },
+        {
+            "type": "ROCAUC",
+            "value": 0.0,
+            "parameters": {"label": {"key": "k5", "value": "v5"}},
+        },
+        {
+            "type": "ROCAUC",
+            "value": 0.0,
+            "parameters": {"label": {"key": "k3", "value": "v3"}},
+        },
+    ]
+    for m in actual_metrics:
+        assert m in expected_metrics
+    for m in expected_metrics:
+        assert m in actual_metrics
+
+    actual_metrics = [m.to_dict() for m in metrics[MetricType.mROCAUC]]
+    expected_metrics = [
+        {"type": "mROCAUC", "value": 0.0, "parameters": {"label_key": "k3"}},
+        {"type": "mROCAUC", "value": 0.0, "parameters": {"label_key": "k4"}},
+        {"type": "mROCAUC", "value": 0.0, "parameters": {"label_key": "k5"}},
+    ]
+    for m in actual_metrics:
+        import json
+
+        print(json.dumps(m, indent=4))
+        assert m in expected_metrics
+    for m in expected_metrics:
+        assert m in actual_metrics
+
+
+def test_rocacu_with_tabular_example(
+    classifications_tabular_example: list[Classification],
+):
+    loader = DataLoader()
+    loader.add_data(classifications_tabular_example)
+    loader.finalize()
+    evaluator = loader.finalize()
+    evaluator.evaluate()
+
+    metrics = evaluator.evaluate()
+
+    actual_metrics = [m.to_dict() for m in metrics[MetricType.ROCAUC]]
+    expected_metrics = [
+        {
+            "type": "ROCAUC",
+            "value": 0.75,
+            "parameters": {"label": {"key": "class", "value": "1"}},
+        },
+        {
+            "type": "ROCAUC",
+            "value": 1.0,
+            "parameters": {"label": {"key": "class", "value": "0"}},
+        },
+        {
+            "type": "ROCAUC",
+            "value": 0.5555555555555556,
+            "parameters": {"label": {"key": "class", "value": "2"}},
+        },
+    ]
+    for m in actual_metrics:
+        assert m in expected_metrics
+    for m in expected_metrics:
+        assert m in actual_metrics
+
+    actual_metrics = [m.to_dict() for m in metrics[MetricType.mROCAUC]]
+    expected_metrics = [
+        {
+            "type": "mROCAUC",
+            "value": 0.7685185185185185,
+            "parameters": {"label_key": "class"},
+        }
+    ]
+    for m in actual_metrics:
+        import json
+
+        print(json.dumps(m, indent=4))
+        assert m in expected_metrics
+    for m in expected_metrics:
+        assert m in actual_metrics
