@@ -1,7 +1,8 @@
 import numpy as np
 import pytest
 from shapely.geometry import Polygon as ShapelyPolygon
-from valor_lite.detection import Bitmask, BoundingBox, Polygon, compute_iou
+from valor_lite.detection import Bitmask, BoundingBox, Polygon
+from valor_lite.detection.manager import compute_iou
 
 
 def test_compute_bbox_iou():

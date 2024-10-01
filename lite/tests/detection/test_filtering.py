@@ -482,7 +482,6 @@ def test_filtering_all_detections(four_detections: list[Detection]):
     # test datum filtering
 
     filter_ = evaluator.create_filter(datum_uids=[])
-    print(filter_)
     assert (filter_.indices == np.array([])).all()
     assert (filter_.label_metadata == np.array([[0, 0, 0], [0, 0, 1]])).all()
 
@@ -514,7 +513,7 @@ def test_filtering_all_detections(four_detections: list[Detection]):
         filter_=filter_,
         metrics_to_return=[
             *MetricType.base_metrics(),
-            MetricType.DetailedCounts,
+            MetricType.ConfusionMatrix,
         ],
     )
 
