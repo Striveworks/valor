@@ -1,16 +1,36 @@
 import numpy as np
 from numpy.typing import NDArray
 
-# datum id  0
-# gt        1
-# pd        2
-# iou       3
-# gt label  4
-# pd label  5
-# score     6
 
+def compute_bbox_iou(data: NDArray[np.floating]) -> NDArray[np.floating]:
+    """
+    Computes intersection-over-union (IoU) for axis-aligned bounding boxes.
 
-def compute_iou(data: NDArray[np.floating]) -> NDArray[np.floating]:
+    Takes data with shape (N, 8):
+
+    Index 0 - xmin for Box 1
+    Index 1 - xmax for Box 1
+    Index 2 - ymin for Box 1
+    Index 3 - ymax for Box 1
+    Index 4 - xmin for Box 2
+    Index 5 - xmax for Box 2
+    Index 6 - ymin for Box 2
+    Index 7 - ymax for Box 2
+
+    Returns data with shape (N, 1):
+
+    Index 0 - IoU
+
+    Parameters
+    ----------
+    data : NDArray[np.floating]
+        A sorted array of bounding box pairs.
+
+    Returns
+    -------
+    NDArray[np.floating]
+        Computed IoU's.
+    """
 
     xmin1, xmax1, ymin1, ymax1 = (
         data[:, 0],
@@ -47,16 +67,89 @@ def compute_iou(data: NDArray[np.floating]) -> NDArray[np.floating]:
     return iou
 
 
+def compute_bitmask_iou(data: NDArray[np.floating]) -> NDArray[np.floating]:
+    """
+    Computes intersection-over-union (IoU) for bitmasks.
+
+    Takes data with shape (N, 2):
+
+    Index 0 - first bitmask
+    Index 1 - second bitmask
+
+    Returns data with shape (N, 1):
+
+    Index 0 - IoU
+
+    Parameters
+    ----------
+    data : NDArray[np.floating]
+        A sorted array of bitmask pairs.
+
+    Returns
+    -------
+    NDArray[np.floating]
+        Computed IoU's.
+    """
+    intersection_ = np.array([np.logical_and(x, y).sum() for x, y in data])
+    union_ = np.array([np.logical_or(x, y).sum() for x, y in data])
+
+    return intersection_ / union_
+
+
+def compute_polygon_iou(
+    data: NDArray[np.floating],
+) -> NDArray[np.floating]:
+    """
+    Computes intersection-over-union (IoU) for shapely polygons.
+
+    Takes data with shape (N, 2):
+
+    Index 0 - first polygon
+    Index 1 - second polygon
+
+    Returns data with shape (N, 1):
+
+    Index 0 - IoU
+
+    Parameters
+    ----------
+    data : NDArray[np.floating]
+        A sorted array of polygon pairs.
+
+    Returns
+    -------
+    NDArray[np.floating]
+        Computed IoU's.
+    """
+    intersection_ = np.array(
+        [poly1.intersection(poly2).area for poly1, poly2 in data]
+    )
+    union_ = np.array(
+        [
+            poly1.area + poly2.area - intersection_[i]
+            for i, (poly1, poly2) in enumerate(data)
+        ]
+    )
+
+    return intersection_ / union_
+
+
 def _compute_ranked_pairs_for_datum(
-    data: np.ndarray,
-    label_counts: np.ndarray,
-) -> np.ndarray:
+    data: NDArray[np.floating],
+    label_metadata: NDArray[np.int32],
+) -> NDArray[np.floating]:
     """
     Computes ranked pairs for a datum.
     """
 
     # remove null predictions
     data = data[data[:, 2] >= 0.0]
+
+    # find best fits for prediction
+    mask_label_match = data[:, 4] == data[:, 5]
+    matched_predicitons = np.unique(data[mask_label_match, 2].astype(int))
+    mask_unmatched_predictions = ~np.isin(data[:, 2], matched_predicitons)
+    data = data[mask_label_match | mask_unmatched_predictions]
 
     # sort by gt_id, iou, score
     indices = np.lexsort(
@@ -69,7 +162,7 @@ def _compute_ranked_pairs_for_datum(
     data = data[indices]
 
     # remove ignored predictions
-    for label_idx, count in enumerate(label_counts[:, 0]):
+    for label_idx, count in enumerate(label_metadata[:, 0]):
         if count > 0:
             continue
         data = data[data[:, 5] != label_idx]
@@ -85,32 +178,58 @@ def _compute_ranked_pairs_for_datum(
 
 def compute_ranked_pairs(
     data: list[NDArray[np.floating]],
-    label_counts: NDArray[np.integer],
+    label_metadata: NDArray[np.int32],
 ) -> NDArray[np.floating]:
-    pairs = np.concatenate(
-        [
-            _compute_ranked_pairs_for_datum(
-                datum,
-                label_counts=label_counts,
-            )
-            for datum in data
-        ],
-        axis=0,
-    )
+    """
+    Performs pair ranking on input data.
+
+    Takes data with shape (N, 7):
+
+    Index 0 - Datum Index
+    Index 1 - GroundTruth Index
+    Index 2 - Prediction Index
+    Index 3 - IoU
+    Index 4 - GroundTruth Label Index
+    Index 5 - Prediction Label Index
+    Index 6 - Score
+
+    Returns data with shape (N - M, 7)
+
+    Parameters
+    ----------
+    data : NDArray[np.floating]
+        A sorted array summarizing the IOU calculations of one or more pairs.
+    label_metadata : NDArray[np.int32]
+        An array containing metadata related to labels.
+
+    Returns
+    -------
+    NDArray[np.floating]
+        A filtered array containing only ranked pairs.
+    """
+
+    ranked_pairs_by_datum = [
+        _compute_ranked_pairs_for_datum(
+            data=datum,
+            label_metadata=label_metadata,
+        )
+        for datum in data
+    ]
+    ranked_pairs = np.concatenate(ranked_pairs_by_datum, axis=0)
     indices = np.lexsort(
         (
-            -pairs[:, 3],  # iou
-            -pairs[:, 6],  # score
+            -ranked_pairs[:, 3],  # iou
+            -ranked_pairs[:, 6],  # score
         )
     )
-    return pairs[indices]
+    return ranked_pairs[indices]
 
 
 def compute_metrics(
-    data: np.ndarray,
-    label_counts: np.ndarray,
-    iou_thresholds: np.ndarray,
-    score_thresholds: np.ndarray,
+    data: NDArray[np.floating],
+    label_metadata: NDArray[np.int32],
+    iou_thresholds: NDArray[np.floating],
+    score_thresholds: NDArray[np.floating],
 ) -> tuple[
     tuple[
         NDArray[np.floating],
@@ -130,6 +249,27 @@ def compute_metrics(
     """
     Computes Object Detection metrics.
 
+    Takes data with shape (N, 7):
+
+    Index 0 - Datum Index
+    Index 1 - GroundTruth Index
+    Index 2 - Prediction Index
+    Index 3 - IoU
+    Index 4 - GroundTruth Label Index
+    Index 5 - Prediction Label Index
+    Index 6 - Score
+
+    Parameters
+    ----------
+    data : NDArray[np.floating]
+        A sorted array summarizing the IOU calculations of one or more pairs.
+    label_metadata : NDArray[np.int32]
+        An array containing metadata related to labels.
+    iou_thresholds : NDArray[np.floating]
+        A 1-D array containing IoU thresholds.
+    score_thresholds : NDArray[np.floating]
+        A 1-D array containing score thresholds.
+
     Returns
     -------
     tuple[NDArray, NDArray, NDArray NDArray]
@@ -143,17 +283,17 @@ def compute_metrics(
     """
 
     n_rows = data.shape[0]
-    n_labels = label_counts.shape[0]
+    n_labels = label_metadata.shape[0]
     n_ious = iou_thresholds.shape[0]
     n_scores = score_thresholds.shape[0]
 
     average_precision = np.zeros((n_ious, n_labels))
     average_recall = np.zeros((n_scores, n_labels))
-    precision_recall = np.zeros((n_ious, n_scores, n_labels, 7))
+    counts = np.zeros((n_ious, n_scores, n_labels, 7))
 
     pd_labels = data[:, 5].astype(int)
     unique_pd_labels = np.unique(pd_labels)
-    gt_count = label_counts[:, 0]
+    gt_count = label_metadata[:, 0]
     running_total_count = np.zeros(
         (n_ious, n_rows),
         dtype=np.float64,
@@ -239,7 +379,7 @@ def compute_metrics(
                 out=accuracy,
             )
 
-            precision_recall[iou_idx][score_idx] = np.concatenate(
+            counts[iou_idx][score_idx] = np.concatenate(
                 (
                     tp_count[:, np.newaxis],
                     fp_count[:, np.newaxis],
@@ -313,8 +453,8 @@ def compute_metrics(
     average_recall /= n_ious
 
     # calculate mAP and mAR
-    label_key_mapping = label_counts[unique_pd_labels, 2]
-    label_keys = np.unique(label_counts[:, 2])
+    label_key_mapping = label_metadata[unique_pd_labels, 2]
+    label_keys = np.unique(label_metadata[:, 2])
     mAP = np.ones((n_ious, label_keys.shape[0])) * -1.0
     mAR = np.ones((n_scores, label_keys.shape[0])) * -1.0
     for key in np.unique(label_key_mapping):
@@ -347,85 +487,193 @@ def compute_metrics(
     return (
         ap_results,
         ar_results,
-        precision_recall,
+        counts,
         pr_curve,
     )
 
 
-def compute_detailed_pr_curve(
-    data: np.ndarray,
-    label_counts: np.ndarray,
-    iou_thresholds: np.ndarray,
-    score_thresholds: np.ndarray,
+def compute_detailed_counts(
+    data: NDArray[np.floating],
+    label_metadata: NDArray[np.int32],
+    iou_thresholds: NDArray[np.floating],
+    score_thresholds: NDArray[np.floating],
     n_samples: int,
-) -> np.ndarray:
-
+) -> NDArray[np.int32]:
     """
-    0  label
-    1  tp
-    ...
-    2  fp - 1
-    3  fp - 2
-    4  fn - misclassification
-    5  fn - hallucination
+    Compute detailed counts.
+
+    Takes data with shape (N, 7):
+
+    Index 0 - Datum Index
+    Index 1 - GroundTruth Index
+    Index 2 - Prediction Index
+    Index 3 - IoU
+    Index 4 - GroundTruth Label Index
+    Index 5 - Prediction Label Index
+    Index 6 - Score
+
+    Outputs an array with shape (N_IoUs, N_Score, N_Labels, 5 * n_samples + 5):
+
+    Index 0 - True Positive Count
+    ... Datum ID Examples
+    Index 2 * n_samples + 1 - False Positive Misclassification Count
+    ... Datum ID Examples
+    Index 4 * n_samples + 2 - False Positive Hallucination Count
+    ... Datum ID Examples
+    Index 6 * n_samples + 3 - False Negative Misclassification Count
+    ... Datum ID Examples
+    Index 8 * n_samples + 4 - False Negative Missing Prediction Count
+    ... Datum ID Examples
+
+    Parameters
+    ----------
+    data : NDArray[np.floating]
+        A sorted array summarizing the IOU calculations of one or more pairs.
+    label_metadata : NDArray[np.int32]
+        An array containing metadata related to labels.
+    iou_thresholds : NDArray[np.floating]
+        A 1-D array containing IoU thresholds.
+    score_thresholds : NDArray[np.floating]
+        A 1-D array containing score thresholds.
+    n_samples : int
+        The number of examples to return per count.
+
+    Returns
+    -------
+    NDArray[np.int32]
+        The detailed counts with optional examples.
     """
 
-    n_labels = label_counts.shape[0]
+    n_labels = label_metadata.shape[0]
     n_ious = iou_thresholds.shape[0]
     n_scores = score_thresholds.shape[0]
-    n_metrics = 5 * (n_samples + 1)
+    n_metrics = 5 * (2 * n_samples + 1)
 
     tp_idx = 0
-    fp_misclf_idx = tp_idx + n_samples + 1
-    fp_halluc_idx = fp_misclf_idx + n_samples + 1
-    fn_misclf_idx = fp_halluc_idx + n_samples + 1
-    fn_misprd_idx = fn_misclf_idx + n_samples + 1
+    fp_misclf_idx = 2 * n_samples + 1
+    fp_halluc_idx = 4 * n_samples + 2
+    fn_misclf_idx = 6 * n_samples + 3
+    fn_misprd_idx = 8 * n_samples + 4
 
-    detailed_pr_curve = np.ones((n_ious, n_scores, n_labels, n_metrics)) * -1.0
+    detailed_pr_curve = -1 * np.ones(
+        (n_ious, n_scores, n_labels, n_metrics), dtype=np.int32
+    )
 
     mask_gt_exists = data[:, 1] > -0.5
     mask_pd_exists = data[:, 2] > -0.5
     mask_label_match = np.isclose(data[:, 4], data[:, 5])
+    mask_score_nonzero = data[:, 6] > 1e-9
+    mask_iou_nonzero = data[:, 3] > 1e-9
 
     mask_gt_pd_exists = mask_gt_exists & mask_pd_exists
     mask_gt_pd_match = mask_gt_pd_exists & mask_label_match
     mask_gt_pd_mismatch = mask_gt_pd_exists & ~mask_label_match
 
+    groundtruths = data[:, [0, 1]].astype(int)
+    predictions = data[:, [0, 2]].astype(int)
     for iou_idx in range(n_ious):
-        mask_iou = data[:, 3] >= iou_thresholds[iou_idx]
-        mask_gt_pd_match_iou = mask_gt_pd_match & mask_iou
-        mask_gt_pd_mismatch_iou = mask_gt_pd_mismatch & mask_iou
+        mask_iou_threshold = data[:, 3] >= iou_thresholds[iou_idx]
+        mask_iou = mask_iou_nonzero & mask_iou_threshold
+
+        groundtruths_passing_ious = np.unique(groundtruths[mask_iou], axis=0)
+        mask_groundtruths_with_passing_ious = (
+            (
+                groundtruths.reshape(-1, 1, 2)
+                == groundtruths_passing_ious.reshape(1, -1, 2)
+            )
+            .all(axis=2)
+            .any(axis=1)
+        )
+        mask_groundtruths_without_passing_ious = (
+            ~mask_groundtruths_with_passing_ious & mask_gt_exists
+        )
+
+        predictions_with_passing_ious = np.unique(
+            predictions[mask_iou], axis=0
+        )
+        mask_predictions_with_passing_ious = (
+            (
+                predictions.reshape(-1, 1, 2)
+                == predictions_with_passing_ious.reshape(1, -1, 2)
+            )
+            .all(axis=2)
+            .any(axis=1)
+        )
+        mask_predictions_without_passing_ious = (
+            ~mask_predictions_with_passing_ious & mask_pd_exists
+        )
+
         for score_idx in range(n_scores):
-            mask_score = data[:, 6] >= score_thresholds[score_idx]
-            mask_tp = mask_gt_pd_match_iou & mask_score
-            mask_fp_misclf = mask_gt_pd_mismatch_iou & mask_score
-            mask_fn_misclf = mask_gt_pd_match_iou & ~mask_score
-            mask_halluc_missing = ~(
-                mask_gt_pd_match_iou | (mask_gt_pd_mismatch & mask_score)
-            )
-            mask_fp_halluc = mask_halluc_missing & mask_pd_exists
-            mask_fn_misprd = mask_halluc_missing & mask_gt_exists
+            mask_score_threshold = data[:, 6] >= score_thresholds[score_idx]
+            mask_score = mask_score_nonzero & mask_score_threshold
 
-            tp_slice = data[mask_tp]
-            fp_misclf_slice = data[mask_fp_misclf]
-            fp_halluc_slice = data[mask_fp_halluc]
-            fn_misclf_slice = data[mask_fn_misclf]
-            fn_misprd_slice = data[mask_fn_misprd]
-
-            tp_count = np.bincount(
-                tp_slice[:, 5].astype(int), minlength=n_labels
+            groundtruths_with_passing_score = np.unique(
+                groundtruths[mask_iou & mask_score], axis=0
             )
+            mask_groundtruths_with_passing_score = (
+                (
+                    groundtruths.reshape(-1, 1, 2)
+                    == groundtruths_with_passing_score.reshape(1, -1, 2)
+                )
+                .all(axis=2)
+                .any(axis=1)
+            )
+            mask_groundtruths_without_passing_score = (
+                ~mask_groundtruths_with_passing_score & mask_gt_exists
+            )
+
+            mask_tp = mask_score & mask_iou & mask_gt_pd_match
+            mask_fp_misclf = mask_score & mask_iou & mask_gt_pd_mismatch
+            mask_fn_misclf = mask_iou & (
+                (
+                    ~mask_score
+                    & mask_gt_pd_match
+                    & mask_groundtruths_with_passing_score
+                )
+                | (mask_score & mask_gt_pd_mismatch)
+            )
+            mask_fp_halluc = mask_score & mask_predictions_without_passing_ious
+            mask_fn_misprd = (
+                mask_groundtruths_without_passing_ious
+                | mask_groundtruths_without_passing_score
+            )
+
+            tp_pds = np.unique(data[mask_tp][:, [0, 2, 5]], axis=0)
+            tp_gts = np.unique(data[mask_tp][:, [0, 1, 4]], axis=0)
+            fp_misclf = np.unique(data[mask_fp_misclf][:, [0, 2, 5]], axis=0)
+            fp_halluc = np.unique(data[mask_fp_halluc][:, [0, 2, 5]], axis=0)
+            fn_misclf = np.unique(data[mask_fn_misclf][:, [0, 1, 4]], axis=0)
+            fn_misprd = np.unique(data[mask_fn_misprd][:, [0, 1, 4]], axis=0)
+
+            mask_fp_misclf_is_tp = (
+                (fp_misclf.reshape(-1, 1, 3) == tp_pds.reshape(1, -1, 3))
+                .all(axis=2)
+                .any(axis=1)
+            )
+            mask_fn_misclf_is_tp = (
+                (fn_misclf.reshape(-1, 1, 3) == tp_gts.reshape(1, -1, 3))
+                .all(axis=2)
+                .any(axis=1)
+            )
+
+            tp = tp_pds
+            fp_misclf = fp_misclf[~mask_fp_misclf_is_tp]
+            fp_halluc = fp_halluc
+            fn_misclf = fn_misclf[~mask_fn_misclf_is_tp]
+            fn_misprd = fn_misprd
+
+            tp_count = np.bincount(tp[:, 2].astype(int), minlength=n_labels)
             fp_misclf_count = np.bincount(
-                fp_misclf_slice[:, 5].astype(int), minlength=n_labels
+                fp_misclf[:, 2].astype(int), minlength=n_labels
             )
             fp_halluc_count = np.bincount(
-                fp_halluc_slice[:, 5].astype(int), minlength=n_labels
+                fp_halluc[:, 2].astype(int), minlength=n_labels
             )
             fn_misclf_count = np.bincount(
-                fn_misclf_slice[:, 4].astype(int), minlength=n_labels
+                fn_misclf[:, 2].astype(int), minlength=n_labels
             )
             fn_misprd_count = np.bincount(
-                fn_misprd_slice[:, 4].astype(int), minlength=n_labels
+                fn_misprd[:, 2].astype(int), minlength=n_labels
             )
 
             detailed_pr_curve[iou_idx, score_idx, :, tp_idx] = tp_count
@@ -444,21 +692,41 @@ def compute_detailed_pr_curve(
 
             if n_samples > 0:
                 for label_idx in range(n_labels):
-                    tp_examples = tp_slice[
-                        tp_slice[:, 5].astype(int) == label_idx
-                    ][:n_samples, 0]
-                    fp_misclf_examples = fp_misclf_slice[
-                        fp_misclf_slice[:, 5].astype(int) == label_idx
-                    ][:n_samples, 0]
-                    fp_halluc_examples = fp_halluc_slice[
-                        fp_halluc_slice[:, 5].astype(int) == label_idx
-                    ][:n_samples, 0]
-                    fn_misclf_examples = fn_misclf_slice[
-                        fn_misclf_slice[:, 4].astype(int) == label_idx
-                    ][:n_samples, 0]
-                    fn_misprd_examples = fn_misprd_slice[
-                        fn_misprd_slice[:, 4].astype(int) == label_idx
-                    ][:n_samples, 0]
+                    tp_examples = (
+                        tp[tp[:, 2].astype(int) == label_idx][
+                            :n_samples, [0, 1]
+                        ]
+                        .astype(int)
+                        .flatten()
+                    )
+                    fp_misclf_examples = (
+                        fp_misclf[fp_misclf[:, 2].astype(int) == label_idx][
+                            :n_samples, [0, 1]
+                        ]
+                        .astype(int)
+                        .flatten()
+                    )
+                    fp_halluc_examples = (
+                        fp_halluc[fp_halluc[:, 2].astype(int) == label_idx][
+                            :n_samples, [0, 1]
+                        ]
+                        .astype(int)
+                        .flatten()
+                    )
+                    fn_misclf_examples = (
+                        fn_misclf[fn_misclf[:, 2].astype(int) == label_idx][
+                            :n_samples, [0, 1]
+                        ]
+                        .astype(int)
+                        .flatten()
+                    )
+                    fn_misprd_examples = (
+                        fn_misprd[fn_misprd[:, 2].astype(int) == label_idx][
+                            :n_samples, [0, 1]
+                        ]
+                        .astype(int)
+                        .flatten()
+                    )
 
                     detailed_pr_curve[
                         iou_idx,

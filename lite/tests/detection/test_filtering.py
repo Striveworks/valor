@@ -70,9 +70,9 @@ def test_filtering_one_detection(one_detection: list[Detection]):
             box 1 - label (k1, v1) - score 0.3 - tp
     """
 
-    manager = DataLoader()
-    manager.add_data(one_detection)
-    evaluator = manager.finalize()
+    loader = DataLoader()
+    loader.add_bounding_boxes(one_detection)
+    evaluator = loader.finalize()
 
     assert (
         evaluator._ranked_pairs
@@ -142,12 +142,18 @@ def test_filtering_one_detection(one_detection: list[Detection]):
         {
             "type": "AP",
             "value": 1.0,
-            "parameters": {"iou": 0.5, "label": {"key": "k1", "value": "v1"}},
+            "parameters": {
+                "iou_threshold": 0.5,
+                "label": {"key": "k1", "value": "v1"},
+            },
         },
         {
             "type": "AP",
             "value": 0.0,
-            "parameters": {"iou": 0.5, "label": {"key": "k2", "value": "v2"}},
+            "parameters": {
+                "iou_threshold": 0.5,
+                "label": {"key": "k2", "value": "v2"},
+            },
         },
     ]
     for m in actual_metrics:
@@ -174,9 +180,9 @@ def test_filtering_two_detections(two_detections: list[Detection]):
             box 2 - label (k2, v2) - score 0.98 - fp
     """
 
-    manager = DataLoader()
-    manager.add_data(two_detections)
-    evaluator = manager.finalize()
+    loader = DataLoader()
+    loader.add_bounding_boxes(two_detections)
+    evaluator = loader.finalize()
 
     assert (
         evaluator._ranked_pairs
@@ -252,12 +258,18 @@ def test_filtering_two_detections(two_detections: list[Detection]):
         {
             "type": "AP",
             "value": 1.0,
-            "parameters": {"iou": 0.5, "label": {"key": "k1", "value": "v1"}},
+            "parameters": {
+                "iou_threshold": 0.5,
+                "label": {"key": "k1", "value": "v1"},
+            },
         },
         {
             "type": "AP",
             "value": 0.0,
-            "parameters": {"iou": 0.5, "label": {"key": "k2", "value": "v2"}},
+            "parameters": {
+                "iou_threshold": 0.5,
+                "label": {"key": "k2", "value": "v2"},
+            },
         },
     ]
     for m in actual_metrics:
@@ -293,9 +305,9 @@ def test_filtering_four_detections(four_detections: list[Detection]):
             box 2 - label (k2, v2) - score 0.98 - fp
     """
 
-    manager = DataLoader()
-    manager.add_data(four_detections)
-    evaluator = manager.finalize()
+    loader = DataLoader()
+    loader.add_bounding_boxes(four_detections)
+    evaluator = loader.finalize()
 
     assert (
         evaluator._ranked_pairs
@@ -379,12 +391,18 @@ def test_filtering_four_detections(four_detections: list[Detection]):
         {
             "type": "AP",
             "value": 1.0,
-            "parameters": {"iou": 0.5, "label": {"key": "k1", "value": "v1"}},
+            "parameters": {
+                "iou_threshold": 0.5,
+                "label": {"key": "k1", "value": "v1"},
+            },
         },
         {
             "type": "AP",
             "value": 0.0,
-            "parameters": {"iou": 0.5, "label": {"key": "k2", "value": "v2"}},
+            "parameters": {
+                "iou_threshold": 0.5,
+                "label": {"key": "k2", "value": "v2"},
+            },
         },
     ]
     for m in actual_metrics:
@@ -393,9 +411,120 @@ def test_filtering_four_detections(four_detections: list[Detection]):
         assert m in actual_metrics
 
 
+def test_filtering_all_detections(four_detections: list[Detection]):
+    """
+    Basic object detection test.
+
+    groundtruths
+        datum uid1
+            box 1 - label (k1, v1) - tp
+            box 3 - label (k2, v2) - fn missing prediction
+        datum uid2
+            box 2 - label (k1, v1) - fn misclassification
+        datum uid3
+            box 1 - label (k1, v1) - tp
+            box 3 - label (k2, v2) - fn missing prediction
+        datum uid4
+            box 2 - label (k1, v1) - fn misclassification
+
+    predictions
+        datum uid1
+            box 1 - label (k1, v1) - score 0.3 - tp
+        datum uid2
+            box 2 - label (k2, v2) - score 0.98 - fp
+        datum uid3
+            box 1 - label (k1, v1) - score 0.3 - tp
+        datum uid4
+            box 2 - label (k2, v2) - score 0.98 - fp
+    """
+
+    loader = DataLoader()
+    loader.add_bounding_boxes(four_detections)
+    evaluator = loader.finalize()
+
+    assert (
+        evaluator._ranked_pairs
+        == np.array(
+            [
+                [1.0, -1.0, 0.0, 0.0, -1.0, 1.0, 0.98],
+                [3.0, -1.0, 0.0, 0.0, -1.0, 1.0, 0.98],
+                [0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.3],
+                [2.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.3],
+            ]
+        )
+    ).all()
+
+    assert (
+        evaluator._label_metadata_per_datum
+        == np.array(
+            [
+                [
+                    [1, 1],
+                    [1, 0],
+                    [1, 1],
+                    [1, 0],
+                ],
+                [
+                    [1, 0],
+                    [0, 1],
+                    [1, 0],
+                    [0, 1],
+                ],
+            ],
+            dtype=np.int32,
+        )
+    ).all()
+
+    assert (
+        evaluator._label_metadata == np.array([[4, 2, 0], [2, 2, 1]])
+    ).all()
+
+    # test datum filtering
+
+    filter_ = evaluator.create_filter(datum_uids=[])
+    print(filter_)
+    assert (filter_.indices == np.array([])).all()
+    assert (filter_.label_metadata == np.array([[0, 0, 0], [0, 0, 1]])).all()
+
+    # test label filtering
+
+    filter_ = evaluator.create_filter(labels=[])
+    assert (filter_.indices == np.array([])).all()
+    assert (filter_.label_metadata == np.array([[0, 0, 0], [0, 0, 1]])).all()
+
+    # test label key filtering
+
+    filter_ = evaluator.create_filter(label_keys=[])
+    assert (filter_.indices == np.array([[]])).all()
+    assert (filter_.label_metadata == np.array([[0, 0, 0], [0, 0, 1]])).all()
+
+    # test combo
+    filter_ = evaluator.create_filter(
+        datum_uids=[],
+        label_keys=["k1"],
+    )
+    assert (filter_.indices == np.array([])).all()
+    assert (filter_.label_metadata == np.array([[0, 0, 0], [0, 0, 1]])).all()
+
+    # test evaluation
+    filter_ = evaluator.create_filter(datum_uids=[])
+
+    metrics = evaluator.evaluate(
+        iou_thresholds=[0.5],
+        filter_=filter_,
+        metrics_to_return=[
+            *MetricType.base_metrics(),
+            MetricType.DetailedCounts,
+        ],
+    )
+
+    actual_metrics = [m.to_dict() for m in metrics[MetricType.AP]]
+    assert len(actual_metrics) == 0
+
+
 def test_filtering_random_detections():
     loader = DataLoader()
-    loader.add_data(generate_random_detections(13, 4, "abc"))
+    loader.add_bounding_boxes(generate_random_detections(13, 4, "abc"))
     evaluator = loader.finalize()
     f = evaluator.create_filter(datum_uids=["uid1"])
     evaluator.evaluate(filter_=f)

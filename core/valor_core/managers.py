@@ -676,20 +676,67 @@ class ValorTextGenerationStreamingManager:
             )
 
     def _initialize_joint_df(self):
-        """Adds a column to the joint_df for each metric."""
-        self.joint_df = pd.DataFrame(
-            [],
-            columns=[
-                "datum_uid",
-                "datum_text",
-                "datum_metadata",
-                "prediction_id",
-                "prediction_annotation_id",
-                "prediction_text",
-                "prediction_context_list",
+        """
+        Initialize the joint_df if needed.
+
+        Add a column to the joint_df for each metric.
+
+        Validate the joint_df.
+        """
+        columns = [
+            "datum_uid",
+            "datum_text",
+            "datum_metadata",
+            "prediction_text",
+            "prediction_context_list",
+        ] + [metric._name_ for metric in self.metrics_to_return]
+
+        # Initialize if no joint_df was specified
+        if self.joint_df.empty:
+            self.joint_df = pd.DataFrame(
+                [],
+                columns=columns,
+            )
+
+        # Validation
+        if not set(self.joint_df.columns) == set(columns):
+            raise ValueError(
+                "The joint_df columns do not match the expected columns. Please ensure that the joint_df is initialized correctly."
+            )
+
+        # Check that datum_uids are unique
+        if not self.joint_df["datum_uid"].notnull().all():
+            raise ValueError(
+                "The joint_df contains rows with missing datum_uid values."
+            )
+        if not self.joint_df["datum_uid"].is_unique:
+            raise ValueError(
+                "The joint_df contains rows with non-unique datum_uid values."
+            )
+
+        # Check that for every row either prediction_text or prediction_context_list is not null. It's okay if one is null.
+        if (
+            not self.joint_df[["prediction_text", "prediction_context_list"]]
+            .notnull()
+            .any(axis=1)
+            .all()
+        ):
+            raise ValueError(
+                "The joint_df contains rows that are missing both prediction_text and prediction_context_list. Every prediction in the joint_df must have either prediction_text or prediction_context_list."
+            )
+
+        # Check that every row has non-null values for every metric column in self.metrics_to_return
+        if (
+            not self.joint_df[
+                [metric._name_ for metric in self.metrics_to_return]
             ]
-            + [metric._name_ for metric in self.metrics_to_return],
-        )
+            .notnull()
+            .all(axis=1)
+            .all()
+        ):
+            raise ValueError(
+                "The joint_df contains rows with missing metric values."
+            )
 
     def add_and_evaluate_prediction(
         self,

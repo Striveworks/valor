@@ -305,9 +305,6 @@ def test_AnswerCorrectnessMetric():
     }
 
     with pytest.raises(TypeError):
-        metrics.AnswerCorrectnessMetric(value=1, parameters=parameters)  # type: ignore - testing
-
-    with pytest.raises(TypeError):
         metrics.AnswerCorrectnessMetric(value="value", parameters=parameters)  # type: ignore - testing
 
     with pytest.raises(ValueError):
@@ -331,9 +328,6 @@ def test_AnswerRelevanceMetric():
     }
 
     with pytest.raises(TypeError):
-        metrics.AnswerRelevanceMetric(value=1, parameters=parameters)  # type: ignore - testing
-
-    with pytest.raises(TypeError):
         metrics.AnswerRelevanceMetric(value="value", parameters=parameters)  # type: ignore - testing
 
     with pytest.raises(ValueError):
@@ -355,9 +349,6 @@ def test_BiasMetric():
         "value": 0.5,
         "parameters": parameters,
     }
-
-    with pytest.raises(TypeError):
-        metrics.BiasMetric(value=1, parameters=parameters)  # type: ignore - testing
 
     with pytest.raises(TypeError):
         metrics.BiasMetric(value="value", parameters=parameters)  # type: ignore - testing
@@ -384,9 +375,6 @@ def test_BLEUMetric():
     }
 
     with pytest.raises(TypeError):
-        metrics.BLEUMetric(value=1, parameters=parameters)  # type: ignore - testing
-
-    with pytest.raises(TypeError):
         metrics.BLEUMetric(value="value", parameters=parameters)  # type: ignore - testing
 
     with pytest.raises(ValueError):
@@ -408,9 +396,6 @@ def test_ContextPrecisionMetric():
         "value": 0.5,
         "parameters": parameters,
     }
-
-    with pytest.raises(TypeError):
-        metrics.ContextPrecisionMetric(value=1, parameters=parameters)  # type: ignore - testing
 
     with pytest.raises(TypeError):
         metrics.ContextPrecisionMetric(value="value", parameters=parameters)  # type: ignore - testing
@@ -436,9 +421,6 @@ def test_ContextRecallMetric():
     }
 
     with pytest.raises(TypeError):
-        metrics.ContextRecallMetric(value=1, parameters=parameters)  # type: ignore - testing
-
-    with pytest.raises(TypeError):
         metrics.ContextRecallMetric(value="value", parameters=parameters)  # type: ignore - testing
 
     with pytest.raises(ValueError):
@@ -455,14 +437,11 @@ def test_ContextRelevanceMetric():
         value=0.5,
         parameters=parameters,
     )
-
     assert m.to_dict() == {
         "type": "ContextRelevance",
         "value": 0.5,
         "parameters": parameters,
     }
-    with pytest.raises(TypeError):
-        metrics.ContextRelevanceMetric(value=1, parameters=parameters)  # type: ignore - testing
 
     with pytest.raises(TypeError):
         metrics.ContextRelevanceMetric(value="value", parameters=parameters)  # type: ignore - testing
@@ -489,9 +468,6 @@ def test_FaithfulnessMetric():
     }
 
     with pytest.raises(TypeError):
-        metrics.FaithfulnessMetric(value=1, parameters=parameters)  # type: ignore - testing
-
-    with pytest.raises(TypeError):
         metrics.FaithfulnessMetric(value="value", parameters=parameters)  # type: ignore - testing
 
     with pytest.raises(ValueError):
@@ -514,9 +490,6 @@ def test_HallucinationMetric():
         "value": 0.5,
         "parameters": parameters,
     }
-
-    with pytest.raises(TypeError):
-        metrics.HallucinationMetric(value=1, parameters=parameters)  # type: ignore - testing
 
     with pytest.raises(TypeError):
         metrics.HallucinationMetric(value="value", parameters=parameters)  # type: ignore - testing
@@ -557,9 +530,6 @@ def test_ROUGEMetric():
         },
         "parameters": parameters,
     }
-
-    with pytest.raises(TypeError):
-        metrics.ROUGEMetric(value=1, parameters=parameters)  # type: ignore - testing
 
     with pytest.raises(TypeError):
         metrics.ROUGEMetric(value="value", parameters=parameters)  # type: ignore - testing
@@ -620,9 +590,6 @@ def test_ToxicityMetric():
         "value": 0.5,
         "parameters": parameters,
     }
-
-    with pytest.raises(TypeError):
-        metrics.ToxicityMetric(value=1, parameters=parameters)  # type: ignore - testing
 
     with pytest.raises(TypeError):
         metrics.ToxicityMetric(value="value", parameters=parameters)  # type: ignore - testing

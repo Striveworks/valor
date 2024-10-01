@@ -20,13 +20,13 @@ def test__compute_average_precision():
         ]
     )
 
-    label_counts = np.array([[1, 5, 0]])
+    label_metadata = np.array([[1, 5, 0]])
     iou_thresholds = np.array([0.1, 0.6])
     score_thresholds = np.array([0.0])
 
     (results, _, _, _,) = compute_metrics(
         sorted_pairs,
-        label_counts=label_counts,
+        label_metadata=label_metadata,
         iou_thresholds=iou_thresholds,
         score_thresholds=score_thresholds,
     )
@@ -67,7 +67,10 @@ def test__compute_average_precision():
     ).all()
 
 
-def test_ap_metrics(basic_detections: list[Detection]):
+def test_ap_metrics(
+    basic_detections: list[Detection],
+    basic_rotated_detections: list[Detection],
+):
     """
     Basic object detection test.
 
@@ -85,156 +88,160 @@ def test_ap_metrics(basic_detections: list[Detection]):
             box 2 - label (k2, v2) - score 0.98 - fp
     """
 
-    manager = DataLoader()
-    manager.add_data(basic_detections)
-    evaluator = manager.finalize()
+    for input_, method in [
+        (basic_detections, DataLoader.add_bounding_boxes),
+        (basic_rotated_detections, DataLoader.add_polygons),
+    ]:
+        loader = DataLoader()
+        method(loader, input_)
+        evaluator = loader.finalize()
 
-    metrics = evaluator.evaluate(
-        iou_thresholds=[0.1, 0.6],
-    )
+        metrics = evaluator.evaluate(
+            iou_thresholds=[0.1, 0.6],
+        )
 
-    assert evaluator.ignored_prediction_labels == []
-    assert evaluator.missing_prediction_labels == []
-    assert evaluator.n_datums == 2
-    assert evaluator.n_labels == 2
-    assert evaluator.n_groundtruths == 3
-    assert evaluator.n_predictions == 2
+        assert evaluator.ignored_prediction_labels == []
+        assert evaluator.missing_prediction_labels == []
+        assert evaluator.n_datums == 2
+        assert evaluator.n_labels == 2
+        assert evaluator.n_groundtruths == 3
+        assert evaluator.n_predictions == 2
 
-    # test AP
-    actual_metrics = [m.to_dict() for m in metrics[MetricType.AP]]
-    expected_metrics = [
-        {
-            "type": "AP",
-            "value": 0.504950495049505,
-            "parameters": {
-                "iou": 0.1,
-                "label": {"key": "k1", "value": "v1"},
+        # test AP
+        actual_metrics = [m.to_dict() for m in metrics[MetricType.AP]]
+        expected_metrics = [
+            {
+                "type": "AP",
+                "value": 0.504950495049505,
+                "parameters": {
+                    "iou_threshold": 0.1,
+                    "label": {"key": "k1", "value": "v1"},
+                },
             },
-        },
-        {
-            "type": "AP",
-            "value": 0.504950495049505,
-            "parameters": {
-                "iou": 0.6,
-                "label": {"key": "k1", "value": "v1"},
+            {
+                "type": "AP",
+                "value": 0.504950495049505,
+                "parameters": {
+                    "iou_threshold": 0.6,
+                    "label": {"key": "k1", "value": "v1"},
+                },
             },
-        },
-        {
-            "type": "AP",
-            "value": 0.0,
-            "parameters": {
-                "iou": 0.1,
-                "label": {"key": "k2", "value": "v2"},
+            {
+                "type": "AP",
+                "value": 0.0,
+                "parameters": {
+                    "iou_threshold": 0.1,
+                    "label": {"key": "k2", "value": "v2"},
+                },
             },
-        },
-        {
-            "type": "AP",
-            "value": 0.0,
-            "parameters": {
-                "iou": 0.6,
-                "label": {"key": "k2", "value": "v2"},
+            {
+                "type": "AP",
+                "value": 0.0,
+                "parameters": {
+                    "iou_threshold": 0.6,
+                    "label": {"key": "k2", "value": "v2"},
+                },
             },
-        },
-    ]
-    for m in actual_metrics:
-        assert m in expected_metrics
-    for m in expected_metrics:
-        assert m in actual_metrics
+        ]
+        for m in actual_metrics:
+            assert m in expected_metrics
+        for m in expected_metrics:
+            assert m in actual_metrics
 
-    # test mAP
-    actual_metrics = [m.to_dict() for m in metrics[MetricType.mAP]]
-    expected_metrics = [
-        {
-            "type": "mAP",
-            "value": 0.504950495049505,
-            "parameters": {
-                "iou": 0.1,
-                "label_key": "k1",
+        # test mAP
+        actual_metrics = [m.to_dict() for m in metrics[MetricType.mAP]]
+        expected_metrics = [
+            {
+                "type": "mAP",
+                "value": 0.504950495049505,
+                "parameters": {
+                    "iou_threshold": 0.1,
+                    "label_key": "k1",
+                },
             },
-        },
-        {
-            "type": "mAP",
-            "value": 0.504950495049505,
-            "parameters": {
-                "iou": 0.6,
-                "label_key": "k1",
+            {
+                "type": "mAP",
+                "value": 0.504950495049505,
+                "parameters": {
+                    "iou_threshold": 0.6,
+                    "label_key": "k1",
+                },
             },
-        },
-        {
-            "type": "mAP",
-            "value": 0.0,
-            "parameters": {
-                "iou": 0.1,
-                "label_key": "k2",
+            {
+                "type": "mAP",
+                "value": 0.0,
+                "parameters": {
+                    "iou_threshold": 0.1,
+                    "label_key": "k2",
+                },
             },
-        },
-        {
-            "type": "mAP",
-            "value": 0.0,
-            "parameters": {
-                "iou": 0.6,
-                "label_key": "k2",
+            {
+                "type": "mAP",
+                "value": 0.0,
+                "parameters": {
+                    "iou_threshold": 0.6,
+                    "label_key": "k2",
+                },
             },
-        },
-    ]
-    for m in actual_metrics:
-        assert m in expected_metrics
-    for m in expected_metrics:
-        assert m in actual_metrics
+        ]
+        for m in actual_metrics:
+            assert m in expected_metrics
+        for m in expected_metrics:
+            assert m in actual_metrics
 
-    # test AP Averaged Over IoUs
-    actual_metrics = [
-        m.to_dict() for m in metrics[MetricType.APAveragedOverIOUs]
-    ]
-    expected_metrics = [
-        {
-            "type": "APAveragedOverIOUs",
-            "value": 0.504950495049505,
-            "parameters": {
-                "ious": [0.1, 0.6],
-                "label": {"key": "k1", "value": "v1"},
+        # test AP Averaged Over IoUs
+        actual_metrics = [
+            m.to_dict() for m in metrics[MetricType.APAveragedOverIOUs]
+        ]
+        expected_metrics = [
+            {
+                "type": "APAveragedOverIOUs",
+                "value": 0.504950495049505,
+                "parameters": {
+                    "iou_thresholds": [0.1, 0.6],
+                    "label": {"key": "k1", "value": "v1"},
+                },
             },
-        },
-        {
-            "type": "APAveragedOverIOUs",
-            "value": 0.0,
-            "parameters": {
-                "ious": [0.1, 0.6],
-                "label": {"key": "k2", "value": "v2"},
+            {
+                "type": "APAveragedOverIOUs",
+                "value": 0.0,
+                "parameters": {
+                    "iou_thresholds": [0.1, 0.6],
+                    "label": {"key": "k2", "value": "v2"},
+                },
             },
-        },
-    ]
-    for m in actual_metrics:
-        assert m in expected_metrics
-    for m in expected_metrics:
-        assert m in actual_metrics
+        ]
+        for m in actual_metrics:
+            assert m in expected_metrics
+        for m in expected_metrics:
+            assert m in actual_metrics
 
-    # test mAP Averaged Over IoUs
-    actual_metrics = [
-        m.to_dict() for m in metrics[MetricType.mAPAveragedOverIOUs]
-    ]
-    expected_metrics = [
-        {
-            "type": "mAPAveragedOverIOUs",
-            "value": 0.504950495049505,
-            "parameters": {
-                "ious": [0.1, 0.6],
-                "label_key": "k1",
+        # test mAP Averaged Over IoUs
+        actual_metrics = [
+            m.to_dict() for m in metrics[MetricType.mAPAveragedOverIOUs]
+        ]
+        expected_metrics = [
+            {
+                "type": "mAPAveragedOverIOUs",
+                "value": 0.504950495049505,
+                "parameters": {
+                    "iou_thresholds": [0.1, 0.6],
+                    "label_key": "k1",
+                },
             },
-        },
-        {
-            "type": "mAPAveragedOverIOUs",
-            "value": 0.0,
-            "parameters": {
-                "ious": [0.1, 0.6],
-                "label_key": "k2",
+            {
+                "type": "mAPAveragedOverIOUs",
+                "value": 0.0,
+                "parameters": {
+                    "iou_thresholds": [0.1, 0.6],
+                    "label_key": "k2",
+                },
             },
-        },
-    ]
-    for m in actual_metrics:
-        assert m in expected_metrics
-    for m in expected_metrics:
-        assert m in actual_metrics
+        ]
+        for m in actual_metrics:
+            assert m in expected_metrics
+        for m in expected_metrics:
+            assert m in actual_metrics
 
 
 def test_ap_using_torch_metrics_example(
@@ -244,9 +251,10 @@ def test_ap_using_torch_metrics_example(
     cf with torch metrics/pycocotools results listed here:
     https://github.com/Lightning-AI/metrics/blob/107dbfd5fb158b7ae6d76281df44bd94c836bfce/tests/unittests/detection/test_map.py#L231
     """
-    manager = DataLoader()
-    manager.add_data(torchmetrics_detections)
-    evaluator = manager.finalize()
+
+    loader = DataLoader()
+    loader.add_bounding_boxes(torchmetrics_detections)
+    evaluator = loader.finalize()
 
     assert evaluator.ignored_prediction_labels == [("class", "3")]
     assert evaluator.missing_prediction_labels == []
@@ -266,7 +274,7 @@ def test_ap_using_torch_metrics_example(
             "type": "AP",
             "value": 1.0,
             "parameters": {
-                "iou": 0.5,
+                "iou_threshold": 0.5,
                 "label": {"key": "class", "value": "0"},
             },
         },
@@ -274,7 +282,7 @@ def test_ap_using_torch_metrics_example(
             "type": "AP",
             "value": 0.7227722772277229,
             "parameters": {
-                "iou": 0.75,
+                "iou_threshold": 0.75,
                 "label": {"key": "class", "value": "0"},
             },
         },
@@ -282,7 +290,7 @@ def test_ap_using_torch_metrics_example(
             "type": "AP",
             "value": 1.0,
             "parameters": {
-                "iou": 0.5,
+                "iou_threshold": 0.5,
                 "label": {"key": "class", "value": "1"},
             },
         },
@@ -290,7 +298,7 @@ def test_ap_using_torch_metrics_example(
             "type": "AP",
             "value": 1.0,
             "parameters": {
-                "iou": 0.75,
+                "iou_threshold": 0.75,
                 "label": {"key": "class", "value": "1"},
             },
         },
@@ -298,7 +306,7 @@ def test_ap_using_torch_metrics_example(
             "type": "AP",
             "value": 0.504950495049505,
             "parameters": {
-                "iou": 0.5,
+                "iou_threshold": 0.5,
                 "label": {"key": "class", "value": "2"},
             },
         },
@@ -306,7 +314,7 @@ def test_ap_using_torch_metrics_example(
             "type": "AP",
             "value": 0.504950495049505,
             "parameters": {
-                "iou": 0.75,
+                "iou_threshold": 0.75,
                 "label": {"key": "class", "value": "2"},
             },
         },
@@ -314,7 +322,7 @@ def test_ap_using_torch_metrics_example(
             "type": "AP",
             "value": 1.0,
             "parameters": {
-                "iou": 0.5,
+                "iou_threshold": 0.5,
                 "label": {"key": "class", "value": "4"},
             },
         },
@@ -322,7 +330,7 @@ def test_ap_using_torch_metrics_example(
             "type": "AP",
             "value": 1.0,
             "parameters": {
-                "iou": 0.75,
+                "iou_threshold": 0.75,
                 "label": {"key": "class", "value": "4"},
             },
         },
@@ -330,7 +338,7 @@ def test_ap_using_torch_metrics_example(
             "type": "AP",
             "value": 0.7909790979097909,
             "parameters": {
-                "iou": 0.5,
+                "iou_threshold": 0.5,
                 "label": {"key": "class", "value": "49"},
             },
         },
@@ -338,7 +346,7 @@ def test_ap_using_torch_metrics_example(
             "type": "AP",
             "value": 0.5756718528995757,
             "parameters": {
-                "iou": 0.75,
+                "iou_threshold": 0.75,
                 "label": {"key": "class", "value": "49"},
             },
         },
@@ -355,7 +363,7 @@ def test_ap_using_torch_metrics_example(
             "type": "mAP",
             "value": 0.8591859185918592,
             "parameters": {
-                "iou": 0.5,
+                "iou_threshold": 0.5,
                 "label_key": "class",
             },
         },
@@ -363,7 +371,7 @@ def test_ap_using_torch_metrics_example(
             "type": "mAP",
             "value": 0.7606789250353607,
             "parameters": {
-                "iou": 0.75,
+                "iou_threshold": 0.75,
                 "label_key": "class",
             },
         },
@@ -382,9 +390,9 @@ def test_ap_false_negatives_single_datum_baseline(
     so there is not a penalty for the false negative so the AP is 1
     """
 
-    manager = DataLoader()
-    manager.add_data(false_negatives_single_datum_baseline_detections)
-    evaluator = manager.finalize()
+    loader = DataLoader()
+    loader.add_bounding_boxes(false_negatives_single_datum_baseline_detections)
+    evaluator = loader.finalize()
     metrics = evaluator.evaluate(iou_thresholds=[0.5])
 
     actual_metrics = [m.to_dict() for m in metrics[MetricType.AP]]
@@ -393,7 +401,7 @@ def test_ap_false_negatives_single_datum_baseline(
             "type": "AP",
             "value": 1.0,
             "parameters": {
-                "iou": 0.5,
+                "iou_threshold": 0.5,
                 "label": {
                     "key": "key",
                     "value": "value",
@@ -401,10 +409,10 @@ def test_ap_false_negatives_single_datum_baseline(
             },
         }
     ]
-    for m in expected_metrics:
-        assert m in actual_metrics
     for m in actual_metrics:
         assert m in expected_metrics
+    for m in expected_metrics:
+        assert m in actual_metrics
 
 
 def test_ap_false_negatives_single_datum(
@@ -415,9 +423,9 @@ def test_ap_false_negatives_single_datum(
     does not sufficiently overlap the groundtruth and so is penalized and we get an AP of 0.5
     """
 
-    manager = DataLoader()
-    manager.add_data(false_negatives_single_datum_detections)
-    evaluator = manager.finalize()
+    loader = DataLoader()
+    loader.add_bounding_boxes(false_negatives_single_datum_detections)
+    evaluator = loader.finalize()
     metrics = evaluator.evaluate(iou_thresholds=[0.5])
 
     actual_metrics = [m.to_dict() for m in metrics[MetricType.AP]]
@@ -426,7 +434,7 @@ def test_ap_false_negatives_single_datum(
             "type": "AP",
             "value": 0.5,
             "parameters": {
-                "iou": 0.5,
+                "iou_threshold": 0.5,
                 "label": {
                     "key": "key",
                     "value": "value",
@@ -434,10 +442,10 @@ def test_ap_false_negatives_single_datum(
             },
         }
     ]
-    for m in expected_metrics:
-        assert m in actual_metrics
     for m in actual_metrics:
         assert m in expected_metrics
+    for m in expected_metrics:
+        assert m in actual_metrics
 
 
 def test_ap_false_negatives_two_datums_one_empty_low_confidence_of_fp(
@@ -454,11 +462,11 @@ def test_ap_false_negatives_two_datums_one_empty_low_confidence_of_fp(
 
     """
 
-    manager = DataLoader()
-    manager.add_data(
+    loader = DataLoader()
+    loader.add_bounding_boxes(
         false_negatives_two_datums_one_empty_low_confidence_of_fp_detections
     )
-    evaluator = manager.finalize()
+    evaluator = loader.finalize()
     metrics = evaluator.evaluate(iou_thresholds=[0.5])
 
     actual_metrics = [m.to_dict() for m in metrics[MetricType.AP]]
@@ -467,7 +475,7 @@ def test_ap_false_negatives_two_datums_one_empty_low_confidence_of_fp(
             "type": "AP",
             "value": 1.0,
             "parameters": {
-                "iou": 0.5,
+                "iou_threshold": 0.5,
                 "label": {
                     "key": "key",
                     "value": "value",
@@ -475,10 +483,10 @@ def test_ap_false_negatives_two_datums_one_empty_low_confidence_of_fp(
             },
         }
     ]
-    for m in expected_metrics:
-        assert m in actual_metrics
     for m in actual_metrics:
         assert m in expected_metrics
+    for m in expected_metrics:
+        assert m in actual_metrics
 
 
 def test_ap_false_negatives_two_datums_one_empty_high_confidence_of_fp(
@@ -494,11 +502,11 @@ def test_ap_false_negatives_two_datums_one_empty_high_confidence_of_fp(
     In this case, the AP should be 0.5 since the false positive has higher confidence than the true positive
     """
 
-    manager = DataLoader()
-    manager.add_data(
+    loader = DataLoader()
+    loader.add_bounding_boxes(
         false_negatives_two_datums_one_empty_high_confidence_of_fp_detections
     )
-    evaluator = manager.finalize()
+    evaluator = loader.finalize()
     metrics = evaluator.evaluate(iou_thresholds=[0.5])
 
     actual_metrics = [m.to_dict() for m in metrics[MetricType.AP]]
@@ -507,7 +515,7 @@ def test_ap_false_negatives_two_datums_one_empty_high_confidence_of_fp(
             "type": "AP",
             "value": 0.5,
             "parameters": {
-                "iou": 0.5,
+                "iou_threshold": 0.5,
                 "label": {
                     "key": "key",
                     "value": "value",
@@ -515,10 +523,10 @@ def test_ap_false_negatives_two_datums_one_empty_high_confidence_of_fp(
             },
         }
     ]
-    for m in expected_metrics:
-        assert m in actual_metrics
     for m in actual_metrics:
         assert m in expected_metrics
+    for m in expected_metrics:
+        assert m in actual_metrics
 
 
 def test_ap_false_negatives_two_datums_one_only_with_different_class_low_confidence_of_fp(
@@ -534,11 +542,11 @@ def test_ap_false_negatives_two_datums_one_only_with_different_class_low_confide
     In this case, the AP for class `"value"` should be 1 since the false positive has lower confidence than the true positive.
     AP for class `"other value"` should be 0 since there is no prediction for the `"other value"` groundtruth
     """
-    manager = DataLoader()
-    manager.add_data(
+    loader = DataLoader()
+    loader.add_bounding_boxes(
         false_negatives_two_datums_one_only_with_different_class_low_confidence_of_fp_detections
     )
-    evaluator = manager.finalize()
+    evaluator = loader.finalize()
     metrics = evaluator.evaluate(iou_thresholds=[0.5])
 
     actual_metrics = [m.to_dict() for m in metrics[MetricType.AP]]
@@ -547,7 +555,7 @@ def test_ap_false_negatives_two_datums_one_only_with_different_class_low_confide
             "type": "AP",
             "value": 1.0,
             "parameters": {
-                "iou": 0.5,
+                "iou_threshold": 0.5,
                 "label": {
                     "key": "key",
                     "value": "value",
@@ -558,7 +566,7 @@ def test_ap_false_negatives_two_datums_one_only_with_different_class_low_confide
             "type": "AP",
             "value": 0.0,
             "parameters": {
-                "iou": 0.5,
+                "iou_threshold": 0.5,
                 "label": {
                     "key": "key",
                     "value": "other value",
@@ -566,10 +574,10 @@ def test_ap_false_negatives_two_datums_one_only_with_different_class_low_confide
             },
         },
     ]
-    for m in expected_metrics:
-        assert m in actual_metrics
     for m in actual_metrics:
         assert m in expected_metrics
+    for m in expected_metrics:
+        assert m in actual_metrics
 
 
 def test_ap_false_negatives_two_datums_one_only_with_different_class_high_confidence_of_fp(
@@ -585,11 +593,11 @@ def test_ap_false_negatives_two_datums_one_only_with_different_class_high_confid
     In this case, the AP for class `"value"` should be 0.5 since the false positive has higher confidence than the true positive.
     AP for class `"other value"` should be 0 since there is no prediction for the `"other value"` groundtruth
     """
-    manager = DataLoader()
-    manager.add_data(
+    loader = DataLoader()
+    loader.add_bounding_boxes(
         false_negatives_two_images_one_only_with_different_class_high_confidence_of_fp_detections
     )
-    evaluator = manager.finalize()
+    evaluator = loader.finalize()
     metrics = evaluator.evaluate(iou_thresholds=[0.5])
 
     actual_metrics = [m.to_dict() for m in metrics[MetricType.AP]]
@@ -598,7 +606,7 @@ def test_ap_false_negatives_two_datums_one_only_with_different_class_high_confid
             "type": "AP",
             "value": 0.5,
             "parameters": {
-                "iou": 0.5,
+                "iou_threshold": 0.5,
                 "label": {
                     "key": "key",
                     "value": "value",
@@ -609,7 +617,7 @@ def test_ap_false_negatives_two_datums_one_only_with_different_class_high_confid
             "type": "AP",
             "value": 0.0,
             "parameters": {
-                "iou": 0.5,
+                "iou_threshold": 0.5,
                 "label": {
                     "key": "key",
                     "value": "other value",
@@ -617,7 +625,210 @@ def test_ap_false_negatives_two_datums_one_only_with_different_class_high_confid
             },
         },
     ]
-    for m in expected_metrics:
-        assert m in actual_metrics
     for m in actual_metrics:
         assert m in expected_metrics
+    for m in expected_metrics:
+        assert m in actual_metrics
+
+
+def test_ap_ranked_pair_ordering(
+    detection_ranked_pair_ordering: Detection,
+    detection_ranked_pair_ordering_with_bitmasks: Detection,
+    detection_ranked_pair_ordering_with_polygons: Detection,
+):
+    for input_, method in [
+        (detection_ranked_pair_ordering, DataLoader.add_bounding_boxes),
+        (
+            detection_ranked_pair_ordering_with_bitmasks,
+            DataLoader.add_bitmasks,
+        ),
+        (
+            detection_ranked_pair_ordering_with_polygons,
+            DataLoader.add_polygons,
+        ),
+    ]:
+        loader = DataLoader()
+        method(loader, detections=[input_])
+        evaluator = loader.finalize()
+
+        assert evaluator.metadata == {
+            "ignored_prediction_labels": [
+                ("class", "label4"),
+            ],
+            "missing_prediction_labels": [],
+            "n_datums": 1,
+            "n_groundtruths": 3,
+            "n_labels": 4,
+            "n_predictions": 4,
+        }
+
+        metrics = evaluator.evaluate(iou_thresholds=[0.5, 0.75])
+
+        actual_metrics = [m.to_dict() for m in metrics[MetricType.AP]]
+        expected_metrics = [
+            {
+                "parameters": {
+                    "iou_threshold": 0.5,
+                    "label": {"key": "class", "value": "label1"},
+                },
+                "value": 1.0,
+                "type": "AP",
+            },
+            {
+                "parameters": {
+                    "iou_threshold": 0.75,
+                    "label": {"key": "class", "value": "label1"},
+                },
+                "value": 1.0,
+                "type": "AP",
+            },
+            {
+                "parameters": {
+                    "iou_threshold": 0.5,
+                    "label": {"key": "class", "value": "label2"},
+                },
+                "value": 1.0,
+                "type": "AP",
+            },
+            {
+                "parameters": {
+                    "iou_threshold": 0.75,
+                    "label": {"key": "class", "value": "label2"},
+                },
+                "value": 1.0,
+                "type": "AP",
+            },
+            {
+                "parameters": {
+                    "iou_threshold": 0.5,
+                    "label": {"key": "class", "value": "label3"},
+                },
+                "value": 0.0,
+                "type": "AP",
+            },
+            {
+                "parameters": {
+                    "iou_threshold": 0.75,
+                    "label": {"key": "class", "value": "label3"},
+                },
+                "value": 0.0,
+                "type": "AP",
+            },
+        ]
+        for m in actual_metrics:
+            assert m in expected_metrics
+        for m in expected_metrics:
+            assert m in actual_metrics
+
+        actual_metrics = [m.to_dict() for m in metrics[MetricType.mAP]]
+        expected_metrics = [
+            {
+                "parameters": {"label_key": "class", "iou_threshold": 0.5},
+                "value": 0.6666666666666666,
+                "type": "mAP",
+            },
+            {
+                "parameters": {"label_key": "class", "iou_threshold": 0.75},
+                "value": 0.6666666666666666,
+                "type": "mAP",
+            },
+        ]
+        for m in actual_metrics:
+            assert m in expected_metrics
+        for m in expected_metrics:
+            assert m in actual_metrics
+
+        actual_metrics = [
+            m.to_dict() for m in metrics[MetricType.APAveragedOverIOUs]
+        ]
+        expected_metrics = [
+            {
+                "parameters": {
+                    "label": {"key": "class", "value": "label1"},
+                    "iou_thresholds": [0.5, 0.75],
+                },
+                "value": 1.0,
+                "type": "APAveragedOverIOUs",
+            },
+            {
+                "parameters": {
+                    "iou_thresholds": [0.5, 0.75],
+                    "label": {"key": "class", "value": "label2"},
+                },
+                "value": 1.0,
+                "type": "APAveragedOverIOUs",
+            },
+            {
+                "parameters": {
+                    "iou_thresholds": [0.5, 0.75],
+                    "label": {"key": "class", "value": "label3"},
+                },
+                "value": 0.0,
+                "type": "APAveragedOverIOUs",
+            },
+        ]
+        for m in actual_metrics:
+            assert m in expected_metrics
+        for m in expected_metrics:
+            assert m in actual_metrics
+
+        actual_metrics = [
+            m.to_dict() for m in metrics[MetricType.mAPAveragedOverIOUs]
+        ]
+        expected_metrics = [
+            {
+                "parameters": {
+                    "label_key": "class",
+                    "iou_thresholds": [
+                        0.5,
+                        0.75,
+                    ],
+                },
+                "value": 0.6666666666666666,
+                "type": "mAPAveragedOverIOUs",
+            },
+        ]
+        for m in actual_metrics:
+            assert m in expected_metrics
+        for m in expected_metrics:
+            assert m in actual_metrics
+
+
+def test_ap_true_positive_deassignment(
+    detections_tp_deassignment_edge_case: list[Detection],
+):
+
+    loader = DataLoader()
+    loader.add_bounding_boxes(detections_tp_deassignment_edge_case)
+    evaluator = loader.finalize()
+
+    assert evaluator.ignored_prediction_labels == []
+    assert evaluator.missing_prediction_labels == []
+    assert evaluator.n_datums == 1
+    assert evaluator.n_labels == 1
+    assert evaluator.n_groundtruths == 2
+    assert evaluator.n_predictions == 4
+
+    metrics = evaluator.evaluate(
+        iou_thresholds=[0.5],
+        score_thresholds=[0.5],
+    )
+
+    assert len(metrics) == 14
+
+    # test AP
+    actual_metrics = [m.to_dict() for m in metrics[MetricType.AP]]
+    expected_metrics = [
+        {
+            "type": "AP",
+            "value": 0.504950495049505,
+            "parameters": {
+                "iou_threshold": 0.5,
+                "label": {"key": "k1", "value": "v1"},
+            },
+        },
+    ]
+    for m in actual_metrics:
+        assert m in expected_metrics
+    for m in expected_metrics:
+        assert m in actual_metrics

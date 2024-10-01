@@ -20,13 +20,13 @@ def test_pr_curve_simple():
         ]
     )
 
-    label_counts = np.array([[1, 5, 0]])
+    label_metadata = np.array([[1, 5, 0]])
     iou_thresholds = np.array([0.1, 0.6])
     score_thresholds = np.array([0.0])
 
     (_, _, _, pr_curve) = compute_metrics(
         sorted_pairs,
-        label_counts=label_counts,
+        label_metadata=label_metadata,
         iou_thresholds=iou_thresholds,
         score_thresholds=score_thresholds,
     )
@@ -43,9 +43,9 @@ def test_pr_curve_using_torch_metrics_example(
     cf with torch metrics/pycocotools results listed here:
     https://github.com/Lightning-AI/metrics/blob/107dbfd5fb158b7ae6d76281df44bd94c836bfce/tests/unittests/detection/test_map.py#L231
     """
-    manager = DataLoader()
-    manager.add_data(torchmetrics_detections)
-    evaluator = manager.finalize()
+    loader = DataLoader()
+    loader.add_bounding_boxes(torchmetrics_detections)
+    evaluator = loader.finalize()
 
     assert evaluator.ignored_prediction_labels == [("class", "3")]
     assert evaluator.missing_prediction_labels == []
@@ -94,7 +94,7 @@ def test_pr_curve_using_torch_metrics_example(
             "type": "PrecisionRecallCurve",
             "value": a,
             "parameters": {
-                "iou": 0.5,
+                "iou_threshold": 0.5,
                 "label": {"key": "class", "value": "0"},
             },
         },
@@ -102,7 +102,7 @@ def test_pr_curve_using_torch_metrics_example(
             "type": "PrecisionRecallCurve",
             "value": d,
             "parameters": {
-                "iou": 0.75,
+                "iou_threshold": 0.75,
                 "label": {"key": "class", "value": "0"},
             },
         },
@@ -110,7 +110,7 @@ def test_pr_curve_using_torch_metrics_example(
             "type": "PrecisionRecallCurve",
             "value": a,
             "parameters": {
-                "iou": 0.5,
+                "iou_threshold": 0.5,
                 "label": {"key": "class", "value": "1"},
             },
         },
@@ -118,7 +118,7 @@ def test_pr_curve_using_torch_metrics_example(
             "type": "PrecisionRecallCurve",
             "value": a,
             "parameters": {
-                "iou": 0.75,
+                "iou_threshold": 0.75,
                 "label": {"key": "class", "value": "1"},
             },
         },
@@ -126,7 +126,7 @@ def test_pr_curve_using_torch_metrics_example(
             "type": "PrecisionRecallCurve",
             "value": b,
             "parameters": {
-                "iou": 0.5,
+                "iou_threshold": 0.5,
                 "label": {"key": "class", "value": "2"},
             },
         },
@@ -134,7 +134,7 @@ def test_pr_curve_using_torch_metrics_example(
             "type": "PrecisionRecallCurve",
             "value": b,
             "parameters": {
-                "iou": 0.75,
+                "iou_threshold": 0.75,
                 "label": {"key": "class", "value": "2"},
             },
         },
@@ -142,7 +142,7 @@ def test_pr_curve_using_torch_metrics_example(
             "type": "PrecisionRecallCurve",
             "value": a,
             "parameters": {
-                "iou": 0.5,
+                "iou_threshold": 0.5,
                 "label": {"key": "class", "value": "4"},
             },
         },
@@ -150,7 +150,7 @@ def test_pr_curve_using_torch_metrics_example(
             "type": "PrecisionRecallCurve",
             "value": a,
             "parameters": {
-                "iou": 0.75,
+                "iou_threshold": 0.75,
                 "label": {"key": "class", "value": "4"},
             },
         },
@@ -158,7 +158,7 @@ def test_pr_curve_using_torch_metrics_example(
             "type": "PrecisionRecallCurve",
             "value": c,
             "parameters": {
-                "iou": 0.5,
+                "iou_threshold": 0.5,
                 "label": {"key": "class", "value": "49"},
             },
         },
@@ -166,7 +166,7 @@ def test_pr_curve_using_torch_metrics_example(
             "type": "PrecisionRecallCurve",
             "value": e,
             "parameters": {
-                "iou": 0.75,
+                "iou_threshold": 0.75,
                 "label": {"key": "class", "value": "49"},
             },
         },

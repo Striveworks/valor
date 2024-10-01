@@ -1,11 +1,10 @@
-from .annotation import Bitmask, BoundingBox, Detection
+from .annotation import Bitmask, BoundingBox, Detection, Polygon
 from .computation import (
-    compute_detailed_pr_curve,
-    compute_iou,
+    compute_detailed_counts,
     compute_metrics,
     compute_ranked_pairs,
 )
-from .manager import DataLoader, Evaluator
+from .manager import DataLoader, Evaluator, compute_iou
 from .metric import (
     AP,
     AR,
@@ -14,8 +13,7 @@ from .metric import (
     APAveragedOverIOUs,
     ARAveragedOverScores,
     Counts,
-    DetailedPrecisionRecallCurve,
-    DetailedPrecisionRecallPoint,
+    DetailedCounts,
     MetricType,
     Precision,
     PrecisionRecallCurve,
@@ -30,6 +28,7 @@ __all__ = [
     "Bitmask",
     "BoundingBox",
     "Detection",
+    "Polygon",
     "MetricType",
     "Counts",
     "Precision",
@@ -45,12 +44,11 @@ __all__ = [
     "ARAveragedOverScores",
     "mARAveragedOverScores",
     "PrecisionRecallCurve",
-    "DetailedPrecisionRecallPoint",
-    "DetailedPrecisionRecallCurve",
+    "DetailedCounts",
     "compute_iou",
     "compute_ranked_pairs",
     "compute_metrics",
-    "compute_detailed_pr_curve",
+    "compute_detailed_counts",
     "DataLoader",
     "Evaluator",
 ]
