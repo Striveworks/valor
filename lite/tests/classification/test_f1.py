@@ -122,70 +122,70 @@ def test_f1_score_with_example(
     loader.add_data(classifications_two_categeories)
     evaluator = loader.finalize()
 
-    metrics = evaluator.evaluate(score_thresholds=[0.5])
+    metrics = evaluator.evaluate(score_thresholds=[0.0, 0.5])
 
     # test F1
     actual_metrics = [m.to_dict() for m in metrics[MetricType.F1]]
     expected_metrics = [
         {
             "type": "F1",
-            "value": [0.5],
+            "value": [0.5, 0.5],
             "parameters": {
-                "score_thresholds": [0.5],
+                "score_thresholds": [0.0, 0.5],
                 "hardmax": True,
                 "label": {"key": "animal", "value": "bird"},
             },
         },
         {
             "type": "F1",
-            "value": [0.0],
+            "value": [0.0, 0.0],
             "parameters": {
-                "score_thresholds": [0.5],
+                "score_thresholds": [0.0, 0.5],
                 "hardmax": True,
                 "label": {"key": "animal", "value": "dog"},
             },
         },
         {
             "type": "F1",
-            "value": [0.5],
+            "value": [0.4, 0.5],
             "parameters": {
-                "score_thresholds": [0.5],
+                "score_thresholds": [0.0, 0.5],
                 "hardmax": True,
                 "label": {"key": "animal", "value": "cat"},
             },
         },
         {
             "type": "F1",
-            "value": [0.5],
+            "value": [0.5, 0.5],
             "parameters": {
-                "score_thresholds": [0.5],
+                "score_thresholds": [0.0, 0.5],
                 "hardmax": True,
                 "label": {"key": "color", "value": "white"},
             },
         },
         {
             "type": "F1",
-            "value": [0.5],
+            "value": [0.8, 0.5],
             "parameters": {
-                "score_thresholds": [0.5],
+                "score_thresholds": [0.0, 0.5],
                 "hardmax": True,
                 "label": {"key": "color", "value": "red"},
             },
         },
         {
             "type": "F1",
-            "value": [0.0],
+            "value": [0.0, 0.0],
             "parameters": {
-                "score_thresholds": [0.5],
+                "score_thresholds": [0.0, 0.5],
                 "hardmax": True,
                 "label": {"key": "color", "value": "blue"},
             },
         },
         {
             "type": "F1",
-            "value": [0.0],
+            "value": [0.0, 0.0],
             "parameters": {
-                "score_thresholds": [0.5],
+                "score_thresholds": [0.0, 0.5],
                 "hardmax": True,
                 "label": {"key": "color", "value": "black"},
             },
