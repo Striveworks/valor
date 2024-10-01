@@ -619,9 +619,9 @@ def compute_confusion_matrix(
                 ~mask_groundtruths_with_passing_score & mask_gt_exists
             )
 
+            # create category masks
             mask_tp = mask_score & mask_iou & mask_gt_pd_match
-            mask_fp_misclf = mask_score & mask_iou & mask_gt_pd_mismatch
-            mask_fn_misclf = mask_iou & (
+            mask_misclf = mask_iou & (
                 (
                     ~mask_score
                     & mask_gt_pd_match
@@ -629,184 +629,169 @@ def compute_confusion_matrix(
                 )
                 | (mask_score & mask_gt_pd_mismatch)
             )
-            mask_fp_halluc = mask_score & mask_predictions_without_passing_ious
-            mask_fn_misprd = (
+            mask_halluc = mask_score & mask_predictions_without_passing_ious
+            mask_misprd = (
                 mask_groundtruths_without_passing_ious
                 | mask_groundtruths_without_passing_score
             )
 
-            # find unique pairs
-            tps, tp_indices, tp_inverse = np.unique(
-                data[mask_tp][:, [0, 2, 4]].astype(int),
-                return_index=True,
-                return_inverse=True,
-                axis=0,
+            # filter out true-positives from misclf and misprd
+            mask_gts_with_tp_override = (
+                (
+                    data[mask_misclf][:, [0, 1]].reshape(-1, 1, 2)
+                    == data[mask_tp][:, [0, 1]].reshape(1, -1, 2)
+                )
+                .all(axis=2)
+                .any(axis=1)
             )
-            tp_labels = np.unique(tps[:, 2])
-            tp_counts = np.bincount(tps[:, 2], minlength=n_labels)
-
-            (
-                fp_misclf_labels,
-                fp_misclf_indices,
-                fp_misclf_inverse,
-                fp_misclf_counts,
-            ) = np.unique(
-                data[mask_fp_misclf][:, [4, 5]].astype(int),
-                return_index=True,
-                return_inverse=True,
-                return_counts=True,
-                axis=0,
+            mask_pds_with_tp_override = (
+                (
+                    data[mask_misclf][:, [0, 2]].reshape(-1, 1, 2)
+                    == data[mask_tp][:, [0, 2]].reshape(1, -1, 2)
+                )
+                .all(axis=2)
+                .any(axis=1)
             )
-            (
-                fp_halluc_labels,
-                fp_halluc_indices,
-                fp_halluc_inverse,
-                fp_halluc_counts,
-            ) = np.unique(
-                data[mask_fp_halluc][:, 5].astype(int),
-                axis=0,
-                return_index=True,
-                return_inverse=True,
-                return_counts=True,
+            mask_misprd[mask_misclf] |= (
+                ~mask_gts_with_tp_override & mask_pds_with_tp_override
             )
-            (
-                fn_misprd_labels,
-                fn_misprd_indices,
-                fn_misprd_inverse,
-                fn_misprd_counts,
-            ) = np.unique(
-                data[mask_fn_misprd][:, 4].astype(int),
-                axis=0,
-                return_index=True,
-                return_inverse=True,
-                return_counts=True,
+            mask_misclf[mask_misclf] &= (
+                ~mask_gts_with_tp_override & ~mask_pds_with_tp_override
             )
 
-            # filter out predictions and groundtruths involved in true-positives
-            if tp_indices.size > 0:
-                tp_predictions = np.unique(
-                    data[mask_tp][tp_indices, :][:, [0, 2, 4]].astype(int),
+            def _count(
+                x: NDArray[np.floating],
+                unique_idx: int | list[int],
+                label_idx: int | list[int],
+            ):
+                unique_rows, indices = np.unique(
+                    x.astype(int)[:, unique_idx],
+                    return_index=True,
                     axis=0,
                 )
-                data[mask_fp_misclf][fp_misclf_indices, :][
-                    :, [0, 2, 4]
-                ].reshape(-1, 1, 3)
-                mask_fp_misclf_is_tp = (
-                    (
-                        data[mask_fp_misclf][fp_misclf_indices][
-                            :, [0, 2, 4]
-                        ].reshape(-1, 1, 3)
-                        == tp_predictions.reshape(1, -1, 3)
-                    )
-                    .all(axis=2)
-                    .any(axis=1)
+                examples = x[indices]
+                labels, counts = np.unique(
+                    unique_rows[:, label_idx], return_counts=True, axis=0
                 )
-                fp_misclf_labels = fp_misclf_labels[~mask_fp_misclf_is_tp]
-                fp_misclf_indices = fp_misclf_indices[~mask_fp_misclf_is_tp]
+                return examples, labels, counts
 
-            # store the results
+            # count true positives
+            tp_examples, tp_labels, tp_counts = _count(
+                data[mask_tp],
+                unique_idx=[0, 2, 5],
+                label_idx=2,
+            )
+
+            # count misclassifications
+            misclf_examples, misclf_labels, misclf_counts = _count(
+                data[mask_misclf], unique_idx=[0, 1, 2, 4, 5], label_idx=[3, 4]
+            )
+
+            # count hallucinations
+            (
+                halluc_examples,
+                halluc_labels,
+                halluc_counts,
+            ) = _count(data[mask_halluc], unique_idx=[0, 2, 5], label_idx=2)
+
+            # count missing predictions
+            (
+                misprd_examples,
+                misprd_labels,
+                misprd_counts,
+            ) = _count(data[mask_misprd], unique_idx=[0, 1, 4], label_idx=2)
+
+            # store the counts
             confusion_matrix[
                 iou_idx, score_idx, tp_labels, tp_labels, 0
-            ] = tp_counts[tp_labels]
+            ] = tp_counts
             confusion_matrix[
                 iou_idx,
                 score_idx,
-                fp_misclf_labels[:, 0],
-                fp_misclf_labels[:, 1],
+                misclf_labels[:, 0],
+                misclf_labels[:, 1],
                 0,
-            ] = fp_misclf_counts
+            ] = misclf_counts
             hallucinations[
                 iou_idx,
                 score_idx,
-                fp_halluc_labels,
+                halluc_labels,
                 0,
-            ] = fp_halluc_counts
+            ] = halluc_counts
             missing_predictions[
                 iou_idx,
                 score_idx,
-                fn_misprd_labels,
+                misprd_labels,
                 0,
-            ] = fn_misprd_counts
+            ] = misprd_counts
 
             # store examples
             if n_examples > 0:
                 for label_idx in range(n_labels):
 
-                    tp_label_idx = tp_indices[tps[:, 2] == label_idx]
-                    if tp_label_idx.size > 0:
-                        tp_example_indices = np.where(
-                            tp_inverse == tp_label_idx
-                        )[0][:n_examples]
-                        tp_examples = data[mask_tp][tp_example_indices, :][
-                            :, [0, 1, 2, 6]
+                    # true-positive examples
+                    mask_tp_label = tp_examples[:, 5] == label_idx
+                    if mask_tp_label.sum() > 0:
+                        tp_label_examples = tp_examples[mask_tp_label][
+                            :n_examples
                         ]
                         confusion_matrix[
                             iou_idx,
                             score_idx,
                             label_idx,
                             label_idx,
-                            1 : 4 * tp_example_indices.size + 1,
-                        ] = tp_examples.flatten()
+                            1 : 4 * tp_label_examples.shape[0] + 1,
+                        ] = tp_label_examples[:, [0, 1, 2, 6]].flatten()
 
-                    mask_misclf_gt_indices = (
-                        fp_misclf_labels[:, 0] == label_idx
-                    )
-                    if mask_misclf_gt_indices.size > 0:
-                        for inner_label_idx in range(n_labels):
-                            mask_misclf_pd_indices = (
-                                fp_misclf_labels[:, 1] == inner_label_idx
+                    # misclassification examples
+                    mask_misclf_gt_label = misclf_examples[:, 4] == label_idx
+                    if mask_misclf_gt_label.sum() > 0:
+                        for pd_label_idx in range(n_labels):
+                            mask_misclf_pd_label = (
+                                misclf_examples[:, 5] == pd_label_idx
                             )
-                            misclf_label_idx = fp_misclf_indices[
-                                mask_misclf_gt_indices & mask_misclf_pd_indices
-                            ]
-                            if misclf_label_idx.size > 0:
-                                misclf_example_indices = np.where(
-                                    fp_misclf_inverse == misclf_label_idx
-                                )[0][:n_examples]
-                                misclf_examples = data[mask_fp_misclf][
-                                    misclf_example_indices, :
-                                ][:, [0, 1, 2, 6]]
+                            mask_misclf_label_combo = (
+                                mask_misclf_gt_label & mask_misclf_pd_label
+                            )
+                            if mask_misclf_label_combo.sum() > 0:
+                                misclf_label_examples = misclf_examples[
+                                    mask_misclf_label_combo
+                                ][:n_examples]
                                 confusion_matrix[
                                     iou_idx,
                                     score_idx,
                                     label_idx,
-                                    inner_label_idx,
-                                    1 : 4 * misclf_example_indices.size + 1,
-                                ] = misclf_examples.flatten()
+                                    pd_label_idx,
+                                    1 : 4 * misclf_label_examples.shape[0] + 1,
+                                ] = misclf_label_examples[
+                                    :, [0, 1, 2, 6]
+                                ].flatten()
 
-                    fp_halluc_label_idx = fp_halluc_indices[
-                        fp_halluc_labels == label_idx
-                    ]
-                    if fp_halluc_label_idx.size > 0:
-                        fp_halluc_example_indices = np.where(
-                            fp_halluc_inverse == fp_halluc_label_idx
-                        )[0][:n_examples]
-                        fp_halluc_examples = data[mask_fp_halluc][
-                            fp_halluc_example_indices, :
-                        ][:, [0, 2, 6]]
+                    # hallucination examples
+                    mask_halluc_label = halluc_examples[:, 5] == label_idx
+                    if mask_halluc_label.sum() > 0:
+                        halluc_label_examples = halluc_examples[
+                            mask_halluc_label
+                        ][:n_examples]
                         hallucinations[
                             iou_idx,
                             score_idx,
                             label_idx,
-                            1 : 3 * fp_halluc_example_indices.size + 1,
-                        ] = fp_halluc_examples.flatten()
+                            1 : 3 * halluc_label_examples.shape[0] + 1,
+                        ] = halluc_label_examples[:, [0, 2, 6]].flatten()
 
-                    fn_misprd_label_idx = fn_misprd_indices[
-                        fn_misprd_labels == label_idx
-                    ]
-                    if fn_misprd_label_idx.size > 0:
-                        fn_misprd_example_indices = np.where(
-                            fn_misprd_inverse == fn_misprd_label_idx
-                        )[0][:n_examples]
-                        fn_misprd_examples = data[mask_fn_misprd][
-                            fn_misprd_example_indices, :
-                        ][:, [0, 1]]
+                    # missing prediction examples
+                    mask_misprd_label = misprd_examples[:, 4] == label_idx
+                    if misprd_examples.size > 0:
+                        misprd_label_examples = misprd_examples[
+                            mask_misprd_label
+                        ][:n_examples]
                         missing_predictions[
                             iou_idx,
                             score_idx,
                             label_idx,
-                            1 : 2 * fn_misprd_example_indices.size + 1,
-                        ] = fn_misprd_examples.flatten()
+                            1 : 2 * misprd_label_examples.shape[0] + 1,
+                        ] = misprd_label_examples[:, [0, 1]].flatten()
 
     return (
         confusion_matrix,

@@ -228,7 +228,7 @@ def test_compute_confusion_matrix_with_examples():
     indices = slice(10)
 
     # total count, datum 0, gt 0, pd 0, score 0, datum 1, gt 1, pd 1, score 1
-    cm_gt0_pd0 = np.array([3.0, 0.0, 0.0, 1.0, 0.9, 3.0, 4.0, 5.0, 0.1])
+    cm_gt0_pd0 = np.array([3.0, 0.0, 0.0, 1.0, 0.9, 1.0, 2.0, 3.0, 0.1])
     cm_gt0_pd1 = np.array(
         [-1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0]
     )
@@ -291,7 +291,7 @@ def test_compute_confusion_matrix_with_examples():
     ).all()
 
     # total count, datum 0, gt 0, datum1, gt 1
-    misprd_gt0 = np.array([3.0, 3.0, 4.0, 1.0, 2.0])
+    misprd_gt0 = np.array([3.0, 1.0, 2.0, 3.0, 4.0])
     misprd_gt1 = np.array([-1.0, -1.0, -1.0, -1.0, -1.0])
     expected_missing_predictions = np.array([misprd_gt0, misprd_gt1])
     assert np.isclose(
@@ -332,7 +332,7 @@ def test_compute_confusion_matrix_with_examples():
     ).all()
 
     # total count, datum 0, gt 0, datum1, gt 1
-    misprd_gt0 = np.array([3.0, 3.0, 4.0, 1.0, 2.0])
+    misprd_gt0 = np.array([3.0, 1.0, 2.0, 3.0, 4.0])
     misprd_gt1 = np.array([-1.0, -1.0, -1.0, -1.0, -1.0])
     expected_missing_predictions = np.array([misprd_gt0, misprd_gt1])
     assert np.isclose(
@@ -347,6 +347,8 @@ def test_compute_confusion_matrix_with_examples():
     0x fn misclassification
     4x fn missing prediction
     """
+
+    indices = slice(90, None)
 
     # total count, datum 0, gt 0, pd 0, score 0, datum 1, gt 1, pd 1, score 1
     cm_gt0_pd0 = np.array(
@@ -375,7 +377,7 @@ def test_compute_confusion_matrix_with_examples():
     ).all()
 
     # total count, datum 0, gt 0, datum1, gt 1
-    misprd_gt0 = np.array([4.0, 0.0, 0.0, 3.0, 4.0])
+    misprd_gt0 = np.array([4.0, 0.0, 0.0, 1.0, 2.0])
     misprd_gt1 = np.array([1.0, 1.0, 1.0, -1.0, -1.0])
     expected_missing_predictions = np.array([misprd_gt0, misprd_gt1])
     assert np.isclose(
@@ -1121,43 +1123,11 @@ def test_confusion_matrix_using_torch_metrics_example(
     metrics = evaluator.evaluate(
         iou_thresholds=[0.5, 0.9],
         score_thresholds=[0.05, 0.25, 0.35, 0.55, 0.75, 0.8, 0.85, 0.95],
-        number_of_examples=1,
+        number_of_examples=0,
         metrics_to_return=[MetricType.ConfusionMatrix],
     )
 
     assert len(metrics[MetricType.ConfusionMatrix]) == 16
-
-    uid0_gt_0 = (214.125, 562.5, 41.28125, 285.0)
-    uid1_gt_0 = (13.0, 549.0, 22.75, 632.5)
-    uid1_gt_1 = (1.66015625, 270.25, 3.3203125, 275.25)
-    uid2_gt_0 = (61.875, 358.25, 276.25, 379.5)
-    uid2_gt_1 = (2.75, 162.125, 3.66015625, 316.0)
-    uid2_gt_2 = (295.5, 314.0, 93.9375, 152.75)
-    uid2_gt_3 = (327.0, 340.5, 97.0625, 123.0)
-    uid2_gt_4 = (356.5, 372.25, 95.5, 147.5)
-    uid2_gt_5 = (462.0, 493.75, 105.0625, 147.0)
-    uid2_gt_6 = (277.0, 292.5, 103.8125, 150.75)
-    uid3_gt_0 = (72.9375, 91.25, 45.96875, 80.5625)
-    uid3_gt_1 = (50.15625, 71.25, 45.34375, 79.8125)
-    uid3_gt_2 = (81.25, 98.6875, 47.03125, 78.5)
-    uid3_gt_3 = (63.96875, 84.375, 46.15625, 80.5)
-    uid3_gt_4 = (75.3125, 91.875, 23.015625, 50.84375)
-    uid3_gt_5 = (56.375, 75.6875, 21.65625, 45.53125)
-
-    uid0_pd_0 = (258.25, 606.5, 41.28125, 285.0)
-    uid1_pd_0 = (61.0, 565.0, 22.75, 632.5)
-    uid1_pd_1 = (12.65625, 281.25, 3.3203125, 275.25)
-    uid2_pd_0 = (87.875, 384.25, 276.25, 379.5)
-    uid2_pd_1 = (0.0, 142.125, 3.66015625, 316.0)
-    uid2_pd_2 = (296.5, 315.0, 93.9375, 152.75)
-    uid2_pd_3 = (329.0, 342.5, 97.0625, 123.0)
-    uid2_pd_4 = (356.5, 372.25, 95.5, 147.5)
-    uid2_pd_5 = (464.0, 495.75, 105.0625, 147.0)
-    uid2_pd_6 = (276.0, 291.5, 103.8125, 150.75)
-    uid3_pd_0 = (72.9375, 91.25, 45.96875, 80.5625)
-    uid3_pd_1 = (45.15625, 66.25, 45.34375, 79.8125)
-    uid3_pd_2 = (82.25, 99.6875, 47.03125, 78.5)
-    uid3_pd_4 = (75.3125, 91.875, 23.015625, 50.84375)
 
     # test ConfusionMatrix
     actual_metrics = [m.to_dict() for m in metrics[MetricType.ConfusionMatrix]]
@@ -1166,83 +1136,17 @@ def test_confusion_matrix_using_torch_metrics_example(
             "type": "ConfusionMatrix",
             "value": {
                 "confusion_matrix": {
-                    "4": {
-                        "4": {
-                            "count": 2,
-                            "examples": [
-                                {
-                                    "datum": "0",
-                                    "groundtruth": uid0_gt_0,
-                                    "prediction": uid0_pd_0,
-                                    "score": 0.23600000143051147,
-                                }
-                            ],
-                        }
-                    },
+                    "4": {"4": {"count": 2, "examples": []}},
                     "2": {
-                        "2": {
-                            "count": 1,
-                            "examples": [
-                                {
-                                    "datum": "1",
-                                    "groundtruth": uid1_gt_1,
-                                    "prediction": uid1_pd_1,
-                                    "score": 0.7260000109672546,
-                                }
-                            ],
-                        },
-                        "3": {
-                            "count": 1,
-                            "examples": [
-                                {
-                                    "datum": "1",
-                                    "groundtruth": uid1_gt_0,
-                                    "prediction": uid1_pd_0,
-                                    "score": 0.3179999887943268,
-                                }
-                            ],
-                        },
+                        "2": {"count": 1, "examples": []},
+                        "3": {"count": 1, "examples": []},
                     },
-                    "1": {
-                        "1": {
-                            "count": 1,
-                            "examples": [
-                                {
-                                    "datum": "2",
-                                    "groundtruth": uid2_gt_2,
-                                    "prediction": uid2_pd_2,
-                                    "score": 0.40700000524520874,
-                                }
-                            ],
-                        }
-                    },
-                    "0": {
-                        "0": {
-                            "count": 5,
-                            "examples": [
-                                {
-                                    "datum": "3",
-                                    "groundtruth": uid3_gt_0,
-                                    "prediction": uid3_pd_0,
-                                    "score": 0.5320000052452087,
-                                }
-                            ],
-                        }
-                    },
-                    "49": {"49": {"count": 11, "examples": []}},
+                    "1": {"1": {"count": 1, "examples": []}},
+                    "0": {"0": {"count": 5, "examples": []}},
+                    "49": {"49": {"count": 9, "examples": []}},
                 },
                 "hallucinations": {},
-                "missing_predictions": {
-                    "49": {
-                        "count": 4,
-                        "examples": [
-                            {
-                                "datum": "3",
-                                "groundtruth": uid3_gt_5,
-                            }
-                        ],
-                    }
-                },
+                "missing_predictions": {"49": {"count": 1, "examples": []}},
             },
             "parameters": {
                 "score_threshold": 0.05,
@@ -1254,91 +1158,19 @@ def test_confusion_matrix_using_torch_metrics_example(
             "type": "ConfusionMatrix",
             "value": {
                 "confusion_matrix": {
-                    "4": {
-                        "4": {
-                            "count": 1,
-                            "examples": [
-                                {
-                                    "datum": "1",
-                                    "groundtruth": uid1_gt_1,
-                                    "prediction": uid1_pd_1,
-                                    "score": 0.7260000109672546,
-                                }
-                            ],
-                        }
-                    },
+                    "4": {"4": {"count": 1, "examples": []}},
                     "2": {
-                        "2": {
-                            "count": 1,
-                            "examples": [
-                                {
-                                    "datum": "2",
-                                    "groundtruth": uid2_gt_0,
-                                    "prediction": uid2_pd_0,
-                                    "score": 0.5460000038146973,
-                                }
-                            ],
-                        },
-                        "3": {
-                            "count": 1,
-                            "examples": [
-                                {
-                                    "datum": "1",
-                                    "groundtruth": uid1_gt_0,
-                                    "prediction": uid1_pd_0,
-                                    "score": 0.3179999887943268,
-                                }
-                            ],
-                        },
+                        "2": {"count": 1, "examples": []},
+                        "3": {"count": 1, "examples": []},
                     },
-                    "1": {
-                        "1": {
-                            "count": 1,
-                            "examples": [
-                                {
-                                    "datum": "2",
-                                    "groundtruth": uid2_gt_1,
-                                    "prediction": uid2_pd_1,
-                                    "score": 0.30000001192092896,
-                                }
-                            ],
-                        }
-                    },
-                    "0": {
-                        "0": {
-                            "count": 5,
-                            "examples": [
-                                {
-                                    "datum": "2",
-                                    "groundtruth": uid2_gt_2,
-                                    "prediction": uid2_pd_2,
-                                    "score": 0.40700000524520874,
-                                }
-                            ],
-                        }
-                    },
+                    "1": {"1": {"count": 1, "examples": []}},
+                    "0": {"0": {"count": 5, "examples": []}},
                     "49": {"49": {"count": 6, "examples": []}},
                 },
                 "hallucinations": {},
                 "missing_predictions": {
-                    "4": {
-                        "count": 1,
-                        "examples": [
-                            {
-                                "datum": "0",
-                                "groundtruth": uid0_gt_0,
-                            }
-                        ],
-                    },
-                    "49": {
-                        "count": 21,
-                        "examples": [
-                            {
-                                "datum": "3",
-                                "groundtruth": uid3_gt_3,
-                            }
-                        ],
-                    },
+                    "4": {"count": 1, "examples": []},
+                    "49": {"count": 4, "examples": []},
                 },
             },
             "parameters": {
@@ -1351,78 +1183,18 @@ def test_confusion_matrix_using_torch_metrics_example(
             "type": "ConfusionMatrix",
             "value": {
                 "confusion_matrix": {
-                    "4": {
-                        "4": {
-                            "count": 1,
-                            "examples": [
-                                {
-                                    "datum": "1",
-                                    "groundtruth": uid1_gt_1,
-                                    "prediction": uid1_pd_1,
-                                    "score": 0.7260000109672546,
-                                }
-                            ],
-                        }
-                    },
-                    "2": {
-                        "2": {
-                            "count": 1,
-                            "examples": [
-                                {
-                                    "datum": "2",
-                                    "groundtruth": uid2_gt_0,
-                                    "prediction": uid2_pd_0,
-                                    "score": 0.5460000038146973,
-                                }
-                            ],
-                        }
-                    },
-                    "0": {
-                        "0": {
-                            "count": 4,
-                            "examples": [
-                                {
-                                    "datum": "2",
-                                    "groundtruth": uid2_gt_2,
-                                    "prediction": uid2_pd_2,
-                                    "score": 0.40700000524520874,
-                                }
-                            ],
-                        }
-                    },
+                    "4": {"4": {"count": 1, "examples": []}},
+                    "2": {"2": {"count": 1, "examples": []}},
+                    "0": {"0": {"count": 4, "examples": []}},
                     "49": {"49": {"count": 4, "examples": []}},
                 },
                 "hallucinations": {},
                 "missing_predictions": {
-                    "4": {
-                        "count": 1,
-                        "examples": [
-                            {
-                                "datum": "0",
-                                "groundtruth": uid0_gt_0,
-                            }
-                        ],
-                    },
-                    "2": {
-                        "count": 2,
-                        "examples": [
-                            {
-                                "datum": "1",
-                                "groundtruth": uid1_gt_0,
-                            }
-                        ],
-                    },
-                    "1": {
-                        "count": 2,
-                        "examples": [
-                            {
-                                "datum": "2",
-                                "groundtruth": uid2_gt_4,
-                            }
-                        ],
-                    },
+                    "4": {"count": 1, "examples": []},
+                    "2": {"count": 1, "examples": []},
+                    "1": {"count": 1, "examples": []},
                     "0": {"count": 1, "examples": []},
-                    "49": {"count": 28, "examples": []},
+                    "49": {"count": 6, "examples": []},
                 },
             },
             "parameters": {
@@ -1435,65 +1207,17 @@ def test_confusion_matrix_using_torch_metrics_example(
             "type": "ConfusionMatrix",
             "value": {
                 "confusion_matrix": {
-                    "2": {
-                        "2": {
-                            "count": 1,
-                            "examples": [
-                                {
-                                    "datum": "1",
-                                    "groundtruth": uid1_gt_1,
-                                    "prediction": uid1_pd_1,
-                                    "score": 0.7260000109672546,
-                                }
-                            ],
-                        }
-                    },
-                    "0": {
-                        "0": {
-                            "count": 3,
-                            "examples": [
-                                {
-                                    "datum": "2",
-                                    "groundtruth": uid2_gt_3,
-                                    "prediction": uid2_pd_3,
-                                    "score": 0.6110000014305115,
-                                }
-                            ],
-                        }
-                    },
+                    "2": {"2": {"count": 1, "examples": []}},
+                    "0": {"0": {"count": 3, "examples": []}},
                     "49": {"49": {"count": 3, "examples": []}},
                 },
                 "hallucinations": {},
                 "missing_predictions": {
-                    "4": {
-                        "count": 3,
-                        "examples": [
-                            {
-                                "datum": "0",
-                                "groundtruth": uid0_gt_0,
-                            }
-                        ],
-                    },
-                    "2": {
-                        "count": 2,
-                        "examples": [
-                            {
-                                "datum": "1",
-                                "groundtruth": uid1_gt_0,
-                            }
-                        ],
-                    },
-                    "1": {
-                        "count": 2,
-                        "examples": [
-                            {
-                                "datum": "3",
-                                "groundtruth": uid3_gt_0,
-                            }
-                        ],
-                    },
+                    "4": {"count": 2, "examples": []},
+                    "2": {"count": 1, "examples": []},
+                    "1": {"count": 1, "examples": []},
                     "0": {"count": 2, "examples": []},
-                    "49": {"count": 33, "examples": []},
+                    "49": {"count": 7, "examples": []},
                 },
             },
             "parameters": {
@@ -1506,44 +1230,16 @@ def test_confusion_matrix_using_torch_metrics_example(
             "type": "ConfusionMatrix",
             "value": {
                 "confusion_matrix": {
-                    "0": {
-                        "0": {
-                            "count": 2,
-                            "examples": [
-                                {
-                                    "datum": "2",
-                                    "groundtruth": uid2_gt_5,
-                                    "prediction": uid2_pd_5,
-                                    "score": 0.8050000071525574,
-                                }
-                            ],
-                        }
-                    },
+                    "0": {"0": {"count": 2, "examples": []}},
                     "49": {"49": {"count": 2, "examples": []}},
                 },
                 "hallucinations": {},
                 "missing_predictions": {
-                    "4": {
-                        "count": 3,
-                        "examples": [
-                            {
-                                "datum": "0",
-                                "groundtruth": uid0_gt_0,
-                            }
-                        ],
-                    },
-                    "2": {
-                        "count": 4,
-                        "examples": [
-                            {
-                                "datum": "1",
-                                "groundtruth": uid1_gt_0,
-                            }
-                        ],
-                    },
-                    "1": {"count": 2, "examples": []},
+                    "4": {"count": 2, "examples": []},
+                    "2": {"count": 2, "examples": []},
+                    "1": {"count": 1, "examples": []},
                     "0": {"count": 3, "examples": []},
-                    "49": {"count": 38, "examples": []},
+                    "49": {"count": 8, "examples": []},
                 },
             },
             "parameters": {
@@ -1556,44 +1252,16 @@ def test_confusion_matrix_using_torch_metrics_example(
             "type": "ConfusionMatrix",
             "value": {
                 "confusion_matrix": {
-                    "0": {
-                        "0": {
-                            "count": 2,
-                            "examples": [
-                                {
-                                    "datum": "2",
-                                    "groundtruth": uid2_gt_5,
-                                    "prediction": uid2_pd_5,
-                                    "score": 0.8050000071525574,
-                                }
-                            ],
-                        }
-                    },
+                    "0": {"0": {"count": 2, "examples": []}},
                     "49": {"49": {"count": 1, "examples": []}},
                 },
                 "hallucinations": {},
                 "missing_predictions": {
-                    "4": {
-                        "count": 3,
-                        "examples": [
-                            {
-                                "datum": "0",
-                                "groundtruth": uid0_gt_0,
-                            }
-                        ],
-                    },
-                    "2": {
-                        "count": 4,
-                        "examples": [
-                            {
-                                "datum": "1",
-                                "groundtruth": uid1_gt_0,
-                            }
-                        ],
-                    },
-                    "1": {"count": 2, "examples": []},
+                    "4": {"count": 2, "examples": []},
+                    "2": {"count": 2, "examples": []},
+                    "1": {"count": 1, "examples": []},
                     "0": {"count": 3, "examples": []},
-                    "49": {"count": 41, "examples": []},
+                    "49": {"count": 9, "examples": []},
                 },
             },
             "parameters": {
@@ -1606,56 +1274,16 @@ def test_confusion_matrix_using_torch_metrics_example(
             "type": "ConfusionMatrix",
             "value": {
                 "confusion_matrix": {
-                    "0": {
-                        "0": {
-                            "count": 1,
-                            "examples": [
-                                {
-                                    "datum": "2",
-                                    "groundtruth": uid2_gt_6,
-                                    "prediction": uid2_pd_6,
-                                    "score": 0.953000009059906,
-                                }
-                            ],
-                        }
-                    },
-                    "49": {
-                        "49": {
-                            "count": 1,
-                            "examples": [
-                                {
-                                    "datum": "3",
-                                    "groundtruth": uid3_gt_4,
-                                    "prediction": uid3_pd_4,
-                                    "score": 0.8830000162124634,
-                                }
-                            ],
-                        }
-                    },
+                    "0": {"0": {"count": 1, "examples": []}},
+                    "49": {"49": {"count": 1, "examples": []}},
                 },
                 "hallucinations": {},
                 "missing_predictions": {
-                    "4": {
-                        "count": 3,
-                        "examples": [
-                            {
-                                "datum": "0",
-                                "groundtruth": uid0_gt_0,
-                            }
-                        ],
-                    },
-                    "2": {
-                        "count": 4,
-                        "examples": [
-                            {
-                                "datum": "1",
-                                "groundtruth": uid1_gt_0,
-                            }
-                        ],
-                    },
-                    "1": {"count": 2, "examples": []},
+                    "4": {"count": 2, "examples": []},
+                    "2": {"count": 2, "examples": []},
+                    "1": {"count": 1, "examples": []},
                     "0": {"count": 4, "examples": []},
-                    "49": {"count": 41, "examples": []},
+                    "49": {"count": 9, "examples": []},
                 },
             },
             "parameters": {
@@ -1667,44 +1295,14 @@ def test_confusion_matrix_using_torch_metrics_example(
         {
             "type": "ConfusionMatrix",
             "value": {
-                "confusion_matrix": {
-                    "0": {
-                        "0": {
-                            "count": 1,
-                            "examples": [
-                                {
-                                    "datum": "2",
-                                    "groundtruth": uid2_gt_6,
-                                    "prediction": uid2_pd_6,
-                                    "score": 0.953000009059906,
-                                }
-                            ],
-                        }
-                    }
-                },
+                "confusion_matrix": {"0": {"0": {"count": 1, "examples": []}}},
                 "hallucinations": {},
                 "missing_predictions": {
-                    "4": {
-                        "count": 3,
-                        "examples": [
-                            {
-                                "datum": "0",
-                                "groundtruth": uid0_gt_0,
-                            }
-                        ],
-                    },
-                    "2": {
-                        "count": 4,
-                        "examples": [
-                            {
-                                "datum": "1",
-                                "groundtruth": uid1_gt_0,
-                            }
-                        ],
-                    },
-                    "1": {"count": 2, "examples": []},
+                    "4": {"count": 2, "examples": []},
+                    "2": {"count": 2, "examples": []},
+                    "1": {"count": 1, "examples": []},
                     "0": {"count": 4, "examples": []},
-                    "49": {"count": 46, "examples": []},
+                    "49": {"count": 10, "examples": []},
                 },
             },
             "parameters": {
@@ -1717,101 +1315,23 @@ def test_confusion_matrix_using_torch_metrics_example(
             "type": "ConfusionMatrix",
             "value": {
                 "confusion_matrix": {
-                    "2": {
-                        "2": {
-                            "count": 1,
-                            "examples": [
-                                {
-                                    "datum": "1",
-                                    "groundtruth": uid1_gt_1,
-                                    "prediction": uid1_pd_1,
-                                    "score": 0.7260000109672546,
-                                }
-                            ],
-                        }
-                    },
-                    "0": {
-                        "0": {
-                            "count": 1,
-                            "examples": [
-                                {
-                                    "datum": "2",
-                                    "groundtruth": uid2_gt_4,
-                                    "prediction": uid2_pd_4,
-                                    "score": 0.33500000834465027,
-                                }
-                            ],
-                        }
-                    },
-                    "49": {
-                        "49": {
-                            "count": 2,
-                            "examples": [
-                                {
-                                    "datum": "3",
-                                    "groundtruth": uid3_gt_0,
-                                    "prediction": uid3_pd_0,
-                                    "score": 0.5320000052452087,
-                                }
-                            ],
-                        }
-                    },
+                    "2": {"2": {"count": 1, "examples": []}},
+                    "0": {"0": {"count": 1, "examples": []}},
+                    "49": {"49": {"count": 2, "examples": []}},
                 },
                 "hallucinations": {
-                    "4": {
-                        "count": 3,
-                        "examples": [
-                            {
-                                "datum": "0",
-                                "prediction": uid0_pd_0,
-                                "score": 0.23600000143051147,
-                            }
-                        ],
-                    },
-                    "3": {
-                        "count": 2,
-                        "examples": [
-                            {
-                                "datum": "1",
-                                "prediction": uid1_pd_0,
-                                "score": 0.3179999887943268,
-                            }
-                        ],
-                    },
-                    "1": {"count": 2, "examples": []},
+                    "4": {"count": 2, "examples": []},
+                    "3": {"count": 1, "examples": []},
+                    "1": {"count": 1, "examples": []},
                     "0": {"count": 4, "examples": []},
-                    "49": {"count": 35, "examples": []},
+                    "49": {"count": 7, "examples": []},
                 },
                 "missing_predictions": {
-                    "4": {
-                        "count": 3,
-                        "examples": [
-                            {
-                                "datum": "0",
-                                "groundtruth": uid0_gt_0,
-                            }
-                        ],
-                    },
-                    "2": {
-                        "count": 2,
-                        "examples": [
-                            {
-                                "datum": "1",
-                                "groundtruth": uid1_gt_0,
-                            }
-                        ],
-                    },
-                    "1": {
-                        "count": 2,
-                        "examples": [
-                            {
-                                "datum": "3",
-                                "groundtruth": uid3_gt_2,
-                            }
-                        ],
-                    },
+                    "4": {"count": 2, "examples": []},
+                    "2": {"count": 1, "examples": []},
+                    "1": {"count": 1, "examples": []},
                     "0": {"count": 4, "examples": []},
-                    "49": {"count": 36, "examples": []},
+                    "49": {"count": 8, "examples": []},
                 },
             },
             "parameters": {
@@ -1824,110 +1344,23 @@ def test_confusion_matrix_using_torch_metrics_example(
             "type": "ConfusionMatrix",
             "value": {
                 "confusion_matrix": {
-                    "2": {
-                        "2": {
-                            "count": 1,
-                            "examples": [
-                                {
-                                    "datum": "1",
-                                    "groundtruth": uid1_gt_1,
-                                    "prediction": uid1_pd_1,
-                                    "score": 0.7260000109672546,
-                                }
-                            ],
-                        }
-                    },
-                    "0": {
-                        "0": {
-                            "count": 1,
-                            "examples": [
-                                {
-                                    "datum": "2",
-                                    "groundtruth": uid2_gt_4,
-                                    "prediction": uid2_pd_4,
-                                    "score": 0.33500000834465027,
-                                }
-                            ],
-                        }
-                    },
-                    "49": {
-                        "49": {
-                            "count": 2,
-                            "examples": [
-                                {
-                                    "datum": "3",
-                                    "groundtruth": uid3_gt_0,
-                                    "prediction": uid3_pd_0,
-                                    "score": 0.5320000052452087,
-                                }
-                            ],
-                        }
-                    },
+                    "2": {"2": {"count": 1, "examples": []}},
+                    "0": {"0": {"count": 1, "examples": []}},
+                    "49": {"49": {"count": 2, "examples": []}},
                 },
                 "hallucinations": {
-                    "4": {
-                        "count": 2,
-                        "examples": [
-                            {
-                                "datum": "2",
-                                "prediction": uid2_pd_1,
-                                "score": 0.30000001192092896,
-                            }
-                        ],
-                    },
-                    "3": {
-                        "count": 2,
-                        "examples": [
-                            {
-                                "datum": "2",
-                                "prediction": uid2_pd_0,
-                                "score": 0.5460000038146973,
-                            }
-                        ],
-                    },
-                    "1": {
-                        "count": 2,
-                        "examples": [
-                            {
-                                "datum": "3",
-                                "prediction": uid3_pd_2,
-                                "score": 0.7820000052452087,
-                            }
-                        ],
-                    },
+                    "4": {"count": 1, "examples": []},
+                    "3": {"count": 1, "examples": []},
+                    "1": {"count": 1, "examples": []},
                     "0": {"count": 4, "examples": []},
-                    "49": {"count": 19, "examples": []},
+                    "49": {"count": 4, "examples": []},
                 },
                 "missing_predictions": {
-                    "4": {
-                        "count": 3,
-                        "examples": [
-                            {
-                                "datum": "0",
-                                "groundtruth": uid0_gt_0,
-                            }
-                        ],
-                    },
-                    "2": {
-                        "count": 2,
-                        "examples": [
-                            {
-                                "datum": "1",
-                                "groundtruth": uid1_gt_0,
-                            }
-                        ],
-                    },
-                    "1": {
-                        "count": 2,
-                        "examples": [
-                            {
-                                "datum": "3",
-                                "groundtruth": uid3_gt_2,
-                            }
-                        ],
-                    },
+                    "4": {"count": 2, "examples": []},
+                    "2": {"count": 1, "examples": []},
+                    "1": {"count": 1, "examples": []},
                     "0": {"count": 4, "examples": []},
-                    "49": {"count": 36, "examples": []},
+                    "49": {"count": 8, "examples": []},
                 },
             },
             "parameters": {
@@ -1940,86 +1373,20 @@ def test_confusion_matrix_using_torch_metrics_example(
             "type": "ConfusionMatrix",
             "value": {
                 "confusion_matrix": {
-                    "2": {
-                        "2": {
-                            "count": 1,
-                            "examples": [
-                                {
-                                    "datum": "1",
-                                    "groundtruth": uid1_gt_1,
-                                    "prediction": uid1_pd_1,
-                                    "score": 0.7260000109672546,
-                                }
-                            ],
-                        }
-                    },
-                    "49": {
-                        "49": {
-                            "count": 2,
-                            "examples": [
-                                {
-                                    "datum": "3",
-                                    "groundtruth": uid3_gt_0,
-                                    "prediction": uid3_pd_0,
-                                    "score": 0.5320000052452087,
-                                }
-                            ],
-                        }
-                    },
+                    "2": {"2": {"count": 1, "examples": []}},
+                    "49": {"49": {"count": 2, "examples": []}},
                 },
                 "hallucinations": {
-                    "4": {
-                        "count": 2,
-                        "examples": [
-                            {
-                                "datum": "2",
-                                "prediction": uid2_pd_0,
-                                "score": 0.5460000038146973,
-                            }
-                        ],
-                    },
-                    "0": {
-                        "count": 4,
-                        "examples": [
-                            {
-                                "datum": "3",
-                                "prediction": uid3_pd_2,
-                                "score": 0.7820000052452087,
-                            }
-                        ],
-                    },
-                    "49": {"count": 10, "examples": []},
+                    "4": {"count": 1, "examples": []},
+                    "0": {"count": 4, "examples": []},
+                    "49": {"count": 2, "examples": []},
                 },
                 "missing_predictions": {
-                    "4": {
-                        "count": 3,
-                        "examples": [
-                            {
-                                "datum": "0",
-                                "groundtruth": uid0_gt_0,
-                            }
-                        ],
-                    },
-                    "2": {
-                        "count": 2,
-                        "examples": [
-                            {
-                                "datum": "1",
-                                "groundtruth": uid1_gt_0,
-                            }
-                        ],
-                    },
-                    "1": {
-                        "count": 2,
-                        "examples": [
-                            {
-                                "datum": "3",
-                                "groundtruth": uid3_gt_2,
-                            }
-                        ],
-                    },
+                    "4": {"count": 2, "examples": []},
+                    "2": {"count": 1, "examples": []},
+                    "1": {"count": 1, "examples": []},
                     "0": {"count": 5, "examples": []},
-                    "49": {"count": 36, "examples": []},
+                    "49": {"count": 8, "examples": []},
                 },
             },
             "parameters": {
@@ -2032,76 +1399,19 @@ def test_confusion_matrix_using_torch_metrics_example(
             "type": "ConfusionMatrix",
             "value": {
                 "confusion_matrix": {
-                    "2": {
-                        "2": {
-                            "count": 1,
-                            "examples": [
-                                {
-                                    "datum": "1",
-                                    "groundtruth": uid1_gt_1,
-                                    "prediction": uid1_pd_1,
-                                    "score": 0.7260000109672546,
-                                }
-                            ],
-                        }
-                    },
-                    "49": {
-                        "49": {
-                            "count": 1,
-                            "examples": [
-                                {
-                                    "datum": "3",
-                                    "groundtruth": uid3_gt_4,
-                                    "prediction": uid3_pd_4,
-                                    "score": 0.8830000162124634,
-                                }
-                            ],
-                        }
-                    },
+                    "2": {"2": {"count": 1, "examples": []}},
+                    "49": {"49": {"count": 1, "examples": []}},
                 },
                 "hallucinations": {
-                    "0": {
-                        "count": 3,
-                        "examples": [
-                            {
-                                "datum": "2",
-                                "prediction": uid2_pd_3,
-                                "score": 0.6110000014305115,
-                            }
-                        ],
-                    },
-                    "49": {"count": 10, "examples": []},
+                    "0": {"count": 3, "examples": []},
+                    "49": {"count": 2, "examples": []},
                 },
                 "missing_predictions": {
-                    "4": {
-                        "count": 3,
-                        "examples": [
-                            {
-                                "datum": "0",
-                                "groundtruth": uid0_gt_0,
-                            }
-                        ],
-                    },
-                    "2": {
-                        "count": 2,
-                        "examples": [
-                            {
-                                "datum": "1",
-                                "groundtruth": uid1_gt_0,
-                            }
-                        ],
-                    },
-                    "1": {
-                        "count": 2,
-                        "examples": [
-                            {
-                                "datum": "3",
-                                "groundtruth": uid3_gt_0,
-                            }
-                        ],
-                    },
+                    "4": {"count": 2, "examples": []},
+                    "2": {"count": 1, "examples": []},
+                    "1": {"count": 1, "examples": []},
                     "0": {"count": 5, "examples": []},
-                    "49": {"count": 41, "examples": []},
+                    "49": {"count": 9, "examples": []},
                 },
             },
             "parameters": {
@@ -2114,55 +1424,18 @@ def test_confusion_matrix_using_torch_metrics_example(
             "type": "ConfusionMatrix",
             "value": {
                 "confusion_matrix": {
-                    "49": {
-                        "49": {
-                            "count": 1,
-                            "examples": [
-                                {
-                                    "datum": "3",
-                                    "groundtruth": uid3_gt_4,
-                                    "prediction": uid3_pd_4,
-                                    "score": 0.8830000162124634,
-                                }
-                            ],
-                        }
-                    }
+                    "49": {"49": {"count": 1, "examples": []}}
                 },
                 "hallucinations": {
-                    "0": {
-                        "count": 2,
-                        "examples": [
-                            {
-                                "datum": "2",
-                                "prediction": uid2_pd_5,
-                                "score": 0.8050000071525574,
-                            }
-                        ],
-                    },
-                    "49": {"count": 4, "examples": []},
+                    "0": {"count": 2, "examples": []},
+                    "49": {"count": 1, "examples": []},
                 },
                 "missing_predictions": {
-                    "4": {
-                        "count": 3,
-                        "examples": [
-                            {
-                                "datum": "0",
-                                "groundtruth": uid0_gt_0,
-                            }
-                        ],
-                    },
-                    "2": {
-                        "count": 4,
-                        "examples": [
-                            {
-                                "datum": "1",
-                                "groundtruth": uid1_gt_0,
-                            }
-                        ],
-                    },
-                    "1": {"count": 2, "examples": []},
+                    "4": {"count": 2, "examples": []},
+                    "2": {"count": 2, "examples": []},
+                    "1": {"count": 1, "examples": []},
                     "0": {"count": 5, "examples": []},
-                    "49": {"count": 41, "examples": []},
+                    "49": {"count": 9, "examples": []},
                 },
             },
             "parameters": {
@@ -2175,54 +1448,15 @@ def test_confusion_matrix_using_torch_metrics_example(
             "type": "ConfusionMatrix",
             "value": {
                 "confusion_matrix": {
-                    "49": {
-                        "49": {
-                            "count": 1,
-                            "examples": [
-                                {
-                                    "datum": "3",
-                                    "groundtruth": uid3_gt_4,
-                                    "prediction": uid3_pd_4,
-                                    "score": 0.8830000162124634,
-                                }
-                            ],
-                        }
-                    }
+                    "49": {"49": {"count": 1, "examples": []}}
                 },
-                "hallucinations": {
-                    "0": {
-                        "count": 2,
-                        "examples": [
-                            {
-                                "datum": "2",
-                                "prediction": uid2_pd_5,
-                                "score": 0.8050000071525574,
-                            }
-                        ],
-                    }
-                },
+                "hallucinations": {"0": {"count": 2, "examples": []}},
                 "missing_predictions": {
-                    "4": {
-                        "count": 3,
-                        "examples": [
-                            {
-                                "datum": "0",
-                                "groundtruth": uid0_gt_0,
-                            }
-                        ],
-                    },
-                    "2": {
-                        "count": 4,
-                        "examples": [
-                            {
-                                "datum": "1",
-                                "groundtruth": uid1_gt_0,
-                            }
-                        ],
-                    },
-                    "1": {"count": 2, "examples": []},
+                    "4": {"count": 2, "examples": []},
+                    "2": {"count": 2, "examples": []},
+                    "1": {"count": 1, "examples": []},
                     "0": {"count": 5, "examples": []},
-                    "49": {"count": 41, "examples": []},
+                    "49": {"count": 9, "examples": []},
                 },
             },
             "parameters": {
@@ -2235,54 +1469,15 @@ def test_confusion_matrix_using_torch_metrics_example(
             "type": "ConfusionMatrix",
             "value": {
                 "confusion_matrix": {
-                    "49": {
-                        "49": {
-                            "count": 1,
-                            "examples": [
-                                {
-                                    "datum": "3",
-                                    "groundtruth": uid3_gt_4,
-                                    "prediction": uid3_pd_4,
-                                    "score": 0.8830000162124634,
-                                }
-                            ],
-                        }
-                    }
+                    "49": {"49": {"count": 1, "examples": []}}
                 },
-                "hallucinations": {
-                    "0": {
-                        "count": 1,
-                        "examples": [
-                            {
-                                "datum": "2",
-                                "prediction": uid2_pd_6,
-                                "score": 0.953000009059906,
-                            }
-                        ],
-                    }
-                },
+                "hallucinations": {"0": {"count": 1, "examples": []}},
                 "missing_predictions": {
-                    "4": {
-                        "count": 3,
-                        "examples": [
-                            {
-                                "datum": "0",
-                                "groundtruth": uid0_gt_0,
-                            }
-                        ],
-                    },
-                    "2": {
-                        "count": 4,
-                        "examples": [
-                            {
-                                "datum": "1",
-                                "groundtruth": uid1_gt_0,
-                            }
-                        ],
-                    },
-                    "1": {"count": 2, "examples": []},
+                    "4": {"count": 2, "examples": []},
+                    "2": {"count": 2, "examples": []},
+                    "1": {"count": 1, "examples": []},
                     "0": {"count": 5, "examples": []},
-                    "49": {"count": 41, "examples": []},
+                    "49": {"count": 9, "examples": []},
                 },
             },
             "parameters": {
@@ -2295,40 +1490,13 @@ def test_confusion_matrix_using_torch_metrics_example(
             "type": "ConfusionMatrix",
             "value": {
                 "confusion_matrix": {},
-                "hallucinations": {
-                    "0": {
-                        "count": 1,
-                        "examples": [
-                            {
-                                "datum": "2",
-                                "prediction": uid2_pd_6,
-                                "score": 0.953000009059906,
-                            }
-                        ],
-                    }
-                },
+                "hallucinations": {"0": {"count": 1, "examples": []}},
                 "missing_predictions": {
-                    "4": {
-                        "count": 3,
-                        "examples": [
-                            {
-                                "datum": "0",
-                                "groundtruth": uid0_gt_0,
-                            }
-                        ],
-                    },
-                    "2": {
-                        "count": 4,
-                        "examples": [
-                            {
-                                "datum": "1",
-                                "groundtruth": uid1_gt_0,
-                            }
-                        ],
-                    },
-                    "1": {"count": 2, "examples": []},
+                    "4": {"count": 2, "examples": []},
+                    "2": {"count": 2, "examples": []},
+                    "1": {"count": 1, "examples": []},
                     "0": {"count": 5, "examples": []},
-                    "49": {"count": 46, "examples": []},
+                    "49": {"count": 10, "examples": []},
                 },
             },
             "parameters": {
@@ -2338,16 +1506,12 @@ def test_confusion_matrix_using_torch_metrics_example(
             },
         },
     ]
-
     for m in actual_metrics:
         _filter_out_zero_counts(
             m["value"]["confusion_matrix"],
             m["value"]["hallucinations"],
             m["value"]["missing_predictions"],
         )
-        import json
-
-        print(json.dumps(m, indent=4) + ",")
         assert m in expected_metrics
     for m in expected_metrics:
         assert m in actual_metrics
@@ -2375,7 +1539,7 @@ def test_confusion_matrix_fp_hallucination_edge_case(
         metrics_to_return=[MetricType.ConfusionMatrix],
     )
 
-    assert len(metrics[MetricType.ConfusionMatrix]) == 1
+    assert len(metrics[MetricType.ConfusionMatrix]) == 2
 
     # test ConfusionMatrix
     actual_metrics = [m.to_dict() for m in metrics[MetricType.ConfusionMatrix]]
@@ -2383,27 +1547,72 @@ def test_confusion_matrix_fp_hallucination_edge_case(
         {
             "type": "ConfusionMatrix",
             "value": {
-                "tp": [1, 0],
-                "fp_misclassification": [0, 0],
-                "fp_hallucination": [1, 0],
-                "fn_misclassification": [0, 0],
-                "fn_missing_prediction": [1, 2],
-                "tp_examples": [[("uid1", (0.0, 5.0, 0.0, 5.0))], []],
-                "fp_misclassification_examples": [[], []],
-                "fp_hallucination_examples": [
-                    [("uid2", (10.0, 20.0, 10.0, 20.0))],
-                    [],
-                ],
-                "fn_misclassification_examples": [[], []],
-                "fn_missing_prediction_examples": [
-                    [("uid2", (0.0, 5.0, 0.0, 5.0))],
-                    [("uid1", (0.0, 5.0, 0.0, 5.0))],
-                ],
+                "confusion_matrix": {
+                    "v1": {
+                        "v1": {
+                            "count": 1,
+                            "examples": [
+                                {
+                                    "datum": "uid1",
+                                    "groundtruth": (0.0, 5.0, 0.0, 5.0),
+                                    "prediction": (0.0, 5.0, 0.0, 5.0),
+                                    "score": 0.800000011920929,
+                                }
+                            ],
+                        }
+                    }
+                },
+                "hallucinations": {
+                    "v1": {
+                        "count": 1,
+                        "examples": [
+                            {
+                                "datum": "uid2",
+                                "prediction": (10.0, 20.0, 10.0, 20.0),
+                                "score": 0.800000011920929,
+                            }
+                        ],
+                    }
+                },
+                "missing_predictions": {
+                    "v1": {
+                        "count": 1,
+                        "examples": [
+                            {
+                                "datum": "uid2",
+                                "groundtruth": (0.0, 5.0, 0.0, 5.0),
+                            }
+                        ],
+                    }
+                },
             },
             "parameters": {
-                "score_thresholds": [0.5, 0.85],
+                "score_threshold": 0.5,
                 "iou_threshold": 0.5,
-                "label": {"key": "k1", "value": "v1"},
+                "label_key": "k1",
+            },
+        },
+        {
+            "type": "ConfusionMatrix",
+            "value": {
+                "confusion_matrix": {},
+                "hallucinations": {},
+                "missing_predictions": {
+                    "v1": {
+                        "count": 2,
+                        "examples": [
+                            {
+                                "datum": "uid1",
+                                "groundtruth": (0.0, 5.0, 0.0, 5.0),
+                            }
+                        ],
+                    }
+                },
+            },
+            "parameters": {
+                "score_threshold": 0.85,
+                "iou_threshold": 0.5,
+                "label_key": "k1",
             },
         },
     ]
@@ -2465,81 +1674,22 @@ def test_confusion_matrix_ranked_pair_ordering(
             {
                 "type": "ConfusionMatrix",
                 "value": {
-                    "tp": [1],
-                    "fp_misclassification": [0],
-                    "fp_hallucination": [0],
-                    "fn_misclassification": [0],
-                    "fn_missing_prediction": [0],
-                    "tp_examples": [[]],
-                    "fp_misclassification_examples": [[]],
-                    "fp_hallucination_examples": [[]],
-                    "fn_misclassification_examples": [[]],
-                    "fn_missing_prediction_examples": [[]],
+                    "confusion_matrix": {
+                        "label1": {"label1": {"count": 1, "examples": []}},
+                        "label2": {"label2": {"count": 1, "examples": []}},
+                    },
+                    "hallucinations": {
+                        "label3": {"count": 1, "examples": []},
+                        "label4": {"count": 1, "examples": []},
+                    },
+                    "missing_predictions": {
+                        "label3": {"count": 1, "examples": []}
+                    },
                 },
                 "parameters": {
-                    "score_thresholds": [0.0],
+                    "score_threshold": 0.0,
                     "iou_threshold": 0.5,
-                    "label": {"key": "class", "value": "label1"},
-                },
-            },
-            {
-                "type": "ConfusionMatrix",
-                "value": {
-                    "tp": [1],
-                    "fp_misclassification": [0],
-                    "fp_hallucination": [0],
-                    "fn_misclassification": [0],
-                    "fn_missing_prediction": [0],
-                    "tp_examples": [[]],
-                    "fp_misclassification_examples": [[]],
-                    "fp_hallucination_examples": [[]],
-                    "fn_misclassification_examples": [[]],
-                    "fn_missing_prediction_examples": [[]],
-                },
-                "parameters": {
-                    "score_thresholds": [0.0],
-                    "iou_threshold": 0.5,
-                    "label": {"key": "class", "value": "label2"},
-                },
-            },
-            {
-                "type": "ConfusionMatrix",
-                "value": {
-                    "tp": [0],
-                    "fp_misclassification": [0],
-                    "fp_hallucination": [1],
-                    "fn_misclassification": [1],
-                    "fn_missing_prediction": [0],
-                    "tp_examples": [[]],
-                    "fp_misclassification_examples": [[]],
-                    "fp_hallucination_examples": [[]],
-                    "fn_misclassification_examples": [[]],
-                    "fn_missing_prediction_examples": [[]],
-                },
-                "parameters": {
-                    "score_thresholds": [0.0],
-                    "iou_threshold": 0.5,
-                    "label": {"key": "class", "value": "label3"},
-                },
-            },
-            {
-                "type": "ConfusionMatrix",
-                "value": {
-                    "tp": [0],
-                    "fp_misclassification": [0],
-                    "fp_hallucination": [1],
-                    "fn_misclassification": [0],
-                    "fn_missing_prediction": [0],
-                    "tp_examples": [[]],
-                    "fp_misclassification_examples": [[]],
-                    "fp_hallucination_examples": [[]],
-                    "fn_misclassification_examples": [[]],
-                    "fn_missing_prediction_examples": [[]],
-                },
-                "parameters": {
-                    "score_thresholds": [0.0],
-                    "iou_threshold": 0.5,
-                    "label": {"key": "class", "value": "label4"},
+                    "label_key": "class",
                 },
             },
         ]
