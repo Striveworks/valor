@@ -6,7 +6,11 @@ from valor_lite.detection.computation import compute_confusion_matrix
 def test_confusion_matrix_no_data():
     evaluator = Evaluator()
     curves = evaluator._compute_confusion_matrix(
-        data=np.array([]), label_metadata=np.array([])
+        data=np.array([]),
+        label_metadata=np.array([]),
+        iou_thresholds=[0.5],
+        score_thresholds=[0.5],
+        number_of_examples=0,
     )
     assert isinstance(curves, list)
     assert len(curves) == 0
