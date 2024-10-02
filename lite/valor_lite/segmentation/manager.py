@@ -609,6 +609,73 @@ class DataLoader:
             self._evaluator.label_key_to_index[label[0]],
         )
 
+
+    def _combine_masks(
+        self,
+        segmentation: Segmentation,
+    ) -> tuple[
+        NDArray[np.int32],
+        NDArray[np.int32],
+        NDArray[np.floating],
+    ]:
+        """
+        Combines segmentation masks.
+
+        Returns
+        -------
+        NDArray[np.int32]
+            Ground truth label mask.
+        NDArray[np.int32]
+            Prediction label mask.
+        NDArray[np.floating]
+            Prediction score mask.
+        """
+
+        combined_groundtruths = np.stack(
+            [
+                prediction.mask
+                for prediction in segmentation.predictions
+            ],
+            axis=0,
+        )
+        combined_predictions = np.stack(
+            [
+                prediction.mask
+                for prediction in segmentation.predictions
+            ],
+            axis=0,
+        )
+
+        groundtruth_labels = np.zeros(segmentation.shape, dtype=np.int32)
+        prediction_labels = np.zeros_like(groundtruth_labels)
+        prediction_scores = np.zeros_like(groundtruth_labels, dtype=np.floating)
+
+        for groundtruth in segmentation.groundtruths:
+            label_idx, label_key_idx = self._add_label(groundtruth.label)
+
+
+        groundtruth_labels = [
+
+            label_to_index(groundtruth.label)
+            for groundtruth in segmentation.groundtruths
+        ]
+        groundtruth_indices = np.argmax(combined_groundtruths, axis=0)
+
+
+
+
+
+        groundtruth_labels =
+
+
+        indices = np.argmax(combined_mask, axis=0)
+        boolean_mask = np.zeros_like(combined_mask, dtype=np.bool_)
+        boolean_mask[indices] = True
+        return [
+            boolean_mask[i]
+            for i in range(boolean_mask.shape[0])
+        ]
+
     def add_data(
         self,
         segmentations: list[Segmentation],
@@ -639,19 +706,23 @@ class DataLoader:
             # cache labels and annotations
             keyed_groundtruths = defaultdict(list)
             keyed_predictions = defaultdict(list)
-            for glabel in segmentation.groundtruths:
-                label_idx, label_key_idx = self._add_label(glabel)
+            for gann in segmentation.groundtruths:
+                label_idx, label_key_idx = self._add_label(gann.label)
                 self.groundtruth_count[label_idx][uid_index] += 1
-                keyed_groundtruths[label_key_idx].append(label_idx)
-            for idx, (plabel, pscore) in enumerate(
-                zip(segmentation.predictions, segmentation.scores)
-            ):
-                label_idx, label_key_idx = self._add_label(plabel)
+                keyed_groundtruths[label_key_idx].append(
+                    (
+                        label_idx,
+                        gann.mask,
+                    )
+                )
+            for pann, boolean_mask in zip(segmentation.predictions, segmentation.hardmax()):
+                label_idx, label_key_idx = self._add_label(pann.label)
                 self.prediction_count[label_idx][uid_index] += 1
                 keyed_predictions[label_key_idx].append(
                     (
                         label_idx,
-                        pscore,
+                        pann.mask,
+                        boolean_mask,
                     )
                 )
 
@@ -668,18 +739,15 @@ class DataLoader:
 
             pairs = list()
             for key in joint_keys:
-                hardmax_idx = np.argmax(
-                    [score for _, score in keyed_predictions[key]]
-                )
-                for idx, (plabel, score) in enumerate(keyed_predictions[key]):
+                for idx, (plabel, floating_mask, boolean_mask) in enumerate(keyed_predictions[key]):
                     for glabel in keyed_groundtruths[key]:
                         pairs.append(
                             (
                                 float(uid_index),
                                 float(glabel),
                                 float(plabel),
-                                float(score),
-                                float(hardmax_idx == idx),
+                                float(floating_mask),
+                                float(boolean_mask),
                             )
                         )
 

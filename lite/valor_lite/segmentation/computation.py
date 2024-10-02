@@ -2,7 +2,7 @@ import numpy as np
 from numpy.typing import NDArray
 
 
-def compute_bitmask_iou(data: NDArray[np.floating]) -> NDArray[np.floating]:
+def compute_iou(data: NDArray[np.floating]) -> NDArray[np.floating]:
     """
     Computes intersection-over-union (IoU) for bitmasks.
 
