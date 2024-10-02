@@ -270,7 +270,7 @@ def run_benchmarking_analysis(
                 evaluator.evaluate
             )(
                 [
-                    MetricType.DetailedCounts,
+                    MetricType.ConfusionMatrix,
                     *MetricType.base_metrics(),
                 ]
             )
@@ -287,7 +287,7 @@ def run_benchmarking_analysis(
                 evaluator.evaluate
             )(
                 [
-                    MetricType.DetailedCounts,
+                    MetricType.ConfusionMatrix,
                     *MetricType.base_metrics(),
                 ],
                 number_of_examples=3,
