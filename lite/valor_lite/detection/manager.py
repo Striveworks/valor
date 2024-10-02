@@ -342,6 +342,7 @@ class Evaluator:
         score_thresholds: list[float] = [0.5],
         number_of_examples: int = 0,
         filter_: Filter | None = None,
+        as_dict: bool = False,
     ) -> dict[MetricType, list]:
         """
         Performs an evaluation and returns metrics.
@@ -358,6 +359,8 @@ class Evaluator:
             Maximum number of annotation examples to return in ConfusionMatrix.
         filter_ : Filter, optional
             An optional filter object.
+        as_dict : bool, default=False
+            An option to return metrics as dictionaries.
 
         Returns
         -------
@@ -558,6 +561,12 @@ class Evaluator:
         for metric in set(metrics.keys()):
             if metric not in metrics_to_return:
                 del metrics[metric]
+
+        if as_dict:
+            return {
+                mtype: [metric.to_dict() for metric in mvalues]
+                for mtype, mvalues in metrics.items()
+            }
 
         return metrics
 
