@@ -102,6 +102,7 @@ def test_ar_metrics(
         metrics = evaluator.evaluate(
             iou_thresholds=[0.1, 0.6],
             score_thresholds=[0.0],
+            as_dict=True,
         )
 
         assert evaluator.ignored_prediction_labels == []
@@ -112,7 +113,7 @@ def test_ar_metrics(
         assert evaluator.n_predictions == 2
 
         # test AR
-        actual_metrics = [m.to_dict() for m in metrics[MetricType.AR]]
+        actual_metrics = [m for m in metrics[MetricType.AR]]
         expected_metrics = [
             {
                 "type": "AR",
@@ -139,7 +140,7 @@ def test_ar_metrics(
             assert m in actual_metrics
 
         # test mAR
-        actual_metrics = [m.to_dict() for m in metrics[MetricType.mAR]]
+        actual_metrics = [m for m in metrics[MetricType.mAR]]
         expected_metrics = [
             {
                 "type": "mAR",
@@ -166,9 +167,7 @@ def test_ar_metrics(
             assert m in actual_metrics
 
         # test AR Averaged Over IoUs
-        actual_metrics = [
-            m.to_dict() for m in metrics[MetricType.ARAveragedOverScores]
-        ]
+        actual_metrics = [m for m in metrics[MetricType.ARAveragedOverScores]]
         expected_metrics = [
             {
                 "type": "ARAveragedOverScores",
@@ -195,9 +194,7 @@ def test_ar_metrics(
             assert m in actual_metrics
 
         # test mAR Averaged Over IoUs
-        actual_metrics = [
-            m.to_dict() for m in metrics[MetricType.mARAveragedOverScores]
-        ]
+        actual_metrics = [m for m in metrics[MetricType.mARAveragedOverScores]]
         expected_metrics = [
             {
                 "type": "mARAveragedOverScores",
@@ -249,10 +246,11 @@ def test_ar_using_torch_metrics_example(
     metrics = evaluator.evaluate(
         iou_thresholds=iou_thresholds,
         score_thresholds=score_thresholds,
+        as_dict=True,
     )
 
     # test AR
-    actual_metrics = [m.to_dict() for m in metrics[MetricType.AR]]
+    actual_metrics = [m for m in metrics[MetricType.AR]]
     expected_metrics = [
         {
             "type": "AR",
@@ -306,7 +304,7 @@ def test_ar_using_torch_metrics_example(
         assert m in actual_metrics
 
     # test mAR
-    actual_metrics = [m.to_dict() for m in metrics[MetricType.mAR]]
+    actual_metrics = [m for m in metrics[MetricType.mAR]]
     expected_metrics = [
         {
             "type": "mAR",
@@ -324,9 +322,7 @@ def test_ar_using_torch_metrics_example(
         assert m in actual_metrics
 
     # test ARAveragedOverScores
-    actual_metrics = [
-        m.to_dict() for m in metrics[MetricType.ARAveragedOverScores]
-    ]
+    actual_metrics = [m for m in metrics[MetricType.ARAveragedOverScores]]
     expected_metrics = [
         {
             "type": "ARAveragedOverScores",
@@ -380,9 +376,7 @@ def test_ar_using_torch_metrics_example(
         assert m in actual_metrics
 
     # test mARAveragedOverScores
-    actual_metrics = [
-        m.to_dict() for m in metrics[MetricType.mARAveragedOverScores]
-    ]
+    actual_metrics = [m for m in metrics[MetricType.mARAveragedOverScores]]
     expected_metrics = [
         {
             "type": "mARAveragedOverScores",
@@ -418,12 +412,13 @@ def test_ar_true_positive_deassignment(
     metrics = evaluator.evaluate(
         iou_thresholds=[0.5],
         score_thresholds=[0.5],
+        as_dict=True,
     )
 
     assert len(metrics) == 14
 
     # test AR
-    actual_metrics = [m.to_dict() for m in metrics[MetricType.AR]]
+    actual_metrics = [m for m in metrics[MetricType.AR]]
     expected_metrics = [
         {
             "type": "AR",
@@ -474,10 +469,12 @@ def test_ar_ranked_pair_ordering(
         }
 
         metrics = evaluator.evaluate(
-            iou_thresholds=[0.5, 0.75], score_thresholds=[0.0]
+            iou_thresholds=[0.5, 0.75],
+            score_thresholds=[0.0],
+            as_dict=True,
         )
 
-        actual_metrics = [m.to_dict() for m in metrics[MetricType.AR]]
+        actual_metrics = [m for m in metrics[MetricType.AR]]
         expected_metrics = expected_metrics = [
             {
                 "type": "AR",
@@ -512,7 +509,7 @@ def test_ar_ranked_pair_ordering(
         for m in expected_metrics:
             assert m in actual_metrics
 
-        actual_metrics = [m.to_dict() for m in metrics[MetricType.mAR]]
+        actual_metrics = [m for m in metrics[MetricType.mAR]]
         expected_metrics = expected_metrics = [
             {
                 "type": "mAR",
