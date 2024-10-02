@@ -56,6 +56,7 @@ def test_pr_curve_using_torch_metrics_example(
 
     metrics = evaluator.evaluate(
         iou_thresholds=[0.5, 0.75],
+        as_dict=True,
     )
 
     # AP = 1.0
@@ -86,9 +87,7 @@ def test_pr_curve_using_torch_metrics_example(
     )
 
     # test PrecisionRecallCurve
-    actual_metrics = [
-        m.to_dict() for m in metrics[MetricType.PrecisionRecallCurve]
-    ]
+    actual_metrics = [m for m in metrics[MetricType.PrecisionRecallCurve]]
     expected_metrics = [
         {
             "type": "PrecisionRecallCurve",

@@ -241,6 +241,8 @@ class Evaluator:
             Maximum number of annotation examples to return in ConfusionMatrix.
         filter_ : Filter, optional
             An optional filter object.
+        as_dict : bool, default=False
+            An option to return metrics as dictionaries.
 
         Returns
         -------
