@@ -609,6 +609,51 @@ class DataLoader:
             self._evaluator.label_key_to_index[label[0]],
         )
 
+    def _add_data(
+        self,
+        uid_index: int,
+        keyed_groundtruths: dict[int, int],
+        keyed_predictions: dict[int, list[tuple[int, float]]],
+    ):
+        gt_keys = set(keyed_groundtruths.keys())
+        pd_keys = set(keyed_predictions.keys())
+        joint_keys = gt_keys.intersection(pd_keys)
+
+        gt_unique_keys = gt_keys - pd_keys
+        pd_unique_keys = pd_keys - gt_keys
+        if gt_unique_keys or pd_unique_keys:
+            raise ValueError(
+                "Label keys must match between ground truths and predictions."
+            )
+
+        pairs = list()
+        for key in joint_keys:
+            scores = np.array([score for _, score in keyed_predictions[key]])
+            max_score_idx = np.argmax(scores)
+
+            glabel = keyed_groundtruths[key]
+            for idx, (plabel, score) in enumerate(keyed_predictions[key]):
+                pairs.append(
+                    (
+                        float(uid_index),
+                        float(glabel),
+                        float(plabel),
+                        float(score),
+                        float(max_score_idx == idx),
+                    )
+                )
+
+        if self._evaluator._detailed_pairs.size == 0:
+            self._evaluator._detailed_pairs = np.array(pairs)
+        else:
+            self._evaluator._detailed_pairs = np.concatenate(
+                [
+                    self._evaluator._detailed_pairs,
+                    np.array(pairs),
+                ],
+                axis=0,
+            )
+
     def add_data(
         self,
         classifications: list[Classification],
@@ -655,60 +700,11 @@ class DataLoader:
                     )
                 )
 
-            gt_keys = set(keyed_groundtruths.keys())
-            pd_keys = set(keyed_predictions.keys())
-            joint_keys = gt_keys.intersection(pd_keys)
-
-            gt_unique_keys = gt_keys - pd_keys
-            pd_unique_keys = pd_keys - gt_keys
-            if gt_unique_keys or pd_unique_keys:
-                raise ValueError(
-                    "Label keys must match between ground truths and predictions."
-                )
-
-            pairs = list()
-            for key in joint_keys:
-                scores = np.array(
-                    [score for _, score in keyed_predictions[key]]
-                )
-                plabels = np.array(
-                    [plabel for plabel, _ in keyed_predictions[key]]
-                )
-                max_score = np.amax(scores)
-                max_score_indices = np.argwhere(np.isclose(scores, max_score))
-
-                glabel = keyed_groundtruths[key]
-                label_match_idx = np.where(plabels == glabel)[0]
-
-                if (
-                    label_match_idx.size > 0
-                    and (max_score_indices == label_match_idx).any()
-                ):
-                    max_score_idx = label_match_idx[0]
-                else:
-                    max_score_idx = max_score_indices[0]
-
-                for idx, (plabel, score) in enumerate(keyed_predictions[key]):
-                    pairs.append(
-                        (
-                            float(uid_index),
-                            float(glabel),
-                            float(plabel),
-                            float(score),
-                            float(max_score_idx == idx),
-                        )
-                    )
-
-            if self._evaluator._detailed_pairs.size == 0:
-                self._evaluator._detailed_pairs = np.array(pairs)
-            else:
-                self._evaluator._detailed_pairs = np.concatenate(
-                    [
-                        self._evaluator._detailed_pairs,
-                        np.array(pairs),
-                    ],
-                    axis=0,
-                )
+            self._add_data(
+                uid_index=uid_index,
+                keyed_groundtruths=keyed_groundtruths,
+                keyed_predictions=keyed_predictions,
+            )
 
     def add_data_from_valor_dict(
         self,
@@ -740,14 +736,14 @@ class DataLoader:
             uid_index = self._add_datum(uid=groundtruth["datum"]["uid"])
 
             # cache labels and annotations
-            keyed_groundtruths = defaultdict(list)
+            keyed_groundtruths = defaultdict(int)
             keyed_predictions = defaultdict(list)
             for gann in groundtruth["annotations"]:
                 for valor_label in gann["labels"]:
                     glabel = (valor_label["key"], valor_label["value"])
                     label_idx, label_key_idx = self._add_label(glabel)
                     self.groundtruth_count[label_idx][uid_index] += 1
-                    keyed_groundtruths[label_key_idx].append(label_idx)
+                    keyed_groundtruths[label_key_idx] = label_idx
             for pann in prediction["annotations"]:
                 for valor_label in pann["labels"]:
                     plabel = (valor_label["key"], valor_label["value"])
@@ -761,42 +757,11 @@ class DataLoader:
                         )
                     )
 
-            gt_keys = set(keyed_groundtruths.keys())
-            pd_keys = set(keyed_predictions.keys())
-            joint_keys = gt_keys.intersection(pd_keys)
-
-            gt_unique_keys = gt_keys - pd_keys
-            pd_unique_keys = pd_keys - gt_keys
-            if gt_unique_keys or pd_unique_keys:
-                raise ValueError()
-
-            pairs = list()
-            for key in joint_keys:
-                hardmax_idx = np.argmax(
-                    [score for _, score in keyed_predictions[key]]
-                )
-                for idx, (plabel, score) in enumerate(keyed_predictions[key]):
-                    for glabel in keyed_groundtruths[key]:
-                        pairs.append(
-                            (
-                                float(uid_index),
-                                float(glabel),
-                                float(plabel),
-                                float(score),
-                                float(hardmax_idx == idx),
-                            )
-                        )
-
-            if self._evaluator._detailed_pairs.size == 0:
-                self._evaluator._detailed_pairs = np.array(pairs)
-            else:
-                self._evaluator._detailed_pairs = np.concatenate(
-                    [
-                        self._evaluator._detailed_pairs,
-                        np.array(pairs),
-                    ],
-                    axis=0,
-                )
+            self._add_data(
+                uid_index=uid_index,
+                keyed_groundtruths=keyed_groundtruths,
+                keyed_predictions=keyed_predictions,
+            )
 
     def finalize(self) -> Evaluator:
         """

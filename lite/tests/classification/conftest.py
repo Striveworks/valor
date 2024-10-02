@@ -128,6 +128,7 @@ def classifications_two_categories() -> list[Classification]:
         {"dog": 0.75, "cat": 0.1, "bird": 0.15},
         {"cat": 1.0, "dog": 0.0, "bird": 0.0},
         {"cat": 0.4, "dog": 0.4, "bird": 0.2},
+        # Note: In the case of a tied score, the ordering of predictions is used.
     ]
 
     color_gts = ["white", "white", "red", "blue", "black", "red"]

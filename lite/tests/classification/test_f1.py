@@ -138,7 +138,7 @@ def test_f1_score_with_example(
         },
         {
             "type": "F1",
-            "value": [0.5, 0.0],
+            "value": [0.0, 0.0],
             "parameters": {
                 "score_thresholds": [0.0, 0.5],
                 "hardmax": True,
@@ -147,7 +147,7 @@ def test_f1_score_with_example(
         },
         {
             "type": "F1",
-            "value": [0.5, 0.5],
+            "value": [0.4, 0.5],
             "parameters": {
                 "score_thresholds": [0.0, 0.5],
                 "hardmax": True,

@@ -137,7 +137,7 @@ def test_precision_with_example(
         },
         {
             "type": "Precision",
-            "value": [0.5, 0.0],
+            "value": [0.0, 0.0],
             "parameters": {
                 "score_thresholds": [0.0, 0.5],
                 "hardmax": True,
@@ -146,7 +146,7 @@ def test_precision_with_example(
         },
         {
             "type": "Precision",
-            "value": [1 / 3, 1 / 3],
+            "value": [0.25, 1 / 3],
             "parameters": {
                 "score_thresholds": [0.0, 0.5],
                 "hardmax": True,
