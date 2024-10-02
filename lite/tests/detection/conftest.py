@@ -1029,3 +1029,64 @@ def detections_for_detailed_counting(
             ],
         ),
     ]
+
+
+@pytest.fixture
+def detections_for_label_maps(
+    rect1: tuple[float, float, float, float],
+    rect2: tuple[float, float, float, float],
+    rect3: tuple[float, float, float, float],
+):
+    return [
+        Detection(
+            uid="uid1",
+            groundtruths=[
+                BoundingBox(
+                    xmin=rect1[0],
+                    xmax=rect1[1],
+                    ymin=rect1[2],
+                    ymax=rect1[3],
+                    labels=[("class_name", "maine coon cat"), ("k1", "v1")],
+                ),
+                BoundingBox(
+                    xmin=rect3[0],
+                    xmax=rect3[1],
+                    ymin=rect3[2],
+                    ymax=rect3[3],
+                    labels=[("class", "british shorthair"), ("k2", "v2")],
+                ),
+            ],
+            predictions=[
+                BoundingBox(
+                    xmin=rect1[0],
+                    xmax=rect1[1],
+                    ymin=rect1[2],
+                    ymax=rect1[3],
+                    labels=[("class", "cat"), ("k1", "v1")],
+                    scores=[0.3, 0.3],
+                ),
+            ],
+        ),
+        Detection(
+            uid="uid2",
+            groundtruths=[
+                BoundingBox(
+                    xmin=rect2[0],
+                    xmax=rect2[1],
+                    ymin=rect2[2],
+                    ymax=rect2[3],
+                    labels=[("class", "siamese cat"), ("k1", "v1")],
+                ),
+            ],
+            predictions=[
+                BoundingBox(
+                    xmin=rect2[0],
+                    xmax=rect2[1],
+                    ymin=rect2[2],
+                    ymax=rect2[3],
+                    labels=[("k2", "v2"), ("class_name", "cat")],
+                    scores=[0.98, 0.98],
+                ),
+            ],
+        ),
+    ]

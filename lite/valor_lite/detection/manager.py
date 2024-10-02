@@ -893,6 +893,7 @@ class DataLoader:
         self,
         detections: list[Detection],
         annotation_type: type[Bitmask] | type[BoundingBox] | type[Polygon],
+        label_map: dict[tuple[str, str], tuple[str, str]],
         show_progress: bool = False,
     ):
         """
@@ -904,6 +905,8 @@ class DataLoader:
             A list of Detection objects.
         annotation_type : type[Bitmask] | type[BoundingBox] | type[Polygon]
             The annotation type to process.
+        label_map : dict[tuple[str, str], tuple[str, str]]
+            A dictionary mapping each label tuple to another label tuple.
         show_progress : bool, default=False
             Toggle for tqdm progress bar.
         """
@@ -952,7 +955,8 @@ class DataLoader:
                         else None
                     )
                 for glabel in gann.labels:
-                    label_idx, label_key_idx = self._add_label(glabel)
+                    processed_label = label_map.get(glabel, glabel)
+                    label_idx, label_key_idx = self._add_label(processed_label)
                     self.groundtruth_count[label_idx][uid_index] += 1
                     representation = getattr(gann, representation_property)
                     keyed_groundtruths[label_key_idx].append(
@@ -981,7 +985,8 @@ class DataLoader:
                         else None
                     )
                 for plabel, pscore in zip(pann.labels, pann.scores):
-                    label_idx, label_key_idx = self._add_label(plabel)
+                    processed_label = label_map.get(plabel, plabel)
+                    label_idx, label_key_idx = self._add_label(processed_label)
                     self.prediction_count[label_idx][uid_index] += 1
                     representation = representation = getattr(
                         pann, representation_property
@@ -1005,6 +1010,7 @@ class DataLoader:
     def add_bounding_boxes(
         self,
         detections: list[Detection],
+        label_map: dict[tuple[str, str], tuple[str, str]] = dict(),
         show_progress: bool = False,
     ):
         """
@@ -1014,11 +1020,14 @@ class DataLoader:
         ----------
         detections : list[Detection]
             A list of Detection objects.
+        label_map : dict[tuple[str, str], tuple[str, str]], default=dict()
+            A dictionary mapping each label tuple to another label tuple.
         show_progress : bool, default=False
             Toggle for tqdm progress bar.
         """
         return self._add_data(
             detections=detections,
+            label_map=label_map,
             show_progress=show_progress,
             annotation_type=BoundingBox,
         )
@@ -1026,6 +1035,7 @@ class DataLoader:
     def add_polygons(
         self,
         detections: list[Detection],
+        label_map: dict[tuple[str, str], tuple[str, str]] = dict(),
         show_progress: bool = False,
     ):
         """
@@ -1035,11 +1045,14 @@ class DataLoader:
         ----------
         detections : list[Detection]
             A list of Detection objects.
+        label_map : dict[tuple[str, str], tuple[str, str]], default=dict()
+            A dictionary mapping each label tuple to another label tuple.
         show_progress : bool, default=False
             Toggle for tqdm progress bar.
         """
         return self._add_data(
             detections=detections,
+            label_map=label_map,
             show_progress=show_progress,
             annotation_type=Polygon,
         )
@@ -1047,6 +1060,7 @@ class DataLoader:
     def add_bitmasks(
         self,
         detections: list[Detection],
+        label_map: dict[tuple[str, str], tuple[str, str]] = dict(),
         show_progress: bool = False,
     ):
         """
@@ -1056,11 +1070,14 @@ class DataLoader:
         ----------
         detections : list[Detection]
             A list of Detection objects.
+        label_map : dict[tuple[str, str], tuple[str, str]], default=dict()
+            A dictionary mapping each label tuple to another label tuple.
         show_progress : bool, default=False
             Toggle for tqdm progress bar.
         """
         return self._add_data(
             detections=detections,
+            label_map=label_map,
             show_progress=show_progress,
             annotation_type=Bitmask,
         )

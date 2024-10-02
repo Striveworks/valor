@@ -528,3 +528,253 @@ def test_ar_ranked_pair_ordering(
             assert m in expected_metrics
         for m in expected_metrics:
             assert m in actual_metrics
+
+
+def test_ar_with_label_maps(detections_for_label_maps):
+
+    # test partial label map
+    loader = DataLoader()
+    loader.add_bounding_boxes(
+        detections_for_label_maps,
+        label_map={
+            ("class_name", "maine coon cat"): ("class", "cat"),
+            ("class", "siamese cat"): ("class", "cat"),
+            ("class", "british shorthair"): ("class", "cat"),
+        },
+    )
+    evaluator = loader.finalize()
+    metrics = evaluator.evaluate(
+        iou_thresholds=[0.1, 0.6], score_thresholds=[0]
+    )
+
+    metrics_to_test = [
+        MetricType.AR,
+        MetricType.mAR,
+    ]
+    actual_metrics = [
+        m.to_dict() for key in metrics_to_test for m in metrics[key]
+    ]
+
+    assert evaluator.ignored_prediction_labels == [("class_name", "cat")]
+    assert evaluator.missing_prediction_labels == []
+    assert evaluator.n_datums == 2
+    assert evaluator.n_labels == 4
+    assert evaluator.n_groundtruths == 3
+    assert evaluator.n_predictions == 2
+
+    expected_metrics = [
+        {
+            "type": "AR",
+            "parameters": {
+                "iou_thresholds": [0.1, 0.6],
+                "score_threshold": 0.0,
+                "label": {"key": "k1", "value": "v1"},
+            },
+            "value": 0.5,
+        },
+        {
+            "type": "AR",
+            "parameters": {
+                "iou_thresholds": [0.1, 0.6],
+                "score_threshold": 0.0,
+                "label": {"key": "class", "value": "cat"},
+            },
+            "value": 1 / 3,
+        },
+        {
+            "type": "AR",
+            "parameters": {
+                "iou_thresholds": [0.1, 0.6],
+                "score_threshold": 0.0,
+                "label": {"key": "k2", "value": "v2"},
+            },
+            "value": 0.0,
+        },
+        {
+            "type": "mAR",
+            "parameters": {
+                "iou_thresholds": [0.1, 0.6],
+                "label_key": "class",
+                "score_threshold": 0.0,
+            },
+            "value": 1 / 3,
+        },
+        {
+            "type": "mAR",
+            "parameters": {
+                "iou_thresholds": [0.1, 0.6],
+                "label_key": "k1",
+                "score_threshold": 0.0,
+            },
+            "value": 0.5,
+        },
+        {
+            "type": "mAR",
+            "parameters": {
+                "iou_thresholds": [0.1, 0.6],
+                "label_key": "class_name",
+                "score_threshold": 0.0,
+            },
+            "value": -1,
+        },
+        {
+            "type": "mAR",
+            "parameters": {
+                "iou_thresholds": [0.1, 0.6],
+                "label_key": "k2",
+                "score_threshold": 0.0,
+            },
+            "value": 0.0,
+        },
+    ]
+
+    for m in actual_metrics:
+        assert m in expected_metrics
+    for m in expected_metrics:
+        assert m in actual_metrics
+
+    # finally, we check that the label mapping works when the label is completely foreign
+    # to both groundtruths and predictions
+
+    loader = DataLoader()
+    loader.add_bounding_boxes(
+        detections_for_label_maps,
+        label_map={
+            ("class_name", "maine coon cat"): ("foo", "bar"),
+            ("class", "siamese cat"): ("foo", "bar"),
+            ("class", "british shorthair"): ("foo", "bar"),
+            ("class", "cat"): ("foo", "bar"),
+            ("class_name", "cat"): ("foo", "bar"),
+        },
+    )
+    evaluator = loader.finalize()
+    metrics = evaluator.evaluate(
+        iou_thresholds=[0.1, 0.6], score_thresholds=[0, 0.8]
+    )
+
+    actual_metrics = [
+        m.to_dict() for key in metrics_to_test for m in metrics[key]
+    ]
+
+    assert evaluator.ignored_prediction_labels == []
+    assert evaluator.missing_prediction_labels == []
+    assert evaluator.n_datums == 2
+    assert evaluator.n_labels == 3
+    assert evaluator.n_groundtruths == 3
+    assert evaluator.n_predictions == 2
+
+    expected_metrics = [
+        {
+            "type": "AR",
+            "value": 0.6666666666666666,
+            "parameters": {
+                "score_threshold": 0,
+                "iou_thresholds": [0.1, 0.6],
+                "label": {"key": "foo", "value": "bar"},
+            },
+        },
+        {
+            "type": "AR",
+            "value": 0.5,
+            "parameters": {
+                "score_threshold": 0,
+                "iou_thresholds": [0.1, 0.6],
+                "label": {"key": "k1", "value": "v1"},
+            },
+        },
+        {
+            "type": "AR",
+            "value": 0.0,
+            "parameters": {
+                "score_threshold": 0,
+                "iou_thresholds": [0.1, 0.6],
+                "label": {"key": "k2", "value": "v2"},
+            },
+        },
+        {
+            "type": "AR",
+            "value": 0.3333333333333333,  # two missed groundtruth on the first image, and 1 hit for the second image
+            "parameters": {
+                "score_threshold": 0.8,
+                "iou_thresholds": [0.1, 0.6],
+                "label": {"key": "foo", "value": "bar"},
+            },
+        },
+        {
+            "type": "AR",
+            "value": 0.0,
+            "parameters": {
+                "score_threshold": 0.8,
+                "iou_thresholds": [0.1, 0.6],
+                "label": {"key": "k1", "value": "v1"},
+            },
+        },
+        {
+            "type": "AR",
+            "value": 0.0,
+            "parameters": {
+                "score_threshold": 0.8,
+                "iou_thresholds": [0.1, 0.6],
+                "label": {"key": "k2", "value": "v2"},
+            },
+        },
+        {
+            "type": "mAR",
+            "value": 0.5,
+            "parameters": {
+                "score_threshold": 0,
+                "iou_thresholds": [0.1, 0.6],
+                "label_key": "k1",
+            },
+        },
+        {
+            "type": "mAR",
+            "value": -1.0,
+            "parameters": {
+                "score_threshold": 0,
+                "iou_thresholds": [0.1, 0.6],
+                "label_key": "k2",
+            },
+        },
+        {
+            "type": "mAR",
+            "value": 0.6666666666666666,
+            "parameters": {
+                "score_threshold": 0,
+                "iou_thresholds": [0.1, 0.6],
+                "label_key": "foo",
+            },
+        },
+        {
+            "type": "mAR",
+            "value": 0.3333333333333333,
+            "parameters": {
+                "score_threshold": 0.8,
+                "iou_thresholds": [0.1, 0.6],
+                "label_key": "foo",
+            },
+        },
+        {
+            "type": "mAR",
+            "value": 0.0,
+            "parameters": {
+                "score_threshold": 0.8,
+                "iou_thresholds": [0.1, 0.6],
+                "label_key": "k1",
+            },
+        },
+        {
+            "type": "mAR",
+            "value": -1.0,
+            "parameters": {
+                "score_threshold": 0.8,
+                "iou_thresholds": [0.1, 0.6],
+                "label_key": "k2",
+            },
+        },
+    ]
+
+    for m in actual_metrics:
+        assert m in expected_metrics
+    for m in expected_metrics:
+        assert m in actual_metrics

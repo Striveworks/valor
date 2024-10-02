@@ -832,3 +832,369 @@ def test_ap_true_positive_deassignment(
         assert m in expected_metrics
     for m in expected_metrics:
         assert m in actual_metrics
+
+
+def test_ap_with_label_maps(detections_for_label_maps):
+
+    # test partial label map
+    loader = DataLoader()
+    loader.add_bounding_boxes(
+        detections_for_label_maps,
+        label_map={
+            ("class_name", "maine coon cat"): ("class", "cat"),
+            ("class", "siamese cat"): ("class", "cat"),
+            ("class", "british shorthair"): ("class", "cat"),
+        },
+    )
+    evaluator = loader.finalize()
+    metrics = evaluator.evaluate(
+        iou_thresholds=[0.1, 0.6], score_thresholds=[0]
+    )
+
+    metrics_to_test = [
+        MetricType.AP,
+        MetricType.mAP,
+        MetricType.APAveragedOverIOUs,
+        MetricType.mAPAveragedOverIOUs,
+    ]
+    actual_metrics = [
+        m.to_dict() for key in metrics_to_test for m in metrics[key]
+    ]
+
+    assert evaluator.ignored_prediction_labels == [("class_name", "cat")]
+    assert evaluator.missing_prediction_labels == []
+    assert evaluator.n_datums == 2
+    assert evaluator.n_labels == 4
+    assert evaluator.n_groundtruths == 3
+    assert evaluator.n_predictions == 2
+
+    expected_metrics = [
+        {
+            "type": "AP",
+            "parameters": {
+                "iou_threshold": 0.1,
+                "label": {"key": "class", "value": "cat"},
+            },
+            "value": 0.33663366336633666,
+        },
+        {
+            "type": "AP",
+            "parameters": {
+                "iou_threshold": 0.1,
+                "label": {"key": "k1", "value": "v1"},
+            },
+            "value": 0.504950495049505,
+        },
+        {
+            "type": "AP",
+            "parameters": {
+                "iou_threshold": 0.1,
+                "label": {"key": "k2", "value": "v2"},
+            },
+            "value": 0.0,
+        },
+        {
+            "type": "AP",
+            "parameters": {
+                "iou_threshold": 0.6,
+                "label": {"key": "class", "value": "cat"},
+            },
+            "value": 0.33663366336633666,
+        },
+        {
+            "type": "AP",
+            "parameters": {
+                "iou_threshold": 0.6,
+                "label": {"key": "k1", "value": "v1"},
+            },
+            "value": 0.504950495049505,
+        },
+        {
+            "type": "AP",
+            "parameters": {
+                "iou_threshold": 0.6,
+                "label": {"key": "k2", "value": "v2"},
+            },
+            "value": 0.0,
+        },
+        {
+            "type": "mAP",
+            "parameters": {"iou_threshold": 0.1, "label_key": "class"},
+            "value": 0.33663366336633666,
+        },
+        {
+            "type": "mAP",
+            "parameters": {"iou_threshold": 0.1, "label_key": "k1"},
+            "value": 0.504950495049505,
+        },
+        {
+            "type": "mAP",
+            "parameters": {"iou_threshold": 0.1, "label_key": "k2"},
+            "value": 0.0,
+        },
+        {
+            "type": "mAP",
+            "parameters": {"iou_threshold": 0.6, "label_key": "class"},
+            "value": 0.33663366336633666,
+        },
+        {
+            "type": "mAP",
+            "parameters": {"iou_threshold": 0.6, "label_key": "k1"},
+            "value": 0.504950495049505,
+        },
+        {
+            "type": "mAP",
+            "parameters": {"iou_threshold": 0.6, "label_key": "k2"},
+            "value": 0.0,
+        },
+        {
+            "type": "mAP",
+            "parameters": {"iou_threshold": 0.1, "label_key": "class"},
+            "value": 0.33663366336633666,
+        },
+        {
+            "type": "mAP",
+            "parameters": {"iou_threshold": 0.1, "label_key": "k1"},
+            "value": 0.504950495049505,
+        },
+        {
+            "type": "mAP",
+            "parameters": {"iou_threshold": 0.1, "label_key": "k2"},
+            "value": 0.0,
+        },
+        {
+            "type": "mAP",
+            "parameters": {"iou_threshold": 0.6, "label_key": "class"},
+            "value": 0.33663366336633666,
+        },
+        {
+            "type": "mAP",
+            "parameters": {"iou_threshold": 0.6, "label_key": "k1"},
+            "value": 0.504950495049505,
+        },
+        {
+            "type": "mAP",
+            "parameters": {"iou_threshold": 0.6, "label_key": "k2"},
+            "value": 0.0,
+        },
+        {
+            "type": "mAP",
+            "value": -1,
+            "parameters": {"iou_threshold": 0.1, "label_key": "class_name"},
+        },
+        {
+            "type": "mAP",
+            "value": -1,
+            "parameters": {
+                "iou_threshold": 0.6,
+                "label_key": "class_name",
+            },
+        },
+        {
+            "type": "APAveragedOverIOUs",
+            "parameters": {
+                "iou_thresholds": [0.1, 0.6],
+                "label": {"key": "class", "value": "cat"},
+            },
+            "value": 0.33663366336633666,
+        },
+        {
+            "type": "APAveragedOverIOUs",
+            "parameters": {
+                "iou_thresholds": [0.1, 0.6],
+                "label": {"key": "k1", "value": "v1"},
+            },
+            "value": 0.504950495049505,
+        },
+        {
+            "type": "APAveragedOverIOUs",
+            "parameters": {
+                "iou_thresholds": [0.1, 0.6],
+                "label": {"key": "k2", "value": "v2"},
+            },
+            "value": 0.0,
+        },
+        {
+            "type": "mAPAveragedOverIOUs",
+            "parameters": {"iou_thresholds": [0.1, 0.6], "label_key": "k1"},
+            "value": 0.504950495049505,
+        },
+        {
+            "type": "mAPAveragedOverIOUs",
+            "parameters": {"iou_thresholds": [0.1, 0.6], "label_key": "class"},
+            "value": 0.33663366336633666,
+        },
+        {
+            "type": "mAPAveragedOverIOUs",
+            "parameters": {"iou_thresholds": [0.1, 0.6], "label_key": "k2"},
+            "value": 0.0,
+        },
+        {
+            "type": "mAPAveragedOverIOUs",
+            "value": -1.0,
+            "parameters": {
+                "iou_thresholds": [0.1, 0.6],
+                "label_key": "class_name",
+            },
+        },
+    ]
+
+    for m in actual_metrics:
+        assert m in expected_metrics
+    for m in expected_metrics:
+        assert m in actual_metrics
+
+    # finally, we check that the label mapping works when the label is completely foreign
+    # to both groundtruths and predictions
+
+    loader = DataLoader()
+    loader.add_bounding_boxes(
+        detections_for_label_maps,
+        label_map={
+            ("class_name", "maine coon cat"): ("foo", "bar"),
+            ("class", "siamese cat"): ("foo", "bar"),
+            ("class", "british shorthair"): ("foo", "bar"),
+            ("class", "cat"): ("foo", "bar"),
+            ("class_name", "cat"): ("foo", "bar"),
+        },
+    )
+    evaluator = loader.finalize()
+    metrics = evaluator.evaluate(
+        iou_thresholds=[0.1, 0.6], score_thresholds=[0, 0.8]
+    )
+
+    actual_metrics = [
+        m.to_dict() for key in metrics_to_test for m in metrics[key]
+    ]
+
+    assert evaluator.ignored_prediction_labels == []
+    assert evaluator.missing_prediction_labels == []
+    assert evaluator.n_datums == 2
+    assert evaluator.n_labels == 3
+    assert evaluator.n_groundtruths == 3
+    assert evaluator.n_predictions == 2
+
+    expected_metrics = [
+        {
+            "type": "AP",
+            "value": 0.6633663366336634,
+            "parameters": {
+                "iou_threshold": 0.1,
+                "label": {"key": "foo", "value": "bar"},
+            },
+        },
+        {
+            "type": "AP",
+            "value": 0.504950495049505,
+            "parameters": {
+                "iou_threshold": 0.1,
+                "label": {"key": "k1", "value": "v1"},
+            },
+        },
+        {
+            "type": "AP",
+            "value": 0.0,
+            "parameters": {
+                "iou_threshold": 0.1,
+                "label": {"key": "k2", "value": "v2"},
+            },
+        },
+        {
+            "type": "AP",
+            "value": 0.6633663366336634,
+            "parameters": {
+                "iou_threshold": 0.6,
+                "label": {"key": "foo", "value": "bar"},
+            },
+        },
+        {
+            "type": "AP",
+            "value": 0.504950495049505,
+            "parameters": {
+                "iou_threshold": 0.6,
+                "label": {"key": "k1", "value": "v1"},
+            },
+        },
+        {
+            "type": "AP",
+            "value": 0.0,
+            "parameters": {
+                "iou_threshold": 0.6,
+                "label": {"key": "k2", "value": "v2"},
+            },
+        },
+        {
+            "type": "mAP",
+            "value": 0.6633663366336634,
+            "parameters": {"iou_threshold": 0.1, "label_key": "foo"},
+        },
+        {
+            "type": "mAP",
+            "value": 0.504950495049505,
+            "parameters": {"iou_threshold": 0.1, "label_key": "k1"},
+        },
+        {
+            "type": "mAP",
+            "value": -1.0,
+            "parameters": {"iou_threshold": 0.1, "label_key": "k2"},
+        },
+        {
+            "type": "mAP",
+            "value": 0.6633663366336634,
+            "parameters": {"iou_threshold": 0.6, "label_key": "foo"},
+        },
+        {
+            "type": "mAP",
+            "value": 0.504950495049505,
+            "parameters": {"iou_threshold": 0.6, "label_key": "k1"},
+        },
+        {
+            "type": "mAP",
+            "value": -1.0,
+            "parameters": {"iou_threshold": 0.6, "label_key": "k2"},
+        },
+        {
+            "type": "APAveragedOverIOUs",
+            "value": 0.6633663366336634,
+            "parameters": {
+                "iou_thresholds": [0.1, 0.6],
+                "label": {"key": "foo", "value": "bar"},
+            },
+        },
+        {
+            "type": "APAveragedOverIOUs",
+            "value": 0.504950495049505,
+            "parameters": {
+                "iou_thresholds": [0.1, 0.6],
+                "label": {"key": "k1", "value": "v1"},
+            },
+        },
+        {
+            "type": "APAveragedOverIOUs",
+            "value": 0.0,
+            "parameters": {
+                "iou_thresholds": [0.1, 0.6],
+                "label": {"key": "k2", "value": "v2"},
+            },
+        },
+        {
+            "type": "mAPAveragedOverIOUs",
+            "value": 0.6633663366336634,
+            "parameters": {"iou_thresholds": [0.1, 0.6], "label_key": "foo"},
+        },
+        {
+            "type": "mAPAveragedOverIOUs",
+            "value": 0.504950495049505,
+            "parameters": {"iou_thresholds": [0.1, 0.6], "label_key": "k1"},
+        },
+        {
+            "type": "mAPAveragedOverIOUs",
+            "value": -1.0,
+            "parameters": {"iou_thresholds": [0.1, 0.6], "label_key": "k2"},
+        },
+    ]
+
+    for m in actual_metrics:
+        assert m in expected_metrics
+    for m in expected_metrics:
+        assert m in actual_metrics
