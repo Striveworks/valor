@@ -170,10 +170,10 @@ def test_rocauc_with_example(
     loader.add_data(classifications_two_categories)
     evaluator = loader.finalize()
 
-    metrics = evaluator.evaluate()
+    metrics = evaluator.evaluate(as_dict=True)
 
     # test ROCAUC
-    actual_metrics = [m.to_dict() for m in metrics[MetricType.ROCAUC]]
+    actual_metrics = [m for m in metrics[MetricType.ROCAUC]]
     expected_metrics = [
         {
             "type": "ROCAUC",
@@ -231,7 +231,7 @@ def test_rocauc_with_example(
         assert m in actual_metrics
 
     # test mROCAUC
-    actual_metrics = [m.to_dict() for m in metrics[MetricType.mROCAUC]]
+    actual_metrics = [m for m in metrics[MetricType.mROCAUC]]
     expected_metrics = [
         {
             "type": "mROCAUC",
@@ -263,9 +263,9 @@ def test_rocauc_with_image_example(
     evaluator = loader.finalize()
     evaluator.evaluate()
 
-    metrics = evaluator.evaluate()
+    metrics = evaluator.evaluate(as_dict=True)
 
-    actual_metrics = [m.to_dict() for m in metrics[MetricType.ROCAUC]]
+    actual_metrics = [m for m in metrics[MetricType.ROCAUC]]
     expected_metrics = [
         {
             "type": "ROCAUC",
@@ -288,7 +288,7 @@ def test_rocauc_with_image_example(
     for m in expected_metrics:
         assert m in actual_metrics
 
-    actual_metrics = [m.to_dict() for m in metrics[MetricType.mROCAUC]]
+    actual_metrics = [m for m in metrics[MetricType.mROCAUC]]
     expected_metrics = [
         {"type": "mROCAUC", "value": 0.0, "parameters": {"label_key": "k3"}},
         {"type": "mROCAUC", "value": 0.0, "parameters": {"label_key": "k4"}},
@@ -309,9 +309,9 @@ def test_rocauc_with_tabular_example(
     evaluator = loader.finalize()
     evaluator.evaluate()
 
-    metrics = evaluator.evaluate()
+    metrics = evaluator.evaluate(as_dict=True)
 
-    actual_metrics = [m.to_dict() for m in metrics[MetricType.ROCAUC]]
+    actual_metrics = [m for m in metrics[MetricType.ROCAUC]]
     expected_metrics = [
         {
             "type": "ROCAUC",
@@ -334,7 +334,7 @@ def test_rocauc_with_tabular_example(
     for m in expected_metrics:
         assert m in actual_metrics
 
-    actual_metrics = [m.to_dict() for m in metrics[MetricType.mROCAUC]]
+    actual_metrics = [m for m in metrics[MetricType.mROCAUC]]
     expected_metrics = [
         {
             "type": "mROCAUC",

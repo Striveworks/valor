@@ -121,10 +121,11 @@ def test_confusion_matrix_basic(basic_classifications: list[Classification]):
         metrics_to_return=[MetricType.ConfusionMatrix],
         score_thresholds=[0.25, 0.75],
         number_of_examples=1,
+        as_dict=True,
     )
 
     # test ConfusionMatrix
-    actual_metrics = [m.to_dict() for m in metrics[MetricType.ConfusionMatrix]]
+    actual_metrics = [m for m in metrics[MetricType.ConfusionMatrix]]
     expected_metrics = [
         {
             "type": "ConfusionMatrix",
@@ -194,11 +195,13 @@ def test_confusion_matrix_unit(
     evaluator = loader.finalize()
 
     metrics = evaluator.evaluate(
-        metrics_to_return=[MetricType.ConfusionMatrix], score_thresholds=[0.5]
+        metrics_to_return=[MetricType.ConfusionMatrix],
+        score_thresholds=[0.5],
+        as_dict=True,
     )
 
     # test ConfusionMatrix
-    actual_metrics = [m.to_dict() for m in metrics[MetricType.ConfusionMatrix]]
+    actual_metrics = [m for m in metrics[MetricType.ConfusionMatrix]]
     expected_metrics = [
         {
             "type": "ConfusionMatrix",
@@ -239,10 +242,11 @@ def test_confusion_matrix_with_example(
         metrics_to_return=[MetricType.ConfusionMatrix],
         score_thresholds=[0.5],
         number_of_examples=6,
+        as_dict=True,
     )
 
     # test ConfusionMatrix
-    actual_metrics = [m.to_dict() for m in metrics[MetricType.ConfusionMatrix]]
+    actual_metrics = [m for m in metrics[MetricType.ConfusionMatrix]]
     expected_metrics = [
         {
             "type": "ConfusionMatrix",
@@ -363,10 +367,11 @@ def test_confusion_matrix_multiclass(
         metrics_to_return=[MetricType.ConfusionMatrix],
         score_thresholds=[0.05, 0.5, 0.85],
         number_of_examples=5,
+        as_dict=True,
     )
 
     # test ConfusionMatrix
-    actual_metrics = [m.to_dict() for m in metrics[MetricType.ConfusionMatrix]]
+    actual_metrics = [m for m in metrics[MetricType.ConfusionMatrix]]
     expected_metrics = [
         {
             "type": "ConfusionMatrix",
@@ -503,10 +508,11 @@ def test_confusion_matrix_without_hardmax(
         score_thresholds=[0.05, 0.4, 0.5],
         number_of_examples=6,
         hardmax=False,
+        as_dict=True,
     )
 
     # test ConfusionMatrix
-    actual_metrics = [m.to_dict() for m in metrics[MetricType.ConfusionMatrix]]
+    actual_metrics = [m for m in metrics[MetricType.ConfusionMatrix]]
     expected_metrics = [
         {
             "type": "ConfusionMatrix",

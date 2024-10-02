@@ -84,10 +84,10 @@ def test_accuracy_basic(basic_classifications: list[Classification]):
         "missing_prediction_labels": [],
     }
 
-    metrics = evaluator.evaluate(score_thresholds=[0.25, 0.75])
+    metrics = evaluator.evaluate(score_thresholds=[0.25, 0.75], as_dict=True)
 
     # test Accuracy
-    actual_metrics = [m.to_dict() for m in metrics[MetricType.Accuracy]]
+    actual_metrics = [m for m in metrics[MetricType.Accuracy]]
     expected_metrics = [
         {
             "type": "Accuracy",
@@ -122,10 +122,10 @@ def test_accuracy_with_example(
     loader.add_data(classifications_two_categories)
     evaluator = loader.finalize()
 
-    metrics = evaluator.evaluate(score_thresholds=[0.5])
+    metrics = evaluator.evaluate(score_thresholds=[0.5], as_dict=True)
 
     # test Accuracy
-    actual_metrics = [m.to_dict() for m in metrics[MetricType.Accuracy]]
+    actual_metrics = [m for m in metrics[MetricType.Accuracy]]
     expected_metrics = [
         {
             "type": "Accuracy",
@@ -222,10 +222,10 @@ def test_accuracy_with_image_example(
         ],
     }
 
-    metrics = evaluator.evaluate()
+    metrics = evaluator.evaluate(as_dict=True)
 
     # test Accuracy
-    actual_metrics = [m.to_dict() for m in metrics[MetricType.Accuracy]]
+    actual_metrics = [m for m in metrics[MetricType.Accuracy]]
     expected_metrics = [
         {
             "type": "Accuracy",
@@ -277,10 +277,10 @@ def test_accuracy_with_tabular_example(
         "missing_prediction_labels": [],
     }
 
-    metrics = evaluator.evaluate()
+    metrics = evaluator.evaluate(as_dict=True)
 
     # test Accuracy
-    actual_metrics = [m.to_dict() for m in metrics[MetricType.Accuracy]]
+    actual_metrics = [m for m in metrics[MetricType.Accuracy]]
     expected_metrics = [
         {
             "type": "Accuracy",

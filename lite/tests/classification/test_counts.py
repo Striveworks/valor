@@ -121,10 +121,13 @@ def test_counts_basic(basic_classifications: list[Classification]):
         "missing_prediction_labels": [],
     }
 
-    metrics = evaluator.evaluate(score_thresholds=[0.25, 0.75])
+    metrics = evaluator.evaluate(
+        score_thresholds=[0.25, 0.75],
+        as_dict=True,
+    )
 
     # test Counts
-    actual_metrics = [m.to_dict() for m in metrics[MetricType.Counts]]
+    actual_metrics = [m for m in metrics[MetricType.Counts]]
     expected_metrics = [
         {
             "type": "Counts",
@@ -197,10 +200,13 @@ def test_counts_unit(
     loader.add_data(classifications_from_api_unit_tests)
     evaluator = loader.finalize()
 
-    metrics = evaluator.evaluate(score_thresholds=[0.5])
+    metrics = evaluator.evaluate(
+        score_thresholds=[0.5],
+        as_dict=True,
+    )
 
     # test Counts
-    actual_metrics = [m.to_dict() for m in metrics[MetricType.Counts]]
+    actual_metrics = [m for m in metrics[MetricType.Counts]]
     expected_metrics = [
         {
             "type": "Counts",
@@ -259,10 +265,13 @@ def test_counts_with_example(
     loader.add_data(classifications_two_categories)
     evaluator = loader.finalize()
 
-    metrics = evaluator.evaluate(score_thresholds=[0.05, 0.5, 0.95])
+    metrics = evaluator.evaluate(
+        score_thresholds=[0.05, 0.5, 0.95],
+        as_dict=True,
+    )
 
     # test Counts
-    actual_metrics = [m.to_dict() for m in metrics[MetricType.Counts]]
+    actual_metrics = [m for m in metrics[MetricType.Counts]]
     expected_metrics = [
         {
             "type": "Counts",
@@ -394,10 +403,10 @@ def test_counts_with_image_example(
         ],
     }
 
-    metrics = evaluator.evaluate()
+    metrics = evaluator.evaluate(as_dict=True)
 
     # test Counts
-    actual_metrics = [m.to_dict() for m in metrics[MetricType.Counts]]
+    actual_metrics = [m for m in metrics[MetricType.Counts]]
     expected_metrics = [
         # k3
         {
@@ -537,10 +546,10 @@ def test_counts_with_tabular_example(
         "missing_prediction_labels": [],
     }
 
-    metrics = evaluator.evaluate()
+    metrics = evaluator.evaluate(as_dict=True)
 
     # test Counts
-    actual_metrics = [m.to_dict() for m in metrics[MetricType.Counts]]
+    actual_metrics = [m for m in metrics[MetricType.Counts]]
     expected_metrics = [
         {
             "type": "Counts",
@@ -607,10 +616,13 @@ def test_counts_multiclass(
         "n_predictions": 15,
     }
 
-    metrics = evaluator.evaluate(score_thresholds=[0.05, 0.1, 0.3, 0.85])
+    metrics = evaluator.evaluate(
+        score_thresholds=[0.05, 0.1, 0.3, 0.85],
+        as_dict=True,
+    )
 
     # test Counts
-    actual_metrics = [m.to_dict() for m in metrics[MetricType.Counts]]
+    actual_metrics = [m for m in metrics[MetricType.Counts]]
     expected_metrics = [
         {
             "value": {
@@ -684,10 +696,11 @@ def test_counts_true_negatives_check(
 
     metrics = evaluator.evaluate(
         score_thresholds=[0.05, 0.15, 0.95],
+        as_dict=True,
     )
 
     # test Counts
-    actual_metrics = [m.to_dict() for m in metrics[MetricType.Counts]]
+    actual_metrics = [m for m in metrics[MetricType.Counts]]
     expected_metrics = [
         {
             "value": {
@@ -800,10 +813,13 @@ def test_counts_zero_count_check(
         "n_predictions": 3,
     }
 
-    metrics = evaluator.evaluate(score_thresholds=[0.05, 0.2, 0.95])
+    metrics = evaluator.evaluate(
+        score_thresholds=[0.05, 0.2, 0.95],
+        as_dict=True,
+    )
 
     # test Counts
-    actual_metrics = [m.to_dict() for m in metrics[MetricType.Counts]]
+    actual_metrics = [m for m in metrics[MetricType.Counts]]
     expected_metrics = [
         {
             "value": {
