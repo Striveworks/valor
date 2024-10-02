@@ -843,11 +843,11 @@ class Evaluator:
             An array containing detailed pairs of detections.
         label_metadata : NDArray[np.int32]
             An array containing label metadata.
-        iou_thresholds : list[float], default=[0.5]
+        iou_thresholds : list[float]
             List of IoU thresholds to compute metrics for.
-        score_thresholds : list[float], default=[0.1,0.2,...,1.0]
+        score_thresholds : list[float]
             List of confidence thresholds to compute metrics for.
-        number_of_examples : int, default=0
+        number_of_examples : int
             Maximum number of annotation examples to return per metric.
 
         Returns
