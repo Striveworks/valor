@@ -7,13 +7,13 @@ from numpy.typing import NDArray
 @dataclass
 class Bitmask:
     mask: NDArray[np.bool_]
-    label: tuple[str, str]
+    label: str
 
 
 @dataclass
 class WeightedMask:
     mask: NDArray[np.floating]
-    label: tuple[str, str]
+    label: str
 
 
 @dataclass
@@ -21,7 +21,8 @@ class Segmentation:
     uid: str
     groundtruths: list[Bitmask]
     predictions: list[WeightedMask]
-    shape: tuple[int, int] = field(default_factory=lambda: (0, 0))
+    shape: tuple[int, ...] = field(default_factory=lambda: (0, 0))
+    size: int = field(default=0)
 
     def __post_init__(self):
 
@@ -39,7 +40,9 @@ class Segmentation:
             raise ValueError(
                 "A shape mismatch exists within the segmentation."
             )
+
         self.shape = groundtruth_shape.pop()
+        self.size = int(np.prod(np.array(self.shape)))
 
         combined_mask = np.concatenate(
             [prediction.mask for prediction in self.predictions],
