@@ -281,9 +281,9 @@ def test_counts_with_example(
         {
             "type": "Counts",
             "value": {
-                "tp": [0, 0, 0],
+                "tp": [1, 0, 0],
                 "fp": [1, 1, 0],
-                "fn": [2, 2, 2],
+                "fn": [1, 2, 2],
                 "tn": [3, 3, 4],
             },
             "parameters": {
@@ -296,9 +296,9 @@ def test_counts_with_example(
             "type": "Counts",
             "value": {
                 "tp": [1, 1, 1],
-                "fp": [3, 2, 0],
+                "fp": [2, 2, 0],
                 "fn": [0, 0, 0],
-                "tn": [2, 3, 5],
+                "tn": [3, 3, 5],
             },
             "parameters": {
                 "score_thresholds": [0.05, 0.5, 0.95],
@@ -364,9 +364,6 @@ def test_counts_with_example(
         },
     ]
     for m in actual_metrics:
-        import json
-
-        print(json.dumps(m, indent=4))
         assert m in expected_metrics
     for m in expected_metrics:
         assert m in actual_metrics

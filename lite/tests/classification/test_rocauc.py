@@ -295,9 +295,6 @@ def test_rocauc_with_image_example(
         {"type": "mROCAUC", "value": 0.0, "parameters": {"label_key": "k5"}},
     ]
     for m in actual_metrics:
-        import json
-
-        print(json.dumps(m, indent=4))
         assert m in expected_metrics
     for m in expected_metrics:
         assert m in actual_metrics
@@ -346,9 +343,6 @@ def test_rocauc_with_tabular_example(
         }
     ]
     for m in actual_metrics:
-        import json
-
-        print(json.dumps(m, indent=4))
         assert m in expected_metrics
     for m in expected_metrics:
         assert m in actual_metrics

@@ -637,12 +637,12 @@ class DataLoader:
             uid_index = self._add_datum(uid=classification.uid)
 
             # cache labels and annotations
-            keyed_groundtruths = defaultdict(list)
+            keyed_groundtruths = defaultdict(int)
             keyed_predictions = defaultdict(list)
             for glabel in classification.groundtruths:
                 label_idx, label_key_idx = self._add_label(glabel)
                 self.groundtruth_count[label_idx][uid_index] += 1
-                keyed_groundtruths[label_key_idx].append(label_idx)
+                keyed_groundtruths[label_key_idx] = label_idx
             for idx, (plabel, pscore) in enumerate(
                 zip(classification.predictions, classification.scores)
             ):
@@ -668,20 +668,36 @@ class DataLoader:
 
             pairs = list()
             for key in joint_keys:
-                hardmax_idx = np.argmax(
+                scores = np.array(
                     [score for _, score in keyed_predictions[key]]
                 )
+                plabels = np.array(
+                    [plabel for plabel, _ in keyed_predictions[key]]
+                )
+                max_score = np.amax(scores)
+                max_score_indices = np.argwhere(np.isclose(scores, max_score))
+
+                glabel = keyed_groundtruths[key]
+                label_match_idx = np.where(plabels == glabel)[0]
+
+                if (
+                    label_match_idx.size > 0
+                    and (max_score_indices == label_match_idx).any()
+                ):
+                    max_score_idx = label_match_idx[0]
+                else:
+                    max_score_idx = max_score_indices[0]
+
                 for idx, (plabel, score) in enumerate(keyed_predictions[key]):
-                    for glabel in keyed_groundtruths[key]:
-                        pairs.append(
-                            (
-                                float(uid_index),
-                                float(glabel),
-                                float(plabel),
-                                float(score),
-                                float(hardmax_idx == idx),
-                            )
+                    pairs.append(
+                        (
+                            float(uid_index),
+                            float(glabel),
+                            float(plabel),
+                            float(score),
+                            float(max_score_idx == idx),
                         )
+                    )
 
             if self._evaluator._detailed_pairs.size == 0:
                 self._evaluator._detailed_pairs = np.array(pairs)
