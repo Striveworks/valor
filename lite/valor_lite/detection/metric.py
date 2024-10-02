@@ -46,7 +46,7 @@ class Counts:
     tp: int
     fp: int
     fn: int
-    label: tuple[str, str]
+    label: str
     iou_threshold: float
     score_threshold: float
 
@@ -62,10 +62,7 @@ class Counts:
             parameters={
                 "iou_threshold": self.iou_threshold,
                 "score_threshold": self.score_threshold,
-                "label": {
-                    "key": self.label[0],
-                    "value": self.label[1],
-                },
+                "label": self.label,
             },
         )
 
@@ -76,7 +73,7 @@ class Counts:
 @dataclass
 class ClassMetric:
     value: float
-    label: tuple[str, str]
+    label: str
     iou_threshold: float
     score_threshold: float
 
@@ -88,10 +85,7 @@ class ClassMetric:
             parameters={
                 "iou_threshold": self.iou_threshold,
                 "score_threshold": self.score_threshold,
-                "label": {
-                    "key": self.label[0],
-                    "value": self.label[1],
-                },
+                "label": self.label,
             },
         )
 
@@ -119,7 +113,7 @@ class F1(ClassMetric):
 class AP:
     value: float
     iou_threshold: float
-    label: tuple[str, str]
+    label: str
 
     @property
     def metric(self) -> Metric:
@@ -128,10 +122,7 @@ class AP:
             value=self.value,
             parameters={
                 "iou_threshold": self.iou_threshold,
-                "label": {
-                    "key": self.label[0],
-                    "value": self.label[1],
-                },
+                "label": self.label,
             },
         )
 
@@ -143,7 +134,6 @@ class AP:
 class mAP:
     value: float
     iou_threshold: float
-    label_key: str
 
     @property
     def metric(self) -> Metric:
@@ -152,7 +142,6 @@ class mAP:
             value=self.value,
             parameters={
                 "iou_threshold": self.iou_threshold,
-                "label_key": self.label_key,
             },
         )
 
@@ -164,7 +153,7 @@ class mAP:
 class APAveragedOverIOUs:
     value: float
     iou_thresholds: list[float]
-    label: tuple[str, str]
+    label: str
 
     @property
     def metric(self) -> Metric:
@@ -173,10 +162,7 @@ class APAveragedOverIOUs:
             value=self.value,
             parameters={
                 "iou_thresholds": self.iou_thresholds,
-                "label": {
-                    "key": self.label[0],
-                    "value": self.label[1],
-                },
+                "label": self.label,
             },
         )
 
@@ -188,7 +174,6 @@ class APAveragedOverIOUs:
 class mAPAveragedOverIOUs:
     value: float
     iou_thresholds: list[float]
-    label_key: str
 
     @property
     def metric(self) -> Metric:
@@ -197,7 +182,6 @@ class mAPAveragedOverIOUs:
             value=self.value,
             parameters={
                 "iou_thresholds": self.iou_thresholds,
-                "label_key": self.label_key,
             },
         )
 
@@ -210,7 +194,7 @@ class AR:
     value: float
     score_threshold: float
     iou_thresholds: list[float]
-    label: tuple[str, str]
+    label: str
 
     @property
     def metric(self) -> Metric:
@@ -220,10 +204,7 @@ class AR:
             parameters={
                 "score_threshold": self.score_threshold,
                 "iou_thresholds": self.iou_thresholds,
-                "label": {
-                    "key": self.label[0],
-                    "value": self.label[1],
-                },
+                "label": self.label,
             },
         )
 
@@ -236,7 +217,6 @@ class mAR:
     value: float
     score_threshold: float
     iou_thresholds: list[float]
-    label_key: str
 
     @property
     def metric(self) -> Metric:
@@ -246,7 +226,6 @@ class mAR:
             parameters={
                 "score_threshold": self.score_threshold,
                 "iou_thresholds": self.iou_thresholds,
-                "label_key": self.label_key,
             },
         )
 
@@ -259,7 +238,7 @@ class ARAveragedOverScores:
     value: float
     score_thresholds: list[float]
     iou_thresholds: list[float]
-    label: tuple[str, str]
+    label: str
 
     @property
     def metric(self) -> Metric:
@@ -269,10 +248,7 @@ class ARAveragedOverScores:
             parameters={
                 "score_thresholds": self.score_thresholds,
                 "iou_thresholds": self.iou_thresholds,
-                "label": {
-                    "key": self.label[0],
-                    "value": self.label[1],
-                },
+                "label": self.label,
             },
         )
 
@@ -285,7 +261,6 @@ class mARAveragedOverScores:
     value: float
     score_thresholds: list[float]
     iou_thresholds: list[float]
-    label_key: str
 
     @property
     def metric(self) -> Metric:
@@ -295,7 +270,6 @@ class mARAveragedOverScores:
             parameters={
                 "score_thresholds": self.score_thresholds,
                 "iou_thresholds": self.iou_thresholds,
-                "label_key": self.label_key,
             },
         )
 
@@ -311,7 +285,7 @@ class PrecisionRecallCurve:
 
     precision: list[float]
     iou_threshold: float
-    label: tuple[str, str]
+    label: str
 
     @property
     def metric(self) -> Metric:
@@ -320,7 +294,7 @@ class PrecisionRecallCurve:
             value=self.precision,
             parameters={
                 "iou_threshold": self.iou_threshold,
-                "label": {"key": self.label[0], "value": self.label[1]},
+                "label": self.label,
             },
         )
 
@@ -385,7 +359,6 @@ class ConfusionMatrix:
     ]
     score_threshold: float
     iou_threshold: float
-    label_key: str
     number_of_examples: int
 
     @property
@@ -400,7 +373,6 @@ class ConfusionMatrix:
             parameters={
                 "score_threshold": self.score_threshold,
                 "iou_threshold": self.iou_threshold,
-                "label_key": self.label_key,
             },
         )
 

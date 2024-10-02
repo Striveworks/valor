@@ -71,10 +71,9 @@ def rect3_rotated_5_degrees_around_origin() -> list[tuple[float, float]]:
 
 
 @pytest.fixture
-def basic_detections(
+def basic_detections_first_class(
     rect1: tuple[float, float, float, float],
     rect2: tuple[float, float, float, float],
-    rect3: tuple[float, float, float, float],
 ) -> list[Detection]:
     return [
         Detection(
@@ -85,14 +84,7 @@ def basic_detections(
                     xmax=rect1[1],
                     ymin=rect1[2],
                     ymax=rect1[3],
-                    labels=[("k1", "v1")],
-                ),
-                BoundingBox(
-                    xmin=rect3[0],
-                    xmax=rect3[1],
-                    ymin=rect3[2],
-                    ymax=rect3[3],
-                    labels=[("k2", "v2")],
+                    labels=["v1"],
                 ),
             ],
             predictions=[
@@ -101,7 +93,7 @@ def basic_detections(
                     xmax=rect1[1],
                     ymin=rect1[2],
                     ymax=rect1[3],
-                    labels=[("k1", "v1")],
+                    labels=["v1"],
                     scores=[0.3],
                 ),
             ],
@@ -114,16 +106,43 @@ def basic_detections(
                     xmax=rect2[1],
                     ymin=rect2[2],
                     ymax=rect2[3],
-                    labels=[("k1", "v1")],
+                    labels=["v1"],
                 ),
             ],
+            predictions=[],
+        ),
+    ]
+
+
+@pytest.fixture
+def basic_detections_second_class(
+    rect2: tuple[float, float, float, float],
+    rect3: tuple[float, float, float, float],
+) -> list[Detection]:
+    return [
+        Detection(
+            uid="uid1",
+            groundtruths=[
+                BoundingBox(
+                    xmin=rect3[0],
+                    xmax=rect3[1],
+                    ymin=rect3[2],
+                    ymax=rect3[3],
+                    labels=["v2"],
+                ),
+            ],
+            predictions=[],
+        ),
+        Detection(
+            uid="uid2",
+            groundtruths=[],
             predictions=[
                 BoundingBox(
                     xmin=rect2[0],
                     xmax=rect2[1],
                     ymin=rect2[2],
                     ymax=rect2[3],
-                    labels=[("k2", "v2")],
+                    labels=["v2"],
                     scores=[0.98],
                 ),
             ],
@@ -132,8 +151,48 @@ def basic_detections(
 
 
 @pytest.fixture
-def basic_rotated_detections(
+def basic_rotated_detections_first_class(
     rect1_rotated_5_degrees_around_origin: tuple[float, float, float, float],
+    rect2_rotated_5_degrees_around_origin: tuple[float, float, float, float],
+) -> list[Detection]:
+    return [
+        Detection(
+            uid="uid1",
+            groundtruths=[
+                Polygon(
+                    shape=ShapelyPolygon(
+                        rect1_rotated_5_degrees_around_origin
+                    ),
+                    labels=["v1"],
+                ),
+            ],
+            predictions=[
+                Polygon(
+                    shape=ShapelyPolygon(
+                        rect1_rotated_5_degrees_around_origin
+                    ),
+                    labels=["v1"],
+                    scores=[0.3],
+                ),
+            ],
+        ),
+        Detection(
+            uid="uid2",
+            groundtruths=[
+                Polygon(
+                    shape=ShapelyPolygon(
+                        rect2_rotated_5_degrees_around_origin
+                    ),
+                    labels=["v1"],
+                ),
+            ],
+            predictions=[],
+        ),
+    ]
+
+
+@pytest.fixture
+def basic_rotated_detections_second_class(
     rect2_rotated_5_degrees_around_origin: tuple[float, float, float, float],
     rect3_rotated_5_degrees_around_origin: tuple[float, float, float, float],
 ) -> list[Detection]:
@@ -143,43 +202,22 @@ def basic_rotated_detections(
             groundtruths=[
                 Polygon(
                     shape=ShapelyPolygon(
-                        rect1_rotated_5_degrees_around_origin
-                    ),
-                    labels=[("k1", "v1")],
-                ),
-                Polygon(
-                    shape=ShapelyPolygon(
                         rect3_rotated_5_degrees_around_origin
                     ),
-                    labels=[("k2", "v2")],
+                    labels=["v2"],
                 ),
             ],
-            predictions=[
-                Polygon(
-                    shape=ShapelyPolygon(
-                        rect1_rotated_5_degrees_around_origin
-                    ),
-                    labels=[("k1", "v1")],
-                    scores=[0.3],
-                ),
-            ],
+            predictions=[],
         ),
         Detection(
             uid="uid2",
-            groundtruths=[
-                Polygon(
-                    shape=ShapelyPolygon(
-                        rect2_rotated_5_degrees_around_origin
-                    ),
-                    labels=[("k1", "v1")],
-                ),
-            ],
+            groundtruths=[],
             predictions=[
                 Polygon(
                     shape=ShapelyPolygon(
                         rect2_rotated_5_degrees_around_origin
                     ),
-                    labels=[("k2", "v2")],
+                    labels=["v2"],
                     scores=[0.98],
                 ),
             ],
@@ -308,7 +346,7 @@ def torchmetrics_detections() -> list[Detection]:
                     ymin=box[1],
                     xmax=box[2],
                     ymax=box[3],
-                    labels=[("class", label_value)],
+                    labels=[label_value],
                 )
                 for box, label_value in zip(gt["boxes"], gt["labels"])
             ],
@@ -318,7 +356,7 @@ def torchmetrics_detections() -> list[Detection]:
                     ymin=box[1],
                     xmax=box[2],
                     ymax=box[3],
-                    labels=[("class", label_value)],
+                    labels=[label_value],
                     scores=[score],
                 )
                 for box, label_value, score in zip(
@@ -341,7 +379,7 @@ def false_negatives_single_datum_baseline_detections() -> list[Detection]:
                     xmax=20,
                     ymin=10,
                     ymax=20,
-                    labels=[("key", "value")],
+                    labels=["value"],
                 )
             ],
             predictions=[
@@ -350,7 +388,7 @@ def false_negatives_single_datum_baseline_detections() -> list[Detection]:
                     xmax=20,
                     ymin=10,
                     ymax=20,
-                    labels=[("key", "value")],
+                    labels=["value"],
                     scores=[0.8],
                 ),
                 BoundingBox(
@@ -358,7 +396,7 @@ def false_negatives_single_datum_baseline_detections() -> list[Detection]:
                     xmax=110,
                     ymin=100,
                     ymax=200,
-                    labels=[("key", "value")],
+                    labels=["value"],
                     scores=[0.7],
                 ),
             ],
@@ -377,7 +415,7 @@ def false_negatives_single_datum_detections() -> list[Detection]:
                     xmax=20,
                     ymin=10,
                     ymax=20,
-                    labels=[("key", "value")],
+                    labels=["value"],
                 )
             ],
             predictions=[
@@ -386,7 +424,7 @@ def false_negatives_single_datum_detections() -> list[Detection]:
                     xmax=20,
                     ymin=10,
                     ymax=20,
-                    labels=[("key", "value")],
+                    labels=["value"],
                     scores=[0.8],
                 ),
                 BoundingBox(
@@ -394,7 +432,7 @@ def false_negatives_single_datum_detections() -> list[Detection]:
                     xmax=110,
                     ymin=100,
                     ymax=200,
-                    labels=[("key", "value")],
+                    labels=["value"],
                     scores=[0.9],
                 ),
             ],
@@ -416,7 +454,7 @@ def false_negatives_two_datums_one_empty_low_confidence_of_fp_detections() -> (
                     xmax=20,
                     ymin=10,
                     ymax=20,
-                    labels=[("key", "value")],
+                    labels=["value"],
                 )
             ],
             predictions=[
@@ -425,7 +463,7 @@ def false_negatives_two_datums_one_empty_low_confidence_of_fp_detections() -> (
                     xmax=20,
                     ymin=10,
                     ymax=20,
-                    labels=[("key", "value")],
+                    labels=["value"],
                     scores=[0.8],
                 ),
             ],
@@ -439,7 +477,7 @@ def false_negatives_two_datums_one_empty_low_confidence_of_fp_detections() -> (
                     xmax=20,
                     ymin=10,
                     ymax=20,
-                    labels=[("key", "value")],
+                    labels=["value"],
                     scores=[0.7],
                 ),
             ],
@@ -461,7 +499,7 @@ def false_negatives_two_datums_one_empty_high_confidence_of_fp_detections() -> (
                     xmax=20,
                     ymin=10,
                     ymax=20,
-                    labels=[("key", "value")],
+                    labels=["value"],
                 )
             ],
             predictions=[
@@ -470,7 +508,7 @@ def false_negatives_two_datums_one_empty_high_confidence_of_fp_detections() -> (
                     xmax=20,
                     ymin=10,
                     ymax=20,
-                    labels=[("key", "value")],
+                    labels=["value"],
                     scores=[0.8],
                 ),
             ],
@@ -484,7 +522,7 @@ def false_negatives_two_datums_one_empty_high_confidence_of_fp_detections() -> (
                     xmax=20,
                     ymin=10,
                     ymax=20,
-                    labels=[("key", "value")],
+                    labels=["value"],
                     scores=[0.9],
                 ),
             ],
@@ -506,7 +544,7 @@ def false_negatives_two_datums_one_only_with_different_class_low_confidence_of_f
                     xmax=20,
                     ymin=10,
                     ymax=20,
-                    labels=[("key", "value")],
+                    labels=["value"],
                 )
             ],
             predictions=[
@@ -515,7 +553,7 @@ def false_negatives_two_datums_one_only_with_different_class_low_confidence_of_f
                     xmax=20,
                     ymin=10,
                     ymax=20,
-                    labels=[("key", "value")],
+                    labels=["value"],
                     scores=[0.8],
                 ),
             ],
@@ -528,7 +566,7 @@ def false_negatives_two_datums_one_only_with_different_class_low_confidence_of_f
                     xmax=20,
                     ymin=10,
                     ymax=20,
-                    labels=[("key", "other value")],
+                    labels=["other_value"],
                 )
             ],
             predictions=[
@@ -537,7 +575,7 @@ def false_negatives_two_datums_one_only_with_different_class_low_confidence_of_f
                     xmax=20,
                     ymin=10,
                     ymax=20,
-                    labels=[("key", "value")],
+                    labels=["value"],
                     scores=[0.7],
                 ),
             ],
@@ -559,7 +597,7 @@ def false_negatives_two_images_one_only_with_different_class_high_confidence_of_
                     xmax=20,
                     ymin=10,
                     ymax=20,
-                    labels=[("key", "value")],
+                    labels=["value"],
                 )
             ],
             predictions=[
@@ -568,7 +606,7 @@ def false_negatives_two_images_one_only_with_different_class_high_confidence_of_
                     xmax=20,
                     ymin=10,
                     ymax=20,
-                    labels=[("key", "value")],
+                    labels=["value"],
                     scores=[0.8],
                 ),
             ],
@@ -581,7 +619,7 @@ def false_negatives_two_images_one_only_with_different_class_high_confidence_of_
                     xmax=20,
                     ymin=10,
                     ymax=20,
-                    labels=[("key", "other value")],
+                    labels=["other_value"],
                 )
             ],
             predictions=[
@@ -590,7 +628,7 @@ def false_negatives_two_images_one_only_with_different_class_high_confidence_of_
                     xmax=20,
                     ymin=10,
                     ymax=20,
-                    labels=[("key", "value")],
+                    labels=["value"],
                     scores=[0.9],
                 ),
             ],
@@ -609,7 +647,7 @@ def detections_fp_hallucination_edge_case() -> list[Detection]:
                     xmax=5,
                     ymin=0,
                     ymax=5,
-                    labels=[("k1", "v1")],
+                    labels=["v1"],
                 )
             ],
             predictions=[
@@ -618,7 +656,7 @@ def detections_fp_hallucination_edge_case() -> list[Detection]:
                     xmax=5,
                     ymin=0,
                     ymax=5,
-                    labels=[("k1", "v1")],
+                    labels=["v1"],
                     scores=[0.8],
                 )
             ],
@@ -631,7 +669,7 @@ def detections_fp_hallucination_edge_case() -> list[Detection]:
                     xmax=5,
                     ymin=0,
                     ymax=5,
-                    labels=[("k1", "v1")],
+                    labels=["v1"],
                 )
             ],
             predictions=[
@@ -640,7 +678,7 @@ def detections_fp_hallucination_edge_case() -> list[Detection]:
                     xmax=20,
                     ymin=10,
                     ymax=20,
-                    labels=[("k1", "v1")],
+                    labels=["v1"],
                     scores=[0.8],
                 )
             ],
@@ -659,14 +697,14 @@ def detections_tp_deassignment_edge_case() -> list[Detection]:
                     xmax=20,
                     ymin=10,
                     ymax=20,
-                    labels=[("k1", "v1")],
+                    labels=["v1"],
                 ),
                 BoundingBox(
                     xmin=10,
                     xmax=15,
                     ymin=20,
                     ymax=25,
-                    labels=[("k1", "v1")],
+                    labels=["v1"],
                 ),
             ],
             predictions=[
@@ -675,7 +713,7 @@ def detections_tp_deassignment_edge_case() -> list[Detection]:
                     xmax=20,
                     ymin=10,
                     ymax=20,
-                    labels=[("k1", "v1")],
+                    labels=["v1"],
                     scores=[0.78],
                 ),
                 BoundingBox(
@@ -683,7 +721,7 @@ def detections_tp_deassignment_edge_case() -> list[Detection]:
                     xmax=20,
                     ymin=12,
                     ymax=22,
-                    labels=[("k1", "v1")],
+                    labels=["v1"],
                     scores=[0.96],
                 ),
                 BoundingBox(
@@ -691,7 +729,7 @@ def detections_tp_deassignment_edge_case() -> list[Detection]:
                     xmax=20,
                     ymin=12,
                     ymax=22,
-                    labels=[("k1", "v1")],
+                    labels=["v1"],
                     scores=[0.96],
                 ),
                 BoundingBox(
@@ -699,7 +737,7 @@ def detections_tp_deassignment_edge_case() -> list[Detection]:
                     xmax=102,
                     ymin=101,
                     ymax=102,
-                    labels=[("k1", "v1")],
+                    labels=["v1"],
                     scores=[0.87],
                 ),
             ],
@@ -742,7 +780,7 @@ def detection_ranked_pair_ordering() -> Detection:
             xmax=xmax,
             ymin=ymin,
             ymax=ymax,
-            labels=[("class", label_value)],
+            labels=[label_value],
         )
         for (xmin, xmax, ymin, ymax), label_value in zip(
             gts["boxes"], gts["label_values"]
@@ -755,7 +793,7 @@ def detection_ranked_pair_ordering() -> Detection:
             xmax=xmax,
             ymin=ymin,
             ymax=ymax,
-            labels=[("class", label_value)],
+            labels=[label_value],
             scores=[score],
         )
         for (xmin, xmax, ymin, ymax), label_value, score in zip(
@@ -799,7 +837,7 @@ def detection_ranked_pair_ordering_with_bitmasks() -> Detection:
     groundtruths = [
         Bitmask(
             mask=mask,
-            labels=[("class", label_value)],
+            labels=[label_value],
         )
         for mask, label_value in zip(gts["bitmasks"], gts["label_values"])
     ]
@@ -807,7 +845,7 @@ def detection_ranked_pair_ordering_with_bitmasks() -> Detection:
     predictions = [
         Bitmask(
             mask=mask,
-            labels=[("class", label_value)],
+            labels=[label_value],
             scores=[score],
         )
         for mask, label_value, score in zip(
@@ -854,7 +892,7 @@ def detection_ranked_pair_ordering_with_polygons(
     groundtruths = [
         Polygon(
             shape=ShapelyPolygon(polygon),
-            labels=[("class", label_value)],
+            labels=[label_value],
         )
         for polygon, label_value in zip(gts["polygons"], gts["label_values"])
     ]
@@ -862,7 +900,7 @@ def detection_ranked_pair_ordering_with_polygons(
     predictions = [
         Polygon(
             shape=ShapelyPolygon(polygon),
-            labels=[("class", label_value)],
+            labels=[label_value],
             scores=[score],
         )
         for polygon, label_value, score in zip(
@@ -887,15 +925,7 @@ def detections_no_groundtruths() -> list[Detection]:
                     xmax=10,
                     ymin=0,
                     ymax=10,
-                    labels=[("k1", "v1")],
-                    scores=[1.0],
-                ),
-                BoundingBox(
-                    xmin=0,
-                    xmax=10,
-                    ymin=0,
-                    ymax=10,
-                    labels=[("k2", "v2")],
+                    labels=["v1"],
                     scores=[1.0],
                 ),
             ],
@@ -909,7 +939,7 @@ def detections_no_groundtruths() -> list[Detection]:
                     xmax=10,
                     ymin=0,
                     ymax=10,
-                    labels=[("k1", "v1")],
+                    labels=["v1"],
                     scores=[1.0],
                 ),
             ],
@@ -923,21 +953,14 @@ def detections_no_predictions() -> list[Detection]:
         Detection(
             uid="uid",
             groundtruths=[
-                BoundingBox(
-                    xmin=0, xmax=10, ymin=0, ymax=10, labels=[("k1", "v1")]
-                ),
-                BoundingBox(
-                    xmin=0, xmax=10, ymin=0, ymax=10, labels=[("k2", "v2")]
-                ),
+                BoundingBox(xmin=0, xmax=10, ymin=0, ymax=10, labels=["v1"]),
             ],
             predictions=[],
         ),
         Detection(
             uid="uid",
             groundtruths=[
-                BoundingBox(
-                    xmin=0, xmax=10, ymin=0, ymax=10, labels=[("k1", "v1")]
-                ),
+                BoundingBox(xmin=0, xmax=10, ymin=0, ymax=10, labels=["v1"]),
             ],
             predictions=[],
         ),
@@ -962,21 +985,21 @@ def detections_for_detailed_counting(
                     xmax=rect1[1],
                     ymin=rect1[2],
                     ymax=rect1[3],
-                    labels=[("k1", "v1")],
+                    labels=["v1"],
                 ),
                 BoundingBox(
                     xmin=rect2[0],
                     xmax=rect2[1],
                     ymin=rect2[2],
                     ymax=rect2[3],
-                    labels=[("k1", "missed_detection")],
+                    labels=["missed_detection"],
                 ),
                 BoundingBox(
                     xmin=rect3[0],
                     xmax=rect3[1],
                     ymin=rect3[2],
                     ymax=rect3[3],
-                    labels=[("k1", "v2")],
+                    labels=["v2"],
                 ),
             ],
             predictions=[
@@ -985,7 +1008,7 @@ def detections_for_detailed_counting(
                     xmax=rect1[1],
                     ymin=rect1[2],
                     ymax=rect1[3],
-                    labels=[("k1", "v1")],
+                    labels=["v1"],
                     scores=[0.5],
                 ),
                 BoundingBox(
@@ -993,7 +1016,7 @@ def detections_for_detailed_counting(
                     xmax=rect5[1],
                     ymin=rect5[2],
                     ymax=rect5[3],
-                    labels=[("k1", "not_v2")],
+                    labels=["not_v2"],
                     scores=[0.3],
                 ),
                 BoundingBox(
@@ -1001,7 +1024,7 @@ def detections_for_detailed_counting(
                     xmax=rect4[1],
                     ymin=rect4[2],
                     ymax=rect4[3],
-                    labels=[("k1", "hallucination")],
+                    labels=["hallucination"],
                     scores=[0.1],
                 ),
             ],
@@ -1014,7 +1037,7 @@ def detections_for_detailed_counting(
                     xmax=rect1[1],
                     ymin=rect1[2],
                     ymax=rect1[3],
-                    labels=[("k1", "low_iou")],
+                    labels=["low_iou"],
                 ),
             ],
             predictions=[
@@ -1023,7 +1046,7 @@ def detections_for_detailed_counting(
                     xmax=rect2[1],
                     ymin=rect2[2],
                     ymax=rect2[3],
-                    labels=[("k1", "low_iou")],
+                    labels=["low_iou"],
                     scores=[0.5],
                 ),
             ],
