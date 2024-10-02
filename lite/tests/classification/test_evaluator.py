@@ -2,10 +2,10 @@ from valor_lite.classification import Classification, DataLoader
 
 
 def test_metadata_using_classification_example(
-    classifications_two_categeories: list[Classification],
+    classifications_two_categories: list[Classification],
 ):
     manager = DataLoader()
-    manager.add_data(classifications_two_categeories)
+    manager.add_data(classifications_two_categories)
     evaluator = manager.finalize()
 
     assert evaluator.ignored_prediction_labels == []

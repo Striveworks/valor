@@ -163,11 +163,11 @@ def test_compute_rocauc():
 
 
 def test_rocauc_with_example(
-    classifications_two_categeories: list[Classification],
+    classifications_two_categories: list[Classification],
 ):
 
     loader = DataLoader()
-    loader.add_data(classifications_two_categeories)
+    loader.add_data(classifications_two_categories)
     evaluator = loader.finalize()
 
     metrics = evaluator.evaluate()

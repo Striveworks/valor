@@ -252,11 +252,11 @@ def test_counts_unit(
 
 
 def test_counts_with_example(
-    classifications_two_categeories: list[Classification],
+    classifications_two_categories: list[Classification],
 ):
 
     loader = DataLoader()
-    loader.add_data(classifications_two_categeories)
+    loader.add_data(classifications_two_categories)
     evaluator = loader.finalize()
 
     metrics = evaluator.evaluate(score_thresholds=[0.5, 0.95])

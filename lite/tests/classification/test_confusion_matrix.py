@@ -228,11 +228,11 @@ def test_confusion_matrix_unit(
 
 
 def test_confusion_matrix_with_example(
-    classifications_two_categeories: list[Classification],
+    classifications_two_categories: list[Classification],
 ):
 
     loader = DataLoader()
-    loader.add_data(classifications_two_categeories)
+    loader.add_data(classifications_two_categories)
     evaluator = loader.finalize()
 
     metrics = evaluator.evaluate(
