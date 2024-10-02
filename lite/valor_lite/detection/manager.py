@@ -830,22 +830,24 @@ class Evaluator:
         self,
         data: NDArray[np.floating],
         label_metadata: NDArray[np.int32],
-        iou_thresholds: list[float] = [0.5],
-        score_thresholds: list[float] = [
-            score / 10.0 for score in range(1, 11)
-        ],
-        number_of_examples: int = 0,
+        iou_thresholds: list[float],
+        score_thresholds: list[float],
+        number_of_examples: int,
     ) -> list[ConfusionMatrix]:
         """
         Computes detailed counting metrics.
 
         Parameters
         ----------
-        iou_thresholds : list[float], default=[0.5]
+        data : NDArray[np.floating]
+            An array containing detailed pairs of detections.
+        label_metadata : NDArray[np.int32]
+            An array containing label metadata.
+        iou_thresholds : list[float]
             List of IoU thresholds to compute metrics for.
-        score_thresholds : list[float], default=[0.1,0.2,...,1.0]
+        score_thresholds : list[float]
             List of confidence thresholds to compute metrics for.
-        number_of_examples : int, default=0
+        number_of_examples : int
             Maximum number of annotation examples to return per metric.
 
         Returns
