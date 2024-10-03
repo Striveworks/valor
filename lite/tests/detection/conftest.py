@@ -566,7 +566,7 @@ def false_negatives_two_datums_one_only_with_different_class_low_confidence_of_f
                     xmax=20,
                     ymin=10,
                     ymax=20,
-                    labels=["other_value"],
+                    labels=["other value"],
                 )
             ],
             predictions=[
@@ -619,7 +619,7 @@ def false_negatives_two_images_one_only_with_different_class_high_confidence_of_
                     xmax=20,
                     ymin=10,
                     ymax=20,
-                    labels=["other_value"],
+                    labels=["other value"],
                 )
             ],
             predictions=[

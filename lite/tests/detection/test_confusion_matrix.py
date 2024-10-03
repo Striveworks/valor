@@ -420,12 +420,12 @@ def test_confusion_matrix(
     evaluator = loader.finalize()
 
     assert evaluator.ignored_prediction_labels == [
-        ("k1", "not_v2"),
-        ("k1", "hallucination"),
+        "not_v2",
+        "hallucination",
     ]
     assert evaluator.missing_prediction_labels == [
-        ("k1", "missed_detection"),
-        ("k1", "v2"),
+        "missed_detection",
+        "v2",
     ]
     assert evaluator.n_datums == 2
     assert evaluator.n_labels == 6
@@ -509,7 +509,6 @@ def test_confusion_matrix(
             "parameters": {
                 "score_threshold": 0.05,
                 "iou_threshold": 0.5,
-                "label_key": "k1",
             },
         },
         {
@@ -570,7 +569,6 @@ def test_confusion_matrix(
             "parameters": {
                 "score_threshold": 0.3,
                 "iou_threshold": 0.5,
-                "label_key": "k1",
             },
         },
         {
@@ -621,7 +619,6 @@ def test_confusion_matrix(
             "parameters": {
                 "score_threshold": 0.35,
                 "iou_threshold": 0.5,
-                "label_key": "k1",
             },
         },
         {
@@ -672,7 +669,6 @@ def test_confusion_matrix(
             "parameters": {
                 "score_threshold": 0.45,
                 "iou_threshold": 0.5,
-                "label_key": "k1",
             },
         },
         {
@@ -702,7 +698,6 @@ def test_confusion_matrix(
             "parameters": {
                 "score_threshold": 0.55,
                 "iou_threshold": 0.5,
-                "label_key": "k1",
             },
         },
         {
@@ -732,7 +727,6 @@ def test_confusion_matrix(
             "parameters": {
                 "score_threshold": 0.95,
                 "iou_threshold": 0.5,
-                "label_key": "k1",
             },
         },
     ]
@@ -829,7 +823,6 @@ def test_confusion_matrix(
             "parameters": {
                 "score_threshold": 0.05,
                 "iou_threshold": 0.45,
-                "label_key": "k1",
             },
         },
         {
@@ -894,7 +887,6 @@ def test_confusion_matrix(
             "parameters": {
                 "score_threshold": 0.3,
                 "iou_threshold": 0.45,
-                "label_key": "k1",
             },
         },
         {
@@ -950,7 +942,6 @@ def test_confusion_matrix(
             "parameters": {
                 "score_threshold": 0.35,
                 "iou_threshold": 0.45,
-                "label_key": "k1",
             },
         },
         {
@@ -1006,7 +997,6 @@ def test_confusion_matrix(
             "parameters": {
                 "score_threshold": 0.45,
                 "iou_threshold": 0.45,
-                "label_key": "k1",
             },
         },
         {
@@ -1046,7 +1036,6 @@ def test_confusion_matrix(
             "parameters": {
                 "score_threshold": 0.55,
                 "iou_threshold": 0.45,
-                "label_key": "k1",
             },
         },
         {
@@ -1086,7 +1075,6 @@ def test_confusion_matrix(
             "parameters": {
                 "score_threshold": 0.95,
                 "iou_threshold": 0.45,
-                "label_key": "k1",
             },
         },
     ]
@@ -1113,7 +1101,7 @@ def test_confusion_matrix_using_torch_metrics_example(
     loader.add_bounding_boxes(torchmetrics_detections)
     evaluator = loader.finalize()
 
-    assert evaluator.ignored_prediction_labels == [("class", "3")]
+    assert evaluator.ignored_prediction_labels == ["3"]
     assert evaluator.missing_prediction_labels == []
     assert evaluator.n_datums == 4
     assert evaluator.n_labels == 6
@@ -1150,7 +1138,6 @@ def test_confusion_matrix_using_torch_metrics_example(
             "parameters": {
                 "score_threshold": 0.05,
                 "iou_threshold": 0.5,
-                "label_key": "class",
             },
         },
         {
@@ -1175,7 +1162,6 @@ def test_confusion_matrix_using_torch_metrics_example(
             "parameters": {
                 "score_threshold": 0.25,
                 "iou_threshold": 0.5,
-                "label_key": "class",
             },
         },
         {
@@ -1199,7 +1185,6 @@ def test_confusion_matrix_using_torch_metrics_example(
             "parameters": {
                 "score_threshold": 0.35,
                 "iou_threshold": 0.5,
-                "label_key": "class",
             },
         },
         {
@@ -1222,7 +1207,6 @@ def test_confusion_matrix_using_torch_metrics_example(
             "parameters": {
                 "score_threshold": 0.55,
                 "iou_threshold": 0.5,
-                "label_key": "class",
             },
         },
         {
@@ -1244,7 +1228,6 @@ def test_confusion_matrix_using_torch_metrics_example(
             "parameters": {
                 "score_threshold": 0.75,
                 "iou_threshold": 0.5,
-                "label_key": "class",
             },
         },
         {
@@ -1266,7 +1249,6 @@ def test_confusion_matrix_using_torch_metrics_example(
             "parameters": {
                 "score_threshold": 0.8,
                 "iou_threshold": 0.5,
-                "label_key": "class",
             },
         },
         {
@@ -1288,7 +1270,6 @@ def test_confusion_matrix_using_torch_metrics_example(
             "parameters": {
                 "score_threshold": 0.85,
                 "iou_threshold": 0.5,
-                "label_key": "class",
             },
         },
         {
@@ -1307,7 +1288,6 @@ def test_confusion_matrix_using_torch_metrics_example(
             "parameters": {
                 "score_threshold": 0.95,
                 "iou_threshold": 0.5,
-                "label_key": "class",
             },
         },
         {
@@ -1336,7 +1316,6 @@ def test_confusion_matrix_using_torch_metrics_example(
             "parameters": {
                 "score_threshold": 0.05,
                 "iou_threshold": 0.9,
-                "label_key": "class",
             },
         },
         {
@@ -1365,7 +1344,6 @@ def test_confusion_matrix_using_torch_metrics_example(
             "parameters": {
                 "score_threshold": 0.25,
                 "iou_threshold": 0.9,
-                "label_key": "class",
             },
         },
         {
@@ -1391,7 +1369,6 @@ def test_confusion_matrix_using_torch_metrics_example(
             "parameters": {
                 "score_threshold": 0.35,
                 "iou_threshold": 0.9,
-                "label_key": "class",
             },
         },
         {
@@ -1416,7 +1393,6 @@ def test_confusion_matrix_using_torch_metrics_example(
             "parameters": {
                 "score_threshold": 0.55,
                 "iou_threshold": 0.9,
-                "label_key": "class",
             },
         },
         {
@@ -1440,7 +1416,6 @@ def test_confusion_matrix_using_torch_metrics_example(
             "parameters": {
                 "score_threshold": 0.75,
                 "iou_threshold": 0.9,
-                "label_key": "class",
             },
         },
         {
@@ -1461,7 +1436,6 @@ def test_confusion_matrix_using_torch_metrics_example(
             "parameters": {
                 "score_threshold": 0.8,
                 "iou_threshold": 0.9,
-                "label_key": "class",
             },
         },
         {
@@ -1482,7 +1456,6 @@ def test_confusion_matrix_using_torch_metrics_example(
             "parameters": {
                 "score_threshold": 0.85,
                 "iou_threshold": 0.9,
-                "label_key": "class",
             },
         },
         {
@@ -1501,7 +1474,6 @@ def test_confusion_matrix_using_torch_metrics_example(
             "parameters": {
                 "score_threshold": 0.95,
                 "iou_threshold": 0.9,
-                "label_key": "class",
             },
         },
     ]
@@ -1587,7 +1559,6 @@ def test_confusion_matrix_fp_hallucination_edge_case(
             "parameters": {
                 "score_threshold": 0.5,
                 "iou_threshold": 0.5,
-                "label_key": "k1",
             },
         },
         {
@@ -1610,7 +1581,6 @@ def test_confusion_matrix_fp_hallucination_edge_case(
             "parameters": {
                 "score_threshold": 0.85,
                 "iou_threshold": 0.5,
-                "label_key": "k1",
             },
         },
     ]
@@ -1649,7 +1619,7 @@ def test_confusion_matrix_ranked_pair_ordering(
 
         assert evaluator.metadata == {
             "ignored_prediction_labels": [
-                ("class", "label4"),
+                "label4",
             ],
             "missing_prediction_labels": [],
             "n_datums": 1,
@@ -1687,7 +1657,6 @@ def test_confusion_matrix_ranked_pair_ordering(
                 "parameters": {
                     "score_threshold": 0.0,
                     "iou_threshold": 0.5,
-                    "label_key": "class",
                 },
             },
         ]

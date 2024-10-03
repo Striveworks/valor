@@ -1,7 +1,7 @@
+import warnings
 from collections import defaultdict
 from dataclasses import dataclass
 
-# TODO ctrl + F for "key"
 import numpy as np
 from numpy.typing import NDArray
 from shapely.geometry import Polygon as ShapelyPolygon
@@ -104,8 +104,8 @@ def _get_annotation_representation_from_valor_dict(
 
 
 def _get_annotation_data(
-    keyed_groundtruths: list,
-    keyed_predictions: list,
+    groundtruths: list,
+    predictions: list,
     annotation_type: type[BoundingBox] | type[Polygon] | type[Bitmask] | None,
 ) -> np.ndarray:
     """Create an array of annotation pairs for use when calculating IOU. Needed because we unpack bounding box representations, but not bitmask or polygon representations."""
@@ -113,16 +113,16 @@ def _get_annotation_data(
         return np.array(
             [
                 np.array([*gextrema, *pextrema])
-                for _, _, _, pextrema in keyed_predictions
-                for _, _, gextrema in keyed_groundtruths
+                for _, _, _, pextrema in predictions
+                for _, _, gextrema in groundtruths
             ]
         )
     else:
         return np.array(
             [
                 np.array([groundtruth_obj, prediction_obj])
-                for _, _, _, prediction_obj in keyed_predictions
-                for _, _, groundtruth_obj in keyed_groundtruths
+                for _, _, _, prediction_obj in predictions
+                for _, _, groundtruth_obj in groundtruths
             ]
         )
 
@@ -301,7 +301,7 @@ class Evaluator:
                 axis=1,
             )
         )
-        label_metadata[:, 2] = self._label_metadata[:, 2]
+        label_metadata[:, 1] = self._label_metadata[:, 1]
 
         return Filter(
             ranked_indices=np.where(mask_ranked)[0],
@@ -507,14 +507,14 @@ class Evaluator:
                     )
 
         if MetricType.ConfusionMatrix in metrics_to_return:
-            metrics[MetricType.ConfusionMatrix] = (
-                self._compute_confusion_matrix(
-                    data=detailed_pairs,
-                    label_metadata=label_metadata,
-                    iou_thresholds=iou_thresholds,
-                    score_thresholds=score_thresholds,
-                    number_of_examples=number_of_examples,
-                )
+            metrics[
+                MetricType.ConfusionMatrix
+            ] = self._compute_confusion_matrix(
+                data=detailed_pairs,
+                label_metadata=label_metadata,
+                iou_thresholds=iou_thresholds,
+                score_thresholds=score_thresholds,
+                number_of_examples=number_of_examples,
             )
 
         for metric in set(metrics.keys()):
@@ -581,8 +581,8 @@ class Evaluator:
         )
 
         return {
-            self.index_to_label[gt_label_idx][1]: {
-                self.index_to_label[pd_label_idx][1]: {
+            self.index_to_label[gt_label_idx]: {
+                self.index_to_label[pd_label_idx]: {
                     "count": max(
                         int(confusion_matrix[gt_label_idx, pd_label_idx, 0]),
                         0,
@@ -683,7 +683,7 @@ class Evaluator:
         )
 
         return {
-            self.index_to_label[pd_label_idx][1]: {
+            self.index_to_label[pd_label_idx]: {
                 "count": max(
                     int(hallucinations[pd_label_idx, 0]),
                     0,
@@ -744,7 +744,7 @@ class Evaluator:
         )
 
         return {
-            self.index_to_label[gt_label_idx][1]: {
+            self.index_to_label[gt_label_idx]: {
                 "count": max(
                     int(missing_predictions[gt_label_idx, 0]),
                     0,
@@ -901,8 +901,8 @@ class DataLoader:
     def _compute_ious_and_cache_pairs(
         self,
         uid_index: int,
-        keyed_groundtruths: list,
-        keyed_predictions: list,
+        groundtruths: list,
+        predictions: list,
         annotation_type: type[BoundingBox] | type[Polygon] | type[Bitmask],
     ) -> None:
         """
@@ -912,21 +912,20 @@ class DataLoader:
         ----------
         uid_index: int
             The index of the detection.
-        # TODO change "keyed" in names
-        keyed_groundtruths: list
+        groundtruths: list
             A list of groundtruths.
-        keyed_predictions: list
+        predictions: list
             A list of predictions.
         annotation_type: type[BoundingBox] | type[Polygon] | type[Bitmask]
             The type of annotation to compute IOUs for.
         """
 
         pairs = list()
-        n_predictions = len(keyed_predictions)
-        n_groundtruths = len(keyed_groundtruths)
+        n_predictions = len(predictions)
+        n_groundtruths = len(groundtruths)
         data = _get_annotation_data(
-            keyed_groundtruths=keyed_groundtruths,
-            keyed_predictions=keyed_predictions,
+            groundtruths=groundtruths,
+            predictions=predictions,
             annotation_type=annotation_type,
         )
 
@@ -944,15 +943,15 @@ class DataLoader:
                         float(uid_index),
                         float(gidx),
                         float(pidx),
-                        ious[pidx * len(keyed_groundtruths) + gidx],
+                        ious[pidx * len(groundtruths) + gidx],
                         float(glabel),
                         float(plabel),
                         float(score),
                     ]
                 )
-                for pidx, plabel, score, _ in keyed_predictions
-                for gidx, glabel, _ in keyed_groundtruths
-                if ious[pidx * len(keyed_groundtruths) + gidx] > 1e-9
+                for pidx, plabel, score, _ in predictions
+                for gidx, glabel, _ in groundtruths
+                if ious[pidx * len(groundtruths) + gidx] > 1e-9
             ]
         )
         pairs.extend(
@@ -968,7 +967,7 @@ class DataLoader:
                         float(score),
                     ]
                 )
-                for pidx, plabel, score, _ in keyed_predictions
+                for pidx, plabel, score, _ in predictions
                 if mask_ious_halluc[pidx]
             ]
         )
@@ -985,7 +984,7 @@ class DataLoader:
                         -1.0,
                     ]
                 )
-                for gidx, glabel, _ in keyed_groundtruths
+                for gidx, glabel, _ in groundtruths
                 if mask_ious_misprd[gidx]
             ]
         )
@@ -1003,7 +1002,7 @@ class DataLoader:
                         -1.0,
                     ]
                 )
-                for gidx, glabel, _ in keyed_groundtruths
+                for gidx, glabel, _ in groundtruths
             ]
         )
         pairs.extend(
@@ -1019,7 +1018,7 @@ class DataLoader:
                         float(score),
                     ]
                 )
-                for pidx, plabel, score, _ in keyed_predictions
+                for pidx, plabel, score, _ in predictions
             ]
         )
 
@@ -1063,8 +1062,8 @@ class DataLoader:
             )
 
             # cache labels and annotations
-            keyed_groundtruths = list()
-            keyed_predictions = list()
+            groundtruths = list()
+            predictions = list()
 
             representation_property = _get_annotation_representation(
                 annotation_type=annotation_type
@@ -1077,9 +1076,9 @@ class DataLoader:
                     )
 
                 if isinstance(gann, BoundingBox):
-                    self._evaluator.groundtruth_examples[uid_index][gidx] = (
-                        getattr(gann, representation_property)
-                    )
+                    self._evaluator.groundtruth_examples[uid_index][
+                        gidx
+                    ] = getattr(gann, representation_property)
                 else:
                     converted_box = gann.to_box()
                     self._evaluator.groundtruth_examples[uid_index][gidx] = (
@@ -1091,7 +1090,7 @@ class DataLoader:
                     label_idx = self._add_label(glabel)
                     self.groundtruth_count[label_idx][uid_index] += 1
                     representation = getattr(gann, representation_property)
-                    keyed_groundtruths.append(
+                    groundtruths.append(
                         (
                             gidx,
                             label_idx,
@@ -1106,9 +1105,9 @@ class DataLoader:
                     )
 
                 if isinstance(pann, BoundingBox):
-                    self._evaluator.prediction_examples[uid_index][pidx] = (
-                        getattr(pann, representation_property)
-                    )
+                    self._evaluator.prediction_examples[uid_index][
+                        pidx
+                    ] = getattr(pann, representation_property)
                 else:
                     converted_box = pann.to_box()
                     self._evaluator.prediction_examples[uid_index][pidx] = (
@@ -1122,7 +1121,7 @@ class DataLoader:
                     representation = representation = getattr(
                         pann, representation_property
                     )
-                    keyed_predictions.append(
+                    predictions.append(
                         (
                             pidx,
                             label_idx,
@@ -1133,8 +1132,8 @@ class DataLoader:
 
             self._compute_ious_and_cache_pairs(
                 uid_index=uid_index,
-                keyed_groundtruths=keyed_groundtruths,
-                keyed_predictions=keyed_predictions,
+                groundtruths=groundtruths,
+                predictions=predictions,
                 annotation_type=annotation_type,
             )
 
@@ -1219,6 +1218,10 @@ class DataLoader:
         show_progress : bool, default=False
             Toggle for tqdm progress bar.
         """
+        warnings.warn(
+            "The `...from_valor_dict` functions are deprecated and will be deleted in the near future. Use `add_bounding_boxes`, `add_bitmasks`, or `add_polygons` instead.",
+            DeprecationWarning,
+        )
 
         disable_tqdm = not show_progress
         for groundtruth, prediction in tqdm(detections, disable=disable_tqdm):
@@ -1239,8 +1242,8 @@ class DataLoader:
             )
 
             # cache labels and annotations
-            keyed_groundtruths = list()
-            keyed_predictions = list()
+            groundtruths = list()
+            predictions = list()
 
             annotation_key = _get_valor_dict_annotation_key(
                 annotation_type=annotation_type
@@ -1260,22 +1263,20 @@ class DataLoader:
                         f"Input JSON doesn't contain {annotation_type} data, or contains data for multiple annotation types."
                     )
                 if annotation_type == BoundingBox:
-                    self._evaluator.groundtruth_examples[uid_index][gidx] = (
-                        np.array(
-                            _get_annotation_representation_from_valor_dict(
-                                gann[annotation_key],
-                                annotation_type=annotation_type,
-                            ),
-                        )
+                    self._evaluator.groundtruth_examples[uid_index][
+                        gidx
+                    ] = np.array(
+                        _get_annotation_representation_from_valor_dict(
+                            gann[annotation_key],
+                            annotation_type=annotation_type,
+                        ),
                     )
 
                 for valor_label in gann["labels"]:
-                    glabel = valor_label[
-                        "value"
-                    ]  # TODO keys is basically being ignored here. have to deal with benchmarks later
+                    glabel = f'{valor_label["key" ]}_{valor_label[ "value" ]}'
                     label_idx = self._add_label(glabel)
                     self.groundtruth_count[label_idx][uid_index] += 1
-                    keyed_groundtruths.append(
+                    groundtruths.append(
                         (
                             gidx,
                             label_idx,
@@ -1294,12 +1295,12 @@ class DataLoader:
                     )
 
                 if annotation_type == BoundingBox:
-                    self._evaluator.prediction_examples[uid_index][pidx] = (
-                        np.array(
-                            _get_annotation_representation_from_valor_dict(
-                                pann[annotation_key],
-                                annotation_type=annotation_type,
-                            )
+                    self._evaluator.prediction_examples[uid_index][
+                        pidx
+                    ] = np.array(
+                        _get_annotation_representation_from_valor_dict(
+                            pann[annotation_key],
+                            annotation_type=annotation_type,
                         )
                     )
                 for valor_label in pann["labels"]:
@@ -1307,7 +1308,7 @@ class DataLoader:
                     pscore = valor_label["score"]
                     label_idx = self._add_label(plabel)
                     self.prediction_count[label_idx][uid_index] += 1
-                    keyed_predictions.append(
+                    predictions.append(
                         (
                             pidx,
                             label_idx,
@@ -1321,8 +1322,8 @@ class DataLoader:
 
             self._compute_ious_and_cache_pairs(
                 uid_index=uid_index,
-                keyed_groundtruths=keyed_groundtruths,
-                keyed_predictions=keyed_predictions,
+                groundtruths=groundtruths,
+                predictions=predictions,
                 annotation_type=annotation_type,
             )
 

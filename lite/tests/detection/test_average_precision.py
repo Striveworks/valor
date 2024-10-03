@@ -24,12 +24,7 @@ def test__compute_average_precision():
     iou_thresholds = np.array([0.1, 0.6])
     score_thresholds = np.array([0.0])
 
-    (
-        results,
-        _,
-        _,
-        _,
-    ) = compute_metrics(
+    (results, _, _, _,) = compute_metrics(
         sorted_pairs,
         label_metadata=label_metadata,
         iou_thresholds=iou_thresholds,
@@ -42,26 +37,26 @@ def test__compute_average_precision():
         mean_average_precision_averaged_over_ious,
     ) = results
 
-    expected_ap = np.array(
+    expected = np.array(
         [
             [1.0],  # iou = 0.1
             [1 / 3],  # iou = 0.6
         ]
     )
-    assert expected_ap.shape == average_precision.shape
-    assert np.isclose(average_precision, expected_ap).all()
+    assert expected.shape == average_precision.shape
+    assert np.isclose(average_precision, expected).all()
 
-    assert expected_ap.flatten().shape == mean_average_precision.shape
-    assert np.isclose(mean_average_precision, expected_ap.flatten()).all()
+    assert expected.flatten().shape == mean_average_precision.shape
+    assert np.isclose(mean_average_precision, expected.flatten()).all()
 
-    expected_ar = np.array([2 / 3])
+    expected = np.array([2 / 3])
 
-    assert average_precision_averaged_over_ious.shape == expected_ar.shape
-    assert np.isclose(average_precision_averaged_over_ious, expected_ar).all()
+    assert average_precision_averaged_over_ious.shape == expected.shape
+    assert np.isclose(average_precision_averaged_over_ious, expected).all()
 
     assert isinstance(mean_average_precision_averaged_over_ious, float)
     assert np.isclose(
-        mean_average_precision_averaged_over_ious, expected_ar.flatten()
+        mean_average_precision_averaged_over_ious, expected.flatten()
     ).all()
 
 
@@ -597,7 +592,7 @@ def test_ap_false_negatives_two_datums_one_only_with_different_class_low_confide
         {
             "type": "AP",
             "value": 0.0,
-            "parameters": {"iou_threshold": 0.5, "label": "other_value"},
+            "parameters": {"iou_threshold": 0.5, "label": "other value"},
         },
     ]
     for m in actual_metrics:
@@ -636,7 +631,7 @@ def test_ap_false_negatives_two_datums_one_only_with_different_class_high_confid
         {
             "type": "AP",
             "value": 0.0,
-            "parameters": {"iou_threshold": 0.5, "label": "other_value"},
+            "parameters": {"iou_threshold": 0.5, "label": "other value"},
         },
     ]
     for m in actual_metrics:
