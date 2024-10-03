@@ -276,9 +276,9 @@ def compute_metrics(
 
     Returns
     -------
-    tuple[NDArray, NDArray, NDArray float]
+    tuple[NDArray, NDArray, NDArray, float]
         Average Precision results.
-    tuple[NDArray, NDArray, NDArray float]
+    tuple[NDArray, NDArray, NDArray, float]
         Average Recall results.
     np.ndarray
         Precision, Recall, TP, FP, FN, F1 Score, Accuracy.
