@@ -67,7 +67,7 @@ def download_data_if_not_exists(
 
 
 def write_results_to_file(write_path: Path, results: list[dict]):
-    """Write results to manager_results.json"""
+    """Write results to json"""
     current_datetime = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
     if os.path.isfile(write_path):
         with open(write_path, "r") as file:
@@ -178,7 +178,7 @@ class Benchmark:
 def run_benchmarking_analysis(
     limits_to_test: list[int],
     combinations: list[tuple[AnnotationType, AnnotationType]] | None = None,
-    results_file: str = "manager_results.json",
+    results_file: str = "objdet_results.json",
     chunk_size: int = -1,
     compute_pr: bool = True,
     compute_detailed: bool = True,
@@ -270,7 +270,7 @@ def run_benchmarking_analysis(
                 evaluator.evaluate
             )(
                 [
-                    MetricType.DetailedCounts,
+                    MetricType.ConfusionMatrix,
                     *MetricType.base_metrics(),
                 ]
             )
@@ -287,7 +287,7 @@ def run_benchmarking_analysis(
                 evaluator.evaluate
             )(
                 [
-                    MetricType.DetailedCounts,
+                    MetricType.ConfusionMatrix,
                     *MetricType.base_metrics(),
                 ],
                 number_of_examples=3,
