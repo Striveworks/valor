@@ -301,8 +301,8 @@ def run_benchmarking_analysis(
     chunk_size: int = -1,
     ingestion_timeout: int = 30,
     evaluation_timeout: int = 30,
-    compute_pr: bool = True,
-    compute_detailed: bool = True,
+    compute_pr: bool = False,
+    compute_detailed: bool = False,
 ):
     """Time various function calls and export the results."""
     current_directory = Path(__file__).parent

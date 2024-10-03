@@ -332,7 +332,7 @@ def run_benchmarking_analysis(
                 n_labels=eval_base.meta["labels"],
                 eval_base=eval_base.meta["duration"],
                 eval_base_pr=eval_pr.meta["duration"],
-                eval_base_pr_detail=-1,
+                eval_base_pr_detail=-1,  # eval_detail.meta["duration"],
             ).result()
         )
 
