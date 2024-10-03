@@ -355,11 +355,10 @@ class DataLoader:
         int
             The label's index.
         """
-        label_id = len(self._evaluator.index_to_label)
         if label not in self._evaluator.label_to_index:
+            label_id = len(self._evaluator.index_to_label)
             self._evaluator.label_to_index[label] = label_id
             self._evaluator.index_to_label[label_id] = label
-            label_id += 1
         return self._evaluator.label_to_index[label]
 
     def add_data(
@@ -420,9 +419,6 @@ class DataLoader:
                 ] += mask_pixels.sum()
                 prediction_labels[mask_pixels] = label_idx
                 scores[mask_pixels] = combined_predictions[idx][mask_pixels]
-            print(groundtruth_labels)
-            print("labels", prediction_labels)
-            print("scores", scores)
             pixel_classifications[0, 1, :] = prediction_labels.flatten()
             pixel_classifications[0, 2, :] = scores.flatten()
 

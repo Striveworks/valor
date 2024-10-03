@@ -28,3 +28,29 @@ def test_accuracy_basic_segmenations(basic_segmentations: list[Segmentation]):
         assert m in expected_metrics
     for m in expected_metrics:
         assert m in actual_metrics
+
+
+def test_accuracy_segmentations_from_boxes(
+    segmentations_from_boxes: list[Segmentation],
+):
+    loader = DataLoader()
+    loader.add_data(segmentations_from_boxes)
+    evaluator = loader.finalize()
+
+    metrics = evaluator.evaluate(
+        score_thresholds=[0.0],
+        as_dict=True,
+    )
+
+    actual_metrics = [m for m in metrics[MetricType.Accuracy]]
+    expected_metrics = [
+        {
+            "type": "Accuracy",
+            "value": [0.3334],
+            "parameters": {"score_thresholds": [0.0]},
+        },
+    ]
+    for m in actual_metrics:
+        assert m in expected_metrics
+    for m in expected_metrics:
+        assert m in actual_metrics

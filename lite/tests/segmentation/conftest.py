@@ -20,7 +20,7 @@ def _generate_boolean_mask(
     xmax = annotation_shape[1]
     ymin = annotation_shape[2]
     ymax = annotation_shape[3]
-    mask[ymin : ymax + 1, xmin : xmax + 1] = True
+    mask[ymin:ymax, xmin:xmax] = True
     return Bitmask(
         mask=mask,
         label=label,
@@ -32,12 +32,12 @@ def _generate_weighted_mask(
     annotation_shape: tuple[int, int, int, int],
     label: str,
 ) -> WeightedMask:
-    mask = np.random.rand(*mask_shape)
     xmin = annotation_shape[0]
     xmax = annotation_shape[1]
     ymin = annotation_shape[2]
     ymax = annotation_shape[3]
-    mask[ymin : ymax + 1, xmin : xmax + 1] = 0.0
+    mask = np.zeros(mask_shape, dtype=np.float64)
+    mask[ymin:ymax, xmin:xmax] = 1.0
     return WeightedMask(
         mask=mask,
         label=label,
@@ -76,41 +76,11 @@ def _generate_random_weighted_mask(
         label=label,
     ).mask
     weighted_mask = np.random.rand(*mask_shape)
-    weighted_mask[boolean_mask] = 0.0
+    weighted_mask[~boolean_mask] = 0.0
     return WeightedMask(
         mask=weighted_mask,
         label=label,
     )
-
-
-@pytest.fixture
-def rect1() -> tuple[float, float, float, float]:
-    """Box with area = 1500."""
-    return (10, 60, 10, 40)
-
-
-@pytest.fixture
-def rect2() -> tuple[float, float, float, float]:
-    """Box with area = 1100."""
-    return (15, 70, 0, 20)
-
-
-@pytest.fixture
-def rect3() -> tuple[float, float, float, float]:
-    """Box with area = 57,510."""
-    return (87, 158, 10, 820)
-
-
-@pytest.fixture
-def rect4() -> tuple[float, float, float, float]:
-    """Box with area = 90."""
-    return (1, 10, 10, 20)
-
-
-@pytest.fixture
-def rect5() -> tuple[float, float, float, float]:
-    """Box with partial overlap to rect3."""
-    return (87, 158, 10, 400)
 
 
 @pytest.fixture
@@ -144,33 +114,29 @@ def basic_segmentations() -> list[Segmentation]:
 
 
 @pytest.fixture
-def segmentations_from_boxes(
-    rect1: tuple[int, int, int, int],
-    rect2: tuple[int, int, int, int],
-    rect3: tuple[int, int, int, int],
-    rect5: tuple[int, int, int, int],
-) -> list[Segmentation]:
+def segmentations_from_boxes() -> list[Segmentation]:
+
     mask_shape = (900, 300)
 
-    bitmask1 = _generate_boolean_mask(mask_shape, rect1, "v1")
-    bitmask2 = _generate_boolean_mask(mask_shape, rect2, "v1")
-    bitmask3 = _generate_boolean_mask(mask_shape, rect3, "v2")
-    bitmask5 = _generate_boolean_mask(mask_shape, rect5, "v2")
+    rect1 = (0, 100, 0, 100)
+    rect2 = (150, 300, 400, 500)
+    rect3 = (50, 150, 0, 100)  # overlaps 50% with rect1
+    rect4 = (101, 151, 301, 401)  # overlaps 1 pixel with rect2
 
-    weighted_mask1 = _convert_bool_to_weighted(bitmask1)
-    weighted_mask2 = _convert_bool_to_weighted(bitmask2)
-    weighted_mask5 = _convert_bool_to_weighted(bitmask5)
+    bitmask1 = _generate_boolean_mask(mask_shape, rect1, "v1")
+    bitmask2 = _generate_boolean_mask(mask_shape, rect2, "v2")
+
+    weighted_mask1 = _generate_weighted_mask(mask_shape, rect3, "v1")
+    weighted_mask2 = _generate_weighted_mask(mask_shape, rect4, "v2")
 
     return [
         Segmentation(
             uid="uid1",
             groundtruths=[
                 bitmask1,
-                bitmask3,
             ],
             predictions=[
                 weighted_mask1,
-                weighted_mask5,
             ],
         ),
         Segmentation(
@@ -179,5 +145,86 @@ def segmentations_from_boxes(
             predictions=[
                 weighted_mask2,
             ],
+        ),
+    ]
+
+
+@pytest.fixture
+def segmentations_from_other_boxes() -> list[Segmentation]:
+
+    mask_shape = (900, 300)
+
+    rect1 = (0, 100, 0, 100)
+    rect2 = (150, 300, 400, 500)
+    rect3 = (50, 150, 0, 100)  # overlaps 50% with rect1
+    rect4 = (101, 151, 301, 401)  # overlaps 1 pixel with rect2
+
+    bitmask1 = _generate_boolean_mask(mask_shape, rect1, "v1")
+    bitmask2 = _generate_boolean_mask(mask_shape, rect2, "v2")
+
+    weighted_mask1 = _generate_weighted_mask(mask_shape, rect3, "v1")
+    weighted_mask2 = _generate_weighted_mask(mask_shape, rect4, "v2")
+
+    return [
+        Segmentation(
+            uid="uid1",
+            groundtruths=[
+                bitmask1,
+            ],
+            predictions=[
+                weighted_mask1,
+            ],
+        ),
+        Segmentation(
+            uid="uid2",
+            groundtruths=[bitmask2],
+            predictions=[
+                weighted_mask2,
+            ],
+        ),
+    ]
+
+
+@pytest.fixture
+def large_random_segmenations() -> list[Segmentation]:
+
+    mask_shape = (5000, 5000)
+
+    bitmask1 = _generate_random_boolean_mask(
+        mask_shape, infill=0.9, label="v1"
+    )
+    bitmask2 = _generate_random_boolean_mask(
+        mask_shape, infill=0.1, label="v2"
+    )
+    bitmask3 = _generate_random_boolean_mask(
+        mask_shape, infill=0.5, label="v1"
+    )
+    bitmask4 = _generate_random_boolean_mask(
+        mask_shape, infill=0.5, label="v2"
+    )
+
+    weighted_mask1 = _generate_random_weighted_mask(
+        mask_shape, infill=0.9, label="v1"
+    )
+    weighted_mask2 = _generate_random_weighted_mask(
+        mask_shape, infill=0.1, label="v2"
+    )
+    weighted_mask3 = _generate_random_weighted_mask(
+        mask_shape, infill=0.5, label="v1"
+    )
+    weighted_mask4 = _generate_random_weighted_mask(
+        mask_shape, infill=0.5, label="v2"
+    )
+
+    return [
+        Segmentation(
+            uid="uid1",
+            groundtruths=[bitmask1, bitmask2],
+            predictions=[weighted_mask1, weighted_mask2],
+        ),
+        Segmentation(
+            uid="uid2",
+            groundtruths=[bitmask3, bitmask4],
+            predictions=[weighted_mask3, weighted_mask4],
         ),
     ]

@@ -58,8 +58,8 @@ def compute_metrics(
     f1_score = np.zeros_like(precision)
     accuracy = np.zeros((n_scores), dtype=np.float64)
 
-    true_prediction_count = np.zeros_like(accuracy)
-    total_prediciton_count = np.zeros_like(accuracy)
+    true_prediction_count = np.zeros_like(accuracy, dtype=np.int32)
+    total_prediciton_count = np.zeros_like(accuracy, dtype=np.int32)
 
     for gt_label_idx in range(n_labels):
 
@@ -69,7 +69,6 @@ def compute_metrics(
         for pd_label_idx in range(n_labels):
 
             mask_pd_label = prediction_labels == pd_label_idx
-            print(mask_pd_label)
 
             for score_idx in range(n_scores):
 

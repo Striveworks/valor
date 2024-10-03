@@ -28,3 +28,34 @@ def test_recall_basic_segmenations(basic_segmentations: list[Segmentation]):
         assert m in expected_metrics
     for m in expected_metrics:
         assert m in actual_metrics
+
+
+def test_recall_segmentations_from_boxes(
+    segmentations_from_boxes: list[Segmentation],
+):
+    loader = DataLoader()
+    loader.add_data(segmentations_from_boxes)
+    evaluator = loader.finalize()
+
+    metrics = evaluator.evaluate(
+        score_thresholds=[0.0],
+        as_dict=True,
+    )
+
+    actual_metrics = [m for m in metrics[MetricType.F1]]
+    expected_metrics = [
+        {
+            "type": "F1",
+            "value": [0.5],  # 50% overlap
+            "parameters": {"score_thresholds": [0.0], "label": "v1"},
+        },
+        {
+            "type": "F1",
+            "value": [1 / 10000],  # overlaps 1 pixel out of 20,000
+            "parameters": {"score_thresholds": [0.0], "label": "v2"},
+        },
+    ]
+    for m in actual_metrics:
+        assert m in expected_metrics
+    for m in expected_metrics:
+        assert m in actual_metrics
