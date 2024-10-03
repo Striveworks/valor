@@ -728,9 +728,9 @@ def compute_confusion_matrix(
             )
 
             # store the counts
-            confusion_matrix[iou_idx, score_idx, tp_labels, tp_labels, 0] = (
-                tp_counts
-            )
+            confusion_matrix[
+                iou_idx, score_idx, tp_labels, tp_labels, 0
+            ] = tp_counts
             confusion_matrix[
                 iou_idx,
                 score_idx,
