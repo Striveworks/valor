@@ -55,6 +55,8 @@ def test__compute_average_recall():
             [0.0],
         ]
     )
+
+    # since only one class, ar == mar
     assert expected.flatten().shape == mean_average_recall.shape
     assert np.isclose(mean_average_recall, expected.flatten()).all()
 
@@ -82,15 +84,15 @@ def test_ar_metrics_first_class(
 
     groundtruths
         datum uid1
-            box 1 - label (k1, v1) - tp
+            box 1 - label v1 - tp
         datum uid2
-            box 2 - label (k1, v1) - fn misclassification
+            box 2 - label v1 - fn missing prediction
 
     predictions
         datum uid1
-            box 1 - label (k1, v1) - score 0.3 - tp
+            box 1 - label v1 - score 0.3 - tp
         datum uid2
-            none - fn
+           none
     """
     for input_, method in [
         (basic_detections_first_class, DataLoader.add_bounding_boxes),
@@ -193,14 +195,14 @@ def test_ar_metrics_second_class(
 
     groundtruths
         datum uid1
-            box 3 - label (k2, v2) - fn missing prediction
+            box 3 - label v2 - fn missing prediction
         datum uid2
-            none - fn
+           none
     predictions
         datum uid1
             none
         datum uid2
-            box 2 - label (k2, v2) - score 0.98 - fp
+            box 2 - label v2 - score 0.98 - fp
     """
     for input_, method in [
         (basic_detections_second_class, DataLoader.add_bounding_boxes),

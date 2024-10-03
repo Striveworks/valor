@@ -151,6 +151,68 @@ def basic_detections_second_class(
 
 
 @pytest.fixture
+def basic_detections(
+    rect1: tuple[float, float, float, float],
+    rect2: tuple[float, float, float, float],
+    rect3: tuple[float, float, float, float],
+) -> list[Detection]:
+    """Combines the labels from basic_detections_first_class and basic_detections_second_class."""
+    return [
+        Detection(
+            uid="uid1",
+            groundtruths=[
+                BoundingBox(
+                    xmin=rect1[0],
+                    xmax=rect1[1],
+                    ymin=rect1[2],
+                    ymax=rect1[3],
+                    labels=["v1"],
+                ),
+                BoundingBox(
+                    xmin=rect3[0],
+                    xmax=rect3[1],
+                    ymin=rect3[2],
+                    ymax=rect3[3],
+                    labels=["v2"],
+                ),
+            ],
+            predictions=[
+                BoundingBox(
+                    xmin=rect1[0],
+                    xmax=rect1[1],
+                    ymin=rect1[2],
+                    ymax=rect1[3],
+                    labels=["v1"],
+                    scores=[0.3],
+                ),
+            ],
+        ),
+        Detection(
+            uid="uid2",
+            groundtruths=[
+                BoundingBox(
+                    xmin=rect2[0],
+                    xmax=rect2[1],
+                    ymin=rect2[2],
+                    ymax=rect2[3],
+                    labels=["v1"],
+                ),
+            ],
+            predictions=[
+                BoundingBox(
+                    xmin=rect2[0],
+                    xmax=rect2[1],
+                    ymin=rect2[2],
+                    ymax=rect2[3],
+                    labels=["v2"],
+                    scores=[0.98],
+                ),
+            ],
+        ),
+    ]
+
+
+@pytest.fixture
 def basic_rotated_detections_first_class(
     rect1_rotated_5_degrees_around_origin: tuple[float, float, float, float],
     rect2_rotated_5_degrees_around_origin: tuple[float, float, float, float],
