@@ -6,7 +6,11 @@ from valor_lite.detection.computation import compute_confusion_matrix
 def test_confusion_matrix_no_data():
     evaluator = Evaluator()
     curves = evaluator._compute_confusion_matrix(
-        data=np.array([]), label_metadata=np.array([])
+        data=np.array([]),
+        label_metadata=np.array([]),
+        iou_thresholds=[0.5],
+        score_thresholds=[0.5],
+        number_of_examples=0,
     )
     assert isinstance(curves, list)
     assert len(curves) == 0
@@ -437,9 +441,10 @@ def test_confusion_matrix(
         score_thresholds=[0.05, 0.3, 0.35, 0.45, 0.55, 0.95],
         number_of_examples=1,
         metrics_to_return=[MetricType.ConfusionMatrix],
+        as_dict=True,
     )
 
-    actual_metrics = [m.to_dict() for m in metrics[MetricType.ConfusionMatrix]]
+    actual_metrics = [m for m in metrics[MetricType.ConfusionMatrix]]
     expected_metrics = [
         {
             "type": "ConfusionMatrix",
@@ -747,9 +752,10 @@ def test_confusion_matrix(
         score_thresholds=[0.05, 0.3, 0.35, 0.45, 0.55, 0.95],
         number_of_examples=1,
         metrics_to_return=[MetricType.ConfusionMatrix],
+        as_dict=True,
     )
 
-    actual_metrics = [m.to_dict() for m in metrics[MetricType.ConfusionMatrix]]
+    actual_metrics = [m for m in metrics[MetricType.ConfusionMatrix]]
     expected_metrics = [
         {
             "type": "ConfusionMatrix",
@@ -1113,11 +1119,12 @@ def test_confusion_matrix_using_torch_metrics_example(
         score_thresholds=[0.05, 0.25, 0.35, 0.55, 0.75, 0.8, 0.85, 0.95],
         number_of_examples=0,
         metrics_to_return=[MetricType.ConfusionMatrix],
+        as_dict=True,
     )
 
     assert len(metrics[MetricType.ConfusionMatrix]) == 16
 
-    actual_metrics = [m.to_dict() for m in metrics[MetricType.ConfusionMatrix]]
+    actual_metrics = [m for m in metrics[MetricType.ConfusionMatrix]]
     expected_metrics = [
         {
             "type": "ConfusionMatrix",
@@ -1508,11 +1515,12 @@ def test_confusion_matrix_fp_hallucination_edge_case(
         score_thresholds=[0.5, 0.85],
         number_of_examples=1,
         metrics_to_return=[MetricType.ConfusionMatrix],
+        as_dict=True,
     )
 
     assert len(metrics[MetricType.ConfusionMatrix]) == 2
 
-    actual_metrics = [m.to_dict() for m in metrics[MetricType.ConfusionMatrix]]
+    actual_metrics = [m for m in metrics[MetricType.ConfusionMatrix]]
     expected_metrics = [
         {
             "type": "ConfusionMatrix",
@@ -1633,11 +1641,10 @@ def test_confusion_matrix_ranked_pair_ordering(
             score_thresholds=[0.0],
             number_of_examples=0,
             metrics_to_return=[MetricType.ConfusionMatrix],
+            as_dict=True,
         )
 
-        actual_metrics = [
-            m.to_dict() for m in metrics[MetricType.ConfusionMatrix]
-        ]
+        actual_metrics = [m for m in metrics[MetricType.ConfusionMatrix]]
         expected_metrics = [
             {
                 "type": "ConfusionMatrix",
