@@ -1,3 +1,4 @@
+import warnings
 from collections import defaultdict
 from dataclasses import dataclass
 
@@ -103,26 +104,25 @@ def _get_annotation_representation_from_valor_dict(
 
 
 def _get_annotation_data(
-    keyed_groundtruths: dict,
-    keyed_predictions: dict,
+    groundtruths: list,
+    predictions: list,
     annotation_type: type[BoundingBox] | type[Polygon] | type[Bitmask] | None,
-    key=int,
 ) -> np.ndarray:
     """Create an array of annotation pairs for use when calculating IOU. Needed because we unpack bounding box representations, but not bitmask or polygon representations."""
     if annotation_type == BoundingBox:
         return np.array(
             [
                 np.array([*gextrema, *pextrema])
-                for _, _, _, pextrema in keyed_predictions[key]
-                for _, _, gextrema in keyed_groundtruths[key]
+                for _, _, _, pextrema in predictions
+                for _, _, gextrema in groundtruths
             ]
         )
     else:
         return np.array(
             [
                 np.array([groundtruth_obj, prediction_obj])
-                for _, _, _, prediction_obj in keyed_predictions[key]
-                for _, _, groundtruth_obj in keyed_groundtruths[key]
+                for _, _, _, prediction_obj in predictions
+                for _, _, groundtruth_obj in groundtruths
             ]
         )
 
@@ -185,13 +185,8 @@ class Evaluator:
         self.prediction_examples: dict[int, NDArray[np.float16]] = dict()
 
         # label reference
-        self.label_to_index: dict[tuple[str, str], int] = dict()
-        self.index_to_label: dict[int, tuple[str, str]] = dict()
-
-        # label key reference
-        self.index_to_label_key: dict[int, str] = dict()
-        self.label_key_to_index: dict[str, int] = dict()
-        self.label_index_to_label_key_index: dict[int, int] = dict()
+        self.label_to_index: dict[str, int] = dict()
+        self.index_to_label: dict[int, str] = dict()
 
         # computation caches
         self._detailed_pairs: NDArray[np.floating] = np.array([])
@@ -200,7 +195,7 @@ class Evaluator:
         self._label_metadata_per_datum: NDArray[np.int32] = np.array([])
 
     @property
-    def ignored_prediction_labels(self) -> list[tuple[str, str]]:
+    def ignored_prediction_labels(self) -> list[str]:
         """
         Prediction labels that are not present in the ground truth set.
         """
@@ -211,7 +206,7 @@ class Evaluator:
         ]
 
     @property
-    def missing_prediction_labels(self) -> list[tuple[str, str]]:
+    def missing_prediction_labels(self) -> list[str]:
         """
         Ground truth labels that are not present in the prediction set.
         """
@@ -238,8 +233,7 @@ class Evaluator:
     def create_filter(
         self,
         datum_uids: list[str] | NDArray[np.int32] | None = None,
-        labels: list[tuple[str, str]] | NDArray[np.int32] | None = None,
-        label_keys: list[str] | NDArray[np.int32] | None = None,
+        labels: list[str] | NDArray[np.int32] | None = None,
     ) -> Filter:
         """
         Creates a filter that can be passed to an evaluation.
@@ -248,10 +242,8 @@ class Evaluator:
         ----------
         datum_uids : list[str] | NDArray[np.int32], optional
             An optional list of string uids or a numpy array of uid indices.
-        labels : list[tuple[str, str]] | NDArray[np.int32], optional
+        labels : list[str] | NDArray[np.int32], optional
             An optional list of labels or a numpy array of label indices.
-        label_keys : list[str] | NDArray[np.int32], optional
-            An optional list of label keys or a numpy array of label key indices.
 
         Returns
         -------
@@ -296,24 +288,6 @@ class Evaluator:
             ] = False
             mask_labels[~np.isin(np.arange(n_labels), labels)] = False
 
-        if label_keys is not None:
-            if isinstance(label_keys, list):
-                label_keys = np.array(
-                    [self.label_key_to_index[key] for key in label_keys]
-                )
-            label_indices = (
-                np.where(np.isclose(self._label_metadata[:, 2], label_keys))[0]
-                if label_keys.size > 0
-                else np.array([])
-            )
-            mask_ranked[
-                ~np.isin(self._ranked_pairs[:, 4].astype(int), label_indices)
-            ] = False
-            mask_detailed[
-                ~np.isin(self._detailed_pairs[:, 4].astype(int), label_indices)
-            ] = False
-            mask_labels[~np.isin(np.arange(n_labels), label_indices)] = False
-
         mask_label_metadata = (
             mask_datums[:, np.newaxis] & mask_labels[np.newaxis, :]
         )
@@ -321,13 +295,12 @@ class Evaluator:
         label_metadata_per_datum[:, ~mask_label_metadata] = 0
 
         label_metadata = np.zeros_like(self._label_metadata, dtype=np.int32)
-        label_metadata[:, :2] = np.transpose(
+        label_metadata = np.transpose(
             np.sum(
                 label_metadata_per_datum,
                 axis=1,
             )
         )
-        label_metadata[:, 2] = self._label_metadata[:, 2]
 
         return Filter(
             ranked_indices=np.where(mask_ranked)[0],
@@ -413,12 +386,10 @@ class Evaluator:
 
         metrics[MetricType.mAP] = [
             mAP(
-                value=mean_average_precision[iou_idx][label_key_idx],
+                value=mean_average_precision[iou_idx],
                 iou_threshold=iou_thresholds[iou_idx],
-                label_key=self.index_to_label_key[label_key_idx],
             )
             for iou_idx in range(mean_average_precision.shape[0])
-            for label_key_idx in range(mean_average_precision.shape[1])
         ]
 
         metrics[MetricType.APAveragedOverIOUs] = [
@@ -433,12 +404,8 @@ class Evaluator:
 
         metrics[MetricType.mAPAveragedOverIOUs] = [
             mAPAveragedOverIOUs(
-                value=mean_average_precision_average_over_ious[label_key_idx],
+                value=mean_average_precision_average_over_ious,
                 iou_thresholds=iou_thresholds,
-                label_key=self.index_to_label_key[label_key_idx],
-            )
-            for label_key_idx in range(
-                mean_average_precision_average_over_ious.shape[0]
             )
         ]
 
@@ -456,13 +423,11 @@ class Evaluator:
 
         metrics[MetricType.mAR] = [
             mAR(
-                value=mean_average_recall[score_idx][label_key_idx],
+                value=mean_average_recall[score_idx],
                 iou_thresholds=iou_thresholds,
                 score_threshold=score_thresholds[score_idx],
-                label_key=self.index_to_label_key[label_key_idx],
             )
             for score_idx in range(mean_average_recall.shape[0])
-            for label_key_idx in range(mean_average_recall.shape[1])
         ]
 
         metrics[MetricType.ARAveragedOverScores] = [
@@ -478,13 +443,9 @@ class Evaluator:
 
         metrics[MetricType.mARAveragedOverScores] = [
             mARAveragedOverScores(
-                value=mean_average_recall_averaged_over_scores[label_key_idx],
+                value=mean_average_recall_averaged_over_scores,
                 score_thresholds=score_thresholds,
                 iou_thresholds=iou_thresholds,
-                label_key=self.index_to_label_key[label_key_idx],
-            )
-            for label_key_idx in range(
-                mean_average_recall_averaged_over_scores.shape[0]
             )
         ]
 
@@ -573,7 +534,6 @@ class Evaluator:
     def _unpack_confusion_matrix(
         self,
         confusion_matrix: NDArray[np.floating],
-        label_key_idx: int,
         number_of_labels: int,
         number_of_examples: int,
     ) -> dict[
@@ -629,8 +589,8 @@ class Evaluator:
         )
 
         return {
-            self.index_to_label[gt_label_idx][1]: {
-                self.index_to_label[pd_label_idx][1]: {
+            self.index_to_label[gt_label_idx]: {
+                self.index_to_label[pd_label_idx]: {
                     "count": max(
                         int(confusion_matrix[gt_label_idx, pd_label_idx, 0]),
                         0,
@@ -682,22 +642,13 @@ class Evaluator:
                     ],
                 }
                 for pd_label_idx in range(number_of_labels)
-                if (
-                    self.label_index_to_label_key_index[pd_label_idx]
-                    == label_key_idx
-                )
             }
             for gt_label_idx in range(number_of_labels)
-            if (
-                self.label_index_to_label_key_index[gt_label_idx]
-                == label_key_idx
-            )
         }
 
     def _unpack_hallucinations(
         self,
         hallucinations: NDArray[np.floating],
-        label_key_idx: int,
         number_of_labels: int,
         number_of_examples: int,
     ) -> dict[
@@ -740,7 +691,7 @@ class Evaluator:
         )
 
         return {
-            self.index_to_label[pd_label_idx][1]: {
+            self.index_to_label[pd_label_idx]: {
                 "count": max(
                     int(hallucinations[pd_label_idx, 0]),
                     0,
@@ -764,16 +715,11 @@ class Evaluator:
                 ],
             }
             for pd_label_idx in range(number_of_labels)
-            if (
-                self.label_index_to_label_key_index[pd_label_idx]
-                == label_key_idx
-            )
         }
 
     def _unpack_missing_predictions(
         self,
         missing_predictions: NDArray[np.int32],
-        label_key_idx: int,
         number_of_labels: int,
         number_of_examples: int,
     ) -> dict[
@@ -806,7 +752,7 @@ class Evaluator:
         )
 
         return {
-            self.index_to_label[gt_label_idx][1]: {
+            self.index_to_label[gt_label_idx]: {
                 "count": max(
                     int(missing_predictions[gt_label_idx, 0]),
                     0,
@@ -829,10 +775,6 @@ class Evaluator:
                 ],
             }
             for gt_label_idx in range(number_of_labels)
-            if (
-                self.label_index_to_label_key_index[gt_label_idx]
-                == label_key_idx
-            )
         }
 
     def _compute_confusion_matrix(
@@ -885,19 +827,16 @@ class Evaluator:
             ConfusionMatrix(
                 iou_threshold=iou_thresholds[iou_idx],
                 score_threshold=score_thresholds[score_idx],
-                label_key=label_key,
                 number_of_examples=number_of_examples,
                 confusion_matrix=self._unpack_confusion_matrix(
                     confusion_matrix=confusion_matrix[
                         iou_idx, score_idx, :, :, :
                     ],
-                    label_key_idx=label_key_idx,
                     number_of_labels=n_labels,
                     number_of_examples=number_of_examples,
                 ),
                 hallucinations=self._unpack_hallucinations(
                     hallucinations=hallucinations[iou_idx, score_idx, :, :],
-                    label_key_idx=label_key_idx,
                     number_of_labels=n_labels,
                     number_of_examples=number_of_examples,
                 ),
@@ -905,12 +844,10 @@ class Evaluator:
                     missing_predictions=missing_predictions[
                         iou_idx, score_idx, :, :
                     ],
-                    label_key_idx=label_key_idx,
                     number_of_labels=n_labels,
                     number_of_examples=number_of_examples,
                 ),
             )
-            for label_key_idx, label_key in self.index_to_label_key.items()
             for iou_idx in range(n_ious)
             for score_idx in range(n_scores)
         ]
@@ -947,50 +884,35 @@ class DataLoader:
             self._evaluator.index_to_uid[index] = uid
         return self._evaluator.uid_to_index[uid]
 
-    def _add_label(self, label: tuple[str, str]) -> tuple[int, int]:
+    def _add_label(self, label: str) -> int:
         """
         Helper function for adding a label to the cache.
 
         Parameters
         ----------
-        label : tuple[str, str]
-            The label as a tuple in format (key, value).
+        label : str
+            The label associated with the annotation.
 
         Returns
         -------
         int
             Label index.
-        int
-            Label key index.
         """
 
         label_id = len(self._evaluator.index_to_label)
-        label_key_id = len(self._evaluator.index_to_label_key)
         if label not in self._evaluator.label_to_index:
             self._evaluator.label_to_index[label] = label_id
             self._evaluator.index_to_label[label_id] = label
 
-            # update label key index
-            if label[0] not in self._evaluator.label_key_to_index:
-                self._evaluator.label_key_to_index[label[0]] = label_key_id
-                self._evaluator.index_to_label_key[label_key_id] = label[0]
-                label_key_id += 1
-
-            self._evaluator.label_index_to_label_key_index[
-                label_id
-            ] = self._evaluator.label_key_to_index[label[0]]
             label_id += 1
 
-        return (
-            self._evaluator.label_to_index[label],
-            self._evaluator.label_key_to_index[label[0]],
-        )
+        return self._evaluator.label_to_index[label]
 
     def _compute_ious_and_cache_pairs(
         self,
         uid_index: int,
-        keyed_groundtruths: dict,
-        keyed_predictions: dict,
+        groundtruths: list,
+        predictions: list,
         annotation_type: type[BoundingBox] | type[Polygon] | type[Bitmask],
     ) -> None:
         """
@@ -1000,122 +922,115 @@ class DataLoader:
         ----------
         uid_index: int
             The index of the detection.
-        keyed_groundtruths: dict
-            A dictionary of groundtruths.
-        keyed_predictions: dict
-            A dictionary of predictions.
+        groundtruths: list
+            A list of groundtruths.
+        predictions: list
+            A list of predictions.
         annotation_type: type[BoundingBox] | type[Polygon] | type[Bitmask]
             The type of annotation to compute IOUs for.
         """
-        gt_keys = set(keyed_groundtruths.keys())
-        pd_keys = set(keyed_predictions.keys())
-        joint_keys = gt_keys.intersection(pd_keys)
-        gt_unique_keys = gt_keys - pd_keys
-        pd_unique_keys = pd_keys - gt_keys
 
         pairs = list()
-        for key in joint_keys:
-            n_predictions = len(keyed_predictions[key])
-            n_groundtruths = len(keyed_groundtruths[key])
-            data = _get_annotation_data(
-                keyed_groundtruths=keyed_groundtruths,
-                keyed_predictions=keyed_predictions,
-                key=key,
-                annotation_type=annotation_type,
-            )
-            ious = compute_iou(data=data, annotation_type=annotation_type)
-            mask_nonzero_iou = (ious > 1e-9).reshape(
-                (n_predictions, n_groundtruths)
-            )
-            mask_ious_halluc = ~(mask_nonzero_iou.any(axis=1))
-            mask_ious_misprd = ~(mask_nonzero_iou.any(axis=0))
+        n_predictions = len(predictions)
+        n_groundtruths = len(groundtruths)
+        data = _get_annotation_data(
+            groundtruths=groundtruths,
+            predictions=predictions,
+            annotation_type=annotation_type,
+        )
 
-            pairs.extend(
-                [
-                    np.array(
-                        [
-                            float(uid_index),
-                            float(gidx),
-                            float(pidx),
-                            ious[pidx * len(keyed_groundtruths[key]) + gidx],
-                            float(glabel),
-                            float(plabel),
-                            float(score),
-                        ]
-                    )
-                    for pidx, plabel, score, _ in keyed_predictions[key]
-                    for gidx, glabel, _ in keyed_groundtruths[key]
-                    if ious[pidx * len(keyed_groundtruths[key]) + gidx] > 1e-9
-                ]
-            )
-            pairs.extend(
-                [
-                    np.array(
-                        [
-                            float(uid_index),
-                            -1.0,
-                            float(pidx),
-                            0.0,
-                            -1.0,
-                            float(plabel),
-                            float(score),
-                        ]
-                    )
-                    for pidx, plabel, score, _ in keyed_predictions[key]
-                    if mask_ious_halluc[pidx]
-                ]
-            )
-            pairs.extend(
-                [
-                    np.array(
-                        [
-                            float(uid_index),
-                            float(gidx),
-                            -1.0,
-                            0.0,
-                            float(glabel),
-                            -1.0,
-                            -1.0,
-                        ]
-                    )
-                    for gidx, glabel, _ in keyed_groundtruths[key]
-                    if mask_ious_misprd[gidx]
-                ]
-            )
-        for key in gt_unique_keys:
-            pairs.extend(
-                [
-                    np.array(
-                        [
-                            float(uid_index),
-                            float(gidx),
-                            -1.0,
-                            0.0,
-                            float(glabel),
-                            -1.0,
-                            -1.0,
-                        ]
-                    )
-                    for gidx, glabel, _ in keyed_groundtruths[key]
-                ]
-            )
-        for key in pd_unique_keys:
-            pairs.extend(
-                [
-                    np.array(
-                        [
-                            float(uid_index),
-                            -1.0,
-                            float(pidx),
-                            0.0,
-                            -1.0,
-                            float(plabel),
-                            float(score),
-                        ]
-                    )
-                    for pidx, plabel, score, _ in keyed_predictions[key]
-                ]
-            )
+        ious = compute_iou(data=data, annotation_type=annotation_type)
+        mask_nonzero_iou = (ious > 1e-9).reshape(
+            (n_predictions, n_groundtruths)
+        )
+        mask_ious_halluc = ~(mask_nonzero_iou.any(axis=1))
+        mask_ious_misprd = ~(mask_nonzero_iou.any(axis=0))
+
+        pairs.extend(
+            [
+                np.array(
+                    [
+                        float(uid_index),
+                        float(gidx),
+                        float(pidx),
+                        ious[pidx * len(groundtruths) + gidx],
+                        float(glabel),
+                        float(plabel),
+                        float(score),
+                    ]
+                )
+                for pidx, plabel, score, _ in predictions
+                for gidx, glabel, _ in groundtruths
+                if ious[pidx * len(groundtruths) + gidx] > 1e-9
+            ]
+        )
+        pairs.extend(
+            [
+                np.array(
+                    [
+                        float(uid_index),
+                        -1.0,
+                        float(pidx),
+                        0.0,
+                        -1.0,
+                        float(plabel),
+                        float(score),
+                    ]
+                )
+                for pidx, plabel, score, _ in predictions
+                if mask_ious_halluc[pidx]
+            ]
+        )
+        pairs.extend(
+            [
+                np.array(
+                    [
+                        float(uid_index),
+                        float(gidx),
+                        -1.0,
+                        0.0,
+                        float(glabel),
+                        -1.0,
+                        -1.0,
+                    ]
+                )
+                for gidx, glabel, _ in groundtruths
+                if mask_ious_misprd[gidx]
+            ]
+        )
+
+        pairs.extend(
+            [
+                np.array(
+                    [
+                        float(uid_index),
+                        float(gidx),
+                        -1.0,
+                        0.0,
+                        float(glabel),
+                        -1.0,
+                        -1.0,
+                    ]
+                )
+                for gidx, glabel, _ in groundtruths
+            ]
+        )
+        pairs.extend(
+            [
+                np.array(
+                    [
+                        float(uid_index),
+                        -1.0,
+                        float(pidx),
+                        0.0,
+                        -1.0,
+                        float(plabel),
+                        float(score),
+                    ]
+                )
+                for pidx, plabel, score, _ in predictions
+            ]
+        )
 
         self.pairs.append(np.array(pairs))
 
@@ -1157,8 +1072,8 @@ class DataLoader:
             )
 
             # cache labels and annotations
-            keyed_groundtruths = defaultdict(list)
-            keyed_predictions = defaultdict(list)
+            groundtruths = list()
+            predictions = list()
 
             representation_property = _get_annotation_representation(
                 annotation_type=annotation_type
@@ -1182,10 +1097,10 @@ class DataLoader:
                         else None
                     )
                 for glabel in gann.labels:
-                    label_idx, label_key_idx = self._add_label(glabel)
+                    label_idx = self._add_label(glabel)
                     self.groundtruth_count[label_idx][uid_index] += 1
                     representation = getattr(gann, representation_property)
-                    keyed_groundtruths[label_key_idx].append(
+                    groundtruths.append(
                         (
                             gidx,
                             label_idx,
@@ -1211,12 +1126,12 @@ class DataLoader:
                         else None
                     )
                 for plabel, pscore in zip(pann.labels, pann.scores):
-                    label_idx, label_key_idx = self._add_label(plabel)
+                    label_idx = self._add_label(plabel)
                     self.prediction_count[label_idx][uid_index] += 1
                     representation = representation = getattr(
                         pann, representation_property
                     )
-                    keyed_predictions[label_key_idx].append(
+                    predictions.append(
                         (
                             pidx,
                             label_idx,
@@ -1227,8 +1142,8 @@ class DataLoader:
 
             self._compute_ious_and_cache_pairs(
                 uid_index=uid_index,
-                keyed_groundtruths=keyed_groundtruths,
-                keyed_predictions=keyed_predictions,
+                groundtruths=groundtruths,
+                predictions=predictions,
                 annotation_type=annotation_type,
             )
 
@@ -1313,6 +1228,10 @@ class DataLoader:
         show_progress : bool, default=False
             Toggle for tqdm progress bar.
         """
+        warnings.warn(
+            "The `...from_valor_dict` functions are deprecated and will be deleted in the near future. Use `add_bounding_boxes`, `add_bitmasks`, or `add_polygons` instead.",
+            DeprecationWarning,
+        )
 
         disable_tqdm = not show_progress
         for groundtruth, prediction in tqdm(detections, disable=disable_tqdm):
@@ -1333,8 +1252,8 @@ class DataLoader:
             )
 
             # cache labels and annotations
-            keyed_groundtruths = defaultdict(list)
-            keyed_predictions = defaultdict(list)
+            groundtruths = list()
+            predictions = list()
 
             annotation_key = _get_valor_dict_annotation_key(
                 annotation_type=annotation_type
@@ -1364,10 +1283,10 @@ class DataLoader:
                     )
 
                 for valor_label in gann["labels"]:
-                    glabel = (valor_label["key"], valor_label["value"])
-                    label_idx, label_key_idx = self._add_label(glabel)
+                    glabel = f'{valor_label["key" ]}_{valor_label[ "value" ]}'
+                    label_idx = self._add_label(glabel)
                     self.groundtruth_count[label_idx][uid_index] += 1
-                    keyed_groundtruths[label_key_idx].append(
+                    groundtruths.append(
                         (
                             gidx,
                             label_idx,
@@ -1395,11 +1314,11 @@ class DataLoader:
                         )
                     )
                 for valor_label in pann["labels"]:
-                    plabel = (valor_label["key"], valor_label["value"])
+                    plabel = valor_label["value"]
                     pscore = valor_label["score"]
-                    label_idx, label_key_idx = self._add_label(plabel)
+                    label_idx = self._add_label(plabel)
                     self.prediction_count[label_idx][uid_index] += 1
-                    keyed_predictions[label_key_idx].append(
+                    predictions.append(
                         (
                             pidx,
                             label_idx,
@@ -1413,8 +1332,8 @@ class DataLoader:
 
             self._compute_ious_and_cache_pairs(
                 uid_index=uid_index,
-                keyed_groundtruths=keyed_groundtruths,
-                keyed_predictions=keyed_predictions,
+                groundtruths=groundtruths,
+                predictions=predictions,
                 annotation_type=annotation_type,
             )
 
@@ -1493,11 +1412,6 @@ class DataLoader:
                                 1, :, label_idx
                             ]
                         )
-                    ),
-                    float(
-                        self._evaluator.label_index_to_label_key_index[
-                            label_idx
-                        ]
                     ),
                 ]
                 for label_idx in range(n_labels)

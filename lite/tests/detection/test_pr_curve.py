@@ -47,7 +47,7 @@ def test_pr_curve_using_torch_metrics_example(
     loader.add_bounding_boxes(torchmetrics_detections)
     evaluator = loader.finalize()
 
-    assert evaluator.ignored_prediction_labels == [("class", "3")]
+    assert evaluator.ignored_prediction_labels == ["3"]
     assert evaluator.missing_prediction_labels == []
     assert evaluator.n_datums == 4
     assert evaluator.n_labels == 6
@@ -94,7 +94,7 @@ def test_pr_curve_using_torch_metrics_example(
             "value": a,
             "parameters": {
                 "iou_threshold": 0.5,
-                "label": {"key": "class", "value": "0"},
+                "label": "0",
             },
         },
         {
@@ -102,7 +102,7 @@ def test_pr_curve_using_torch_metrics_example(
             "value": d,
             "parameters": {
                 "iou_threshold": 0.75,
-                "label": {"key": "class", "value": "0"},
+                "label": "0",
             },
         },
         {
@@ -110,7 +110,7 @@ def test_pr_curve_using_torch_metrics_example(
             "value": a,
             "parameters": {
                 "iou_threshold": 0.5,
-                "label": {"key": "class", "value": "1"},
+                "label": "1",
             },
         },
         {
@@ -118,7 +118,7 @@ def test_pr_curve_using_torch_metrics_example(
             "value": a,
             "parameters": {
                 "iou_threshold": 0.75,
-                "label": {"key": "class", "value": "1"},
+                "label": "1",
             },
         },
         {
@@ -126,7 +126,7 @@ def test_pr_curve_using_torch_metrics_example(
             "value": b,
             "parameters": {
                 "iou_threshold": 0.5,
-                "label": {"key": "class", "value": "2"},
+                "label": "2",
             },
         },
         {
@@ -134,7 +134,7 @@ def test_pr_curve_using_torch_metrics_example(
             "value": b,
             "parameters": {
                 "iou_threshold": 0.75,
-                "label": {"key": "class", "value": "2"},
+                "label": "2",
             },
         },
         {
@@ -142,7 +142,7 @@ def test_pr_curve_using_torch_metrics_example(
             "value": a,
             "parameters": {
                 "iou_threshold": 0.5,
-                "label": {"key": "class", "value": "4"},
+                "label": "4",
             },
         },
         {
@@ -150,7 +150,7 @@ def test_pr_curve_using_torch_metrics_example(
             "value": a,
             "parameters": {
                 "iou_threshold": 0.75,
-                "label": {"key": "class", "value": "4"},
+                "label": "4",
             },
         },
         {
@@ -158,7 +158,7 @@ def test_pr_curve_using_torch_metrics_example(
             "value": c,
             "parameters": {
                 "iou_threshold": 0.5,
-                "label": {"key": "class", "value": "49"},
+                "label": "49",
             },
         },
         {
@@ -166,7 +166,7 @@ def test_pr_curve_using_torch_metrics_example(
             "value": e,
             "parameters": {
                 "iou_threshold": 0.75,
-                "label": {"key": "class", "value": "49"},
+                "label": "49",
             },
         },
     ]

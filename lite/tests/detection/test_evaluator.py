@@ -12,7 +12,7 @@ def test_metadata_using_torch_metrics_example(
     loader.add_bounding_boxes(torchmetrics_detections)
     evaluator = loader.finalize()
 
-    assert evaluator.ignored_prediction_labels == [("class", "3")]
+    assert evaluator.ignored_prediction_labels == ["3"]
     assert evaluator.missing_prediction_labels == []
     assert evaluator.n_datums == 4
     assert evaluator.n_labels == 6
@@ -20,9 +20,7 @@ def test_metadata_using_torch_metrics_example(
     assert evaluator.n_predictions == 19
 
     assert evaluator.metadata == {
-        "ignored_prediction_labels": [
-            ("class", "3"),
-        ],
+        "ignored_prediction_labels": ["3"],
         "missing_prediction_labels": [],
         "n_datums": 4,
         "n_labels": 6,
@@ -37,12 +35,12 @@ def test_no_groundtruths(detections_no_groundtruths):
     loader.add_bounding_boxes(detections_no_groundtruths)
     evaluator = loader.finalize()
 
-    assert evaluator.ignored_prediction_labels == [("k1", "v1"), ("k2", "v2")]
+    assert evaluator.ignored_prediction_labels == ["v1"]
     assert evaluator.missing_prediction_labels == []
     assert evaluator.n_datums == 2
-    assert evaluator.n_labels == 2
+    assert evaluator.n_labels == 1
     assert evaluator.n_groundtruths == 0
-    assert evaluator.n_predictions == 3
+    assert evaluator.n_predictions == 2
 
     metrics = evaluator.evaluate(
         iou_thresholds=[0.5],
@@ -59,10 +57,10 @@ def test_no_predictions(detections_no_predictions):
     evaluator = loader.finalize()
 
     assert evaluator.ignored_prediction_labels == []
-    assert evaluator.missing_prediction_labels == [("k1", "v1"), ("k2", "v2")]
+    assert evaluator.missing_prediction_labels == ["v1"]
     assert evaluator.n_datums == 2
-    assert evaluator.n_labels == 2
-    assert evaluator.n_groundtruths == 3
+    assert evaluator.n_labels == 1
+    assert evaluator.n_groundtruths == 2
     assert evaluator.n_predictions == 0
 
     metrics = evaluator.evaluate(
@@ -70,7 +68,7 @@ def test_no_predictions(detections_no_predictions):
         score_thresholds=[0.5],
     )
 
-    assert len(metrics[MetricType.AP]) == 2
+    assert len(metrics[MetricType.AP]) == 1
 
     # test AP
     actual_metrics = [m.to_dict() for m in metrics[MetricType.AP]]
@@ -80,15 +78,7 @@ def test_no_predictions(detections_no_predictions):
             "value": 0.0,
             "parameters": {
                 "iou_threshold": 0.5,
-                "label": {"key": "k1", "value": "v1"},
-            },
-        },
-        {
-            "type": "AP",
-            "value": 0.0,
-            "parameters": {
-                "iou_threshold": 0.5,
-                "label": {"key": "k2", "value": "v2"},
+                "label": "v1",
             },
         },
     ]
@@ -98,10 +88,10 @@ def test_no_predictions(detections_no_predictions):
         assert m in actual_metrics
 
 
-def test_metrics_to_return(basic_detections: list[Detection]):
+def test_metrics_to_return(basic_detections_first_class: list[Detection]):
 
     loader = DataLoader()
-    loader.add_bounding_boxes(basic_detections)
+    loader.add_bounding_boxes(basic_detections_first_class)
     evaluator = loader.finalize()
 
     metrics_to_return = [
