@@ -299,9 +299,10 @@ def run_benchmarking_analysis(
         eval_pr = run_pr_curve_evaluation(
             dset=dset, model=model, timeout=evaluation_timeout
         )
-        eval_detail = run_detailed_pr_curve_evaluation(
-            dset=dset, model=model, timeout=evaluation_timeout
-        )
+        # NOTE: turned this off due to long runtimes causing TimeoutError
+        # eval_detail = run_detailed_pr_curve_evaluation(
+        #     dset=dset, model=model, timeout=evaluation_timeout
+        # )
 
         # delete model
         start = time.time()
@@ -331,7 +332,7 @@ def run_benchmarking_analysis(
                 n_labels=eval_base.meta["labels"],
                 eval_base=eval_base.meta["duration"],
                 eval_base_pr=eval_pr.meta["duration"],
-                eval_base_pr_detail=eval_detail.meta["duration"],
+                eval_base_pr_detail=-1,
             ).result()
         )
 

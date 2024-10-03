@@ -245,48 +245,52 @@ class Benchmark:
                     "model": f"{round(self.pd_deletion, 2)} seconds",
                 },
             },
-            "base+pr": {
-                "ingestion": {
-                    "dataset": f"{round(self.gt_ingest, 2)} seconds",
-                    "model": f"{round(self.pd_ingest, 2)} seconds",
-                },
-                "finalization": {
-                    "dataset": f"{round(self.gt_finalization, 2)} seconds",
-                    "model": f"{round(self.pd_finalization, 2)} seconds",
-                },
-                "evaluation": {
-                    "preprocessing": "0.0 seconds",
-                    "computation": f"{round(self.eval_base_pr, 2)} seconds",
-                    "total": f"{round(self.eval_base_pr, 2)} seconds",
-                },
-                "deletion": {
-                    "dataset": f"{round(self.gt_deletion, 2)} seconds",
-                    "model": f"{round(self.pd_deletion, 2)} seconds",
-                },
-            }
-            if self.eval_base_pr > -1
-            else {},
-            "base+pr+detailed": {
-                "ingestion": {
-                    "dataset": f"{round(self.gt_ingest, 2)} seconds",
-                    "model": f"{round(self.pd_ingest, 2)} seconds",
-                },
-                "finalization": {
-                    "dataset": f"{round(self.gt_finalization, 2)} seconds",
-                    "model": f"{round(self.pd_finalization, 2)} seconds",
-                },
-                "evaluation": {
-                    "preprocessing": "0.0 seconds",
-                    "computation": f"{round(self.eval_base_pr_detail, 2)} seconds",
-                    "total": f"{round(self.eval_base_pr_detail, 2)} seconds",
-                },
-                "deletion": {
-                    "dataset": f"{round(self.gt_deletion, 2)} seconds",
-                    "model": f"{round(self.pd_deletion, 2)} seconds",
-                },
-            }
-            if self.eval_base_pr_detail > -1
-            else {},
+            "base+pr": (
+                {
+                    "ingestion": {
+                        "dataset": f"{round(self.gt_ingest, 2)} seconds",
+                        "model": f"{round(self.pd_ingest, 2)} seconds",
+                    },
+                    "finalization": {
+                        "dataset": f"{round(self.gt_finalization, 2)} seconds",
+                        "model": f"{round(self.pd_finalization, 2)} seconds",
+                    },
+                    "evaluation": {
+                        "preprocessing": "0.0 seconds",
+                        "computation": f"{round(self.eval_base_pr, 2)} seconds",
+                        "total": f"{round(self.eval_base_pr, 2)} seconds",
+                    },
+                    "deletion": {
+                        "dataset": f"{round(self.gt_deletion, 2)} seconds",
+                        "model": f"{round(self.pd_deletion, 2)} seconds",
+                    },
+                }
+                if self.eval_base_pr > -1
+                else {}
+            ),
+            "base+pr+detailed": (
+                {
+                    "ingestion": {
+                        "dataset": f"{round(self.gt_ingest, 2)} seconds",
+                        "model": f"{round(self.pd_ingest, 2)} seconds",
+                    },
+                    "finalization": {
+                        "dataset": f"{round(self.gt_finalization, 2)} seconds",
+                        "model": f"{round(self.pd_finalization, 2)} seconds",
+                    },
+                    "evaluation": {
+                        "preprocessing": "0.0 seconds",
+                        "computation": f"{round(self.eval_base_pr_detail, 2)} seconds",
+                        "total": f"{round(self.eval_base_pr_detail, 2)} seconds",
+                    },
+                    "deletion": {
+                        "dataset": f"{round(self.gt_deletion, 2)} seconds",
+                        "model": f"{round(self.pd_deletion, 2)} seconds",
+                    },
+                }
+                if self.eval_base_pr_detail > -1
+                else {}
+            ),
         }
 
 
