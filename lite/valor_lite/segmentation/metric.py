@@ -104,7 +104,6 @@ class ConfusionMatrix:
         dict[str, float],  # iou
     ]
     score_threshold: float
-    number_of_examples: int
 
     @property
     def metric(self) -> Metric:

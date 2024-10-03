@@ -58,6 +58,10 @@ class Evaluator:
         self.n_predictions = 0
         self.n_labels = 0
 
+        self.n_pixels = 0
+        self.n_groundtruth_pixels = 0
+        self.n_prediction_pixels = 0
+
         # datum reference
         self.uid_to_index: dict[str, int] = dict()
         self.index_to_uid: dict[int, str] = dict()
@@ -67,7 +71,7 @@ class Evaluator:
         self.index_to_label: dict[int, str] = dict()
 
         # computation caches
-        self._classifications = np.array([])
+        self._pixel_classifications = np.array([])
         self._label_metadata = np.array([], dtype=np.int32)
         self._label_metadata_per_datum = np.array([], dtype=np.int32)
 
@@ -99,10 +103,11 @@ class Evaluator:
         Evaluation metadata.
         """
         return {
-            "n_datums": self.n_datums,
-            "n_groundtruths": self.n_groundtruths,
-            "n_predictions": self.n_predictions,
-            "n_labels": self.n_labels,
+            "number_of_datums": self.n_datums,
+            "number_of_pixels": self.n_pixels,
+            "number_of_groundtruth_pixels": self.n_groundtruths,
+            "number_of_prediction_pixels": self.n_predictions,
+            "number_of_labels": self.n_labels,
             "ignored_prediction_labels": self.ignored_prediction_labels,
             "missing_prediction_labels": self.missing_prediction_labels,
         }
@@ -128,7 +133,7 @@ class Evaluator:
         Filter
             A filter object that can be passed to the `evaluate` method.
         """
-        n_rows = self._classifications.shape[0]
+        n_rows = self._pixel_classifications.shape[0]
 
         n_datums = self._label_metadata_per_datum.shape[1]
         n_labels = self._label_metadata_per_datum.shape[2]
@@ -175,8 +180,8 @@ class Evaluator:
         self,
         metrics_to_return: list[MetricType] = MetricType.base(),
         score_thresholds: list[float] = [0.0],
-        number_of_examples: int = 0,
         filter_: Filter | None = None,
+        as_dict: bool = False,
     ) -> dict[MetricType, list]:
         """
         Performs an evaluation and returns metrics.
@@ -199,7 +204,7 @@ class Evaluator:
         """
 
         # apply filters
-        data = self._classifications
+        data = self._pixel_classifications
         label_metadata = self._label_metadata
         if filter_ is not None:
             data = data[filter_.indices]
@@ -220,12 +225,41 @@ class Evaluator:
 
         metrics = defaultdict(list)
 
-        metrics[MetricType.Accuracy].append(
+        metrics[MetricType.Accuracy] = [
             Accuracy(
                 value=accuracy.tolist(),
                 score_thresholds=score_thresholds,
             )
-        )
+        ]
+
+        metrics[MetricType.ConfusionMatrix] = [
+            ConfusionMatrix(
+                confusion_matrix={
+                    self.index_to_label[gt_label_idx]: {
+                        self.index_to_label[pd_label_idx]: {
+                            "iou": ious[score_idx, gt_label_idx, pd_label_idx]
+                        }
+                        for pd_label_idx in range(self.n_labels)
+                    }
+                    for gt_label_idx in range(self.n_labels)
+                },
+                missing_predictions={
+                    self.index_to_label[gt_label_idx]: {
+                        "iou": missing_predictions[score_idx, gt_label_idx]
+                    }
+                    for gt_label_idx in range(self.n_labels)
+                },
+                score_threshold=score_threshold,
+            )
+            for score_idx, score_threshold in enumerate(score_thresholds)
+        ]
+
+        metrics[MetricType.mIoU] = [
+            mIoU(
+                value=ious.diagonal(axis1=1, axis2=2).mean(axis=1).tolist(),
+                score_thresholds=score_thresholds,
+            )
+        ]
 
         for label_idx, label in self.index_to_label.items():
 
@@ -256,10 +290,22 @@ class Evaluator:
                     **kwargs,
                 )
             )
+            metrics[MetricType.IoU].append(
+                IoU(
+                    value=ious[:, label_idx, label_idx].tolist(),
+                    **kwargs,
+                )
+            )
 
         for metric in set(metrics.keys()):
             if metric not in metrics_to_return:
                 del metrics[metric]
+
+        if as_dict:
+            return {
+                mtype: [metric.to_dict() for metric in mvalues]
+                for mtype, mvalues in metrics.items()
+            }
 
         return metrics
 
@@ -337,52 +383,59 @@ class DataLoader:
 
             # update metadata
             self._evaluator.n_datums += 1
+            self._evaluator.n_pixels += segmentation.size
             self._evaluator.n_groundtruths += len(segmentation.groundtruths)
             self._evaluator.n_predictions += len(segmentation.predictions)
 
             uid_index = self._add_datum(segmentation.uid)
 
-            combined_groundtruths = np.stack(
-                [
-                    groundtruth.mask
-                    for groundtruth in segmentation.groundtruths
-                ],
-                axis=0,
-            )
             combined_predictions = np.stack(
                 [prediction.mask for prediction in segmentation.predictions],
                 axis=0,
             )
-
-            classification = (
-                np.ones_like((1, 3, segmentation.size), dtype=np.floating) * -1
-            )
-            groundtruth_indices = np.argmax(combined_groundtruths, axis=0)
             prediction_indices = np.argmax(combined_predictions, axis=0)
 
+            pixel_classifications = (
+                np.ones((1, 3, segmentation.size), dtype=np.float64) * -1
+            )
+
+            groundtruth_labels = np.full(
+                segmentation.shape, fill_value=-1, dtype=np.int32
+            )
             for idx, groundtruth in enumerate(segmentation.groundtruths):
                 label_idx = self._add_label(groundtruth.label)
-                mask_pixels = groundtruth_indices == idx
                 self.groundtruth_count[label_idx][
                     uid_index
-                ] += mask_pixels.sum()
-                classification[0, 0, :][mask_pixels.flatten()] = label_idx
+                ] += groundtruth.mask.sum()
+                groundtruth_labels[groundtruth.mask] = label_idx
+            pixel_classifications[0, 0, :] = groundtruth_labels.flatten()
+
+            prediction_labels = np.full_like(groundtruth_labels, fill_value=-1)
+            scores = np.zeros_like(groundtruth_labels, dtype=np.float64)
             for idx, prediction in enumerate(segmentation.predictions):
                 label_idx = self._add_label(prediction.label)
                 mask_pixels = prediction_indices == idx
                 self.prediction_count[label_idx][
                     uid_index
                 ] += mask_pixels.sum()
-                classification[0, 1, :][mask_pixels.flatten()] = label_idx
-            classification[0, 2, :] = combined_predictions[prediction_indices]
+                prediction_labels[mask_pixels] = label_idx
+                scores[mask_pixels] = combined_predictions[idx][mask_pixels]
+            print(groundtruth_labels)
+            print("labels", prediction_labels)
+            print("scores", scores)
+            pixel_classifications[0, 1, :] = prediction_labels.flatten()
+            pixel_classifications[0, 2, :] = scores.flatten()
 
-            self._evaluator._classifications = np.concatenate(
-                [
-                    self._evaluator._classifications,
-                    classification,
-                ],
-                axis=0,
-            )
+            if self._evaluator._pixel_classifications.size == 0:
+                self._evaluator._pixel_classifications = pixel_classifications
+            else:
+                self._evaluator._pixel_classifications = np.concatenate(
+                    [
+                        self._evaluator._pixel_classifications,
+                        pixel_classifications,
+                    ],
+                    axis=0,
+                )
 
     def finalize(self) -> Evaluator:
         """
@@ -394,7 +447,7 @@ class DataLoader:
             A ready-to-use evaluator object.
         """
 
-        if self._evaluator._classifications.size == 0:
+        if self._evaluator._pixel_classifications.size == 0:
             raise ValueError("No data available to create evaluator.")
 
         n_datums = self._evaluator.n_datums

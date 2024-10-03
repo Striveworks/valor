@@ -12,7 +12,7 @@ class Bitmask:
 
 @dataclass
 class WeightedMask:
-    mask: NDArray[np.floating]
+    mask: NDArray[np.float64]
     label: str
 
 
@@ -35,7 +35,7 @@ class Segmentation:
         if (
             len(groundtruth_shape) != 1
             or len(prediction_shape) != 1
-            or groundtruth_shape == prediction_shape
+            or groundtruth_shape != prediction_shape
         ):
             raise ValueError(
                 "A shape mismatch exists within the segmentation."
@@ -44,9 +44,10 @@ class Segmentation:
         self.shape = groundtruth_shape.pop()
         self.size = int(np.prod(np.array(self.shape)))
 
-        combined_mask = np.concatenate(
-            [prediction.mask for prediction in self.predictions],
-            axis=0,
-        )
-        if not np.isclose(combined_mask.sum(axis=0), 1.0).all():
-            raise ValueError("Segmentation scores must sum to 1.0.")
+        # Not sure if this is a requirement, really hard for a user to guarantee
+        # combined_mask = np.concatenate(
+        #     [prediction.mask for prediction in self.predictions],
+        #     axis=0,
+        # )
+        # if not np.isclose(combined_mask.sum(axis=0), 1.0).all():
+        #     raise ValueError("Segmentation scores must sum to 1.0.")
