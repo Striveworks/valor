@@ -2,15 +2,60 @@ import numpy as np
 from numpy.typing import NDArray
 
 
+def compute_confusion_matrix(
+    groundtruths: NDArray[np.int32],
+    predictions: NDArray[np.int32],
+    n_labels: int,
+) -> NDArray[np.int32]:
+    """
+    Computes confusion matrix containing label counts.
+
+    Parameters
+    ----------
+    groundtruths : NDArray[np.int32]
+        A 2-D array containing labeled pixels.
+    predictions : NDArray[np.int32]
+        A 2-D array containing labeled pixels.
+    n_labels : int
+        The number of unique labels.
+
+    Returns
+    -------
+    NDArray[np.int32]
+        A 2-D confusion matrix with shape (n_labels + 1, n_labels + 1).
+    """
+
+    confusion_matrix = np.zeros((n_labels + 1, n_labels + 1), dtype=np.int32)
+
+    mask_no_groundtruth = groundtruths == -1
+    mask_no_predictions = predictions == -1
+
+    for gt_label_idx in range(n_labels):
+        mask_groundtruths = groundtruths == gt_label_idx
+        for pd_label_idx in range(n_labels):
+            mask_predictions = predictions == pd_label_idx
+            confusion_matrix[gt_label_idx + 1, pd_label_idx + 1] = (
+                mask_groundtruths & mask_predictions
+            ).sum()
+            if gt_label_idx == 0:
+                confusion_matrix[0, pd_label_idx + 1] = (
+                    mask_no_groundtruth & mask_predictions
+                ).sum()
+        confusion_matrix[gt_label_idx + 1, 0] = (
+            mask_no_predictions & mask_groundtruths
+        ).sum()
+
+    return confusion_matrix
+
+
 def compute_metrics(
     data: NDArray[np.float64],
-    score_thresholds: NDArray[np.float64],
     label_metadata: NDArray[np.int32],
 ) -> tuple[
     NDArray[np.float64],
     NDArray[np.float64],
     NDArray[np.float64],
-    NDArray[np.float64],
+    float,
     NDArray[np.float64],
     NDArray[np.float64],
 ]:
@@ -25,8 +70,6 @@ def compute_metrics(
         An containing segmentations.
     label_metadata : NDArray[np.int32]
         A 2-D array containing label metadata.
-    score_threhsolds : NDArray[np.int32]
-        A 1-D array containing score thresholds.
 
     Returns
     -------
@@ -44,67 +87,38 @@ def compute_metrics(
         Missing prediction ratios.
     """
     n_labels = label_metadata.shape[0]
-    n_scores = score_thresholds.shape[0]
 
-    groundtruth_labels = data[:, 0].astype(int)
-    prediction_labels = data[:, 1].astype(int)
-    prediction_scores = data[:, 2]
+    counts = data.sum(axis=0)
 
-    ious = np.zeros((n_scores, n_labels, n_labels), dtype=np.float64)
-    missing_predictions = np.zeros((n_scores, n_labels), dtype=np.float64)
+    ious = np.zeros((n_labels, n_labels), dtype=np.float64)
+    missing_predictions = np.zeros((n_labels), dtype=np.float64)
 
-    precision = np.zeros((n_scores, n_labels), dtype=np.float64)
-    recall = np.zeros_like(precision)
-    f1_score = np.zeros_like(precision)
-    accuracy = np.zeros((n_scores), dtype=np.float64)
+    true_prediction_count = 0
+    total_prediciton_count = 0
 
-    true_prediction_count = np.zeros_like(accuracy, dtype=np.int32)
-    total_prediciton_count = np.zeros_like(accuracy, dtype=np.int32)
+    gt_counts = counts.sum(axis=0)[1:]
+    pd_counts = counts.sum(axis=1)[1:]
+    tp_counts = counts.diagonal()[1:]
 
     for gt_label_idx in range(n_labels):
-
-        gt_count = label_metadata[gt_label_idx, 0]
-        mask_gt_label = groundtruth_labels == gt_label_idx
-
         for pd_label_idx in range(n_labels):
+            intersection_ = counts[gt_label_idx + 1, pd_label_idx + 1]
+            union_ = (
+                gt_counts[gt_label_idx]
+                + pd_counts[pd_label_idx]
+                - intersection_
+            )
+            ious[gt_label_idx, pd_label_idx] = (
+                intersection_ / union_ if union_ > 1e-9 else 0.0
+            )
 
-            mask_pd_label = prediction_labels == pd_label_idx
+    precision = np.zeros(n_labels, dtype=np.float64)
+    np.divide(tp_counts, pd_counts, where=pd_counts > 1e-9, out=precision)
 
-            for score_idx in range(n_scores):
+    recall = np.zeros_like(precision)
+    np.divide(tp_counts, gt_counts, where=gt_counts > 1e-9, out=recall)
 
-                if score_thresholds[score_idx] > 1e-9:
-                    mask_scores = (
-                        prediction_scores >= score_thresholds[score_idx]
-                    )
-                else:
-                    mask_scores = prediction_scores > 1e-9
-
-                mask_scored_pd_label = mask_scores & mask_pd_label
-                mask_intersection = mask_gt_label & mask_scored_pd_label
-
-                pd_count = mask_scored_pd_label.sum()
-                intersection_ = mask_intersection.sum()
-                union_ = gt_count + pd_count - intersection_
-
-                missing_predictions[score_idx, gt_label_idx] = (
-                    (gt_count - intersection_) / gt_count
-                    if gt_count > 1e-9
-                    else 0.0
-                )
-                ious[score_idx, gt_label_idx, pd_label_idx] = (
-                    intersection_ / union_ if union_ > 1e-9 else 0.0
-                )
-
-                if gt_label_idx == pd_label_idx:
-                    true_prediction_count[score_idx] += intersection_
-                    total_prediciton_count[score_idx] += pd_count
-                    precision[score_idx, pd_label_idx] = (
-                        (intersection_ / pd_count) if pd_count > 1e-9 else 0.0
-                    )
-                    recall[score_idx, gt_label_idx] = (
-                        (intersection_ / gt_count) if gt_count > 1e-9 else 0.0
-                    )
-
+    f1_score = np.zeros_like(precision)
     np.divide(
         2 * (precision * recall),
         (precision + recall),
@@ -112,11 +126,10 @@ def compute_metrics(
         out=f1_score,
     )
 
-    np.divide(
-        true_prediction_count,
-        total_prediciton_count,
-        where=total_prediciton_count > 1e-9,
-        out=accuracy,
+    accuracy = (
+        (true_prediction_count / total_prediciton_count)
+        if total_prediciton_count > 0
+        else 0.0
     )
 
     return (

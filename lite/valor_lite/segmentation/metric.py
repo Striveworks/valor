@@ -29,7 +29,6 @@ class MetricType(Enum):
 @dataclass
 class _ThresholdLabelValue:
     value: list[float]
-    score_thresholds: list[float]
     label: str
 
     @property
@@ -38,7 +37,6 @@ class _ThresholdLabelValue:
             type=type(self).__name__,
             value=self.value,
             parameters={
-                "score_thresholds": self.score_thresholds,
                 "label": self.label,
             },
         )
@@ -66,16 +64,13 @@ class IoU(_ThresholdLabelValue):
 @dataclass
 class _ThresholdValue:
     value: list[float]
-    score_thresholds: list[float]
 
     @property
     def metric(self) -> Metric:
         return Metric(
             type=type(self).__name__,
             value=self.value,
-            parameters={
-                "score_thresholds": self.score_thresholds,
-            },
+            parameters={},
         )
 
     def to_dict(self) -> dict:
@@ -103,7 +98,6 @@ class ConfusionMatrix:
         str,  # ground truth label value
         dict[str, float],  # iou
     ]
-    score_threshold: float
 
     @property
     def metric(self) -> Metric:
@@ -113,9 +107,7 @@ class ConfusionMatrix:
                 "confusion_matrix": self.confusion_matrix,
                 "missing_predictions": self.missing_predictions,
             },
-            parameters={
-                "score_threshold": self.score_threshold,
-            },
+            parameters={},
         )
 
     def to_dict(self) -> dict:
