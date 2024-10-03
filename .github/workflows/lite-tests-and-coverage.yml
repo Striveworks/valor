@@ -36,7 +36,21 @@ jobs:
       - name: run object detection tests and report coverage
         run: |
           pip install -e ".[test]"
-          COVERAGE_FILE=.coverage.functional python -m coverage run --omit "tests/*"  -m pytest -v tests/detection/
+          COVERAGE_FILE=.coverage.detection python -m coverage run --omit "tests/*"  -m pytest -v tests/detection/
+          python -m coverage combine
+          python -m coverage report -m
+          python -m coverage json
+          export TOTAL=$(python -c "import json;print(json.load(open('coverage.json'))['totals']['percent_covered_display'])")
+          echo "total=$TOTAL" >> $GITHUB_ENV
+          if (( $TOTAL < 90 )); then
+            echo "Coverage is below 90%"
+            exit 1
+          fi
+        working-directory: ./lite
+      - name: run semantic segmentation tests and report coverage
+        run: |
+          pip install -e ".[test]"
+          COVERAGE_FILE=.coverage.segmentation python -m coverage run --omit "tests/*"  -m pytest -v tests/segmentation/
           python -m coverage combine
           python -m coverage report -m
           python -m coverage json
