@@ -35,7 +35,7 @@ class Counts:
     tn: list[int]
     score_thresholds: list[float]
     hardmax: bool
-    label: tuple[str, str]
+    label: str
 
     @property
     def metric(self) -> Metric:
@@ -50,10 +50,7 @@ class Counts:
             parameters={
                 "score_thresholds": self.score_thresholds,
                 "hardmax": self.hardmax,
-                "label": {
-                    "key": self.label[0],
-                    "value": self.label[1],
-                },
+                "label": self.label,
             },
         )
 
@@ -66,7 +63,7 @@ class _ThresholdValue:
     value: list[float]
     score_thresholds: list[float]
     hardmax: bool
-    label: tuple[str, str]
+    label: str
 
     @property
     def metric(self) -> Metric:
@@ -76,10 +73,7 @@ class _ThresholdValue:
             parameters={
                 "score_thresholds": self.score_thresholds,
                 "hardmax": self.hardmax,
-                "label": {
-                    "key": self.label[0],
-                    "value": self.label[1],
-                },
+                "label": self.label,
             },
         )
 
@@ -106,19 +100,14 @@ class F1(_ThresholdValue):
 @dataclass
 class ROCAUC:
     value: float
-    label: tuple[str, str]
+    label: str
 
     @property
     def metric(self) -> Metric:
         return Metric(
             type=type(self).__name__,
             value=self.value,
-            parameters={
-                "label": {
-                    "key": self.label[0],
-                    "value": self.label[1],
-                },
-            },
+            parameters={"label": self.label},
         )
 
     def to_dict(self) -> dict:
@@ -128,16 +117,13 @@ class ROCAUC:
 @dataclass
 class mROCAUC:
     value: float
-    label_key: str
 
     @property
     def metric(self) -> Metric:
         return Metric(
             type=type(self).__name__,
             value=self.value,
-            parameters={
-                "label_key": self.label_key,
-            },
+            parameters={},
         )
 
     def to_dict(self) -> dict:
@@ -170,7 +156,6 @@ class ConfusionMatrix:
         ],
     ]
     score_threshold: float
-    label_key: str
     number_of_examples: int
 
     @property
@@ -183,7 +168,6 @@ class ConfusionMatrix:
             },
             parameters={
                 "score_threshold": self.score_threshold,
-                "label_key": self.label_key,
             },
         )
 
