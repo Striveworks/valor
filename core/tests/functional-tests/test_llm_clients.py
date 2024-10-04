@@ -1339,6 +1339,8 @@ def test_LLMClient_retries(monkeypatch):
     def _return_valid_summary_coherence_response(*args, **kwargs):
         return "5"
 
+    errors = ["The score is 5."] * 3 + ["5"]
+
     def _return_invalid_summary_coherence_response(*args, **kwargs):
         return "The score is 5."
 
@@ -1360,7 +1362,6 @@ def test_LLMClient_retries(monkeypatch):
     assert 5 == client.summary_coherence("some text", "some summary")
 
     # mock_method returns a bad response three times but on the fourth call returns a valid response.
-    errors = ["The score is 5."] * 3 + ["5"]
     monkeypatch.setattr(
         "valor_core.llm_clients.LLMClient.__call__",
         Mock(side_effect=errors),
@@ -1369,7 +1370,6 @@ def test_LLMClient_retries(monkeypatch):
     assert 5 == client.summary_coherence("some text", "some summary")
 
     # Test with retries=2 and invalid response
-    errors = ["The score is 5."] * 3 + ["5"]
     monkeypatch.setattr(
         "valor_core.llm_clients.LLMClient.__call__",
         Mock(side_effect=errors),
@@ -1391,6 +1391,46 @@ def test_LLMClient_retries(monkeypatch):
     # Test with retries=3 and invalid response
     with pytest.raises(InvalidLLMResponseError):
         client = LLMClient(api_key=None, model_name="model_name", retries=3)
+        client.summary_coherence("some text", "some summary")
+
+    # Test WrappedOpenAIClient
+    monkeypatch.setattr(
+        "valor_core.llm_clients.WrappedOpenAIClient.__call__",
+        Mock(side_effect=errors),
+    )
+    client = WrappedOpenAIClient(
+        api_key=None, model_name="model_name", retries=3
+    )
+    assert 5 == client.summary_coherence("some text", "some summary")
+
+    with pytest.raises(InvalidLLMResponseError):
+        monkeypatch.setattr(
+            "valor_core.llm_clients.WrappedOpenAIClient.__call__",
+            Mock(side_effect=errors),
+        )
+        client = WrappedOpenAIClient(
+            api_key=None, model_name="model_name", retries=2
+        )
+        client.summary_coherence("some text", "some summary")
+
+    # Test WrappedMistralAIClient
+    monkeypatch.setattr(
+        "valor_core.llm_clients.WrappedMistralAIClient.__call__",
+        Mock(side_effect=errors),
+    )
+    client = WrappedMistralAIClient(
+        api_key=None, model_name="model_name", retries=3
+    )
+    assert 5 == client.summary_coherence("some text", "some summary")
+
+    with pytest.raises(InvalidLLMResponseError):
+        monkeypatch.setattr(
+            "valor_core.llm_clients.WrappedMistralAIClient.__call__",
+            Mock(side_effect=errors),
+        )
+        client = WrappedMistralAIClient(
+            api_key=None, model_name="model_name", retries=2
+        )
         client.summary_coherence("some text", "some summary")
 
 
