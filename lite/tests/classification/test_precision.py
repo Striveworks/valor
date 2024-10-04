@@ -77,10 +77,7 @@ def test_precision_basic(basic_classifications: list[Classification]):
         "n_groundtruths": 3,
         "n_predictions": 12,
         "n_labels": 4,
-        "ignored_prediction_labels": [
-            ("class", "1"),
-            ("class", "2"),
-        ],
+        "ignored_prediction_labels": ["1", "2"],
         "missing_prediction_labels": [],
     }
 
@@ -89,7 +86,6 @@ def test_precision_basic(basic_classifications: list[Classification]):
         as_dict=True,
     )
 
-    # test Precision
     actual_metrics = [m for m in metrics[MetricType.Precision]]
     expected_metrics = [
         {
@@ -98,7 +94,7 @@ def test_precision_basic(basic_classifications: list[Classification]):
             "parameters": {
                 "score_thresholds": [0.25, 0.75],
                 "hardmax": True,
-                "label": {"key": "class", "value": "0"},
+                "label": "0",
             },
         },
         {
@@ -107,7 +103,7 @@ def test_precision_basic(basic_classifications: list[Classification]):
             "parameters": {
                 "score_thresholds": [0.25, 0.75],
                 "hardmax": True,
-                "label": {"key": "class", "value": "3"},
+                "label": "3",
             },
         },
     ]
@@ -117,11 +113,11 @@ def test_precision_basic(basic_classifications: list[Classification]):
         assert m in actual_metrics
 
 
-def test_precision_with_example(
-    classifications_two_categories: list[Classification],
+def test_precision_with_animal_example(
+    classifications_animal_example: list[Classification],
 ):
     loader = DataLoader()
-    loader.add_data(classifications_two_categories)
+    loader.add_data(classifications_animal_example)
     evaluator = loader.finalize()
 
     metrics = evaluator.evaluate(
@@ -129,7 +125,6 @@ def test_precision_with_example(
         as_dict=True,
     )
 
-    # test Precision
     actual_metrics = [m for m in metrics[MetricType.Precision]]
     expected_metrics = [
         {
@@ -138,7 +133,7 @@ def test_precision_with_example(
             "parameters": {
                 "score_thresholds": [0.0, 0.5],
                 "hardmax": True,
-                "label": {"key": "animal", "value": "bird"},
+                "label": "bird",
             },
         },
         {
@@ -147,7 +142,7 @@ def test_precision_with_example(
             "parameters": {
                 "score_thresholds": [0.0, 0.5],
                 "hardmax": True,
-                "label": {"key": "animal", "value": "dog"},
+                "label": "dog",
             },
         },
         {
@@ -156,16 +151,37 @@ def test_precision_with_example(
             "parameters": {
                 "score_thresholds": [0.0, 0.5],
                 "hardmax": True,
-                "label": {"key": "animal", "value": "cat"},
+                "label": "cat",
             },
         },
+    ]
+    for m in actual_metrics:
+        assert m in expected_metrics
+    for m in expected_metrics:
+        assert m in actual_metrics
+
+
+def test_precision_with_color_example(
+    classifications_color_example: list[Classification],
+):
+    loader = DataLoader()
+    loader.add_data(classifications_color_example)
+    evaluator = loader.finalize()
+
+    metrics = evaluator.evaluate(
+        score_thresholds=[0.0, 0.5],
+        as_dict=True,
+    )
+
+    actual_metrics = [m for m in metrics[MetricType.Precision]]
+    expected_metrics = [
         {
             "type": "Precision",
             "value": [0.5, 0.5],
             "parameters": {
                 "score_thresholds": [0.0, 0.5],
                 "hardmax": True,
-                "label": {"key": "color", "value": "white"},
+                "label": "white",
             },
         },
         {
@@ -174,7 +190,7 @@ def test_precision_with_example(
             "parameters": {
                 "score_thresholds": [0.0, 0.5],
                 "hardmax": True,
-                "label": {"key": "color", "value": "red"},
+                "label": "red",
             },
         },
         {
@@ -183,7 +199,7 @@ def test_precision_with_example(
             "parameters": {
                 "score_thresholds": [0.0, 0.5],
                 "hardmax": True,
-                "label": {"key": "color", "value": "blue"},
+                "label": "blue",
             },
         },
         {
@@ -192,7 +208,7 @@ def test_precision_with_example(
             "parameters": {
                 "score_thresholds": [0.0, 0.5],
                 "hardmax": True,
-                "label": {"key": "color", "value": "black"},
+                "label": "black",
             },
         },
     ]
@@ -210,26 +226,16 @@ def test_precision_with_image_example(
     evaluator = loader.finalize()
 
     assert evaluator.metadata == {
-        "n_datums": 3,
-        "n_groundtruths": 4,
-        "n_predictions": 6,
-        "n_labels": 8,
-        "ignored_prediction_labels": [
-            ("k4", "v1"),
-            ("k4", "v8"),
-            ("k5", "v1"),
-            ("k4", "v5"),
-            ("k3", "v1"),
-        ],
-        "missing_prediction_labels": [
-            ("k5", "v5"),
-            ("k3", "v3"),
-        ],
+        "n_datums": 2,
+        "n_groundtruths": 2,
+        "n_predictions": 4,
+        "n_labels": 4,
+        "ignored_prediction_labels": ["v1", "v8", "v5"],
+        "missing_prediction_labels": [],
     }
 
     metrics = evaluator.evaluate(as_dict=True)
 
-    # test Precision
     actual_metrics = [m for m in metrics[MetricType.Precision]]
     expected_metrics = [
         {
@@ -238,25 +244,7 @@ def test_precision_with_image_example(
             "parameters": {
                 "score_thresholds": [0.0],
                 "hardmax": True,
-                "label": {"key": "k4", "value": "v4"},
-            },
-        },
-        {
-            "type": "Precision",
-            "value": [0.0],
-            "parameters": {
-                "score_thresholds": [0.0],
-                "hardmax": True,
-                "label": {"key": "k5", "value": "v5"},
-            },
-        },
-        {
-            "type": "Precision",
-            "value": [0.0],
-            "parameters": {
-                "score_thresholds": [0.0],
-                "hardmax": True,
-                "label": {"key": "k3", "value": "v3"},
+                "label": "v4",
             },
         },
     ]
@@ -284,7 +272,6 @@ def test_precision_with_tabular_example(
 
     metrics = evaluator.evaluate(as_dict=True)
 
-    # test Precision
     actual_metrics = [m for m in metrics[MetricType.Precision]]
     expected_metrics = [
         {
@@ -293,7 +280,7 @@ def test_precision_with_tabular_example(
             "parameters": {
                 "score_thresholds": [0.0],
                 "hardmax": True,
-                "label": {"key": "class", "value": "0"},
+                "label": "0",
             },
         },
         {
@@ -302,7 +289,7 @@ def test_precision_with_tabular_example(
             "parameters": {
                 "score_thresholds": [0.0],
                 "hardmax": True,
-                "label": {"key": "class", "value": "1"},
+                "label": "1",
             },
         },
         {
@@ -311,7 +298,7 @@ def test_precision_with_tabular_example(
             "parameters": {
                 "score_thresholds": [0.0],
                 "hardmax": True,
-                "label": {"key": "class", "value": "2"},
+                "label": "2",
             },
         },
     ]

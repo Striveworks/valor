@@ -7,24 +7,14 @@ def _compute_rocauc(
     label_metadata: NDArray[np.int32],
     n_datums: int,
     n_labels: int,
-    n_label_keys: int,
     mask_matching_labels: NDArray[np.bool_],
     pd_labels: NDArray[np.int32],
 ):
     """
     Compute ROCAUC and mean ROCAUC.
     """
-    count_labels_per_key = np.bincount(label_metadata[:, 2])
-    count_groundtruths_per_key = np.bincount(
-        label_metadata[:, 2],
-        weights=label_metadata[:, 0],
-        minlength=n_label_keys,
-    )
-
     positive_count = label_metadata[:, 0]
-    negative_count = (
-        count_groundtruths_per_key[label_metadata[:, 2]] - label_metadata[:, 0]
-    )
+    negative_count = label_metadata[:, 1] - label_metadata[:, 0]
 
     true_positives = np.zeros((n_labels, n_datums), dtype=np.int32)
     false_positives = np.zeros_like(true_positives)
@@ -35,7 +25,6 @@ def _compute_rocauc(
             continue
 
         mask_pds = pd_labels == label_idx
-
         true_positives[label_idx] = mask_matching_labels[mask_pds]
         false_positives[label_idx] = ~mask_matching_labels[mask_pds]
         scores[label_idx] = data[mask_pds, 3]
@@ -70,14 +59,7 @@ def _compute_rocauc(
     rocauc = np.trapz(x=fpr, y=tpr, axis=1)  # type: ignore - numpy will be switching to `trapezoid` in the future.
 
     # compute mean rocauc
-    summed_rocauc = np.bincount(label_metadata[:, 2], weights=rocauc)
-    mean_rocauc = np.zeros(n_label_keys, dtype=np.float64)
-    np.divide(
-        summed_rocauc,
-        count_labels_per_key,
-        where=count_labels_per_key > 1e-9,
-        out=mean_rocauc,
-    )
+    mean_rocauc = sum(rocauc) / n_labels
 
     return rocauc, mean_rocauc
 
@@ -95,7 +77,7 @@ def compute_metrics(
     NDArray[np.floating],
     NDArray[np.floating],
     NDArray[np.floating],
-    NDArray[np.floating],
+    float,
 ]:
     """
     Computes classification metrics.
@@ -117,7 +99,7 @@ def compute_metrics(
     score_thresholds : NDArray[np.floating]
         A 1-D array contains score thresholds to compute metrics over.
     hardmax : bool
-        Option to only allow a single positive prediction per label key.
+        Option to only allow a single positive prediction.
     n_datums : int
         The number of datums being operated over.
 
@@ -135,12 +117,11 @@ def compute_metrics(
         F1 Score
     NDArray[np.floating]
         ROCAUC.
-    NDArray[np.floating]
+    float
         mROCAUC.
     """
 
     n_labels = label_metadata.shape[0]
-    n_label_keys = np.unique(label_metadata[:, 2]).size
     n_scores = score_thresholds.shape[0]
 
     pd_labels = data[:, 2].astype(int)
@@ -155,7 +136,6 @@ def compute_metrics(
         label_metadata=label_metadata,
         n_datums=n_datums,
         n_labels=n_labels,
-        n_label_keys=n_label_keys,
         mask_matching_labels=mask_matching_labels,
         pd_labels=pd_labels,
     )
@@ -273,7 +253,6 @@ def compute_confusion_matrix(
     hardmax: bool,
     n_examples: int,
 ) -> tuple[NDArray[np.floating], NDArray[np.int32]]:
-
     """
     Compute detailed confusion matrix.
 

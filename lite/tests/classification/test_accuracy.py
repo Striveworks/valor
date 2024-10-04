@@ -77,16 +77,12 @@ def test_accuracy_basic(basic_classifications: list[Classification]):
         "n_groundtruths": 3,
         "n_predictions": 12,
         "n_labels": 4,
-        "ignored_prediction_labels": [
-            ("class", "1"),
-            ("class", "2"),
-        ],
+        "ignored_prediction_labels": ["1", "2"],
         "missing_prediction_labels": [],
     }
 
     metrics = evaluator.evaluate(score_thresholds=[0.25, 0.75], as_dict=True)
 
-    # test Accuracy
     actual_metrics = [m for m in metrics[MetricType.Accuracy]]
     expected_metrics = [
         {
@@ -95,7 +91,7 @@ def test_accuracy_basic(basic_classifications: list[Classification]):
             "parameters": {
                 "score_thresholds": [0.25, 0.75],
                 "hardmax": True,
-                "label": {"key": "class", "value": "0"},
+                "label": "0",
             },
         },
         {
@@ -104,7 +100,7 @@ def test_accuracy_basic(basic_classifications: list[Classification]):
             "parameters": {
                 "score_thresholds": [0.25, 0.75],
                 "hardmax": True,
-                "label": {"key": "class", "value": "3"},
+                "label": "3",
             },
         },
     ]
@@ -114,17 +110,16 @@ def test_accuracy_basic(basic_classifications: list[Classification]):
         assert m in actual_metrics
 
 
-def test_accuracy_with_example(
-    classifications_two_categories: list[Classification],
+def test_accuracy_with_animal_example(
+    classifications_animal_example: list[Classification],
 ):
 
     loader = DataLoader()
-    loader.add_data(classifications_two_categories)
+    loader.add_data(classifications_animal_example)
     evaluator = loader.finalize()
 
     metrics = evaluator.evaluate(score_thresholds=[0.5], as_dict=True)
 
-    # test Accuracy
     actual_metrics = [m for m in metrics[MetricType.Accuracy]]
     expected_metrics = [
         {
@@ -133,7 +128,7 @@ def test_accuracy_with_example(
             "parameters": {
                 "score_thresholds": [0.5],
                 "hardmax": True,
-                "label": {"key": "animal", "value": "bird"},
+                "label": "bird",
             },
         },
         {
@@ -142,7 +137,7 @@ def test_accuracy_with_example(
             "parameters": {
                 "score_thresholds": [0.5],
                 "hardmax": True,
-                "label": {"key": "animal", "value": "dog"},
+                "label": "dog",
             },
         },
         {
@@ -151,43 +146,7 @@ def test_accuracy_with_example(
             "parameters": {
                 "score_thresholds": [0.5],
                 "hardmax": True,
-                "label": {"key": "animal", "value": "cat"},
-            },
-        },
-        {
-            "type": "Accuracy",
-            "value": [2 / 3],
-            "parameters": {
-                "score_thresholds": [0.5],
-                "hardmax": True,
-                "label": {"key": "color", "value": "white"},
-            },
-        },
-        {
-            "type": "Accuracy",
-            "value": [2 / 3],
-            "parameters": {
-                "score_thresholds": [0.5],
-                "hardmax": True,
-                "label": {"key": "color", "value": "red"},
-            },
-        },
-        {
-            "type": "Accuracy",
-            "value": [2 / 3],
-            "parameters": {
-                "score_thresholds": [0.5],
-                "hardmax": True,
-                "label": {"key": "color", "value": "blue"},
-            },
-        },
-        {
-            "type": "Accuracy",
-            "value": [5 / 6],
-            "parameters": {
-                "score_thresholds": [0.5],
-                "hardmax": True,
-                "label": {"key": "color", "value": "black"},
+                "label": "cat",
             },
         },
     ]
@@ -197,7 +156,62 @@ def test_accuracy_with_example(
         assert m in actual_metrics
 
 
-def test_accuracy_with_image_example(
+def test_accuracy_color_example(
+    classifications_color_example: list[Classification],
+):
+
+    loader = DataLoader()
+    loader.add_data(classifications_color_example)
+    evaluator = loader.finalize()
+
+    metrics = evaluator.evaluate(score_thresholds=[0.5], as_dict=True)
+
+    actual_metrics = [m for m in metrics[MetricType.Accuracy]]
+    expected_metrics = [
+        {
+            "type": "Accuracy",
+            "value": [2 / 3],
+            "parameters": {
+                "score_thresholds": [0.5],
+                "hardmax": True,
+                "label": "white",
+            },
+        },
+        {
+            "type": "Accuracy",
+            "value": [2 / 3],
+            "parameters": {
+                "score_thresholds": [0.5],
+                "hardmax": True,
+                "label": "red",
+            },
+        },
+        {
+            "type": "Accuracy",
+            "value": [2 / 3],
+            "parameters": {
+                "score_thresholds": [0.5],
+                "hardmax": True,
+                "label": "blue",
+            },
+        },
+        {
+            "type": "Accuracy",
+            "value": [5 / 6],
+            "parameters": {
+                "score_thresholds": [0.5],
+                "hardmax": True,
+                "label": "black",
+            },
+        },
+    ]
+    for m in actual_metrics:
+        assert m in expected_metrics
+    for m in expected_metrics:
+        assert m in actual_metrics
+
+
+def test_accuracy_with_image_example(  # TODO add comment about the deleted data here
     classifications_image_example: list[Classification],
 ):
     loader = DataLoader()
@@ -205,53 +219,25 @@ def test_accuracy_with_image_example(
     evaluator = loader.finalize()
 
     assert evaluator.metadata == {
-        "n_datums": 3,
-        "n_groundtruths": 4,
-        "n_predictions": 6,
-        "n_labels": 8,
-        "ignored_prediction_labels": [
-            ("k4", "v1"),
-            ("k4", "v8"),
-            ("k5", "v1"),
-            ("k4", "v5"),
-            ("k3", "v1"),
-        ],
-        "missing_prediction_labels": [
-            ("k5", "v5"),
-            ("k3", "v3"),
-        ],
+        "n_datums": 2,
+        "n_groundtruths": 2,
+        "n_predictions": 4,
+        "n_labels": 4,
+        "ignored_prediction_labels": ["v1", "v8", "v5"],
+        "missing_prediction_labels": [],
     }
 
     metrics = evaluator.evaluate(as_dict=True)
 
-    # test Accuracy
     actual_metrics = [m for m in metrics[MetricType.Accuracy]]
     expected_metrics = [
         {
             "type": "Accuracy",
-            "value": [0.3333333333333333],
+            "value": [0.5],  # TODO add comment about the bug here
             "parameters": {
                 "score_thresholds": [0.0],
                 "hardmax": True,
-                "label": {"key": "k4", "value": "v4"},
-            },
-        },
-        {
-            "type": "Accuracy",
-            "value": [0.0],
-            "parameters": {
-                "score_thresholds": [0.0],
-                "hardmax": True,
-                "label": {"key": "k5", "value": "v5"},
-            },
-        },
-        {
-            "type": "Accuracy",
-            "value": [0.0],
-            "parameters": {
-                "score_thresholds": [0.0],
-                "hardmax": True,
-                "label": {"key": "k3", "value": "v3"},
+                "label": "v4",
             },
         },
     ]
@@ -279,7 +265,6 @@ def test_accuracy_with_tabular_example(
 
     metrics = evaluator.evaluate(as_dict=True)
 
-    # test Accuracy
     actual_metrics = [m for m in metrics[MetricType.Accuracy]]
     expected_metrics = [
         {
@@ -288,7 +273,7 @@ def test_accuracy_with_tabular_example(
             "parameters": {
                 "score_thresholds": [0.0],
                 "hardmax": True,
-                "label": {"key": "class", "value": "0"},
+                "label": "0",
             },
         },
         {
@@ -297,7 +282,7 @@ def test_accuracy_with_tabular_example(
             "parameters": {
                 "score_thresholds": [0.0],
                 "hardmax": True,
-                "label": {"key": "class", "value": "1"},
+                "label": "1",
             },
         },
         {
@@ -306,7 +291,7 @@ def test_accuracy_with_tabular_example(
             "parameters": {
                 "score_thresholds": [0.0],
                 "hardmax": True,
-                "label": {"key": "class", "value": "2"},
+                "label": "2",
             },
         },
     ]

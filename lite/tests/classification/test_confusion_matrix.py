@@ -110,10 +110,7 @@ def test_confusion_matrix_basic(basic_classifications: list[Classification]):
         "n_groundtruths": 3,
         "n_predictions": 12,
         "n_labels": 4,
-        "ignored_prediction_labels": [
-            ("class", "1"),
-            ("class", "2"),
-        ],
+        "ignored_prediction_labels": ["1", "2"],
         "missing_prediction_labels": [],
     }
 
@@ -124,7 +121,6 @@ def test_confusion_matrix_basic(basic_classifications: list[Classification]):
         as_dict=True,
     )
 
-    # test ConfusionMatrix
     actual_metrics = [m for m in metrics[MetricType.ConfusionMatrix]]
     expected_metrics = [
         {
@@ -152,7 +148,7 @@ def test_confusion_matrix_basic(basic_classifications: list[Classification]):
                 },
                 "missing_predictions": {},
             },
-            "parameters": {"score_threshold": 0.25, "label_key": "class"},
+            "parameters": {"score_threshold": 0.25},
         },
         {
             "type": "ConfusionMatrix",
@@ -173,7 +169,7 @@ def test_confusion_matrix_basic(basic_classifications: list[Classification]):
                     "3": {"count": 1, "examples": [{"datum": "uid2"}]}
                 },
             },
-            "parameters": {"score_threshold": 0.75, "label_key": "class"},
+            "parameters": {"score_threshold": 0.75},
         },
     ]
     for m in actual_metrics:
@@ -200,7 +196,6 @@ def test_confusion_matrix_unit(
         as_dict=True,
     )
 
-    # test ConfusionMatrix
     actual_metrics = [m for m in metrics[MetricType.ConfusionMatrix]]
     expected_metrics = [
         {
@@ -217,7 +212,7 @@ def test_confusion_matrix_unit(
                 },
                 "missing_predictions": {},
             },
-            "parameters": {"score_threshold": 0.5, "label_key": "class"},
+            "parameters": {"score_threshold": 0.5},
         },
     ]
     for m in actual_metrics:
@@ -230,12 +225,12 @@ def test_confusion_matrix_unit(
         assert m in actual_metrics
 
 
-def test_confusion_matrix_with_example(
-    classifications_two_categories: list[Classification],
+def test_confusion_matrix_with_animal_example(
+    classifications_animal_example: list[Classification],
 ):
 
     loader = DataLoader()
-    loader.add_data(classifications_two_categories)
+    loader.add_data(classifications_animal_example)
     evaluator = loader.finalize()
 
     metrics = evaluator.evaluate(
@@ -245,7 +240,6 @@ def test_confusion_matrix_with_example(
         as_dict=True,
     )
 
-    # test ConfusionMatrix
     actual_metrics = [m for m in metrics[MetricType.ConfusionMatrix]]
     expected_metrics = [
         {
@@ -289,8 +283,36 @@ def test_confusion_matrix_with_example(
                     "dog": {"count": 1, "examples": [{"datum": "uid5"}]}
                 },
             },
-            "parameters": {"score_threshold": 0.5, "label_key": "animal"},
+            "parameters": {"score_threshold": 0.5},
         },
+    ]
+    for m in actual_metrics:
+        _filter_elements_with_zero_count(
+            cm=m["value"]["confusion_matrix"],
+            mp=m["value"]["missing_predictions"],
+        )
+        assert m in expected_metrics
+    for m in expected_metrics:
+        assert m in actual_metrics
+
+
+def test_confusion_matrix_with_color_example(
+    classifications_color_example: list[Classification],
+):
+
+    loader = DataLoader()
+    loader.add_data(classifications_color_example)
+    evaluator = loader.finalize()
+
+    metrics = evaluator.evaluate(
+        metrics_to_return=[MetricType.ConfusionMatrix],
+        score_thresholds=[0.5],
+        number_of_examples=6,
+        as_dict=True,
+    )
+
+    actual_metrics = [m for m in metrics[MetricType.ConfusionMatrix]]
+    expected_metrics = [
         {
             "type": "ConfusionMatrix",
             "value": {
@@ -334,7 +356,7 @@ def test_confusion_matrix_with_example(
                     "red": {"count": 1, "examples": [{"datum": "uid2"}]}
                 },
             },
-            "parameters": {"score_threshold": 0.5, "label_key": "color"},
+            "parameters": {"score_threshold": 0.5},
         },
     ]
     for m in actual_metrics:
@@ -370,7 +392,6 @@ def test_confusion_matrix_multiclass(
         as_dict=True,
     )
 
-    # test ConfusionMatrix
     actual_metrics = [m for m in metrics[MetricType.ConfusionMatrix]]
     expected_metrics = [
         {
@@ -416,7 +437,6 @@ def test_confusion_matrix_multiclass(
             },
             "parameters": {
                 "score_threshold": 0.05,
-                "label_key": "class_label",
             },
         },
         {
@@ -448,7 +468,7 @@ def test_confusion_matrix_multiclass(
                     "bee": {"count": 1, "examples": [{"datum": "uid1"}]},
                 },
             },
-            "parameters": {"score_threshold": 0.5, "label_key": "class_label"},
+            "parameters": {"score_threshold": 0.5},
         },
         {
             "type": "ConfusionMatrix",
@@ -468,7 +488,6 @@ def test_confusion_matrix_multiclass(
             },
             "parameters": {
                 "score_threshold": 0.85,
-                "label_key": "class_label",
             },
         },
     ]
@@ -482,25 +501,22 @@ def test_confusion_matrix_multiclass(
         assert m in actual_metrics
 
 
-def test_confusion_matrix_without_hardmax(
-    classifications_multiclass_true_negatives_check: list[Classification],
+def test_confusion_matrix_without_hardmax_animal_example(
+    classifications_multiclass_true_negatives_check_animals: list[
+        Classification
+    ],
 ):
     loader = DataLoader()
-    loader.add_data(classifications_multiclass_true_negatives_check)
+    loader.add_data(classifications_multiclass_true_negatives_check_animals)
     evaluator = loader.finalize()
 
     assert evaluator.metadata == {
-        "ignored_prediction_labels": [
-            ("k1", "bee"),
-            ("k1", "cat"),
-            ("k2", "milk"),
-            ("k2", "flour"),
-        ],
+        "n_datums": 1,
+        "n_groundtruths": 1,
+        "n_predictions": 3,
+        "n_labels": 3,
+        "ignored_prediction_labels": ["bee", "cat"],
         "missing_prediction_labels": [],
-        "n_datums": 2,
-        "n_groundtruths": 2,
-        "n_labels": 6,
-        "n_predictions": 6,
     }
 
     metrics = evaluator.evaluate(
@@ -511,7 +527,6 @@ def test_confusion_matrix_without_hardmax(
         as_dict=True,
     )
 
-    # test ConfusionMatrix
     actual_metrics = [m for m in metrics[MetricType.ConfusionMatrix]]
     expected_metrics = [
         {
@@ -541,7 +556,7 @@ def test_confusion_matrix_without_hardmax(
                 },
                 "missing_predictions": {},
             },
-            "parameters": {"score_threshold": 0.05, "label_key": "k1"},
+            "parameters": {"score_threshold": 0.05},
         },
         {
             "type": "ConfusionMatrix",
@@ -558,7 +573,7 @@ def test_confusion_matrix_without_hardmax(
                 },
                 "missing_predictions": {},
             },
-            "parameters": {"score_threshold": 0.4, "label_key": "k1"},
+            "parameters": {"score_threshold": 0.4},
         },
         {
             "type": "ConfusionMatrix",
@@ -575,8 +590,48 @@ def test_confusion_matrix_without_hardmax(
                     }
                 },
             },
-            "parameters": {"score_threshold": 0.5, "label_key": "k1"},
+            "parameters": {"score_threshold": 0.5},
         },
+    ]
+    for m in actual_metrics:
+        _filter_elements_with_zero_count(
+            cm=m["value"]["confusion_matrix"],
+            mp=m["value"]["missing_predictions"],
+        )
+        assert m in expected_metrics
+    for m in expected_metrics:
+        assert m in actual_metrics
+
+
+def test_confusion_matrix_without_hardmax_ingredient_example(
+    classifications_multiclass_true_negatives_check_ingredients: list[
+        Classification
+    ],
+):
+    loader = DataLoader()
+    loader.add_data(
+        classifications_multiclass_true_negatives_check_ingredients
+    )
+    evaluator = loader.finalize()
+
+    assert evaluator.metadata == {
+        "n_datums": 1,
+        "n_groundtruths": 1,
+        "n_predictions": 3,
+        "n_labels": 3,
+        "ignored_prediction_labels": ["milk", "flour"],
+        "missing_prediction_labels": [],
+    }
+    metrics = evaluator.evaluate(
+        metrics_to_return=[MetricType.ConfusionMatrix],
+        score_thresholds=[0.05, 0.4, 0.5],
+        number_of_examples=6,
+        hardmax=False,
+        as_dict=True,
+    )
+
+    actual_metrics = [m for m in metrics[MetricType.ConfusionMatrix]]
+    expected_metrics = [
         {
             "type": "ConfusionMatrix",
             "value": {
@@ -604,7 +659,7 @@ def test_confusion_matrix_without_hardmax(
                 },
                 "missing_predictions": {},
             },
-            "parameters": {"score_threshold": 0.05, "label_key": "k2"},
+            "parameters": {"score_threshold": 0.05},
         },
         {
             "type": "ConfusionMatrix",
@@ -621,7 +676,7 @@ def test_confusion_matrix_without_hardmax(
                 },
                 "missing_predictions": {},
             },
-            "parameters": {"score_threshold": 0.4, "label_key": "k2"},
+            "parameters": {"score_threshold": 0.4},
         },
         {
             "type": "ConfusionMatrix",
@@ -638,7 +693,7 @@ def test_confusion_matrix_without_hardmax(
                     }
                 },
             },
-            "parameters": {"score_threshold": 0.5, "label_key": "k2"},
+            "parameters": {"score_threshold": 0.5},
         },
     ]
     for m in actual_metrics:

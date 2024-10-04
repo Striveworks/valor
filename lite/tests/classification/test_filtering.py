@@ -46,17 +46,14 @@ def generate_random_classifications(
     n_classifications: int, n_categories: int, n_labels: int
 ) -> list[Classification]:
 
-    labels = [
-        [(str(key), str(value)) for value in range(n_labels)]
-        for key in range(n_categories)
-    ]
+    labels = [str(value) for value in range(n_labels)]
 
     return [
         Classification(
             uid=f"uid{i}",
-            groundtruths=[choice(category) for category in labels],
-            predictions=[label for category in labels for label in category],
-            scores=[uniform(0, 1) for _ in range(n_labels * n_categories)],
+            groundtruths=[choice(labels)],
+            predictions=labels,
+            scores=[uniform(0, 1) for _ in range(n_labels)],
         )
         for i in range(n_classifications)
     ]
@@ -98,7 +95,26 @@ def test_filtering_one_classification(
 
     assert (
         evaluator._label_metadata
-        == np.array([[1, 1, 0], [0, 1, 0], [0, 1, 0], [0, 1, 0]])
+        == np.array(
+            [
+                [
+                    1,
+                    1,
+                ],
+                [
+                    0,
+                    1,
+                ],
+                [
+                    0,
+                    1,
+                ],
+                [
+                    0,
+                    1,
+                ],
+            ]
+        )
     ).all()
 
     # test datum filtering
@@ -107,29 +123,39 @@ def test_filtering_one_classification(
     assert (filter_.indices == np.array([0, 1, 2, 3])).all()
     assert (
         filter_.label_metadata
-        == np.array([[1, 1, 0], [0, 1, 0], [0, 1, 0], [0, 1, 0]])
+        == np.array(
+            [
+                [
+                    1,
+                    1,
+                ],
+                [
+                    0,
+                    1,
+                ],
+                [
+                    0,
+                    1,
+                ],
+                [
+                    0,
+                    1,
+                ],
+            ]
+        )
     ).all()
 
     # test label filtering
-
-    filter_ = evaluator.create_filter(labels=[("class", "0")])
+    filter_ = evaluator.create_filter(labels=["0"])
     assert (filter_.indices == np.array([0, 1, 2, 3])).all()
 
-    filter_ = evaluator.create_filter(labels=[("class", "1")])
+    filter_ = evaluator.create_filter(labels=["1"])
     assert (filter_.indices == np.array([])).all()
-
-    # test label key filtering
-
-    filter_ = evaluator.create_filter(label_keys=["class"])
-    assert (filter_.indices == np.array([0, 1, 2, 3])).all()
-
-    with pytest.raises(KeyError):
-        filter_ = evaluator.create_filter(label_keys=["other"])
 
     # test combo
     filter_ = evaluator.create_filter(
         datum_uids=["uid0"],
-        label_keys=["class"],
+        labels=["0"],
     )
     assert (filter_.indices == np.array([0, 1, 2, 3])).all()
 
@@ -154,7 +180,7 @@ def test_filtering_one_classification(
             "parameters": {
                 "score_thresholds": [0.5],
                 "hardmax": False,
-                "label": {"key": "class", "value": "0"},
+                "label": "0",
             },
         },
         {
@@ -168,7 +194,7 @@ def test_filtering_one_classification(
             "parameters": {
                 "score_thresholds": [0.5],
                 "hardmax": False,
-                "label": {"key": "class", "value": "1"},
+                "label": "1",
             },
         },
         {
@@ -182,7 +208,7 @@ def test_filtering_one_classification(
             "parameters": {
                 "score_thresholds": [0.5],
                 "hardmax": False,
-                "label": {"key": "class", "value": "2"},
+                "label": "2",
             },
         },
         {
@@ -196,7 +222,7 @@ def test_filtering_one_classification(
             "parameters": {
                 "score_thresholds": [0.5],
                 "hardmax": False,
-                "label": {"key": "class", "value": "3"},
+                "label": "3",
             },
         },
     ]
@@ -255,8 +281,7 @@ def test_filtering_three_classifications(
     ).all()
 
     assert (
-        evaluator._label_metadata
-        == np.array([[2, 3, 0], [0, 3, 0], [0, 3, 0], [1, 3, 0]])
+        evaluator._label_metadata == np.array([[2, 3], [0, 3], [0, 3], [1, 3]])
     ).all()
 
     # test datum filtering
@@ -264,8 +289,7 @@ def test_filtering_three_classifications(
     filter_ = evaluator.create_filter(datum_uids=["uid0"])
     assert (filter_.indices == np.array([0, 5, 8, 10])).all()
     assert (
-        filter_.label_metadata
-        == np.array([[1, 1, 0], [0, 1, 0], [0, 1, 0], [0, 1, 0]])
+        filter_.label_metadata == np.array([[1, 1], [0, 1], [0, 1], [0, 1]])
     ).all()
 
     filter_ = evaluator.create_filter(datum_uids=["uid2"])
@@ -273,26 +297,19 @@ def test_filtering_three_classifications(
 
     # test label filtering
 
-    filter_ = evaluator.create_filter(labels=[("class", "0")])
+    filter_ = evaluator.create_filter(labels=["0"])
     assert (filter_.indices == np.array([0, 1, 3, 5, 6, 8, 10, 11])).all()
 
-    filter_ = evaluator.create_filter(labels=[("class", "1")])
+    filter_ = evaluator.create_filter(labels=["1"])
     assert (filter_.indices == np.array([])).all()
 
-    # test label key filtering
-
-    filter_ = evaluator.create_filter(label_keys=["class"])
-    assert (
-        filter_.indices == np.array([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11])
-    ).all()
-
     with pytest.raises(KeyError):
-        filter_ = evaluator.create_filter(label_keys=["other"])
+        filter_ = evaluator.create_filter(labels=["other"])
 
     # test combo
     filter_ = evaluator.create_filter(
         datum_uids=["uid0"],
-        label_keys=["class"],
+        labels=["0"],
     )
     assert (filter_.indices == np.array([0, 5, 8, 10])).all()
 
@@ -317,7 +334,7 @@ def test_filtering_three_classifications(
             "parameters": {
                 "score_thresholds": [0.5],
                 "hardmax": False,
-                "label": {"key": "class", "value": "0"},
+                "label": "0",
             },
         },
         {
@@ -331,7 +348,7 @@ def test_filtering_three_classifications(
             "parameters": {
                 "score_thresholds": [0.5],
                 "hardmax": False,
-                "label": {"key": "class", "value": "1"},
+                "label": "1",
             },
         },
         {
@@ -345,7 +362,7 @@ def test_filtering_three_classifications(
             "parameters": {
                 "score_thresholds": [0.5],
                 "hardmax": False,
-                "label": {"key": "class", "value": "2"},
+                "label": "2",
             },
         },
         {
@@ -359,7 +376,7 @@ def test_filtering_three_classifications(
             "parameters": {
                 "score_thresholds": [0.5],
                 "hardmax": False,
-                "label": {"key": "class", "value": "3"},
+                "label": "3",
             },
         },
     ]
@@ -436,8 +453,7 @@ def test_filtering_six_classifications(
     ).all()
 
     assert (
-        evaluator._label_metadata
-        == np.array([[4, 6, 0], [0, 6, 0], [0, 6, 0], [2, 6, 0]])
+        evaluator._label_metadata == np.array([[4, 6], [0, 6], [0, 6], [2, 6]])
     ).all()
 
     # test datum filtering
@@ -445,8 +461,7 @@ def test_filtering_six_classifications(
     filter_ = evaluator.create_filter(datum_uids=["uid0"])
     assert (filter_.indices == np.array([0, 10, 16, 20])).all()
     assert (
-        filter_.label_metadata
-        == np.array([[1, 1, 0], [0, 1, 0], [0, 1, 0], [0, 1, 0]])
+        filter_.label_metadata == np.array([[1, 1], [0, 1], [0, 1], [0, 1]])
     ).all()
 
     filter_ = evaluator.create_filter(datum_uids=["uid2"])
@@ -454,27 +469,22 @@ def test_filtering_six_classifications(
 
     # test label filtering
 
-    filter_ = evaluator.create_filter(labels=[("class", "0")])
+    filter_ = evaluator.create_filter(labels=["0"])
     assert (
         filter_.indices
         == np.array([0, 1, 2, 3, 6, 7, 10, 11, 12, 13, 16, 17, 20, 21, 22, 23])
     ).all()
 
-    filter_ = evaluator.create_filter(labels=[("class", "1")])
+    filter_ = evaluator.create_filter(labels=["1"])
     assert (filter_.indices == np.array([])).all()
 
-    # test label key filtering
-
-    filter_ = evaluator.create_filter(label_keys=["class"])
-    assert (filter_.indices == np.arange(24)).all()
-
     with pytest.raises(KeyError):
-        evaluator.create_filter(label_keys=["other"])
+        evaluator.create_filter(labels=["other"])
 
     # test combo
     filter_ = evaluator.create_filter(
         datum_uids=["uid0"],
-        label_keys=["class"],
+        labels=["0"],
     )
     assert (filter_.indices == np.array([0, 10, 16, 20])).all()
 
@@ -500,7 +510,7 @@ def test_filtering_six_classifications(
             "parameters": {
                 "score_thresholds": [0.5],
                 "hardmax": False,
-                "label": {"key": "class", "value": "0"},
+                "label": "0",
             },
         },
         {
@@ -514,7 +524,7 @@ def test_filtering_six_classifications(
             "parameters": {
                 "score_thresholds": [0.5],
                 "hardmax": False,
-                "label": {"key": "class", "value": "1"},
+                "label": "1",
             },
         },
         {
@@ -528,7 +538,7 @@ def test_filtering_six_classifications(
             "parameters": {
                 "score_thresholds": [0.5],
                 "hardmax": False,
-                "label": {"key": "class", "value": "2"},
+                "label": "2",
             },
         },
         {
@@ -542,7 +552,7 @@ def test_filtering_six_classifications(
             "parameters": {
                 "score_thresholds": [0.5],
                 "hardmax": False,
-                "label": {"key": "class", "value": "3"},
+                "label": "3",
             },
         },
     ]
