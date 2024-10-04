@@ -1413,6 +1413,12 @@ def test_LLMClient_retries(monkeypatch):
         )
         client.summary_coherence("some text", "some summary")
 
+    # Should not set retries and seed, as seed makes behavior deterministic
+    with pytest.raises(ValueError):
+        client = WrappedOpenAIClient(
+            api_key=None, model_name="model_name", retries=3, seed=2024
+        )
+
     # Test WrappedMistralAIClient
     monkeypatch.setattr(
         "valor_core.llm_clients.WrappedMistralAIClient.__call__",
