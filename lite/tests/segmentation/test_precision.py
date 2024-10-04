@@ -6,22 +6,19 @@ def test_precision_basic_segmenations(basic_segmentations: list[Segmentation]):
     loader.add_data(basic_segmentations)
     evaluator = loader.finalize()
 
-    metrics = evaluator.evaluate(
-        score_thresholds=[0.4, 0.6],
-        as_dict=True,
-    )
+    metrics = evaluator.evaluate(as_dict=True)
 
     actual_metrics = [m for m in metrics[MetricType.Precision]]
     expected_metrics = [
         {
             "type": "Precision",
-            "value": [1.0, 1.0],
-            "parameters": {"score_thresholds": [0.4, 0.6], "label": "v1"},
+            "value": 1.0,
+            "parameters": {"label": "v1"},
         },
         {
             "type": "Precision",
-            "value": [0.5, 1.0],
-            "parameters": {"score_thresholds": [0.4, 0.6], "label": "v2"},
+            "value": 0.5,
+            "parameters": {"label": "v2"},
         },
     ]
     for m in actual_metrics:
@@ -37,22 +34,19 @@ def test_precision_segmentations_from_boxes(
     loader.add_data(segmentations_from_boxes)
     evaluator = loader.finalize()
 
-    metrics = evaluator.evaluate(
-        score_thresholds=[0.0],
-        as_dict=True,
-    )
+    metrics = evaluator.evaluate(as_dict=True)
 
     actual_metrics = [m for m in metrics[MetricType.F1]]
     expected_metrics = [
         {
             "type": "F1",
-            "value": [0.5],  # 50% overlap
-            "parameters": {"score_thresholds": [0.0], "label": "v1"},
+            "value": 0.5,  # 50% overlap
+            "parameters": {"label": "v1"},
         },
         {
             "type": "F1",
-            "value": [1 / 10000],  # overlaps 1 pixel out of 20,000
-            "parameters": {"score_thresholds": [0.0], "label": "v2"},
+            "value": 1 / 10000,  # overlaps 1 pixel out of 20,000
+            "parameters": {"label": "v2"},
         },
     ]
     for m in actual_metrics:

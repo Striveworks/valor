@@ -27,8 +27,8 @@ class MetricType(Enum):
 
 
 @dataclass
-class _ThresholdLabelValue:
-    value: list[float]
+class _LabelValue:
+    value: float
     label: str
 
     @property
@@ -45,25 +45,25 @@ class _ThresholdLabelValue:
         return self.metric.to_dict()
 
 
-class Precision(_ThresholdLabelValue):
+class Precision(_LabelValue):
     pass
 
 
-class Recall(_ThresholdLabelValue):
+class Recall(_LabelValue):
     pass
 
 
-class F1(_ThresholdLabelValue):
+class F1(_LabelValue):
     pass
 
 
-class IoU(_ThresholdLabelValue):
+class IoU(_LabelValue):
     pass
 
 
 @dataclass
-class _ThresholdValue:
-    value: list[float]
+class _Value:
+    value: float
 
     @property
     def metric(self) -> Metric:
@@ -77,11 +77,11 @@ class _ThresholdValue:
         return self.metric.to_dict()
 
 
-class Accuracy(_ThresholdValue):
+class Accuracy(_Value):
     pass
 
 
-class mIoU(_ThresholdValue):
+class mIoU(_Value):
     pass
 
 
@@ -94,9 +94,13 @@ class ConfusionMatrix:
             dict[str, float],  # iou
         ],
     ]
+    hallucinations: dict[
+        str,  # prediction label value
+        dict[str, float],  # percentage of pixels
+    ]
     missing_predictions: dict[
         str,  # ground truth label value
-        dict[str, float],  # iou
+        dict[str, float],  # percentage of pixels
     ]
 
     @property

@@ -2,9 +2,11 @@ import numpy as np
 from numpy.typing import NDArray
 
 
-def compute_confusion_matrix(
-    groundtruths: NDArray[np.int32],
-    predictions: NDArray[np.int32],
+def compute_confusion_matrix_2(
+    groundtruths: NDArray[np.bool_],
+    predictions: NDArray[np.bool_],
+    groundtruth_labels: NDArray[np.int32],
+    prediction_labels: NDArray[np.int32],
     n_labels: int,
 ) -> NDArray[np.int32]:
     """
@@ -12,10 +14,14 @@ def compute_confusion_matrix(
 
     Parameters
     ----------
-    groundtruths : NDArray[np.int32]
-        A 2-D array containing labeled pixels.
-    predictions : NDArray[np.int32]
-        A 2-D array containing labeled pixels.
+    groundtruths : NDArray[np.bool_]
+        A 2-D array containing flattened bitmasks for each label.
+    predictions : NDArray[np.bool_]
+        A 2-D array containing flattened bitmasks for each label.
+    groundtruth_labels : NDArray[np.int32]
+        A 1-D array containing label indices.
+    groundtruth_labels : NDArray[np.int32]
+        A 1-D array containing label indices.
     n_labels : int
         The number of unique labels.
 
@@ -25,25 +31,38 @@ def compute_confusion_matrix(
         A 2-D confusion matrix with shape (n_labels + 1, n_labels + 1).
     """
 
+    n_gt_labels = groundtruth_labels.size
+    n_pd_labels = prediction_labels.size
+
+    groundtruth_counts = groundtruths.sum(axis=1)
+    prediction_counts = predictions.sum(axis=1)
+
+    intersection_counts = np.logical_and(
+        groundtruths.reshape(n_gt_labels, 1, -1),
+        predictions.reshape(1, n_pd_labels, -1),
+    ).sum(axis=2)
+
+    intersected_groundtruth_counts = intersection_counts.sum(axis=0)
+    intersected_prediction_counts = intersection_counts.sum(axis=1)
+
     confusion_matrix = np.zeros((n_labels + 1, n_labels + 1), dtype=np.int32)
+    for gidx in range(n_gt_labels):
+        gt_label_idx = groundtruth_labels[gidx]
+        for pidx in range(n_pd_labels):
+            pd_label_idx = prediction_labels[pidx]
+            confusion_matrix[
+                gt_label_idx + 1, pd_label_idx + 1
+            ] = intersection_counts[gidx, pidx]
 
-    mask_no_groundtruth = groundtruths == -1
-    mask_no_predictions = predictions == -1
-
-    for gt_label_idx in range(n_labels):
-        mask_groundtruths = groundtruths == gt_label_idx
-        for pd_label_idx in range(n_labels):
-            mask_predictions = predictions == pd_label_idx
-            confusion_matrix[gt_label_idx + 1, pd_label_idx + 1] = (
-                mask_groundtruths & mask_predictions
-            ).sum()
             if gt_label_idx == 0:
-                confusion_matrix[0, pd_label_idx + 1] = (
-                    mask_no_groundtruth & mask_predictions
-                ).sum()
-        confusion_matrix[gt_label_idx + 1, 0] = (
-            mask_no_predictions & mask_groundtruths
-        ).sum()
+                confusion_matrix[0][pd_label_idx] = (
+                    prediction_counts[pidx]
+                    - intersected_prediction_counts[pidx]
+                )
+
+        confusion_matrix[gt_label_idx][0] = (
+            groundtruth_counts[gidx] - intersected_groundtruth_counts[gidx]
+        )
 
     return confusion_matrix
 
@@ -56,6 +75,7 @@ def compute_metrics(
     NDArray[np.float64],
     NDArray[np.float64],
     float,
+    NDArray[np.float64],
     NDArray[np.float64],
     NDArray[np.float64],
 ]:
@@ -84,33 +104,48 @@ def compute_metrics(
     NDArray[np.float64]
         Confusion matrix containing IoU values.
     NDArray[np.float64]
+        Hallucination ratios.
+    NDArray[np.float64]
         Missing prediction ratios.
     """
     n_labels = label_metadata.shape[0]
+    gt_counts = label_metadata[:, 0]
+    pd_counts = label_metadata[:, 1]
 
     counts = data.sum(axis=0)
 
+    # compute iou, missing_predictions and hallucinations
+    intersection_ = counts[1:, 1:]
+    union_ = (
+        gt_counts[:, np.newaxis] + pd_counts[np.newaxis, :] - intersection_
+    )
+
     ious = np.zeros((n_labels, n_labels), dtype=np.float64)
-    missing_predictions = np.zeros((n_labels), dtype=np.float64)
+    np.divide(
+        intersection_,
+        union_,
+        where=union_ > 1e-9,
+        out=ious,
+    )
 
-    true_prediction_count = 0
-    total_prediciton_count = 0
+    hallucination_ratio = np.zeros((n_labels), dtype=np.float64)
+    np.divide(
+        counts[0, 1:],
+        pd_counts,
+        where=gt_counts > 1e-9,
+        out=hallucination_ratio,
+    )
 
-    gt_counts = counts.sum(axis=0)[1:]
-    pd_counts = counts.sum(axis=1)[1:]
+    missing_prediction_ratio = np.zeros((n_labels), dtype=np.float64)
+    np.divide(
+        counts[1:, 0],
+        gt_counts,
+        where=gt_counts > 1e-9,
+        out=missing_prediction_ratio,
+    )
+
+    # compute precision, recall, f1
     tp_counts = counts.diagonal()[1:]
-
-    for gt_label_idx in range(n_labels):
-        for pd_label_idx in range(n_labels):
-            intersection_ = counts[gt_label_idx + 1, pd_label_idx + 1]
-            union_ = (
-                gt_counts[gt_label_idx]
-                + pd_counts[pd_label_idx]
-                - intersection_
-            )
-            ious[gt_label_idx, pd_label_idx] = (
-                intersection_ / union_ if union_ > 1e-9 else 0.0
-            )
 
     precision = np.zeros(n_labels, dtype=np.float64)
     np.divide(tp_counts, pd_counts, where=pd_counts > 1e-9, out=precision)
@@ -126,11 +161,11 @@ def compute_metrics(
         out=f1_score,
     )
 
-    accuracy = (
-        (true_prediction_count / total_prediciton_count)
-        if total_prediciton_count > 0
-        else 0.0
-    )
+    # compute accuracy
+    tp_count = counts[1:, 1:].diagonal().sum()
+    pd_count = pd_counts.sum()
+
+    accuracy = (tp_count / pd_count) if pd_count > 0 else 0.0
 
     return (
         precision,
@@ -138,5 +173,6 @@ def compute_metrics(
         f1_score,
         accuracy,
         ious,
-        missing_predictions,
+        hallucination_ratio,
+        missing_prediction_ratio,
     )

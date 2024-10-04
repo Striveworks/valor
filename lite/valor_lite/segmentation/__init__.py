@@ -1,4 +1,4 @@
-from .annotation import Bitmask, Segmentation, WeightedMask
+from .annotation import Bitmask, Segmentation
 from .manager import DataLoader, Evaluator
 from .metric import (
     F1,
@@ -16,7 +16,6 @@ __all__ = [
     "Evaluator",
     "Segmentation",
     "Bitmask",
-    "WeightedMask",
     "MetricType",
     "Precision",
     "Recall",

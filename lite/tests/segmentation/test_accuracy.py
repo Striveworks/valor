@@ -6,22 +6,14 @@ def test_accuracy_basic_segmenations(basic_segmentations: list[Segmentation]):
     loader.add_data(basic_segmentations)
     evaluator = loader.finalize()
 
-    metrics = evaluator.evaluate(
-        score_thresholds=[0.4, 0.6],
-        as_dict=True,
-    )
+    metrics = evaluator.evaluate(as_dict=True)
 
     actual_metrics = [m for m in metrics[MetricType.Accuracy]]
     expected_metrics = [
         {
             "type": "Accuracy",
-            "value": [
-                0.75,
-                1.0,
-            ],
-            "parameters": {
-                "score_thresholds": [0.4, 0.6],
-            },
+            "value": 2 / 3,
+            "parameters": {},
         },
     ]
     for m in actual_metrics:
@@ -37,17 +29,14 @@ def test_accuracy_segmentations_from_boxes(
     loader.add_data(segmentations_from_boxes)
     evaluator = loader.finalize()
 
-    metrics = evaluator.evaluate(
-        score_thresholds=[0.0],
-        as_dict=True,
-    )
+    metrics = evaluator.evaluate(as_dict=True)
 
     actual_metrics = [m for m in metrics[MetricType.Accuracy]]
     expected_metrics = [
         {
             "type": "Accuracy",
-            "value": [0.3334],
-            "parameters": {"score_thresholds": [0.0]},
+            "value": 0.3334,
+            "parameters": {},
         },
     ]
     for m in actual_metrics:

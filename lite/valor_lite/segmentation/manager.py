@@ -6,7 +6,7 @@ from numpy.typing import NDArray
 from tqdm import tqdm
 from valor_lite.segmentation.annotation import Segmentation
 from valor_lite.segmentation.computation import (
-    compute_confusion_matrix,
+    compute_confusion_matrix_2,
     compute_metrics,
 )
 from valor_lite.segmentation.metric import (
@@ -209,7 +209,8 @@ class Evaluator:
             f1_score,
             accuracy,
             ious,
-            missing_predictions,
+            hallucination_ratios,
+            missing_prediction_ratios,
         ) = compute_metrics(
             data=data,
             label_metadata=label_metadata,
@@ -234,9 +235,19 @@ class Evaluator:
                     }
                     for gt_label_idx in range(self.n_labels)
                 },
+                hallucinations={
+                    self.index_to_label[pd_label_idx]: {
+                        "percent": float(hallucination_ratios[pd_label_idx])
+                        * 100.0
+                    }
+                    for pd_label_idx in range(self.n_labels)
+                },
                 missing_predictions={
                     self.index_to_label[gt_label_idx]: {
-                        "iou": float(missing_predictions[gt_label_idx])
+                        "percent": float(
+                            missing_prediction_ratios[gt_label_idx]
+                        )
+                        * 100.0
                     }
                     for gt_label_idx in range(self.n_labels)
                 },
@@ -245,7 +256,7 @@ class Evaluator:
 
         metrics[MetricType.mIoU] = [
             mIoU(
-                value=float(ious.diagonal(axis1=1, axis2=2).mean()),
+                value=float(ious.diagonal().mean()),
             )
         ]
 
@@ -267,7 +278,7 @@ class Evaluator:
             )
             metrics[MetricType.Recall].append(
                 Recall(
-                    value=float(recall[:, label_idx]),
+                    value=float(recall[label_idx]),
                     **kwargs,
                 )
             )
@@ -374,39 +385,50 @@ class DataLoader:
             self._evaluator.n_groundtruths += len(segmentation.groundtruths)
             self._evaluator.n_predictions += len(segmentation.predictions)
 
+            # update datum cache
             uid_index = self._add_datum(segmentation.uid)
 
-            combined_predictions = np.stack(
-                [prediction.mask for prediction in segmentation.predictions],
-                axis=0,
-            )
-            prediction_indices = np.argmax(combined_predictions, axis=0)
-
             groundtruth_labels = np.full(
-                segmentation.shape, fill_value=-1, dtype=np.int32
+                len(segmentation.groundtruths), fill_value=-1
             )
             for idx, groundtruth in enumerate(segmentation.groundtruths):
                 label_idx = self._add_label(groundtruth.label)
+                groundtruth_labels[idx] = label_idx
                 self.groundtruth_count[label_idx][
                     uid_index
                 ] += groundtruth.mask.sum()
-                groundtruth_labels[groundtruth.mask] = label_idx
 
-            prediction_labels = np.full_like(groundtruth_labels, fill_value=-1)
-            scores = np.zeros_like(groundtruth_labels, dtype=np.float64)
+            prediction_labels = np.full(
+                len(segmentation.predictions), fill_value=-1
+            )
             for idx, prediction in enumerate(segmentation.predictions):
                 label_idx = self._add_label(prediction.label)
-                mask_pixels = prediction_indices == idx
+                prediction_labels[idx] = label_idx
                 self.prediction_count[label_idx][
                     uid_index
-                ] += mask_pixels.sum()
-                prediction_labels[mask_pixels] = label_idx
-                scores[mask_pixels] = combined_predictions[idx][mask_pixels]
+                ] += prediction.mask.sum()
+
+            combined_groundtruths = np.stack(
+                [
+                    groundtruth.mask.flatten()
+                    for groundtruth in segmentation.groundtruths
+                ],
+                axis=0,
+            )
+            combined_predictions = np.stack(
+                [
+                    prediction.mask.flatten()
+                    for prediction in segmentation.predictions
+                ],
+                axis=0,
+            )
 
             self.matrices.append(
-                compute_confusion_matrix(
-                    groundtruths=groundtruth_labels,
-                    predictions=prediction_labels,
+                compute_confusion_matrix_2(
+                    groundtruths=combined_groundtruths,
+                    predictions=combined_predictions,
+                    groundtruth_labels=groundtruth_labels,
+                    prediction_labels=prediction_labels,
                     n_labels=len(self._evaluator.index_to_label),
                 )
             )
