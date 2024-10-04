@@ -100,7 +100,7 @@ def segmentations_from_boxes() -> list[Segmentation]:
 
 
 @pytest.fixture
-def random_segmenations() -> list[Segmentation]:
+def large_random_segmenations() -> list[Segmentation]:
 
     mask_shape = (1000, 1000)
     infills_per_seg = [
@@ -133,9 +133,9 @@ def random_segmenations() -> list[Segmentation]:
 
 
 @pytest.fixture
-def large_random_segmenations() -> list[Segmentation]:
+def massive_random_segmenations() -> list[Segmentation]:
     """
-    A variant of `random_segmentations`.
+    A variant of `large_random_segmentations`.
 
     This fixture is not used as it takes 10s to load.
     """

@@ -1,4 +1,4 @@
-from valor_lite.segmentation import DataLoader, MetricType, Segmentation
+from valor_lite.segmentation import F1, DataLoader, MetricType, Segmentation
 
 
 def test_f1_basic_segmenations(basic_segmentations: list[Segmentation]):
@@ -53,3 +53,37 @@ def test_f1_segmentations_from_boxes(
         assert m in expected_metrics
     for m in expected_metrics:
         assert m in actual_metrics
+
+
+def test_f1_large_random_segmentations(
+    large_random_segmenations: list[Segmentation],
+):
+    loader = DataLoader()
+    loader.add_data(large_random_segmenations)
+    evaluator = loader.finalize()
+
+    metrics = evaluator.evaluate()
+
+    for m in metrics[MetricType.F1]:
+        assert isinstance(m, F1)
+        match m.label:
+            case "v1":
+                assert round(m.value, 1) == 0.9
+            case "v2":
+                assert round(m.value, 2) == 0.09
+            case "v3":
+                assert round(m.value, 2) == 0.01
+            case "v4":
+                assert round(m.value, 1) == 0.4
+            case "v5":
+                assert round(m.value, 1) == 0.4
+            case "v6":
+                assert round(m.value, 1) == 0.1
+            case "v7":
+                assert round(m.value, 1) == 0.3
+            case "v8":
+                assert round(m.value, 1) == 0.3
+            case "v9":
+                assert round(m.value, 1) == 0.3
+            case _:
+                assert False

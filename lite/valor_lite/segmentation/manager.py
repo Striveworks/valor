@@ -45,7 +45,6 @@ filtered_metrics = evaluator.evaluate(filter_mask=filter_mask)
 class Filter:
     indices: NDArray[np.int32]
     label_metadata: NDArray[np.int32]
-    n_datums: int
 
 
 class Evaluator:
@@ -59,11 +58,9 @@ class Evaluator:
         self.n_datums = 0
         self.n_groundtruths = 0
         self.n_predictions = 0
-        self.n_labels = 0
-
-        self.n_pixels = 0
         self.n_groundtruth_pixels = 0
         self.n_prediction_pixels = 0
+        self.n_labels = 0
 
         # datum reference
         self.uid_to_index: dict[str, int] = dict()
@@ -107,72 +104,82 @@ class Evaluator:
         """
         return {
             "number_of_datums": self.n_datums,
-            "number_of_pixels": self.n_pixels,
-            "number_of_groundtruth_pixels": self.n_groundtruths,
-            "number_of_prediction_pixels": self.n_predictions,
+            "number_of_groundtruths": self.n_groundtruths,
+            "number_of_predictions": self.n_predictions,
+            "number_of_groundtruth_pixels": self.n_groundtruth_pixels,
+            "number_of_prediction_pixels": self.n_prediction_pixels,
             "number_of_labels": self.n_labels,
             "ignored_prediction_labels": self.ignored_prediction_labels,
             "missing_prediction_labels": self.missing_prediction_labels,
         }
 
-    # def create_filter(
-    #     self,
-    #     datum_uids: list[str] | NDArray[np.int32] | None = None,
-    # ) -> Filter:
-    #     """
-    #     Creates a boolean mask that can be passed to an evaluation.
+    def create_filter(
+        self,
+        datum_uids: list[str] | NDArray[np.int32] | None = None,
+        labels: list[str] | NDArray[np.int32] | None = None,
+    ) -> Filter:
+        """
+        Creates a boolean mask that can be passed to an evaluation.
 
-    #     Parameters
-    #     ----------
-    #     datum_uids : list[str] | NDArray[np.int32], optional
-    #         An optional list of string uids or a numpy array of uid indices.
-    #     labels : list[tuple[str, str]] | NDArray[np.int32], optional
-    #         An optional list of labels or a numpy array of label indices.
-    #     label_keys : list[str] | NDArray[np.int32], optional
-    #         An optional list of label keys or a numpy array of label key indices.
+        Parameters
+        ----------
+        datum_uids : list[str] | NDArray[np.int32], optional
+            An optional list of string uids or a numpy array of uid indices.
+        labels : list[tuple[str, str]] | NDArray[np.int32], optional
+            An optional list of labels or a numpy array of label indices.
 
-    #     Returns
-    #     -------
-    #     Filter
-    #         A filter object that can be passed to the `evaluate` method.
-    #     """
-    #     n_datums = self._label_metadata_per_datum.shape[1]
-    #     n_labels = self._label_metadata_per_datum.shape[2]
+        Returns
+        -------
+        Filter
+            A filter object that can be passed to the `evaluate` method.
+        """
+        n_datums = self._label_metadata_per_datum.shape[1]
+        n_labels = self._label_metadata_per_datum.shape[2]
 
-    #     mask_datums = np.ones(n_datums, dtype=np.bool_)
-    #     mask_labels = np.ones(n_labels, dtype=np.bool_)
+        mask_datums = np.ones(n_datums, dtype=np.bool_)
+        mask_labels = np.ones(n_labels, dtype=np.bool_)
 
-    #     if datum_uids is not None:
-    #         if isinstance(datum_uids, list):
-    #             datum_uids = np.array(
-    #                 [self.uid_to_index[uid] for uid in datum_uids],
-    #                 dtype=np.int32,
-    #             )
-    #         mask = np.arange(n_datums) == datum_uids
+        if datum_uids is not None:
+            if isinstance(datum_uids, list):
+                datum_uids = np.array(
+                    [self.uid_to_index[uid] for uid in datum_uids],
+                    dtype=np.int32,
+                )
+            if datum_uids.size == 0:
+                mask_datums[mask_datums] = False
+            else:
+                mask = np.arange(n_datums) == datum_uids
+                mask_datums[~mask] = False
 
-    #         mask = np.zeros_like(mask_datums, dtype=np.bool_)
-    #         mask[datum_uids] = True
-    #         mask_datums &= mask
+        if labels is not None:
+            if isinstance(labels, list):
+                labels = np.array(
+                    [self.label_to_index[label] for label in labels],
+                    dtype=np.int32,
+                )
+            if labels.size == 0:
+                mask_labels[mask_labels] = False
+            else:
+                mask = np.arange(n_labels) == labels
+                mask_labels[~mask] = False
 
-    #     mask = mask_datums[:, np.newaxis] & mask_labels[np.newaxis, :]
-    #     label_metadata_per_datum = self._label_metadata_per_datum.copy()
-    #     label_metadata_per_datum[:, ~mask] = 0
+        mask = mask_datums[:, np.newaxis] & mask_labels[np.newaxis, :]
+        label_metadata_per_datum = self._label_metadata_per_datum.copy()
+        label_metadata_per_datum[:, ~mask] = 0
 
-    #     label_metadata = np.zeros_like(self._label_metadata, dtype=np.int32)
-    #     label_metadata[:, :2] = np.transpose(
-    #         np.sum(
-    #             label_metadata_per_datum,
-    #             axis=1,
-    #         )
-    #     )
-    #     label_metadata[:, 2] = self._label_metadata[:, 2]
-    #     n_datums = int(np.sum(label_metadata[:, 0]))
+        label_metadata = np.zeros_like(self._label_metadata, dtype=np.int32)
+        label_metadata = np.transpose(
+            np.sum(
+                label_metadata_per_datum,
+                axis=1,
+            )
+        )
+        n_datums = int(np.sum(label_metadata[:, 0]))
 
-    #     return Filter(
-    #         indices=np.where(mask_pairs)[0],
-    #         label_metadata=label_metadata,
-    #         n_datums=n_datums,
-    #     )
+        return Filter(
+            indices=np.where(mask_datums)[0],
+            label_metadata=label_metadata,
+        )
 
     def evaluate(
         self,
@@ -232,8 +239,10 @@ class Evaluator:
                             "iou": float(ious[gt_label_idx, pd_label_idx])
                         }
                         for pd_label_idx in range(self.n_labels)
+                        if label_metadata[pd_label_idx, 0] > 0
                     }
                     for gt_label_idx in range(self.n_labels)
+                    if label_metadata[gt_label_idx, 0] > 0
                 },
                 hallucinations={
                     self.index_to_label[pd_label_idx]: {
@@ -241,6 +250,7 @@ class Evaluator:
                         * 100.0
                     }
                     for pd_label_idx in range(self.n_labels)
+                    if label_metadata[pd_label_idx, 0] > 0
                 },
                 missing_predictions={
                     self.index_to_label[gt_label_idx]: {
@@ -250,6 +260,7 @@ class Evaluator:
                         * 100.0
                     }
                     for gt_label_idx in range(self.n_labels)
+                    if label_metadata[gt_label_idx, 0] > 0
                 },
             )
         ]
@@ -381,9 +392,14 @@ class DataLoader:
 
             # update metadata
             self._evaluator.n_datums += 1
-            self._evaluator.n_pixels += segmentation.size
             self._evaluator.n_groundtruths += len(segmentation.groundtruths)
             self._evaluator.n_predictions += len(segmentation.predictions)
+            self._evaluator.n_groundtruth_pixels += segmentation.size * len(
+                segmentation.groundtruths
+            )
+            self._evaluator.n_prediction_pixels += segmentation.size * len(
+                segmentation.predictions
+            )
 
             # update datum cache
             uid_index = self._add_datum(segmentation.uid)
