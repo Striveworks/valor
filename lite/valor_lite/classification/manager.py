@@ -560,7 +560,7 @@ class DataLoader:
     def _add_data(
         self,
         uid_index: int,
-        groundtruths: int,
+        groundtruth: int,
         predictions: list[tuple[int, float]],
     ):
 
@@ -572,7 +572,7 @@ class DataLoader:
             pairs.append(
                 (
                     float(uid_index),
-                    float(groundtruths),
+                    float(groundtruth),
                     float(plabel),
                     float(score),
                     float(max_score_idx == idx),
@@ -624,12 +624,12 @@ class DataLoader:
             uid_index = self._add_datum(uid=classification.uid)
 
             # cache labels and annotations
-            groundtruths = None
+            groundtruth = None
             predictions = list()
             for glabel in classification.groundtruths:
                 label_idx = self._add_label(glabel)
                 self.groundtruth_count[label_idx][uid_index] += 1
-                groundtruths = label_idx
+                groundtruth = label_idx
             for plabel, pscore in zip(
                 classification.predictions, classification.scores
             ):
@@ -644,14 +644,14 @@ class DataLoader:
 
             # fix type error where groundtruths can possibly be unbound now that it's a float
             # in practice, this error should never be hit since groundtruths can't be empty without throwing a ValueError earlier in the flow
-            if groundtruths is None:
+            if groundtruth is None:
                 raise ValueError(
                     "Expected a value for groundtruths, but got None."
                 )
 
             self._add_data(
                 uid_index=uid_index,
-                groundtruths=groundtruths,
+                groundtruth=groundtruth,
                 predictions=predictions,
             )
 
@@ -715,7 +715,7 @@ class DataLoader:
 
             self._add_data(
                 uid_index=uid_index,
-                groundtruths=groundtruths,
+                groundtruth=groundtruths,
                 predictions=predictions,
             )
 

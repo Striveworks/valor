@@ -59,7 +59,7 @@ def _compute_rocauc(
     rocauc = np.trapz(x=fpr, y=tpr, axis=1)  # type: ignore - numpy will be switching to `trapezoid` in the future.
 
     # compute mean rocauc
-    mean_rocauc = sum(rocauc) / n_labels
+    mean_rocauc = rocauc.mean()
 
     return rocauc, mean_rocauc
 

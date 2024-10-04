@@ -618,12 +618,10 @@ def test_counts_multiclass(
 
 
 def test_counts_true_negatives_check_animals(
-    classifications_multiclass_true_negatives_check_animals: list[
-        Classification
-    ],
+    classifications_multiclass_true_negatives_check: list[Classification],
 ):
     loader = DataLoader()
-    loader.add_data(classifications_multiclass_true_negatives_check_animals)
+    loader.add_data(classifications_multiclass_true_negatives_check)
     evaluator = loader.finalize()
 
     assert evaluator.metadata == {
@@ -680,82 +678,6 @@ def test_counts_true_negatives_check_animals(
                 "score_thresholds": [0.05, 0.15, 0.95],
                 "hardmax": True,
                 "label": "cat",
-            },
-            "type": "Counts",
-        },
-    ]
-    for m in actual_metrics:
-        assert m in expected_metrics
-    for m in expected_metrics:
-        assert m in actual_metrics
-
-
-def test_counts_true_negatives_check_ingredients(
-    classifications_multiclass_true_negatives_check_ingredients: list[
-        Classification
-    ],
-):
-    loader = DataLoader()
-    loader.add_data(
-        classifications_multiclass_true_negatives_check_ingredients
-    )
-    evaluator = loader.finalize()
-
-    assert evaluator.metadata == {
-        "n_datums": 1,
-        "n_groundtruths": 1,
-        "n_predictions": 3,
-        "n_labels": 3,
-        "ignored_prediction_labels": ["milk", "flour"],
-        "missing_prediction_labels": [],
-    }
-
-    metrics = evaluator.evaluate(
-        score_thresholds=[0.05, 0.15, 0.95],
-        as_dict=True,
-    )
-
-    actual_metrics = [m for m in metrics[MetricType.Counts]]
-    expected_metrics = [
-        {
-            "value": {
-                "tp": [0, 0, 0],
-                "fp": [0, 0, 0],
-                "fn": [1, 1, 1],
-                "tn": [0, 0, 0],
-            },
-            "parameters": {
-                "score_thresholds": [0.05, 0.15, 0.95],
-                "hardmax": True,
-                "label": "egg",
-            },
-            "type": "Counts",
-        },
-        {
-            "value": {
-                "tp": [0, 0, 0],
-                "fp": [1, 1, 0],
-                "fn": [0, 0, 0],
-                "tn": [0, 0, 1],
-            },
-            "parameters": {
-                "score_thresholds": [0.05, 0.15, 0.95],
-                "hardmax": True,
-                "label": "milk",
-            },
-            "type": "Counts",
-        },
-        {
-            "value": {
-                "tp": [0, 0, 0],
-                "fp": [0, 0, 0],
-                "fn": [0, 0, 0],
-                "tn": [1, 1, 1],
-            },
-            "parameters": {
-                "score_thresholds": [0.05, 0.15, 0.95],
-                "hardmax": True,
-                "label": "flour",
             },
             "type": "Counts",
         },

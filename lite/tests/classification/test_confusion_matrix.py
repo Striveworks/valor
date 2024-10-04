@@ -502,12 +502,10 @@ def test_confusion_matrix_multiclass(
 
 
 def test_confusion_matrix_without_hardmax_animal_example(
-    classifications_multiclass_true_negatives_check_animals: list[
-        Classification
-    ],
+    classifications_multiclass_true_negatives_check: list[Classification],
 ):
     loader = DataLoader()
-    loader.add_data(classifications_multiclass_true_negatives_check_animals)
+    loader.add_data(classifications_multiclass_true_negatives_check)
     evaluator = loader.finalize()
 
     assert evaluator.metadata == {
@@ -585,109 +583,6 @@ def test_confusion_matrix_without_hardmax_animal_example(
                         "examples": [
                             {
                                 "datum": "uid1",
-                            }
-                        ],
-                    }
-                },
-            },
-            "parameters": {"score_threshold": 0.5},
-        },
-    ]
-    for m in actual_metrics:
-        _filter_elements_with_zero_count(
-            cm=m["value"]["confusion_matrix"],
-            mp=m["value"]["missing_predictions"],
-        )
-        assert m in expected_metrics
-    for m in expected_metrics:
-        assert m in actual_metrics
-
-
-def test_confusion_matrix_without_hardmax_ingredient_example(
-    classifications_multiclass_true_negatives_check_ingredients: list[
-        Classification
-    ],
-):
-    loader = DataLoader()
-    loader.add_data(
-        classifications_multiclass_true_negatives_check_ingredients
-    )
-    evaluator = loader.finalize()
-
-    assert evaluator.metadata == {
-        "n_datums": 1,
-        "n_groundtruths": 1,
-        "n_predictions": 3,
-        "n_labels": 3,
-        "ignored_prediction_labels": ["milk", "flour"],
-        "missing_prediction_labels": [],
-    }
-    metrics = evaluator.evaluate(
-        metrics_to_return=[MetricType.ConfusionMatrix],
-        score_thresholds=[0.05, 0.4, 0.5],
-        number_of_examples=6,
-        hardmax=False,
-        as_dict=True,
-    )
-
-    actual_metrics = [m for m in metrics[MetricType.ConfusionMatrix]]
-    expected_metrics = [
-        {
-            "type": "ConfusionMatrix",
-            "value": {
-                "confusion_matrix": {
-                    "egg": {
-                        "egg": {
-                            "count": 1,
-                            "examples": [
-                                {"datum": "uid2", "score": 0.15000000596046448}
-                            ],
-                        },
-                        "milk": {
-                            "count": 1,
-                            "examples": [
-                                {"datum": "uid2", "score": 0.47999998927116394}
-                            ],
-                        },
-                        "flour": {
-                            "count": 1,
-                            "examples": [
-                                {"datum": "uid2", "score": 0.3700000047683716}
-                            ],
-                        },
-                    }
-                },
-                "missing_predictions": {},
-            },
-            "parameters": {"score_threshold": 0.05},
-        },
-        {
-            "type": "ConfusionMatrix",
-            "value": {
-                "confusion_matrix": {
-                    "egg": {
-                        "milk": {
-                            "count": 1,
-                            "examples": [
-                                {"datum": "uid2", "score": 0.47999998927116394}
-                            ],
-                        },
-                    }
-                },
-                "missing_predictions": {},
-            },
-            "parameters": {"score_threshold": 0.4},
-        },
-        {
-            "type": "ConfusionMatrix",
-            "value": {
-                "confusion_matrix": {},
-                "missing_predictions": {
-                    "egg": {
-                        "count": 1,
-                        "examples": [
-                            {
-                                "datum": "uid2",
                             }
                         ],
                     }

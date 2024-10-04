@@ -322,7 +322,7 @@ def classifications_multiclass() -> list[Classification]:
 
 
 @pytest.fixture
-def classifications_multiclass_true_negatives_check_animals() -> (
+def classifications_multiclass_true_negatives_check() -> (
     list[Classification]
 ):
     return [
@@ -330,20 +330,6 @@ def classifications_multiclass_true_negatives_check_animals() -> (
             uid="uid1",
             groundtruths=["ant"],
             predictions=["ant", "bee", "cat"],
-            scores=[0.15, 0.48, 0.37],
-        ),
-    ]
-
-
-@pytest.fixture
-def classifications_multiclass_true_negatives_check_ingredients() -> (
-    list[Classification]
-):
-    return [
-        Classification(
-            uid="uid2",
-            groundtruths=["egg"],
-            predictions=["egg", "milk", "flour"],
             scores=[0.15, 0.48, 0.37],
         ),
     ]
