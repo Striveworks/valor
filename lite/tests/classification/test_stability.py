@@ -7,17 +7,14 @@ def generate_random_classifications(
     n_classifications: int, n_categories: int, n_labels: int
 ) -> list[Classification]:
 
-    labels = [
-        [(str(key), str(value)) for value in range(n_labels)]
-        for key in range(n_categories)
-    ]
+    labels = [str(value) for value in range(n_labels)]
 
     return [
         Classification(
             uid=f"uid{i}",
-            groundtruths=[choice(category) for category in labels],
-            predictions=[label for category in labels for label in category],
-            scores=[uniform(0, 1) for _ in range(n_labels * n_categories)],
+            groundtruths=[choice(labels)],
+            predictions=labels,
+            scores=[uniform(0, 1) for _ in range(n_labels)],
         )
         for i in range(n_classifications)
     ]
@@ -61,12 +58,10 @@ def test_fuzz_classifications_with_filtering():
         loader.add_data(classifications)
         evaluator = loader.finalize()
 
-        label_key = "1"
         datum_subset = [f"uid{i}" for i in range(len(classifications) // 2)]
 
         filter_ = evaluator.create_filter(
             datum_uids=datum_subset,
-            label_keys=[label_key],
         )
 
         evaluator.evaluate(

@@ -24,26 +24,26 @@ def test_valor_integration():
 
     assert loader._evaluator._detailed_pairs.shape == (10, 5)
 
-    assert set(loader._evaluator.label_key_to_index.keys()) == {
-        "class_label",
-    }
     assert len(loader._evaluator.index_to_label) == 11
     assert loader._evaluator.n_datums == 1
 
 
-def test_mismatch_label_keys(
+def test_missing_groundtruths_or_predictions(
     classifications_no_groundtruths: list[Classification],
     classifications_no_predictions: list[Classification],
-    classifications_with_label_key_mismatch: list[Classification],
 ):
     loader = DataLoader()
 
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError) as e:
         loader.add_data(classifications_no_groundtruths)
-
-    with pytest.raises(ValueError):
-        loader.add_data(classifications_no_predictions)
+    assert (
+        "Classifications must contain at least one groundtruth and prediction"
+        in str(e)
+    )
 
     with pytest.raises(ValueError) as e:
-        loader.add_data(classifications_with_label_key_mismatch)
-    assert "Label keys must match" in str(e)
+        loader.add_data(classifications_no_predictions)
+    assert (
+        "Classifications must contain at least one groundtruth and prediction"
+        in str(e)
+    )

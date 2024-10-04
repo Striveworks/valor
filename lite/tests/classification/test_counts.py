@@ -114,10 +114,7 @@ def test_counts_basic(basic_classifications: list[Classification]):
         "n_groundtruths": 3,
         "n_predictions": 12,
         "n_labels": 4,
-        "ignored_prediction_labels": [
-            ("class", "1"),
-            ("class", "2"),
-        ],
+        "ignored_prediction_labels": ["1", "2"],
         "missing_prediction_labels": [],
     }
 
@@ -126,7 +123,6 @@ def test_counts_basic(basic_classifications: list[Classification]):
         as_dict=True,
     )
 
-    # test Counts
     actual_metrics = [m for m in metrics[MetricType.Counts]]
     expected_metrics = [
         {
@@ -140,7 +136,7 @@ def test_counts_basic(basic_classifications: list[Classification]):
             "parameters": {
                 "score_thresholds": [0.25, 0.75],
                 "hardmax": True,
-                "label": {"key": "class", "value": "0"},
+                "label": "0",
             },
         },
         {
@@ -154,7 +150,7 @@ def test_counts_basic(basic_classifications: list[Classification]):
             "parameters": {
                 "score_thresholds": [0.25, 0.75],
                 "hardmax": True,
-                "label": {"key": "class", "value": "1"},
+                "label": "1",
             },
         },
         {
@@ -168,7 +164,7 @@ def test_counts_basic(basic_classifications: list[Classification]):
             "parameters": {
                 "score_thresholds": [0.25, 0.75],
                 "hardmax": True,
-                "label": {"key": "class", "value": "2"},
+                "label": "2",
             },
         },
         {
@@ -182,7 +178,7 @@ def test_counts_basic(basic_classifications: list[Classification]):
             "parameters": {
                 "score_thresholds": [0.25, 0.75],
                 "hardmax": True,
-                "label": {"key": "class", "value": "3"},
+                "label": "3",
             },
         },
     ]
@@ -205,7 +201,6 @@ def test_counts_unit(
         as_dict=True,
     )
 
-    # test Counts
     actual_metrics = [m for m in metrics[MetricType.Counts]]
     expected_metrics = [
         {
@@ -219,7 +214,7 @@ def test_counts_unit(
             "parameters": {
                 "score_thresholds": [0.5],
                 "hardmax": True,
-                "label": {"key": "class", "value": "0"},
+                "label": "0",
             },
         },
         {
@@ -233,7 +228,7 @@ def test_counts_unit(
             "parameters": {
                 "score_thresholds": [0.5],
                 "hardmax": True,
-                "label": {"key": "class", "value": "1"},
+                "label": "1",
             },
         },
         {
@@ -247,7 +242,7 @@ def test_counts_unit(
             "parameters": {
                 "score_thresholds": [0.5],
                 "hardmax": True,
-                "label": {"key": "class", "value": "2"},
+                "label": "2",
             },
         },
     ]
@@ -257,12 +252,12 @@ def test_counts_unit(
         assert m in actual_metrics
 
 
-def test_counts_with_example(
-    classifications_two_categories: list[Classification],
+def test_counts_with_animal_example(
+    classifications_animal_example: list[Classification],
 ):
 
     loader = DataLoader()
-    loader.add_data(classifications_two_categories)
+    loader.add_data(classifications_animal_example)
     evaluator = loader.finalize()
 
     metrics = evaluator.evaluate(
@@ -270,7 +265,6 @@ def test_counts_with_example(
         as_dict=True,
     )
 
-    # test Counts
     actual_metrics = [m for m in metrics[MetricType.Counts]]
     expected_metrics = [
         {
@@ -284,7 +278,7 @@ def test_counts_with_example(
             "parameters": {
                 "score_thresholds": [0.05, 0.5, 0.95],
                 "hardmax": True,
-                "label": {"key": "animal", "value": "bird"},
+                "label": "bird",
             },
         },
         {
@@ -298,7 +292,7 @@ def test_counts_with_example(
             "parameters": {
                 "score_thresholds": [0.05, 0.5, 0.95],
                 "hardmax": True,
-                "label": {"key": "animal", "value": "dog"},
+                "label": "dog",
             },
         },
         {
@@ -312,9 +306,31 @@ def test_counts_with_example(
             "parameters": {
                 "score_thresholds": [0.05, 0.5, 0.95],
                 "hardmax": True,
-                "label": {"key": "animal", "value": "cat"},
+                "label": "cat",
             },
         },
+    ]
+    for m in actual_metrics:
+        assert m in expected_metrics
+    for m in expected_metrics:
+        assert m in actual_metrics
+
+
+def test_counts_with_color_example(
+    classifications_color_example: list[Classification],
+):
+
+    loader = DataLoader()
+    loader.add_data(classifications_color_example)
+    evaluator = loader.finalize()
+
+    metrics = evaluator.evaluate(
+        score_thresholds=[0.05, 0.5, 0.95],
+        as_dict=True,
+    )
+
+    actual_metrics = [m for m in metrics[MetricType.Counts]]
+    expected_metrics = [
         {
             "type": "Counts",
             "value": {
@@ -326,7 +342,7 @@ def test_counts_with_example(
             "parameters": {
                 "score_thresholds": [0.05, 0.5, 0.95],
                 "hardmax": True,
-                "label": {"key": "color", "value": "white"},
+                "label": "white",
             },
         },
         {
@@ -340,7 +356,7 @@ def test_counts_with_example(
             "parameters": {
                 "score_thresholds": [0.05, 0.5, 0.95],
                 "hardmax": True,
-                "label": {"key": "color", "value": "red"},
+                "label": "red",
             },
         },
         {
@@ -354,7 +370,7 @@ def test_counts_with_example(
             "parameters": {
                 "score_thresholds": [0.05, 0.5, 0.95],
                 "hardmax": True,
-                "label": {"key": "color", "value": "blue"},
+                "label": "blue",
             },
         },
         {
@@ -368,7 +384,7 @@ def test_counts_with_example(
             "parameters": {
                 "score_thresholds": [0.05, 0.5, 0.95],
                 "hardmax": True,
-                "label": {"key": "color", "value": "black"},
+                "label": "black",
             },
         },
     ]
@@ -386,58 +402,17 @@ def test_counts_with_image_example(
     evaluator = loader.finalize()
 
     assert evaluator.metadata == {
-        "n_datums": 3,
-        "n_groundtruths": 4,
-        "n_predictions": 6,
-        "n_labels": 8,
-        "ignored_prediction_labels": [
-            ("k4", "v1"),
-            ("k4", "v8"),
-            ("k5", "v1"),
-            ("k4", "v5"),
-            ("k3", "v1"),
-        ],
-        "missing_prediction_labels": [
-            ("k5", "v5"),
-            ("k3", "v3"),
-        ],
+        "n_datums": 2,
+        "n_groundtruths": 2,
+        "n_predictions": 4,
+        "n_labels": 4,
+        "ignored_prediction_labels": ["v1", "v8", "v5"],
+        "missing_prediction_labels": [],
     }
-
     metrics = evaluator.evaluate(as_dict=True)
 
-    # test Counts
     actual_metrics = [m for m in metrics[MetricType.Counts]]
     expected_metrics = [
-        # k3
-        {
-            "type": "Counts",
-            "value": {
-                "tp": [0],
-                "fp": [1],
-                "fn": [0],
-                "tn": [0],
-            },
-            "parameters": {
-                "score_thresholds": [0.0],
-                "hardmax": True,
-                "label": {"key": "k3", "value": "v1"},
-            },
-        },
-        {
-            "type": "Counts",
-            "value": {
-                "tp": [0],
-                "fp": [0],
-                "fn": [1],
-                "tn": [0],
-            },
-            "parameters": {
-                "score_thresholds": [0.0],
-                "hardmax": True,
-                "label": {"key": "k3", "value": "v3"},
-            },
-        },
-        # k4
         {
             "type": "Counts",
             "value": {
@@ -449,7 +424,7 @@ def test_counts_with_image_example(
             "parameters": {
                 "score_thresholds": [0.0],
                 "hardmax": True,
-                "label": {"key": "k4", "value": "v1"},
+                "label": "v1",
             },
         },
         {
@@ -463,7 +438,7 @@ def test_counts_with_image_example(
             "parameters": {
                 "score_thresholds": [0.0],
                 "hardmax": True,
-                "label": {"key": "k4", "value": "v4"},
+                "label": "v4",
             },
         },
         {
@@ -477,7 +452,7 @@ def test_counts_with_image_example(
             "parameters": {
                 "score_thresholds": [0.0],
                 "hardmax": True,
-                "label": {"key": "k4", "value": "v5"},
+                "label": "v5",
             },
         },
         {
@@ -491,36 +466,7 @@ def test_counts_with_image_example(
             "parameters": {
                 "score_thresholds": [0.0],
                 "hardmax": True,
-                "label": {"key": "k4", "value": "v8"},
-            },
-        },
-        # k5
-        {
-            "type": "Counts",
-            "value": {
-                "tp": [0],
-                "fp": [1],
-                "fn": [0],
-                "tn": [0],
-            },
-            "parameters": {
-                "score_thresholds": [0.0],
-                "hardmax": True,
-                "label": {"key": "k5", "value": "v1"},
-            },
-        },
-        {
-            "type": "Counts",
-            "value": {
-                "tp": [0],
-                "fp": [0],
-                "fn": [1],
-                "tn": [0],
-            },
-            "parameters": {
-                "score_thresholds": [0.0],
-                "hardmax": True,
-                "label": {"key": "k5", "value": "v5"},
+                "label": "v8",
             },
         },
     ]
@@ -548,7 +494,6 @@ def test_counts_with_tabular_example(
 
     metrics = evaluator.evaluate(as_dict=True)
 
-    # test Counts
     actual_metrics = [m for m in metrics[MetricType.Counts]]
     expected_metrics = [
         {
@@ -562,7 +507,7 @@ def test_counts_with_tabular_example(
             "parameters": {
                 "score_thresholds": [0.0],
                 "hardmax": True,
-                "label": {"key": "class", "value": "0"},
+                "label": "0",
             },
         },
         {
@@ -576,7 +521,7 @@ def test_counts_with_tabular_example(
             "parameters": {
                 "score_thresholds": [0.0],
                 "hardmax": True,
-                "label": {"key": "class", "value": "1"},
+                "label": "1",
             },
         },
         {
@@ -590,7 +535,7 @@ def test_counts_with_tabular_example(
             "parameters": {
                 "score_thresholds": [0.0],
                 "hardmax": True,
-                "label": {"key": "class", "value": "2"},
+                "label": "2",
             },
         },
     ]
@@ -621,7 +566,6 @@ def test_counts_multiclass(
         as_dict=True,
     )
 
-    # test Counts
     actual_metrics = [m for m in metrics[MetricType.Counts]]
     expected_metrics = [
         {
@@ -634,7 +578,7 @@ def test_counts_multiclass(
             "parameters": {
                 "score_thresholds": [0.05, 0.1, 0.3, 0.85],
                 "hardmax": True,
-                "label": {"key": "class_label", "value": "cat"},
+                "label": "cat",
             },
             "type": "Counts",
         },
@@ -648,7 +592,7 @@ def test_counts_multiclass(
             "parameters": {
                 "score_thresholds": [0.05, 0.1, 0.3, 0.85],
                 "hardmax": True,
-                "label": {"key": "class_label", "value": "dog"},
+                "label": "dog",
             },
             "type": "Counts",
         },
@@ -662,7 +606,7 @@ def test_counts_multiclass(
             "parameters": {
                 "score_thresholds": [0.05, 0.1, 0.3, 0.85],
                 "hardmax": True,
-                "label": {"key": "class_label", "value": "bee"},
+                "label": "bee",
             },
             "type": "Counts",
         },
@@ -673,7 +617,7 @@ def test_counts_multiclass(
         assert m in actual_metrics
 
 
-def test_counts_true_negatives_check(
+def test_counts_true_negatives_check_animals(
     classifications_multiclass_true_negatives_check: list[Classification],
 ):
     loader = DataLoader()
@@ -681,25 +625,18 @@ def test_counts_true_negatives_check(
     evaluator = loader.finalize()
 
     assert evaluator.metadata == {
-        "ignored_prediction_labels": [
-            ("k1", "bee"),
-            ("k1", "cat"),
-            ("k2", "milk"),
-            ("k2", "flour"),
-        ],
+        "n_datums": 1,
+        "n_groundtruths": 1,
+        "n_predictions": 3,
+        "n_labels": 3,
+        "ignored_prediction_labels": ["bee", "cat"],
         "missing_prediction_labels": [],
-        "n_datums": 2,
-        "n_groundtruths": 2,
-        "n_labels": 6,
-        "n_predictions": 6,
     }
-
     metrics = evaluator.evaluate(
         score_thresholds=[0.05, 0.15, 0.95],
         as_dict=True,
     )
 
-    # test Counts
     actual_metrics = [m for m in metrics[MetricType.Counts]]
     expected_metrics = [
         {
@@ -712,7 +649,7 @@ def test_counts_true_negatives_check(
             "parameters": {
                 "score_thresholds": [0.05, 0.15, 0.95],
                 "hardmax": True,
-                "label": {"key": "k1", "value": "ant"},
+                "label": "ant",
             },
             "type": "Counts",
         },
@@ -726,7 +663,7 @@ def test_counts_true_negatives_check(
             "parameters": {
                 "score_thresholds": [0.05, 0.15, 0.95],
                 "hardmax": True,
-                "label": {"key": "k1", "value": "bee"},
+                "label": "bee",
             },
             "type": "Counts",
         },
@@ -740,49 +677,7 @@ def test_counts_true_negatives_check(
             "parameters": {
                 "score_thresholds": [0.05, 0.15, 0.95],
                 "hardmax": True,
-                "label": {"key": "k1", "value": "cat"},
-            },
-            "type": "Counts",
-        },
-        {
-            "value": {
-                "tp": [0, 0, 0],
-                "fp": [0, 0, 0],
-                "fn": [1, 1, 1],
-                "tn": [0, 0, 0],
-            },
-            "parameters": {
-                "score_thresholds": [0.05, 0.15, 0.95],
-                "hardmax": True,
-                "label": {"key": "k2", "value": "egg"},
-            },
-            "type": "Counts",
-        },
-        {
-            "value": {
-                "tp": [0, 0, 0],
-                "fp": [1, 1, 0],
-                "fn": [0, 0, 0],
-                "tn": [0, 0, 1],
-            },
-            "parameters": {
-                "score_thresholds": [0.05, 0.15, 0.95],
-                "hardmax": True,
-                "label": {"key": "k2", "value": "milk"},
-            },
-            "type": "Counts",
-        },
-        {
-            "value": {
-                "tp": [0, 0, 0],
-                "fp": [0, 0, 0],
-                "fn": [0, 0, 0],
-                "tn": [1, 1, 1],
-            },
-            "parameters": {
-                "score_thresholds": [0.05, 0.15, 0.95],
-                "hardmax": True,
-                "label": {"key": "k2", "value": "flour"},
+                "label": "cat",
             },
             "type": "Counts",
         },
@@ -802,10 +697,7 @@ def test_counts_zero_count_check(
     evaluator = loader.finalize()
 
     assert evaluator.metadata == {
-        "ignored_prediction_labels": [
-            ("k", "bee"),
-            ("k", "cat"),
-        ],
+        "ignored_prediction_labels": ["bee", "cat"],
         "missing_prediction_labels": [],
         "n_datums": 1,
         "n_groundtruths": 1,
@@ -818,7 +710,6 @@ def test_counts_zero_count_check(
         as_dict=True,
     )
 
-    # test Counts
     actual_metrics = [m for m in metrics[MetricType.Counts]]
     expected_metrics = [
         {
@@ -831,7 +722,7 @@ def test_counts_zero_count_check(
             "parameters": {
                 "score_thresholds": [0.05, 0.2, 0.95],
                 "hardmax": True,
-                "label": {"key": "k", "value": "ant"},
+                "label": "ant",
             },
             "type": "Counts",
         },
@@ -845,7 +736,7 @@ def test_counts_zero_count_check(
             "parameters": {
                 "score_thresholds": [0.05, 0.2, 0.95],
                 "hardmax": True,
-                "label": {"key": "k", "value": "bee"},
+                "label": "bee",
             },
             "type": "Counts",
         },
@@ -859,7 +750,7 @@ def test_counts_zero_count_check(
             "parameters": {
                 "score_thresholds": [0.05, 0.2, 0.95],
                 "hardmax": True,
-                "label": {"key": "k", "value": "cat"},
+                "label": "cat",
             },
             "type": "Counts",
         },
