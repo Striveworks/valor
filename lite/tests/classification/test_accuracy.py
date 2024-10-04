@@ -211,7 +211,7 @@ def test_accuracy_color_example(
         assert m in actual_metrics
 
 
-def test_accuracy_with_image_example(  # TODO add comment about the deleted data here
+def test_accuracy_with_image_example(
     classifications_image_example: list[Classification],
 ):
     loader = DataLoader()
@@ -233,7 +233,7 @@ def test_accuracy_with_image_example(  # TODO add comment about the deleted data
     expected_metrics = [
         {
             "type": "Accuracy",
-            "value": [0.5],  # TODO add comment about the bug here
+            "value": [0.5],
             "parameters": {
                 "score_thresholds": [0.0],
                 "hardmax": True,
