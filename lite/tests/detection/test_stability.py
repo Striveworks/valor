@@ -3,7 +3,7 @@ from random import choice, uniform
 from valor_lite.detection import BoundingBox, DataLoader, Detection
 
 
-def generate_random_detections(
+def _generate_random_detections(
     n_detections: int, n_boxes: int, labels: str
 ) -> list[Detection]:
     def bbox(is_prediction):
@@ -17,7 +17,7 @@ def generate_random_detections(
             xmax,
             ymin,
             ymax,
-            [("class", choice(labels)), ("category", choice(labels))],
+            [choice(labels), choice(labels)],
             **kw,
         )
 
@@ -43,7 +43,7 @@ def test_fuzz_detections():
         n_detections = choice(quantities)
         n_boxes = choice(quantities)
 
-        detections = generate_random_detections(n_detections, n_boxes, labels)
+        detections = _generate_random_detections(n_detections, n_boxes, labels)
 
         loader = DataLoader()
         loader.add_bounding_boxes(detections)
@@ -66,18 +66,16 @@ def test_fuzz_detections_with_filtering():
         n_detections = choice(quantities)
         n_boxes = choice(quantities)
 
-        detections = generate_random_detections(n_detections, n_boxes, labels)
+        detections = _generate_random_detections(n_detections, n_boxes, labels)
 
         loader = DataLoader()
         loader.add_bounding_boxes(detections)
         evaluator = loader.finalize()
 
-        label_key = "class"
         datum_subset = [f"uid{i}" for i in range(len(detections) // 2)]
 
         filter_ = evaluator.create_filter(
             datum_uids=datum_subset,
-            label_keys=[label_key],
         )
 
         evaluator.evaluate(
