@@ -12,7 +12,7 @@ class Bitmask:
     def __post_init__(self):
         if self.mask.dtype != np.bool_:
             raise ValueError(
-                f"Mask contain a boolean mask, recieved mask with dtype `{self.mask.dtype}`."
+                f"Bitmask recieved mask with dtype `{self.mask.dtype}`."
             )
 
 

@@ -109,6 +109,7 @@ class ConfusionMatrix:
             type=type(self).__name__,
             value={
                 "confusion_matrix": self.confusion_matrix,
+                "hallucinations": self.hallucinations,
                 "missing_predictions": self.missing_predictions,
             },
             parameters={},
