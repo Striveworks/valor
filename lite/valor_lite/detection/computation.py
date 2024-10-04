@@ -31,6 +31,11 @@ def compute_bbox_iou(data: NDArray[np.floating]) -> NDArray[np.floating]:
     NDArray[np.floating]
         Computed IoU's.
     """
+    iou = np.zeros(data.shape[0])
+
+    # we may not have data if we don't have any predictions for a given datum
+    if data.size == 0:
+        return iou
 
     xmin1, xmax1, ymin1, ymax1 = (
         data[:, 0],
@@ -59,7 +64,6 @@ def compute_bbox_iou(data: NDArray[np.floating]) -> NDArray[np.floating]:
 
     union_area = area1 + area2 - intersection_area
 
-    iou = np.zeros(data.shape[0])
     valid_union_mask = union_area >= 1e-9
     iou[valid_union_mask] = (
         intersection_area[valid_union_mask] / union_area[valid_union_mask]
@@ -235,13 +239,13 @@ def compute_metrics(
         NDArray[np.floating],
         NDArray[np.floating],
         NDArray[np.floating],
-        NDArray[np.floating],
+        float,
     ],
     tuple[
         NDArray[np.floating],
         NDArray[np.floating],
         NDArray[np.floating],
-        NDArray[np.floating],
+        float,
     ],
     NDArray[np.floating],
     NDArray[np.floating],
@@ -272,9 +276,9 @@ def compute_metrics(
 
     Returns
     -------
-    tuple[NDArray, NDArray, NDArray NDArray]
+    tuple[NDArray, NDArray, NDArray, float]
         Average Precision results.
-    tuple[NDArray, NDArray, NDArray NDArray]
+    tuple[NDArray, NDArray, NDArray, float]
         Average Recall results.
     np.ndarray
         Precision, Recall, TP, FP, FN, F1 Score, Accuracy.
@@ -453,15 +457,8 @@ def compute_metrics(
     average_recall /= n_ious
 
     # calculate mAP and mAR
-    label_key_mapping = label_metadata[unique_pd_labels, 2]
-    label_keys = np.unique(label_metadata[:, 2])
-    mAP = np.ones((n_ious, label_keys.shape[0])) * -1.0
-    mAR = np.ones((n_scores, label_keys.shape[0])) * -1.0
-    for key in np.unique(label_key_mapping):
-        labels = unique_pd_labels[label_key_mapping == key]
-        key_idx = int(key)
-        mAP[:, key_idx] = average_precision[:, labels].mean(axis=1)
-        mAR[:, key_idx] = average_recall[:, labels].mean(axis=1)
+    mAP = average_precision[:, unique_pd_labels].mean(axis=1)
+    mAR = average_recall[:, unique_pd_labels].mean(axis=1)
 
     # calculate AP and mAP averaged over iou thresholds
     APAveragedOverIoUs = average_precision.mean(axis=0)
@@ -537,7 +534,6 @@ def compute_confusion_matrix(
     score_thresholds: NDArray[np.floating],
     n_examples: int,
 ) -> tuple[NDArray[np.floating], NDArray[np.floating], NDArray[np.int32]]:
-
     """
     Compute detailed counts.
 

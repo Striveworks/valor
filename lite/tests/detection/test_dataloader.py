@@ -31,15 +31,9 @@ def test_valor_integration():
     loader.add_bounding_boxes_from_valor_dict([(gt, pd)])
 
     assert len(loader.pairs) == 1
-    assert loader.pairs[0].shape == (71, 7)
+    assert loader.pairs[0].shape == (142, 7)
 
-    assert set(loader._evaluator.label_key_to_index.keys()) == {
-        "iscrowd",
-        "name",
-        "supercategory",
-        "unused_class",
-    }
-    assert len(loader._evaluator.index_to_label) == 17
+    assert len(loader._evaluator.index_to_label) == 24
     assert loader._evaluator.n_datums == 1
 
 
@@ -59,7 +53,7 @@ def test_mixed_annotations(
                     xmax=rect1[1],
                     ymin=rect1[2],
                     ymax=rect1[3],
-                    labels=[("k1", "v1")],
+                    labels=["v1"],
                 ),
             ],
             predictions=[
@@ -67,7 +61,7 @@ def test_mixed_annotations(
                     shape=ShapelyPolygon(
                         rect1_rotated_5_degrees_around_origin
                     ),
-                    labels=[("k1", "v1")],
+                    labels=["v1"],
                     scores=[0.3],
                 ),
             ],
@@ -80,13 +74,13 @@ def test_mixed_annotations(
                     xmax=rect1[1],
                     ymin=rect1[2],
                     ymax=rect1[3],
-                    labels=[("k1", "v1")],
+                    labels=["v1"],
                 ),
             ],
             predictions=[
                 Bitmask(
                     mask=np.ones((80, 32), dtype=bool),
-                    labels=[("k1", "v1")],
+                    labels=["v1"],
                     scores=[0.3],
                 ),
             ],
@@ -96,7 +90,7 @@ def test_mixed_annotations(
             groundtruths=[
                 Bitmask(
                     mask=np.ones((80, 32), dtype=bool),
-                    labels=[("k1", "v1")],
+                    labels=["v1"],
                     scores=[0.3],
                 ),
             ],
@@ -105,7 +99,7 @@ def test_mixed_annotations(
                     shape=ShapelyPolygon(
                         rect1_rotated_5_degrees_around_origin
                     ),
-                    labels=[("k1", "v1")],
+                    labels=["v1"],
                     scores=[0.3],
                 ),
             ],

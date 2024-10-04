@@ -6,7 +6,7 @@ from valor_lite.detection import Bitmask, BoundingBox, Detection, Polygon
 
 def test_BoundingBox():
     # groundtruth
-    gt = BoundingBox(xmin=0, xmax=1, ymin=0, ymax=1, labels=[("k", "v")])
+    gt = BoundingBox(xmin=0, xmax=1, ymin=0, ymax=1, labels=["label"])
 
     # prediction
     pd = BoundingBox(
@@ -14,7 +14,7 @@ def test_BoundingBox():
         xmax=11,
         ymin=0,
         ymax=1,
-        labels=[("k", "v")],
+        labels=["label"],
         scores=[0.7],
     )
 
@@ -24,7 +24,7 @@ def test_BoundingBox():
             xmax=1,
             ymin=0,
             ymax=1,
-            labels=[("k", "v")],
+            labels=["label"],
             scores=[0.7, 0.1],
         )
     with pytest.raises(ValueError):
@@ -33,7 +33,7 @@ def test_BoundingBox():
             xmax=1,
             ymin=0,
             ymax=1,
-            labels=[("k", "v1"), ("k", "v2")],
+            labels=["label1", "label2"],
             scores=[0.7],
         )
 
@@ -48,12 +48,12 @@ def test_Bitmask():
     mask[:5, :5] = True
 
     # groundtruth
-    gt = Bitmask(mask=mask, labels=[("k", "v")])
+    gt = Bitmask(mask=mask, labels=["label"])
 
     # prediction
     Bitmask(
         mask=mask,
-        labels=[("k", "v")],
+        labels=["label"],
         scores=[0.7],
     )
 
@@ -61,13 +61,13 @@ def test_Bitmask():
     with pytest.raises(ValueError):
         Bitmask(
             mask=np.zeros((10, 10), dtype=np.bool_),
-            labels=[("k", "v")],
+            labels=["label"],
             scores=[0.7, 0.1],
         )
     with pytest.raises(ValueError):
         Bitmask(
             mask=np.zeros((10, 10), dtype=np.bool_),
-            labels=[("k", "v1"), ("k", "v2")],
+            labels=["label1", "label2"],
             scores=[0.7],
         )
 
@@ -76,7 +76,7 @@ def test_Bitmask():
     assert box
     assert box.extrema == (0, 4, 0, 4)
 
-    empty_box = Bitmask(mask=np.array([]), labels=[("k", "v")])
+    empty_box = Bitmask(mask=np.array([]), labels=["label"])
 
     assert empty_box.to_box() is None
 
@@ -86,12 +86,12 @@ def test_Polygon(rect1_rotated_5_degrees_around_origin):
     shape = ShapelyPolygon(rect1_rotated_5_degrees_around_origin)
 
     # groundtruth
-    gt = Polygon(shape=shape, labels=[("k", "v")])
+    gt = Polygon(shape=shape, labels=["label"])
 
     # prediction
     Polygon(
         shape=shape,
-        labels=[("k", "v")],
+        labels=["label"],
         scores=[0.7],
     )
 
@@ -99,20 +99,20 @@ def test_Polygon(rect1_rotated_5_degrees_around_origin):
     with pytest.raises(ValueError):
         Polygon(
             shape=shape,
-            labels=[("k", "v")],
+            labels=["label"],
             scores=[0.7, 0.1],
         )
     with pytest.raises(ValueError):
         Polygon(
             shape=shape,
-            labels=[("k", "v1"), ("k", "v2")],
+            labels=["label1", "label2"],
             scores=[0.7],
         )
     # test that we throw a type error if the shape isn't a shapely.geometry.Polygon
     with pytest.raises(TypeError):
         Polygon(
             shape=np.zeros((10, 10), dtype=np.bool_),  # type: ignore - purposefully throwing error
-            labels=[("k", "v1"), ("k", "v2")],
+            labels=["label1", "label2"],
             scores=[0.7],
         )
 
@@ -126,7 +126,7 @@ def test_Polygon(rect1_rotated_5_degrees_around_origin):
         45.07713248852931,
     )
 
-    empty_box = Polygon(shape=ShapelyPolygon([]), labels=[("k", "v")])
+    empty_box = Polygon(shape=ShapelyPolygon([]), labels=["label"])
 
     assert empty_box.to_box() is None
 
@@ -134,7 +134,7 @@ def test_Polygon(rect1_rotated_5_degrees_around_origin):
 def test_Detection():
 
     # groundtruth
-    gt = BoundingBox(xmin=0, xmax=1, ymin=0, ymax=1, labels=[("k", "v")])
+    gt = BoundingBox(xmin=0, xmax=1, ymin=0, ymax=1, labels=["label"])
 
     # prediction
     pd = BoundingBox(
@@ -142,7 +142,7 @@ def test_Detection():
         xmax=11,
         ymin=0,
         ymax=1,
-        labels=[("k", "v")],
+        labels=["label"],
         scores=[0.7],
     )
 

@@ -11,7 +11,7 @@ class BoundingBox:
     xmax: float
     ymin: float
     ymax: float
-    labels: list[tuple[str, str]]
+    labels: list[str]
     scores: list[float] = field(default_factory=list)
 
     def __post_init__(self):
@@ -28,7 +28,7 @@ class BoundingBox:
 @dataclass
 class Polygon:
     shape: ShapelyPolygon
-    labels: list[tuple[str, str]]
+    labels: list[str]
     scores: list[float] = field(default_factory=list)
 
     def __post_init__(self):
@@ -59,7 +59,7 @@ class Polygon:
 @dataclass
 class Bitmask:
     mask: NDArray[np.bool_]
-    labels: list[tuple[str, str]]
+    labels: list[str]
     scores: list[float] = field(default_factory=list)
 
     def __post_init__(self):

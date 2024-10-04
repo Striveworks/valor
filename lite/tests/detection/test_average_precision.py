@@ -37,60 +37,53 @@ def test__compute_average_precision():
         mean_average_precision_averaged_over_ious,
     ) = results
 
-    expected_ap = np.array(
+    expected = np.array(
         [
             [1.0],  # iou = 0.1
             [1 / 3],  # iou = 0.6
         ]
     )
-    assert expected_ap.shape == average_precision.shape
-    assert np.isclose(average_precision, expected_ap).all()
+    assert expected.shape == average_precision.shape
+    assert np.isclose(average_precision, expected).all()
 
     # since only one class, ap == map
-    assert expected_ap.shape == mean_average_precision.shape
-    assert np.isclose(mean_average_precision, expected_ap).all()
+    assert expected.flatten().shape == mean_average_precision.shape
+    assert np.isclose(mean_average_precision, expected.flatten()).all()
 
-    expected_average = np.array([2 / 3])
+    expected = np.array([2 / 3])
 
-    assert average_precision_averaged_over_ious.shape == expected_average.shape
+    assert average_precision_averaged_over_ious.shape == expected.shape
+    assert np.isclose(average_precision_averaged_over_ious, expected).all()
+
+    assert isinstance(mean_average_precision_averaged_over_ious, float)
     assert np.isclose(
-        average_precision_averaged_over_ious, expected_average
-    ).all()
-
-    # since only one class, ap == map
-    assert (
-        mean_average_precision_averaged_over_ious.shape
-        == expected_average.shape
-    )
-    assert np.isclose(
-        mean_average_precision_averaged_over_ious, expected_average
+        mean_average_precision_averaged_over_ious, expected.flatten()
     ).all()
 
 
-def test_ap_metrics(
-    basic_detections: list[Detection],
-    basic_rotated_detections: list[Detection],
+def test_ap_metrics_first_class(
+    basic_detections_first_class: list[Detection],
+    basic_rotated_detections_first_class: list[Detection],
 ):
     """
     Basic object detection test.
 
     groundtruths
         datum uid1
-            box 1 - label (k1, v1) - tp
-            box 3 - label (k2, v2) - fn missing prediction
+            box 1 - label v1 - tp
         datum uid2
-            box 2 - label (k1, v1) - fn misclassification
+            box 2 - label v1 - fn missing prediction
 
     predictions
         datum uid1
-            box 1 - label (k1, v1) - score 0.3 - tp
+            box 1 - label v1 - score 0.3 - tp
         datum uid2
-            box 2 - label (k2, v2) - score 0.98 - fp
+            none
     """
 
     for input_, method in [
-        (basic_detections, DataLoader.add_bounding_boxes),
-        (basic_rotated_detections, DataLoader.add_polygons),
+        (basic_detections_first_class, DataLoader.add_bounding_boxes),
+        (basic_rotated_detections_first_class, DataLoader.add_polygons),
     ]:
         loader = DataLoader()
         method(loader, input_)
@@ -104,9 +97,9 @@ def test_ap_metrics(
         assert evaluator.ignored_prediction_labels == []
         assert evaluator.missing_prediction_labels == []
         assert evaluator.n_datums == 2
-        assert evaluator.n_labels == 2
-        assert evaluator.n_groundtruths == 3
-        assert evaluator.n_predictions == 2
+        assert evaluator.n_labels == 1
+        assert evaluator.n_groundtruths == 2
+        assert evaluator.n_predictions == 1
 
         # test AP
         actual_metrics = [m for m in metrics[MetricType.AP]]
@@ -116,7 +109,7 @@ def test_ap_metrics(
                 "value": 0.504950495049505,
                 "parameters": {
                     "iou_threshold": 0.1,
-                    "label": {"key": "k1", "value": "v1"},
+                    "label": "v1",
                 },
             },
             {
@@ -124,23 +117,7 @@ def test_ap_metrics(
                 "value": 0.504950495049505,
                 "parameters": {
                     "iou_threshold": 0.6,
-                    "label": {"key": "k1", "value": "v1"},
-                },
-            },
-            {
-                "type": "AP",
-                "value": 0.0,
-                "parameters": {
-                    "iou_threshold": 0.1,
-                    "label": {"key": "k2", "value": "v2"},
-                },
-            },
-            {
-                "type": "AP",
-                "value": 0.0,
-                "parameters": {
-                    "iou_threshold": 0.6,
-                    "label": {"key": "k2", "value": "v2"},
+                    "label": "v1",
                 },
             },
         ]
@@ -157,7 +134,6 @@ def test_ap_metrics(
                 "value": 0.504950495049505,
                 "parameters": {
                     "iou_threshold": 0.1,
-                    "label_key": "k1",
                 },
             },
             {
@@ -165,23 +141,6 @@ def test_ap_metrics(
                 "value": 0.504950495049505,
                 "parameters": {
                     "iou_threshold": 0.6,
-                    "label_key": "k1",
-                },
-            },
-            {
-                "type": "mAP",
-                "value": 0.0,
-                "parameters": {
-                    "iou_threshold": 0.1,
-                    "label_key": "k2",
-                },
-            },
-            {
-                "type": "mAP",
-                "value": 0.0,
-                "parameters": {
-                    "iou_threshold": 0.6,
-                    "label_key": "k2",
                 },
             },
         ]
@@ -196,18 +155,7 @@ def test_ap_metrics(
             {
                 "type": "APAveragedOverIOUs",
                 "value": 0.504950495049505,
-                "parameters": {
-                    "iou_thresholds": [0.1, 0.6],
-                    "label": {"key": "k1", "value": "v1"},
-                },
-            },
-            {
-                "type": "APAveragedOverIOUs",
-                "value": 0.0,
-                "parameters": {
-                    "iou_thresholds": [0.1, 0.6],
-                    "label": {"key": "k2", "value": "v2"},
-                },
+                "parameters": {"iou_thresholds": [0.1, 0.6], "label": "v1"},
             },
         ]
         for m in actual_metrics:
@@ -223,15 +171,127 @@ def test_ap_metrics(
                 "value": 0.504950495049505,
                 "parameters": {
                     "iou_thresholds": [0.1, 0.6],
-                    "label_key": "k1",
                 },
             },
+        ]
+        for m in actual_metrics:
+            assert m in expected_metrics
+        for m in expected_metrics:
+            assert m in actual_metrics
+
+
+def test_ap_metrics_second_class(
+    basic_detections_second_class: list[Detection],
+    basic_rotated_detections_second_class: list[Detection],
+):
+    """
+    Basic object detection test.
+
+    groundtruths
+        datum uid1
+            box 3 - label v2 - fn missing prediction
+        datum uid2
+           none
+    predictions
+        datum uid1
+            none
+        datum uid2
+            box 2 - label v2 - score 0.98 - fp
+    """
+
+    for input_, method in [
+        (basic_detections_second_class, DataLoader.add_bounding_boxes),
+        (basic_rotated_detections_second_class, DataLoader.add_polygons),
+    ]:
+        loader = DataLoader()
+        method(loader, input_)
+        evaluator = loader.finalize()
+
+        metrics = evaluator.evaluate(
+            iou_thresholds=[0.1, 0.6],
+        )
+
+        assert evaluator.ignored_prediction_labels == []
+        assert evaluator.missing_prediction_labels == []
+        assert evaluator.n_datums == 2
+        assert evaluator.n_labels == 1
+        assert evaluator.n_groundtruths == 1
+        assert evaluator.n_predictions == 1
+
+        # test AP
+        actual_metrics = [m.to_dict() for m in metrics[MetricType.AP]]
+        expected_metrics = [
+            {
+                "type": "AP",
+                "value": 0.0,
+                "parameters": {
+                    "iou_threshold": 0.1,
+                    "label": "v2",
+                },
+            },
+            {
+                "type": "AP",
+                "value": 0.0,
+                "parameters": {"iou_threshold": 0.6, "label": "v2"},
+            },
+        ]
+        for m in actual_metrics:
+            assert m in expected_metrics
+        for m in expected_metrics:
+            assert m in actual_metrics
+
+        # test mAP
+        actual_metrics = [m.to_dict() for m in metrics[MetricType.mAP]]
+        expected_metrics = [
+            {
+                "type": "mAP",
+                "value": 0.0,
+                "parameters": {
+                    "iou_threshold": 0.1,
+                },
+            },
+            {
+                "type": "mAP",
+                "value": 0.0,
+                "parameters": {
+                    "iou_threshold": 0.6,
+                },
+            },
+        ]
+        for m in actual_metrics:
+            assert m in expected_metrics
+        for m in expected_metrics:
+            assert m in actual_metrics
+
+        # test AP Averaged Over IoUs
+        actual_metrics = [
+            m.to_dict() for m in metrics[MetricType.APAveragedOverIOUs]
+        ]
+        expected_metrics = [
+            {
+                "type": "APAveragedOverIOUs",
+                "value": 0.0,
+                "parameters": {
+                    "iou_thresholds": [0.1, 0.6],
+                    "label": "v2",
+                },
+            },
+        ]
+        for m in actual_metrics:
+            assert m in expected_metrics
+        for m in expected_metrics:
+            assert m in actual_metrics
+
+        # test mAP Averaged Over IoUs
+        actual_metrics = [
+            m.to_dict() for m in metrics[MetricType.mAPAveragedOverIOUs]
+        ]
+        expected_metrics = [
             {
                 "type": "mAPAveragedOverIOUs",
                 "value": 0.0,
                 "parameters": {
                     "iou_thresholds": [0.1, 0.6],
-                    "label_key": "k2",
                 },
             },
         ]
@@ -253,7 +313,7 @@ def test_ap_using_torch_metrics_example(
     loader.add_bounding_boxes(torchmetrics_detections)
     evaluator = loader.finalize()
 
-    assert evaluator.ignored_prediction_labels == [("class", "3")]
+    assert evaluator.ignored_prediction_labels == ["3"]
     assert evaluator.missing_prediction_labels == []
     assert evaluator.n_datums == 4
     assert evaluator.n_labels == 6
@@ -273,7 +333,7 @@ def test_ap_using_torch_metrics_example(
             "value": 1.0,
             "parameters": {
                 "iou_threshold": 0.5,
-                "label": {"key": "class", "value": "0"},
+                "label": "0",
             },
         },
         {
@@ -281,7 +341,7 @@ def test_ap_using_torch_metrics_example(
             "value": 0.7227722772277229,
             "parameters": {
                 "iou_threshold": 0.75,
-                "label": {"key": "class", "value": "0"},
+                "label": "0",
             },
         },
         {
@@ -289,7 +349,7 @@ def test_ap_using_torch_metrics_example(
             "value": 1.0,
             "parameters": {
                 "iou_threshold": 0.5,
-                "label": {"key": "class", "value": "1"},
+                "label": "1",
             },
         },
         {
@@ -297,7 +357,7 @@ def test_ap_using_torch_metrics_example(
             "value": 1.0,
             "parameters": {
                 "iou_threshold": 0.75,
-                "label": {"key": "class", "value": "1"},
+                "label": "1",
             },
         },
         {
@@ -305,7 +365,7 @@ def test_ap_using_torch_metrics_example(
             "value": 0.504950495049505,
             "parameters": {
                 "iou_threshold": 0.5,
-                "label": {"key": "class", "value": "2"},
+                "label": "2",
             },
         },
         {
@@ -313,7 +373,7 @@ def test_ap_using_torch_metrics_example(
             "value": 0.504950495049505,
             "parameters": {
                 "iou_threshold": 0.75,
-                "label": {"key": "class", "value": "2"},
+                "label": "2",
             },
         },
         {
@@ -321,7 +381,7 @@ def test_ap_using_torch_metrics_example(
             "value": 1.0,
             "parameters": {
                 "iou_threshold": 0.5,
-                "label": {"key": "class", "value": "4"},
+                "label": "4",
             },
         },
         {
@@ -329,7 +389,7 @@ def test_ap_using_torch_metrics_example(
             "value": 1.0,
             "parameters": {
                 "iou_threshold": 0.75,
-                "label": {"key": "class", "value": "4"},
+                "label": "4",
             },
         },
         {
@@ -337,7 +397,7 @@ def test_ap_using_torch_metrics_example(
             "value": 0.7909790979097909,
             "parameters": {
                 "iou_threshold": 0.5,
-                "label": {"key": "class", "value": "49"},
+                "label": "49",
             },
         },
         {
@@ -345,7 +405,7 @@ def test_ap_using_torch_metrics_example(
             "value": 0.5756718528995757,
             "parameters": {
                 "iou_threshold": 0.75,
-                "label": {"key": "class", "value": "49"},
+                "label": "49",
             },
         },
     ]
@@ -362,7 +422,6 @@ def test_ap_using_torch_metrics_example(
             "value": 0.8591859185918592,
             "parameters": {
                 "iou_threshold": 0.5,
-                "label_key": "class",
             },
         },
         {
@@ -370,7 +429,6 @@ def test_ap_using_torch_metrics_example(
             "value": 0.7606789250353607,
             "parameters": {
                 "iou_threshold": 0.75,
-                "label_key": "class",
             },
         },
     ]
@@ -401,13 +459,7 @@ def test_ap_false_negatives_single_datum_baseline(
         {
             "type": "AP",
             "value": 1.0,
-            "parameters": {
-                "iou_threshold": 0.5,
-                "label": {
-                    "key": "key",
-                    "value": "value",
-                },
-            },
+            "parameters": {"iou_threshold": 0.5, "label": "value"},
         }
     ]
     for m in actual_metrics:
@@ -437,13 +489,7 @@ def test_ap_false_negatives_single_datum(
         {
             "type": "AP",
             "value": 0.5,
-            "parameters": {
-                "iou_threshold": 0.5,
-                "label": {
-                    "key": "key",
-                    "value": "value",
-                },
-            },
+            "parameters": {"iou_threshold": 0.5, "label": "value"},
         }
     ]
     for m in actual_metrics:
@@ -481,13 +527,7 @@ def test_ap_false_negatives_two_datums_one_empty_low_confidence_of_fp(
         {
             "type": "AP",
             "value": 1.0,
-            "parameters": {
-                "iou_threshold": 0.5,
-                "label": {
-                    "key": "key",
-                    "value": "value",
-                },
-            },
+            "parameters": {"iou_threshold": 0.5, "label": "value"},
         }
     ]
     for m in actual_metrics:
@@ -524,13 +564,7 @@ def test_ap_false_negatives_two_datums_one_empty_high_confidence_of_fp(
         {
             "type": "AP",
             "value": 0.5,
-            "parameters": {
-                "iou_threshold": 0.5,
-                "label": {
-                    "key": "key",
-                    "value": "value",
-                },
-            },
+            "parameters": {"iou_threshold": 0.5, "label": "value"},
         }
     ]
     for m in actual_metrics:
@@ -567,24 +601,12 @@ def test_ap_false_negatives_two_datums_one_only_with_different_class_low_confide
         {
             "type": "AP",
             "value": 1.0,
-            "parameters": {
-                "iou_threshold": 0.5,
-                "label": {
-                    "key": "key",
-                    "value": "value",
-                },
-            },
+            "parameters": {"iou_threshold": 0.5, "label": "value"},
         },
         {
             "type": "AP",
             "value": 0.0,
-            "parameters": {
-                "iou_threshold": 0.5,
-                "label": {
-                    "key": "key",
-                    "value": "other value",
-                },
-            },
+            "parameters": {"iou_threshold": 0.5, "label": "other value"},
         },
     ]
     for m in actual_metrics:
@@ -621,24 +643,12 @@ def test_ap_false_negatives_two_datums_one_only_with_different_class_high_confid
         {
             "type": "AP",
             "value": 0.5,
-            "parameters": {
-                "iou_threshold": 0.5,
-                "label": {
-                    "key": "key",
-                    "value": "value",
-                },
-            },
+            "parameters": {"iou_threshold": 0.5, "label": "value"},
         },
         {
             "type": "AP",
             "value": 0.0,
-            "parameters": {
-                "iou_threshold": 0.5,
-                "label": {
-                    "key": "key",
-                    "value": "other value",
-                },
-            },
+            "parameters": {"iou_threshold": 0.5, "label": "other value"},
         },
     ]
     for m in actual_metrics:
@@ -669,7 +679,7 @@ def test_ap_ranked_pair_ordering(
 
         assert evaluator.metadata == {
             "ignored_prediction_labels": [
-                ("class", "label4"),
+                "label4",
             ],
             "missing_prediction_labels": [],
             "n_datums": 1,
@@ -688,7 +698,7 @@ def test_ap_ranked_pair_ordering(
             {
                 "parameters": {
                     "iou_threshold": 0.5,
-                    "label": {"key": "class", "value": "label1"},
+                    "label": "label1",
                 },
                 "value": 1.0,
                 "type": "AP",
@@ -696,7 +706,7 @@ def test_ap_ranked_pair_ordering(
             {
                 "parameters": {
                     "iou_threshold": 0.75,
-                    "label": {"key": "class", "value": "label1"},
+                    "label": "label1",
                 },
                 "value": 1.0,
                 "type": "AP",
@@ -704,7 +714,7 @@ def test_ap_ranked_pair_ordering(
             {
                 "parameters": {
                     "iou_threshold": 0.5,
-                    "label": {"key": "class", "value": "label2"},
+                    "label": "label2",
                 },
                 "value": 1.0,
                 "type": "AP",
@@ -712,7 +722,7 @@ def test_ap_ranked_pair_ordering(
             {
                 "parameters": {
                     "iou_threshold": 0.75,
-                    "label": {"key": "class", "value": "label2"},
+                    "label": "label2",
                 },
                 "value": 1.0,
                 "type": "AP",
@@ -720,7 +730,7 @@ def test_ap_ranked_pair_ordering(
             {
                 "parameters": {
                     "iou_threshold": 0.5,
-                    "label": {"key": "class", "value": "label3"},
+                    "label": "label3",
                 },
                 "value": 0.0,
                 "type": "AP",
@@ -728,7 +738,7 @@ def test_ap_ranked_pair_ordering(
             {
                 "parameters": {
                     "iou_threshold": 0.75,
-                    "label": {"key": "class", "value": "label3"},
+                    "label": "label3",
                 },
                 "value": 0.0,
                 "type": "AP",
@@ -742,12 +752,12 @@ def test_ap_ranked_pair_ordering(
         actual_metrics = [m for m in metrics[MetricType.mAP]]
         expected_metrics = [
             {
-                "parameters": {"label_key": "class", "iou_threshold": 0.5},
+                "parameters": {"iou_threshold": 0.5},
                 "value": 0.6666666666666666,
                 "type": "mAP",
             },
             {
-                "parameters": {"label_key": "class", "iou_threshold": 0.75},
+                "parameters": {"iou_threshold": 0.75},
                 "value": 0.6666666666666666,
                 "type": "mAP",
             },
@@ -761,7 +771,7 @@ def test_ap_ranked_pair_ordering(
         expected_metrics = [
             {
                 "parameters": {
-                    "label": {"key": "class", "value": "label1"},
+                    "label": "label1",
                     "iou_thresholds": [0.5, 0.75],
                 },
                 "value": 1.0,
@@ -770,7 +780,7 @@ def test_ap_ranked_pair_ordering(
             {
                 "parameters": {
                     "iou_thresholds": [0.5, 0.75],
-                    "label": {"key": "class", "value": "label2"},
+                    "label": "label2",
                 },
                 "value": 1.0,
                 "type": "APAveragedOverIOUs",
@@ -778,7 +788,7 @@ def test_ap_ranked_pair_ordering(
             {
                 "parameters": {
                     "iou_thresholds": [0.5, 0.75],
-                    "label": {"key": "class", "value": "label3"},
+                    "label": "label3",
                 },
                 "value": 0.0,
                 "type": "APAveragedOverIOUs",
@@ -793,7 +803,6 @@ def test_ap_ranked_pair_ordering(
         expected_metrics = [
             {
                 "parameters": {
-                    "label_key": "class",
                     "iou_thresholds": [
                         0.5,
                         0.75,
@@ -838,10 +847,7 @@ def test_ap_true_positive_deassignment(
         {
             "type": "AP",
             "value": 0.504950495049505,
-            "parameters": {
-                "iou_threshold": 0.5,
-                "label": {"key": "k1", "value": "v1"},
-            },
+            "parameters": {"iou_threshold": 0.5, "label": "v1"},
         },
     ]
     for m in actual_metrics:

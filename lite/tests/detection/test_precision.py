@@ -1,29 +1,29 @@
 from valor_lite.detection import DataLoader, Detection, MetricType
 
 
-def test_precision_metrics(
-    basic_detections: list[Detection],
-    basic_rotated_detections: list[Detection],
+def test_precision_metrics_first_class(
+    basic_detections_first_class: list[Detection],
+    basic_rotated_detections_first_class: list[Detection],
 ):
     """
     Basic object detection test.
 
     groundtruths
         datum uid1
-            box 1 - label (k1, v1) - tp
-            box 3 - label (k2, v2) - fn missing prediction
+            box 1 - label v1 - tp
+            box 3 - label v2 - fn missing prediction
         datum uid2
-            box 2 - label (k1, v1) - fn misclassification
+            box 2 - label v1 - fn missing prediction
 
     predictions
         datum uid1
-            box 1 - label (k1, v1) - score 0.3 - tp
+            box 1 - label v1 - score 0.3 - tp
         datum uid2
-            box 2 - label (k2, v2) - score 0.98 - fp
+            box 2 - label v2 - score 0.98 - fp
     """
     for input_, method in [
-        (basic_detections, DataLoader.add_bounding_boxes),
-        (basic_rotated_detections, DataLoader.add_polygons),
+        (basic_detections_first_class, DataLoader.add_bounding_boxes),
+        (basic_rotated_detections_first_class, DataLoader.add_polygons),
     ]:
         loader = DataLoader()
         method(loader, input_)
@@ -38,9 +38,94 @@ def test_precision_metrics(
         assert evaluator.ignored_prediction_labels == []
         assert evaluator.missing_prediction_labels == []
         assert evaluator.n_datums == 2
-        assert evaluator.n_labels == 2
-        assert evaluator.n_groundtruths == 3
-        assert evaluator.n_predictions == 2
+        assert evaluator.n_labels == 1
+        assert evaluator.n_groundtruths == 2
+        assert evaluator.n_predictions == 1
+
+        # test Precision
+        actual_metrics = [m for m in metrics[MetricType.Precision]]
+        expected_metrics = [
+            {
+                "type": "Precision",
+                "value": 1.0,
+                "parameters": {
+                    "iou_threshold": 0.1,
+                    "score_threshold": 0.0,
+                    "label": "v1",
+                },
+            },
+            {
+                "type": "Precision",
+                "value": 1.0,
+                "parameters": {
+                    "iou_threshold": 0.6,
+                    "score_threshold": 0.0,
+                    "label": "v1",
+                },
+            },
+            {
+                "type": "Precision",
+                "value": 0.0,
+                "parameters": {
+                    "iou_threshold": 0.1,
+                    "score_threshold": 0.5,
+                    "label": "v1",
+                },
+            },
+            {
+                "type": "Precision",
+                "value": 0.0,
+                "parameters": {
+                    "iou_threshold": 0.6,
+                    "score_threshold": 0.5,
+                    "label": "v1",
+                },
+            },
+        ]
+        for m in actual_metrics:
+            assert m in expected_metrics
+        for m in expected_metrics:
+            assert m in actual_metrics
+
+
+def test_precision_metrics_second_class(
+    basic_detections_second_class: list[Detection],
+    basic_rotated_detections_second_class: list[Detection],
+):
+    """
+    Basic object detection test.
+
+    groundtruths
+        datum uid1
+            box 3 - label v2 - fn missing prediction
+        datum uid2
+           none
+    predictions
+        datum uid1
+            none
+        datum uid2
+            box 2 - label v2 - score 0.98 - fp
+    """
+    for input_, method in [
+        (basic_detections_second_class, DataLoader.add_bounding_boxes),
+        (basic_rotated_detections_second_class, DataLoader.add_polygons),
+    ]:
+        loader = DataLoader()
+        method(loader, input_)
+        evaluator = loader.finalize()
+
+        metrics = evaluator.evaluate(
+            iou_thresholds=[0.1, 0.6],
+            score_thresholds=[0.0, 0.5],
+            as_dict=True,
+        )
+
+        assert evaluator.ignored_prediction_labels == []
+        assert evaluator.missing_prediction_labels == []
+        assert evaluator.n_datums == 2
+        assert evaluator.n_labels == 1
+        assert evaluator.n_groundtruths == 1
+        assert evaluator.n_predictions == 1
 
         # test Precision
         actual_metrics = [m for m in metrics[MetricType.Precision]]
@@ -51,7 +136,7 @@ def test_precision_metrics(
                 "parameters": {
                     "iou_threshold": 0.1,
                     "score_threshold": 0.0,
-                    "label": {"key": "k2", "value": "v2"},
+                    "label": "v2",
                 },
             },
             {
@@ -60,25 +145,7 @@ def test_precision_metrics(
                 "parameters": {
                     "iou_threshold": 0.6,
                     "score_threshold": 0.0,
-                    "label": {"key": "k2", "value": "v2"},
-                },
-            },
-            {
-                "type": "Precision",
-                "value": 1.0,
-                "parameters": {
-                    "iou_threshold": 0.1,
-                    "score_threshold": 0.0,
-                    "label": {"key": "k1", "value": "v1"},
-                },
-            },
-            {
-                "type": "Precision",
-                "value": 1.0,
-                "parameters": {
-                    "iou_threshold": 0.6,
-                    "score_threshold": 0.0,
-                    "label": {"key": "k1", "value": "v1"},
+                    "label": "v2",
                 },
             },
             {
@@ -87,7 +154,7 @@ def test_precision_metrics(
                 "parameters": {
                     "iou_threshold": 0.1,
                     "score_threshold": 0.5,
-                    "label": {"key": "k2", "value": "v2"},
+                    "label": "v2",
                 },
             },
             {
@@ -96,25 +163,7 @@ def test_precision_metrics(
                 "parameters": {
                     "iou_threshold": 0.6,
                     "score_threshold": 0.5,
-                    "label": {"key": "k2", "value": "v2"},
-                },
-            },
-            {
-                "type": "Precision",
-                "value": 0.0,
-                "parameters": {
-                    "iou_threshold": 0.1,
-                    "score_threshold": 0.5,
-                    "label": {"key": "k1", "value": "v1"},
-                },
-            },
-            {
-                "type": "Precision",
-                "value": 0.0,
-                "parameters": {
-                    "iou_threshold": 0.6,
-                    "score_threshold": 0.5,
-                    "label": {"key": "k1", "value": "v1"},
+                    "label": "v2",
                 },
             },
         ]
@@ -150,10 +199,7 @@ def test_precision_false_negatives_single_datum_baseline(
             "parameters": {
                 "iou_threshold": 0.5,
                 "score_threshold": 0.0,
-                "label": {
-                    "key": "key",
-                    "value": "value",
-                },
+                "label": "value",
             },
         },
         {
@@ -162,10 +208,7 @@ def test_precision_false_negatives_single_datum_baseline(
             "parameters": {
                 "iou_threshold": 0.5,
                 "score_threshold": 0.9,
-                "label": {
-                    "key": "key",
-                    "value": "value",
-                },
+                "label": "value",
             },
         },
     ]
@@ -200,10 +243,7 @@ def test_precision_false_negatives_single_datum(
             "parameters": {
                 "iou_threshold": 0.5,
                 "score_threshold": 0.0,
-                "label": {
-                    "key": "key",
-                    "value": "value",
-                },
+                "label": "value",
             },
         }
     ]
@@ -246,10 +286,7 @@ def test_precision_false_negatives_two_datums_one_empty_low_confidence_of_fp(
             "parameters": {
                 "iou_threshold": 0.5,
                 "score_threshold": 0.0,
-                "label": {
-                    "key": "key",
-                    "value": "value",
-                },
+                "label": "value",
             },
         }
     ]
@@ -291,10 +328,7 @@ def test_precision_false_negatives_two_datums_one_empty_high_confidence_of_fp(
             "parameters": {
                 "iou_threshold": 0.5,
                 "score_threshold": 0.0,
-                "label": {
-                    "key": "key",
-                    "value": "value",
-                },
+                "label": "value",
             },
         }
     ]
@@ -336,10 +370,7 @@ def test_precision_false_negatives_two_datums_one_only_with_different_class_low_
             "parameters": {
                 "iou_threshold": 0.5,
                 "score_threshold": 0.0,
-                "label": {
-                    "key": "key",
-                    "value": "value",
-                },
+                "label": "value",
             },
         },
         {
@@ -348,10 +379,7 @@ def test_precision_false_negatives_two_datums_one_only_with_different_class_low_
             "parameters": {
                 "iou_threshold": 0.5,
                 "score_threshold": 0.0,
-                "label": {
-                    "key": "key",
-                    "value": "other value",
-                },
+                "label": "other value",
             },
         },
     ]
@@ -393,10 +421,7 @@ def test_precision_false_negatives_two_datums_one_only_with_different_class_high
             "parameters": {
                 "iou_threshold": 0.5,
                 "score_threshold": 0.0,
-                "label": {
-                    "key": "key",
-                    "value": "value",
-                },
+                "label": "value",
             },
         },
         {
@@ -405,10 +430,7 @@ def test_precision_false_negatives_two_datums_one_only_with_different_class_high
             "parameters": {
                 "iou_threshold": 0.5,
                 "score_threshold": 0.0,
-                "label": {
-                    "key": "key",
-                    "value": "other value",
-                },
+                "label": "other value",
             },
         },
     ]
