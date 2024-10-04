@@ -59,7 +59,15 @@ def validate_messages(messages: list[dict[str, str]]):
         raise ValueError("All content in messages must be strings.")
 
 
-def retry():
+def retry_if_invalid_llm_response():
+    """
+    Call the LLMClient class function with retries for InvalidLLMResponseError.
+
+    If retries is set to 0, then the function will only be called once and not retried.
+
+    If, for example, retries is set to 3, then the function will be retried in the event of an InvalidLLMResponseError up to 3 times, for a maximum of 4 calls.
+    """
+
     def decorator(function):
         @wraps(function)
         def wrapper(self, *args, **kwargs):
@@ -160,35 +168,7 @@ class LLMClient:
         """
         raise NotImplementedError
 
-    # def _function_with_retries(
-    #     self,
-    #     function,
-    #     **kwargs,
-    # ):
-    #     """
-    #     Call the metric subfunction with retries.
-
-    #     If retries is set to 0, the function is only attempted once. If retries is set to 3, the function is attempted up to 4 times.
-
-    #     Parameters
-    #     ----------
-    #     function: function
-    #         The function to call.
-    #     kwargs: dict
-    #         The arguments to pass to the function.
-    #     Returns
-    #     -------
-    #     Any
-    #         The result of the function call.
-    #     """
-    #     for _ in range(1 + self.retries):
-    #         try:
-    #             return function(**kwargs)
-    #         except InvalidLLMResponseError as e:
-    #             error = e
-    #     raise error
-
-    @retry()
+    @retry_if_invalid_llm_response()
     def _generate_claims(
         self,
         text: str,
@@ -229,7 +209,7 @@ class LLMClient:
             )
         return claims
 
-    @retry()
+    @retry_if_invalid_llm_response()
     def _generate_opinions(
         self,
         text: str,
@@ -270,7 +250,7 @@ class LLMClient:
             )
         return opinions
 
-    @retry()
+    @retry_if_invalid_llm_response()
     def _generate_statements(
         self,
         text: str,
@@ -311,7 +291,7 @@ class LLMClient:
             )
         return statements
 
-    @retry()
+    @retry_if_invalid_llm_response()
     def _generate_answer_correctness_verdicts(
         self,
         query: str,
@@ -381,7 +361,7 @@ class LLMClient:
 
         return response
 
-    @retry()
+    @retry_if_invalid_llm_response()
     def _generate_answer_relevance_verdicts(
         self,
         query: str,
@@ -435,7 +415,7 @@ class LLMClient:
 
         return verdicts
 
-    @retry()
+    @retry_if_invalid_llm_response()
     def _generate_bias_verdicts(
         self,
         opinions: list[str],
@@ -484,7 +464,7 @@ class LLMClient:
 
         return verdicts
 
-    @retry()
+    @retry_if_invalid_llm_response()
     def _generate_context_precision_verdicts(
         self,
         query: str,
@@ -543,7 +523,7 @@ class LLMClient:
 
         return verdicts
 
-    @retry()
+    @retry_if_invalid_llm_response()
     def _generate_context_recall_verdicts(
         self,
         context_list: list[str],
@@ -598,7 +578,7 @@ class LLMClient:
 
         return verdicts
 
-    @retry()
+    @retry_if_invalid_llm_response()
     def _generate_context_relevance_verdicts(
         self,
         query: str,
@@ -651,7 +631,7 @@ class LLMClient:
 
         return verdicts
 
-    @retry()
+    @retry_if_invalid_llm_response()
     def _generate_faithfulness_verdicts(
         self,
         claims: list[str],
@@ -704,7 +684,7 @@ class LLMClient:
 
         return verdicts
 
-    @retry()
+    @retry_if_invalid_llm_response()
     def _generate_hallucination_verdicts(
         self,
         text: str,
@@ -759,7 +739,7 @@ class LLMClient:
 
         return verdicts
 
-    @retry()
+    @retry_if_invalid_llm_response()
     def _summary_coherence(
         self,
         text: str,
@@ -807,7 +787,7 @@ class LLMClient:
 
         return ret
 
-    @retry()
+    @retry_if_invalid_llm_response()
     def _generate_toxicity_verdicts(
         self,
         opinions: list[str],
