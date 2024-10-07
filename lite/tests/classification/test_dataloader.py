@@ -28,22 +28,11 @@ def test_valor_integration():
     assert loader._evaluator.n_datums == 1
 
 
-def test_missing_groundtruths_or_predictions(
-    classifications_no_groundtruths: list[Classification],
+def test_missing_predictions(
     classifications_no_predictions: list[Classification],
 ):
     loader = DataLoader()
 
     with pytest.raises(ValueError) as e:
-        loader.add_data(classifications_no_groundtruths)
-    assert (
-        "Classifications must contain at least one groundtruth and prediction"
-        in str(e)
-    )
-
-    with pytest.raises(ValueError) as e:
         loader.add_data(classifications_no_predictions)
-    assert (
-        "Classifications must contain at least one groundtruth and prediction"
-        in str(e)
-    )
+    assert "Classifications must contain at least one prediction" in str(e)

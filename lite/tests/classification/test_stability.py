@@ -12,7 +12,7 @@ def generate_random_classifications(
     return [
         Classification(
             uid=f"uid{i}",
-            groundtruths=[choice(labels)],
+            groundtruth=choice(labels),
             predictions=labels,
             scores=[uniform(0, 1) for _ in range(n_labels)],
         )
