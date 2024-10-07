@@ -52,3 +52,29 @@ def test_segmentation():
             ],
         )
     assert "mismatch" in str(e)
+
+    with pytest.raises(ValueError) as e:
+        Segmentation(
+            uid="uid",
+            groundtruths=[],
+            predictions=[
+                Bitmask(
+                    mask=np.array([True, False]),
+                    label="label",
+                )
+            ],
+        )
+    assert "missing ground truths" in str(e)
+
+    with pytest.raises(ValueError) as e:
+        Segmentation(
+            uid="uid",
+            groundtruths=[
+                Bitmask(
+                    mask=np.array([True, False]),
+                    label="label",
+                )
+            ],
+            predictions=[],
+        )
+    assert "missing predictions" in str(e)

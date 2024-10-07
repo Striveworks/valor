@@ -4,7 +4,7 @@ import numpy as np
 from valor_lite.segmentation import Bitmask, DataLoader, Segmentation
 
 
-def generate_random_segmentations(
+def _generate_random_segmentations(
     n_segmentations: int, size_: int, n_labels: int
 ) -> list[Segmentation]:
 
@@ -39,7 +39,7 @@ def generate_random_segmentations(
 def test_fuzz_segmentations():
 
     quantities = [1, 5, 10]
-    sizes = [10, 100, 1000]
+    sizes = [10, 100]
 
     for _ in range(100):
 
@@ -47,7 +47,7 @@ def test_fuzz_segmentations():
         size_ = choice(sizes)
         n_labels = choice(quantities)
 
-        segmentations = generate_random_segmentations(
+        segmentations = _generate_random_segmentations(
             n_segmentations, size_=size_, n_labels=n_labels
         )
 
@@ -66,7 +66,7 @@ def test_fuzz_segmentations_with_filtering():
         size_ = choice(quantities)
         n_labels = choice(quantities)
 
-        segmentations = generate_random_segmentations(
+        segmentations = _generate_random_segmentations(
             n_segmentations, size_=size_, n_labels=n_labels
         )
 

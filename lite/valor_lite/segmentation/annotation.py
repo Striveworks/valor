@@ -32,7 +32,11 @@ class Segmentation:
         prediction_shape = {
             prediction.mask.shape for prediction in self.predictions
         }
-        if (
+        if len(groundtruth_shape) == 0:
+            raise ValueError("The segmenation is missing ground truths.")
+        elif len(prediction_shape) == 0:
+            raise ValueError("The segmenation is missing predictions.")
+        elif (
             len(groundtruth_shape) != 1
             or len(prediction_shape) != 1
             or groundtruth_shape != prediction_shape

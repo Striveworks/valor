@@ -43,16 +43,16 @@ def test_precision_segmentations_from_boxes(
 
     metrics = evaluator.evaluate(as_dict=True)
 
-    actual_metrics = [m for m in metrics[MetricType.F1]]
+    actual_metrics = [m for m in metrics[MetricType.Precision]]
     expected_metrics = [
         {
-            "type": "F1",
+            "type": "Precision",
             "value": 0.5,  # 50% overlap
             "parameters": {"label": "v1"},
         },
         {
-            "type": "F1",
-            "value": 1 / 10000,  # overlaps 1 pixel out of 20,000
+            "type": "Precision",
+            "value": 1 / 5000,  # overlaps 1 pixel out of 5000 predictions
             "parameters": {"label": "v2"},
         },
     ]

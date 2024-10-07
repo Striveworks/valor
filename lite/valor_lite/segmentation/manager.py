@@ -6,7 +6,7 @@ from numpy.typing import NDArray
 from tqdm import tqdm
 from valor_lite.segmentation.annotation import Segmentation
 from valor_lite.segmentation.computation import (
-    compute_intermediates,
+    compute_intermediate_confusion_matrices,
     compute_metrics,
 )
 from valor_lite.segmentation.metric import (
@@ -443,7 +443,7 @@ class DataLoader:
             )
 
             self.matrices.append(
-                compute_intermediates(
+                compute_intermediate_confusion_matrices(
                     groundtruths=combined_groundtruths,
                     predictions=combined_predictions,
                     groundtruth_labels=groundtruth_labels,

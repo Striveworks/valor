@@ -2,7 +2,7 @@ import numpy as np
 from numpy.typing import NDArray
 
 
-def compute_intermediates(
+def compute_intermediate_confusion_matrices(
     groundtruths: NDArray[np.bool_],
     predictions: NDArray[np.bool_],
     groundtruth_labels: NDArray[np.int32],
