@@ -17,7 +17,7 @@ class BoundingBox:
     def __post_init__(self):
         if len(self.scores) == 0 and len(self.labels) != 1:
             raise ValueError(
-                "If no scores are defined, then this is a ground truth and a single label requirement is enforced."
+                "Ground truths must be defined with no scores and a single label. If you meant to define a prediction, then please include one score for every label provided."
             )
         if len(self.scores) > 0 and len(self.labels) != len(self.scores):
             raise ValueError(
@@ -41,7 +41,7 @@ class Polygon:
 
         if len(self.scores) == 0 and len(self.labels) != 1:
             raise ValueError(
-                "If no scores are defined, then this is a ground truth and a single label requirement is enforced."
+                "Ground truths must be defined with no scores and a single label. If you meant to define a prediction, then please include one score for every label provided."
             )
         if len(self.scores) > 0 and len(self.labels) != len(self.scores):
             raise ValueError(
@@ -83,7 +83,7 @@ class Bitmask:
 
         if len(self.scores) == 0 and len(self.labels) != 1:
             raise ValueError(
-                "If no scores are defined, then this is a ground truth and a single label requirement is enforced."
+                "Ground truths must be defined with no scores and a single label. If you meant to define a prediction, then please include one score for every label provided."
             )
         if len(self.scores) > 0 and len(self.labels) != len(self.scores):
             raise ValueError(
