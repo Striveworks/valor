@@ -9,15 +9,13 @@ def _generate_random_detections(
     def bbox(is_prediction):
         xmin, ymin = uniform(0, 10), uniform(0, 10)
         xmax, ymax = uniform(xmin, 15), uniform(ymin, 15)
-        kw = (
-            {"scores": [uniform(0, 1), uniform(0, 1)]} if is_prediction else {}
-        )
+        kw = {"scores": [uniform(0, 1)]} if is_prediction else {}
         return BoundingBox(
             xmin,
             xmax,
             ymin,
             ymax,
-            [choice(labels), choice(labels)],
+            [choice(labels)],
             **kw,
         )
 

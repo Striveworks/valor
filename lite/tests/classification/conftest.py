@@ -7,7 +7,7 @@ def basic_classifications() -> list[Classification]:
     return [
         Classification(
             uid="uid0",
-            groundtruths=["0"],
+            groundtruth="0",
             predictions=[
                 "0",
                 "1",
@@ -18,7 +18,7 @@ def basic_classifications() -> list[Classification]:
         ),
         Classification(
             uid="uid1",
-            groundtruths=["0"],
+            groundtruth="0",
             predictions=[
                 "0",
                 "1",
@@ -29,7 +29,7 @@ def basic_classifications() -> list[Classification]:
         ),
         Classification(
             uid="uid2",
-            groundtruths=["3"],
+            groundtruth="3",
             predictions=[
                 "0",
                 "1",
@@ -57,7 +57,7 @@ def classifications_from_api_unit_tests() -> list[Classification]:
     return [
         Classification(
             uid="uid0",
-            groundtruths=["0"],
+            groundtruth="0",
             predictions=[
                 "0",
                 "1",
@@ -67,7 +67,7 @@ def classifications_from_api_unit_tests() -> list[Classification]:
         ),
         Classification(
             uid="uid1",
-            groundtruths=["0"],
+            groundtruth="0",
             predictions=[
                 "0",
                 "1",
@@ -77,7 +77,7 @@ def classifications_from_api_unit_tests() -> list[Classification]:
         ),
         Classification(
             uid="uid2",
-            groundtruths=["0"],
+            groundtruth="0",
             predictions=[
                 "0",
                 "1",
@@ -87,7 +87,7 @@ def classifications_from_api_unit_tests() -> list[Classification]:
         ),
         Classification(
             uid="uid3",
-            groundtruths=["1"],
+            groundtruth="1",
             predictions=[
                 "0",
                 "1",
@@ -97,7 +97,7 @@ def classifications_from_api_unit_tests() -> list[Classification]:
         ),
         Classification(
             uid="uid4",
-            groundtruths=["2"],
+            groundtruth="2",
             predictions=[
                 "0",
                 "1",
@@ -107,7 +107,7 @@ def classifications_from_api_unit_tests() -> list[Classification]:
         ),
         Classification(
             uid="uid5",
-            groundtruths=["2"],
+            groundtruth="2",
             predictions=[
                 "0",
                 "1",
@@ -134,7 +134,7 @@ def classifications_animal_example() -> list[Classification]:
     return [
         Classification(
             uid=f"uid{idx}",
-            groundtruths=[gt],
+            groundtruth=gt,
             predictions=list(pd.keys()),
             scores=list(pd.values()),
         )
@@ -157,7 +157,7 @@ def classifications_color_example() -> list[Classification]:
     return [
         Classification(
             uid=f"uid{idx}",
-            groundtruths=[gt],
+            groundtruth=gt,
             predictions=list(pd.keys()),
             scores=list(pd.values()),
         )
@@ -170,9 +170,7 @@ def classifications_image_example() -> list[Classification]:
     return [
         Classification(
             uid="uid5",
-            groundtruths=[
-                "v4",
-            ],
+            groundtruth="v4",
             predictions=[
                 "v1",
                 "v8",
@@ -181,9 +179,7 @@ def classifications_image_example() -> list[Classification]:
         ),
         Classification(
             uid="uid6",
-            groundtruths=[
-                "v4",
-            ],
+            groundtruth="v4",
             predictions=[
                 "v4",
                 "v5",
@@ -211,7 +207,7 @@ def classifications_tabular_example() -> list[Classification]:
     return [
         Classification(
             uid=f"uid{i}",
-            groundtruths=[str(gt_label)],
+            groundtruth=str(gt_label),
             predictions=[str(pd_label) for pd_label, _ in enumerate(pds)],
             scores=pds,
         )
@@ -222,23 +218,11 @@ def classifications_tabular_example() -> list[Classification]:
 
 
 @pytest.fixture
-def classifications_no_groundtruths() -> list[Classification]:
-    return [
-        Classification(
-            uid="uid1",
-            groundtruths=[],
-            predictions=["v1", "v2"],
-            scores=[0.8, 0.2],
-        )
-    ]
-
-
-@pytest.fixture
 def classifications_no_predictions() -> list[Classification]:
     return [
         Classification(
             uid="uid1",
-            groundtruths=["v1", "v2"],
+            groundtruth="v1",
             predictions=[],
             scores=[],
         )
@@ -250,7 +234,7 @@ def classifications_multiclass() -> list[Classification]:
     return [
         Classification(
             uid="uid0",
-            groundtruths=["cat"],
+            groundtruth="cat",
             predictions=[
                 "cat",
                 "dog",
@@ -264,7 +248,7 @@ def classifications_multiclass() -> list[Classification]:
         ),
         Classification(
             uid="uid1",
-            groundtruths=["bee"],
+            groundtruth="bee",
             predictions=[
                 "cat",
                 "dog",
@@ -278,7 +262,7 @@ def classifications_multiclass() -> list[Classification]:
         ),
         Classification(
             uid="uid2",
-            groundtruths=["cat"],
+            groundtruth="cat",
             predictions=[
                 "cat",
                 "dog",
@@ -292,7 +276,7 @@ def classifications_multiclass() -> list[Classification]:
         ),
         Classification(
             uid="uid3",
-            groundtruths=["bee"],
+            groundtruth="bee",
             predictions=[
                 "cat",
                 "dog",
@@ -306,7 +290,7 @@ def classifications_multiclass() -> list[Classification]:
         ),
         Classification(
             uid="uid4",
-            groundtruths=["dog"],
+            groundtruth="dog",
             predictions=[
                 "cat",
                 "dog",
@@ -328,7 +312,7 @@ def classifications_multiclass_true_negatives_check() -> (
     return [
         Classification(
             uid="uid1",
-            groundtruths=["ant"],
+            groundtruth="ant",
             predictions=["ant", "bee", "cat"],
             scores=[0.15, 0.48, 0.37],
         ),
@@ -340,7 +324,7 @@ def classifications_multiclass_zero_count() -> list[Classification]:
     return [
         Classification(
             uid="uid1",
-            groundtruths=["ant"],
+            groundtruth="ant",
             predictions=["ant", "bee", "cat"],
             scores=[0.15, 0.48, 0.37],
         )
