@@ -609,27 +609,23 @@ class DataLoader:
         disable_tqdm = not show_progress
         for classification in tqdm(classifications, disable=disable_tqdm):
 
-            if (len(classification.groundtruths) == 0) or (
-                len(classification.predictions) == 0
-            ):
+            if len(classification.predictions) == 0:
                 raise ValueError(
-                    "Classifications must contain at least one groundtruth and prediction."
+                    "Classifications must contain at least one prediction."
                 )
             # update metadata
             self._evaluator.n_datums += 1
-            self._evaluator.n_groundtruths += len(classification.groundtruths)
+            self._evaluator.n_groundtruths += 1
             self._evaluator.n_predictions += len(classification.predictions)
 
             # update datum uid index
             uid_index = self._add_datum(uid=classification.uid)
 
             # cache labels and annotations
-            groundtruth = None
+            groundtruth = self._add_label(classification.groundtruth)
+            self.groundtruth_count[groundtruth][uid_index] += 1
+
             predictions = list()
-            for glabel in classification.groundtruths:
-                label_idx = self._add_label(glabel)
-                self.groundtruth_count[label_idx][uid_index] += 1
-                groundtruth = label_idx
             for plabel, pscore in zip(
                 classification.predictions, classification.scores
             ):
@@ -640,13 +636,6 @@ class DataLoader:
                         label_idx,
                         pscore,
                     )
-                )
-
-            # fix type error where groundtruths can possibly be unbound now that it's a float
-            # in practice, this error should never be hit since groundtruths can't be empty without throwing a ValueError earlier in the flow
-            if groundtruth is None:
-                raise ValueError(
-                    "Expected a value for groundtruths, but got None."
                 )
 
             self._add_data(
