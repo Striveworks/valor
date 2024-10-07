@@ -76,7 +76,7 @@ def test_Bitmask():
     assert box
     assert box.extrema == (0, 4, 0, 4)
 
-    empty_box = Bitmask(mask=np.array([]), labels=["label"])
+    empty_box = Bitmask(mask=np.array([], dtype=np.bool_), labels=["label"])
 
     assert empty_box.to_box() is None
 
