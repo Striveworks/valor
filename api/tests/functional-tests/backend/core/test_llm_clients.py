@@ -1334,7 +1334,7 @@ def test_LLMClient_retries(monkeypatch):
         return "The score is 5."
 
     monkeypatch.setattr(
-        "valor_api.llm_clients.LLMClient.__call__",
+        "valor_api.backend.core.llm_clients.LLMClient.__call__",
         _return_valid_summary_coherence_response,
     )
 
@@ -1352,7 +1352,7 @@ def test_LLMClient_retries(monkeypatch):
 
     # mock_method returns a bad response three times but on the fourth call returns a valid response.
     monkeypatch.setattr(
-        "valor_api.llm_clients.LLMClient.__call__",
+        "valor_api.backend.core.llm_clients.LLMClient.__call__",
         Mock(side_effect=errors),
     )
     client = LLMClient(api_key=None, model_name="model_name", retries=3)
@@ -1360,7 +1360,7 @@ def test_LLMClient_retries(monkeypatch):
 
     # Test with retries=2 and invalid response
     monkeypatch.setattr(
-        "valor_api.llm_clients.LLMClient.__call__",
+        "valor_api.backend.core.llm_clients.LLMClient.__call__",
         Mock(side_effect=errors),
     )
     with pytest.raises(InvalidLLMResponseError):
@@ -1368,7 +1368,7 @@ def test_LLMClient_retries(monkeypatch):
         client.summary_coherence("some text", "some summary")
 
     monkeypatch.setattr(
-        "valor_api.llm_clients.LLMClient.__call__",
+        "valor_api.backend.core.llm_clients.LLMClient.__call__",
         _return_invalid_summary_coherence_response,
     )
 
@@ -1384,7 +1384,7 @@ def test_LLMClient_retries(monkeypatch):
 
     # Test WrappedOpenAIClient
     monkeypatch.setattr(
-        "valor_api.llm_clients.WrappedOpenAIClient.__call__",
+        "valor_api.backend.core.llm_clients.WrappedOpenAIClient.__call__",
         Mock(side_effect=errors),
     )
     client = WrappedOpenAIClient(
@@ -1394,7 +1394,7 @@ def test_LLMClient_retries(monkeypatch):
 
     with pytest.raises(InvalidLLMResponseError):
         monkeypatch.setattr(
-            "valor_api.llm_clients.WrappedOpenAIClient.__call__",
+            "valor_api.backend.core.llm_clients.WrappedOpenAIClient.__call__",
             Mock(side_effect=errors),
         )
         client = WrappedOpenAIClient(
@@ -1404,7 +1404,7 @@ def test_LLMClient_retries(monkeypatch):
 
     # Test WrappedMistralAIClient
     monkeypatch.setattr(
-        "valor_api.llm_clients.WrappedMistralAIClient.__call__",
+        "valor_api.backend.core.llm_clients.WrappedMistralAIClient.__call__",
         Mock(side_effect=errors),
     )
     client = WrappedMistralAIClient(
@@ -1414,7 +1414,7 @@ def test_LLMClient_retries(monkeypatch):
 
     with pytest.raises(InvalidLLMResponseError):
         monkeypatch.setattr(
-            "valor_api.llm_clients.WrappedMistralAIClient.__call__",
+            "valor_api.backend.core.llm_clients.WrappedMistralAIClient.__call__",
             Mock(side_effect=errors),
         )
         client = WrappedMistralAIClient(
