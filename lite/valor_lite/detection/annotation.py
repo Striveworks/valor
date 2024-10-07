@@ -15,6 +15,10 @@ class BoundingBox:
     scores: list[float] = field(default_factory=list)
 
     def __post_init__(self):
+        if len(self.scores) == 0 and len(self.labels) != 1:
+            raise ValueError(
+                "If no scores are defined, then this is a ground truth and a single label requirement is enforced."
+            )
         if len(self.scores) > 0 and len(self.labels) != len(self.scores):
             raise ValueError(
                 "If scores are defined, there must be a 1:1 pairing with labels."
