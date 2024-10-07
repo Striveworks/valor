@@ -2,7 +2,7 @@ import numpy as np
 from numpy.typing import NDArray
 
 
-def compute_confusion_matrix_2(
+def compute_intermediates(
     groundtruths: NDArray[np.bool_],
     predictions: NDArray[np.bool_],
     groundtruth_labels: NDArray[np.int32],
@@ -55,12 +55,12 @@ def compute_confusion_matrix_2(
             ] = intersection_counts[gidx, pidx]
 
             if gt_label_idx == 0:
-                confusion_matrix[0][pd_label_idx] = (
+                confusion_matrix[0, pd_label_idx] = (
                     prediction_counts[pidx]
                     - intersected_prediction_counts[pidx]
                 )
 
-        confusion_matrix[gt_label_idx][0] = (
+        confusion_matrix[gt_label_idx, 0] = (
             groundtruth_counts[gidx] - intersected_groundtruth_counts[gidx]
         )
 
@@ -132,11 +132,13 @@ def compute_metrics(
     np.divide(
         counts[0, 1:],
         pd_counts,
-        where=gt_counts > 1e-9,
+        where=pd_counts > 1e-9,
         out=hallucination_ratio,
     )
 
     missing_prediction_ratio = np.zeros((n_labels), dtype=np.float64)
+    print(counts[1:, 0])
+    print(gt_counts)
     np.divide(
         counts[1:, 0],
         gt_counts,

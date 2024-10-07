@@ -6,7 +6,7 @@ from numpy.typing import NDArray
 from tqdm import tqdm
 from valor_lite.segmentation.annotation import Segmentation
 from valor_lite.segmentation.computation import (
-    compute_confusion_matrix_2,
+    compute_intermediates,
     compute_metrics,
 )
 from valor_lite.segmentation.metric import (
@@ -247,7 +247,6 @@ class Evaluator:
                 hallucinations={
                     self.index_to_label[pd_label_idx]: {
                         "percent": float(hallucination_ratios[pd_label_idx])
-                        * 100.0
                     }
                     for pd_label_idx in range(self.n_labels)
                     if label_metadata[pd_label_idx, 0] > 0
@@ -257,7 +256,6 @@ class Evaluator:
                         "percent": float(
                             missing_prediction_ratios[gt_label_idx]
                         )
-                        * 100.0
                     }
                     for gt_label_idx in range(self.n_labels)
                     if label_metadata[gt_label_idx, 0] > 0
@@ -440,7 +438,7 @@ class DataLoader:
             )
 
             self.matrices.append(
-                compute_confusion_matrix_2(
+                compute_intermediates(
                     groundtruths=combined_groundtruths,
                     predictions=combined_predictions,
                     groundtruth_labels=groundtruth_labels,

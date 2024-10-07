@@ -20,7 +20,7 @@ def test_confusion_matrix_basic_segmenations(
                     "v2": {"v1": {"iou": 0.0}, "v2": {"iou": 0.5}},
                 },
                 "hallucinations": {
-                    "v1": {"percent": 100.0},
+                    "v1": {"percent": 1.0},
                     "v2": {"percent": 0.0},
                 },
                 "missing_predictions": {
