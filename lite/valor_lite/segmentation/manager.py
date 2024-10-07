@@ -148,7 +148,10 @@ class Evaluator:
             if datum_uids.size == 0:
                 mask_datums[mask_datums] = False
             else:
-                mask = np.arange(n_datums) == datum_uids
+                mask = (
+                    np.arange(n_datums).reshape(-1, 1)
+                    == datum_uids.reshape(1, -1)
+                ).any(axis=1)
                 mask_datums[~mask] = False
 
         if labels is not None:
@@ -160,7 +163,9 @@ class Evaluator:
             if labels.size == 0:
                 mask_labels[mask_labels] = False
             else:
-                mask = np.arange(n_labels) == labels
+                mask = (
+                    np.arange(n_labels).reshape(-1, 1) == labels.reshape(1, -1)
+                ).any(axis=1)
                 mask_labels[~mask] = False
 
         mask = mask_datums[:, np.newaxis] & mask_labels[np.newaxis, :]

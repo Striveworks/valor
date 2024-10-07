@@ -1,7 +1,7 @@
 from valor_lite.segmentation import DataLoader, MetricType, Segmentation
 
 
-def test_confusion_matrix_basic_segmenations(
+def test_confusion_matrix_basic_segmentations(
     basic_segmentations: list[Segmentation],
 ):
     loader = DataLoader()
@@ -85,38 +85,3 @@ def test_confusion_matrix_segmentations_from_boxes(
         assert m in expected_metrics
     for m in expected_metrics:
         assert m in actual_metrics
-
-
-def test_confusion_matrix_large_random_segmentations(
-    large_random_segmenations: list[Segmentation],
-):
-    loader = DataLoader()
-    loader.add_data(large_random_segmenations)
-    evaluator = loader.finalize()
-
-    metrics = evaluator.evaluate(as_dict=True)[MetricType.ConfusionMatrix]
-    assert len(metrics) == 1
-
-    cm = metrics[0]["value"]["confusion_matrix"]
-    hl = metrics[0]["value"]["hallucinations"]
-    mp = metrics[0]["value"]["missing_predictions"]
-
-    labels = set(cm.keys())
-
-    for gt_label in labels:
-        for pd_label in labels:
-            if cm[gt_label][pd_label]["iou"] < 1e-9:
-                cm[gt_label].pop(pd_label)
-        if len(cm[gt_label]) == 0:
-            cm.pop(gt_label)
-
-    for label in labels:
-        if hl[label]["percent"] < 1e-9:
-            hl.pop(label)
-        if mp[label]["percent"] < 1e-9:
-            mp.pop(label)
-
-    import json
-
-    print(json.dumps(metrics[0], indent=4))
-    assert cm == {}

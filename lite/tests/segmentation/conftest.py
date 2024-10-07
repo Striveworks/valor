@@ -100,7 +100,7 @@ def segmentations_from_boxes() -> list[Segmentation]:
 
 
 @pytest.fixture
-def large_random_segmenations() -> list[Segmentation]:
+def large_random_segmentations() -> list[Segmentation]:
 
     mask_shape = (1000, 1000)
     infills_per_seg = [
@@ -133,7 +133,7 @@ def large_random_segmenations() -> list[Segmentation]:
 
 
 @pytest.fixture
-def massive_random_segmenations() -> list[Segmentation]:
+def massive_random_segmentations() -> list[Segmentation]:
     """
     A variant of `large_random_segmentations`.
 

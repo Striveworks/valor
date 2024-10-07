@@ -10,7 +10,7 @@ def compute_intermediates(
     n_labels: int,
 ) -> NDArray[np.int32]:
     """
-    Computes confusion matrix containing label counts.
+    Computes an intermediate confusion matrix containing label counts.
 
     Parameters
     ----------
@@ -81,14 +81,14 @@ def compute_metrics(
     NDArray[np.float64],
 ]:
     """
-    Computes semantic segmenation metrics.
+    Computes semantic segmentation metrics.
 
     Takes data with shape (3, N).
 
     Parameters
     ----------
     data : NDArray[np.float64]
-        An containing segmentations.
+        A 3-D array containing confusion matrices for each datum.
     label_metadata : NDArray[np.int32]
         A 2-D array containing label metadata.
 

@@ -6,7 +6,7 @@ from valor_lite.segmentation import (
 )
 
 
-def test_accuracy_basic_segmenations(basic_segmentations: list[Segmentation]):
+def test_accuracy_basic_segmentations(basic_segmentations: list[Segmentation]):
     loader = DataLoader()
     loader.add_data(basic_segmentations)
     evaluator = loader.finalize()
@@ -51,10 +51,10 @@ def test_accuracy_segmentations_from_boxes(
 
 
 def test_accuracy_large_random_segmentations(
-    large_random_segmenations: list[Segmentation],
+    large_random_segmentations: list[Segmentation],
 ):
     loader = DataLoader()
-    loader.add_data(large_random_segmenations)
+    loader.add_data(large_random_segmentations)
     evaluator = loader.finalize()
 
     metrics = evaluator.evaluate()[MetricType.Accuracy]

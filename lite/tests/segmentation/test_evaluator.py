@@ -2,10 +2,10 @@ from valor_lite.segmentation import DataLoader, Segmentation
 
 
 def test_metadata_using_large_random_segmentations(
-    large_random_segmenations: list[Segmentation],
+    large_random_segmentations: list[Segmentation],
 ):
     manager = DataLoader()
-    manager.add_data(large_random_segmenations)
+    manager.add_data(large_random_segmentations)
     evaluator = manager.finalize()
 
     assert evaluator.ignored_prediction_labels == []
