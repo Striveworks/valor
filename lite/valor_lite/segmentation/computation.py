@@ -37,6 +37,10 @@ def compute_intermediate_confusion_matrices(
     groundtruth_counts = groundtruths.sum(axis=1)
     prediction_counts = predictions.sum(axis=1)
 
+    background_counts = np.logical_not(
+        groundtruths.any(axis=0) | predictions.any(axis=0)
+    ).sum()
+
     intersection_counts = np.logical_and(
         groundtruths.reshape(n_gt_labels, 1, -1),
         predictions.reshape(1, n_pd_labels, -1),
@@ -46,6 +50,7 @@ def compute_intermediate_confusion_matrices(
     intersected_prediction_counts = intersection_counts.sum(axis=1)
 
     confusion_matrix = np.zeros((n_labels + 1, n_labels + 1), dtype=np.int32)
+    confusion_matrix[0, 0] = background_counts
     for gidx in range(n_gt_labels):
         gt_label_idx = groundtruth_labels[gidx]
         for pidx in range(n_pd_labels):
@@ -71,6 +76,7 @@ def compute_intermediate_confusion_matrices(
 def compute_metrics(
     data: NDArray[np.float64],
     label_metadata: NDArray[np.int32],
+    n_pixels: int,
 ) -> tuple[
     NDArray[np.float64],
     NDArray[np.float64],
@@ -164,9 +170,10 @@ def compute_metrics(
 
     # compute accuracy
     tp_count = counts[1:, 1:].diagonal().sum()
-    pd_count = pd_counts.sum()
-
-    accuracy = (tp_count / pd_count) if pd_count > 0 else 0.0
+    background_count = counts[0, 0]
+    accuracy = (
+        (tp_count + background_count) / n_pixels if n_pixels > 0 else 0.0
+    )
 
     return (
         precision,

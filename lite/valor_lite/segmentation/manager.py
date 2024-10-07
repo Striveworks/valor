@@ -45,6 +45,7 @@ filtered_metrics = evaluator.evaluate(filter_mask=filter_mask)
 class Filter:
     indices: NDArray[np.int32]
     label_metadata: NDArray[np.int32]
+    n_pixels: int
 
 
 class Evaluator:
@@ -58,6 +59,7 @@ class Evaluator:
         self.n_datums = 0
         self.n_groundtruths = 0
         self.n_predictions = 0
+        self.n_pixels = 0
         self.n_groundtruth_pixels = 0
         self.n_prediction_pixels = 0
         self.n_labels = 0
@@ -74,6 +76,7 @@ class Evaluator:
         self._confusion_matrices = np.array([])
         self._label_metadata = np.array([], dtype=np.int32)
         self._label_metadata_per_datum = np.array([], dtype=np.int32)
+        self._n_pixels_per_datum = np.array([], dtype=np.int32)
 
     @property
     def ignored_prediction_labels(self) -> list[str]:
@@ -184,6 +187,7 @@ class Evaluator:
         return Filter(
             indices=np.where(mask_datums)[0],
             label_metadata=label_metadata,
+            n_pixels=self._n_pixels_per_datum[mask_datums].sum(),
         )
 
     def evaluate(
@@ -211,9 +215,11 @@ class Evaluator:
         # apply filters
         data = self._confusion_matrices
         label_metadata = self._label_metadata
+        n_pixels = self.n_pixels
         if filter_ is not None:
             data = data[filter_.indices]
             label_metadata = filter_.label_metadata
+            n_pixels = filter_.n_pixels
 
         (
             precision,
@@ -226,6 +232,7 @@ class Evaluator:
         ) = compute_metrics(
             data=data,
             label_metadata=label_metadata,
+            n_pixels=n_pixels,
         )
 
         metrics = defaultdict(list)
@@ -332,6 +339,7 @@ class DataLoader:
         self.groundtruth_count = defaultdict(lambda: defaultdict(int))
         self.prediction_count = defaultdict(lambda: defaultdict(int))
         self.matrices = list()
+        self.pixel_count = list()
 
     def _add_datum(self, uid: str) -> int:
         """
@@ -397,6 +405,7 @@ class DataLoader:
             self._evaluator.n_datums += 1
             self._evaluator.n_groundtruths += len(segmentation.groundtruths)
             self._evaluator.n_predictions += len(segmentation.predictions)
+            self._evaluator.n_pixels += segmentation.size
             self._evaluator.n_groundtruth_pixels += segmentation.size * len(
                 segmentation.groundtruths
             )
@@ -451,6 +460,7 @@ class DataLoader:
                     n_labels=len(self._evaluator.index_to_label),
                 )
             )
+            self.pixel_count.append(segmentation.size)
 
     def finalize(self) -> Evaluator:
         """
@@ -506,6 +516,10 @@ class DataLoader:
                 for label_idx in range(n_labels)
             ],
             dtype=np.int32,
+        )
+
+        self._evaluator._n_pixels_per_datum = np.array(
+            self.pixel_count, dtype=np.int32
         )
 
         self._evaluator._confusion_matrices = np.zeros(

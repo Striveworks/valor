@@ -17,7 +17,7 @@ def test_accuracy_basic_segmentations(basic_segmentations: list[Segmentation]):
     expected_metrics = [
         {
             "type": "Accuracy",
-            "value": 2 / 3,
+            "value": 0.5,
             "parameters": {},
         },
     ]
@@ -40,7 +40,7 @@ def test_accuracy_segmentations_from_boxes(
     expected_metrics = [
         {
             "type": "Accuracy",
-            "value": 0.3334,
+            "value": 0.9444481481481481,
             "parameters": {},
         },
     ]
@@ -61,4 +61,4 @@ def test_accuracy_large_random_segmentations(
 
     assert len(metrics) == 1
     assert isinstance(metrics[0], Accuracy)
-    assert round(metrics[0].value, 1) == 0.5
+    assert round(metrics[0].value, 1) == 0.5  # random choice
