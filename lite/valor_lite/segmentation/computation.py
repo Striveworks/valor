@@ -51,16 +51,17 @@ def compute_intermediates(
         for pidx in range(n_pd_labels):
             pd_label_idx = prediction_labels[pidx]
             confusion_matrix[
-                gt_label_idx + 1, pd_label_idx + 1
+                gt_label_idx + 1,
+                pd_label_idx + 1,
             ] = intersection_counts[gidx, pidx]
 
-            if gt_label_idx == 0:
-                confusion_matrix[0, pd_label_idx] = (
+            if gidx == 0:
+                confusion_matrix[0, pd_label_idx + 1] = (
                     prediction_counts[pidx]
                     - intersected_prediction_counts[pidx]
                 )
 
-        confusion_matrix[gt_label_idx, 0] = (
+        confusion_matrix[gt_label_idx + 1, 0] = (
             groundtruth_counts[gidx] - intersected_groundtruth_counts[gidx]
         )
 
@@ -137,8 +138,6 @@ def compute_metrics(
     )
 
     missing_prediction_ratio = np.zeros((n_labels), dtype=np.float64)
-    print(counts[1:, 0])
-    print(gt_counts)
     np.divide(
         counts[1:, 0],
         gt_counts,

@@ -20,11 +20,11 @@ def test_confusion_matrix_basic_segmenations(
                     "v2": {"v1": {"iou": 0.0}, "v2": {"iou": 0.5}},
                 },
                 "hallucinations": {
-                    "v1": {"percent": 1.0},
-                    "v2": {"percent": 0.0},
+                    "v1": {"percent": 0.0},
+                    "v2": {"percent": 0.5},
                 },
                 "missing_predictions": {
-                    "v1": {"percent": 0.0},
+                    "v1": {"percent": 0.5},
                     "v2": {"percent": 0.0},
                 },
             },
@@ -32,9 +32,6 @@ def test_confusion_matrix_basic_segmenations(
         },
     ]
     for m in actual_metrics:
-        import json
-
-        print(json.dumps(m, indent=4))
         assert m in expected_metrics
     for m in expected_metrics:
         assert m in actual_metrics
@@ -56,25 +53,29 @@ def test_confusion_matrix_segmentations_from_boxes(
             "value": {
                 "confusion_matrix": {
                     "v1": {
-                        "v1": {"iou": 0.3333333333333333},  # 50% overlap
+                        "v1": {
+                            "iou": 5000 / (10000 + 10000 - 5000)
+                        },  # 50% overlap
                         "v2": {"iou": 0.0},
                     },
                     "v2": {
                         "v1": {"iou": 0.0},
                         "v2": {
-                            "iou": 5.000250012500625e-05  # overlaps 1 pixel out of 15,000 groundtruths
+                            "iou": 1 / (14999 + 4999 + 1)  # overlaps 1 pixel
                         },
                     },
                 },
                 "hallucinations": {
-                    "v1": {"percent": 0.0},
-                    "v2": {"percent": 0.0},
+                    "v1": {"percent": 5000 / 10000},  # 50% overlap
+                    "v2": {
+                        "percent": 4999 / 5000
+                    },  # overlaps 1 pixel out of 5000 predictions
                 },
                 "missing_predictions": {
-                    "v1": {
-                        "percent": 149.99  # overlaps 1 pixel out of 15,000 groundtruths
-                    },
-                    "v2": {"percent": 0.0},
+                    "v1": {"percent": 5000 / 10000},
+                    "v2": {
+                        "percent": 14999 / 15000
+                    },  # overlaps 1 pixel out of 15,000 groundtruths
                 },
             },
             "parameters": {},
