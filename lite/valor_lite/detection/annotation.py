@@ -38,6 +38,11 @@ class Polygon:
     def __post_init__(self):
         if not isinstance(self.shape, ShapelyPolygon):
             raise TypeError("shape must be of type shapely.geometry.Polygon.")
+
+        if len(self.scores) == 0 and len(self.labels) != 1:
+            raise ValueError(
+                "If no scores are defined, then this is a ground truth and a single label requirement is enforced."
+            )
         if len(self.scores) > 0 and len(self.labels) != len(self.scores):
             raise ValueError(
                 "If scores are defined, there must be a 1:1 pairing with labels."
@@ -67,6 +72,19 @@ class Bitmask:
     scores: list[float] = field(default_factory=list)
 
     def __post_init__(self):
+
+        if (
+            not isinstance(self.mask, np.ndarray)
+            or self.mask.dtype != np.bool_
+        ):
+            raise ValueError(
+                "Expected mask to be of type `NDArray[np.bool_]`."
+            )
+
+        if len(self.scores) == 0 and len(self.labels) != 1:
+            raise ValueError(
+                "If no scores are defined, then this is a ground truth and a single label requirement is enforced."
+            )
         if len(self.scores) > 0 and len(self.labels) != len(self.scores):
             raise ValueError(
                 "If scores are defined, there must be a 1:1 pairing with labels."
