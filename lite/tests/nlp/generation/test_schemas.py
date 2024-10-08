@@ -1,7 +1,7 @@
 import copy
 
 import pytest
-from valor_lite.nlp.generative import enums, schemas
+from valor_lite.nlp.generation import enums, schemas
 
 
 @pytest.fixture

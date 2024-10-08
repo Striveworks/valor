@@ -11,8 +11,8 @@ try:
 except ImportError:
     OpenAI = None
 
-from valor_lite.nlp.generative.exceptions import InvalidLLMResponseError
-from valor_lite.nlp.generative.llm_instructions_analysis import (
+from valor_lite.nlp.generation.exceptions import InvalidLLMResponseError
+from valor_lite.nlp.generation.llm_instructions_analysis import (
     generate_answer_correctness_verdicts_instruction,
     generate_answer_relevance_verdicts_instruction,
     generate_bias_verdicts_instruction,
@@ -27,7 +27,7 @@ from valor_lite.nlp.generative.llm_instructions_analysis import (
     generate_summary_coherence_instruction,
     generate_toxicity_verdicts_instruction,
 )
-from valor_lite.nlp.generative.utilities import trim_and_load_json
+from valor_lite.nlp.generation.utilities import trim_and_load_json
 
 DEFAULT_SYSTEM_PROMPT = "You are a helpful assistant."
 

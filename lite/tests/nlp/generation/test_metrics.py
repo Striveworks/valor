@@ -1,6 +1,6 @@
 import pytest
-from valor_lite.nlp.generative import metrics
-from valor_lite.nlp.generative.enums import ROUGEType
+from valor_lite.nlp.generation import metrics
+from valor_lite.nlp.generation.enums import ROUGEType
 
 
 def test_AnswerCorrectnessMetric():

@@ -1,13 +1,13 @@
 from dataclasses import dataclass, field
 
 import pandas as pd
-from valor_lite.nlp.generative import (
+from valor_lite.nlp.generation import (
     enums,
     schemas,
     text_generation,
     utilities,
 )
-from valor_lite.nlp.generative.exceptions import (
+from valor_lite.nlp.generation.exceptions import (
     MismatchingTextGenerationDatumError,
 )
 

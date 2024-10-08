@@ -2,7 +2,7 @@ import json
 import math
 from dataclasses import dataclass
 
-from valor_lite.nlp.generative import enums
+from valor_lite.nlp.generation import enums
 
 
 @dataclass

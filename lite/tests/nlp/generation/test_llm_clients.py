@@ -27,8 +27,8 @@ try:
 except ImportError:
     OPENAI_INSTALLED = False
 
-from valor_lite.nlp.generative.exceptions import InvalidLLMResponseError
-from valor_lite.nlp.generative.llm_clients import (
+from valor_lite.nlp.generation.exceptions import InvalidLLMResponseError
+from valor_lite.nlp.generation.llm_clients import (
     LLMClient,
     MockLLMClient,
     WrappedMistralAIClient,
@@ -848,7 +848,7 @@ def test_LLMClient(monkeypatch):
 
     # Patch __call__ with a valid response.
     monkeypatch.setattr(
-        "valor_lite.nlp.generative.llm_clients.LLMClient.__call__",
+        "valor_lite.nlp.generation.llm_clients.LLMClient.__call__",
         _return_valid_answer_correctness_response,
     )
     assert 0.6666666666666666 == client.answer_correctness(
@@ -857,7 +857,7 @@ def test_LLMClient(monkeypatch):
 
     # Needs to have 'statements' key.
     monkeypatch.setattr(
-        "valor_lite.nlp.generative.llm_clients.LLMClient.__call__",
+        "valor_lite.nlp.generation.llm_clients.LLMClient.__call__",
         _return_invalid1_answer_correctness_response,
     )
     with pytest.raises(InvalidLLMResponseError):
@@ -867,7 +867,7 @@ def test_LLMClient(monkeypatch):
 
     # Should fail if ground truth statements are invalid even when prediction statements are valid
     monkeypatch.setattr(
-        "valor_lite.nlp.generative.llm_clients.LLMClient.__call__",
+        "valor_lite.nlp.generation.llm_clients.LLMClient.__call__",
         _return_invalid2_answer_correctness_response,
     )
     with pytest.raises(InvalidLLMResponseError):
@@ -877,7 +877,7 @@ def test_LLMClient(monkeypatch):
 
     # Missing 'FN' in dictionary
     monkeypatch.setattr(
-        "valor_lite.nlp.generative.llm_clients.LLMClient.__call__",
+        "valor_lite.nlp.generation.llm_clients.LLMClient.__call__",
         _return_invalid3_answer_correctness_response,
     )
     with pytest.raises(InvalidLLMResponseError):
@@ -887,7 +887,7 @@ def test_LLMClient(monkeypatch):
 
     # TP has an invalid value.
     monkeypatch.setattr(
-        "valor_lite.nlp.generative.llm_clients.LLMClient.__call__",
+        "valor_lite.nlp.generation.llm_clients.LLMClient.__call__",
         _return_invalid4_answer_correctness_response,
     )
     with pytest.raises(InvalidLLMResponseError):
@@ -897,7 +897,7 @@ def test_LLMClient(monkeypatch):
 
     # Number of TP + FP does not equal the number of prediction statements
     monkeypatch.setattr(
-        "valor_lite.nlp.generative.llm_clients.LLMClient.__call__",
+        "valor_lite.nlp.generation.llm_clients.LLMClient.__call__",
         _return_invalid5_answer_correctness_response,
     )
     with pytest.raises(InvalidLLMResponseError):
@@ -907,7 +907,7 @@ def test_LLMClient(monkeypatch):
 
     # The number of FN is more than the number of ground truth statements
     monkeypatch.setattr(
-        "valor_lite.nlp.generative.llm_clients.LLMClient.__call__",
+        "valor_lite.nlp.generation.llm_clients.LLMClient.__call__",
         _return_invalid6_answer_correctness_response,
     )
     with pytest.raises(InvalidLLMResponseError):
@@ -917,14 +917,14 @@ def test_LLMClient(monkeypatch):
 
     # Patch __call__ with a valid response.
     monkeypatch.setattr(
-        "valor_lite.nlp.generative.llm_clients.LLMClient.__call__",
+        "valor_lite.nlp.generation.llm_clients.LLMClient.__call__",
         _return_valid_answer_relevance_response,
     )
     assert 0.5 == client.answer_relevance("some query", "some answer")
 
     # Needs to have 'statements' key.
     monkeypatch.setattr(
-        "valor_lite.nlp.generative.llm_clients.LLMClient.__call__",
+        "valor_lite.nlp.generation.llm_clients.LLMClient.__call__",
         _return_invalid1_answer_relevance_response,
     )
     with pytest.raises(InvalidLLMResponseError):
@@ -932,7 +932,7 @@ def test_LLMClient(monkeypatch):
 
     # Statements must be strings.
     monkeypatch.setattr(
-        "valor_lite.nlp.generative.llm_clients.LLMClient.__call__",
+        "valor_lite.nlp.generation.llm_clients.LLMClient.__call__",
         _return_invalid2_answer_relevance_response,
     )
     with pytest.raises(InvalidLLMResponseError):
@@ -940,7 +940,7 @@ def test_LLMClient(monkeypatch):
 
     # Needs to have 'verdicts' key.
     monkeypatch.setattr(
-        "valor_lite.nlp.generative.llm_clients.LLMClient.__call__",
+        "valor_lite.nlp.generation.llm_clients.LLMClient.__call__",
         _return_invalid3_answer_relevance_response,
     )
     with pytest.raises(InvalidLLMResponseError):
@@ -948,7 +948,7 @@ def test_LLMClient(monkeypatch):
 
     # Invalid verdict, all verdicts must be yes, no or idk.
     monkeypatch.setattr(
-        "valor_lite.nlp.generative.llm_clients.LLMClient.__call__",
+        "valor_lite.nlp.generation.llm_clients.LLMClient.__call__",
         _return_invalid4_answer_relevance_response,
     )
     with pytest.raises(InvalidLLMResponseError):
@@ -956,21 +956,21 @@ def test_LLMClient(monkeypatch):
 
     # Patch __call__ with a valid response.
     monkeypatch.setattr(
-        "valor_lite.nlp.generative.llm_clients.LLMClient.__call__",
+        "valor_lite.nlp.generation.llm_clients.LLMClient.__call__",
         _return_valid1_bias_response,
     )
     assert 0.5 == client.bias("some text")
 
     # No opinions found, so no bias should be reported.
     monkeypatch.setattr(
-        "valor_lite.nlp.generative.llm_clients.LLMClient.__call__",
+        "valor_lite.nlp.generation.llm_clients.LLMClient.__call__",
         _return_valid2_bias_response,
     )
     assert 0.0 == client.bias("some text")
 
     # Key 'verdicts' is returned but the key should be 'opinions'.
     monkeypatch.setattr(
-        "valor_lite.nlp.generative.llm_clients.LLMClient.__call__",
+        "valor_lite.nlp.generation.llm_clients.LLMClient.__call__",
         _return_invalid1_bias_response,
     )
     with pytest.raises(InvalidLLMResponseError):
@@ -978,7 +978,7 @@ def test_LLMClient(monkeypatch):
 
     # Opinions must be strings.
     monkeypatch.setattr(
-        "valor_lite.nlp.generative.llm_clients.LLMClient.__call__",
+        "valor_lite.nlp.generation.llm_clients.LLMClient.__call__",
         _return_invalid2_bias_response,
     )
     with pytest.raises(InvalidLLMResponseError):
@@ -986,7 +986,7 @@ def test_LLMClient(monkeypatch):
 
     # Key 'opinions' is returned but the key should be 'verdicts'.
     monkeypatch.setattr(
-        "valor_lite.nlp.generative.llm_clients.LLMClient.__call__",
+        "valor_lite.nlp.generation.llm_clients.LLMClient.__call__",
         _return_invalid3_bias_response,
     )
     with pytest.raises(InvalidLLMResponseError):
@@ -994,7 +994,7 @@ def test_LLMClient(monkeypatch):
 
     # 'idk' is not a valid bias verdict.
     monkeypatch.setattr(
-        "valor_lite.nlp.generative.llm_clients.LLMClient.__call__",
+        "valor_lite.nlp.generation.llm_clients.LLMClient.__call__",
         _return_invalid4_bias_response,
     )
     with pytest.raises(InvalidLLMResponseError):
@@ -1002,7 +1002,7 @@ def test_LLMClient(monkeypatch):
 
     # Patch __call__ with a valid response.
     monkeypatch.setattr(
-        "valor_lite.nlp.generative.llm_clients.LLMClient.__call__",
+        "valor_lite.nlp.generation.llm_clients.LLMClient.__call__",
         _return_valid1_context_precision_response,
     )
     assert 0.45 == client.context_precision(
@@ -1013,7 +1013,7 @@ def test_LLMClient(monkeypatch):
 
     # If all verdicts are "no", the returned score should be 0.
     monkeypatch.setattr(
-        "valor_lite.nlp.generative.llm_clients.LLMClient.__call__",
+        "valor_lite.nlp.generation.llm_clients.LLMClient.__call__",
         _return_valid2_context_precision_response,
     )
     assert 0.0 == client.context_precision(
@@ -1024,7 +1024,7 @@ def test_LLMClient(monkeypatch):
 
     # Context precision is meaningless if context_list is empty.
     monkeypatch.setattr(
-        "valor_lite.nlp.generative.llm_clients.LLMClient.__call__",
+        "valor_lite.nlp.generation.llm_clients.LLMClient.__call__",
         _return_valid1_context_precision_response,
     )
     with pytest.raises(ValueError):
@@ -1036,7 +1036,7 @@ def test_LLMClient(monkeypatch):
 
     # Only 1 context provided but 5 verdicts were returned.
     monkeypatch.setattr(
-        "valor_lite.nlp.generative.llm_clients.LLMClient.__call__",
+        "valor_lite.nlp.generation.llm_clients.LLMClient.__call__",
         _return_valid1_context_precision_response,
     )
     with pytest.raises(InvalidLLMResponseError):
@@ -1048,7 +1048,7 @@ def test_LLMClient(monkeypatch):
 
     # Key 'invalid_key' is returned but the key should be 'verdicts'.
     monkeypatch.setattr(
-        "valor_lite.nlp.generative.llm_clients.LLMClient.__call__",
+        "valor_lite.nlp.generation.llm_clients.LLMClient.__call__",
         _return_invalid1_context_precision_response,
     )
     with pytest.raises(InvalidLLMResponseError):
@@ -1060,7 +1060,7 @@ def test_LLMClient(monkeypatch):
 
     # Patch __call__ with a valid response.
     monkeypatch.setattr(
-        "valor_lite.nlp.generative.llm_clients.LLMClient.__call__",
+        "valor_lite.nlp.generation.llm_clients.LLMClient.__call__",
         _return_valid_context_recall_response,
     )
     assert 0.75 == client.context_recall(
@@ -1070,7 +1070,7 @@ def test_LLMClient(monkeypatch):
 
     # Context recall is meaningless if context_list is empty.
     monkeypatch.setattr(
-        "valor_lite.nlp.generative.llm_clients.LLMClient.__call__",
+        "valor_lite.nlp.generation.llm_clients.LLMClient.__call__",
         _return_valid_context_recall_response,
     )
     with pytest.raises(ValueError):
@@ -1081,7 +1081,7 @@ def test_LLMClient(monkeypatch):
 
     # Ground truth statements response must have key 'statements'.
     monkeypatch.setattr(
-        "valor_lite.nlp.generative.llm_clients.LLMClient.__call__",
+        "valor_lite.nlp.generation.llm_clients.LLMClient.__call__",
         _return_invalid1_context_recall_response,
     )
     with pytest.raises(InvalidLLMResponseError):
@@ -1092,7 +1092,7 @@ def test_LLMClient(monkeypatch):
 
     # Ground truth statements must be strings.
     monkeypatch.setattr(
-        "valor_lite.nlp.generative.llm_clients.LLMClient.__call__",
+        "valor_lite.nlp.generation.llm_clients.LLMClient.__call__",
         _return_invalid2_context_recall_response,
     )
     with pytest.raises(InvalidLLMResponseError):
@@ -1103,7 +1103,7 @@ def test_LLMClient(monkeypatch):
 
     # Context recall verdicts response must have key 'verdicts'.
     monkeypatch.setattr(
-        "valor_lite.nlp.generative.llm_clients.LLMClient.__call__",
+        "valor_lite.nlp.generation.llm_clients.LLMClient.__call__",
         _return_invalid3_context_recall_response,
     )
     with pytest.raises(InvalidLLMResponseError):
@@ -1114,7 +1114,7 @@ def test_LLMClient(monkeypatch):
 
     # Number of context recall verdicts doesn't match the number of ground truth statements.
     monkeypatch.setattr(
-        "valor_lite.nlp.generative.llm_clients.LLMClient.__call__",
+        "valor_lite.nlp.generation.llm_clients.LLMClient.__call__",
         _return_invalid4_context_recall_response,
     )
     with pytest.raises(InvalidLLMResponseError):
@@ -1125,7 +1125,7 @@ def test_LLMClient(monkeypatch):
 
     # Patch __call__ with a valid response.
     monkeypatch.setattr(
-        "valor_lite.nlp.generative.llm_clients.LLMClient.__call__",
+        "valor_lite.nlp.generation.llm_clients.LLMClient.__call__",
         _return_valid_context_relevance_response,
     )
     assert 0.3333333333333333 == client.context_relevance(
@@ -1134,7 +1134,7 @@ def test_LLMClient(monkeypatch):
 
     # Context relevance is meaningless if context_list is empty.
     monkeypatch.setattr(
-        "valor_lite.nlp.generative.llm_clients.LLMClient.__call__",
+        "valor_lite.nlp.generation.llm_clients.LLMClient.__call__",
         _return_valid_context_relevance_response,
     )
     with pytest.raises(ValueError):
@@ -1142,7 +1142,7 @@ def test_LLMClient(monkeypatch):
 
     # Only 1 context provided but 3 verdicts were returned.
     monkeypatch.setattr(
-        "valor_lite.nlp.generative.llm_clients.LLMClient.__call__",
+        "valor_lite.nlp.generation.llm_clients.LLMClient.__call__",
         _return_valid_context_relevance_response,
     )
     with pytest.raises(InvalidLLMResponseError):
@@ -1153,7 +1153,7 @@ def test_LLMClient(monkeypatch):
 
     # Key 'all_verdicts' is returned but the key should be 'verdicts'.
     monkeypatch.setattr(
-        "valor_lite.nlp.generative.llm_clients.LLMClient.__call__",
+        "valor_lite.nlp.generation.llm_clients.LLMClient.__call__",
         _return_invalid1_context_relevance_response,
     )
     with pytest.raises(InvalidLLMResponseError):
@@ -1163,21 +1163,21 @@ def test_LLMClient(monkeypatch):
 
     # Patch __call__ with a valid response.
     monkeypatch.setattr(
-        "valor_lite.nlp.generative.llm_clients.LLMClient.__call__",
+        "valor_lite.nlp.generation.llm_clients.LLMClient.__call__",
         _return_valid1_faithfulness_response,
     )
     assert 0.6 == client.faithfulness("some text", ["context 1", "context 2"])
 
     # If no claims are found in the text, then the text should have a faithfulness score of 1.
     monkeypatch.setattr(
-        "valor_lite.nlp.generative.llm_clients.LLMClient.__call__",
+        "valor_lite.nlp.generation.llm_clients.LLMClient.__call__",
         _return_valid2_faithfulness_response,
     )
     assert 1.0 == client.faithfulness("some text", ["context 1", "context 2"])
 
     # Faithfulness is meaningless if context_list is empty.
     monkeypatch.setattr(
-        "valor_lite.nlp.generative.llm_clients.LLMClient.__call__",
+        "valor_lite.nlp.generation.llm_clients.LLMClient.__call__",
         _return_valid1_faithfulness_response,
     )
     with pytest.raises(ValueError):
@@ -1185,7 +1185,7 @@ def test_LLMClient(monkeypatch):
 
     # Bad key in the claims response.
     monkeypatch.setattr(
-        "valor_lite.nlp.generative.llm_clients.LLMClient.__call__",
+        "valor_lite.nlp.generation.llm_clients.LLMClient.__call__",
         _return_invalid1_faithfulness_response,
     )
     with pytest.raises(InvalidLLMResponseError):
@@ -1193,7 +1193,7 @@ def test_LLMClient(monkeypatch):
 
     # Claims must be strings, not lists of strings.
     monkeypatch.setattr(
-        "valor_lite.nlp.generative.llm_clients.LLMClient.__call__",
+        "valor_lite.nlp.generation.llm_clients.LLMClient.__call__",
         _return_invalid2_faithfulness_response,
     )
     with pytest.raises(InvalidLLMResponseError):
@@ -1201,7 +1201,7 @@ def test_LLMClient(monkeypatch):
 
     # Bad key in the verdicts response.
     monkeypatch.setattr(
-        "valor_lite.nlp.generative.llm_clients.LLMClient.__call__",
+        "valor_lite.nlp.generation.llm_clients.LLMClient.__call__",
         _return_invalid3_faithfulness_response,
     )
     with pytest.raises(InvalidLLMResponseError):
@@ -1209,7 +1209,7 @@ def test_LLMClient(monkeypatch):
 
     # Number of verdicts does not match the number of claims.
     monkeypatch.setattr(
-        "valor_lite.nlp.generative.llm_clients.LLMClient.__call__",
+        "valor_lite.nlp.generation.llm_clients.LLMClient.__call__",
         _return_invalid4_faithfulness_response,
     )
     with pytest.raises(InvalidLLMResponseError):
@@ -1217,7 +1217,7 @@ def test_LLMClient(monkeypatch):
 
     # 'idk' is not a valid verdict for faithfulness.
     monkeypatch.setattr(
-        "valor_lite.nlp.generative.llm_clients.LLMClient.__call__",
+        "valor_lite.nlp.generation.llm_clients.LLMClient.__call__",
         _return_invalid5_faithfulness_response,
     )
     with pytest.raises(InvalidLLMResponseError):
@@ -1225,7 +1225,7 @@ def test_LLMClient(monkeypatch):
 
     # Patch __call__ with a valid response.
     monkeypatch.setattr(
-        "valor_lite.nlp.generative.llm_clients.LLMClient.__call__",
+        "valor_lite.nlp.generation.llm_clients.LLMClient.__call__",
         _return_valid_hallucination_response,
     )
     assert 0.6666666666666666 == client.hallucination(
@@ -1234,7 +1234,7 @@ def test_LLMClient(monkeypatch):
 
     # Context relevance is meaningless if context_list is empty.
     monkeypatch.setattr(
-        "valor_lite.nlp.generative.llm_clients.LLMClient.__call__",
+        "valor_lite.nlp.generation.llm_clients.LLMClient.__call__",
         _return_valid_hallucination_response,
     )
     with pytest.raises(ValueError):
@@ -1242,7 +1242,7 @@ def test_LLMClient(monkeypatch):
 
     # Only 1 context provided but 3 verdicts were returned.
     monkeypatch.setattr(
-        "valor_lite.nlp.generative.llm_clients.LLMClient.__call__",
+        "valor_lite.nlp.generation.llm_clients.LLMClient.__call__",
         _return_valid_hallucination_response,
     )
     with pytest.raises(InvalidLLMResponseError):
@@ -1253,7 +1253,7 @@ def test_LLMClient(monkeypatch):
 
     # Key 'all_verdicts' is returned but the key should be 'verdicts'.
     monkeypatch.setattr(
-        "valor_lite.nlp.generative.llm_clients.LLMClient.__call__",
+        "valor_lite.nlp.generation.llm_clients.LLMClient.__call__",
         _return_invalid1_hallucination_response,
     )
     with pytest.raises(InvalidLLMResponseError):
@@ -1263,14 +1263,14 @@ def test_LLMClient(monkeypatch):
 
     # Patch __call__ with a valid response.
     monkeypatch.setattr(
-        "valor_lite.nlp.generative.llm_clients.LLMClient.__call__",
+        "valor_lite.nlp.generation.llm_clients.LLMClient.__call__",
         _return_valid_summary_coherence_response,
     )
     assert 5 == client.summary_coherence("some text", "some summary")
 
     # Summary coherence score is not an integer.
     monkeypatch.setattr(
-        "valor_lite.nlp.generative.llm_clients.LLMClient.__call__",
+        "valor_lite.nlp.generation.llm_clients.LLMClient.__call__",
         _return_invalid1_summary_coherence_response,
     )
     with pytest.raises(InvalidLLMResponseError):
@@ -1278,7 +1278,7 @@ def test_LLMClient(monkeypatch):
 
     # Summary coherence score is 0, which is not in {1,2,3,4,5}.
     monkeypatch.setattr(
-        "valor_lite.nlp.generative.llm_clients.LLMClient.__call__",
+        "valor_lite.nlp.generation.llm_clients.LLMClient.__call__",
         _return_invalid2_summary_coherence_response,
     )
     with pytest.raises(InvalidLLMResponseError):
@@ -1286,21 +1286,21 @@ def test_LLMClient(monkeypatch):
 
     # Patch __call__ with a valid response.
     monkeypatch.setattr(
-        "valor_lite.nlp.generative.llm_clients.LLMClient.__call__",
+        "valor_lite.nlp.generation.llm_clients.LLMClient.__call__",
         _return_valid1_toxicity_response,
     )
     assert 0.5 == client.toxicity("some text")
 
     # No opinions found, so no toxicity should be reported.
     monkeypatch.setattr(
-        "valor_lite.nlp.generative.llm_clients.LLMClient.__call__",
+        "valor_lite.nlp.generation.llm_clients.LLMClient.__call__",
         _return_valid2_toxicity_response,
     )
     assert 0.0 == client.toxicity("some text")
 
     # Key 'verdicts' is returned but the key should be 'opinions'.
     monkeypatch.setattr(
-        "valor_lite.nlp.generative.llm_clients.LLMClient.__call__",
+        "valor_lite.nlp.generation.llm_clients.LLMClient.__call__",
         _return_invalid1_toxicity_response,
     )
     with pytest.raises(InvalidLLMResponseError):
@@ -1308,7 +1308,7 @@ def test_LLMClient(monkeypatch):
 
     # Opinions must be strings.
     monkeypatch.setattr(
-        "valor_lite.nlp.generative.llm_clients.LLMClient.__call__",
+        "valor_lite.nlp.generation.llm_clients.LLMClient.__call__",
         _return_invalid2_toxicity_response,
     )
     with pytest.raises(InvalidLLMResponseError):
@@ -1316,7 +1316,7 @@ def test_LLMClient(monkeypatch):
 
     # Key 'opinions' is returned but the key should be 'verdicts'.
     monkeypatch.setattr(
-        "valor_lite.nlp.generative.llm_clients.LLMClient.__call__",
+        "valor_lite.nlp.generation.llm_clients.LLMClient.__call__",
         _return_invalid3_toxicity_response,
     )
     with pytest.raises(InvalidLLMResponseError):
@@ -1324,7 +1324,7 @@ def test_LLMClient(monkeypatch):
 
     # 'idk' is not a valid toxicity verdict.
     monkeypatch.setattr(
-        "valor_lite.nlp.generative.llm_clients.LLMClient.__call__",
+        "valor_lite.nlp.generation.llm_clients.LLMClient.__call__",
         _return_invalid4_toxicity_response,
     )
     with pytest.raises(InvalidLLMResponseError):
@@ -1345,7 +1345,7 @@ def test_LLMClient_retries(monkeypatch):
         return "The score is 5."
 
     monkeypatch.setattr(
-        "valor_lite.nlp.generative.llm_clients.LLMClient.__call__",
+        "valor_lite.nlp.generation.llm_clients.LLMClient.__call__",
         _return_valid_summary_coherence_response,
     )
 
@@ -1363,7 +1363,7 @@ def test_LLMClient_retries(monkeypatch):
 
     # mock_method returns a bad response three times but on the fourth call returns a valid response.
     monkeypatch.setattr(
-        "valor_lite.nlp.generative.llm_clients.LLMClient.__call__",
+        "valor_lite.nlp.generation.llm_clients.LLMClient.__call__",
         Mock(side_effect=errors),
     )
     client = LLMClient(api_key=None, model_name="model_name", retries=3)
@@ -1371,7 +1371,7 @@ def test_LLMClient_retries(monkeypatch):
 
     # Test with retries=2 and invalid response
     monkeypatch.setattr(
-        "valor_lite.nlp.generative.llm_clients.LLMClient.__call__",
+        "valor_lite.nlp.generation.llm_clients.LLMClient.__call__",
         Mock(side_effect=errors),
     )
     with pytest.raises(InvalidLLMResponseError):
@@ -1379,7 +1379,7 @@ def test_LLMClient_retries(monkeypatch):
         client.summary_coherence("some text", "some summary")
 
     monkeypatch.setattr(
-        "valor_lite.nlp.generative.llm_clients.LLMClient.__call__",
+        "valor_lite.nlp.generation.llm_clients.LLMClient.__call__",
         _return_invalid_summary_coherence_response,
     )
 
@@ -1395,7 +1395,7 @@ def test_LLMClient_retries(monkeypatch):
 
     # Test WrappedOpenAIClient
     monkeypatch.setattr(
-        "valor_lite.nlp.generative.llm_clients.WrappedOpenAIClient.__call__",
+        "valor_lite.nlp.generation.llm_clients.WrappedOpenAIClient.__call__",
         Mock(side_effect=errors),
     )
     client = WrappedOpenAIClient(
@@ -1405,7 +1405,7 @@ def test_LLMClient_retries(monkeypatch):
 
     with pytest.raises(InvalidLLMResponseError):
         monkeypatch.setattr(
-            "valor_lite.nlp.generative.llm_clients.WrappedOpenAIClient.__call__",
+            "valor_lite.nlp.generation.llm_clients.WrappedOpenAIClient.__call__",
             Mock(side_effect=errors),
         )
         client = WrappedOpenAIClient(
@@ -1421,7 +1421,7 @@ def test_LLMClient_retries(monkeypatch):
 
     # Test WrappedMistralAIClient
     monkeypatch.setattr(
-        "valor_lite.nlp.generative.llm_clients.WrappedMistralAIClient.__call__",
+        "valor_lite.nlp.generation.llm_clients.WrappedMistralAIClient.__call__",
         Mock(side_effect=errors),
     )
     client = WrappedMistralAIClient(
@@ -1431,7 +1431,7 @@ def test_LLMClient_retries(monkeypatch):
 
     with pytest.raises(InvalidLLMResponseError):
         monkeypatch.setattr(
-            "valor_lite.nlp.generative.llm_clients.WrappedMistralAIClient.__call__",
+            "valor_lite.nlp.generation.llm_clients.WrappedMistralAIClient.__call__",
             Mock(side_effect=errors),
         )
         client = WrappedMistralAIClient(

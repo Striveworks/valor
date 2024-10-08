@@ -4,15 +4,15 @@ from collections import defaultdict
 import evaluate
 from nltk.tokenize import RegexpTokenizer
 from nltk.translate import bleu_score
-from valor_lite.nlp.generative import enums, schemas, utilities
-from valor_lite.nlp.generative.enums import MetricType, ROUGEType
-from valor_lite.nlp.generative.llm_clients import (
+from valor_lite.nlp.generation import enums, schemas, utilities
+from valor_lite.nlp.generation.enums import MetricType, ROUGEType
+from valor_lite.nlp.generation.llm_clients import (
     LLMClient,
     MockLLMClient,
     WrappedMistralAIClient,
     WrappedOpenAIClient,
 )
-from valor_lite.nlp.generative.metrics import (
+from valor_lite.nlp.generation.metrics import (
     AnswerCorrectnessMetric,
     AnswerRelevanceMetric,
     BiasMetric,

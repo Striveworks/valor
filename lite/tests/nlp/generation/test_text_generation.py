@@ -1,9 +1,9 @@
 from unittest.mock import patch
 
 import pytest
-from valor_lite.nlp.generative import schemas
-from valor_lite.nlp.generative.enums import MetricType, ROUGEType
-from valor_lite.nlp.generative.text_generation import (
+from valor_lite.nlp.generation import schemas
+from valor_lite.nlp.generation.enums import MetricType, ROUGEType
+from valor_lite.nlp.generation.text_generation import (
     _calculate_rouge_scores,
     _calculate_sentence_bleu,
     _setup_llm_client,
@@ -451,11 +451,11 @@ def mocked_compute_rouge_none(*args, **kwargs):
 
 
 @patch(
-    "valor_lite.nlp.generative.llm_clients.WrappedOpenAIClient.connect",
+    "valor_lite.nlp.generation.llm_clients.WrappedOpenAIClient.connect",
     mocked_connection,
 )
 @patch(
-    "valor_lite.nlp.generative.llm_clients.WrappedMistralAIClient.connect",
+    "valor_lite.nlp.generation.llm_clients.WrappedMistralAIClient.connect",
     mocked_connection,
 )
 def test__setup_llm_client():
@@ -551,51 +551,51 @@ def test__setup_llm_client():
 
 
 @patch(
-    "valor_lite.nlp.generative.llm_clients.WrappedOpenAIClient.connect",
+    "valor_lite.nlp.generation.llm_clients.WrappedOpenAIClient.connect",
     mocked_connection,
 )
 @patch(
-    "valor_lite.nlp.generative.llm_clients.WrappedOpenAIClient.answer_correctness",
+    "valor_lite.nlp.generation.llm_clients.WrappedOpenAIClient.answer_correctness",
     mocked_answer_correctness,
 )
 @patch(
-    "valor_lite.nlp.generative.llm_clients.WrappedOpenAIClient.answer_relevance",
+    "valor_lite.nlp.generation.llm_clients.WrappedOpenAIClient.answer_relevance",
     mocked_answer_relevance,
 )
 @patch(
-    "valor_lite.nlp.generative.llm_clients.WrappedOpenAIClient.bias",
+    "valor_lite.nlp.generation.llm_clients.WrappedOpenAIClient.bias",
     mocked_bias,
 )
 @patch(
-    "valor_lite.nlp.generative.llm_clients.WrappedOpenAIClient.context_precision",
+    "valor_lite.nlp.generation.llm_clients.WrappedOpenAIClient.context_precision",
     mocked_context_precision,
 )
 @patch(
-    "valor_lite.nlp.generative.llm_clients.WrappedOpenAIClient.context_recall",
+    "valor_lite.nlp.generation.llm_clients.WrappedOpenAIClient.context_recall",
     mocked_context_recall,
 )
 @patch(
-    "valor_lite.nlp.generative.llm_clients.WrappedOpenAIClient.context_relevance",
+    "valor_lite.nlp.generation.llm_clients.WrappedOpenAIClient.context_relevance",
     mocked_context_relevance,
 )
 @patch(
-    "valor_lite.nlp.generative.llm_clients.WrappedOpenAIClient.faithfulness",
+    "valor_lite.nlp.generation.llm_clients.WrappedOpenAIClient.faithfulness",
     mocked_faithfulness,
 )
 @patch(
-    "valor_lite.nlp.generative.llm_clients.WrappedOpenAIClient.hallucination",
+    "valor_lite.nlp.generation.llm_clients.WrappedOpenAIClient.hallucination",
     mocked_hallucination,
 )
 @patch(
-    "valor_lite.nlp.generative.llm_clients.WrappedOpenAIClient.toxicity",
+    "valor_lite.nlp.generation.llm_clients.WrappedOpenAIClient.toxicity",
     mocked_toxicity,
 )
 @patch(
-    "valor_lite.nlp.generative.llm_clients.WrappedMistralAIClient.connect",
+    "valor_lite.nlp.generation.llm_clients.WrappedMistralAIClient.connect",
     mocked_connection,
 )
 @patch(
-    "valor_lite.nlp.generative.llm_clients.WrappedMistralAIClient.answer_relevance",
+    "valor_lite.nlp.generation.llm_clients.WrappedMistralAIClient.answer_relevance",
     mocked_answer_relevance,
 )
 def test_evaluate_text_generation_rag(
@@ -872,15 +872,15 @@ def test_evaluate_text_generation_rag(
 
 
 @patch(
-    "valor_lite.nlp.generative.llm_clients.WrappedOpenAIClient.connect",
+    "valor_lite.nlp.generation.llm_clients.WrappedOpenAIClient.connect",
     mocked_connection,
 )
 @patch(
-    "valor_lite.nlp.generative.llm_clients.WrappedOpenAIClient.bias",
+    "valor_lite.nlp.generation.llm_clients.WrappedOpenAIClient.bias",
     mocked_bias,
 )
 @patch(
-    "valor_lite.nlp.generative.llm_clients.WrappedOpenAIClient.toxicity",
+    "valor_lite.nlp.generation.llm_clients.WrappedOpenAIClient.toxicity",
     mocked_toxicity,
 )
 def test_evaluate_text_generation_content_gen(
@@ -938,11 +938,11 @@ def test_evaluate_text_generation_content_gen(
 
 
 @patch(
-    "valor_lite.nlp.generative.llm_clients.WrappedOpenAIClient.connect",
+    "valor_lite.nlp.generation.llm_clients.WrappedOpenAIClient.connect",
     mocked_connection,
 )
 @patch(
-    "valor_lite.nlp.generative.llm_clients.WrappedOpenAIClient.summary_coherence",
+    "valor_lite.nlp.generation.llm_clients.WrappedOpenAIClient.summary_coherence",
     mocked_summary_coherence,
 )
 def test_evaluate_text_generation_summarization(

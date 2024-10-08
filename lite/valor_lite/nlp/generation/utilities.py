@@ -1,8 +1,8 @@
 import json
 from typing import Any
 
-from valor_lite.nlp.generative import enums
-from valor_lite.nlp.generative.exceptions import InvalidLLMResponseError
+from valor_lite.nlp.generation import enums
+from valor_lite.nlp.generation.exceptions import InvalidLLMResponseError
 
 
 def validate_metrics_to_return(

@@ -3,12 +3,12 @@ from unittest.mock import patch
 
 import pandas as pd
 import pytest
-from valor_lite.nlp.generative import schemas
-from valor_lite.nlp.generative.enums import MetricType
-from valor_lite.nlp.generative.exceptions import (
+from valor_lite.nlp.generation import schemas
+from valor_lite.nlp.generation.enums import MetricType
+from valor_lite.nlp.generation.exceptions import (
     MismatchingTextGenerationDatumError,
 )
-from valor_lite.nlp.generative.manager import (
+from valor_lite.nlp.generation.manager import (
     ValorTextGenerationStreamingManager,
 )
 
@@ -189,31 +189,31 @@ def mocked_toxicity(
 
 
 @patch(
-    "valor_lite.nlp.generative.llm_clients.WrappedOpenAIClient.connect",
+    "valor_lite.nlp.generation.llm_clients.WrappedOpenAIClient.connect",
     mocked_connection,
 )
 @patch(
-    "valor_lite.nlp.generative.llm_clients.WrappedOpenAIClient.answer_relevance",
+    "valor_lite.nlp.generation.llm_clients.WrappedOpenAIClient.answer_relevance",
     mocked_answer_relevance,
 )
 @patch(
-    "valor_lite.nlp.generative.llm_clients.WrappedOpenAIClient.bias",
+    "valor_lite.nlp.generation.llm_clients.WrappedOpenAIClient.bias",
     mocked_bias,
 )
 @patch(
-    "valor_lite.nlp.generative.llm_clients.WrappedOpenAIClient.context_relevance",
+    "valor_lite.nlp.generation.llm_clients.WrappedOpenAIClient.context_relevance",
     mocked_context_relevance,
 )
 @patch(
-    "valor_lite.nlp.generative.llm_clients.WrappedOpenAIClient.faithfulness",
+    "valor_lite.nlp.generation.llm_clients.WrappedOpenAIClient.faithfulness",
     mocked_faithfulness,
 )
 @patch(
-    "valor_lite.nlp.generative.llm_clients.WrappedOpenAIClient.hallucination",
+    "valor_lite.nlp.generation.llm_clients.WrappedOpenAIClient.hallucination",
     mocked_hallucination,
 )
 @patch(
-    "valor_lite.nlp.generative.llm_clients.WrappedOpenAIClient.toxicity",
+    "valor_lite.nlp.generation.llm_clients.WrappedOpenAIClient.toxicity",
     mocked_toxicity,
 )
 def test_ValorTextGenerationStreamingManager_rag(
