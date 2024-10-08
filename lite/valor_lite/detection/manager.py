@@ -6,7 +6,6 @@ from typing import Type
 import numpy as np
 import valor_lite.detection.annotation as annotation
 from numpy.typing import NDArray
-from shapely.geometry import Polygon as ShapelyPolygon
 from tqdm import tqdm
 from valor_lite.detection.annotation import (
     Bitmask,
@@ -60,35 +59,6 @@ ar_metrics = metrics[MetricType.AR]
 filter_mask = evaluator.create_filter(datum_uids=["uid1", "uid2"])
 filtered_metrics = evaluator.evaluate(iou_thresholds=[0.5], filter_mask=filter_mask)
 """
-
-
-def _get_valor_dict_annotation_key(
-    annotation_type: type[BoundingBox] | type[Polygon] | type[Bitmask],
-) -> str:
-    """Get the correct JSON key to extract a given annotation type."""
-
-    if issubclass(annotation_type, BoundingBox):
-        return "bounding_box"
-    if issubclass(annotation_type, Polygon):
-        return "polygon"
-    else:
-        return "raster"
-
-
-def _get_annotation_representation_from_valor_dict(
-    data: list,
-    annotation_type: type[BoundingBox] | type[Polygon] | type[Bitmask],
-) -> tuple[float, float, float, float] | ShapelyPolygon | NDArray[np.bool_]:
-    """Get the correct representation of an annotation object from a valor dictionary."""
-
-    if issubclass(annotation_type, BoundingBox):
-        x = [point[0] for shape in data for point in shape]
-        y = [point[1] for shape in data for point in shape]
-        return (min(x), max(x), min(y), max(y))
-    if issubclass(annotation_type, Polygon):
-        return ShapelyPolygon(data)
-    else:
-        return np.array(data)
 
 
 @dataclass
@@ -1100,10 +1070,9 @@ class DataLoader:
             annotation_type=Bitmask,
         )
 
-    def _add_data_from_valor_dict(
+    def add_bounding_boxes_from_valor_dict(
         self,
         detections: list[tuple[dict, dict]],
-        annotation_type: type[Bitmask] | type[BoundingBox] | type[Polygon],
         show_progress: bool = False,
     ):
         """
@@ -1123,8 +1092,24 @@ class DataLoader:
             DeprecationWarning,
         )
 
+        def _get_bbox_extrema(
+            data: list,
+        ) -> tuple[float, float, float, float]:
+            """Get the correct representation of an annotation object from a valor dictionary."""
+            x = [point[0] for shape in data for point in shape]
+            y = [point[1] for shape in data for point in shape]
+            return (min(x), max(x), min(y), max(y))
+
         disable_tqdm = not show_progress
         for groundtruth, prediction in tqdm(detections, disable=disable_tqdm):
+
+            if not isinstance(groundtruth, dict) or not isinstance(
+                prediction, dict
+            ):
+                raise ValueError(
+                    f"Received values with type `{type(groundtruth)}` which are not valid Valor dictionaries."
+                )
+
             # update metadata
             self._evaluator.n_datums += 1
             self._evaluator.n_groundtruths += len(groundtruth["annotations"])
@@ -1145,33 +1130,16 @@ class DataLoader:
             groundtruths = list()
             predictions = list()
 
-            annotation_key = _get_valor_dict_annotation_key(
-                annotation_type=annotation_type
-            )
-            invalid_keys = list(
-                filter(
-                    lambda x: x != annotation_key,
-                    ["bounding_box", "raster", "polygon"],
-                )
-            )
-
             for gidx, gann in enumerate(groundtruth["annotations"]):
-                if (gann[annotation_key] is None) or any(
-                    [gann[k] is not None for k in invalid_keys]
-                ):
+                if gann["bounding_box"] is None:
                     raise ValueError(
-                        f"Input JSON doesn't contain {annotation_type} data, or contains data for multiple annotation types."
+                        f"Detection `{groundtruth['datum']['uid']}` contains a ground truth without a bounding box."
                     )
-                if annotation_type == BoundingBox:
-                    self._evaluator.groundtruth_examples[uid_index][
-                        gidx
-                    ] = np.array(
-                        _get_annotation_representation_from_valor_dict(
-                            gann[annotation_key],
-                            annotation_type=annotation_type,
-                        ),
-                    )
-
+                self._evaluator.groundtruth_examples[uid_index][
+                    gidx
+                ] = np.array(
+                    _get_bbox_extrema(gann["bounding_box"]),
+                )
                 for valor_label in gann["labels"]:
                     glabel = f'{valor_label["key" ]}_{valor_label[ "value" ]}'
                     label_idx = self._add_label(glabel)
@@ -1180,29 +1148,17 @@ class DataLoader:
                         (
                             gidx,
                             label_idx,
-                            _get_annotation_representation_from_valor_dict(
-                                gann[annotation_key],
-                                annotation_type=annotation_type,
-                            ),
+                            _get_bbox_extrema(gann["bounding_box"]),
                         )
                     )
             for pidx, pann in enumerate(prediction["annotations"]):
-                if (pann[annotation_key] is None) or any(
-                    [pann[k] is not None for k in invalid_keys]
-                ):
+                if pann["bounding_box"] is None:
                     raise ValueError(
-                        f"Input JSON doesn't contain {annotation_type} data, or contains data for multiple annotation types."
+                        f"Detection `{prediction['datum']['uid']}` contains a prediction without a bounding box."
                     )
-
-                if annotation_type == BoundingBox:
-                    self._evaluator.prediction_examples[uid_index][
-                        pidx
-                    ] = np.array(
-                        _get_annotation_representation_from_valor_dict(
-                            pann[annotation_key],
-                            annotation_type=annotation_type,
-                        )
-                    )
+                self._evaluator.prediction_examples[uid_index][
+                    pidx
+                ] = np.array(_get_bbox_extrema(pann["bounding_box"]))
                 for valor_label in pann["labels"]:
                     plabel = valor_label["value"]
                     pscore = valor_label["score"]
@@ -1213,10 +1169,7 @@ class DataLoader:
                             pidx,
                             label_idx,
                             pscore,
-                            _get_annotation_representation_from_valor_dict(
-                                pann[annotation_key],
-                                annotation_type=annotation_type,
-                            ),
+                            _get_bbox_extrema(pann["bounding_box"]),
                         )
                     )
 
@@ -1224,29 +1177,8 @@ class DataLoader:
                 uid_index=uid_index,
                 groundtruths=groundtruths,
                 predictions=predictions,
-                annotation_type=annotation_type,
+                annotation_type=BoundingBox,
             )
-
-    def add_bounding_boxes_from_valor_dict(
-        self,
-        detections: list[tuple[dict, dict]],
-        show_progress: bool = False,
-    ):
-        """
-        Adds Valor-format bounding box detections to the cache.
-
-        Parameters
-        ----------
-        detections : list[tuple[dict, dict]]
-            A list of groundtruth, prediction pairs in Valor-format dictionaries.
-        show_progress : bool, default=False
-            Toggle for tqdm progress bar.
-        """
-        return self._add_data_from_valor_dict(
-            detections=detections,
-            show_progress=show_progress,
-            annotation_type=BoundingBox,
-        )
 
     def finalize(self) -> Evaluator:
         """
