@@ -8,7 +8,7 @@ from time import time
 
 import requests
 from tqdm import tqdm
-from valor_lite.detection import DataLoader, MetricType
+from valor_lite.cv.detection import DataLoader, MetricType
 
 
 class AnnotationType(str, Enum):

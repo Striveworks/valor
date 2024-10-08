@@ -1,7 +1,7 @@
 [project]
 name = "valor-lite"
 dynamic = ["version"]
-description = "Compute valor metrics directly in your client."
+description = "Compute valor metrics locally."
 readme = "README.md"
 requires-python = ">=3.10"
 license = { file = "LICENSE" }
@@ -12,6 +12,9 @@ dependencies = [
     "requests",
     "numpy",
     "shapely",
+    "nltk",
+    "rouge_score",
+    "evaluate"
 ]
 
 [project.urls]
@@ -22,6 +25,8 @@ requires = ["setuptools>=61.0", "setuptools_scm[toml]>=6.2"]
 build-backend = "setuptools.build_meta"
 
 [project.optional-dependencies]
+mistral = ["mistralai >= 1.0"]
+openai = ["openai"]
 test = ["pytest", "coverage"]
 
 [tool.black]
