@@ -73,20 +73,6 @@ def _get_valor_dict_annotation_key(
         return "raster"
 
 
-def _get_annotation_representation(
-    annotation_type: type[BoundingBox] | type[Polygon] | type[Bitmask],
-) -> str:
-    """Get the correct representation of an annotation object."""
-
-    representation = (
-        "extrema"
-        if issubclass(annotation_type, BoundingBox)
-        else ("mask" if issubclass(annotation_type, Bitmask) else "shape")
-    )
-
-    return representation
-
-
 def _get_annotation_representation_from_valor_dict(
     data: list,
     annotation_type: type[BoundingBox] | type[Polygon] | type[Bitmask],
@@ -128,15 +114,15 @@ def _get_annotation_data(
 
 
 def compute_iou(
-    data: NDArray[np.floating],
+    data: NDArray[np.float64],
     annotation_type: type[BoundingBox] | type[Polygon] | type[Bitmask],
-) -> NDArray[np.floating]:
+) -> NDArray[np.float64]:
     """
     Computes intersection-over-union (IoU) calculations for various annotation types.
 
     Parameters
     ----------
-    data : NDArray[np.floating]
+    data : NDArray[np.float64]
         A sorted array of bounding box, bitmask, or polygon pairs.
     annotation_type: type[BoundingBox] | type[Polygon] | type[Bitmask]
         The type of annotation contained in the data.
@@ -144,7 +130,7 @@ def compute_iou(
 
     Returns
     -------
-    NDArray[np.floating]
+    NDArray[np.float64]
         Computed IoU's.
     """
 
@@ -189,8 +175,8 @@ class Evaluator:
         self.index_to_label: dict[int, str] = dict()
 
         # computation caches
-        self._detailed_pairs: NDArray[np.floating] = np.array([])
-        self._ranked_pairs: NDArray[np.floating] = np.array([])
+        self._detailed_pairs: NDArray[np.float64] = np.array([])
+        self._ranked_pairs: NDArray[np.float64] = np.array([])
         self._label_metadata: NDArray[np.int32] = np.array([])
         self._label_metadata_per_datum: NDArray[np.int32] = np.array([])
 
@@ -533,7 +519,7 @@ class Evaluator:
 
     def _unpack_confusion_matrix(
         self,
-        confusion_matrix: NDArray[np.floating],
+        confusion_matrix: NDArray[np.float64],
         number_of_labels: int,
         number_of_examples: int,
     ) -> dict[
@@ -648,7 +634,7 @@ class Evaluator:
 
     def _unpack_hallucinations(
         self,
-        hallucinations: NDArray[np.floating],
+        hallucinations: NDArray[np.float64],
         number_of_labels: int,
         number_of_examples: int,
     ) -> dict[
@@ -779,7 +765,7 @@ class Evaluator:
 
     def _compute_confusion_matrix(
         self,
-        data: NDArray[np.floating],
+        data: NDArray[np.float64],
         label_metadata: NDArray[np.int32],
         iou_thresholds: list[float],
         score_thresholds: list[float],
@@ -790,7 +776,7 @@ class Evaluator:
 
         Parameters
         ----------
-        data : NDArray[np.floating]
+        data : NDArray[np.float64]
             An array containing detailed pairs of detections.
         label_metadata : NDArray[np.int32]
             An array containing label metadata.
@@ -860,7 +846,7 @@ class DataLoader:
 
     def __init__(self):
         self._evaluator = Evaluator()
-        self.pairs: list[NDArray[np.floating]] = list()
+        self.pairs: list[NDArray[np.float64]] = list()
         self.groundtruth_count = defaultdict(lambda: defaultdict(int))
         self.prediction_count = defaultdict(lambda: defaultdict(int))
 
@@ -940,11 +926,9 @@ class DataLoader:
         )
 
         ious = compute_iou(data=data, annotation_type=annotation_type)
-        mask_nonzero_iou = (ious > 1e-9).reshape(
-            (n_predictions, n_groundtruths)
-        )
-        mask_ious_halluc = ~(mask_nonzero_iou.any(axis=1))
-        mask_ious_misprd = ~(mask_nonzero_iou.any(axis=0))
+        ious = ious.reshape(n_predictions, n_groundtruths)
+        predictions_with_iou_of_zero = (ious < 1e-9).all(axis=1)
+        groundtruths_with_iou_of_zero = (ious < 1e-9).all(axis=0)
 
         pairs.extend(
             [
@@ -953,7 +937,7 @@ class DataLoader:
                         float(uid_index),
                         float(gidx),
                         float(pidx),
-                        ious[pidx * len(groundtruths) + gidx],
+                        ious[pidx, gidx],
                         float(glabel),
                         float(plabel),
                         float(score),
@@ -961,7 +945,7 @@ class DataLoader:
                 )
                 for pidx, plabel, score, _ in predictions
                 for gidx, glabel, _ in groundtruths
-                if ious[pidx * len(groundtruths) + gidx] > 1e-9
+                if ious[pidx, gidx] >= 1e-9
             ]
         )
         pairs.extend(
@@ -978,7 +962,7 @@ class DataLoader:
                     ]
                 )
                 for pidx, plabel, score, _ in predictions
-                if mask_ious_halluc[pidx]
+                if predictions_with_iou_of_zero[pidx]
             ]
         )
         pairs.extend(
@@ -995,40 +979,7 @@ class DataLoader:
                     ]
                 )
                 for gidx, glabel, _ in groundtruths
-                if mask_ious_misprd[gidx]
-            ]
-        )
-
-        pairs.extend(
-            [
-                np.array(
-                    [
-                        float(uid_index),
-                        float(gidx),
-                        -1.0,
-                        0.0,
-                        float(glabel),
-                        -1.0,
-                        -1.0,
-                    ]
-                )
-                for gidx, glabel, _ in groundtruths
-            ]
-        )
-        pairs.extend(
-            [
-                np.array(
-                    [
-                        float(uid_index),
-                        -1.0,
-                        float(pidx),
-                        0.0,
-                        -1.0,
-                        float(plabel),
-                        float(score),
-                    ]
-                )
-                for pidx, plabel, score, _ in predictions
+                if groundtruths_with_iou_of_zero[gidx]
             ]
         )
 
@@ -1075,36 +1026,23 @@ class DataLoader:
             groundtruths = list()
             predictions = list()
 
-            representation_property = _get_annotation_representation(
-                annotation_type=annotation_type
-            )
-
             for gidx, gann in enumerate(detection.groundtruths):
                 if not isinstance(gann, annotation_type):
                     raise ValueError(
                         f"Expected {annotation_type}, but annotation is of type {type(gann)}."
                     )
 
-                if isinstance(gann, BoundingBox):
-                    self._evaluator.groundtruth_examples[uid_index][
-                        gidx
-                    ] = getattr(gann, representation_property)
-                else:
-                    converted_box = gann.to_box()
-                    self._evaluator.groundtruth_examples[uid_index][gidx] = (
-                        getattr(converted_box, "extrema")
-                        if converted_box is not None
-                        else None
-                    )
+                self._evaluator.groundtruth_examples[uid_index][
+                    gidx
+                ] = gann.extrema
                 for glabel in gann.labels:
                     label_idx = self._add_label(glabel)
                     self.groundtruth_count[label_idx][uid_index] += 1
-                    representation = getattr(gann, representation_property)
                     groundtruths.append(
                         (
                             gidx,
                             label_idx,
-                            representation,
+                            gann.annotation,
                         )
                     )
 
@@ -1114,29 +1052,18 @@ class DataLoader:
                         f"Expected {annotation_type}, but annotation is of type {type(pann)}."
                     )
 
-                if isinstance(pann, BoundingBox):
-                    self._evaluator.prediction_examples[uid_index][
-                        pidx
-                    ] = getattr(pann, representation_property)
-                else:
-                    converted_box = pann.to_box()
-                    self._evaluator.prediction_examples[uid_index][pidx] = (
-                        getattr(converted_box, "extrema")
-                        if converted_box is not None
-                        else None
-                    )
+                self._evaluator.prediction_examples[uid_index][
+                    pidx
+                ] = pann.extrema
                 for plabel, pscore in zip(pann.labels, pann.scores):
                     label_idx = self._add_label(plabel)
                     self.prediction_count[label_idx][uid_index] += 1
-                    representation = representation = getattr(
-                        pann, representation_property
-                    )
                     predictions.append(
                         (
                             pidx,
                             label_idx,
                             pscore,
-                            representation,
+                            pann.annotation,
                         )
                     )
 

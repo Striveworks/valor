@@ -1,8 +1,9 @@
+import shapely
 import numpy as np
 from numpy.typing import NDArray
 
 
-def compute_bbox_iou(data: NDArray[np.floating]) -> NDArray[np.floating]:
+def compute_bbox_iou(data: NDArray[np.float64]) -> NDArray[np.float64]:
     """
     Computes intersection-over-union (IoU) for axis-aligned bounding boxes.
 
@@ -23,12 +24,12 @@ def compute_bbox_iou(data: NDArray[np.floating]) -> NDArray[np.floating]:
 
     Parameters
     ----------
-    data : NDArray[np.floating]
+    data : NDArray[np.float64]
         A sorted array of bounding box pairs.
 
     Returns
     -------
-    NDArray[np.floating]
+    NDArray[np.float64]
         Computed IoU's.
     """
     iou = np.zeros(data.shape[0])
@@ -71,7 +72,7 @@ def compute_bbox_iou(data: NDArray[np.floating]) -> NDArray[np.floating]:
     return iou
 
 
-def compute_bitmask_iou(data: NDArray[np.floating]) -> NDArray[np.floating]:
+def compute_bitmask_iou(data: NDArray[np.float64]) -> NDArray[np.float64]:
     """
     Computes intersection-over-union (IoU) for bitmasks.
 
@@ -86,23 +87,42 @@ def compute_bitmask_iou(data: NDArray[np.floating]) -> NDArray[np.floating]:
 
     Parameters
     ----------
-    data : NDArray[np.floating]
+    data : NDArray[np.float64]
         A sorted array of bitmask pairs.
 
     Returns
     -------
-    NDArray[np.floating]
+    NDArray[np.float64]
         Computed IoU's.
     """
-    intersection_ = np.array([np.logical_and(x, y).sum() for x, y in data])
-    union_ = np.array([np.logical_or(x, y).sum() for x, y in data])
 
-    return intersection_ / union_
+    if data.size == 0:
+        return np.array([], dtype=np.float64)
+
+    lhs = data[:, 0]
+    rhs = data[:, 1]
+
+    print(lhs.dtype)
+
+    lhs_sum = lhs.sum()
+    rhs_sum = rhs.sum()
+
+    intersection_ = np.logical_and(lhs, rhs)
+    union_ = lhs_sum + rhs_sum - intersection_
+
+    ious = np.zeros_like(lhs, dtype=np.float64)
+    np.divide(
+        intersection_,
+        union_,
+        where=union_ >= 1e-9,
+        out=ious,
+    )
+    return ious
 
 
 def compute_polygon_iou(
-    data: NDArray[np.floating],
-) -> NDArray[np.floating]:
+    data: NDArray[np.float64],
+) -> NDArray[np.float64]:
     """
     Computes intersection-over-union (IoU) for shapely polygons.
 
@@ -117,31 +137,41 @@ def compute_polygon_iou(
 
     Parameters
     ----------
-    data : NDArray[np.floating]
+    data : NDArray[np.float64]
         A sorted array of polygon pairs.
 
     Returns
     -------
-    NDArray[np.floating]
+    NDArray[np.float64]
         Computed IoU's.
     """
-    intersection_ = np.array(
-        [poly1.intersection(poly2).area for poly1, poly2 in data]
-    )
-    union_ = np.array(
-        [
-            poly1.area + poly2.area - intersection_[i]
-            for i, (poly1, poly2) in enumerate(data)
-        ]
-    )
 
-    return intersection_ / union_
+    if data.size == 0:
+        return np.array([], dtype=np.float64)
+
+    lhs = data[:, 0]
+    rhs = data[:, 1]
+
+    intersections = shapely.intersection(lhs, rhs)
+    intersection_areas = shapely.area(intersections)
+
+    unions = shapely.union(lhs, rhs)
+    union_areas = shapely.area(unions)
+
+    ious = np.zeros_like(lhs, dtype=np.float64)
+    np.divide(
+        intersection_areas,
+        union_areas,
+        where=union_areas >= 1e-9,
+        out=ious,
+    )
+    return ious
 
 
 def _compute_ranked_pairs_for_datum(
-    data: NDArray[np.floating],
+    data: NDArray[np.float64],
     label_metadata: NDArray[np.int32],
-) -> NDArray[np.floating]:
+) -> NDArray[np.float64]:
     """
     Computes ranked pairs for a datum.
     """
@@ -181,9 +211,9 @@ def _compute_ranked_pairs_for_datum(
 
 
 def compute_ranked_pairs(
-    data: list[NDArray[np.floating]],
+    data: list[NDArray[np.float64]],
     label_metadata: NDArray[np.int32],
-) -> NDArray[np.floating]:
+) -> NDArray[np.float64]:
     """
     Performs pair ranking on input data.
 
@@ -201,14 +231,14 @@ def compute_ranked_pairs(
 
     Parameters
     ----------
-    data : NDArray[np.floating]
+    data : NDArray[np.float64]
         A sorted array summarizing the IOU calculations of one or more pairs.
     label_metadata : NDArray[np.int32]
         An array containing metadata related to labels.
 
     Returns
     -------
-    NDArray[np.floating]
+    NDArray[np.float64]
         A filtered array containing only ranked pairs.
     """
 
@@ -230,25 +260,25 @@ def compute_ranked_pairs(
 
 
 def compute_metrics(
-    data: NDArray[np.floating],
+    data: NDArray[np.float64],
     label_metadata: NDArray[np.int32],
-    iou_thresholds: NDArray[np.floating],
-    score_thresholds: NDArray[np.floating],
+    iou_thresholds: NDArray[np.float64],
+    score_thresholds: NDArray[np.float64],
 ) -> tuple[
     tuple[
-        NDArray[np.floating],
-        NDArray[np.floating],
-        NDArray[np.floating],
+        NDArray[np.float64],
+        NDArray[np.float64],
+        NDArray[np.float64],
         float,
     ],
     tuple[
-        NDArray[np.floating],
-        NDArray[np.floating],
-        NDArray[np.floating],
+        NDArray[np.float64],
+        NDArray[np.float64],
+        NDArray[np.float64],
         float,
     ],
-    NDArray[np.floating],
-    NDArray[np.floating],
+    NDArray[np.float64],
+    NDArray[np.float64],
 ]:
     """
     Computes Object Detection metrics.
@@ -265,13 +295,13 @@ def compute_metrics(
 
     Parameters
     ----------
-    data : NDArray[np.floating]
+    data : NDArray[np.float64]
         A sorted array summarizing the IOU calculations of one or more pairs.
     label_metadata : NDArray[np.int32]
         An array containing metadata related to labels.
-    iou_thresholds : NDArray[np.floating]
+    iou_thresholds : NDArray[np.float64]
         A 1-D array containing IoU thresholds.
-    score_thresholds : NDArray[np.floating]
+    score_thresholds : NDArray[np.float64]
         A 1-D array containing score thresholds.
 
     Returns
@@ -490,16 +520,16 @@ def compute_metrics(
 
 
 def _count_with_examples(
-    data: NDArray[np.floating],
+    data: NDArray[np.float64],
     unique_idx: int | list[int],
     label_idx: int | list[int],
-) -> tuple[NDArray[np.floating], NDArray[np.int32], NDArray[np.int32]]:
+) -> tuple[NDArray[np.float64], NDArray[np.int32], NDArray[np.int32]]:
     """
     Helper function for counting occurences of unique detailed pairs.
 
     Parameters
     ----------
-    data : NDArray[np.floating]
+    data : NDArray[np.float64]
         A masked portion of a detailed pairs array.
     unique_idx : int | list[int]
         The index or indices upon which uniqueness is constrained.
@@ -508,7 +538,7 @@ def _count_with_examples(
 
     Returns
     -------
-    NDArray[np.floating]
+    NDArray[np.float64]
         Examples drawn from the data input.
     NDArray[np.int32]
         Unique label indices.
@@ -528,12 +558,12 @@ def _count_with_examples(
 
 
 def compute_confusion_matrix(
-    data: NDArray[np.floating],
+    data: NDArray[np.float64],
     label_metadata: NDArray[np.int32],
-    iou_thresholds: NDArray[np.floating],
-    score_thresholds: NDArray[np.floating],
+    iou_thresholds: NDArray[np.float64],
+    score_thresholds: NDArray[np.float64],
     n_examples: int,
-) -> tuple[NDArray[np.floating], NDArray[np.floating], NDArray[np.int32]]:
+) -> tuple[NDArray[np.float64], NDArray[np.float64], NDArray[np.int32]]:
     """
     Compute detailed counts.
 
@@ -549,22 +579,22 @@ def compute_confusion_matrix(
 
     Parameters
     ----------
-    data : NDArray[np.floating]
+    data : NDArray[np.float64]
         A sorted array summarizing the IOU calculations of one or more pairs.
     label_metadata : NDArray[np.int32]
         An array containing metadata related to labels.
-    iou_thresholds : NDArray[np.floating]
+    iou_thresholds : NDArray[np.float64]
         A 1-D array containing IoU thresholds.
-    score_thresholds : NDArray[np.floating]
+    score_thresholds : NDArray[np.float64]
         A 1-D array containing score thresholds.
     n_examples : int
         The maximum number of examples to return per count.
 
     Returns
     -------
-    NDArray[np.floating]
+    NDArray[np.float64]
         Confusion matrix.
-    NDArray[np.floating]
+    NDArray[np.float64]
         Hallucinations.
     NDArray[np.int32]
         Missing Predictions.

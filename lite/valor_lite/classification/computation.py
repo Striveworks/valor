@@ -3,7 +3,7 @@ from numpy.typing import NDArray
 
 
 def _compute_rocauc(
-    data: NDArray[np.floating],
+    data: NDArray[np.float64],
     label_metadata: NDArray[np.int32],
     n_datums: int,
     n_labels: int,
@@ -65,18 +65,18 @@ def _compute_rocauc(
 
 
 def compute_metrics(
-    data: NDArray[np.floating],
+    data: NDArray[np.float64],
     label_metadata: NDArray[np.int32],
-    score_thresholds: NDArray[np.floating],
+    score_thresholds: NDArray[np.float64],
     hardmax: bool,
     n_datums: int,
 ) -> tuple[
     NDArray[np.int32],
-    NDArray[np.floating],
-    NDArray[np.floating],
-    NDArray[np.floating],
-    NDArray[np.floating],
-    NDArray[np.floating],
+    NDArray[np.float64],
+    NDArray[np.float64],
+    NDArray[np.float64],
+    NDArray[np.float64],
+    NDArray[np.float64],
     float,
 ]:
     """
@@ -92,11 +92,11 @@ def compute_metrics(
 
     Parameters
     ----------
-    data : NDArray[np.floating]
+    data : NDArray[np.float64]
         A sorted array of classification pairs.
     label_metadata : NDArray[np.int32]
         An array containing metadata related to labels.
-    score_thresholds : NDArray[np.floating]
+    score_thresholds : NDArray[np.float64]
         A 1-D array contains score thresholds to compute metrics over.
     hardmax : bool
         Option to only allow a single positive prediction.
@@ -107,15 +107,15 @@ def compute_metrics(
     -------
     NDArray[np.int32]
         TP, FP, FN, TN counts.
-    NDArray[np.floating]
+    NDArray[np.float64]
         Precision.
-    NDArray[np.floating]
+    NDArray[np.float64]
         Recall.
-    NDArray[np.floating]
+    NDArray[np.float64]
         Accuracy
-    NDArray[np.floating]
+    NDArray[np.float64]
         F1 Score
-    NDArray[np.floating]
+    NDArray[np.float64]
         ROCAUC.
     float
         mROCAUC.
@@ -209,16 +209,16 @@ def compute_metrics(
 
 
 def _count_with_examples(
-    data: NDArray[np.floating],
+    data: NDArray[np.float64],
     unique_idx: int | list[int],
     label_idx: int | list[int],
-) -> tuple[NDArray[np.floating], NDArray[np.int32], NDArray[np.int32]]:
+) -> tuple[NDArray[np.float64], NDArray[np.int32], NDArray[np.int32]]:
     """
     Helper function for counting occurences of unique detailed pairs.
 
     Parameters
     ----------
-    data : NDArray[np.floating]
+    data : NDArray[np.float64]
         A masked portion of a detailed pairs array.
     unique_idx : int | list[int]
         The index or indices upon which uniqueness is constrained.
@@ -227,7 +227,7 @@ def _count_with_examples(
 
     Returns
     -------
-    NDArray[np.floating]
+    NDArray[np.float64]
         Examples drawn from the data input.
     NDArray[np.int32]
         Unique label indices.
@@ -247,12 +247,12 @@ def _count_with_examples(
 
 
 def compute_confusion_matrix(
-    data: NDArray[np.floating],
+    data: NDArray[np.float64],
     label_metadata: NDArray[np.int32],
-    score_thresholds: NDArray[np.floating],
+    score_thresholds: NDArray[np.float64],
     hardmax: bool,
     n_examples: int,
-) -> tuple[NDArray[np.floating], NDArray[np.int32]]:
+) -> tuple[NDArray[np.float64], NDArray[np.int32]]:
     """
     Compute detailed confusion matrix.
 
@@ -266,20 +266,20 @@ def compute_confusion_matrix(
 
     Parameters
     ----------
-    data : NDArray[np.floating]
+    data : NDArray[np.float64]
         A sorted array summarizing the IOU calculations of one or more pairs.
     label_metadata : NDArray[np.int32]
         An array containing metadata related to labels.
-    iou_thresholds : NDArray[np.floating]
+    iou_thresholds : NDArray[np.float64]
         A 1-D array containing IoU thresholds.
-    score_thresholds : NDArray[np.floating]
+    score_thresholds : NDArray[np.float64]
         A 1-D array containing score thresholds.
     n_examples : int
         The maximum number of examples to return per count.
 
     Returns
     -------
-    NDArray[np.floating]
+    NDArray[np.float64]
         Confusion matrix.
     NDArray[np.int32]
         Ground truths with missing predictions.

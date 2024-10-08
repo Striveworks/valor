@@ -72,13 +72,13 @@ def test_Bitmask():
         )
 
     # test `to_box` method
-    box = gt.to_box()
-    assert box
-    assert box.extrema == (0, 4, 0, 4)
+    assert gt.extrema == (0, 4, 0, 4)
 
-    empty_box = Bitmask(mask=np.array([], dtype=np.bool_), labels=["label"])
-
-    assert empty_box.to_box() is None
+    with pytest.raises(ValueError):
+        Bitmask(
+            mask=np.array([], dtype=np.bool_),
+            labels=["label"]
+        )
 
 
 def test_Polygon(rect1_rotated_5_degrees_around_origin):
@@ -117,18 +117,18 @@ def test_Polygon(rect1_rotated_5_degrees_around_origin):
         )
 
     # test `to_box` method
-    box = gt.to_box()
-    assert box
-    assert box.extrema == (
+    assert gt.extrema == (
         6.475717271011129,
         58.90012445802815,
         10.833504408394036,
         45.07713248852931,
     )
 
-    empty_box = Polygon(shape=ShapelyPolygon([]), labels=["label"])
-
-    assert empty_box.to_box() is None
+    with pytest.raises(ValueError):
+        Polygon(
+            shape=ShapelyPolygon([]), 
+            labels=["label"]
+        )
 
 
 def test_Detection():

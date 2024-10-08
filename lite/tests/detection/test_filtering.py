@@ -102,7 +102,7 @@ def test_filtering_one_detection(one_detection: list[Detection]):
     # test datum filtering
     filter_ = evaluator.create_filter(datum_uids=["uid1"])
     assert (filter_.ranked_indices == np.array([0])).all()
-    assert (filter_.detailed_indices == np.array([0, 1, 2, 3, 4])).all()
+    assert (filter_.detailed_indices == np.array([0, 1])).all()
     assert (
         filter_.label_metadata
         == np.array(
@@ -123,12 +123,12 @@ def test_filtering_one_detection(one_detection: list[Detection]):
     # test label filtering
     filter_ = evaluator.create_filter(labels=["v1"])
     assert (filter_.ranked_indices == np.array([0])).all()
-    assert (filter_.detailed_indices == np.array([0, 2])).all()
+    assert (filter_.detailed_indices == np.array([0])).all()
     assert (filter_.label_metadata == np.array([[1, 1], [0, 0]])).all()
 
     filter_ = evaluator.create_filter(labels=["v2"])
     assert (filter_.ranked_indices == np.array([])).all()
-    assert (filter_.detailed_indices == np.array([1, 3])).all()
+    assert (filter_.detailed_indices == np.array([1])).all()
     assert (filter_.label_metadata == np.array([[0, 0], [1, 0]])).all()
 
     # test combo
@@ -137,7 +137,7 @@ def test_filtering_one_detection(one_detection: list[Detection]):
         labels=["v1"],
     )
     assert (filter_.ranked_indices == np.array([0])).all()
-    assert (filter_.detailed_indices == np.array([0, 2])).all()
+    assert (filter_.detailed_indices == np.array([0])).all()
     assert (filter_.label_metadata == np.array([[1, 1], [0, 0]])).all()
 
     # test evaluation
@@ -225,12 +225,12 @@ def test_filtering_two_detections(two_detections: list[Detection]):
     # test datum filtering
     filter_ = evaluator.create_filter(datum_uids=["uid1"])
     assert (filter_.ranked_indices == np.array([1])).all()
-    assert (filter_.detailed_indices == np.array([0, 1, 2, 3, 4])).all()
+    assert (filter_.detailed_indices == np.array([0, 1])).all()
     assert (filter_.label_metadata == np.array([[1, 1], [1, 0]])).all()
 
     filter_ = evaluator.create_filter(datum_uids=["uid2"])
     assert (filter_.ranked_indices == np.array([0])).all()
-    assert (filter_.detailed_indices == np.array([5, 6, 7])).all()
+    assert (filter_.detailed_indices == np.array([2])).all()
     assert (
         filter_.label_metadata
         == np.array(
@@ -250,12 +250,12 @@ def test_filtering_two_detections(two_detections: list[Detection]):
     # test label filtering
     filter_ = evaluator.create_filter(labels=["v1"])
     assert (filter_.ranked_indices == np.array([0, 1])).all()
-    assert (filter_.detailed_indices == np.array([0, 2, 5, 6])).all()
+    assert (filter_.detailed_indices == np.array([0, 2])).all()
     assert (filter_.label_metadata == np.array([[2, 1], [0, 0]])).all()
 
     filter_ = evaluator.create_filter(labels=["v2"])
     assert (filter_.ranked_indices == np.array([])).all()
-    assert (filter_.detailed_indices == np.array([1, 3])).all()
+    assert (filter_.detailed_indices == np.array([1])).all()
     assert (filter_.label_metadata == np.array([[0, 0], [1, 1]])).all()
 
     # test combo
@@ -264,7 +264,7 @@ def test_filtering_two_detections(two_detections: list[Detection]):
         labels=["v1"],
     )
     assert (filter_.ranked_indices == np.array([1])).all()
-    assert (filter_.detailed_indices == np.array([0, 2])).all()
+    assert (filter_.detailed_indices == np.array([0])).all()
     assert (filter_.label_metadata == np.array([[1, 1], [0, 0]])).all()
 
     # test evaluation
@@ -362,25 +362,25 @@ def test_filtering_four_detections(four_detections: list[Detection]):
     # test datum filtering
     filter_ = evaluator.create_filter(datum_uids=["uid1"])
     assert (filter_.ranked_indices == np.array([2])).all()
-    assert (filter_.detailed_indices == np.array([0, 1, 2, 3, 4])).all()
+    assert (filter_.detailed_indices == np.array([0, 1])).all()
     assert (filter_.label_metadata == np.array([[1, 1], [1, 0]])).all()
 
     filter_ = evaluator.create_filter(datum_uids=["uid2"])
     assert (filter_.ranked_indices == np.array([0])).all()
-    assert (filter_.detailed_indices == np.array([5, 6, 7])).all()
+    assert (filter_.detailed_indices == np.array([2])).all()
     assert (filter_.label_metadata == np.array([[1, 0], [0, 1]])).all()
 
     # test label filtering
     filter_ = evaluator.create_filter(labels=["v1"])
     assert (filter_.ranked_indices == np.array([0, 1, 2, 3])).all()
     assert (
-        filter_.detailed_indices == np.array([0, 2, 5, 6, 8, 10, 13, 14])
+        filter_.detailed_indices == np.array([0, 2, 3, 5])
     ).all()
     assert (filter_.label_metadata == np.array([[4, 2], [0, 0]])).all()
 
     filter_ = evaluator.create_filter(labels=["v2"])
     assert (filter_.ranked_indices == np.array([])).all()
-    assert (filter_.detailed_indices == np.array([1, 3, 9, 11])).all()
+    assert (filter_.detailed_indices == np.array([1, 4])).all()
     assert (filter_.label_metadata == np.array([[0, 0], [2, 2]])).all()
 
     # test combo
@@ -389,7 +389,7 @@ def test_filtering_four_detections(four_detections: list[Detection]):
         labels=["v1"],
     )
     assert (filter_.ranked_indices == np.array([2])).all()
-    assert (filter_.detailed_indices == np.array([0, 2])).all()
+    assert (filter_.detailed_indices == np.array([0])).all()
     assert (
         filter_.label_metadata
         == np.array(

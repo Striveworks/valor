@@ -871,11 +871,17 @@ def detection_ranked_pair_ordering() -> Detection:
 @pytest.fixture
 def detection_ranked_pair_ordering_with_bitmasks() -> Detection:
 
+    bitmask1 = np.zeros((100, 50), dtype=np.bool_)
+    bitmask1[79, 31] = True
+
+    bitmask2 = np.zeros((100, 50), dtype=np.bool_)
+    bitmask2[80:, 32:] = True
+
     gts = {
         "bitmasks": [
-            np.ones((80, 32), dtype=bool),
-            np.ones((80, 32), dtype=bool),
-            np.ones((80, 32), dtype=bool),
+            bitmask1,
+            bitmask1,
+            bitmask1,
         ],
         "label_values": ["label1", "label2", "label3"],
     }
@@ -883,10 +889,10 @@ def detection_ranked_pair_ordering_with_bitmasks() -> Detection:
     # labels 1 and 2 have IOU==1, labels 3 and 4 have IOU==0
     preds = {
         "bitmasks": [
-            np.ones((80, 32), dtype=bool),
-            np.ones((80, 32), dtype=bool),
-            np.zeros((80, 32), dtype=bool),
-            np.zeros((80, 32), dtype=bool),
+            bitmask1,
+            bitmask1,
+            bitmask2,
+            bitmask2
         ],
         "label_values": ["label1", "label2", "label3", "label4"],
         "scores": [
@@ -896,6 +902,7 @@ def detection_ranked_pair_ordering_with_bitmasks() -> Detection:
             0.94,
         ],
     }
+
     groundtruths = [
         Bitmask(
             mask=mask,

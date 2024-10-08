@@ -221,7 +221,7 @@ def test_compute_bitmask_iou():
         ],
     ]
 
-    data = np.array(list(zip(gt_bitmasks, pd_bitmasks)), dtype=object)
+    data = np.array(list(zip(gt_bitmasks, pd_bitmasks)), dtype=np.float64)
 
     result = compute_iou(data=data, annotation_type=Bitmask)
 

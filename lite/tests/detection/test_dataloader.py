@@ -31,7 +31,7 @@ def test_valor_integration():
     loader.add_bounding_boxes_from_valor_dict([(gt, pd)])
 
     assert len(loader.pairs) == 1
-    assert loader.pairs[0].shape == (142, 7)
+    assert loader.pairs[0].shape == (69, 7)
 
     assert len(loader._evaluator.index_to_label) == 24
     assert loader._evaluator.n_datums == 1
