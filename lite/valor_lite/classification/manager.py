@@ -4,12 +4,12 @@ from dataclasses import dataclass
 import numpy as np
 from numpy.typing import NDArray
 from tqdm import tqdm
-from valor_lite.cv.classification.annotation import Classification
-from valor_lite.cv.classification.computation import (
+from valor_lite.classification.annotation import Classification
+from valor_lite.classification.computation import (
     compute_confusion_matrix,
     compute_metrics,
 )
-from valor_lite.cv.classification.metric import (
+from valor_lite.classification.metric import (
     F1,
     ROCAUC,
     Accuracy,

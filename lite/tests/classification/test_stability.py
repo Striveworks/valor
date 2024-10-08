@@ -1,6 +1,6 @@
 from random import choice, uniform
 
-from valor_lite.cv.classification import Classification, DataLoader
+from valor_lite.classification import Classification, DataLoader
 
 
 def generate_random_classifications(

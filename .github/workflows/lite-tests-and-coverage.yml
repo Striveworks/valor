@@ -22,7 +22,7 @@ jobs:
       - name: run classification tests and report coverage
         run: |
           pip install -e ".[test]"
-          COVERAGE_FILE=.coverage.classification python -m coverage run --omit "tests/*"  -m pytest -v tests/cv/classification/
+          COVERAGE_FILE=.coverage.classification python -m coverage run --omit "tests/*"  -m pytest -v tests/classification/
           python -m coverage combine
           python -m coverage report -m
           python -m coverage json

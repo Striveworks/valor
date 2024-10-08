@@ -1,6 +1,6 @@
 import numpy as np
-from valor_lite.cv.classification import Classification, DataLoader, MetricType
-from valor_lite.cv.classification.computation import compute_metrics
+from valor_lite.classification import Classification, DataLoader, MetricType
+from valor_lite.classification.computation import compute_metrics
 
 
 def test_compute_rocauc_animals():

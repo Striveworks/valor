@@ -1,5 +1,5 @@
 import numpy as np
-from valor_lite.cv.classification import (
+from valor_lite.classification import (
     Classification,
     DataLoader,
     MetricType,

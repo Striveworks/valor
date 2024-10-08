@@ -1,6 +1,6 @@
 import numpy as np
-from valor_lite.cv.classification import Classification, DataLoader, MetricType
-from valor_lite.cv.classification.computation import compute_confusion_matrix
+from valor_lite.classification import Classification, DataLoader, MetricType
+from valor_lite.classification.computation import compute_confusion_matrix
 
 
 def test_compute_confusion_matrix():

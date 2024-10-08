@@ -1,4 +1,4 @@
-from valor_lite.cv.classification import Classification, DataLoader
+from valor_lite.classification import Classification, DataLoader
 
 
 def test_metadata_using_classification_example(

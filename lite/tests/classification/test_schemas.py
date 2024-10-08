@@ -1,5 +1,5 @@
 import pytest
-from valor_lite.cv.classification import Classification
+from valor_lite.classification import Classification
 
 
 def test_Classification():

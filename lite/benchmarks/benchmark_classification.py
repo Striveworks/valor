@@ -7,7 +7,7 @@ from time import time
 
 import requests
 from tqdm import tqdm
-from valor_lite.cv.classification import DataLoader, MetricType
+from valor_lite.classification import DataLoader, MetricType
 
 
 def time_it(fn):

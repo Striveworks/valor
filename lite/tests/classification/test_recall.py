@@ -1,5 +1,5 @@
 import numpy as np
-from valor_lite.cv.classification import (
+from valor_lite.classification import (
     Classification,
     DataLoader,
     MetricType,
@@ -7,7 +7,7 @@ from valor_lite.cv.classification import (
 )
 
 
-def test_accuracy_computation():
+def test_recall_computation():
 
     # groundtruth, prediction, score
     data = np.array(
@@ -44,7 +44,7 @@ def test_accuracy_computation():
 
     score_thresholds = np.array([0.25, 0.75], dtype=np.float64)
 
-    (_, _, _, accuracy, _, _, _) = compute_metrics(
+    (_, _, recall, _, _, _, _) = compute_metrics(
         data=data,
         label_metadata=label_metadata,
         score_thresholds=score_thresholds,
@@ -53,21 +53,21 @@ def test_accuracy_computation():
     )
 
     # score threshold, label, count metric
-    assert accuracy.shape == (2, 4)
+    assert recall.shape == (2, 4)
 
     # score >= 0.25
-    assert accuracy[0][0] == 2 / 3
-    assert accuracy[0][1] == 1.0
-    assert accuracy[0][2] == 2 / 3
-    assert accuracy[0][3] == 1.0
+    assert recall[0][0] == 0.5
+    assert recall[0][1] == 0.0
+    assert recall[0][2] == 0.0
+    assert recall[0][3] == 1.0
     # score >= 0.75
-    assert accuracy[1][0] == 2 / 3
-    assert accuracy[1][1] == 1.0
-    assert accuracy[1][2] == 2 / 3
-    assert accuracy[1][3] == 2 / 3
+    assert recall[1][0] == 0.5
+    assert recall[1][1] == 0.0
+    assert recall[1][2] == 0.0
+    assert recall[1][3] == 0.0
 
 
-def test_accuracy_basic(basic_classifications: list[Classification]):
+def test_recall_basic(basic_classifications: list[Classification]):
     loader = DataLoader()
     loader.add_data(basic_classifications)
     evaluator = loader.finalize()
@@ -81,13 +81,16 @@ def test_accuracy_basic(basic_classifications: list[Classification]):
         "missing_prediction_labels": [],
     }
 
-    metrics = evaluator.evaluate(score_thresholds=[0.25, 0.75], as_dict=True)
+    metrics = evaluator.evaluate(
+        score_thresholds=[0.25, 0.75],
+        as_dict=True,
+    )
 
-    actual_metrics = [m for m in metrics[MetricType.Accuracy]]
+    actual_metrics = [m for m in metrics[MetricType.Recall]]
     expected_metrics = [
         {
-            "type": "Accuracy",
-            "value": [2 / 3, 2 / 3],
+            "type": "Recall",
+            "value": [0.5, 0.5],
             "parameters": {
                 "score_thresholds": [0.25, 0.75],
                 "hardmax": True,
@@ -95,8 +98,8 @@ def test_accuracy_basic(basic_classifications: list[Classification]):
             },
         },
         {
-            "type": "Accuracy",
-            "value": [1.0, 2 / 3],
+            "type": "Recall",
+            "value": [1.0, 0.0],
             "parameters": {
                 "score_thresholds": [0.25, 0.75],
                 "hardmax": True,
@@ -110,7 +113,7 @@ def test_accuracy_basic(basic_classifications: list[Classification]):
         assert m in actual_metrics
 
 
-def test_accuracy_with_animal_example(
+def test_recall_with_animal_example(
     classifications_animal_example: list[Classification],
 ):
 
@@ -118,13 +121,16 @@ def test_accuracy_with_animal_example(
     loader.add_data(classifications_animal_example)
     evaluator = loader.finalize()
 
-    metrics = evaluator.evaluate(score_thresholds=[0.5], as_dict=True)
+    metrics = evaluator.evaluate(
+        score_thresholds=[0.5],
+        as_dict=True,
+    )
 
-    actual_metrics = [m for m in metrics[MetricType.Accuracy]]
+    actual_metrics = [m for m in metrics[MetricType.Recall]]
     expected_metrics = [
         {
-            "type": "Accuracy",
-            "value": [2.0 / 3.0],
+            "type": "Recall",
+            "value": [1.0 / 3.0],
             "parameters": {
                 "score_thresholds": [0.5],
                 "hardmax": True,
@@ -132,8 +138,8 @@ def test_accuracy_with_animal_example(
             },
         },
         {
-            "type": "Accuracy",
-            "value": [0.5],
+            "type": "Recall",
+            "value": [0.0],
             "parameters": {
                 "score_thresholds": [0.5],
                 "hardmax": True,
@@ -141,8 +147,8 @@ def test_accuracy_with_animal_example(
             },
         },
         {
-            "type": "Accuracy",
-            "value": [2 / 3],
+            "type": "Recall",
+            "value": [1.0],
             "parameters": {
                 "score_thresholds": [0.5],
                 "hardmax": True,
@@ -156,7 +162,7 @@ def test_accuracy_with_animal_example(
         assert m in actual_metrics
 
 
-def test_accuracy_color_example(
+def test_recall_with_color_example(
     classifications_color_example: list[Classification],
 ):
 
@@ -164,13 +170,16 @@ def test_accuracy_color_example(
     loader.add_data(classifications_color_example)
     evaluator = loader.finalize()
 
-    metrics = evaluator.evaluate(score_thresholds=[0.5], as_dict=True)
+    metrics = evaluator.evaluate(
+        score_thresholds=[0.5],
+        as_dict=True,
+    )
 
-    actual_metrics = [m for m in metrics[MetricType.Accuracy]]
+    actual_metrics = [m for m in metrics[MetricType.Recall]]
     expected_metrics = [
         {
-            "type": "Accuracy",
-            "value": [2 / 3],
+            "type": "Recall",
+            "value": [0.5],
             "parameters": {
                 "score_thresholds": [0.5],
                 "hardmax": True,
@@ -178,8 +187,8 @@ def test_accuracy_color_example(
             },
         },
         {
-            "type": "Accuracy",
-            "value": [2 / 3],
+            "type": "Recall",
+            "value": [0.5],
             "parameters": {
                 "score_thresholds": [0.5],
                 "hardmax": True,
@@ -187,8 +196,8 @@ def test_accuracy_color_example(
             },
         },
         {
-            "type": "Accuracy",
-            "value": [2 / 3],
+            "type": "Recall",
+            "value": [0.0],
             "parameters": {
                 "score_thresholds": [0.5],
                 "hardmax": True,
@@ -196,8 +205,8 @@ def test_accuracy_color_example(
             },
         },
         {
-            "type": "Accuracy",
-            "value": [5 / 6],
+            "type": "Recall",
+            "value": [0.0],
             "parameters": {
                 "score_thresholds": [0.5],
                 "hardmax": True,
@@ -211,7 +220,7 @@ def test_accuracy_color_example(
         assert m in actual_metrics
 
 
-def test_accuracy_with_image_example(
+def test_recall_with_image_example(
     classifications_image_example: list[Classification],
 ):
     loader = DataLoader()
@@ -229,10 +238,10 @@ def test_accuracy_with_image_example(
 
     metrics = evaluator.evaluate(as_dict=True)
 
-    actual_metrics = [m for m in metrics[MetricType.Accuracy]]
+    actual_metrics = [m for m in metrics[MetricType.Recall]]
     expected_metrics = [
         {
-            "type": "Accuracy",
+            "type": "Recall",
             "value": [0.5],
             "parameters": {
                 "score_thresholds": [0.0],
@@ -247,7 +256,7 @@ def test_accuracy_with_image_example(
         assert m in actual_metrics
 
 
-def test_accuracy_with_tabular_example(
+def test_recall_with_tabular_example(
     classifications_tabular_example: list[Classification],
 ):
     loader = DataLoader()
@@ -265,11 +274,11 @@ def test_accuracy_with_tabular_example(
 
     metrics = evaluator.evaluate(as_dict=True)
 
-    actual_metrics = [m for m in metrics[MetricType.Accuracy]]
+    actual_metrics = [m for m in metrics[MetricType.Recall]]
     expected_metrics = [
         {
-            "type": "Accuracy",
-            "value": [0.7],
+            "type": "Recall",
+            "value": [1.0],
             "parameters": {
                 "score_thresholds": [0.0],
                 "hardmax": True,
@@ -277,8 +286,8 @@ def test_accuracy_with_tabular_example(
             },
         },
         {
-            "type": "Accuracy",
-            "value": [0.5],
+            "type": "Recall",
+            "value": [0.3333333333333333],
             "parameters": {
                 "score_thresholds": [0.0],
                 "hardmax": True,
@@ -286,8 +295,8 @@ def test_accuracy_with_tabular_example(
             },
         },
         {
-            "type": "Accuracy",
-            "value": [0.8],
+            "type": "Recall",
+            "value": [0.0],
             "parameters": {
                 "score_thresholds": [0.0],
                 "hardmax": True,
