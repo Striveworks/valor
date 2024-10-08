@@ -1,3 +1,4 @@
+from functools import wraps
 from typing import Any
 
 from mistralai.sdk import Mistral
@@ -34,6 +35,33 @@ class Messages(BaseModel):
     messages: list[Message]
 
 
+def retry_if_invalid_llm_response():
+    """
+    Call the LLMClient class function with retries for InvalidLLMResponseError.
+
+    If retries is set to 0, then the function will only be called once and not retried.
+
+    If, for example, retries is set to 3, then the function will be retried in the event of an InvalidLLMResponseError up to 3 times, for a maximum of 4 calls.
+    """
+
+    def decorator(function):
+        @wraps(function)
+        def wrapper(self, *args, **kwargs):
+            error = None
+            retries = getattr(self, "retries", 0)
+            for _ in range(1 + retries):
+                try:
+                    return function(self, *args, **kwargs)
+                except InvalidLLMResponseError as e:
+                    error = e
+            if error is not None:
+                raise error
+
+        return wrapper
+
+    return decorator
+
+
 class LLMClient:
     """
     Parent class for all LLM clients.
@@ -48,11 +76,13 @@ class LLMClient:
 
     api_key: str | None = None
     model_name: str
+    retries: int = 0
 
     def __init__(
         self,
         api_key: str | None = None,
         model_name: str | None = None,
+        retries: int | None = None,
     ):
         """
         Set the API key and model name (if provided).
@@ -60,6 +90,8 @@ class LLMClient:
         self.api_key = api_key
         if model_name is not None:
             self.model_name = model_name
+        if retries is not None:
+            self.retries = retries
 
     def connect(
         self,
@@ -110,6 +142,7 @@ class LLMClient:
         """
         raise NotImplementedError
 
+    @retry_if_invalid_llm_response()
     def _generate_claims(
         self,
         text: str,
@@ -150,6 +183,7 @@ class LLMClient:
             )
         return claims
 
+    @retry_if_invalid_llm_response()
     def _generate_opinions(
         self,
         text: str,
@@ -190,6 +224,7 @@ class LLMClient:
             )
         return opinions
 
+    @retry_if_invalid_llm_response()
     def _generate_statements(
         self,
         text: str,
@@ -230,6 +265,7 @@ class LLMClient:
             )
         return statements
 
+    @retry_if_invalid_llm_response()
     def _generate_answer_correctness_verdicts(
         self,
         query: str,
@@ -299,6 +335,7 @@ class LLMClient:
 
         return response
 
+    @retry_if_invalid_llm_response()
     def _generate_answer_relevance_verdicts(
         self,
         query: str,
@@ -352,6 +389,7 @@ class LLMClient:
 
         return verdicts
 
+    @retry_if_invalid_llm_response()
     def _generate_bias_verdicts(
         self,
         opinions: list[str],
@@ -400,6 +438,7 @@ class LLMClient:
 
         return verdicts
 
+    @retry_if_invalid_llm_response()
     def _generate_context_precision_verdicts(
         self,
         query: str,
@@ -458,6 +497,7 @@ class LLMClient:
 
         return verdicts
 
+    @retry_if_invalid_llm_response()
     def _generate_context_recall_verdicts(
         self,
         context_list: list[str],
@@ -512,6 +552,7 @@ class LLMClient:
 
         return verdicts
 
+    @retry_if_invalid_llm_response()
     def _generate_context_relevance_verdicts(
         self,
         query: str,
@@ -564,6 +605,7 @@ class LLMClient:
 
         return verdicts
 
+    @retry_if_invalid_llm_response()
     def _generate_faithfulness_verdicts(
         self,
         claims: list[str],
@@ -616,6 +658,7 @@ class LLMClient:
 
         return verdicts
 
+    @retry_if_invalid_llm_response()
     def _generate_hallucination_verdicts(
         self,
         text: str,
@@ -670,6 +713,7 @@ class LLMClient:
 
         return verdicts
 
+    @retry_if_invalid_llm_response()
     def _summary_coherence(
         self,
         text: str,
@@ -717,6 +761,7 @@ class LLMClient:
 
         return ret
 
+    @retry_if_invalid_llm_response()
     def _generate_toxicity_verdicts(
         self,
         opinions: list[str],
@@ -797,10 +842,12 @@ class LLMClient:
                 "Answer correctness is meaningless if the ground truth list is empty."
             )
 
-        prediction_statements = self._generate_statements(prediction)
+        prediction_statements = self._generate_statements(text=prediction)
         f1_scores = []
         for groundtruth in groundtruth_list:
-            groundtruth_statements = self._generate_statements(groundtruth)
+            groundtruth_statements = self._generate_statements(
+                text=groundtruth
+            )
             verdicts = self._generate_answer_correctness_verdicts(
                 query=query,
                 groundtruth_statements=groundtruth_statements,
@@ -835,8 +882,11 @@ class LLMClient:
         float
             The answer relevance score between 0 and 1. A score of 1 indicates that all statements are relevant to the query.
         """
-        statements = self._generate_statements(text)
-        verdicts = self._generate_answer_relevance_verdicts(query, statements)
+        statements = self._generate_statements(text=text)
+        verdicts = self._generate_answer_relevance_verdicts(
+            query=query,
+            statements=statements,
+        )
         return sum(
             1 for verdict in verdicts if verdict["verdict"] == "yes"
         ) / len(verdicts)
@@ -858,11 +908,11 @@ class LLMClient:
         float
             The bias score between 0 and 1. A score of 1 indicates that all opinions in the text are biased.
         """
-        opinions = self._generate_opinions(text)
+        opinions = self._generate_opinions(text=text)
         if len(opinions) == 0:
             return 0
 
-        verdicts = self._generate_bias_verdicts(opinions)
+        verdicts = self._generate_bias_verdicts(opinions=opinions)
 
         return sum(
             1 for verdict in verdicts if verdict["verdict"] == "yes"
@@ -978,10 +1028,13 @@ class LLMClient:
 
         scores = []
         for groundtruth in groundtruth_list:
-            groundtruth_statements = self._generate_statements(groundtruth)
+            groundtruth_statements = self._generate_statements(
+                text=groundtruth
+            )
 
             verdicts = self._generate_context_recall_verdicts(
-                context_list, groundtruth_statements
+                context_list=context_list,
+                groundtruth_statements=groundtruth_statements,
             )
 
             scores.append(
@@ -1017,7 +1070,8 @@ class LLMClient:
             )
 
         verdicts = self._generate_context_relevance_verdicts(
-            query, context_list
+            query=query,
+            context_list=context_list,
         )
 
         return sum(
@@ -1049,14 +1103,15 @@ class LLMClient:
                 "Faithfulness is meaningless if the context list is empty."
             )
 
-        claims = self._generate_claims(text)
+        claims = self._generate_claims(text=text)
 
         # If there aren't any claims, then the text is perfectly faithful, as the text does not contain any non-faithful claims.
         if len(claims) == 0:
             return 1
 
         faithfulness_verdicts = self._generate_faithfulness_verdicts(
-            claims, context_list
+            claims=claims,
+            context_list=context_list,
         )
 
         return sum(
@@ -1091,8 +1146,8 @@ class LLMClient:
             )
 
         verdicts = self._generate_hallucination_verdicts(
-            text,
-            context_list,
+            text=text,
+            context_list=context_list,
         )
 
         return sum(
@@ -1119,7 +1174,10 @@ class LLMClient:
         int
             The summary coherence score between 1 and 5. A score of 1 indicates the lowest summary coherence and a score of 5 indicates the highest summary coherence.
         """
-        return self._summary_coherence(text=text, summary=summary)
+        return self._summary_coherence(
+            text=text,
+            summary=summary,
+        )
 
     def toxicity(
         self,
@@ -1138,11 +1196,11 @@ class LLMClient:
         float
             The toxicity score will be evaluated as a float between 0 and 1, with 1 indicating that all opinions in the text are toxic.
         """
-        opinions = self._generate_opinions(text)
+        opinions = self._generate_opinions(text=text)
         if len(opinions) == 0:
             return 0
 
-        verdicts = self._generate_toxicity_verdicts(opinions)
+        verdicts = self._generate_toxicity_verdicts(opinions=opinions)
 
         return sum(
             1 for verdict in verdicts if verdict["verdict"] == "yes"
@@ -1164,25 +1222,33 @@ class WrappedOpenAIClient(LLMClient):
     """
 
     api_key: str | None = None
-    seed: int | None = None
     model_name: str = "gpt-3.5-turbo"
+    retries: int = 0
+    seed: int | None = None
     total_prompt_tokens: int = 0
     total_completion_tokens: int = 0
 
     def __init__(
         self,
         api_key: str | None = None,
-        seed: int | None = None,
         model_name: str | None = None,
+        retries: int | None = None,
+        seed: int | None = None,
     ):
         """
         Set the API key, seed and model name (if provided).
         """
         self.api_key = api_key
-        if seed is not None:
-            self.seed = seed
         if model_name is not None:
             self.model_name = model_name
+        if retries is not None:
+            self.retries = retries
+        if seed is not None:
+            self.seed = seed
+            if self.retries != 0:
+                raise ValueError(
+                    "Seed is provided, but retries is not 0. Retries should be 0 when seed is provided."
+                )
 
     def connect(
         self,
@@ -1279,11 +1345,13 @@ class WrappedMistralAIClient(LLMClient):
 
     api_key: str | None = None
     model_name: str = "mistral-small-latest"
+    retries: int = 0
 
     def __init__(
         self,
         api_key: str | None = None,
         model_name: str | None = None,
+        retries: int | None = None,
     ):
         """
         Set the API key and model name (if provided).
@@ -1291,6 +1359,8 @@ class WrappedMistralAIClient(LLMClient):
         self.api_key = api_key
         if model_name is not None:
             self.model_name = model_name
+        if retries is not None:
+            self.retries = retries
 
     def connect(
         self,
