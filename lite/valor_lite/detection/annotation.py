@@ -26,7 +26,17 @@ class BoundingBox:
 
     @property
     def extrema(self) -> tuple[float, float, float, float]:
+        """
+        Returns annotation extrema in the form (xmin, xmax, ymin, ymax).
+        """
         return (self.xmin, self.xmax, self.ymin, self.ymax)
+
+    @property
+    def annotation(self) -> tuple[float, float, float, float]:
+        """
+        Returns the annotation's data representation.
+        """
+        return self.extrema
 
 
 @dataclass
@@ -38,6 +48,8 @@ class Polygon:
     def __post_init__(self):
         if not isinstance(self.shape, ShapelyPolygon):
             raise TypeError("shape must be of type shapely.geometry.Polygon.")
+        if self.shape.is_empty:
+            raise ValueError("Polygon is empty.")
 
         if len(self.scores) == 0 and len(self.labels) != 1:
             raise ValueError(
@@ -48,21 +60,20 @@ class Polygon:
                 "If scores are defined, there must be a 1:1 pairing with labels."
             )
 
-    def to_box(self) -> BoundingBox | None:
-
-        if self.shape.is_empty:
-            return None
-
+    @property
+    def extrema(self) -> tuple[float, float, float, float]:
+        """
+        Returns annotation extrema in the form (xmin, xmax, ymin, ymax).
+        """
         xmin, ymin, xmax, ymax = self.shape.bounds
+        return (xmin, xmax, ymin, ymax)
 
-        return BoundingBox(
-            xmin=xmin,
-            xmax=xmax,
-            ymin=ymin,
-            ymax=ymax,
-            labels=self.labels,
-            scores=self.scores,
-        )
+    @property
+    def annotation(self) -> ShapelyPolygon:
+        """
+        Returns the annotation's data representation.
+        """
+        return self.shape
 
 
 @dataclass
@@ -80,6 +91,8 @@ class Bitmask:
             raise ValueError(
                 "Expected mask to be of type `NDArray[np.bool_]`."
             )
+        elif not self.mask.any():
+            raise ValueError("Mask does not define any object instances.")
 
         if len(self.scores) == 0 and len(self.labels) != 1:
             raise ValueError(
@@ -90,20 +103,20 @@ class Bitmask:
                 "If scores are defined, there must be a 1:1 pairing with labels."
             )
 
-    def to_box(self) -> BoundingBox | None:
-
-        if not self.mask.any():
-            return None
-
+    @property
+    def extrema(self) -> tuple[float, float, float, float]:
+        """
+        Returns annotation extrema in the form (xmin, xmax, ymin, ymax).
+        """
         rows, cols = np.nonzero(self.mask)
-        return BoundingBox(
-            xmin=cols.min(),
-            xmax=cols.max(),
-            ymin=rows.min(),
-            ymax=rows.max(),
-            labels=self.labels,
-            scores=self.scores,
-        )
+        return (cols.min(), cols.max(), rows.min(), rows.max())
+
+    @property
+    def annotation(self) -> NDArray[np.bool_]:
+        """
+        Returns the annotation's data representation.
+        """
+        return self.mask
 
 
 @dataclass

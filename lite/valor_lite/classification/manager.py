@@ -338,7 +338,7 @@ class Evaluator:
 
     def _unpack_confusion_matrix(
         self,
-        confusion_matrix: NDArray[np.floating],
+        confusion_matrix: NDArray[np.float64],
         number_of_labels: int,
         number_of_examples: int,
     ) -> dict[
@@ -445,7 +445,7 @@ class Evaluator:
 
     def _compute_confusion_matrix(
         self,
-        data: NDArray[np.floating],
+        data: NDArray[np.float64],
         label_metadata: NDArray[np.int32],
         score_thresholds: list[float],
         hardmax: bool,
@@ -456,7 +456,7 @@ class Evaluator:
 
         Parameters
         ----------
-        data : NDArray[np.floating]
+        data : NDArray[np.float64]
             A data array containing classification pairs.
         label_metadata : NDArray[np.int32]
             An integer array containing label metadata.
