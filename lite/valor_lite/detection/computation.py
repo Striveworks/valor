@@ -324,6 +324,11 @@ def compute_metrics(
     n_ious = iou_thresholds.shape[0]
     n_scores = score_thresholds.shape[0]
 
+    if n_ious == 0:
+        raise ValueError("At least one IoU threshold must be passed.")
+    elif n_scores == 0:
+        raise ValueError("At least one score threshold must be passed.")
+
     average_precision = np.zeros((n_ious, n_labels))
     average_recall = np.zeros((n_scores, n_labels))
     counts = np.zeros((n_ious, n_scores, n_labels, 7))
@@ -487,19 +492,23 @@ def compute_metrics(
     average_precision = average_precision / 101.0
 
     # calculate average recall
-    average_recall /= n_ious
+    average_recall = average_recall / n_ious
 
     # calculate mAP and mAR
-    mAP = average_precision[:, unique_pd_labels].mean(axis=1)
-    mAR = average_recall[:, unique_pd_labels].mean(axis=1)
+    if unique_pd_labels.size > 0:
+        mAP = average_precision[:, unique_pd_labels].mean(axis=1)
+        mAR = average_recall[:, unique_pd_labels].mean(axis=1)
+    else:
+        mAP = np.zeros(n_ious, dtype=np.float64)
+        mAR = np.zeros(n_scores, dtype=np.float64)
 
-    # calculate AP and mAP averaged over iou thresholds
+    # calculate AR and AR averaged over thresholds
     APAveragedOverIoUs = average_precision.mean(axis=0)
-    mAPAveragedOverIoUs = mAP.mean(axis=0)
+    ARAveragedOverScores = average_recall.mean(axis=0)
 
-    # calculate AR and mAR averaged over score thresholds
-    ARAveragedOverIoUs = average_recall.mean(axis=0)
-    mARAveragedOverIoUs = mAR.mean(axis=0)
+    # calculate mAP and mAR averaged over thresholds
+    mAPAveragedOverIoUs = mAP.mean(axis=0)
+    mARAveragedOverScores = mAR.mean(axis=0)
 
     ap_results = (
         average_precision,
@@ -510,8 +519,8 @@ def compute_metrics(
     ar_results = (
         average_recall,
         mAR,
-        ARAveragedOverIoUs,
-        mARAveragedOverIoUs,
+        ARAveragedOverScores,
+        mARAveragedOverScores,
     )
 
     return (
