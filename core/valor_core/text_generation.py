@@ -239,6 +239,8 @@ def _setup_llm_client(
             client_kwargs["model_name"] = llm_api_params["data"]["model"]
         if "seed" in llm_api_params["data"]:
             client_kwargs["seed"] = llm_api_params["data"]["seed"]
+    if "retries" in llm_api_params:
+        client_kwargs["retries"] = llm_api_params["retries"]
 
     client = client_cls(**client_kwargs)
     client.connect()
