@@ -841,9 +841,9 @@ class DataLoader:
 
         all_pairs = np.array(
             [
-                np.array([groundtruth, prediction])
-                for _, _, _, prediction in predictions
-                for _, _, groundtruth in groundtruths
+                np.array([gann, pann])
+                for _, _, _, pann in predictions
+                for _, _, gann in groundtruths
             ]
         )
 
@@ -860,8 +860,8 @@ class DataLoader:
                 )
 
         ious = ious.reshape(n_predictions, n_groundtruths)
-        predictions_with_iou_of_zero = (ious < 1e-9).all(axis=1)
-        groundtruths_with_iou_of_zero = (ious < 1e-9).all(axis=0)
+        predictions_with_iou_of_zero = np.where((ious < 1e-9).all(axis=1))[0]
+        groundtruths_with_iou_of_zero = np.where((ious < 1e-9).all(axis=0))[0]
 
         pairs.extend(
             [
@@ -887,15 +887,14 @@ class DataLoader:
                     [
                         float(uid_index),
                         -1.0,
-                        float(pidx),
+                        float(predictions[index][0]),
                         0.0,
                         -1.0,
-                        float(plabel),
-                        float(score),
+                        float(predictions[index][1]),
+                        float(predictions[index][2]),
                     ]
                 )
-                for pidx, plabel, score, _ in predictions
-                if predictions_with_iou_of_zero[pidx]
+                for index in predictions_with_iou_of_zero
             ]
         )
         pairs.extend(
@@ -903,16 +902,15 @@ class DataLoader:
                 np.array(
                     [
                         float(uid_index),
-                        float(gidx),
+                        float(groundtruths[index][0]),
                         -1.0,
                         0.0,
-                        float(glabel),
+                        float(groundtruths[index][1]),
                         -1.0,
                         -1.0,
                     ]
                 )
-                for gidx, glabel, _ in groundtruths
-                if groundtruths_with_iou_of_zero[gidx]
+                for index in groundtruths_with_iou_of_zero
             ]
         )
 
