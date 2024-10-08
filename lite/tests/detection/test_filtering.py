@@ -373,9 +373,7 @@ def test_filtering_four_detections(four_detections: list[Detection]):
     # test label filtering
     filter_ = evaluator.create_filter(labels=["v1"])
     assert (filter_.ranked_indices == np.array([0, 1, 2, 3])).all()
-    assert (
-        filter_.detailed_indices == np.array([0, 2, 3, 5])
-    ).all()
+    assert (filter_.detailed_indices == np.array([0, 2, 3, 5])).all()
     assert (filter_.label_metadata == np.array([[4, 2], [0, 0]])).all()
 
     filter_ = evaluator.create_filter(labels=["v2"])

@@ -75,10 +75,7 @@ def test_Bitmask():
     assert gt.extrema == (0, 4, 0, 4)
 
     with pytest.raises(ValueError):
-        Bitmask(
-            mask=np.array([], dtype=np.bool_),
-            labels=["label"]
-        )
+        Bitmask(mask=np.array([], dtype=np.bool_), labels=["label"])
 
 
 def test_Polygon(rect1_rotated_5_degrees_around_origin):
@@ -125,10 +122,7 @@ def test_Polygon(rect1_rotated_5_degrees_around_origin):
     )
 
     with pytest.raises(ValueError):
-        Polygon(
-            shape=ShapelyPolygon([]), 
-            labels=["label"]
-        )
+        Polygon(shape=ShapelyPolygon([]), labels=["label"])
 
 
 def test_Detection():

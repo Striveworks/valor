@@ -30,14 +30,14 @@ class BoundingBox:
         Returns annotation extrema in the form (xmin, xmax, ymin, ymax).
         """
         return (self.xmin, self.xmax, self.ymin, self.ymax)
-    
+
     @property
     def annotation(self) -> tuple[float, float, float, float]:
         """
         Returns the annotation's data representation.
         """
         return self.extrema
-    
+
 
 @dataclass
 class Polygon:
@@ -59,7 +59,7 @@ class Polygon:
             raise ValueError(
                 "If scores are defined, there must be a 1:1 pairing with labels."
             )
-        
+
     @property
     def extrema(self) -> tuple[float, float, float, float]:
         """
@@ -67,7 +67,7 @@ class Polygon:
         """
         xmin, ymin, xmax, ymax = self.shape.bounds
         return (xmin, xmax, ymin, ymax)
-    
+
     @property
     def annotation(self) -> ShapelyPolygon:
         """
@@ -102,7 +102,7 @@ class Bitmask:
             raise ValueError(
                 "If scores are defined, there must be a 1:1 pairing with labels."
             )
-        
+
     @property
     def extrema(self) -> tuple[float, float, float, float]:
         """
@@ -110,7 +110,7 @@ class Bitmask:
         """
         rows, cols = np.nonzero(self.mask)
         return (cols.min(), cols.max(), rows.min(), rows.max())
-    
+
     @property
     def annotation(self) -> NDArray[np.bool_]:
         """

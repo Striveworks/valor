@@ -888,12 +888,7 @@ def detection_ranked_pair_ordering_with_bitmasks() -> Detection:
 
     # labels 1 and 2 have IOU==1, labels 3 and 4 have IOU==0
     preds = {
-        "bitmasks": [
-            bitmask1,
-            bitmask1,
-            bitmask2,
-            bitmask2
-        ],
+        "bitmasks": [bitmask1, bitmask1, bitmask2, bitmask2],
         "label_values": ["label1", "label2", "label3", "label4"],
         "scores": [
             0.3,
