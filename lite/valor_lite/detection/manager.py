@@ -1141,6 +1141,8 @@ class DataLoader:
                     _get_bbox_extrema(gann["bounding_box"]),
                 )
                 for valor_label in gann["labels"]:
+                    if valor_label["key"] != "name":
+                        continue
                     glabel = f'{valor_label["key" ]}_{valor_label[ "value" ]}'
                     label_idx = self._add_label(glabel)
                     self.groundtruth_count[label_idx][uid_index] += 1
@@ -1160,6 +1162,8 @@ class DataLoader:
                     pidx
                 ] = np.array(_get_bbox_extrema(pann["bounding_box"]))
                 for valor_label in pann["labels"]:
+                    if valor_label["key"] != "name":
+                        continue
                     plabel = valor_label["value"]
                     pscore = valor_label["score"]
                     label_idx = self._add_label(plabel)
