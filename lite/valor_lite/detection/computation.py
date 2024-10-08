@@ -1,5 +1,5 @@
-import shapely
 import numpy as np
+import shapely
 from numpy.typing import NDArray
 
 
@@ -32,23 +32,22 @@ def compute_bbox_iou(data: NDArray[np.float64]) -> NDArray[np.float64]:
     NDArray[np.float64]
         Computed IoU's.
     """
-    iou = np.zeros(data.shape[0])
-
-    # we may not have data if we don't have any predictions for a given datum
     if data.size == 0:
-        return iou
+        return np.array([], dtype=np.float64)
+
+    n_pairs = data.shape[0]
 
     xmin1, xmax1, ymin1, ymax1 = (
-        data[:, 0],
-        data[:, 1],
-        data[:, 2],
-        data[:, 3],
+        data[:, 0, 0],
+        data[:, 0, 1],
+        data[:, 0, 2],
+        data[:, 0, 3],
     )
     xmin2, xmax2, ymin2, ymax2 = (
-        data[:, 4],
-        data[:, 5],
-        data[:, 6],
-        data[:, 7],
+        data[:, 1, 0],
+        data[:, 1, 1],
+        data[:, 1, 2],
+        data[:, 1, 3],
     )
 
     xmin = np.maximum(xmin1, xmin2)
@@ -65,14 +64,17 @@ def compute_bbox_iou(data: NDArray[np.float64]) -> NDArray[np.float64]:
 
     union_area = area1 + area2 - intersection_area
 
-    valid_union_mask = union_area >= 1e-9
-    iou[valid_union_mask] = (
-        intersection_area[valid_union_mask] / union_area[valid_union_mask]
+    ious = np.zeros(n_pairs, dtype=np.float64)
+    np.divide(
+        intersection_area,
+        union_area,
+        where=union_area >= 1e-9,
+        out=ious,
     )
-    return iou
+    return ious
 
 
-def compute_bitmask_iou(data: NDArray[np.float64]) -> NDArray[np.float64]:
+def compute_bitmask_iou(data: NDArray[np.bool_]) -> NDArray[np.float64]:
     """
     Computes intersection-over-union (IoU) for bitmasks.
 
@@ -99,18 +101,17 @@ def compute_bitmask_iou(data: NDArray[np.float64]) -> NDArray[np.float64]:
     if data.size == 0:
         return np.array([], dtype=np.float64)
 
-    lhs = data[:, 0]
-    rhs = data[:, 1]
+    n_pairs = data.shape[0]
+    lhs = data[:, 0, :, :].reshape(n_pairs, -1)
+    rhs = data[:, 1, :, :].reshape(n_pairs, -1)
 
-    print(lhs.dtype)
+    lhs_sum = lhs.sum(axis=1)
+    rhs_sum = rhs.sum(axis=1)
 
-    lhs_sum = lhs.sum()
-    rhs_sum = rhs.sum()
-
-    intersection_ = np.logical_and(lhs, rhs)
+    intersection_ = np.logical_and(lhs, rhs).sum(axis=1)
     union_ = lhs_sum + rhs_sum - intersection_
 
-    ious = np.zeros_like(lhs, dtype=np.float64)
+    ious = np.zeros(n_pairs, dtype=np.float64)
     np.divide(
         intersection_,
         union_,
@@ -149,6 +150,8 @@ def compute_polygon_iou(
     if data.size == 0:
         return np.array([], dtype=np.float64)
 
+    n_pairs = data.shape[0]
+
     lhs = data[:, 0]
     rhs = data[:, 1]
 
@@ -158,7 +161,7 @@ def compute_polygon_iou(
     unions = shapely.union(lhs, rhs)
     union_areas = shapely.area(unions)
 
-    ious = np.zeros_like(lhs, dtype=np.float64)
+    ious = np.zeros(n_pairs, dtype=np.float64)
     np.divide(
         intersection_areas,
         union_areas,

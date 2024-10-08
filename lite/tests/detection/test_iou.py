@@ -1,8 +1,10 @@
 import numpy as np
-import pytest
 from shapely.geometry import Polygon as ShapelyPolygon
-from valor_lite.detection import Bitmask, BoundingBox, Polygon
-from valor_lite.detection.manager import compute_iou
+from valor_lite.detection.computation import (
+    compute_bbox_iou,
+    compute_bitmask_iou,
+    compute_polygon_iou,
+)
 
 
 def test_compute_bbox_iou():
@@ -16,15 +18,15 @@ def test_compute_bbox_iou():
 
     pairs = np.array(
         [
-            np.concatenate((box1, box1)),
-            np.concatenate((box1, box2)),
-            np.concatenate((box1, box3)),
-            np.concatenate((box1, box4)),
-            np.concatenate((box1, box5)),
+            np.stack((box1, box1), axis=0),
+            np.stack((box1, box2), axis=0),
+            np.stack((box1, box3), axis=0),
+            np.stack((box1, box4), axis=0),
+            np.stack((box1, box5), axis=0),
         ]
     )
 
-    ious = compute_iou(pairs, annotation_type=BoundingBox)
+    ious = compute_bbox_iou(pairs)
     assert len(ious) == 5
     assert ious[0] == 1.0
     assert ious[1] == 0.5
@@ -32,216 +34,56 @@ def test_compute_bbox_iou():
     assert round(ious[3], 5) == 0.33333
     assert round(ious[4], 5) == 0.66667
 
+    # test no data
+    assert (
+        compute_bbox_iou(data=np.array([], dtype=np.float64))
+        == np.array([], dtype=np.float64)
+    ).all()
+
 
 def test_compute_bitmask_iou():
-    filled_8x8 = np.full((8, 8), True)
-    filled_10x10 = (np.full((10, 10), True),)
+    empty_10x10 = np.zeros((10, 10), dtype=np.bool_)
+    filled_10x10 = np.ones((10, 10), dtype=np.bool_)
+
+    top_left_corner = empty_10x10.copy()
+    top_left_corner[:5, :5] = True
+
+    bottom_right_corner = empty_10x10.copy()
+    bottom_right_corner[5:, 5:] = True
+
+    checker = top_left_corner | bottom_right_corner
+
+    diagonal = np.eye(10, 10, dtype=np.bool_)
 
     gt_bitmasks = [
         filled_10x10,
         filled_10x10,
-        [
-            [True, True, True, True, True, False, False, False],
-            [True, True, True, True, True, False, False, False],
-            [True, True, True, True, True, False, False, False],
-            [True, True, True, True, True, False, False, False],
-            [True, True, True, True, True, False, False, False],
-            [True, True, True, True, True, False, False, False],
-            [True, True, True, True, True, False, False, False],
-            [True, True, True, True, True, False, False, False],
-        ],
-        filled_8x8,
-        filled_8x8,
-    ]
-
-    pd_bitmasks = [
-        [
-            [True, True, True, True, True, True, True, True, True, True],
-            [True, True, True, True, True, True, True, True, True, True],
-            [True, True, True, True, True, True, True, True, True, True],
-            [True, True, True, True, True, True, True, True, True, True],
-            [True, True, True, True, True, True, True, True, True, True],
-            [True, True, True, True, True, True, True, True, True, True],
-            [True, True, True, True, True, True, True, True, True, True],
-            [True, True, True, True, True, True, True, True, True, True],
-            [True, True, True, True, True, True, True, True, True, True],
-            [True, True, True, True, True, True, True, True, True, True],
-        ],
-        [
-            [
-                True,
-                True,
-                True,
-                True,
-                True,
-                False,
-                False,
-                False,
-                False,
-                False,
-            ],
-            [
-                True,
-                True,
-                True,
-                True,
-                True,
-                False,
-                False,
-                False,
-                False,
-                False,
-            ],
-            [
-                True,
-                True,
-                True,
-                True,
-                True,
-                False,
-                False,
-                False,
-                False,
-                False,
-            ],
-            [
-                True,
-                True,
-                True,
-                True,
-                True,
-                False,
-                False,
-                False,
-                False,
-                False,
-            ],
-            [
-                True,
-                True,
-                True,
-                True,
-                True,
-                False,
-                False,
-                False,
-                False,
-                False,
-            ],
-            [
-                True,
-                True,
-                True,
-                True,
-                True,
-                False,
-                False,
-                False,
-                False,
-                False,
-            ],
-            [
-                True,
-                True,
-                True,
-                True,
-                True,
-                False,
-                False,
-                False,
-                False,
-                False,
-            ],
-            [
-                True,
-                True,
-                True,
-                True,
-                True,
-                False,
-                False,
-                False,
-                False,
-                False,
-            ],
-            [
-                True,
-                True,
-                True,
-                True,
-                True,
-                False,
-                False,
-                False,
-                False,
-                False,
-            ],
-            [
-                True,
-                True,
-                True,
-                True,
-                True,
-                False,
-                False,
-                False,
-                False,
-                False,
-            ],
-        ],
-        [
-            [False, False, False, False, False, True, True, True],
-            [False, False, False, False, False, True, True, True],
-            [False, False, False, False, False, True, True, True],
-            [False, False, False, False, False, True, True, True],
-            [False, False, False, False, False, True, True, True],
-            [False, False, False, False, False, True, True, True],
-            [False, False, False, False, False, True, True, True],
-            [False, False, False, False, False, True, True, True],
-        ],
-        [
-            [False, False, False, False, True, True, True, True],
-            [False, False, False, False, True, True, True, True],
-            [False, False, False, False, True, True, True, True],
-            [False, False, False, False, True, True, True, True],
-            [False, False, False, False, False, False, False, False],
-            [False, False, False, False, False, False, False, False],
-            [False, False, False, False, False, False, False, False],
-            [False, False, False, False, False, False, False, False],
-        ],
-        [
-            [False, False, False, False, False, True, True, True],
-            [False, False, False, False, False, True, True, True],
-            [False, False, False, False, False, True, True, True],
-            [False, False, False, False, False, True, True, True],
-            [True, True, True, False, False, True, True, True],
-            [True, True, True, False, False, True, True, True],
-            [True, True, True, False, False, True, True, True],
-            [True, True, True, False, False, True, True, True],
-        ],
-    ]
-
-    data = np.array(list(zip(gt_bitmasks, pd_bitmasks)), dtype=np.float64)
-
-    result = compute_iou(data=data, annotation_type=Bitmask)
-
-    assert (result == [1, 0.5, 0, 0.25, 36 / 64]).all()
-
-    gt_bitmasks = [
-        filled_10x10,
-        filled_10x10,
+        top_left_corner,
+        bottom_right_corner,
+        checker,
+        diagonal,
     ]
 
     pd_bitmasks = [
         filled_10x10,
-        filled_8x8,
+        top_left_corner,
+        bottom_right_corner,
+        checker,
+        filled_10x10,
+        filled_10x10,
     ]
 
-    data = np.array(list(zip(gt_bitmasks, pd_bitmasks)), dtype=object)
+    data = np.array(list(zip(gt_bitmasks, pd_bitmasks)), dtype=np.bool_)
 
-    with pytest.raises(ValueError) as e:
-        compute_iou(data=data, annotation_type=Bitmask)
-    assert "operands could not be broadcast together with shapes" in str(e)
+    result = compute_bitmask_iou(data=data)
+
+    assert (result == [1.0, 0.25, 0.0, 0.5, 0.5, 0.1]).all()
+
+    # test no data
+    assert (
+        compute_bitmask_iou(data=np.array([], dtype=np.bool_))
+        == np.array([], dtype=np.float64)
+    ).all()
 
 
 def test_compute_polygon_iou():
@@ -519,5 +361,11 @@ def test_compute_polygon_iou():
         ]
 
         data = np.array(list(zip(gt_polygons, pd_polygons)), dtype=object)
-        result = compute_iou(data=data, annotation_type=Polygon)
+        result = compute_polygon_iou(data=data)
         assert (np.round(result, 4) == test["expected"]).all()
+
+    # test no data
+    assert (
+        compute_polygon_iou(data=np.array([], dtype=object))
+        == np.array([], dtype=np.float64)
+    ).all()

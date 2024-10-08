@@ -1,8 +1,10 @@
 import warnings
 from collections import defaultdict
 from dataclasses import dataclass
+from typing import Type
 
 import numpy as np
+import valor_lite.detection.annotation as annotation
 from numpy.typing import NDArray
 from shapely.geometry import Polygon as ShapelyPolygon
 from tqdm import tqdm
@@ -87,59 +89,6 @@ def _get_annotation_representation_from_valor_dict(
         return ShapelyPolygon(data)
     else:
         return np.array(data)
-
-
-def _get_annotation_data(
-    groundtruths: list,
-    predictions: list,
-    annotation_type: type[BoundingBox] | type[Polygon] | type[Bitmask] | None,
-) -> np.ndarray:
-    """Create an array of annotation pairs for use when calculating IOU. Needed because we unpack bounding box representations, but not bitmask or polygon representations."""
-    if annotation_type == BoundingBox:
-        return np.array(
-            [
-                np.array([*gextrema, *pextrema])
-                for _, _, _, pextrema in predictions
-                for _, _, gextrema in groundtruths
-            ]
-        )
-    else:
-        return np.array(
-            [
-                np.array([groundtruth_obj, prediction_obj])
-                for _, _, _, prediction_obj in predictions
-                for _, _, groundtruth_obj in groundtruths
-            ]
-        )
-
-
-def compute_iou(
-    data: NDArray[np.float64],
-    annotation_type: type[BoundingBox] | type[Polygon] | type[Bitmask],
-) -> NDArray[np.float64]:
-    """
-    Computes intersection-over-union (IoU) calculations for various annotation types.
-
-    Parameters
-    ----------
-    data : NDArray[np.float64]
-        A sorted array of bounding box, bitmask, or polygon pairs.
-    annotation_type: type[BoundingBox] | type[Polygon] | type[Bitmask]
-        The type of annotation contained in the data.
-
-
-    Returns
-    -------
-    NDArray[np.float64]
-        Computed IoU's.
-    """
-
-    if annotation_type == BoundingBox:
-        return compute_bbox_iou(data=data)
-    elif annotation_type == Bitmask:
-        return compute_bitmask_iou(data=data)
-    else:
-        return compute_polygon_iou(data=data)
 
 
 @dataclass
@@ -899,7 +848,7 @@ class DataLoader:
         uid_index: int,
         groundtruths: list,
         predictions: list,
-        annotation_type: type[BoundingBox] | type[Polygon] | type[Bitmask],
+        annotation_type: Type[BoundingBox] | Type[Polygon] | Type[Bitmask],
     ) -> None:
         """
         Compute IOUs between groundtruths and preditions before storing as pairs.
@@ -919,13 +868,27 @@ class DataLoader:
         pairs = list()
         n_predictions = len(predictions)
         n_groundtruths = len(groundtruths)
-        data = _get_annotation_data(
-            groundtruths=groundtruths,
-            predictions=predictions,
-            annotation_type=annotation_type,
+
+        all_pairs = np.array(
+            [
+                np.array([groundtruth, prediction])
+                for _, _, _, prediction in predictions
+                for _, _, groundtruth in groundtruths
+            ]
         )
 
-        ious = compute_iou(data=data, annotation_type=annotation_type)
+        match annotation_type:
+            case annotation.BoundingBox:
+                ious = compute_bbox_iou(all_pairs)
+            case annotation.Polygon:
+                ious = compute_polygon_iou(all_pairs)
+            case annotation.Bitmask:
+                ious = compute_bitmask_iou(all_pairs)
+            case _:
+                raise ValueError(
+                    f"Invalid annotation type `{annotation_type}`."
+                )
+
         ious = ious.reshape(n_predictions, n_groundtruths)
         predictions_with_iou_of_zero = (ious < 1e-9).all(axis=1)
         groundtruths_with_iou_of_zero = (ious < 1e-9).all(axis=0)
