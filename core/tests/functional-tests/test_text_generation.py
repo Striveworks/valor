@@ -466,6 +466,7 @@ def test__setup_llm_client():
             "data": {
                 "seed": 2024,
                 "model": "gpt-4o",
+                "retries": 0,
             },
         },
     )
@@ -476,6 +477,18 @@ def test__setup_llm_client():
             "client": "mistral",
             "data": {
                 "model": "mistral-small-latest",
+                "retries": 3,
+            },
+        },
+    )
+
+    # Setting retries is not required.
+    _ = _setup_llm_client(
+        llm_api_params={
+            "client": "openai",
+            "data": {
+                "seed": 2024,
+                "model": "gpt-4o",
             },
         },
     )
