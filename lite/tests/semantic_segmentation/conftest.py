@@ -102,45 +102,7 @@ def segmentations_from_boxes() -> list[Segmentation]:
 @pytest.fixture
 def large_random_segmentations() -> list[Segmentation]:
 
-    mask_shape = (1000, 1000)
-    infills_per_seg = [
-        (0.9, 0.09, 0.01),
-        (0.4, 0.4, 0.1),
-        (0.3, 0.3, 0.3),
-    ]
-    labels_per_seg = [
-        ("v1", "v2", "v3"),
-        ("v4", "v5", "v6"),
-        ("v7", "v8", "v9"),
-    ]
-
-    return [
-        Segmentation(
-            uid=f"uid{idx}",
-            groundtruths=[
-                _generate_random_boolean_mask(mask_shape, infill, label)
-                for infill, label in zip(infills, labels)
-            ],
-            predictions=[
-                _generate_random_boolean_mask(mask_shape, infill, label)
-                for infill, label in zip(infills, labels)
-            ],
-        )
-        for idx, (infills, labels) in enumerate(
-            zip(infills_per_seg, labels_per_seg)
-        )
-    ]
-
-
-@pytest.fixture
-def massive_random_segmentations() -> list[Segmentation]:
-    """
-    A variant of `large_random_segmentations`.
-
-    This fixture is not used as it takes 10s to load.
-    """
-
-    mask_shape = (5000, 5000)
+    mask_shape = (2000, 2000)
     infills_per_seg = [
         (0.9, 0.09, 0.01),
         (0.4, 0.4, 0.1),
