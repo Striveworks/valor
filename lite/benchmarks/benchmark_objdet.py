@@ -23,6 +23,8 @@ def _get_bbox_extrema(
 def _process_valor_dicts_into_detection(gt_dict: dict, pd_dict: dict):
     """Convert a groundtruth dictionary and prediction dictionary into a valor_lite Detection object."""
     gts = []
+    pds = []
+
     for gann in gt_dict["annotations"]:
         labels = []
         for valor_label in gann["labels"]:
@@ -48,7 +50,6 @@ def _process_valor_dicts_into_detection(gt_dict: dict, pd_dict: dict):
             )
         )
 
-    pds = []
     for pann in pd_dict["annotations"]:
         labels, scores = [], []
         for valor_label in pann["labels"]:
