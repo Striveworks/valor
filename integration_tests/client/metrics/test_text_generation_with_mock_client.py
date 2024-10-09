@@ -249,6 +249,7 @@ def test_llm_evaluation_rag_with_mock_client(
         },
         metric_params={
             MetricType.BLEU: {
+                "smoothing_function": "method0",
                 "weights": [0.25, 0.25, 0.25, 0.25],
             },
             MetricType.ROUGE: {
@@ -354,6 +355,31 @@ def test_llm_evaluation_rag_with_mock_client(
         assert (
             expected_metrics[uid][metric_name] == m["value"]
         ), f"Failed for {uid} and {metric_name}"
+
+    # # Test different settings for metric params
+    # eval_job = model.evaluate_text_generation(
+    #     datasets=dataset,
+    #     metrics_to_return=metrics_to_return,
+    #     llm_api_params={
+    #         "client": "mock",
+    #         "data": {
+    #             "model": "model",
+    #         },
+    #     },
+    #     metric_params={
+    #         MetricType.BLEU: {
+    #             "smoothing_function": "method3",
+    #         },
+    #         MetricType.ROUGE: {
+    #             "rouge_types": [
+    #                 ROUGEType.ROUGE1,
+    #                 ROUGEType.ROUGE2,
+    #                 ROUGEType.ROUGEL,
+    #             ],
+    #             "use_stemmer": True,
+    #         },
+    #     },
+    # )
 
     # Must only specify text generation metrics.
     with pytest.raises(ValueError):

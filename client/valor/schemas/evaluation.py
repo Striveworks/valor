@@ -32,6 +32,8 @@ class EvaluationParameters:
         The IOU threshold to use when calculating precision-recall curves for object detection tasks. Defaults to 0.5.
     pr_curve_max_examples: int
         The maximum number of datum examples to store when calculating PR curves.
+    bleu_smoothing_function: str, optional
+        The method name of the smoothing function to use when calculating BLEU scores. See https://github.com/nltk/nltk/blob/develop/nltk/translate/bleu_score.py for options.
     bleu_weights: list[float], optional
         The weights to use when calculating BLEU scores.
     rouge_types: list[ROUGEType]
@@ -51,6 +53,7 @@ class EvaluationParameters:
     recall_score_threshold: float = 0
     pr_curve_iou_threshold: float = 0.5
     pr_curve_max_examples: int = 1
+    bleu_smoothing_function: Optional[str] = None
     bleu_weights: Optional[List[float]] = None
     rouge_types: Optional[List[ROUGEType]] = None
     rouge_use_stemmer: Optional[bool] = None
