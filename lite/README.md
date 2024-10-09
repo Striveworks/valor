@@ -1,10 +1,10 @@
 # valor-lite: Fast, local machine learning evaluation.
 
-Valor-lite is a lightweight, numpy-based library designed for fast and seamless evaluation of machine learning models. It is optimized for environments where quick, responsive evaluations are essential, whether as part of a larger service or embedded within user-facing tools. By operating without the latency of external systems, Valor-lite ensures an efficient, smooth experience for users.
+valor-lite is a lightweight, numpy-based library designed for fast and seamless evaluation of machine learning models. It is optimized for environments where quick, responsive evaluations are essential, whether as part of a larger service or embedded within user-facing tools.
 
 Valor, the broader platform, acts as a centralized evaluation store that simplifies the measurement, exploration, and ranking of model performance. This powerful tool helps data scientists and engineers continuously assess and refine their machine learning pipelines, enabling them to make data-driven decisions for ongoing improvement.
 
-Both Valor and Valor-lite are maintained by Striveworks, a cutting-edge MLOps company based in Austin, Texas. If you'd like to learn more or have questions, we invite you to connect with us on [Slack](https://striveworks-public.slack.com/join/shared_invite/zt-1a0jx768y-2J1fffN~b4fXYM8GecvOhA#/shared-invite/email) or explore our [GitHub repository](https://github.com/striveworks/valor).
+Both Valor and valor-lite are maintained by Striveworks, a cutting-edge MLOps company based in Austin, Texas. If you'd like to learn more or have questions, we invite you to connect with us on [Slack](https://striveworks-public.slack.com/join/shared_invite/zt-1a0jx768y-2J1fffN~b4fXYM8GecvOhA#/shared-invite/email) or explore our [GitHub repository](https://github.com/striveworks/valor).
 
 For additional details, be sure to check out our user [documentation](https://striveworks.github.io/valor/). We're excited to support you in making the most of Valor!
 
