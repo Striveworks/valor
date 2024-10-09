@@ -54,7 +54,7 @@ def test_pr_curve_using_torch_metrics_example(
     assert evaluator.n_groundtruths == 20
     assert evaluator.n_predictions == 19
 
-    metrics = evaluator.evaluate(
+    metrics = evaluator.compute_metrics(
         iou_thresholds=[0.5, 0.75],
         as_dict=True,
     )

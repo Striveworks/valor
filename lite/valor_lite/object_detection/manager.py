@@ -51,13 +51,13 @@ loader.add_bounding_boxes(
 )
 evaluator = loader.finalize()
 
-metrics = evaluator.evaluate(iou_thresholds=[0.5])
+metrics = evaluator.compute_metrics(iou_thresholds=[0.5])
 
 ap_metrics = metrics[MetricType.AP]
 ar_metrics = metrics[MetricType.AR]
 
 filter_mask = evaluator.create_filter(datum_uids=["uid1", "uid2"])
-filtered_metrics = evaluator.evaluate(iou_thresholds=[0.5], filter_mask=filter_mask)
+filtered_metrics = evaluator.compute_metrics(iou_thresholds=[0.5], filter_mask=filter_mask)
 """
 
 
@@ -590,7 +590,7 @@ class Evaluator:
         number_of_examples: int = 0,
         filter_: Filter | None = None,
         as_dict: bool = False,
-    ) -> list[ConfusionMatrix] | list[dict]:
+    ) -> list:
         """
         Computes confusion matrices at various thresholds.
 
@@ -618,6 +618,9 @@ class Evaluator:
         if filter_ is not None:
             detailed_pairs = detailed_pairs[filter_.detailed_indices]
             label_metadata = filter_.label_metadata
+
+        if detailed_pairs.size == 0:
+            return list()
 
         (
             confusion_matrix,

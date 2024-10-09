@@ -36,7 +36,7 @@ def test_fuzz_classifications():
         loader = DataLoader()
         loader.add_data(classifications)
         evaluator = loader.finalize()
-        evaluator.evaluate(
+        evaluator.compute_metrics(
             score_thresholds=[0.25, 0.75],
         )
 
@@ -64,7 +64,7 @@ def test_fuzz_classifications_with_filtering():
             datum_uids=datum_subset,
         )
 
-        evaluator.evaluate(
+        evaluator.compute_metrics(
             score_thresholds=[0.25, 0.75],
             filter_=filter_,
         )

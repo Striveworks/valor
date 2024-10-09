@@ -211,7 +211,7 @@ def test_rocauc_with_animal_example(
     loader.add_data(classifications_animal_example)
     evaluator = loader.finalize()
 
-    metrics = evaluator.evaluate(as_dict=True)
+    metrics = evaluator.compute_metrics(as_dict=True)
 
     # test ROCAUC
     actual_metrics = [m for m in metrics[MetricType.ROCAUC]]
@@ -262,7 +262,7 @@ def test_rocauc_with_color_example(
     loader.add_data(classifications_color_example)
     evaluator = loader.finalize()
 
-    metrics = evaluator.evaluate(as_dict=True, hardmax=False)
+    metrics = evaluator.compute_metrics(as_dict=True, hardmax=False)
 
     # test ROCAUC
     actual_metrics = [m for m in metrics[MetricType.ROCAUC]]
@@ -319,9 +319,9 @@ def test_rocauc_with_image_example(
     loader.add_data(classifications_image_example)
     loader.finalize()
     evaluator = loader.finalize()
-    evaluator.evaluate()
+    evaluator.compute_metrics()
 
-    metrics = evaluator.evaluate(as_dict=True)
+    metrics = evaluator.compute_metrics(as_dict=True)
 
     actual_metrics = [m for m in metrics[MetricType.ROCAUC]]
     expected_metrics = [
@@ -353,9 +353,9 @@ def test_rocauc_with_tabular_example(
     loader.add_data(classifications_tabular_example)
     loader.finalize()
     evaluator = loader.finalize()
-    evaluator.evaluate()
+    evaluator.compute_metrics()
 
-    metrics = evaluator.evaluate(as_dict=True)
+    metrics = evaluator.compute_metrics(as_dict=True)
 
     actual_metrics = [m for m in metrics[MetricType.ROCAUC]]
     expected_metrics = [

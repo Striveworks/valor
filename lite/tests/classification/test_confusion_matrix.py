@@ -1,5 +1,5 @@
 import numpy as np
-from valor_lite.classification import Classification, DataLoader, MetricType
+from valor_lite.classification import Classification, DataLoader
 from valor_lite.classification.computation import compute_confusion_matrix
 
 
@@ -114,14 +114,12 @@ def test_confusion_matrix_basic(basic_classifications: list[Classification]):
         "missing_prediction_labels": [],
     }
 
-    metrics = evaluator.evaluate(
-        metrics_to_return=[MetricType.ConfusionMatrix],
+    actual_metrics = evaluator.compute_confusion_matrix(
         score_thresholds=[0.25, 0.75],
         number_of_examples=1,
         as_dict=True,
     )
 
-    actual_metrics = [m for m in metrics[MetricType.ConfusionMatrix]]
     expected_metrics = [
         {
             "type": "ConfusionMatrix",
@@ -190,13 +188,11 @@ def test_confusion_matrix_unit(
     loader.add_data(classifications_from_api_unit_tests)
     evaluator = loader.finalize()
 
-    metrics = evaluator.evaluate(
-        metrics_to_return=[MetricType.ConfusionMatrix],
+    actual_metrics = evaluator.compute_confusion_matrix(
         score_thresholds=[0.5],
         as_dict=True,
     )
 
-    actual_metrics = [m for m in metrics[MetricType.ConfusionMatrix]]
     expected_metrics = [
         {
             "type": "ConfusionMatrix",
@@ -233,14 +229,12 @@ def test_confusion_matrix_with_animal_example(
     loader.add_data(classifications_animal_example)
     evaluator = loader.finalize()
 
-    metrics = evaluator.evaluate(
-        metrics_to_return=[MetricType.ConfusionMatrix],
+    actual_metrics = evaluator.compute_confusion_matrix(
         score_thresholds=[0.5],
         number_of_examples=6,
         as_dict=True,
     )
 
-    actual_metrics = [m for m in metrics[MetricType.ConfusionMatrix]]
     expected_metrics = [
         {
             "type": "ConfusionMatrix",
@@ -304,14 +298,12 @@ def test_confusion_matrix_with_color_example(
     loader.add_data(classifications_color_example)
     evaluator = loader.finalize()
 
-    metrics = evaluator.evaluate(
-        metrics_to_return=[MetricType.ConfusionMatrix],
+    actual_metrics = evaluator.compute_confusion_matrix(
         score_thresholds=[0.5],
         number_of_examples=6,
         as_dict=True,
     )
 
-    actual_metrics = [m for m in metrics[MetricType.ConfusionMatrix]]
     expected_metrics = [
         {
             "type": "ConfusionMatrix",
@@ -385,14 +377,12 @@ def test_confusion_matrix_multiclass(
         "n_predictions": 15,
     }
 
-    metrics = evaluator.evaluate(
-        metrics_to_return=[MetricType.ConfusionMatrix],
+    actual_metrics = evaluator.compute_confusion_matrix(
         score_thresholds=[0.05, 0.5, 0.85],
         number_of_examples=5,
         as_dict=True,
     )
 
-    actual_metrics = [m for m in metrics[MetricType.ConfusionMatrix]]
     expected_metrics = [
         {
             "type": "ConfusionMatrix",
@@ -517,15 +507,13 @@ def test_confusion_matrix_without_hardmax_animal_example(
         "missing_prediction_labels": [],
     }
 
-    metrics = evaluator.evaluate(
-        metrics_to_return=[MetricType.ConfusionMatrix],
+    actual_metrics = evaluator.compute_confusion_matrix(
         score_thresholds=[0.05, 0.4, 0.5],
         number_of_examples=6,
         hardmax=False,
         as_dict=True,
     )
 
-    actual_metrics = [m for m in metrics[MetricType.ConfusionMatrix]]
     expected_metrics = [
         {
             "type": "ConfusionMatrix",

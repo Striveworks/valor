@@ -89,7 +89,7 @@ def test_ap_metrics_first_class(
         method(loader, input_)
         evaluator = loader.finalize()
 
-        metrics = evaluator.evaluate(
+        metrics = evaluator.compute_metrics(
             iou_thresholds=[0.1, 0.6],
             as_dict=True,
         )
@@ -207,7 +207,7 @@ def test_ap_metrics_second_class(
         method(loader, input_)
         evaluator = loader.finalize()
 
-        metrics = evaluator.evaluate(
+        metrics = evaluator.compute_metrics(
             iou_thresholds=[0.1, 0.6],
         )
 
@@ -320,7 +320,7 @@ def test_ap_using_torch_metrics_example(
     assert evaluator.n_groundtruths == 20
     assert evaluator.n_predictions == 19
 
-    metrics = evaluator.evaluate(
+    metrics = evaluator.compute_metrics(
         iou_thresholds=[0.5, 0.75],
         as_dict=True,
     )
@@ -449,7 +449,7 @@ def test_ap_false_negatives_single_datum_baseline(
     loader = DataLoader()
     loader.add_bounding_boxes(false_negatives_single_datum_baseline_detections)
     evaluator = loader.finalize()
-    metrics = evaluator.evaluate(
+    metrics = evaluator.compute_metrics(
         iou_thresholds=[0.5],
         as_dict=True,
     )
@@ -479,7 +479,7 @@ def test_ap_false_negatives_single_datum(
     loader = DataLoader()
     loader.add_bounding_boxes(false_negatives_single_datum_detections)
     evaluator = loader.finalize()
-    metrics = evaluator.evaluate(
+    metrics = evaluator.compute_metrics(
         iou_thresholds=[0.5],
         as_dict=True,
     )
@@ -517,7 +517,7 @@ def test_ap_false_negatives_two_datums_one_empty_low_confidence_of_fp(
         false_negatives_two_datums_one_empty_low_confidence_of_fp_detections
     )
     evaluator = loader.finalize()
-    metrics = evaluator.evaluate(
+    metrics = evaluator.compute_metrics(
         iou_thresholds=[0.5],
         as_dict=True,
     )
@@ -554,7 +554,7 @@ def test_ap_false_negatives_two_datums_one_empty_high_confidence_of_fp(
         false_negatives_two_datums_one_empty_high_confidence_of_fp_detections
     )
     evaluator = loader.finalize()
-    metrics = evaluator.evaluate(
+    metrics = evaluator.compute_metrics(
         iou_thresholds=[0.5],
         as_dict=True,
     )
@@ -591,7 +591,7 @@ def test_ap_false_negatives_two_datums_one_only_with_different_class_low_confide
         false_negatives_two_datums_one_only_with_different_class_low_confidence_of_fp_detections
     )
     evaluator = loader.finalize()
-    metrics = evaluator.evaluate(
+    metrics = evaluator.compute_metrics(
         iou_thresholds=[0.5],
         as_dict=True,
     )
@@ -633,7 +633,7 @@ def test_ap_false_negatives_two_datums_one_only_with_different_class_high_confid
         false_negatives_two_images_one_only_with_different_class_high_confidence_of_fp_detections
     )
     evaluator = loader.finalize()
-    metrics = evaluator.evaluate(
+    metrics = evaluator.compute_metrics(
         iou_thresholds=[0.5],
         as_dict=True,
     )
@@ -688,7 +688,7 @@ def test_ap_ranked_pair_ordering(
             "n_predictions": 4,
         }
 
-        metrics = evaluator.evaluate(
+        metrics = evaluator.compute_metrics(
             iou_thresholds=[0.5, 0.75],
             as_dict=True,
         )
@@ -833,7 +833,7 @@ def test_ap_true_positive_deassignment(
     assert evaluator.n_groundtruths == 2
     assert evaluator.n_predictions == 4
 
-    metrics = evaluator.evaluate(
+    metrics = evaluator.compute_metrics(
         iou_thresholds=[0.5],
         score_thresholds=[0.5],
         as_dict=True,

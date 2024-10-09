@@ -81,7 +81,9 @@ def test_accuracy_basic(basic_classifications: list[Classification]):
         "missing_prediction_labels": [],
     }
 
-    metrics = evaluator.evaluate(score_thresholds=[0.25, 0.75], as_dict=True)
+    metrics = evaluator.compute_metrics(
+        score_thresholds=[0.25, 0.75], as_dict=True
+    )
 
     actual_metrics = [m for m in metrics[MetricType.Accuracy]]
     expected_metrics = [
@@ -118,7 +120,7 @@ def test_accuracy_with_animal_example(
     loader.add_data(classifications_animal_example)
     evaluator = loader.finalize()
 
-    metrics = evaluator.evaluate(score_thresholds=[0.5], as_dict=True)
+    metrics = evaluator.compute_metrics(score_thresholds=[0.5], as_dict=True)
 
     actual_metrics = [m for m in metrics[MetricType.Accuracy]]
     expected_metrics = [
@@ -164,7 +166,7 @@ def test_accuracy_color_example(
     loader.add_data(classifications_color_example)
     evaluator = loader.finalize()
 
-    metrics = evaluator.evaluate(score_thresholds=[0.5], as_dict=True)
+    metrics = evaluator.compute_metrics(score_thresholds=[0.5], as_dict=True)
 
     actual_metrics = [m for m in metrics[MetricType.Accuracy]]
     expected_metrics = [
@@ -227,7 +229,7 @@ def test_accuracy_with_image_example(
         "missing_prediction_labels": [],
     }
 
-    metrics = evaluator.evaluate(as_dict=True)
+    metrics = evaluator.compute_metrics(as_dict=True)
 
     actual_metrics = [m for m in metrics[MetricType.Accuracy]]
     expected_metrics = [
@@ -263,7 +265,7 @@ def test_accuracy_with_tabular_example(
         "missing_prediction_labels": [],
     }
 
-    metrics = evaluator.evaluate(as_dict=True)
+    metrics = evaluator.compute_metrics(as_dict=True)
 
     actual_metrics = [m for m in metrics[MetricType.Accuracy]]
     expected_metrics = [

@@ -29,7 +29,7 @@ def test_precision_metrics_first_class(
         method(loader, input_)
         evaluator = loader.finalize()
 
-        metrics = evaluator.evaluate(
+        metrics = evaluator.compute_metrics(
             iou_thresholds=[0.1, 0.6],
             score_thresholds=[0.0, 0.5],
             as_dict=True,
@@ -114,7 +114,7 @@ def test_precision_metrics_second_class(
         method(loader, input_)
         evaluator = loader.finalize()
 
-        metrics = evaluator.evaluate(
+        metrics = evaluator.compute_metrics(
             iou_thresholds=[0.1, 0.6],
             score_thresholds=[0.0, 0.5],
             as_dict=True,
@@ -185,7 +185,7 @@ def test_precision_false_negatives_single_datum_baseline(
     loader.add_bounding_boxes(false_negatives_single_datum_baseline_detections)
     evaluator = loader.finalize()
 
-    metrics = evaluator.evaluate(
+    metrics = evaluator.compute_metrics(
         iou_thresholds=[0.5],
         score_thresholds=[0.0, 0.9],
         as_dict=True,
@@ -229,7 +229,7 @@ def test_precision_false_negatives_single_datum(
     loader = DataLoader()
     loader.add_bounding_boxes(false_negatives_single_datum_detections)
     evaluator = loader.finalize()
-    metrics = evaluator.evaluate(
+    metrics = evaluator.compute_metrics(
         iou_thresholds=[0.5],
         score_thresholds=[0.0],
         as_dict=True,
@@ -272,7 +272,7 @@ def test_precision_false_negatives_two_datums_one_empty_low_confidence_of_fp(
         false_negatives_two_datums_one_empty_low_confidence_of_fp_detections
     )
     evaluator = loader.finalize()
-    metrics = evaluator.evaluate(
+    metrics = evaluator.compute_metrics(
         iou_thresholds=[0.5],
         score_thresholds=[0.0],
         as_dict=True,
@@ -314,7 +314,7 @@ def test_precision_false_negatives_two_datums_one_empty_high_confidence_of_fp(
         false_negatives_two_datums_one_empty_high_confidence_of_fp_detections
     )
     evaluator = loader.finalize()
-    metrics = evaluator.evaluate(
+    metrics = evaluator.compute_metrics(
         iou_thresholds=[0.5],
         score_thresholds=[0.0],
         as_dict=True,
@@ -356,7 +356,7 @@ def test_precision_false_negatives_two_datums_one_only_with_different_class_low_
         false_negatives_two_datums_one_only_with_different_class_low_confidence_of_fp_detections
     )
     evaluator = loader.finalize()
-    metrics = evaluator.evaluate(
+    metrics = evaluator.compute_metrics(
         iou_thresholds=[0.5],
         score_thresholds=[0.0],
         as_dict=True,
@@ -407,7 +407,7 @@ def test_precision_false_negatives_two_datums_one_only_with_different_class_high
         false_negatives_two_images_one_only_with_different_class_high_confidence_of_fp_detections
     )
     evaluator = loader.finalize()
-    metrics = evaluator.evaluate(
+    metrics = evaluator.compute_metrics(
         iou_thresholds=[0.5],
         score_thresholds=[0.0],
         as_dict=True,

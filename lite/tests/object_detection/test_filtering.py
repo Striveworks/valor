@@ -147,7 +147,7 @@ def test_filtering_one_detection(one_detection: list[Detection]):
 
     # test evaluation
     filter_ = evaluator.create_filter(datum_uids=["uid1"])
-    metrics = evaluator.evaluate(
+    metrics = evaluator.compute_metrics(
         iou_thresholds=[0.5],
         filter_=filter_,
     )
@@ -274,7 +274,7 @@ def test_filtering_two_detections(two_detections: list[Detection]):
 
     # test evaluation
     filter_ = evaluator.create_filter(datum_uids=["uid1"])
-    metrics = evaluator.evaluate(
+    metrics = evaluator.compute_metrics(
         iou_thresholds=[0.5],
         filter_=filter_,
     )
@@ -412,7 +412,7 @@ def test_filtering_four_detections(four_detections: list[Detection]):
     # test evaluation
     filter_ = evaluator.create_filter(datum_uids=["uid1"])
 
-    metrics = evaluator.evaluate(
+    metrics = evaluator.compute_metrics(
         iou_thresholds=[0.5],
         filter_=filter_,
     )
@@ -565,13 +565,13 @@ def test_filtering_all_detections(four_detections: list[Detection]):
     # test evaluation
     filter_ = evaluator.create_filter(datum_uids=[])
 
-    metrics = evaluator.evaluate(
+    metrics = evaluator.compute_metrics(
         iou_thresholds=[0.5],
         filter_=filter_,
-        metrics_to_return=[
-            *MetricType.base_metrics(),
-            MetricType.ConfusionMatrix,
-        ],
+    )
+    evaluator.compute_confusion_matrix(
+        iou_thresholds=[0.5],
+        filter_=filter_,
     )
 
     actual_metrics = [m.to_dict() for m in metrics[MetricType.AP]]
@@ -583,4 +583,4 @@ def test_filtering_random_detections():
     loader.add_bounding_boxes(_generate_random_detections(13, 4, "abc"))
     evaluator = loader.finalize()
     f = evaluator.create_filter(datum_uids=["uid1"])
-    evaluator.evaluate(filter_=f)
+    evaluator.compute_metrics(filter_=f)

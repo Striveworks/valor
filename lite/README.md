@@ -32,7 +32,7 @@ loader = DataLoader()
 loader.add_data(classifications)
 evaluator = loader.finalize()
 
-metrics = evaluator.evaluate()
+metrics = evaluator.compute_metrics()
 
 assert metrics[MetricType.Precision][0].to_dict() == {
     'type': 'Precision',
@@ -86,7 +86,7 @@ loader = DataLoader()
 loader.add_bounding_boxes(detections)
 evaluator = loader.finalize()
 
-metrics = evaluator.evaluate()
+metrics = evaluator.compute_metrics()
 
 assert metrics[MetricType.Precision][0].to_dict() == {
     'type': 'Precision',

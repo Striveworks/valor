@@ -31,13 +31,13 @@ manager.add_data(
 )
 evaluator = manager.finalize()
 
-metrics = evaluator.evaluate()
+metrics = evaluator.compute_metrics()
 
 f1_metrics = metrics[MetricType.F1]
 accuracy_metrics = metrics[MetricType.Accuracy]
 
 filter_mask = evaluator.create_filter(datum_uids=["uid1", "uid2"])
-filtered_metrics = evaluator.evaluate(filter_mask=filter_mask)
+filtered_metrics = evaluator.compute_metrics(filter_mask=filter_mask)
 """
 
 
@@ -190,7 +190,7 @@ class Evaluator:
             n_pixels=self._n_pixels_per_datum[mask_datums].sum(),
         )
 
-    def evaluate(
+    def compute_metrics(
         self,
         metrics_to_return: list[MetricType] = MetricType.base(),
         filter_: Filter | None = None,
