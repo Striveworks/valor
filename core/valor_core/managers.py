@@ -611,7 +611,7 @@ class ValorTextGenerationStreamingManager:
     ----------
     metrics_to_return : list[enums.MetricType]
         A list of metrics to calculate during the evaluation.
-    llm_api_params : dict[str, str | dict], optional
+    llm_api_params : dict[str, str | int | dict], optional
         The parameters to setup the client with.
     metric_params: dict, optional
         A dictionary of optional parameters to pass in to specific metrics.
@@ -622,7 +622,7 @@ class ValorTextGenerationStreamingManager:
     """
 
     metrics_to_return: list[enums.MetricType]
-    llm_api_params: dict[str, str | dict]
+    llm_api_params: dict[str, str | int | dict]
     metric_params: dict[str, dict] = field(default_factory=dict)
     joint_df: pd.DataFrame = field(default_factory=lambda: pd.DataFrame([]))
     datum_uids: set = field(default_factory=set)
