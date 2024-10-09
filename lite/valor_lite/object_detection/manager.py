@@ -1069,7 +1069,6 @@ class DataLoader:
             annotation_type=Bitmask,
         )
 
-      
     def finalize(self) -> Evaluator:
         """
         Performs data finalization and some preprocessing steps.

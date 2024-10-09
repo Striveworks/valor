@@ -311,10 +311,7 @@ def run_benchmarking_analysis(
             manager = DataLoader()
 
             # ingest + preprocess
-            (
-                ingest_time,
-                preprocessing_time,
-            ) = ingest(
+            (ingest_time, preprocessing_time,) = ingest(
                 manager=manager,
                 gt_path=current_directory / Path(gt_filename),
                 pd_path=current_directory / Path(pd_filename),
