@@ -1535,7 +1535,7 @@ class EvaluationParameters:
             The IOU threshold to use when calculating precision-recall curves for object detection tasks. Defaults to 0.5.
     pr_curve_max_examples: int
         The maximum number of datum examples to store when calculating PR curves.
-    llm_api_params: dict[str, str | dict], optional
+    llm_api_params: dict[str, str | int | dict], optional
         A dictionary of parameters for the LLM API. Only required by some text generation metrics.
     metric_params: dict[str, dict], optional
         A dictionary of optional parameters to pass in to specific metrics.
@@ -1549,7 +1549,7 @@ class EvaluationParameters:
     recall_score_threshold: float = 0.0
     pr_curve_iou_threshold: float = 0.5
     pr_curve_max_examples: int = 1
-    llm_api_params: dict[str, str | dict] | None = None
+    llm_api_params: dict[str, str | int | dict] | None = None
     metric_params: dict[str, dict] | None = None
 
     def __post_init__(self):
@@ -1634,11 +1634,11 @@ class EvaluationParameters:
                 )
 
             if not all(
-                isinstance(value, (str, dict))
+                isinstance(value, (str, int, dict))
                 for value in self.llm_api_params.values()
             ):
                 raise TypeError(
-                    "All values in 'llm_api_params' must be of type 'str' or 'dict'"
+                    "All values in 'llm_api_params' must be of type 'str', 'int' or 'dict'"
                 )
 
         if self.metric_params is not None:
