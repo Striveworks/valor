@@ -10,8 +10,8 @@ from tqdm import tqdm
 from valor_lite.classification import Classification, DataLoader, MetricType
 
 
-def _process_valor_dicts_into_detection(gt_dict: dict, pd_dict: dict):
-    """Convert a groundtruth dictionary and prediction dictionary into a valor_lite Detection object."""
+def _process_valor_dicts_into_Classification(gt_dict: dict, pd_dict: dict):
+    """Convert a groundtruth dictionary and prediction dictionary into a valor_lite Classification object."""
     pds = []
     scores = []
 
@@ -98,28 +98,28 @@ def ingest(
     with open(gt_path, "r") as gf:
         with open(pd_path, "r") as pf:
             count = 0
-            detections = []
+            classifications = []
             for gline, pline in zip(gf, pf):
 
                 gt_dict = json.loads(gline)
                 pd_dict = json.loads(pline)
-                detections.append(
-                    _process_valor_dicts_into_detection(
+                classifications.append(
+                    _process_valor_dicts_into_Classification(
                         gt_dict=gt_dict, pd_dict=pd_dict
                     )
                 )
                 count += 1
                 if count >= limit and limit > 0:
                     break
-                elif len(detections) < chunk_size or chunk_size == -1:
+                elif len(classifications) < chunk_size or chunk_size == -1:
                     continue
 
-                timer, _ = time_it(loader.add_data)(detections)
+                timer, _ = time_it(loader.add_data)(classifications)
                 accumulated_time += timer
-                detections = []
+                classifications = []
 
-            if detections:
-                timer, _ = time_it(loader.add_data)(detections)
+            if classifications:
+                timer, _ = time_it(loader.add_data)(classifications)
                 accumulated_time += timer
 
     return accumulated_time

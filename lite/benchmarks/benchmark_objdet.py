@@ -20,7 +20,7 @@ def _get_bbox_extrema(
     return (min(x), max(x), min(y), max(y))
 
 
-def _process_valor_dicts_into_detection(gt_dict: dict, pd_dict: dict):
+def _process_valor_dicts_into_Detection(gt_dict: dict, pd_dict: dict):
     """Convert a groundtruth dictionary and prediction dictionary into a valor_lite Detection object."""
     gts = []
     pds = []
@@ -170,7 +170,7 @@ def ingest(
                 gt_dict = json.loads(gline)
                 pd_dict = json.loads(pline)
                 detections.append(
-                    _process_valor_dicts_into_detection(
+                    _process_valor_dicts_into_Detection(
                         gt_dict=gt_dict, pd_dict=pd_dict
                     )
                 )
