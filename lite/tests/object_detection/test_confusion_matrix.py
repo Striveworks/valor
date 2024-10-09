@@ -449,6 +449,12 @@ def test_confusion_matrix(
         as_dict=True,
     )
 
+    rect1_dict = evaluator._convert_example_to_dict(np.array(rect1))
+    rect2_dict = evaluator._convert_example_to_dict(np.array(rect2))
+    rect3_dict = evaluator._convert_example_to_dict(np.array(rect3))
+    rect4_dict = evaluator._convert_example_to_dict(np.array(rect4))
+    rect5_dict = evaluator._convert_example_to_dict(np.array(rect5))
+
     actual_metrics = [m for m in metrics[MetricType.ConfusionMatrix]]
     expected_metrics = [
         {
@@ -461,8 +467,8 @@ def test_confusion_matrix(
                             "examples": [
                                 {
                                     "datum": "uid1",
-                                    "groundtruth": rect1,
-                                    "prediction": rect1,
+                                    "groundtruth": rect1_dict,
+                                    "prediction": rect1_dict,
                                     "score": 0.5,
                                 }
                             ],
@@ -475,7 +481,7 @@ def test_confusion_matrix(
                         "examples": [
                             {
                                 "datum": "uid1",
-                                "prediction": rect5,
+                                "prediction": rect5_dict,
                                 "score": 0.30000001192092896,
                             }
                         ],
@@ -485,7 +491,7 @@ def test_confusion_matrix(
                         "examples": [
                             {
                                 "datum": "uid1",
-                                "prediction": rect4,
+                                "prediction": rect4_dict,
                                 "score": 0.10000000149011612,
                             }
                         ],
@@ -495,7 +501,7 @@ def test_confusion_matrix(
                         "examples": [
                             {
                                 "datum": "uid2",
-                                "prediction": rect2,
+                                "prediction": rect2_dict,
                                 "score": 0.5,
                             }
                         ],
@@ -504,15 +510,21 @@ def test_confusion_matrix(
                 "missing_predictions": {
                     "missed_detection": {
                         "count": 1,
-                        "examples": [{"datum": "uid1", "groundtruth": rect2}],
+                        "examples": [
+                            {"datum": "uid1", "groundtruth": rect2_dict}
+                        ],
                     },
                     "v2": {
                         "count": 1,
-                        "examples": [{"datum": "uid1", "groundtruth": rect3}],
+                        "examples": [
+                            {"datum": "uid1", "groundtruth": rect3_dict}
+                        ],
                     },
                     "low_iou": {
                         "count": 1,
-                        "examples": [{"datum": "uid2", "groundtruth": rect1}],
+                        "examples": [
+                            {"datum": "uid2", "groundtruth": rect1_dict}
+                        ],
                     },
                 },
             },
@@ -531,8 +543,8 @@ def test_confusion_matrix(
                             "examples": [
                                 {
                                     "datum": "uid1",
-                                    "groundtruth": rect1,
-                                    "prediction": rect1,
+                                    "groundtruth": rect1_dict,
+                                    "prediction": rect1_dict,
                                     "score": 0.5,
                                 }
                             ],
@@ -545,7 +557,7 @@ def test_confusion_matrix(
                         "examples": [
                             {
                                 "datum": "uid1",
-                                "prediction": rect5,
+                                "prediction": rect5_dict,
                                 "score": 0.30000001192092896,
                             }
                         ],
@@ -555,7 +567,7 @@ def test_confusion_matrix(
                         "examples": [
                             {
                                 "datum": "uid2",
-                                "prediction": rect2,
+                                "prediction": rect2_dict,
                                 "score": 0.5,
                             }
                         ],
@@ -564,15 +576,21 @@ def test_confusion_matrix(
                 "missing_predictions": {
                     "missed_detection": {
                         "count": 1,
-                        "examples": [{"datum": "uid1", "groundtruth": rect2}],
+                        "examples": [
+                            {"datum": "uid1", "groundtruth": rect2_dict}
+                        ],
                     },
                     "v2": {
                         "count": 1,
-                        "examples": [{"datum": "uid1", "groundtruth": rect3}],
+                        "examples": [
+                            {"datum": "uid1", "groundtruth": rect3_dict}
+                        ],
                     },
                     "low_iou": {
                         "count": 1,
-                        "examples": [{"datum": "uid2", "groundtruth": rect1}],
+                        "examples": [
+                            {"datum": "uid2", "groundtruth": rect1_dict}
+                        ],
                     },
                 },
             },
@@ -591,8 +609,8 @@ def test_confusion_matrix(
                             "examples": [
                                 {
                                     "datum": "uid1",
-                                    "groundtruth": rect1,
-                                    "prediction": rect1,
+                                    "groundtruth": rect1_dict,
+                                    "prediction": rect1_dict,
                                     "score": 0.5,
                                 }
                             ],
@@ -605,7 +623,7 @@ def test_confusion_matrix(
                         "examples": [
                             {
                                 "datum": "uid2",
-                                "prediction": rect2,
+                                "prediction": rect2_dict,
                                 "score": 0.5,
                             }
                         ],
@@ -614,15 +632,21 @@ def test_confusion_matrix(
                 "missing_predictions": {
                     "missed_detection": {
                         "count": 1,
-                        "examples": [{"datum": "uid1", "groundtruth": rect2}],
+                        "examples": [
+                            {"datum": "uid1", "groundtruth": rect2_dict}
+                        ],
                     },
                     "v2": {
                         "count": 1,
-                        "examples": [{"datum": "uid1", "groundtruth": rect3}],
+                        "examples": [
+                            {"datum": "uid1", "groundtruth": rect3_dict}
+                        ],
                     },
                     "low_iou": {
                         "count": 1,
-                        "examples": [{"datum": "uid2", "groundtruth": rect1}],
+                        "examples": [
+                            {"datum": "uid2", "groundtruth": rect1_dict}
+                        ],
                     },
                 },
             },
@@ -641,8 +665,8 @@ def test_confusion_matrix(
                             "examples": [
                                 {
                                     "datum": "uid1",
-                                    "groundtruth": rect1,
-                                    "prediction": rect1,
+                                    "groundtruth": rect1_dict,
+                                    "prediction": rect1_dict,
                                     "score": 0.5,
                                 }
                             ],
@@ -655,7 +679,7 @@ def test_confusion_matrix(
                         "examples": [
                             {
                                 "datum": "uid2",
-                                "prediction": rect2,
+                                "prediction": rect2_dict,
                                 "score": 0.5,
                             }
                         ],
@@ -664,15 +688,21 @@ def test_confusion_matrix(
                 "missing_predictions": {
                     "missed_detection": {
                         "count": 1,
-                        "examples": [{"datum": "uid1", "groundtruth": rect2}],
+                        "examples": [
+                            {"datum": "uid1", "groundtruth": rect2_dict}
+                        ],
                     },
                     "v2": {
                         "count": 1,
-                        "examples": [{"datum": "uid1", "groundtruth": rect3}],
+                        "examples": [
+                            {"datum": "uid1", "groundtruth": rect3_dict}
+                        ],
                     },
                     "low_iou": {
                         "count": 1,
-                        "examples": [{"datum": "uid2", "groundtruth": rect1}],
+                        "examples": [
+                            {"datum": "uid2", "groundtruth": rect1_dict}
+                        ],
                     },
                 },
             },
@@ -689,19 +719,27 @@ def test_confusion_matrix(
                 "missing_predictions": {
                     "v1": {
                         "count": 1,
-                        "examples": [{"datum": "uid1", "groundtruth": rect1}],
+                        "examples": [
+                            {"datum": "uid1", "groundtruth": rect1_dict}
+                        ],
                     },
                     "missed_detection": {
                         "count": 1,
-                        "examples": [{"datum": "uid1", "groundtruth": rect2}],
+                        "examples": [
+                            {"datum": "uid1", "groundtruth": rect2_dict}
+                        ],
                     },
                     "v2": {
                         "count": 1,
-                        "examples": [{"datum": "uid1", "groundtruth": rect3}],
+                        "examples": [
+                            {"datum": "uid1", "groundtruth": rect3_dict}
+                        ],
                     },
                     "low_iou": {
                         "count": 1,
-                        "examples": [{"datum": "uid2", "groundtruth": rect1}],
+                        "examples": [
+                            {"datum": "uid2", "groundtruth": rect1_dict}
+                        ],
                     },
                 },
             },
@@ -718,19 +756,27 @@ def test_confusion_matrix(
                 "missing_predictions": {
                     "v1": {
                         "count": 1,
-                        "examples": [{"datum": "uid1", "groundtruth": rect1}],
+                        "examples": [
+                            {"datum": "uid1", "groundtruth": rect1_dict}
+                        ],
                     },
                     "missed_detection": {
                         "count": 1,
-                        "examples": [{"datum": "uid1", "groundtruth": rect2}],
+                        "examples": [
+                            {"datum": "uid1", "groundtruth": rect2_dict}
+                        ],
                     },
                     "v2": {
                         "count": 1,
-                        "examples": [{"datum": "uid1", "groundtruth": rect3}],
+                        "examples": [
+                            {"datum": "uid1", "groundtruth": rect3_dict}
+                        ],
                     },
                     "low_iou": {
                         "count": 1,
-                        "examples": [{"datum": "uid2", "groundtruth": rect1}],
+                        "examples": [
+                            {"datum": "uid2", "groundtruth": rect1_dict}
+                        ],
                     },
                 },
             },
@@ -772,8 +818,8 @@ def test_confusion_matrix(
                             "examples": [
                                 {
                                     "datum": "uid1",
-                                    "groundtruth": rect1,
-                                    "prediction": rect1,
+                                    "groundtruth": rect1_dict,
+                                    "prediction": rect1_dict,
                                     "score": 0.5,
                                 }
                             ],
@@ -785,8 +831,8 @@ def test_confusion_matrix(
                             "examples": [
                                 {
                                     "datum": "uid1",
-                                    "groundtruth": rect3,
-                                    "prediction": rect5,
+                                    "groundtruth": rect3_dict,
+                                    "prediction": rect5_dict,
                                     "score": 0.30000001192092896,
                                 }
                             ],
@@ -799,7 +845,7 @@ def test_confusion_matrix(
                         "examples": [
                             {
                                 "datum": "uid1",
-                                "prediction": rect4,
+                                "prediction": rect4_dict,
                                 "score": 0.10000000149011612,
                             }
                         ],
@@ -809,7 +855,7 @@ def test_confusion_matrix(
                         "examples": [
                             {
                                 "datum": "uid2",
-                                "prediction": rect2,
+                                "prediction": rect2_dict,
                                 "score": 0.5,
                             }
                         ],
@@ -818,14 +864,16 @@ def test_confusion_matrix(
                 "missing_predictions": {
                     "missed_detection": {
                         "count": 1,
-                        "examples": [{"datum": "uid1", "groundtruth": rect2}],
+                        "examples": [
+                            {"datum": "uid1", "groundtruth": rect2_dict}
+                        ],
                     },
                     "low_iou": {
                         "count": 1,
                         "examples": [
                             {
                                 "datum": "uid2",
-                                "groundtruth": rect1,
+                                "groundtruth": rect1_dict,
                             }
                         ],
                     },
@@ -846,8 +894,8 @@ def test_confusion_matrix(
                             "examples": [
                                 {
                                     "datum": "uid1",
-                                    "groundtruth": rect1,
-                                    "prediction": rect1,
+                                    "groundtruth": rect1_dict,
+                                    "prediction": rect1_dict,
                                     "score": 0.5,
                                 }
                             ],
@@ -859,8 +907,8 @@ def test_confusion_matrix(
                             "examples": [
                                 {
                                     "datum": "uid1",
-                                    "groundtruth": rect3,
-                                    "prediction": rect5,
+                                    "groundtruth": rect3_dict,
+                                    "prediction": rect5_dict,
                                     "score": 0.30000001192092896,
                                 }
                             ],
@@ -873,7 +921,7 @@ def test_confusion_matrix(
                         "examples": [
                             {
                                 "datum": "uid2",
-                                "prediction": rect2,
+                                "prediction": rect2_dict,
                                 "score": 0.5,
                             }
                         ],
@@ -882,14 +930,16 @@ def test_confusion_matrix(
                 "missing_predictions": {
                     "missed_detection": {
                         "count": 1,
-                        "examples": [{"datum": "uid1", "groundtruth": rect2}],
+                        "examples": [
+                            {"datum": "uid1", "groundtruth": rect2_dict}
+                        ],
                     },
                     "low_iou": {
                         "count": 1,
                         "examples": [
                             {
                                 "datum": "uid2",
-                                "groundtruth": rect1,
+                                "groundtruth": rect1_dict,
                             }
                         ],
                     },
@@ -910,8 +960,8 @@ def test_confusion_matrix(
                             "examples": [
                                 {
                                     "datum": "uid1",
-                                    "groundtruth": rect1,
-                                    "prediction": rect1,
+                                    "groundtruth": rect1_dict,
+                                    "prediction": rect1_dict,
                                     "score": 0.5,
                                 }
                             ],
@@ -924,7 +974,7 @@ def test_confusion_matrix(
                         "examples": [
                             {
                                 "datum": "uid2",
-                                "prediction": rect2,
+                                "prediction": rect2_dict,
                                 "score": 0.5,
                             }
                         ],
@@ -933,18 +983,22 @@ def test_confusion_matrix(
                 "missing_predictions": {
                     "missed_detection": {
                         "count": 1,
-                        "examples": [{"datum": "uid1", "groundtruth": rect2}],
+                        "examples": [
+                            {"datum": "uid1", "groundtruth": rect2_dict}
+                        ],
                     },
                     "v2": {
                         "count": 1,
-                        "examples": [{"datum": "uid1", "groundtruth": rect3}],
+                        "examples": [
+                            {"datum": "uid1", "groundtruth": rect3_dict}
+                        ],
                     },
                     "low_iou": {
                         "count": 1,
                         "examples": [
                             {
                                 "datum": "uid2",
-                                "groundtruth": rect1,
+                                "groundtruth": rect1_dict,
                             }
                         ],
                     },
@@ -965,8 +1019,8 @@ def test_confusion_matrix(
                             "examples": [
                                 {
                                     "datum": "uid1",
-                                    "groundtruth": rect1,
-                                    "prediction": rect1,
+                                    "groundtruth": rect1_dict,
+                                    "prediction": rect1_dict,
                                     "score": 0.5,
                                 }
                             ],
@@ -979,7 +1033,7 @@ def test_confusion_matrix(
                         "examples": [
                             {
                                 "datum": "uid2",
-                                "prediction": rect2,
+                                "prediction": rect2_dict,
                                 "score": 0.5,
                             }
                         ],
@@ -988,18 +1042,22 @@ def test_confusion_matrix(
                 "missing_predictions": {
                     "missed_detection": {
                         "count": 1,
-                        "examples": [{"datum": "uid1", "groundtruth": rect2}],
+                        "examples": [
+                            {"datum": "uid1", "groundtruth": rect2_dict}
+                        ],
                     },
                     "v2": {
                         "count": 1,
-                        "examples": [{"datum": "uid1", "groundtruth": rect3}],
+                        "examples": [
+                            {"datum": "uid1", "groundtruth": rect3_dict}
+                        ],
                     },
                     "low_iou": {
                         "count": 1,
                         "examples": [
                             {
                                 "datum": "uid2",
-                                "groundtruth": rect1,
+                                "groundtruth": rect1_dict,
                             }
                         ],
                     },
@@ -1021,24 +1079,28 @@ def test_confusion_matrix(
                         "examples": [
                             {
                                 "datum": "uid1",
-                                "groundtruth": rect1,
+                                "groundtruth": rect1_dict,
                             }
                         ],
                     },
                     "missed_detection": {
                         "count": 1,
-                        "examples": [{"datum": "uid1", "groundtruth": rect2}],
+                        "examples": [
+                            {"datum": "uid1", "groundtruth": rect2_dict}
+                        ],
                     },
                     "v2": {
                         "count": 1,
-                        "examples": [{"datum": "uid1", "groundtruth": rect3}],
+                        "examples": [
+                            {"datum": "uid1", "groundtruth": rect3_dict}
+                        ],
                     },
                     "low_iou": {
                         "count": 1,
                         "examples": [
                             {
                                 "datum": "uid2",
-                                "groundtruth": rect1,
+                                "groundtruth": rect1_dict,
                             }
                         ],
                     },
@@ -1060,24 +1122,28 @@ def test_confusion_matrix(
                         "examples": [
                             {
                                 "datum": "uid1",
-                                "groundtruth": rect1,
+                                "groundtruth": rect1_dict,
                             }
                         ],
                     },
                     "missed_detection": {
                         "count": 1,
-                        "examples": [{"datum": "uid1", "groundtruth": rect2}],
+                        "examples": [
+                            {"datum": "uid1", "groundtruth": rect2_dict}
+                        ],
                     },
                     "v2": {
                         "count": 1,
-                        "examples": [{"datum": "uid1", "groundtruth": rect3}],
+                        "examples": [
+                            {"datum": "uid1", "groundtruth": rect3_dict}
+                        ],
                     },
                     "low_iou": {
                         "count": 1,
                         "examples": [
                             {
                                 "datum": "uid2",
-                                "groundtruth": rect1,
+                                "groundtruth": rect1_dict,
                             }
                         ],
                     },
@@ -1537,8 +1603,18 @@ def test_confusion_matrix_fp_hallucination_edge_case(
                             "examples": [
                                 {
                                     "datum": "uid1",
-                                    "groundtruth": (0.0, 5.0, 0.0, 5.0),
-                                    "prediction": (0.0, 5.0, 0.0, 5.0),
+                                    "groundtruth": {
+                                        "xmin": 0.0,
+                                        "xmax": 5.0,
+                                        "ymin": 0.0,
+                                        "ymax": 5.0,
+                                    },
+                                    "prediction": {
+                                        "xmin": 0.0,
+                                        "xmax": 5.0,
+                                        "ymin": 0.0,
+                                        "ymax": 5.0,
+                                    },
                                     "score": 0.800000011920929,
                                 }
                             ],
@@ -1551,7 +1627,12 @@ def test_confusion_matrix_fp_hallucination_edge_case(
                         "examples": [
                             {
                                 "datum": "uid2",
-                                "prediction": (10.0, 20.0, 10.0, 20.0),
+                                "prediction": {
+                                    "xmin": 10.0,
+                                    "xmax": 20.0,
+                                    "ymin": 10.0,
+                                    "ymax": 20.0,
+                                },
                                 "score": 0.800000011920929,
                             }
                         ],
@@ -1563,7 +1644,12 @@ def test_confusion_matrix_fp_hallucination_edge_case(
                         "examples": [
                             {
                                 "datum": "uid2",
-                                "groundtruth": (0.0, 5.0, 0.0, 5.0),
+                                "groundtruth": {
+                                    "xmin": 0.0,
+                                    "xmax": 5.0,
+                                    "ymin": 0.0,
+                                    "ymax": 5.0,
+                                },
                             }
                         ],
                     }
@@ -1585,7 +1671,12 @@ def test_confusion_matrix_fp_hallucination_edge_case(
                         "examples": [
                             {
                                 "datum": "uid1",
-                                "groundtruth": (0.0, 5.0, 0.0, 5.0),
+                                "groundtruth": {
+                                    "xmin": 0.0,
+                                    "xmax": 5.0,
+                                    "ymin": 0.0,
+                                    "ymax": 5.0,
+                                },
                             }
                         ],
                     }

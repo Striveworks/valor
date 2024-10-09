@@ -436,6 +436,19 @@ class Evaluator:
 
         return metrics
 
+    def _convert_example_to_dict(
+        self, box: NDArray[np.float16]
+    ) -> dict[str, float]:
+        """
+        Converts a cached bounding box example to dictionary format.
+        """
+        return {
+            "xmin": box[0],
+            "xmax": box[1],
+            "ymin": box[2],
+            "ymax": box[3],
+        }
+
     def _unpack_confusion_matrix(
         self,
         confusion_matrix: NDArray[np.float64],
@@ -451,7 +464,7 @@ class Evaluator:
                 | list[
                     dict[
                         str,
-                        str | float | tuple[float, float, float, float],
+                        str | float | dict[str, float],
                     ]
                 ],
             ],
@@ -507,7 +520,7 @@ class Evaluator:
                                     gt_label_idx, pd_label_idx, example_idx
                                 )
                             ],
-                            "groundtruth": tuple(
+                            "groundtruth": self._convert_example_to_dict(
                                 self.groundtruth_examples[
                                     datum_idx(
                                         gt_label_idx,
@@ -520,9 +533,9 @@ class Evaluator:
                                         pd_label_idx,
                                         example_idx,
                                     )
-                                ].tolist()
+                                ]
                             ),
-                            "prediction": tuple(
+                            "prediction": self._convert_example_to_dict(
                                 self.prediction_examples[
                                     datum_idx(
                                         gt_label_idx,
@@ -535,7 +548,7 @@ class Evaluator:
                                         pd_label_idx,
                                         example_idx,
                                     )
-                                ].tolist()
+                                ]
                             ),
                             "score": score_idx(
                                 gt_label_idx, pd_label_idx, example_idx
@@ -560,8 +573,7 @@ class Evaluator:
         str,
         dict[
             str,
-            int
-            | list[dict[str, str | float | tuple[float, float, float, float]]],
+            int | list[dict[str, str | float | dict[str, float]]],
         ],
     ]:
         """
@@ -606,12 +618,10 @@ class Evaluator:
                         "datum": self.index_to_uid[
                             datum_idx(pd_label_idx, example_idx)
                         ],
-                        "prediction": tuple(
+                        "prediction": self._convert_example_to_dict(
                             self.prediction_examples[
                                 datum_idx(pd_label_idx, example_idx)
-                            ][
-                                prediction_idx(pd_label_idx, example_idx)
-                            ].tolist()
+                            ][prediction_idx(pd_label_idx, example_idx)]
                         ),
                         "score": score_idx(pd_label_idx, example_idx),
                     }
@@ -627,13 +637,7 @@ class Evaluator:
         missing_predictions: NDArray[np.int32],
         number_of_labels: int,
         number_of_examples: int,
-    ) -> dict[
-        str,
-        dict[
-            str,
-            int | list[dict[str, str | tuple[float, float, float, float]]],
-        ],
-    ]:
+    ) -> dict[str, dict[str, int | list[dict[str, str | dict[str, float]]]]]:
         """
         Unpacks a numpy array of missing prediction counts and examples.
         """
@@ -667,12 +671,10 @@ class Evaluator:
                         "datum": self.index_to_uid[
                             datum_idx(gt_label_idx, example_idx)
                         ],
-                        "groundtruth": tuple(
+                        "groundtruth": self._convert_example_to_dict(
                             self.groundtruth_examples[
                                 datum_idx(gt_label_idx, example_idx)
-                            ][
-                                groundtruth_idx(gt_label_idx, example_idx)
-                            ].tolist()
+                            ][groundtruth_idx(gt_label_idx, example_idx)]
                         ),
                     }
                     for example_idx in range(number_of_examples)
