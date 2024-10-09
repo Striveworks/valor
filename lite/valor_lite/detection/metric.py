@@ -315,8 +315,8 @@ class ConfusionMatrix:
                     dict[
                         str,  # either `datum`, `groundtruth`, `prediction` or score
                         str  # datum uid
-                        | tuple[
-                            float, float, float, float
+                        | dict[
+                            str, float
                         ]  # bounding box (xmin, xmax, ymin, ymax)
                         | float,  # prediction score
                     ]
@@ -334,8 +334,8 @@ class ConfusionMatrix:
                     str,  # either `datum`, `prediction` or score
                     str  # datum uid
                     | float  # prediction score
-                    | tuple[
-                        float, float, float, float
+                    | dict[
+                        str, float
                     ],  # bounding box (xmin, xmax, ymin, ymax)
                 ]
             ],
@@ -350,8 +350,8 @@ class ConfusionMatrix:
                 dict[
                     str,  # either `datum` or `groundtruth`
                     str  # datum uid
-                    | tuple[
-                        float, float, float, float
+                    | dict[
+                        str, float
                     ],  # bounding box (xmin, xmax, ymin, ymax)
                 ]
             ],
