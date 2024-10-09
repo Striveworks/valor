@@ -692,7 +692,7 @@ class ValorTextGenerationStreamingManager:
         ] + [metric._name_ for metric in self.metrics_to_return]
 
         # Initialize if no joint_df was specified
-        if self.joint_df.empty:
+        if self.joint_df is None or self.joint_df.empty:
             self.joint_df = pd.DataFrame(
                 [],
                 columns=columns,
@@ -714,7 +714,7 @@ class ValorTextGenerationStreamingManager:
                 "The joint_df contains rows with non-unique datum_uid values."
             )
 
-        # Check that for every row either prediction_text or prediction_context_list is not null. It's okay if one is null.
+        # Check that for every row either prediction_text or prediction_context_list is not null. It's okay if one of the two is null, but not both.
         if (
             not self.joint_df[["prediction_text", "prediction_context_list"]]
             .notnull()
@@ -723,19 +723,6 @@ class ValorTextGenerationStreamingManager:
         ):
             raise ValueError(
                 "The joint_df contains rows that are missing both prediction_text and prediction_context_list. Every prediction in the joint_df must have either prediction_text or prediction_context_list."
-            )
-
-        # Check that every row has non-null values for every metric column in self.metrics_to_return
-        if (
-            not self.joint_df[
-                [metric._name_ for metric in self.metrics_to_return]
-            ]
-            .notnull()
-            .all(axis=1)
-            .all()
-        ):
-            raise ValueError(
-                "The joint_df contains rows with missing metric values."
             )
 
     def add_and_evaluate_prediction(
