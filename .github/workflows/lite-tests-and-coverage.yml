@@ -36,7 +36,7 @@ jobs:
       - name: run object detection tests and report coverage
         run: |
           pip install -e ".[test]"
-          COVERAGE_FILE=.coverage.detection python -m coverage run --omit "tests/*"  -m pytest -v tests/detection/
+          COVERAGE_FILE=.coverage.detection python -m coverage run --omit "tests/*"  -m pytest -v tests/cv/detection/
           python -m coverage combine
           python -m coverage report -m
           python -m coverage json
@@ -50,7 +50,21 @@ jobs:
       - name: run semantic segmentation tests and report coverage
         run: |
           pip install -e ".[test]"
-          COVERAGE_FILE=.coverage.segmentation python -m coverage run --omit "tests/*"  -m pytest -v tests/segmentation/
+          COVERAGE_FILE=.coverage.segmentation python -m coverage run --omit "tests/*"  -m pytest -v tests/cv/segmentation/
+          python -m coverage combine
+          python -m coverage report -m
+          python -m coverage json
+          export TOTAL=$(python -c "import json;print(json.load(open('coverage.json'))['totals']['percent_covered_display'])")
+          echo "total=$TOTAL" >> $GITHUB_ENV
+          if (( $TOTAL < 90 )); then
+            echo "Coverage is below 90%"
+            exit 1
+          fi
+        working-directory: ./lite
+      - name: run nlp generation tests and report coverage
+        run: |
+          pip install -e ".[test]"
+          COVERAGE_FILE=.coverage.generation python -m coverage run --omit "tests/*"  -m pytest -v tests/nlp/generation
           python -m coverage combine
           python -m coverage report -m
           python -m coverage json
