@@ -8,7 +8,81 @@ from time import time
 
 import requests
 from tqdm import tqdm
-from valor_lite.object_detection import DataLoader, MetricType
+from valor_lite.object_detection import (
+    BoundingBox,
+    DataLoader,
+    Detection,
+    MetricType,
+)
+
+
+def _get_bbox_extrema(
+    data: list,
+) -> tuple[float, float, float, float]:
+    """Get the bounding box coordinates from a valor Annotation object."""
+    x = [point[0] for shape in data for point in shape]
+    y = [point[1] for shape in data for point in shape]
+    return (min(x), max(x), min(y), max(y))
+
+
+def _convert_valor_dicts_into_Detection(gt_dict: dict, pd_dict: dict):
+    """Convert a groundtruth dictionary and prediction dictionary into a valor_lite Detection object."""
+    gts = []
+    pds = []
+
+    for gann in gt_dict["annotations"]:
+        labels = []
+        for valor_label in gann["labels"]:
+            # NOTE: we only include labels where the key is "name"
+            if valor_label["key"] != "name":
+                continue
+
+            labels.append(valor_label["value"])
+
+        # if the annotation doesn't contain any labels that aren't key == 'name', then we skip that annotation
+        if not labels:
+            continue
+
+        x_min, x_max, y_min, y_max = _get_bbox_extrema(gann["bounding_box"])
+
+        gts.append(
+            BoundingBox(
+                xmin=x_min,
+                xmax=x_max,
+                ymin=y_min,
+                ymax=y_max,
+                labels=labels,
+            )
+        )
+
+    for pann in pd_dict["annotations"]:
+        labels, scores = [], []
+        for valor_label in pann["labels"]:
+            if valor_label["key"] != "name":
+                continue
+            labels.append(valor_label["value"])
+            scores.append(valor_label["score"])
+        if not labels:
+            continue
+
+        x_min, x_max, y_min, y_max = _get_bbox_extrema(pann["bounding_box"])
+
+        pds.append(
+            BoundingBox(
+                xmin=x_min,
+                xmax=x_max,
+                ymin=y_min,
+                ymax=y_max,
+                labels=labels,
+                scores=scores,
+            )
+        )
+
+    return Detection(
+        uid=gt_dict["datum"]["uid"],
+        groundtruths=gts,
+        predictions=pds,
+    )
 
 
 class AnnotationType(str, Enum):
@@ -95,35 +169,29 @@ def ingest(
         with open(pd_path, "r") as pf:
 
             count = 0
-            groundtruths = []
-            predictions = []
+            detections = []
             for gline, pline in zip(gf, pf):
 
-                # groundtruth
                 gt_dict = json.loads(gline)
-                groundtruths.append(gt_dict)
-
-                # prediction
                 pd_dict = json.loads(pline)
-                predictions.append(pd_dict)
+                detections.append(
+                    _convert_valor_dicts_into_Detection(
+                        gt_dict=gt_dict, pd_dict=pd_dict
+                    )
+                )
 
                 count += 1
                 if count >= limit and limit > 0:
                     break
-                elif len(groundtruths) < chunk_size or chunk_size == -1:
+                elif len(detections) < chunk_size or chunk_size == -1:
                     continue
 
-                timer, _ = time_it(manager.add_bounding_boxes_from_valor_dict)(
-                    zip(groundtruths, predictions), True
-                )
+                timer, _ = time_it(manager.add_bounding_boxes)(detections)
                 accumulated_time += timer
-                groundtruths = []
-                predictions = []
+                detections = []
 
-            if groundtruths:
-                timer, _ = time_it(manager.add_bounding_boxes_from_valor_dict)(
-                    zip(groundtruths, predictions), True
-                )
+            if detections:
+                timer, _ = time_it(manager.add_bounding_boxes)(detections)
                 accumulated_time += timer
 
     return accumulated_time

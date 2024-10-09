@@ -7,7 +7,29 @@ from time import time
 
 import requests
 from tqdm import tqdm
-from valor_lite.classification import DataLoader, MetricType
+from valor_lite.classification import Classification, DataLoader, MetricType
+
+
+def _convert_valor_dicts_into_Classification(gt_dict: dict, pd_dict: dict):
+    """Convert a groundtruth dictionary and prediction dictionary into a valor_lite Classification object."""
+    pds = []
+    scores = []
+
+    # there's only one annotation / label per groundtruth in the benchmarking data
+    gt = gt_dict["annotations"][0]["labels"][0]["value"]
+    pds = []
+    scores = []
+    for pann in pd_dict["annotations"]:
+        for valor_label in pann["labels"]:
+            pds.append(valor_label["value"])
+            scores.append(valor_label["score"])
+
+    return Classification(
+        uid=gt_dict["datum"]["uid"],
+        groundtruth=gt,
+        predictions=pds,
+        scores=scores,
+    )
 
 
 def time_it(fn):
@@ -76,35 +98,28 @@ def ingest(
     with open(gt_path, "r") as gf:
         with open(pd_path, "r") as pf:
             count = 0
-            groundtruths = []
-            predictions = []
+            classifications = []
             for gline, pline in zip(gf, pf):
 
-                # groundtruth
                 gt_dict = json.loads(gline)
-                groundtruths.append(gt_dict)
-
-                # prediction
                 pd_dict = json.loads(pline)
-                predictions.append(pd_dict)
-
+                classifications.append(
+                    _convert_valor_dicts_into_Classification(
+                        gt_dict=gt_dict, pd_dict=pd_dict
+                    )
+                )
                 count += 1
                 if count >= limit and limit > 0:
                     break
-                elif len(groundtruths) < chunk_size or chunk_size == -1:
+                elif len(classifications) < chunk_size or chunk_size == -1:
                     continue
 
-                timer, _ = time_it(loader.add_data_from_valor_dict)(
-                    zip(groundtruths, predictions), True
-                )
+                timer, _ = time_it(loader.add_data)(classifications)
                 accumulated_time += timer
-                groundtruths = []
-                predictions = []
+                classifications = []
 
-            if groundtruths:
-                timer, _ = time_it(loader.add_data_from_valor_dict)(
-                    zip(groundtruths, predictions), True
-                )
+            if classifications:
+                timer, _ = time_it(loader.add_data)(classifications)
                 accumulated_time += timer
 
     return accumulated_time

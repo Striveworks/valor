@@ -1,4 +1,3 @@
-import warnings
 from collections import defaultdict
 from dataclasses import dataclass
 from typing import Type
@@ -464,7 +463,7 @@ class Evaluator:
                 | list[
                     dict[
                         str,
-                        str | float | dict[str, float],
+                        str | dict[str, float] | float,
                     ]
                 ],
             ],
@@ -1069,120 +1068,6 @@ class DataLoader:
             show_progress=show_progress,
             annotation_type=Bitmask,
         )
-
-    def add_bounding_boxes_from_valor_dict(
-        self,
-        detections: list[tuple[dict, dict]],
-        show_progress: bool = False,
-    ):
-        """
-        Adds Valor-format detections to the cache.
-
-        Parameters
-        ----------
-        detections : list[tuple[dict, dict]]
-            A list of groundtruth, prediction pairs in Valor-format dictionaries.
-        annotation_type : type[Bitmask] | type[BoundingBox] | type[Polygon]
-            The annotation type to process.
-        show_progress : bool, default=False
-            Toggle for tqdm progress bar.
-        """
-        warnings.warn(
-            "The `...from_valor_dict` functions are deprecated and will be deleted in the near future. Use `add_bounding_boxes`, `add_bitmasks`, or `add_polygons` instead.",
-            DeprecationWarning,
-        )
-
-        def _get_bbox_extrema(
-            data: list,
-        ) -> tuple[float, float, float, float]:
-            """Get the correct representation of an annotation object from a valor dictionary."""
-            x = [point[0] for shape in data for point in shape]
-            y = [point[1] for shape in data for point in shape]
-            return (min(x), max(x), min(y), max(y))
-
-        disable_tqdm = not show_progress
-        for groundtruth, prediction in tqdm(detections, disable=disable_tqdm):
-
-            if not isinstance(groundtruth, dict) or not isinstance(
-                prediction, dict
-            ):
-                raise ValueError(
-                    f"Received values with type `{type(groundtruth)}` which are not valid Valor dictionaries."
-                )
-
-            # update metadata
-            self._evaluator.n_datums += 1
-            self._evaluator.n_groundtruths += len(groundtruth["annotations"])
-            self._evaluator.n_predictions += len(prediction["annotations"])
-
-            # update datum uid index
-            uid_index = self._add_datum(uid=groundtruth["datum"]["uid"])
-
-            # initialize bounding box examples
-            self._evaluator.groundtruth_examples[uid_index] = np.zeros(
-                (len(groundtruth["annotations"]), 4), dtype=np.float16
-            )
-            self._evaluator.prediction_examples[uid_index] = np.zeros(
-                (len(prediction["annotations"]), 4), dtype=np.float16
-            )
-
-            # cache labels and annotations
-            groundtruths = list()
-            predictions = list()
-
-            for gidx, gann in enumerate(groundtruth["annotations"]):
-                if gann["bounding_box"] is None:
-                    raise ValueError(
-                        f"Detection `{groundtruth['datum']['uid']}` contains a ground truth without a bounding box."
-                    )
-                self._evaluator.groundtruth_examples[uid_index][
-                    gidx
-                ] = np.array(
-                    _get_bbox_extrema(gann["bounding_box"]),
-                )
-                for valor_label in gann["labels"]:
-                    if valor_label["key"] != "name":
-                        continue
-                    glabel = f'{valor_label["key" ]}_{valor_label[ "value" ]}'
-                    label_idx = self._add_label(glabel)
-                    self.groundtruth_count[label_idx][uid_index] += 1
-                    groundtruths.append(
-                        (
-                            gidx,
-                            label_idx,
-                            _get_bbox_extrema(gann["bounding_box"]),
-                        )
-                    )
-            for pidx, pann in enumerate(prediction["annotations"]):
-                if pann["bounding_box"] is None:
-                    raise ValueError(
-                        f"Detection `{prediction['datum']['uid']}` contains a prediction without a bounding box."
-                    )
-                self._evaluator.prediction_examples[uid_index][
-                    pidx
-                ] = np.array(_get_bbox_extrema(pann["bounding_box"]))
-                for valor_label in pann["labels"]:
-                    if valor_label["key"] != "name":
-                        continue
-                    plabel = valor_label["value"]
-                    pscore = valor_label["score"]
-                    label_idx = self._add_label(plabel)
-                    self.prediction_count[label_idx][uid_index] += 1
-                    predictions.append(
-                        (
-                            pidx,
-                            label_idx,
-                            pscore,
-                            _get_bbox_extrema(pann["bounding_box"]),
-                        )
-                    )
-
-            self._compute_ious_and_cache_pairs(
-                uid_index=uid_index,
-                groundtruths=groundtruths,
-                predictions=predictions,
-                annotation_type=BoundingBox,
-            )
 
     def finalize(self) -> Evaluator:
         """
