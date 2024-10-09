@@ -10,7 +10,7 @@ from tqdm import tqdm
 from valor_lite.classification import Classification, DataLoader, MetricType
 
 
-def _process_valor_dicts_into_Classification(gt_dict: dict, pd_dict: dict):
+def _convert_valor_dicts_into_Classification(gt_dict: dict, pd_dict: dict):
     """Convert a groundtruth dictionary and prediction dictionary into a valor_lite Classification object."""
     pds = []
     scores = []
@@ -104,7 +104,7 @@ def ingest(
                 gt_dict = json.loads(gline)
                 pd_dict = json.loads(pline)
                 classifications.append(
-                    _process_valor_dicts_into_Classification(
+                    _convert_valor_dicts_into_Classification(
                         gt_dict=gt_dict, pd_dict=pd_dict
                     )
                 )
