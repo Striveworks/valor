@@ -1,7 +1,7 @@
 [project]
 name = "valor-lite"
 dynamic = ["version"]
-description = "Compute valor metrics directly in your client."
+description = "Compute valor metrics locally."
 readme = "README.md"
 requires-python = ">=3.10"
 license = { file = "LICENSE" }

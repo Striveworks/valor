@@ -8,7 +8,12 @@ from time import time
 
 import requests
 from tqdm import tqdm
-from valor_lite.detection import BoundingBox, DataLoader, Detection, MetricType
+from valor_lite.object_detection import (
+    BoundingBox,
+    DataLoader,
+    Detection,
+    MetricType,
+)
 
 
 def _get_bbox_extrema(
@@ -306,7 +311,10 @@ def run_benchmarking_analysis(
             manager = DataLoader()
 
             # ingest + preprocess
-            (ingest_time, preprocessing_time,) = ingest(
+            (
+                ingest_time,
+                preprocessing_time,
+            ) = ingest(
                 manager=manager,
                 gt_path=current_directory / Path(gt_filename),
                 pd_path=current_directory / Path(pd_filename),
