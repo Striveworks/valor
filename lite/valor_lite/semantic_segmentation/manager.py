@@ -4,12 +4,12 @@ from dataclasses import dataclass
 import numpy as np
 from numpy.typing import NDArray
 from tqdm import tqdm
-from valor_lite.cv.segmentation.annotation import Segmentation
-from valor_lite.cv.segmentation.computation import (
+from valor_lite.semantic_segmentation.annotation import Segmentation
+from valor_lite.semantic_segmentation.computation import (
     compute_intermediate_confusion_matrices,
     compute_metrics,
 )
-from valor_lite.cv.segmentation.metric import (
+from valor_lite.semantic_segmentation.metric import (
     F1,
     Accuracy,
     ConfusionMatrix,

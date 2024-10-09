@@ -1,4 +1,4 @@
-from valor_lite.cv.detection import DataLoader, Detection, MetricType
+from valor_lite.object_detection import DataLoader, Detection, MetricType
 
 
 def test_metadata_using_torch_metrics_example(

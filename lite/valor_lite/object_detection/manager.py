@@ -4,16 +4,16 @@ from dataclasses import dataclass
 from typing import Type
 
 import numpy as np
-import valor_lite.cv.detection.annotation as annotation
+import valor_lite.object_detection.annotation as annotation
 from numpy.typing import NDArray
 from tqdm import tqdm
-from valor_lite.cv.detection.annotation import (
+from valor_lite.object_detection.annotation import (
     Bitmask,
     BoundingBox,
     Detection,
     Polygon,
 )
-from valor_lite.cv.detection.computation import (
+from valor_lite.object_detection.computation import (
     compute_bbox_iou,
     compute_bitmask_iou,
     compute_confusion_matrix,
@@ -21,7 +21,7 @@ from valor_lite.cv.detection.computation import (
     compute_polygon_iou,
     compute_ranked_pairs,
 )
-from valor_lite.cv.detection.metric import (
+from valor_lite.object_detection.metric import (
     AP,
     AR,
     F1,

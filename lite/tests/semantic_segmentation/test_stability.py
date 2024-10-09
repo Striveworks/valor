@@ -1,7 +1,7 @@
 from random import choice
 
 import numpy as np
-from valor_lite.cv.segmentation import Bitmask, DataLoader, Segmentation
+from valor_lite.semantic_segmentation import Bitmask, DataLoader, Segmentation
 
 
 def _generate_random_segmentations(

@@ -1,6 +1,6 @@
 import numpy as np
 import pytest
-from valor_lite.cv.segmentation import Bitmask, Segmentation
+from valor_lite.semantic_segmentation import Bitmask, Segmentation
 
 
 def _generate_boolean_mask(

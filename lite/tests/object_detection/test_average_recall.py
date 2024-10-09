@@ -1,5 +1,5 @@
 import numpy as np
-from valor_lite.cv.detection import (
+from valor_lite.object_detection import (
     DataLoader,
     Detection,
     MetricType,

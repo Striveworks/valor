@@ -1,5 +1,5 @@
 import numpy as np
-from valor_lite.cv.segmentation import DataLoader, Segmentation
+from valor_lite.semantic_segmentation import DataLoader, Segmentation
 
 
 def test_filtering(segmentations_from_boxes: list[Segmentation]):

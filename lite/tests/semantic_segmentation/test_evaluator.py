@@ -1,4 +1,4 @@
-from valor_lite.cv.segmentation import DataLoader, Segmentation
+from valor_lite.semantic_segmentation import DataLoader, Segmentation
 
 
 def test_metadata_using_large_random_segmentations(

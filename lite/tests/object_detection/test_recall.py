@@ -1,7 +1,7 @@
-from valor_lite.cv.detection import DataLoader, Detection, MetricType
+from valor_lite.object_detection import DataLoader, Detection, MetricType
 
 
-def test_counts_metrics_first_class(
+def test_recall_metrics_first_class(
     basic_detections_first_class: list[Detection],
     basic_rotated_detections_first_class: list[Detection],
 ):
@@ -20,7 +20,6 @@ def test_counts_metrics_first_class(
         datum uid2
            none
     """
-
     for input_, method in [
         (basic_detections_first_class, DataLoader.add_bounding_boxes),
         (basic_rotated_detections_first_class, DataLoader.add_polygons),
@@ -42,16 +41,12 @@ def test_counts_metrics_first_class(
         assert evaluator.n_groundtruths == 2
         assert evaluator.n_predictions == 1
 
-        # test Counts
-        actual_metrics = [m for m in metrics[MetricType.Counts]]
+        # test Recall
+        actual_metrics = [m for m in metrics[MetricType.Recall]]
         expected_metrics = [
             {
-                "type": "Counts",
-                "value": {
-                    "tp": 1,
-                    "fp": 0,
-                    "fn": 1,
-                },
+                "type": "Recall",
+                "value": 0.5,
                 "parameters": {
                     "iou_threshold": 0.1,
                     "score_threshold": 0.0,
@@ -59,12 +54,8 @@ def test_counts_metrics_first_class(
                 },
             },
             {
-                "type": "Counts",
-                "value": {
-                    "tp": 1,
-                    "fp": 0,
-                    "fn": 1,
-                },
+                "type": "Recall",
+                "value": 0.5,
                 "parameters": {
                     "iou_threshold": 0.6,
                     "score_threshold": 0.0,
@@ -72,12 +63,8 @@ def test_counts_metrics_first_class(
                 },
             },
             {
-                "type": "Counts",
-                "value": {
-                    "tp": 0,
-                    "fp": 0,
-                    "fn": 2,
-                },
+                "type": "Recall",
+                "value": 0.0,
                 "parameters": {
                     "iou_threshold": 0.1,
                     "score_threshold": 0.5,
@@ -85,12 +72,8 @@ def test_counts_metrics_first_class(
                 },
             },
             {
-                "type": "Counts",
-                "value": {
-                    "tp": 0,
-                    "fp": 0,
-                    "fn": 2,
-                },
+                "type": "Recall",
+                "value": 0.0,
                 "parameters": {
                     "iou_threshold": 0.6,
                     "score_threshold": 0.5,
@@ -104,7 +87,7 @@ def test_counts_metrics_first_class(
             assert m in actual_metrics
 
 
-def test_counts_metrics_second_class(
+def test_recall_metrics_second_class(
     basic_detections_second_class: list[Detection],
     basic_rotated_detections_second_class: list[Detection],
 ):
@@ -122,7 +105,6 @@ def test_counts_metrics_second_class(
         datum uid2
             box 2 - label v2 - score 0.98 - fp
     """
-
     for input_, method in [
         (basic_detections_second_class, DataLoader.add_bounding_boxes),
         (basic_rotated_detections_second_class, DataLoader.add_polygons),
@@ -134,6 +116,7 @@ def test_counts_metrics_second_class(
         metrics = evaluator.evaluate(
             iou_thresholds=[0.1, 0.6],
             score_thresholds=[0.0, 0.5],
+            as_dict=True,
         )
 
         assert evaluator.ignored_prediction_labels == []
@@ -143,16 +126,12 @@ def test_counts_metrics_second_class(
         assert evaluator.n_groundtruths == 1
         assert evaluator.n_predictions == 1
 
-        # test Counts
-        actual_metrics = [m.to_dict() for m in metrics[MetricType.Counts]]
+        # test Recall
+        actual_metrics = [m for m in metrics[MetricType.Recall]]
         expected_metrics = [
             {
-                "type": "Counts",
-                "value": {
-                    "tp": 0,
-                    "fp": 1,
-                    "fn": 1,
-                },
+                "type": "Recall",
+                "value": 0.0,
                 "parameters": {
                     "iou_threshold": 0.1,
                     "score_threshold": 0.0,
@@ -160,12 +139,8 @@ def test_counts_metrics_second_class(
                 },
             },
             {
-                "type": "Counts",
-                "value": {
-                    "tp": 0,
-                    "fp": 1,
-                    "fn": 1,
-                },
+                "type": "Recall",
+                "value": 0.0,
                 "parameters": {
                     "iou_threshold": 0.6,
                     "score_threshold": 0.0,
@@ -173,12 +148,8 @@ def test_counts_metrics_second_class(
                 },
             },
             {
-                "type": "Counts",
-                "value": {
-                    "tp": 0,
-                    "fp": 1,
-                    "fn": 1,
-                },
+                "type": "Recall",
+                "value": 0.0,
                 "parameters": {
                     "iou_threshold": 0.1,
                     "score_threshold": 0.5,
@@ -186,12 +157,8 @@ def test_counts_metrics_second_class(
                 },
             },
             {
-                "type": "Counts",
-                "value": {
-                    "tp": 0,
-                    "fp": 1,
-                    "fn": 1,
-                },
+                "type": "Recall",
+                "value": 0.0,
                 "parameters": {
                     "iou_threshold": 0.6,
                     "score_threshold": 0.5,
@@ -205,7 +172,7 @@ def test_counts_metrics_second_class(
             assert m in actual_metrics
 
 
-def test_counts_false_negatives_single_datum_baseline(
+def test_recall_false_negatives_single_datum_baseline(
     false_negatives_single_datum_baseline_detections: list[Detection],
 ):
     """This is the baseline for the below test. In this case there are two predictions and
@@ -223,15 +190,11 @@ def test_counts_false_negatives_single_datum_baseline(
         as_dict=True,
     )
 
-    actual_metrics = [m for m in metrics[MetricType.Counts]]
+    actual_metrics = [m for m in metrics[MetricType.Recall]]
     expected_metrics = [
         {
-            "type": "Counts",
-            "value": {
-                "tp": 1,
-                "fp": 1,
-                "fn": 0,
-            },
+            "type": "Recall",
+            "value": 1.0,
             "parameters": {
                 "iou_threshold": 0.5,
                 "score_threshold": 0.0,
@@ -239,12 +202,8 @@ def test_counts_false_negatives_single_datum_baseline(
             },
         },
         {
-            "type": "Counts",
-            "value": {
-                "tp": 0,
-                "fp": 0,
-                "fn": 1,
-            },
+            "type": "Recall",
+            "value": 0.0,
             "parameters": {
                 "iou_threshold": 0.5,
                 "score_threshold": 0.9,
@@ -258,7 +217,7 @@ def test_counts_false_negatives_single_datum_baseline(
         assert m in actual_metrics
 
 
-def test_counts_false_negatives_single_datum(
+def test_recall_false_negatives_single_datum(
     false_negatives_single_datum_detections: list[Detection],
 ):
     """Tests where high confidence false negative was not being penalized. The
@@ -275,15 +234,11 @@ def test_counts_false_negatives_single_datum(
         as_dict=True,
     )
 
-    actual_metrics = [m for m in metrics[MetricType.Counts]]
+    actual_metrics = [m for m in metrics[MetricType.Recall]]
     expected_metrics = [
         {
-            "type": "Counts",
-            "value": {
-                "tp": 1,
-                "fp": 1,
-                "fn": 0,
-            },
+            "type": "Recall",
+            "value": 1.0,
             "parameters": {
                 "iou_threshold": 0.5,
                 "score_threshold": 0.0,
@@ -291,13 +246,13 @@ def test_counts_false_negatives_single_datum(
             },
         }
     ]
-    for m in actual_metrics:
-        assert m in expected_metrics
     for m in expected_metrics:
         assert m in actual_metrics
+    for m in actual_metrics:
+        assert m in expected_metrics
 
 
-def test_counts_false_negatives_two_datums_one_empty_low_confidence_of_fp(
+def test_recall_false_negatives_two_datums_one_empty_low_confidence_of_fp(
     false_negatives_two_datums_one_empty_low_confidence_of_fp_detections: list[
         Detection
     ],
@@ -322,15 +277,11 @@ def test_counts_false_negatives_two_datums_one_empty_low_confidence_of_fp(
         as_dict=True,
     )
 
-    actual_metrics = [m for m in metrics[MetricType.Counts]]
+    actual_metrics = [m for m in metrics[MetricType.Recall]]
     expected_metrics = [
         {
-            "type": "Counts",
-            "value": {
-                "tp": 1,
-                "fp": 1,
-                "fn": 0,
-            },
+            "type": "Recall",
+            "value": 1.0,
             "parameters": {
                 "iou_threshold": 0.5,
                 "score_threshold": 0.0,
@@ -344,7 +295,7 @@ def test_counts_false_negatives_two_datums_one_empty_low_confidence_of_fp(
         assert m in expected_metrics
 
 
-def test_counts_false_negatives_two_datums_one_empty_high_confidence_of_fp(
+def test_recall_false_negatives_two_datums_one_empty_high_confidence_of_fp(
     false_negatives_two_datums_one_empty_high_confidence_of_fp_detections: list[
         Detection
     ],
@@ -368,15 +319,11 @@ def test_counts_false_negatives_two_datums_one_empty_high_confidence_of_fp(
         as_dict=True,
     )
 
-    actual_metrics = [m for m in metrics[MetricType.Counts]]
+    actual_metrics = [m for m in metrics[MetricType.Recall]]
     expected_metrics = [
         {
-            "type": "Counts",
-            "value": {
-                "tp": 1,
-                "fp": 1,
-                "fn": 0,
-            },
+            "type": "Recall",
+            "value": 1.0,
             "parameters": {
                 "iou_threshold": 0.5,
                 "score_threshold": 0.0,
@@ -390,7 +337,7 @@ def test_counts_false_negatives_two_datums_one_empty_high_confidence_of_fp(
         assert m in expected_metrics
 
 
-def test_counts_false_negatives_two_datums_one_only_with_different_class_low_confidence_of_fp(
+def test_recall_false_negatives_two_datums_one_only_with_different_class_low_confidence_of_fp(
     false_negatives_two_datums_one_only_with_different_class_low_confidence_of_fp_detections: list[
         Detection
     ],
@@ -414,15 +361,11 @@ def test_counts_false_negatives_two_datums_one_only_with_different_class_low_con
         as_dict=True,
     )
 
-    actual_metrics = [m for m in metrics[MetricType.Counts]]
+    actual_metrics = [m for m in metrics[MetricType.Recall]]
     expected_metrics = [
         {
-            "type": "Counts",
-            "value": {
-                "tp": 1,
-                "fp": 1,
-                "fn": 0,
-            },
+            "type": "Recall",
+            "value": 1.0,
             "parameters": {
                 "iou_threshold": 0.5,
                 "score_threshold": 0.0,
@@ -430,12 +373,8 @@ def test_counts_false_negatives_two_datums_one_only_with_different_class_low_con
             },
         },
         {
-            "type": "Counts",
-            "value": {
-                "tp": 0,
-                "fp": 0,
-                "fn": 1,
-            },
+            "type": "Recall",
+            "value": 0.0,
             "parameters": {
                 "iou_threshold": 0.5,
                 "score_threshold": 0.0,
@@ -449,7 +388,7 @@ def test_counts_false_negatives_two_datums_one_only_with_different_class_low_con
         assert m in expected_metrics
 
 
-def test_counts_false_negatives_two_datums_one_only_with_different_class_high_confidence_of_fp(
+def test_recall_false_negatives_two_datums_one_only_with_different_class_high_confidence_of_fp(
     false_negatives_two_images_one_only_with_different_class_high_confidence_of_fp_detections: list[
         Detection
     ],
@@ -473,15 +412,11 @@ def test_counts_false_negatives_two_datums_one_only_with_different_class_high_co
         as_dict=True,
     )
 
-    actual_metrics = [m for m in metrics[MetricType.Counts]]
+    actual_metrics = [m for m in metrics[MetricType.Recall]]
     expected_metrics = [
         {
-            "type": "Counts",
-            "value": {
-                "tp": 1,
-                "fp": 1,
-                "fn": 0,
-            },
+            "type": "Recall",
+            "value": 1.0,
             "parameters": {
                 "iou_threshold": 0.5,
                 "score_threshold": 0.0,
@@ -489,12 +424,8 @@ def test_counts_false_negatives_two_datums_one_only_with_different_class_high_co
             },
         },
         {
-            "type": "Counts",
-            "value": {
-                "tp": 0,
-                "fp": 0,
-                "fn": 1,
-            },
+            "type": "Recall",
+            "value": 0.0,
             "parameters": {
                 "iou_threshold": 0.5,
                 "score_threshold": 0.0,
@@ -506,104 +437,3 @@ def test_counts_false_negatives_two_datums_one_only_with_different_class_high_co
         assert m in actual_metrics
     for m in actual_metrics:
         assert m in expected_metrics
-
-
-def test_counts_ranked_pair_ordering(
-    detection_ranked_pair_ordering: Detection,
-    detection_ranked_pair_ordering_with_bitmasks: Detection,
-    detection_ranked_pair_ordering_with_polygons: Detection,
-):
-
-    for input_, method in [
-        (detection_ranked_pair_ordering, DataLoader.add_bounding_boxes),
-        (
-            detection_ranked_pair_ordering_with_bitmasks,
-            DataLoader.add_bitmasks,
-        ),
-        (
-            detection_ranked_pair_ordering_with_polygons,
-            DataLoader.add_polygons,
-        ),
-    ]:
-        loader = DataLoader()
-        method(loader, detections=[input_])
-        evaluator = loader.finalize()
-
-        assert evaluator.metadata == {
-            "ignored_prediction_labels": [
-                "label4",
-            ],
-            "missing_prediction_labels": [],
-            "n_datums": 1,
-            "n_groundtruths": 3,
-            "n_labels": 4,
-            "n_predictions": 4,
-        }
-
-        metrics = evaluator.evaluate(
-            iou_thresholds=[0.5, 0.75],
-            score_thresholds=[0.0],
-            as_dict=True,
-        )
-
-        actual_metrics = [m for m in metrics[MetricType.Counts]]
-        expected_metrics = [
-            {
-                "type": "Counts",
-                "value": {"tp": 1, "fp": 0, "fn": 0},
-                "parameters": {
-                    "iou_threshold": 0.5,
-                    "score_threshold": 0.0,
-                    "label": "label1",
-                },
-            },
-            {
-                "type": "Counts",
-                "value": {"tp": 1, "fp": 0, "fn": 0},
-                "parameters": {
-                    "iou_threshold": 0.75,
-                    "score_threshold": 0.0,
-                    "label": "label1",
-                },
-            },
-            {
-                "type": "Counts",
-                "value": {"tp": 1, "fp": 0, "fn": 0},
-                "parameters": {
-                    "iou_threshold": 0.5,
-                    "score_threshold": 0.0,
-                    "label": "label2",
-                },
-            },
-            {
-                "type": "Counts",
-                "value": {"tp": 1, "fp": 0, "fn": 0},
-                "parameters": {
-                    "iou_threshold": 0.75,
-                    "score_threshold": 0.0,
-                    "label": "label2",
-                },
-            },
-            {
-                "type": "Counts",
-                "value": {"tp": 0, "fp": 1, "fn": 1},
-                "parameters": {
-                    "iou_threshold": 0.5,
-                    "score_threshold": 0.0,
-                    "label": "label3",
-                },
-            },
-            {
-                "type": "Counts",
-                "value": {"tp": 0, "fp": 1, "fn": 1},
-                "parameters": {
-                    "iou_threshold": 0.75,
-                    "score_threshold": 0.0,
-                    "label": "label3",
-                },
-            },
-        ]
-        for m in actual_metrics:
-            assert m in expected_metrics
-        for m in expected_metrics:
-            assert m in actual_metrics

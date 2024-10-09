@@ -2,7 +2,7 @@ from dataclasses import replace
 
 import numpy as np
 import pytest
-from valor_lite.cv.detection import (
+from valor_lite.object_detection import (
     BoundingBox,
     DataLoader,
     Detection,

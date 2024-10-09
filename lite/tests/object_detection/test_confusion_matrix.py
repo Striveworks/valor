@@ -1,11 +1,11 @@
 import numpy as np
-from valor_lite.cv.detection import (
+from valor_lite.object_detection import (
     DataLoader,
     Detection,
     Evaluator,
     MetricType,
 )
-from valor_lite.cv.detection.computation import compute_confusion_matrix
+from valor_lite.object_detection.computation import compute_confusion_matrix
 
 
 def test_confusion_matrix_no_data():

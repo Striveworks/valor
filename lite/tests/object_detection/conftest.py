@@ -1,7 +1,12 @@
 import numpy as np
 import pytest
 from shapely.geometry import Polygon as ShapelyPolygon
-from valor_lite.cv.detection import Bitmask, BoundingBox, Detection, Polygon
+from valor_lite.object_detection import (
+    Bitmask,
+    BoundingBox,
+    Detection,
+    Polygon,
+)
 
 
 @pytest.fixture

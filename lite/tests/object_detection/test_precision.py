@@ -1,7 +1,7 @@
-from valor_lite.cv.detection import DataLoader, Detection, MetricType
+from valor_lite.object_detection import DataLoader, Detection, MetricType
 
 
-def test_recall_metrics_first_class(
+def test_precision_metrics_first_class(
     basic_detections_first_class: list[Detection],
     basic_rotated_detections_first_class: list[Detection],
 ):
@@ -11,6 +11,7 @@ def test_recall_metrics_first_class(
     groundtruths
         datum uid1
             box 1 - label v1 - tp
+            box 3 - label v2 - fn missing prediction
         datum uid2
             box 2 - label v1 - fn missing prediction
 
@@ -18,7 +19,7 @@ def test_recall_metrics_first_class(
         datum uid1
             box 1 - label v1 - score 0.3 - tp
         datum uid2
-           none
+            box 2 - label v2 - score 0.98 - fp
     """
     for input_, method in [
         (basic_detections_first_class, DataLoader.add_bounding_boxes),
@@ -41,12 +42,12 @@ def test_recall_metrics_first_class(
         assert evaluator.n_groundtruths == 2
         assert evaluator.n_predictions == 1
 
-        # test Recall
-        actual_metrics = [m for m in metrics[MetricType.Recall]]
+        # test Precision
+        actual_metrics = [m for m in metrics[MetricType.Precision]]
         expected_metrics = [
             {
-                "type": "Recall",
-                "value": 0.5,
+                "type": "Precision",
+                "value": 1.0,
                 "parameters": {
                     "iou_threshold": 0.1,
                     "score_threshold": 0.0,
@@ -54,8 +55,8 @@ def test_recall_metrics_first_class(
                 },
             },
             {
-                "type": "Recall",
-                "value": 0.5,
+                "type": "Precision",
+                "value": 1.0,
                 "parameters": {
                     "iou_threshold": 0.6,
                     "score_threshold": 0.0,
@@ -63,7 +64,7 @@ def test_recall_metrics_first_class(
                 },
             },
             {
-                "type": "Recall",
+                "type": "Precision",
                 "value": 0.0,
                 "parameters": {
                     "iou_threshold": 0.1,
@@ -72,7 +73,7 @@ def test_recall_metrics_first_class(
                 },
             },
             {
-                "type": "Recall",
+                "type": "Precision",
                 "value": 0.0,
                 "parameters": {
                     "iou_threshold": 0.6,
@@ -87,7 +88,7 @@ def test_recall_metrics_first_class(
             assert m in actual_metrics
 
 
-def test_recall_metrics_second_class(
+def test_precision_metrics_second_class(
     basic_detections_second_class: list[Detection],
     basic_rotated_detections_second_class: list[Detection],
 ):
@@ -126,11 +127,11 @@ def test_recall_metrics_second_class(
         assert evaluator.n_groundtruths == 1
         assert evaluator.n_predictions == 1
 
-        # test Recall
-        actual_metrics = [m for m in metrics[MetricType.Recall]]
+        # test Precision
+        actual_metrics = [m for m in metrics[MetricType.Precision]]
         expected_metrics = [
             {
-                "type": "Recall",
+                "type": "Precision",
                 "value": 0.0,
                 "parameters": {
                     "iou_threshold": 0.1,
@@ -139,7 +140,7 @@ def test_recall_metrics_second_class(
                 },
             },
             {
-                "type": "Recall",
+                "type": "Precision",
                 "value": 0.0,
                 "parameters": {
                     "iou_threshold": 0.6,
@@ -148,7 +149,7 @@ def test_recall_metrics_second_class(
                 },
             },
             {
-                "type": "Recall",
+                "type": "Precision",
                 "value": 0.0,
                 "parameters": {
                     "iou_threshold": 0.1,
@@ -157,7 +158,7 @@ def test_recall_metrics_second_class(
                 },
             },
             {
-                "type": "Recall",
+                "type": "Precision",
                 "value": 0.0,
                 "parameters": {
                     "iou_threshold": 0.6,
@@ -172,7 +173,7 @@ def test_recall_metrics_second_class(
             assert m in actual_metrics
 
 
-def test_recall_false_negatives_single_datum_baseline(
+def test_precision_false_negatives_single_datum_baseline(
     false_negatives_single_datum_baseline_detections: list[Detection],
 ):
     """This is the baseline for the below test. In this case there are two predictions and
@@ -190,11 +191,11 @@ def test_recall_false_negatives_single_datum_baseline(
         as_dict=True,
     )
 
-    actual_metrics = [m for m in metrics[MetricType.Recall]]
+    actual_metrics = [m for m in metrics[MetricType.Precision]]
     expected_metrics = [
         {
-            "type": "Recall",
-            "value": 1.0,
+            "type": "Precision",
+            "value": 0.5,
             "parameters": {
                 "iou_threshold": 0.5,
                 "score_threshold": 0.0,
@@ -202,7 +203,7 @@ def test_recall_false_negatives_single_datum_baseline(
             },
         },
         {
-            "type": "Recall",
+            "type": "Precision",
             "value": 0.0,
             "parameters": {
                 "iou_threshold": 0.5,
@@ -217,7 +218,7 @@ def test_recall_false_negatives_single_datum_baseline(
         assert m in actual_metrics
 
 
-def test_recall_false_negatives_single_datum(
+def test_precision_false_negatives_single_datum(
     false_negatives_single_datum_detections: list[Detection],
 ):
     """Tests where high confidence false negative was not being penalized. The
@@ -234,11 +235,11 @@ def test_recall_false_negatives_single_datum(
         as_dict=True,
     )
 
-    actual_metrics = [m for m in metrics[MetricType.Recall]]
+    actual_metrics = [m for m in metrics[MetricType.Precision]]
     expected_metrics = [
         {
-            "type": "Recall",
-            "value": 1.0,
+            "type": "Precision",
+            "value": 0.5,
             "parameters": {
                 "iou_threshold": 0.5,
                 "score_threshold": 0.0,
@@ -246,13 +247,13 @@ def test_recall_false_negatives_single_datum(
             },
         }
     ]
-    for m in expected_metrics:
-        assert m in actual_metrics
     for m in actual_metrics:
         assert m in expected_metrics
+    for m in expected_metrics:
+        assert m in actual_metrics
 
 
-def test_recall_false_negatives_two_datums_one_empty_low_confidence_of_fp(
+def test_precision_false_negatives_two_datums_one_empty_low_confidence_of_fp(
     false_negatives_two_datums_one_empty_low_confidence_of_fp_detections: list[
         Detection
     ],
@@ -277,11 +278,11 @@ def test_recall_false_negatives_two_datums_one_empty_low_confidence_of_fp(
         as_dict=True,
     )
 
-    actual_metrics = [m for m in metrics[MetricType.Recall]]
+    actual_metrics = [m for m in metrics[MetricType.Precision]]
     expected_metrics = [
         {
-            "type": "Recall",
-            "value": 1.0,
+            "type": "Precision",
+            "value": 0.5,
             "parameters": {
                 "iou_threshold": 0.5,
                 "score_threshold": 0.0,
@@ -289,13 +290,13 @@ def test_recall_false_negatives_two_datums_one_empty_low_confidence_of_fp(
             },
         }
     ]
-    for m in expected_metrics:
-        assert m in actual_metrics
     for m in actual_metrics:
         assert m in expected_metrics
+    for m in expected_metrics:
+        assert m in actual_metrics
 
 
-def test_recall_false_negatives_two_datums_one_empty_high_confidence_of_fp(
+def test_precision_false_negatives_two_datums_one_empty_high_confidence_of_fp(
     false_negatives_two_datums_one_empty_high_confidence_of_fp_detections: list[
         Detection
     ],
@@ -319,11 +320,11 @@ def test_recall_false_negatives_two_datums_one_empty_high_confidence_of_fp(
         as_dict=True,
     )
 
-    actual_metrics = [m for m in metrics[MetricType.Recall]]
+    actual_metrics = [m for m in metrics[MetricType.Precision]]
     expected_metrics = [
         {
-            "type": "Recall",
-            "value": 1.0,
+            "type": "Precision",
+            "value": 0.5,
             "parameters": {
                 "iou_threshold": 0.5,
                 "score_threshold": 0.0,
@@ -331,13 +332,13 @@ def test_recall_false_negatives_two_datums_one_empty_high_confidence_of_fp(
             },
         }
     ]
-    for m in expected_metrics:
-        assert m in actual_metrics
     for m in actual_metrics:
         assert m in expected_metrics
+    for m in expected_metrics:
+        assert m in actual_metrics
 
 
-def test_recall_false_negatives_two_datums_one_only_with_different_class_low_confidence_of_fp(
+def test_precision_false_negatives_two_datums_one_only_with_different_class_low_confidence_of_fp(
     false_negatives_two_datums_one_only_with_different_class_low_confidence_of_fp_detections: list[
         Detection
     ],
@@ -361,11 +362,11 @@ def test_recall_false_negatives_two_datums_one_only_with_different_class_low_con
         as_dict=True,
     )
 
-    actual_metrics = [m for m in metrics[MetricType.Recall]]
+    actual_metrics = [m for m in metrics[MetricType.Precision]]
     expected_metrics = [
         {
-            "type": "Recall",
-            "value": 1.0,
+            "type": "Precision",
+            "value": 0.5,
             "parameters": {
                 "iou_threshold": 0.5,
                 "score_threshold": 0.0,
@@ -373,7 +374,7 @@ def test_recall_false_negatives_two_datums_one_only_with_different_class_low_con
             },
         },
         {
-            "type": "Recall",
+            "type": "Precision",
             "value": 0.0,
             "parameters": {
                 "iou_threshold": 0.5,
@@ -382,13 +383,13 @@ def test_recall_false_negatives_two_datums_one_only_with_different_class_low_con
             },
         },
     ]
-    for m in expected_metrics:
-        assert m in actual_metrics
     for m in actual_metrics:
         assert m in expected_metrics
+    for m in expected_metrics:
+        assert m in actual_metrics
 
 
-def test_recall_false_negatives_two_datums_one_only_with_different_class_high_confidence_of_fp(
+def test_precision_false_negatives_two_datums_one_only_with_different_class_high_confidence_of_fp(
     false_negatives_two_images_one_only_with_different_class_high_confidence_of_fp_detections: list[
         Detection
     ],
@@ -412,11 +413,11 @@ def test_recall_false_negatives_two_datums_one_only_with_different_class_high_co
         as_dict=True,
     )
 
-    actual_metrics = [m for m in metrics[MetricType.Recall]]
+    actual_metrics = [m for m in metrics[MetricType.Precision]]
     expected_metrics = [
         {
-            "type": "Recall",
-            "value": 1.0,
+            "type": "Precision",
+            "value": 0.5,
             "parameters": {
                 "iou_threshold": 0.5,
                 "score_threshold": 0.0,
@@ -424,7 +425,7 @@ def test_recall_false_negatives_two_datums_one_only_with_different_class_high_co
             },
         },
         {
-            "type": "Recall",
+            "type": "Precision",
             "value": 0.0,
             "parameters": {
                 "iou_threshold": 0.5,
@@ -433,7 +434,7 @@ def test_recall_false_negatives_two_datums_one_only_with_different_class_high_co
             },
         },
     ]
-    for m in expected_metrics:
-        assert m in actual_metrics
     for m in actual_metrics:
         assert m in expected_metrics
+    for m in expected_metrics:
+        assert m in actual_metrics

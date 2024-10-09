@@ -1,6 +1,6 @@
 import numpy as np
 from shapely.geometry import Polygon as ShapelyPolygon
-from valor_lite.cv.detection.computation import (
+from valor_lite.object_detection.computation import (
     compute_bbox_iou,
     compute_bitmask_iou,
     compute_polygon_iou,

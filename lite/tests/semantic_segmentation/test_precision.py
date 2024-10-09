@@ -1,4 +1,4 @@
-from valor_lite.cv.segmentation import (
+from valor_lite.semantic_segmentation import (
     DataLoader,
     MetricType,
     Precision,

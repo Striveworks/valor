@@ -48,7 +48,7 @@ assert metrics[MetricType.Precision][0].to_dict() == {
 ### Object Detection
 
 ```python
-from valor_lite.cv.detection import DataLoader, Detection, BoundingBox, MetricType
+from valor_lite.object_detection import DataLoader, Detection, BoundingBox, MetricType
 
 detections = [
     Detection(
@@ -103,7 +103,7 @@ assert metrics[MetricType.Precision][0].to_dict() == {
 
 ```python
 import numpy as np
-from valor_lite.cv.segmentation import DataLoader, Segmentation, Bitmask, MetricType
+from valor_lite.semantic_segmentation import DataLoader, Segmentation, Bitmask, MetricType
 
 segmentations = [
     Segmentation(

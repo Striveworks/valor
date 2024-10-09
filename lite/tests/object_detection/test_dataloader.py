@@ -3,7 +3,7 @@ import json
 import numpy as np
 import pytest
 from shapely.geometry import Polygon as ShapelyPolygon
-from valor_lite.cv.detection import (
+from valor_lite.object_detection import (
     Bitmask,
     BoundingBox,
     DataLoader,

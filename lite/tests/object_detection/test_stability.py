@@ -1,6 +1,6 @@
 from random import choice, uniform
 
-from valor_lite.cv.detection import BoundingBox, DataLoader, Detection
+from valor_lite.object_detection import BoundingBox, DataLoader, Detection
 
 
 def _generate_random_detections(

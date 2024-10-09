@@ -36,7 +36,7 @@ jobs:
       - name: run object detection tests and report coverage
         run: |
           pip install -e ".[test]"
-          COVERAGE_FILE=.coverage.detection python -m coverage run --omit "tests/*"  -m pytest -v tests/cv/detection/
+          COVERAGE_FILE=.coverage.detection python -m coverage run --omit "tests/*"  -m pytest -v tests/cv/object_detection/
           python -m coverage combine
           python -m coverage report -m
           python -m coverage json
@@ -50,7 +50,7 @@ jobs:
       - name: run semantic segmentation tests and report coverage
         run: |
           pip install -e ".[test]"
-          COVERAGE_FILE=.coverage.segmentation python -m coverage run --omit "tests/*"  -m pytest -v tests/cv/segmentation/
+          COVERAGE_FILE=.coverage.segmentation python -m coverage run --omit "tests/*"  -m pytest -v tests/cv/semantic_segmentation/
           python -m coverage combine
           python -m coverage report -m
           python -m coverage json
@@ -64,7 +64,7 @@ jobs:
       # - name: run nlp generation tests and report coverage
       #   run: |
       #     pip install -e ".[test]"
-      #     COVERAGE_FILE=.coverage.generation python -m coverage run --omit "tests/*"  -m pytest -v tests/nlp/generation
+      #     COVERAGE_FILE=.coverage.generation python -m coverage run --omit "tests/*"  -m pytest -v tests/text_generation
       #     python -m coverage combine
       #     python -m coverage report -m
       #     python -m coverage json

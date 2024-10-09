@@ -1,23 +1,28 @@
-from valor_lite.cv.segmentation import F1, DataLoader, MetricType, Segmentation
+from valor_lite.semantic_segmentation import (
+    DataLoader,
+    MetricType,
+    Recall,
+    Segmentation,
+)
 
 
-def test_f1_basic_segmentations(basic_segmentations: list[Segmentation]):
+def test_recall_basic_segmentations(basic_segmentations: list[Segmentation]):
     loader = DataLoader()
     loader.add_data(basic_segmentations)
     evaluator = loader.finalize()
 
     metrics = evaluator.evaluate(as_dict=True)
 
-    actual_metrics = [m for m in metrics[MetricType.F1]]
+    actual_metrics = [m for m in metrics[MetricType.Recall]]
     expected_metrics = [
         {
-            "type": "F1",
-            "value": 2 / 3,
+            "type": "Recall",
+            "value": 0.5,
             "parameters": {"label": "v1"},
         },
         {
-            "type": "F1",
-            "value": 2 / 3,
+            "type": "Recall",
+            "value": 1.0,
             "parameters": {"label": "v2"},
         },
     ]
@@ -27,7 +32,7 @@ def test_f1_basic_segmentations(basic_segmentations: list[Segmentation]):
         assert m in actual_metrics
 
 
-def test_f1_segmentations_from_boxes(
+def test_recall_segmentations_from_boxes(
     segmentations_from_boxes: list[Segmentation],
 ):
     loader = DataLoader()
@@ -36,16 +41,16 @@ def test_f1_segmentations_from_boxes(
 
     metrics = evaluator.evaluate(as_dict=True)
 
-    actual_metrics = [m for m in metrics[MetricType.F1]]
+    actual_metrics = [m for m in metrics[MetricType.Recall]]
     expected_metrics = [
         {
-            "type": "F1",
+            "type": "Recall",
             "value": 0.5,  # 50% overlap
             "parameters": {"label": "v1"},
         },
         {
-            "type": "F1",
-            "value": 1 / 10000,  # overlaps 1 pixel out of 20,000
+            "type": "Recall",
+            "value": 1 / 15000,  # overlaps 1 pixel out of 15,000 groundtruths
             "parameters": {"label": "v2"},
         },
     ]
@@ -55,7 +60,7 @@ def test_f1_segmentations_from_boxes(
         assert m in actual_metrics
 
 
-def test_f1_large_random_segmentations(
+def test_recall_large_random_segmentations(
     large_random_segmentations: list[Segmentation],
 ):
     loader = DataLoader()
@@ -64,8 +69,8 @@ def test_f1_large_random_segmentations(
 
     metrics = evaluator.evaluate()
 
-    for m in metrics[MetricType.F1]:
-        assert isinstance(m, F1)
+    for m in metrics[MetricType.Recall]:
+        assert isinstance(m, Recall)
         match m.label:
             case "v1":
                 assert round(m.value, 1) == 0.9

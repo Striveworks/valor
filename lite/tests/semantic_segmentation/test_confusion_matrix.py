@@ -1,4 +1,8 @@
-from valor_lite.cv.segmentation import DataLoader, MetricType, Segmentation
+from valor_lite.semantic_segmentation import (
+    DataLoader,
+    MetricType,
+    Segmentation,
+)
 
 
 def test_confusion_matrix_basic_segmentations(
