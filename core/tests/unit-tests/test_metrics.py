@@ -288,6 +288,44 @@ def test_DetailedPrecisionRecallCurve():
     }
 
 
+def test_text_gen_metric_status():
+    parameters = {
+        "datum_uid": "uid1",
+        "prediction": "text",
+    }
+
+    m = metrics.AnswerCorrectnessMetric(
+        status="success",
+        value=0.5,
+        parameters=parameters,
+    )
+    assert m.to_dict() == {
+        "type": "AnswerCorrectness",
+        "status": "success",
+        "value": 0.5,
+        "parameters": parameters,
+    }
+
+    m = metrics.AnswerCorrectnessMetric(
+        status="error",
+        value=None,
+        parameters=parameters,
+    )
+    assert m.to_dict() == {
+        "type": "AnswerCorrectness",
+        "status": "error",
+        "value": None,
+        "parameters": parameters,
+    }
+
+    with pytest.raises(ValueError):
+        metrics.AnswerCorrectnessMetric(
+            status="error",
+            value=0.5,
+            parameters=parameters,
+        )
+
+
 def test_AnswerCorrectnessMetric():
     parameters = {
         "datum_uid": "uid1",
@@ -295,20 +333,24 @@ def test_AnswerCorrectnessMetric():
     }
 
     m = metrics.AnswerCorrectnessMetric(
+        status="success",
         value=0.5,
         parameters=parameters,
     )
     assert m.to_dict() == {
         "type": "AnswerCorrectness",
+        "status": "success",
         "value": 0.5,
         "parameters": parameters,
     }
 
     with pytest.raises(TypeError):
-        metrics.AnswerCorrectnessMetric(value="value", parameters=parameters)  # type: ignore - testing
+        metrics.AnswerCorrectnessMetric(status="success", value="value", parameters=parameters)  # type: ignore - testing
 
     with pytest.raises(ValueError):
-        metrics.AnswerCorrectnessMetric(value=1.3, parameters=parameters)
+        metrics.AnswerCorrectnessMetric(
+            status="success", value=1.3, parameters=parameters
+        )
 
 
 def test_AnswerRelevanceMetric():
@@ -318,20 +360,24 @@ def test_AnswerRelevanceMetric():
     }
 
     m = metrics.AnswerRelevanceMetric(
+        status="success",
         value=0.5,
         parameters=parameters,
     )
     assert m.to_dict() == {
         "type": "AnswerRelevance",
+        "status": "success",
         "value": 0.5,
         "parameters": parameters,
     }
 
     with pytest.raises(TypeError):
-        metrics.AnswerRelevanceMetric(value="value", parameters=parameters)  # type: ignore - testing
+        metrics.AnswerRelevanceMetric(status="success", value="value", parameters=parameters)  # type: ignore - testing
 
     with pytest.raises(ValueError):
-        metrics.AnswerRelevanceMetric(value=1.3, parameters=parameters)
+        metrics.AnswerRelevanceMetric(
+            status="success", value=1.3, parameters=parameters
+        )
 
 
 def test_BiasMetric():
@@ -341,20 +387,22 @@ def test_BiasMetric():
     }
 
     m = metrics.BiasMetric(
+        status="success",
         value=0.5,
         parameters=parameters,
     )
     assert m.to_dict() == {
         "type": "Bias",
+        "status": "success",
         "value": 0.5,
         "parameters": parameters,
     }
 
     with pytest.raises(TypeError):
-        metrics.BiasMetric(value="value", parameters=parameters)  # type: ignore - testing
+        metrics.BiasMetric(status="success", value="value", parameters=parameters)  # type: ignore - testing
 
     with pytest.raises(ValueError):
-        metrics.BiasMetric(value=-0.2, parameters=parameters)
+        metrics.BiasMetric(status="success", value=-0.2, parameters=parameters)
 
 
 def test_BLEUMetric():
@@ -365,20 +413,22 @@ def test_BLEUMetric():
     }
 
     m = metrics.BLEUMetric(
+        status="success",
         value=0.5,
         parameters=parameters,
     )
     assert m.to_dict() == {
         "type": "BLEU",
+        "status": "success",
         "value": 0.5,
         "parameters": parameters,
     }
 
     with pytest.raises(TypeError):
-        metrics.BLEUMetric(value="value", parameters=parameters)  # type: ignore - testing
+        metrics.BLEUMetric(status="success", value="value", parameters=parameters)  # type: ignore - testing
 
     with pytest.raises(ValueError):
-        metrics.BLEUMetric(value=1.3, parameters=parameters)
+        metrics.BLEUMetric(status="success", value=1.3, parameters=parameters)
 
 
 def test_ContextPrecisionMetric():
@@ -388,20 +438,24 @@ def test_ContextPrecisionMetric():
     }
 
     m = metrics.ContextPrecisionMetric(
+        status="success",
         value=0.5,
         parameters=parameters,
     )
     assert m.to_dict() == {
         "type": "ContextPrecision",
+        "status": "success",
         "value": 0.5,
         "parameters": parameters,
     }
 
     with pytest.raises(TypeError):
-        metrics.ContextPrecisionMetric(value="value", parameters=parameters)  # type: ignore - testing
+        metrics.ContextPrecisionMetric(status="success", value="value", parameters=parameters)  # type: ignore - testing
 
     with pytest.raises(ValueError):
-        metrics.ContextPrecisionMetric(value=1.3, parameters=parameters)
+        metrics.ContextPrecisionMetric(
+            status="success", value=1.3, parameters=parameters
+        )
 
 
 def test_ContextRecallMetric():
@@ -411,20 +465,24 @@ def test_ContextRecallMetric():
     }
 
     m = metrics.ContextRecallMetric(
+        status="success",
         value=0.5,
         parameters=parameters,
     )
     assert m.to_dict() == {
         "type": "ContextRecall",
+        "status": "success",
         "value": 0.5,
         "parameters": parameters,
     }
 
     with pytest.raises(TypeError):
-        metrics.ContextRecallMetric(value="value", parameters=parameters)  # type: ignore - testing
+        metrics.ContextRecallMetric(status="success", value="value", parameters=parameters)  # type: ignore - testing
 
     with pytest.raises(ValueError):
-        metrics.ContextRecallMetric(value=1.3, parameters=parameters)
+        metrics.ContextRecallMetric(
+            status="success", value=1.3, parameters=parameters
+        )
 
 
 def test_ContextRelevanceMetric():
@@ -434,20 +492,24 @@ def test_ContextRelevanceMetric():
     }
 
     m = metrics.ContextRelevanceMetric(
+        status="success",
         value=0.5,
         parameters=parameters,
     )
     assert m.to_dict() == {
         "type": "ContextRelevance",
+        "status": "success",
         "value": 0.5,
         "parameters": parameters,
     }
 
     with pytest.raises(TypeError):
-        metrics.ContextRelevanceMetric(value="value", parameters=parameters)  # type: ignore - testing
+        metrics.ContextRelevanceMetric(status="success", value="value", parameters=parameters)  # type: ignore - testing
 
     with pytest.raises(ValueError):
-        metrics.ContextRelevanceMetric(value=1.3, parameters=parameters)
+        metrics.ContextRelevanceMetric(
+            status="success", value=1.3, parameters=parameters
+        )
 
 
 def test_FaithfulnessMetric():
@@ -458,20 +520,24 @@ def test_FaithfulnessMetric():
     }
 
     m = metrics.FaithfulnessMetric(
+        status="success",
         value=0.5,
         parameters=parameters,
     )
     assert m.to_dict() == {
         "type": "Faithfulness",
+        "status": "success",
         "value": 0.5,
         "parameters": parameters,
     }
 
     with pytest.raises(TypeError):
-        metrics.FaithfulnessMetric(value="value", parameters=parameters)  # type: ignore - testing
+        metrics.FaithfulnessMetric(status="success", value="value", parameters=parameters)  # type: ignore - testing
 
     with pytest.raises(ValueError):
-        metrics.FaithfulnessMetric(value=1.3, parameters=parameters)
+        metrics.FaithfulnessMetric(
+            status="success", value=1.3, parameters=parameters
+        )
 
 
 def test_HallucinationMetric():
@@ -482,20 +548,24 @@ def test_HallucinationMetric():
     }
 
     m = metrics.HallucinationMetric(
+        status="success",
         value=0.5,
         parameters=parameters,
     )
     assert m.to_dict() == {
         "type": "Hallucination",
+        "status": "success",
         "value": 0.5,
         "parameters": parameters,
     }
 
     with pytest.raises(TypeError):
-        metrics.HallucinationMetric(value="value", parameters=parameters)  # type: ignore - testing
+        metrics.HallucinationMetric(status="success", value="value", parameters=parameters)  # type: ignore - testing
 
     with pytest.raises(ValueError):
-        metrics.HallucinationMetric(value=1.3, parameters=parameters)
+        metrics.HallucinationMetric(
+            status="success", value=1.3, parameters=parameters
+        )
 
 
 def test_ROUGEMetric():
@@ -512,6 +582,7 @@ def test_ROUGEMetric():
     }
 
     m = metrics.ROUGEMetric(
+        status="success",
         value={
             "rouge1": 0.8,
             "rouge2": 0.6,
@@ -522,6 +593,7 @@ def test_ROUGEMetric():
     )
     assert m.to_dict() == {
         "type": "ROUGE",
+        "status": "success",
         "value": {
             "rouge1": 0.8,
             "rouge2": 0.6,
@@ -532,10 +604,11 @@ def test_ROUGEMetric():
     }
 
     with pytest.raises(TypeError):
-        metrics.ROUGEMetric(value="value", parameters=parameters)  # type: ignore - testing
+        metrics.ROUGEMetric(status="success", value="value", parameters=parameters)  # type: ignore - testing
 
     with pytest.raises(ValueError):
         metrics.ROUGEMetric(
+            status="success",
             value={
                 "rouge1": 0.8,
                 "rouge2": 1.2,
@@ -553,26 +626,30 @@ def test_SummaryCoherenceMetric():
     }
 
     m = metrics.SummaryCoherenceMetric(
+        status="success",
         value=2,
         parameters=parameters,
     )
     assert m.to_dict() == {
         "type": "SummaryCoherence",
+        "status": "success",
         "value": 2,
         "parameters": parameters,
     }
 
     with pytest.raises(TypeError):
-        metrics.SummaryCoherenceMetric(value=0.7, parameters=parameters)  # type: ignore - testing
+        metrics.SummaryCoherenceMetric(status="success", value=0.7, parameters=parameters)  # type: ignore - testing
 
     with pytest.raises(TypeError):
-        metrics.SummaryCoherenceMetric(value=2.5, parameters=parameters)  # type: ignore - testing
+        metrics.SummaryCoherenceMetric(status="success", value=2.5, parameters=parameters)  # type: ignore - testing
 
     with pytest.raises(TypeError):
-        metrics.SummaryCoherenceMetric(value="value", parameters=parameters)  # type: ignore - testing
+        metrics.SummaryCoherenceMetric(status="success", value="value", parameters=parameters)  # type: ignore - testing
 
     with pytest.raises(ValueError):
-        metrics.SummaryCoherenceMetric(value=0, parameters=parameters)
+        metrics.SummaryCoherenceMetric(
+            status="success", value=0, parameters=parameters
+        )
 
 
 def test_ToxicityMetric():
@@ -582,17 +659,21 @@ def test_ToxicityMetric():
     }
 
     m = metrics.ToxicityMetric(
+        status="success",
         value=0.5,
         parameters=parameters,
     )
     assert m.to_dict() == {
         "type": "Toxicity",
+        "status": "success",
         "value": 0.5,
         "parameters": parameters,
     }
 
     with pytest.raises(TypeError):
-        metrics.ToxicityMetric(value="value", parameters=parameters)  # type: ignore - testing
+        metrics.ToxicityMetric(status="success", value="value", parameters=parameters)  # type: ignore - testing
 
     with pytest.raises(ValueError):
-        metrics.ToxicityMetric(value=1.3, parameters=parameters)
+        metrics.ToxicityMetric(
+            status="success", value=1.3, parameters=parameters
+        )

@@ -6,6 +6,7 @@ from nltk.tokenize import RegexpTokenizer
 from nltk.translate import bleu_score
 from valor_core import enums, metrics, schemas, utilities
 from valor_core.enums import MetricType, ROUGEType
+from valor_core.exceptions import InvalidLLMResponseError
 from valor_core.llm_clients import (
     LLMClient,
     MockLLMClient,
@@ -193,14 +194,14 @@ def _calculate_sentence_bleu(
 
 
 def _setup_llm_client(
-    llm_api_params: dict[str, str | dict],
+    llm_api_params: dict[str, str | int | dict],
 ) -> LLMClient:
     """
     Setup an LLM client for LLM guided evaluation.
 
     Parameters
     ----------
-    llm_api_params : dict[str, str | dict], optional
+    llm_api_params : dict[str, str | int | dict], optional
         The parameters to setup the client with.
 
     Returns
@@ -250,7 +251,7 @@ def _setup_llm_client(
 def _compute_text_generation_metrics(
     data: list[tuple[str, list[str], int, str, list[str]]],
     metrics_to_return: list[MetricType] = [],
-    llm_api_params: dict[str, str | dict] | None = None,
+    llm_api_params: dict[str, str | int | dict] | None = None,
     metric_params: dict[str, dict] = {},
 ) -> list[
     metrics.AnswerCorrectnessMetric
@@ -275,7 +276,7 @@ def _compute_text_generation_metrics(
         A list of tuples, where each tuple contains the prediction text, the prediction context list, the datum UID, the datum text, and the ground truth texts.
     metrics_to_return: list[MetricType]
         The list of metrics to compute, store, and return to the user.
-    llm_api_params: dict[str, str | dict], optional
+    llm_api_params: dict[str, str | int | dict], optional
         A dictionary of parameters for the LLM API.
     metric_params: dict, optional
         A dictionary of optional parameters to pass in to specific metrics.
@@ -330,19 +331,33 @@ def _compute_text_generation_metrics(
         ) in data:
             if is_AnswerCorrectness_enabled:
                 assert client
-                output += [
-                    metrics.AnswerCorrectnessMetric(
-                        value=client.answer_correctness(
-                            query=datum_text,
-                            prediction=prediction_text,
-                            groundtruth_list=groundtruth_texts,
-                        ),
-                        parameters={
-                            "datum_uid": datum_uid,
-                            "prediction": prediction_text,
-                        },
+                try:
+                    value = client.answer_correctness(
+                        query=datum_text,
+                        prediction=prediction_text,
+                        groundtruth_list=groundtruth_texts,
                     )
-                ]
+                    output += [
+                        metrics.AnswerCorrectnessMetric(
+                            status="success",
+                            value=value,
+                            parameters={
+                                "datum_uid": datum_uid,
+                                "prediction": prediction_text,
+                            },
+                        )
+                    ]
+                except InvalidLLMResponseError:
+                    output += [
+                        metrics.AnswerCorrectnessMetric(
+                            status="error",
+                            value=None,
+                            parameters={
+                                "datum_uid": datum_uid,
+                                "prediction": prediction_text,
+                            },
+                        )
+                    ]
 
             if is_BLEU_enabled:
                 bleu_params = metric_params.get("BLEU", {})
@@ -357,6 +372,7 @@ def _compute_text_generation_metrics(
 
                 output += [
                     metrics.BLEUMetric(
+                        status="success",
                         value=metric["value"],
                         parameters={
                             "datum_uid": datum_uid,
@@ -369,34 +385,62 @@ def _compute_text_generation_metrics(
 
             if is_ContextPrecision_enabled:
                 assert client
-                output += [
-                    metrics.ContextPrecisionMetric(
-                        value=client.context_precision(
-                            query=datum_text,
-                            ordered_context_list=prediction_context_list,
-                            groundtruth_list=groundtruth_texts,
-                        ),
-                        parameters={
-                            "datum_uid": datum_uid,
-                            "context_list": prediction_context_list,
-                        },
+                try:
+                    value = client.context_precision(
+                        query=datum_text,
+                        ordered_context_list=prediction_context_list,
+                        groundtruth_list=groundtruth_texts,
                     )
-                ]
+                    output += [
+                        metrics.ContextPrecisionMetric(
+                            status="success",
+                            value=value,
+                            parameters={
+                                "datum_uid": datum_uid,
+                                "context_list": prediction_context_list,
+                            },
+                        )
+                    ]
+                except InvalidLLMResponseError:
+                    output += [
+                        metrics.ContextPrecisionMetric(
+                            status="error",
+                            value=None,
+                            parameters={
+                                "datum_uid": datum_uid,
+                                "context_list": prediction_context_list,
+                            },
+                        )
+                    ]
 
             if is_ContextRecall_enabled:
                 assert client
-                output += [
-                    metrics.ContextRecallMetric(
-                        value=client.context_recall(
-                            context_list=prediction_context_list,
-                            groundtruth_list=groundtruth_texts,
-                        ),
-                        parameters={
-                            "datum_uid": datum_uid,
-                            "context_list": prediction_context_list,
-                        },
+                try:
+                    value = client.context_recall(
+                        context_list=prediction_context_list,
+                        groundtruth_list=groundtruth_texts,
                     )
-                ]
+                    output += [
+                        metrics.ContextRecallMetric(
+                            status="success",
+                            value=value,
+                            parameters={
+                                "datum_uid": datum_uid,
+                                "context_list": prediction_context_list,
+                            },
+                        )
+                    ]
+                except InvalidLLMResponseError:
+                    output += [
+                        metrics.ContextRecallMetric(
+                            status="error",
+                            value=None,
+                            parameters={
+                                "datum_uid": datum_uid,
+                                "context_list": prediction_context_list,
+                            },
+                        )
+                    ]
 
             if is_ROUGE_enabled:
                 rouge_params = metric_params.get("ROUGE", {})
@@ -421,6 +465,7 @@ def _compute_text_generation_metrics(
 
                 output += [
                     metrics.ROUGEMetric(
+                        status="success",
                         value=metric["value"],
                         parameters={
                             "datum_uid": datum_uid,
@@ -451,101 +496,196 @@ def _compute_text_generation_metrics(
             _,
         ) in data:
             if is_AnswerRelevance_enabled:
-                score = client.answer_relevance(
-                    query=datum_text,
-                    text=prediction_text,
-                )
-                output += [
-                    metrics.AnswerRelevanceMetric(
-                        value=score,
-                        parameters={
-                            "datum_uid": datum_uid,
-                            "prediction": prediction_text,
-                        },
+                try:
+                    value = client.answer_relevance(
+                        query=datum_text,
+                        text=prediction_text,
                     )
-                ]
+                    output += [
+                        metrics.AnswerRelevanceMetric(
+                            status="success",
+                            value=value,
+                            parameters={
+                                "datum_uid": datum_uid,
+                                "prediction": prediction_text,
+                            },
+                        )
+                    ]
+                except InvalidLLMResponseError:
+                    output += [
+                        metrics.AnswerRelevanceMetric(
+                            status="error",
+                            value=None,
+                            parameters={
+                                "datum_uid": datum_uid,
+                                "prediction": prediction_text,
+                            },
+                        )
+                    ]
             if is_Bias_enabled:
-                score = client.bias(text=prediction_text)
-                output += [
-                    metrics.BiasMetric(
-                        value=score,
-                        parameters={
-                            "datum_uid": datum_uid,
-                            "prediction": prediction_text,
-                        },
-                    )
-                ]
+                try:
+                    value = client.bias(text=prediction_text)
+                    output += [
+                        metrics.BiasMetric(
+                            status="success",
+                            value=value,
+                            parameters={
+                                "datum_uid": datum_uid,
+                                "prediction": prediction_text,
+                            },
+                        )
+                    ]
+                except InvalidLLMResponseError:
+                    output += [
+                        metrics.BiasMetric(
+                            status="error",
+                            value=None,
+                            parameters={
+                                "datum_uid": datum_uid,
+                                "prediction": prediction_text,
+                            },
+                        )
+                    ]
 
             if is_ContextRelevance_enabled:
-                score = client.context_relevance(
-                    query=datum_text, context_list=prediction_context_list
-                )
-                output += [
-                    metrics.ContextRelevanceMetric(
-                        value=score,
-                        parameters={
-                            "datum_uid": datum_uid,
-                            "context_list": prediction_context_list,
-                        },
+                try:
+                    value = client.context_relevance(
+                        query=datum_text, context_list=prediction_context_list
                     )
-                ]
+                    output += [
+                        metrics.ContextRelevanceMetric(
+                            status="success",
+                            value=value,
+                            parameters={
+                                "datum_uid": datum_uid,
+                                "context_list": prediction_context_list,
+                            },
+                        )
+                    ]
+                except InvalidLLMResponseError:
+                    output += [
+                        metrics.ContextRelevanceMetric(
+                            status="error",
+                            value=None,
+                            parameters={
+                                "datum_uid": datum_uid,
+                                "context_list": prediction_context_list,
+                            },
+                        )
+                    ]
 
             if is_Faithfulness_enabled:
-                score = client.faithfulness(
-                    text=prediction_text, context_list=prediction_context_list
-                )
-                output += [
-                    metrics.FaithfulnessMetric(
-                        value=score,
-                        parameters={
-                            "datum_uid": datum_uid,
-                            "prediction": prediction_text,
-                            "context_list": prediction_context_list,
-                        },
+                try:
+                    value = client.faithfulness(
+                        text=prediction_text,
+                        context_list=prediction_context_list,
                     )
-                ]
+                    output += [
+                        metrics.FaithfulnessMetric(
+                            status="success",
+                            value=value,
+                            parameters={
+                                "datum_uid": datum_uid,
+                                "prediction": prediction_text,
+                                "context_list": prediction_context_list,
+                            },
+                        )
+                    ]
+                except InvalidLLMResponseError:
+                    output += [
+                        metrics.FaithfulnessMetric(
+                            status="error",
+                            value=None,
+                            parameters={
+                                "datum_uid": datum_uid,
+                                "prediction": prediction_text,
+                                "context_list": prediction_context_list,
+                            },
+                        )
+                    ]
 
             if is_Hallucination_enabled:
-                score = client.hallucination(
-                    text=prediction_text, context_list=prediction_context_list
-                )
-                output += [
-                    metrics.HallucinationMetric(
-                        value=score,
-                        parameters={
-                            "datum_uid": datum_uid,
-                            "prediction": prediction_text,
-                            "context_list": prediction_context_list,
-                        },
+                try:
+                    value = client.hallucination(
+                        text=prediction_text,
+                        context_list=prediction_context_list,
                     )
-                ]
+                    output += [
+                        metrics.HallucinationMetric(
+                            status="success",
+                            value=value,
+                            parameters={
+                                "datum_uid": datum_uid,
+                                "prediction": prediction_text,
+                                "context_list": prediction_context_list,
+                            },
+                        )
+                    ]
+                except InvalidLLMResponseError:
+                    output += [
+                        metrics.HallucinationMetric(
+                            status="error",
+                            value=None,
+                            parameters={
+                                "datum_uid": datum_uid,
+                                "prediction": prediction_text,
+                                "context_list": prediction_context_list,
+                            },
+                        )
+                    ]
 
             if is_SummaryCoherence_enabled:
-                score = client.summary_coherence(
-                    text=datum_text,
-                    summary=prediction_text,
-                )
-                output += [
-                    metrics.SummaryCoherenceMetric(
-                        value=score,
-                        parameters={
-                            "datum_uid": datum_uid,
-                            "prediction": prediction_text,
-                        },
+                try:
+                    value = client.summary_coherence(
+                        text=datum_text,
+                        summary=prediction_text,
                     )
-                ]
+                    output += [
+                        metrics.SummaryCoherenceMetric(
+                            status="success",
+                            value=value,
+                            parameters={
+                                "datum_uid": datum_uid,
+                                "prediction": prediction_text,
+                            },
+                        )
+                    ]
+                except InvalidLLMResponseError:
+                    output += [
+                        metrics.SummaryCoherenceMetric(
+                            status="error",
+                            value=None,
+                            parameters={
+                                "datum_uid": datum_uid,
+                                "prediction": prediction_text,
+                            },
+                        )
+                    ]
 
             if is_Toxicity_enabled:
-                score = client.toxicity(text=prediction_text)
-                output += [
-                    metrics.ToxicityMetric(
-                        value=score,
-                        parameters={
-                            "datum_uid": datum_uid,
-                            "prediction": prediction_text,
-                        },
-                    )
-                ]
+                try:
+                    value = client.toxicity(text=prediction_text)
+                    output += [
+                        metrics.ToxicityMetric(
+                            status="success",
+                            value=value,
+                            parameters={
+                                "datum_uid": datum_uid,
+                                "prediction": prediction_text,
+                            },
+                        )
+                    ]
+                except InvalidLLMResponseError:
+                    output += [
+                        metrics.ToxicityMetric(
+                            status="error",
+                            value=None,
+                            parameters={
+                                "datum_uid": datum_uid,
+                                "prediction": prediction_text,
+                            },
+                        )
+                    ]
 
     return output
 
@@ -583,7 +723,7 @@ def evaluate_text_generation(
     predictions: list[schemas.Prediction],
     metrics_to_return: list[MetricType],
     groundtruths: list[schemas.GroundTruth] = [],
-    llm_api_params: dict[str, str | dict] | None = None,
+    llm_api_params: dict[str, str | int | dict] | None = None,
     metric_params: dict[str, dict] = {},
 ) -> schemas.Evaluation:
     """
@@ -597,7 +737,7 @@ def evaluate_text_generation(
         The list of metrics to compute, store, and return to the user. There is no default value, so the user must specify the metrics they want to compute.
     groundtruths : list[schemas.GroundTruth], optional
         A list of ground truths. Ground truths are not required for all text generation metrics.
-    llm_api_params : dict[str, str | dict], optional
+    llm_api_params : dict[str, str | int | dict], optional
         A dictionary of parameters for the LLM API.
     metric_params : dict, optional
         A dictionary of optional parameters to pass in to specific metrics.
