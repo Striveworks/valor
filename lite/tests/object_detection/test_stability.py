@@ -1,6 +1,11 @@
 from random import choice, uniform
 
-from valor_lite.object_detection import BoundingBox, DataLoader, Detection
+from valor_lite.object_detection import (
+    BoundingBox,
+    DataLoader,
+    Detection,
+    MetricType,
+)
 
 
 def _generate_random_detections(
@@ -81,3 +86,19 @@ def test_fuzz_detections_with_filtering():
             score_thresholds=[0.25, 0.75],
             filter_=filter_,
         )
+
+
+def test_fuzz_confusion_matrix():
+    dets = _generate_random_detections(1000, 30, "abcde")
+    loader = DataLoader()
+    loader.add_bounding_boxes(dets)
+    evaluator = loader.finalize()
+    evaluator.evaluate(
+        iou_thresholds=[0.25, 0.75],
+        score_thresholds=[0.5],
+        metrics_to_return=[MetricType.ConfusionMatrix],
+    )
+
+
+if __name__ == "__main__":
+    test_fuzz_confusion_matrix()
