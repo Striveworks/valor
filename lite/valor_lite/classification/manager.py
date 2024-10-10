@@ -253,7 +253,7 @@ class Evaluator:
 
         metrics[MetricType.ROCAUC] = [
             ROCAUC(
-                value=rocauc[label_idx],
+                value=float(rocauc[label_idx]),
                 label=self.index_to_label[label_idx],
             )
             for label_idx in range(label_metadata.shape[0])
@@ -262,7 +262,7 @@ class Evaluator:
 
         metrics[MetricType.mROCAUC] = [
             mROCAUC(
-                value=mean_rocauc,
+                value=float(mean_rocauc),
             )
         ]
 
@@ -276,10 +276,10 @@ class Evaluator:
             row = counts[:, label_idx]
             metrics[MetricType.Counts].append(
                 Counts(
-                    tp=row[:, 0].tolist(),
-                    fp=row[:, 1].tolist(),
-                    fn=row[:, 2].tolist(),
-                    tn=row[:, 3].tolist(),
+                    tp=[int(value) for value in row[:, 0].tolist()],
+                    fp=[int(value) for value in row[:, 1].tolist()],
+                    fn=[int(value) for value in row[:, 2].tolist()],
+                    tn=[int(value) for value in row[:, 3].tolist()],
                     **kwargs,
                 )
             )
@@ -290,13 +290,18 @@ class Evaluator:
 
             metrics[MetricType.Precision].append(
                 Precision(
-                    value=precision[:, label_idx].tolist(),
+                    value=[
+                        float(value)
+                        for value in precision[:, label_idx].tolist()
+                    ],
                     **kwargs,
                 )
             )
             metrics[MetricType.Recall].append(
                 Recall(
-                    value=recall[:, label_idx].tolist(),
+                    value=[
+                        float(value) for value in recall[:, label_idx].tolist()
+                    ],
                     **kwargs,
                 )
             )
@@ -308,7 +313,10 @@ class Evaluator:
             )
             metrics[MetricType.F1].append(
                 F1(
-                    value=f1_score[:, label_idx].tolist(),
+                    value=[
+                        float(value)
+                        for value in f1_score[:, label_idx].tolist()
+                    ],
                     **kwargs,
                 )
             )

@@ -239,7 +239,7 @@ class Evaluator:
 
         metrics[MetricType.Accuracy] = [
             Accuracy(
-                value=accuracy,
+                value=float(accuracy),
             )
         ]
 

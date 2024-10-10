@@ -1,3 +1,4 @@
+import numpy as np
 from valor_lite.object_detection import DataLoader, Detection, MetricType
 
 
@@ -108,3 +109,43 @@ def test_metrics_to_return(basic_detections_first_class: list[Detection]):
     ]
     metrics = evaluator.evaluate(metrics_to_return)
     assert metrics.keys() == set(metrics_to_return)
+
+
+def _flatten_metrics(m) -> list:
+    if isinstance(m, dict):
+        keys = list(m.keys())
+        values = [
+            inner_value
+            for value in m.values()
+            for inner_value in _flatten_metrics(value)
+        ]
+        return keys + values
+    elif isinstance(m, list):
+        return [
+            inner_value
+            for value in m
+            for inner_value in _flatten_metrics(value)
+        ]
+    else:
+        return [m]
+
+
+def test_output_types_dont_contain_numpy(basic_detections: list[Detection]):
+    manager = DataLoader()
+    manager.add_bounding_boxes(basic_detections)
+    evaluator = manager.finalize()
+
+    metrics = evaluator.evaluate(
+        score_thresholds=[0.25, 0.75],
+        metrics_to_return=[
+            *MetricType.base_metrics(),
+            MetricType.ConfusionMatrix,
+        ],
+        as_dict=True,
+    )
+
+    values = _flatten_metrics(metrics)
+    for value in values:
+        print(value)
+        if isinstance(value, (np.generic, np.ndarray)):
+            raise TypeError

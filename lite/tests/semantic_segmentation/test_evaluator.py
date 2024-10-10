@@ -1,3 +1,4 @@
+import numpy as np
 from valor_lite.semantic_segmentation import DataLoader, Segmentation
 
 
@@ -27,3 +28,39 @@ def test_metadata_using_large_random_segmentations(
         "number_of_groundtruth_pixels": 36000000,
         "number_of_prediction_pixels": 36000000,
     }
+
+
+def _flatten_metrics(m) -> list:
+    if isinstance(m, dict):
+        keys = list(m.keys())
+        values = [
+            inner_value
+            for value in m.values()
+            for inner_value in _flatten_metrics(value)
+        ]
+        return keys + values
+    elif isinstance(m, list):
+        return [
+            inner_value
+            for value in m
+            for inner_value in _flatten_metrics(value)
+        ]
+    else:
+        return [m]
+
+
+def test_output_types_dont_contain_numpy(
+    segmentations_from_boxes: list[Segmentation],
+):
+    manager = DataLoader()
+    manager.add_data(segmentations_from_boxes)
+    evaluator = manager.finalize()
+
+    metrics = evaluator.evaluate(
+        as_dict=True,
+    )
+
+    values = _flatten_metrics(metrics)
+    for value in values:
+        if isinstance(value, (np.generic, np.ndarray)):
+            raise TypeError(value)

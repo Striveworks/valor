@@ -279,7 +279,7 @@ class Evaluator:
 
         metrics[MetricType.AP] = [
             AP(
-                value=average_precision[iou_idx][label_idx],
+                value=float(average_precision[iou_idx][label_idx]),
                 iou_threshold=iou_thresholds[iou_idx],
                 label=self.index_to_label[label_idx],
             )
@@ -290,7 +290,7 @@ class Evaluator:
 
         metrics[MetricType.mAP] = [
             mAP(
-                value=mean_average_precision[iou_idx],
+                value=float(mean_average_precision[iou_idx]),
                 iou_threshold=iou_thresholds[iou_idx],
             )
             for iou_idx in range(mean_average_precision.shape[0])
@@ -298,7 +298,7 @@ class Evaluator:
 
         metrics[MetricType.APAveragedOverIOUs] = [
             APAveragedOverIOUs(
-                value=average_precision_average_over_ious[label_idx],
+                value=float(average_precision_average_over_ious[label_idx]),
                 iou_thresholds=iou_thresholds,
                 label=self.index_to_label[label_idx],
             )
@@ -308,14 +308,14 @@ class Evaluator:
 
         metrics[MetricType.mAPAveragedOverIOUs] = [
             mAPAveragedOverIOUs(
-                value=mean_average_precision_average_over_ious,
+                value=float(mean_average_precision_average_over_ious),
                 iou_thresholds=iou_thresholds,
             )
         ]
 
         metrics[MetricType.AR] = [
             AR(
-                value=average_recall[score_idx][label_idx],
+                value=float(average_recall[score_idx][label_idx]),
                 iou_thresholds=iou_thresholds,
                 score_threshold=score_thresholds[score_idx],
                 label=self.index_to_label[label_idx],
@@ -327,7 +327,7 @@ class Evaluator:
 
         metrics[MetricType.mAR] = [
             mAR(
-                value=mean_average_recall[score_idx],
+                value=float(mean_average_recall[score_idx]),
                 iou_thresholds=iou_thresholds,
                 score_threshold=score_thresholds[score_idx],
             )
@@ -336,7 +336,7 @@ class Evaluator:
 
         metrics[MetricType.ARAveragedOverScores] = [
             ARAveragedOverScores(
-                value=average_recall_averaged_over_scores[label_idx],
+                value=float(average_recall_averaged_over_scores[label_idx]),
                 score_thresholds=score_thresholds,
                 iou_thresholds=iou_thresholds,
                 label=self.index_to_label[label_idx],
@@ -347,7 +347,7 @@ class Evaluator:
 
         metrics[MetricType.mARAveragedOverScores] = [
             mARAveragedOverScores(
-                value=mean_average_recall_averaged_over_scores,
+                value=float(mean_average_recall_averaged_over_scores),
                 score_thresholds=score_thresholds,
                 iou_thresholds=iou_thresholds,
             )
@@ -355,7 +355,9 @@ class Evaluator:
 
         metrics[MetricType.PrecisionRecallCurve] = [
             PrecisionRecallCurve(
-                precision=list(pr_curves[iou_idx][label_idx]),
+                precision=[
+                    float(point) for point in pr_curves[iou_idx][label_idx]
+                ],
                 iou_threshold=iou_threshold,
                 label=label,
             )
@@ -389,25 +391,25 @@ class Evaluator:
 
                     metrics[MetricType.Precision].append(
                         Precision(
-                            value=row[3],
+                            value=float(row[3]),
                             **kwargs,
                         )
                     )
                     metrics[MetricType.Recall].append(
                         Recall(
-                            value=row[4],
+                            value=float(row[4]),
                             **kwargs,
                         )
                     )
                     metrics[MetricType.F1].append(
                         F1(
-                            value=row[5],
+                            value=float(row[5]),
                             **kwargs,
                         )
                     )
                     metrics[MetricType.Accuracy].append(
                         Accuracy(
-                            value=row[6],
+                            value=float(row[6]),
                             **kwargs,
                         )
                     )
@@ -442,10 +444,10 @@ class Evaluator:
         Converts a cached bounding box example to dictionary format.
         """
         return {
-            "xmin": box[0],
-            "xmax": box[1],
-            "ymin": box[2],
-            "ymax": box[3],
+            "xmin": float(box[0]),
+            "xmax": float(box[1]),
+            "ymin": float(box[2]),
+            "ymax": float(box[3]),
         }
 
     def _unpack_confusion_matrix(
