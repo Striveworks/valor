@@ -31,13 +31,13 @@ manager.add_data(
 )
 evaluator = manager.finalize()
 
-metrics = evaluator.compute_metrics()
+metrics = evaluator.evaluate()
 
 f1_metrics = metrics[MetricType.F1]
 accuracy_metrics = metrics[MetricType.Accuracy]
 
 filter_mask = evaluator.create_filter(datum_uids=["uid1", "uid2"])
-filtered_metrics = evaluator.compute_metrics(filter_mask=filter_mask)
+filtered_metrics = evaluator.evaluate(filter_mask=filter_mask)
 """
 
 
@@ -190,9 +190,8 @@ class Evaluator:
             n_pixels=self._n_pixels_per_datum[mask_datums].sum(),
         )
 
-    def compute_metrics(
+    def compute_precision_recall_iou(
         self,
-        metrics_to_return: list[MetricType] = MetricType.base(),
         filter_: Filter | None = None,
         as_dict: bool = False,
     ) -> dict[MetricType, list]:
@@ -201,10 +200,10 @@ class Evaluator:
 
         Parameters
         ----------
-        metrics_to_return : list[MetricType]
-            A list of metrics to return in the results.
         filter_ : Filter, optional
             An optional filter object.
+        as_dict : bool, default=False
+            An option to return metrics as dictionaries.
 
         Returns
         -------
@@ -316,10 +315,6 @@ class Evaluator:
                 )
             )
 
-        for metric in set(metrics.keys()):
-            if metric not in metrics_to_return:
-                del metrics[metric]
-
         if as_dict:
             return {
                 mtype: [metric.to_dict() for metric in mvalues]
@@ -327,6 +322,30 @@ class Evaluator:
             }
 
         return metrics
+
+    def evaluate(
+        self,
+        filter_: Filter | None = None,
+        as_dict: bool = False,
+    ) -> dict[MetricType, list]:
+        """
+        Computes all available metrics.
+
+        Parameters
+        ----------
+        filter_ : Filter, optional
+            An optional filter object.
+        as_dict : bool, default=False
+            An option to return metrics as dictionaries.
+
+        Returns
+        -------
+        dict[MetricType, list]
+            A dictionary mapping metric type to lists of metrics.
+        """
+        return self.compute_precision_recall_iou(
+            filter_=filter_, as_dict=as_dict
+        )
 
 
 class DataLoader:

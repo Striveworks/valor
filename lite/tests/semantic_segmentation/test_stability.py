@@ -54,7 +54,7 @@ def test_fuzz_segmentations():
         loader = DataLoader()
         loader.add_data(segmentations)
         evaluator = loader.finalize()
-        evaluator.compute_metrics()
+        evaluator.evaluate()
 
 
 def test_fuzz_segmentations_with_filtering():
@@ -80,6 +80,6 @@ def test_fuzz_segmentations_with_filtering():
             datum_uids=datum_subset,
         )
 
-        evaluator.compute_metrics(
+        evaluator.evaluate(
             filter_=filter_,
         )

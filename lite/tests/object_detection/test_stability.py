@@ -46,7 +46,7 @@ def test_fuzz_detections():
         loader = DataLoader()
         loader.add_bounding_boxes(detections)
         evaluator = loader.finalize()
-        evaluator.compute_metrics(
+        evaluator.evaluate(
             iou_thresholds=[0.25, 0.75],
             score_thresholds=[0.25, 0.75],
         )
@@ -76,7 +76,7 @@ def test_fuzz_detections_with_filtering():
             datum_uids=datum_subset,
         )
 
-        evaluator.compute_metrics(
+        evaluator.evaluate(
             iou_thresholds=[0.25, 0.75],
             score_thresholds=[0.25, 0.75],
             filter_=filter_,

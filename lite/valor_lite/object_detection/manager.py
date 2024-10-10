@@ -50,13 +50,13 @@ loader.add_bounding_boxes(
 )
 evaluator = loader.finalize()
 
-metrics = evaluator.compute_metrics(iou_thresholds=[0.5])
+metrics = evaluator.evaluate(iou_thresholds=[0.5])
 
 ap_metrics = metrics[MetricType.AP]
 ar_metrics = metrics[MetricType.AR]
 
 filter_mask = evaluator.create_filter(datum_uids=["uid1", "uid2"])
-filtered_metrics = evaluator.compute_metrics(iou_thresholds=[0.5], filter_mask=filter_mask)
+filtered_metrics = evaluator.evaluate(iou_thresholds=[0.5], filter_mask=filter_mask)
 """
 
 
@@ -133,6 +133,84 @@ class Evaluator:
             "ignored_prediction_labels": self.ignored_prediction_labels,
             "missing_prediction_labels": self.missing_prediction_labels,
         }
+
+    def create_filter(
+        self,
+        datum_uids: list[str] | NDArray[np.int32] | None = None,
+        labels: list[str] | NDArray[np.int32] | None = None,
+    ) -> Filter:
+        """
+        Creates a filter that can be passed to an evaluation.
+
+        Parameters
+        ----------
+        datum_uids : list[str] | NDArray[np.int32], optional
+            An optional list of string uids or a numpy array of uid indices.
+        labels : list[str] | NDArray[np.int32], optional
+            An optional list of labels or a numpy array of label indices.
+
+        Returns
+        -------
+        Filter
+            A filter object that can be passed to the `evaluate` method.
+        """
+
+        n_datums = self._label_metadata_per_datum.shape[1]
+        n_labels = self._label_metadata_per_datum.shape[2]
+
+        mask_ranked = np.ones((self._ranked_pairs.shape[0], 1), dtype=np.bool_)
+        mask_detailed = np.ones(
+            (self._detailed_pairs.shape[0], 1), dtype=np.bool_
+        )
+        mask_datums = np.ones(n_datums, dtype=np.bool_)
+        mask_labels = np.ones(n_labels, dtype=np.bool_)
+
+        if datum_uids is not None:
+            if isinstance(datum_uids, list):
+                datum_uids = np.array(
+                    [self.uid_to_index[uid] for uid in datum_uids],
+                    dtype=np.int32,
+                )
+            mask_ranked[
+                ~np.isin(self._ranked_pairs[:, 0].astype(int), datum_uids)
+            ] = False
+            mask_detailed[
+                ~np.isin(self._detailed_pairs[:, 0].astype(int), datum_uids)
+            ] = False
+            mask_datums[~np.isin(np.arange(n_datums), datum_uids)] = False
+
+        if labels is not None:
+            if isinstance(labels, list):
+                labels = np.array(
+                    [self.label_to_index[label] for label in labels]
+                )
+            mask_ranked[
+                ~np.isin(self._ranked_pairs[:, 4].astype(int), labels)
+            ] = False
+            mask_detailed[
+                ~np.isin(self._detailed_pairs[:, 4].astype(int), labels)
+            ] = False
+            mask_labels[~np.isin(np.arange(n_labels), labels)] = False
+
+        mask_label_metadata = (
+            mask_datums[:, np.newaxis] & mask_labels[np.newaxis, :]
+        )
+        label_metadata_per_datum = self._label_metadata_per_datum.copy()
+        label_metadata_per_datum[:, ~mask_label_metadata] = 0
+
+        label_metadata = np.zeros_like(self._label_metadata, dtype=np.int32)
+        label_metadata = np.transpose(
+            np.sum(
+                label_metadata_per_datum,
+                axis=1,
+            )
+        )
+
+        return Filter(
+            ranked_indices=np.where(mask_ranked)[0],
+            detailed_indices=np.where(mask_detailed)[0],
+            label_metadata=label_metadata,
+        )
 
     def _convert_example_to_dict(
         self, box: NDArray[np.float16]
@@ -382,7 +460,7 @@ class Evaluator:
             for gt_label_idx in range(number_of_labels)
         }
 
-    def compute_metrics(
+    def compute_precision_recall(
         self,
         iou_thresholds: list[float] = [0.5, 0.75, 0.9],
         score_thresholds: list[float] = [0.5],
@@ -667,83 +745,49 @@ class Evaluator:
             return [m.to_dict() for m in matrices]
         return matrices
 
-    def create_filter(
+    def evaluate(
         self,
-        datum_uids: list[str] | NDArray[np.int32] | None = None,
-        labels: list[str] | NDArray[np.int32] | None = None,
-    ) -> Filter:
+        iou_thresholds: list[float] = [0.5, 0.75, 0.9],
+        score_thresholds: list[float] = [0.5],
+        number_of_examples: int = 0,
+        filter_: Filter | None = None,
+        as_dict: bool = False,
+    ) -> dict[MetricType, list]:
         """
-        Creates a filter that can be passed to an evaluation.
+        Computes all avaiable metrics.
 
         Parameters
         ----------
-        datum_uids : list[str] | NDArray[np.int32], optional
-            An optional list of string uids or a numpy array of uid indices.
-        labels : list[str] | NDArray[np.int32], optional
-            An optional list of labels or a numpy array of label indices.
+        iou_thresholds : list[float]
+            A list of IoU thresholds to compute metrics over.
+        score_thresholds : list[float]
+            A list of score thresholds to compute metrics over.
+        number_of_examples : int, default=0
+            Maximum number of annotation examples to return in ConfusionMatrix.
+        filter_ : Filter, optional
+            An optional filter object.
+        as_dict : bool, default=False
+            An option to return metrics as dictionaries.
 
         Returns
         -------
-        Filter
-            A filter object that can be passed to the `evaluate` method.
+        dict[MetricType, list]
+            A dictionary mapping metric type to a list of metrics.
         """
-
-        n_datums = self._label_metadata_per_datum.shape[1]
-        n_labels = self._label_metadata_per_datum.shape[2]
-
-        mask_ranked = np.ones((self._ranked_pairs.shape[0], 1), dtype=np.bool_)
-        mask_detailed = np.ones(
-            (self._detailed_pairs.shape[0], 1), dtype=np.bool_
+        results = self.compute_precision_recall(
+            iou_thresholds=iou_thresholds,
+            score_thresholds=score_thresholds,
+            filter_=filter_,
+            as_dict=as_dict,
         )
-        mask_datums = np.ones(n_datums, dtype=np.bool_)
-        mask_labels = np.ones(n_labels, dtype=np.bool_)
-
-        if datum_uids is not None:
-            if isinstance(datum_uids, list):
-                datum_uids = np.array(
-                    [self.uid_to_index[uid] for uid in datum_uids],
-                    dtype=np.int32,
-                )
-            mask_ranked[
-                ~np.isin(self._ranked_pairs[:, 0].astype(int), datum_uids)
-            ] = False
-            mask_detailed[
-                ~np.isin(self._detailed_pairs[:, 0].astype(int), datum_uids)
-            ] = False
-            mask_datums[~np.isin(np.arange(n_datums), datum_uids)] = False
-
-        if labels is not None:
-            if isinstance(labels, list):
-                labels = np.array(
-                    [self.label_to_index[label] for label in labels]
-                )
-            mask_ranked[
-                ~np.isin(self._ranked_pairs[:, 4].astype(int), labels)
-            ] = False
-            mask_detailed[
-                ~np.isin(self._detailed_pairs[:, 4].astype(int), labels)
-            ] = False
-            mask_labels[~np.isin(np.arange(n_labels), labels)] = False
-
-        mask_label_metadata = (
-            mask_datums[:, np.newaxis] & mask_labels[np.newaxis, :]
+        results[MetricType.ConfusionMatrix] = self.compute_confusion_matrix(
+            iou_thresholds=iou_thresholds,
+            score_thresholds=score_thresholds,
+            number_of_examples=number_of_examples,
+            filter_=filter_,
+            as_dict=as_dict,
         )
-        label_metadata_per_datum = self._label_metadata_per_datum.copy()
-        label_metadata_per_datum[:, ~mask_label_metadata] = 0
-
-        label_metadata = np.zeros_like(self._label_metadata, dtype=np.int32)
-        label_metadata = np.transpose(
-            np.sum(
-                label_metadata_per_datum,
-                axis=1,
-            )
-        )
-
-        return Filter(
-            ranked_indices=np.where(mask_ranked)[0],
-            detailed_indices=np.where(mask_detailed)[0],
-            label_metadata=label_metadata,
-        )
+        return results
 
 
 class DataLoader:

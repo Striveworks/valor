@@ -12,6 +12,7 @@ class MetricType(Enum):
     Recall = "Recall"
     Accuracy = "Accuracy"
     F1 = "F1"
+    ConfusionMatrix = "ConfusionMatrix"
 
 
 @dataclass

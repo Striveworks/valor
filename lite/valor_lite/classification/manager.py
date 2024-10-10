@@ -32,13 +32,13 @@ manager.add_data(
 )
 evaluator = manager.finalize()
 
-metrics = evaluator.compute_metrics()
+metrics = evaluator.evaluate()
 
 f1_metrics = metrics[MetricType.F1]
 accuracy_metrics = metrics[MetricType.Accuracy]
 
 filter_mask = evaluator.create_filter(datum_uids=["uid1", "uid2"])
-filtered_metrics = evaluator.compute_metrics(filter_mask=filter_mask)
+filtered_metrics = evaluator.evaluate(filter_mask=filter_mask)
 """
 
 
@@ -298,11 +298,10 @@ class Evaluator:
             n_datums=n_datums,
         )
 
-    def compute_metrics(
+    def compute_precision_recall(
         self,
         score_thresholds: list[float] = [0.0],
         hardmax: bool = True,
-        number_of_examples: int = 0,
         filter_: Filter | None = None,
         as_dict: bool = False,
     ) -> dict[MetricType, list]:
@@ -493,6 +492,51 @@ class Evaluator:
         if as_dict:
             return [m.to_dict() for m in results]
 
+        return results
+
+    def evaluate(
+        self,
+        score_thresholds: list[float] = [0.0],
+        hardmax: bool = True,
+        number_of_examples: int = 0,
+        filter_: Filter | None = None,
+        as_dict: bool = False,
+    ) -> dict[MetricType, list]:
+        """
+        Computes a detailed confusion matrix..
+
+        Parameters
+        ----------
+        score_thresholds : list[float]
+            A list of score thresholds to compute metrics over.
+        hardmax : bool
+            Toggles whether a hardmax is applied to predictions.
+        number_of_examples : int, default=0
+            The number of examples to return per count.
+        filter_ : Filter, optional
+            An optional filter object.
+        as_dict : bool, default=False
+            An option to return metrics as dictionaries.
+
+        Returns
+        -------
+        list[ConfusionMatrix] | list[dict]
+            A list of confusion matrices.
+        """
+
+        results = self.compute_precision_recall(
+            score_thresholds=score_thresholds,
+            hardmax=hardmax,
+            filter_=filter_,
+            as_dict=as_dict,
+        )
+        results[MetricType.ConfusionMatrix] = self.compute_confusion_matrix(
+            score_thresholds=score_thresholds,
+            hardmax=hardmax,
+            number_of_examples=number_of_examples,
+            filter_=filter_,
+            as_dict=as_dict,
+        )
         return results
 
 

@@ -11,7 +11,7 @@ def test_accuracy_basic_segmentations(basic_segmentations: list[Segmentation]):
     loader.add_data(basic_segmentations)
     evaluator = loader.finalize()
 
-    metrics = evaluator.compute_metrics(as_dict=True)
+    metrics = evaluator.evaluate(as_dict=True)
 
     actual_metrics = [m for m in metrics[MetricType.Accuracy]]
     expected_metrics = [
@@ -34,7 +34,7 @@ def test_accuracy_segmentations_from_boxes(
     loader.add_data(segmentations_from_boxes)
     evaluator = loader.finalize()
 
-    metrics = evaluator.compute_metrics(as_dict=True)
+    metrics = evaluator.evaluate(as_dict=True)
 
     actual_metrics = [m for m in metrics[MetricType.Accuracy]]
     expected_metrics = [
@@ -57,7 +57,7 @@ def test_accuracy_large_random_segmentations(
     loader.add_data(large_random_segmentations)
     evaluator = loader.finalize()
 
-    metrics = evaluator.compute_metrics()[MetricType.Accuracy]
+    metrics = evaluator.evaluate()[MetricType.Accuracy]
 
     assert len(metrics) == 1
     assert isinstance(metrics[0], Accuracy)

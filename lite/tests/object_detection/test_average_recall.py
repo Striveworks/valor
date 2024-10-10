@@ -102,7 +102,7 @@ def test_ar_metrics_first_class(
         method(loader, input_)
         evaluator = loader.finalize()
 
-        metrics = evaluator.compute_metrics(
+        metrics = evaluator.evaluate(
             iou_thresholds=[0.1, 0.6],
             score_thresholds=[0.0],
             as_dict=True,
@@ -212,7 +212,7 @@ def test_ar_metrics_second_class(
         method(loader, input_)
         evaluator = loader.finalize()
 
-        metrics = evaluator.compute_metrics(
+        metrics = evaluator.evaluate(
             iou_thresholds=[0.1, 0.6],
             score_thresholds=[0.0],
         )
@@ -321,7 +321,7 @@ def test_ar_using_torch_metrics_example(
     score_thresholds = [0.0]
     iou_thresholds = [0.5, 0.55, 0.6, 0.65, 0.7, 0.75, 0.8, 0.85, 0.9, 0.95]
 
-    metrics = evaluator.compute_metrics(
+    metrics = evaluator.evaluate(
         iou_thresholds=iou_thresholds,
         score_thresholds=score_thresholds,
         as_dict=True,
@@ -485,13 +485,13 @@ def test_ar_true_positive_deassignment(
     assert evaluator.n_groundtruths == 2
     assert evaluator.n_predictions == 4
 
-    metrics = evaluator.compute_metrics(
+    metrics = evaluator.evaluate(
         iou_thresholds=[0.5],
         score_thresholds=[0.5],
         as_dict=True,
     )
 
-    assert len(metrics) == 14
+    assert len(metrics) == 15
 
     # test AR
     actual_metrics = [m for m in metrics[MetricType.AR]]
@@ -542,7 +542,7 @@ def test_ar_ranked_pair_ordering(
             "n_predictions": 4,
         }
 
-        metrics = evaluator.compute_metrics(
+        metrics = evaluator.evaluate(
             iou_thresholds=[0.5, 0.75],
             score_thresholds=[0.0],
             as_dict=True,

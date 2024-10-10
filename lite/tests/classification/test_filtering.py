@@ -161,7 +161,7 @@ def test_filtering_one_classification(
 
     # test evaluation
     filter_ = evaluator.create_filter(datum_uids=["uid0"])
-    metrics = evaluator.compute_metrics(
+    metrics = evaluator.evaluate(
         score_thresholds=[0.5],
         hardmax=False,
         filter_=filter_,
@@ -315,7 +315,7 @@ def test_filtering_three_classifications(
 
     # test evaluation
     filter_ = evaluator.create_filter(datum_uids=["uid0"])
-    metrics = evaluator.compute_metrics(
+    metrics = evaluator.evaluate(
         score_thresholds=[0.5],
         hardmax=False,
         filter_=filter_,
@@ -491,7 +491,7 @@ def test_filtering_six_classifications(
     # test evaluation
     filter_ = evaluator.create_filter(datum_uids=["uid0"])
 
-    metrics = evaluator.compute_metrics(
+    metrics = evaluator.evaluate(
         score_thresholds=[0.5],
         hardmax=False,
         filter_=filter_,
@@ -567,4 +567,4 @@ def test_filtering_random_classifications():
     loader.add_data(generate_random_classifications(13, 2, 10))
     evaluator = loader.finalize()
     f = evaluator.create_filter(datum_uids=["uid0"])
-    evaluator.compute_metrics(score_thresholds=[0.5], hardmax=False, filter_=f)
+    evaluator.evaluate(score_thresholds=[0.5], hardmax=False, filter_=f)

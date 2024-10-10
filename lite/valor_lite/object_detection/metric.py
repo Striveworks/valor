@@ -19,6 +19,7 @@ class MetricType(str, Enum):
     ARAveragedOverScores = "ARAveragedOverScores"
     mARAveragedOverScores = "mARAveragedOverScores"
     PrecisionRecallCurve = "PrecisionRecallCurve"
+    ConfusionMatrix = "ConfusionMatrix"
 
 
 @dataclass

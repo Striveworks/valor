@@ -322,7 +322,7 @@ def run_benchmarking_analysis(
                 )
 
             # evaluate - base metrics only
-            eval_time, metrics = time_it(evaluator.compute_metrics)()
+            eval_time, metrics = time_it(evaluator.evaluate)()
             if eval_time > evaluation_timeout and evaluation_timeout != -1:
                 raise TimeoutError(
                     f"Base evaluation timed out with {evaluator.n_datums} datums."

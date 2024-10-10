@@ -12,7 +12,7 @@ def test_confusion_matrix_basic_segmentations(
     loader.add_data(basic_segmentations)
     evaluator = loader.finalize()
 
-    metrics = evaluator.compute_metrics(as_dict=True)
+    metrics = evaluator.evaluate(as_dict=True)
 
     actual_metrics = [m for m in metrics[MetricType.ConfusionMatrix]]
     expected_metrics = [
@@ -48,7 +48,7 @@ def test_confusion_matrix_segmentations_from_boxes(
     loader.add_data(segmentations_from_boxes)
     evaluator = loader.finalize()
 
-    metrics = evaluator.compute_metrics(as_dict=True)
+    metrics = evaluator.evaluate(as_dict=True)
 
     actual_metrics = [m for m in metrics[MetricType.ConfusionMatrix]]
     expected_metrics = [

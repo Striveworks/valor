@@ -11,7 +11,7 @@ def test_recall_basic_segmentations(basic_segmentations: list[Segmentation]):
     loader.add_data(basic_segmentations)
     evaluator = loader.finalize()
 
-    metrics = evaluator.compute_metrics(as_dict=True)
+    metrics = evaluator.evaluate(as_dict=True)
 
     actual_metrics = [m for m in metrics[MetricType.Recall]]
     expected_metrics = [
@@ -39,7 +39,7 @@ def test_recall_segmentations_from_boxes(
     loader.add_data(segmentations_from_boxes)
     evaluator = loader.finalize()
 
-    metrics = evaluator.compute_metrics(as_dict=True)
+    metrics = evaluator.evaluate(as_dict=True)
 
     actual_metrics = [m for m in metrics[MetricType.Recall]]
     expected_metrics = [
@@ -67,7 +67,7 @@ def test_recall_large_random_segmentations(
     loader.add_data(large_random_segmentations)
     evaluator = loader.finalize()
 
-    metrics = evaluator.compute_metrics()
+    metrics = evaluator.evaluate()
 
     for m in metrics[MetricType.Recall]:
         assert isinstance(m, Recall)
