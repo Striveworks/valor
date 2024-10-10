@@ -258,16 +258,14 @@ class Evaluator:
                 },
                 hallucinations={
                     self.index_to_label[pd_label_idx]: {
-                        "percent": float(hallucination_ratios[pd_label_idx])
+                        "ratio": float(hallucination_ratios[pd_label_idx])
                     }
                     for pd_label_idx in range(self.n_labels)
                     if label_metadata[pd_label_idx, 0] > 0
                 },
                 missing_predictions={
                     self.index_to_label[gt_label_idx]: {
-                        "percent": float(
-                            missing_prediction_ratios[gt_label_idx]
-                        )
+                        "ratio": float(missing_prediction_ratios[gt_label_idx])
                     }
                     for gt_label_idx in range(self.n_labels)
                     if label_metadata[gt_label_idx, 0] > 0
