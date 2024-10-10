@@ -202,7 +202,7 @@ class Accuracy(_ThresholdValue):
 
 class F1(_ThresholdValue):
     """
-    F1 score metric for a specific class label.
+    F1 score for a specific class label.
 
     This class calculates the F1 score at various score thresholds for a binary
     classification task.
@@ -232,7 +232,7 @@ class F1(_ThresholdValue):
 @dataclass
 class ROCAUC:
     """
-    The Receiver Operating Characteristic Area Under the Curve (ROC AUC).
+    Receiver Operating Characteristic Area Under the Curve (ROC AUC).
 
     This class calculates the ROC AUC score for a specific class label in a multiclass classification task.
     ROC AUC is a performance measurement for classification problems at various threshold settings.
@@ -270,7 +270,7 @@ class ROCAUC:
 @dataclass
 class mROCAUC:
     """
-    The mean Receiver Operating Characteristic Area Under the Curve (mROC AUC) for multiclass classifiers.
+    Mean Receiver Operating Characteristic Area Under the Curve (mROC AUC).
 
     This class calculates the mean ROC AUC score over all classes in a multiclass classification task.
     It provides an aggregate measure of the model's ability to distinguish between classes.
@@ -304,7 +304,7 @@ class mROCAUC:
 @dataclass
 class ConfusionMatrix:
     """
-    Represents a confusion matrix for classification tasks.
+    The confusion matrix and related metrics for the classification task.
 
     This class encapsulates detailed information about the model's performance, including correct
     predictions, misclassifications, hallucinations (false positives), and missing predictions

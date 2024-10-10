@@ -44,9 +44,7 @@ class MetricType(str, Enum):
 @dataclass
 class Counts:
     """
-    Counts of detection results for a specific class label at given thresholds.
-
-    The `Counts` class encapsulates the counts of true positives (`tp`), false positives (`fp`),
+    `Counts` encapsulates the counts of true positives (`tp`), false positives (`fp`),
     and false negatives (`fn`) for object detection evaluation, along with the associated
     class label, Intersection over Union (IoU) threshold, and confidence score threshold.
 
@@ -101,32 +99,6 @@ class Counts:
 
 @dataclass
 class _ClassMetric:
-    """
-    Base class for object detection metrics associated with a specific class label.
-
-    This class encapsulates a metric value (e.g., precision, recall) for a particular
-    class label, along with the associated Intersection over Union (IoU) threshold and
-    confidence score threshold.
-
-    Attributes
-    ----------
-    value : float
-        The metric value.
-    label : str
-        The class label for which the metric is calculated.
-    iou_threshold : float
-        The IoU threshold used to determine matches between predicted and ground truth boxes.
-    score_threshold : float
-        The confidence score threshold above which predictions are considered.
-
-    Methods
-    -------
-    to_metric()
-        Converts the instance to a generic `Metric` object.
-    to_dict()
-        Converts the instance to a dictionary representation.
-    """
-
     value: float
     label: str
     iou_threshold: float
@@ -270,10 +242,7 @@ class F1(_ClassMetric):
 @dataclass
 class AP:
     """
-    Represents the Average Precision (AP) metric for object detection tasks.
-
-    This class holds the AP value computed for a specific Intersection-over-Union (IoU)
-    threshold and object class label.
+    Average Precision (AP) metric for object detection tasks.
 
     The AP computation uses 101-point interpolation, which calculates the average
     precision by interpolating the precision-recall curve at 101 evenly spaced recall
@@ -317,7 +286,7 @@ class AP:
 @dataclass
 class mAP:
     """
-    Represents the mean Average Precision (mAP) metric for object detection tasks.
+    Mean Average Precision (mAP) metric for object detection tasks.
 
     The AP computation uses 101-point interpolation, which calculates the average
     precision for each class by interpolating the precision-recall curve at 101 evenly
@@ -358,7 +327,7 @@ class mAP:
 @dataclass
 class APAveragedOverIOUs:
     """
-    Represents the Average Precision (AP) metric averaged over multiple IoU thresholds for a specific object class label.
+    Average Precision (AP) metric averaged over multiple IoU thresholds.
 
     The AP computation uses 101-point interpolation, which calculates the average precision
     by interpolating the precision-recall curve at 101 evenly spaced recall levels from 0 to 1
@@ -403,7 +372,7 @@ class APAveragedOverIOUs:
 @dataclass
 class mAPAveragedOverIOUs:
     """
-    Represents the mean Average Precision (mAP) metric averaged over multiple IoU thresholds.
+    Mean Average Precision (mAP) metric averaged over multiple IoU thresholds.
 
     The AP computation uses 101-point interpolation, which calculates the average precision
     by interpolating the precision-recall curve at 101 evenly spaced recall levels from 0 to 1
@@ -444,7 +413,7 @@ class mAPAveragedOverIOUs:
 @dataclass
 class AR:
     """
-    Represents the Average Recall (AR) metric for object detection tasks.
+    Average Recall (AR) metric for object detection tasks.
 
     The AR computation considers detections with confidence scores above the specified
     `score_threshold` and calculates the recall at each IoU threshold in `iou_thresholds`.
@@ -494,7 +463,7 @@ class AR:
 @dataclass
 class mAR:
     """
-    Represents the mean Average Recall (mAR) metric for object detection tasks.
+    Mean Average Recall (mAR) metric for object detection tasks.
 
     The mAR computation considers detections with confidence scores above the specified
     `score_threshold` and calculates recall at each IoU threshold in `iou_thresholds` for
@@ -540,7 +509,7 @@ class mAR:
 @dataclass
 class ARAveragedOverScores:
     """
-    Represents the Average Recall (AR) metric averaged over multiple score thresholds for a specific object class label.
+    Average Recall (AR) metric averaged over multiple score thresholds for a specific object class label.
 
     The AR computation considers detections across multiple `score_thresholds` and calculates
     recall at each IoU threshold in `iou_thresholds`. The final AR value is obtained by averaging
@@ -588,7 +557,7 @@ class ARAveragedOverScores:
 @dataclass
 class mARAveragedOverScores:
     """
-    Represents the mean Average Recall (mAR) metric averaged over multiple score thresholds and IoU thresholds.
+    Mean Average Recall (mAR) metric averaged over multiple score thresholds and IoU thresholds.
 
     The mAR computation considers detections across multiple `score_thresholds`, calculates recall
     at each IoU threshold in `iou_thresholds` for each label, averages these recall values over all
@@ -633,7 +602,7 @@ class mARAveragedOverScores:
 @dataclass
 class PrecisionRecallCurve:
     """
-    Represents an interpolated precision-recall curve over 101 recall points.
+    Interpolated precision-recall curve over 101 recall points.
 
     The precision values are interpolated over recalls ranging from 0.0 to 1.0 in steps of 0.01,
     resulting in 101 points. This is a byproduct of the 101-point interpolation used in calculating
@@ -677,16 +646,16 @@ class PrecisionRecallCurve:
 @dataclass
 class ConfusionMatrix:
     """
-    Represents a confusion matrix for object detection tasks.
+    Confusion matrix for object detection tasks.
 
     This class encapsulates detailed information about the model's performance, including correct
     predictions, misclassifications, hallucinations (false positives), and missing predictions
     (false negatives). It provides counts and examples for each category to facilitate in-depth analysis.
 
-    Confusion Matrix Structure:
+    Confusion Matrix Format:
     {
-        ground_truth_label: {
-            predicted_label: {
+        <ground truth label>: {
+            <prediction label>: {
                 'count': int,
                 'examples': [
                     {
@@ -703,9 +672,9 @@ class ConfusionMatrix:
         ...
     }
 
-    Hallucinations Structure:
+    Hallucinations Format:
     {
-        prediction_label: {
+        <prediction label>: {
             'count': int,
             'examples': [
                 {
@@ -719,9 +688,9 @@ class ConfusionMatrix:
         ...
     }
 
-    Missing Prediction Structure:
+    Missing Prediction Format:
     {
-        ground_truth_label: {
+        <ground truth label>: {
             'count': int,
             'examples': [
                 {
