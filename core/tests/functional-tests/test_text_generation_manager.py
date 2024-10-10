@@ -310,7 +310,7 @@ def test_ValorTextGenerationStreamingManager_rag(
             == metric["value"]
         )
 
-    # Test with pre-initialized joint_df
+    # Test with pre-initialized joint_df.
     joint_df = pd.DataFrame(
         [
             [
@@ -427,6 +427,38 @@ def test_ValorTextGenerationStreamingManager_rag(
             expected_values[metric["parameters"]["prediction"]]
             == metric["value"]
         )
+
+    # The joint_df can have null metrics. This is expected when a metric computation fails.
+    joint_df = pd.DataFrame(
+        [
+            [
+                "uid0",
+                RAG_QUERIES[0],
+                None,
+                RAG_PREDICTIONS[0],
+                RAG_CONTEXT[0],
+                0.6666666666666666,
+                0.0,
+                0.75,
+                0.4,
+                None,
+                0.0,
+            ],
+        ],
+        columns=[
+            "datum_uid",
+            "datum_text",
+            "datum_metadata",
+            "prediction_text",
+            "prediction_context_list",
+        ]
+        + [metric._name_ for metric in metrics_to_return],
+    )
+    _ = managers.ValorTextGenerationStreamingManager(
+        metrics_to_return=metrics_to_return,
+        llm_api_params=LLM_API_PARAMS,
+        joint_df=joint_df,
+    )
 
     # Adding two different predictions with the same datum uid but different datum text or metadata should raise an error.
     pred0_modified_text = copy.deepcopy(rag_preds[0])
@@ -602,39 +634,6 @@ def test_ValorTextGenerationStreamingManager_rag(
                     0.75,
                     0.4,
                     0.0,
-                    0.0,
-                ],
-            ],
-            columns=[
-                "datum_uid",
-                "datum_text",
-                "datum_metadata",
-                "prediction_text",
-                "prediction_context_list",
-            ]
-            + [metric._name_ for metric in metrics_to_return],
-        )
-        _ = managers.ValorTextGenerationStreamingManager(
-            metrics_to_return=metrics_to_return,
-            llm_api_params=LLM_API_PARAMS,
-            joint_df=joint_df,
-        )
-
-    # The joint_df cannot have null values for any of the requested metrics.
-    with pytest.raises(ValueError):
-        joint_df = pd.DataFrame(
-            [
-                [
-                    "uid0",
-                    RAG_QUERIES[0],
-                    {"category": "history"},
-                    RAG_PREDICTIONS[0],
-                    RAG_CONTEXT[0],
-                    0.6666666666666666,
-                    0.0,
-                    0.75,
-                    0.4,
-                    None,
                     0.0,
                 ],
             ],
