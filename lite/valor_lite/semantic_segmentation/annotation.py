@@ -6,6 +6,23 @@ from numpy.typing import NDArray
 
 @dataclass
 class Bitmask:
+    """
+    Represents a binary mask with an associated semantic label.
+
+    Parameters
+    ----------
+    mask : NDArray[np.bool_]
+        A NumPy array of boolean values representing the mask.
+    label : str
+        The semantic label associated with the mask.
+
+    Examples
+    --------
+    >>> import numpy as np
+    >>> mask = np.array([[True, False], [False, True]], dtype=np.bool_)
+    >>> bitmask = Bitmask(mask=mask, label='ocean')
+    """
+
     mask: NDArray[np.bool_]
     label: str
 
@@ -18,6 +35,36 @@ class Bitmask:
 
 @dataclass
 class Segmentation:
+    """
+    Segmentation data structure holding ground truth and prediction bitmasks for semantic segmentation tasks.
+
+    Parameters
+    ----------
+    uid : str
+        Unique identifier for the image or sample.
+    groundtruths : List[Bitmask]
+        List of ground truth bitmasks.
+    predictions : List[Bitmask]
+        List of predicted bitmasks.
+    shape : tuple of int, optional
+        The shape of the segmentation masks. This is set automatically after initialization.
+    size : int, optional
+        The total number of pixels in the masks. This is set automatically after initialization.
+
+    Examples
+    --------
+    >>> import numpy as np
+    >>> mask1 = np.array([[True, False], [False, True]], dtype=np.bool_)
+    >>> groundtruth = Bitmask(mask=mask1, label='object')
+    >>> mask2 = np.array([[False, True], [True, False]], dtype=np.bool_)
+    >>> prediction = Bitmask(mask=mask2, label='object')
+    >>> segmentation = Segmentation(
+    ...     uid='123',
+    ...     groundtruths=[groundtruth],
+    ...     predictions=[prediction]
+    ... )
+    """
+
     uid: str
     groundtruths: list[Bitmask]
     predictions: list[Bitmask]
