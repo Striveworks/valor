@@ -1,3 +1,4 @@
+import numpy as np
 from valor_lite.classification import Classification, DataLoader
 
 
@@ -23,3 +24,40 @@ def test_metadata_using_classification_example(
         "ignored_prediction_labels": [],
         "missing_prediction_labels": [],
     }
+
+
+def _flatten_metrics(m) -> list:
+    if isinstance(m, dict):
+        keys = list(m.keys())
+        values = [
+            inner_value
+            for value in m.values()
+            for inner_value in _flatten_metrics(value)
+        ]
+        return keys + values
+    elif isinstance(m, list):
+        return [
+            inner_value
+            for value in m
+            for inner_value in _flatten_metrics(value)
+        ]
+    else:
+        return [m]
+
+
+def test_output_types_dont_contain_numpy(
+    basic_classifications: list[Classification],
+):
+    manager = DataLoader()
+    manager.add_data(basic_classifications)
+    evaluator = manager.finalize()
+
+    metrics = evaluator.evaluate(
+        score_thresholds=[0.25, 0.75],
+        as_dict=True,
+    )
+
+    values = _flatten_metrics(metrics)
+    for value in values:
+        if isinstance(value, (np.generic, np.ndarray)):
+            raise TypeError(value)

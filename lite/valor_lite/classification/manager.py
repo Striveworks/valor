@@ -111,6 +111,86 @@ class Evaluator:
             "missing_prediction_labels": self.missing_prediction_labels,
         }
 
+    def create_filter(
+        self,
+        datum_uids: list[str] | NDArray[np.int32] | None = None,
+        labels: list[str] | NDArray[np.int32] | None = None,
+    ) -> Filter:
+        """
+        Creates a boolean mask that can be passed to an evaluation.
+
+        Parameters
+        ----------
+        datum_uids : list[str] | NDArray[np.int32], optional
+            An optional list of string uids or a numpy array of uid indices.
+        labels : list[str] | NDArray[np.int32], optional
+            An optional list of labels or a numpy array of label indices.
+
+        Returns
+        -------
+        Filter
+            A filter object that can be passed to the `evaluate` method.
+        """
+        n_rows = self._detailed_pairs.shape[0]
+
+        n_datums = self._label_metadata_per_datum.shape[1]
+        n_labels = self._label_metadata_per_datum.shape[2]
+
+        mask_pairs = np.ones((n_rows, 1), dtype=np.bool_)
+        mask_datums = np.ones(n_datums, dtype=np.bool_)
+        mask_labels = np.ones(n_labels, dtype=np.bool_)
+
+        if datum_uids is not None:
+            if isinstance(datum_uids, list):
+                datum_uids = np.array(
+                    [self.uid_to_index[uid] for uid in datum_uids],
+                    dtype=np.int32,
+                )
+            mask = np.zeros_like(mask_pairs, dtype=np.bool_)
+            mask[
+                np.isin(self._detailed_pairs[:, 0].astype(int), datum_uids)
+            ] = True
+            mask_pairs &= mask
+
+            mask = np.zeros_like(mask_datums, dtype=np.bool_)
+            mask[datum_uids] = True
+            mask_datums &= mask
+
+        if labels is not None:
+            if isinstance(labels, list):
+                labels = np.array(
+                    [self.label_to_index[label] for label in labels]
+                )
+            mask = np.zeros_like(mask_pairs, dtype=np.bool_)
+            mask[
+                np.isin(self._detailed_pairs[:, 1].astype(int), labels)
+            ] = True
+            mask_pairs &= mask
+
+            mask = np.zeros_like(mask_labels, dtype=np.bool_)
+            mask[labels] = True
+            mask_labels &= mask
+
+        mask = mask_datums[:, np.newaxis] & mask_labels[np.newaxis, :]
+        label_metadata_per_datum = self._label_metadata_per_datum.copy()
+        label_metadata_per_datum[:, ~mask] = 0
+
+        label_metadata = np.zeros_like(self._label_metadata, dtype=np.int32)
+        label_metadata = np.transpose(
+            np.sum(
+                label_metadata_per_datum,
+                axis=1,
+            )
+        )
+
+        n_datums = int(np.sum(label_metadata[:, 0]))
+
+        return Filter(
+            indices=np.where(mask_pairs)[0],
+            label_metadata=label_metadata,
+            n_datums=n_datums,
+        )
+
     def _unpack_confusion_matrix(
         self,
         confusion_matrix: NDArray[np.float64],
@@ -218,86 +298,6 @@ class Evaluator:
             for gt_label_idx in range(number_of_labels)
         }
 
-    def create_filter(
-        self,
-        datum_uids: list[str] | NDArray[np.int32] | None = None,
-        labels: list[str] | NDArray[np.int32] | None = None,
-    ) -> Filter:
-        """
-        Creates a boolean mask that can be passed to an evaluation.
-
-        Parameters
-        ----------
-        datum_uids : list[str] | NDArray[np.int32], optional
-            An optional list of string uids or a numpy array of uid indices.
-        labels : list[str] | NDArray[np.int32], optional
-            An optional list of labels or a numpy array of label indices.
-
-        Returns
-        -------
-        Filter
-            A filter object that can be passed to the `evaluate` method.
-        """
-        n_rows = self._detailed_pairs.shape[0]
-
-        n_datums = self._label_metadata_per_datum.shape[1]
-        n_labels = self._label_metadata_per_datum.shape[2]
-
-        mask_pairs = np.ones((n_rows, 1), dtype=np.bool_)
-        mask_datums = np.ones(n_datums, dtype=np.bool_)
-        mask_labels = np.ones(n_labels, dtype=np.bool_)
-
-        if datum_uids is not None:
-            if isinstance(datum_uids, list):
-                datum_uids = np.array(
-                    [self.uid_to_index[uid] for uid in datum_uids],
-                    dtype=np.int32,
-                )
-            mask = np.zeros_like(mask_pairs, dtype=np.bool_)
-            mask[
-                np.isin(self._detailed_pairs[:, 0].astype(int), datum_uids)
-            ] = True
-            mask_pairs &= mask
-
-            mask = np.zeros_like(mask_datums, dtype=np.bool_)
-            mask[datum_uids] = True
-            mask_datums &= mask
-
-        if labels is not None:
-            if isinstance(labels, list):
-                labels = np.array(
-                    [self.label_to_index[label] for label in labels]
-                )
-            mask = np.zeros_like(mask_pairs, dtype=np.bool_)
-            mask[
-                np.isin(self._detailed_pairs[:, 1].astype(int), labels)
-            ] = True
-            mask_pairs &= mask
-
-            mask = np.zeros_like(mask_labels, dtype=np.bool_)
-            mask[labels] = True
-            mask_labels &= mask
-
-        mask = mask_datums[:, np.newaxis] & mask_labels[np.newaxis, :]
-        label_metadata_per_datum = self._label_metadata_per_datum.copy()
-        label_metadata_per_datum[:, ~mask] = 0
-
-        label_metadata = np.zeros_like(self._label_metadata, dtype=np.int32)
-        label_metadata = np.transpose(
-            np.sum(
-                label_metadata_per_datum,
-                axis=1,
-            )
-        )
-
-        n_datums = int(np.sum(label_metadata[:, 0]))
-
-        return Filter(
-            indices=np.where(mask_pairs)[0],
-            label_metadata=label_metadata,
-            n_datums=n_datums,
-        )
-
     def compute_precision_recall(
         self,
         score_thresholds: list[float] = [0.0],
@@ -354,7 +354,7 @@ class Evaluator:
 
         metrics[MetricType.ROCAUC] = [
             ROCAUC(
-                value=rocauc[label_idx],
+                value=float(rocauc[label_idx]),
                 label=self.index_to_label[label_idx],
             )
             for label_idx in range(label_metadata.shape[0])
@@ -363,7 +363,7 @@ class Evaluator:
 
         metrics[MetricType.mROCAUC] = [
             mROCAUC(
-                value=mean_rocauc,
+                value=float(mean_rocauc),
             )
         ]
 
@@ -377,10 +377,10 @@ class Evaluator:
             row = counts[:, label_idx]
             metrics[MetricType.Counts].append(
                 Counts(
-                    tp=row[:, 0].tolist(),
-                    fp=row[:, 1].tolist(),
-                    fn=row[:, 2].tolist(),
-                    tn=row[:, 3].tolist(),
+                    tp=row[:, 0].astype(int).tolist(),
+                    fp=row[:, 1].astype(int).tolist(),
+                    fn=row[:, 2].astype(int).tolist(),
+                    tn=row[:, 3].astype(int).tolist(),
                     **kwargs,
                 )
             )
@@ -391,25 +391,25 @@ class Evaluator:
 
             metrics[MetricType.Precision].append(
                 Precision(
-                    value=precision[:, label_idx].tolist(),
+                    value=precision[:, label_idx].astype(float).tolist(),
                     **kwargs,
                 )
             )
             metrics[MetricType.Recall].append(
                 Recall(
-                    value=recall[:, label_idx].tolist(),
+                    value=recall[:, label_idx].astype(float).tolist(),
                     **kwargs,
                 )
             )
             metrics[MetricType.Accuracy].append(
                 Accuracy(
-                    value=accuracy[:, label_idx].tolist(),
+                    value=accuracy[:, label_idx].astype(float).tolist(),
                     **kwargs,
                 )
             )
             metrics[MetricType.F1].append(
                 F1(
-                    value=f1_score[:, label_idx].tolist(),
+                    value=f1_score[:, label_idx].astype(float).tolist(),
                     **kwargs,
                 )
             )
