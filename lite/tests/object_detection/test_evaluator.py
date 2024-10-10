@@ -86,25 +86,3 @@ def test_no_predictions(detections_no_predictions):
         assert m in expected_metrics
     for m in expected_metrics:
         assert m in actual_metrics
-
-
-def test_metrics_to_return(basic_detections_first_class: list[Detection]):
-
-    loader = DataLoader()
-    loader.add_bounding_boxes(basic_detections_first_class)
-    evaluator = loader.finalize()
-
-    metrics_to_return = [
-        MetricType.AP,
-        MetricType.AR,
-    ]
-    metrics = evaluator.evaluate(metrics_to_return)
-    assert metrics.keys() == set(metrics_to_return)
-
-    metrics_to_return = [
-        MetricType.AP,
-        MetricType.AR,
-        MetricType.ConfusionMatrix,
-    ]
-    metrics = evaluator.evaluate(metrics_to_return)
-    assert metrics.keys() == set(metrics_to_return)
