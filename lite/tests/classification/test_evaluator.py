@@ -1,5 +1,5 @@
 import numpy as np
-from valor_lite.classification import Classification, DataLoader, MetricType
+from valor_lite.classification import Classification, DataLoader
 
 
 def test_metadata_using_classification_example(
@@ -54,7 +54,6 @@ def test_output_types_dont_contain_numpy(
 
     metrics = evaluator.evaluate(
         score_thresholds=[0.25, 0.75],
-        metrics_to_return=[*MetricType.base(), MetricType.ConfusionMatrix],
         as_dict=True,
     )
 

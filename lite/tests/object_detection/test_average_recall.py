@@ -491,7 +491,7 @@ def test_ar_true_positive_deassignment(
         as_dict=True,
     )
 
-    assert len(metrics) == 14
+    assert len(metrics) == 15
 
     # test AR
     actual_metrics = [m for m in metrics[MetricType.AR]]

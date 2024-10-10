@@ -14,18 +14,6 @@ class MetricType(Enum):
     F1 = "F1"
     ConfusionMatrix = "ConfusionMatrix"
 
-    @classmethod
-    def base(cls):
-        return [
-            cls.Counts,
-            cls.ROCAUC,
-            cls.mROCAUC,
-            cls.Precision,
-            cls.Recall,
-            cls.Accuracy,
-            cls.F1,
-        ]
-
 
 @dataclass
 class Counts:
