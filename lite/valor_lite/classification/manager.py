@@ -276,10 +276,10 @@ class Evaluator:
             row = counts[:, label_idx]
             metrics[MetricType.Counts].append(
                 Counts(
-                    tp=[int(value) for value in row[:, 0].tolist()],
-                    fp=[int(value) for value in row[:, 1].tolist()],
-                    fn=[int(value) for value in row[:, 2].tolist()],
-                    tn=[int(value) for value in row[:, 3].tolist()],
+                    tp=row[:, 0].astype(int).tolist(),
+                    fp=row[:, 1].astype(int).tolist(),
+                    fn=row[:, 2].astype(int).tolist(),
+                    tn=row[:, 3].astype(int).tolist(),
                     **kwargs,
                 )
             )
@@ -290,33 +290,25 @@ class Evaluator:
 
             metrics[MetricType.Precision].append(
                 Precision(
-                    value=[
-                        float(value)
-                        for value in precision[:, label_idx].tolist()
-                    ],
+                    value=precision[:, label_idx].astype(float).tolist(),
                     **kwargs,
                 )
             )
             metrics[MetricType.Recall].append(
                 Recall(
-                    value=[
-                        float(value) for value in recall[:, label_idx].tolist()
-                    ],
+                    value=recall[:, label_idx].astype(float).tolist(),
                     **kwargs,
                 )
             )
             metrics[MetricType.Accuracy].append(
                 Accuracy(
-                    value=accuracy[:, label_idx].tolist(),
+                    value=accuracy[:, label_idx].astype(float).tolist(),
                     **kwargs,
                 )
             )
             metrics[MetricType.F1].append(
                 F1(
-                    value=[
-                        float(value)
-                        for value in f1_score[:, label_idx].tolist()
-                    ],
+                    value=f1_score[:, label_idx].astype(float).tolist(),
                     **kwargs,
                 )
             )
