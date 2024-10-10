@@ -739,22 +739,22 @@ class ConfusionMatrix:
     confusion_matrix : dict
         A nested dictionary where the first key is the ground truth label value, the second key
         is the prediction label value, and the innermost dictionary contains either a `count`
-        or a list of `examples`. Each example includes details such as datum UID, ground truth
-        bounding boxes, predicted bounding boxes, and prediction scores.
+        or a list of `examples`. Each example includes the datum UID, ground truth bounding box,
+        predicted bounding box, and prediction scores.
     hallucinations : dict
         A dictionary where each key is a prediction label value with no corresponding ground truth
         (false positives). The value is a dictionary containing either a `count` or a list of
-        `examples`. Each example includes the datum UID, predicted bounding boxes, and prediction scores.
+        `examples`. Each example includes the datum UID, predicted bounding box, and prediction score.
     missing_predictions : dict
         A dictionary where each key is a ground truth label value for which the model failed to predict
         (false negatives). The value is a dictionary containing either a `count` or a list of `examples`.
-        Each example includes the datum UID and ground truth bounding boxes.
+        Each example includes the datum UID and ground truth bounding box.
     score_threshold : float
         The confidence score threshold used to filter predictions.
     iou_threshold : float
         The Intersection over Union (IoU) threshold used to determine true positives.
     number_of_examples : int
-        The total number of examples evaluated.
+        The maximum number of examples per element.
 
     Methods
     -------
