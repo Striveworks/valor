@@ -146,6 +146,5 @@ def test_output_types_dont_contain_numpy(basic_detections: list[Detection]):
 
     values = _flatten_metrics(metrics)
     for value in values:
-        print(value)
         if isinstance(value, (np.generic, np.ndarray)):
             raise TypeError
