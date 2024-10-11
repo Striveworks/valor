@@ -591,7 +591,7 @@ class PrecisionRecallCurve:
 
     Attributes
     ----------
-    precision : list[float]
+    precisions : list[float]
         Interpolated precision values corresponding to recalls at 0.0, 0.01, ..., 1.0.
     scores : list[float]
         Maximum prediction score for each point on the interpolated curve.
@@ -608,7 +608,7 @@ class PrecisionRecallCurve:
         Converts the instance to a dictionary representation.
     """
 
-    precision: list[float]
+    precisions: list[float]
     scores: list[float]
     iou_threshold: float
     label: str
@@ -617,7 +617,7 @@ class PrecisionRecallCurve:
         return Metric(
             type=type(self).__name__,
             value={
-                "precisions": self.precision,
+                "precisions": self.precisions,
                 "scores": self.scores,
             },
             parameters={

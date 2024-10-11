@@ -595,7 +595,7 @@ class Evaluator:
 
         metrics[MetricType.PrecisionRecallCurve] = [
             PrecisionRecallCurve(
-                precision=pr_curves[iou_idx, label_idx, :, 0]
+                precisions=pr_curves[iou_idx, label_idx, :, 0]
                 .astype(float)
                 .tolist(),
                 scores=pr_curves[iou_idx, label_idx, :, 1]
