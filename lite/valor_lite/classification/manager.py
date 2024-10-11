@@ -191,151 +191,6 @@ class Evaluator:
             n_datums=n_datums,
         )
 
-    def evaluate(
-        self,
-        metrics_to_return: list[MetricType] = MetricType.base(),
-        score_thresholds: list[float] = [0.0],
-        hardmax: bool = True,
-        number_of_examples: int = 0,
-        filter_: Filter | None = None,
-        as_dict: bool = False,
-    ) -> dict[MetricType, list]:
-        """
-        Performs an evaluation and returns metrics.
-
-        Parameters
-        ----------
-        metrics_to_return : list[MetricType]
-            A list of metrics to return in the results.
-        score_thresholds : list[float]
-            A list of score thresholds to compute metrics over.
-        hardmax : bool
-            Toggles whether a hardmax is applied to predictions.
-        number_of_examples : int, default=0
-            Maximum number of annotation examples to return in ConfusionMatrix.
-        filter_ : Filter, optional
-            An optional filter object.
-        as_dict : bool, default=False
-            An option to return metrics as dictionaries.
-
-        Returns
-        -------
-        dict[MetricType, list]
-            A dictionary mapping MetricType enumerations to lists of computed metrics.
-        """
-
-        # apply filters
-        data = self._detailed_pairs
-        label_metadata = self._label_metadata
-        n_datums = self.n_datums
-        if filter_ is not None:
-            data = data[filter_.indices]
-            label_metadata = filter_.label_metadata
-            n_datums = filter_.n_datums
-
-        (
-            counts,
-            precision,
-            recall,
-            accuracy,
-            f1_score,
-            rocauc,
-            mean_rocauc,
-        ) = compute_metrics(
-            data=data,
-            label_metadata=label_metadata,
-            score_thresholds=np.array(score_thresholds),
-            hardmax=hardmax,
-            n_datums=n_datums,
-        )
-
-        metrics = defaultdict(list)
-
-        metrics[MetricType.ROCAUC] = [
-            ROCAUC(
-                value=rocauc[label_idx],
-                label=self.index_to_label[label_idx],
-            )
-            for label_idx in range(label_metadata.shape[0])
-            if label_metadata[label_idx, 0] > 0
-        ]
-
-        metrics[MetricType.mROCAUC] = [
-            mROCAUC(
-                value=mean_rocauc,
-            )
-        ]
-
-        for label_idx, label in self.index_to_label.items():
-
-            kwargs = {
-                "label": label,
-                "score_thresholds": score_thresholds,
-                "hardmax": hardmax,
-            }
-            row = counts[:, label_idx]
-            metrics[MetricType.Counts].append(
-                Counts(
-                    tp=row[:, 0].tolist(),
-                    fp=row[:, 1].tolist(),
-                    fn=row[:, 2].tolist(),
-                    tn=row[:, 3].tolist(),
-                    **kwargs,
-                )
-            )
-
-            # if no groundtruths exists for a label, skip it.
-            if label_metadata[label_idx, 0] == 0:
-                continue
-
-            metrics[MetricType.Precision].append(
-                Precision(
-                    value=precision[:, label_idx].tolist(),
-                    **kwargs,
-                )
-            )
-            metrics[MetricType.Recall].append(
-                Recall(
-                    value=recall[:, label_idx].tolist(),
-                    **kwargs,
-                )
-            )
-            metrics[MetricType.Accuracy].append(
-                Accuracy(
-                    value=accuracy[:, label_idx].tolist(),
-                    **kwargs,
-                )
-            )
-            metrics[MetricType.F1].append(
-                F1(
-                    value=f1_score[:, label_idx].tolist(),
-                    **kwargs,
-                )
-            )
-
-        if MetricType.ConfusionMatrix in metrics_to_return:
-            metrics[
-                MetricType.ConfusionMatrix
-            ] = self._compute_confusion_matrix(
-                data=data,
-                label_metadata=label_metadata,
-                score_thresholds=score_thresholds,
-                hardmax=hardmax,
-                number_of_examples=number_of_examples,
-            )
-
-        for metric in set(metrics.keys()):
-            if metric not in metrics_to_return:
-                del metrics[metric]
-
-        if as_dict:
-            return {
-                mtype: [metric.to_dict() for metric in mvalues]
-                for mtype, mvalues in metrics.items()
-            }
-
-        return metrics
-
     def _unpack_confusion_matrix(
         self,
         confusion_matrix: NDArray[np.float64],
@@ -443,35 +298,166 @@ class Evaluator:
             for gt_label_idx in range(number_of_labels)
         }
 
-    def _compute_confusion_matrix(
+    def compute_precision_recall(
         self,
-        data: NDArray[np.float64],
-        label_metadata: NDArray[np.int32],
-        score_thresholds: list[float],
-        hardmax: bool,
-        number_of_examples: int,
-    ) -> list[ConfusionMatrix]:
+        score_thresholds: list[float] = [0.0],
+        hardmax: bool = True,
+        filter_: Filter | None = None,
+        as_dict: bool = False,
+    ) -> dict[MetricType, list]:
+        """
+        Performs an evaluation and returns metrics.
+
+        Parameters
+        ----------
+        score_thresholds : list[float]
+            A list of score thresholds to compute metrics over.
+        hardmax : bool
+            Toggles whether a hardmax is applied to predictions.
+        filter_ : Filter, optional
+            An optional filter object.
+        as_dict : bool, default=False
+            An option to return metrics as dictionaries.
+
+        Returns
+        -------
+        dict[MetricType, list]
+            A dictionary mapping MetricType enumerations to lists of computed metrics.
+        """
+
+        # apply filters
+        data = self._detailed_pairs
+        label_metadata = self._label_metadata
+        n_datums = self.n_datums
+        if filter_ is not None:
+            data = data[filter_.indices]
+            label_metadata = filter_.label_metadata
+            n_datums = filter_.n_datums
+
+        (
+            counts,
+            precision,
+            recall,
+            accuracy,
+            f1_score,
+            rocauc,
+            mean_rocauc,
+        ) = compute_metrics(
+            data=data,
+            label_metadata=label_metadata,
+            score_thresholds=np.array(score_thresholds),
+            hardmax=hardmax,
+            n_datums=n_datums,
+        )
+
+        metrics = defaultdict(list)
+
+        metrics[MetricType.ROCAUC] = [
+            ROCAUC(
+                value=float(rocauc[label_idx]),
+                label=self.index_to_label[label_idx],
+            )
+            for label_idx in range(label_metadata.shape[0])
+            if label_metadata[label_idx, 0] > 0
+        ]
+
+        metrics[MetricType.mROCAUC] = [
+            mROCAUC(
+                value=float(mean_rocauc),
+            )
+        ]
+
+        for label_idx, label in self.index_to_label.items():
+
+            kwargs = {
+                "label": label,
+                "score_thresholds": score_thresholds,
+                "hardmax": hardmax,
+            }
+            row = counts[:, label_idx]
+            metrics[MetricType.Counts].append(
+                Counts(
+                    tp=row[:, 0].astype(int).tolist(),
+                    fp=row[:, 1].astype(int).tolist(),
+                    fn=row[:, 2].astype(int).tolist(),
+                    tn=row[:, 3].astype(int).tolist(),
+                    **kwargs,
+                )
+            )
+
+            # if no groundtruths exists for a label, skip it.
+            if label_metadata[label_idx, 0] == 0:
+                continue
+
+            metrics[MetricType.Precision].append(
+                Precision(
+                    value=precision[:, label_idx].astype(float).tolist(),
+                    **kwargs,
+                )
+            )
+            metrics[MetricType.Recall].append(
+                Recall(
+                    value=recall[:, label_idx].astype(float).tolist(),
+                    **kwargs,
+                )
+            )
+            metrics[MetricType.Accuracy].append(
+                Accuracy(
+                    value=accuracy[:, label_idx].astype(float).tolist(),
+                    **kwargs,
+                )
+            )
+            metrics[MetricType.F1].append(
+                F1(
+                    value=f1_score[:, label_idx].astype(float).tolist(),
+                    **kwargs,
+                )
+            )
+
+        if as_dict:
+            return {
+                mtype: [metric.to_dict() for metric in mvalues]
+                for mtype, mvalues in metrics.items()
+            }
+
+        return metrics
+
+    def compute_confusion_matrix(
+        self,
+        score_thresholds: list[float] = [0.0],
+        hardmax: bool = True,
+        number_of_examples: int = 0,
+        filter_: Filter | None = None,
+        as_dict: bool = False,
+    ) -> list:
         """
         Computes a detailed confusion matrix..
 
         Parameters
         ----------
-        data : NDArray[np.float64]
-            A data array containing classification pairs.
-        label_metadata : NDArray[np.int32]
-            An integer array containing label metadata.
         score_thresholds : list[float]
             A list of score thresholds to compute metrics over.
         hardmax : bool
             Toggles whether a hardmax is applied to predictions.
         number_of_examples : int, default=0
             The number of examples to return per count.
+        filter_ : Filter, optional
+            An optional filter object.
+        as_dict : bool, default=False
+            An option to return metrics as dictionaries.
 
         Returns
         -------
-        list[ConfusionMatrix]
-            A list of ConfusionMatrix objects.
+        list[ConfusionMatrix] | list[dict]
+            A list of confusion matrices.
         """
+
+        # apply filters
+        data = self._detailed_pairs
+        label_metadata = self._label_metadata
+        if filter_ is not None:
+            data = data[filter_.indices]
+            label_metadata = filter_.label_metadata
 
         if data.size == 0:
             return list()
@@ -485,7 +471,7 @@ class Evaluator:
         )
 
         n_scores, n_labels, _, _ = confusion_matrix.shape
-        return [
+        results = [
             ConfusionMatrix(
                 score_threshold=score_thresholds[score_idx],
                 number_of_examples=number_of_examples,
@@ -502,6 +488,56 @@ class Evaluator:
             )
             for score_idx in range(n_scores)
         ]
+
+        if as_dict:
+            return [m.to_dict() for m in results]
+
+        return results
+
+    def evaluate(
+        self,
+        score_thresholds: list[float] = [0.0],
+        hardmax: bool = True,
+        number_of_examples: int = 0,
+        filter_: Filter | None = None,
+        as_dict: bool = False,
+    ) -> dict[MetricType, list]:
+        """
+        Computes a detailed confusion matrix..
+
+        Parameters
+        ----------
+        score_thresholds : list[float]
+            A list of score thresholds to compute metrics over.
+        hardmax : bool
+            Toggles whether a hardmax is applied to predictions.
+        number_of_examples : int, default=0
+            The number of examples to return per count.
+        filter_ : Filter, optional
+            An optional filter object.
+        as_dict : bool, default=False
+            An option to return metrics as dictionaries.
+
+        Returns
+        -------
+        list[ConfusionMatrix] | list[dict]
+            A list of confusion matrices.
+        """
+
+        results = self.compute_precision_recall(
+            score_thresholds=score_thresholds,
+            hardmax=hardmax,
+            filter_=filter_,
+            as_dict=as_dict,
+        )
+        results[MetricType.ConfusionMatrix] = self.compute_confusion_matrix(
+            score_thresholds=score_thresholds,
+            hardmax=hardmax,
+            number_of_examples=number_of_examples,
+            filter_=filter_,
+            as_dict=as_dict,
+        )
+        return results
 
 
 class DataLoader:

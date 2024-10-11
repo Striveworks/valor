@@ -8,12 +8,7 @@ from time import time
 
 import requests
 from tqdm import tqdm
-from valor_lite.object_detection import (
-    BoundingBox,
-    DataLoader,
-    Detection,
-    MetricType,
-)
+from valor_lite.object_detection import BoundingBox, DataLoader, Detection
 
 
 def _get_bbox_extrema(
@@ -327,7 +322,7 @@ def run_benchmarking_analysis(
                 )
 
             # evaluate - base metrics only
-            eval_time, metrics = time_it(evaluator.evaluate)()
+            eval_time, metrics = time_it(evaluator.compute_precision_recall)()
             if eval_time > evaluation_timeout and evaluation_timeout != -1:
                 raise TimeoutError(
                     f"Base evaluation timed out with {evaluator.n_datums} datums."
@@ -335,12 +330,9 @@ def run_benchmarking_analysis(
 
             # evaluate - base metrics + detailed counts with no samples
             detailed_counts_time_no_samples, metrics = time_it(
-                evaluator.evaluate
+                evaluator.compute_confusion_matrix
             )(
-                [
-                    MetricType.ConfusionMatrix,
-                    *MetricType.base_metrics(),
-                ]
+                number_of_examples=0,
             )
             if (
                 detailed_counts_time_no_samples > evaluation_timeout
@@ -352,12 +344,8 @@ def run_benchmarking_analysis(
 
             # evaluate - base metrics + detailed counts with 3 samples
             detailed_counts_time_three_samples, metrics = time_it(
-                evaluator.evaluate
+                evaluator.compute_confusion_matrix
             )(
-                [
-                    MetricType.ConfusionMatrix,
-                    *MetricType.base_metrics(),
-                ],
                 number_of_examples=3,
             )
             if (

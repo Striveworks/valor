@@ -7,7 +7,7 @@ from time import time
 
 import requests
 from tqdm import tqdm
-from valor_lite.classification import Classification, DataLoader, MetricType
+from valor_lite.classification import Classification, DataLoader
 
 
 def _convert_valor_dicts_into_Classification(gt_dict: dict, pd_dict: dict):
@@ -211,14 +211,16 @@ def run_benchmarking_analysis(
             )
 
         # evaluate
-        eval_time, _ = time_it(evaluator.evaluate)()
+        eval_time, _ = time_it(evaluator.compute_precision_recall)()
         if eval_time > evaluation_timeout and evaluation_timeout != -1:
             raise TimeoutError(
                 f"Base evaluation timed out with {evaluator.n_datums} datums."
             )
 
-        detail_no_examples_time, _ = time_it(evaluator.evaluate)(
-            metrics_to_return=[*MetricType.base(), MetricType.ConfusionMatrix],
+        detail_no_examples_time, _ = time_it(
+            evaluator.compute_confusion_matrix
+        )(
+            number_of_examples=0,
         )
         if (
             detail_no_examples_time > evaluation_timeout
@@ -228,8 +230,9 @@ def run_benchmarking_analysis(
                 f"Base evaluation timed out with {evaluator.n_datums} datums."
             )
 
-        detail_three_examples_time, _ = time_it(evaluator.evaluate)(
-            metrics_to_return=[*MetricType.base(), MetricType.ConfusionMatrix],
+        detail_three_examples_time, _ = time_it(
+            evaluator.compute_confusion_matrix
+        )(
             number_of_examples=3,
         )
         if (

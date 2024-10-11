@@ -568,10 +568,10 @@ def test_filtering_all_detections(four_detections: list[Detection]):
     metrics = evaluator.evaluate(
         iou_thresholds=[0.5],
         filter_=filter_,
-        metrics_to_return=[
-            *MetricType.base_metrics(),
-            MetricType.ConfusionMatrix,
-        ],
+    )
+    evaluator.compute_confusion_matrix(
+        iou_thresholds=[0.5],
+        filter_=filter_,
     )
 
     actual_metrics = [m.to_dict() for m in metrics[MetricType.AP]]

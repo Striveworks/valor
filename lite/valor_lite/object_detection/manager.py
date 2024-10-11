@@ -212,229 +212,6 @@ class Evaluator:
             label_metadata=label_metadata,
         )
 
-    def evaluate(
-        self,
-        metrics_to_return: list[MetricType] = MetricType.base_metrics(),
-        iou_thresholds: list[float] = [0.5, 0.75, 0.9],
-        score_thresholds: list[float] = [0.5],
-        number_of_examples: int = 0,
-        filter_: Filter | None = None,
-        as_dict: bool = False,
-    ) -> dict[MetricType, list]:
-        """
-        Performs an evaluation and returns metrics.
-
-        Parameters
-        ----------
-        metrics_to_return : list[MetricType]
-            A list of metrics to return in the results.
-        iou_thresholds : list[float]
-            A list of IoU thresholds to compute metrics over.
-        score_thresholds : list[float]
-            A list of score thresholds to compute metrics over.
-        number_of_examples : int, default=0
-            Maximum number of annotation examples to return in ConfusionMatrix.
-        filter_ : Filter, optional
-            An optional filter object.
-        as_dict : bool, default=False
-            An option to return metrics as dictionaries.
-
-        Returns
-        -------
-        dict[MetricType, list]
-            A dictionary mapping MetricType enumerations to lists of computed metrics.
-        """
-
-        ranked_pairs = self._ranked_pairs
-        detailed_pairs = self._detailed_pairs
-        label_metadata = self._label_metadata
-        if filter_ is not None:
-            ranked_pairs = ranked_pairs[filter_.ranked_indices]
-            detailed_pairs = detailed_pairs[filter_.detailed_indices]
-            label_metadata = filter_.label_metadata
-
-        (
-            (
-                average_precision,
-                mean_average_precision,
-                average_precision_average_over_ious,
-                mean_average_precision_average_over_ious,
-            ),
-            (
-                average_recall,
-                mean_average_recall,
-                average_recall_averaged_over_scores,
-                mean_average_recall_averaged_over_scores,
-            ),
-            precision_recall,
-            pr_curves,
-        ) = compute_metrics(
-            data=ranked_pairs,
-            label_metadata=label_metadata,
-            iou_thresholds=np.array(iou_thresholds),
-            score_thresholds=np.array(score_thresholds),
-        )
-
-        metrics = defaultdict(list)
-
-        metrics[MetricType.AP] = [
-            AP(
-                value=average_precision[iou_idx][label_idx],
-                iou_threshold=iou_thresholds[iou_idx],
-                label=self.index_to_label[label_idx],
-            )
-            for iou_idx in range(average_precision.shape[0])
-            for label_idx in range(average_precision.shape[1])
-            if int(label_metadata[label_idx, 0]) > 0
-        ]
-
-        metrics[MetricType.mAP] = [
-            mAP(
-                value=mean_average_precision[iou_idx],
-                iou_threshold=iou_thresholds[iou_idx],
-            )
-            for iou_idx in range(mean_average_precision.shape[0])
-        ]
-
-        metrics[MetricType.APAveragedOverIOUs] = [
-            APAveragedOverIOUs(
-                value=average_precision_average_over_ious[label_idx],
-                iou_thresholds=iou_thresholds,
-                label=self.index_to_label[label_idx],
-            )
-            for label_idx in range(self.n_labels)
-            if int(label_metadata[label_idx, 0]) > 0
-        ]
-
-        metrics[MetricType.mAPAveragedOverIOUs] = [
-            mAPAveragedOverIOUs(
-                value=mean_average_precision_average_over_ious,
-                iou_thresholds=iou_thresholds,
-            )
-        ]
-
-        metrics[MetricType.AR] = [
-            AR(
-                value=average_recall[score_idx][label_idx],
-                iou_thresholds=iou_thresholds,
-                score_threshold=score_thresholds[score_idx],
-                label=self.index_to_label[label_idx],
-            )
-            for score_idx in range(average_recall.shape[0])
-            for label_idx in range(average_recall.shape[1])
-            if int(label_metadata[label_idx, 0]) > 0
-        ]
-
-        metrics[MetricType.mAR] = [
-            mAR(
-                value=mean_average_recall[score_idx],
-                iou_thresholds=iou_thresholds,
-                score_threshold=score_thresholds[score_idx],
-            )
-            for score_idx in range(mean_average_recall.shape[0])
-        ]
-
-        metrics[MetricType.ARAveragedOverScores] = [
-            ARAveragedOverScores(
-                value=average_recall_averaged_over_scores[label_idx],
-                score_thresholds=score_thresholds,
-                iou_thresholds=iou_thresholds,
-                label=self.index_to_label[label_idx],
-            )
-            for label_idx in range(self.n_labels)
-            if int(label_metadata[label_idx, 0]) > 0
-        ]
-
-        metrics[MetricType.mARAveragedOverScores] = [
-            mARAveragedOverScores(
-                value=mean_average_recall_averaged_over_scores,
-                score_thresholds=score_thresholds,
-                iou_thresholds=iou_thresholds,
-            )
-        ]
-
-        metrics[MetricType.PrecisionRecallCurve] = [
-            PrecisionRecallCurve(
-                precision=list(pr_curves[iou_idx][label_idx]),
-                iou_threshold=iou_threshold,
-                label=label,
-            )
-            for iou_idx, iou_threshold in enumerate(iou_thresholds)
-            for label_idx, label in self.index_to_label.items()
-            if int(label_metadata[label_idx, 0]) > 0
-        ]
-
-        for label_idx, label in self.index_to_label.items():
-
-            if label_metadata[label_idx, 0] == 0:
-                continue
-
-            for score_idx, score_threshold in enumerate(score_thresholds):
-                for iou_idx, iou_threshold in enumerate(iou_thresholds):
-
-                    row = precision_recall[iou_idx][score_idx][label_idx]
-                    kwargs = {
-                        "label": label,
-                        "iou_threshold": iou_threshold,
-                        "score_threshold": score_threshold,
-                    }
-                    metrics[MetricType.Counts].append(
-                        Counts(
-                            tp=int(row[0]),
-                            fp=int(row[1]),
-                            fn=int(row[2]),
-                            **kwargs,
-                        )
-                    )
-
-                    metrics[MetricType.Precision].append(
-                        Precision(
-                            value=row[3],
-                            **kwargs,
-                        )
-                    )
-                    metrics[MetricType.Recall].append(
-                        Recall(
-                            value=row[4],
-                            **kwargs,
-                        )
-                    )
-                    metrics[MetricType.F1].append(
-                        F1(
-                            value=row[5],
-                            **kwargs,
-                        )
-                    )
-                    metrics[MetricType.Accuracy].append(
-                        Accuracy(
-                            value=row[6],
-                            **kwargs,
-                        )
-                    )
-
-        if MetricType.ConfusionMatrix in metrics_to_return:
-            metrics[
-                MetricType.ConfusionMatrix
-            ] = self._compute_confusion_matrix(
-                data=detailed_pairs,
-                label_metadata=label_metadata,
-                iou_thresholds=iou_thresholds,
-                score_thresholds=score_thresholds,
-                number_of_examples=number_of_examples,
-            )
-
-        for metric in set(metrics.keys()):
-            if metric not in metrics_to_return:
-                del metrics[metric]
-
-        if as_dict:
-            return {
-                mtype: [metric.to_dict() for metric in mvalues]
-                for mtype, mvalues in metrics.items()
-            }
-
-        return metrics
-
     def _convert_example_to_dict(
         self, box: NDArray[np.float16]
     ) -> dict[str, float]:
@@ -442,10 +219,10 @@ class Evaluator:
         Converts a cached bounding box example to dictionary format.
         """
         return {
-            "xmin": box[0],
-            "xmax": box[1],
-            "ymin": box[2],
-            "ymax": box[3],
+            "xmin": float(box[0]),
+            "xmax": float(box[1]),
+            "ymin": float(box[2]),
+            "ymax": float(box[3]),
         }
 
     def _unpack_confusion_matrix(
@@ -683,37 +460,248 @@ class Evaluator:
             for gt_label_idx in range(number_of_labels)
         }
 
-    def _compute_confusion_matrix(
+    def compute_precision_recall(
         self,
-        data: NDArray[np.float64],
-        label_metadata: NDArray[np.int32],
-        iou_thresholds: list[float],
-        score_thresholds: list[float],
-        number_of_examples: int,
-    ) -> list[ConfusionMatrix]:
+        iou_thresholds: list[float] = [0.5, 0.75, 0.9],
+        score_thresholds: list[float] = [0.5],
+        filter_: Filter | None = None,
+        as_dict: bool = False,
+    ) -> dict[MetricType, list]:
         """
-        Computes detailed counting metrics.
+        Computes all metrics except for ConfusionMatrix
 
         Parameters
         ----------
-        data : NDArray[np.float64]
-            An array containing detailed pairs of detections.
-        label_metadata : NDArray[np.int32]
-            An array containing label metadata.
         iou_thresholds : list[float]
-            List of IoU thresholds to compute metrics for.
+            A list of IoU thresholds to compute metrics over.
         score_thresholds : list[float]
-            List of confidence thresholds to compute metrics for.
-        number_of_examples : int
-            Maximum number of annotation examples to return per metric.
+            A list of score thresholds to compute metrics over.
+        filter_ : Filter, optional
+            An optional filter object.
+        as_dict : bool, default=False
+            An option to return metrics as dictionaries.
 
         Returns
         -------
-        list[list[ConfusionMatrix]]
-            Outer list is indexed by label, inner list is by IoU.
+        dict[MetricType, list]
+            A dictionary mapping MetricType enumerations to lists of computed metrics.
         """
 
-        if data.size == 0:
+        ranked_pairs = self._ranked_pairs
+        label_metadata = self._label_metadata
+        if filter_ is not None:
+            ranked_pairs = ranked_pairs[filter_.ranked_indices]
+            label_metadata = filter_.label_metadata
+
+        (
+            (
+                average_precision,
+                mean_average_precision,
+                average_precision_average_over_ious,
+                mean_average_precision_average_over_ious,
+            ),
+            (
+                average_recall,
+                mean_average_recall,
+                average_recall_averaged_over_scores,
+                mean_average_recall_averaged_over_scores,
+            ),
+            precision_recall,
+            pr_curves,
+        ) = compute_metrics(
+            data=ranked_pairs,
+            label_metadata=label_metadata,
+            iou_thresholds=np.array(iou_thresholds),
+            score_thresholds=np.array(score_thresholds),
+        )
+
+        metrics = defaultdict(list)
+
+        metrics[MetricType.AP] = [
+            AP(
+                value=float(average_precision[iou_idx][label_idx]),
+                iou_threshold=iou_thresholds[iou_idx],
+                label=self.index_to_label[label_idx],
+            )
+            for iou_idx in range(average_precision.shape[0])
+            for label_idx in range(average_precision.shape[1])
+            if int(label_metadata[label_idx, 0]) > 0
+        ]
+
+        metrics[MetricType.mAP] = [
+            mAP(
+                value=float(mean_average_precision[iou_idx]),
+                iou_threshold=iou_thresholds[iou_idx],
+            )
+            for iou_idx in range(mean_average_precision.shape[0])
+        ]
+
+        metrics[MetricType.APAveragedOverIOUs] = [
+            APAveragedOverIOUs(
+                value=float(average_precision_average_over_ious[label_idx]),
+                iou_thresholds=iou_thresholds,
+                label=self.index_to_label[label_idx],
+            )
+            for label_idx in range(self.n_labels)
+            if int(label_metadata[label_idx, 0]) > 0
+        ]
+
+        metrics[MetricType.mAPAveragedOverIOUs] = [
+            mAPAveragedOverIOUs(
+                value=float(mean_average_precision_average_over_ious),
+                iou_thresholds=iou_thresholds,
+            )
+        ]
+
+        metrics[MetricType.AR] = [
+            AR(
+                value=float(average_recall[score_idx][label_idx]),
+                iou_thresholds=iou_thresholds,
+                score_threshold=score_thresholds[score_idx],
+                label=self.index_to_label[label_idx],
+            )
+            for score_idx in range(average_recall.shape[0])
+            for label_idx in range(average_recall.shape[1])
+            if int(label_metadata[label_idx, 0]) > 0
+        ]
+
+        metrics[MetricType.mAR] = [
+            mAR(
+                value=float(mean_average_recall[score_idx]),
+                iou_thresholds=iou_thresholds,
+                score_threshold=score_thresholds[score_idx],
+            )
+            for score_idx in range(mean_average_recall.shape[0])
+        ]
+
+        metrics[MetricType.ARAveragedOverScores] = [
+            ARAveragedOverScores(
+                value=float(average_recall_averaged_over_scores[label_idx]),
+                score_thresholds=score_thresholds,
+                iou_thresholds=iou_thresholds,
+                label=self.index_to_label[label_idx],
+            )
+            for label_idx in range(self.n_labels)
+            if int(label_metadata[label_idx, 0]) > 0
+        ]
+
+        metrics[MetricType.mARAveragedOverScores] = [
+            mARAveragedOverScores(
+                value=float(mean_average_recall_averaged_over_scores),
+                score_thresholds=score_thresholds,
+                iou_thresholds=iou_thresholds,
+            )
+        ]
+
+        metrics[MetricType.PrecisionRecallCurve] = [
+            PrecisionRecallCurve(
+                precisions=pr_curves[iou_idx, label_idx, :, 0]
+                .astype(float)
+                .tolist(),
+                scores=pr_curves[iou_idx, label_idx, :, 1]
+                .astype(float)
+                .tolist(),
+                iou_threshold=iou_threshold,
+                label=label,
+            )
+            for iou_idx, iou_threshold in enumerate(iou_thresholds)
+            for label_idx, label in self.index_to_label.items()
+            if int(label_metadata[label_idx, 0]) > 0
+        ]
+
+        for label_idx, label in self.index_to_label.items():
+
+            if label_metadata[label_idx, 0] == 0:
+                continue
+
+            for score_idx, score_threshold in enumerate(score_thresholds):
+                for iou_idx, iou_threshold in enumerate(iou_thresholds):
+
+                    row = precision_recall[iou_idx][score_idx][label_idx]
+                    kwargs = {
+                        "label": label,
+                        "iou_threshold": iou_threshold,
+                        "score_threshold": score_threshold,
+                    }
+                    metrics[MetricType.Counts].append(
+                        Counts(
+                            tp=int(row[0]),
+                            fp=int(row[1]),
+                            fn=int(row[2]),
+                            **kwargs,
+                        )
+                    )
+
+                    metrics[MetricType.Precision].append(
+                        Precision(
+                            value=float(row[3]),
+                            **kwargs,
+                        )
+                    )
+                    metrics[MetricType.Recall].append(
+                        Recall(
+                            value=float(row[4]),
+                            **kwargs,
+                        )
+                    )
+                    metrics[MetricType.F1].append(
+                        F1(
+                            value=float(row[5]),
+                            **kwargs,
+                        )
+                    )
+                    metrics[MetricType.Accuracy].append(
+                        Accuracy(
+                            value=float(row[6]),
+                            **kwargs,
+                        )
+                    )
+
+        if as_dict:
+            return {
+                mtype: [metric.to_dict() for metric in mvalues]
+                for mtype, mvalues in metrics.items()
+            }
+
+        return metrics
+
+    def compute_confusion_matrix(
+        self,
+        iou_thresholds: list[float] = [0.5, 0.75, 0.9],
+        score_thresholds: list[float] = [0.5],
+        number_of_examples: int = 0,
+        filter_: Filter | None = None,
+        as_dict: bool = False,
+    ) -> list:
+        """
+        Computes confusion matrices at various thresholds.
+
+        Parameters
+        ----------
+        iou_thresholds : list[float]
+            A list of IoU thresholds to compute metrics over.
+        score_thresholds : list[float]
+            A list of score thresholds to compute metrics over.
+        number_of_examples : int, default=0
+            Maximum number of annotation examples to return in ConfusionMatrix.
+        filter_ : Filter, optional
+            An optional filter object.
+        as_dict : bool, default=False
+            An option to return metrics as dictionaries.
+
+        Returns
+        -------
+        list[ConfusionMatrix] | list[dict]
+            List of confusion matrices per threshold pair.
+        """
+
+        detailed_pairs = self._detailed_pairs
+        label_metadata = self._label_metadata
+        if filter_ is not None:
+            detailed_pairs = detailed_pairs[filter_.detailed_indices]
+            label_metadata = filter_.label_metadata
+
+        if detailed_pairs.size == 0:
             return list()
 
         (
@@ -721,7 +709,7 @@ class Evaluator:
             hallucinations,
             missing_predictions,
         ) = compute_confusion_matrix(
-            data=data,
+            data=detailed_pairs,
             label_metadata=label_metadata,
             iou_thresholds=np.array(iou_thresholds),
             score_thresholds=np.array(score_thresholds),
@@ -729,7 +717,7 @@ class Evaluator:
         )
 
         n_ious, n_scores, n_labels, _, _ = confusion_matrix.shape
-        return [
+        matrices = [
             ConfusionMatrix(
                 iou_threshold=iou_thresholds[iou_idx],
                 score_threshold=score_thresholds[score_idx],
@@ -757,6 +745,54 @@ class Evaluator:
             for iou_idx in range(n_ious)
             for score_idx in range(n_scores)
         ]
+
+        if as_dict:
+            return [m.to_dict() for m in matrices]
+        return matrices
+
+    def evaluate(
+        self,
+        iou_thresholds: list[float] = [0.5, 0.75, 0.9],
+        score_thresholds: list[float] = [0.5],
+        number_of_examples: int = 0,
+        filter_: Filter | None = None,
+        as_dict: bool = False,
+    ) -> dict[MetricType, list]:
+        """
+        Computes all avaiable metrics.
+
+        Parameters
+        ----------
+        iou_thresholds : list[float]
+            A list of IoU thresholds to compute metrics over.
+        score_thresholds : list[float]
+            A list of score thresholds to compute metrics over.
+        number_of_examples : int, default=0
+            Maximum number of annotation examples to return in ConfusionMatrix.
+        filter_ : Filter, optional
+            An optional filter object.
+        as_dict : bool, default=False
+            An option to return metrics as dictionaries.
+
+        Returns
+        -------
+        dict[MetricType, list]
+            A dictionary mapping metric type to a list of metrics.
+        """
+        results = self.compute_precision_recall(
+            iou_thresholds=iou_thresholds,
+            score_thresholds=score_thresholds,
+            filter_=filter_,
+            as_dict=as_dict,
+        )
+        results[MetricType.ConfusionMatrix] = self.compute_confusion_matrix(
+            iou_thresholds=iou_thresholds,
+            score_thresholds=score_thresholds,
+            number_of_examples=number_of_examples,
+            filter_=filter_,
+            as_dict=as_dict,
+        )
+        return results
 
 
 class DataLoader:

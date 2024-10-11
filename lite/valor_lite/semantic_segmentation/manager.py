@@ -190,9 +190,8 @@ class Evaluator:
             n_pixels=self._n_pixels_per_datum[mask_datums].sum(),
         )
 
-    def evaluate(
+    def compute_precision_recall_iou(
         self,
-        metrics_to_return: list[MetricType] = MetricType.base(),
         filter_: Filter | None = None,
         as_dict: bool = False,
     ) -> dict[MetricType, list]:
@@ -201,10 +200,10 @@ class Evaluator:
 
         Parameters
         ----------
-        metrics_to_return : list[MetricType]
-            A list of metrics to return in the results.
         filter_ : Filter, optional
             An optional filter object.
+        as_dict : bool, default=False
+            An option to return metrics as dictionaries.
 
         Returns
         -------
@@ -239,7 +238,7 @@ class Evaluator:
 
         metrics[MetricType.Accuracy] = [
             Accuracy(
-                value=accuracy,
+                value=float(accuracy),
             )
         ]
 
@@ -258,16 +257,14 @@ class Evaluator:
                 },
                 hallucinations={
                     self.index_to_label[pd_label_idx]: {
-                        "percent": float(hallucination_ratios[pd_label_idx])
+                        "ratio": float(hallucination_ratios[pd_label_idx])
                     }
                     for pd_label_idx in range(self.n_labels)
                     if label_metadata[pd_label_idx, 0] > 0
                 },
                 missing_predictions={
                     self.index_to_label[gt_label_idx]: {
-                        "percent": float(
-                            missing_prediction_ratios[gt_label_idx]
-                        )
+                        "ratio": float(missing_prediction_ratios[gt_label_idx])
                     }
                     for gt_label_idx in range(self.n_labels)
                     if label_metadata[gt_label_idx, 0] > 0
@@ -316,10 +313,6 @@ class Evaluator:
                 )
             )
 
-        for metric in set(metrics.keys()):
-            if metric not in metrics_to_return:
-                del metrics[metric]
-
         if as_dict:
             return {
                 mtype: [metric.to_dict() for metric in mvalues]
@@ -327,6 +320,30 @@ class Evaluator:
             }
 
         return metrics
+
+    def evaluate(
+        self,
+        filter_: Filter | None = None,
+        as_dict: bool = False,
+    ) -> dict[MetricType, list]:
+        """
+        Computes all available metrics.
+
+        Parameters
+        ----------
+        filter_ : Filter, optional
+            An optional filter object.
+        as_dict : bool, default=False
+            An option to return metrics as dictionaries.
+
+        Returns
+        -------
+        dict[MetricType, list]
+            A dictionary mapping metric type to lists of metrics.
+        """
+        return self.compute_precision_recall_iou(
+            filter_=filter_, as_dict=as_dict
+        )
 
 
 class DataLoader:

@@ -1,3 +1,4 @@
+import numpy as np
 from valor_lite.object_detection import DataLoader, Detection, MetricType
 
 
@@ -88,23 +89,36 @@ def test_no_predictions(detections_no_predictions):
         assert m in actual_metrics
 
 
-def test_metrics_to_return(basic_detections_first_class: list[Detection]):
+def _flatten_metrics(m) -> list:
+    if isinstance(m, dict):
+        keys = list(m.keys())
+        values = [
+            inner_value
+            for value in m.values()
+            for inner_value in _flatten_metrics(value)
+        ]
+        return keys + values
+    elif isinstance(m, list):
+        return [
+            inner_value
+            for value in m
+            for inner_value in _flatten_metrics(value)
+        ]
+    else:
+        return [m]
 
-    loader = DataLoader()
-    loader.add_bounding_boxes(basic_detections_first_class)
-    evaluator = loader.finalize()
 
-    metrics_to_return = [
-        MetricType.AP,
-        MetricType.AR,
-    ]
-    metrics = evaluator.evaluate(metrics_to_return)
-    assert metrics.keys() == set(metrics_to_return)
+def test_output_types_dont_contain_numpy(basic_detections: list[Detection]):
+    manager = DataLoader()
+    manager.add_bounding_boxes(basic_detections)
+    evaluator = manager.finalize()
 
-    metrics_to_return = [
-        MetricType.AP,
-        MetricType.AR,
-        MetricType.ConfusionMatrix,
-    ]
-    metrics = evaluator.evaluate(metrics_to_return)
-    assert metrics.keys() == set(metrics_to_return)
+    metrics = evaluator.evaluate(
+        score_thresholds=[0.25, 0.75],
+        as_dict=True,
+    )
+
+    values = _flatten_metrics(metrics)
+    for value in values:
+        if isinstance(value, (np.generic, np.ndarray)):
+            raise TypeError
