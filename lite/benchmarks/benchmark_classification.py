@@ -211,7 +211,7 @@ def run_benchmarking_analysis(
             )
 
         # evaluate
-        eval_time, _ = time_it(evaluator.evaluate)()
+        eval_time, _ = time_it(evaluator.compute_precision_recall)()
         if eval_time > evaluation_timeout and evaluation_timeout != -1:
             raise TimeoutError(
                 f"Base evaluation timed out with {evaluator.n_datums} datums."
