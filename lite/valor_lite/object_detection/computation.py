@@ -1,4 +1,3 @@
-import numba
 import numpy as np
 import shapely
 from numpy.typing import NDArray
@@ -596,9 +595,9 @@ def _count_with_examples(
     return examples, labels, counts
 
 
-@numba.njit(parallel=True)
 def _isin(
-    data: NDArray[np.int32], subset: NDArray[np.int32]
+    data: NDArray[np.int32],
+    subset: NDArray[np.int32],
 ) -> NDArray[np.bool_]:
     """
     Creates a mask of elements in data that exist within the subset.
@@ -615,15 +614,13 @@ def _isin(
     NDArray[np.bool_]
         Returns a bool mask with shape (N,).
     """
-    mask = np.zeros(data.shape[0], dtype=np.bool_)
-    for didx in numba.prange(data.shape[0]):
-        row = data[didx]
-        flag = False
-        for sidx in range(subset.shape[0]):
-            if row[0] == subset[sidx][0] and row[1] == subset[sidx][1]:
-                flag = True
-                break
-        mask[didx] = flag
+    combined_data = (data[:, 0].astype(np.int64) << 32) | data[:, 1].astype(
+        np.uint32
+    )
+    combined_subset = (subset[:, 0].astype(np.int64) << 32) | subset[
+        :, 1
+    ].astype(np.uint32)
+    mask = np.isin(combined_data, combined_subset, assume_unique=False)
     return mask
 
 

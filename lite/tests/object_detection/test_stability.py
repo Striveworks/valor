@@ -7,8 +7,9 @@ def _generate_random_detections(
     n_detections: int, n_boxes: int, labels: str
 ) -> list[Detection]:
     def bbox(is_prediction):
-        xmin, ymin = uniform(0, 10), uniform(0, 10)
-        xmax, ymax = uniform(xmin, 15), uniform(ymin, 15)
+        width, height = 50, 50
+        xmin, ymin = uniform(0, 1000), uniform(0, 1000)
+        xmax, ymax = uniform(xmin, xmin + width), uniform(ymin, ymin + height)
         kw = {"scores": [uniform(0, 1)]} if is_prediction else {}
         return BoundingBox(
             xmin,
