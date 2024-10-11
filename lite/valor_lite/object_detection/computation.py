@@ -480,8 +480,6 @@ def compute_metrics(
 
     # bin precision-recall curve
     pr_curve = np.zeros((n_ious, n_labels, 101, 2))
-
-    # TODO remove this for-loop
     for iou_idx in range(n_ious):
         p = precision[iou_idx]
         r = recall_index[iou_idx]
