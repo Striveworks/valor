@@ -184,7 +184,7 @@ def _compute_ranked_pairs_for_datum(
 
     # find best fits for prediction
     mask_label_match = data[:, 4] == data[:, 5]
-    matched_predicitons = np.unique(data[mask_label_match, 2].astype(int))
+    matched_predicitons = np.unique(data[mask_label_match, 2].astype(np.int32))
     mask_unmatched_predictions = ~np.isin(data[:, 2], matched_predicitons)
     data = data[mask_label_match | mask_unmatched_predictions]
 
@@ -333,7 +333,7 @@ def compute_metrics(
     average_recall = np.zeros((n_scores, n_labels))
     counts = np.zeros((n_ious, n_scores, n_labels, 7))
 
-    pd_labels = data[:, 5].astype(int)
+    pd_labels = data[:, 5].astype(np.int32)
     scores = data[:, 6]
     unique_pd_labels, unique_pd_indices = np.unique(
         pd_labels, return_index=True
@@ -383,17 +383,19 @@ def compute_metrics(
             true_positives_mask[mask_tp_inner] = mask_gt_unique
 
             # calculate intermediates
-            pd_count = np.bincount(pd_labels, minlength=n_labels).astype(float)
+            pd_count = np.bincount(pd_labels, minlength=n_labels).astype(
+                np.float64
+            )
             tp_count = np.bincount(
                 pd_labels,
                 weights=true_positives_mask,
                 minlength=n_labels,
-            ).astype(float)
+            ).astype(np.float64)
 
             fp_count = np.bincount(
                 pd_labels[mask_fp_inner],
                 minlength=n_labels,
-            ).astype(float)
+            ).astype(np.float64)
 
             fn_count = np.bincount(
                 pd_labels[mask_fn_inner],
@@ -476,7 +478,7 @@ def compute_metrics(
         where=running_gt_count > 1e-9,
         out=recall,
     )
-    recall_index = np.floor(recall * 100.0).astype(int)
+    recall_index = np.floor(recall * 100.0).astype(np.int32)
 
     # bin precision-recall curve
     pr_curve = np.zeros((n_ious, n_labels, 101, 2))
@@ -582,7 +584,7 @@ def _count_with_examples(
         Counts for each unique label index.
     """
     unique_rows, indices = np.unique(
-        data.astype(int)[:, unique_idx],
+        data.astype(np.int32)[:, unique_idx],
         return_index=True,
         axis=0,
     )
@@ -591,6 +593,35 @@ def _count_with_examples(
         unique_rows[:, label_idx], return_counts=True, axis=0
     )
     return examples, labels, counts
+
+
+def _isin(
+    data: NDArray[np.int32],
+    subset: NDArray[np.int32],
+) -> NDArray[np.bool_]:
+    """
+    Creates a mask of rows that exist within the subset.
+
+    Parameters
+    ----------
+    data : NDArray[np.int32]
+        An array with shape (N, 2).
+    subset : NDArray[np.int32]
+        An array with shape (M, 2) where N >= M.
+
+    Returns
+    -------
+    NDArray[np.bool_]
+        Returns a bool mask with shape (N,).
+    """
+    combined_data = (data[:, 0].astype(np.int64) << 32) | data[:, 1].astype(
+        np.uint32
+    )
+    combined_subset = (subset[:, 0].astype(np.int64) << 32) | subset[
+        :, 1
+    ].astype(np.uint32)
+    mask = np.isin(combined_data, combined_subset, assume_unique=False)
+    return mask
 
 
 def compute_confusion_matrix(
@@ -666,20 +697,16 @@ def compute_confusion_matrix(
     mask_gt_pd_match = mask_gt_pd_exists & mask_label_match
     mask_gt_pd_mismatch = mask_gt_pd_exists & ~mask_label_match
 
-    groundtruths = data[:, [0, 1]].astype(int)
-    predictions = data[:, [0, 2]].astype(int)
+    groundtruths = data[:, [0, 1]].astype(np.int32)
+    predictions = data[:, [0, 2]].astype(np.int32)
     for iou_idx in range(n_ious):
         mask_iou_threshold = data[:, 3] >= iou_thresholds[iou_idx]
         mask_iou = mask_iou_nonzero & mask_iou_threshold
 
         groundtruths_passing_ious = np.unique(groundtruths[mask_iou], axis=0)
-        mask_groundtruths_with_passing_ious = (
-            (
-                groundtruths.reshape(-1, 1, 2)
-                == groundtruths_passing_ious.reshape(1, -1, 2)
-            )
-            .all(axis=2)
-            .any(axis=1)
+        mask_groundtruths_with_passing_ious = _isin(
+            data=groundtruths,
+            subset=groundtruths_passing_ious,
         )
         mask_groundtruths_without_passing_ious = (
             ~mask_groundtruths_with_passing_ious & mask_gt_exists
@@ -688,13 +715,9 @@ def compute_confusion_matrix(
         predictions_with_passing_ious = np.unique(
             predictions[mask_iou], axis=0
         )
-        mask_predictions_with_passing_ious = (
-            (
-                predictions.reshape(-1, 1, 2)
-                == predictions_with_passing_ious.reshape(1, -1, 2)
-            )
-            .all(axis=2)
-            .any(axis=1)
+        mask_predictions_with_passing_ious = _isin(
+            data=predictions,
+            subset=predictions_with_passing_ious,
         )
         mask_predictions_without_passing_ious = (
             ~mask_predictions_with_passing_ious & mask_pd_exists
@@ -707,13 +730,9 @@ def compute_confusion_matrix(
             groundtruths_with_passing_score = np.unique(
                 groundtruths[mask_iou & mask_score], axis=0
             )
-            mask_groundtruths_with_passing_score = (
-                (
-                    groundtruths.reshape(-1, 1, 2)
-                    == groundtruths_with_passing_score.reshape(1, -1, 2)
-                )
-                .all(axis=2)
-                .any(axis=1)
+            mask_groundtruths_with_passing_score = _isin(
+                data=groundtruths,
+                subset=groundtruths_with_passing_score,
             )
             mask_groundtruths_without_passing_score = (
                 ~mask_groundtruths_with_passing_score & mask_gt_exists
@@ -736,21 +755,13 @@ def compute_confusion_matrix(
             )
 
             # filter out true-positives from misclf and misprd
-            mask_gts_with_tp_override = (
-                (
-                    data[mask_misclf][:, [0, 1]].reshape(-1, 1, 2)
-                    == data[mask_tp][:, [0, 1]].reshape(1, -1, 2)
-                )
-                .all(axis=2)
-                .any(axis=1)
+            mask_gts_with_tp_override = _isin(
+                data=groundtruths[mask_misclf],
+                subset=groundtruths[mask_tp],
             )
-            mask_pds_with_tp_override = (
-                (
-                    data[mask_misclf][:, [0, 2]].reshape(-1, 1, 2)
-                    == data[mask_tp][:, [0, 2]].reshape(1, -1, 2)
-                )
-                .all(axis=2)
-                .any(axis=1)
+            mask_pds_with_tp_override = _isin(
+                data=predictions[mask_misclf],
+                subset=predictions[mask_tp],
             )
             mask_misprd[mask_misclf] |= (
                 ~mask_gts_with_tp_override & mask_pds_with_tp_override
