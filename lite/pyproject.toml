@@ -12,6 +12,7 @@ dependencies = [
     "requests",
     "numpy",
     "shapely",
+    "numba",
 ]
 
 [project.urls]
