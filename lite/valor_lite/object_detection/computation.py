@@ -1,3 +1,4 @@
+import numba
 import numpy as np
 import shapely
 from numpy.typing import NDArray
@@ -593,6 +594,33 @@ def _count_with_examples(
     return examples, labels, counts
 
 
+# def _isin(data: NDArray[np.int32], subset: NDArray[np.int32]) -> NDArray[np.bool_]:
+#     return (
+#         (
+#             data.reshape(-1, 1, 2)
+#             == subset.reshape(1, -1, 2)
+#         )
+#         .all(axis=2)
+#         .any(axis=1)
+#     )
+
+
+@numba.njit(parallel=True)
+def _isin(
+    data: NDArray[np.int32], subset: NDArray[np.int32]
+) -> NDArray[np.bool_]:
+    mask = np.zeros(data.shape[0], dtype=np.bool_)
+    for didx in numba.prange(data.shape[0]):
+        row = data[didx]
+        flag = False
+        for sidx in range(subset.shape[0]):
+            if row[0] == subset[sidx][0] and row[1] == subset[sidx][1]:
+                flag = True
+                break
+        mask[didx] = flag
+    return mask
+
+
 def compute_confusion_matrix(
     data: NDArray[np.float64],
     label_metadata: NDArray[np.int32],
@@ -673,14 +701,18 @@ def compute_confusion_matrix(
         mask_iou = mask_iou_nonzero & mask_iou_threshold
 
         groundtruths_passing_ious = np.unique(groundtruths[mask_iou], axis=0)
-        mask_groundtruths_with_passing_ious = (
-            (
-                groundtruths.reshape(-1, 1, 2)
-                == groundtruths_passing_ious.reshape(1, -1, 2)
-            )
-            .all(axis=2)
-            .any(axis=1)
+        mask_groundtruths_with_passing_ious = _isin(
+            data=groundtruths,
+            subset=groundtruths_passing_ious,
         )
+        # mask_groundtruths_with_passing_ious = (
+        #     (
+        #         groundtruths.reshape(-1, 1, 2)
+        #         == groundtruths_passing_ious.reshape(1, -1, 2)
+        #     )
+        #     .all(axis=2)
+        #     .any(axis=1)
+        # )
         mask_groundtruths_without_passing_ious = (
             ~mask_groundtruths_with_passing_ious & mask_gt_exists
         )
@@ -688,14 +720,18 @@ def compute_confusion_matrix(
         predictions_with_passing_ious = np.unique(
             predictions[mask_iou], axis=0
         )
-        mask_predictions_with_passing_ious = (
-            (
-                predictions.reshape(-1, 1, 2)
-                == predictions_with_passing_ious.reshape(1, -1, 2)
-            )
-            .all(axis=2)
-            .any(axis=1)
+        mask_predictions_with_passing_ious = _isin(
+            data=predictions,
+            subset=predictions_with_passing_ious,
         )
+        # mask_predictions_with_passing_ious = (
+        #     (
+        #         predictions.reshape(-1, 1, 2)
+        #         == predictions_with_passing_ious.reshape(1, -1, 2)
+        #     )
+        #     .all(axis=2)
+        #     .any(axis=1)
+        # )
         mask_predictions_without_passing_ious = (
             ~mask_predictions_with_passing_ious & mask_pd_exists
         )
@@ -707,14 +743,18 @@ def compute_confusion_matrix(
             groundtruths_with_passing_score = np.unique(
                 groundtruths[mask_iou & mask_score], axis=0
             )
-            mask_groundtruths_with_passing_score = (
-                (
-                    groundtruths.reshape(-1, 1, 2)
-                    == groundtruths_with_passing_score.reshape(1, -1, 2)
-                )
-                .all(axis=2)
-                .any(axis=1)
+            mask_groundtruths_with_passing_score = _isin(
+                data=groundtruths,
+                subset=groundtruths_with_passing_score,
             )
+            # mask_groundtruths_with_passing_score = (
+            #     (
+            #         groundtruths.reshape(-1, 1, 2)
+            #         == groundtruths_with_passing_score.reshape(1, -1, 2)
+            #     )
+            #     .all(axis=2)
+            #     .any(axis=1)
+            # )
             mask_groundtruths_without_passing_score = (
                 ~mask_groundtruths_with_passing_score & mask_gt_exists
             )
@@ -736,22 +776,31 @@ def compute_confusion_matrix(
             )
 
             # filter out true-positives from misclf and misprd
-            mask_gts_with_tp_override = (
-                (
-                    data[mask_misclf][:, [0, 1]].reshape(-1, 1, 2)
-                    == data[mask_tp][:, [0, 1]].reshape(1, -1, 2)
-                )
-                .all(axis=2)
-                .any(axis=1)
+            mask_gts_with_tp_override = _isin(
+                data=data[mask_misclf][:, [0, 1]].astype(np.int32),
+                subset=data[mask_tp][:, [0, 1]].astype(np.int32),
             )
-            mask_pds_with_tp_override = (
-                (
-                    data[mask_misclf][:, [0, 2]].reshape(-1, 1, 2)
-                    == data[mask_tp][:, [0, 2]].reshape(1, -1, 2)
-                )
-                .all(axis=2)
-                .any(axis=1)
+            # mask_gts_with_tp_override = (
+            #     (
+            #         data[mask_misclf][:, [0, 1]].reshape(-1, 1, 2)
+            #         == data[mask_tp][:, [0, 1]].reshape(1, -1, 2)
+            #     )
+            #     .all(axis=2)
+            #     .any(axis=1)
+            # )
+
+            mask_pds_with_tp_override = _isin(
+                data=data[mask_misclf][:, [0, 2]].astype(np.int32),
+                subset=data[mask_tp][:, [0, 2]].astype(np.int32),
             )
+            # mask_pds_with_tp_override = (
+            #     (
+            #         data[mask_misclf][:, [0, 2]].reshape(-1, 1, 2)
+            #         == data[mask_tp][:, [0, 2]].reshape(1, -1, 2)
+            #     )
+            #     .all(axis=2)
+            #     .any(axis=1)
+            # )
             mask_misprd[mask_misclf] |= (
                 ~mask_gts_with_tp_override & mask_pds_with_tp_override
             )
