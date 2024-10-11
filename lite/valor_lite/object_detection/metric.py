@@ -593,6 +593,8 @@ class PrecisionRecallCurve:
     ----------
     precision : list[float]
         Interpolated precision values corresponding to recalls at 0.0, 0.01, ..., 1.0.
+    scores : list[float]
+        Maximum prediction score for each point on the interpolated curve.
     iou_threshold : float
         The Intersection over Union (IoU) threshold used to determine true positives.
     label : str
@@ -607,13 +609,17 @@ class PrecisionRecallCurve:
     """
 
     precision: list[float]
+    scores: list[float]
     iou_threshold: float
     label: str
 
     def to_metric(self) -> Metric:
         return Metric(
             type=type(self).__name__,
-            value=self.precision,
+            value={
+                "precisions": self.precision,
+                "scores": self.scores,
+            },
             parameters={
                 "iou_threshold": self.iou_threshold,
                 "label": self.label,

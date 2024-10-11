@@ -334,7 +334,10 @@ def compute_metrics(
     counts = np.zeros((n_ious, n_scores, n_labels, 7))
 
     pd_labels = data[:, 5].astype(int)
-    unique_pd_labels = np.unique(pd_labels)
+    scores = data[:, 6]
+    unique_pd_labels, unique_pd_indices = np.unique(
+        pd_labels, return_index=True
+    )
     gt_count = label_metadata[:, 0]
     running_total_count = np.zeros(
         (n_ious, n_rows),
@@ -342,7 +345,6 @@ def compute_metrics(
     )
     running_tp_count = np.zeros_like(running_total_count)
     running_gt_count = np.zeros_like(running_total_count)
-    pr_curve = np.zeros((n_ious, n_labels, 101))
 
     mask_score_nonzero = data[:, 6] > 1e-9
     mask_gt_exists = data[:, 1] >= 0.0
@@ -475,20 +477,44 @@ def compute_metrics(
         out=recall,
     )
     recall_index = np.floor(recall * 100.0).astype(int)
+
+    # bin precision-recall curve
+    pr_curve = np.zeros((n_ious, n_labels, 101, 2))
+
+    # TODO remove this for-loop
     for iou_idx in range(n_ious):
         p = precision[iou_idx]
         r = recall_index[iou_idx]
-        pr_curve[iou_idx, pd_labels, r] = np.maximum(
-            pr_curve[iou_idx, pd_labels, r], p
+        pr_curve[iou_idx, pd_labels, r, 0] = np.maximum(
+            pr_curve[iou_idx, pd_labels, r, 0],
+            p,
+        )
+        pr_curve[iou_idx, pd_labels, r, 1] = np.maximum(
+            pr_curve[iou_idx, pd_labels, r, 1],
+            scores,
         )
 
     # calculate average precision
-    running_max = np.zeros((n_ious, n_labels))
+    running_max_precision = np.zeros((n_ious, n_labels))
+    running_max_score = np.zeros((n_labels))
     for recall in range(100, -1, -1):
-        precision = pr_curve[:, :, recall]
-        running_max = np.maximum(precision, running_max)
-        average_precision += running_max
-        pr_curve[:, :, recall] = running_max
+
+        # running max precision
+        running_max_precision = np.maximum(
+            pr_curve[:, :, recall, 0],
+            running_max_precision,
+        )
+        pr_curve[:, :, recall, 0] = running_max_precision
+
+        # running max score
+        running_max_score = np.maximum(
+            pr_curve[:, :, recall, 1],
+            running_max_score,
+        )
+        pr_curve[:, :, recall, 1] = running_max_score
+
+        average_precision += running_max_precision
+
     average_precision = average_precision / 101.0
 
     # calculate average recall
