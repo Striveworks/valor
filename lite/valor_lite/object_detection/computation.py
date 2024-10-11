@@ -600,7 +600,7 @@ def _isin(
     subset: NDArray[np.int32],
 ) -> NDArray[np.bool_]:
     """
-    Creates a mask of elements in data that exist within the subset.
+    Creates a mask of data rows that exist within the subset.
 
     Parameters
     ----------
