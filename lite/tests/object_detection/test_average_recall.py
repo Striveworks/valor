@@ -25,7 +25,7 @@ def test__compute_average_recall():
     iou_thresholds = np.array([0.1, 0.6])
     score_thresholds = np.array([0.5, 0.93, 0.98])
 
-    (_, results, _, _,) = compute_metrics(
+    (_, results, _, _, _,) = compute_metrics(
         sorted_pairs,
         label_metadata=label_metadata,
         iou_thresholds=iou_thresholds,
