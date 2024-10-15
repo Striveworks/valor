@@ -207,7 +207,7 @@ class Accuracy:
     score_threshold : float
         The confidence score threshold above which predictions are considered.
 
-    Methodss
+    Methods
     -------
     to_metric()
         Converts the instance to a generic `Metric` object.
