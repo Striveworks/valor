@@ -182,9 +182,9 @@ def compute_metrics(
         out=precision,
     )
 
-    accuracy = np.zeros_like(recall)
+    accuracy = np.zeros(n_scores, dtype=np.float64)
     np.divide(
-        (counts[:, :, 0] + counts[:, :, 3]),
+        counts[:, :, 0].sum(axis=1),
         float(n_datums),
         out=accuracy,
     )
