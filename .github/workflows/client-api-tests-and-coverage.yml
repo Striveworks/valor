@@ -131,7 +131,7 @@ jobs:
   client-unit-tests:
     env:
       COVERAGE_FILE: .coverage.client-unit-tests
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-latest
     strategy:
       matrix:
         python: ["3.8", "3.9", "3.10", "3.11"]
