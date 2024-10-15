@@ -58,39 +58,28 @@ class Geospatial(Base):
     created_at: Mapped[datetime.datetime] = mapped_column(default=func.now())
 
 
-class Label(Base):
-    __tablename__ = "label_annotation"
-    __table_args__ = (UniqueConstraint("key", "value"),)
-
-    # columns
-    id: Mapped[int] = mapped_column(primary_key=True, index=True)
-    key: Mapped[str]
-    value: Mapped[str]
-    created_at: Mapped[datetime.datetime] = mapped_column(default=func.now())
-
-
 class Classification(Base):
     __tablename__ = "classification"
     __table_args__ = (
-        UniqueConstraint("datum_id", "groundtruth_id", "prediction_id"),
+        UniqueConstraint("datum_id", "groundtruth", "prediction"),
     )
 
     # columns
-    id: Mapped[int] = mapped_column(primary_key=True, index=True)
+    id: Mapped[int] = mapped_column(primary_key=True)
     dataset_id: Mapped[int] = mapped_column(
-        ForeignKey("dataset.id"), nullable=False
+        ForeignKey("dataset.id"), nullable=False, index=True
     )
     model_id: Mapped[int] = mapped_column(
-        ForeignKey("model.id"), nullable=False
+        ForeignKey("model.id"), nullable=False, index=True
     )
     datum_id: Mapped[int] = mapped_column(
-        ForeignKey("datum.id"), nullable=False
+        ForeignKey("datum.id"), nullable=False, index=True
     )
     groundtruth_id: Mapped[int] = mapped_column(
-        ForeignKey("label.id"), nullable=False
+        ForeignKey("label.id"), nullable=False,
     )
     prediction_id: Mapped[int] = mapped_column(
-        ForeignKey("label.id"), nullable=False
+        ForeignKey("label.id"), nullable=False,
     )
     score: Mapped[float] = mapped_column(nullable=False)
     hardmax: Mapped[bool] = mapped_column(nullable=False)
