@@ -158,36 +158,6 @@ class Recall(_ThresholdValue):
     pass
 
 
-class Accuracy(_ThresholdValue):
-    """
-    Accuracy metric for a specific class label.
-
-    This class calculates the accuracy at various score thresholds for a binary
-    classification task. Accuracy is defined as the ratio of the sum of true positives and
-    true negatives over all predictions.
-
-    Attributes
-    ----------
-    value : list[float]
-        Accuracy values computed at each score threshold.
-    score_thresholds : list[float]
-        Score thresholds at which the accuracy values are computed.
-    hardmax : bool
-        Indicates whether hardmax thresholding was used.
-    label : str
-        The class label for which the accuracy is computed.
-
-    Methods
-    -------
-    to_metric()
-        Converts the instance to a generic `Metric` object.
-    to_dict()
-        Converts the instance to a dictionary representation.
-    """
-
-    pass
-
-
 class F1(_ThresholdValue):
     """
     F1 score for a specific class label.
@@ -215,6 +185,48 @@ class F1(_ThresholdValue):
     """
 
     pass
+
+
+@dataclass
+class Accuracy:
+    """
+    Multiclass accuracy metric.
+
+    This class calculates the accuracy at various score thresholds.
+
+    Attributes
+    ----------
+    value : list[float]
+        Accuracy values computed at each score threshold.
+    score_thresholds : list[float]
+        Score thresholds at which the accuracy values are computed.
+    hardmax : bool
+        Indicates whether hardmax thresholding was used.
+
+    Methods
+    -------
+    to_metric()
+        Converts the instance to a generic `Metric` object.
+    to_dict()
+        Converts the instance to a dictionary representation.
+    """
+
+    value: list[float]
+    score_thresholds: list[float]
+    hardmax: bool
+
+    def to_metric(self) -> Metric:
+        return Metric(
+            type=type(self).__name__,
+            value=self.value,
+            parameters={
+                "score_thresholds": self.score_thresholds,
+                "hardmax": self.hardmax,
+            },
+        )
+
+    def to_dict(self) -> dict:
+        return self.to_metric().to_dict()
 
 
 @dataclass

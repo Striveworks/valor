@@ -367,6 +367,14 @@ class Evaluator:
             )
         ]
 
+        metrics[MetricType.Accuracy] = [
+            Accuracy(
+                value=accuracy.astype(float).tolist(),
+                score_thresholds=score_thresholds,
+                hardmax=hardmax,
+            )
+        ]
+
         for label_idx, label in self.index_to_label.items():
 
             kwargs = {
@@ -398,12 +406,6 @@ class Evaluator:
             metrics[MetricType.Recall].append(
                 Recall(
                     value=recall[:, label_idx].astype(float).tolist(),
-                    **kwargs,
-                )
-            )
-            metrics[MetricType.Accuracy].append(
-                Accuracy(
-                    value=accuracy[:, label_idx].astype(float).tolist(),
                     **kwargs,
                 )
             )
