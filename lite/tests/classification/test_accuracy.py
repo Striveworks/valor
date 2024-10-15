@@ -53,18 +53,12 @@ def test_accuracy_computation():
     )
 
     # score threshold, label, count metric
-    assert accuracy.shape == (2, 4)
+    assert accuracy.shape == (2,)
 
     # score >= 0.25
-    assert accuracy[0][0] == 2 / 3
-    assert accuracy[0][1] == 1.0
-    assert accuracy[0][2] == 2 / 3
-    assert accuracy[0][3] == 1.0
+    assert accuracy[0] == 2 / 3
     # score >= 0.75
-    assert accuracy[1][0] == 2 / 3
-    assert accuracy[1][1] == 1.0
-    assert accuracy[1][2] == 2 / 3
-    assert accuracy[1][3] == 2 / 3
+    assert accuracy[1] == 1 / 3
 
 
 def test_accuracy_basic(basic_classifications: list[Classification]):
@@ -87,20 +81,10 @@ def test_accuracy_basic(basic_classifications: list[Classification]):
     expected_metrics = [
         {
             "type": "Accuracy",
-            "value": [2 / 3, 2 / 3],
+            "value": [2 / 3, 1 / 3],
             "parameters": {
                 "score_thresholds": [0.25, 0.75],
                 "hardmax": True,
-                "label": "0",
-            },
-        },
-        {
-            "type": "Accuracy",
-            "value": [1.0, 2 / 3],
-            "parameters": {
-                "score_thresholds": [0.25, 0.75],
-                "hardmax": True,
-                "label": "3",
             },
         },
     ]
@@ -124,29 +108,10 @@ def test_accuracy_with_animal_example(
     expected_metrics = [
         {
             "type": "Accuracy",
-            "value": [2.0 / 3.0],
+            "value": [2.0 / 6.0],
             "parameters": {
                 "score_thresholds": [0.5],
                 "hardmax": True,
-                "label": "bird",
-            },
-        },
-        {
-            "type": "Accuracy",
-            "value": [0.5],
-            "parameters": {
-                "score_thresholds": [0.5],
-                "hardmax": True,
-                "label": "dog",
-            },
-        },
-        {
-            "type": "Accuracy",
-            "value": [2 / 3],
-            "parameters": {
-                "score_thresholds": [0.5],
-                "hardmax": True,
-                "label": "cat",
             },
         },
     ]
@@ -170,38 +135,10 @@ def test_accuracy_color_example(
     expected_metrics = [
         {
             "type": "Accuracy",
-            "value": [2 / 3],
+            "value": [2 / 6],
             "parameters": {
                 "score_thresholds": [0.5],
                 "hardmax": True,
-                "label": "white",
-            },
-        },
-        {
-            "type": "Accuracy",
-            "value": [2 / 3],
-            "parameters": {
-                "score_thresholds": [0.5],
-                "hardmax": True,
-                "label": "red",
-            },
-        },
-        {
-            "type": "Accuracy",
-            "value": [2 / 3],
-            "parameters": {
-                "score_thresholds": [0.5],
-                "hardmax": True,
-                "label": "blue",
-            },
-        },
-        {
-            "type": "Accuracy",
-            "value": [5 / 6],
-            "parameters": {
-                "score_thresholds": [0.5],
-                "hardmax": True,
-                "label": "black",
             },
         },
     ]
@@ -237,7 +174,6 @@ def test_accuracy_with_image_example(
             "parameters": {
                 "score_thresholds": [0.0],
                 "hardmax": True,
-                "label": "v4",
             },
         },
     ]
@@ -269,29 +205,10 @@ def test_accuracy_with_tabular_example(
     expected_metrics = [
         {
             "type": "Accuracy",
-            "value": [0.7],
+            "value": [5 / 10],
             "parameters": {
                 "score_thresholds": [0.0],
                 "hardmax": True,
-                "label": "0",
-            },
-        },
-        {
-            "type": "Accuracy",
-            "value": [0.5],
-            "parameters": {
-                "score_thresholds": [0.0],
-                "hardmax": True,
-                "label": "1",
-            },
-        },
-        {
-            "type": "Accuracy",
-            "value": [0.8],
-            "parameters": {
-                "score_thresholds": [0.0],
-                "hardmax": True,
-                "label": "2",
             },
         },
     ]
