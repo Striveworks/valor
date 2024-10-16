@@ -4,18 +4,15 @@ from collections import defaultdict
 import evaluate
 from nltk.tokenize import RegexpTokenizer
 from nltk.translate import bleu_score
-from valor_core import enums, metrics, schemas, utilities
-from valor_core.enums import MetricType, ROUGEType
-from valor_core.exceptions import InvalidLLMResponseError
-from valor_core.llm_clients import (
+from valor_lite.text_generation import metrics, schemas, utilities
+from valor_lite.text_generation.enums import MetricType, ROUGEType
+from valor_lite.text_generation.exceptions import InvalidLLMResponseError
+from valor_lite.text_generation.llm_clients import (
     LLMClient,
     MockLLMClient,
     WrappedMistralAIClient,
     WrappedOpenAIClient,
 )
-
-LabelMapType = list[list[list[str]]]
-
 
 LLM_GUIDED_METRICS = {
     "AnswerCorrectness",
@@ -706,14 +703,7 @@ def is_text_gen_task(
     bool
         True if the annotation is a text generation annotation, False otherwise.
     """
-    if (
-        (ann.text is not None or ann.context_list is not None)
-        and ann.labels is None
-        and ann.bounding_box is None
-        and ann.polygon is None
-        and ann.raster is None
-        and ann.embedding is None
-    ):
+    if ann.text is not None or ann.context_list is not None:
         return True
     else:
         return False
@@ -749,9 +739,8 @@ def evaluate_text_generation(
     """
     start_time = time.time()
 
-    utilities.validate_metrics_to_return(
+    utilities.validate_text_gen_metrics_to_return(
         metrics_to_return=metrics_to_return,
-        task_type=enums.TaskType.TEXT_GENERATION,
     )
     utilities.validate_metric_parameters(
         metrics_to_return=metrics_to_return,
@@ -765,16 +754,12 @@ def evaluate_text_generation(
     for prediction in predictions:
         datum = prediction.datum
         for pred_annotation in prediction.annotations:
-            if not is_text_gen_task(pred_annotation):
-                continue
             groundtruth_annotations = []
             for gt in groundtruths:
                 if gt.datum == datum:
                     groundtruth_annotations.extend(gt.annotations)
             groundtruth_texts = [
-                gt_annotation.text
-                for gt_annotation in groundtruth_annotations
-                if is_text_gen_task(gt_annotation)
+                gt_annotation.text for gt_annotation in groundtruth_annotations
             ]
             data.append(
                 (
