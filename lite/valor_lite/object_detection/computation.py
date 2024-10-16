@@ -282,6 +282,7 @@ def compute_metrics(
     ],
     NDArray[np.float64],
     NDArray[np.float64],
+    NDArray[np.float64],
 ]:
     """
     Computes Object Detection metrics.
@@ -309,13 +310,15 @@ def compute_metrics(
 
     Returns
     -------
-    tuple[NDArray, NDArray, NDArray, float]
+    tuple[NDArray[np.float64], NDArray[np.float64], NDArray[np.float64], float]
         Average Precision results.
-    tuple[NDArray, NDArray, NDArray, float]
+    tuple[NDArray[np.float64], NDArray[np.float64], NDArray[np.float64], float]
         Average Recall results.
-    np.ndarray
-        Precision, Recall, TP, FP, FN, F1 Score, Accuracy.
-    np.ndarray
+    NDArray[np.float64]
+        Accuracy.
+    NDArray[np.float64]
+        Precision, Recall, TP, FP, FN, F1 Score.
+    NDArray[np.float64]
         Interpolated Precision-Recall Curves.
     """
 
@@ -329,9 +332,10 @@ def compute_metrics(
     elif n_scores == 0:
         raise ValueError("At least one score threshold must be passed.")
 
-    average_precision = np.zeros((n_ious, n_labels))
-    average_recall = np.zeros((n_scores, n_labels))
-    counts = np.zeros((n_ious, n_scores, n_labels, 7))
+    average_precision = np.zeros((n_ious, n_labels), dtype=np.float64)
+    average_recall = np.zeros((n_scores, n_labels), dtype=np.float64)
+    accuracy = np.zeros((n_ious, n_scores), dtype=np.float64)
+    counts = np.zeros((n_ious, n_scores, n_labels, 6), dtype=np.float64)
 
     pd_labels = data[:, 5].astype(np.int32)
     scores = data[:, 6]
@@ -417,14 +421,6 @@ def compute_metrics(
                 out=f1_score,
             )
 
-            accuracy = np.zeros_like(tp_count)
-            np.divide(
-                tp_count,
-                (gt_count + pd_count),
-                where=(gt_count + pd_count) > 1e-9,
-                out=accuracy,
-            )
-
             counts[iou_idx][score_idx] = np.concatenate(
                 (
                     tp_count[:, np.newaxis],
@@ -433,9 +429,16 @@ def compute_metrics(
                     precision[:, np.newaxis],
                     recall[:, np.newaxis],
                     f1_score[:, np.newaxis],
-                    accuracy[:, np.newaxis],
                 ),
                 axis=1,
+            )
+
+            # caluculate accuracy
+            total_pd_count = label_metadata[:, 1].sum()
+            accuracy[iou_idx, score_idx] = (
+                (tp_count.sum() / total_pd_count)
+                if total_pd_count > 1e-9
+                else 0.0
             )
 
             # calculate recall for AR
@@ -552,6 +555,7 @@ def compute_metrics(
     return (
         ap_results,
         ar_results,
+        accuracy,
         counts,
         pr_curve,
     )

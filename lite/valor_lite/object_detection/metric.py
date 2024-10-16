@@ -160,36 +160,6 @@ class Recall(_ClassMetric):
     pass
 
 
-class Accuracy(_ClassMetric):
-    """
-    Accuracy metric for a specific class label in object detection.
-
-    This class encapsulates a metric value for a particular class label,
-    along with the associated Intersection over Union (IoU) threshold and
-    confidence score threshold.
-
-    Attributes
-    ----------
-    value : float
-        The metric value.
-    label : str
-        The class label for which the metric is calculated.
-    iou_threshold : float
-        The IoU threshold used to determine matches between predicted and ground truth boxes.
-    score_threshold : float
-        The confidence score threshold above which predictions are considered.
-
-    Methods
-    -------
-    to_metric()
-        Converts the instance to a generic `Metric` object.
-    to_dict()
-        Converts the instance to a dictionary representation.
-    """
-
-    pass
-
-
 class F1(_ClassMetric):
     """
     F1 score for a specific class label in object detection.
@@ -218,6 +188,49 @@ class F1(_ClassMetric):
     """
 
     pass
+
+
+@dataclass
+class Accuracy:
+    """
+    Accuracy metric for the object detection task type.
+
+    This class encapsulates a metric value at a specific Intersection
+    over Union (IoU) threshold and confidence score threshold.
+
+    Attributes
+    ----------
+    value : float
+        The metric value.
+    iou_threshold : float
+        The IoU threshold used to determine matches between predicted and ground truth boxes.
+    score_threshold : float
+        The confidence score threshold above which predictions are considered.
+
+    Methods
+    -------
+    to_metric()
+        Converts the instance to a generic `Metric` object.
+    to_dict()
+        Converts the instance to a dictionary representation.
+    """
+
+    value: float
+    iou_threshold: float
+    score_threshold: float
+
+    def to_metric(self) -> Metric:
+        return Metric(
+            type=type(self).__name__,
+            value=self.value,
+            parameters={
+                "iou_threshold": self.iou_threshold,
+                "score_threshold": self.score_threshold,
+            },
+        )
+
+    def to_dict(self) -> dict:
+        return self.to_metric().to_dict()
 
 
 @dataclass

@@ -506,6 +506,7 @@ class Evaluator:
                 average_recall_averaged_over_scores,
                 mean_average_recall_averaged_over_scores,
             ),
+            accuracy,
             precision_recall,
             pr_curves,
         ) = compute_metrics(
@@ -593,6 +594,16 @@ class Evaluator:
             )
         ]
 
+        metrics[MetricType.Accuracy] = [
+            Accuracy(
+                value=float(accuracy[iou_idx, score_idx]),
+                iou_threshold=iou_thresholds[iou_idx],
+                score_threshold=score_thresholds[score_idx],
+            )
+            for iou_idx in range(accuracy.shape[0])
+            for score_idx in range(accuracy.shape[1])
+        ]
+
         metrics[MetricType.PrecisionRecallCurve] = [
             PrecisionRecallCurve(
                 precisions=pr_curves[iou_idx, label_idx, :, 0]
@@ -647,12 +658,6 @@ class Evaluator:
                     metrics[MetricType.F1].append(
                         F1(
                             value=float(row[5]),
-                            **kwargs,
-                        )
-                    )
-                    metrics[MetricType.Accuracy].append(
-                        Accuracy(
-                            value=float(row[6]),
                             **kwargs,
                         )
                     )
