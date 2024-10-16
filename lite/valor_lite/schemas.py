@@ -11,7 +11,9 @@ class Metric:
 
     def __post_init__(self):
         if not isinstance(self.value, (int, float, dict)):
-            raise TypeError("Value must have type `int`, `float` or `dict`.")
+            raise TypeError(
+                "Metric value must be of type `int`, `float` or `dict`."
+            )
 
     def to_dict(self) -> dict:
         return asdict(self)
@@ -27,7 +29,9 @@ class _BaseMetric:
     def to_metric(self) -> Metric:
         """Converts the instance to a generic `Metric` object."""
         if not is_dataclass(self):
-            raise ValueError
+            raise TypeError(
+                f"Type `{type(self)}` inherits `_BaseMeric` but is not a dataclass."
+            )
         m_raw = asdict(self)
 
         m_type = type(self).__name__
@@ -58,6 +62,4 @@ class _BaseMetric:
 
     def to_dict(self) -> dict:
         """Converts the instance to a dictionary representation."""
-        if not issubclass(type(self), _BaseMetric):
-            raise ValueError
         return self.to_metric().to_dict()
