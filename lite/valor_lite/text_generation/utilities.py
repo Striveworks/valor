@@ -1,0 +1,1001 @@
+import json
+from typing import Any
+
+import numpy as np
+import pandas as pd
+from valor_core import enums, schemas
+from valor_core.exceptions import InvalidLLMResponseError
+
+
+def concatenate_df_if_not_empty(
+    df1: pd.DataFrame, df2: pd.DataFrame | None
+) -> pd.DataFrame:
+    """
+    Checks to see if a dataframe is None before attempting a concatenation. Handles pandas warning about not using pd.concat on empty dataframes.
+
+    Parameters
+    ----------
+    df1: pd.DataFrame
+        The first dataframe to join.
+    df2: pd.DataFrame, optional
+        The second (potentially empty) dataframe to join.
+
+    Returns
+    -------
+    pd.DataFrame
+        A concatenated dataframe.
+    """
+
+    if not df1.empty and (df2 is not None):
+        df1 = pd.concat(
+            [df1, df2],
+            ignore_index=True,
+        )
+    elif df1.empty and (df2 is not None):
+        df1 = df2
+
+    return df1
+
+
+def replace_labels_using_label_map(
+    groundtruth_df: pd.DataFrame,
+    prediction_df: pd.DataFrame,
+    label_map: dict[schemas.Label, schemas.Label] | None,
+):
+    """
+    Replace label keys, values, and IDs in the groundtruth and prediction DataFrames using a given label map.
+
+    This function updates the `label_key`, `label_value`, and `label_id` columns in both the groundtruth and prediction
+    DataFrames based on the provided label map. If the `label_map` is not provided, the function returns the original DataFrames
+    without modification.
+
+    Parameters
+    ----------
+    groundtruth_df : pd.DataFrame
+        DataFrame containing groundtruth data with columns `label_key`, `label_value`, and `label_id`.
+    prediction_df : pd.DataFrame
+        DataFrame containing prediction data with columns `label_key`, `label_value`, and `label_id`.
+    label_map : dict[schemas.Label, schemas.Label], optional
+        Dictionary mapping tuples of (label_key, label_value) to (grouper_key, grouper_value). Used to replace the labels in the DataFrames.
+
+    Returns
+    -------
+    Tuple[pd.DataFrame, pd.DataFrame]
+        Updated groundtruth and prediction DataFrames with replaced labels and IDs based on the provided label map.
+    """
+    if not label_map:
+        return (groundtruth_df, prediction_df)
+
+    # create a mapping dictionary to map each label to its grouper label
+    mapping_dict = dict()
+    unique_grouper_labels = set()
+    if label_map:
+        for label, grouper in label_map.items():
+            mapping_dict[(label.key, label.value)] = (
+                grouper.key,
+                grouper.value,
+            )
+            unique_grouper_labels.add(
+                (
+                    grouper.key,
+                    grouper.value,
+                )
+            )
+
+    # get a dictionary mapping all current labels to their ids
+    label_id_lookup_df = pd.concat(
+        [
+            groundtruth_df[["label_key", "label_value", "label_id"]],
+            prediction_df[["label_key", "label_value", "label_id"]],
+        ]
+    )
+    label_id_lookup_df = label_id_lookup_df[~label_id_lookup_df.duplicated()]
+
+    label_to_label_id_dict = dict(
+        zip(
+            zip(
+                label_id_lookup_df["label_key"],
+                label_id_lookup_df["label_value"],
+            ),
+            label_id_lookup_df["label_id"],
+        )
+    )
+
+    # create unique ids for any new labels that will be created by the label_map
+    new_labels = unique_grouper_labels - set(label_to_label_id_dict.keys())
+    for label_key, label_value in new_labels:
+        label_id = hash(label_key + label_value)
+        label_to_label_id_dict[(label_key, label_value)] = label_id
+
+    # replace the labels both dataframes with the correct values
+    for df in (groundtruth_df, prediction_df):
+        df.loc[:, ["label_key", "label_value"]] = (
+            df.apply(
+                lambda row: mapping_dict.get(
+                    (row["label_key"], row["label_value"]),
+                    (row["label_key"], row["label_value"]),
+                ),
+                axis=1,
+            )
+            .apply(pd.Series)
+            .values
+        )
+
+        df.loc[:, ["label_id"]] = df.apply(
+            lambda row: label_to_label_id_dict.get(
+                (row["label_key"], row["label_value"]),
+                row["label_id"],
+            ),
+            axis=1,
+        ).values
+
+    return groundtruth_df, prediction_df
+
+
+def validate_label_map(
+    label_map: dict[schemas.Label, schemas.Label] | None,
+) -> None:
+    """
+    Validate the label mapping if necessary.
+
+    This function checks if the provided label_map is a dictionary with both
+    keys and values being instances of schemas.Label. If the label_map is
+    invalid, a TypeError is raised.
+
+    Parameters
+    ----------
+    label_map : dict[schemas.Label, schemas.Label], optional
+        A dictionary mapping labels to other labels, or None if no mapping
+        is provided.
+
+    Raises
+    ------
+    TypeError
+        If label_map is not a dictionary or if its keys and values are not
+        instances of schemas.Label.
+    """
+    if label_map and (
+        not isinstance(label_map, dict)
+        or not all(
+            [
+                isinstance(key, schemas.Label)
+                and isinstance(value, schemas.Label)
+                for key, value in label_map.items()
+            ]
+        )
+    ):
+        raise TypeError(
+            "label_map should be a dictionary with valid Labels for both the key and value."
+        )
+
+
+def validate_metrics_to_return(
+    task_type: enums.TaskType, metrics_to_return: list[enums.MetricType]
+) -> None:
+    """
+    Validate that the provided metrics are appropriate for the specified task type.
+
+    This function checks if the provided metrics_to_return are valid for the given
+    task_type. It raises a ValueError if any of the metrics are not supported for
+    the specified task type.
+
+    Parameters
+    ----------
+    task_type : enums.TaskType
+        The type of task for which the metrics are being validated. This can be
+        either `enums.TaskType.CLASSIFICATION` or `enums.TaskType.OBJECT_DETECTION`.
+    metrics_to_return : List[enums.MetricType]
+        A list of metrics that need to be validated against the task type.
+
+    Raises
+    ------
+    ValueError
+        If any of the provided metrics are not supported for the specified task type.
+    """
+
+    if task_type == enums.TaskType.CLASSIFICATION:
+        if not set(metrics_to_return).issubset(
+            enums.MetricType.classification()
+        ):
+            raise ValueError(
+                f"The following metrics are not supported for classification: '{set(metrics_to_return) - enums.MetricType.classification()}'"
+            )
+
+    if task_type == enums.TaskType.OBJECT_DETECTION:
+        if not set(metrics_to_return).issubset(
+            enums.MetricType.object_detection()
+        ):
+            raise ValueError(
+                f"The following metrics are not supported for object detection: '{set(metrics_to_return) - enums.MetricType.object_detection()}'"
+            )
+
+    if task_type == enums.TaskType.TEXT_GENERATION:
+        if not set(metrics_to_return).issubset(
+            enums.MetricType.text_generation()
+        ):
+            raise ValueError(
+                f"The following metrics are not supported for text generation: '{set(metrics_to_return) - enums.MetricType.text_generation()}'"
+            )
+
+
+def validate_metric_parameters(
+    metrics_to_return: list[enums.MetricType],
+    metric_params: dict[str, dict],
+):
+    # check that the keys of metric parameters are all in metrics_to_return
+    if not set(metric_params.keys()).issubset(
+        [metric.value for metric in metrics_to_return]
+    ):
+        raise ValueError(
+            "The keys of metric_params must be a subset of the metrics_to_return."
+        )
+
+    if enums.MetricType.BLEU in metric_params:
+        bleu_params = metric_params[enums.MetricType.BLEU.value]
+        if "weights" in bleu_params:
+            bleu_weights = bleu_params["weights"]
+            if not all(
+                isinstance(weight, (int, float)) and 0 <= weight
+                for weight in bleu_weights
+            ):
+                raise ValueError(
+                    "BLEU metric weights must be a list of non-negative integers or floats."
+                )
+            if sum(bleu_weights) != 1:
+                raise ValueError("BLEU metric weights must sum to 1.")
+
+
+def validate_parameters(
+    recall_score_threshold: float | None = None,
+    pr_curve_iou_threshold: float | None = None,
+    pr_curve_max_examples: int | None = None,
+) -> None:
+    """
+    Validate parameters for scoring and PR curves.
+
+    Parameters
+    ----------
+    recall_score_threshold : float, optional
+        The threshold for recall score.
+    pr_curve_iou_threshold : float, optional
+        The IOU threshold for PR curve.
+    pr_curve_max_examples : int, optional
+        The maximum number of examples for PR curve.
+
+    Raises
+    ------
+    ValueError
+        If any of the parameters are out of their valid ranges.
+    """
+
+    if recall_score_threshold and (
+        recall_score_threshold > 1 or recall_score_threshold < 0
+    ):
+        raise ValueError(
+            "recall_score_threshold should exist in the range 0 <= threshold <= 1."
+        )
+
+    if pr_curve_iou_threshold and (
+        pr_curve_iou_threshold <= 0 or pr_curve_iou_threshold > 1.0
+    ):
+        raise ValueError(
+            "IOU thresholds should exist in the range 0 < threshold <= 1."
+        )
+
+    if pr_curve_max_examples and (pr_curve_max_examples < 0):
+        raise ValueError(
+            "pr_curve_max_examples should be an integer greater than or equal to zero."
+        )
+
+
+def validate_matching_label_keys(
+    groundtruths: pd.DataFrame,
+    predictions: pd.DataFrame,
+) -> None:
+    """
+    Validates that every datum has the same set of label keys for both ground truths and predictions. This check is only needed for classification tasks.
+
+    Parameters
+    ----------
+    groundtruths : pd.DataFrame
+        The DataFrame containing ground truth data.
+    predictions : pd.DataFrame
+        The DataFrame containing prediction data.
+
+    Raises
+    ------
+    ValueError
+        If the distinct ground truth label keys don't match the distinct prediction label keys for any datum.
+    """
+    # allow for case where our predictions don't have any labels
+    if len(predictions) == 0:
+        return
+
+    gt_label_keys_per_datum = groundtruths.groupby(
+        ["datum_id"], as_index=False
+    )["label_key"].unique()
+
+    pd_label_keys_per_datum = predictions.groupby(
+        ["datum_id"], as_index=False
+    )["label_key"].unique()
+
+    joined = gt_label_keys_per_datum.merge(
+        pd_label_keys_per_datum, on=["datum_id"], suffixes=("_gt", "_pd")
+    )
+
+    if not joined["label_key_gt"].equals(joined["label_key_pd"]):
+        raise ValueError(
+            "Ground truth label keys must match prediction label keys for classification tasks."
+        )
+
+
+def _validate_groundtruth_dataframe(
+    df: pd.DataFrame, task_type: enums.TaskType
+) -> None:
+    """Validate the details of a ground truth dataframe."""
+    null_placeholder_column = pd.Series([None] * len(df))
+
+    required_columns = [
+        "datum_uid",
+        "datum_id",
+        "id",
+        "label_key",
+        "label_value",
+        "annotation_id",
+        "label_id",
+    ]
+
+    if not all(col in df.columns for col in required_columns):
+        raise ValueError(
+            f"DataFrame must contain columns: {', '.join(required_columns)}"
+        )
+
+    if not df["id"].is_unique:
+        raise ValueError("The column 'id' contains duplicate values.")
+
+    if df.get("score", null_placeholder_column).notnull().any():
+        raise ValueError("GroundTruth labels should not have scores.")
+
+    if task_type == enums.TaskType.SEMANTIC_SEGMENTATION:
+        if not (df.groupby("label")["annotation_id"].nunique() == 1).all():
+            raise ValueError(
+                "For semantic segmentation tasks, each label can only be associated with a single annotation id."
+            )
+
+
+def _validate_prediction_dataframe(
+    df: pd.DataFrame, task_type: enums.TaskType
+) -> None:
+    """Validate the details of a prediction dataframe."""
+
+    required_columns = [
+        "datum_uid",
+        "datum_id",
+        "id",
+        "label_key",
+        "label_value",
+        "annotation_id",
+        "label_id",
+        "score",
+    ]
+
+    if not all(col in df.columns for col in required_columns):
+        raise ValueError(
+            f"DataFrame must contain columns: {', '.join(required_columns)}"
+        )
+
+    if not df["id"].is_unique:
+        raise ValueError("The column 'id' contains duplicate values.")
+
+    if task_type == enums.TaskType.CLASSIFICATION:
+        if df["score"].isnull().any():
+            raise ValueError(
+                "All classification predictions must have an associated score."
+            )
+
+        if not (
+            abs(df.groupby(["datum_id", "label_key"])["score"].sum() - 1.0)
+            <= 1e-6
+        ).all():
+            raise ValueError(
+                "All classification scores must sum to one for each label key."
+            )
+    if task_type == enums.TaskType.OBJECT_DETECTION:
+        if df["score"].isnull().any():
+            raise ValueError(
+                "All object detection predictions must have an associated score."
+            )
+    if task_type == enums.TaskType.SEMANTIC_SEGMENTATION:
+        if df["score"].notnull().any():
+            raise ValueError(
+                "All classification predictions must have an associated score."
+            )
+
+        if not (df.groupby("label")["annotation_id"].nunique() == 1).all():
+            raise ValueError(
+                "For semantic segmentation tasks, each label can only be associated with a single annotation id."
+            )
+
+
+def create_validated_groundtruth_df(
+    obj: pd.DataFrame | list[schemas.GroundTruth],
+    task_type: enums.TaskType,
+) -> pd.DataFrame:
+    """
+    Create a validated DataFrame of groundtruth data.
+
+    Parameters
+    ----------
+    obj : pd.DataFrame | list[schemas.GroundTruth]
+        The groundtruth data to be processed. This can be either a pandas DataFrame
+        or a list of GroundTruth objects.
+    task_type : enums.TaskType
+        The task type for which the prediction data is being validated.
+
+    Returns
+    -------
+    pd.DataFrame
+        A DataFrame containing the validated prediction data.
+
+    Raises
+    ------
+    ValueError
+        If the input object is neither a DataFrame nor a list of GroundTruth objects.
+    """
+    if not (
+        isinstance(obj, pd.DataFrame)
+        or (
+            obj
+            and isinstance(obj, list)
+            and isinstance(obj[0], schemas.GroundTruth)
+        )
+    ):
+        raise ValueError(
+            f"Could not validate object as it's neither a dataframe nor a list of Valor Groundtruth objects. Object is of type {type(obj)}."
+        )
+    if isinstance(obj, pd.DataFrame):
+        df = obj
+    else:
+        df = _convert_groundtruth_or_prediction_to_dataframe(obj)
+
+    _validate_groundtruth_dataframe(df=df, task_type=task_type)
+
+    return df
+
+
+def create_validated_prediction_df(
+    obj: pd.DataFrame | list[schemas.Prediction],
+    task_type: enums.TaskType,
+) -> pd.DataFrame:
+    """
+    Create a validated DataFrame of prediction data.
+
+    Parameters
+    ----------
+    obj : pd.DataFrame | list[schemas.Prediction]
+        The prediction data to be processed. This can be either a pandas DataFrame
+        or a list of Prediction objects.
+    task_type : enums.TaskType
+        The task type for which the prediction data is being validated.
+
+    Returns
+    -------
+    pd.DataFrame
+        A DataFrame containing the validated prediction data.
+
+    Raises
+    ------
+    ValueError
+        If the input object is neither a DataFrame nor a list of Prediction objects.
+    """
+    if not (
+        isinstance(obj, pd.DataFrame)
+        or (
+            obj
+            and isinstance(obj, list)
+            and isinstance(obj[0], schemas.Prediction)
+        )
+    ):
+        raise ValueError(
+            f"Could not validate object as it's neither a dataframe nor a list of Valor Prediction objects. Object is of type {type(obj)}."
+        )
+
+    if isinstance(obj, pd.DataFrame):
+        df = obj
+    else:
+        df = _convert_groundtruth_or_prediction_to_dataframe(obj)
+
+    if df.empty:
+        return df
+
+    _validate_prediction_dataframe(df=df, task_type=task_type)
+
+    return df
+
+
+def filter_dataframe_by_task_type(df: pd.DataFrame, task_type: enums.TaskType):
+    """
+    Filter a DataFrame by task type.
+
+    This function identifies the task type implied by the data and filters the DataFrame to include only rows
+    that match the specified task type.
+
+    Parameters
+    ----------
+    df : pd.DataFrame
+        The DataFrame containing the data to be filtered.
+
+    task_type : enums.TaskType
+        The task type to filter the DataFrame by (e.g., classification, detection).
+
+    Returns
+    -------
+    pd.DataFrame
+        A DataFrame filtered to contain only rows that match the specified task type.
+    """
+
+    df = _identify_implied_task_types(df=df)
+
+    filtered_df = df[df["implied_task_type"] == task_type]
+
+    return filtered_df
+
+
+def _convert_groundtruth_or_prediction_to_dataframe(
+    list_of_objects: list[schemas.GroundTruth] | list[schemas.Prediction],
+) -> pd.DataFrame:
+    """
+    Convert a list of GroundTruth or Prediction objects to a DataFrame.
+
+    Parameters
+    ----------
+    list_of_objects : list[schemas.GroundTruth] | list[schemas.Prediction]
+        List of GroundTruth or Prediction objects.
+
+    Returns
+    -------
+    pd.DataFrame
+        DataFrame representation of the input list.
+    """
+
+    output = []
+
+    for i, obj in enumerate(list_of_objects):
+        datum_uid = obj.datum.uid
+        datum_id = hash(obj.datum.uid)
+        datum_metadata = obj.datum.metadata
+
+        for j, ann in enumerate(obj.annotations):
+            ann_id = hash(str(datum_uid) + str(ann))
+            ann_metadata = ann.metadata
+            ann_bbox = ann.bounding_box
+            ann_raster = ann.raster
+            ann_embeding = ann.embedding
+            ann_polygon = ann.polygon
+            ann_is_instance = ann.is_instance
+            ann_text = ann.text
+            ann_context_list = ann.context_list
+
+            if ann.labels is not None:
+                for k, label in enumerate(ann.labels):
+                    id_ = (
+                        str(ann_id) + str(i) + str(j) + str(k)
+                    )  # we use indices here, rather than a hash() so that the IDs are sequential. this prevents randomness when two predictions share the same score
+                    label_key = label.key
+                    label_value = label.value
+                    label_score = label.score
+                    label_id = hash(label_key + label_value)
+
+                    # only include scores for predictions
+                    if isinstance(obj, schemas.Prediction):
+                        output.append(
+                            {
+                                "datum_uid": datum_uid,
+                                "datum_id": datum_id,
+                                "datum_metadata": datum_metadata,
+                                "annotation_id": ann_id,
+                                "annotation_metadata": ann_metadata,
+                                "bounding_box": ann_bbox,
+                                "raster": ann_raster,
+                                "embedding": ann_embeding,
+                                "polygon": ann_polygon,
+                                "is_instance": ann_is_instance,
+                                "text": ann_text,
+                                "context_list": ann_context_list,
+                                "label_key": label_key,
+                                "label_value": label_value,
+                                "score": label_score,
+                                "label_id": label_id,
+                                "id": id_,
+                            }
+                        )
+                    else:
+                        output.append(
+                            {
+                                "datum_uid": datum_uid,
+                                "datum_id": datum_id,
+                                "datum_metadata": datum_metadata,
+                                "annotation_id": ann_id,
+                                "annotation_metadata": ann_metadata,
+                                "bounding_box": ann_bbox,
+                                "raster": ann_raster,
+                                "embedding": ann_embeding,
+                                "polygon": ann_polygon,
+                                "is_instance": ann_is_instance,
+                                "text": ann_text,
+                                "context_list": ann_context_list,
+                                "label_key": label_key,
+                                "label_value": label_value,
+                                "label_id": label_id,
+                                "id": id_,
+                            }
+                        )
+            else:
+                id_ = (
+                    str(ann_id) + str(i) + str(j) + "0"
+                )  # we use indices here, rather than a hash() so that the IDs are sequential. this prevents randomness when two predictions share the same score
+                output.append(
+                    {
+                        "datum_uid": datum_uid,
+                        "datum_id": datum_id,
+                        "datum_metadata": datum_metadata,
+                        "annotation_id": ann_id,
+                        "annotation_metadata": ann_metadata,
+                        "bounding_box": ann_bbox,
+                        "raster": ann_raster,
+                        "embedding": ann_embeding,
+                        "polygon": ann_polygon,
+                        "is_instance": ann_is_instance,
+                        "text": ann_text,
+                        "context_list": ann_context_list,
+                        "id": id_,
+                    }
+                )
+
+    return (
+        pd.DataFrame(output)
+        if output
+        else pd.DataFrame(
+            [],
+            columns=[
+                "datum_uid",
+                "datum_id",
+                "datum_metadata",
+                "annotation_id",
+                "annotation_metadata",
+                "bounding_box",
+                "raster",
+                "embedding",
+                "polygon",
+                "is_instance",
+                "text",
+                "context_list",
+                "label_key",
+                "label_value",
+                "score",
+                "label_id",
+                "id",
+            ],
+        )
+    )
+
+
+def get_disjoint_labels(
+    groundtruth_df: pd.DataFrame,
+    prediction_df: pd.DataFrame,
+    label_map: dict[schemas.Label, schemas.Label] | None,
+) -> tuple[list[tuple[str, str]], list[tuple[str, str]]]:
+    """
+    Returns all unique labels that are not shared between two dataframes.
+
+    Parameters
+    ----------
+    groundtruth_df : pd.DataFrame
+        The dataframe representing ground truth objects.
+    prediction_df : pd.DataFrame
+        The dataframe representing prediction objects.
+    label_map : dict[schemas.Label, schemas.Label], optional
+        Dictionary mapping tuples of (label_key, label_value) to (grouper_key, grouper_value). Used to replace the labels in the DataFrames.
+
+    Returns
+    ----------
+    tuple[list[tuple[str, str]], list[tuple[str, str]]]
+        A tuple of disjoint labels, where the first element is those labels which are present in lhs label set but absent in rhs label set.
+    """
+    if not label_map:
+        label_map = {}
+
+    groundtruth_labels = set(
+        map(tuple, groundtruth_df[["label_key", "label_value"]].values)
+    )
+
+    prediction_labels = set(
+        map(tuple, prediction_df[["label_key", "label_value"]].values)
+    )
+
+    # don't count user-mapped labels as disjoint
+    mapped_labels = set()
+    if label_map:
+        mapped_labels.update(
+            {
+                (map_from.key, map_from.value)
+                for map_from, _ in label_map.items()
+            }
+        )
+        mapped_labels.update(
+            {(map_to.key, map_to.value) for _, map_to in label_map.items()}
+        )
+
+    groundtruth_unique = list(
+        groundtruth_labels - prediction_labels - mapped_labels
+    )
+    prediction_unique = list(
+        prediction_labels - groundtruth_labels - mapped_labels
+    )
+
+    return groundtruth_unique, prediction_unique
+
+
+def _identify_implied_task_types(
+    df: pd.DataFrame,
+) -> pd.DataFrame:
+    """Match an annotation to an implied task type."""
+
+    # null series for use if the column doesn't exist
+    null_placeholder_column = pd.Series([None] * len(df))
+
+    # classification rows only have labels
+    classification_rows = df[
+        df.get("label_key", null_placeholder_column).notnull()
+        & df.get("label_value", null_placeholder_column).notnull()
+        & df.get("bounding_box", null_placeholder_column).isnull()
+        & df.get("polygon", null_placeholder_column).isnull()
+        & df.get("raster", null_placeholder_column).isnull()
+        & df.get("embedding", null_placeholder_column).isnull()
+        & df.get("text", null_placeholder_column).isnull()
+        & df.get("context_list", null_placeholder_column).isnull()
+    ].index
+
+    # object detection tasks have is_instance=True & one of (bounding_box, polygon, raster)
+    object_detection_rows = df[
+        df.get("label_key", null_placeholder_column).notnull()
+        & df.get("label_value", null_placeholder_column).notnull()
+        & (
+            df[
+                [
+                    col
+                    for col in ["bounding_box", "polygon", "raster"]
+                    if col in df.columns
+                ]
+            ]
+            .notna()
+            .sum(axis=1)
+            == 1
+        )
+        & df.get("is_instance", null_placeholder_column).isin([True])
+        & df.get("embedding", null_placeholder_column).isnull()
+        & df.get("text", null_placeholder_column).isnull()
+        & df.get("context_list", null_placeholder_column).isnull()
+    ].index
+
+    # semantic segmentation tasks only support rasters
+    semantic_segmentation_rows = df[
+        df.get("label_key", null_placeholder_column).notnull()
+        & df.get("label_value", null_placeholder_column).notnull()
+        & df.get("bounding_box", null_placeholder_column).isnull()
+        & df.get("polygon", null_placeholder_column).isnull()
+        & df.get("raster", null_placeholder_column).notnull()
+        & df.get("embedding", null_placeholder_column).isnull()
+        & df.get("is_instance", null_placeholder_column).isin([None, False])
+        & df.get("text", null_placeholder_column).isnull()
+        & df.get("context_list", null_placeholder_column).isnull()
+    ].index
+
+    # text generation tasks only support text and context, and require at least one of them
+    text_generation_rows = df[
+        df.get("label_key", null_placeholder_column).isnull()
+        & df.get("label_value", null_placeholder_column).isnull()
+        & df.get("bounding_box", null_placeholder_column).isnull()
+        & df.get("polygon", null_placeholder_column).isnull()
+        & df.get("raster", null_placeholder_column).isnull()
+        & df.get("embedding", null_placeholder_column).isnull()
+        & (
+            df[[col for col in ["text", "context_list"] if col in df.columns]]
+            .notna()
+            .sum(axis=1)
+            .isin([1, 2])
+        )
+    ].index
+
+    # empty annotations shouldn't contain anything
+    empty_rows = df[
+        df.get("label_key", null_placeholder_column).isnull()
+        & df.get("label_value", null_placeholder_column).isnull()
+        & df.get("bounding_box", null_placeholder_column).isnull()
+        & df.get("polygon", null_placeholder_column).isnull()
+        & df.get("raster", null_placeholder_column).isnull()
+        & df.get("embedding", null_placeholder_column).isnull()
+        & df.get("text", null_placeholder_column).isnull()
+        & df.get("context_list", null_placeholder_column).isnull()
+    ].index
+
+    if not classification_rows.empty:
+        df.loc[
+            classification_rows, "implied_task_type"
+        ] = enums.TaskType.CLASSIFICATION
+
+    if not object_detection_rows.empty:
+        df.loc[
+            object_detection_rows, "implied_task_type"
+        ] = enums.TaskType.OBJECT_DETECTION
+
+    if not semantic_segmentation_rows.empty:
+        df.loc[
+            semantic_segmentation_rows, "implied_task_type"
+        ] = enums.TaskType.SEMANTIC_SEGMENTATION
+
+    if not text_generation_rows.empty:
+        df.loc[
+            text_generation_rows, "implied_task_type"
+        ] = enums.TaskType.TEXT_GENERATION
+
+    if not empty_rows.empty:
+        df.loc[empty_rows, "implied_task_type"] = enums.TaskType.EMPTY
+
+    if df["implied_task_type"].isnull().any():
+        raise ValueError(
+            "Input didn't match any known patterns. Classification tasks should only contain labels. Object detection tasks should contain labels and polygons, bounding boxes, or rasters with is_instance == True. Segmentation tasks should contain labels and rasters with is_instance != True. Text generation tasks should only contain text and optionally context."
+        )
+
+    return df
+
+
+def _convert_raster_to_box(raster: np.ndarray) -> schemas.Box:
+    """Convert a raster mask to a Box."""
+    rows = np.any(raster, axis=1)
+    cols = np.any(raster, axis=0)
+    if not np.any(rows) or not np.any(cols):
+        raise ValueError("Raster is empty, cannot create bounding box.")
+
+    ymin, ymax = np.where(rows)[0][[0, -1]]
+    xmin, xmax = np.where(cols)[0][[0, -1]]
+
+    return schemas.Box.from_extrema(xmin, xmax + 1, ymin, ymax + 1)
+
+
+def _convert_raster_to_polygon(raster: np.ndarray) -> schemas.Polygon:
+    """Convert a raster mask to a Polygon."""
+    if raster.ndim != 2:
+        raise ValueError("Raster must be a 2D array.")
+
+    mask = (raster > 0).astype(np.uint8)
+    rows, cols = np.where(mask > 0)
+
+    if len(rows) == 0 or len(cols) == 0:
+        raise ValueError("Raster is empty, cannot create a polygon.")
+
+    contours = []
+    for r, c in zip(rows, cols):
+        if (
+            (r > 0 and mask[r - 1, c] == 0)
+            or (r < mask.shape[0] - 1 and mask[r + 1, c] == 0)
+            or (c > 0 and mask[r, c - 1] == 0)
+            or (c < mask.shape[1] - 1 and mask[r, c + 1] == 0)
+        ):
+            contours.append((c, r))
+
+    if not contours:
+        raise ValueError("No contours found in raster.")
+
+    contours = sorted(contours, key=lambda p: (p[1], p[0]))
+
+    polygon = [[(x, y) for x, y in contours] + [contours[0]]]
+
+    return schemas.Polygon.from_dict(
+        {"type": "Polygon", "coordinates": polygon}
+    )
+
+
+def _convert_polygon_to_box(polygon: schemas.Polygon) -> schemas.Box:
+    """Convert a Polygon to a Box."""
+
+    boundary = polygon.boundary
+
+    xmin = min(point[0] for point in boundary)
+    xmax = max(point[0] for point in boundary)
+    ymin = min(point[1] for point in boundary)
+    ymax = max(point[1] for point in boundary)
+
+    return schemas.Box.from_extrema(xmin, xmax, ymin, ymax)
+
+
+def _identify_most_detailed_annotation_type(
+    df: pd.DataFrame,
+) -> enums.AnnotationType:
+    """
+    Identify the most detailed annotation type present in the DataFrame.
+
+    Parameters
+    ----------
+    df : pd.DataFrame
+        DataFrame containing the annotations.
+
+    Returns
+    -------
+    enums.AnnotationType
+        The most detailed annotation type present in the DataFrame.
+    """
+
+    if df["raster"].notnull().any():
+        return enums.AnnotationType.RASTER
+
+    elif df["polygon"].notnull().any():
+        return enums.AnnotationType.POLYGON
+
+    elif df["bounding_box"].notnull().any():
+        return enums.AnnotationType.BOX
+
+    else:
+        return enums.AnnotationType.NONE
+
+
+def _identify_least_detailed_annotation_type(
+    df: pd.DataFrame,
+) -> enums.AnnotationType:
+    """
+    Identify the least detailed annotation type present in the DataFrame.
+
+    Parameters
+    ----------
+    df : pd.DataFrame
+        DataFrame containing the annotations.
+
+    Returns
+    -------
+    enums.AnnotationType
+        The least detailed annotation type present in the DataFrame.
+    """
+
+    if df["bounding_box"].notnull().any():
+        return enums.AnnotationType.BOX
+
+    elif df["polygon"].notnull().any():
+        return enums.AnnotationType.POLYGON
+
+    elif df["raster"].notnull().any():
+        return enums.AnnotationType.RASTER
+
+    else:
+        return enums.AnnotationType.NONE
+
+
+def trim_and_load_json(input_string: str) -> Any:
+    """
+    Trims and loads input_string as a json. Adapted from DeepEval https://github.com/confident-ai/deepeval/blob/dc117a5ea2160dbb61909c537908a41f7da4dfe7/deepeval/metrics/utils.py#L50
+
+    Parameters
+    ----------
+    input_string : str
+        The input string to trim and load as a json.
+
+    Returns
+    -------
+    Any
+        The json object.
+    """
+    start = input_string.find("{")
+    end = input_string.rfind("}") + 1
+
+    if end == 0 and start != -1:
+        input_string = input_string + "}"
+        end = len(input_string)
+
+    jsonStr = input_string[start:end] if start != -1 and end != 0 else ""
+
+    try:
+        return json.loads(jsonStr)
+    except json.JSONDecodeError as e:
+        raise InvalidLLMResponseError(
+            "Evaluation LLM outputted an invalid JSON. Please use a better evaluation model. JSONDecodeError: "
+            + str(e)
+        )
