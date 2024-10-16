@@ -48,7 +48,7 @@ def test_base_metric():
         score_threshold: float
 
     assert Test3(value=2, label="dog", score_threshold=0.5).to_dict() == {
-        "type": "Test2",
+        "type": "Test3",
         "value": 2,
         "parameters": {"label": "dog", "score_threshold": 0.5},
     }
