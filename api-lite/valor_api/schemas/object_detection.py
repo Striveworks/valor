@@ -8,6 +8,9 @@ from numpy.typing import NDArray
 from pydantic import BaseModel, ConfigDict, model_validator
 from typing_extensions import Self
 
+from valor_api.schemas.metadata import Metadata
+from valor_api.schemas.validators import validate_string_identifier
+
 
 class BoundingBox(BaseModel):
     xmin: float
@@ -73,4 +76,27 @@ class InstanceBitmask(BaseModel):
         n_scores = len(self.scores)
         if n_scores > 0 and n_scores != n_labels:
             raise ValueError("Scores should be empty or enumerate per label.")
+        return self
+
+
+class ObjectDetection(BaseModel):
+    uid: str
+    groundtruths: list[BoundingBox] | list[InstancePolygon] | list[
+        InstanceBitmask
+    ]
+    predictions: list[BoundingBox] | list[InstancePolygon] | list[
+        InstanceBitmask
+    ]
+    metadata: Metadata
+    model_config = ConfigDict(extra="forbid")
+
+    @model_validator(mode="after")
+    def _validate(self) -> Self:
+        validate_string_identifier(self.uid)
+        for groundtruth in self.groundtruths:
+            for label in groundtruth.labels:
+                validate_string_identifier(label)
+        for prediction in self.predictions:
+            for label in prediction.labels:
+                validate_string_identifier(label)
         return self

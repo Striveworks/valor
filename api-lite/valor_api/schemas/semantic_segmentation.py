@@ -6,6 +6,10 @@ import numpy as np
 import PIL.Image
 from numpy.typing import NDArray
 from pydantic import BaseModel, ConfigDict, model_validator
+from typing_extensions import Self
+
+from valor_api.schemas.metadata import Metadata
+from valor_api.schemas.validators import validate_string_identifier
 
 
 class SemanticBitmask(BaseModel):
@@ -31,3 +35,20 @@ class SemanticBitmask(BaseModel):
             )
         kwargs["mask"] = np.array(img, dtype=np.bool_)
         return kwargs
+
+
+class SemanticSegmentation(BaseModel):
+    uid: str
+    groundtruths: list[SemanticBitmask]
+    predictions: list[SemanticBitmask]
+    metadata: Metadata
+    model_config = ConfigDict(extra="forbid")
+
+    @model_validator(mode="after")
+    def _validate(self) -> Self:
+        validate_string_identifier(self.uid)
+        for groundtruth in self.groundtruths:
+            validate_string_identifier(groundtruth.label)
+        for prediction in self.predictions:
+            validate_string_identifier(prediction.label)
+        return self

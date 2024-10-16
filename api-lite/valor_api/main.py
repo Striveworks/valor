@@ -60,41 +60,68 @@ def get_db():
         db.close()
 
 
-""" GROUNDTRUTHS """
+""" Classifications """
 
 
 @app.post(
-    "/groundtruths",
+    "/classifications/{dataset_name}/{model_name}",
     status_code=200,
     dependencies=[Depends(token_auth_scheme)],
-    tags=["GroundTruths"],
+    tags=["Classification"],
 )
-def create_groundtruths(
-    groundtruths: list[schemas.GroundTruth],
+def create_classifications(
+    dataset_name: str,
+    model_name: str,
+    classifications: list[schemas.Classification],
     ignore_existing_datums: bool = False,
     db: Session = Depends(get_db),
 ):
-    """
-    Create a ground truth in the database.
+    try:
+        crud.create_groundtruths(
+            db=db,
+            groundtruths=groundtruths,
+            ignore_existing_datums=ignore_existing_datums,
+        )
+    except Exception as e:
+        raise exceptions.create_http_error(e)
 
-    POST Endpoint: `/groundtruths`
 
-    Parameters
-    ----------
-    groundtruths : list[schemas.GroundTruth]
-        The ground truths to add to the database.
-    db : Session
-        The database session to use. This parameter is a sqlalchemy dependency and shouldn't be submitted by the user.
-    ignore_existing_datums : bool, optional
-        If True, will ignore datums that already exist in the database.
+@app.post(
+    "/classifications/{dataset_name}/{model_name}/evaluate",
+    status_code=200,
+    dependencies=[Depends(token_auth_scheme)],
+    tags=["Classification"],
+)
+def evaluate_classifications(
+    dataset_name: str,
+    model_name: str,
+    parameters: schemas.Filter,
+    ignore_existing_datums: bool = False,
+    db: Session = Depends(get_db),
+):
+    try:
+        crud.create_groundtruths(
+            db=db,
+            groundtruths=groundtruths,
+            ignore_existing_datums=ignore_existing_datums,
+        )
+    except Exception as e:
+        raise exceptions.create_http_error(e)
 
-    Raises
-    ------
-    HTTPException (404)
-        If the dataset or datum doesn't exist.
-    HTTPException (409)
-        If the dataset has been finalized, or if the datum already exists.
-    """
+
+@app.post(
+    "/classifications/{dataset_name}/{model_name}/evaluate",
+    status_code=200,
+    dependencies=[Depends(token_auth_scheme)],
+    tags=["Classification"],
+)
+def evaluate_classifications(
+    dataset_name: str,
+    model_name: str,
+    filters: schemas.Filter,
+    ignore_existing_datums: bool = False,
+    db: Session = Depends(get_db),
+):
     try:
         crud.create_groundtruths(
             db=db,
@@ -106,38 +133,14 @@ def create_groundtruths(
 
 
 @app.get(
-    "/groundtruths/dataset/{dataset_name}/datum/{uid}",
+    "/classifications/{dataset_name}/{model_name}/{uid}",
     status_code=200,
     dependencies=[Depends(token_auth_scheme)],
-    tags=["GroundTruths"],
+    tags=["Classification"],
 )
-def get_groundtruth(
-    dataset_name: str, uid: str, db: Session = Depends(get_db)
-) -> schemas.GroundTruth | None:
-    """
-    Fetch a ground truth from the database.
-
-    GET Endpoint: `/groundtruths/dataset/{dataset_name}/datum/{uid}`
-
-    Parameters
-    ----------
-    dataset_name : str
-        The name of the dataset to fetch the ground truth from.
-    uid : str
-        The UID of the ground truth.
-    db : Session
-        The database session to use. This parameter is a sqlalchemy dependency and shouldn't be submitted by the user.
-
-    Returns
-    -------
-    schemas.GroundTruth
-        Thee ground truth requested by the user.
-
-    Raises
-    ------
-    HTTPException (404)
-        If the dataset or datum does not exist.
-    """
+def get_classification(
+    dataset_name: str, model_name: str, uid: str, db: Session = Depends(get_db)
+) -> schemas.Classification | None:
     try:
         return crud.get_groundtruth(
             db=db,
@@ -148,83 +151,44 @@ def get_groundtruth(
         raise exceptions.create_http_error(e)
 
 
-""" PREDICTIONS """
+""" Object Detection """
 
 
 @app.post(
-    "/predictions",
+    "/object_detections/{dataset_name}/{model_name}",
     status_code=200,
     dependencies=[Depends(token_auth_scheme)],
-    tags=["Predictions"],
+    tags=["Object Detection"],
 )
-def create_predictions(
-    predictions: list[schemas.Prediction],
+def create_object_detections(
+    dataset_name: str,
+    model_name: str,
+    detections: list[schemas.ObjectDetection],
+    ignore_existing_datums: bool = False,
     db: Session = Depends(get_db),
 ):
-    """
-    Create a prediction in the database.
-
-    POST Endpoint: `/predictions`
-
-    Parameters
-    ----------
-    predictions : list[schemas.Prediction]
-        The predictions to add to the database.
-    db : Session
-        The database session to use. This parameter is a sqlalchemy dependency and shouldn't be submitted by the user.
-
-    Raises
-    ------
-    HTTPException (404)
-        If the dataset, model, or datum doesn't exist.
-    HTTPException (409)
-        If the model has been finalized, or if the dataset has not been finalized.
-    """
     try:
-        crud.create_predictions(db=db, predictions=predictions)
+        crud.create_groundtruths(
+            db=db,
+            groundtruths=groundtruths,
+            ignore_existing_datums=ignore_existing_datums,
+        )
     except Exception as e:
         raise exceptions.create_http_error(e)
 
 
 @app.get(
-    "/predictions/model/{model_name}/dataset/{dataset_name}/datum/{uid}",
+    "/object_detections/{dataset_name}/{model_name}/{uid}",
     status_code=200,
     dependencies=[Depends(token_auth_scheme)],
-    tags=["Predictions"],
+    tags=["Object Detection"],
 )
-def get_prediction(
-    model_name: str, dataset_name: str, uid: str, db: Session = Depends(get_db)
-) -> schemas.Prediction | None:
-    """
-    Fetch a prediction from the database.
-
-    GET Endpoint: `/predictions/model/{model_name}/dataset/{dataset_name}/datum/{uid}`
-
-    Parameters
-    ----------
-    model_name : str
-        The name of the model associated with the prediction.
-    dataset_name : str
-        The name of the dataset associated with the prediction.
-    uid : str
-        The UID associated with the prediction.
-    db : Session
-        The database session to use. This parameter is a sqlalchemy dependency and shouldn't be submitted by the user.
-
-    Returns
-    -------
-    schemas.Prediction
-        The requested prediction.
-
-    Raises
-    ------
-    HTTPException (404)
-        If the dataset or datum doesn't exist.
-    """
+def get_object_detection(
+    dataset_name: str, model_name: str, uid: str, db: Session = Depends(get_db)
+) -> schemas.ObjectDetection | None:
     try:
-        return crud.get_prediction(
+        return crud.get_groundtruth(
             db=db,
-            model_name=model_name,
             dataset_name=dataset_name,
             datum_uid=uid,
         )
@@ -232,7 +196,52 @@ def get_prediction(
         raise exceptions.create_http_error(e)
 
 
-""" LABELS """
+""" Semantic Segmenation """
+
+
+@app.post(
+    "/semantic_segmentations/{dataset_name}/{model_name}",
+    status_code=200,
+    dependencies=[Depends(token_auth_scheme)],
+    tags=["Semantic Segmentation"],
+)
+def create_semantic_segmentations(
+    dataset_name: str,
+    model_name: str,
+    segmentations: list[schemas.SemanticSegmentation],
+    ignore_existing_datums: bool = False,
+    db: Session = Depends(get_db),
+):
+    try:
+        crud.create_groundtruths(
+            db=db,
+            groundtruths=groundtruths,
+            ignore_existing_datums=ignore_existing_datums,
+        )
+    except Exception as e:
+        raise exceptions.create_http_error(e)
+
+
+@app.get(
+    "/semantic_segmentations/{dataset_name}/{model_name}/{uid}",
+    status_code=200,
+    dependencies=[Depends(token_auth_scheme)],
+    tags=["Semantic Segmentation"],
+)
+def get_semantic_segmentation(
+    dataset_name: str, model_name: str, uid: str, db: Session = Depends(get_db)
+) -> schemas.SemanticSegmentation | None:
+    try:
+        return crud.get_groundtruth(
+            db=db,
+            dataset_name=dataset_name,
+            datum_uid=uid,
+        )
+    except Exception as e:
+        raise exceptions.create_http_error(e)
+
+
+""" Labels """
 
 
 @app.get(
@@ -252,7 +261,7 @@ def get_labels(
         description="The number of items to return. Returns all items when set to -1.",
     ),
     db: Session = Depends(get_db),
-) -> list[schemas.Label]:
+) -> list[str]:
     """
     Fetch all labels in the database.
 
@@ -271,7 +280,7 @@ def get_labels(
 
     Returns
     -------
-    list[schemas.Label]
+    list[str]
         A list of all labels in the database.
     """
     try:
@@ -305,7 +314,7 @@ def get_filtered_labels(
         description="The number of items to return. Returns all items when set to -1.",
     ),
     db: Session = Depends(get_db),
-) -> list[schemas.Label]:
+) -> list[str]:
     """
     Fetch labels using a filter.
 
@@ -326,7 +335,7 @@ def get_filtered_labels(
 
     Returns
     -------
-    list[schemas.Label]
+    list[str]
         A list of labels.
     """
     try:
@@ -359,7 +368,7 @@ def get_labels_from_dataset(
         description="The number of items to return. Returns all items when set to -1.",
     ),
     db: Session = Depends(get_db),
-) -> list[schemas.Label]:
+) -> list[str]:
     """
     Fetch all labels for a particular dataset from the database.
 
@@ -378,7 +387,7 @@ def get_labels_from_dataset(
     db : Session
         The database session to use. This parameter is a sqlalchemy dependency and shouldn't be submitted by the user
     -------
-    list[schemas.Label]
+    list[str]
         A list of all labels associated with the dataset in the database.
 
     Raises
@@ -426,7 +435,7 @@ def get_labels_from_model(
         description="The number of items to return. Returns all items when set to -1.",
     ),
     db: Session = Depends(get_db),
-) -> list[schemas.Label]:
+) -> list[str]:
     """
     Fetch all labels for a particular model from the database.
 
@@ -447,7 +456,7 @@ def get_labels_from_model(
 
     Returns
     -------
-    list[schemas.Label]
+    list[str]
         A list of all labels associated with the model in the database.
 
     Raises
@@ -656,119 +665,6 @@ def get_dataset(
         raise exceptions.create_http_error(e)
 
 
-@app.get(
-    "/datasets/{dataset_name}/status",
-    dependencies=[Depends(token_auth_scheme)],
-    tags=["Datasets"],
-)
-def get_dataset_status(
-    dataset_name: str, db: Session = Depends(get_db)
-) -> enums.TableStatus:
-    """
-    Fetch the status of a dataset.
-
-    GET Endpoint: `/datasets/{dataset_name}/status`
-
-    Parameters
-    ----------
-    dataset_name : str
-        The name of the dataset.
-    db : Session
-        The database session to use. This parameter is a sqlalchemy dependency and shouldn't be submitted by the user.
-
-    Returns
-    -------
-    enums.TableStatus
-        The requested state.
-
-    Raises
-    ------
-    HTTPException (404)
-        If the dataset doesn't exist.
-    """
-    try:
-        resp = crud.get_table_status(db=db, dataset_name=dataset_name)
-        return resp
-    except Exception as e:
-        raise exceptions.create_http_error(e)
-
-
-@app.get(
-    "/datasets/{dataset_name}/summary",
-    dependencies=[Depends(token_auth_scheme)],
-    tags=["Datasets"],
-)
-def get_dataset_summary(
-    dataset_name: str, db: Session = Depends(get_db)
-) -> schemas.DatasetSummary:
-    """
-    Get the summary of a dataset.
-
-    GET Endpoint: `/datasets/{dataset_name}/summary`
-
-    Parameters
-    ----------
-    dataset_name : str
-        The name of the dataset.
-    db : Session
-        The database session to use. This parameter is a sqlalchemy dependency and shouldn't be submitted by the user.
-
-    Returns
-    -------
-    schemas.DatasetSummary
-        The dataset summary.
-
-    Raises
-    ------
-    HTTPException (404)
-        If the dataset doesn't exist.
-    """
-    try:
-        resp = crud.get_dataset_summary(db=db, name=dataset_name)
-        return resp
-    except Exception as e:
-        raise exceptions.create_http_error(e)
-
-
-@app.put(
-    "/datasets/{dataset_name}/finalize",
-    status_code=200,
-    dependencies=[Depends(token_auth_scheme)],
-    tags=["Datasets"],
-)
-def finalize_dataset(
-    dataset_name: str,
-    background_tasks: BackgroundTasks,
-    db: Session = Depends(get_db),
-):
-    """
-    Finalizes a dataset for evaluation.
-
-    PUT Endpoint: `/datasets/{dataset_name}/finalize`
-
-    Parameters
-    ----------
-    dataset_name : str
-        The name of the dataset.
-    background_tasks: BackgroundTasks
-        A FastAPI `BackgroundTasks` object to process the creation asynchronously. This parameter is a FastAPI dependency and shouldn't be submitted by the user.
-    db : Session
-        The database session to use. This parameter is a sqlalchemy dependency and shouldn't be submitted by the user.
-
-    Raises
-    ------
-    HTTPException (409)
-        If the dataset is empty.
-    HTTPException (404)
-        If the dataset doesn't exist.
-
-    """
-    try:
-        crud.finalize(db=db, dataset_name=dataset_name, task_handler=None)
-    except Exception as e:
-        raise exceptions.create_http_error(e)
-
-
 @app.delete(
     "/datasets/{dataset_name}",
     dependencies=[Depends(token_auth_scheme)],
@@ -803,184 +699,6 @@ def delete_dataset(
     logger.debug(f"request to delete dataset {dataset_name}")
     try:
         crud.delete(db=db, dataset_name=dataset_name)
-    except Exception as e:
-        raise exceptions.create_http_error(e)
-
-
-""" DATUMS """
-
-
-@app.get(
-    "/data",
-    status_code=200,
-    dependencies=[Depends(token_auth_scheme)],
-    tags=["Datums"],
-    description="Fetch all datums.",
-)
-def get_datums(
-    response: Response,
-    offset: int = Query(
-        0, description="The start index of the items to return."
-    ),
-    limit: int = Query(
-        -1,
-        description="The number of items to return. Returns all items when set to -1.",
-    ),
-    db: Session = Depends(get_db),
-) -> list[schemas.Datum]:
-    """
-    Fetch all datums for a particular dataset.
-
-    GET Endpoint: `/data`
-
-    Parameters
-    ----------
-    response: Response
-        The FastAPI response object. Used to return a content-range header to the user.
-    offset : int, optional
-        The start index of the items to return.
-    limit : int, optional
-        The number of items to return. Returns all items when set to -1.
-    db : Session
-        The database session to use. This parameter is a sqlalchemy dependency and shouldn't be submitted by the user.
-
-    Returns
-    -------
-    list[schemas.Datum]
-        A list of datums.
-
-    Raises
-    ------
-    HTTPException (404)
-        If the dataset or datum doesn't exist.
-    """
-    try:
-        content, headers = crud.get_datums(
-            db=db,
-            filters=schemas.Filter(),
-            offset=offset,
-            limit=limit,
-        )
-        response.headers.update(headers)
-        return content
-    except Exception as e:
-        raise exceptions.create_http_error(e)
-
-
-@app.post(
-    "/data/filter",
-    status_code=200,
-    dependencies=[Depends(token_auth_scheme)],
-    tags=["Datums"],
-    description="Fetch datums using a filter.",
-)
-def get_filtered_datums(
-    response: Response,
-    filters: schemas.Filter,
-    offset: int = Query(
-        0, description="The start index of the items to return."
-    ),
-    limit: int = Query(
-        -1,
-        description="The number of items to return. Returns all items when set to -1.",
-    ),
-    db: Session = Depends(get_db),
-) -> list[schemas.Datum]:
-    """
-    Fetch datums using a filter.
-
-    POST Endpoint: `/data/filter`
-
-    Parameters
-    ----------
-    response: Response
-        The FastAPI response object. Used to return a content-range header to the user.
-    filters : Filter
-        The filter to constrain the results by.
-    offset : int, optional
-        The start index of the items to return.
-    limit : int, optional
-        The number of items to return. Returns all items when set to -1.
-    db : Session
-        The database session to use. This parameter is a sqlalchemy dependency and shouldn't be submitted by the user.
-
-    Returns
-    -------
-    list[schemas.Datum]
-        A list of datums.
-    """
-    try:
-        content, headers = crud.get_datums(
-            db=db,
-            filters=filters,
-            offset=offset,
-            limit=limit,
-        )
-        response.headers.update(headers)
-        return list(content)
-    except Exception as e:
-        raise exceptions.create_http_error(e)
-
-
-@app.get(
-    "/data/dataset/{dataset_name}/uid/{uid}",
-    status_code=200,
-    dependencies=[Depends(token_auth_scheme)],
-    tags=["Datums"],
-)
-def get_datum(
-    dataset_name: str, uid: str, db: Session = Depends(get_db)
-) -> schemas.Datum | None:
-    """
-    Fetch a particular datum.
-    GET Endpoint: `/data/dataset/{dataset_name}/uid/{uid}`
-    Parameters
-    ----------
-    dataset_name : str
-        The name of the dataset.
-    uid : str
-        The UID of the datum.
-    db : Session
-        The database session to use. This parameter is a sqlalchemy dependency and shouldn't be submitted by the user.
-    Returns
-    -------
-    schemas.Datum
-        The requested datum.
-    Raises
-    ------
-    HTTPException (404)
-        If the dataset or datum doesn't exist.
-    """
-    try:
-        datums, _ = crud.get_datums(
-            db=db,
-            filters=schemas.Filter(
-                datums=schemas.LogicalFunction(
-                    args=[
-                        schemas.Condition(
-                            lhs=schemas.Symbol(
-                                name=schemas.SupportedSymbol.DATASET_NAME
-                            ),
-                            rhs=schemas.Value.infer(dataset_name),
-                            op=schemas.FilterOperator.EQ,
-                        ),
-                        schemas.Condition(
-                            lhs=schemas.Symbol(
-                                name=schemas.SupportedSymbol.DATUM_UID
-                            ),
-                            rhs=schemas.Value.infer(uid),
-                            op=schemas.FilterOperator.EQ,
-                        ),
-                    ],
-                    op=schemas.LogicalOperator.AND,
-                )
-            ),
-        )
-
-        if len(datums) == 0:
-            raise exceptions.DatumDoesNotExistError(uid=uid)
-
-        return datums[0]
     except Exception as e:
         raise exceptions.create_http_error(e)
 
@@ -1162,7 +880,7 @@ def get_model(model_name: str, db: Session = Depends(get_db)) -> schemas.Model:
 
 
 @app.get(
-    "/models/{model_name}/eval-requests",
+    "/models/{model_name}/summary",
     dependencies=[Depends(token_auth_scheme)],
     tags=["Models"],
 )
@@ -1194,91 +912,6 @@ def get_model_eval_requests(
     try:
         return crud.get_evaluation_requests_from_model(
             db=db, model_name=model_name
-        )
-    except Exception as e:
-        raise exceptions.create_http_error(e)
-
-
-@app.get(
-    "/models/{model_name}/dataset/{dataset_name}/status",
-    dependencies=[Depends(token_auth_scheme)],
-    tags=["Models"],
-)
-def get_model_status(
-    dataset_name: str, model_name: str, db: Session = Depends(get_db)
-) -> enums.TableStatus:
-    """
-    Fetch the status of a model over a dataset.
-
-    Parameters
-    ----------
-    dataset_name : str
-        The name of the dataset.
-    model_name : str
-        The name of the model.
-    db : Session
-        The database session to use. This parameter is a sqlalchemy dependency and shouldn't be submitted by the user.
-
-    Returns
-    -------
-    enums.TableStatus
-        The requested state.
-
-    Raises
-    ------
-    HTTPException (404)
-        If the model doesn't exist.
-    """
-    try:
-        return crud.get_table_status(
-            db=db, dataset_name=dataset_name, model_name=model_name
-        )
-    except Exception as e:
-        raise exceptions.create_http_error(e)
-
-
-@app.put(
-    "/models/{model_name}/datasets/{dataset_name}/finalize",
-    status_code=200,
-    dependencies=[Depends(token_auth_scheme)],
-    tags=["Models"],
-)
-def finalize_inferences(
-    dataset_name: str,
-    model_name: str,
-    background_tasks: BackgroundTasks,
-    db: Session = Depends(get_db),
-):
-    """
-    Finalize a model prior to evaluation.
-
-    PUT Endpoint: `/models/{model_name}/datasets/{dataset_name}/finalize`
-
-    Parameters
-    ----------
-    dataset_name : str
-        The name of the dataset.
-    model_name : str
-        The name of the model.
-    background_tasks: BackgroundTasks
-        A FastAPI `BackgroundTasks` object to process the creation asynchronously. This parameter is a FastAPI dependency and shouldn't be submitted by the user.
-    db : Session
-        The database session to use. This parameter is a sqlalchemy dependency and shouldn't be submitted by the user.
-
-
-    Raises
-    ------
-    HTTPException (400)
-        If the dataset or model are empty.
-    HTTPException (404)
-        If the dataset or model do not exist.
-    """
-    try:
-        crud.finalize(
-            db=db,
-            model_name=model_name,
-            dataset_name=dataset_name,
-            task_handler=None,
         )
     except Exception as e:
         raise exceptions.create_http_error(e)
@@ -1381,7 +1014,7 @@ def create_or_get_evaluations(
 
 
 @app.get(
-    "/evaluations",
+    "/evaluations/",
     dependencies=[Depends(token_auth_scheme)],
     response_model_exclude_none=True,
     tags=["Evaluations"],

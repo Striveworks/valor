@@ -9,14 +9,106 @@ from sqlalchemy.sql import func
 from valor_api.backend.database import Base
 
 
+class Metadata(Base):
+    __tablename__ = "meta_linker"
+
+    # columns
+    id: Mapped[int] = mapped_column(primary_key=True, index=True)
+    created_at: Mapped[datetime.datetime] = mapped_column(default=func.now())
+
+
+class Integer(Base):
+    __tablename__ = "meta_integer"
+
+    # columns
+    id: Mapped[int] = mapped_column(primary_key=True)
+    metadata_id: Mapped[int] = mapped_column(
+        ForeignKey("meta_linker.id"), index=True
+    )
+    key: Mapped[str] = mapped_column(nullable=False)
+    value: Mapped[int] = mapped_column(nullable=False)
+
+
+class Float(Base):
+    __tablename__ = "meta_float"
+
+    # columns
+    id: Mapped[int] = mapped_column(primary_key=True)
+    metadata_id: Mapped[int] = mapped_column(
+        ForeignKey("meta_linker.id"), index=True
+    )
+    key: Mapped[str] = mapped_column(nullable=False)
+    value: Mapped[float] = mapped_column(nullable=False)
+
+
+class String(Base):
+    __tablename__ = "meta_string"
+
+    # columns
+    id: Mapped[int] = mapped_column(primary_key=True)
+    metadata_id: Mapped[int] = mapped_column(
+        ForeignKey("meta_linker.id"), index=True
+    )
+    key: Mapped[str] = mapped_column(nullable=False)
+    value: Mapped[str] = mapped_column(nullable=False)
+
+
+class DateTime(Base):
+    __tablename__ = "meta_datetime"
+
+    # columns
+    id: Mapped[int] = mapped_column(primary_key=True)
+    metadata_id: Mapped[int] = mapped_column(
+        ForeignKey("meta_linker.id"), index=True
+    )
+    key: Mapped[str] = mapped_column(nullable=False)
+    value: Mapped[datetime.datetime] = mapped_column(nullable=False)
+
+
+class Date(Base):
+    __tablename__ = "meta_date"
+
+    # columns
+    id: Mapped[int] = mapped_column(primary_key=True)
+    metadata_id: Mapped[int] = mapped_column(
+        ForeignKey("meta_linker.id"), index=True
+    )
+    key: Mapped[str] = mapped_column(nullable=False)
+    value: Mapped[datetime.date] = mapped_column(nullable=False)
+
+
+class Time(Base):
+    __tablename__ = "meta_time"
+
+    # columns
+    id: Mapped[int] = mapped_column(primary_key=True)
+    metadata_id: Mapped[int] = mapped_column(
+        ForeignKey("meta_linker.id"), index=True
+    )
+    key: Mapped[str] = mapped_column(nullable=False)
+    value: Mapped[datetime.time] = mapped_column(nullable=False)
+
+
+class Geospatial(Base):
+    __tablename__ = "meta_geospatial"
+
+    # columns
+    id: Mapped[int] = mapped_column(primary_key=True)
+    metadata_id: Mapped[int] = mapped_column(
+        ForeignKey("meta_linker.id"), index=True
+    )
+    key: Mapped[str] = mapped_column(nullable=False)
+    value = mapped_column(Geometry, nullable=False)
+
+
 class Dataset(Base):
     __tablename__ = "dataset"
 
     # columns
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
     name: Mapped[str] = mapped_column(index=True, unique=True)
-    meta = mapped_column(JSONB)
-    status: Mapped[str] = mapped_column(nullable=False)
+    metadata_id: Mapped[int] = mapped_column(ForeignKey("meta_linker.id"))
+    finalized: Mapped[bool] = mapped_column(nullable=False)
     created_at: Mapped[datetime.datetime] = mapped_column(default=func.now())
 
 
@@ -26,7 +118,7 @@ class Model(Base):
     # columns
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
     name: Mapped[str] = mapped_column(index=True, unique=True)
-    meta = mapped_column(JSONB)
+    metadata_id: Mapped[int] = mapped_column(ForeignKey("meta_linker.id"))
     status: Mapped[str] = mapped_column(nullable=False)
     created_at: Mapped[datetime.datetime] = mapped_column(default=func.now())
 
@@ -41,20 +133,7 @@ class Datum(Base):
         ForeignKey("dataset.id"), nullable=False
     )
     uid: Mapped[str] = mapped_column(nullable=False)
-    geo: Mapped[int] = mapped_column(
-        ForeignKey("geospatial.id"), nullable=True
-    )
-    meta = mapped_column(JSONB)
-    created_at: Mapped[datetime.datetime] = mapped_column(default=func.now())
-
-
-class Geospatial(Base):
-    __tablename__ = "geospatial"
-
-    # columns
-    id: Mapped[int] = mapped_column(primary_key=True, index=True)
-    point = mapped_column(Geometry("POINT"), nullable=False)
-    region = mapped_column(Geometry("POLYGON"), nullable=False)
+    metadata_id: Mapped[int] = mapped_column(ForeignKey("meta_linker.id"))
     created_at: Mapped[datetime.datetime] = mapped_column(default=func.now())
 
 
@@ -76,23 +155,29 @@ class Classification(Base):
         ForeignKey("datum.id"), nullable=False, index=True
     )
     groundtruth_id: Mapped[int] = mapped_column(
-        ForeignKey("label.id"), nullable=False,
+        ForeignKey("label.id"),
+        nullable=False,
     )
     prediction_id: Mapped[int] = mapped_column(
-        ForeignKey("label.id"), nullable=False,
+        ForeignKey("label.id"),
+        nullable=False,
     )
     score: Mapped[float] = mapped_column(nullable=False)
     hardmax: Mapped[bool] = mapped_column(nullable=False)
     created_at: Mapped[datetime.datetime] = mapped_column(default=func.now())
 
 
-class DetectionExamples(Base):
-    __tablename__ = "object_detection_examples"
+class DetectionAnnotation(Base):
+    __tablename__ = "object_detection_annotation"
 
     # columns
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
-    value = mapped_column(Geometry("BOX"), nullable=False)
-    created_at: Mapped[datetime.datetime] = mapped_column(default=func.now())
+    iou: Mapped[float] = mapped_column(nullable=False)
+    area: Mapped[float] = mapped_column(nullable=False)
+    xmin: Mapped[float] = mapped_column(nullable=False)
+    xmax: Mapped[float] = mapped_column(nullable=False)
+    ymin: Mapped[float] = mapped_column(nullable=False)
+    ymax: Mapped[float] = mapped_column(nullable=False)
 
 
 class Detection(Base):
@@ -119,9 +204,8 @@ class Detection(Base):
         ForeignKey("label.id"), nullable=False
     )
     score: Mapped[float] = mapped_column(nullable=False)
-    iou: Mapped[float] = mapped_column(nullable=False)
-    example_id: Mapped[int] = mapped_column(
-        ForeignKey("object_detection_examples.id"), nullable=False
+    detection: Mapped[int] = mapped_column(
+        ForeignKey("object_detection_annotation.id"), nullable=False
     )
     created_at: Mapped[datetime.datetime] = mapped_column(default=func.now())
 
