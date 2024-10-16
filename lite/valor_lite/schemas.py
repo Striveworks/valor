@@ -21,7 +21,7 @@ class Metric:
 
 class _BaseMetric:
     """
-    Base class subclassed by metric dataclasses.
+    Base class for metric dataclasses.
 
     Automates conversion to a generic metric type.
     """
