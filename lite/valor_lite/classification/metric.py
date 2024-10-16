@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from enum import Enum
 
-from valor_lite.schemas import Metric
+from valor_lite.schemas import _BaseMetric
 
 
 class MetricType(Enum):
@@ -16,102 +16,27 @@ class MetricType(Enum):
 
 
 @dataclass
-class Counts:
-    """
-    Confusion matrix counts at specified score thresholds for binary classification.
-
-    This class stores the true positive (`tp`), false positive (`fp`), false negative (`fn`), and true
-    negative (`tn`) counts computed at various score thresholds for a binary classification task.
-
-    Attributes
-    ----------
-    tp : list[int]
-        True positive counts at each score threshold.
-    fp : list[int]
-        False positive counts at each score threshold.
-    fn : list[int]
-        False negative counts at each score threshold.
-    tn : list[int]
-        True negative counts at each score threshold.
-    score_thresholds : list[float]
-        Score thresholds at which the counts are computed.
-    hardmax : bool
-        Indicates whether hardmax thresholding was used.
-    label : str
-        The class label for which the counts are computed.
-
-    Methods
-    -------
-    to_metric()
-        Converts the instance to a generic `Metric` object.
-    to_dict()
-        Converts the instance to a dictionary representation.
-    """
-
-    tp: list[int]
-    fp: list[int]
-    fn: list[int]
-    tn: list[int]
-    score_thresholds: list[float]
+class _ThresholdValue(_BaseMetric):
+    value: float
+    score_threshold: float
     hardmax: bool
     label: str
-
-    def to_metric(self) -> Metric:
-        return Metric(
-            type=type(self).__name__,
-            value={
-                "tp": self.tp,
-                "fp": self.fp,
-                "fn": self.fn,
-                "tn": self.tn,
-            },
-            parameters={
-                "score_thresholds": self.score_thresholds,
-                "hardmax": self.hardmax,
-                "label": self.label,
-            },
-        )
-
-    def to_dict(self) -> dict:
-        return self.to_metric().to_dict()
-
-
-@dataclass
-class _ThresholdValue:
-    value: list[float]
-    score_thresholds: list[float]
-    hardmax: bool
-    label: str
-
-    def to_metric(self) -> Metric:
-        return Metric(
-            type=type(self).__name__,
-            value=self.value,
-            parameters={
-                "score_thresholds": self.score_thresholds,
-                "hardmax": self.hardmax,
-                "label": self.label,
-            },
-        )
-
-    def to_dict(self) -> dict:
-        return self.to_metric().to_dict()
 
 
 class Precision(_ThresholdValue):
     """
     Precision metric for a specific class label.
 
-    This class calculates the precision at various score thresholds for a binary
-    classification task. Precision is defined as the ratio of true positives to the
-    sum of true positives and false positives.
+    This class calculates the precision at a specific score threshold.
+    Precision is defined as the ratio of true positives to the sum of
+    true positives and false positives.
 
     Attributes
     ----------
-    value : list[float]
-        Precision values computed at each score threshold.
-    score_thresholds : list[float]
-        Score thresholds at which the precision values are computed.
+    value : float
+        Precision value computed at a specific score threshold.
+    score_threshold : float
+        Score threshold at which the precision value is computed.
     hardmax : bool
         Indicates whether hardmax thresholding was used.
     label : str
@@ -132,16 +57,16 @@ class Recall(_ThresholdValue):
     """
     Recall metric for a specific class label.
 
-    This class calculates the recall at various score thresholds for a binary
-    classification task. Recall is defined as the ratio of true positives to the
-    sum of true positives and false negatives.
+    This class calculates the recall at a specific score threshold.
+    Recall is defined as the ratio of true positives to the sum of
+    true positives and false negatives.
 
     Attributes
     ----------
-    value : list[float]
-        Recall values computed at each score threshold.
-    score_thresholds : list[float]
-        Score thresholds at which the recall values are computed.
+    value : float
+        Recall value computed at a specific score threshold.
+    score_threshold : float
+        Score threshold at which the recall value is computed.
     hardmax : bool
         Indicates whether hardmax thresholding was used.
     label : str
@@ -160,17 +85,14 @@ class Recall(_ThresholdValue):
 
 class F1(_ThresholdValue):
     """
-    F1 score for a specific class label.
-
-    This class calculates the F1 score at various score thresholds for a binary
-    classification task.
+    F1 score for a specific class label and confidence score threshold.
 
     Attributes
     ----------
-    value : list[float]
-        F1 scores computed at each score threshold.
-    score_thresholds : list[float]
-        Score thresholds at which the F1 scores are computed.
+    value : float
+        F1 score computed at a specific score threshold.
+    score_threshold : float
+        Score threshold at which the F1 score is computed.
     hardmax : bool
         Indicates whether hardmax thresholding was used.
     label : str
@@ -188,7 +110,7 @@ class F1(_ThresholdValue):
 
 
 @dataclass
-class Accuracy:
+class Accuracy(_BaseMetric):
     """
     Multiclass accuracy metric.
 
@@ -196,10 +118,10 @@ class Accuracy:
 
     Attributes
     ----------
-    value : list[float]
-        Accuracy values computed at each score threshold.
-    score_thresholds : list[float]
-        Score thresholds at which the accuracy values are computed.
+    value : float
+        Accuracy value computed at a specific score threshold.
+    score_threshold : float
+        Score threshold at which the accuracy value is computed.
     hardmax : bool
         Indicates whether hardmax thresholding was used.
 
@@ -211,26 +133,13 @@ class Accuracy:
         Converts the instance to a dictionary representation.
     """
 
-    value: list[float]
-    score_thresholds: list[float]
+    value: float
+    score_threshold: float
     hardmax: bool
-
-    def to_metric(self) -> Metric:
-        return Metric(
-            type=type(self).__name__,
-            value=self.value,
-            parameters={
-                "score_thresholds": self.score_thresholds,
-                "hardmax": self.hardmax,
-            },
-        )
-
-    def to_dict(self) -> dict:
-        return self.to_metric().to_dict()
 
 
 @dataclass
-class ROCAUC:
+class ROCAUC(_BaseMetric):
     """
     Receiver Operating Characteristic Area Under the Curve (ROC AUC).
 
@@ -256,19 +165,9 @@ class ROCAUC:
     value: float
     label: str
 
-    def to_metric(self) -> Metric:
-        return Metric(
-            type=type(self).__name__,
-            value=self.value,
-            parameters={"label": self.label},
-        )
-
-    def to_dict(self) -> dict:
-        return self.to_metric().to_dict()
-
 
 @dataclass
-class mROCAUC:
+class mROCAUC(_BaseMetric):
     """
     Mean Receiver Operating Characteristic Area Under the Curve (mROC AUC).
 
@@ -290,19 +189,51 @@ class mROCAUC:
 
     value: float
 
-    def to_metric(self) -> Metric:
-        return Metric(
-            type=type(self).__name__,
-            value=self.value,
-            parameters={},
-        )
 
-    def to_dict(self) -> dict:
-        return self.to_metric().to_dict()
+@dataclass
+class Counts(_BaseMetric):
+    """
+    Confusion matrix counts at specified score thresholds for binary classification.
+
+    This class stores the true positive (`tp`), false positive (`fp`), false negative (`fn`), and true
+    negative (`tn`) counts computed at various score thresholds for a binary classification task.
+
+    Attributes
+    ----------
+    tp : int
+        True positive counts at each score threshold.
+    fp : int
+        False positive counts at each score threshold.
+    fn : int
+        False negative counts at each score threshold.
+    tn : int
+        True negative counts at each score threshold.
+    score_threshold : float
+        Score thresholds at which the counts are computed.
+    hardmax : bool
+        Indicates whether hardmax thresholding was used.
+    label : str
+        The class label for which the counts are computed.
+
+    Methods
+    -------
+    to_metric()
+        Converts the instance to a generic `Metric` object.
+    to_dict()
+        Converts the instance to a dictionary representation.
+    """
+
+    tp: int
+    fp: int
+    fn: int
+    tn: int
+    score_threshold: float
+    hardmax: bool
+    label: str
 
 
 @dataclass
-class ConfusionMatrix:
+class ConfusionMatrix(_BaseMetric):
     """
     The confusion matrix and related metrics for the classification task.
 
@@ -373,7 +304,7 @@ class ConfusionMatrix:
         Each example includes the datum UID.
     score_threshold : float
         The confidence score threshold used to filter predictions.
-    number_of_examples : int
+    maximum_number_of_examples : int
         The maximum number of examples per element.
 
     Methods
@@ -408,19 +339,4 @@ class ConfusionMatrix:
         ],
     ]
     score_threshold: float
-    number_of_examples: int
-
-    def to_metric(self) -> Metric:
-        return Metric(
-            type=type(self).__name__,
-            value={
-                "confusion_matrix": self.confusion_matrix,
-                "missing_predictions": self.missing_predictions,
-            },
-            parameters={
-                "score_threshold": self.score_threshold,
-            },
-        )
-
-    def to_dict(self) -> dict:
-        return self.to_metric().to_dict()
+    maximum_number_of_examples: int

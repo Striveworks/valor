@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from enum import Enum
 
-from valor_lite.schemas import Metric
+from valor_lite.schemas import _BaseMetric
 
 
 class MetricType(str, Enum):
@@ -23,81 +23,11 @@ class MetricType(str, Enum):
 
 
 @dataclass
-class Counts:
-    """
-    `Counts` encapsulates the counts of true positives (`tp`), false positives (`fp`),
-    and false negatives (`fn`) for object detection evaluation, along with the associated
-    class label, Intersection over Union (IoU) threshold, and confidence score threshold.
-
-    Attributes
-    ----------
-    tp : int
-        Number of true positives.
-    fp : int
-        Number of false positives.
-    fn : int
-        Number of false negatives.
-    label : str
-        The class label for which the counts are calculated.
-    iou_threshold : float
-        The IoU threshold used to determine a match between predicted and ground truth boxes.
-    score_threshold : float
-        The confidence score threshold above which predictions are considered.
-
-    Methods
-    -------
-    to_metric()
-        Converts the instance to a generic `Metric` object.
-    to_dict()
-        Converts the instance to a dictionary representation.
-    """
-
-    tp: int
-    fp: int
-    fn: int
-    label: str
-    iou_threshold: float
-    score_threshold: float
-
-    def to_metric(self) -> Metric:
-        return Metric(
-            type=type(self).__name__,
-            value={
-                "tp": self.tp,
-                "fp": self.fp,
-                "fn": self.fn,
-            },
-            parameters={
-                "iou_threshold": self.iou_threshold,
-                "score_threshold": self.score_threshold,
-                "label": self.label,
-            },
-        )
-
-    def to_dict(self) -> dict:
-        return self.to_metric().to_dict()
-
-
-@dataclass
-class _ClassMetric:
+class _ClassMetric(_BaseMetric):
     value: float
     label: str
     iou_threshold: float
     score_threshold: float
-
-    def to_metric(self) -> Metric:
-        return Metric(
-            type=type(self).__name__,
-            value=self.value,
-            parameters={
-                "iou_threshold": self.iou_threshold,
-                "score_threshold": self.score_threshold,
-                "label": self.label,
-            },
-        )
-
-    def to_dict(self) -> dict:
-        return self.to_metric().to_dict()
 
 
 class Precision(_ClassMetric):
@@ -105,7 +35,7 @@ class Precision(_ClassMetric):
     Precision metric for a specific class label in object detection.
 
     This class encapsulates a metric value for a particular class label,
-    along with the associated Intersection over Union (IoU) threshold and
+    along with the associated Intersection over Union (IOU) threshold and
     confidence score threshold.
 
     Attributes
@@ -115,7 +45,7 @@ class Precision(_ClassMetric):
     label : str
         The class label for which the metric is calculated.
     iou_threshold : float
-        The IoU threshold used to determine matches between predicted and ground truth boxes.
+        The IOU threshold used to determine matches between predicted and ground truth boxes.
     score_threshold : float
         The confidence score threshold above which predictions are considered.
 
@@ -135,7 +65,7 @@ class Recall(_ClassMetric):
     Recall metric for a specific class label in object detection.
 
     This class encapsulates a metric value for a particular class label,
-    along with the associated Intersection over Union (IoU) threshold and
+    along with the associated Intersection over Union (IOU) threshold and
     confidence score threshold.
 
     Attributes
@@ -145,7 +75,7 @@ class Recall(_ClassMetric):
     label : str
         The class label for which the metric is calculated.
     iou_threshold : float
-        The IoU threshold used to determine matches between predicted and ground truth boxes.
+        The IOU threshold used to determine matches between predicted and ground truth boxes.
     score_threshold : float
         The confidence score threshold above which predictions are considered.
 
@@ -165,7 +95,7 @@ class F1(_ClassMetric):
     F1 score for a specific class label in object detection.
 
     This class encapsulates a metric value for a particular class label,
-    along with the associated Intersection over Union (IoU) threshold and
+    along with the associated Intersection over Union (IOU) threshold and
     confidence score threshold.
 
     Attributes
@@ -175,7 +105,7 @@ class F1(_ClassMetric):
     label : str
         The class label for which the metric is calculated.
     iou_threshold : float
-        The IoU threshold used to determine matches between predicted and ground truth boxes.
+        The IOU threshold used to determine matches between predicted and ground truth boxes.
     score_threshold : float
         The confidence score threshold above which predictions are considered.
 
@@ -191,19 +121,19 @@ class F1(_ClassMetric):
 
 
 @dataclass
-class Accuracy:
+class Accuracy(_BaseMetric):
     """
     Accuracy metric for the object detection task type.
 
     This class encapsulates a metric value at a specific Intersection
-    over Union (IoU) threshold and confidence score threshold.
+    over Union (IOU) threshold and confidence score threshold.
 
     Attributes
     ----------
     value : float
         The metric value.
     iou_threshold : float
-        The IoU threshold used to determine matches between predicted and ground truth boxes.
+        The IOU threshold used to determine matches between predicted and ground truth boxes.
     score_threshold : float
         The confidence score threshold above which predictions are considered.
 
@@ -219,22 +149,9 @@ class Accuracy:
     iou_threshold: float
     score_threshold: float
 
-    def to_metric(self) -> Metric:
-        return Metric(
-            type=type(self).__name__,
-            value=self.value,
-            parameters={
-                "iou_threshold": self.iou_threshold,
-                "score_threshold": self.score_threshold,
-            },
-        )
-
-    def to_dict(self) -> dict:
-        return self.to_metric().to_dict()
-
 
 @dataclass
-class AP:
+class AP(_BaseMetric):
     """
     Average Precision (AP) metric for object detection tasks.
 
@@ -247,7 +164,7 @@ class AP:
     value : float
         The average precision value.
     iou_threshold : float
-        The IoU threshold used to compute the AP.
+        The IOU threshold used to compute the AP.
     label : str
         The class label for which the AP is computed.
 
@@ -263,22 +180,9 @@ class AP:
     iou_threshold: float
     label: str
 
-    def to_metric(self) -> Metric:
-        return Metric(
-            type=type(self).__name__,
-            value=self.value,
-            parameters={
-                "iou_threshold": self.iou_threshold,
-                "label": self.label,
-            },
-        )
-
-    def to_dict(self) -> dict:
-        return self.to_metric().to_dict()
-
 
 @dataclass
-class mAP:
+class mAP(_BaseMetric):
     """
     Mean Average Precision (mAP) metric for object detection tasks.
 
@@ -292,7 +196,7 @@ class mAP:
     value : float
         The mean average precision value.
     iou_threshold : float
-        The IoU threshold used to compute the mAP.
+        The IOU threshold used to compute the mAP.
 
     Methods
     -------
@@ -305,35 +209,23 @@ class mAP:
     value: float
     iou_threshold: float
 
-    def to_metric(self) -> Metric:
-        return Metric(
-            type=type(self).__name__,
-            value=self.value,
-            parameters={
-                "iou_threshold": self.iou_threshold,
-            },
-        )
-
-    def to_dict(self) -> dict:
-        return self.to_metric().to_dict()
-
 
 @dataclass
-class APAveragedOverIOUs:
+class APAveragedOverIOUs(_BaseMetric):
     """
-    Average Precision (AP) metric averaged over multiple IoU thresholds.
+    Average Precision (AP) metric averaged over multiple IOU thresholds.
 
     The AP computation uses 101-point interpolation, which calculates the average precision
     by interpolating the precision-recall curve at 101 evenly spaced recall levels from 0 to 1
-    for each IoU threshold specified in `iou_thresholds`. The final APAveragedOverIOUs value is
-    obtained by averaging these AP values across all specified IoU thresholds.
+    for each IOU threshold specified in `iou_thresholds`. The final APAveragedOverIOUs value is
+    obtained by averaging these AP values across all specified IOU thresholds.
 
     Attributes
     ----------
     value : float
-        The average precision value averaged over the specified IoU thresholds.
+        The average precision value averaged over the specified IOU thresholds.
     iou_thresholds : list[float]
-        The list of IoU thresholds used to compute the AP values.
+        The list of IOU thresholds used to compute the AP values.
     label : str
         The class label for which the AP is computed.
 
@@ -349,36 +241,23 @@ class APAveragedOverIOUs:
     iou_thresholds: list[float]
     label: str
 
-    def to_metric(self) -> Metric:
-        return Metric(
-            type=type(self).__name__,
-            value=self.value,
-            parameters={
-                "iou_thresholds": self.iou_thresholds,
-                "label": self.label,
-            },
-        )
-
-    def to_dict(self) -> dict:
-        return self.to_metric().to_dict()
-
 
 @dataclass
-class mAPAveragedOverIOUs:
+class mAPAveragedOverIOUs(_BaseMetric):
     """
-    Mean Average Precision (mAP) metric averaged over multiple IoU thresholds.
+    Mean Average Precision (mAP) metric averaged over multiple IOU thresholds.
 
     The AP computation uses 101-point interpolation, which calculates the average precision
     by interpolating the precision-recall curve at 101 evenly spaced recall levels from 0 to 1
-    for each IoU threshold specified in `iou_thresholds`. The final mAPAveragedOverIOUs value is
-    obtained by averaging these AP values across all specified IoU thresholds and all class labels.
+    for each IOU threshold specified in `iou_thresholds`. The final mAPAveragedOverIOUs value is
+    obtained by averaging these AP values across all specified IOU thresholds and all class labels.
 
     Attributes
     ----------
     value : float
-        The average precision value averaged over the specified IoU thresholds.
+        The average precision value averaged over the specified IOU thresholds.
     iou_thresholds : list[float]
-        The list of IoU thresholds used to compute the AP values.
+        The list of IOU thresholds used to compute the AP values.
 
     Methods
     -------
@@ -391,38 +270,26 @@ class mAPAveragedOverIOUs:
     value: float
     iou_thresholds: list[float]
 
-    def to_metric(self) -> Metric:
-        return Metric(
-            type=type(self).__name__,
-            value=self.value,
-            parameters={
-                "iou_thresholds": self.iou_thresholds,
-            },
-        )
-
-    def to_dict(self) -> dict:
-        return self.to_metric().to_dict()
-
 
 @dataclass
-class AR:
+class AR(_BaseMetric):
     """
     Average Recall (AR) metric for object detection tasks.
 
     The AR computation considers detections with confidence scores above the specified
-    `score_threshold` and calculates the recall at each IoU threshold in `iou_thresholds`.
-    The final AR value is the average of these recall values across all specified IoU
+    `score_threshold` and calculates the recall at each IOU threshold in `iou_thresholds`.
+    The final AR value is the average of these recall values across all specified IOU
     thresholds.
 
     Attributes
     ----------
     value : float
-        The average recall value averaged over the specified IoU thresholds.
+        The average recall value averaged over the specified IOU thresholds.
     score_threshold : float
         The detection score threshold; only detections with confidence scores above this
         threshold are considered.
     iou_thresholds : list[float]
-        The list of IoU thresholds used to compute the recall values.
+        The list of IOU thresholds used to compute the recall values.
     label : str
         The class label for which the AR is computed.
 
@@ -439,40 +306,26 @@ class AR:
     iou_thresholds: list[float]
     label: str
 
-    def to_metric(self) -> Metric:
-        return Metric(
-            type=type(self).__name__,
-            value=self.value,
-            parameters={
-                "score_threshold": self.score_threshold,
-                "iou_thresholds": self.iou_thresholds,
-                "label": self.label,
-            },
-        )
-
-    def to_dict(self) -> dict:
-        return self.to_metric().to_dict()
-
 
 @dataclass
-class mAR:
+class mAR(_BaseMetric):
     """
     Mean Average Recall (mAR) metric for object detection tasks.
 
     The mAR computation considers detections with confidence scores above the specified
-    `score_threshold` and calculates recall at each IoU threshold in `iou_thresholds` for
+    `score_threshold` and calculates recall at each IOU threshold in `iou_thresholds` for
     each label. The final mAR value is obtained by averaging these recall values over the
-    specified IoU thresholds and then averaging across all labels.
+    specified IOU thresholds and then averaging across all labels.
 
     Attributes
     ----------
     value : float
-        The mean average recall value averaged over the specified IoU thresholds.
+        The mean average recall value averaged over the specified IOU thresholds.
     score_threshold : float
         The detection score threshold; only detections with confidence scores above this
         threshold are considered.
     iou_thresholds : list[float]
-        The list of IoU thresholds used to compute the recall values.
+        The list of IOU thresholds used to compute the recall values.
 
     Methods
     -------
@@ -486,37 +339,24 @@ class mAR:
     score_threshold: float
     iou_thresholds: list[float]
 
-    def to_metric(self) -> Metric:
-        return Metric(
-            type=type(self).__name__,
-            value=self.value,
-            parameters={
-                "score_threshold": self.score_threshold,
-                "iou_thresholds": self.iou_thresholds,
-            },
-        )
-
-    def to_dict(self) -> dict:
-        return self.to_metric().to_dict()
-
 
 @dataclass
-class ARAveragedOverScores:
+class ARAveragedOverScores(_BaseMetric):
     """
     Average Recall (AR) metric averaged over multiple score thresholds for a specific object class label.
 
     The AR computation considers detections across multiple `score_thresholds` and calculates
-    recall at each IoU threshold in `iou_thresholds`. The final AR value is obtained by averaging
-    the recall values over all specified score thresholds and IoU thresholds.
+    recall at each IOU threshold in `iou_thresholds`. The final AR value is obtained by averaging
+    the recall values over all specified score thresholds and IOU thresholds.
 
     Attributes
     ----------
     value : float
-        The average recall value averaged over the specified score thresholds and IoU thresholds.
+        The average recall value averaged over the specified score thresholds and IOU thresholds.
     score_thresholds : list[float]
         The list of detection score thresholds; detections with confidence scores above each threshold are considered.
     iou_thresholds : list[float]
-        The list of IoU thresholds used to compute the recall values.
+        The list of IOU thresholds used to compute the recall values.
     label : str
         The class label for which the AR is computed.
 
@@ -533,39 +373,25 @@ class ARAveragedOverScores:
     iou_thresholds: list[float]
     label: str
 
-    def to_metric(self) -> Metric:
-        return Metric(
-            type=type(self).__name__,
-            value=self.value,
-            parameters={
-                "score_thresholds": self.score_thresholds,
-                "iou_thresholds": self.iou_thresholds,
-                "label": self.label,
-            },
-        )
-
-    def to_dict(self) -> dict:
-        return self.to_metric().to_dict()
-
 
 @dataclass
-class mARAveragedOverScores:
+class mARAveragedOverScores(_BaseMetric):
     """
-    Mean Average Recall (mAR) metric averaged over multiple score thresholds and IoU thresholds.
+    Mean Average Recall (mAR) metric averaged over multiple score thresholds and IOU thresholds.
 
     The mAR computation considers detections across multiple `score_thresholds`, calculates recall
-    at each IoU threshold in `iou_thresholds` for each label, averages these recall values over all
-    specified score thresholds and IoU thresholds, and then computes the mean across all labels to
+    at each IOU threshold in `iou_thresholds` for each label, averages these recall values over all
+    specified score thresholds and IOU thresholds, and then computes the mean across all labels to
     obtain the final mAR value.
 
     Attributes
     ----------
     value : float
-        The mean average recall value averaged over the specified score thresholds and IoU thresholds.
+        The mean average recall value averaged over the specified score thresholds and IOU thresholds.
     score_thresholds : list[float]
         The list of detection score thresholds; detections with confidence scores above each threshold are considered.
     iou_thresholds : list[float]
-        The list of IoU thresholds used to compute the recall values.
+        The list of IOU thresholds used to compute the recall values.
 
     Methods
     -------
@@ -579,22 +405,9 @@ class mARAveragedOverScores:
     score_thresholds: list[float]
     iou_thresholds: list[float]
 
-    def to_metric(self) -> Metric:
-        return Metric(
-            type=type(self).__name__,
-            value=self.value,
-            parameters={
-                "score_thresholds": self.score_thresholds,
-                "iou_thresholds": self.iou_thresholds,
-            },
-        )
-
-    def to_dict(self) -> dict:
-        return self.to_metric().to_dict()
-
 
 @dataclass
-class PrecisionRecallCurve:
+class PrecisionRecallCurve(_BaseMetric):
     """
     Interpolated precision-recall curve over 101 recall points.
 
@@ -609,7 +422,7 @@ class PrecisionRecallCurve:
     scores : list[float]
         Maximum prediction score for each point on the interpolated curve.
     iou_threshold : float
-        The Intersection over Union (IoU) threshold used to determine true positives.
+        The Intersection over Union (IOU) threshold used to determine true positives.
     label : str
         The class label associated with this precision-recall curve.
 
@@ -626,25 +439,47 @@ class PrecisionRecallCurve:
     iou_threshold: float
     label: str
 
-    def to_metric(self) -> Metric:
-        return Metric(
-            type=type(self).__name__,
-            value={
-                "precisions": self.precisions,
-                "scores": self.scores,
-            },
-            parameters={
-                "iou_threshold": self.iou_threshold,
-                "label": self.label,
-            },
-        )
 
-    def to_dict(self) -> dict:
-        return self.to_metric().to_dict()
+@dataclass
+class Counts(_BaseMetric):
+    """
+    `Counts` encapsulates the counts of true positives (`tp`), false positives (`fp`),
+    and false negatives (`fn`) for object detection evaluation, along with the associated
+    class label, Intersection over Union (IOU) threshold, and confidence score threshold.
+
+    Attributes
+    ----------
+    tp : int
+        Number of true positives.
+    fp : int
+        Number of false positives.
+    fn : int
+        Number of false negatives.
+    label : str
+        The class label for which the counts are calculated.
+    iou_threshold : float
+        The IOU threshold used to determine a match between predicted and ground truth boxes.
+    score_threshold : float
+        The confidence score threshold above which predictions are considered.
+
+    Methods
+    -------
+    to_metric()
+        Converts the instance to a generic `Metric` object.
+    to_dict()
+        Converts the instance to a dictionary representation.
+    """
+
+    tp: int
+    fp: int
+    fn: int
+    label: str
+    iou_threshold: float
+    score_threshold: float
 
 
 @dataclass
-class ConfusionMatrix:
+class ConfusionMatrix(_BaseMetric):
     """
     Confusion matrix for object detection tasks.
 
@@ -721,8 +556,8 @@ class ConfusionMatrix:
     score_threshold : float
         The confidence score threshold used to filter predictions.
     iou_threshold : float
-        The Intersection over Union (IoU) threshold used to determine true positives.
-    number_of_examples : int
+        The Intersection over Union (IOU) threshold used to determine true positives.
+    maximum_number_of_examples : int
         The maximum number of examples per element.
 
     Methods
@@ -788,21 +623,4 @@ class ConfusionMatrix:
     ]
     score_threshold: float
     iou_threshold: float
-    number_of_examples: int
-
-    def to_metric(self) -> Metric:
-        return Metric(
-            type=type(self).__name__,
-            value={
-                "confusion_matrix": self.confusion_matrix,
-                "hallucinations": self.hallucinations,
-                "missing_predictions": self.missing_predictions,
-            },
-            parameters={
-                "score_threshold": self.score_threshold,
-                "iou_threshold": self.iou_threshold,
-            },
-        )
-
-    def to_dict(self) -> dict:
-        return self.to_metric().to_dict()
+    maximum_number_of_examples: int

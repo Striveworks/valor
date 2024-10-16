@@ -5,7 +5,7 @@ from numpy.typing import NDArray
 
 def compute_bbox_iou(data: NDArray[np.float64]) -> NDArray[np.float64]:
     """
-    Computes intersection-over-union (IoU) for axis-aligned bounding boxes.
+    Computes intersection-over-union (IOU) for axis-aligned bounding boxes.
 
     Takes data with shape (N, 8):
 
@@ -20,7 +20,7 @@ def compute_bbox_iou(data: NDArray[np.float64]) -> NDArray[np.float64]:
 
     Returns data with shape (N, 1):
 
-    Index 0 - IoU
+    Index 0 - IOU
 
     Parameters
     ----------
@@ -30,7 +30,7 @@ def compute_bbox_iou(data: NDArray[np.float64]) -> NDArray[np.float64]:
     Returns
     -------
     NDArray[np.float64]
-        Computed IoU's.
+        Computed IOU's.
     """
     if data.size == 0:
         return np.array([], dtype=np.float64)
@@ -76,7 +76,7 @@ def compute_bbox_iou(data: NDArray[np.float64]) -> NDArray[np.float64]:
 
 def compute_bitmask_iou(data: NDArray[np.bool_]) -> NDArray[np.float64]:
     """
-    Computes intersection-over-union (IoU) for bitmasks.
+    Computes intersection-over-union (IOU) for bitmasks.
 
     Takes data with shape (N, 2):
 
@@ -85,7 +85,7 @@ def compute_bitmask_iou(data: NDArray[np.bool_]) -> NDArray[np.float64]:
 
     Returns data with shape (N, 1):
 
-    Index 0 - IoU
+    Index 0 - IOU
 
     Parameters
     ----------
@@ -95,7 +95,7 @@ def compute_bitmask_iou(data: NDArray[np.bool_]) -> NDArray[np.float64]:
     Returns
     -------
     NDArray[np.float64]
-        Computed IoU's.
+        Computed IOU's.
     """
 
     if data.size == 0:
@@ -125,7 +125,7 @@ def compute_polygon_iou(
     data: NDArray[np.float64],
 ) -> NDArray[np.float64]:
     """
-    Computes intersection-over-union (IoU) for shapely polygons.
+    Computes intersection-over-union (IOU) for shapely polygons.
 
     Takes data with shape (N, 2):
 
@@ -134,7 +134,7 @@ def compute_polygon_iou(
 
     Returns data with shape (N, 1):
 
-    Index 0 - IoU
+    Index 0 - IOU
 
     Parameters
     ----------
@@ -144,7 +144,7 @@ def compute_polygon_iou(
     Returns
     -------
     NDArray[np.float64]
-        Computed IoU's.
+        Computed IOU's.
     """
 
     if data.size == 0:
@@ -225,7 +225,7 @@ def compute_ranked_pairs(
     Index 0 - Datum Index
     Index 1 - GroundTruth Index
     Index 2 - Prediction Index
-    Index 3 - IoU
+    Index 3 - IOU
     Index 4 - GroundTruth Label Index
     Index 5 - Prediction Label Index
     Index 6 - Score
@@ -292,7 +292,7 @@ def compute_metrics(
     Index 0 - Datum Index
     Index 1 - GroundTruth Index
     Index 2 - Prediction Index
-    Index 3 - IoU
+    Index 3 - IOU
     Index 4 - GroundTruth Label Index
     Index 5 - Prediction Label Index
     Index 6 - Score
@@ -304,7 +304,7 @@ def compute_metrics(
     label_metadata : NDArray[np.int32]
         An array containing metadata related to labels.
     iou_thresholds : NDArray[np.float64]
-        A 1-D array containing IoU thresholds.
+        A 1-D array containing IOU thresholds.
     score_thresholds : NDArray[np.float64]
         A 1-D array containing score thresholds.
 
@@ -328,7 +328,7 @@ def compute_metrics(
     n_scores = score_thresholds.shape[0]
 
     if n_ious == 0:
-        raise ValueError("At least one IoU threshold must be passed.")
+        raise ValueError("At least one IOU threshold must be passed.")
     elif n_scores == 0:
         raise ValueError("At least one score threshold must be passed.")
 
@@ -532,18 +532,18 @@ def compute_metrics(
         mAR = np.zeros(n_scores, dtype=np.float64)
 
     # calculate AR and AR averaged over thresholds
-    APAveragedOverIoUs = average_precision.mean(axis=0)
+    APAveragedOverIOUs = average_precision.mean(axis=0)
     ARAveragedOverScores = average_recall.mean(axis=0)
 
     # calculate mAP and mAR averaged over thresholds
-    mAPAveragedOverIoUs = mAP.mean(axis=0)
+    mAPAveragedOverIOUs = mAP.mean(axis=0)
     mARAveragedOverScores = mAR.mean(axis=0)
 
     ap_results = (
         average_precision,
         mAP,
-        APAveragedOverIoUs,
-        mAPAveragedOverIoUs,
+        APAveragedOverIOUs,
+        mAPAveragedOverIOUs,
     )
     ar_results = (
         average_recall,
@@ -643,7 +643,7 @@ def compute_confusion_matrix(
     Index 0 - Datum Index
     Index 1 - GroundTruth Index
     Index 2 - Prediction Index
-    Index 3 - IoU
+    Index 3 - IOU
     Index 4 - GroundTruth Label Index
     Index 5 - Prediction Label Index
     Index 6 - Score
@@ -655,7 +655,7 @@ def compute_confusion_matrix(
     label_metadata : NDArray[np.int32]
         An array containing metadata related to labels.
     iou_thresholds : NDArray[np.float64]
-        A 1-D array containing IoU thresholds.
+        A 1-D array containing IOU thresholds.
     score_thresholds : NDArray[np.float64]
         A 1-D array containing score thresholds.
     n_examples : int

@@ -11,13 +11,13 @@ from valor_lite.semantic_segmentation.computation import (
 )
 from valor_lite.semantic_segmentation.metric import (
     F1,
+    IOU,
     Accuracy,
     ConfusionMatrix,
-    IoU,
     MetricType,
     Precision,
     Recall,
-    mIoU,
+    mIOU,
 )
 
 """
@@ -272,8 +272,8 @@ class Evaluator:
             )
         ]
 
-        metrics[MetricType.mIoU] = [
-            mIoU(
+        metrics[MetricType.mIOU] = [
+            mIOU(
                 value=float(ious.diagonal().mean()),
             )
         ]
@@ -306,8 +306,8 @@ class Evaluator:
                     **kwargs,
                 )
             )
-            metrics[MetricType.IoU].append(
-                IoU(
+            metrics[MetricType.IOU].append(
+                IOU(
                     value=float(ious[label_idx, label_idx]),
                     **kwargs,
                 )

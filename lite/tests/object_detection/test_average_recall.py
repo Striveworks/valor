@@ -150,7 +150,7 @@ def test_ar_metrics_first_class(
         for m in expected_metrics:
             assert m in actual_metrics
 
-        # test AR Averaged Over IoUs
+        # test AR Averaged Over IOUs
         actual_metrics = [m for m in metrics[MetricType.ARAveragedOverScores]]
         expected_metrics = [
             {
@@ -168,7 +168,7 @@ def test_ar_metrics_first_class(
         for m in expected_metrics:
             assert m in actual_metrics
 
-        # test mAR Averaged Over IoUs
+        # test mAR Averaged Over IOUs
         actual_metrics = [m for m in metrics[MetricType.mARAveragedOverScores]]
         expected_metrics = [
             {
@@ -259,7 +259,7 @@ def test_ar_metrics_second_class(
         for m in expected_metrics:
             assert m in actual_metrics
 
-        # test AR Averaged Over IoUs
+        # test AR Averaged Over IOUs
         actual_metrics = [
             m.to_dict() for m in metrics[MetricType.ARAveragedOverScores]
         ]
@@ -279,7 +279,7 @@ def test_ar_metrics_second_class(
         for m in expected_metrics:
             assert m in actual_metrics
 
-        # test mAR Averaged Over IoUs
+        # test mAR Averaged Over IOUs
         actual_metrics = [
             m.to_dict() for m in metrics[MetricType.mARAveragedOverScores]
         ]

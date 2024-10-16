@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from enum import Enum
 
-from valor_lite.schemas import Metric
+from valor_lite.schemas import _BaseMetric
 
 
 class MetricType(Enum):
@@ -9,8 +9,8 @@ class MetricType(Enum):
     Recall = "Recall"
     Accuracy = "Accuracy"
     F1 = "F1"
-    IoU = "IoU"
-    mIoU = "mIoU"
+    IOU = "IOU"
+    mIOU = "mIOU"
     ConfusionMatrix = "ConfusionMatrix"
 
     @classmethod
@@ -20,31 +20,24 @@ class MetricType(Enum):
             cls.Recall,
             cls.Accuracy,
             cls.F1,
-            cls.IoU,
-            cls.mIoU,
+            cls.IOU,
+            cls.mIOU,
             cls.ConfusionMatrix,
         ]
 
 
 @dataclass
-class _LabelValue:
+class _Metric(_BaseMetric):
+    value: float
+
+
+@dataclass
+class _ClassMetric(_BaseMetric):
     value: float
     label: str
 
-    def to_metric(self) -> Metric:
-        return Metric(
-            type=type(self).__name__,
-            value=self.value,
-            parameters={
-                "label": self.label,
-            },
-        )
 
-    def to_dict(self) -> dict:
-        return self.to_metric().to_dict()
-
-
-class Precision(_LabelValue):
+class Precision(_ClassMetric):
     """
     Precision metric for a specific class label.
 
@@ -69,7 +62,7 @@ class Precision(_LabelValue):
     pass
 
 
-class Recall(_LabelValue):
+class Recall(_ClassMetric):
     """
     Recall metric for a specific class label.
 
@@ -94,7 +87,7 @@ class Recall(_LabelValue):
     pass
 
 
-class F1(_LabelValue):
+class F1(_ClassMetric):
     """
     F1 score for a specific class label.
 
@@ -116,16 +109,16 @@ class F1(_LabelValue):
     pass
 
 
-class IoU(_LabelValue):
+class IOU(_ClassMetric):
     """
-    Intersection over Union (IoU) ratio for a specific class label.
+    Intersection over Union (IOU) ratio for a specific class label.
 
     Attributes
     ----------
     value : float
-        The computed IoU ratio.
+        The computed IOU ratio.
     label : str
-        The label for which the IoU is calculated.
+        The label for which the IOU is calculated.
 
     Methods
     -------
@@ -138,22 +131,29 @@ class IoU(_LabelValue):
     pass
 
 
-@dataclass
-class _Value:
-    value: float
+class mIOU(_Metric):
+    """
+    Mean Intersection over Union (mIOU) ratio.
 
-    def to_metric(self) -> Metric:
-        return Metric(
-            type=type(self).__name__,
-            value=self.value,
-            parameters={},
-        )
+    The mIOU value is computed by averaging IOU over all labels.
 
-    def to_dict(self) -> dict:
-        return self.to_metric().to_dict()
+    Attributes
+    ----------
+    value : float
+        The mIOU value.
+
+    Methods
+    -------
+    to_metric()
+        Converts the instance to a generic `Metric` object.
+    to_dict()
+        Converts the instance to a dictionary representation.
+    """
+
+    pass
 
 
-class Accuracy(_Value):
+class Accuracy(_Metric):
     """
     Accuracy metric computed over all labels.
 
@@ -173,30 +173,8 @@ class Accuracy(_Value):
     pass
 
 
-class mIoU(_Value):
-    """
-    Mean Intersection over Union (mIoU) ratio.
-
-    The mIoU value is computed by averaging IoU over all labels.
-
-    Attributes
-    ----------
-    value : float
-        The mIoU value.
-
-    Methods
-    -------
-    to_metric()
-        Converts the instance to a generic `Metric` object.
-    to_dict()
-        Converts the instance to a dictionary representation.
-    """
-
-    pass
-
-
 @dataclass
-class ConfusionMatrix:
+class ConfusionMatrix(_BaseMetric):
     """
     The confusion matrix and related metrics for semantic segmentation tasks.
 
@@ -230,7 +208,7 @@ class ConfusionMatrix:
     Attributes
     ----------
     confusion_matrix : dict
-        Nested dictionaries representing the Intersection over Union (IoU) scores for each
+        Nested dictionaries representing the Intersection over Union (IOU) scores for each
         ground truth label and prediction label pair.
     hallucinations : dict
         Dictionary representing the pixel ratios for predicted labels that do not correspond
@@ -262,17 +240,3 @@ class ConfusionMatrix:
         str,  # ground truth label value
         dict[str, float],  # pixel ratio
     ]
-
-    def to_metric(self) -> Metric:
-        return Metric(
-            type=type(self).__name__,
-            value={
-                "confusion_matrix": self.confusion_matrix,
-                "hallucinations": self.hallucinations,
-                "missing_predictions": self.missing_predictions,
-            },
-            parameters={},
-        )
-
-    def to_dict(self) -> dict:
-        return self.to_metric().to_dict()

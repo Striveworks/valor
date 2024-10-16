@@ -522,6 +522,7 @@ def test_confusion_matrix(
             "parameters": {
                 "score_threshold": 0.05,
                 "iou_threshold": 0.5,
+                "maximum_number_of_examples": 1,
             },
         },
         {
@@ -588,6 +589,7 @@ def test_confusion_matrix(
             "parameters": {
                 "score_threshold": 0.3,
                 "iou_threshold": 0.5,
+                "maximum_number_of_examples": 1,
             },
         },
         {
@@ -644,6 +646,7 @@ def test_confusion_matrix(
             "parameters": {
                 "score_threshold": 0.35,
                 "iou_threshold": 0.5,
+                "maximum_number_of_examples": 1,
             },
         },
         {
@@ -700,6 +703,7 @@ def test_confusion_matrix(
             "parameters": {
                 "score_threshold": 0.45,
                 "iou_threshold": 0.5,
+                "maximum_number_of_examples": 1,
             },
         },
         {
@@ -737,6 +741,7 @@ def test_confusion_matrix(
             "parameters": {
                 "score_threshold": 0.55,
                 "iou_threshold": 0.5,
+                "maximum_number_of_examples": 1,
             },
         },
         {
@@ -774,6 +779,7 @@ def test_confusion_matrix(
             "parameters": {
                 "score_threshold": 0.95,
                 "iou_threshold": 0.5,
+                "maximum_number_of_examples": 1,
             },
         },
     ]
@@ -787,7 +793,7 @@ def test_confusion_matrix(
     for m in expected_metrics:
         assert m in actual_metrics
 
-    # test at lower IoU threshold
+    # test at lower IOU threshold
 
     actual_metrics = evaluator.compute_confusion_matrix(
         iou_thresholds=[0.45],
@@ -871,6 +877,7 @@ def test_confusion_matrix(
             "parameters": {
                 "score_threshold": 0.05,
                 "iou_threshold": 0.45,
+                "maximum_number_of_examples": 1,
             },
         },
         {
@@ -937,6 +944,7 @@ def test_confusion_matrix(
             "parameters": {
                 "score_threshold": 0.3,
                 "iou_threshold": 0.45,
+                "maximum_number_of_examples": 1,
             },
         },
         {
@@ -996,6 +1004,7 @@ def test_confusion_matrix(
             "parameters": {
                 "score_threshold": 0.35,
                 "iou_threshold": 0.45,
+                "maximum_number_of_examples": 1,
             },
         },
         {
@@ -1055,6 +1064,7 @@ def test_confusion_matrix(
             "parameters": {
                 "score_threshold": 0.45,
                 "iou_threshold": 0.45,
+                "maximum_number_of_examples": 1,
             },
         },
         {
@@ -1098,6 +1108,7 @@ def test_confusion_matrix(
             "parameters": {
                 "score_threshold": 0.55,
                 "iou_threshold": 0.45,
+                "maximum_number_of_examples": 1,
             },
         },
         {
@@ -1141,6 +1152,7 @@ def test_confusion_matrix(
             "parameters": {
                 "score_threshold": 0.95,
                 "iou_threshold": 0.45,
+                "maximum_number_of_examples": 1,
             },
         },
     ]
@@ -1203,6 +1215,7 @@ def test_confusion_matrix_using_torch_metrics_example(
             "parameters": {
                 "score_threshold": 0.05,
                 "iou_threshold": 0.5,
+                "maximum_number_of_examples": 0,
             },
         },
         {
@@ -1227,6 +1240,7 @@ def test_confusion_matrix_using_torch_metrics_example(
             "parameters": {
                 "score_threshold": 0.25,
                 "iou_threshold": 0.5,
+                "maximum_number_of_examples": 0,
             },
         },
         {
@@ -1250,6 +1264,7 @@ def test_confusion_matrix_using_torch_metrics_example(
             "parameters": {
                 "score_threshold": 0.35,
                 "iou_threshold": 0.5,
+                "maximum_number_of_examples": 0,
             },
         },
         {
@@ -1272,6 +1287,7 @@ def test_confusion_matrix_using_torch_metrics_example(
             "parameters": {
                 "score_threshold": 0.55,
                 "iou_threshold": 0.5,
+                "maximum_number_of_examples": 0,
             },
         },
         {
@@ -1293,6 +1309,7 @@ def test_confusion_matrix_using_torch_metrics_example(
             "parameters": {
                 "score_threshold": 0.75,
                 "iou_threshold": 0.5,
+                "maximum_number_of_examples": 0,
             },
         },
         {
@@ -1314,6 +1331,7 @@ def test_confusion_matrix_using_torch_metrics_example(
             "parameters": {
                 "score_threshold": 0.8,
                 "iou_threshold": 0.5,
+                "maximum_number_of_examples": 0,
             },
         },
         {
@@ -1335,6 +1353,7 @@ def test_confusion_matrix_using_torch_metrics_example(
             "parameters": {
                 "score_threshold": 0.85,
                 "iou_threshold": 0.5,
+                "maximum_number_of_examples": 0,
             },
         },
         {
@@ -1353,6 +1372,7 @@ def test_confusion_matrix_using_torch_metrics_example(
             "parameters": {
                 "score_threshold": 0.95,
                 "iou_threshold": 0.5,
+                "maximum_number_of_examples": 0,
             },
         },
         {
@@ -1381,6 +1401,7 @@ def test_confusion_matrix_using_torch_metrics_example(
             "parameters": {
                 "score_threshold": 0.05,
                 "iou_threshold": 0.9,
+                "maximum_number_of_examples": 0,
             },
         },
         {
@@ -1409,6 +1430,7 @@ def test_confusion_matrix_using_torch_metrics_example(
             "parameters": {
                 "score_threshold": 0.25,
                 "iou_threshold": 0.9,
+                "maximum_number_of_examples": 0,
             },
         },
         {
@@ -1434,6 +1456,7 @@ def test_confusion_matrix_using_torch_metrics_example(
             "parameters": {
                 "score_threshold": 0.35,
                 "iou_threshold": 0.9,
+                "maximum_number_of_examples": 0,
             },
         },
         {
@@ -1458,6 +1481,7 @@ def test_confusion_matrix_using_torch_metrics_example(
             "parameters": {
                 "score_threshold": 0.55,
                 "iou_threshold": 0.9,
+                "maximum_number_of_examples": 0,
             },
         },
         {
@@ -1481,6 +1505,7 @@ def test_confusion_matrix_using_torch_metrics_example(
             "parameters": {
                 "score_threshold": 0.75,
                 "iou_threshold": 0.9,
+                "maximum_number_of_examples": 0,
             },
         },
         {
@@ -1501,6 +1526,7 @@ def test_confusion_matrix_using_torch_metrics_example(
             "parameters": {
                 "score_threshold": 0.8,
                 "iou_threshold": 0.9,
+                "maximum_number_of_examples": 0,
             },
         },
         {
@@ -1521,6 +1547,7 @@ def test_confusion_matrix_using_torch_metrics_example(
             "parameters": {
                 "score_threshold": 0.85,
                 "iou_threshold": 0.9,
+                "maximum_number_of_examples": 0,
             },
         },
         {
@@ -1539,6 +1566,7 @@ def test_confusion_matrix_using_torch_metrics_example(
             "parameters": {
                 "score_threshold": 0.95,
                 "iou_threshold": 0.9,
+                "maximum_number_of_examples": 0,
             },
         },
     ]
@@ -1643,6 +1671,7 @@ def test_confusion_matrix_fp_hallucination_edge_case(
             "parameters": {
                 "score_threshold": 0.5,
                 "iou_threshold": 0.5,
+                "maximum_number_of_examples": 1,
             },
         },
         {
@@ -1670,6 +1699,7 @@ def test_confusion_matrix_fp_hallucination_edge_case(
             "parameters": {
                 "score_threshold": 0.85,
                 "iou_threshold": 0.5,
+                "maximum_number_of_examples": 1,
             },
         },
     ]
@@ -1743,6 +1773,7 @@ def test_confusion_matrix_ranked_pair_ordering(
                 "parameters": {
                     "score_threshold": 0.0,
                     "iou_threshold": 0.5,
+                    "maximum_number_of_examples": 0,
                 },
             },
         ]

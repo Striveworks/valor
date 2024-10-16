@@ -81,9 +81,17 @@ def test_accuracy_basic(basic_classifications: list[Classification]):
     expected_metrics = [
         {
             "type": "Accuracy",
-            "value": [2 / 3, 1 / 3],
+            "value": 2 / 3,
             "parameters": {
-                "score_thresholds": [0.25, 0.75],
+                "score_threshold": 0.25,
+                "hardmax": True,
+            },
+        },
+        {
+            "type": "Accuracy",
+            "value": 1 / 3,
+            "parameters": {
+                "score_threshold": 0.75,
                 "hardmax": True,
             },
         },
@@ -108,9 +116,9 @@ def test_accuracy_with_animal_example(
     expected_metrics = [
         {
             "type": "Accuracy",
-            "value": [2.0 / 6.0],
+            "value": 2 / 6,
             "parameters": {
-                "score_thresholds": [0.5],
+                "score_threshold": 0.5,
                 "hardmax": True,
             },
         },
@@ -135,9 +143,9 @@ def test_accuracy_color_example(
     expected_metrics = [
         {
             "type": "Accuracy",
-            "value": [2 / 6],
+            "value": 2 / 6,
             "parameters": {
-                "score_thresholds": [0.5],
+                "score_threshold": 0.5,
                 "hardmax": True,
             },
         },
@@ -170,9 +178,9 @@ def test_accuracy_with_image_example(
     expected_metrics = [
         {
             "type": "Accuracy",
-            "value": [0.5],
+            "value": 0.5,
             "parameters": {
-                "score_thresholds": [0.0],
+                "score_threshold": 0.0,
                 "hardmax": True,
             },
         },
@@ -205,9 +213,9 @@ def test_accuracy_with_tabular_example(
     expected_metrics = [
         {
             "type": "Accuracy",
-            "value": [5 / 10],
+            "value": 0.5,
             "parameters": {
-                "score_thresholds": [0.0],
+                "score_threshold": 0.0,
                 "hardmax": True,
             },
         },

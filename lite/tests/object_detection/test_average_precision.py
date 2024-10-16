@@ -149,7 +149,7 @@ def test_ap_metrics_first_class(
         for m in expected_metrics:
             assert m in actual_metrics
 
-        # test AP Averaged Over IoUs
+        # test AP Averaged Over IOUs
         actual_metrics = [m for m in metrics[MetricType.APAveragedOverIOUs]]
         expected_metrics = [
             {
@@ -163,7 +163,7 @@ def test_ap_metrics_first_class(
         for m in expected_metrics:
             assert m in actual_metrics
 
-        # test mAP Averaged Over IoUs
+        # test mAP Averaged Over IOUs
         actual_metrics = [m for m in metrics[MetricType.mAPAveragedOverIOUs]]
         expected_metrics = [
             {
@@ -263,7 +263,7 @@ def test_ap_metrics_second_class(
         for m in expected_metrics:
             assert m in actual_metrics
 
-        # test AP Averaged Over IoUs
+        # test AP Averaged Over IOUs
         actual_metrics = [
             m.to_dict() for m in metrics[MetricType.APAveragedOverIOUs]
         ]
@@ -282,7 +282,7 @@ def test_ap_metrics_second_class(
         for m in expected_metrics:
             assert m in actual_metrics
 
-        # test mAP Averaged Over IoUs
+        # test mAP Averaged Over IOUs
         actual_metrics = [
             m.to_dict() for m in metrics[MetricType.mAPAveragedOverIOUs]
         ]

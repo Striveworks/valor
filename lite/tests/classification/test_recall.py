@@ -88,20 +88,40 @@ def test_recall_basic(basic_classifications: list[Classification]):
 
     actual_metrics = [m for m in metrics[MetricType.Recall]]
     expected_metrics = [
+        # score >= 0.25
         {
             "type": "Recall",
-            "value": [0.5, 0.5],
+            "value": 0.5,
             "parameters": {
-                "score_thresholds": [0.25, 0.75],
+                "score_threshold": 0.25,
                 "hardmax": True,
                 "label": "0",
             },
         },
         {
             "type": "Recall",
-            "value": [1.0, 0.0],
+            "value": 1.0,
             "parameters": {
-                "score_thresholds": [0.25, 0.75],
+                "score_threshold": 0.25,
+                "hardmax": True,
+                "label": "3",
+            },
+        },
+        # score >= 0.75
+        {
+            "type": "Recall",
+            "value": 0.5,
+            "parameters": {
+                "score_threshold": 0.75,
+                "hardmax": True,
+                "label": "0",
+            },
+        },
+        {
+            "type": "Recall",
+            "value": 0.0,
+            "parameters": {
+                "score_threshold": 0.75,
                 "hardmax": True,
                 "label": "3",
             },
@@ -130,27 +150,27 @@ def test_recall_with_animal_example(
     expected_metrics = [
         {
             "type": "Recall",
-            "value": [1.0 / 3.0],
+            "value": 1.0 / 3.0,
             "parameters": {
-                "score_thresholds": [0.5],
+                "score_threshold": 0.5,
                 "hardmax": True,
                 "label": "bird",
             },
         },
         {
             "type": "Recall",
-            "value": [0.0],
+            "value": 0.0,
             "parameters": {
-                "score_thresholds": [0.5],
+                "score_threshold": 0.5,
                 "hardmax": True,
                 "label": "dog",
             },
         },
         {
             "type": "Recall",
-            "value": [1.0],
+            "value": 1.0,
             "parameters": {
-                "score_thresholds": [0.5],
+                "score_threshold": 0.5,
                 "hardmax": True,
                 "label": "cat",
             },
@@ -179,36 +199,36 @@ def test_recall_with_color_example(
     expected_metrics = [
         {
             "type": "Recall",
-            "value": [0.5],
+            "value": 0.5,
             "parameters": {
-                "score_thresholds": [0.5],
+                "score_threshold": 0.5,
                 "hardmax": True,
                 "label": "white",
             },
         },
         {
             "type": "Recall",
-            "value": [0.5],
+            "value": 0.5,
             "parameters": {
-                "score_thresholds": [0.5],
+                "score_threshold": 0.5,
                 "hardmax": True,
                 "label": "red",
             },
         },
         {
             "type": "Recall",
-            "value": [0.0],
+            "value": 0.0,
             "parameters": {
-                "score_thresholds": [0.5],
+                "score_threshold": 0.5,
                 "hardmax": True,
                 "label": "blue",
             },
         },
         {
             "type": "Recall",
-            "value": [0.0],
+            "value": 0.0,
             "parameters": {
-                "score_thresholds": [0.5],
+                "score_threshold": 0.5,
                 "hardmax": True,
                 "label": "black",
             },
@@ -242,9 +262,9 @@ def test_recall_with_image_example(
     expected_metrics = [
         {
             "type": "Recall",
-            "value": [0.5],
+            "value": 0.5,
             "parameters": {
-                "score_thresholds": [0.0],
+                "score_threshold": 0.0,
                 "hardmax": True,
                 "label": "v4",
             },
@@ -278,27 +298,27 @@ def test_recall_with_tabular_example(
     expected_metrics = [
         {
             "type": "Recall",
-            "value": [1.0],
+            "value": 1.0,
             "parameters": {
-                "score_thresholds": [0.0],
+                "score_threshold": 0.0,
                 "hardmax": True,
                 "label": "0",
             },
         },
         {
             "type": "Recall",
-            "value": [0.3333333333333333],
+            "value": 1 / 3,
             "parameters": {
-                "score_thresholds": [0.0],
+                "score_threshold": 0.0,
                 "hardmax": True,
                 "label": "1",
             },
         },
         {
             "type": "Recall",
-            "value": [0.0],
+            "value": 0.0,
             "parameters": {
-                "score_thresholds": [0.0],
+                "score_threshold": 0.0,
                 "hardmax": True,
                 "label": "2",
             },

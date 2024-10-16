@@ -473,7 +473,7 @@ class Evaluator:
         Parameters
         ----------
         iou_thresholds : list[float]
-            A list of IoU thresholds to compute metrics over.
+            A list of IOU thresholds to compute metrics over.
         score_thresholds : list[float]
             A list of score thresholds to compute metrics over.
         filter_ : Filter, optional
@@ -684,7 +684,7 @@ class Evaluator:
         Parameters
         ----------
         iou_thresholds : list[float]
-            A list of IoU thresholds to compute metrics over.
+            A list of IOU thresholds to compute metrics over.
         score_thresholds : list[float]
             A list of score thresholds to compute metrics over.
         number_of_examples : int, default=0
@@ -726,7 +726,7 @@ class Evaluator:
             ConfusionMatrix(
                 iou_threshold=iou_thresholds[iou_idx],
                 score_threshold=score_thresholds[score_idx],
-                number_of_examples=number_of_examples,
+                maximum_number_of_examples=number_of_examples,
                 confusion_matrix=self._unpack_confusion_matrix(
                     confusion_matrix=confusion_matrix[
                         iou_idx, score_idx, :, :, :
@@ -769,7 +769,7 @@ class Evaluator:
         Parameters
         ----------
         iou_thresholds : list[float]
-            A list of IoU thresholds to compute metrics over.
+            A list of IOU thresholds to compute metrics over.
         score_thresholds : list[float]
             A list of score thresholds to compute metrics over.
         number_of_examples : int, default=0

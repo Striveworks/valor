@@ -146,7 +146,10 @@ def test_confusion_matrix_basic(basic_classifications: list[Classification]):
                 },
                 "missing_predictions": {},
             },
-            "parameters": {"score_threshold": 0.25},
+            "parameters": {
+                "score_threshold": 0.25,
+                "maximum_number_of_examples": 1,
+            },
         },
         {
             "type": "ConfusionMatrix",
@@ -167,7 +170,10 @@ def test_confusion_matrix_basic(basic_classifications: list[Classification]):
                     "3": {"count": 1, "examples": [{"datum": "uid2"}]}
                 },
             },
-            "parameters": {"score_threshold": 0.75},
+            "parameters": {
+                "score_threshold": 0.75,
+                "maximum_number_of_examples": 1,
+            },
         },
     ]
     for m in actual_metrics:
@@ -208,7 +214,10 @@ def test_confusion_matrix_unit(
                 },
                 "missing_predictions": {},
             },
-            "parameters": {"score_threshold": 0.5},
+            "parameters": {
+                "score_threshold": 0.5,
+                "maximum_number_of_examples": 0,
+            },
         },
     ]
     for m in actual_metrics:
@@ -277,7 +286,10 @@ def test_confusion_matrix_with_animal_example(
                     "dog": {"count": 1, "examples": [{"datum": "uid5"}]}
                 },
             },
-            "parameters": {"score_threshold": 0.5},
+            "parameters": {
+                "score_threshold": 0.5,
+                "maximum_number_of_examples": 6,
+            },
         },
     ]
     for m in actual_metrics:
@@ -348,7 +360,10 @@ def test_confusion_matrix_with_color_example(
                     "red": {"count": 1, "examples": [{"datum": "uid2"}]}
                 },
             },
-            "parameters": {"score_threshold": 0.5},
+            "parameters": {
+                "score_threshold": 0.5,
+                "maximum_number_of_examples": 6,
+            },
         },
     ]
     for m in actual_metrics:
@@ -427,6 +442,7 @@ def test_confusion_matrix_multiclass(
             },
             "parameters": {
                 "score_threshold": 0.05,
+                "maximum_number_of_examples": 5,
             },
         },
         {
@@ -458,7 +474,10 @@ def test_confusion_matrix_multiclass(
                     "bee": {"count": 1, "examples": [{"datum": "uid1"}]},
                 },
             },
-            "parameters": {"score_threshold": 0.5},
+            "parameters": {
+                "score_threshold": 0.5,
+                "maximum_number_of_examples": 5,
+            },
         },
         {
             "type": "ConfusionMatrix",
@@ -478,6 +497,7 @@ def test_confusion_matrix_multiclass(
             },
             "parameters": {
                 "score_threshold": 0.85,
+                "maximum_number_of_examples": 5,
             },
         },
     ]
@@ -542,7 +562,10 @@ def test_confusion_matrix_without_hardmax_animal_example(
                 },
                 "missing_predictions": {},
             },
-            "parameters": {"score_threshold": 0.05},
+            "parameters": {
+                "score_threshold": 0.05,
+                "maximum_number_of_examples": 6,
+            },
         },
         {
             "type": "ConfusionMatrix",
@@ -559,7 +582,10 @@ def test_confusion_matrix_without_hardmax_animal_example(
                 },
                 "missing_predictions": {},
             },
-            "parameters": {"score_threshold": 0.4},
+            "parameters": {
+                "score_threshold": 0.4,
+                "maximum_number_of_examples": 6,
+            },
         },
         {
             "type": "ConfusionMatrix",
@@ -576,7 +602,10 @@ def test_confusion_matrix_without_hardmax_animal_example(
                     }
                 },
             },
-            "parameters": {"score_threshold": 0.5},
+            "parameters": {
+                "score_threshold": 0.5,
+                "maximum_number_of_examples": 6,
+            },
         },
     ]
     for m in actual_metrics:

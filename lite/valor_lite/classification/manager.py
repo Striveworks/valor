@@ -369,52 +369,54 @@ class Evaluator:
 
         metrics[MetricType.Accuracy] = [
             Accuracy(
-                value=accuracy.astype(float).tolist(),
-                score_thresholds=score_thresholds,
+                value=float(accuracy[score_idx]),
+                score_threshold=score_threshold,
                 hardmax=hardmax,
             )
+            for score_idx, score_threshold in enumerate(score_thresholds)
         ]
 
         for label_idx, label in self.index_to_label.items():
+            for score_idx, score_threshold in enumerate(score_thresholds):
 
-            kwargs = {
-                "label": label,
-                "score_thresholds": score_thresholds,
-                "hardmax": hardmax,
-            }
-            row = counts[:, label_idx]
-            metrics[MetricType.Counts].append(
-                Counts(
-                    tp=row[:, 0].astype(int).tolist(),
-                    fp=row[:, 1].astype(int).tolist(),
-                    fn=row[:, 2].astype(int).tolist(),
-                    tn=row[:, 3].astype(int).tolist(),
-                    **kwargs,
+                kwargs = {
+                    "label": label,
+                    "hardmax": hardmax,
+                    "score_threshold": score_threshold,
+                }
+                row = counts[:, label_idx]
+                metrics[MetricType.Counts].append(
+                    Counts(
+                        tp=int(row[score_idx, 0]),
+                        fp=int(row[score_idx, 1]),
+                        fn=int(row[score_idx, 2]),
+                        tn=int(row[score_idx, 3]),
+                        **kwargs,
+                    )
                 )
-            )
 
-            # if no groundtruths exists for a label, skip it.
-            if label_metadata[label_idx, 0] == 0:
-                continue
+                # if no groundtruths exists for a label, skip it.
+                if label_metadata[label_idx, 0] == 0:
+                    continue
 
-            metrics[MetricType.Precision].append(
-                Precision(
-                    value=precision[:, label_idx].astype(float).tolist(),
-                    **kwargs,
+                metrics[MetricType.Precision].append(
+                    Precision(
+                        value=float(precision[score_idx, label_idx]),
+                        **kwargs,
+                    )
                 )
-            )
-            metrics[MetricType.Recall].append(
-                Recall(
-                    value=recall[:, label_idx].astype(float).tolist(),
-                    **kwargs,
+                metrics[MetricType.Recall].append(
+                    Recall(
+                        value=float(recall[score_idx, label_idx]),
+                        **kwargs,
+                    )
                 )
-            )
-            metrics[MetricType.F1].append(
-                F1(
-                    value=f1_score[:, label_idx].astype(float).tolist(),
-                    **kwargs,
+                metrics[MetricType.F1].append(
+                    F1(
+                        value=float(f1_score[score_idx, label_idx]),
+                        **kwargs,
+                    )
                 )
-            )
 
         if as_dict:
             return {
@@ -476,7 +478,7 @@ class Evaluator:
         results = [
             ConfusionMatrix(
                 score_threshold=score_thresholds[score_idx],
-                number_of_examples=number_of_examples,
+                maximum_number_of_examples=number_of_examples,
                 confusion_matrix=self._unpack_confusion_matrix(
                     confusion_matrix=confusion_matrix[score_idx, :, :, :],
                     number_of_labels=n_labels,
