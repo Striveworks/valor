@@ -1,6 +1,7 @@
 import numpy as np
 from valor_lite.object_detection import DataLoader, Detection, Evaluator
 from valor_lite.object_detection.computation import compute_confusion_matrix
+from valor_lite.object_detection.utilities import _convert_example_to_dict
 
 
 def test_confusion_matrix_no_data():
@@ -438,15 +439,15 @@ def test_confusion_matrix(
         iou_thresholds=[0.5],
         score_thresholds=[0.05, 0.3, 0.35, 0.45, 0.55, 0.95],
         number_of_examples=1,
-        as_dict=True,
     )
 
-    rect1_dict = evaluator._convert_example_to_dict(np.array(rect1))
-    rect2_dict = evaluator._convert_example_to_dict(np.array(rect2))
-    rect3_dict = evaluator._convert_example_to_dict(np.array(rect3))
-    rect4_dict = evaluator._convert_example_to_dict(np.array(rect4))
-    rect5_dict = evaluator._convert_example_to_dict(np.array(rect5))
+    rect1_dict = _convert_example_to_dict(np.array(rect1))
+    rect2_dict = _convert_example_to_dict(np.array(rect2))
+    rect3_dict = _convert_example_to_dict(np.array(rect3))
+    rect4_dict = _convert_example_to_dict(np.array(rect4))
+    rect5_dict = _convert_example_to_dict(np.array(rect5))
 
+    actual_metrics = [m.to_dict() for m in actual_metrics]
     expected_metrics = [
         {
             "type": "ConfusionMatrix",
@@ -799,9 +800,9 @@ def test_confusion_matrix(
         iou_thresholds=[0.45],
         score_thresholds=[0.05, 0.3, 0.35, 0.45, 0.55, 0.95],
         number_of_examples=1,
-        as_dict=True,
     )
 
+    actual_metrics = [m.to_dict() for m in actual_metrics]
     expected_metrics = [
         {
             "type": "ConfusionMatrix",
@@ -1190,11 +1191,11 @@ def test_confusion_matrix_using_torch_metrics_example(
         iou_thresholds=[0.5, 0.9],
         score_thresholds=[0.05, 0.25, 0.35, 0.55, 0.75, 0.8, 0.85, 0.95],
         number_of_examples=0,
-        as_dict=True,
     )
 
     assert len(actual_metrics) == 16
 
+    actual_metrics = [m.to_dict() for m in actual_metrics]
     expected_metrics = [
         {
             "type": "ConfusionMatrix",
@@ -1600,11 +1601,11 @@ def test_confusion_matrix_fp_hallucination_edge_case(
         iou_thresholds=[0.5],
         score_thresholds=[0.5, 0.85],
         number_of_examples=1,
-        as_dict=True,
     )
 
     assert len(actual_metrics) == 2
 
+    actual_metrics = [m.to_dict() for m in actual_metrics]
     expected_metrics = [
         {
             "type": "ConfusionMatrix",
@@ -1751,9 +1752,9 @@ def test_confusion_matrix_ranked_pair_ordering(
             iou_thresholds=[0.5],
             score_thresholds=[0.0],
             number_of_examples=0,
-            as_dict=True,
         )
 
+        actual_metrics = [m.to_dict() for m in actual_metrics]
         expected_metrics = [
             {
                 "type": "ConfusionMatrix",

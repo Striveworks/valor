@@ -117,9 +117,9 @@ def test_confusion_matrix_basic(basic_classifications: list[Classification]):
     actual_metrics = evaluator.compute_confusion_matrix(
         score_thresholds=[0.25, 0.75],
         number_of_examples=1,
-        as_dict=True,
     )
 
+    actual_metrics = [m.to_dict() for m in actual_metrics]
     expected_metrics = [
         {
             "type": "ConfusionMatrix",
@@ -196,9 +196,9 @@ def test_confusion_matrix_unit(
 
     actual_metrics = evaluator.compute_confusion_matrix(
         score_thresholds=[0.5],
-        as_dict=True,
     )
 
+    actual_metrics = [m.to_dict() for m in actual_metrics]
     expected_metrics = [
         {
             "type": "ConfusionMatrix",
@@ -241,9 +241,9 @@ def test_confusion_matrix_with_animal_example(
     actual_metrics = evaluator.compute_confusion_matrix(
         score_thresholds=[0.5],
         number_of_examples=6,
-        as_dict=True,
     )
 
+    actual_metrics = [m.to_dict() for m in actual_metrics]
     expected_metrics = [
         {
             "type": "ConfusionMatrix",
@@ -313,9 +313,9 @@ def test_confusion_matrix_with_color_example(
     actual_metrics = evaluator.compute_confusion_matrix(
         score_thresholds=[0.5],
         number_of_examples=6,
-        as_dict=True,
     )
 
+    actual_metrics = [m.to_dict() for m in actual_metrics]
     expected_metrics = [
         {
             "type": "ConfusionMatrix",
@@ -395,9 +395,9 @@ def test_confusion_matrix_multiclass(
     actual_metrics = evaluator.compute_confusion_matrix(
         score_thresholds=[0.05, 0.5, 0.85],
         number_of_examples=5,
-        as_dict=True,
     )
 
+    actual_metrics = [m.to_dict() for m in actual_metrics]
     expected_metrics = [
         {
             "type": "ConfusionMatrix",
@@ -531,9 +531,9 @@ def test_confusion_matrix_without_hardmax_animal_example(
         score_thresholds=[0.05, 0.4, 0.5],
         number_of_examples=6,
         hardmax=False,
-        as_dict=True,
     )
 
+    actual_metrics = [m.to_dict() for m in actual_metrics]
     expected_metrics = [
         {
             "type": "ConfusionMatrix",

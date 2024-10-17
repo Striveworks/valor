@@ -3,7 +3,7 @@ from valor_lite.classification import (
     Classification,
     DataLoader,
     MetricType,
-    compute_metrics,
+    compute_precision_recall_rocauc,
 )
 
 
@@ -44,7 +44,7 @@ def test_precision_computation():
 
     score_thresholds = np.array([0.25, 0.75], dtype=np.float64)
 
-    (_, precision, _, _, _, _, _) = compute_metrics(
+    (_, precision, _, _, _, _, _) = compute_precision_recall_rocauc(
         data=data,
         label_metadata=label_metadata,
         score_thresholds=score_thresholds,
@@ -83,10 +83,9 @@ def test_precision_basic(basic_classifications: list[Classification]):
 
     metrics = evaluator.evaluate(
         score_thresholds=[0.25, 0.75],
-        as_dict=True,
     )
 
-    actual_metrics = [m for m in metrics[MetricType.Precision]]
+    actual_metrics = [m.to_dict() for m in metrics[MetricType.Precision]]
     expected_metrics = [
         # score > 0.25
         {
@@ -142,10 +141,9 @@ def test_precision_with_animal_example(
 
     metrics = evaluator.evaluate(
         score_thresholds=[0.0, 0.5],
-        as_dict=True,
     )
 
-    actual_metrics = [m for m in metrics[MetricType.Precision]]
+    actual_metrics = [m.to_dict() for m in metrics[MetricType.Precision]]
     expected_metrics = [
         # score > 0.0
         {
@@ -219,10 +217,9 @@ def test_precision_with_color_example(
 
     metrics = evaluator.evaluate(
         score_thresholds=[0.0, 0.5],
-        as_dict=True,
     )
 
-    actual_metrics = [m for m in metrics[MetricType.Precision]]
+    actual_metrics = [m.to_dict() for m in metrics[MetricType.Precision]]
     expected_metrics = [
         # score > 0.0
         {
@@ -321,9 +318,9 @@ def test_precision_with_image_example(
         "missing_prediction_labels": [],
     }
 
-    metrics = evaluator.evaluate(as_dict=True)
+    metrics = evaluator.evaluate()
 
-    actual_metrics = [m for m in metrics[MetricType.Precision]]
+    actual_metrics = [m.to_dict() for m in metrics[MetricType.Precision]]
     expected_metrics = [
         {
             "type": "Precision",
@@ -357,9 +354,9 @@ def test_precision_with_tabular_example(
         "missing_prediction_labels": [],
     }
 
-    metrics = evaluator.evaluate(as_dict=True)
+    metrics = evaluator.evaluate()
 
-    actual_metrics = [m for m in metrics[MetricType.Precision]]
+    actual_metrics = [m.to_dict() for m in metrics[MetricType.Precision]]
     expected_metrics = [
         {
             "type": "Precision",

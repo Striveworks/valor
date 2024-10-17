@@ -1,5 +1,5 @@
 import numpy as np
-from valor_lite.classification import Classification, DataLoader
+from valor_lite.classification import Classification, DataLoader, Metric
 
 
 def test_metadata_using_classification_example(
@@ -41,6 +41,8 @@ def _flatten_metrics(m) -> list:
             for value in m
             for inner_value in _flatten_metrics(value)
         ]
+    elif isinstance(m, Metric):
+        return _flatten_metrics(m.to_dict())
     else:
         return [m]
 
@@ -54,10 +56,9 @@ def test_output_types_dont_contain_numpy(
 
     metrics = evaluator.evaluate(
         score_thresholds=[0.25, 0.75],
-        as_dict=True,
     )
 
     values = _flatten_metrics(metrics)
     for value in values:
-        if isinstance(value, (np.generic, np.ndarray)):
+        if isinstance(value, (np.generic, np.ndarray, Metric)):
             raise TypeError(value)

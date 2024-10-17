@@ -1,5 +1,10 @@
 import numpy as np
-from valor_lite.object_detection import DataLoader, Detection, MetricType
+from valor_lite.object_detection import (
+    DataLoader,
+    Detection,
+    Metric,
+    MetricType,
+)
 
 
 def test_metadata_using_torch_metrics_example(
@@ -104,6 +109,8 @@ def _flatten_metrics(m) -> list:
             for value in m
             for inner_value in _flatten_metrics(value)
         ]
+    elif isinstance(m, Metric):
+        return _flatten_metrics(m.to_dict())
     else:
         return [m]
 
@@ -115,10 +122,9 @@ def test_output_types_dont_contain_numpy(basic_detections: list[Detection]):
 
     metrics = evaluator.evaluate(
         score_thresholds=[0.25, 0.75],
-        as_dict=True,
     )
 
     values = _flatten_metrics(metrics)
     for value in values:
         if isinstance(value, (np.generic, np.ndarray)):
-            raise TypeError
+            raise TypeError(f"Value `{value}` has type `{type(value)}`.")

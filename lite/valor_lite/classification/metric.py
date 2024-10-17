@@ -1,7 +1,6 @@
-from dataclasses import dataclass
 from enum import Enum
 
-from valor_lite.schemas import _BaseMetric
+from valor_lite.schemas import BaseMetric
 
 
 class MetricType(Enum):
@@ -15,328 +14,359 @@ class MetricType(Enum):
     ConfusionMatrix = "ConfusionMatrix"
 
 
-@dataclass
-class _ThresholdValue(_BaseMetric):
-    value: float
-    score_threshold: float
-    hardmax: bool
-    label: str
+class Metric(BaseMetric):
+    @classmethod
+    def precision(
+        cls,
+        value: float,
+        score_threshold: float,
+        hardmax: bool,
+        label: str,
+    ):
+        """
+        Precision metric for a specific class label.
 
+        This class calculates the precision at a specific score threshold.
+        Precision is defined as the ratio of true positives to the sum of
+        true positives and false positives.
 
-class Precision(_ThresholdValue):
-    """
-    Precision metric for a specific class label.
+        Parameters
+        ----------
+        value : float
+            Precision value computed at a specific score threshold.
+        score_threshold : float
+            Score threshold at which the precision value is computed.
+        hardmax : bool
+            Indicates whether hardmax thresholding was used.
+        label : str
+            The class label for which the precision is computed.
 
-    This class calculates the precision at a specific score threshold.
-    Precision is defined as the ratio of true positives to the sum of
-    true positives and false positives.
+        Returns
+        -------
+        Metric
+        """
+        return cls(
+            type=MetricType.Precision.value,
+            value=value,
+            parameters={
+                "score_threshold": score_threshold,
+                "hardmax": hardmax,
+                "label": label,
+            },
+        )
 
-    Attributes
-    ----------
-    value : float
-        Precision value computed at a specific score threshold.
-    score_threshold : float
-        Score threshold at which the precision value is computed.
-    hardmax : bool
-        Indicates whether hardmax thresholding was used.
-    label : str
-        The class label for which the precision is computed.
+    @classmethod
+    def recall(
+        cls,
+        value: float,
+        score_threshold: float,
+        hardmax: bool,
+        label: str,
+    ):
+        """
+        Recall metric for a specific class label.
 
-    Methods
-    -------
-    to_metric()
-        Converts the instance to a generic `Metric` object.
-    to_dict()
-        Converts the instance to a dictionary representation.
-    """
+        This class calculates the recall at a specific score threshold.
+        Recall is defined as the ratio of true positives to the sum of
+        true positives and false negatives.
 
-    pass
+        Parameters
+        ----------
+        value : float
+            Recall value computed at a specific score threshold.
+        score_threshold : float
+            Score threshold at which the recall value is computed.
+        hardmax : bool
+            Indicates whether hardmax thresholding was used.
+        label : str
+            The class label for which the recall is computed.
 
+        Returns
+        -------
+        Metric
+        """
+        return cls(
+            type=MetricType.Recall.value,
+            value=value,
+            parameters={
+                "score_threshold": score_threshold,
+                "hardmax": hardmax,
+                "label": label,
+            },
+        )
 
-class Recall(_ThresholdValue):
-    """
-    Recall metric for a specific class label.
+    @classmethod
+    def f1_score(
+        cls,
+        value: float,
+        score_threshold: float,
+        hardmax: bool,
+        label: str,
+    ):
+        """
+        F1 score for a specific class label and confidence score threshold.
 
-    This class calculates the recall at a specific score threshold.
-    Recall is defined as the ratio of true positives to the sum of
-    true positives and false negatives.
+        Parameters
+        ----------
+        value : float
+            F1 score computed at a specific score threshold.
+        score_threshold : float
+            Score threshold at which the F1 score is computed.
+        hardmax : bool
+            Indicates whether hardmax thresholding was used.
+        label : str
+            The class label for which the F1 score is computed.
 
-    Attributes
-    ----------
-    value : float
-        Recall value computed at a specific score threshold.
-    score_threshold : float
-        Score threshold at which the recall value is computed.
-    hardmax : bool
-        Indicates whether hardmax thresholding was used.
-    label : str
-        The class label for which the recall is computed.
+        Returns
+        -------
+        Metric
+        """
+        return cls(
+            type=MetricType.F1.value,
+            value=value,
+            parameters={
+                "score_threshold": score_threshold,
+                "hardmax": hardmax,
+                "label": label,
+            },
+        )
 
-    Methods
-    -------
-    to_metric()
-        Converts the instance to a generic `Metric` object.
-    to_dict()
-        Converts the instance to a dictionary representation.
-    """
+    @classmethod
+    def accuracy(
+        cls,
+        value: float,
+        score_threshold: float,
+        hardmax: bool,
+    ):
+        """
+        Multiclass accuracy metric.
 
-    pass
+        This class calculates the accuracy at various score thresholds.
 
+        Parameters
+        ----------
+        value : float
+            Accuracy value computed at a specific score threshold.
+        score_threshold : float
+            Score threshold at which the accuracy value is computed.
+        hardmax : bool
+            Indicates whether hardmax thresholding was used.
 
-class F1(_ThresholdValue):
-    """
-    F1 score for a specific class label and confidence score threshold.
+        Returns
+        -------
+        Metric
+        """
+        return cls(
+            type=MetricType.Accuracy.value,
+            value=value,
+            parameters={
+                "score_threshold": score_threshold,
+                "hardmax": hardmax,
+            },
+        )
 
-    Attributes
-    ----------
-    value : float
-        F1 score computed at a specific score threshold.
-    score_threshold : float
-        Score threshold at which the F1 score is computed.
-    hardmax : bool
-        Indicates whether hardmax thresholding was used.
-    label : str
-        The class label for which the F1 score is computed.
+    @classmethod
+    def roc_auc(
+        cls,
+        value: float,
+        label: str,
+    ):
+        """
+        Receiver Operating Characteristic Area Under the Curve (ROC AUC).
 
-    Methods
-    -------
-    to_metric()
-        Converts the instance to a generic `Metric` object.
-    to_dict()
-        Converts the instance to a dictionary representation.
-    """
+        This class calculates the ROC AUC score for a specific class label in a multiclass classification task.
+        ROC AUC is a performance measurement for classification problems at various threshold settings.
+        It reflects the ability of the classifier to distinguish between the positive and negative classes.
 
-    pass
+        Parameters
+        ----------
+        value : float
+            The computed ROC AUC score.
+        label : str
+            The class label for which the ROC AUC is computed.
 
+        Returns
+        -------
+        Metric
+        """
+        return cls(
+            type=MetricType.ROCAUC.value,
+            value=value,
+            parameters={
+                "label": label,
+            },
+        )
 
-@dataclass
-class Accuracy(_BaseMetric):
-    """
-    Multiclass accuracy metric.
+    @classmethod
+    def mean_roc_auc(cls, value: float):
+        """
+        Mean Receiver Operating Characteristic Area Under the Curve (mROC AUC).
 
-    This class calculates the accuracy at various score thresholds.
+        This class calculates the mean ROC AUC score over all classes in a multiclass classification task.
+        It provides an aggregate measure of the model's ability to distinguish between classes.
 
-    Attributes
-    ----------
-    value : float
-        Accuracy value computed at a specific score threshold.
-    score_threshold : float
-        Score threshold at which the accuracy value is computed.
-    hardmax : bool
-        Indicates whether hardmax thresholding was used.
+        Parameters
+        ----------
+        value : float
+            The computed mean ROC AUC score.
 
-    Methods
-    -------
-    to_metric()
-        Converts the instance to a generic `Metric` object.
-    to_dict()
-        Converts the instance to a dictionary representation.
-    """
+        Returns
+        -------
+        Metric
+        """
+        return cls(type=MetricType.mROCAUC.value, value=value, parameters={})
 
-    value: float
-    score_threshold: float
-    hardmax: bool
+    @classmethod
+    def counts(
+        cls,
+        tp: int,
+        fp: int,
+        fn: int,
+        tn: int,
+        score_threshold: float,
+        hardmax: bool,
+        label: str,
+    ):
+        """
+        Confusion matrix counts at specified score thresholds for binary classification.
 
+        This class stores the true positive (`tp`), false positive (`fp`), false negative (`fn`), and true
+        negative (`tn`) counts computed at various score thresholds for a binary classification task.
 
-@dataclass
-class ROCAUC(_BaseMetric):
-    """
-    Receiver Operating Characteristic Area Under the Curve (ROC AUC).
+        Parameters
+        ----------
+        tp : int
+            True positive counts at each score threshold.
+        fp : int
+            False positive counts at each score threshold.
+        fn : int
+            False negative counts at each score threshold.
+        tn : int
+            True negative counts at each score threshold.
+        score_threshold : float
+            Score thresholds at which the counts are computed.
+        hardmax : bool
+            Indicates whether hardmax thresholding was used.
+        label : str
+            The class label for which the counts are computed.
 
-    This class calculates the ROC AUC score for a specific class label in a multiclass classification task.
-    ROC AUC is a performance measurement for classification problems at various threshold settings.
-    It reflects the ability of the classifier to distinguish between the positive and negative classes.
+        Returns
+        -------
+        Metric
+        """
+        return cls(
+            type=MetricType.Counts.value,
+            value={
+                "tp": tp,
+                "fp": fp,
+                "fn": fn,
+                "tn": tn,
+            },
+            parameters={
+                "score_threshold": score_threshold,
+                "hardmax": hardmax,
+                "label": label,
+            },
+        )
 
-    Parameters
-    ----------
-    value : float
-        The computed ROC AUC score.
-    label : str
-        The class label for which the ROC AUC is computed.
+    @classmethod
+    def confusion_matrix(
+        cls,
+        confusion_matrix: dict[
+            str,  # ground truth label value
+            dict[
+                str,  # prediction label value
+                dict[
+                    str,  # either `count` or `examples`
+                    int
+                    | list[
+                        dict[
+                            str,  # either `datum` or `score`
+                            str | float,  # datum uid  # prediction score
+                        ]
+                    ],
+                ],
+            ],
+        ],
+        missing_predictions: dict[
+            str,  # ground truth label value
+            dict[
+                str,  # either `count` or `examples`
+                int | list[dict[str, str]],  # count or datum examples
+            ],
+        ],
+        score_threshold: float,
+        maximum_number_of_examples: int,
+    ):
+        """
+        The confusion matrix and related metrics for the classification task.
 
-    Methods
-    -------
-    to_metric()
-        Converts the instance to a generic `Metric` object.
-    to_dict()
-        Converts the instance to a dictionary representation.
-    """
+        This class encapsulates detailed information about the model's performance, including correct
+        predictions, misclassifications, hallucinations (false positives), and missing predictions
+        (false negatives). It provides counts and examples for each category to facilitate in-depth analysis.
 
-    value: float
-    label: str
+        Confusion Matrix Structure:
+        {
+            ground_truth_label: {
+                predicted_label: {
+                    'count': int,
+                    'examples': [
+                        {
+                            'datum': str,
+                            'groundtruth': dict,  # {'xmin': float, 'xmax': float, 'ymin': float, 'ymax': float}
+                            'prediction': dict,   # {'xmin': float, 'xmax': float, 'ymin': float, 'ymax': float}
+                            'score': float,
+                        },
+                        ...
+                    ],
+                },
+                ...
+            },
+            ...
+        }
 
-
-@dataclass
-class mROCAUC(_BaseMetric):
-    """
-    Mean Receiver Operating Characteristic Area Under the Curve (mROC AUC).
-
-    This class calculates the mean ROC AUC score over all classes in a multiclass classification task.
-    It provides an aggregate measure of the model's ability to distinguish between classes.
-
-    Parameters
-    ----------
-    value : float
-        The computed mean ROC AUC score.
-
-    Methods
-    -------
-    to_metric()
-        Converts the instance to a generic `Metric` object.
-    to_dict()
-        Converts the instance to a dictionary representation.
-    """
-
-    value: float
-
-
-@dataclass
-class Counts(_BaseMetric):
-    """
-    Confusion matrix counts at specified score thresholds for binary classification.
-
-    This class stores the true positive (`tp`), false positive (`fp`), false negative (`fn`), and true
-    negative (`tn`) counts computed at various score thresholds for a binary classification task.
-
-    Attributes
-    ----------
-    tp : int
-        True positive counts at each score threshold.
-    fp : int
-        False positive counts at each score threshold.
-    fn : int
-        False negative counts at each score threshold.
-    tn : int
-        True negative counts at each score threshold.
-    score_threshold : float
-        Score thresholds at which the counts are computed.
-    hardmax : bool
-        Indicates whether hardmax thresholding was used.
-    label : str
-        The class label for which the counts are computed.
-
-    Methods
-    -------
-    to_metric()
-        Converts the instance to a generic `Metric` object.
-    to_dict()
-        Converts the instance to a dictionary representation.
-    """
-
-    tp: int
-    fp: int
-    fn: int
-    tn: int
-    score_threshold: float
-    hardmax: bool
-    label: str
-
-
-@dataclass
-class ConfusionMatrix(_BaseMetric):
-    """
-    The confusion matrix and related metrics for the classification task.
-
-    This class encapsulates detailed information about the model's performance, including correct
-    predictions, misclassifications, hallucinations (false positives), and missing predictions
-    (false negatives). It provides counts and examples for each category to facilitate in-depth analysis.
-
-    Confusion Matrix Structure:
-    {
-        ground_truth_label: {
-            predicted_label: {
+        Missing Prediction Structure:
+        {
+            ground_truth_label: {
                 'count': int,
                 'examples': [
                     {
                         'datum': str,
                         'groundtruth': dict,  # {'xmin': float, 'xmax': float, 'ymin': float, 'ymax': float}
-                        'prediction': dict,   # {'xmin': float, 'xmax': float, 'ymin': float, 'ymax': float}
-                        'score': float,
                     },
                     ...
                 ],
             },
             ...
-        },
-        ...
-    }
+        }
 
-    Hallucinations Structure:
-    {
-        prediction_label: {
-            'count': int,
-            'examples': [
-                {
-                    'datum': str,
-                    'prediction': dict,  # {'xmin': float, 'xmax': float, 'ymin': float, 'ymax': float}
-                    'score': float,
-                },
-                ...
-            ],
-        },
-        ...
-    }
+        Parameters
+        ----------
+        confusion_matrix : dict
+            A nested dictionary where the first key is the ground truth label value, the second key
+            is the prediction label value, and the innermost dictionary contains either a `count`
+            or a list of `examples`. Each example includes the datum UID and prediction score.
+        missing_predictions : dict
+            A dictionary where each key is a ground truth label value for which the model failed to predict
+            (false negatives). The value is a dictionary containing either a `count` or a list of `examples`.
+            Each example includes the datum UID.
+        score_threshold : float
+            The confidence score threshold used to filter predictions.
+        maximum_number_of_examples : int
+            The maximum number of examples per element.
 
-    Missing Prediction Structure:
-    {
-        ground_truth_label: {
-            'count': int,
-            'examples': [
-                {
-                    'datum': str,
-                    'groundtruth': dict,  # {'xmin': float, 'xmax': float, 'ymin': float, 'ymax': float}
-                },
-                ...
-            ],
-        },
-        ...
-    }
-
-    Attributes
-    ----------
-    confusion_matrix : dict
-        A nested dictionary where the first key is the ground truth label value, the second key
-        is the prediction label value, and the innermost dictionary contains either a `count`
-        or a list of `examples`. Each example includes the datum UID and prediction score.
-    missing_predictions : dict
-        A dictionary where each key is a ground truth label value for which the model failed to predict
-        (false negatives). The value is a dictionary containing either a `count` or a list of `examples`.
-        Each example includes the datum UID.
-    score_threshold : float
-        The confidence score threshold used to filter predictions.
-    maximum_number_of_examples : int
-        The maximum number of examples per element.
-
-    Methods
-    -------
-    to_metric()
-        Converts the instance to a generic `Metric` object.
-    to_dict()
-        Converts the instance to a dictionary representation.
-    """
-
-    confusion_matrix: dict[
-        str,  # ground truth label value
-        dict[
-            str,  # prediction label value
-            dict[
-                str,  # either `count` or `examples`
-                int
-                | list[
-                    dict[
-                        str,  # either `datum` or `score`
-                        str | float,  # datum uid  # prediction score
-                    ]
-                ],
-            ],
-        ],
-    ]
-    missing_predictions: dict[
-        str,  # ground truth label value
-        dict[
-            str,  # either `count` or `examples`
-            int | list[dict[str, str]],  # count or datum examples
-        ],
-    ]
-    score_threshold: float
-    maximum_number_of_examples: int
+        Returns
+        -------
+        Metric
+        """
+        return cls(
+            type=MetricType.ConfusionMatrix.value,
+            value={
+                "confusion_matrix": confusion_matrix,
+                "missing_predictions": missing_predictions,
+            },
+            parameters={
+                "score_threshold": score_threshold,
+                "maximum_number_of_examples": maximum_number_of_examples,
+            },
+        )

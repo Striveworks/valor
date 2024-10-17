@@ -3,7 +3,7 @@ from valor_lite.classification import (
     Classification,
     DataLoader,
     MetricType,
-    compute_metrics,
+    compute_precision_recall_rocauc,
 )
 
 
@@ -44,7 +44,7 @@ def test_accuracy_computation():
 
     score_thresholds = np.array([0.25, 0.75], dtype=np.float64)
 
-    (_, _, _, accuracy, _, _, _) = compute_metrics(
+    (_, _, _, accuracy, _, _, _) = compute_precision_recall_rocauc(
         data=data,
         label_metadata=label_metadata,
         score_thresholds=score_thresholds,
@@ -75,9 +75,9 @@ def test_accuracy_basic(basic_classifications: list[Classification]):
         "missing_prediction_labels": [],
     }
 
-    metrics = evaluator.evaluate(score_thresholds=[0.25, 0.75], as_dict=True)
+    metrics = evaluator.evaluate(score_thresholds=[0.25, 0.75])
 
-    actual_metrics = [m for m in metrics[MetricType.Accuracy]]
+    actual_metrics = [m.to_dict() for m in metrics[MetricType.Accuracy]]
     expected_metrics = [
         {
             "type": "Accuracy",
@@ -110,9 +110,9 @@ def test_accuracy_with_animal_example(
     loader.add_data(classifications_animal_example)
     evaluator = loader.finalize()
 
-    metrics = evaluator.evaluate(score_thresholds=[0.5], as_dict=True)
+    metrics = evaluator.evaluate(score_thresholds=[0.5])
 
-    actual_metrics = [m for m in metrics[MetricType.Accuracy]]
+    actual_metrics = [m.to_dict() for m in metrics[MetricType.Accuracy]]
     expected_metrics = [
         {
             "type": "Accuracy",
@@ -137,9 +137,9 @@ def test_accuracy_color_example(
     loader.add_data(classifications_color_example)
     evaluator = loader.finalize()
 
-    metrics = evaluator.evaluate(score_thresholds=[0.5], as_dict=True)
+    metrics = evaluator.evaluate(score_thresholds=[0.5])
 
-    actual_metrics = [m for m in metrics[MetricType.Accuracy]]
+    actual_metrics = [m.to_dict() for m in metrics[MetricType.Accuracy]]
     expected_metrics = [
         {
             "type": "Accuracy",
@@ -172,9 +172,9 @@ def test_accuracy_with_image_example(
         "missing_prediction_labels": [],
     }
 
-    metrics = evaluator.evaluate(as_dict=True)
+    metrics = evaluator.evaluate()
 
-    actual_metrics = [m for m in metrics[MetricType.Accuracy]]
+    actual_metrics = [m.to_dict() for m in metrics[MetricType.Accuracy]]
     expected_metrics = [
         {
             "type": "Accuracy",
@@ -207,9 +207,9 @@ def test_accuracy_with_tabular_example(
         "missing_prediction_labels": [],
     }
 
-    metrics = evaluator.evaluate(as_dict=True)
+    metrics = evaluator.evaluate()
 
-    actual_metrics = [m for m in metrics[MetricType.Accuracy]]
+    actual_metrics = [m.to_dict() for m in metrics[MetricType.Accuracy]]
     expected_metrics = [
         {
             "type": "Accuracy",

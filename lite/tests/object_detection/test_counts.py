@@ -32,7 +32,6 @@ def test_counts_metrics_first_class(
         metrics = evaluator.evaluate(
             iou_thresholds=[0.1, 0.6],
             score_thresholds=[0.0, 0.5],
-            as_dict=True,
         )
 
         assert evaluator.ignored_prediction_labels == []
@@ -43,7 +42,7 @@ def test_counts_metrics_first_class(
         assert evaluator.n_predictions == 1
 
         # test Counts
-        actual_metrics = [m for m in metrics[MetricType.Counts]]
+        actual_metrics = [m.to_dict() for m in metrics[MetricType.Counts]]
         expected_metrics = [
             {
                 "type": "Counts",
@@ -220,10 +219,9 @@ def test_counts_false_negatives_single_datum_baseline(
     metrics = evaluator.evaluate(
         iou_thresholds=[0.5],
         score_thresholds=[0.0, 0.9],
-        as_dict=True,
     )
 
-    actual_metrics = [m for m in metrics[MetricType.Counts]]
+    actual_metrics = [m.to_dict() for m in metrics[MetricType.Counts]]
     expected_metrics = [
         {
             "type": "Counts",
@@ -272,10 +270,9 @@ def test_counts_false_negatives_single_datum(
     metrics = evaluator.evaluate(
         iou_thresholds=[0.5],
         score_thresholds=[0.0],
-        as_dict=True,
     )
 
-    actual_metrics = [m for m in metrics[MetricType.Counts]]
+    actual_metrics = [m.to_dict() for m in metrics[MetricType.Counts]]
     expected_metrics = [
         {
             "type": "Counts",
@@ -319,10 +316,9 @@ def test_counts_false_negatives_two_datums_one_empty_low_confidence_of_fp(
     metrics = evaluator.evaluate(
         iou_thresholds=[0.5],
         score_thresholds=[0.0],
-        as_dict=True,
     )
 
-    actual_metrics = [m for m in metrics[MetricType.Counts]]
+    actual_metrics = [m.to_dict() for m in metrics[MetricType.Counts]]
     expected_metrics = [
         {
             "type": "Counts",
@@ -365,10 +361,9 @@ def test_counts_false_negatives_two_datums_one_empty_high_confidence_of_fp(
     metrics = evaluator.evaluate(
         iou_thresholds=[0.5],
         score_thresholds=[0.0],
-        as_dict=True,
     )
 
-    actual_metrics = [m for m in metrics[MetricType.Counts]]
+    actual_metrics = [m.to_dict() for m in metrics[MetricType.Counts]]
     expected_metrics = [
         {
             "type": "Counts",
@@ -411,10 +406,9 @@ def test_counts_false_negatives_two_datums_one_only_with_different_class_low_con
     metrics = evaluator.evaluate(
         iou_thresholds=[0.5],
         score_thresholds=[0.0],
-        as_dict=True,
     )
 
-    actual_metrics = [m for m in metrics[MetricType.Counts]]
+    actual_metrics = [m.to_dict() for m in metrics[MetricType.Counts]]
     expected_metrics = [
         {
             "type": "Counts",
@@ -470,10 +464,9 @@ def test_counts_false_negatives_two_datums_one_only_with_different_class_high_co
     metrics = evaluator.evaluate(
         iou_thresholds=[0.5],
         score_thresholds=[0.0],
-        as_dict=True,
     )
 
-    actual_metrics = [m for m in metrics[MetricType.Counts]]
+    actual_metrics = [m.to_dict() for m in metrics[MetricType.Counts]]
     expected_metrics = [
         {
             "type": "Counts",
@@ -543,10 +536,9 @@ def test_counts_ranked_pair_ordering(
         metrics = evaluator.evaluate(
             iou_thresholds=[0.5, 0.75],
             score_thresholds=[0.0],
-            as_dict=True,
         )
 
-        actual_metrics = [m for m in metrics[MetricType.Counts]]
+        actual_metrics = [m.to_dict() for m in metrics[MetricType.Counts]]
         expected_metrics = [
             {
                 "type": "Counts",

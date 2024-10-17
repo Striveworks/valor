@@ -64,7 +64,7 @@ def _compute_rocauc(
     return rocauc, mean_rocauc
 
 
-def compute_metrics(
+def compute_precision_recall_rocauc(
     data: NDArray[np.float64],
     label_metadata: NDArray[np.int32],
     score_thresholds: NDArray[np.float64],

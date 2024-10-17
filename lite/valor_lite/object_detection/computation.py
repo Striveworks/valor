@@ -262,7 +262,7 @@ def compute_ranked_pairs(
     return ranked_pairs[indices]
 
 
-def compute_metrics(
+def compute_precion_recall(
     data: NDArray[np.float64],
     label_metadata: NDArray[np.int32],
     iou_thresholds: NDArray[np.float64],

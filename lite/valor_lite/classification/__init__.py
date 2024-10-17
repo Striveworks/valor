@@ -1,30 +1,17 @@
 from .annotation import Classification
-from .computation import compute_metrics
-from .manager import DataLoader, Evaluator
-from .metric import (
-    F1,
-    ROCAUC,
-    Accuracy,
-    ConfusionMatrix,
-    Counts,
-    MetricType,
-    Precision,
-    Recall,
-    mROCAUC,
+from .computation import (
+    compute_confusion_matrix,
+    compute_precision_recall_rocauc,
 )
+from .manager import DataLoader, Evaluator
+from .metric import Metric, MetricType
 
 __all__ = [
     "Classification",
-    "compute_metrics",
+    "compute_precision_recall_rocauc",
+    "compute_confusion_matrix",
     "MetricType",
-    "Counts",
-    "Precision",
-    "Recall",
-    "Accuracy",
-    "F1",
-    "ROCAUC",
-    "mROCAUC",
-    "ConfusionMatrix",
     "DataLoader",
     "Evaluator",
+    "Metric",
 ]

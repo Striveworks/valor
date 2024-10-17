@@ -3,7 +3,7 @@ from valor_lite.classification import (
     Classification,
     DataLoader,
     MetricType,
-    compute_metrics,
+    compute_precision_recall_rocauc,
 )
 
 
@@ -44,7 +44,7 @@ def test_counts_computation():
 
     score_thresholds = np.array([0.25, 0.75], dtype=np.float64)
 
-    (counts, _, _, _, _, _, _) = compute_metrics(
+    (counts, _, _, _, _, _, _) = compute_precision_recall_rocauc(
         data=data,
         label_metadata=label_metadata,
         score_thresholds=score_thresholds,
@@ -120,10 +120,9 @@ def test_counts_basic(basic_classifications: list[Classification]):
 
     metrics = evaluator.evaluate(
         score_thresholds=[0.25, 0.75],
-        as_dict=True,
     )
 
-    actual_metrics = [m for m in metrics[MetricType.Counts]]
+    actual_metrics = [m.to_dict() for m in metrics[MetricType.Counts]]
     expected_metrics = [
         # score >= 0.25
         {
@@ -256,10 +255,9 @@ def test_counts_unit(
 
     metrics = evaluator.evaluate(
         score_thresholds=[0.5],
-        as_dict=True,
     )
 
-    actual_metrics = [m for m in metrics[MetricType.Counts]]
+    actual_metrics = [m.to_dict() for m in metrics[MetricType.Counts]]
     expected_metrics = [
         {
             "type": "Counts",
@@ -320,10 +318,9 @@ def test_counts_with_animal_example(
 
     metrics = evaluator.evaluate(
         score_thresholds=[0.05, 0.5, 0.95],
-        as_dict=True,
     )
 
-    actual_metrics = [m for m in metrics[MetricType.Counts]]
+    actual_metrics = [m.to_dict() for m in metrics[MetricType.Counts]]
     expected_metrics = [
         # score >= 0.05
         {
@@ -471,10 +468,9 @@ def test_counts_with_color_example(
 
     metrics = evaluator.evaluate(
         score_thresholds=[0.05, 0.5, 0.95],
-        as_dict=True,
     )
 
-    actual_metrics = [m for m in metrics[MetricType.Counts]]
+    actual_metrics = [m.to_dict() for m in metrics[MetricType.Counts]]
     expected_metrics = [
         # score >= 0.05
         {
@@ -669,9 +665,9 @@ def test_counts_with_image_example(
         "ignored_prediction_labels": ["v1", "v8", "v5"],
         "missing_prediction_labels": [],
     }
-    metrics = evaluator.evaluate(as_dict=True)
+    metrics = evaluator.evaluate()
 
-    actual_metrics = [m for m in metrics[MetricType.Counts]]
+    actual_metrics = [m.to_dict() for m in metrics[MetricType.Counts]]
     expected_metrics = [
         {
             "type": "Counts",
@@ -752,9 +748,9 @@ def test_counts_with_tabular_example(
         "missing_prediction_labels": [],
     }
 
-    metrics = evaluator.evaluate(as_dict=True)
+    metrics = evaluator.evaluate()
 
-    actual_metrics = [m for m in metrics[MetricType.Counts]]
+    actual_metrics = [m.to_dict() for m in metrics[MetricType.Counts]]
     expected_metrics = [
         {
             "type": "Counts",
@@ -823,10 +819,9 @@ def test_counts_multiclass(
 
     metrics = evaluator.evaluate(
         score_thresholds=[0.05, 0.1, 0.3, 0.85],
-        as_dict=True,
     )
 
-    actual_metrics = [m for m in metrics[MetricType.Counts]]
+    actual_metrics = [m.to_dict() for m in metrics[MetricType.Counts]]
     expected_metrics = [
         # score >= 0.05
         {
@@ -1024,10 +1019,9 @@ def test_counts_true_negatives_check_animals(
     }
     metrics = evaluator.evaluate(
         score_thresholds=[0.05, 0.15, 0.95],
-        as_dict=True,
     )
 
-    actual_metrics = [m for m in metrics[MetricType.Counts]]
+    actual_metrics = [m.to_dict() for m in metrics[MetricType.Counts]]
     expected_metrics = [
         # score >= 0.05
         {
@@ -1184,10 +1178,9 @@ def test_counts_zero_count_check(
 
     metrics = evaluator.evaluate(
         score_thresholds=[0.05, 0.2, 0.95],
-        as_dict=True,
     )
 
-    actual_metrics = [m for m in metrics[MetricType.Counts]]
+    actual_metrics = [m.to_dict() for m in metrics[MetricType.Counts]]
     expected_metrics = [
         # score >= 0.05
         {

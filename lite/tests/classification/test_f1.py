@@ -3,7 +3,7 @@ from valor_lite.classification import (
     Classification,
     DataLoader,
     MetricType,
-    compute_metrics,
+    compute_precision_recall_rocauc,
 )
 
 
@@ -44,7 +44,7 @@ def test_f1_score_computation():
 
     score_thresholds = np.array([0.25, 0.75], dtype=np.float64)
 
-    (_, _, _, _, f1_score, _, _) = compute_metrics(
+    (_, _, _, _, f1_score, _, _) = compute_precision_recall_rocauc(
         data=data,
         label_metadata=label_metadata,
         score_thresholds=score_thresholds,
@@ -83,10 +83,9 @@ def test_f1_score_basic(basic_classifications: list[Classification]):
 
     metrics = evaluator.evaluate(
         score_thresholds=[0.25, 0.75],
-        as_dict=True,
     )
 
-    actual_metrics = [m for m in metrics[MetricType.F1]]
+    actual_metrics = [m.to_dict() for m in metrics[MetricType.F1]]
     expected_metrics = [
         # score >= 0.25
         {
@@ -143,10 +142,9 @@ def test_f1_score_with_animal_example(
 
     metrics = evaluator.evaluate(
         score_thresholds=[0.0, 0.5],
-        as_dict=True,
     )
 
-    actual_metrics = [m for m in metrics[MetricType.F1]]
+    actual_metrics = [m.to_dict() for m in metrics[MetricType.F1]]
     expected_metrics = [
         # score > 0.0
         {
@@ -221,10 +219,9 @@ def test_f1_score_with_color_example(
 
     metrics = evaluator.evaluate(
         score_thresholds=[0.0, 0.5],
-        as_dict=True,
     )
 
-    actual_metrics = [m for m in metrics[MetricType.F1]]
+    actual_metrics = [m.to_dict() for m in metrics[MetricType.F1]]
     expected_metrics = [
         # scpre > 0.0
         {
@@ -323,9 +320,9 @@ def test_f1_score_with_image_example(
         "missing_prediction_labels": [],
     }
 
-    metrics = evaluator.evaluate(as_dict=True)
+    metrics = evaluator.evaluate()
 
-    actual_metrics = [m for m in metrics[MetricType.F1]]
+    actual_metrics = [m.to_dict() for m in metrics[MetricType.F1]]
     expected_metrics = [
         {
             "type": "F1",
@@ -359,9 +356,9 @@ def test_f1_score_with_tabular_example(
         "missing_prediction_labels": [],
     }
 
-    metrics = evaluator.evaluate(as_dict=True)
+    metrics = evaluator.evaluate()
 
-    actual_metrics = [m for m in metrics[MetricType.F1]]
+    actual_metrics = [m.to_dict() for m in metrics[MetricType.F1]]
     expected_metrics = [
         {
             "type": "F1",

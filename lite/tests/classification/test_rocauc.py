@@ -1,6 +1,8 @@
 import numpy as np
 from valor_lite.classification import Classification, DataLoader, MetricType
-from valor_lite.classification.computation import compute_metrics
+from valor_lite.classification.computation import (
+    compute_precision_recall_rocauc,
+)
 
 
 def test_compute_rocauc_animals():
@@ -84,7 +86,7 @@ def test_compute_rocauc_animals():
     )
 
     # compute ROCAUC and mROCAUC
-    (_, _, _, _, _, rocauc, mean_rocauc) = compute_metrics(
+    (_, _, _, _, _, rocauc, mean_rocauc) = compute_precision_recall_rocauc(
         data=animals,
         label_metadata=label_metadata,
         n_datums=6,
@@ -184,7 +186,7 @@ def test_compute_rocauc_colors():
     )
 
     # compute ROCAUC and mROCAUC
-    (_, _, _, _, _, rocauc, mean_rocauc) = compute_metrics(
+    (_, _, _, _, _, rocauc, mean_rocauc) = compute_precision_recall_rocauc(
         data=colors,
         label_metadata=label_metadata,
         n_datums=6,
@@ -211,10 +213,10 @@ def test_rocauc_with_animal_example(
     loader.add_data(classifications_animal_example)
     evaluator = loader.finalize()
 
-    metrics = evaluator.evaluate(as_dict=True)
+    metrics = evaluator.evaluate()
 
     # test ROCAUC
-    actual_metrics = [m for m in metrics[MetricType.ROCAUC]]
+    actual_metrics = [m.to_dict() for m in metrics[MetricType.ROCAUC]]
     expected_metrics = [
         {
             "type": "ROCAUC",
@@ -244,7 +246,7 @@ def test_rocauc_with_animal_example(
         assert m in actual_metrics
 
     # test mROCAUC
-    actual_metrics = [m for m in metrics[MetricType.mROCAUC]]
+    actual_metrics = [m.to_dict() for m in metrics[MetricType.mROCAUC]]
     expected_metrics = [
         {"type": "mROCAUC", "value": 0.8009259259259259, "parameters": {}},
     ]
@@ -262,10 +264,10 @@ def test_rocauc_with_color_example(
     loader.add_data(classifications_color_example)
     evaluator = loader.finalize()
 
-    metrics = evaluator.evaluate(as_dict=True, hardmax=False)
+    metrics = evaluator.evaluate(hardmax=False)
 
     # test ROCAUC
-    actual_metrics = [m for m in metrics[MetricType.ROCAUC]]
+    actual_metrics = [m.to_dict() for m in metrics[MetricType.ROCAUC]]
     expected_metrics = [
         {
             "type": "ROCAUC",
@@ -302,7 +304,7 @@ def test_rocauc_with_color_example(
         assert m in actual_metrics
 
     # test mROCAUC
-    actual_metrics = [m for m in metrics[MetricType.mROCAUC]]
+    actual_metrics = [m.to_dict() for m in metrics[MetricType.mROCAUC]]
     expected_metrics = [
         {"type": "mROCAUC", "value": 0.43125, "parameters": {}},
     ]
@@ -321,9 +323,9 @@ def test_rocauc_with_image_example(
     evaluator = loader.finalize()
     evaluator.evaluate()
 
-    metrics = evaluator.evaluate(as_dict=True)
+    metrics = evaluator.evaluate()
 
-    actual_metrics = [m for m in metrics[MetricType.ROCAUC]]
+    actual_metrics = [m.to_dict() for m in metrics[MetricType.ROCAUC]]
     expected_metrics = [
         {
             "type": "ROCAUC",
@@ -336,7 +338,7 @@ def test_rocauc_with_image_example(
     for m in expected_metrics:
         assert m in actual_metrics
 
-    actual_metrics = [m for m in metrics[MetricType.mROCAUC]]
+    actual_metrics = [m.to_dict() for m in metrics[MetricType.mROCAUC]]
     expected_metrics = [
         {"type": "mROCAUC", "value": 0.0, "parameters": {}},
     ]
@@ -355,9 +357,9 @@ def test_rocauc_with_tabular_example(
     evaluator = loader.finalize()
     evaluator.evaluate()
 
-    metrics = evaluator.evaluate(as_dict=True)
+    metrics = evaluator.evaluate()
 
-    actual_metrics = [m for m in metrics[MetricType.ROCAUC]]
+    actual_metrics = [m.to_dict() for m in metrics[MetricType.ROCAUC]]
     expected_metrics = [
         {
             "type": "ROCAUC",
@@ -380,7 +382,7 @@ def test_rocauc_with_tabular_example(
     for m in expected_metrics:
         assert m in actual_metrics
 
-    actual_metrics = [m for m in metrics[MetricType.mROCAUC]]
+    actual_metrics = [m.to_dict() for m in metrics[MetricType.mROCAUC]]
     expected_metrics = [
         {
             "type": "mROCAUC",
