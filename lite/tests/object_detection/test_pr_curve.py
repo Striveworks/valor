@@ -3,7 +3,7 @@ from valor_lite.object_detection import (
     DataLoader,
     Detection,
     MetricType,
-    compute_metrics,
+    compute_precion_recall,
 )
 
 
@@ -24,7 +24,7 @@ def test_pr_curve_simple():
     iou_thresholds = np.array([0.1, 0.6])
     score_thresholds = np.array([0.0])
 
-    (_, _, _, _, pr_curve) = compute_metrics(
+    (_, _, _, _, pr_curve) = compute_precion_recall(
         sorted_pairs,
         label_metadata=label_metadata,
         iou_thresholds=iou_thresholds,
@@ -62,11 +62,12 @@ def test_pr_curve_using_torch_metrics_example(
 
     metrics = evaluator.evaluate(
         iou_thresholds=[0.5, 0.75],
-        as_dict=True,
     )
 
     # test PrecisionRecallCurve
-    actual_metrics = [m for m in metrics[MetricType.PrecisionRecallCurve]]
+    actual_metrics = [
+        m.to_dict() for m in metrics[MetricType.PrecisionRecallCurve]
+    ]
     expected_metrics = [
         {
             "type": "PrecisionRecallCurve",

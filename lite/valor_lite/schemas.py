@@ -1,15 +1,17 @@
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 
 
 @dataclass
-class Metric:
+class BaseMetric:
     type: str
-    value: float | dict | list
+    value: int | float | dict
     parameters: dict
 
+    def __post_init__(self):
+        if not isinstance(self.value, (int, float, dict)):
+            raise TypeError(
+                "Metric value must be of type `int`, `float` or `dict`."
+            )
+
     def to_dict(self) -> dict:
-        return {
-            "type": self.type,
-            "value": self.value,
-            "parameters": self.parameters,
-        }
+        return asdict(self)

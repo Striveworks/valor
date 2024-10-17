@@ -32,7 +32,6 @@ def test_precision_metrics_first_class(
         metrics = evaluator.evaluate(
             iou_thresholds=[0.1, 0.6],
             score_thresholds=[0.0, 0.5],
-            as_dict=True,
         )
 
         assert evaluator.ignored_prediction_labels == []
@@ -43,7 +42,7 @@ def test_precision_metrics_first_class(
         assert evaluator.n_predictions == 1
 
         # test Precision
-        actual_metrics = [m for m in metrics[MetricType.Precision]]
+        actual_metrics = [m.to_dict() for m in metrics[MetricType.Precision]]
         expected_metrics = [
             {
                 "type": "Precision",
@@ -117,7 +116,6 @@ def test_precision_metrics_second_class(
         metrics = evaluator.evaluate(
             iou_thresholds=[0.1, 0.6],
             score_thresholds=[0.0, 0.5],
-            as_dict=True,
         )
 
         assert evaluator.ignored_prediction_labels == []
@@ -128,7 +126,7 @@ def test_precision_metrics_second_class(
         assert evaluator.n_predictions == 1
 
         # test Precision
-        actual_metrics = [m for m in metrics[MetricType.Precision]]
+        actual_metrics = [m.to_dict() for m in metrics[MetricType.Precision]]
         expected_metrics = [
             {
                 "type": "Precision",
@@ -188,10 +186,9 @@ def test_precision_false_negatives_single_datum_baseline(
     metrics = evaluator.evaluate(
         iou_thresholds=[0.5],
         score_thresholds=[0.0, 0.9],
-        as_dict=True,
     )
 
-    actual_metrics = [m for m in metrics[MetricType.Precision]]
+    actual_metrics = [m.to_dict() for m in metrics[MetricType.Precision]]
     expected_metrics = [
         {
             "type": "Precision",
@@ -232,10 +229,9 @@ def test_precision_false_negatives_single_datum(
     metrics = evaluator.evaluate(
         iou_thresholds=[0.5],
         score_thresholds=[0.0],
-        as_dict=True,
     )
 
-    actual_metrics = [m for m in metrics[MetricType.Precision]]
+    actual_metrics = [m.to_dict() for m in metrics[MetricType.Precision]]
     expected_metrics = [
         {
             "type": "Precision",
@@ -275,10 +271,9 @@ def test_precision_false_negatives_two_datums_one_empty_low_confidence_of_fp(
     metrics = evaluator.evaluate(
         iou_thresholds=[0.5],
         score_thresholds=[0.0],
-        as_dict=True,
     )
 
-    actual_metrics = [m for m in metrics[MetricType.Precision]]
+    actual_metrics = [m.to_dict() for m in metrics[MetricType.Precision]]
     expected_metrics = [
         {
             "type": "Precision",
@@ -317,10 +312,9 @@ def test_precision_false_negatives_two_datums_one_empty_high_confidence_of_fp(
     metrics = evaluator.evaluate(
         iou_thresholds=[0.5],
         score_thresholds=[0.0],
-        as_dict=True,
     )
 
-    actual_metrics = [m for m in metrics[MetricType.Precision]]
+    actual_metrics = [m.to_dict() for m in metrics[MetricType.Precision]]
     expected_metrics = [
         {
             "type": "Precision",
@@ -359,10 +353,9 @@ def test_precision_false_negatives_two_datums_one_only_with_different_class_low_
     metrics = evaluator.evaluate(
         iou_thresholds=[0.5],
         score_thresholds=[0.0],
-        as_dict=True,
     )
 
-    actual_metrics = [m for m in metrics[MetricType.Precision]]
+    actual_metrics = [m.to_dict() for m in metrics[MetricType.Precision]]
     expected_metrics = [
         {
             "type": "Precision",
@@ -410,10 +403,9 @@ def test_precision_false_negatives_two_datums_one_only_with_different_class_high
     metrics = evaluator.evaluate(
         iou_thresholds=[0.5],
         score_thresholds=[0.0],
-        as_dict=True,
     )
 
-    actual_metrics = [m for m in metrics[MetricType.Precision]]
+    actual_metrics = [m.to_dict() for m in metrics[MetricType.Precision]]
     expected_metrics = [
         {
             "type": "Precision",

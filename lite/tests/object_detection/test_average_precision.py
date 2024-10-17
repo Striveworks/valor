@@ -3,7 +3,7 @@ from valor_lite.object_detection import (
     DataLoader,
     Detection,
     MetricType,
-    compute_metrics,
+    compute_precion_recall,
 )
 
 
@@ -24,7 +24,7 @@ def test__compute_average_precision():
     iou_thresholds = np.array([0.1, 0.6])
     score_thresholds = np.array([0.0])
 
-    (results, _, _, _, _) = compute_metrics(
+    (results, _, _, _, _) = compute_precion_recall(
         sorted_pairs,
         label_metadata=label_metadata,
         iou_thresholds=iou_thresholds,
@@ -91,7 +91,6 @@ def test_ap_metrics_first_class(
 
         metrics = evaluator.evaluate(
             iou_thresholds=[0.1, 0.6],
-            as_dict=True,
         )
 
         assert evaluator.ignored_prediction_labels == []
@@ -102,7 +101,7 @@ def test_ap_metrics_first_class(
         assert evaluator.n_predictions == 1
 
         # test AP
-        actual_metrics = [m for m in metrics[MetricType.AP]]
+        actual_metrics = [m.to_dict() for m in metrics[MetricType.AP]]
         expected_metrics = [
             {
                 "type": "AP",
@@ -127,7 +126,7 @@ def test_ap_metrics_first_class(
             assert m in actual_metrics
 
         # test mAP
-        actual_metrics = [m for m in metrics[MetricType.mAP]]
+        actual_metrics = [m.to_dict() for m in metrics[MetricType.mAP]]
         expected_metrics = [
             {
                 "type": "mAP",
@@ -149,8 +148,10 @@ def test_ap_metrics_first_class(
         for m in expected_metrics:
             assert m in actual_metrics
 
-        # test AP Averaged Over IoUs
-        actual_metrics = [m for m in metrics[MetricType.APAveragedOverIOUs]]
+        # test AP Averaged Over IOUs
+        actual_metrics = [
+            m.to_dict() for m in metrics[MetricType.APAveragedOverIOUs]
+        ]
         expected_metrics = [
             {
                 "type": "APAveragedOverIOUs",
@@ -163,8 +164,10 @@ def test_ap_metrics_first_class(
         for m in expected_metrics:
             assert m in actual_metrics
 
-        # test mAP Averaged Over IoUs
-        actual_metrics = [m for m in metrics[MetricType.mAPAveragedOverIOUs]]
+        # test mAP Averaged Over IOUs
+        actual_metrics = [
+            m.to_dict() for m in metrics[MetricType.mAPAveragedOverIOUs]
+        ]
         expected_metrics = [
             {
                 "type": "mAPAveragedOverIOUs",
@@ -263,7 +266,7 @@ def test_ap_metrics_second_class(
         for m in expected_metrics:
             assert m in actual_metrics
 
-        # test AP Averaged Over IoUs
+        # test AP Averaged Over IOUs
         actual_metrics = [
             m.to_dict() for m in metrics[MetricType.APAveragedOverIOUs]
         ]
@@ -282,7 +285,7 @@ def test_ap_metrics_second_class(
         for m in expected_metrics:
             assert m in actual_metrics
 
-        # test mAP Averaged Over IoUs
+        # test mAP Averaged Over IOUs
         actual_metrics = [
             m.to_dict() for m in metrics[MetricType.mAPAveragedOverIOUs]
         ]
@@ -322,11 +325,10 @@ def test_ap_using_torch_metrics_example(
 
     metrics = evaluator.evaluate(
         iou_thresholds=[0.5, 0.75],
-        as_dict=True,
     )
 
     # test AP
-    actual_metrics = [m for m in metrics[MetricType.AP]]
+    actual_metrics = [m.to_dict() for m in metrics[MetricType.AP]]
     expected_metrics = [
         {
             "type": "AP",
@@ -415,7 +417,7 @@ def test_ap_using_torch_metrics_example(
         assert m in actual_metrics
 
     # test mAP
-    actual_metrics = [m for m in metrics[MetricType.mAP]]
+    actual_metrics = [m.to_dict() for m in metrics[MetricType.mAP]]
     expected_metrics = [
         {
             "type": "mAP",
@@ -451,10 +453,9 @@ def test_ap_false_negatives_single_datum_baseline(
     evaluator = loader.finalize()
     metrics = evaluator.evaluate(
         iou_thresholds=[0.5],
-        as_dict=True,
     )
 
-    actual_metrics = [m for m in metrics[MetricType.AP]]
+    actual_metrics = [m.to_dict() for m in metrics[MetricType.AP]]
     expected_metrics = [
         {
             "type": "AP",
@@ -481,10 +482,9 @@ def test_ap_false_negatives_single_datum(
     evaluator = loader.finalize()
     metrics = evaluator.evaluate(
         iou_thresholds=[0.5],
-        as_dict=True,
     )
 
-    actual_metrics = [m for m in metrics[MetricType.AP]]
+    actual_metrics = [m.to_dict() for m in metrics[MetricType.AP]]
     expected_metrics = [
         {
             "type": "AP",
@@ -519,10 +519,9 @@ def test_ap_false_negatives_two_datums_one_empty_low_confidence_of_fp(
     evaluator = loader.finalize()
     metrics = evaluator.evaluate(
         iou_thresholds=[0.5],
-        as_dict=True,
     )
 
-    actual_metrics = [m for m in metrics[MetricType.AP]]
+    actual_metrics = [m.to_dict() for m in metrics[MetricType.AP]]
     expected_metrics = [
         {
             "type": "AP",
@@ -556,10 +555,9 @@ def test_ap_false_negatives_two_datums_one_empty_high_confidence_of_fp(
     evaluator = loader.finalize()
     metrics = evaluator.evaluate(
         iou_thresholds=[0.5],
-        as_dict=True,
     )
 
-    actual_metrics = [m for m in metrics[MetricType.AP]]
+    actual_metrics = [m.to_dict() for m in metrics[MetricType.AP]]
     expected_metrics = [
         {
             "type": "AP",
@@ -593,10 +591,9 @@ def test_ap_false_negatives_two_datums_one_only_with_different_class_low_confide
     evaluator = loader.finalize()
     metrics = evaluator.evaluate(
         iou_thresholds=[0.5],
-        as_dict=True,
     )
 
-    actual_metrics = [m for m in metrics[MetricType.AP]]
+    actual_metrics = [m.to_dict() for m in metrics[MetricType.AP]]
     expected_metrics = [
         {
             "type": "AP",
@@ -635,10 +632,9 @@ def test_ap_false_negatives_two_datums_one_only_with_different_class_high_confid
     evaluator = loader.finalize()
     metrics = evaluator.evaluate(
         iou_thresholds=[0.5],
-        as_dict=True,
     )
 
-    actual_metrics = [m for m in metrics[MetricType.AP]]
+    actual_metrics = [m.to_dict() for m in metrics[MetricType.AP]]
     expected_metrics = [
         {
             "type": "AP",
@@ -690,10 +686,9 @@ def test_ap_ranked_pair_ordering(
 
         metrics = evaluator.evaluate(
             iou_thresholds=[0.5, 0.75],
-            as_dict=True,
         )
 
-        actual_metrics = [m for m in metrics[MetricType.AP]]
+        actual_metrics = [m.to_dict() for m in metrics[MetricType.AP]]
         expected_metrics = [
             {
                 "parameters": {
@@ -749,7 +744,7 @@ def test_ap_ranked_pair_ordering(
         for m in expected_metrics:
             assert m in actual_metrics
 
-        actual_metrics = [m for m in metrics[MetricType.mAP]]
+        actual_metrics = [m.to_dict() for m in metrics[MetricType.mAP]]
         expected_metrics = [
             {
                 "parameters": {"iou_threshold": 0.5},
@@ -767,7 +762,9 @@ def test_ap_ranked_pair_ordering(
         for m in expected_metrics:
             assert m in actual_metrics
 
-        actual_metrics = [m for m in metrics[MetricType.APAveragedOverIOUs]]
+        actual_metrics = [
+            m.to_dict() for m in metrics[MetricType.APAveragedOverIOUs]
+        ]
         expected_metrics = [
             {
                 "parameters": {
@@ -799,7 +796,9 @@ def test_ap_ranked_pair_ordering(
         for m in expected_metrics:
             assert m in actual_metrics
 
-        actual_metrics = [m for m in metrics[MetricType.mAPAveragedOverIOUs]]
+        actual_metrics = [
+            m.to_dict() for m in metrics[MetricType.mAPAveragedOverIOUs]
+        ]
         expected_metrics = [
             {
                 "parameters": {
@@ -836,13 +835,12 @@ def test_ap_true_positive_deassignment(
     metrics = evaluator.evaluate(
         iou_thresholds=[0.5],
         score_thresholds=[0.5],
-        as_dict=True,
     )
 
     assert len(metrics) == 15
 
     # test AP
-    actual_metrics = [m for m in metrics[MetricType.AP]]
+    actual_metrics = [m.to_dict() for m in metrics[MetricType.AP]]
     expected_metrics = [
         {
             "type": "AP",

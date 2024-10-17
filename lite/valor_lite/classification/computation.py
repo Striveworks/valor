@@ -64,7 +64,7 @@ def _compute_rocauc(
     return rocauc, mean_rocauc
 
 
-def compute_metrics(
+def compute_precision_recall_rocauc(
     data: NDArray[np.float64],
     label_metadata: NDArray[np.int32],
     score_thresholds: NDArray[np.float64],
@@ -271,7 +271,7 @@ def compute_confusion_matrix(
     label_metadata : NDArray[np.int32]
         An array containing metadata related to labels.
     iou_thresholds : NDArray[np.float64]
-        A 1-D array containing IoU thresholds.
+        A 1-D array containing IOU thresholds.
     score_thresholds : NDArray[np.float64]
         A 1-D array containing score thresholds.
     n_examples : int

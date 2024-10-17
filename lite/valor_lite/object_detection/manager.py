@@ -16,27 +16,14 @@ from valor_lite.object_detection.computation import (
     compute_bbox_iou,
     compute_bitmask_iou,
     compute_confusion_matrix,
-    compute_metrics,
     compute_polygon_iou,
+    compute_precion_recall,
     compute_ranked_pairs,
 )
-from valor_lite.object_detection.metric import (
-    AP,
-    AR,
-    F1,
-    Accuracy,
-    APAveragedOverIOUs,
-    ARAveragedOverScores,
-    ConfusionMatrix,
-    Counts,
-    MetricType,
-    Precision,
-    PrecisionRecallCurve,
-    Recall,
-    mAP,
-    mAPAveragedOverIOUs,
-    mAR,
-    mARAveragedOverScores,
+from valor_lite.object_detection.metric import Metric, MetricType
+from valor_lite.object_detection.utilities import (
+    unpack_confusion_matrix_into_metric_list,
+    unpack_precision_recall_into_metric_lists,
 )
 
 """
@@ -212,274 +199,23 @@ class Evaluator:
             label_metadata=label_metadata,
         )
 
-    def _convert_example_to_dict(
-        self, box: NDArray[np.float16]
-    ) -> dict[str, float]:
-        """
-        Converts a cached bounding box example to dictionary format.
-        """
-        return {
-            "xmin": float(box[0]),
-            "xmax": float(box[1]),
-            "ymin": float(box[2]),
-            "ymax": float(box[3]),
-        }
-
-    def _unpack_confusion_matrix(
-        self,
-        confusion_matrix: NDArray[np.float64],
-        number_of_labels: int,
-        number_of_examples: int,
-    ) -> dict[
-        str,
-        dict[
-            str,
-            dict[
-                str,
-                int
-                | list[
-                    dict[
-                        str,
-                        str | dict[str, float] | float,
-                    ]
-                ],
-            ],
-        ],
-    ]:
-        """
-        Unpacks a numpy array of confusion matrix counts and examples.
-        """
-
-        datum_idx = lambda gt_label_idx, pd_label_idx, example_idx: int(  # noqa: E731 - lambda fn
-            confusion_matrix[
-                gt_label_idx,
-                pd_label_idx,
-                example_idx * 4 + 1,
-            ]
-        )
-
-        groundtruth_idx = lambda gt_label_idx, pd_label_idx, example_idx: int(  # noqa: E731 - lambda fn
-            confusion_matrix[
-                gt_label_idx,
-                pd_label_idx,
-                example_idx * 4 + 2,
-            ]
-        )
-
-        prediction_idx = lambda gt_label_idx, pd_label_idx, example_idx: int(  # noqa: E731 - lambda fn
-            confusion_matrix[
-                gt_label_idx,
-                pd_label_idx,
-                example_idx * 4 + 3,
-            ]
-        )
-
-        score_idx = lambda gt_label_idx, pd_label_idx, example_idx: float(  # noqa: E731 - lambda fn
-            confusion_matrix[
-                gt_label_idx,
-                pd_label_idx,
-                example_idx * 4 + 4,
-            ]
-        )
-
-        return {
-            self.index_to_label[gt_label_idx]: {
-                self.index_to_label[pd_label_idx]: {
-                    "count": max(
-                        int(confusion_matrix[gt_label_idx, pd_label_idx, 0]),
-                        0,
-                    ),
-                    "examples": [
-                        {
-                            "datum": self.index_to_uid[
-                                datum_idx(
-                                    gt_label_idx, pd_label_idx, example_idx
-                                )
-                            ],
-                            "groundtruth": self._convert_example_to_dict(
-                                self.groundtruth_examples[
-                                    datum_idx(
-                                        gt_label_idx,
-                                        pd_label_idx,
-                                        example_idx,
-                                    )
-                                ][
-                                    groundtruth_idx(
-                                        gt_label_idx,
-                                        pd_label_idx,
-                                        example_idx,
-                                    )
-                                ]
-                            ),
-                            "prediction": self._convert_example_to_dict(
-                                self.prediction_examples[
-                                    datum_idx(
-                                        gt_label_idx,
-                                        pd_label_idx,
-                                        example_idx,
-                                    )
-                                ][
-                                    prediction_idx(
-                                        gt_label_idx,
-                                        pd_label_idx,
-                                        example_idx,
-                                    )
-                                ]
-                            ),
-                            "score": score_idx(
-                                gt_label_idx, pd_label_idx, example_idx
-                            ),
-                        }
-                        for example_idx in range(number_of_examples)
-                        if datum_idx(gt_label_idx, pd_label_idx, example_idx)
-                        >= 0
-                    ],
-                }
-                for pd_label_idx in range(number_of_labels)
-            }
-            for gt_label_idx in range(number_of_labels)
-        }
-
-    def _unpack_hallucinations(
-        self,
-        hallucinations: NDArray[np.float64],
-        number_of_labels: int,
-        number_of_examples: int,
-    ) -> dict[
-        str,
-        dict[
-            str,
-            int | list[dict[str, str | float | dict[str, float]]],
-        ],
-    ]:
-        """
-        Unpacks a numpy array of hallucination counts and examples.
-        """
-
-        datum_idx = (
-            lambda pd_label_idx, example_idx: int(  # noqa: E731 - lambda fn
-                hallucinations[
-                    pd_label_idx,
-                    example_idx * 3 + 1,
-                ]
-            )
-        )
-
-        prediction_idx = (
-            lambda pd_label_idx, example_idx: int(  # noqa: E731 - lambda fn
-                hallucinations[
-                    pd_label_idx,
-                    example_idx * 3 + 2,
-                ]
-            )
-        )
-
-        score_idx = (
-            lambda pd_label_idx, example_idx: float(  # noqa: E731 - lambda fn
-                hallucinations[
-                    pd_label_idx,
-                    example_idx * 3 + 3,
-                ]
-            )
-        )
-
-        return {
-            self.index_to_label[pd_label_idx]: {
-                "count": max(
-                    int(hallucinations[pd_label_idx, 0]),
-                    0,
-                ),
-                "examples": [
-                    {
-                        "datum": self.index_to_uid[
-                            datum_idx(pd_label_idx, example_idx)
-                        ],
-                        "prediction": self._convert_example_to_dict(
-                            self.prediction_examples[
-                                datum_idx(pd_label_idx, example_idx)
-                            ][prediction_idx(pd_label_idx, example_idx)]
-                        ),
-                        "score": score_idx(pd_label_idx, example_idx),
-                    }
-                    for example_idx in range(number_of_examples)
-                    if datum_idx(pd_label_idx, example_idx) >= 0
-                ],
-            }
-            for pd_label_idx in range(number_of_labels)
-        }
-
-    def _unpack_missing_predictions(
-        self,
-        missing_predictions: NDArray[np.int32],
-        number_of_labels: int,
-        number_of_examples: int,
-    ) -> dict[str, dict[str, int | list[dict[str, str | dict[str, float]]]]]:
-        """
-        Unpacks a numpy array of missing prediction counts and examples.
-        """
-
-        datum_idx = (
-            lambda gt_label_idx, example_idx: int(  # noqa: E731 - lambda fn
-                missing_predictions[
-                    gt_label_idx,
-                    example_idx * 2 + 1,
-                ]
-            )
-        )
-
-        groundtruth_idx = (
-            lambda gt_label_idx, example_idx: int(  # noqa: E731 - lambda fn
-                missing_predictions[
-                    gt_label_idx,
-                    example_idx * 2 + 2,
-                ]
-            )
-        )
-
-        return {
-            self.index_to_label[gt_label_idx]: {
-                "count": max(
-                    int(missing_predictions[gt_label_idx, 0]),
-                    0,
-                ),
-                "examples": [
-                    {
-                        "datum": self.index_to_uid[
-                            datum_idx(gt_label_idx, example_idx)
-                        ],
-                        "groundtruth": self._convert_example_to_dict(
-                            self.groundtruth_examples[
-                                datum_idx(gt_label_idx, example_idx)
-                            ][groundtruth_idx(gt_label_idx, example_idx)]
-                        ),
-                    }
-                    for example_idx in range(number_of_examples)
-                    if datum_idx(gt_label_idx, example_idx) >= 0
-                ],
-            }
-            for gt_label_idx in range(number_of_labels)
-        }
-
     def compute_precision_recall(
         self,
         iou_thresholds: list[float] = [0.5, 0.75, 0.9],
         score_thresholds: list[float] = [0.5],
         filter_: Filter | None = None,
-        as_dict: bool = False,
-    ) -> dict[MetricType, list]:
+    ) -> dict[MetricType, list[Metric]]:
         """
         Computes all metrics except for ConfusionMatrix
 
         Parameters
         ----------
         iou_thresholds : list[float]
-            A list of IoU thresholds to compute metrics over.
+            A list of IOU thresholds to compute metrics over.
         score_thresholds : list[float]
             A list of score thresholds to compute metrics over.
         filter_ : Filter, optional
             An optional filter object.
-        as_dict : bool, default=False
-            An option to return metrics as dictionaries.
 
         Returns
         -------
@@ -493,182 +229,20 @@ class Evaluator:
             ranked_pairs = ranked_pairs[filter_.ranked_indices]
             label_metadata = filter_.label_metadata
 
-        (
-            (
-                average_precision,
-                mean_average_precision,
-                average_precision_average_over_ious,
-                mean_average_precision_average_over_ious,
-            ),
-            (
-                average_recall,
-                mean_average_recall,
-                average_recall_averaged_over_scores,
-                mean_average_recall_averaged_over_scores,
-            ),
-            accuracy,
-            precision_recall,
-            pr_curves,
-        ) = compute_metrics(
+        results = compute_precion_recall(
             data=ranked_pairs,
             label_metadata=label_metadata,
             iou_thresholds=np.array(iou_thresholds),
             score_thresholds=np.array(score_thresholds),
         )
 
-        metrics = defaultdict(list)
-
-        metrics[MetricType.AP] = [
-            AP(
-                value=float(average_precision[iou_idx][label_idx]),
-                iou_threshold=iou_thresholds[iou_idx],
-                label=self.index_to_label[label_idx],
-            )
-            for iou_idx in range(average_precision.shape[0])
-            for label_idx in range(average_precision.shape[1])
-            if int(label_metadata[label_idx, 0]) > 0
-        ]
-
-        metrics[MetricType.mAP] = [
-            mAP(
-                value=float(mean_average_precision[iou_idx]),
-                iou_threshold=iou_thresholds[iou_idx],
-            )
-            for iou_idx in range(mean_average_precision.shape[0])
-        ]
-
-        metrics[MetricType.APAveragedOverIOUs] = [
-            APAveragedOverIOUs(
-                value=float(average_precision_average_over_ious[label_idx]),
-                iou_thresholds=iou_thresholds,
-                label=self.index_to_label[label_idx],
-            )
-            for label_idx in range(self.n_labels)
-            if int(label_metadata[label_idx, 0]) > 0
-        ]
-
-        metrics[MetricType.mAPAveragedOverIOUs] = [
-            mAPAveragedOverIOUs(
-                value=float(mean_average_precision_average_over_ious),
-                iou_thresholds=iou_thresholds,
-            )
-        ]
-
-        metrics[MetricType.AR] = [
-            AR(
-                value=float(average_recall[score_idx][label_idx]),
-                iou_thresholds=iou_thresholds,
-                score_threshold=score_thresholds[score_idx],
-                label=self.index_to_label[label_idx],
-            )
-            for score_idx in range(average_recall.shape[0])
-            for label_idx in range(average_recall.shape[1])
-            if int(label_metadata[label_idx, 0]) > 0
-        ]
-
-        metrics[MetricType.mAR] = [
-            mAR(
-                value=float(mean_average_recall[score_idx]),
-                iou_thresholds=iou_thresholds,
-                score_threshold=score_thresholds[score_idx],
-            )
-            for score_idx in range(mean_average_recall.shape[0])
-        ]
-
-        metrics[MetricType.ARAveragedOverScores] = [
-            ARAveragedOverScores(
-                value=float(average_recall_averaged_over_scores[label_idx]),
-                score_thresholds=score_thresholds,
-                iou_thresholds=iou_thresholds,
-                label=self.index_to_label[label_idx],
-            )
-            for label_idx in range(self.n_labels)
-            if int(label_metadata[label_idx, 0]) > 0
-        ]
-
-        metrics[MetricType.mARAveragedOverScores] = [
-            mARAveragedOverScores(
-                value=float(mean_average_recall_averaged_over_scores),
-                score_thresholds=score_thresholds,
-                iou_thresholds=iou_thresholds,
-            )
-        ]
-
-        metrics[MetricType.Accuracy] = [
-            Accuracy(
-                value=float(accuracy[iou_idx, score_idx]),
-                iou_threshold=iou_thresholds[iou_idx],
-                score_threshold=score_thresholds[score_idx],
-            )
-            for iou_idx in range(accuracy.shape[0])
-            for score_idx in range(accuracy.shape[1])
-        ]
-
-        metrics[MetricType.PrecisionRecallCurve] = [
-            PrecisionRecallCurve(
-                precisions=pr_curves[iou_idx, label_idx, :, 0]
-                .astype(float)
-                .tolist(),
-                scores=pr_curves[iou_idx, label_idx, :, 1]
-                .astype(float)
-                .tolist(),
-                iou_threshold=iou_threshold,
-                label=label,
-            )
-            for iou_idx, iou_threshold in enumerate(iou_thresholds)
-            for label_idx, label in self.index_to_label.items()
-            if int(label_metadata[label_idx, 0]) > 0
-        ]
-
-        for label_idx, label in self.index_to_label.items():
-
-            if label_metadata[label_idx, 0] == 0:
-                continue
-
-            for score_idx, score_threshold in enumerate(score_thresholds):
-                for iou_idx, iou_threshold in enumerate(iou_thresholds):
-
-                    row = precision_recall[iou_idx][score_idx][label_idx]
-                    kwargs = {
-                        "label": label,
-                        "iou_threshold": iou_threshold,
-                        "score_threshold": score_threshold,
-                    }
-                    metrics[MetricType.Counts].append(
-                        Counts(
-                            tp=int(row[0]),
-                            fp=int(row[1]),
-                            fn=int(row[2]),
-                            **kwargs,
-                        )
-                    )
-
-                    metrics[MetricType.Precision].append(
-                        Precision(
-                            value=float(row[3]),
-                            **kwargs,
-                        )
-                    )
-                    metrics[MetricType.Recall].append(
-                        Recall(
-                            value=float(row[4]),
-                            **kwargs,
-                        )
-                    )
-                    metrics[MetricType.F1].append(
-                        F1(
-                            value=float(row[5]),
-                            **kwargs,
-                        )
-                    )
-
-        if as_dict:
-            return {
-                mtype: [metric.to_dict() for metric in mvalues]
-                for mtype, mvalues in metrics.items()
-            }
-
-        return metrics
+        return unpack_precision_recall_into_metric_lists(
+            results=results,
+            label_metadata=label_metadata,
+            iou_thresholds=iou_thresholds,
+            score_thresholds=score_thresholds,
+            index_to_label=self.index_to_label,
+        )
 
     def compute_confusion_matrix(
         self,
@@ -676,27 +250,24 @@ class Evaluator:
         score_thresholds: list[float] = [0.5],
         number_of_examples: int = 0,
         filter_: Filter | None = None,
-        as_dict: bool = False,
-    ) -> list:
+    ) -> list[Metric]:
         """
         Computes confusion matrices at various thresholds.
 
         Parameters
         ----------
         iou_thresholds : list[float]
-            A list of IoU thresholds to compute metrics over.
+            A list of IOU thresholds to compute metrics over.
         score_thresholds : list[float]
             A list of score thresholds to compute metrics over.
         number_of_examples : int, default=0
             Maximum number of annotation examples to return in ConfusionMatrix.
         filter_ : Filter, optional
             An optional filter object.
-        as_dict : bool, default=False
-            An option to return metrics as dictionaries.
 
         Returns
         -------
-        list[ConfusionMatrix] | list[dict]
+        list[Metric]
             List of confusion matrices per threshold pair.
         """
 
@@ -709,11 +280,7 @@ class Evaluator:
         if detailed_pairs.size == 0:
             return list()
 
-        (
-            confusion_matrix,
-            hallucinations,
-            missing_predictions,
-        ) = compute_confusion_matrix(
+        results = compute_confusion_matrix(
             data=detailed_pairs,
             label_metadata=label_metadata,
             iou_thresholds=np.array(iou_thresholds),
@@ -721,39 +288,16 @@ class Evaluator:
             n_examples=number_of_examples,
         )
 
-        n_ious, n_scores, n_labels, _, _ = confusion_matrix.shape
-        matrices = [
-            ConfusionMatrix(
-                iou_threshold=iou_thresholds[iou_idx],
-                score_threshold=score_thresholds[score_idx],
-                number_of_examples=number_of_examples,
-                confusion_matrix=self._unpack_confusion_matrix(
-                    confusion_matrix=confusion_matrix[
-                        iou_idx, score_idx, :, :, :
-                    ],
-                    number_of_labels=n_labels,
-                    number_of_examples=number_of_examples,
-                ),
-                hallucinations=self._unpack_hallucinations(
-                    hallucinations=hallucinations[iou_idx, score_idx, :, :],
-                    number_of_labels=n_labels,
-                    number_of_examples=number_of_examples,
-                ),
-                missing_predictions=self._unpack_missing_predictions(
-                    missing_predictions=missing_predictions[
-                        iou_idx, score_idx, :, :
-                    ],
-                    number_of_labels=n_labels,
-                    number_of_examples=number_of_examples,
-                ),
-            )
-            for iou_idx in range(n_ious)
-            for score_idx in range(n_scores)
-        ]
-
-        if as_dict:
-            return [m.to_dict() for m in matrices]
-        return matrices
+        return unpack_confusion_matrix_into_metric_list(
+            results=results,
+            iou_thresholds=iou_thresholds,
+            score_thresholds=score_thresholds,
+            number_of_examples=number_of_examples,
+            index_to_uid=self.index_to_uid,
+            index_to_label=self.index_to_label,
+            groundtruth_examples=self.groundtruth_examples,
+            prediction_examples=self.prediction_examples,
+        )
 
     def evaluate(
         self,
@@ -761,43 +305,40 @@ class Evaluator:
         score_thresholds: list[float] = [0.5],
         number_of_examples: int = 0,
         filter_: Filter | None = None,
-        as_dict: bool = False,
-    ) -> dict[MetricType, list]:
+    ) -> dict[MetricType, list[Metric]]:
         """
         Computes all avaiable metrics.
 
         Parameters
         ----------
         iou_thresholds : list[float]
-            A list of IoU thresholds to compute metrics over.
+            A list of IOU thresholds to compute metrics over.
         score_thresholds : list[float]
             A list of score thresholds to compute metrics over.
         number_of_examples : int, default=0
             Maximum number of annotation examples to return in ConfusionMatrix.
         filter_ : Filter, optional
             An optional filter object.
-        as_dict : bool, default=False
-            An option to return metrics as dictionaries.
 
         Returns
         -------
-        dict[MetricType, list]
-            A dictionary mapping metric type to a list of metrics.
+        dict[MetricType, list[Metric]]
+            Lists of metrics organized by metric type.
         """
-        results = self.compute_precision_recall(
+        metrics = self.compute_precision_recall(
             iou_thresholds=iou_thresholds,
             score_thresholds=score_thresholds,
             filter_=filter_,
-            as_dict=as_dict,
         )
-        results[MetricType.ConfusionMatrix] = self.compute_confusion_matrix(
+
+        metrics[MetricType.ConfusionMatrix] = self.compute_confusion_matrix(
             iou_thresholds=iou_thresholds,
             score_thresholds=score_thresholds,
             number_of_examples=number_of_examples,
             filter_=filter_,
-            as_dict=as_dict,
         )
-        return results
+
+        return metrics
 
 
 class DataLoader:

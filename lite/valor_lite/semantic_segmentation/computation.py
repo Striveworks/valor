@@ -109,7 +109,7 @@ def compute_metrics(
     float
         Accuracy
     NDArray[np.float64]
-        Confusion matrix containing IoU values.
+        Confusion matrix containing IOU values.
     NDArray[np.float64]
         Hallucination ratios.
     NDArray[np.float64]

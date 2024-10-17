@@ -7,18 +7,12 @@ from tqdm import tqdm
 from valor_lite.classification.annotation import Classification
 from valor_lite.classification.computation import (
     compute_confusion_matrix,
-    compute_metrics,
+    compute_precision_recall_rocauc,
 )
-from valor_lite.classification.metric import (
-    F1,
-    ROCAUC,
-    Accuracy,
-    ConfusionMatrix,
-    Counts,
-    MetricType,
-    Precision,
-    Recall,
-    mROCAUC,
+from valor_lite.classification.metric import Metric, MetricType
+from valor_lite.classification.utilities import (
+    unpack_confusion_matrix_into_metric_list,
+    unpack_precision_recall_rocauc_into_metric_lists,
 )
 
 """
@@ -191,119 +185,11 @@ class Evaluator:
             n_datums=n_datums,
         )
 
-    def _unpack_confusion_matrix(
-        self,
-        confusion_matrix: NDArray[np.float64],
-        number_of_labels: int,
-        number_of_examples: int,
-    ) -> dict[
-        str,
-        dict[
-            str,
-            dict[
-                str,
-                int
-                | list[
-                    dict[
-                        str,
-                        str | float,
-                    ]
-                ],
-            ],
-        ],
-    ]:
-        """
-        Unpacks a numpy array of confusion matrix counts and examples.
-        """
-
-        datum_idx = lambda gt_label_idx, pd_label_idx, example_idx: int(  # noqa: E731 - lambda fn
-            confusion_matrix[
-                gt_label_idx,
-                pd_label_idx,
-                example_idx * 2 + 1,
-            ]
-        )
-
-        score_idx = lambda gt_label_idx, pd_label_idx, example_idx: float(  # noqa: E731 - lambda fn
-            confusion_matrix[
-                gt_label_idx,
-                pd_label_idx,
-                example_idx * 2 + 2,
-            ]
-        )
-
-        return {
-            self.index_to_label[gt_label_idx]: {
-                self.index_to_label[pd_label_idx]: {
-                    "count": max(
-                        int(confusion_matrix[gt_label_idx, pd_label_idx, 0]),
-                        0,
-                    ),
-                    "examples": [
-                        {
-                            "datum": self.index_to_uid[
-                                datum_idx(
-                                    gt_label_idx, pd_label_idx, example_idx
-                                )
-                            ],
-                            "score": score_idx(
-                                gt_label_idx, pd_label_idx, example_idx
-                            ),
-                        }
-                        for example_idx in range(number_of_examples)
-                        if datum_idx(gt_label_idx, pd_label_idx, example_idx)
-                        >= 0
-                    ],
-                }
-                for pd_label_idx in range(number_of_labels)
-            }
-            for gt_label_idx in range(number_of_labels)
-        }
-
-    def _unpack_missing_predictions(
-        self,
-        missing_predictions: NDArray[np.int32],
-        number_of_labels: int,
-        number_of_examples: int,
-    ) -> dict[str, dict[str, int | list[dict[str, str]]]]:
-        """
-        Unpacks a numpy array of missing prediction counts and examples.
-        """
-
-        datum_idx = (
-            lambda gt_label_idx, example_idx: int(  # noqa: E731 - lambda fn
-                missing_predictions[
-                    gt_label_idx,
-                    example_idx + 1,
-                ]
-            )
-        )
-
-        return {
-            self.index_to_label[gt_label_idx]: {
-                "count": max(
-                    int(missing_predictions[gt_label_idx, 0]),
-                    0,
-                ),
-                "examples": [
-                    {
-                        "datum": self.index_to_uid[
-                            datum_idx(gt_label_idx, example_idx)
-                        ]
-                    }
-                    for example_idx in range(number_of_examples)
-                    if datum_idx(gt_label_idx, example_idx) >= 0
-                ],
-            }
-            for gt_label_idx in range(number_of_labels)
-        }
-
-    def compute_precision_recall(
+    def compute_precision_recall_rocauc(
         self,
         score_thresholds: list[float] = [0.0],
         hardmax: bool = True,
         filter_: Filter | None = None,
-        as_dict: bool = False,
     ) -> dict[MetricType, list]:
         """
         Performs an evaluation and returns metrics.
@@ -316,8 +202,6 @@ class Evaluator:
             Toggles whether a hardmax is applied to predictions.
         filter_ : Filter, optional
             An optional filter object.
-        as_dict : bool, default=False
-            An option to return metrics as dictionaries.
 
         Returns
         -------
@@ -334,15 +218,7 @@ class Evaluator:
             label_metadata = filter_.label_metadata
             n_datums = filter_.n_datums
 
-        (
-            counts,
-            precision,
-            recall,
-            accuracy,
-            f1_score,
-            rocauc,
-            mean_rocauc,
-        ) = compute_metrics(
+        results = compute_precision_recall_rocauc(
             data=data,
             label_metadata=label_metadata,
             score_thresholds=np.array(score_thresholds),
@@ -350,79 +226,13 @@ class Evaluator:
             n_datums=n_datums,
         )
 
-        metrics = defaultdict(list)
-
-        metrics[MetricType.ROCAUC] = [
-            ROCAUC(
-                value=float(rocauc[label_idx]),
-                label=self.index_to_label[label_idx],
-            )
-            for label_idx in range(label_metadata.shape[0])
-            if label_metadata[label_idx, 0] > 0
-        ]
-
-        metrics[MetricType.mROCAUC] = [
-            mROCAUC(
-                value=float(mean_rocauc),
-            )
-        ]
-
-        metrics[MetricType.Accuracy] = [
-            Accuracy(
-                value=accuracy.astype(float).tolist(),
-                score_thresholds=score_thresholds,
-                hardmax=hardmax,
-            )
-        ]
-
-        for label_idx, label in self.index_to_label.items():
-
-            kwargs = {
-                "label": label,
-                "score_thresholds": score_thresholds,
-                "hardmax": hardmax,
-            }
-            row = counts[:, label_idx]
-            metrics[MetricType.Counts].append(
-                Counts(
-                    tp=row[:, 0].astype(int).tolist(),
-                    fp=row[:, 1].astype(int).tolist(),
-                    fn=row[:, 2].astype(int).tolist(),
-                    tn=row[:, 3].astype(int).tolist(),
-                    **kwargs,
-                )
-            )
-
-            # if no groundtruths exists for a label, skip it.
-            if label_metadata[label_idx, 0] == 0:
-                continue
-
-            metrics[MetricType.Precision].append(
-                Precision(
-                    value=precision[:, label_idx].astype(float).tolist(),
-                    **kwargs,
-                )
-            )
-            metrics[MetricType.Recall].append(
-                Recall(
-                    value=recall[:, label_idx].astype(float).tolist(),
-                    **kwargs,
-                )
-            )
-            metrics[MetricType.F1].append(
-                F1(
-                    value=f1_score[:, label_idx].astype(float).tolist(),
-                    **kwargs,
-                )
-            )
-
-        if as_dict:
-            return {
-                mtype: [metric.to_dict() for metric in mvalues]
-                for mtype, mvalues in metrics.items()
-            }
-
-        return metrics
+        return unpack_precision_recall_rocauc_into_metric_lists(
+            results=results,
+            score_thresholds=score_thresholds,
+            hardmax=hardmax,
+            label_metadata=label_metadata,
+            index_to_label=self.index_to_label,
+        )
 
     def compute_confusion_matrix(
         self,
@@ -430,8 +240,7 @@ class Evaluator:
         hardmax: bool = True,
         number_of_examples: int = 0,
         filter_: Filter | None = None,
-        as_dict: bool = False,
-    ) -> list:
+    ) -> list[Metric]:
         """
         Computes a detailed confusion matrix..
 
@@ -445,12 +254,10 @@ class Evaluator:
             The number of examples to return per count.
         filter_ : Filter, optional
             An optional filter object.
-        as_dict : bool, default=False
-            An option to return metrics as dictionaries.
 
         Returns
         -------
-        list[ConfusionMatrix] | list[dict]
+        list[Metric]
             A list of confusion matrices.
         """
 
@@ -464,7 +271,7 @@ class Evaluator:
         if data.size == 0:
             return list()
 
-        confusion_matrix, missing_predictions = compute_confusion_matrix(
+        results = compute_confusion_matrix(
             data=data,
             label_metadata=label_metadata,
             score_thresholds=np.array(score_thresholds),
@@ -472,29 +279,13 @@ class Evaluator:
             n_examples=number_of_examples,
         )
 
-        n_scores, n_labels, _, _ = confusion_matrix.shape
-        results = [
-            ConfusionMatrix(
-                score_threshold=score_thresholds[score_idx],
-                number_of_examples=number_of_examples,
-                confusion_matrix=self._unpack_confusion_matrix(
-                    confusion_matrix=confusion_matrix[score_idx, :, :, :],
-                    number_of_labels=n_labels,
-                    number_of_examples=number_of_examples,
-                ),
-                missing_predictions=self._unpack_missing_predictions(
-                    missing_predictions=missing_predictions[score_idx, :, :],
-                    number_of_labels=n_labels,
-                    number_of_examples=number_of_examples,
-                ),
-            )
-            for score_idx in range(n_scores)
-        ]
-
-        if as_dict:
-            return [m.to_dict() for m in results]
-
-        return results
+        return unpack_confusion_matrix_into_metric_list(
+            results=results,
+            score_thresholds=score_thresholds,
+            number_of_examples=number_of_examples,
+            index_to_uid=self.index_to_uid,
+            index_to_label=self.index_to_label,
+        )
 
     def evaluate(
         self,
@@ -502,8 +293,7 @@ class Evaluator:
         hardmax: bool = True,
         number_of_examples: int = 0,
         filter_: Filter | None = None,
-        as_dict: bool = False,
-    ) -> dict[MetricType, list]:
+    ) -> dict[MetricType, list[Metric]]:
         """
         Computes a detailed confusion matrix..
 
@@ -517,29 +307,27 @@ class Evaluator:
             The number of examples to return per count.
         filter_ : Filter, optional
             An optional filter object.
-        as_dict : bool, default=False
-            An option to return metrics as dictionaries.
 
         Returns
         -------
-        list[ConfusionMatrix] | list[dict]
-            A list of confusion matrices.
+        dict[MetricType, list[Metric]]
+            Lists of metrics organized by metric type.
         """
 
-        results = self.compute_precision_recall(
+        metrics = self.compute_precision_recall_rocauc(
             score_thresholds=score_thresholds,
             hardmax=hardmax,
             filter_=filter_,
-            as_dict=as_dict,
         )
-        results[MetricType.ConfusionMatrix] = self.compute_confusion_matrix(
+
+        metrics[MetricType.ConfusionMatrix] = self.compute_confusion_matrix(
             score_thresholds=score_thresholds,
             hardmax=hardmax,
             number_of_examples=number_of_examples,
             filter_=filter_,
-            as_dict=as_dict,
         )
-        return results
+
+        return metrics
 
 
 class DataLoader:

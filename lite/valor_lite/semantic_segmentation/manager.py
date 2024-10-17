@@ -9,15 +9,9 @@ from valor_lite.semantic_segmentation.computation import (
     compute_intermediate_confusion_matrices,
     compute_metrics,
 )
-from valor_lite.semantic_segmentation.metric import (
-    F1,
-    Accuracy,
-    ConfusionMatrix,
-    IoU,
-    MetricType,
-    Precision,
-    Recall,
-    mIoU,
+from valor_lite.semantic_segmentation.metric import Metric, MetricType
+from valor_lite.semantic_segmentation.utilities import (
+    unpack_precision_recall_iou_into_metric_lists,
 )
 
 """
@@ -193,7 +187,6 @@ class Evaluator:
     def compute_precision_recall_iou(
         self,
         filter_: Filter | None = None,
-        as_dict: bool = False,
     ) -> dict[MetricType, list]:
         """
         Performs an evaluation and returns metrics.
@@ -202,8 +195,6 @@ class Evaluator:
         ----------
         filter_ : Filter, optional
             An optional filter object.
-        as_dict : bool, default=False
-            An option to return metrics as dictionaries.
 
         Returns
         -------
@@ -220,112 +211,22 @@ class Evaluator:
             label_metadata = filter_.label_metadata
             n_pixels = filter_.n_pixels
 
-        (
-            precision,
-            recall,
-            f1_score,
-            accuracy,
-            ious,
-            hallucination_ratios,
-            missing_prediction_ratios,
-        ) = compute_metrics(
+        results = compute_metrics(
             data=data,
             label_metadata=label_metadata,
             n_pixels=n_pixels,
         )
 
-        metrics = defaultdict(list)
-
-        metrics[MetricType.Accuracy] = [
-            Accuracy(
-                value=float(accuracy),
-            )
-        ]
-
-        metrics[MetricType.ConfusionMatrix] = [
-            ConfusionMatrix(
-                confusion_matrix={
-                    self.index_to_label[gt_label_idx]: {
-                        self.index_to_label[pd_label_idx]: {
-                            "iou": float(ious[gt_label_idx, pd_label_idx])
-                        }
-                        for pd_label_idx in range(self.n_labels)
-                        if label_metadata[pd_label_idx, 0] > 0
-                    }
-                    for gt_label_idx in range(self.n_labels)
-                    if label_metadata[gt_label_idx, 0] > 0
-                },
-                hallucinations={
-                    self.index_to_label[pd_label_idx]: {
-                        "ratio": float(hallucination_ratios[pd_label_idx])
-                    }
-                    for pd_label_idx in range(self.n_labels)
-                    if label_metadata[pd_label_idx, 0] > 0
-                },
-                missing_predictions={
-                    self.index_to_label[gt_label_idx]: {
-                        "ratio": float(missing_prediction_ratios[gt_label_idx])
-                    }
-                    for gt_label_idx in range(self.n_labels)
-                    if label_metadata[gt_label_idx, 0] > 0
-                },
-            )
-        ]
-
-        metrics[MetricType.mIoU] = [
-            mIoU(
-                value=float(ious.diagonal().mean()),
-            )
-        ]
-
-        for label_idx, label in self.index_to_label.items():
-
-            kwargs = {
-                "label": label,
-            }
-
-            # if no groundtruths exists for a label, skip it.
-            if label_metadata[label_idx, 0] == 0:
-                continue
-
-            metrics[MetricType.Precision].append(
-                Precision(
-                    value=float(precision[label_idx]),
-                    **kwargs,
-                )
-            )
-            metrics[MetricType.Recall].append(
-                Recall(
-                    value=float(recall[label_idx]),
-                    **kwargs,
-                )
-            )
-            metrics[MetricType.F1].append(
-                F1(
-                    value=float(f1_score[label_idx]),
-                    **kwargs,
-                )
-            )
-            metrics[MetricType.IoU].append(
-                IoU(
-                    value=float(ious[label_idx, label_idx]),
-                    **kwargs,
-                )
-            )
-
-        if as_dict:
-            return {
-                mtype: [metric.to_dict() for metric in mvalues]
-                for mtype, mvalues in metrics.items()
-            }
-
-        return metrics
+        return unpack_precision_recall_iou_into_metric_lists(
+            results=results,
+            label_metadata=label_metadata,
+            index_to_label=self.index_to_label,
+        )
 
     def evaluate(
         self,
         filter_: Filter | None = None,
-        as_dict: bool = False,
-    ) -> dict[MetricType, list]:
+    ) -> dict[MetricType, list[Metric]]:
         """
         Computes all available metrics.
 
@@ -333,17 +234,13 @@ class Evaluator:
         ----------
         filter_ : Filter, optional
             An optional filter object.
-        as_dict : bool, default=False
-            An option to return metrics as dictionaries.
 
         Returns
         -------
-        dict[MetricType, list]
-            A dictionary mapping metric type to lists of metrics.
+        dict[MetricType, list[Metric]]
+            Lists of metrics organized by metric type.
         """
-        return self.compute_precision_recall_iou(
-            filter_=filter_, as_dict=as_dict
-        )
+        return self.compute_precision_recall_iou(filter_=filter_)
 
 
 class DataLoader:
