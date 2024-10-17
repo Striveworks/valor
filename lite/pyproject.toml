@@ -6,15 +6,17 @@ readme = "README.md"
 requires-python = ">=3.10"
 license = { file = "LICENSE" }
 dependencies = [
-    "Pillow >= 9.1.0",
+    "evaluate",
     "importlib_metadata; python_version < '3.8'",
-    "tqdm",
-    "requests",
-    "numpy",
-    "shapely",
     "nltk",
+    "numpy",
+    "pandas>=2.2.2",
+    "pandas-stubs",
+    "Pillow >= 9.1.0",
+    "requests",
     "rouge_score",
-    "evaluate"
+    "shapely",
+    "tqdm",
 ]
 
 [project.urls]
