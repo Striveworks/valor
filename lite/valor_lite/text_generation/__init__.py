@@ -1,5 +1,5 @@
 from .managers import ValorTextGenerationStreamingManager
-from .metrics import (
+from .metric import (
     AnswerCorrectnessMetric,
     AnswerRelevanceMetric,
     BiasMetric,

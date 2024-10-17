@@ -4,14 +4,29 @@ from collections import defaultdict
 import evaluate
 from nltk.tokenize import RegexpTokenizer
 from nltk.translate import bleu_score
-from valor_lite.text_generation import metrics, schemas, utilities
-from valor_lite.text_generation.enums import MetricType, ROUGEType
+from valor_lite.text_generation import schemas, utilities
 from valor_lite.text_generation.exceptions import InvalidLLMResponseError
 from valor_lite.text_generation.llm_clients import (
     LLMClient,
     MockLLMClient,
     WrappedMistralAIClient,
     WrappedOpenAIClient,
+)
+from valor_lite.text_generation.metric import (
+    AnswerCorrectnessMetric,
+    AnswerRelevanceMetric,
+    BiasMetric,
+    BLEUMetric,
+    ContextPrecisionMetric,
+    ContextRecallMetric,
+    ContextRelevanceMetric,
+    FaithfulnessMetric,
+    HallucinationMetric,
+    MetricType,
+    ROUGEMetric,
+    ROUGEType,
+    SummaryCoherenceMetric,
+    ToxicityMetric,
 )
 
 LLM_GUIDED_METRICS = {
@@ -251,18 +266,18 @@ def _compute_text_generation_metrics(
     llm_api_params: dict[str, str | int | dict] | None = None,
     metric_params: dict[str, dict] = {},
 ) -> list[
-    metrics.AnswerCorrectnessMetric
-    | metrics.AnswerRelevanceMetric
-    | metrics.BiasMetric
-    | metrics.BLEUMetric
-    | metrics.ContextPrecisionMetric
-    | metrics.ContextRecallMetric
-    | metrics.ContextRelevanceMetric
-    | metrics.FaithfulnessMetric
-    | metrics.HallucinationMetric
-    | metrics.ROUGEMetric
-    | metrics.SummaryCoherenceMetric
-    | metrics.ToxicityMetric
+    AnswerCorrectnessMetric
+    | AnswerRelevanceMetric
+    | BiasMetric
+    | BLEUMetric
+    | ContextPrecisionMetric
+    | ContextRecallMetric
+    | ContextRelevanceMetric
+    | FaithfulnessMetric
+    | HallucinationMetric
+    | ROUGEMetric
+    | SummaryCoherenceMetric
+    | ToxicityMetric
 ]:
     """
     Compute text generation metrics.
@@ -335,7 +350,7 @@ def _compute_text_generation_metrics(
                         groundtruth_list=groundtruth_texts,
                     )
                     output += [
-                        metrics.AnswerCorrectnessMetric(
+                        AnswerCorrectnessMetric(
                             status="success",
                             value=value,
                             parameters={
@@ -346,7 +361,7 @@ def _compute_text_generation_metrics(
                     ]
                 except InvalidLLMResponseError:
                     output += [
-                        metrics.AnswerCorrectnessMetric(
+                        AnswerCorrectnessMetric(
                             status="error",
                             value=None,
                             parameters={
@@ -368,7 +383,7 @@ def _compute_text_generation_metrics(
                 )
 
                 output += [
-                    metrics.BLEUMetric(
+                    BLEUMetric(
                         status="success",
                         value=metric["value"],
                         parameters={
@@ -389,7 +404,7 @@ def _compute_text_generation_metrics(
                         groundtruth_list=groundtruth_texts,
                     )
                     output += [
-                        metrics.ContextPrecisionMetric(
+                        ContextPrecisionMetric(
                             status="success",
                             value=value,
                             parameters={
@@ -400,7 +415,7 @@ def _compute_text_generation_metrics(
                     ]
                 except InvalidLLMResponseError:
                     output += [
-                        metrics.ContextPrecisionMetric(
+                        ContextPrecisionMetric(
                             status="error",
                             value=None,
                             parameters={
@@ -418,7 +433,7 @@ def _compute_text_generation_metrics(
                         groundtruth_list=groundtruth_texts,
                     )
                     output += [
-                        metrics.ContextRecallMetric(
+                        ContextRecallMetric(
                             status="success",
                             value=value,
                             parameters={
@@ -429,7 +444,7 @@ def _compute_text_generation_metrics(
                     ]
                 except InvalidLLMResponseError:
                     output += [
-                        metrics.ContextRecallMetric(
+                        ContextRecallMetric(
                             status="error",
                             value=None,
                             parameters={
@@ -461,7 +476,7 @@ def _compute_text_generation_metrics(
                 )
 
                 output += [
-                    metrics.ROUGEMetric(
+                    ROUGEMetric(
                         status="success",
                         value=metric["value"],
                         parameters={
@@ -499,7 +514,7 @@ def _compute_text_generation_metrics(
                         text=prediction_text,
                     )
                     output += [
-                        metrics.AnswerRelevanceMetric(
+                        AnswerRelevanceMetric(
                             status="success",
                             value=value,
                             parameters={
@@ -510,7 +525,7 @@ def _compute_text_generation_metrics(
                     ]
                 except InvalidLLMResponseError:
                     output += [
-                        metrics.AnswerRelevanceMetric(
+                        AnswerRelevanceMetric(
                             status="error",
                             value=None,
                             parameters={
@@ -523,7 +538,7 @@ def _compute_text_generation_metrics(
                 try:
                     value = client.bias(text=prediction_text)
                     output += [
-                        metrics.BiasMetric(
+                        BiasMetric(
                             status="success",
                             value=value,
                             parameters={
@@ -534,7 +549,7 @@ def _compute_text_generation_metrics(
                     ]
                 except InvalidLLMResponseError:
                     output += [
-                        metrics.BiasMetric(
+                        BiasMetric(
                             status="error",
                             value=None,
                             parameters={
@@ -550,7 +565,7 @@ def _compute_text_generation_metrics(
                         query=datum_text, context_list=prediction_context_list
                     )
                     output += [
-                        metrics.ContextRelevanceMetric(
+                        ContextRelevanceMetric(
                             status="success",
                             value=value,
                             parameters={
@@ -561,7 +576,7 @@ def _compute_text_generation_metrics(
                     ]
                 except InvalidLLMResponseError:
                     output += [
-                        metrics.ContextRelevanceMetric(
+                        ContextRelevanceMetric(
                             status="error",
                             value=None,
                             parameters={
@@ -578,7 +593,7 @@ def _compute_text_generation_metrics(
                         context_list=prediction_context_list,
                     )
                     output += [
-                        metrics.FaithfulnessMetric(
+                        FaithfulnessMetric(
                             status="success",
                             value=value,
                             parameters={
@@ -590,7 +605,7 @@ def _compute_text_generation_metrics(
                     ]
                 except InvalidLLMResponseError:
                     output += [
-                        metrics.FaithfulnessMetric(
+                        FaithfulnessMetric(
                             status="error",
                             value=None,
                             parameters={
@@ -608,7 +623,7 @@ def _compute_text_generation_metrics(
                         context_list=prediction_context_list,
                     )
                     output += [
-                        metrics.HallucinationMetric(
+                        HallucinationMetric(
                             status="success",
                             value=value,
                             parameters={
@@ -620,7 +635,7 @@ def _compute_text_generation_metrics(
                     ]
                 except InvalidLLMResponseError:
                     output += [
-                        metrics.HallucinationMetric(
+                        HallucinationMetric(
                             status="error",
                             value=None,
                             parameters={
@@ -638,7 +653,7 @@ def _compute_text_generation_metrics(
                         summary=prediction_text,
                     )
                     output += [
-                        metrics.SummaryCoherenceMetric(
+                        SummaryCoherenceMetric(
                             status="success",
                             value=value,
                             parameters={
@@ -649,7 +664,7 @@ def _compute_text_generation_metrics(
                     ]
                 except InvalidLLMResponseError:
                     output += [
-                        metrics.SummaryCoherenceMetric(
+                        SummaryCoherenceMetric(
                             status="error",
                             value=None,
                             parameters={
@@ -663,7 +678,7 @@ def _compute_text_generation_metrics(
                 try:
                     value = client.toxicity(text=prediction_text)
                     output += [
-                        metrics.ToxicityMetric(
+                        ToxicityMetric(
                             status="success",
                             value=value,
                             parameters={
@@ -674,7 +689,7 @@ def _compute_text_generation_metrics(
                     ]
                 except InvalidLLMResponseError:
                     output += [
-                        metrics.ToxicityMetric(
+                        ToxicityMetric(
                             status="error",
                             value=None,
                             parameters={

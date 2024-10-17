@@ -1,7 +1,7 @@
 import json
 from dataclasses import dataclass
 
-from valor_lite.text_generation import enums
+from valor_lite.text_generation.metric import MetricType
 
 
 @dataclass
@@ -118,7 +118,7 @@ class EvaluationParameters:
         A dictionary of optional parameters to pass in to specific metrics.
     """
 
-    metrics_to_return: list[enums.MetricType] | None = None
+    metrics_to_return: list[MetricType] | None = None
     llm_api_params: dict[str, str | int | dict] | None = None
     metric_params: dict[str, dict] | None = None
 
@@ -130,11 +130,10 @@ class EvaluationParameters:
                 f"Expected 'metrics_to_return' to be of type 'list' or 'None', got {type(self.metrics_to_return).__name__}"
             )
         if self.metrics_to_return is not None and not all(
-            isinstance(metric, enums.MetricType)
-            for metric in self.metrics_to_return
+            isinstance(metric, MetricType) for metric in self.metrics_to_return
         ):
             raise TypeError(
-                "All items in 'metrics_to_return' must be of type 'enums.MetricType'"
+                "All items in 'metrics_to_return' must be of type 'MetricType'"
             )
 
         if self.llm_api_params is not None:

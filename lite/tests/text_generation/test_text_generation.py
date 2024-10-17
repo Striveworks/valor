@@ -2,7 +2,7 @@ from unittest.mock import patch
 
 import pytest
 from valor_lite.text_generation import schemas
-from valor_lite.text_generation.enums import MetricType, ROUGEType
+from valor_lite.text_generation.metric import MetricType, ROUGEType
 from valor_lite.text_generation.text_generation import (
     _calculate_rouge_scores,
     _calculate_sentence_bleu,

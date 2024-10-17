@@ -4,10 +4,10 @@ from unittest.mock import patch
 import pandas as pd
 import pytest
 from valor_lite.text_generation import managers, schemas
-from valor_lite.text_generation.enums import MetricType
 from valor_lite.text_generation.exceptions import (
     MismatchingTextGenerationDatumError,
 )
+from valor_lite.text_generation.metric import MetricType
 
 LLM_API_PARAMS = {
     "client": "openai",

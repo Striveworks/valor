@@ -1,15 +1,11 @@
 from dataclasses import dataclass, field
 
 import pandas as pd
-from valor_lite.text_generation import (
-    enums,
-    schemas,
-    text_generation,
-    utilities,
-)
+from valor_lite.text_generation import schemas, text_generation, utilities
 from valor_lite.text_generation.exceptions import (
     MismatchingTextGenerationDatumError,
 )
+from valor_lite.text_generation.metric import MetricType
 
 
 @dataclass
@@ -21,7 +17,7 @@ class ValorTextGenerationStreamingManager:
 
     Attributes
     ----------
-    metrics_to_return : list[enums.MetricType]
+    metrics_to_return : list[MetricType]
         A list of metrics to calculate during the evaluation.
     llm_api_params : dict[str, str | int | dict], optional
         The parameters to setup the client with.
@@ -33,7 +29,7 @@ class ValorTextGenerationStreamingManager:
         A set of user specified unique identifiers for the data samples.
     """
 
-    metrics_to_return: list[enums.MetricType]
+    metrics_to_return: list[MetricType]
     llm_api_params: dict[str, str | int | dict]
     metric_params: dict[str, dict] = field(default_factory=dict)
     joint_df: pd.DataFrame = field(default_factory=lambda: pd.DataFrame([]))
@@ -71,13 +67,13 @@ class ValorTextGenerationStreamingManager:
             metrics_to_return=self.metrics_to_return,
         )
         non_text_comparison_metrics = {
-            enums.MetricType.AnswerRelevance,
-            enums.MetricType.Bias,
-            enums.MetricType.ContextRelevance,
-            enums.MetricType.Faithfulness,
-            enums.MetricType.Hallucination,
-            enums.MetricType.SummaryCoherence,
-            enums.MetricType.Toxicity,
+            MetricType.AnswerRelevance,
+            MetricType.Bias,
+            MetricType.ContextRelevance,
+            MetricType.Faithfulness,
+            MetricType.Hallucination,
+            MetricType.SummaryCoherence,
+            MetricType.Toxicity,
         }
         if not set(self.metrics_to_return).issubset(
             non_text_comparison_metrics

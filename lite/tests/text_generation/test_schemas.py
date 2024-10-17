@@ -1,5 +1,5 @@
 import pytest
-from valor_lite.text_generation import enums, schemas
+from valor_lite.text_generation import metric, schemas
 
 
 @pytest.fixture
@@ -150,10 +150,10 @@ def test_EvaluationParameters():
     # Typical evaluation parameters for a text generation task
     schemas.EvaluationParameters(
         metrics_to_return=[
-            enums.MetricType.AnswerCorrectness,
-            enums.MetricType.BLEU,
-            enums.MetricType.ContextPrecision,
-            enums.MetricType.ContextRecall,
+            metric.MetricType.AnswerCorrectness,
+            metric.MetricType.BLEU,
+            metric.MetricType.ContextPrecision,
+            metric.MetricType.ContextRecall,
         ],
         llm_api_params={
             "client": "openai",
