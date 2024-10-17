@@ -15,6 +15,19 @@ class MetricType(Enum):
 
 
 class Metric(BaseMetric):
+    """
+    Classification Metric.
+
+    Attributes
+    ----------
+    type : str
+        The metric type.
+    value : int | float | dict
+        The metric value.
+    parameters : dict[str, Any]
+        A dictionary containing metric parameters.
+    """
+
     @classmethod
     def precision(
         cls,
