@@ -1,9 +1,11 @@
 from .auth import User
 from .classification import Classification
 from .evaluation import (
-    EvaluationParameters,
-    EvaluationRequest,
-    EvaluationResponse,
+    Evaluation,
+    ClassificationParameters,
+    ObjectDetectionParameters,
+    SemanticSegmentationParameters,
+    Summary,
 )
 from .filters import (
     Condition,
@@ -16,7 +18,7 @@ from .filters import (
     Symbol,
     Value,
 )
-from .generic import Dataset, Model
+from .generic import Dataset, Model, Datum
 from .geojson import (
     GeoJSON,
     LineString,
@@ -42,6 +44,7 @@ __all__ = [
     "GeoJSON",
     "APIVersion",
     "User",
+    "Datum",
     "Dataset",
     "Model",
     "Point",
@@ -55,9 +58,6 @@ __all__ = [
     "MultiPoint",
     "LineString",
     "MultiLineString",
-    "EvaluationRequest",
-    "EvaluationResponse",
-    "EvaluationParameters",
     "Filter",
     "Symbol",
     "Value",
@@ -77,4 +77,9 @@ __all__ = [
     "InstanceBitmask",
     "SemanticSegmentation",
     "SemanticBitmask",
+    "Evaluation",
+    "ClassificationParameters",
+    "ObjectDetectionParameters",
+    "SemanticSegmentationParameters",
+    "Summary",
 ]

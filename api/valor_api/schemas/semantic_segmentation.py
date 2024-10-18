@@ -13,15 +13,20 @@ from valor_api.schemas.validators import validate_string_identifier
 
 
 class SemanticBitmask(BaseModel):
-    mask: NDArray[np.bool_]
+    mask: np.ndarray
     label: str
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(
+        extra="forbid",
+        arbitrary_types_allowed=True,
+    )
 
     @model_validator(mode="before")
     @classmethod
     def _decode_mask(cls, kwargs: Any) -> Any:
         """Decode the encoded byte string into a NumPy mask."""
         encoding = kwargs["mask"]
+        if not isinstance(encoding, str):
+            raise ValueError("Semantic bitmask takes an encoded bitmask as input.")
         f = io.BytesIO(b64decode(encoding))
         img = PIL.Image.open(f)
         f.close()
@@ -38,10 +43,8 @@ class SemanticBitmask(BaseModel):
 
 
 class SemanticSegmentation(BaseModel):
-    uid: str
     groundtruths: list[SemanticBitmask]
     predictions: list[SemanticBitmask]
-    metadata: Metadata | None = None
     model_config = ConfigDict(extra="forbid")
 
     @model_validator(mode="after")

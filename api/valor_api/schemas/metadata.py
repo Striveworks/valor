@@ -29,13 +29,13 @@ class Metadata(BaseModel):
         A time in ISO string format.
     """
 
-    string: dict[str, str] | None = None
-    integer: dict[str, int] | None = None
-    floating: dict[str, float] | None = None
-    geospatial: dict[str, GeoJSON] | None = None
-    datetime: dict[str, "datetime"] | None = None
-    date: dict[str, "date"] | None = None
-    time: dict[str, "time"] | None = None
+    string: dict[str, str]
+    integer: dict[str, int]
+    floating: dict[str, float]
+    geospatial: dict[str, GeoJSON]
+    datetime: dict[str, "datetime"]
+    date: dict[str, "date"]
+    time: dict[str, "time"]
     model_config = ConfigDict(extra="forbid")
 
     @model_validator(mode="before")
@@ -44,10 +44,10 @@ class Metadata(BaseModel):
         for key in kwargs.keys():
             validate_string_identifier(key)
             for k, v in kwargs[key].items():
-                if key == "datetime":
-                    kwargs[key][k] = datetime.fromisoformat(v)
-                elif key == "date":
+                if key == "datetime" and isinstance(kwargs[key][k], str):
+                        kwargs[key][k] = datetime.fromisoformat(v)
+                elif key == "date" and isinstance(kwargs[key][k], str):
                     kwargs[key][k] = date.fromisoformat(v)
-                elif key == "time":
+                elif key == "time" and isinstance(kwargs[key][k], str):
                     kwargs[key][k] = time.fromisoformat(v)
         return kwargs

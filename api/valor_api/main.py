@@ -77,11 +77,7 @@ def create_classifications(
     db: Session = Depends(get_db),
 ):
     try:
-        crud.create_groundtruths(
-            db=db,
-            groundtruths=groundtruths,
-            ignore_existing_datums=ignore_existing_datums,
-        )
+        pass
     except Exception as e:
         raise exceptions.create_http_error(e)
 
@@ -96,11 +92,7 @@ def get_classification(
     dataset_name: str, model_name: str, uid: str, db: Session = Depends(get_db)
 ) -> schemas.Classification | None:
     try:
-        return crud.get_groundtruth(
-            db=db,
-            dataset_name=dataset_name,
-            datum_uid=uid,
-        )
+        pass
     except Exception as e:
         raise exceptions.create_http_error(e)
 
@@ -119,11 +111,7 @@ def evaluate_classifications(
     db: Session = Depends(get_db),
 ):
     try:
-        crud.create_groundtruths(
-            db=db,
-            groundtruths=groundtruths,
-            ignore_existing_datums=ignore_existing_datums,
-        )
+        pass
     except Exception as e:
         raise exceptions.create_http_error(e)
 
@@ -141,11 +129,7 @@ def evaluate_filtered_classifications(
     db: Session = Depends(get_db),
 ):
     try:
-        crud.create_groundtruths(
-            db=db,
-            groundtruths=groundtruths,
-            ignore_existing_datums=ignore_existing_datums,
-        )
+        pass
     except Exception as e:
         raise exceptions.create_http_error(e)
 
@@ -167,11 +151,7 @@ def create_object_detections(
     db: Session = Depends(get_db),
 ):
     try:
-        crud.create_groundtruths(
-            db=db,
-            groundtruths=groundtruths,
-            ignore_existing_datums=ignore_existing_datums,
-        )
+        pass
     except Exception as e:
         raise exceptions.create_http_error(e)
 
@@ -186,11 +166,7 @@ def get_object_detection(
     dataset_name: str, model_name: str, uid: str, db: Session = Depends(get_db)
 ) -> schemas.ObjectDetection | None:
     try:
-        return crud.get_groundtruth(
-            db=db,
-            dataset_name=dataset_name,
-            datum_uid=uid,
-        )
+        pass
     except Exception as e:
         raise exceptions.create_http_error(e)
 
@@ -212,11 +188,7 @@ def create_semantic_segmentations(
     db: Session = Depends(get_db),
 ):
     try:
-        crud.create_groundtruths(
-            db=db,
-            groundtruths=groundtruths,
-            ignore_existing_datums=ignore_existing_datums,
-        )
+        pass
     except Exception as e:
         raise exceptions.create_http_error(e)
 
@@ -231,11 +203,7 @@ def get_semantic_segmentation(
     dataset_name: str, model_name: str, uid: str, db: Session = Depends(get_db)
 ) -> schemas.SemanticSegmentation | None:
     try:
-        return crud.get_groundtruth(
-            db=db,
-            dataset_name=dataset_name,
-            datum_uid=uid,
-        )
+        pass
     except Exception as e:
         raise exceptions.create_http_error(e)
 
@@ -283,14 +251,7 @@ def get_labels(
         A list of all labels in the database.
     """
     try:
-        content, headers = crud.get_labels(
-            db=db,
-            filters=schemas.Filter(),
-            offset=offset,
-            limit=limit,
-        )
-        response.headers.update(headers)
-        return list(content)
+        pass
     except Exception as e:
         raise exceptions.create_http_error(e)
 
@@ -338,14 +299,7 @@ def get_filtered_labels(
         A list of labels.
     """
     try:
-        content, headers = crud.get_labels(
-            db=db,
-            filters=filters,
-            offset=offset,
-            limit=limit,
-        )
-        response.headers.update(headers)
-        return list(content)
+        pass
     except Exception as e:
         raise exceptions.create_http_error(e)
 
@@ -395,23 +349,7 @@ def get_labels_from_dataset(
         If the dataset doesn't exist.
     """
     try:
-        content, headers = crud.get_labels(
-            db=db,
-            filters=schemas.Filter(
-                groundtruths=schemas.Condition(
-                    lhs=schemas.Symbol(
-                        name=schemas.SupportedSymbol.DATASET_NAME
-                    ),
-                    rhs=schemas.Value.infer(dataset_name),
-                    op=schemas.FilterOperator.EQ,
-                )
-            ),
-            ignore_prediction_labels=True,
-            offset=offset,
-            limit=limit,
-        )
-        response.headers.update(headers)
-        return list(content)
+        pass
 
     except Exception as e:
         raise exceptions.create_http_error(e)
@@ -464,23 +402,7 @@ def get_labels_from_model(
         If the model doesn't exist.
     """
     try:
-        content, headers = crud.get_labels(
-            db=db,
-            filters=schemas.Filter(
-                groundtruths=schemas.Condition(
-                    lhs=schemas.Symbol(
-                        name=schemas.SupportedSymbol.MODEL_NAME
-                    ),
-                    rhs=schemas.Value.infer(model_name),
-                    op=schemas.FilterOperator.EQ,
-                )
-            ),
-            ignore_groundtruth_labels=True,
-            offset=offset,
-            limit=limit,
-        )
-        response.headers.update(headers)
-        return list(content)
+        pass
 
     except Exception as e:
         raise exceptions.create_http_error(e)
@@ -561,14 +483,7 @@ def get_datasets(
         A list of all datasets stored in the database.
     """
     try:
-        content, headers = crud.get_datasets(
-            db=db,
-            filters=schemas.Filter(),
-            offset=offset,
-            limit=limit,
-        )
-        response.headers.update(headers)
-        return content
+        pass
     except Exception as e:
         raise exceptions.create_http_error(e)
 
@@ -616,14 +531,7 @@ def get_filtered_datasets(
         A list of datasets.
     """
     try:
-        content, headers = crud.get_datasets(
-            db=db,
-            filters=filters,
-            offset=offset,
-            limit=limit,
-        )
-        response.headers.update(headers)
-        return list(content)
+        pass
     except Exception as e:
         raise exceptions.create_http_error(e)
 
@@ -659,7 +567,7 @@ def get_dataset(
         If the dataset doesn't exist.
     """
     try:
-        return crud.get_dataset(db=db, dataset_name=dataset_name)
+        pass
     except Exception as e:
         raise exceptions.create_http_error(e)
 
@@ -697,7 +605,7 @@ def delete_dataset(
     """
     logger.debug(f"request to delete dataset {dataset_name}")
     try:
-        crud.delete(db=db, dataset_name=dataset_name)
+        pass
     except Exception as e:
         raise exceptions.create_http_error(e)
 
@@ -732,7 +640,7 @@ def create_model(model: schemas.Model, db: Session = Depends(get_db)):
         If the dataset has been finalized, or if the datum already exists.
     """
     try:
-        crud.create_model(db=db, model=model)
+        pass
     except Exception as e:
         raise exceptions.create_http_error(e)
 
@@ -777,16 +685,7 @@ def get_models(
     list[schemas.Model]
         A list of models.
     """
-    content, headers = crud.get_models(
-        db=db,
-        filters=schemas.Filter(),
-        offset=offset,
-        limit=limit,
-    )
-
-    response.headers.update(headers)
-
-    return content
+    pass
 
 
 @app.post(
@@ -832,14 +731,7 @@ def get_filtered_models(
         A list of models.
     """
     try:
-        content, headers = crud.get_models(
-            db=db,
-            filters=filters,
-            offset=offset,
-            limit=limit,
-        )
-        response.headers.update(headers)
-        return list(content)
+        pass
     except Exception as e:
         raise exceptions.create_http_error(e)
 
@@ -873,7 +765,7 @@ def get_model(model_name: str, db: Session = Depends(get_db)) -> schemas.Model:
         If the model datum doesn't exist.
     """
     try:
-        return crud.get_model(db=db, model_name=model_name)
+        pass
     except Exception as e:
         raise exceptions.create_http_error(e)
 
@@ -885,7 +777,7 @@ def get_model(model_name: str, db: Session = Depends(get_db)) -> schemas.Model:
 )
 def get_model_eval_requests(
     model_name: str, db: Session = Depends(get_db)
-) -> list[schemas.EvaluationResponse]:
+) -> list[schemas.Evaluation]:
     """
     Fetch a particular model.
 
@@ -900,7 +792,7 @@ def get_model_eval_requests(
 
     Returns
     -------
-    list[EvaluationResponse]
+    list[Evaluation]
         The evaluation requessts associated to the model
 
     Raises
@@ -909,9 +801,7 @@ def get_model_eval_requests(
         If the model doesn't exist.
     """
     try:
-        return crud.get_evaluation_requests_from_model(
-            db=db, model_name=model_name
-        )
+        return []
     except Exception as e:
         raise exceptions.create_http_error(e)
 
@@ -946,208 +836,7 @@ def delete_model(
         If the model isn't in the correct state to be deleted.
     """
     try:
-        crud.delete(db=db, model_name=model_name)
-    except Exception as e:
-        raise exceptions.create_http_error(e)
-
-
-""" EVALUATION """
-
-
-@app.post(
-    "/evaluations",
-    status_code=202,
-    dependencies=[Depends(token_auth_scheme)],
-    tags=["Evaluations"],
-)
-def create_or_get_evaluations(
-    response: Response,
-    job_request: schemas.EvaluationRequest,
-    background_tasks: BackgroundTasks,
-    allow_retries: bool = False,
-    db: Session = Depends(get_db),
-) -> list[schemas.EvaluationResponse]:
-    """
-    Create a new evaluation.
-
-    POST Endpoint: `/evaluations`
-
-    Parameters
-    ----------
-    response: Response
-        The FastAPI response object. Used to return a content-range header to the user.
-    job_request: schemas.EvaluationJob
-        The job request for the evaluation.
-    background_tasks: BackgroundTasks
-        A FastAPI `BackgroundTasks` object to process the creation asynchronously. This parameter is a FastAPI dependency and shouldn't be submitted by the user.
-    allow_retries: bool, default = False
-        Determines whether failed evaluations are restarted.
-    db : Session
-        The database session to use. This parameter is a sqlalchemy dependency and shouldn't be submitted by the user.
-
-    Returns
-    -------
-    list[schemas.EvaluationResponse]
-        A list of evaluation response objects.
-
-    Raises
-    ------
-    HTTPException (400)
-        If the task type of the evaluation job doesn't exist, or if another ValueError is thrown.
-    HTTPException (404)
-        If the dataset or model does not exist.
-    HTTPException (405)
-        If the dataset or model hasn't been finalized.
-    HTTPException (409)
-        If there is a state exception when creating the evaluation.
-    """
-    try:
-        return crud.create_or_get_evaluations(
-            db=db,
-            job_request=job_request,
-            task_handler=background_tasks,
-            allow_retries=allow_retries,
-        )
-    except Exception as e:
-        raise exceptions.create_http_error(e)
-
-
-@app.get(
-    "/evaluations/",
-    dependencies=[Depends(token_auth_scheme)],
-    response_model_exclude_none=True,
-    tags=["Evaluations"],
-)
-def get_evaluations(
-    response: Response,
-    datasets: str
-    | None = Query(
-        None, description="An optional set of dataset names to constrain by."
-    ),
-    models: str
-    | None = Query(
-        None, description="An optional set of model names to constrain by."
-    ),
-    evaluation_ids: str
-    | None = Query(
-        None, description="An optional set of evaluation_ids to constrain by."
-    ),
-    offset: int = Query(
-        0, description="The start index of the items to return."
-    ),
-    limit: int = Query(
-        -1,
-        description="The number of items to return. Returns all items when set to -1.",
-    ),
-    metrics_to_sort_by: str | None = None,
-    db: Session = Depends(get_db),
-) -> list[schemas.EvaluationResponse]:
-    """
-    Fetch all metrics associated with user-supplied dataset and model names. Users
-    may query using model names, dataset names, or both. All metrics for all specified
-    models and datasets will be returned in a list of Evaluations.
-
-    This endpoint can handle multiple dataset and model names. For example, you can use
-    `/evaluations?models=first_model,second_model&datasets=test_dataset` to get all evaluations
-    related to `test_dataset` and either `first_model` or `second_model`.
-
-    GET Endpoint: `/evaluations`
-
-    Parameters
-    ----------
-    response: Response
-        The FastAPI response object. Used to return a content-range header to the user.
-    datasets : str
-        An optional set of dataset names to constrain by.
-    models : str
-        An optional set of model names to constrain by.
-    evaluation_ids : str
-        An optional set of evaluation_ids to constrain by.
-    db : Session
-        The database session to use. This parameter is a sqlalchemy dependency and shouldn't be submitted by the user.
-    offset : int, optional
-        The start index of the items to return.
-    limit : int, optional
-        The number of items to return. Returns all items when set to -1.
-    metrics_to_sort_by: str, optional
-        An optional dict of metric types to sort the evaluations by.
-
-    Returns
-    -------
-    list[schemas.Evaluation]
-        A list of evaluations.
-
-    Raises
-    ------
-    HTTPException (400)
-        If a ValueError is thrown.
-    HTTPException (404)
-        If the dataset or model doesn't exist.
-    """
-    model_names = api_utils._split_query_params(models)
-    dataset_names = api_utils._split_query_params(datasets)
-    evaluation_ids_str = api_utils._split_query_params(evaluation_ids)
-    metrics_to_sort_by_ = (
-        json.loads(metrics_to_sort_by) if metrics_to_sort_by else None
-    )
-
-    api_utils.validate_metrics_to_sort_by(metrics_to_sort_by_)
-
-    if evaluation_ids_str:
-        try:
-            evaluation_ids_ints = [int(id) for id in evaluation_ids_str]
-        except Exception as e:
-            raise exceptions.create_http_error(e)
-    else:
-        evaluation_ids_ints = None
-
-    try:
-        content, headers = crud.get_evaluations(
-            db=db,
-            evaluation_ids=evaluation_ids_ints,
-            dataset_names=dataset_names,
-            model_names=model_names,
-            offset=offset,
-            limit=limit,
-            metrics_to_sort_by=metrics_to_sort_by_,
-        )
-        response.headers.update(headers)
-        return content
-    except Exception as e:
-        raise exceptions.create_http_error(e)
-
-
-@app.delete(
-    "/evaluations/{evaluation_id}",
-    dependencies=[Depends(token_auth_scheme)],
-    tags=["Evaluations"],
-)
-def delete_evaluation(
-    evaluation_id: int,
-    db: Session = Depends(get_db),
-):
-    """
-    Delete a evaluation from the database.
-
-    DELETE Endpoint: `/evaluations/{evaluation_id}`
-
-    Parameters
-    ----------
-    evaluation_id : int
-        The evaluation identifier.
-    db : Session
-        The database session to use. This parameter is a sqlalchemy dependency and shouldn't be submitted by the user.
-
-    Raises
-    ------
-    HTTPException (404)
-        If the evaluation doesn't exist.
-    HTTPException (409)
-        If the evaluation isn't in the correct state to be deleted.
-    """
-    logger.debug(f"request to delete evaluation {evaluation_id}")
-    try:
-        crud.delete_evaluation(db=db, evaluation_id=evaluation_id)
+        pass
     except Exception as e:
         raise exceptions.create_http_error(e)
 

@@ -6,11 +6,9 @@ from valor_api.schemas.validators import validate_string_identifier
 
 
 class Classification(BaseModel):
-    uid: str
     groundtruth: str
     predictions: list[str]
     scores: list[float]
-    metadata: Metadata | None = None
     model_config = ConfigDict(extra="forbid")
 
     @model_validator(mode="after")

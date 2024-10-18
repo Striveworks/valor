@@ -1,24 +1,43 @@
-from sqlalchemy import and_, delete, desc, func
+from sqlalchemy import and_, delete, desc, func, select
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from valor_api import api_utils, exceptions, schemas
 from valor_api.backend import models
-from valor_api.backend.core.metadata import insert_metadata
-from valor_api.backend.query import generate_select
-from valor_api.enums import TableStatus
+from valor_api.backend.core.metadata import insert_metadata, delete_metadata
 
 
 def insert_datum(
     db: Session,
     dataset_id: int,
-    datum: schemas.Classification
-    | schemas.ObjectDetection
-    | schemas.SemanticSegmentation,
+    datum: schemas.Datum,
     ignore_existing_datums: bool,
-) -> dict[tuple[int, str], int]:
+) -> list[int]:    
+    """
+    Inserts multiple datums from a dataset.
 
+    Parameters
+    ----------
+    db : Session
+        The database session.
+    dataset_id : int
+        The ID of the dataset that owns this datum.
+    datums : list[schemas.Classification] | list[schemas.ObjectDetection] | list[schemas.SemanticSegmentation]
+        The objects containing datum information.
+    ignore_existing_datums : bool
+        Option to ignore duplicates instead of raising an error.
+
+    Returns
+    -------
+    list[int]
+        The IDs of the provided datums.
+
+    Raises
+    ------
+    DatumAlreadyExistsError
+        If a datum with the same UID already exists for the dataset.
+    """
     values = [
         {
             "dataset_id": dataset_id,
@@ -35,18 +54,12 @@ def insert_datum(
                 index_elements=["dataset_id", "uid"]
             )
 
-        insert_stmt = insert_stmt.returning(
-            models.Datum.id,
-            models.Datum.dataset_id,
-            models.Datum.uid,
-        )
-
-        datum_row_info = db.execute(insert_stmt).all()
+        insert_stmt = insert_stmt.returning(models.Datum.id)
+        row_ids = db.execute(insert_stmt).all()
         db.commit()
-        return {
-            (dataset_id, datum_uid): datum_id
-            for datum_id, dataset_id, datum_uid in datum_row_info
-        }
+        return [
+            row_id[0] for row_id in row_ids
+        ]
 
     except IntegrityError as e:
         db.rollback()

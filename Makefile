@@ -11,9 +11,9 @@ unit-tests:
 	python -m pytest -v ./api/tests/unit-tests
 	python -m pytest -v ./client/unit-tests
 
-start-postgres-docker:
-	docker build -t pgvalor ./database
-	docker run -p 5432:5432 -e POSTGRES_PASSWORD=password -e POSTGRES_DB=valor -d pgvalor
+start-postrgres-docker:
+	# docker build -t pgvalor ./database
+	docker run -p 5432:5432 -e POSTGRES_PASSWORD=password -e POSTGRES_DB=valor -d postgis/postgis
 
 run-migrations:
 ifeq ($(shell uname -s),Darwin)

@@ -46,16 +46,21 @@ class InstancePolygon(BaseModel):
 
 
 class InstanceBitmask(BaseModel):
-    mask: NDArray[np.bool_]
+    mask: np.ndarray
     labels: list[str]
     scores: list[float]
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(
+        extra="forbid",
+        arbitrary_types_allowed=True,
+    )
 
     @model_validator(mode="before")
     @classmethod
     def _decode_mask(cls, kwargs: Any) -> Any:
         """Decode the encoded byte string into a NumPy mask."""
         encoding = kwargs["mask"]
+        if not isinstance(encoding, str):
+            raise ValueError("Instance bitmask takes an encoded bitmask as input.")
         f = io.BytesIO(b64decode(encoding))
         img = PIL.Image.open(f)
         f.close()
@@ -80,14 +85,12 @@ class InstanceBitmask(BaseModel):
 
 
 class ObjectDetection(BaseModel):
-    uid: str
     groundtruths: list[BoundingBox] | list[InstancePolygon] | list[
         InstanceBitmask
     ]
     predictions: list[BoundingBox] | list[InstancePolygon] | list[
         InstanceBitmask
     ]
-    metadata: Metadata | None = None
     model_config = ConfigDict(extra="forbid")
 
     @model_validator(mode="after")

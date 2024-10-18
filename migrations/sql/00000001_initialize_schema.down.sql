@@ -1,3 +1,5 @@
+drop table label;
+
 drop table meta_linker;
 
 drop table meta_integer;

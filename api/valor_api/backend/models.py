@@ -150,7 +150,7 @@ class Datum(Base):
 class Classification(Base):
     __tablename__ = "classification"
     __table_args__ = (
-        UniqueConstraint("datum_id", "groundtruth", "prediction"),
+        UniqueConstraint("datum_id", "groundtruth_id", "prediction_id"),
     )
 
     # columns
@@ -184,10 +184,10 @@ class DetectionAnnotation(Base):
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
     iou: Mapped[float] = mapped_column(nullable=False)
     area: Mapped[float] = mapped_column(nullable=False)
-    xmin: Mapped[float] = mapped_column(nullable=False)
-    xmax: Mapped[float] = mapped_column(nullable=False)
-    ymin: Mapped[float] = mapped_column(nullable=False)
-    ymax: Mapped[float] = mapped_column(nullable=False)
+    x_min: Mapped[float] = mapped_column(nullable=False)
+    x_max: Mapped[float] = mapped_column(nullable=False)
+    y_min: Mapped[float] = mapped_column(nullable=False)
+    y_max: Mapped[float] = mapped_column(nullable=False)
 
 
 class Detection(Base):

@@ -1,14 +1,8 @@
-from typing import Any
-
-from sqlalchemy import and_, desc, func, or_, select
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.exc import IntegrityError
-from sqlalchemy.orm import InstrumentedAttribute, Query, Session
+from sqlalchemy.orm import Session
 
-from valor_api import api_utils, schemas
 from valor_api.backend import models
-from valor_api.backend.query import generate_query, generate_select
-from valor_api.backend.query.types import TableTypeAlias
 
 
 def insert_labels(db: Session, labels: list[str]) -> list[int]:
