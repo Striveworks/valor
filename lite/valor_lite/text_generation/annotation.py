@@ -12,20 +12,15 @@ class Datum:
         The UID of the datum.
     text : str, optional
         If the datum is a piece of text, then this field should contain the text.
-    metadata : dict[str, Any]
-        A dictionary of metadata that describes the datum.
 
     Examples
     --------
     >>> Datum(uid="uid1")
-    >>> Datum(uid="uid1", metadata={})
-    >>> Datum(uid="uid1", metadata={"foo": "bar", "pi": 3.14})
     >>> Datum(uid="uid2", text="What is the capital of Kenya?")
     """
 
     uid: str | None = None
     text: str | None = None
-    metadata: dict | None = None
 
     def __post_init__(
         self,
@@ -40,10 +35,6 @@ class Datum:
             raise TypeError(
                 f"Expected 'text' to be of type 'str' or 'None', got {type(self.text).__name__}"
             )
-        if not isinstance(self.metadata, (dict, type(None))):
-            raise TypeError(
-                f"Expected 'metadata' to be of type 'dict' or 'None', got {type(self.metadata).__name__}"
-            )
 
 
 @dataclass
@@ -53,8 +44,6 @@ class Annotation:
 
     Attributes
     ----------
-    metadata: dict[str, Any]
-        A dictionary of metadata that describes the `Annotation`.
     text: str, optional
         A piece of text to assign to the 'Annotation'.
     context_list: list[str], optional
@@ -69,17 +58,11 @@ class Annotation:
     ... )
     """
 
-    metadata: dict | None = None
     text: str | None = None
     context_list: list[str] | None = None
 
     def __post_init__(self):
         """Validate instantiated class."""
-
-        if not isinstance(self.metadata, (dict, type(None))):
-            raise TypeError(
-                f"Expected 'metadata' to be of type 'dict' or 'None', got {type(self.metadata).__name__}"
-            )
 
         if not isinstance(self.text, (str, type(None))):
             raise TypeError(

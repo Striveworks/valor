@@ -1,13 +1,5 @@
 import pytest
-from valor_lite.text_generation import annotation, evaluation, metric
-
-
-@pytest.fixture
-def metadata() -> dict[str, dict[str, str | float]]:
-    return {
-        "m1": {"type": "string", "value": "v1"},
-        "m2": {"type": "float", "value": 0.1},
-    }
+from valor_lite.text_generation import annotation
 
 
 @pytest.fixture
@@ -24,16 +16,10 @@ def test_datum(
     text: str,
 ):
     annotation.Datum(uid="123")
-    annotation.Datum(uid="123", metadata={})
-    annotation.Datum(uid="123", metadata={"name": 1})
     annotation.Datum(uid="123", text=text)
 
     with pytest.raises(TypeError):
         annotation.Datum(uid=123)  # type: ignore
-    with pytest.raises(TypeError):
-        annotation.Datum(uid="123", metadata=1)  # type: ignore
-    with pytest.raises(TypeError):
-        annotation.Datum(uid="123", metadata=[1])  # type: ignore
     with pytest.raises(TypeError):
         annotation.Datum(uid="123", text=55)  # type: ignore
 
@@ -41,20 +27,18 @@ def test_datum(
 def test_annotation(
     text: str,
     context_list: list[str],
-    metadata: dict[str, dict[str, str | float]],
 ):
     # valid
     annotation.Annotation(
         text=text,
-        metadata=metadata,
+    )
+    annotation.Annotation(
+        context_list=context_list,
     )
     annotation.Annotation(
         text=text,
         context_list=context_list,
     )
-    annotation.Annotation(
-        context_list=context_list,
-    )  # Some text generation metrics only use the prediction context list and not the prediction text.
 
     # test `__post_init__`
     with pytest.raises(TypeError):
@@ -142,33 +126,3 @@ def test_prediction():
     assert annotation.Prediction(
         datum=datums[0], annotations=[preds[0]]
     ) == annotation.Prediction(datum=datums[0], annotations=[preds[0]])
-
-
-def test_EvaluationParameters():
-    evaluation.EvaluationParameters()
-
-    # Typical evaluation parameters for a text generation task
-    evaluation.EvaluationParameters(
-        metrics_to_return=[
-            metric.MetricType.AnswerCorrectness,
-            metric.MetricType.BLEU,
-            metric.MetricType.ContextPrecision,
-            metric.MetricType.ContextRecall,
-        ],
-        llm_api_params={
-            "client": "openai",
-            "api_key": "test_key",
-            "data": {
-                "seed": 2024,
-                "model": "gpt-4o",
-            },
-        },
-        metric_params={
-            "BLEU": {
-                "weights": [0.5, 0.3, 0.1, 0.1],
-            },
-        },
-    )
-
-    with pytest.raises(TypeError):
-        evaluation.EvaluationParameters(metrics_to_return={"bad": "inputs"})  # type: ignore

@@ -60,26 +60,10 @@ def rag_datums() -> list[annotation.Datum]:
     assert len(RAG_QUERIES) == 3
     return [
         annotation.Datum(
-            uid="uid0",
-            text=RAG_QUERIES[0],
-            metadata={
-                "category": "history",
-            },
-        ),
-        annotation.Datum(
-            uid="uid1",
-            text=RAG_QUERIES[1],
-            metadata={
-                "category": "history",
-            },
-        ),
-        annotation.Datum(
-            uid="uid2",
-            text=RAG_QUERIES[2],
-            metadata={
-                "category": "science",
-            },
-        ),
+            uid=f"uid{i}",
+            text=RAG_QUERIES[i],
+        )
+        for i in range(len(RAG_QUERIES))
     ]
 
 
@@ -319,7 +303,6 @@ def test_ValorTextGenerationStreamingManager_rag(
             [
                 "uid0",
                 RAG_QUERIES[0],
-                None,
                 RAG_PREDICTIONS[0],
                 RAG_CONTEXT[0],
                 0.6666666666666666,
@@ -333,7 +316,6 @@ def test_ValorTextGenerationStreamingManager_rag(
         columns=[
             "datum_uid",
             "datum_text",
-            "datum_metadata",
             "prediction_text",
             "prediction_context_list",
         ]
@@ -437,7 +419,6 @@ def test_ValorTextGenerationStreamingManager_rag(
             [
                 "uid0",
                 RAG_QUERIES[0],
-                None,
                 RAG_PREDICTIONS[0],
                 RAG_CONTEXT[0],
                 0.6666666666666666,
@@ -451,7 +432,6 @@ def test_ValorTextGenerationStreamingManager_rag(
         columns=[
             "datum_uid",
             "datum_text",
-            "datum_metadata",
             "prediction_text",
             "prediction_context_list",
         ]
@@ -463,12 +443,9 @@ def test_ValorTextGenerationStreamingManager_rag(
         joint_df=joint_df,
     )
 
-    # Adding two different predictions with the same datum uid but different datum text or metadata should raise an error.
+    # Adding two different predictions with the same datum uid but different datum text.
     pred0_modified_text = copy.deepcopy(rag_preds[0])
     pred0_modified_text.datum.text = "This is a different piece of text."
-
-    pred0_no_metadata = copy.deepcopy(rag_preds[0])
-    pred0_no_metadata.datum.metadata = None
 
     # Error should be caught when the second prediction is added.
     with pytest.raises(MismatchingTextGenerationDatumError):
@@ -491,34 +468,12 @@ def test_ValorTextGenerationStreamingManager_rag(
             predictions=[rag_preds[0], pred0_modified_text]
         )
 
-    # Error should be caught when the second prediction is added.
-    with pytest.raises(MismatchingTextGenerationDatumError):
-        manager = ValorTextGenerationStreamingManager(
-            metrics_to_return=metrics_to_return,
-            llm_api_params=LLM_API_PARAMS,
-        )
-        _ = manager.add_and_evaluate_prediction(predictions=[rag_preds[0]])
-        _ = manager.add_and_evaluate_prediction(
-            predictions=[pred0_no_metadata]
-        )
-
-    # Error should be caught even though both predictions are new.
-    with pytest.raises(MismatchingTextGenerationDatumError):
-        manager = ValorTextGenerationStreamingManager(
-            metrics_to_return=metrics_to_return,
-            llm_api_params=LLM_API_PARAMS,
-        )
-        _ = manager.add_and_evaluate_prediction(
-            predictions=[rag_preds[0], pred0_no_metadata]
-        )
-
     # Missing a column name in the joint_df should raise an error.
     with pytest.raises(ValueError):
         joint_df = pd.DataFrame(
             [
                 [
                     "uid0",
-                    {"category": "history"},
                     RAG_PREDICTIONS[0],
                     RAG_CONTEXT[0],
                     0.6666666666666666,
@@ -531,7 +486,6 @@ def test_ValorTextGenerationStreamingManager_rag(
             ],
             columns=[
                 "datum_uid",
-                "datum_metadata",
                 "prediction_text",
                 "prediction_context_list",
             ]
@@ -550,7 +504,6 @@ def test_ValorTextGenerationStreamingManager_rag(
                 [
                     None,
                     RAG_QUERIES[0],
-                    {"category": "history"},
                     RAG_PREDICTIONS[0],
                     RAG_CONTEXT[0],
                     0.6666666666666666,
@@ -564,7 +517,6 @@ def test_ValorTextGenerationStreamingManager_rag(
             columns=[
                 "datum_uid",
                 "datum_text",
-                "datum_metadata",
                 "prediction_text",
                 "prediction_context_list",
             ]
@@ -596,7 +548,6 @@ def test_ValorTextGenerationStreamingManager_rag(
                 [
                     "uid0",
                     RAG_QUERIES[1],
-                    {"category": "history"},
                     RAG_PREDICTIONS[1],
                     RAG_CONTEXT[1],
                     0.2,
@@ -610,7 +561,6 @@ def test_ValorTextGenerationStreamingManager_rag(
             columns=[
                 "datum_uid",
                 "datum_text",
-                "datum_metadata",
                 "prediction_text",
                 "prediction_context_list",
             ]
@@ -629,7 +579,6 @@ def test_ValorTextGenerationStreamingManager_rag(
                 [
                     "uid0",
                     RAG_QUERIES[0],
-                    {"category": "history"},
                     None,
                     None,
                     0.6666666666666666,
@@ -643,7 +592,6 @@ def test_ValorTextGenerationStreamingManager_rag(
             columns=[
                 "datum_uid",
                 "datum_text",
-                "datum_metadata",
                 "prediction_text",
                 "prediction_context_list",
             ]

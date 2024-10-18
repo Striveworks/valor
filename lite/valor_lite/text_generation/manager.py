@@ -7,7 +7,7 @@ from valor_lite.text_generation.metric import MetricType
 
 class MismatchingTextGenerationDatumError(Exception):
     """
-    Raised when datums with the same uid but different text or metadata are added to the ValorTextGenerationStreamingManager.
+    Raised when datums with the same uid but different text are added to the ValorTextGenerationStreamingManager.
     """
 
     pass
@@ -98,7 +98,6 @@ class ValorTextGenerationStreamingManager:
         columns = [
             "datum_uid",
             "datum_text",
-            "datum_metadata",
             "prediction_text",
             "prediction_context_list",
         ] + [metric._name_ for metric in self.metrics_to_return]
@@ -152,7 +151,7 @@ class ValorTextGenerationStreamingManager:
         Returns
         -------
         evaluation.Evaluation
-            An evaluation object containing metrics and metadata.
+            An evaluation object containing metrics.
         """
         if not (
             isinstance(predictions, list)
@@ -174,21 +173,18 @@ class ValorTextGenerationStreamingManager:
                 rows = self.joint_df[
                     self.joint_df["datum_uid"] == pred.datum.uid
                 ]
-                if not (
-                    all(rows["datum_text"] == pred.datum.text)
-                    and all(rows["datum_metadata"] == pred.datum.metadata)
-                ):
+                if not all(rows["datum_text"] == pred.datum.text):
                     raise MismatchingTextGenerationDatumError(
                         f"The provided prediction does not match the existing data for this datum_uid {pred.datum.uid}."
                     )
 
             for pred2 in predictions:
-                if pred.datum.uid == pred2.datum.uid and (
-                    pred.datum.text != pred2.datum.text
-                    or pred.datum.metadata != pred2.datum.metadata
+                if (
+                    pred.datum.uid == pred2.datum.uid
+                    and pred.datum.text != pred2.datum.text
                 ):
                     raise MismatchingTextGenerationDatumError(
-                        f"Two predictions with the same datum_uid {pred.datum.uid} have different datum text or metadata."
+                        f"Two predictions with the same datum_uid {pred.datum.uid} have different datum text."
                     )
 
         eval = text_generation.evaluate_text_generation(
@@ -206,7 +202,6 @@ class ValorTextGenerationStreamingManager:
                             {
                                 "datum_uid": pred.datum.uid,
                                 "datum_text": pred.datum.text,
-                                "datum_metadata": pred.datum.metadata,
                                 "prediction_text": annotation.text,
                                 "prediction_context_list": annotation.context_list,
                             }

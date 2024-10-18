@@ -82,26 +82,10 @@ def rag_datums() -> list[annotation.Datum]:
     assert len(RAG_QUERIES) == 3
     return [
         annotation.Datum(
-            uid="uid0",
-            text=RAG_QUERIES[0],
-            metadata={
-                "category": "history",
-            },
-        ),
-        annotation.Datum(
-            uid="uid1",
-            text=RAG_QUERIES[1],
-            metadata={
-                "category": "history",
-            },
-        ),
-        annotation.Datum(
-            uid="uid2",
-            text=RAG_QUERIES[2],
-            metadata={
-                "category": "science",
-            },
-        ),
+            uid=f"uid{i}",
+            text=RAG_QUERIES[i],
+        )
+        for i in range(len(RAG_QUERIES))
     ]
 
 
@@ -151,26 +135,10 @@ def content_gen_datums() -> list[annotation.Datum]:
     assert len(CONTENT_GEN_QUERIES) == 3
     return [
         annotation.Datum(
-            uid="uid0",
-            text=CONTENT_GEN_QUERIES[0],
-            metadata={
-                "request_type": "creative",
-            },
-        ),
-        annotation.Datum(
-            uid="uid1",
-            text=CONTENT_GEN_QUERIES[1],
-            metadata={
-                "request_type": "educational",
-            },
-        ),
-        annotation.Datum(
-            uid="uid2",
-            text=CONTENT_GEN_QUERIES[2],
-            metadata={
-                "request_type": "professional",
-            },
-        ),
+            uid=f"uid{i}",
+            text=CONTENT_GEN_QUERIES[i],
+        )
+        for i in range(len(CONTENT_GEN_QUERIES))
     ]
 
 
