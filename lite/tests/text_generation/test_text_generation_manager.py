@@ -3,9 +3,10 @@ from unittest.mock import patch
 
 import pandas as pd
 import pytest
-from valor_lite.text_generation import managers, schemas
-from valor_lite.text_generation.managers import (
+from valor_lite.text_generation import schemas
+from valor_lite.text_generation.manager import (
     MismatchingTextGenerationDatumError,
+    ValorTextGenerationStreamingManager,
 )
 from valor_lite.text_generation.metric import MetricType
 
@@ -256,7 +257,7 @@ def test_ValorTextGenerationStreamingManager_rag(
     }
 
     # Test adding metrics one at a time.
-    manager = managers.ValorTextGenerationStreamingManager(
+    manager = ValorTextGenerationStreamingManager(
         metrics_to_return=metrics_to_return,
         llm_api_params=LLM_API_PARAMS,
     )
@@ -291,7 +292,7 @@ def test_ValorTextGenerationStreamingManager_rag(
             )
 
     # Test adding metrics as differently sized batches.
-    manager = managers.ValorTextGenerationStreamingManager(
+    manager = ValorTextGenerationStreamingManager(
         metrics_to_return=metrics_to_return,
         llm_api_params=LLM_API_PARAMS,
     )
@@ -338,7 +339,7 @@ def test_ValorTextGenerationStreamingManager_rag(
         ]
         + [metric._name_ for metric in metrics_to_return],
     )
-    manager = managers.ValorTextGenerationStreamingManager(
+    manager = ValorTextGenerationStreamingManager(
         metrics_to_return=metrics_to_return,
         llm_api_params=LLM_API_PARAMS,
         joint_df=joint_df,
@@ -370,7 +371,7 @@ def test_ValorTextGenerationStreamingManager_rag(
         ),
     ]
 
-    manager = managers.ValorTextGenerationStreamingManager(
+    manager = ValorTextGenerationStreamingManager(
         metrics_to_return=[MetricType.Hallucination],
         llm_api_params=LLM_API_PARAMS,
     )
@@ -408,7 +409,7 @@ def test_ValorTextGenerationStreamingManager_rag(
         ),
     ]
 
-    manager = managers.ValorTextGenerationStreamingManager(
+    manager = ValorTextGenerationStreamingManager(
         metrics_to_return=[MetricType.Hallucination],
         llm_api_params=LLM_API_PARAMS,
     )
@@ -456,7 +457,7 @@ def test_ValorTextGenerationStreamingManager_rag(
         ]
         + [metric._name_ for metric in metrics_to_return],
     )
-    _ = managers.ValorTextGenerationStreamingManager(
+    _ = ValorTextGenerationStreamingManager(
         metrics_to_return=metrics_to_return,
         llm_api_params=LLM_API_PARAMS,
         joint_df=joint_df,
@@ -471,7 +472,7 @@ def test_ValorTextGenerationStreamingManager_rag(
 
     # Error should be caught when the second prediction is added.
     with pytest.raises(MismatchingTextGenerationDatumError):
-        manager = managers.ValorTextGenerationStreamingManager(
+        manager = ValorTextGenerationStreamingManager(
             metrics_to_return=metrics_to_return,
             llm_api_params=LLM_API_PARAMS,
         )
@@ -482,7 +483,7 @@ def test_ValorTextGenerationStreamingManager_rag(
 
     # Error should be caught even though both predictions are new.
     with pytest.raises(MismatchingTextGenerationDatumError):
-        manager = managers.ValorTextGenerationStreamingManager(
+        manager = ValorTextGenerationStreamingManager(
             metrics_to_return=metrics_to_return,
             llm_api_params=LLM_API_PARAMS,
         )
@@ -492,7 +493,7 @@ def test_ValorTextGenerationStreamingManager_rag(
 
     # Error should be caught when the second prediction is added.
     with pytest.raises(MismatchingTextGenerationDatumError):
-        manager = managers.ValorTextGenerationStreamingManager(
+        manager = ValorTextGenerationStreamingManager(
             metrics_to_return=metrics_to_return,
             llm_api_params=LLM_API_PARAMS,
         )
@@ -503,7 +504,7 @@ def test_ValorTextGenerationStreamingManager_rag(
 
     # Error should be caught even though both predictions are new.
     with pytest.raises(MismatchingTextGenerationDatumError):
-        manager = managers.ValorTextGenerationStreamingManager(
+        manager = ValorTextGenerationStreamingManager(
             metrics_to_return=metrics_to_return,
             llm_api_params=LLM_API_PARAMS,
         )
@@ -536,7 +537,7 @@ def test_ValorTextGenerationStreamingManager_rag(
             ]
             + [metric._name_ for metric in metrics_to_return],
         )
-        _ = managers.ValorTextGenerationStreamingManager(
+        _ = ValorTextGenerationStreamingManager(
             metrics_to_return=metrics_to_return,
             llm_api_params=LLM_API_PARAMS,
             joint_df=joint_df,
@@ -569,7 +570,7 @@ def test_ValorTextGenerationStreamingManager_rag(
             ]
             + [metric._name_ for metric in metrics_to_return],
         )
-        _ = managers.ValorTextGenerationStreamingManager(
+        _ = ValorTextGenerationStreamingManager(
             metrics_to_return=metrics_to_return,
             llm_api_params=LLM_API_PARAMS,
             joint_df=joint_df,
@@ -615,7 +616,7 @@ def test_ValorTextGenerationStreamingManager_rag(
             ]
             + [metric._name_ for metric in metrics_to_return],
         )
-        _ = managers.ValorTextGenerationStreamingManager(
+        _ = ValorTextGenerationStreamingManager(
             metrics_to_return=metrics_to_return,
             llm_api_params=LLM_API_PARAMS,
             joint_df=joint_df,
@@ -648,7 +649,7 @@ def test_ValorTextGenerationStreamingManager_rag(
             ]
             + [metric._name_ for metric in metrics_to_return],
         )
-        _ = managers.ValorTextGenerationStreamingManager(
+        _ = ValorTextGenerationStreamingManager(
             metrics_to_return=metrics_to_return,
             llm_api_params=LLM_API_PARAMS,
             joint_df=joint_df,

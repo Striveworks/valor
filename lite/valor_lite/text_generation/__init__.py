@@ -1,4 +1,4 @@
-from .managers import ValorTextGenerationStreamingManager
+from .manager import ValorTextGenerationStreamingManager
 from .metric import (
     AnswerCorrectnessMetric,
     AnswerRelevanceMetric,
