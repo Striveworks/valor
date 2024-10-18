@@ -23,6 +23,7 @@ dependencies = [
     "nltk",
     "rouge_score",
     "evaluate",
+    "valor_lite",
 ]
 
 [build-system]

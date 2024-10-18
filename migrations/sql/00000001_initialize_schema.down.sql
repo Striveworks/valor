@@ -1,19 +1,35 @@
-drop table metric cascade;
+drop table label;
 
-drop table confusion_matrix cascade;
+drop table meta_linker;
 
-drop table evaluation cascade;
+drop table meta_integer;
 
-drop table groundtruth cascade;
+drop table meta_float;
 
-drop table prediction cascade;
+drop table meta_string;
 
-drop table label cascade;
+drop table meta_datetime;
 
-drop table annotation cascade;
+drop table meta_date;
 
-drop table model cascade;
+drop table meta_time;
 
-drop table datum cascade;
+drop table meta_geospatial;
 
-drop table dataset cascade;
+drop table dataset;
+
+drop table model;
+
+drop table datum;
+
+drop table classification;
+
+drop table object_detection_annotation;
+
+drop table object_detection;
+
+drop table semantic_segmentation;
+
+drop table evaluation;
+
+drop table metric;
