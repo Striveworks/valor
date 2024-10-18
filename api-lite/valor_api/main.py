@@ -86,6 +86,25 @@ def create_classifications(
         raise exceptions.create_http_error(e)
 
 
+@app.get(
+    "/classifications/{dataset_name}/{model_name}/{uid}",
+    status_code=200,
+    dependencies=[Depends(token_auth_scheme)],
+    tags=["Classification"],
+)
+def get_classification(
+    dataset_name: str, model_name: str, uid: str, db: Session = Depends(get_db)
+) -> schemas.Classification | None:
+    try:
+        return crud.get_groundtruth(
+            db=db,
+            dataset_name=dataset_name,
+            datum_uid=uid,
+        )
+    except Exception as e:
+        raise exceptions.create_http_error(e)
+
+
 @app.post(
     "/classifications/{dataset_name}/{model_name}/evaluate",
     status_code=200,
@@ -109,16 +128,15 @@ def evaluate_classifications(
         raise exceptions.create_http_error(e)
 
 
-@app.post(
+@app.get(
     "/classifications/{dataset_name}/{model_name}/evaluate",
     status_code=200,
     dependencies=[Depends(token_auth_scheme)],
     tags=["Classification"],
 )
-def evaluate_classifications(
+def evaluate_filtered_classifications(
     dataset_name: str,
     model_name: str,
-    filters: schemas.Filter,
     ignore_existing_datums: bool = False,
     db: Session = Depends(get_db),
 ):
@@ -127,25 +145,6 @@ def evaluate_classifications(
             db=db,
             groundtruths=groundtruths,
             ignore_existing_datums=ignore_existing_datums,
-        )
-    except Exception as e:
-        raise exceptions.create_http_error(e)
-
-
-@app.get(
-    "/classifications/{dataset_name}/{model_name}/{uid}",
-    status_code=200,
-    dependencies=[Depends(token_auth_scheme)],
-    tags=["Classification"],
-)
-def get_classification(
-    dataset_name: str, model_name: str, uid: str, db: Session = Depends(get_db)
-) -> schemas.Classification | None:
-    try:
-        return crud.get_groundtruth(
-            db=db,
-            dataset_name=dataset_name,
-            datum_uid=uid,
         )
     except Exception as e:
         raise exceptions.create_http_error(e)

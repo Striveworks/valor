@@ -87,7 +87,7 @@ class ObjectDetection(BaseModel):
     predictions: list[BoundingBox] | list[InstancePolygon] | list[
         InstanceBitmask
     ]
-    metadata: Metadata
+    metadata: Metadata | None = None
     model_config = ConfigDict(extra="forbid")
 
     @model_validator(mode="after")

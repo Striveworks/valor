@@ -9,6 +9,16 @@ from sqlalchemy.sql import func
 from valor_api.backend.database import Base
 
 
+class Label(Base):
+    __tablename__ = "label"
+    __table_args__ = (UniqueConstraint("value"),)
+
+    # columns
+    id: Mapped[int] = mapped_column(primary_key=True, index=True)
+    value: Mapped[str] = mapped_column(nullable=False)
+    created_at: Mapped[datetime.datetime] = mapped_column(default=func.now())
+
+
 class Metadata(Base):
     __tablename__ = "meta_linker"
 

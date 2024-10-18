@@ -13,6 +13,12 @@ class Metadata(BaseModel):
 
     Attributes
     ----------
+    string : dict[str, str]
+        A dictionary containing string-type values.
+    integer : dict[str, int], optional
+        A dictionary containing integer values.
+    floating : dict[str, float], optional
+        A dictionary containing floating-point values.
     geospatial : GeoJSON, optional
         A geospatial point or region represented by GeoJSON.
     datetime : str, optional
@@ -21,19 +27,15 @@ class Metadata(BaseModel):
         A date in ISO string format.
     time : str, optional
         A time in ISO string format.
-    string : dict[str, str]
-        A dictionary containing string-type values.
-    numeric : dict[str, int | float], optional
-        A dictionary containing numeric values.
     """
 
-    geospatial: dict[str, GeoJSON]
-    datetime: dict[str, "datetime"] = Field(default_factory=dict)
-    date: dict[str, "date"] = Field(default_factory=dict)
-    time: dict[str, "time"] = Field(default_factory=dict)
-    string: dict[str, str] = Field(default_factory=dict)
-    integer: dict[str, int] = Field(default_factory=dict)
-    floating: dict[str, float] = Field(default_factory=dict)
+    string: dict[str, str] | None = None
+    integer: dict[str, int] | None = None
+    floating: dict[str, float] | None = None
+    geospatial: dict[str, GeoJSON] | None = None
+    datetime: dict[str, "datetime"] | None = None
+    date: dict[str, "date"] | None = None
+    time: dict[str, "time"] | None = None
     model_config = ConfigDict(extra="forbid")
 
     @model_validator(mode="before")

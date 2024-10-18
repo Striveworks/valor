@@ -10,7 +10,7 @@ class Classification(BaseModel):
     groundtruth: str
     predictions: list[str]
     scores: list[float]
-    metadata: Metadata
+    metadata: Metadata | None = None
     model_config = ConfigDict(extra="forbid")
 
     @model_validator(mode="after")

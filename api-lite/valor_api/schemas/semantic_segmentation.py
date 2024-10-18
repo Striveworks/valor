@@ -41,7 +41,7 @@ class SemanticSegmentation(BaseModel):
     uid: str
     groundtruths: list[SemanticBitmask]
     predictions: list[SemanticBitmask]
-    metadata: Metadata
+    metadata: Metadata | None = None
     model_config = ConfigDict(extra="forbid")
 
     @model_validator(mode="after")

@@ -6,21 +6,30 @@ from valor_api import schemas
 from valor_api.backend import models
 
 
-def load_cache(
-    dataset_id: int,
-    model_id: int,
-):
-    pass
-
-
-def load_cache_from_filter(filter_):
-    pass
-
-
 def insert_classifications(
     dataset_id: int,
     model_id: int,
     classifications: list[schemas.Classification],
+):
+
+
+
+def load_cache(
+    db: Session,
+    dataset_id: int,
+    model_id: int,
+):
+    return db.query(models.Classification).where(
+        and_(
+            models.Classification.dataset_id == dataset_id,
+            models.Classification.model_id == model_id,
+        )
+    ).all()
+
+
+def load_cache_from_filter(
+    db: Session,
+    filter_: schemas.Filter,
 ):
     pass
 
