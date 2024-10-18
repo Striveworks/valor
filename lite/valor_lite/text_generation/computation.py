@@ -702,7 +702,7 @@ def _compute_text_generation_metrics(
     return output
 
 
-def validate_text_gen_metrics_to_return(
+def _validate_text_gen_metrics_to_return(
     metrics_to_return: list[MetricType],
 ) -> None:
     """
@@ -724,7 +724,7 @@ def validate_text_gen_metrics_to_return(
         )
 
 
-def validate_metric_parameters(
+def _validate_metric_parameters(
     metrics_to_return: list[MetricType],
     metric_params: dict[str, dict],
 ):
@@ -781,10 +781,10 @@ def evaluate_text_generation(
     """
     start_time = time.time()
 
-    validate_text_gen_metrics_to_return(
+    _validate_text_gen_metrics_to_return(
         metrics_to_return=metrics_to_return,
     )
-    validate_metric_parameters(
+    _validate_metric_parameters(
         metrics_to_return=metrics_to_return,
         metric_params=metric_params,
     )

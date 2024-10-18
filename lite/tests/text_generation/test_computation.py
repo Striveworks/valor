@@ -2,13 +2,13 @@ from unittest.mock import patch
 
 import pytest
 from valor_lite.text_generation import annotation
-from valor_lite.text_generation.metric import MetricType, ROUGEType
-from valor_lite.text_generation.text_generation import (
+from valor_lite.text_generation.computation import (
     _calculate_rouge_scores,
     _calculate_sentence_bleu,
     _setup_llm_client,
     evaluate_text_generation,
 )
+from valor_lite.text_generation.metric import MetricType, ROUGEType
 
 RAG_QUERIES = [
     """Did John Adams get along with Alexander Hamilton?""",

@@ -1,7 +1,11 @@
 from dataclasses import dataclass, field
 
 import pandas as pd
-from valor_lite.text_generation import annotation, evaluation, text_generation
+from valor_lite.text_generation import annotation, evaluation
+from valor_lite.text_generation.computation import (
+    _validate_text_gen_metrics_to_return,
+    evaluate_text_generation,
+)
 from valor_lite.text_generation.metric import MetricType
 
 
@@ -47,7 +51,7 @@ class ValorTextGenerationStreamingManager:
 
         Initializes the joint_df.
         """
-        self._validate_metrics_to_return()
+        self._validate_streaming_metrics_to_return()
         self._initialize_joint_df()
         self._locked = True
 
@@ -66,9 +70,9 @@ class ValorTextGenerationStreamingManager:
             )
         super().__setattr__(key, value)
 
-    def _validate_metrics_to_return(self):
+    def _validate_streaming_metrics_to_return(self):
         """Validates that all metrics are text generation metrics and are not text comparison metrics."""
-        text_generation.validate_text_gen_metrics_to_return(
+        _validate_text_gen_metrics_to_return(
             metrics_to_return=self.metrics_to_return,
         )
         non_text_comparison_metrics = {
@@ -187,7 +191,7 @@ class ValorTextGenerationStreamingManager:
                         f"Two predictions with the same datum_uid {pred.datum.uid} have different datum text."
                     )
 
-        eval = text_generation.evaluate_text_generation(
+        eval = evaluate_text_generation(
             predictions=predictions,
             metrics_to_return=self.metrics_to_return,
             llm_api_params=self.llm_api_params,
