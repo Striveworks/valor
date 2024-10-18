@@ -33,11 +33,36 @@ def test_text_gen_metric_status():
         "parameters": parameters,
     }
 
+    # Status should be "success" or "error"
+    with pytest.raises(TypeError):
+        metric.AnswerCorrectnessMetric(
+            status=0,  # type: ignore - testing
+            value=0.5,
+            parameters=parameters,
+        )
+
+    # Status should be "success" or "error"
+    with pytest.raises(ValueError):
+        metric.AnswerCorrectnessMetric(
+            status="failure",
+            value=0.5,
+            parameters=parameters,
+        )
+
+    # Value should be None if status is "error"
     with pytest.raises(ValueError):
         metric.AnswerCorrectnessMetric(
             status="error",
             value=0.5,
             parameters=parameters,
+        )
+
+    # Parameters should be a dictionary
+    with pytest.raises(TypeError):
+        metric.AnswerCorrectnessMetric(
+            status="success",
+            value=0.2,
+            parameters=4,  # type: ignore - testing
         )
 
 
@@ -318,9 +343,32 @@ def test_ROUGEMetric():
         "parameters": parameters,
     }
 
+    # Value should be a dictionary of ROUGE keys and values
     with pytest.raises(TypeError):
         metric.ROUGEMetric(status="success", value="value", parameters=parameters)  # type: ignore - testing
 
+    # Value keys should be strings
+    with pytest.raises(TypeError):
+        metric.ROUGEMetric(
+            status="success",
+            value={
+                1: 0.8,  # type: ignore - testing
+                2: 1.2,  # type: ignore - testing
+            },
+            parameters=parameters,
+        )
+
+    # Values should be int or float
+    with pytest.raises(TypeError):
+        metric.ROUGEMetric(
+            status="success",
+            value={
+                "rouge1": "0.3",  # type: ignore - testing
+            },
+            parameters=parameters,
+        )
+
+    # Invalid value for rouge2
     with pytest.raises(ValueError):
         metric.ROUGEMetric(
             status="success",
