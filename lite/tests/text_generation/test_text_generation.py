@@ -1,7 +1,7 @@
 from unittest.mock import patch
 
 import pytest
-from valor_lite.text_generation import schemas
+from valor_lite.text_generation import annotation
 from valor_lite.text_generation.metric import MetricType, ROUGEType
 from valor_lite.text_generation.text_generation import (
     _calculate_rouge_scores,
@@ -78,24 +78,24 @@ SUMMARIZATION_PREDICTIONS = [
 
 
 @pytest.fixture
-def rag_datums() -> list[schemas.Datum]:
+def rag_datums() -> list[annotation.Datum]:
     assert len(RAG_QUERIES) == 3
     return [
-        schemas.Datum(
+        annotation.Datum(
             uid="uid0",
             text=RAG_QUERIES[0],
             metadata={
                 "category": "history",
             },
         ),
-        schemas.Datum(
+        annotation.Datum(
             uid="uid1",
             text=RAG_QUERIES[1],
             metadata={
                 "category": "history",
             },
         ),
-        schemas.Datum(
+        annotation.Datum(
             uid="uid2",
             text=RAG_QUERIES[2],
             metadata={
@@ -107,18 +107,18 @@ def rag_datums() -> list[schemas.Datum]:
 
 @pytest.fixture
 def rag_gts(
-    rag_datums: list[schemas.Datum],
-) -> list[schemas.GroundTruth]:
+    rag_datums: list[annotation.Datum],
+) -> list[annotation.GroundTruth]:
     assert len(rag_datums) == len(RAG_REFERENCES)
     gts = []
     for i in range(len(rag_datums)):
         gts.append(
-            schemas.GroundTruth(
+            annotation.GroundTruth(
                 datum=rag_datums[i],
                 annotations=[
-                    schemas.Annotation(text=RAG_REFERENCES[i]),
-                    schemas.Annotation(text="some other text"),
-                    schemas.Annotation(text="some final text"),
+                    annotation.Annotation(text=RAG_REFERENCES[i]),
+                    annotation.Annotation(text="some other text"),
+                    annotation.Annotation(text="some final text"),
                 ],
             )
         )
@@ -127,16 +127,16 @@ def rag_gts(
 
 @pytest.fixture
 def rag_preds(
-    rag_datums: list[schemas.Datum],
-) -> list[schemas.Prediction]:
+    rag_datums: list[annotation.Datum],
+) -> list[annotation.Prediction]:
     assert len(rag_datums) == len(RAG_PREDICTIONS) == len(RAG_CONTEXT)
     preds = []
     for i in range(len(rag_datums)):
         preds.append(
-            schemas.Prediction(
+            annotation.Prediction(
                 datum=rag_datums[i],
                 annotations=[
-                    schemas.Annotation(
+                    annotation.Annotation(
                         text=RAG_PREDICTIONS[i],
                         context_list=RAG_CONTEXT[i],
                     )
@@ -147,24 +147,24 @@ def rag_preds(
 
 
 @pytest.fixture
-def content_gen_datums() -> list[schemas.Datum]:
+def content_gen_datums() -> list[annotation.Datum]:
     assert len(CONTENT_GEN_QUERIES) == 3
     return [
-        schemas.Datum(
+        annotation.Datum(
             uid="uid0",
             text=CONTENT_GEN_QUERIES[0],
             metadata={
                 "request_type": "creative",
             },
         ),
-        schemas.Datum(
+        annotation.Datum(
             uid="uid1",
             text=CONTENT_GEN_QUERIES[1],
             metadata={
                 "request_type": "educational",
             },
         ),
-        schemas.Datum(
+        annotation.Datum(
             uid="uid2",
             text=CONTENT_GEN_QUERIES[2],
             metadata={
@@ -176,12 +176,12 @@ def content_gen_datums() -> list[schemas.Datum]:
 
 @pytest.fixture
 def content_gen_gts(
-    content_gen_datums: list[schemas.Datum],
-) -> list[schemas.GroundTruth]:
+    content_gen_datums: list[annotation.Datum],
+) -> list[annotation.GroundTruth]:
     gts = []
     for i in range(len(content_gen_datums)):
         gts.append(
-            schemas.GroundTruth(
+            annotation.GroundTruth(
                 datum=content_gen_datums[i],
                 annotations=[],
             )
@@ -191,16 +191,16 @@ def content_gen_gts(
 
 @pytest.fixture
 def content_gen_preds(
-    content_gen_datums: list[schemas.Datum],
-) -> list[schemas.Prediction]:
+    content_gen_datums: list[annotation.Datum],
+) -> list[annotation.Prediction]:
     assert len(content_gen_datums) == len(CONTENT_GEN_PREDICTIONS)
     preds = []
     for i in range(len(content_gen_datums)):
         preds.append(
-            schemas.Prediction(
+            annotation.Prediction(
                 datum=content_gen_datums[i],
                 annotations=[
-                    schemas.Annotation(
+                    annotation.Annotation(
                         text=CONTENT_GEN_PREDICTIONS[i],
                     )
                 ],
@@ -210,14 +210,14 @@ def content_gen_preds(
 
 
 @pytest.fixture
-def summarization_datums() -> list[schemas.Datum]:
+def summarization_datums() -> list[annotation.Datum]:
     assert len(SUMMARIZATION_TEXTS) == 2
     return [
-        schemas.Datum(
+        annotation.Datum(
             uid="uid0",
             text=SUMMARIZATION_TEXTS[0],
         ),
-        schemas.Datum(
+        annotation.Datum(
             uid="uid1",
             text=SUMMARIZATION_TEXTS[1],
         ),
@@ -226,12 +226,12 @@ def summarization_datums() -> list[schemas.Datum]:
 
 @pytest.fixture
 def summarization_gts(
-    summarization_datums: list[schemas.Datum],
-) -> list[schemas.GroundTruth]:
+    summarization_datums: list[annotation.Datum],
+) -> list[annotation.GroundTruth]:
     gts = []
     for i in range(len(summarization_datums)):
         gts.append(
-            schemas.GroundTruth(
+            annotation.GroundTruth(
                 datum=summarization_datums[i],
                 annotations=[],
             )
@@ -241,16 +241,16 @@ def summarization_gts(
 
 @pytest.fixture
 def summarization_preds(
-    summarization_datums: list[schemas.Datum],
-) -> list[schemas.Prediction]:
+    summarization_datums: list[annotation.Datum],
+) -> list[annotation.Prediction]:
     assert len(summarization_datums) == len(SUMMARIZATION_PREDICTIONS)
     preds = []
     for i in range(len(summarization_datums)):
         preds.append(
-            schemas.Prediction(
+            annotation.Prediction(
                 datum=summarization_datums[i],
                 annotations=[
-                    schemas.Annotation(
+                    annotation.Annotation(
                         text=SUMMARIZATION_PREDICTIONS[i],
                     )
                 ],
@@ -599,8 +599,8 @@ def test__setup_llm_client():
     mocked_answer_relevance,
 )
 def test_evaluate_text_generation_rag(
-    rag_gts: list[schemas.GroundTruth],
-    rag_preds: list[schemas.Prediction],
+    rag_gts: list[annotation.GroundTruth],
+    rag_preds: list[annotation.Prediction],
 ):
     """
     Tests the evaluate_text_generation function for RAG.
@@ -884,8 +884,8 @@ def test_evaluate_text_generation_rag(
     mocked_toxicity,
 )
 def test_evaluate_text_generation_content_gen(
-    content_gen_gts: list[schemas.GroundTruth],
-    content_gen_preds: list[schemas.Prediction],
+    content_gen_gts: list[annotation.GroundTruth],
+    content_gen_preds: list[annotation.Prediction],
 ):
     """
     Tests the evaluate_text_generation function for content generation.
@@ -946,8 +946,8 @@ def test_evaluate_text_generation_content_gen(
     mocked_summary_coherence,
 )
 def test_evaluate_text_generation_summarization(
-    summarization_gts: list[schemas.GroundTruth],
-    summarization_preds: list[schemas.Prediction],
+    summarization_gts: list[annotation.GroundTruth],
+    summarization_preds: list[annotation.Prediction],
 ):
     """
     Tests the evaluate_text_generation function for summarization.

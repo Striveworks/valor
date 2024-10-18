@@ -3,7 +3,7 @@ from unittest.mock import patch
 
 import pandas as pd
 import pytest
-from valor_lite.text_generation import schemas
+from valor_lite.text_generation import annotation
 from valor_lite.text_generation.manager import (
     MismatchingTextGenerationDatumError,
     ValorTextGenerationStreamingManager,
@@ -56,24 +56,24 @@ RAG_CONTEXT = [
 
 
 @pytest.fixture
-def rag_datums() -> list[schemas.Datum]:
+def rag_datums() -> list[annotation.Datum]:
     assert len(RAG_QUERIES) == 3
     return [
-        schemas.Datum(
+        annotation.Datum(
             uid="uid0",
             text=RAG_QUERIES[0],
             metadata={
                 "category": "history",
             },
         ),
-        schemas.Datum(
+        annotation.Datum(
             uid="uid1",
             text=RAG_QUERIES[1],
             metadata={
                 "category": "history",
             },
         ),
-        schemas.Datum(
+        annotation.Datum(
             uid="uid2",
             text=RAG_QUERIES[2],
             metadata={
@@ -85,16 +85,16 @@ def rag_datums() -> list[schemas.Datum]:
 
 @pytest.fixture
 def rag_preds(
-    rag_datums: list[schemas.Datum],
-) -> list[schemas.Prediction]:
+    rag_datums: list[annotation.Datum],
+) -> list[annotation.Prediction]:
     assert len(rag_datums) == len(RAG_PREDICTIONS) == len(RAG_CONTEXT)
     preds = []
     for i in range(len(rag_datums)):
         preds.append(
-            schemas.Prediction(
+            annotation.Prediction(
                 datum=rag_datums[i],
                 annotations=[
-                    schemas.Annotation(
+                    annotation.Annotation(
                         text=RAG_PREDICTIONS[i],
                         context_list=RAG_CONTEXT[i],
                     )
@@ -215,7 +215,7 @@ def mocked_toxicity(
     mocked_toxicity,
 )
 def test_ValorTextGenerationStreamingManager_rag(
-    rag_preds: list[schemas.Prediction],
+    rag_preds: list[annotation.Prediction],
 ):
     """
     Tests the evaluate_text_generation function for RAG.
@@ -361,11 +361,11 @@ def test_ValorTextGenerationStreamingManager_rag(
     # Test adding two prediction annotations in the same prediction for the same datum.
     pred0_two_ann = copy.deepcopy(rag_preds[0])
     pred0_two_ann.annotations = [
-        schemas.Annotation(
+        annotation.Annotation(
             text="Generated text 0.",
             context_list=RAG_CONTEXT[0],
         ),
-        schemas.Annotation(
+        annotation.Annotation(
             text="Generated text 1.",
             context_list=RAG_CONTEXT[0],
         ),
@@ -396,14 +396,14 @@ def test_ValorTextGenerationStreamingManager_rag(
     # Test adding two prediction annotations in different predictions for the same datum.
     pred0_0 = copy.deepcopy(rag_preds[0])
     pred0_0.annotations = [
-        schemas.Annotation(
+        annotation.Annotation(
             text="Generated text 0.",
             context_list=RAG_CONTEXT[0],
         ),
     ]
     pred0_1 = copy.deepcopy(rag_preds[0])
     pred0_1.annotations = [
-        schemas.Annotation(
+        annotation.Annotation(
             text="Generated text 1.",
             context_list=RAG_CONTEXT[0],
         ),

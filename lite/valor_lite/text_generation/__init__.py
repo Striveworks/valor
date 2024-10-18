@@ -1,3 +1,5 @@
+from .annotation import Annotation, Datum, GroundTruth, Prediction
+from .evaluation import Evaluation
 from .manager import ValorTextGenerationStreamingManager
 from .metric import (
     AnswerCorrectnessMetric,
@@ -13,7 +15,6 @@ from .metric import (
     SummaryCoherenceMetric,
     ToxicityMetric,
 )
-from .schemas import Annotation, Datum, Evaluation, GroundTruth, Prediction
 from .text_generation import evaluate_text_generation
 
 __all__ = [

@@ -4,7 +4,7 @@ from collections import defaultdict
 import evaluate
 from nltk.tokenize import RegexpTokenizer
 from nltk.translate import bleu_score
-from valor_lite.text_generation import schemas
+from valor_lite.text_generation import annotation, evaluation
 from valor_lite.text_generation.llm_client import (
     InvalidLLMResponseError,
     LLMClient,
@@ -752,22 +752,22 @@ def validate_metric_parameters(
 
 
 def evaluate_text_generation(
-    predictions: list[schemas.Prediction],
+    predictions: list[annotation.Prediction],
     metrics_to_return: list[MetricType],
-    groundtruths: list[schemas.GroundTruth] = [],
+    groundtruths: list[annotation.GroundTruth] = [],
     llm_api_params: dict[str, str | int | dict] | None = None,
     metric_params: dict[str, dict] = {},
-) -> schemas.Evaluation:
+) -> evaluation.Evaluation:
     """
     Validates the parameters and formats the predictions and ground truths, then computes the text generation metrics.
 
     Parameters
     ----------
-    predictions : list[schemas.Prediction]
+    predictions : list[annotation.Prediction]
         A list of predictions.
     metrics_to_return : list[MetricType]
         The list of metrics to compute, store, and return to the user. There is no default value, so the user must specify the metrics they want to compute.
-    groundtruths : list[schemas.GroundTruth], optional
+    groundtruths : list[annotation.GroundTruth], optional
         A list of ground truths. Ground truths are not required for all text generation metrics.
     llm_api_params : dict[str, str | int | dict], optional
         A dictionary of parameters for the LLM API.
@@ -776,7 +776,7 @@ def evaluate_text_generation(
 
     Returns
     ----------
-    schemas.Evaluation
+    evaluation.Evaluation
         An evaluation object containing the computed metrics and metadata.
     """
     start_time = time.time()
@@ -820,8 +820,8 @@ def evaluate_text_generation(
         metric_params=metric_params,
     )
 
-    return schemas.Evaluation(
-        parameters=schemas.EvaluationParameters(
+    return evaluation.Evaluation(
+        parameters=evaluation.EvaluationParameters(
             metrics_to_return=metrics_to_return,
             llm_api_params=llm_api_params,
             metric_params=metric_params,

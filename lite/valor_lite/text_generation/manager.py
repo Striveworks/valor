@@ -1,7 +1,7 @@
 from dataclasses import dataclass, field
 
 import pandas as pd
-from valor_lite.text_generation import schemas, text_generation
+from valor_lite.text_generation import annotation, evaluation, text_generation
 from valor_lite.text_generation.metric import MetricType
 
 
@@ -139,27 +139,29 @@ class ValorTextGenerationStreamingManager:
 
     def add_and_evaluate_prediction(
         self,
-        predictions: list[schemas.Prediction],
-    ) -> schemas.Evaluation:
+        predictions: list[annotation.Prediction],
+    ) -> evaluation.Evaluation:
         """
         Adds a prediction or batch of predictions and evaluates them.
 
         Parameters
         ----------
-        predictions : list[schemas.Prediction]
+        predictions : list[annotation.Prediction]
             A list of Prediction objects.
 
         Returns
         -------
-        schemas.Evaluation
+        evaluation.Evaluation
             An evaluation object containing metrics and metadata.
         """
         if not (
             isinstance(predictions, list)
-            and all([isinstance(x, schemas.Prediction) for x in predictions])
+            and all(
+                [isinstance(x, annotation.Prediction) for x in predictions]
+            )
         ):
             raise TypeError(
-                "predictions should be a list of schemas.Prediction objects."
+                "predictions should be a list of annotation.Prediction objects."
             )
         if not len(predictions) > 0:
             raise ValueError(
