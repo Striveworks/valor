@@ -19,7 +19,7 @@ class MetricType(str, Enum):
     @classmethod
     def text_generation(cls) -> set["MetricType"]:
         """
-        MetricTypes for text-generation tasks.
+        All text generation metrics.
         """
         return {
             cls.AnswerCorrectness,
@@ -34,6 +34,39 @@ class MetricType(str, Enum):
             cls.ROUGE,
             cls.SummaryCoherence,
             cls.Toxicity,
+        }
+
+    @classmethod
+    def llm_guided(cls) -> set["MetricType"]:
+        """
+        All text generation metrics that use an LLM for part of the metric computation.
+        """
+        return {
+            cls.AnswerCorrectness,
+            cls.AnswerRelevance,
+            cls.Bias,
+            cls.ContextPrecision,
+            cls.ContextRecall,
+            cls.ContextRelevance,
+            cls.Faithfulness,
+            cls.Hallucination,
+            cls.SummaryCoherence,
+            cls.Toxicity,
+        }
+
+    @classmethod
+    def text_comparison(cls) -> set["MetricType"]:
+        """
+        All text generation metrics that use ground truth text as part of the metric computation.
+
+        These metrics require ground truths to be used. They are not usable in certain settings, like streaming, where ground truths are not available.
+        """
+        return {
+            cls.AnswerCorrectness,
+            cls.BLEU,
+            cls.ContextPrecision,
+            cls.ContextRecall,
+            cls.ROUGE,
         }
 
 

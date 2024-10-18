@@ -66,24 +66,18 @@ class ValorTextGenerationStreamingManager:
         super().__setattr__(key, value)
 
     def _validate_streaming_metrics_to_return(self):
-        """Validates that all metrics are text generation metrics and are not text comparison metrics."""
+        """
+        Validates that all metrics are text generation metrics and are not text comparison metrics.
+
+        Ground truths will not be available in a streaming setting as the model makes predictions. If you were able to generate ground truths in real time, then you wouldn't need a model to generate predictions in the first place.
+        """
         validate_text_gen_metrics_to_return(
             metrics_to_return=self.metrics_to_return,
         )
-        non_text_comparison_metrics = {
-            MetricType.AnswerRelevance,
-            MetricType.Bias,
-            MetricType.ContextRelevance,
-            MetricType.Faithfulness,
-            MetricType.Hallucination,
-            MetricType.SummaryCoherence,
-            MetricType.Toxicity,
-        }
-        if not set(self.metrics_to_return).issubset(
-            non_text_comparison_metrics
-        ):
+
+        if set(self.metrics_to_return) & MetricType.text_comparison():
             raise ValueError(
-                f"The following text generation metrics either require groundtruths or have not been added to the ValorTextGenerationStreamingManager: '{set(self.metrics_to_return) - non_text_comparison_metrics}'"
+                f"The following text generation metrics require groundtruths, so are not usable in a streaming setting: '{set(self.metrics_to_return) & MetricType.text_comparison()}'"
             )
 
     def _initialize_joint_df(self):

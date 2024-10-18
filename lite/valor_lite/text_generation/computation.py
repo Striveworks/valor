@@ -33,28 +33,6 @@ from valor_lite.text_generation.utilities import (
     validate_text_gen_metrics_to_return,
 )
 
-LLM_GUIDED_METRICS = {
-    "AnswerCorrectness",
-    "AnswerRelevance",
-    "Bias",
-    "ContextPrecision",
-    "ContextRecall",
-    "ContextRelevance",
-    "Faithfulness",
-    "Hallucination",
-    "SummaryCoherence",
-    "Toxicity",
-}
-
-
-TEXT_COMPARISON_METRICS = {
-    "AnswerCorrectness",
-    "BLEU",
-    "ContextPrecision",
-    "ContextRecall",
-    "ROUGE",
-}
-
 
 def _calculate_rouge_scores(
     predictions: str | list[str],
@@ -326,17 +304,22 @@ def _compute_text_generation_metrics(
     is_Toxicity_enabled = MetricType.Toxicity in metrics_to_return
 
     client = None
-    if any([metric in metrics_to_return for metric in LLM_GUIDED_METRICS]):
+    if any(
+        [metric in metrics_to_return for metric in MetricType.llm_guided()]
+    ):
         if llm_api_params is None:
             raise ValueError(
-                f"llm_api_params must be provided for the following metrics: {[metric for metric in metrics_to_return if metric in LLM_GUIDED_METRICS]}."
+                f"llm_api_params must be provided for the following metrics: {[metric for metric in metrics_to_return if metric in MetricType.llm_guided()]}."
             )
         client = _setup_llm_client(llm_api_params)
 
     # Text comparison metrics require both predictions and ground truths.
     output = []
     if any(
-        [metric in TEXT_COMPARISON_METRICS for metric in metrics_to_return]
+        [
+            metric in MetricType.text_comparison()
+            for metric in metrics_to_return
+        ]
     ):
         for (
             prediction_text,
@@ -496,8 +479,8 @@ def _compute_text_generation_metrics(
     if any(
         [
             (
-                metric_name in LLM_GUIDED_METRICS
-                and metric_name not in TEXT_COMPARISON_METRICS
+                metric_name in MetricType.llm_guided()
+                and metric_name not in MetricType.text_comparison()
             )
             for metric_name in metrics_to_return
         ]
