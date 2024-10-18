@@ -1,8 +1,8 @@
 import json
-from typing import Any
+from typing import Any, Sequence
 
 from valor_lite.text_generation.exceptions import InvalidLLMResponseError
-from valor_lite.text_generation.metric import MetricType
+from valor_lite.text_generation.metric import MetricType, ROUGEType
 
 
 def trim_and_load_json(input_string: str) -> Any:
@@ -38,15 +38,15 @@ def trim_and_load_json(input_string: str) -> Any:
 
 
 def validate_text_gen_metrics_to_return(
-    metrics_to_return: list[MetricType],
+    metrics_to_return: Sequence[str | MetricType],
 ) -> None:
     """
     Validate that the provided metrics are appropriate for text generation.
 
     Parameters
     ----------
-    metrics_to_return : List[MetricType]
-        A list of metrics that need to be validated against the task type.
+    metrics_to_return : Sequence[str | MetricType]
+        A list of metrics to check.
 
     Raises
     ------
@@ -73,8 +73,19 @@ def validate_metric_parameters(
 
     if MetricType.BLEU in metric_params:
         bleu_params = metric_params[MetricType.BLEU.value]
+
+        if not isinstance(bleu_params, dict):
+            raise TypeError(
+                f"Expected BLEU parameters to be of type 'dict', got {type(bleu_params).__name__}"
+            )
+
         if "weights" in bleu_params:
             bleu_weights = bleu_params["weights"]
+            if not isinstance(bleu_weights, list):
+                raise TypeError(
+                    f"Expected BLEU weights to be of type 'list', got {type(bleu_weights).__name__}"
+                )
+
             if not all(
                 isinstance(weight, (int, float)) and 0 <= weight
                 for weight in bleu_weights
@@ -82,5 +93,32 @@ def validate_metric_parameters(
                 raise ValueError(
                     "BLEU metric weights must be a list of non-negative integers or floats."
                 )
+
             if sum(bleu_weights) != 1:
                 raise ValueError("BLEU metric weights must sum to 1.")
+
+    if MetricType.ROUGE in metric_params:
+        rouge_params = metric_params[MetricType.ROUGE.value]
+        if not isinstance(rouge_params, dict):
+            raise TypeError(
+                f"Expected ROUGE parameters to be of type 'dict', got {type(rouge_params).__name__}"
+            )
+
+        if "rouge_types" in rouge_params:
+            rouge_types = rouge_params["rouge_types"]
+            if not isinstance(rouge_types, (list, set)):
+                raise TypeError(
+                    f"Expected rouge_types to be of type 'list' or 'set', got {type(rouge_types).__name__}"
+                )
+
+            if not set(rouge_types).issubset(set(ROUGEType)):
+                raise ValueError(
+                    f"Some ROUGE types are not supported: {set(rouge_types) - set(ROUGEType)}"
+                )
+
+        if "use_stemmer" in rouge_params:
+            use_stemmer = rouge_params["use_stemmer"]
+            if not isinstance(use_stemmer, bool):
+                raise TypeError(
+                    f"Expected use_stemmer to be of type 'bool', got {type(use_stemmer).__name__}"
+                )
