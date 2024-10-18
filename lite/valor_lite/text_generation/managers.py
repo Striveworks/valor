@@ -1,7 +1,7 @@
 from dataclasses import dataclass, field
 
 import pandas as pd
-from valor_lite.text_generation import schemas, text_generation, utilities
+from valor_lite.text_generation import schemas, text_generation
 from valor_lite.text_generation.metric import MetricType
 
 
@@ -68,7 +68,7 @@ class ValorTextGenerationStreamingManager:
 
     def _validate_metrics_to_return(self):
         """Validates that all metrics are text generation metrics and are not text comparison metrics."""
-        utilities.validate_text_gen_metrics_to_return(
+        text_generation.validate_text_gen_metrics_to_return(
             metrics_to_return=self.metrics_to_return,
         )
         non_text_comparison_metrics = {

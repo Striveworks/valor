@@ -4,7 +4,7 @@ from collections import defaultdict
 import evaluate
 from nltk.tokenize import RegexpTokenizer
 from nltk.translate import bleu_score
-from valor_lite.text_generation import schemas, utilities
+from valor_lite.text_generation import schemas
 from valor_lite.text_generation.llm_clients import (
     InvalidLLMResponseError,
     LLMClient,
@@ -702,26 +702,53 @@ def _compute_text_generation_metrics(
     return output
 
 
-def is_text_gen_task(
-    ann: schemas.Annotation,
-) -> bool:
+def validate_text_gen_metrics_to_return(
+    metrics_to_return: list[MetricType],
+) -> None:
     """
-    Checks if the annotation is a text generation annotation.
+    Validate that the provided metrics are appropriate for text generation.
 
     Parameters
     ----------
-    ann : schemas.Annotation
-        The annotation to check.
+    metrics_to_return : List[MetricType]
+        A list of metrics that need to be validated against the task type.
 
-    Returns
-    ----------
-    bool
-        True if the annotation is a text generation annotation, False otherwise.
+    Raises
+    ------
+    ValueError
+        If any of the provided metrics are not supported for text generation.
     """
-    if ann.text is not None or ann.context_list is not None:
-        return True
-    else:
-        return False
+    if not set(metrics_to_return).issubset(MetricType.text_generation()):
+        raise ValueError(
+            f"The following metrics are not supported for text generation: '{set(metrics_to_return) - MetricType.text_generation()}'"
+        )
+
+
+def validate_metric_parameters(
+    metrics_to_return: list[MetricType],
+    metric_params: dict[str, dict],
+):
+    # check that the keys of metric parameters are all in metrics_to_return
+    if not set(metric_params.keys()).issubset(
+        [metric.value for metric in metrics_to_return]
+    ):
+        raise ValueError(
+            "The keys of metric_params must be a subset of the metrics_to_return."
+        )
+
+    if MetricType.BLEU in metric_params:
+        bleu_params = metric_params[MetricType.BLEU.value]
+        if "weights" in bleu_params:
+            bleu_weights = bleu_params["weights"]
+            if not all(
+                isinstance(weight, (int, float)) and 0 <= weight
+                for weight in bleu_weights
+            ):
+                raise ValueError(
+                    "BLEU metric weights must be a list of non-negative integers or floats."
+                )
+            if sum(bleu_weights) != 1:
+                raise ValueError("BLEU metric weights must sum to 1.")
 
 
 def evaluate_text_generation(
@@ -754,10 +781,10 @@ def evaluate_text_generation(
     """
     start_time = time.time()
 
-    utilities.validate_text_gen_metrics_to_return(
+    validate_text_gen_metrics_to_return(
         metrics_to_return=metrics_to_return,
     )
-    utilities.validate_metric_parameters(
+    validate_metric_parameters(
         metrics_to_return=metrics_to_return,
         metric_params=metric_params,
     )
