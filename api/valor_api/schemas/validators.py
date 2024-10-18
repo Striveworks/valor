@@ -1,11 +1,39 @@
 import datetime
-from typing import Any
+import re
+from typing import Any, Type
 
 
-def generate_type_error(received_value: Any, expected_type: str):
+def generate_type_error(received_value: Any, expected_type: Type):
     return TypeError(
-        f"Expected value of type '{expected_type}', received value '{received_value}' with type '{type(received_value).__name__}'."
+        f"Expected value of type '{expected_type.__name__}', received value '{received_value}' with type '{type(received_value).__name__}'."
     )
+
+
+def validate_string_identifier(v: Any):
+    """
+    Validates a string identifier.
+
+    Parameters
+    ----------
+    v : Any
+        The value to perform validation on.
+
+    Raises
+    ------
+    TypeError
+        If the value is not of type `str`.
+    ValueError
+        If the value contains illegal characters.
+    """
+    if not isinstance(v, str):
+        raise generate_type_error(v, str)
+
+    specials = re.escape("-_")
+    pattern = f"^[a-zA-Z0-9{specials}]+$"
+    if not bool(re.match(pattern, v)):
+        raise ValueError(
+            "String identifier contains illegal characters. Only alphanumeric, dash and underscore are supported."
+        )
 
 
 def validate_type_bool(v: Any):
@@ -23,7 +51,7 @@ def validate_type_bool(v: Any):
         If the value is not of type 'bool'.
     """
     if not isinstance(v, bool):
-        raise generate_type_error(v, bool.__name__)
+        raise generate_type_error(v, bool)
 
 
 def validate_type_integer(v: Any):
@@ -41,7 +69,7 @@ def validate_type_integer(v: Any):
         If the value is not of type 'int'.
     """
     if not isinstance(v, int):
-        raise generate_type_error(v, int.__name__)
+        raise generate_type_error(v, int)
 
 
 def validate_type_float(v: Any):
@@ -59,7 +87,7 @@ def validate_type_float(v: Any):
         If the value is not of type 'float'.
     """
     if not isinstance(v, (int, float)):
-        raise generate_type_error(v, float.__name__)
+        raise generate_type_error(v, float)
 
 
 def validate_type_string(v: Any):
@@ -79,7 +107,7 @@ def validate_type_string(v: Any):
         If the string contains forbidden characters.
     """
     if not isinstance(v, str):
-        raise generate_type_error(v, str.__name__)
+        raise generate_type_error(v, str)
 
 
 def validate_type_datetime(v: Any):
@@ -99,7 +127,7 @@ def validate_type_datetime(v: Any):
         If the value is not formatted correctly.
     """
     if not isinstance(v, str):
-        raise generate_type_error(v, "ISO formatted datetime")
+        raise generate_type_error(v, str)
     try:
         datetime.datetime.fromisoformat(v)
     except ValueError as e:
@@ -125,7 +153,7 @@ def validate_type_date(v: Any):
         If the value is not formatted correctly.
     """
     if not isinstance(v, str):
-        raise generate_type_error(v, "ISO formatted date")
+        raise generate_type_error(v, str)
     try:
         datetime.date.fromisoformat(v)
     except ValueError as e:
@@ -151,7 +179,7 @@ def validate_type_time(v: Any):
         If the value is not formatted correctly.
     """
     if not isinstance(v, str):
-        raise generate_type_error(v, "ISO formatted time")
+        raise generate_type_error(v, str)
     try:
         datetime.time.fromisoformat(v)
     except ValueError as e:
@@ -177,7 +205,7 @@ def validate_type_duration(v: Any):
         If the value is not formatted correctly.
     """
     if not isinstance(v, float):
-        raise generate_type_error(v, float.__name__)
+        raise generate_type_error(v, float)
     try:
         datetime.timedelta(seconds=v)
     except ValueError as e:
@@ -203,7 +231,7 @@ def validate_type_point(v: Any):
         If the point is not an (x,y) position.
     """
     if not isinstance(v, (tuple, list)):
-        raise generate_type_error(v, "tuple[float, float] or list[float]")
+        raise generate_type_error(v, list)
     elif not (
         len(v) == 2
         and isinstance(v[0], (int, float))
@@ -231,9 +259,7 @@ def validate_type_multipoint(v: Any):
         If there are no points or they are not (x,y) positions.
     """
     if not isinstance(v, list):
-        raise generate_type_error(
-            v, "list[tuple[float, float]] or list[list[float]]"
-        )
+        raise generate_type_error(v, list)
     elif not v:
         raise ValueError("List cannot be empty.")
     for point in v:
@@ -280,9 +306,7 @@ def validate_type_multilinestring(v: Any):
         If the value does not conform to the multilinestring requirements.
     """
     if not isinstance(v, list):
-        return generate_type_error(
-            v, "list[list[tuple[float, float]]] or list[list[list[float]]]"
-        )
+        return generate_type_error(v, list)
     elif not v:
         raise ValueError("List cannot be empty.")
     for line in v:
@@ -353,10 +377,7 @@ def validate_type_multipolygon(v: Any):
         If the value does not conform to the multipolygon requirements.
     """
     if not isinstance(v, list):
-        raise generate_type_error(
-            v,
-            "list[list[list[tuple[float, float]]]] or list[list[list[list[float]]]]",
-        )
+        raise generate_type_error(v, list)
     elif not v:
         raise ValueError("List cannot be empty.")
     for polygon in v:
