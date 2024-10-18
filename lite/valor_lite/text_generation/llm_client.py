@@ -12,7 +12,7 @@ try:
 except ImportError:
     OpenAI = None
 
-from valor_lite.text_generation.llm_instructions_analysis import (
+from valor_lite.text_generation.llm_instructions import (
     generate_answer_correctness_verdicts_instruction,
     generate_answer_relevance_verdicts_instruction,
     generate_bias_verdicts_instruction,

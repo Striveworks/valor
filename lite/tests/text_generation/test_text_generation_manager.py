@@ -187,31 +187,31 @@ def mocked_toxicity(
 
 
 @patch(
-    "valor_lite.text_generation.llm_clients.WrappedOpenAIClient.connect",
+    "valor_lite.text_generation.llm_client.WrappedOpenAIClient.connect",
     mocked_connection,
 )
 @patch(
-    "valor_lite.text_generation.llm_clients.WrappedOpenAIClient.answer_relevance",
+    "valor_lite.text_generation.llm_client.WrappedOpenAIClient.answer_relevance",
     mocked_answer_relevance,
 )
 @patch(
-    "valor_lite.text_generation.llm_clients.WrappedOpenAIClient.bias",
+    "valor_lite.text_generation.llm_client.WrappedOpenAIClient.bias",
     mocked_bias,
 )
 @patch(
-    "valor_lite.text_generation.llm_clients.WrappedOpenAIClient.context_relevance",
+    "valor_lite.text_generation.llm_client.WrappedOpenAIClient.context_relevance",
     mocked_context_relevance,
 )
 @patch(
-    "valor_lite.text_generation.llm_clients.WrappedOpenAIClient.faithfulness",
+    "valor_lite.text_generation.llm_client.WrappedOpenAIClient.faithfulness",
     mocked_faithfulness,
 )
 @patch(
-    "valor_lite.text_generation.llm_clients.WrappedOpenAIClient.hallucination",
+    "valor_lite.text_generation.llm_client.WrappedOpenAIClient.hallucination",
     mocked_hallucination,
 )
 @patch(
-    "valor_lite.text_generation.llm_clients.WrappedOpenAIClient.toxicity",
+    "valor_lite.text_generation.llm_client.WrappedOpenAIClient.toxicity",
     mocked_toxicity,
 )
 def test_ValorTextGenerationStreamingManager_rag(

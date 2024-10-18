@@ -451,11 +451,11 @@ def mocked_compute_rouge_none(*args, **kwargs):
 
 
 @patch(
-    "valor_lite.text_generation.llm_clients.WrappedOpenAIClient.connect",
+    "valor_lite.text_generation.llm_client.WrappedOpenAIClient.connect",
     mocked_connection,
 )
 @patch(
-    "valor_lite.text_generation.llm_clients.WrappedMistralAIClient.connect",
+    "valor_lite.text_generation.llm_client.WrappedMistralAIClient.connect",
     mocked_connection,
 )
 def test__setup_llm_client():
@@ -551,51 +551,51 @@ def test__setup_llm_client():
 
 
 @patch(
-    "valor_lite.text_generation.llm_clients.WrappedOpenAIClient.connect",
+    "valor_lite.text_generation.llm_client.WrappedOpenAIClient.connect",
     mocked_connection,
 )
 @patch(
-    "valor_lite.text_generation.llm_clients.WrappedOpenAIClient.answer_correctness",
+    "valor_lite.text_generation.llm_client.WrappedOpenAIClient.answer_correctness",
     mocked_answer_correctness,
 )
 @patch(
-    "valor_lite.text_generation.llm_clients.WrappedOpenAIClient.answer_relevance",
+    "valor_lite.text_generation.llm_client.WrappedOpenAIClient.answer_relevance",
     mocked_answer_relevance,
 )
 @patch(
-    "valor_lite.text_generation.llm_clients.WrappedOpenAIClient.bias",
+    "valor_lite.text_generation.llm_client.WrappedOpenAIClient.bias",
     mocked_bias,
 )
 @patch(
-    "valor_lite.text_generation.llm_clients.WrappedOpenAIClient.context_precision",
+    "valor_lite.text_generation.llm_client.WrappedOpenAIClient.context_precision",
     mocked_context_precision,
 )
 @patch(
-    "valor_lite.text_generation.llm_clients.WrappedOpenAIClient.context_recall",
+    "valor_lite.text_generation.llm_client.WrappedOpenAIClient.context_recall",
     mocked_context_recall,
 )
 @patch(
-    "valor_lite.text_generation.llm_clients.WrappedOpenAIClient.context_relevance",
+    "valor_lite.text_generation.llm_client.WrappedOpenAIClient.context_relevance",
     mocked_context_relevance,
 )
 @patch(
-    "valor_lite.text_generation.llm_clients.WrappedOpenAIClient.faithfulness",
+    "valor_lite.text_generation.llm_client.WrappedOpenAIClient.faithfulness",
     mocked_faithfulness,
 )
 @patch(
-    "valor_lite.text_generation.llm_clients.WrappedOpenAIClient.hallucination",
+    "valor_lite.text_generation.llm_client.WrappedOpenAIClient.hallucination",
     mocked_hallucination,
 )
 @patch(
-    "valor_lite.text_generation.llm_clients.WrappedOpenAIClient.toxicity",
+    "valor_lite.text_generation.llm_client.WrappedOpenAIClient.toxicity",
     mocked_toxicity,
 )
 @patch(
-    "valor_lite.text_generation.llm_clients.WrappedMistralAIClient.connect",
+    "valor_lite.text_generation.llm_client.WrappedMistralAIClient.connect",
     mocked_connection,
 )
 @patch(
-    "valor_lite.text_generation.llm_clients.WrappedMistralAIClient.answer_relevance",
+    "valor_lite.text_generation.llm_client.WrappedMistralAIClient.answer_relevance",
     mocked_answer_relevance,
 )
 def test_evaluate_text_generation_rag(
@@ -872,15 +872,15 @@ def test_evaluate_text_generation_rag(
 
 
 @patch(
-    "valor_lite.text_generation.llm_clients.WrappedOpenAIClient.connect",
+    "valor_lite.text_generation.llm_client.WrappedOpenAIClient.connect",
     mocked_connection,
 )
 @patch(
-    "valor_lite.text_generation.llm_clients.WrappedOpenAIClient.bias",
+    "valor_lite.text_generation.llm_client.WrappedOpenAIClient.bias",
     mocked_bias,
 )
 @patch(
-    "valor_lite.text_generation.llm_clients.WrappedOpenAIClient.toxicity",
+    "valor_lite.text_generation.llm_client.WrappedOpenAIClient.toxicity",
     mocked_toxicity,
 )
 def test_evaluate_text_generation_content_gen(
@@ -938,11 +938,11 @@ def test_evaluate_text_generation_content_gen(
 
 
 @patch(
-    "valor_lite.text_generation.llm_clients.WrappedOpenAIClient.connect",
+    "valor_lite.text_generation.llm_client.WrappedOpenAIClient.connect",
     mocked_connection,
 )
 @patch(
-    "valor_lite.text_generation.llm_clients.WrappedOpenAIClient.summary_coherence",
+    "valor_lite.text_generation.llm_client.WrappedOpenAIClient.summary_coherence",
     mocked_summary_coherence,
 )
 def test_evaluate_text_generation_summarization(

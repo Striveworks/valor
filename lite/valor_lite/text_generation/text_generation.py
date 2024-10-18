@@ -5,7 +5,7 @@ import evaluate
 from nltk.tokenize import RegexpTokenizer
 from nltk.translate import bleu_score
 from valor_lite.text_generation import schemas
-from valor_lite.text_generation.llm_clients import (
+from valor_lite.text_generation.llm_client import (
     InvalidLLMResponseError,
     LLMClient,
     MockLLMClient,
