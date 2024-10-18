@@ -27,8 +27,8 @@ try:
 except ImportError:
     OPENAI_INSTALLED = False
 
-from valor_lite.text_generation.exceptions import InvalidLLMResponseError
 from valor_lite.text_generation.llm_clients import (
+    InvalidLLMResponseError,
     LLMClient,
     MockLLMClient,
     WrappedMistralAIClient,

@@ -4,7 +4,7 @@ from unittest.mock import patch
 import pandas as pd
 import pytest
 from valor_lite.text_generation import managers, schemas
-from valor_lite.text_generation.exceptions import (
+from valor_lite.text_generation.managers import (
     MismatchingTextGenerationDatumError,
 )
 from valor_lite.text_generation.metric import MetricType

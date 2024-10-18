@@ -5,8 +5,8 @@ import evaluate
 from nltk.tokenize import RegexpTokenizer
 from nltk.translate import bleu_score
 from valor_lite.text_generation import schemas, utilities
-from valor_lite.text_generation.exceptions import InvalidLLMResponseError
 from valor_lite.text_generation.llm_clients import (
+    InvalidLLMResponseError,
     LLMClient,
     MockLLMClient,
     WrappedMistralAIClient,

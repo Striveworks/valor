@@ -2,10 +2,15 @@ from dataclasses import dataclass, field
 
 import pandas as pd
 from valor_lite.text_generation import schemas, text_generation, utilities
-from valor_lite.text_generation.exceptions import (
-    MismatchingTextGenerationDatumError,
-)
 from valor_lite.text_generation.metric import MetricType
+
+
+class MismatchingTextGenerationDatumError(Exception):
+    """
+    Raised when datums with the same uid but different text or metadata are added to the ValorTextGenerationStreamingManager.
+    """
+
+    pass
 
 
 @dataclass
