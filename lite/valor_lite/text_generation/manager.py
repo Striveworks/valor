@@ -1,20 +1,15 @@
 from dataclasses import dataclass, field
 
-import pandas as pd
+import pandas as pd  # TODO remove
 from valor_lite.text_generation import annotation, evaluation
-from valor_lite.text_generation.computation import (
-    _validate_text_gen_metrics_to_return,
-    evaluate_text_generation,
+from valor_lite.text_generation.computation import evaluate_text_generation
+from valor_lite.text_generation.exceptions import (
+    MismatchingTextGenerationDatumError,
 )
 from valor_lite.text_generation.metric import MetricType
-
-
-class MismatchingTextGenerationDatumError(Exception):
-    """
-    Raised when datums with the same uid but different text are added to the ValorTextGenerationStreamingManager.
-    """
-
-    pass
+from valor_lite.text_generation.utilities import (
+    validate_text_gen_metrics_to_return,
+)
 
 
 @dataclass
@@ -72,7 +67,7 @@ class ValorTextGenerationStreamingManager:
 
     def _validate_streaming_metrics_to_return(self):
         """Validates that all metrics are text generation metrics and are not text comparison metrics."""
-        _validate_text_gen_metrics_to_return(
+        validate_text_gen_metrics_to_return(
             metrics_to_return=self.metrics_to_return,
         )
         non_text_comparison_metrics = {
