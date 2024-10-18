@@ -63,8 +63,8 @@ jobs:
         working-directory: ./lite
       - name: run text generation tests and report coverage
         run: |
-          pip install -e ".[test]"
-          COVERAGE_FILE=.coverage.text_generation python -m coverage run --omit "tests/*"  -m pytest -v tests/text_generation
+          pip install -e ".[test,openai,mistral]"
+          COVERAGE_FILE=.coverage.text_generation python -m coverage run --omit "tests/*"  -m pytest -v tests/text_generation/
           python -m coverage combine
           python -m coverage report -m
           python -m coverage json
