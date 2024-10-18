@@ -1,5 +1,5 @@
 import numpy as np
-from valor_lite.semantic_segmentation import DataLoader, Segmentation
+from valor_lite.semantic_segmentation import DataLoader, Metric, Segmentation
 
 
 def test_metadata_using_large_random_segmentations(
@@ -45,6 +45,8 @@ def _flatten_metrics(m) -> list:
             for value in m
             for inner_value in _flatten_metrics(value)
         ]
+    elif isinstance(m, Metric):
+        return _flatten_metrics(m.to_dict())
     else:
         return [m]
 
@@ -56,9 +58,7 @@ def test_output_types_dont_contain_numpy(
     manager.add_data(segmentations_from_boxes)
     evaluator = manager.finalize()
 
-    metrics = evaluator.evaluate(
-        as_dict=True,
-    )
+    metrics = evaluator.evaluate()
 
     values = _flatten_metrics(metrics)
     for value in values:

@@ -172,13 +172,13 @@ def test_filtering_one_classification(
         {
             "type": "Counts",
             "value": {
-                "tp": [1],
-                "fp": [0],
-                "fn": [0],
-                "tn": [0],
+                "tp": 1,
+                "fp": 0,
+                "fn": 0,
+                "tn": 0,
             },
             "parameters": {
-                "score_thresholds": [0.5],
+                "score_threshold": 0.5,
                 "hardmax": False,
                 "label": "0",
             },
@@ -186,13 +186,13 @@ def test_filtering_one_classification(
         {
             "type": "Counts",
             "value": {
-                "tp": [0],
-                "fp": [0],
-                "fn": [0],
-                "tn": [1],
+                "tp": 0,
+                "fp": 0,
+                "fn": 0,
+                "tn": 1,
             },
             "parameters": {
-                "score_thresholds": [0.5],
+                "score_threshold": 0.5,
                 "hardmax": False,
                 "label": "1",
             },
@@ -200,13 +200,13 @@ def test_filtering_one_classification(
         {
             "type": "Counts",
             "value": {
-                "tp": [0],
-                "fp": [0],
-                "fn": [0],
-                "tn": [1],
+                "tp": 0,
+                "fp": 0,
+                "fn": 0,
+                "tn": 1,
             },
             "parameters": {
-                "score_thresholds": [0.5],
+                "score_threshold": 0.5,
                 "hardmax": False,
                 "label": "2",
             },
@@ -214,13 +214,13 @@ def test_filtering_one_classification(
         {
             "type": "Counts",
             "value": {
-                "tp": [0],
-                "fp": [0],
-                "fn": [0],
-                "tn": [1],
+                "tp": 0,
+                "fp": 0,
+                "fn": 0,
+                "tn": 1,
             },
             "parameters": {
-                "score_thresholds": [0.5],
+                "score_threshold": 0.5,
                 "hardmax": False,
                 "label": "3",
             },
@@ -326,13 +326,13 @@ def test_filtering_three_classifications(
         {
             "type": "Counts",
             "value": {
-                "tp": [1],
-                "fp": [0],
-                "fn": [0],
-                "tn": [0],
+                "tp": 1,
+                "fp": 0,
+                "fn": 0,
+                "tn": 0,
             },
             "parameters": {
-                "score_thresholds": [0.5],
+                "score_threshold": 0.5,
                 "hardmax": False,
                 "label": "0",
             },
@@ -340,13 +340,13 @@ def test_filtering_three_classifications(
         {
             "type": "Counts",
             "value": {
-                "tp": [0],
-                "fp": [0],
-                "fn": [0],
-                "tn": [1],
+                "tp": 0,
+                "fp": 0,
+                "fn": 0,
+                "tn": 1,
             },
             "parameters": {
-                "score_thresholds": [0.5],
+                "score_threshold": 0.5,
                 "hardmax": False,
                 "label": "1",
             },
@@ -354,13 +354,13 @@ def test_filtering_three_classifications(
         {
             "type": "Counts",
             "value": {
-                "tp": [0],
-                "fp": [0],
-                "fn": [0],
-                "tn": [1],
+                "tp": 0,
+                "fp": 0,
+                "fn": 0,
+                "tn": 1,
             },
             "parameters": {
-                "score_thresholds": [0.5],
+                "score_threshold": 0.5,
                 "hardmax": False,
                 "label": "2",
             },
@@ -368,13 +368,13 @@ def test_filtering_three_classifications(
         {
             "type": "Counts",
             "value": {
-                "tp": [0],
-                "fp": [0],
-                "fn": [0],
-                "tn": [1],
+                "tp": 0,
+                "fp": 0,
+                "fn": 0,
+                "tn": 1,
             },
             "parameters": {
-                "score_thresholds": [0.5],
+                "score_threshold": 0.5,
                 "hardmax": False,
                 "label": "3",
             },
@@ -502,13 +502,13 @@ def test_filtering_six_classifications(
         {
             "type": "Counts",
             "value": {
-                "tp": [1],
-                "fp": [0],
-                "fn": [0],
-                "tn": [0],
+                "tp": 1,
+                "fp": 0,
+                "fn": 0,
+                "tn": 0,
             },
             "parameters": {
-                "score_thresholds": [0.5],
+                "score_threshold": 0.5,
                 "hardmax": False,
                 "label": "0",
             },
@@ -516,13 +516,13 @@ def test_filtering_six_classifications(
         {
             "type": "Counts",
             "value": {
-                "tp": [0],
-                "fp": [0],
-                "fn": [0],
-                "tn": [1],
+                "tp": 0,
+                "fp": 0,
+                "fn": 0,
+                "tn": 1,
             },
             "parameters": {
-                "score_thresholds": [0.5],
+                "score_threshold": 0.5,
                 "hardmax": False,
                 "label": "1",
             },
@@ -530,13 +530,13 @@ def test_filtering_six_classifications(
         {
             "type": "Counts",
             "value": {
-                "tp": [0],
-                "fp": [0],
-                "fn": [0],
-                "tn": [1],
+                "tp": 0,
+                "fp": 0,
+                "fn": 0,
+                "tn": 1,
             },
             "parameters": {
-                "score_thresholds": [0.5],
+                "score_threshold": 0.5,
                 "hardmax": False,
                 "label": "2",
             },
@@ -544,13 +544,13 @@ def test_filtering_six_classifications(
         {
             "type": "Counts",
             "value": {
-                "tp": [0],
-                "fp": [0],
-                "fn": [0],
-                "tn": [1],
+                "tp": 0,
+                "fp": 0,
+                "fn": 0,
+                "tn": 1,
             },
             "parameters": {
-                "score_thresholds": [0.5],
+                "score_threshold": 0.5,
                 "hardmax": False,
                 "label": "3",
             },

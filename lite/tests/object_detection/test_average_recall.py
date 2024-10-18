@@ -3,7 +3,7 @@ from valor_lite.object_detection import (
     DataLoader,
     Detection,
     MetricType,
-    compute_metrics,
+    compute_precion_recall,
 )
 
 
@@ -25,7 +25,7 @@ def test__compute_average_recall():
     iou_thresholds = np.array([0.1, 0.6])
     score_thresholds = np.array([0.5, 0.93, 0.98])
 
-    (_, results, _, _, _,) = compute_metrics(
+    (_, results, _, _, _,) = compute_precion_recall(
         sorted_pairs,
         label_metadata=label_metadata,
         iou_thresholds=iou_thresholds,
@@ -105,7 +105,6 @@ def test_ar_metrics_first_class(
         metrics = evaluator.evaluate(
             iou_thresholds=[0.1, 0.6],
             score_thresholds=[0.0],
-            as_dict=True,
         )
 
         assert evaluator.ignored_prediction_labels == []
@@ -116,7 +115,7 @@ def test_ar_metrics_first_class(
         assert evaluator.n_predictions == 1
 
         # test AR
-        actual_metrics = [m for m in metrics[MetricType.AR]]
+        actual_metrics = [m.to_dict() for m in metrics[MetricType.AR]]
         expected_metrics = [
             {
                 "type": "AR",
@@ -134,7 +133,7 @@ def test_ar_metrics_first_class(
             assert m in actual_metrics
 
         # test mAR
-        actual_metrics = [m for m in metrics[MetricType.mAR]]
+        actual_metrics = [m.to_dict() for m in metrics[MetricType.mAR]]
         expected_metrics = [
             {
                 "type": "mAR",
@@ -150,8 +149,10 @@ def test_ar_metrics_first_class(
         for m in expected_metrics:
             assert m in actual_metrics
 
-        # test AR Averaged Over IoUs
-        actual_metrics = [m for m in metrics[MetricType.ARAveragedOverScores]]
+        # test AR Averaged Over IOUs
+        actual_metrics = [
+            m.to_dict() for m in metrics[MetricType.ARAveragedOverScores]
+        ]
         expected_metrics = [
             {
                 "type": "ARAveragedOverScores",
@@ -168,8 +169,10 @@ def test_ar_metrics_first_class(
         for m in expected_metrics:
             assert m in actual_metrics
 
-        # test mAR Averaged Over IoUs
-        actual_metrics = [m for m in metrics[MetricType.mARAveragedOverScores]]
+        # test mAR Averaged Over IOUs
+        actual_metrics = [
+            m.to_dict() for m in metrics[MetricType.mARAveragedOverScores]
+        ]
         expected_metrics = [
             {
                 "type": "mARAveragedOverScores",
@@ -259,7 +262,7 @@ def test_ar_metrics_second_class(
         for m in expected_metrics:
             assert m in actual_metrics
 
-        # test AR Averaged Over IoUs
+        # test AR Averaged Over IOUs
         actual_metrics = [
             m.to_dict() for m in metrics[MetricType.ARAveragedOverScores]
         ]
@@ -279,7 +282,7 @@ def test_ar_metrics_second_class(
         for m in expected_metrics:
             assert m in actual_metrics
 
-        # test mAR Averaged Over IoUs
+        # test mAR Averaged Over IOUs
         actual_metrics = [
             m.to_dict() for m in metrics[MetricType.mARAveragedOverScores]
         ]
@@ -324,11 +327,10 @@ def test_ar_using_torch_metrics_example(
     metrics = evaluator.evaluate(
         iou_thresholds=iou_thresholds,
         score_thresholds=score_thresholds,
-        as_dict=True,
     )
 
     # test AR
-    actual_metrics = [m for m in metrics[MetricType.AR]]
+    actual_metrics = [m.to_dict() for m in metrics[MetricType.AR]]
     expected_metrics = [
         {
             "type": "AR",
@@ -382,7 +384,7 @@ def test_ar_using_torch_metrics_example(
         assert m in actual_metrics
 
     # test mAR
-    actual_metrics = [m for m in metrics[MetricType.mAR]]
+    actual_metrics = [m.to_dict() for m in metrics[MetricType.mAR]]
     expected_metrics = [
         {
             "type": "mAR",
@@ -399,7 +401,9 @@ def test_ar_using_torch_metrics_example(
         assert m in actual_metrics
 
     # test ARAveragedOverScores
-    actual_metrics = [m for m in metrics[MetricType.ARAveragedOverScores]]
+    actual_metrics = [
+        m.to_dict() for m in metrics[MetricType.ARAveragedOverScores]
+    ]
     expected_metrics = [
         {
             "type": "ARAveragedOverScores",
@@ -453,7 +457,9 @@ def test_ar_using_torch_metrics_example(
         assert m in actual_metrics
 
     # test mARAveragedOverScores
-    actual_metrics = [m for m in metrics[MetricType.mARAveragedOverScores]]
+    actual_metrics = [
+        m.to_dict() for m in metrics[MetricType.mARAveragedOverScores]
+    ]
     expected_metrics = [
         {
             "type": "mARAveragedOverScores",
@@ -488,13 +494,12 @@ def test_ar_true_positive_deassignment(
     metrics = evaluator.evaluate(
         iou_thresholds=[0.5],
         score_thresholds=[0.5],
-        as_dict=True,
     )
 
     assert len(metrics) == 15
 
     # test AR
-    actual_metrics = [m for m in metrics[MetricType.AR]]
+    actual_metrics = [m.to_dict() for m in metrics[MetricType.AR]]
     expected_metrics = [
         {
             "type": "AR",
@@ -545,10 +550,9 @@ def test_ar_ranked_pair_ordering(
         metrics = evaluator.evaluate(
             iou_thresholds=[0.5, 0.75],
             score_thresholds=[0.0],
-            as_dict=True,
         )
 
-        actual_metrics = [m for m in metrics[MetricType.AR]]
+        actual_metrics = [m.to_dict() for m in metrics[MetricType.AR]]
         expected_metrics = expected_metrics = [
             {
                 "type": "AR",
@@ -583,7 +587,7 @@ def test_ar_ranked_pair_ordering(
         for m in expected_metrics:
             assert m in actual_metrics
 
-        actual_metrics = [m for m in metrics[MetricType.mAR]]
+        actual_metrics = [m.to_dict() for m in metrics[MetricType.mAR]]
         expected_metrics = expected_metrics = [
             {
                 "type": "mAR",

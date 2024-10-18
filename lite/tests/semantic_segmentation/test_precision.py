@@ -1,7 +1,7 @@
 from valor_lite.semantic_segmentation import (
     DataLoader,
+    Metric,
     MetricType,
-    Precision,
     Segmentation,
 )
 
@@ -13,9 +13,9 @@ def test_precision_basic_segmentations(
     loader.add_data(basic_segmentations)
     evaluator = loader.finalize()
 
-    metrics = evaluator.evaluate(as_dict=True)
+    metrics = evaluator.evaluate()
 
-    actual_metrics = [m for m in metrics[MetricType.Precision]]
+    actual_metrics = [m.to_dict() for m in metrics[MetricType.Precision]]
     expected_metrics = [
         {
             "type": "Precision",
@@ -41,9 +41,9 @@ def test_precision_segmentations_from_boxes(
     loader.add_data(segmentations_from_boxes)
     evaluator = loader.finalize()
 
-    metrics = evaluator.evaluate(as_dict=True)
+    metrics = evaluator.evaluate()
 
-    actual_metrics = [m for m in metrics[MetricType.Precision]]
+    actual_metrics = [m.to_dict() for m in metrics[MetricType.Precision]]
     expected_metrics = [
         {
             "type": "Precision",
@@ -72,25 +72,25 @@ def test_precision_large_random_segmentations(
     metrics = evaluator.evaluate()
 
     for m in metrics[MetricType.Precision]:
-        assert isinstance(m, Precision)
-        match m.label:
+        assert isinstance(m, Metric)
+        match m.parameters["label"]:
             case "v1":
-                assert round(m.value, 1) == 0.9
+                assert round(m.value, 1) == 0.9  # type: ignore - testing
             case "v2":
-                assert round(m.value, 2) == 0.09
+                assert round(m.value, 2) == 0.09  # type: ignore - testing
             case "v3":
-                assert round(m.value, 2) == 0.01
+                assert round(m.value, 2) == 0.01  # type: ignore - testing
             case "v4":
-                assert round(m.value, 1) == 0.4
+                assert round(m.value, 1) == 0.4  # type: ignore - testing
             case "v5":
-                assert round(m.value, 1) == 0.4
+                assert round(m.value, 1) == 0.4  # type: ignore - testing
             case "v6":
-                assert round(m.value, 1) == 0.1
+                assert round(m.value, 1) == 0.1  # type: ignore - testing
             case "v7":
-                assert round(m.value, 1) == 0.3
+                assert round(m.value, 1) == 0.3  # type: ignore - testing
             case "v8":
-                assert round(m.value, 1) == 0.3
+                assert round(m.value, 1) == 0.3  # type: ignore - testing
             case "v9":
-                assert round(m.value, 1) == 0.3
+                assert round(m.value, 1) == 0.3  # type: ignore - testing
             case _:
                 assert False

@@ -3,7 +3,7 @@ from valor_lite.classification import (
     Classification,
     DataLoader,
     MetricType,
-    compute_metrics,
+    compute_precision_recall_rocauc,
 )
 
 
@@ -44,7 +44,7 @@ def test_f1_score_computation():
 
     score_thresholds = np.array([0.25, 0.75], dtype=np.float64)
 
-    (_, _, _, _, f1_score, _, _) = compute_metrics(
+    (_, _, _, _, f1_score, _, _) = compute_precision_recall_rocauc(
         data=data,
         label_metadata=label_metadata,
         score_thresholds=score_thresholds,
@@ -83,25 +83,44 @@ def test_f1_score_basic(basic_classifications: list[Classification]):
 
     metrics = evaluator.evaluate(
         score_thresholds=[0.25, 0.75],
-        as_dict=True,
     )
 
-    actual_metrics = [m for m in metrics[MetricType.F1]]
+    actual_metrics = [m.to_dict() for m in metrics[MetricType.F1]]
     expected_metrics = [
+        # score >= 0.25
         {
             "type": "F1",
-            "value": [2 / 3, 2 / 3],
+            "value": 2 / 3,
             "parameters": {
-                "score_thresholds": [0.25, 0.75],
+                "score_threshold": 0.25,
                 "hardmax": True,
                 "label": "0",
             },
         },
         {
             "type": "F1",
-            "value": [1.0, 0.0],
+            "value": 1.0,
             "parameters": {
-                "score_thresholds": [0.25, 0.75],
+                "score_threshold": 0.25,
+                "hardmax": True,
+                "label": "3",
+            },
+        },
+        # score >= 0.75
+        {
+            "type": "F1",
+            "value": 2 / 3,
+            "parameters": {
+                "score_threshold": 0.75,
+                "hardmax": True,
+                "label": "0",
+            },
+        },
+        {
+            "type": "F1",
+            "value": 0.0,
+            "parameters": {
+                "score_threshold": 0.75,
                 "hardmax": True,
                 "label": "3",
             },
@@ -123,34 +142,62 @@ def test_f1_score_with_animal_example(
 
     metrics = evaluator.evaluate(
         score_thresholds=[0.0, 0.5],
-        as_dict=True,
     )
 
-    actual_metrics = [m for m in metrics[MetricType.F1]]
+    actual_metrics = [m.to_dict() for m in metrics[MetricType.F1]]
     expected_metrics = [
+        # score > 0.0
         {
             "type": "F1",
-            "value": [0.5, 0.5],
+            "value": 0.5,
             "parameters": {
-                "score_thresholds": [0.0, 0.5],
+                "score_threshold": 0.0,
                 "hardmax": True,
                 "label": "bird",
             },
         },
         {
             "type": "F1",
-            "value": [0.0, 0.0],
+            "value": 0.0,
             "parameters": {
-                "score_thresholds": [0.0, 0.5],
+                "score_threshold": 0.0,
                 "hardmax": True,
                 "label": "dog",
             },
         },
         {
             "type": "F1",
-            "value": [0.4, 0.5],
+            "value": 0.4,
             "parameters": {
-                "score_thresholds": [0.0, 0.5],
+                "score_threshold": 0.0,
+                "hardmax": True,
+                "label": "cat",
+            },
+        },
+        # score >= 0.5
+        {
+            "type": "F1",
+            "value": 0.5,
+            "parameters": {
+                "score_threshold": 0.5,
+                "hardmax": True,
+                "label": "bird",
+            },
+        },
+        {
+            "type": "F1",
+            "value": 0.0,
+            "parameters": {
+                "score_threshold": 0.5,
+                "hardmax": True,
+                "label": "dog",
+            },
+        },
+        {
+            "type": "F1",
+            "value": 0.5,
+            "parameters": {
+                "score_threshold": 0.5,
                 "hardmax": True,
                 "label": "cat",
             },
@@ -172,43 +219,80 @@ def test_f1_score_with_color_example(
 
     metrics = evaluator.evaluate(
         score_thresholds=[0.0, 0.5],
-        as_dict=True,
     )
 
-    actual_metrics = [m for m in metrics[MetricType.F1]]
+    actual_metrics = [m.to_dict() for m in metrics[MetricType.F1]]
     expected_metrics = [
+        # scpre > 0.0
         {
             "type": "F1",
-            "value": [0.5, 0.5],
+            "value": 0.5,
             "parameters": {
-                "score_thresholds": [0.0, 0.5],
+                "score_threshold": 0.0,
                 "hardmax": True,
                 "label": "white",
             },
         },
         {
             "type": "F1",
-            "value": [0.8, 0.5],
+            "value": 0.8,
             "parameters": {
-                "score_thresholds": [0.0, 0.5],
+                "score_threshold": 0.0,
                 "hardmax": True,
                 "label": "red",
             },
         },
         {
             "type": "F1",
-            "value": [0.0, 0.0],
+            "value": 0.0,
             "parameters": {
-                "score_thresholds": [0.0, 0.5],
+                "score_threshold": 0.0,
                 "hardmax": True,
                 "label": "blue",
             },
         },
         {
             "type": "F1",
-            "value": [0.0, 0.0],
+            "value": 0.0,
             "parameters": {
-                "score_thresholds": [0.0, 0.5],
+                "score_threshold": 0.0,
+                "hardmax": True,
+                "label": "black",
+            },
+        },
+        # score >= 0.5
+        {
+            "type": "F1",
+            "value": 0.5,
+            "parameters": {
+                "score_threshold": 0.5,
+                "hardmax": True,
+                "label": "white",
+            },
+        },
+        {
+            "type": "F1",
+            "value": 0.5,
+            "parameters": {
+                "score_threshold": 0.5,
+                "hardmax": True,
+                "label": "red",
+            },
+        },
+        {
+            "type": "F1",
+            "value": 0.0,
+            "parameters": {
+                "score_threshold": 0.5,
+                "hardmax": True,
+                "label": "blue",
+            },
+        },
+        {
+            "type": "F1",
+            "value": 0.0,
+            "parameters": {
+                "score_threshold": 0.5,
                 "hardmax": True,
                 "label": "black",
             },
@@ -236,15 +320,15 @@ def test_f1_score_with_image_example(
         "missing_prediction_labels": [],
     }
 
-    metrics = evaluator.evaluate(as_dict=True)
+    metrics = evaluator.evaluate()
 
-    actual_metrics = [m for m in metrics[MetricType.F1]]
+    actual_metrics = [m.to_dict() for m in metrics[MetricType.F1]]
     expected_metrics = [
         {
             "type": "F1",
-            "value": [0.6666666666666666],
+            "value": 2 / 3,
             "parameters": {
-                "score_thresholds": [0.0],
+                "score_threshold": 0.0,
                 "hardmax": True,
                 "label": "v4",
             },
@@ -272,33 +356,33 @@ def test_f1_score_with_tabular_example(
         "missing_prediction_labels": [],
     }
 
-    metrics = evaluator.evaluate(as_dict=True)
+    metrics = evaluator.evaluate()
 
-    actual_metrics = [m for m in metrics[MetricType.F1]]
+    actual_metrics = [m.to_dict() for m in metrics[MetricType.F1]]
     expected_metrics = [
         {
             "type": "F1",
-            "value": [0.6666666666666666],
+            "value": 2 / 3,
             "parameters": {
-                "score_thresholds": [0.0],
+                "score_threshold": 0.0,
                 "hardmax": True,
                 "label": "0",
             },
         },
         {
             "type": "F1",
-            "value": [0.4444444444444444],
+            "value": 4 / 9,
             "parameters": {
-                "score_thresholds": [0.0],
+                "score_threshold": 0.0,
                 "hardmax": True,
                 "label": "1",
             },
         },
         {
             "type": "F1",
-            "value": [0.0],
+            "value": 0.0,
             "parameters": {
-                "score_thresholds": [0.0],
+                "score_threshold": 0.0,
                 "hardmax": True,
                 "label": "2",
             },

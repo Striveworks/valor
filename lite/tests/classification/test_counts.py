@@ -3,7 +3,7 @@ from valor_lite.classification import (
     Classification,
     DataLoader,
     MetricType,
-    compute_metrics,
+    compute_precision_recall_rocauc,
 )
 
 
@@ -44,7 +44,7 @@ def test_counts_computation():
 
     score_thresholds = np.array([0.25, 0.75], dtype=np.float64)
 
-    (counts, _, _, _, _, _, _) = compute_metrics(
+    (counts, _, _, _, _, _, _) = compute_precision_recall_rocauc(
         data=data,
         label_metadata=label_metadata,
         score_thresholds=score_thresholds,
@@ -120,21 +120,21 @@ def test_counts_basic(basic_classifications: list[Classification]):
 
     metrics = evaluator.evaluate(
         score_thresholds=[0.25, 0.75],
-        as_dict=True,
     )
 
-    actual_metrics = [m for m in metrics[MetricType.Counts]]
+    actual_metrics = [m.to_dict() for m in metrics[MetricType.Counts]]
     expected_metrics = [
+        # score >= 0.25
         {
             "type": "Counts",
             "value": {
-                "tp": [1, 1],
-                "fp": [0, 0],
-                "fn": [1, 1],
-                "tn": [1, 1],
+                "tp": 1,
+                "fp": 0,
+                "fn": 1,
+                "tn": 1,
             },
             "parameters": {
-                "score_thresholds": [0.25, 0.75],
+                "score_threshold": 0.25,
                 "hardmax": True,
                 "label": "0",
             },
@@ -142,13 +142,13 @@ def test_counts_basic(basic_classifications: list[Classification]):
         {
             "type": "Counts",
             "value": {
-                "tp": [0, 0],
-                "fp": [0, 0],
-                "fn": [0, 0],
-                "tn": [3, 3],
+                "tp": 0,
+                "fp": 0,
+                "fn": 0,
+                "tn": 3,
             },
             "parameters": {
-                "score_thresholds": [0.25, 0.75],
+                "score_threshold": 0.25,
                 "hardmax": True,
                 "label": "1",
             },
@@ -156,13 +156,13 @@ def test_counts_basic(basic_classifications: list[Classification]):
         {
             "type": "Counts",
             "value": {
-                "tp": [0, 0],
-                "fp": [1, 1],
-                "fn": [0, 0],
-                "tn": [2, 2],
+                "tp": 0,
+                "fp": 1,
+                "fn": 0,
+                "tn": 2,
             },
             "parameters": {
-                "score_thresholds": [0.25, 0.75],
+                "score_threshold": 0.25,
                 "hardmax": True,
                 "label": "2",
             },
@@ -170,13 +170,70 @@ def test_counts_basic(basic_classifications: list[Classification]):
         {
             "type": "Counts",
             "value": {
-                "tp": [1, 0],
-                "fp": [0, 0],
-                "fn": [0, 1],
-                "tn": [2, 2],
+                "tp": 1,
+                "fp": 0,
+                "fn": 0,
+                "tn": 2,
             },
             "parameters": {
-                "score_thresholds": [0.25, 0.75],
+                "score_threshold": 0.25,
+                "hardmax": True,
+                "label": "3",
+            },
+        },
+        # score >= 0.75
+        {
+            "type": "Counts",
+            "value": {
+                "tp": 1,
+                "fp": 0,
+                "fn": 1,
+                "tn": 1,
+            },
+            "parameters": {
+                "score_threshold": 0.75,
+                "hardmax": True,
+                "label": "0",
+            },
+        },
+        {
+            "type": "Counts",
+            "value": {
+                "tp": 0,
+                "fp": 0,
+                "fn": 0,
+                "tn": 3,
+            },
+            "parameters": {
+                "score_threshold": 0.75,
+                "hardmax": True,
+                "label": "1",
+            },
+        },
+        {
+            "type": "Counts",
+            "value": {
+                "tp": 0,
+                "fp": 1,
+                "fn": 0,
+                "tn": 2,
+            },
+            "parameters": {
+                "score_threshold": 0.75,
+                "hardmax": True,
+                "label": "2",
+            },
+        },
+        {
+            "type": "Counts",
+            "value": {
+                "tp": 0,
+                "fp": 0,
+                "fn": 1,
+                "tn": 2,
+            },
+            "parameters": {
+                "score_threshold": 0.75,
                 "hardmax": True,
                 "label": "3",
             },
@@ -198,21 +255,20 @@ def test_counts_unit(
 
     metrics = evaluator.evaluate(
         score_thresholds=[0.5],
-        as_dict=True,
     )
 
-    actual_metrics = [m for m in metrics[MetricType.Counts]]
+    actual_metrics = [m.to_dict() for m in metrics[MetricType.Counts]]
     expected_metrics = [
         {
             "type": "Counts",
             "value": {
-                "tp": [1],
-                "fp": [0],
-                "fn": [2],
-                "tn": [3],
+                "tp": 1,
+                "fp": 0,
+                "fn": 2,
+                "tn": 3,
             },
             "parameters": {
-                "score_thresholds": [0.5],
+                "score_threshold": 0.5,
                 "hardmax": True,
                 "label": "0",
             },
@@ -220,13 +276,13 @@ def test_counts_unit(
         {
             "type": "Counts",
             "value": {
-                "tp": [1],
-                "fp": [3],
-                "fn": [0],
-                "tn": [2],
+                "tp": 1,
+                "fp": 3,
+                "fn": 0,
+                "tn": 2,
             },
             "parameters": {
-                "score_thresholds": [0.5],
+                "score_threshold": 0.5,
                 "hardmax": True,
                 "label": "1",
             },
@@ -234,13 +290,13 @@ def test_counts_unit(
         {
             "type": "Counts",
             "value": {
-                "tp": [0],
-                "fp": [1],
-                "fn": [2],
-                "tn": [3],
+                "tp": 0,
+                "fp": 1,
+                "fn": 2,
+                "tn": 3,
             },
             "parameters": {
-                "score_thresholds": [0.5],
+                "score_threshold": 0.5,
                 "hardmax": True,
                 "label": "2",
             },
@@ -262,21 +318,21 @@ def test_counts_with_animal_example(
 
     metrics = evaluator.evaluate(
         score_thresholds=[0.05, 0.5, 0.95],
-        as_dict=True,
     )
 
-    actual_metrics = [m for m in metrics[MetricType.Counts]]
+    actual_metrics = [m.to_dict() for m in metrics[MetricType.Counts]]
     expected_metrics = [
+        # score >= 0.05
         {
             "type": "Counts",
             "value": {
-                "tp": [1, 1, 0],
-                "fp": [0, 0, 0],
-                "fn": [2, 2, 3],
-                "tn": [3, 3, 3],
+                "tp": 1,
+                "fp": 0,
+                "fn": 2,
+                "tn": 3,
             },
             "parameters": {
-                "score_thresholds": [0.05, 0.5, 0.95],
+                "score_threshold": 0.05,
                 "hardmax": True,
                 "label": "bird",
             },
@@ -284,13 +340,13 @@ def test_counts_with_animal_example(
         {
             "type": "Counts",
             "value": {
-                "tp": [0, 0, 0],
-                "fp": [1, 1, 0],
-                "fn": [2, 2, 2],
-                "tn": [3, 3, 4],
+                "tp": 0,
+                "fp": 1,
+                "fn": 2,
+                "tn": 3,
             },
             "parameters": {
-                "score_thresholds": [0.05, 0.5, 0.95],
+                "score_threshold": 0.05,
                 "hardmax": True,
                 "label": "dog",
             },
@@ -298,13 +354,99 @@ def test_counts_with_animal_example(
         {
             "type": "Counts",
             "value": {
-                "tp": [1, 1, 1],
-                "fp": [3, 2, 0],
-                "fn": [0, 0, 0],
-                "tn": [2, 3, 5],
+                "tp": 1,
+                "fp": 3,
+                "fn": 0,
+                "tn": 2,
             },
             "parameters": {
-                "score_thresholds": [0.05, 0.5, 0.95],
+                "score_threshold": 0.05,
+                "hardmax": True,
+                "label": "cat",
+            },
+        },
+        # score >= 0.5
+        {
+            "type": "Counts",
+            "value": {
+                "tp": 1,
+                "fp": 0,
+                "fn": 2,
+                "tn": 3,
+            },
+            "parameters": {
+                "score_threshold": 0.5,
+                "hardmax": True,
+                "label": "bird",
+            },
+        },
+        {
+            "type": "Counts",
+            "value": {
+                "tp": 0,
+                "fp": 1,
+                "fn": 2,
+                "tn": 3,
+            },
+            "parameters": {
+                "score_threshold": 0.5,
+                "hardmax": True,
+                "label": "dog",
+            },
+        },
+        {
+            "type": "Counts",
+            "value": {
+                "tp": 1,
+                "fp": 2,
+                "fn": 0,
+                "tn": 3,
+            },
+            "parameters": {
+                "score_threshold": 0.5,
+                "hardmax": True,
+                "label": "cat",
+            },
+        },
+        # score >= 0.95
+        {
+            "type": "Counts",
+            "value": {
+                "tp": 0,
+                "fp": 0,
+                "fn": 3,
+                "tn": 3,
+            },
+            "parameters": {
+                "score_threshold": 0.95,
+                "hardmax": True,
+                "label": "bird",
+            },
+        },
+        {
+            "type": "Counts",
+            "value": {
+                "tp": 0,
+                "fp": 0,
+                "fn": 2,
+                "tn": 4,
+            },
+            "parameters": {
+                "score_threshold": 0.95,
+                "hardmax": True,
+                "label": "dog",
+            },
+        },
+        {
+            "type": "Counts",
+            "value": {
+                "tp": 1,
+                "fp": 0,
+                "fn": 0,
+                "tn": 5,
+            },
+            "parameters": {
+                "score_threshold": 0.95,
                 "hardmax": True,
                 "label": "cat",
             },
@@ -326,21 +468,21 @@ def test_counts_with_color_example(
 
     metrics = evaluator.evaluate(
         score_thresholds=[0.05, 0.5, 0.95],
-        as_dict=True,
     )
 
-    actual_metrics = [m for m in metrics[MetricType.Counts]]
+    actual_metrics = [m.to_dict() for m in metrics[MetricType.Counts]]
     expected_metrics = [
+        # score >= 0.05
         {
             "type": "Counts",
             "value": {
-                "tp": [1, 1, 0],
-                "fp": [1, 1, 1],
-                "fn": [1, 1, 2],
-                "tn": [3, 3, 3],
+                "tp": 1,
+                "fp": 1,
+                "fn": 1,
+                "tn": 3,
             },
             "parameters": {
-                "score_thresholds": [0.05, 0.5, 0.95],
+                "score_threshold": 0.05,
                 "hardmax": True,
                 "label": "white",
             },
@@ -348,13 +490,13 @@ def test_counts_with_color_example(
         {
             "type": "Counts",
             "value": {
-                "tp": [2, 1, 0],
-                "fp": [1, 1, 0],
-                "fn": [0, 1, 2],
-                "tn": [3, 3, 4],
+                "tp": 2,
+                "fp": 1,
+                "fn": 0,
+                "tn": 3,
             },
             "parameters": {
-                "score_thresholds": [0.05, 0.5, 0.95],
+                "score_threshold": 0.05,
                 "hardmax": True,
                 "label": "red",
             },
@@ -362,13 +504,13 @@ def test_counts_with_color_example(
         {
             "type": "Counts",
             "value": {
-                "tp": [0, 0, 0],
-                "fp": [1, 1, 0],
-                "fn": [1, 1, 1],
-                "tn": [4, 4, 5],
+                "tp": 0,
+                "fp": 1,
+                "fn": 1,
+                "tn": 4,
             },
             "parameters": {
-                "score_thresholds": [0.05, 0.5, 0.95],
+                "score_threshold": 0.05,
                 "hardmax": True,
                 "label": "blue",
             },
@@ -376,13 +518,127 @@ def test_counts_with_color_example(
         {
             "type": "Counts",
             "value": {
-                "tp": [0, 0, 0],
-                "fp": [0, 0, 0],
-                "fn": [1, 1, 1],
-                "tn": [5, 5, 5],
+                "tp": 0,
+                "fp": 0,
+                "fn": 1,
+                "tn": 5,
             },
             "parameters": {
-                "score_thresholds": [0.05, 0.5, 0.95],
+                "score_threshold": 0.05,
+                "hardmax": True,
+                "label": "black",
+            },
+        },
+        # score >= 0.5
+        {
+            "type": "Counts",
+            "value": {
+                "tp": 1,
+                "fp": 1,
+                "fn": 1,
+                "tn": 3,
+            },
+            "parameters": {
+                "score_threshold": 0.5,
+                "hardmax": True,
+                "label": "white",
+            },
+        },
+        {
+            "type": "Counts",
+            "value": {
+                "tp": 1,
+                "fp": 1,
+                "fn": 1,
+                "tn": 3,
+            },
+            "parameters": {
+                "score_threshold": 0.5,
+                "hardmax": True,
+                "label": "red",
+            },
+        },
+        {
+            "type": "Counts",
+            "value": {
+                "tp": 0,
+                "fp": 1,
+                "fn": 1,
+                "tn": 4,
+            },
+            "parameters": {
+                "score_threshold": 0.5,
+                "hardmax": True,
+                "label": "blue",
+            },
+        },
+        {
+            "type": "Counts",
+            "value": {
+                "tp": 0,
+                "fp": 0,
+                "fn": 1,
+                "tn": 5,
+            },
+            "parameters": {
+                "score_threshold": 0.5,
+                "hardmax": True,
+                "label": "black",
+            },
+        },
+        # score >= 0.95
+        {
+            "type": "Counts",
+            "value": {
+                "tp": 0,
+                "fp": 1,
+                "fn": 2,
+                "tn": 3,
+            },
+            "parameters": {
+                "score_threshold": 0.95,
+                "hardmax": True,
+                "label": "white",
+            },
+        },
+        {
+            "type": "Counts",
+            "value": {
+                "tp": 0,
+                "fp": 0,
+                "fn": 2,
+                "tn": 4,
+            },
+            "parameters": {
+                "score_threshold": 0.95,
+                "hardmax": True,
+                "label": "red",
+            },
+        },
+        {
+            "type": "Counts",
+            "value": {
+                "tp": 0,
+                "fp": 0,
+                "fn": 1,
+                "tn": 5,
+            },
+            "parameters": {
+                "score_threshold": 0.95,
+                "hardmax": True,
+                "label": "blue",
+            },
+        },
+        {
+            "type": "Counts",
+            "value": {
+                "tp": 0,
+                "fp": 0,
+                "fn": 1,
+                "tn": 5,
+            },
+            "parameters": {
+                "score_threshold": 0.95,
                 "hardmax": True,
                 "label": "black",
             },
@@ -409,20 +665,20 @@ def test_counts_with_image_example(
         "ignored_prediction_labels": ["v1", "v8", "v5"],
         "missing_prediction_labels": [],
     }
-    metrics = evaluator.evaluate(as_dict=True)
+    metrics = evaluator.evaluate()
 
-    actual_metrics = [m for m in metrics[MetricType.Counts]]
+    actual_metrics = [m.to_dict() for m in metrics[MetricType.Counts]]
     expected_metrics = [
         {
             "type": "Counts",
             "value": {
-                "tp": [0],
-                "fp": [0],
-                "fn": [0],
-                "tn": [1],
+                "tp": 0,
+                "fp": 0,
+                "fn": 0,
+                "tn": 1,
             },
             "parameters": {
-                "score_thresholds": [0.0],
+                "score_threshold": 0.0,
                 "hardmax": True,
                 "label": "v1",
             },
@@ -430,13 +686,13 @@ def test_counts_with_image_example(
         {
             "type": "Counts",
             "value": {
-                "tp": [1],
-                "fp": [0],
-                "fn": [1],
-                "tn": [0],
+                "tp": 1,
+                "fp": 0,
+                "fn": 1,
+                "tn": 0,
             },
             "parameters": {
-                "score_thresholds": [0.0],
+                "score_threshold": 0.0,
                 "hardmax": True,
                 "label": "v4",
             },
@@ -444,13 +700,13 @@ def test_counts_with_image_example(
         {
             "type": "Counts",
             "value": {
-                "tp": [0],
-                "fp": [0],
-                "fn": [0],
-                "tn": [1],
+                "tp": 0,
+                "fp": 0,
+                "fn": 0,
+                "tn": 1,
             },
             "parameters": {
-                "score_thresholds": [0.0],
+                "score_threshold": 0.0,
                 "hardmax": True,
                 "label": "v5",
             },
@@ -458,13 +714,13 @@ def test_counts_with_image_example(
         {
             "type": "Counts",
             "value": {
-                "tp": [0],
-                "fp": [1],
-                "fn": [0],
-                "tn": [0],
+                "tp": 0,
+                "fp": 1,
+                "fn": 0,
+                "tn": 0,
             },
             "parameters": {
-                "score_thresholds": [0.0],
+                "score_threshold": 0.0,
                 "hardmax": True,
                 "label": "v8",
             },
@@ -492,20 +748,20 @@ def test_counts_with_tabular_example(
         "missing_prediction_labels": [],
     }
 
-    metrics = evaluator.evaluate(as_dict=True)
+    metrics = evaluator.evaluate()
 
-    actual_metrics = [m for m in metrics[MetricType.Counts]]
+    actual_metrics = [m.to_dict() for m in metrics[MetricType.Counts]]
     expected_metrics = [
         {
             "type": "Counts",
             "value": {
-                "tp": [3],
-                "fp": [3],
-                "fn": [0],
-                "tn": [4],
+                "tp": 3,
+                "fp": 3,
+                "fn": 0,
+                "tn": 4,
             },
             "parameters": {
-                "score_thresholds": [0.0],
+                "score_threshold": 0.0,
                 "hardmax": True,
                 "label": "0",
             },
@@ -513,13 +769,13 @@ def test_counts_with_tabular_example(
         {
             "type": "Counts",
             "value": {
-                "tp": [2],
-                "fp": [1],
-                "fn": [4],
-                "tn": [3],
+                "tp": 2,
+                "fp": 1,
+                "fn": 4,
+                "tn": 3,
             },
             "parameters": {
-                "score_thresholds": [0.0],
+                "score_threshold": 0.0,
                 "hardmax": True,
                 "label": "1",
             },
@@ -527,13 +783,13 @@ def test_counts_with_tabular_example(
         {
             "type": "Counts",
             "value": {
-                "tp": [0],
-                "fp": [1],
-                "fn": [1],
-                "tn": [8],
+                "tp": 0,
+                "fp": 1,
+                "fn": 1,
+                "tn": 8,
             },
             "parameters": {
-                "score_thresholds": [0.0],
+                "score_threshold": 0.0,
                 "hardmax": True,
                 "label": "2",
             },
@@ -563,20 +819,20 @@ def test_counts_multiclass(
 
     metrics = evaluator.evaluate(
         score_thresholds=[0.05, 0.1, 0.3, 0.85],
-        as_dict=True,
     )
 
-    actual_metrics = [m for m in metrics[MetricType.Counts]]
+    actual_metrics = [m.to_dict() for m in metrics[MetricType.Counts]]
     expected_metrics = [
+        # score >= 0.05
         {
             "value": {
-                "tp": [1, 1, 1, 0],
-                "fp": [0, 0, 0, 0],
-                "fn": [1, 1, 1, 2],
-                "tn": [3, 3, 3, 3],
+                "tp": 1,
+                "fp": 0,
+                "fn": 1,
+                "tn": 3,
             },
             "parameters": {
-                "score_thresholds": [0.05, 0.1, 0.3, 0.85],
+                "score_threshold": 0.05,
                 "hardmax": True,
                 "label": "cat",
             },
@@ -584,13 +840,13 @@ def test_counts_multiclass(
         },
         {
             "value": {
-                "tp": [1, 1, 1, 0],
-                "fp": [0, 0, 0, 0],
-                "fn": [0, 0, 0, 1],
-                "tn": [4, 4, 4, 4],
+                "tp": 1,
+                "fp": 0,
+                "fn": 0,
+                "tn": 4,
             },
             "parameters": {
-                "score_thresholds": [0.05, 0.1, 0.3, 0.85],
+                "score_threshold": 0.05,
                 "hardmax": True,
                 "label": "dog",
             },
@@ -598,13 +854,142 @@ def test_counts_multiclass(
         },
         {
             "value": {
-                "tp": [2, 2, 2, 0],
-                "fp": [1, 1, 1, 0],
-                "fn": [0, 0, 0, 2],
-                "tn": [2, 2, 2, 3],
+                "tp": 2,
+                "fp": 1,
+                "fn": 0,
+                "tn": 2,
             },
             "parameters": {
-                "score_thresholds": [0.05, 0.1, 0.3, 0.85],
+                "score_threshold": 0.05,
+                "hardmax": True,
+                "label": "bee",
+            },
+            "type": "Counts",
+        },
+        # score >= 0.1
+        {
+            "value": {
+                "tp": 1,
+                "fp": 0,
+                "fn": 1,
+                "tn": 3,
+            },
+            "parameters": {
+                "score_threshold": 0.1,
+                "hardmax": True,
+                "label": "cat",
+            },
+            "type": "Counts",
+        },
+        {
+            "value": {
+                "tp": 1,
+                "fp": 0,
+                "fn": 0,
+                "tn": 4,
+            },
+            "parameters": {
+                "score_threshold": 0.1,
+                "hardmax": True,
+                "label": "dog",
+            },
+            "type": "Counts",
+        },
+        {
+            "value": {
+                "tp": 2,
+                "fp": 1,
+                "fn": 0,
+                "tn": 2,
+            },
+            "parameters": {
+                "score_threshold": 0.1,
+                "hardmax": True,
+                "label": "bee",
+            },
+            "type": "Counts",
+        },
+        # score >= 0.3
+        {
+            "value": {
+                "tp": 1,
+                "fp": 0,
+                "fn": 1,
+                "tn": 3,
+            },
+            "parameters": {
+                "score_threshold": 0.3,
+                "hardmax": True,
+                "label": "cat",
+            },
+            "type": "Counts",
+        },
+        {
+            "value": {
+                "tp": 1,
+                "fp": 0,
+                "fn": 0,
+                "tn": 4,
+            },
+            "parameters": {
+                "score_threshold": 0.3,
+                "hardmax": True,
+                "label": "dog",
+            },
+            "type": "Counts",
+        },
+        {
+            "value": {
+                "tp": 2,
+                "fp": 1,
+                "fn": 0,
+                "tn": 2,
+            },
+            "parameters": {
+                "score_threshold": 0.3,
+                "hardmax": True,
+                "label": "bee",
+            },
+            "type": "Counts",
+        },
+        # score >= 0.85
+        {
+            "value": {
+                "tp": 0,
+                "fp": 0,
+                "fn": 2,
+                "tn": 3,
+            },
+            "parameters": {
+                "score_threshold": 0.85,
+                "hardmax": True,
+                "label": "cat",
+            },
+            "type": "Counts",
+        },
+        {
+            "value": {
+                "tp": 0,
+                "fp": 0,
+                "fn": 1,
+                "tn": 4,
+            },
+            "parameters": {
+                "score_threshold": 0.85,
+                "hardmax": True,
+                "label": "dog",
+            },
+            "type": "Counts",
+        },
+        {
+            "value": {
+                "tp": 0,
+                "fp": 0,
+                "fn": 2,
+                "tn": 3,
+            },
+            "parameters": {
+                "score_threshold": 0.85,
                 "hardmax": True,
                 "label": "bee",
             },
@@ -634,20 +1019,20 @@ def test_counts_true_negatives_check_animals(
     }
     metrics = evaluator.evaluate(
         score_thresholds=[0.05, 0.15, 0.95],
-        as_dict=True,
     )
 
-    actual_metrics = [m for m in metrics[MetricType.Counts]]
+    actual_metrics = [m.to_dict() for m in metrics[MetricType.Counts]]
     expected_metrics = [
+        # score >= 0.05
         {
             "value": {
-                "tp": [0, 0, 0],
-                "fp": [0, 0, 0],
-                "fn": [1, 1, 1],
-                "tn": [0, 0, 0],
+                "tp": 0,
+                "fp": 0,
+                "fn": 1,
+                "tn": 0,
             },
             "parameters": {
-                "score_thresholds": [0.05, 0.15, 0.95],
+                "score_threshold": 0.05,
                 "hardmax": True,
                 "label": "ant",
             },
@@ -655,13 +1040,13 @@ def test_counts_true_negatives_check_animals(
         },
         {
             "value": {
-                "tp": [0, 0, 0],
-                "fp": [1, 1, 0],
-                "fn": [0, 0, 0],
-                "tn": [0, 0, 1],
+                "tp": 0,
+                "fp": 1,
+                "fn": 0,
+                "tn": 0,
             },
             "parameters": {
-                "score_thresholds": [0.05, 0.15, 0.95],
+                "score_threshold": 0.05,
                 "hardmax": True,
                 "label": "bee",
             },
@@ -669,13 +1054,99 @@ def test_counts_true_negatives_check_animals(
         },
         {
             "value": {
-                "tp": [0, 0, 0],
-                "fp": [0, 0, 0],
-                "fn": [0, 0, 0],
-                "tn": [1, 1, 1],
+                "tp": 0,
+                "fp": 0,
+                "fn": 0,
+                "tn": 1,
             },
             "parameters": {
-                "score_thresholds": [0.05, 0.15, 0.95],
+                "score_threshold": 0.05,
+                "hardmax": True,
+                "label": "cat",
+            },
+            "type": "Counts",
+        },
+        # score >= 0.15
+        {
+            "value": {
+                "tp": 0,
+                "fp": 0,
+                "fn": 1,
+                "tn": 0,
+            },
+            "parameters": {
+                "score_threshold": 0.15,
+                "hardmax": True,
+                "label": "ant",
+            },
+            "type": "Counts",
+        },
+        {
+            "value": {
+                "tp": 0,
+                "fp": 1,
+                "fn": 0,
+                "tn": 0,
+            },
+            "parameters": {
+                "score_threshold": 0.15,
+                "hardmax": True,
+                "label": "bee",
+            },
+            "type": "Counts",
+        },
+        {
+            "value": {
+                "tp": 0,
+                "fp": 0,
+                "fn": 0,
+                "tn": 1,
+            },
+            "parameters": {
+                "score_threshold": 0.15,
+                "hardmax": True,
+                "label": "cat",
+            },
+            "type": "Counts",
+        },
+        # score >= 0.95
+        {
+            "value": {
+                "tp": 0,
+                "fp": 0,
+                "fn": 1,
+                "tn": 0,
+            },
+            "parameters": {
+                "score_threshold": 0.95,
+                "hardmax": True,
+                "label": "ant",
+            },
+            "type": "Counts",
+        },
+        {
+            "value": {
+                "tp": 0,
+                "fp": 0,
+                "fn": 0,
+                "tn": 1,
+            },
+            "parameters": {
+                "score_threshold": 0.95,
+                "hardmax": True,
+                "label": "bee",
+            },
+            "type": "Counts",
+        },
+        {
+            "value": {
+                "tp": 0,
+                "fp": 0,
+                "fn": 0,
+                "tn": 1,
+            },
+            "parameters": {
+                "score_threshold": 0.95,
                 "hardmax": True,
                 "label": "cat",
             },
@@ -707,20 +1178,20 @@ def test_counts_zero_count_check(
 
     metrics = evaluator.evaluate(
         score_thresholds=[0.05, 0.2, 0.95],
-        as_dict=True,
     )
 
-    actual_metrics = [m for m in metrics[MetricType.Counts]]
+    actual_metrics = [m.to_dict() for m in metrics[MetricType.Counts]]
     expected_metrics = [
+        # score >= 0.05
         {
             "value": {
-                "tp": [0, 0, 0],
-                "fp": [0, 0, 0],
-                "fn": [1, 1, 1],
-                "tn": [0, 0, 0],
+                "tp": 0,
+                "fp": 0,
+                "fn": 1,
+                "tn": 0,
             },
             "parameters": {
-                "score_thresholds": [0.05, 0.2, 0.95],
+                "score_threshold": 0.05,
                 "hardmax": True,
                 "label": "ant",
             },
@@ -728,13 +1199,13 @@ def test_counts_zero_count_check(
         },
         {
             "value": {
-                "tp": [0, 0, 0],
-                "fp": [1, 1, 0],
-                "fn": [0, 0, 0],
-                "tn": [0, 0, 1],
+                "tp": 0,
+                "fp": 1,
+                "fn": 0,
+                "tn": 0,
             },
             "parameters": {
-                "score_thresholds": [0.05, 0.2, 0.95],
+                "score_threshold": 0.05,
                 "hardmax": True,
                 "label": "bee",
             },
@@ -742,13 +1213,99 @@ def test_counts_zero_count_check(
         },
         {
             "value": {
-                "tp": [0, 0, 0],
-                "fp": [0, 0, 0],
-                "fn": [0, 0, 0],
-                "tn": [1, 1, 1],
+                "tp": 0,
+                "fp": 0,
+                "fn": 0,
+                "tn": 1,
             },
             "parameters": {
-                "score_thresholds": [0.05, 0.2, 0.95],
+                "score_threshold": 0.05,
+                "hardmax": True,
+                "label": "cat",
+            },
+            "type": "Counts",
+        },
+        # score >= 0.2
+        {
+            "value": {
+                "tp": 0,
+                "fp": 0,
+                "fn": 1,
+                "tn": 0,
+            },
+            "parameters": {
+                "score_threshold": 0.2,
+                "hardmax": True,
+                "label": "ant",
+            },
+            "type": "Counts",
+        },
+        {
+            "value": {
+                "tp": 0,
+                "fp": 1,
+                "fn": 0,
+                "tn": 0,
+            },
+            "parameters": {
+                "score_threshold": 0.2,
+                "hardmax": True,
+                "label": "bee",
+            },
+            "type": "Counts",
+        },
+        {
+            "value": {
+                "tp": 0,
+                "fp": 0,
+                "fn": 0,
+                "tn": 1,
+            },
+            "parameters": {
+                "score_threshold": 0.2,
+                "hardmax": True,
+                "label": "cat",
+            },
+            "type": "Counts",
+        },
+        # score >= 0.95
+        {
+            "value": {
+                "tp": 0,
+                "fp": 0,
+                "fn": 1,
+                "tn": 0,
+            },
+            "parameters": {
+                "score_threshold": 0.95,
+                "hardmax": True,
+                "label": "ant",
+            },
+            "type": "Counts",
+        },
+        {
+            "value": {
+                "tp": 0,
+                "fp": 0,
+                "fn": 0,
+                "tn": 1,
+            },
+            "parameters": {
+                "score_threshold": 0.95,
+                "hardmax": True,
+                "label": "bee",
+            },
+            "type": "Counts",
+        },
+        {
+            "value": {
+                "tp": 0,
+                "fp": 0,
+                "fn": 0,
+                "tn": 1,
+            },
+            "parameters": {
+                "score_threshold": 0.95,
                 "hardmax": True,
                 "label": "cat",
             },

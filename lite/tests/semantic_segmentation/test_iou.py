@@ -1,9 +1,8 @@
 from valor_lite.semantic_segmentation import (
     DataLoader,
-    IoU,
+    Metric,
     MetricType,
     Segmentation,
-    mIoU,
 )
 
 
@@ -12,17 +11,17 @@ def test_iou_basic_segmentations(basic_segmentations: list[Segmentation]):
     loader.add_data(basic_segmentations)
     evaluator = loader.finalize()
 
-    metrics = evaluator.evaluate(as_dict=True)
+    metrics = evaluator.evaluate()
 
-    actual_metrics = [m for m in metrics[MetricType.IoU]]
+    actual_metrics = [m.to_dict() for m in metrics[MetricType.IOU]]
     expected_metrics = [
         {
-            "type": "IoU",
+            "type": "IOU",
             "value": 0.5,
             "parameters": {"label": "v1"},
         },
         {
-            "type": "IoU",
+            "type": "IOU",
             "value": 0.5,
             "parameters": {"label": "v2"},
         },
@@ -32,10 +31,10 @@ def test_iou_basic_segmentations(basic_segmentations: list[Segmentation]):
     for m in expected_metrics:
         assert m in actual_metrics
 
-    actual_metrics = [m for m in metrics[MetricType.mIoU]]
+    actual_metrics = [m.to_dict() for m in metrics[MetricType.mIOU]]
     expected_metrics = [
         {
-            "type": "mIoU",
+            "type": "mIOU",
             "value": 0.5,
             "parameters": {},
         },
@@ -53,17 +52,17 @@ def test_iou_segmentations_from_boxes(
     loader.add_data(segmentations_from_boxes)
     evaluator = loader.finalize()
 
-    metrics = evaluator.evaluate(as_dict=True)
+    metrics = evaluator.evaluate()
 
-    actual_metrics = [m for m in metrics[MetricType.IoU]]
+    actual_metrics = [m.to_dict() for m in metrics[MetricType.IOU]]
     expected_metrics = [
         {
-            "type": "IoU",
+            "type": "IOU",
             "value": 1 / 3,  # 50% overlap
             "parameters": {"label": "v1"},
         },
         {
-            "type": "IoU",
+            "type": "IOU",
             "value": 1 / 19999,  # overlaps 1 pixel out of 20,000
             "parameters": {"label": "v2"},
         },
@@ -73,10 +72,10 @@ def test_iou_segmentations_from_boxes(
     for m in expected_metrics:
         assert m in actual_metrics
 
-    actual_metrics = [m for m in metrics[MetricType.mIoU]]
+    actual_metrics = [m.to_dict() for m in metrics[MetricType.mIOU]]
     expected_metrics = [
         {
-            "type": "mIoU",
+            "type": "mIOU",
             "value": ((1 / 3) + (1 / 19999)) / 2,
             "parameters": {},
         },
@@ -96,31 +95,31 @@ def test_recall_large_random_segmentations(
 
     metrics = evaluator.evaluate()
 
-    for m in metrics[MetricType.IoU]:
-        assert isinstance(m, IoU)
-        match m.label:
+    for m in metrics[MetricType.IOU]:
+        assert isinstance(m, Metric)
+        match m.parameters["label"]:
             case "v1":
-                assert round(m.value, 2) == 0.82
+                assert round(m.value, 2) == 0.82  # type: ignore - testing
             case "v2":
-                assert round(m.value, 2) == 0.05
+                assert round(m.value, 2) == 0.05  # type: ignore - testing
             case "v3":
-                assert round(m.value, 1) == 0.0
+                assert round(m.value, 1) == 0.0  # type: ignore - testing
             case "v4":
-                assert round(m.value, 2) == 0.25
+                assert round(m.value, 2) == 0.25  # type: ignore - testing
             case "v5":
-                assert round(m.value, 2) == 0.25
+                assert round(m.value, 2) == 0.25  # type: ignore - testing
             case "v6":
-                assert round(m.value, 2) == 0.05
+                assert round(m.value, 2) == 0.05  # type: ignore - testing
             case "v7":
-                assert round(m.value, 2) == 0.18
+                assert round(m.value, 2) == 0.18  # type: ignore - testing
             case "v8":
-                assert round(m.value, 2) == 0.18
+                assert round(m.value, 2) == 0.18  # type: ignore - testing
             case "v9":
-                assert round(m.value, 2) == 0.18
+                assert round(m.value, 2) == 0.18  # type: ignore - testing
             case _:
                 assert False
 
-    mIoUs = metrics[MetricType.mIoU]
-    assert len(mIoUs) == 1
-    assert isinstance(mIoUs[0], mIoU)
-    assert round(mIoUs[0].value, 2) == 0.22
+    mIOUs = metrics[MetricType.mIOU]
+    assert len(mIOUs) == 1
+    assert isinstance(mIOUs[0], Metric)
+    assert round(mIOUs[0].value, 2) == 0.22  # type: ignore - testing
