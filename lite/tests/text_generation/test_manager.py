@@ -247,8 +247,7 @@ def test_ValorTextGenerationStreamingManager_rag(
     )
     metrics = []
     for pred in rag_preds:
-        eval = manager.add_and_evaluate_prediction(predictions=[pred])
-        metrics.extend(eval.metrics)
+        metrics.extend(manager.add_and_evaluate_prediction(predictions=[pred]))
 
     assert len(metrics) == len(metrics_to_return) * len(expected_values)
     for metric in metrics:
@@ -281,10 +280,12 @@ def test_ValorTextGenerationStreamingManager_rag(
         llm_api_params=LLM_API_PARAMS,
     )
     metrics = []
-    eval = manager.add_and_evaluate_prediction(predictions=rag_preds[:2])
-    metrics.extend(eval.metrics)
-    eval = manager.add_and_evaluate_prediction(predictions=[rag_preds[2]])
-    metrics.extend(eval.metrics)
+    metrics.extend(
+        manager.add_and_evaluate_prediction(predictions=rag_preds[:2])
+    )
+    metrics.extend(
+        manager.add_and_evaluate_prediction(predictions=[rag_preds[2]])
+    )
 
     assert len(metrics) == len(metrics_to_return) * len(expected_values)
     for metric in metrics:
@@ -358,8 +359,9 @@ def test_ValorTextGenerationStreamingManager_rag(
         llm_api_params=LLM_API_PARAMS,
     )
     metrics = []
-    eval = manager.add_and_evaluate_prediction(predictions=[pred0_two_ann])
-    metrics.extend(eval.metrics)
+    metrics.extend(
+        manager.add_and_evaluate_prediction(predictions=[pred0_two_ann])
+    )
 
     expected_values = {
         "Generated text 0.": 0.75,
@@ -396,8 +398,9 @@ def test_ValorTextGenerationStreamingManager_rag(
         llm_api_params=LLM_API_PARAMS,
     )
     metrics = []
-    eval = manager.add_and_evaluate_prediction(predictions=[pred0_0, pred0_1])
-    metrics.extend(eval.metrics)
+    metrics.extend(
+        manager.add_and_evaluate_prediction(predictions=[pred0_0, pred0_1])
+    )
 
     expected_values = {
         "Generated text 0.": 0.75,

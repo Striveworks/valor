@@ -37,9 +37,9 @@ def trim_and_load_json(input_string: str) -> Any:
         )
 
 
-def validate_text_gen_metrics_to_return(
+def validate_metrics_to_return(
     metrics_to_return: Sequence[str | MetricType],
-) -> None:
+):
     """
     Validate that the provided metrics are appropriate for text generation.
 
@@ -47,25 +47,99 @@ def validate_text_gen_metrics_to_return(
     ----------
     metrics_to_return : Sequence[str | MetricType]
         A list of metrics to check.
-
-    Raises
-    ------
-    ValueError
-        If any of the provided metrics are not supported for text generation.
     """
+    if not isinstance(metrics_to_return, (list, Sequence)):
+        raise TypeError(
+            f"Expected 'metrics_to_return' to be of type 'list' or 'Sequence', got {type(metrics_to_return).__name__}"
+        )
+
+    if not all(
+        isinstance(metric, (str, MetricType)) for metric in metrics_to_return
+    ):
+        raise TypeError(
+            "All items in 'metrics_to_return' must be of type 'str' or 'MetricType'"
+        )
+
     if not set(metrics_to_return).issubset(MetricType.text_generation()):
         raise ValueError(
             f"The following metrics are not supported for text generation: '{set(metrics_to_return) - MetricType.text_generation()}'"
         )
 
+    if len(metrics_to_return) != len(set(metrics_to_return)):
+        raise ValueError(
+            "There are duplicate metrics in 'metrics_to_return'. Please remove the duplicates."
+        )
 
-def validate_metric_parameters(
-    metrics_to_return: list[MetricType],
-    metric_params: dict[str, dict],
+
+def validate_llm_api_params(
+    llm_api_params: dict[str, str | int | dict] | None = None,
 ):
-    # check that the keys of metric parameters are all in metrics_to_return
+    """
+    Validate the LLM API parameters.
+
+    Parameters
+    ----------
+    llm_api_params : dict[str, str | int | dict], optional
+        A dictionary of parameters for the LLM API. Only required by LLM-guided text generation metrics.
+    """
+    if llm_api_params is None:
+        return
+
+    if not isinstance(llm_api_params, dict):
+        raise TypeError(
+            f"Expected 'llm_api_params' to be of type 'dict' or 'None', got {type(llm_api_params).__name__}"
+        )
+
+    if not all(isinstance(key, str) for key in llm_api_params.keys()):
+        raise TypeError("All keys in 'llm_api_params' must be of type 'str'")
+
+    if not all(
+        isinstance(value, (str, int, dict))
+        for value in llm_api_params.values()
+    ):
+        raise TypeError(
+            "All values in 'llm_api_params' must be of type 'str', 'int' or 'dict'"
+        )
+
+    if not ("client" in llm_api_params or "api_url" in llm_api_params):
+        raise ValueError("Need to specify the client or api_url.")
+
+    if "client" in llm_api_params and "api_url" in llm_api_params:
+        raise ValueError("Cannot specify both client and api_url.")
+
+
+def validate_metric_params(
+    metrics_to_return: Sequence[str | MetricType],
+    metric_params: dict[str, dict] | None = None,
+):
+    """
+    Validate the metric parameters for text generation metrics.
+
+    Parameters
+    ----------
+    metrics_to_return : Sequence[str | MetricType]
+        A list of metrics to calculate during the evaluation.
+    metric_params : dict, optional
+        A dictionary of optional parameters to pass in to specific metrics.
+    """
+    if metric_params is None:
+        return
+
+    if not isinstance(metric_params, dict):
+        raise TypeError(
+            f"Expected 'metric_params' to be of type 'dict' or 'None', got {type(metric_params).__name__}"
+        )
+    if not all(isinstance(key, str) for key in metric_params.keys()):
+        raise TypeError("All keys in 'metric_params' must be of type 'str'")
+
+    if not all(isinstance(value, dict) for value in metric_params.values()):
+        raise TypeError("All values in 'metric_params' must be of type 'dict'")
+
     if not set(metric_params.keys()).issubset(
-        [metric.value for metric in metrics_to_return]
+        [
+            metric.value if isinstance(metric, MetricType) else metric
+            for metric in metrics_to_return
+        ]
     ):
         raise ValueError(
             "The keys of metric_params must be a subset of the metrics_to_return."

@@ -461,26 +461,13 @@ def test__setup_llm_client():
         },
     )
 
-    # Need to specify the client or api_url (api_url has not been implemented)
+    # Test that an invalid client raises an error.
     with pytest.raises(ValueError):
         _ = _setup_llm_client(
             llm_api_params={
+                "client": "invalid_client",
                 "data": {
-                    "seed": 2024,
-                    "model": "gpt-4o",
-                },
-            },
-        )
-
-    # Cannot specify both a client and api_url.
-    with pytest.raises(ValueError):
-        _ = _setup_llm_client(
-            llm_api_params={
-                "client": "openai",
-                "api_url": "openai.com",
-                "data": {
-                    "seed": 2024,
-                    "model": "gpt-4o",
+                    "model": "model",
                 },
             },
         )
@@ -493,17 +480,6 @@ def test__setup_llm_client():
                 "data": {
                     "seed": 2024,
                     "model": "gpt-4o",
-                },
-            },
-        )
-
-    # Test that an invalid client raises an error.
-    with pytest.raises(ValueError):
-        _ = _setup_llm_client(
-            llm_api_params={
-                "client": "invalid_client",
-                "data": {
-                    "model": "model",
                 },
             },
         )
@@ -587,7 +563,7 @@ def test_evaluate_text_generation_rag(
         MetricType.Toxicity,
     ]
 
-    eval = evaluate_text_generation(
+    metrics = evaluate_text_generation(
         predictions=rag_preds,
         groundtruths=rag_gts,
         metrics_to_return=metrics_to_return,
@@ -604,7 +580,6 @@ def test_evaluate_text_generation_rag(
             },
         },
     )
-    metrics = eval.metrics
 
     expected_values = {
         "uid0": {
@@ -768,7 +743,7 @@ def test_evaluate_text_generation_content_gen(
     ]
 
     # default request
-    eval = evaluate_text_generation(
+    metrics = evaluate_text_generation(
         predictions=content_gen_preds,
         groundtruths=content_gen_gts,
         metrics_to_return=metrics_to_return,
@@ -780,7 +755,6 @@ def test_evaluate_text_generation_content_gen(
             },
         },
     )
-    metrics = eval.metrics
 
     expected_values = {
         "uid0": {
@@ -829,7 +803,7 @@ def test_evaluate_text_generation_summarization(
     ]
 
     # default request
-    eval = evaluate_text_generation(
+    metrics = evaluate_text_generation(
         predictions=summarization_preds,
         groundtruths=summarization_gts,
         metrics_to_return=metrics_to_return,
@@ -841,7 +815,6 @@ def test_evaluate_text_generation_summarization(
             },
         },
     )
-    metrics = eval.metrics
 
     expected_values = {
         "uid0": {

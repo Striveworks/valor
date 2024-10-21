@@ -1,10 +1,9 @@
-import time
 from collections import defaultdict
 
 import evaluate
 from nltk.tokenize import RegexpTokenizer
 from nltk.translate import bleu_score
-from valor_lite.text_generation import annotation, evaluation
+from valor_lite.text_generation import annotation
 from valor_lite.text_generation.llm_client import (
     InvalidLLMResponseError,
     LLMClient,
@@ -29,8 +28,9 @@ from valor_lite.text_generation.metric import (
     ToxicityMetric,
 )
 from valor_lite.text_generation.utilities import (
-    validate_metric_parameters,
-    validate_text_gen_metrics_to_return,
+    validate_llm_api_params,
+    validate_metric_params,
+    validate_metrics_to_return,
 )
 
 
@@ -203,11 +203,6 @@ def _setup_llm_client(
     LLMClient
         A wrapper for other LLM API clients.
     """
-    if not ("client" in llm_api_params or "api_url" in llm_api_params):
-        raise ValueError("Need to specify the client or api_url.")
-    if "client" in llm_api_params and "api_url" in llm_api_params:
-        raise ValueError("Cannot specify both client and api_url.")
-
     client_name = llm_api_params.get("client")
     if client_name is not None:
         match client_name:
@@ -695,7 +690,7 @@ def evaluate_text_generation(
     groundtruths: list[annotation.GroundTruth] = [],
     llm_api_params: dict[str, str | int | dict] | None = None,
     metric_params: dict[str, dict] = {},
-) -> evaluation.Evaluation:
+) -> list[dict]:
     """
     Validates the parameters and formats the predictions and ground truths, then computes the text generation metrics.
 
@@ -714,20 +709,19 @@ def evaluate_text_generation(
 
     Returns
     ----------
-    evaluation.Evaluation
-        An evaluation object containing the computed metrics and metadata.
+    list[dict]
+        A list of computed metrics, returned as dictionaries.
     """
-    start_time = time.time()
-
-    validate_text_gen_metrics_to_return(
+    validate_metrics_to_return(
         metrics_to_return=metrics_to_return,
     )
-    validate_metric_parameters(
+    validate_llm_api_params(
+        llm_api_params=llm_api_params,
+    )
+    validate_metric_params(
         metrics_to_return=metrics_to_return,
         metric_params=metric_params,
     )
-
-    unique_datum_counts = len(set([p.datum.uid for p in predictions]))
 
     # Generate a list of data tuples, where each prediction is matched with its corresponding datum and the associated groundtruths.
     data = []
@@ -758,15 +752,4 @@ def evaluate_text_generation(
         metric_params=metric_params,
     )
 
-    return evaluation.Evaluation(
-        parameters=evaluation.EvaluationParameters(
-            metrics_to_return=metrics_to_return,
-            llm_api_params=llm_api_params,
-            metric_params=metric_params,
-        ),
-        metrics=[metric.to_dict() for metric in metrics],
-        meta={
-            "datums": unique_datum_counts,
-            "duration": time.time() - start_time,
-        },
-    )
+    return [metric.to_dict() for metric in metrics]

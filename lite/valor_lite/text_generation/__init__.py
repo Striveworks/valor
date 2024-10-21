@@ -1,6 +1,5 @@
 from .annotation import Annotation, Datum, GroundTruth, Prediction
 from .computation import evaluate_text_generation
-from .evaluation import Evaluation
 from .manager import ValorTextGenerationStreamingManager
 from .metric import (
     AnswerCorrectnessMetric,
@@ -22,7 +21,6 @@ __all__ = [
     "evaluate_text_generation",
     "Annotation",
     "Datum",
-    "Evaluation",
     "GroundTruth",
     "Prediction",
     "AnswerCorrectnessMetric",

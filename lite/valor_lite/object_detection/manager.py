@@ -307,7 +307,7 @@ class Evaluator:
         filter_: Filter | None = None,
     ) -> dict[MetricType, list[Metric]]:
         """
-        Computes all avaiable metrics.
+        Computes all available metrics.
 
         Parameters
         ----------

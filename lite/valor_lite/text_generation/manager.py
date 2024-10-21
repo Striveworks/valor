@@ -1,15 +1,13 @@
 from dataclasses import dataclass, field
 
 import pandas as pd  # TODO remove
-from valor_lite.text_generation import annotation, evaluation
+from valor_lite.text_generation import annotation
 from valor_lite.text_generation.computation import evaluate_text_generation
 from valor_lite.text_generation.exceptions import (
     MismatchingTextGenerationDatumError,
 )
 from valor_lite.text_generation.metric import MetricType
-from valor_lite.text_generation.utilities import (
-    validate_text_gen_metrics_to_return,
-)
+from valor_lite.text_generation.utilities import validate_metrics_to_return
 
 
 @dataclass
@@ -71,7 +69,7 @@ class ValorTextGenerationStreamingManager:
 
         Ground truths will not be available in a streaming setting as the model makes predictions. If you were able to generate ground truths in real time, then you wouldn't need a model to generate predictions in the first place.
         """
-        validate_text_gen_metrics_to_return(
+        validate_metrics_to_return(
             metrics_to_return=self.metrics_to_return,
         )
 
@@ -132,7 +130,7 @@ class ValorTextGenerationStreamingManager:
     def add_and_evaluate_prediction(
         self,
         predictions: list[annotation.Prediction],
-    ) -> evaluation.Evaluation:
+    ) -> list[dict]:
         """
         Adds a prediction or batch of predictions and evaluates them.
 
@@ -143,8 +141,8 @@ class ValorTextGenerationStreamingManager:
 
         Returns
         -------
-        evaluation.Evaluation
-            An evaluation object containing metrics.
+        list[dict]
+            A list of computed metrics, returned as dictionaries.
         """
         if not (
             isinstance(predictions, list)
@@ -180,7 +178,7 @@ class ValorTextGenerationStreamingManager:
                         f"Two predictions with the same datum_uid {pred.datum.uid} have different datum text."
                     )
 
-        eval = evaluate_text_generation(
+        metrics = evaluate_text_generation(
             predictions=predictions,
             metrics_to_return=self.metrics_to_return,
             llm_api_params=self.llm_api_params,
@@ -234,7 +232,7 @@ class ValorTextGenerationStreamingManager:
                     == prediction_context_list
                 )
 
-        for m in eval.metrics:
+        for m in metrics:
             metric_name = m["type"]
             value = m["value"]
             datum_uid = m["parameters"]["datum_uid"]
@@ -251,7 +249,7 @@ class ValorTextGenerationStreamingManager:
 
         self.datum_uids.update([pred.datum.uid for pred in predictions])
 
-        return eval
+        return metrics
 
     def get_results(
         self,
