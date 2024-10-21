@@ -1,4 +1,5 @@
 from collections import defaultdict
+from typing import Sequence
 
 import evaluate
 from nltk.tokenize import RegexpTokenizer
@@ -149,7 +150,7 @@ def _calculate_sentence_bleu(
     if isinstance(predictions, str):
         processed_predictions = [predictions]
         processed_references = [references]
-        # handle case where user passes multiple predictions
+    # handle case where user passes multiple predictions
     elif isinstance(predictions, list) and all(
         [isinstance(lst, list) for lst in references]
     ):
@@ -239,7 +240,7 @@ def _setup_llm_client(
 
 def _compute_text_generation_metrics(
     data: list[tuple[str, list[str], int, str, list[str]]],
-    metrics_to_return: list[MetricType] = [],
+    metrics_to_return: Sequence[str | MetricType] = [],
     llm_api_params: dict[str, str | int | dict] | None = None,
     metric_params: dict[str, dict] = {},
 ) -> list[
@@ -263,7 +264,7 @@ def _compute_text_generation_metrics(
     ----------
     data: list[tuple[str, list[str], int, str, list[str]]]
         A list of tuples, where each tuple contains the prediction text, the prediction context list, the datum UID, the datum text, and the ground truth texts.
-    metrics_to_return: list[MetricType]
+    metrics_to_return: Sequence[str | MetricType]
         The list of metrics to compute, store, and return to the user.
     llm_api_params: dict[str, str | int | dict], optional
         A dictionary of parameters for the LLM API.
@@ -272,7 +273,7 @@ def _compute_text_generation_metrics(
 
     Returns
     ----------
-    Sequence[metrics.AnswerCorrectnessMetric | metrics.AnswerRelevanceMetric | metrics.BiasMetric | metrics.BLEUMetric | metrics.ContextPrecisionMetric | metrics.ContextRecallMetric | metrics.ContextRelevanceMetric | metrics.FaithfulnessMetric | metrics.HallucinationMetric | metrics.ROUGEMetric | metrics.SummaryCoherenceMetric | metrics.ToxicityMetric]
+    Sequence[AnswerCorrectnessMetric | AnswerRelevanceMetric | BiasMetric | BLEUMetric | ContextPrecisionMetric | ContextRecallMetric | ContextRelevanceMetric | FaithfulnessMetric | HallucinationMetric | ROUGEMetric | SummaryCoherenceMetric | ToxicityMetric]
         A list of computed metrics.
     """
     is_AnswerCorrectness_enabled = (
@@ -686,7 +687,7 @@ def _compute_text_generation_metrics(
 
 def evaluate_text_generation(
     predictions: list[annotation.Prediction],
-    metrics_to_return: list[MetricType],
+    metrics_to_return: Sequence[str | MetricType],
     groundtruths: list[annotation.GroundTruth] = [],
     llm_api_params: dict[str, str | int | dict] | None = None,
     metric_params: dict[str, dict] = {},
@@ -698,7 +699,7 @@ def evaluate_text_generation(
     ----------
     predictions : list[annotation.Prediction]
         A list of predictions.
-    metrics_to_return : list[MetricType]
+    metrics_to_return : Sequence[str | MetricType]
         The list of metrics to compute, store, and return to the user. There is no default value, so the user must specify the metrics they want to compute.
     groundtruths : list[annotation.GroundTruth], optional
         A list of ground truths. Ground truths are not required for all text generation metrics.

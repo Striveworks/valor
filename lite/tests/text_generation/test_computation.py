@@ -8,7 +8,8 @@ from valor_lite.text_generation.computation import (
     _setup_llm_client,
     evaluate_text_generation,
 )
-from valor_lite.text_generation.metric import MetricType, ROUGEType
+from valor_lite.text_generation.llm_client import InvalidLLMResponseError
+from valor_lite.text_generation.metric import ROUGEType
 
 RAG_QUERIES = [
     """Did John Adams get along with Alexander Hamilton?""",
@@ -411,6 +412,10 @@ def mocked_toxicity(
     return ret_dict[text]
 
 
+def mocked_invalid_llm_response(*args, **kwargs):
+    raise InvalidLLMResponseError
+
+
 def mocked_compute_rouge_none(*args, **kwargs):
     """
     Dummy docstring
@@ -434,8 +439,8 @@ def test__setup_llm_client():
             "data": {
                 "seed": 2024,
                 "model": "gpt-4o",
-                "retries": 0,
             },
+            "retries": 0,
         },
     )
 
@@ -445,8 +450,8 @@ def test__setup_llm_client():
             "client": "mistral",
             "data": {
                 "model": "mistral-small-latest",
-                "retries": 3,
             },
+            "retries": 3,
         },
     )
 
@@ -550,17 +555,17 @@ def test_evaluate_text_generation_rag(
     Tests the evaluate_text_generation function for RAG.
     """
     metrics_to_return = [
-        MetricType.AnswerCorrectness,
-        MetricType.AnswerRelevance,
-        MetricType.Bias,
-        MetricType.BLEU,
-        MetricType.ContextPrecision,
-        MetricType.ContextRecall,
-        MetricType.ContextRelevance,
-        MetricType.Faithfulness,
-        MetricType.Hallucination,
-        MetricType.ROUGE,
-        MetricType.Toxicity,
+        "AnswerCorrectness",
+        "AnswerRelevance",
+        "Bias",
+        "BLEU",
+        "ContextPrecision",
+        "ContextRecall",
+        "ContextRelevance",
+        "Faithfulness",
+        "Hallucination",
+        "ROUGE",
+        "Toxicity",
     ]
 
     metrics = evaluate_text_generation(
@@ -654,7 +659,7 @@ def test_evaluate_text_generation_rag(
     _ = evaluate_text_generation(
         predictions=rag_preds,
         groundtruths=rag_gts,
-        metrics_to_return=[MetricType.AnswerRelevance, MetricType.BLEU],
+        metrics_to_return=["AnswerRelevance", "BLEU"],
         llm_api_params={
             "client": "mistral",
             "data": {
@@ -672,7 +677,7 @@ def test_evaluate_text_generation_rag(
     _ = evaluate_text_generation(
         predictions=rag_preds,
         groundtruths=rag_gts,
-        metrics_to_return=[MetricType.ContextRelevance],
+        metrics_to_return=["ContextRelevance"],
         llm_api_params={
             "client": "openai",
             "api_key": "test_key",
@@ -738,8 +743,8 @@ def test_evaluate_text_generation_content_gen(
     Tests the evaluate_text_generation function for content generation.
     """
     metrics_to_return = [
-        MetricType.Bias,
-        MetricType.Toxicity,
+        "Bias",
+        "Toxicity",
     ]
 
     # default request
@@ -799,7 +804,7 @@ def test_evaluate_text_generation_summarization(
     Tests the evaluate_text_generation function for summarization.
     """
     metrics_to_return = [
-        MetricType.SummaryCoherence,
+        "SummaryCoherence",
     ]
 
     # default request
@@ -835,6 +840,99 @@ def test_evaluate_text_generation_summarization(
             )
             == metric["value"]
         )
+
+
+@patch(
+    "valor_lite.text_generation.llm_client.LLMClient.connect",
+    mocked_connection,
+)
+@patch(
+    "valor_lite.text_generation.llm_client.LLMClient.answer_correctness",
+    mocked_invalid_llm_response,
+)
+@patch(
+    "valor_lite.text_generation.llm_client.LLMClient.answer_relevance",
+    mocked_invalid_llm_response,
+)
+@patch(
+    "valor_lite.text_generation.llm_client.LLMClient.bias",
+    mocked_invalid_llm_response,
+)
+@patch(
+    "valor_lite.text_generation.llm_client.LLMClient.context_precision",
+    mocked_invalid_llm_response,
+)
+@patch(
+    "valor_lite.text_generation.llm_client.LLMClient.context_recall",
+    mocked_invalid_llm_response,
+)
+@patch(
+    "valor_lite.text_generation.llm_client.LLMClient.context_relevance",
+    mocked_invalid_llm_response,
+)
+@patch(
+    "valor_lite.text_generation.llm_client.LLMClient.faithfulness",
+    mocked_invalid_llm_response,
+)
+@patch(
+    "valor_lite.text_generation.llm_client.LLMClient.hallucination",
+    mocked_invalid_llm_response,
+)
+@patch(
+    "valor_lite.text_generation.llm_client.LLMClient.summary_coherence",
+    mocked_invalid_llm_response,
+)
+@patch(
+    "valor_lite.text_generation.llm_client.LLMClient.toxicity",
+    mocked_invalid_llm_response,
+)
+def test_evaluate_text_generation_invalid_llm_response(
+    rag_gts: list[annotation.GroundTruth],
+    rag_preds: list[annotation.Prediction],
+    summarization_gts: list[annotation.GroundTruth],
+    summarization_preds: list[annotation.Prediction],
+):
+    llm_api_params = {
+        "client": "openai",
+        "data": {
+            "seed": 2024,
+            "model": "gpt-4o",
+        },
+    }
+
+    metrics = evaluate_text_generation(
+        predictions=rag_preds,
+        groundtruths=rag_gts,
+        metrics_to_return=[
+            "AnswerCorrectness",
+            "AnswerRelevance",
+            "Bias",
+            "ContextPrecision",
+            "ContextRecall",
+            "ContextRelevance",
+            "Faithfulness",
+            "Hallucination",
+            "Toxicity",
+        ],
+        llm_api_params=llm_api_params,
+    )
+    for metric in metrics:
+        assert (
+            metric["status"] == "error"
+        ), f"Unexpected status: {metric['status']}, for metric: {metric}"
+
+    metrics = evaluate_text_generation(
+        predictions=summarization_preds,
+        groundtruths=summarization_gts,
+        metrics_to_return=[
+            "SummaryCoherence",
+        ],
+        llm_api_params=llm_api_params,
+    )
+    for metric in metrics:
+        assert (
+            metric["status"] == "error"
+        ), f"Unexpected status: {metric['status']}, for metric: {metric}"
 
 
 def test__calculate_rouge_scores():
@@ -1154,6 +1252,12 @@ def test__calculate_bleu_scores():
             "weights": [0, 1],
             "expected_value": 1,
         },  # test multiple references
+        {
+            "prediction": ["Mary loves Joe"],
+            "references": [["Mary loves Joe"]],
+            "weights": (1,),
+            "expected_value": 1.0,
+        },  # test multiple predictions, each with a list of references
     ]
 
     expected_errors = [

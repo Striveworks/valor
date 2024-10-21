@@ -33,6 +33,7 @@ from valor_lite.text_generation.llm_client import (
     MockLLMClient,
     WrappedMistralAIClient,
     WrappedOpenAIClient,
+    _validate_messages,
 )
 
 VALID_CLAIMS = """```json
@@ -190,6 +191,55 @@ class BadValueInTestLLMClientsError(Exception):
     """
 
     pass
+
+
+def test__validate_messages():
+    # Valid messages.
+    _validate_messages(
+        messages=[
+            {"role": "system", "content": "You are a helpful assistant."},
+            {"role": "user", "content": "Hello!"},
+        ],
+    )
+
+    # messages must be a list
+    with pytest.raises(TypeError):
+        _validate_messages(
+            messages={"role": "system", "content": "You are a helpful assistant."}  # type: ignore - testing
+        )
+
+    # messages must be a list of dictionaries
+    with pytest.raises(TypeError):
+        _validate_messages(
+            messages=["You are a helpful assistant."]  # type: ignore - testing
+        )
+
+    # Each message must have 'role' and 'content' keys
+    with pytest.raises(ValueError):
+        _validate_messages(
+            messages=[
+                {"role": "system", "content": "You are a helpful assistant."},
+                {"role": "user"},
+            ]
+        )
+
+    # Role values must be strings
+    with pytest.raises(TypeError):
+        _validate_messages(
+            messages=[
+                {"role": "system", "content": "You are a helpful assistant."},
+                {"role": 1, "content": "Hello!"},  # type: ignore - testing
+            ]
+        )
+
+    # Content values must be a string
+    with pytest.raises(TypeError):
+        _validate_messages(
+            messages=[
+                {"role": "system", "content": "You are a helpful assistant."},
+                {"role": "user", "content": 1},  # type: ignore - testing
+            ]
+        )
 
 
 def test_LLMClient(monkeypatch):
@@ -673,7 +723,7 @@ def test_LLMClient(monkeypatch):
         {"verdict": "yes"},
         {"verdict": "yes"},
         {"verdict": "yes"},
-        {"verdict": "no"},
+        {"verdict": "no"}
     ]
 }```"""
         else:
@@ -855,6 +905,14 @@ def test_LLMClient(monkeypatch):
         "some query", "prediction text", ["ground truth text"]
     )
 
+    # Need to include ground truth statements.
+    monkeypatch.setattr(
+        "valor_lite.text_generation.llm_client.LLMClient.__call__",
+        _return_valid_answer_correctness_response,
+    )
+    with pytest.raises(ValueError):
+        client.answer_correctness("some query", "prediction text", [])
+
     # Needs to have 'statements' key.
     monkeypatch.setattr(
         "valor_lite.text_generation.llm_client.LLMClient.__call__",
@@ -1034,6 +1092,18 @@ def test_LLMClient(monkeypatch):
             ["some ground truth"],
         )
 
+    # Context precision is meaningless if groundtruth_list is empty.
+    monkeypatch.setattr(
+        "valor_lite.text_generation.llm_client.LLMClient.__call__",
+        _return_valid1_context_precision_response,
+    )
+    with pytest.raises(ValueError):
+        client.context_precision(
+            "some query",
+            ["context 1", "context 2", "context 3", "context 4", "context 5"],
+            [],
+        )
+
     # Only 1 context provided but 5 verdicts were returned.
     monkeypatch.setattr(
         "valor_lite.text_generation.llm_client.LLMClient.__call__",
@@ -1077,6 +1147,17 @@ def test_LLMClient(monkeypatch):
         client.context_recall(
             [],
             ["some ground truth"],
+        )
+
+    # Context recall is meaningless if groundtruth_list is empty.
+    monkeypatch.setattr(
+        "valor_lite.text_generation.llm_client.LLMClient.__call__",
+        _return_valid_context_recall_response,
+    )
+    with pytest.raises(ValueError):
+        client.context_recall(
+            ["context 1", "context 2"],
+            [],
         )
 
     # Ground truth statements response must have key 'statements'.
@@ -1652,6 +1733,45 @@ def test_WrappedMistralAIClient():
             ),
         )
 
+    def _create_mock_chat_completion_choices_is_None(
+        model, messages
+    ) -> ChatCompletionResponse:  # type: ignore - test is not run if mistralai is not installed
+        return ChatCompletionResponse(  # type: ignore - test is not run if mistralai is not installed
+            id="foo",
+            model="gpt-3.5-turbo",
+            object="chat.completion",
+            choices=None,
+            created=int(datetime.datetime.now().timestamp()),
+            usage=UsageInfo(  # type: ignore - test is not run if mistralai is not installed
+                prompt_tokens=2, total_tokens=4, completion_tokens=199
+            ),
+        )
+
+    def _create_mock_chat_completion_bad_message_content(
+        model, messages
+    ) -> ChatCompletionResponse:  # type: ignore - test is not run if mistralai is not installed
+        return ChatCompletionResponse(  # type: ignore - test is not run if mistralai is not installed
+            id="foo",
+            model="gpt-3.5-turbo",
+            object="chat.completion",
+            choices=[
+                ChatCompletionChoice(  # type: ignore - test is not run if mistralai is not installed
+                    finish_reason="stop",
+                    index=0,
+                    message=AssistantMessage(  # type: ignore - test is not run if mistralai is not installed
+                        role="assistant",
+                        name=None,  # type: ignore - mistralai issue
+                        tool_calls=None,
+                        tool_call_id=None,  # type: ignore - mistralai issue
+                    ),
+                )
+            ],
+            created=int(datetime.datetime.now().timestamp()),
+            usage=UsageInfo(  # type: ignore - test is not run if mistralai is not installed
+                prompt_tokens=2, total_tokens=4, completion_tokens=199
+            ),
+        )
+
     # Mistral client call should fail as the API key is invalid.
     client = WrappedMistralAIClient(
         api_key="invalid_key", model_name="model_name"
@@ -1684,6 +1804,18 @@ def test_WrappedMistralAIClient():
     # The metric computation should run successfully when the finish reason is stop.
     client.client.chat.complete = _create_mock_chat_completion
     assert client(fake_message) == "some response"
+
+    # The metric computation should run successfully even when choices is None.
+    client.client.chat.complete = _create_mock_chat_completion_choices_is_None
+    assert client(fake_message) == ""
+
+    # The metric computation should fail when the message doesn't contain any content.
+    client.client.chat.complete = (
+        _create_mock_chat_completion_bad_message_content
+    )
+    with pytest.raises(TypeError) as e:
+        client(fake_message)
+        assert "Mistral AI response was not a string." in str(e)
 
 
 def test_MockLLMClient():

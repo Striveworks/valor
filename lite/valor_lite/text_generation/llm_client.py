@@ -32,7 +32,7 @@ from valor_lite.text_generation.utilities import trim_and_load_json
 DEFAULT_SYSTEM_PROMPT = "You are a helpful assistant."
 
 
-def validate_messages(messages: list[dict[str, str]]):
+def _validate_messages(messages: list[dict[str, str]]):
     """
     Validate that the input is a list of dictionaries with "role" and "content" keys.
 
@@ -42,21 +42,25 @@ def validate_messages(messages: list[dict[str, str]]):
         The messages formatted according to the OpenAI standard. Each message in messages is a dictionary with "role" and "content" keys.
     """
     if not isinstance(messages, list):
-        raise ValueError(
+        raise TypeError(
             f"messages must be a list, got {type(messages)} instead."
         )
+
     if not all(isinstance(message, dict) for message in messages):
-        raise ValueError("messages must be a list of dictionaries.")
+        raise TypeError("messages must be a list of dictionaries.")
+
     if not all(
         "role" in message and "content" in message for message in messages
     ):
         raise ValueError(
             'messages must be a list of dictionaries with "role" and "content" keys.'
         )
+
     if not all(isinstance(message["role"], str) for message in messages):
-        raise ValueError("All roles in messages must be strings.")
+        raise TypeError("All roles in messages must be strings.")
+
     if not all(isinstance(message["content"], str) for message in messages):
-        raise ValueError("All content in messages must be strings.")
+        raise TypeError("All content in messages must be strings.")
 
 
 def retry_if_invalid_llm_response():
@@ -145,7 +149,7 @@ class LLMClient:
             The messages formatted for the API.
         """
         # Validate that the input is a list of dictionaries with "role" and "content" keys.
-        validate_messages(messages=messages)  # type: ignore
+        _validate_messages(messages=messages)  # type: ignore
 
         raise NotImplementedError
 
@@ -1312,7 +1316,7 @@ class WrappedOpenAIClient(LLMClient):
             The messages are left in the OpenAI standard.
         """
         # Validate that the input is a list of dictionaries with "role" and "content" keys.
-        validate_messages(messages=messages)  # type: ignore
+        _validate_messages(messages=messages)  # type: ignore
 
         return messages
 
@@ -1430,7 +1434,7 @@ class WrappedMistralAIClient(LLMClient):
             The messages formatted for Mistral's API. With mistralai>=1.0.0, the messages can be left in the OpenAI standard.
         """
         # Validate that the input is a list of dictionaries with "role" and "content" keys.
-        validate_messages(messages=messages)  # type: ignore
+        _validate_messages(messages=messages)  # type: ignore
 
         return messages
 
@@ -1456,16 +1460,19 @@ class WrappedMistralAIClient(LLMClient):
             model=self.model_name,
             messages=processed_messages,
         )
-        if mistral_response is None or mistral_response.choices is None:
+        if (
+            mistral_response is None
+            or mistral_response.choices is None
+            or mistral_response.choices[0].message is None
+            or mistral_response.choices[0].message.content is None
+        ):
             return ""
+
+        response = mistral_response.choices[0].message.content
 
         finish_reason = mistral_response.choices[
             0
         ].finish_reason  # Enum: "stop" "length" "model_length" "error" "tool_calls"
-        if mistral_response.choices[0].message is None:
-            response = ""
-        else:
-            response = mistral_response.choices[0].message.content
 
         if finish_reason == "length":
             raise ValueError(
@@ -1525,7 +1532,7 @@ class MockLLMClient(LLMClient):
             The messages are left in the OpenAI format.
         """
         # Validate that the input is a list of dictionaries with "role" and "content" keys.
-        validate_messages(messages=messages)  # type: ignore
+        _validate_messages(messages=messages)  # type: ignore
 
         return messages
 

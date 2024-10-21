@@ -205,12 +205,12 @@ def test_ValorTextGenerationStreamingManager_rag(
     Tests the evaluate_text_generation function for RAG.
     """
     metrics_to_return = [
-        MetricType.AnswerRelevance,
-        MetricType.Bias,
-        MetricType.ContextRelevance,
-        MetricType.Faithfulness,
-        MetricType.Hallucination,
-        MetricType.Toxicity,
+        "AnswerRelevance",
+        "Bias",
+        "ContextRelevance",
+        "Faithfulness",
+        "Hallucination",
+        "Toxicity",
     ]
 
     expected_values = {
@@ -268,7 +268,7 @@ def test_ValorTextGenerationStreamingManager_rag(
     )
     for _, row in results_df.iterrows():
         for m in metrics_to_return:
-            metric_name = m._name_
+            metric_name = m.value if isinstance(m, MetricType) else m
             assert (
                 expected_values[row["datum_uid"]].get(metric_name)
                 == row[metric_name]
@@ -320,7 +320,10 @@ def test_ValorTextGenerationStreamingManager_rag(
             "prediction_text",
             "prediction_context_list",
         ]
-        + [metric._name_ for metric in metrics_to_return],
+        + [
+            metric.value if isinstance(metric, MetricType) else metric
+            for metric in metrics_to_return
+        ],
     )
     manager = ValorTextGenerationStreamingManager(
         metrics_to_return=metrics_to_return,
@@ -335,7 +338,7 @@ def test_ValorTextGenerationStreamingManager_rag(
     )
     for _, row in results_df.iterrows():
         for m in metrics_to_return:
-            metric_name = m._name_
+            metric_name = m.value if isinstance(m, MetricType) else m
             assert (
                 expected_values[row["datum_uid"]].get(metric_name)
                 == row[metric_name]
@@ -355,7 +358,7 @@ def test_ValorTextGenerationStreamingManager_rag(
     ]
 
     manager = ValorTextGenerationStreamingManager(
-        metrics_to_return=[MetricType.Hallucination],
+        metrics_to_return=["Hallucination"],
         llm_api_params=LLM_API_PARAMS,
     )
     metrics = []
@@ -394,7 +397,7 @@ def test_ValorTextGenerationStreamingManager_rag(
     ]
 
     manager = ValorTextGenerationStreamingManager(
-        metrics_to_return=[MetricType.Hallucination],
+        metrics_to_return=["Hallucination"],
         llm_api_params=LLM_API_PARAMS,
     )
     metrics = []
@@ -438,13 +441,51 @@ def test_ValorTextGenerationStreamingManager_rag(
             "prediction_text",
             "prediction_context_list",
         ]
-        + [metric._name_ for metric in metrics_to_return],
+        + [
+            metric.value if isinstance(metric, MetricType) else metric
+            for metric in metrics_to_return
+        ],
     )
     _ = ValorTextGenerationStreamingManager(
         metrics_to_return=metrics_to_return,
         llm_api_params=LLM_API_PARAMS,
         joint_df=joint_df,
     )
+
+    # Cannot modify metrics_to_return, llm_api_params or metric_params after initialization
+    manager = ValorTextGenerationStreamingManager(
+        metrics_to_return=metrics_to_return,
+        llm_api_params=LLM_API_PARAMS,
+    )
+    with pytest.raises(AttributeError):
+        manager.metrics_to_return = ["AnswerRelevance"]
+    with pytest.raises(AttributeError):
+        manager.llm_api_params = {"client": "openai"}
+    with pytest.raises(AttributeError):
+        manager.metric_params = {"BLEU": {"weights": [0.25, 0.25, 0.25, 0.25]}}
+
+    # Cannot use text comparison metrics with the streaming manager.
+    with pytest.raises(ValueError):
+        _ = ValorTextGenerationStreamingManager(
+            metrics_to_return=["AnswerCorrectness"],
+            llm_api_params=LLM_API_PARAMS,
+        )
+
+    # predictions should be a list
+    with pytest.raises(TypeError):
+        manager = ValorTextGenerationStreamingManager(
+            metrics_to_return=metrics_to_return,
+            llm_api_params=LLM_API_PARAMS,
+        )
+        _ = manager.add_and_evaluate_prediction(predictions=None)  # type: ignore - testing
+
+    # predictions should have len > 0
+    with pytest.raises(ValueError):
+        manager = ValorTextGenerationStreamingManager(
+            metrics_to_return=metrics_to_return,
+            llm_api_params=LLM_API_PARAMS,
+        )
+        _ = manager.add_and_evaluate_prediction(predictions=[])
 
     # Adding two different predictions with the same datum uid but different datum text.
     pred0_modified_text = copy.deepcopy(rag_preds[0])
@@ -492,7 +533,10 @@ def test_ValorTextGenerationStreamingManager_rag(
                 "prediction_text",
                 "prediction_context_list",
             ]
-            + [metric._name_ for metric in metrics_to_return],
+            + [
+                metric.value if isinstance(metric, MetricType) else metric
+                for metric in metrics_to_return
+            ],
         )
         _ = ValorTextGenerationStreamingManager(
             metrics_to_return=metrics_to_return,
@@ -523,7 +567,10 @@ def test_ValorTextGenerationStreamingManager_rag(
                 "prediction_text",
                 "prediction_context_list",
             ]
-            + [metric._name_ for metric in metrics_to_return],
+            + [
+                metric.value if isinstance(metric, MetricType) else metric
+                for metric in metrics_to_return
+            ],
         )
         _ = ValorTextGenerationStreamingManager(
             metrics_to_return=metrics_to_return,
@@ -567,7 +614,10 @@ def test_ValorTextGenerationStreamingManager_rag(
                 "prediction_text",
                 "prediction_context_list",
             ]
-            + [metric._name_ for metric in metrics_to_return],
+            + [
+                metric.value if isinstance(metric, MetricType) else metric
+                for metric in metrics_to_return
+            ],
         )
         _ = ValorTextGenerationStreamingManager(
             metrics_to_return=metrics_to_return,
@@ -598,7 +648,10 @@ def test_ValorTextGenerationStreamingManager_rag(
                 "prediction_text",
                 "prediction_context_list",
             ]
-            + [metric._name_ for metric in metrics_to_return],
+            + [
+                metric.value if isinstance(metric, MetricType) else metric
+                for metric in metrics_to_return
+            ],
         )
         _ = ValorTextGenerationStreamingManager(
             metrics_to_return=metrics_to_return,

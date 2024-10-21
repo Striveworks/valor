@@ -1,4 +1,5 @@
 from dataclasses import dataclass, field
+from typing import Sequence
 
 import pandas as pd  # TODO remove
 from valor_lite.text_generation import annotation
@@ -19,8 +20,8 @@ class ValorTextGenerationStreamingManager:
 
     Attributes
     ----------
-    metrics_to_return : list[MetricType]
-        A list of metrics to calculate during the evaluation.
+    metrics_to_return : Sequence[str | MetricType]
+        The list of metrics to compute, store, and return to the user. There is no default value, so the user must specify the metrics they want to compute.
     llm_api_params : dict[str, str | int | dict], optional
         The parameters to setup the client with.
     metric_params: dict, optional
@@ -31,7 +32,7 @@ class ValorTextGenerationStreamingManager:
         A set of user specified unique identifiers for the data samples.
     """
 
-    metrics_to_return: list[MetricType]
+    metrics_to_return: Sequence[str | MetricType]
     llm_api_params: dict[str, str | int | dict]
     metric_params: dict[str, dict] = field(default_factory=dict)
     joint_df: pd.DataFrame = field(default_factory=lambda: pd.DataFrame([]))
@@ -91,7 +92,10 @@ class ValorTextGenerationStreamingManager:
             "datum_text",
             "prediction_text",
             "prediction_context_list",
-        ] + [metric._name_ for metric in self.metrics_to_return]
+        ] + [
+            metric.value if isinstance(metric, MetricType) else metric
+            for metric in self.metrics_to_return
+        ]
 
         # Initialize if no joint_df was specified
         if self.joint_df is None or self.joint_df.empty:
@@ -110,10 +114,6 @@ class ValorTextGenerationStreamingManager:
         if not self.joint_df["datum_uid"].notnull().all():
             raise ValueError(
                 "The joint_df contains rows with missing datum_uid values."
-            )
-        if not self.joint_df["datum_uid"].is_unique:
-            raise ValueError(
-                "The joint_df contains rows with non-unique datum_uid values."
             )
 
         # Check that for every row either prediction_text or prediction_context_list is not null. It's okay if one of the two is null, but not both.
