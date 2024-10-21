@@ -3,16 +3,26 @@ from valor_lite.object_detection import DataLoader, Detection, MetricType
 from valor_lite.object_detection.computation import compute_precion_recall
 
 
-def test__compute_average_precision():
+def test__compute_accuracy():
 
     sorted_pairs = np.array(
         [
-            # dt,  gt,  pd,  iou,  gl,  pl, score,
-            [0.0, 0.0, 2.0, 0.25, 0.0, 0.0, 0.95],
-            [0.0, 0.0, 3.0, 0.33333, 0.0, 0.0, 0.9],
-            [0.0, 0.0, 4.0, 0.66667, 0.0, 0.0, 0.65],
-            [0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.1],
-            [0.0, 0.0, 1.0, 0.5, 0.0, 0.0, 0.01],
+            # iou, score
+            [0.25, 0.95],
+            [0.33333, 0.9],
+            [0.66667, 0.65],
+            [1.0, 0.1],
+            [0.5, 0.01],
+        ]
+    )
+    sorted_identifiers = np.array(
+        [
+            # dt,  gt,  pd,  gl,  pl
+            [0, 0, 2, 0, 0],
+            [0, 0, 3, 0, 0],
+            [0, 0, 4, 0, 0],
+            [0, 0, 0, 0, 0],
+            [0, 0, 1, 0, 0],
         ]
     )
 
@@ -22,6 +32,7 @@ def test__compute_average_precision():
 
     (_, _, accuracy, _, _) = compute_precion_recall(
         sorted_pairs,
+        sorted_identifiers,
         label_metadata=label_metadata,
         iou_thresholds=iou_thresholds,
         score_thresholds=score_thresholds,
@@ -36,7 +47,7 @@ def test__compute_average_precision():
     assert (accuracy == expected).all()
 
 
-def test_ap_using_torch_metrics_example(
+def test_accuracy_using_torch_metrics_example(
     torchmetrics_detections: list[Detection],
 ):
     """

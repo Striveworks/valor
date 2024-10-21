@@ -81,7 +81,9 @@ class Evaluator:
 
         # computation caches
         self._detailed_pairs: NDArray[np.float64] = np.array([])
+        self._detailed_identifiers: NDArray[np.int32] = np.array([])
         self._ranked_pairs: NDArray[np.float64] = np.array([])
+        self._ranked_identifiers: NDArray[np.int32] = np.array([])
         self._label_metadata: NDArray[np.int32] = np.array([])
         self._label_metadata_per_datum: NDArray[np.int32] = np.array([])
 
@@ -159,10 +161,14 @@ class Evaluator:
                     dtype=np.int32,
                 )
             mask_ranked[
-                ~np.isin(self._ranked_pairs[:, 0].astype(int), datum_uids)
+                ~np.isin(
+                    self._ranked_identifiers[:, 0].astype(int), datum_uids
+                )
             ] = False
             mask_detailed[
-                ~np.isin(self._detailed_pairs[:, 0].astype(int), datum_uids)
+                ~np.isin(
+                    self._detailed_identifiers[:, 0].astype(int), datum_uids
+                )
             ] = False
             mask_datums[~np.isin(np.arange(n_datums), datum_uids)] = False
 
@@ -172,10 +178,10 @@ class Evaluator:
                     [self.label_to_index[label] for label in labels]
                 )
             mask_ranked[
-                ~np.isin(self._ranked_pairs[:, 4].astype(int), labels)
+                ~np.isin(self._ranked_identifiers[:, 3].astype(int), labels)
             ] = False
             mask_detailed[
-                ~np.isin(self._detailed_pairs[:, 4].astype(int), labels)
+                ~np.isin(self._detailed_identifiers[:, 3].astype(int), labels)
             ] = False
             mask_labels[~np.isin(np.arange(n_labels), labels)] = False
 
@@ -224,13 +230,16 @@ class Evaluator:
         """
 
         ranked_pairs = self._ranked_pairs
+        ranked_identifiers = self._ranked_identifiers
         label_metadata = self._label_metadata
         if filter_ is not None:
             ranked_pairs = ranked_pairs[filter_.ranked_indices]
+            ranked_identifiers = ranked_identifiers[filter_.ranked_indices]
             label_metadata = filter_.label_metadata
 
         results = compute_precion_recall(
             data=ranked_pairs,
+            identifiers=ranked_identifiers,
             label_metadata=label_metadata,
             iou_thresholds=np.array(iou_thresholds),
             score_thresholds=np.array(score_thresholds),
@@ -272,9 +281,13 @@ class Evaluator:
         """
 
         detailed_pairs = self._detailed_pairs
+        detailed_identifiers = self._detailed_identifiers
         label_metadata = self._label_metadata
         if filter_ is not None:
             detailed_pairs = detailed_pairs[filter_.detailed_indices]
+            detailed_identifiers = detailed_identifiers[
+                filter_.detailed_indices
+            ]
             label_metadata = filter_.label_metadata
 
         if detailed_pairs.size == 0:
@@ -282,6 +295,7 @@ class Evaluator:
 
         results = compute_confusion_matrix(
             data=detailed_pairs,
+            identifiers=detailed_identifiers,
             label_metadata=label_metadata,
             iou_thresholds=np.array(iou_thresholds),
             score_thresholds=np.array(score_thresholds),
@@ -348,6 +362,7 @@ class DataLoader:
 
     def __init__(self):
         self._evaluator = Evaluator()
+        self.identifiers: list[NDArray[np.int32]] = list()
         self.pairs: list[NDArray[np.float64]] = list()
         self.groundtruth_count = defaultdict(lambda: defaultdict(int))
         self.prediction_count = defaultdict(lambda: defaultdict(int))
@@ -419,6 +434,7 @@ class DataLoader:
         """
 
         pairs = list()
+        identifiers = list()
         n_predictions = len(predictions)
         n_groundtruths = len(groundtruths)
 
@@ -439,42 +455,51 @@ class DataLoader:
                 ious = compute_bitmask_iou(all_pairs)
             case _:
                 raise ValueError(
-                    f"Invalid annotation type `{annotation_type}`."
+                    f"Invalid annotation type '{annotation_type}'."
                 )
 
         ious = ious.reshape(n_predictions, n_groundtruths)
         predictions_with_iou_of_zero = np.where((ious < 1e-9).all(axis=1))[0]
         groundtruths_with_iou_of_zero = np.where((ious < 1e-9).all(axis=0))[0]
 
-        pairs.extend(
-            [
-                np.array(
-                    [
-                        float(uid_index),
-                        float(gidx),
-                        float(pidx),
-                        ious[pidx, gidx],
-                        float(glabel),
-                        float(plabel),
-                        float(score),
-                    ]
+        for pidx, plabel, score, _ in predictions:
+            for gidx, glabel, _ in groundtruths:
+
+                if ious[pidx, gidx] < 1e-9:
+                    continue
+
+                identifiers.append(
+                    np.array(
+                        [
+                            uid_index,
+                            gidx,
+                            pidx,
+                            glabel,
+                            plabel,
+                        ],
+                        dtype=np.int32,
+                    )
                 )
-                for pidx, plabel, score, _ in predictions
-                for gidx, glabel, _ in groundtruths
-                if ious[pidx, gidx] >= 1e-9
-            ]
-        )
-        pairs.extend(
+                pairs.append(
+                    np.array(
+                        [
+                            ious[pidx, gidx],
+                            float(score),
+                        ],
+                        dtype=np.float64,
+                    )
+                )
+
+        # hallucinated predictions
+        identifiers.extend(
             [
                 np.array(
                     [
-                        float(uid_index),
-                        -1.0,
-                        float(predictions[index][0]),
-                        0.0,
-                        -1.0,
-                        float(predictions[index][1]),
-                        float(predictions[index][2]),
+                        uid_index,
+                        -1,
+                        predictions[index][0],
+                        -1,
+                        predictions[index][1],
                     ]
                 )
                 for index in predictions_with_iou_of_zero
@@ -484,19 +509,42 @@ class DataLoader:
             [
                 np.array(
                     [
-                        float(uid_index),
-                        float(groundtruths[index][0]),
-                        -1.0,
                         0.0,
-                        float(groundtruths[index][1]),
-                        -1.0,
-                        -1.0,
+                        float(predictions[index][2]),
+                    ]
+                )
+                for index in predictions_with_iou_of_zero
+            ]
+        )
+
+        # ground truths with missing predictions
+        identifiers.extend(
+            [
+                np.array(
+                    [
+                        uid_index,
+                        groundtruths[index][0],
+                        -1,
+                        groundtruths[index][1],
+                        -1,
                     ]
                 )
                 for index in groundtruths_with_iou_of_zero
             ]
         )
+        pairs.extend(
+            [
+                np.array(
+                    [
+                        0.0,
+                        -1.0,
+                    ]
+                )
+                for _ in groundtruths_with_iou_of_zero
+            ]
+        )
 
+        self.identifiers.append(np.array(identifiers))
         self.pairs.append(np.array(pairs))
 
     def _add_data(
@@ -662,6 +710,11 @@ class DataLoader:
         """
 
         self.pairs = [pair for pair in self.pairs if pair.size > 0]
+        self.identifiers = [
+            identifier
+            for identifier in self.identifiers
+            if identifier.size > 0
+        ]
         if len(self.pairs) == 0:
             raise ValueError("No data available to create evaluator.")
 
@@ -687,37 +740,42 @@ class DataLoader:
                 )
                 self._evaluator._label_metadata_per_datum[
                     :, datum_idx, label_idx
-                ] = np.array([gt_count, pd_count])
+                ] = np.array([gt_count, pd_count], dtype=np.int32)
 
         self._evaluator._label_metadata = np.array(
             [
                 [
-                    float(
-                        np.sum(
-                            self._evaluator._label_metadata_per_datum[
-                                0, :, label_idx
-                            ]
-                        )
+                    np.sum(
+                        self._evaluator._label_metadata_per_datum[
+                            0, :, label_idx
+                        ]
                     ),
-                    float(
-                        np.sum(
-                            self._evaluator._label_metadata_per_datum[
-                                1, :, label_idx
-                            ]
-                        )
+                    np.sum(
+                        self._evaluator._label_metadata_per_datum[
+                            1, :, label_idx
+                        ]
                     ),
                 ]
                 for label_idx in range(n_labels)
-            ]
+            ],
+            dtype=np.int32,
         )
 
+        self._evaluator._detailed_identifiers = np.concatenate(
+            self.identifiers,
+            axis=0,
+        )
         self._evaluator._detailed_pairs = np.concatenate(
             self.pairs,
             axis=0,
         )
 
-        self._evaluator._ranked_pairs = compute_ranked_pairs(
+        (
+            self._evaluator._ranked_pairs,
+            self._evaluator._ranked_identifiers,
+        ) = compute_ranked_pairs(
             self.pairs,
+            self.identifiers,
             label_metadata=self._evaluator._label_metadata,
         )
 
