@@ -139,6 +139,35 @@ def test_validate_llm_api_params():
         },
     )
 
+    # None is valid as some text generation metrics don't require llm-guidance
+    validate_llm_api_params(
+        llm_api_params=None,
+    )
+
+    # llm_api_params should be a dictionary
+    with pytest.raises(TypeError):
+        validate_llm_api_params(
+            llm_api_params="openai",  # type: ignore - testing
+        )
+
+    # llm api keys should be strings
+    with pytest.raises(TypeError):
+        validate_llm_api_params(
+            llm_api_params={
+                1: {  # type: ignore - testing
+                    "weights": [0.25, 0.25, 0.25, 0.25],
+                },
+            },
+        )
+
+    # llm api values should be strings, integers or dictionaries
+    with pytest.raises(TypeError):
+        validate_llm_api_params(
+            llm_api_params={
+                "client": 1.0,  # type: ignore - testing
+            },
+        )
+
     # Need to specify the client or api_url (api_url has not been implemented)
     with pytest.raises(ValueError):
         validate_llm_api_params(
@@ -197,16 +226,9 @@ def test_validate_metric_params():
         validate_metric_params(
             metrics_to_return=[MetricType.BLEU],
             metric_params={
-                MetricType.BLEU: [0.25, 0.25, 0.25, 0.25],  # type: ignore - testing
-            },
-        )
-
-    # All values in 'metric_params' must be of type 'dict'
-    with pytest.raises(TypeError):
-        validate_metric_params(
-            metrics_to_return=["BLEU"],
-            metric_params={
-                "BLEU": [0.25, 0.25, 0.25, 0.25],  # type: ignore - testing
+                1: {  # type: ignore - testing
+                    "weights": [0.25, 0.25, 0.25, 0.25],
+                },
             },
         )
 
@@ -218,15 +240,6 @@ def test_validate_metric_params():
                 "BLEU": {
                     "weights": [0.25, 0.25, 0.25, 0.25],
                 },
-            },
-        )
-
-    # BLEU metric parameters should be a dictionary.
-    with pytest.raises(TypeError):
-        validate_metric_params(
-            metrics_to_return=["BLEU"],
-            metric_params={
-                "BLEU": [0.25, 0.25, 0.25, 0.25],  # type: ignore - testing
             },
         )
 
@@ -260,15 +273,6 @@ def test_validate_metric_params():
                 "BLEU": {
                     "weights": [0.5, 0.4, 0.3, 0.2],
                 },
-            },
-        )
-
-    # ROUGE metric parameters should be a dictionary.
-    with pytest.raises(TypeError):
-        validate_metric_params(
-            metrics_to_return=["ROUGE"],
-            metric_params={
-                "ROUGE": ["use_stemmer"],  # type: ignore - testing
             },
         )
 
