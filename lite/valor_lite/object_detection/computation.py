@@ -50,24 +50,10 @@ def compute_bbox_iou(data: NDArray[np.float64]) -> NDArray[np.float64]:
         data[:, 1, 3],
     )
 
-    min1 = data[:, 0, [0, 2]]
-    max1 = data[:, 0, [1, 3]]
-
-    min2 = data[:, 1, [0, 2]]
-    max2 = data[:, 1, [1, 3]]
-
-    mins = np.maximum(min1, min2)
-    maxs = np.minimum(max1, max2)
-
-    xmin = mins[:, 0]
-    ymin = mins[:, 1]
-    xmax = maxs[:, 0]
-    ymax = maxs[:, 1]
-
-    # xmin = np.maximum(xmin1, xmin2)
-    # ymin = np.maximum(ymin1, ymin2)
-    # xmax = np.minimum(xmax1, xmax2)
-    # ymax = np.minimum(ymax1, ymax2)
+    xmin = np.maximum(xmin1, xmin2)
+    ymin = np.maximum(ymin1, ymin2)
+    xmax = np.minimum(xmax1, xmax2)
+    ymax = np.minimum(ymax1, ymax2)
 
     intersection_width = np.maximum(0, xmax - xmin)
     intersection_height = np.maximum(0, ymax - ymin)
