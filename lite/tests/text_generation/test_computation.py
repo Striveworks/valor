@@ -504,48 +504,44 @@ def test__setup_llm_client():
     mocked_connection,
 )
 @patch(
-    "valor_lite.text_generation.llm_client.WrappedOpenAIClient.answer_correctness",
-    mocked_answer_correctness,
-)
-@patch(
-    "valor_lite.text_generation.llm_client.WrappedOpenAIClient.answer_relevance",
-    mocked_answer_relevance,
-)
-@patch(
-    "valor_lite.text_generation.llm_client.WrappedOpenAIClient.bias",
-    mocked_bias,
-)
-@patch(
-    "valor_lite.text_generation.llm_client.WrappedOpenAIClient.context_precision",
-    mocked_context_precision,
-)
-@patch(
-    "valor_lite.text_generation.llm_client.WrappedOpenAIClient.context_recall",
-    mocked_context_recall,
-)
-@patch(
-    "valor_lite.text_generation.llm_client.WrappedOpenAIClient.context_relevance",
-    mocked_context_relevance,
-)
-@patch(
-    "valor_lite.text_generation.llm_client.WrappedOpenAIClient.faithfulness",
-    mocked_faithfulness,
-)
-@patch(
-    "valor_lite.text_generation.llm_client.WrappedOpenAIClient.hallucination",
-    mocked_hallucination,
-)
-@patch(
-    "valor_lite.text_generation.llm_client.WrappedOpenAIClient.toxicity",
-    mocked_toxicity,
-)
-@patch(
     "valor_lite.text_generation.llm_client.WrappedMistralAIClient.connect",
     mocked_connection,
 )
 @patch(
-    "valor_lite.text_generation.llm_client.WrappedMistralAIClient.answer_relevance",
+    "valor_lite.text_generation.llm_client.LLMClient.answer_correctness",
+    mocked_answer_correctness,
+)
+@patch(
+    "valor_lite.text_generation.llm_client.LLMClient.answer_relevance",
     mocked_answer_relevance,
+)
+@patch(
+    "valor_lite.text_generation.llm_client.LLMClient.bias",
+    mocked_bias,
+)
+@patch(
+    "valor_lite.text_generation.llm_client.LLMClient.context_precision",
+    mocked_context_precision,
+)
+@patch(
+    "valor_lite.text_generation.llm_client.LLMClient.context_recall",
+    mocked_context_recall,
+)
+@patch(
+    "valor_lite.text_generation.llm_client.LLMClient.context_relevance",
+    mocked_context_relevance,
+)
+@patch(
+    "valor_lite.text_generation.llm_client.LLMClient.faithfulness",
+    mocked_faithfulness,
+)
+@patch(
+    "valor_lite.text_generation.llm_client.LLMClient.hallucination",
+    mocked_hallucination,
+)
+@patch(
+    "valor_lite.text_generation.llm_client.LLMClient.toxicity",
+    mocked_toxicity,
 )
 def test_evaluate_text_generation_rag(
     rag_gts: list[annotation.GroundTruth],
@@ -728,11 +724,11 @@ def test_evaluate_text_generation_rag(
     mocked_connection,
 )
 @patch(
-    "valor_lite.text_generation.llm_client.WrappedOpenAIClient.bias",
+    "valor_lite.text_generation.llm_client.LLMClient.bias",
     mocked_bias,
 )
 @patch(
-    "valor_lite.text_generation.llm_client.WrappedOpenAIClient.toxicity",
+    "valor_lite.text_generation.llm_client.LLMClient.toxicity",
     mocked_toxicity,
 )
 def test_evaluate_text_generation_content_gen(
@@ -793,7 +789,7 @@ def test_evaluate_text_generation_content_gen(
     mocked_connection,
 )
 @patch(
-    "valor_lite.text_generation.llm_client.WrappedOpenAIClient.summary_coherence",
+    "valor_lite.text_generation.llm_client.LLMClient.summary_coherence",
     mocked_summary_coherence,
 )
 def test_evaluate_text_generation_summarization(
@@ -843,7 +839,7 @@ def test_evaluate_text_generation_summarization(
 
 
 @patch(
-    "valor_lite.text_generation.llm_client.LLMClient.connect",
+    "valor_lite.text_generation.llm_client.WrappedOpenAIClient.connect",
     mocked_connection,
 )
 @patch(
