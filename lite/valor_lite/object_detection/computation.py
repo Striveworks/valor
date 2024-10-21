@@ -50,10 +50,24 @@ def compute_bbox_iou(data: NDArray[np.float64]) -> NDArray[np.float64]:
         data[:, 1, 3],
     )
 
-    xmin = np.maximum(xmin1, xmin2)
-    ymin = np.maximum(ymin1, ymin2)
-    xmax = np.minimum(xmax1, xmax2)
-    ymax = np.minimum(ymax1, ymax2)
+    min1 = data[:, 0, [0, 2]]
+    max1 = data[:, 0, [1, 3]]
+
+    min2 = data[:, 1, [0, 2]]
+    max2 = data[:, 1, [1, 3]]
+
+    mins = np.maximum(min1, min2)
+    maxs = np.minimum(max1, max2)
+
+    xmin = mins[:, 0]
+    ymin = mins[:, 1]
+    xmax = maxs[:, 0]
+    ymax = maxs[:, 1]
+
+    # xmin = np.maximum(xmin1, xmin2)
+    # ymin = np.maximum(ymin1, ymin2)
+    # xmax = np.minimum(xmax1, xmax2)
+    # ymax = np.minimum(ymax1, ymax2)
 
     intersection_width = np.maximum(0, xmax - xmin)
     intersection_height = np.maximum(0, ymax - ymin)
@@ -294,6 +308,18 @@ def compute_ranked_pairs(
     )
 
 
+def _combine_ids(
+    msb: NDArray[np.int32],
+    lsb: NDArray[np.int32],
+) -> NDArray[np.int64]:
+    """
+    Combines an annotation id with a datum id.
+
+    Note that sign is retained from the annotation id.
+    """
+    return (msb.astype(np.int64) << 32) | lsb.astype(np.uint32)
+
+
 def compute_precion_recall(
     data: NDArray[np.float64],
     identifiers: NDArray[np.int32],
@@ -320,20 +346,25 @@ def compute_precion_recall(
     """
     Computes Object Detection metrics.
 
-    Takes data with shape (N, 7):
+    Takes data with shape (N, 2):
+
+    Index 0 - IOU
+    Index 1 - Score
+
+    Takes identifiers with shape (N, 5):
 
     Index 0 - Datum Index
     Index 1 - GroundTruth Index
     Index 2 - Prediction Index
-    Index 3 - IOU
-    Index 4 - GroundTruth Label Index
-    Index 5 - Prediction Label Index
-    Index 6 - Score
+    Index 3 - GroundTruth Label Index
+    Index 4 - Prediction Label Index
 
     Parameters
     ----------
     data : NDArray[np.float64]
-        A sorted array summarizing the IOU calculations of one or more pairs.
+        A sorted array containing IoU and score values.
+    identifiers : NDArray[np.int32]
+        A sorted array of reference indices.
     label_metadata : NDArray[np.int32]
         An array containing metadata related to labels.
     iou_thresholds : NDArray[np.float64]
@@ -626,7 +657,9 @@ def _count_with_examples(
     Parameters
     ----------
     data : NDArray[np.float64]
-        A masked portion of a detailed pairs array.
+        A sorted array containing IoU and score values.
+    identifiers : NDArray[np.int32]
+        A sorted array of reference indices.
     unique_idx : int | list[int]
         The index or indices upon which uniqueness is constrained.
     label_idx : int | list[int]
@@ -653,35 +686,6 @@ def _count_with_examples(
         [identifiers[indices], data[indices, 1].reshape((-1, 1))], axis=1
     ).astype(np.float32)
     return examples, labels, counts
-
-
-def _isin(
-    data: NDArray[np.int32],
-    subset: NDArray[np.int32],
-) -> NDArray[np.bool_]:
-    """
-    Creates a mask of rows that exist within the subset.
-
-    Parameters
-    ----------
-    data : NDArray[np.int32]
-        An array with shape (N, 2).
-    subset : NDArray[np.int32]
-        An array with shape (M, 2) where N >= M.
-
-    Returns
-    -------
-    NDArray[np.bool_]
-        Returns a bool mask with shape (N,).
-    """
-    combined_data = (data[:, 0].astype(np.int64) << 32) | data[:, 1].astype(
-        np.uint32
-    )
-    combined_subset = (subset[:, 0].astype(np.int64) << 32) | subset[
-        :, 1
-    ].astype(np.uint32)
-    mask = np.isin(combined_data, combined_subset, assume_unique=False)
-    return mask
 
 
 def compute_confusion_matrix(
@@ -711,7 +715,9 @@ def compute_confusion_matrix(
     Parameters
     ----------
     data : NDArray[np.float64]
-        A sorted array summarizing the IOU calculations of one or more pairs.
+        A array containing IoU and score values.
+    identifiers : NDArray[np.int32]
+        A array of reference indices.
     label_metadata : NDArray[np.int32]
         An array containing metadata related to labels.
     iou_thresholds : NDArray[np.float64]
@@ -738,6 +744,7 @@ def compute_confusion_matrix(
     ious = data[:, 0]
     scores = data[:, 1]
 
+    uids = identifiers[:, 0]
     gt_ids = identifiers[:, 1]
     pd_ids = identifiers[:, 2]
     gt_labels = identifiers[:, 3]
@@ -769,16 +776,23 @@ def compute_confusion_matrix(
     mask_gt_pd_match = mask_gt_pd_exists & mask_label_match
     mask_gt_pd_mismatch = mask_gt_pd_exists & ~mask_label_match
 
-    groundtruths = identifiers[:, [0, 1]]
-    predictions = identifiers[:, [0, 2]]
+    groundtruths = _combine_ids(
+        msb=gt_ids,
+        lsb=uids,
+    )
+    predictions = _combine_ids(
+        msb=pd_ids,
+        lsb=uids,
+    )
+
     for iou_idx in range(n_ious):
         mask_iou_threshold = ious >= iou_thresholds[iou_idx]
         mask_iou = mask_iou_nonzero & mask_iou_threshold
 
         groundtruths_passing_ious = np.unique(groundtruths[mask_iou], axis=0)
-        mask_groundtruths_with_passing_ious = _isin(
-            data=groundtruths,
-            subset=groundtruths_passing_ious,
+        mask_groundtruths_with_passing_ious = np.isin(
+            groundtruths,
+            groundtruths_passing_ious,
         )
         mask_groundtruths_without_passing_ious = (
             ~mask_groundtruths_with_passing_ious & mask_gt_exists
@@ -787,9 +801,8 @@ def compute_confusion_matrix(
         predictions_with_passing_ious = np.unique(
             predictions[mask_iou], axis=0
         )
-        mask_predictions_with_passing_ious = _isin(
-            data=predictions,
-            subset=predictions_with_passing_ious,
+        mask_predictions_with_passing_ious = np.isin(
+            predictions, predictions_with_passing_ious
         )
         mask_predictions_without_passing_ious = (
             ~mask_predictions_with_passing_ious & mask_pd_exists
@@ -802,9 +815,9 @@ def compute_confusion_matrix(
             groundtruths_with_passing_score = np.unique(
                 groundtruths[mask_iou & mask_score], axis=0
             )
-            mask_groundtruths_with_passing_score = _isin(
-                data=groundtruths,
-                subset=groundtruths_with_passing_score,
+            mask_groundtruths_with_passing_score = np.isin(
+                groundtruths,
+                groundtruths_with_passing_score,
             )
             mask_groundtruths_without_passing_score = (
                 ~mask_groundtruths_with_passing_score & mask_gt_exists
@@ -827,13 +840,13 @@ def compute_confusion_matrix(
             )
 
             # filter out true-positives from misclf and misprd
-            mask_gts_with_tp_override = _isin(
-                data=groundtruths[mask_misclf],
-                subset=groundtruths[mask_tp],
+            mask_gts_with_tp_override = np.isin(
+                groundtruths[mask_misclf],
+                groundtruths[mask_tp],
             )
-            mask_pds_with_tp_override = _isin(
-                data=predictions[mask_misclf],
-                subset=predictions[mask_tp],
+            mask_pds_with_tp_override = np.isin(
+                predictions[mask_misclf],
+                predictions[mask_tp],
             )
             mask_misprd[mask_misclf] |= (
                 ~mask_gts_with_tp_override & mask_pds_with_tp_override
