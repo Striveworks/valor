@@ -356,8 +356,6 @@ def _compute_text_generation_metrics(
 
             if is_BLEU_enabled:
                 bleu_params = metric_params.get("BLEU", {})
-                if not isinstance(bleu_params, dict):
-                    raise ValueError("BLEU parameters must be a dictionary.")
                 weights = bleu_params.get("weights", [0.25, 0.25, 0.25, 0.25])
                 bleu_metrics = _calculate_sentence_bleu(
                     predictions=prediction_text,
@@ -439,8 +437,6 @@ def _compute_text_generation_metrics(
 
             if is_ROUGE_enabled:
                 rouge_params = metric_params.get("ROUGE", {})
-                if not isinstance(rouge_params, dict):
-                    raise ValueError("ROUGE parameters must be a dictionary.")
                 rouge_types = rouge_params.get(
                     "rouge_types",
                     [

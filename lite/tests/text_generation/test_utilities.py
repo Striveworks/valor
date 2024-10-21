@@ -221,7 +221,7 @@ def test_validate_metric_params():
             metric_params=[0.25, 0.25, 0.25, 0.25],  # type: ignore - testing
         )
 
-    # metric keys should be strings
+    # metric_params keys should be strings
     with pytest.raises(TypeError):
         validate_metric_params(
             metrics_to_return=[MetricType.BLEU],
@@ -229,6 +229,15 @@ def test_validate_metric_params():
                 1: {  # type: ignore - testing
                     "weights": [0.25, 0.25, 0.25, 0.25],
                 },
+            },
+        )
+
+    # metric_params values should be a dictionary
+    with pytest.raises(TypeError):
+        validate_metric_params(
+            metrics_to_return=["BLEU"],
+            metric_params={
+                "BLEU": [0.25, 0.25, 0.25, 0.25],  # type: ignore - testing
             },
         )
 

@@ -148,11 +148,6 @@ def validate_metric_params(
     if MetricType.BLEU in metric_params:
         bleu_params = metric_params[MetricType.BLEU.value]
 
-        if not isinstance(bleu_params, dict):
-            raise TypeError(
-                f"Expected BLEU parameters to be of type 'dict', got {type(bleu_params).__name__}"
-            )
-
         if "weights" in bleu_params:
             bleu_weights = bleu_params["weights"]
             if not isinstance(bleu_weights, list):
@@ -173,10 +168,6 @@ def validate_metric_params(
 
     if MetricType.ROUGE in metric_params:
         rouge_params = metric_params[MetricType.ROUGE.value]
-        if not isinstance(rouge_params, dict):
-            raise TypeError(
-                f"Expected ROUGE parameters to be of type 'dict', got {type(rouge_params).__name__}"
-            )
 
         if "rouge_types" in rouge_params:
             rouge_types = rouge_params["rouge_types"]
