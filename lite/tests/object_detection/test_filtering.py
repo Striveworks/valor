@@ -83,7 +83,16 @@ def test_filtering_one_detection(one_detection: list[Detection]):
         evaluator._ranked_pairs
         == np.array(
             [
-                [0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.3],
+                [1.0, 0.3],
+            ]
+        )
+    ).all()
+
+    assert (
+        evaluator._ranked_identifiers
+        == np.array(
+            [
+                [0, 0, 0, 0, 0],
             ]
         )
     ).all()
@@ -203,8 +212,18 @@ def test_filtering_two_detections(two_detections: list[Detection]):
         evaluator._ranked_pairs
         == np.array(
             [
-                [1.0, 0.0, 0.0, 1.0, 0.0, 1.0, 0.98],
-                [0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.3],
+                [1.0, 0.98],
+                [1.0, 0.3],
+            ]
+        )
+    ).all()
+
+    assert (
+        evaluator._ranked_identifiers
+        == np.array(
+            [
+                [1, 0, 0, 0, 1],
+                [0, 0, 0, 0, 0],
             ]
         )
     ).all()
@@ -333,10 +352,22 @@ def test_filtering_four_detections(four_detections: list[Detection]):
         evaluator._ranked_pairs
         == np.array(
             [
-                [1.0, 0.0, 0.0, 1.0, 0.0, 1.0, 0.98],
-                [3.0, 0.0, 0.0, 1.0, 0.0, 1.0, 0.98],
-                [0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.3],
-                [2.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.3],
+                [1.0, 0.98],
+                [1.0, 0.98],
+                [1.0, 0.3],
+                [1.0, 0.3],
+            ]
+        )
+    ).all()
+
+    assert (
+        evaluator._ranked_identifiers
+        == np.array(
+            [
+                [1, 0, 0, 0, 1],
+                [3, 0, 0, 0, 1],
+                [0, 0, 0, 0, 0],
+                [2, 0, 0, 0, 0],
             ]
         )
     ).all()
@@ -471,10 +502,22 @@ def test_filtering_all_detections(four_detections: list[Detection]):
         evaluator._ranked_pairs
         == np.array(
             [
-                [1.0, 0.0, 0.0, 1.0, 0.0, 1.0, 0.98],
-                [3.0, 0.0, 0.0, 1.0, 0.0, 1.0, 0.98],
-                [0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.3],
-                [2.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.3],
+                [1.0, 0.98],
+                [1.0, 0.98],
+                [1.0, 0.3],
+                [1.0, 0.3],
+            ]
+        )
+    ).all()
+
+    assert (
+        evaluator._ranked_identifiers
+        == np.array(
+            [
+                [1, 0, 0, 0, 1],
+                [3, 0, 0, 0, 1],
+                [0, 0, 0, 0, 0],
+                [2, 0, 0, 0, 0],
             ]
         )
     ).all()

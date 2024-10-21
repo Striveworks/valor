@@ -20,15 +20,27 @@ def _test_compute_confusion_matrix(
 ):
     sorted_pairs = np.array(
         [
-            # dt,  gt,  pd,  iou,  gl,  pl, score,
-            [0.0, 0.0, 1.0, 0.98, 0.0, 0.0, 0.9],
-            [1.0, 1.0, 2.0, 0.55, 1.0, 0.0, 0.9],
-            [2.0, -1.0, 4.0, 0.0, -1.0, 0.0, 0.65],
-            [3.0, 4.0, 5.0, 1.0, 0.0, 0.0, 0.1],
-            [1.0, 2.0, 3.0, 0.55, 0.0, 0.0, 0.1],
-            [4.0, 5.0, -1.0, 0.0, 0.0, -1.0, -1.0],
+            # iou, score
+            [0.98, 0.9],
+            [0.55, 0.9],
+            [0.0, 0.65],
+            [1.0, 0.1],
+            [0.55, 0.1],
+            [0.0, -1.0],
         ]
     )
+    sorted_identifiers = np.array(
+        [
+            # dt,  gt,  pd,  gl,  pl,
+            [0, 0, 1, 0, 0],
+            [1, 1, 2, 1, 0],
+            [2, -1, 4, -1, 0],
+            [3, 4, 5, 0, 0],
+            [1, 2, 3, 0, 0],
+            [4, 5, -1, 0, -1],
+        ]
+    )
+
     label_metadata = np.array([[3, 4], [1, 0]])
     iou_thresholds = np.array([0.5])
     score_thresholds = np.array([score / 100.0 for score in range(1, 101)])
@@ -39,6 +51,7 @@ def _test_compute_confusion_matrix(
         missing_predictions,
     ) = compute_confusion_matrix(
         data=sorted_pairs,
+        identifiers=sorted_identifiers,
         label_metadata=label_metadata,
         iou_thresholds=iou_thresholds,
         score_thresholds=score_thresholds,
@@ -1164,6 +1177,9 @@ def test_confusion_matrix(
             m["value"]["hallucinations"],
             m["value"]["missing_predictions"],
         )
+        import json
+
+        print(json.dumps(m, indent=4))
         assert m in expected_metrics
     for m in expected_metrics:
         assert m in actual_metrics

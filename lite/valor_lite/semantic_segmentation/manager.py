@@ -270,7 +270,7 @@ class DataLoader:
             The datum index.
         """
         if uid in self._evaluator.uid_to_index:
-            raise ValueError(f"Datum with uid `{uid}` has already been added.")
+            raise ValueError(f"Datum with uid '{uid}' has already been added.")
         index = len(self._evaluator.uid_to_index)
         self._evaluator.uid_to_index[uid] = index
         self._evaluator.index_to_uid[index] = uid
