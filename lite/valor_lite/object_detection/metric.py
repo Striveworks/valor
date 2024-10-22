@@ -156,7 +156,7 @@ class Metric(BaseMetric):
                 "score_threshold": score_threshold,
             },
         )
-    
+
     @classmethod
     def macro_average_f1_score(
         cls,
@@ -167,7 +167,7 @@ class Metric(BaseMetric):
         """
         Macro Average F1 score in object detection.
 
-        This class encapsulates a metric value along with the associated Intersection 
+        This class encapsulates a metric value along with the associated Intersection
         over Union (IOU) threshold and confidence score threshold.
 
         Parameters
@@ -191,7 +191,7 @@ class Metric(BaseMetric):
                 "score_threshold": score_threshold,
             },
         )
-    
+
     @classmethod
     def weighted_average_f1_score(
         cls,
@@ -202,7 +202,7 @@ class Metric(BaseMetric):
         """
         Weighted Average F1 score in object detection.
 
-        This class encapsulates a metric value along with the associated Intersection 
+        This class encapsulates a metric value along with the associated Intersection
         over Union (IOU) threshold and confidence score threshold.
 
         Parameters
