@@ -502,7 +502,7 @@ def test_f1_false_negatives_single_datum_baseline(
 ):
     """This is the baseline for the below test. In this case there are two predictions and
     one groundtruth, but the highest confident prediction overlaps sufficiently with the groundtruth
-    so there is not a penalty for the false negative so the F1 is 1
+    so there is not a penalty for the false negative.
     """
 
     loader = DataLoader()
@@ -546,7 +546,7 @@ def test_f1_false_negatives_single_datum(
 ):
     """Tests where high confidence false negative was not being penalized. The
     difference between this test and the above is that here the prediction with higher confidence
-    does not sufficiently overlap the groundtruth and so is penalized and we get an F1 of 0.5
+    does not sufficiently overlap the groundtruth and so is penalized.
     """
 
     loader = DataLoader()
@@ -580,13 +580,11 @@ def test_f1_false_negatives_two_datums_one_empty_low_confidence_of_fp(
         Detection
     ],
 ):
-    """In this test we have
+    """
+    In this test we have
         1. An image with a matching groundtruth and prediction (same class and high IOU)
         2. A second image with empty groundtruth annotation but a prediction with lower confidence
         then the prediction on the first image.
-
-    In this case, the F1 should be 1.0 since the false positive has lower confidence than the true positive
-
     """
 
     loader = DataLoader()
@@ -622,12 +620,11 @@ def test_f1_false_negatives_two_datums_one_empty_high_confidence_of_fp(
         Detection
     ],
 ):
-    """In this test we have
+    """
+    In this test we have
         1. An image with a matching groundtruth and prediction (same class and high IOU)
         2. A second image with empty groundtruth annotation and a prediction with higher confidence
         then the prediction on the first image.
-
-    In this case, the F1 should be 0.5 since the false positive has higher confidence than the true positive
     """
 
     loader = DataLoader()
@@ -663,13 +660,12 @@ def test_f1_false_negatives_two_datums_one_only_with_different_class_low_confide
         Detection
     ],
 ):
-    """In this test we have
+    """
+    In this test we have
         1. An image with a matching groundtruth and prediction (same class, `"value"`, and high IOU)
         2. A second image with a groundtruth annotation with class `"other value"` and a prediction with lower confidence
         then the prediction on the first image.
 
-    In this case, the F1 for class `"value"` should be 1 since the false positive has lower confidence than the true positive.
-    F1 for class `"other value"` should be 0 since there is no prediction for the `"other value"` groundtruth
     """
     loader = DataLoader()
     loader.add_bounding_boxes(
@@ -713,13 +709,11 @@ def test_f1_false_negatives_two_datums_one_only_with_different_class_high_confid
         Detection
     ],
 ):
-    """In this test we have
+    """
+    In this test we have
         1. An image with a matching groundtruth and prediction (same class, `"value"`, and high IOU)
         2. A second image with a groundtruth annotation with class `"other value"` and a prediction with higher confidence
         then the prediction on the first image.
-
-    In this case, the F1 for class `"value"` should be 0.5 since the false positive has higher confidence than the true positive.
-    F1 for class `"other value"` should be 0 since there is no prediction for the `"other value"` groundtruth
     """
     loader = DataLoader()
     loader.add_bounding_boxes(
