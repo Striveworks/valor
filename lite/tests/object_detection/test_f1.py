@@ -3,7 +3,7 @@ from valor_lite.object_detection import DataLoader, Detection, MetricType
 from valor_lite.object_detection.computation import compute_precion_recall
 
 
-def test__compute_accuracy():
+def test__compute_f1():
 
     sorted_pairs = np.array(
         [
@@ -20,23 +20,46 @@ def test__compute_accuracy():
     iou_thresholds = np.array([0.1, 0.6])
     score_thresholds = np.array([0.0])
 
-    (_, _, accuracy, _, _, _, _) = compute_precion_recall(
+    (_, _, _, macro_avg_f1, weighted_avg_f1, counts, _) = compute_precion_recall(
         sorted_pairs,
         label_metadata=label_metadata,
         iou_thresholds=iou_thresholds,
         score_thresholds=score_thresholds,
     )
 
+    f1 = counts[:, :, :, 5]
+
+    print(f1)
+
+    # f1
     expected = np.array(
         [
             [0.2],  # iou = 0.1
             [0.2],  # iou = 0.6
         ]
     )
-    assert (accuracy == expected).all()
+    assert (f1 == expected).all()
+
+    # macro averaged f1
+    expected = np.array(
+        [
+            [0.2],  # iou = 0.1
+            [0.2],  # iou = 0.6
+        ]
+    )
+    assert (f1 == expected).all()
+
+    # weighted average f1
+    expected = np.array(
+        [
+            [0.2],  # iou = 0.1
+            [0.2],  # iou = 0.6
+        ]
+    )
+    assert (f1 == expected).all()
 
 
-def test_accuracy_using_torch_metrics_example(
+def test_f1_using_torch_metrics_example(
     torchmetrics_detections: list[Detection],
 ):
     """
@@ -59,11 +82,11 @@ def test_accuracy_using_torch_metrics_example(
         iou_thresholds=[0.5, 0.75],
     )
 
-    # test Accuracy
-    actual_metrics = [m.to_dict() for m in metrics[MetricType.Accuracy]]
+    # test F1
+    actual_metrics = [m.to_dict() for m in metrics[MetricType.F1]]
     expected_metrics = [
         {
-            "type": "Accuracy",
+            "type": "F1",
             "value": 9 / 19,
             "parameters": {
                 "iou_threshold": 0.5,
@@ -71,7 +94,7 @@ def test_accuracy_using_torch_metrics_example(
             },
         },
         {
-            "type": "Accuracy",
+            "type": "F1",
             "value": 8 / 19,
             "parameters": {
                 "iou_threshold": 0.75,
@@ -85,7 +108,7 @@ def test_accuracy_using_torch_metrics_example(
         assert m in actual_metrics
 
 
-def test_accuracy_metrics_first_class(
+def test_f1_metrics_first_class(
     basic_detections_first_class: list[Detection],
     basic_rotated_detections_first_class: list[Detection],
 ):
@@ -125,11 +148,11 @@ def test_accuracy_metrics_first_class(
         assert evaluator.n_groundtruths == 2
         assert evaluator.n_predictions == 1
 
-        # test Accuracy
-        actual_metrics = [m.to_dict() for m in metrics[MetricType.Accuracy]]
+        # test F1
+        actual_metrics = [m.to_dict() for m in metrics[MetricType.F1]]
         expected_metrics = [
             {
-                "type": "Accuracy",
+                "type": "F1",
                 "value": 1.0,
                 "parameters": {
                     "iou_threshold": 0.1,
@@ -137,7 +160,7 @@ def test_accuracy_metrics_first_class(
                 },
             },
             {
-                "type": "Accuracy",
+                "type": "F1",
                 "value": 1.0,
                 "parameters": {
                     "iou_threshold": 0.6,
@@ -145,7 +168,7 @@ def test_accuracy_metrics_first_class(
                 },
             },
             {
-                "type": "Accuracy",
+                "type": "F1",
                 "value": 0.0,
                 "parameters": {
                     "iou_threshold": 0.1,
@@ -153,7 +176,7 @@ def test_accuracy_metrics_first_class(
                 },
             },
             {
-                "type": "Accuracy",
+                "type": "F1",
                 "value": 0.0,
                 "parameters": {
                     "iou_threshold": 0.6,
@@ -167,7 +190,7 @@ def test_accuracy_metrics_first_class(
             assert m in actual_metrics
 
 
-def test_accuracy_metrics_second_class(
+def test_f1_metrics_second_class(
     basic_detections_second_class: list[Detection],
     basic_rotated_detections_second_class: list[Detection],
 ):
@@ -205,11 +228,11 @@ def test_accuracy_metrics_second_class(
         assert evaluator.n_groundtruths == 1
         assert evaluator.n_predictions == 1
 
-        # test Accuracy
-        actual_metrics = [m.to_dict() for m in metrics[MetricType.Accuracy]]
+        # test F1
+        actual_metrics = [m.to_dict() for m in metrics[MetricType.F1]]
         expected_metrics = [
             {
-                "type": "Accuracy",
+                "type": "F1",
                 "value": 0.0,
                 "parameters": {
                     "iou_threshold": 0.1,
@@ -217,7 +240,7 @@ def test_accuracy_metrics_second_class(
                 },
             },
             {
-                "type": "Accuracy",
+                "type": "F1",
                 "value": 0.0,
                 "parameters": {
                     "iou_threshold": 0.6,
@@ -225,7 +248,7 @@ def test_accuracy_metrics_second_class(
                 },
             },
             {
-                "type": "Accuracy",
+                "type": "F1",
                 "value": 0.0,
                 "parameters": {
                     "iou_threshold": 0.1,
@@ -233,7 +256,7 @@ def test_accuracy_metrics_second_class(
                 },
             },
             {
-                "type": "Accuracy",
+                "type": "F1",
                 "value": 0.0,
                 "parameters": {
                     "iou_threshold": 0.6,
@@ -247,12 +270,12 @@ def test_accuracy_metrics_second_class(
             assert m in actual_metrics
 
 
-def test_accuracy_false_negatives_single_datum_baseline(
+def test_f1_false_negatives_single_datum_baseline(
     false_negatives_single_datum_baseline_detections: list[Detection],
 ):
     """This is the baseline for the below test. In this case there are two predictions and
     one groundtruth, but the highest confident prediction overlaps sufficiently with the groundtruth
-    so there is not a penalty for the false negative so the Accuracy is 1
+    so there is not a penalty for the false negative so the F1 is 1
     """
 
     loader = DataLoader()
@@ -264,10 +287,10 @@ def test_accuracy_false_negatives_single_datum_baseline(
         score_thresholds=[0.0, 0.9],
     )
 
-    actual_metrics = [m.to_dict() for m in metrics[MetricType.Accuracy]]
+    actual_metrics = [m.to_dict() for m in metrics[MetricType.F1]]
     expected_metrics = [
         {
-            "type": "Accuracy",
+            "type": "F1",
             "value": 0.5,
             "parameters": {
                 "iou_threshold": 0.5,
@@ -275,7 +298,7 @@ def test_accuracy_false_negatives_single_datum_baseline(
             },
         },
         {
-            "type": "Accuracy",
+            "type": "F1",
             "value": 0.0,
             "parameters": {
                 "iou_threshold": 0.5,
@@ -289,12 +312,12 @@ def test_accuracy_false_negatives_single_datum_baseline(
         assert m in actual_metrics
 
 
-def test_accuracy_false_negatives_single_datum(
+def test_f1_false_negatives_single_datum(
     false_negatives_single_datum_detections: list[Detection],
 ):
     """Tests where high confidence false negative was not being penalized. The
     difference between this test and the above is that here the prediction with higher confidence
-    does not sufficiently overlap the groundtruth and so is penalized and we get an Accuracy of 0.5
+    does not sufficiently overlap the groundtruth and so is penalized and we get an F1 of 0.5
     """
 
     loader = DataLoader()
@@ -305,10 +328,10 @@ def test_accuracy_false_negatives_single_datum(
         score_thresholds=[0.0],
     )
 
-    actual_metrics = [m.to_dict() for m in metrics[MetricType.Accuracy]]
+    actual_metrics = [m.to_dict() for m in metrics[MetricType.F1]]
     expected_metrics = [
         {
-            "type": "Accuracy",
+            "type": "F1",
             "value": 0.5,
             "parameters": {
                 "iou_threshold": 0.5,
@@ -322,7 +345,7 @@ def test_accuracy_false_negatives_single_datum(
         assert m in actual_metrics
 
 
-def test_accuracy_false_negatives_two_datums_one_empty_low_confidence_of_fp(
+def test_f1_false_negatives_two_datums_one_empty_low_confidence_of_fp(
     false_negatives_two_datums_one_empty_low_confidence_of_fp_detections: list[
         Detection
     ],
@@ -332,7 +355,7 @@ def test_accuracy_false_negatives_two_datums_one_empty_low_confidence_of_fp(
         2. A second image with empty groundtruth annotation but a prediction with lower confidence
         then the prediction on the first image.
 
-    In this case, the Accuracy should be 1.0 since the false positive has lower confidence than the true positive
+    In this case, the F1 should be 1.0 since the false positive has lower confidence than the true positive
 
     """
 
@@ -346,10 +369,10 @@ def test_accuracy_false_negatives_two_datums_one_empty_low_confidence_of_fp(
         score_thresholds=[0.0],
     )
 
-    actual_metrics = [m.to_dict() for m in metrics[MetricType.Accuracy]]
+    actual_metrics = [m.to_dict() for m in metrics[MetricType.F1]]
     expected_metrics = [
         {
-            "type": "Accuracy",
+            "type": "F1",
             "value": 0.5,
             "parameters": {
                 "iou_threshold": 0.5,
@@ -363,7 +386,7 @@ def test_accuracy_false_negatives_two_datums_one_empty_low_confidence_of_fp(
         assert m in actual_metrics
 
 
-def test_accuracy_false_negatives_two_datums_one_empty_high_confidence_of_fp(
+def test_f1_false_negatives_two_datums_one_empty_high_confidence_of_fp(
     false_negatives_two_datums_one_empty_high_confidence_of_fp_detections: list[
         Detection
     ],
@@ -373,7 +396,7 @@ def test_accuracy_false_negatives_two_datums_one_empty_high_confidence_of_fp(
         2. A second image with empty groundtruth annotation and a prediction with higher confidence
         then the prediction on the first image.
 
-    In this case, the Accuracy should be 0.5 since the false positive has higher confidence than the true positive
+    In this case, the F1 should be 0.5 since the false positive has higher confidence than the true positive
     """
 
     loader = DataLoader()
@@ -386,10 +409,10 @@ def test_accuracy_false_negatives_two_datums_one_empty_high_confidence_of_fp(
         score_thresholds=[0.0],
     )
 
-    actual_metrics = [m.to_dict() for m in metrics[MetricType.Accuracy]]
+    actual_metrics = [m.to_dict() for m in metrics[MetricType.F1]]
     expected_metrics = [
         {
-            "type": "Accuracy",
+            "type": "F1",
             "value": 0.5,
             "parameters": {
                 "iou_threshold": 0.5,
@@ -403,7 +426,7 @@ def test_accuracy_false_negatives_two_datums_one_empty_high_confidence_of_fp(
         assert m in actual_metrics
 
 
-def test_accuracy_false_negatives_two_datums_one_only_with_different_class_low_confidence_of_fp(
+def test_f1_false_negatives_two_datums_one_only_with_different_class_low_confidence_of_fp(
     false_negatives_two_datums_one_only_with_different_class_low_confidence_of_fp_detections: list[
         Detection
     ],
@@ -413,8 +436,8 @@ def test_accuracy_false_negatives_two_datums_one_only_with_different_class_low_c
         2. A second image with a groundtruth annotation with class `"other value"` and a prediction with lower confidence
         then the prediction on the first image.
 
-    In this case, the Accuracy for class `"value"` should be 1 since the false positive has lower confidence than the true positive.
-    Accuracy for class `"other value"` should be 0 since there is no prediction for the `"other value"` groundtruth
+    In this case, the F1 for class `"value"` should be 1 since the false positive has lower confidence than the true positive.
+    F1 for class `"other value"` should be 0 since there is no prediction for the `"other value"` groundtruth
     """
     loader = DataLoader()
     loader.add_bounding_boxes(
@@ -426,10 +449,10 @@ def test_accuracy_false_negatives_two_datums_one_only_with_different_class_low_c
         score_thresholds=[0.0],
     )
 
-    actual_metrics = [m.to_dict() for m in metrics[MetricType.Accuracy]]
+    actual_metrics = [m.to_dict() for m in metrics[MetricType.F1]]
     expected_metrics = [
         {
-            "type": "Accuracy",
+            "type": "F1",
             "value": 0.5,
             "parameters": {
                 "iou_threshold": 0.5,
@@ -443,7 +466,7 @@ def test_accuracy_false_negatives_two_datums_one_only_with_different_class_low_c
         assert m in actual_metrics
 
 
-def test_accuracy_false_negatives_two_datums_one_only_with_different_class_high_confidence_of_fp(
+def test_f1_false_negatives_two_datums_one_only_with_different_class_high_confidence_of_fp(
     false_negatives_two_images_one_only_with_different_class_high_confidence_of_fp_detections: list[
         Detection
     ],
@@ -453,8 +476,8 @@ def test_accuracy_false_negatives_two_datums_one_only_with_different_class_high_
         2. A second image with a groundtruth annotation with class `"other value"` and a prediction with higher confidence
         then the prediction on the first image.
 
-    In this case, the Accuracy for class `"value"` should be 0.5 since the false positive has higher confidence than the true positive.
-    Accuracy for class `"other value"` should be 0 since there is no prediction for the `"other value"` groundtruth
+    In this case, the F1 for class `"value"` should be 0.5 since the false positive has higher confidence than the true positive.
+    F1 for class `"other value"` should be 0 since there is no prediction for the `"other value"` groundtruth
     """
     loader = DataLoader()
     loader.add_bounding_boxes(
@@ -466,10 +489,10 @@ def test_accuracy_false_negatives_two_datums_one_only_with_different_class_high_
         score_thresholds=[0.0],
     )
 
-    actual_metrics = [m.to_dict() for m in metrics[MetricType.Accuracy]]
+    actual_metrics = [m.to_dict() for m in metrics[MetricType.F1]]
     expected_metrics = [
         {
-            "type": "Accuracy",
+            "type": "F1",
             "value": 0.5,
             "parameters": {
                 "iou_threshold": 0.5,

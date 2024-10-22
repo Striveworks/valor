@@ -22,6 +22,8 @@ def unpack_precision_recall_into_metric_lists(
         NDArray[np.float64],
         NDArray[np.float64],
         NDArray[np.float64],
+        NDArray[np.float64],
+        NDArray[np.float64],
     ],
     iou_thresholds: list[float],
     score_thresholds: list[float],
@@ -42,6 +44,8 @@ def unpack_precision_recall_into_metric_lists(
             mean_average_recall_averaged_over_scores,
         ),
         accuracy,
+        macro_avg_f1,
+        weighted_avg_f1,
         precision_recall,
         pr_curves,
     ) = results
@@ -127,6 +131,26 @@ def unpack_precision_recall_into_metric_lists(
     metrics[MetricType.Accuracy] = [
         Metric.accuracy(
             value=float(accuracy[iou_idx, score_idx]),
+            iou_threshold=iou_threshold,
+            score_threshold=score_threshold,
+        )
+        for iou_idx, iou_threshold in enumerate(iou_thresholds)
+        for score_idx, score_threshold in enumerate(score_thresholds)
+    ]
+
+    metrics[MetricType.MacroAverageF1] = [
+        Metric.macro_average_f1_score(
+            value=float(macro_avg_f1[iou_idx, score_idx]),
+            iou_threshold=iou_threshold,
+            score_threshold=score_threshold,
+        )
+        for iou_idx, iou_threshold in enumerate(iou_thresholds)
+        for score_idx, score_threshold in enumerate(score_thresholds)
+    ]
+
+    metrics[MetricType.WeightedAverageF1] = [
+        Metric.weighted_average_f1_score(
+            value=float(weighted_avg_f1[iou_idx, score_idx]),
             iou_threshold=iou_threshold,
             score_threshold=score_threshold,
         )

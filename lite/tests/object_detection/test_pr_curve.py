@@ -24,7 +24,7 @@ def test_pr_curve_simple():
     iou_thresholds = np.array([0.1, 0.6])
     score_thresholds = np.array([0.0])
 
-    (_, _, _, _, pr_curve) = compute_precion_recall(
+    (_, _, _, _, _, _, pr_curve) = compute_precion_recall(
         sorted_pairs,
         label_metadata=label_metadata,
         iou_thresholds=iou_thresholds,

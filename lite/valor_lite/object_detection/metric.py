@@ -9,6 +9,8 @@ class MetricType(str, Enum):
     Precision = "Precision"
     Recall = "Recall"
     F1 = "F1"
+    MacroAverageF1 = "MacroAverageF1"
+    WeightedAverageF1 = "WeightedAverageF1"
     AP = "AP"
     AR = "AR"
     mAP = "mAP"
@@ -150,6 +152,76 @@ class Metric(BaseMetric):
             value=value,
             parameters={
                 "label": label,
+                "iou_threshold": iou_threshold,
+                "score_threshold": score_threshold,
+            },
+        )
+    
+    @classmethod
+    def macro_average_f1_score(
+        cls,
+        value: float,
+        iou_threshold: float,
+        score_threshold: float,
+    ):
+        """
+        Macro Average F1 score in object detection.
+
+        This class encapsulates a metric value along with the associated Intersection 
+        over Union (IOU) threshold and confidence score threshold.
+
+        Parameters
+        ----------
+        value : float
+            The metric value.
+        iou_threshold : float
+            The IOU threshold used to determine matches between predicted and ground truth boxes.
+        score_threshold : float
+            The confidence score threshold above which predictions are considered.
+
+        Returns
+        -------
+        Metric
+        """
+        return cls(
+            type=MetricType.MacroAverageF1.value,
+            value=value,
+            parameters={
+                "iou_threshold": iou_threshold,
+                "score_threshold": score_threshold,
+            },
+        )
+    
+    @classmethod
+    def weighted_average_f1_score(
+        cls,
+        value: float,
+        iou_threshold: float,
+        score_threshold: float,
+    ):
+        """
+        Weighted Average F1 score in object detection.
+
+        This class encapsulates a metric value along with the associated Intersection 
+        over Union (IOU) threshold and confidence score threshold.
+
+        Parameters
+        ----------
+        value : float
+            The metric value.
+        iou_threshold : float
+            The IOU threshold used to determine matches between predicted and ground truth boxes.
+        score_threshold : float
+            The confidence score threshold above which predictions are considered.
+
+        Returns
+        -------
+        Metric
+        """
+        return cls(
+            type=MetricType.WeightedAverageF1.value,
+            value=value,
+            parameters={
                 "iou_threshold": iou_threshold,
                 "score_threshold": score_threshold,
             },
