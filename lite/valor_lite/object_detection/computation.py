@@ -414,9 +414,11 @@ def compute_precion_recall(
 
             # calculate component metrics
             recall = np.zeros_like(tp_count)
-            precision = np.zeros_like(tp_count)
             np.divide(tp_count, gt_count, where=gt_count > 1e-9, out=recall)
+
+            precision = np.zeros_like(tp_count)
             np.divide(tp_count, pd_count, where=pd_count > 1e-9, out=precision)
+
             fn_count = gt_count - tp_count
 
             f1_score = np.zeros_like(precision)
@@ -425,6 +427,7 @@ def compute_precion_recall(
                 (precision + recall),
                 where=(precision + recall) > 1e-9,
                 out=f1_score,
+                dtype=np.float64,
             )
 
             counts[iou_idx][score_idx] = np.concatenate(
@@ -547,7 +550,9 @@ def compute_precion_recall(
 
     # calculate aggregate F1 metrics
     macro_avg_f1 = counts[:, :, :, 5].mean(axis=2)
-    weighted_avg_f1 = (counts[:, :, :, 5] * label_metadata[:, 0]).sum(axis=2) / label_metadata[:, 0].sum()
+    weighted_avg_f1 = (counts[:, :, :, 5] * label_metadata[:, 0]).sum(
+        axis=2
+    ) / label_metadata[:, 0].sum()
 
     ap_results = (
         average_precision,

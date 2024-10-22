@@ -20,7 +20,15 @@ def test__compute_f1():
     iou_thresholds = np.array([0.1, 0.6])
     score_thresholds = np.array([0.0])
 
-    (_, _, _, macro_avg_f1, weighted_avg_f1, counts, _) = compute_precion_recall(
+    (
+        _,
+        _,
+        _,
+        macro_avg_f1,
+        weighted_avg_f1,
+        counts,
+        _,
+    ) = compute_precion_recall(
         sorted_pairs,
         label_metadata=label_metadata,
         iou_thresholds=iou_thresholds,
@@ -29,37 +37,35 @@ def test__compute_f1():
 
     f1 = counts[:, :, :, 5]
 
-    print(f1)
-
     # f1
     expected = np.array(
         [
-            [0.2],  # iou = 0.1
-            [0.2],  # iou = 0.6
+            [[1 / 3]],  # iou = 0.1
+            [[1 / 3]],  # iou = 0.6
         ]
     )
-    assert (f1 == expected).all()
+    assert np.isclose(f1, expected).all()
 
     # macro averaged f1
     expected = np.array(
         [
-            [0.2],  # iou = 0.1
-            [0.2],  # iou = 0.6
+            [1 / 3],  # iou = 0.1
+            [1 / 3],  # iou = 0.6
         ]
     )
-    assert (f1 == expected).all()
+    assert np.isclose(macro_avg_f1, expected).all()
 
-    # weighted average f1
+    # weighted averaged f1
     expected = np.array(
         [
-            [0.2],  # iou = 0.1
-            [0.2],  # iou = 0.6
+            [1 / 3],  # iou = 0.1
+            [1 / 3],  # iou = 0.6
         ]
     )
-    assert (f1 == expected).all()
+    assert np.isclose(weighted_avg_f1, expected).all()
 
 
-def test_f1_using_torch_metrics_example(
+def test_ap_using_torch_metrics_example(
     torchmetrics_detections: list[Detection],
 ):
     """
@@ -79,6 +85,7 @@ def test_f1_using_torch_metrics_example(
     assert evaluator.n_predictions == 19
 
     metrics = evaluator.evaluate(
+        score_thresholds=[0.5],
         iou_thresholds=[0.5, 0.75],
     )
 
@@ -87,18 +94,144 @@ def test_f1_using_torch_metrics_example(
     expected_metrics = [
         {
             "type": "F1",
-            "value": 9 / 19,
+            "value": 0.6,
             "parameters": {
-                "iou_threshold": 0.5,
                 "score_threshold": 0.5,
+                "iou_threshold": 0.5,
+                "label": "0",
             },
         },
         {
             "type": "F1",
-            "value": 8 / 19,
+            "value": 0.4000000000000001,
             "parameters": {
-                "iou_threshold": 0.75,
                 "score_threshold": 0.5,
+                "iou_threshold": 0.75,
+                "label": "0",
+            },
+        },
+        {
+            "type": "F1",
+            "value": 0.0,
+            "parameters": {
+                "score_threshold": 0.5,
+                "iou_threshold": 0.5,
+                "label": "1",
+            },
+        },
+        {
+            "type": "F1",
+            "value": 0.0,
+            "parameters": {
+                "score_threshold": 0.5,
+                "iou_threshold": 0.75,
+                "label": "1",
+            },
+        },
+        {
+            "type": "F1",
+            "value": 2 / 3,
+            "parameters": {
+                "score_threshold": 0.5,
+                "iou_threshold": 0.5,
+                "label": "2",
+            },
+        },
+        {
+            "type": "F1",
+            "value": 2 / 3,
+            "parameters": {
+                "score_threshold": 0.5,
+                "iou_threshold": 0.75,
+                "label": "2",
+            },
+        },
+        {
+            "type": "F1",
+            "value": 0.5,
+            "parameters": {
+                "score_threshold": 0.5,
+                "iou_threshold": 0.5,
+                "label": "4",
+            },
+        },
+        {
+            "type": "F1",
+            "value": 0.5,
+            "parameters": {
+                "score_threshold": 0.5,
+                "iou_threshold": 0.75,
+                "label": "4",
+            },
+        },
+        {
+            "type": "F1",
+            "value": 0.4210526315789474,
+            "parameters": {
+                "score_threshold": 0.5,
+                "iou_threshold": 0.5,
+                "label": "49",
+            },
+        },
+        {
+            "type": "F1",
+            "value": 0.4210526315789474,
+            "parameters": {
+                "score_threshold": 0.5,
+                "iou_threshold": 0.75,
+                "label": "49",
+            },
+        },
+    ]
+    for m in actual_metrics:
+        assert m in expected_metrics
+    for m in expected_metrics:
+        assert m in actual_metrics
+
+    # test macro averaged f1
+    actual_metrics = [m.to_dict() for m in metrics[MetricType.MacroAverageF1]]
+    expected_metrics = [
+        {
+            "type": "MacroAverageF1",
+            "value": 0.3646198830409357,
+            "parameters": {
+                "score_threshold": 0.5,
+                "iou_threshold": 0.5,
+            },
+        },
+        {
+            "type": "MacroAverageF1",
+            "value": 0.33128654970760235,
+            "parameters": {
+                "score_threshold": 0.5,
+                "iou_threshold": 0.75,
+            },
+        },
+    ]
+    for m in actual_metrics:
+        assert m in expected_metrics
+    for m in expected_metrics:
+        assert m in actual_metrics
+
+    # test weighted averaged f1
+    actual_metrics = [
+        m.to_dict() for m in metrics[MetricType.WeightedAverageF1]
+    ]
+    expected_metrics = [
+        {
+            "type": "WeightedAverageF1",
+            "value": 0.4771929824561404,
+            "parameters": {
+                "score_threshold": 0.5,
+                "iou_threshold": 0.5,
+            },
+        },
+        {
+            "type": "WeightedAverageF1",
+            "value": 0.4271929824561404,
+            "parameters": {
+                "score_threshold": 0.5,
+                "iou_threshold": 0.75,
             },
         },
     ]
@@ -153,18 +286,20 @@ def test_f1_metrics_first_class(
         expected_metrics = [
             {
                 "type": "F1",
-                "value": 1.0,
+                "value": 2 / 3,
                 "parameters": {
                     "iou_threshold": 0.1,
                     "score_threshold": 0.0,
+                    "label": "v1",
                 },
             },
             {
                 "type": "F1",
-                "value": 1.0,
+                "value": 2 / 3,
                 "parameters": {
                     "iou_threshold": 0.6,
                     "score_threshold": 0.0,
+                    "label": "v1",
                 },
             },
             {
@@ -173,10 +308,98 @@ def test_f1_metrics_first_class(
                 "parameters": {
                     "iou_threshold": 0.1,
                     "score_threshold": 0.5,
+                    "label": "v1",
                 },
             },
             {
                 "type": "F1",
+                "value": 0.0,
+                "parameters": {
+                    "iou_threshold": 0.6,
+                    "score_threshold": 0.5,
+                    "label": "v1",
+                },
+            },
+        ]
+        for m in actual_metrics:
+            assert m in expected_metrics
+        for m in expected_metrics:
+            assert m in actual_metrics
+
+        # test macro averaged F1
+        actual_metrics = [
+            m.to_dict() for m in metrics[MetricType.MacroAverageF1]
+        ]
+        expected_metrics = [
+            {
+                "type": "MacroAverageF1",
+                "value": 2 / 3,
+                "parameters": {
+                    "iou_threshold": 0.1,
+                    "score_threshold": 0.0,
+                },
+            },
+            {
+                "type": "MacroAverageF1",
+                "value": 2 / 3,
+                "parameters": {
+                    "iou_threshold": 0.6,
+                    "score_threshold": 0.0,
+                },
+            },
+            {
+                "type": "MacroAverageF1",
+                "value": 0.0,
+                "parameters": {
+                    "iou_threshold": 0.1,
+                    "score_threshold": 0.5,
+                },
+            },
+            {
+                "type": "MacroAverageF1",
+                "value": 0.0,
+                "parameters": {
+                    "iou_threshold": 0.6,
+                    "score_threshold": 0.5,
+                },
+            },
+        ]
+        for m in actual_metrics:
+            assert m in expected_metrics
+        for m in expected_metrics:
+            assert m in actual_metrics
+
+        # test weighted average F1
+        actual_metrics = [
+            m.to_dict() for m in metrics[MetricType.WeightedAverageF1]
+        ]
+        expected_metrics = [
+            {
+                "type": "WeightedAverageF1",
+                "value": 2 / 3,
+                "parameters": {
+                    "iou_threshold": 0.1,
+                    "score_threshold": 0.0,
+                },
+            },
+            {
+                "type": "WeightedAverageF1",
+                "value": 2 / 3,
+                "parameters": {
+                    "iou_threshold": 0.6,
+                    "score_threshold": 0.0,
+                },
+            },
+            {
+                "type": "WeightedAverageF1",
+                "value": 0.0,
+                "parameters": {
+                    "iou_threshold": 0.1,
+                    "score_threshold": 0.5,
+                },
+            },
+            {
+                "type": "WeightedAverageF1",
                 "value": 0.0,
                 "parameters": {
                     "iou_threshold": 0.6,
@@ -237,6 +460,7 @@ def test_f1_metrics_second_class(
                 "parameters": {
                     "iou_threshold": 0.1,
                     "score_threshold": 0.0,
+                    "label": "v2",
                 },
             },
             {
@@ -245,6 +469,7 @@ def test_f1_metrics_second_class(
                 "parameters": {
                     "iou_threshold": 0.6,
                     "score_threshold": 0.0,
+                    "label": "v2",
                 },
             },
             {
@@ -253,6 +478,7 @@ def test_f1_metrics_second_class(
                 "parameters": {
                     "iou_threshold": 0.1,
                     "score_threshold": 0.5,
+                    "label": "v2",
                 },
             },
             {
@@ -261,6 +487,7 @@ def test_f1_metrics_second_class(
                 "parameters": {
                     "iou_threshold": 0.6,
                     "score_threshold": 0.5,
+                    "label": "v2",
                 },
             },
         ]
@@ -291,10 +518,11 @@ def test_f1_false_negatives_single_datum_baseline(
     expected_metrics = [
         {
             "type": "F1",
-            "value": 0.5,
+            "value": 2 / 3,
             "parameters": {
                 "iou_threshold": 0.5,
                 "score_threshold": 0.0,
+                "label": "value",
             },
         },
         {
@@ -303,6 +531,7 @@ def test_f1_false_negatives_single_datum_baseline(
             "parameters": {
                 "iou_threshold": 0.5,
                 "score_threshold": 0.9,
+                "label": "value",
             },
         },
     ]
@@ -332,10 +561,11 @@ def test_f1_false_negatives_single_datum(
     expected_metrics = [
         {
             "type": "F1",
-            "value": 0.5,
+            "value": 2 / 3,
             "parameters": {
                 "iou_threshold": 0.5,
                 "score_threshold": 0.0,
+                "label": "value",
             },
         }
     ]
@@ -373,10 +603,11 @@ def test_f1_false_negatives_two_datums_one_empty_low_confidence_of_fp(
     expected_metrics = [
         {
             "type": "F1",
-            "value": 0.5,
+            "value": 2 / 3,
             "parameters": {
                 "iou_threshold": 0.5,
                 "score_threshold": 0.0,
+                "label": "value",
             },
         }
     ]
@@ -413,10 +644,11 @@ def test_f1_false_negatives_two_datums_one_empty_high_confidence_of_fp(
     expected_metrics = [
         {
             "type": "F1",
-            "value": 0.5,
+            "value": 2 / 3,
             "parameters": {
                 "iou_threshold": 0.5,
                 "score_threshold": 0.0,
+                "label": "value",
             },
         }
     ]
@@ -453,10 +685,20 @@ def test_f1_false_negatives_two_datums_one_only_with_different_class_low_confide
     expected_metrics = [
         {
             "type": "F1",
-            "value": 0.5,
+            "value": 2 / 3,
             "parameters": {
                 "iou_threshold": 0.5,
                 "score_threshold": 0.0,
+                "label": "value",
+            },
+        },
+        {
+            "type": "F1",
+            "value": 0.0,
+            "parameters": {
+                "iou_threshold": 0.5,
+                "score_threshold": 0.0,
+                "label": "other value",
             },
         },
     ]
@@ -493,10 +735,20 @@ def test_f1_false_negatives_two_datums_one_only_with_different_class_high_confid
     expected_metrics = [
         {
             "type": "F1",
-            "value": 0.5,
+            "value": 2 / 3,
             "parameters": {
                 "iou_threshold": 0.5,
                 "score_threshold": 0.0,
+                "label": "value",
+            },
+        },
+        {
+            "type": "F1",
+            "value": 0.0,
+            "parameters": {
+                "iou_threshold": 0.5,
+                "score_threshold": 0.0,
+                "label": "other value",
             },
         },
     ]
