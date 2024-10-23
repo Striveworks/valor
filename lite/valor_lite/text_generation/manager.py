@@ -1,14 +1,61 @@
 from dataclasses import dataclass, field
+from enum import Enum
 from typing import Sequence
 
 import pandas as pd  # TODO remove
 from valor_lite.text_generation import annotation
-from valor_lite.text_generation.computation import evaluate_text_generation
+from valor_lite.text_generation.computation import compute_rouge_scores
 from valor_lite.text_generation.exceptions import (
     MismatchingTextGenerationDatumError,
 )
 from valor_lite.text_generation.metric import MetricType
 from valor_lite.text_generation.utilities import validate_metrics_to_return
+
+
+class Interface(str, Enum):
+    OpenAI = "openai"
+    Mistral = "mistral"
+    Debug = "debug"
+
+
+class Evaluator:
+    """
+    Text Generation Evaluator
+    """
+
+    def __init__(
+        self,
+        client: Interface | None = None,
+        api_url: str | None = None,
+    ) -> None:
+        """
+        Creates a text generation evaluator.
+
+        Parameters
+        ----------
+        client : Interface, optional
+            An option to specify a LLM interface.
+        api_url : str, optional
+            An option to specify a LLM via an API interface.
+        """
+
+        # validate
+        if client is None and api_url is None:
+            raise ValueError("Evaluator expected either a client or an api url.")
+        elif client is not None and api_url is not None:
+            raise ValueError("Evaluator expected either a client or an api url, not both.")
+        pass
+
+    def compute_rouge_scores(self) -> dict[str, MetricType]:
+        pass
+
+    def compute_sentence_bleu(self) -> dict[str, MetricType]:
+        pass
+
+    def compute_text_generation_metrics(self) -> dict[str, MetricType]:
+        pass
+
+    def evaluate(self) -> dict[str, list[Metric]]
 
 
 @dataclass

@@ -35,7 +35,7 @@ from valor_lite.text_generation.utilities import (
 )
 
 
-def _calculate_rouge_scores(
+def calculate_rouge_scores(
     predictions: str | list[str],
     references: list[str],
     rouge_types: list[ROUGEType] | None = None,
@@ -115,7 +115,7 @@ def _calculate_rouge_scores(
     ]
 
 
-def _calculate_sentence_bleu(
+def calculate_sentence_bleu(
     predictions: str | list[str],
     references: list[str] | list[list[str]],
     weights: list[float] = [0.25, 0.25, 0.25, 0.25],
@@ -238,9 +238,8 @@ def _setup_llm_client(
     return client
 
 
-def _compute_text_generation_metrics(
+def calculate_text_generation_metrics(
     data: list[tuple[str, list[str], int, str, list[str]]],
-    metrics_to_return: Sequence[str | MetricType] = [],
     llm_api_params: dict[str, str | int | dict] | None = None,
     metric_params: dict[str, dict] = {},
 ) -> list[

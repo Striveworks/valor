@@ -2,6 +2,58 @@ from dataclasses import dataclass
 
 
 @dataclass
+class Response:
+    output: str
+    context: list[str]
+    source: str
+
+
+@dataclass
+class Request:
+    """
+    Text generation data structure containing ground truths and predictions.
+
+    Parameters
+    ----------
+    question : str
+        The user query.
+    groundtruth : list[Response]
+        A list of ground truth responses.
+    predictions : list[Response]
+        A list of model responses.
+
+    Examples
+    ...     groundtruths=[
+    ...         Response(
+    ...             output="02/22/1732",
+    ...             context=[...],
+    ...             source="John Doe",
+    ...         )
+    ...     ],
+    --------
+    >>> question = Request(
+    ...     question='When was George Washington born?',
+    ...     predictions=[
+    ...         Response(
+    ...             output="February 22, 1732",
+    ...             context=[...],
+    ...             source="gpt4o",
+    ...         ),
+    ...         Response(
+    ...             output="July 4th, 1776",
+    ...             context=[...],
+    ...             source="mini-gpt",
+    ...         ),
+    ...     ],
+    ... )
+    """
+
+    question: str
+    groundtruths: list[Response]
+    predictions: list[Response]
+
+
+@dataclass
 class Datum:
     """
     A class used to store information about a datum for either a 'GroundTruth' or a 'Prediction'.
