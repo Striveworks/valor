@@ -3,7 +3,7 @@ from valor_lite.object_detection import DataLoader, Detection, MetricType
 from valor_lite.object_detection.computation import compute_precion_recall
 
 
-def test__compute_average_precision():
+def test__compute_accuracy():
 
     sorted_pairs = np.array(
         [
@@ -20,7 +20,7 @@ def test__compute_average_precision():
     iou_thresholds = np.array([0.1, 0.6])
     score_thresholds = np.array([0.0])
 
-    (_, _, accuracy, _, _) = compute_precion_recall(
+    (_, _, accuracy, _, _, _, _) = compute_precion_recall(
         sorted_pairs,
         label_metadata=label_metadata,
         iou_thresholds=iou_thresholds,
@@ -36,7 +36,7 @@ def test__compute_average_precision():
     assert (accuracy == expected).all()
 
 
-def test_ap_using_torch_metrics_example(
+def test_accuracy_using_torch_metrics_example(
     torchmetrics_detections: list[Detection],
 ):
     """

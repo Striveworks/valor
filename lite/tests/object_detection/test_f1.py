@@ -20,7 +20,15 @@ def test__compute_f1():
     iou_thresholds = np.array([0.1, 0.6])
     score_thresholds = np.array([0.0])
 
-    (_, _, _, counts, _) = compute_precion_recall(
+    (
+        _,
+        _,
+        _,
+        macro_avg_f1,
+        weighted_avg_f1,
+        counts,
+        _,
+    ) = compute_precion_recall(
         sorted_pairs,
         label_metadata=label_metadata,
         iou_thresholds=iou_thresholds,
@@ -37,6 +45,200 @@ def test__compute_f1():
         ]
     )
     assert np.isclose(f1, expected).all()
+
+    # macro averaged f1
+    expected = np.array(
+        [
+            [1 / 3],  # iou = 0.1
+            [1 / 3],  # iou = 0.6
+        ]
+    )
+    assert np.isclose(macro_avg_f1, expected).all()
+
+    # weighted averaged f1
+    expected = np.array(
+        [
+            [1 / 3],  # iou = 0.1
+            [1 / 3],  # iou = 0.6
+        ]
+    )
+    assert np.isclose(weighted_avg_f1, expected).all()
+
+
+def test_ap_using_torch_metrics_example(
+    torchmetrics_detections: list[Detection],
+):
+    """
+    cf with torch metrics/pycocotools results listed here:
+    https://github.com/Lightning-AI/metrics/blob/107dbfd5fb158b7ae6d76281df44bd94c836bfce/tests/unittests/detection/test_map.py#L231
+    """
+
+    loader = DataLoader()
+    loader.add_bounding_boxes(torchmetrics_detections)
+    evaluator = loader.finalize()
+
+    assert evaluator.ignored_prediction_labels == ["3"]
+    assert evaluator.missing_prediction_labels == []
+    assert evaluator.n_datums == 4
+    assert evaluator.n_labels == 6
+    assert evaluator.n_groundtruths == 20
+    assert evaluator.n_predictions == 19
+
+    metrics = evaluator.evaluate(
+        score_thresholds=[0.5],
+        iou_thresholds=[0.5, 0.75],
+    )
+
+    # test F1
+    actual_metrics = [m.to_dict() for m in metrics[MetricType.F1]]
+    expected_metrics = [
+        {
+            "type": "F1",
+            "value": 0.6,
+            "parameters": {
+                "score_threshold": 0.5,
+                "iou_threshold": 0.5,
+                "label": "0",
+            },
+        },
+        {
+            "type": "F1",
+            "value": 0.4000000000000001,
+            "parameters": {
+                "score_threshold": 0.5,
+                "iou_threshold": 0.75,
+                "label": "0",
+            },
+        },
+        {
+            "type": "F1",
+            "value": 0.0,
+            "parameters": {
+                "score_threshold": 0.5,
+                "iou_threshold": 0.5,
+                "label": "1",
+            },
+        },
+        {
+            "type": "F1",
+            "value": 0.0,
+            "parameters": {
+                "score_threshold": 0.5,
+                "iou_threshold": 0.75,
+                "label": "1",
+            },
+        },
+        {
+            "type": "F1",
+            "value": 2 / 3,
+            "parameters": {
+                "score_threshold": 0.5,
+                "iou_threshold": 0.5,
+                "label": "2",
+            },
+        },
+        {
+            "type": "F1",
+            "value": 2 / 3,
+            "parameters": {
+                "score_threshold": 0.5,
+                "iou_threshold": 0.75,
+                "label": "2",
+            },
+        },
+        {
+            "type": "F1",
+            "value": 0.5,
+            "parameters": {
+                "score_threshold": 0.5,
+                "iou_threshold": 0.5,
+                "label": "4",
+            },
+        },
+        {
+            "type": "F1",
+            "value": 0.5,
+            "parameters": {
+                "score_threshold": 0.5,
+                "iou_threshold": 0.75,
+                "label": "4",
+            },
+        },
+        {
+            "type": "F1",
+            "value": 0.4210526315789474,
+            "parameters": {
+                "score_threshold": 0.5,
+                "iou_threshold": 0.5,
+                "label": "49",
+            },
+        },
+        {
+            "type": "F1",
+            "value": 0.4210526315789474,
+            "parameters": {
+                "score_threshold": 0.5,
+                "iou_threshold": 0.75,
+                "label": "49",
+            },
+        },
+    ]
+    for m in actual_metrics:
+        assert m in expected_metrics
+    for m in expected_metrics:
+        assert m in actual_metrics
+
+    # test macro averaged f1
+    actual_metrics = [m.to_dict() for m in metrics[MetricType.MacroAverageF1]]
+    expected_metrics = [
+        {
+            "type": "MacroAverageF1",
+            "value": 0.3646198830409357,
+            "parameters": {
+                "score_threshold": 0.5,
+                "iou_threshold": 0.5,
+            },
+        },
+        {
+            "type": "MacroAverageF1",
+            "value": 0.33128654970760235,
+            "parameters": {
+                "score_threshold": 0.5,
+                "iou_threshold": 0.75,
+            },
+        },
+    ]
+    for m in actual_metrics:
+        assert m in expected_metrics
+    for m in expected_metrics:
+        assert m in actual_metrics
+
+    # test weighted averaged f1
+    actual_metrics = [
+        m.to_dict() for m in metrics[MetricType.WeightedAverageF1]
+    ]
+    expected_metrics = [
+        {
+            "type": "WeightedAverageF1",
+            "value": 0.4771929824561404,
+            "parameters": {
+                "score_threshold": 0.5,
+                "iou_threshold": 0.5,
+            },
+        },
+        {
+            "type": "WeightedAverageF1",
+            "value": 0.4271929824561404,
+            "parameters": {
+                "score_threshold": 0.5,
+                "iou_threshold": 0.75,
+            },
+        },
+    ]
+    for m in actual_metrics:
+        assert m in expected_metrics
+    for m in expected_metrics:
+        assert m in actual_metrics
 
 
 def test_f1_metrics_first_class(
@@ -116,6 +318,92 @@ def test_f1_metrics_first_class(
                     "iou_threshold": 0.6,
                     "score_threshold": 0.5,
                     "label": "v1",
+                },
+            },
+        ]
+        for m in actual_metrics:
+            assert m in expected_metrics
+        for m in expected_metrics:
+            assert m in actual_metrics
+
+        # test macro averaged F1
+        actual_metrics = [
+            m.to_dict() for m in metrics[MetricType.MacroAverageF1]
+        ]
+        expected_metrics = [
+            {
+                "type": "MacroAverageF1",
+                "value": 2 / 3,
+                "parameters": {
+                    "iou_threshold": 0.1,
+                    "score_threshold": 0.0,
+                },
+            },
+            {
+                "type": "MacroAverageF1",
+                "value": 2 / 3,
+                "parameters": {
+                    "iou_threshold": 0.6,
+                    "score_threshold": 0.0,
+                },
+            },
+            {
+                "type": "MacroAverageF1",
+                "value": 0.0,
+                "parameters": {
+                    "iou_threshold": 0.1,
+                    "score_threshold": 0.5,
+                },
+            },
+            {
+                "type": "MacroAverageF1",
+                "value": 0.0,
+                "parameters": {
+                    "iou_threshold": 0.6,
+                    "score_threshold": 0.5,
+                },
+            },
+        ]
+        for m in actual_metrics:
+            assert m in expected_metrics
+        for m in expected_metrics:
+            assert m in actual_metrics
+
+        # test weighted average F1
+        actual_metrics = [
+            m.to_dict() for m in metrics[MetricType.WeightedAverageF1]
+        ]
+        expected_metrics = [
+            {
+                "type": "WeightedAverageF1",
+                "value": 2 / 3,
+                "parameters": {
+                    "iou_threshold": 0.1,
+                    "score_threshold": 0.0,
+                },
+            },
+            {
+                "type": "WeightedAverageF1",
+                "value": 2 / 3,
+                "parameters": {
+                    "iou_threshold": 0.6,
+                    "score_threshold": 0.0,
+                },
+            },
+            {
+                "type": "WeightedAverageF1",
+                "value": 0.0,
+                "parameters": {
+                    "iou_threshold": 0.1,
+                    "score_threshold": 0.5,
+                },
+            },
+            {
+                "type": "WeightedAverageF1",
+                "value": 0.0,
+                "parameters": {
+                    "iou_threshold": 0.6,
+                    "score_threshold": 0.5,
                 },
             },
         ]
@@ -214,7 +502,7 @@ def test_f1_false_negatives_single_datum_baseline(
 ):
     """This is the baseline for the below test. In this case there are two predictions and
     one groundtruth, but the highest confident prediction overlaps sufficiently with the groundtruth
-    so there is not a penalty for the false negative so the AP is 1
+    so there is not a penalty for the false negative.
     """
 
     loader = DataLoader()
@@ -258,7 +546,7 @@ def test_f1_false_negatives_single_datum(
 ):
     """Tests where high confidence false negative was not being penalized. The
     difference between this test and the above is that here the prediction with higher confidence
-    does not sufficiently overlap the groundtruth and so is penalized and we get an AP of 0.5
+    does not sufficiently overlap the groundtruth and so is penalized.
     """
 
     loader = DataLoader()
@@ -292,13 +580,11 @@ def test_f1_false_negatives_two_datums_one_empty_low_confidence_of_fp(
         Detection
     ],
 ):
-    """In this test we have
+    """
+    In this test we have
         1. An image with a matching groundtruth and prediction (same class and high IOU)
         2. A second image with empty groundtruth annotation but a prediction with lower confidence
         then the prediction on the first image.
-
-    In this case, the AP should be 1.0 since the false positive has lower confidence than the true positive
-
     """
 
     loader = DataLoader()
@@ -334,12 +620,11 @@ def test_f1_false_negatives_two_datums_one_empty_high_confidence_of_fp(
         Detection
     ],
 ):
-    """In this test we have
+    """
+    In this test we have
         1. An image with a matching groundtruth and prediction (same class and high IOU)
         2. A second image with empty groundtruth annotation and a prediction with higher confidence
         then the prediction on the first image.
-
-    In this case, the AP should be 0.5 since the false positive has higher confidence than the true positive
     """
 
     loader = DataLoader()
@@ -375,13 +660,12 @@ def test_f1_false_negatives_two_datums_one_only_with_different_class_low_confide
         Detection
     ],
 ):
-    """In this test we have
+    """
+    In this test we have
         1. An image with a matching groundtruth and prediction (same class, `"value"`, and high IOU)
         2. A second image with a groundtruth annotation with class `"other value"` and a prediction with lower confidence
         then the prediction on the first image.
 
-    In this case, the AP for class `"value"` should be 1 since the false positive has lower confidence than the true positive.
-    AP for class `"other value"` should be 0 since there is no prediction for the `"other value"` groundtruth
     """
     loader = DataLoader()
     loader.add_bounding_boxes(
@@ -425,13 +709,11 @@ def test_f1_false_negatives_two_datums_one_only_with_different_class_high_confid
         Detection
     ],
 ):
-    """In this test we have
+    """
+    In this test we have
         1. An image with a matching groundtruth and prediction (same class, `"value"`, and high IOU)
         2. A second image with a groundtruth annotation with class `"other value"` and a prediction with higher confidence
         then the prediction on the first image.
-
-    In this case, the AP for class `"value"` should be 0.5 since the false positive has higher confidence than the true positive.
-    AP for class `"other value"` should be 0 since there is no prediction for the `"other value"` groundtruth
     """
     loader = DataLoader()
     loader.add_bounding_boxes(

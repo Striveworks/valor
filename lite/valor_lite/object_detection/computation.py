@@ -283,6 +283,8 @@ def compute_precion_recall(
     NDArray[np.float64],
     NDArray[np.float64],
     NDArray[np.float64],
+    NDArray[np.float64],
+    NDArray[np.float64],
 ]:
     """
     Computes Object Detection metrics.
@@ -316,6 +318,10 @@ def compute_precion_recall(
         Average Recall results.
     NDArray[np.float64]
         Accuracy.
+    NDArray[np.float64]
+        Macro Average F1 Score.
+    NDArray[np.float64]
+        Weighted Average F1 Score.
     NDArray[np.float64]
         Precision, Recall, TP, FP, FN, F1 Score.
     NDArray[np.float64]
@@ -542,6 +548,12 @@ def compute_precion_recall(
     mAPAveragedOverIOUs = mAP.mean(axis=0)
     mARAveragedOverScores = mAR.mean(axis=0)
 
+    # calculate aggregate F1 metrics
+    macro_avg_f1 = counts[:, :, :, 5].mean(axis=2)
+    weighted_avg_f1 = (counts[:, :, :, 5] * label_metadata[:, 0]).sum(
+        axis=2
+    ) / label_metadata[:, 0].sum()
+
     ap_results = (
         average_precision,
         mAP,
@@ -559,6 +571,8 @@ def compute_precion_recall(
         ap_results,
         ar_results,
         accuracy,
+        macro_avg_f1,
+        weighted_avg_f1,
         counts,
         pr_curve,
     )
