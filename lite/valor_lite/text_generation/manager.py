@@ -1,6 +1,4 @@
-from dataclasses import dataclass, field
-from enum import Enum
-from typing import Sequence
+from functools import wraps
 
 from valor_lite.text_generation.annotation import Query
 from valor_lite.text_generation.computation import (
@@ -13,7 +11,6 @@ from valor_lite.text_generation.llm_client import (
     MockWrapper,
     OpenAIWrapper,
     _ClientWrapper,
-    retry_if_invalid_llm_response,
 )
 from valor_lite.text_generation.llm_instructions import (
     generate_answer_correctness_verdicts_instruction,
@@ -30,8 +27,51 @@ from valor_lite.text_generation.llm_instructions import (
     generate_summary_coherence_instruction,
     generate_toxicity_verdicts_instruction,
 )
-from valor_lite.text_generation.metric import Metric, MetricType
+from valor_lite.text_generation.metric import Metric, MetricType, ROUGEType
 from valor_lite.text_generation.utilities import trim_and_load_json
+
+
+def llm_guided(fn):
+    @wraps(fn)
+    def wrapper(self, *args, **kwargs):
+        if self.client is None:
+            raise ValueError(
+                f"{fn.__name__} requires the definition of an LLM client."
+            )
+        return fn(self, *args, **kwargs)
+
+    return wrapper
+
+
+def retry_if_invalid_llm_response(fn):
+    """
+    Call the LLMClient class function with retries for InvalidLLMResponseError.
+
+    If retries is set to 0, then the function will only be called once and not retried.
+
+    If, for example, retries is set to 3, then the function will be retried in the event of an InvalidLLMResponseError up to 3 times, for a maximum of 4 calls.
+    """
+
+    @wraps(fn)
+    def wrapper(self, *args, **kwargs):
+        if self.client is None:
+            raise ValueError(
+                f"{fn.__name__} requires the definition of an LLM client."
+            )
+        error = None
+        retries = getattr(self, "retries", 0)
+        for _ in range(1 + retries):
+            try:
+                return fn(self, *args, **kwargs)
+            except InvalidLLMResponseError as e:
+                error = e
+        if error is not None:
+            return Metric.error(
+                error_type=type(error).__name__,
+                error_message=f"Failed after {retries} retries.",
+            )
+
+    return wrapper
 
 
 class Evaluator:
@@ -40,17 +80,16 @@ class Evaluator:
 
     Attributes
     ----------
-    api_key : str, optional
-        The API key to use.
-    model_name : str
-        The model to use.
+    client : _ClientWrapper, optional
+        An optional client to compute llm-guided metrics.
     retries : int
-        The number of times to retry the API call if it fails. Defaults to 0, indicating that the call will not be retried. For example, if self.retries is set to 3, this means that the call will be retried up to 3 times, for a maximum of 4 calls.
+        The number of times to retry the API call if it fails. Defaults to 0, indicating that the call will not be retried.
     """
 
     def __init__(
         self,
         client: _ClientWrapper | None = None,
+        retries: int = 0,
     ):
         """
         Creates an instance of a generic LLM client.
@@ -59,14 +98,18 @@ class Evaluator:
         ----------
         client : _ClientWrapper, optional
             Any LLM client that conforms to _ClientWrapper. Required for LLM-guided metrics.
+        retries : int, default=0
+            The number of times to retry the API call if it fails. Defaults to 0, indicating that the call will not be retried.
         """
         self.client = client
+        self.retries = retries
+        self.default_system_prompt = "You are a helpful assistant."
 
     @classmethod
     def openai(
         cls,
-        api_key: str | None = None,
         model_name: str = "gpt-3.5-turbo",
+        api_key: str | None = None,
         retries: int = 0,
         seed: int | None = None,
     ):
@@ -75,28 +118,32 @@ class Evaluator:
 
         Parameters
         ----------
-        api_key : str, optional
-            The OpenAI API key to use. If not specified, then the OPENAI_API_KEY environment variable will be used.
         model_name : str, default="gpt-3.5-turbo"
             The model to use. Defaults to "gpt-3.5-turbo".
+        api_key : str, optional
+            The OpenAI API key to use. If not specified, then the OPENAI_API_KEY environment variable will be used.
         retries : int, default=0
             The number of times to retry the API call if it fails. Defaults to 0, indicating that the call will not be retried. For example, if self.retries is set to 3, this means that the call will be retried up to 3 times, for a maximum of 4 calls.
         seed : int, optional
             An optional seed can be provided to GPT to get deterministic results.
         """
+        if seed is not None:
+            if retries != 0:
+                raise ValueError(
+                    "Seed is provided, but retries is not 0. Retries should be 0 when seed is provided."
+                )
         client = OpenAIWrapper(
             api_key=api_key,
             model_name=model_name,
-            retries=retries,
             seed=seed,
         )
-        return cls(client=client)
+        return cls(client=client, retries=retries)
 
     @classmethod
     def mistral(
         cls,
-        api_key: str | None = None,
         model_name: str = "mistral-small-latest",
+        api_key: str | None = None,
         retries: int = 0,
     ):
         """
@@ -104,32 +151,32 @@ class Evaluator:
 
         Parameters
         ----------
-        api_key : str, optional
-            The Mistral API key to use. If not specified, then the MISTRAL_API_KEY environment variable will be used.
         model_name : str, default="mistral-small-latest"
             The model to use. Defaults to "mistral-small-latest".
+        api_key : str, optional
+            The Mistral API key to use. If not specified, then the MISTRAL_API_KEY environment variable will be used.
         retries : int, default=0
             The number of times to retry the API call if it fails. Defaults to 0, indicating that the call will not be retried. For example, if self.retries is set to 3, this means that the call will be retried up to 3 times, for a maximum of 4 calls.
         """
         client = MistralWrapper(
             api_key=api_key,
             model_name=model_name,
-            retries=retries,
         )
-        return cls(client=client)
+        return cls(client=client, retries=retries)
 
     @classmethod
     def mock(
         cls,
+        retries: int = 0,
         **kwargs,
     ):
         """
         Create an evaluator with a mocked LLM client.
         """
-        client = MockWrapper(**kwargs)
+        client = MockWrapper(**kwargs, retries=retries)
         return cls(client=client)
 
-    @retry_if_invalid_llm_response()
+    @retry_if_invalid_llm_response
     def _generate_claims(
         self,
         text: str,
@@ -147,8 +194,14 @@ class Evaluator:
         list[str]
             The list of claims extracted from the text.
         """
+
+        if self.client is None:
+            raise ValueError(
+                "A LLM client must be defined to use this function."
+            )
+
         messages = [
-            {"role": "system", "content": DEFAULT_SYSTEM_PROMPT},
+            {"role": "system", "content": self.default_system_prompt},
             {
                 "role": "user",
                 "content": generate_claims_instruction(text=text),
@@ -170,7 +223,7 @@ class Evaluator:
             )
         return claims
 
-    @retry_if_invalid_llm_response()
+    @retry_if_invalid_llm_response
     def _generate_opinions(
         self,
         text: str,
@@ -188,8 +241,14 @@ class Evaluator:
         list[str]
             The list of opinions extracted from the text.
         """
+
+        if self.client is None:
+            raise ValueError(
+                "A LLM client must be defined to use this function."
+            )
+
         messages = [
-            {"role": "system", "content": DEFAULT_SYSTEM_PROMPT},
+            {"role": "system", "content": self.default_system_prompt},
             {
                 "role": "user",
                 "content": generate_opinions_instruction(text=text),
@@ -211,7 +270,7 @@ class Evaluator:
             )
         return opinions
 
-    @retry_if_invalid_llm_response()
+    @retry_if_invalid_llm_response
     def _generate_statements(
         self,
         text: str,
@@ -229,8 +288,14 @@ class Evaluator:
         list[str]
             The list of statements extracted from the text.
         """
+
+        if self.client is None:
+            raise ValueError(
+                "A LLM client must be defined to use this function."
+            )
+
         messages = [
-            {"role": "system", "content": DEFAULT_SYSTEM_PROMPT},
+            {"role": "system", "content": self.default_system_prompt},
             {
                 "role": "user",
                 "content": generate_statements_instruction(text=text),
@@ -252,7 +317,7 @@ class Evaluator:
             )
         return statements
 
-    @retry_if_invalid_llm_response()
+    @retry_if_invalid_llm_response
     def _generate_answer_correctness_verdicts(
         self,
         query: str,
@@ -276,8 +341,14 @@ class Evaluator:
         dict[str, list[dict[str, str]]]
             A dictionary of true positives, false positives and false negatives.
         """
+
+        if self.client is None:
+            raise ValueError(
+                "A LLM client must be defined to use this function."
+            )
+
         messages = [
-            {"role": "system", "content": DEFAULT_SYSTEM_PROMPT},
+            {"role": "system", "content": self.default_system_prompt},
             {
                 "role": "user",
                 "content": generate_answer_correctness_verdicts_instruction(
@@ -322,7 +393,7 @@ class Evaluator:
 
         return response
 
-    @retry_if_invalid_llm_response()
+    @retry_if_invalid_llm_response
     def _generate_answer_relevance_verdicts(
         self,
         query: str,
@@ -343,8 +414,13 @@ class Evaluator:
         list[dict[str,str]]
             The list of verdicts for each statement. Each verdict is a dictionary with the "verdict" field.
         """
+        if self.client is None:
+            raise ValueError(
+                "A LLM client must be defined to use this function."
+            )
+
         messages = [
-            {"role": "system", "content": DEFAULT_SYSTEM_PROMPT},
+            {"role": "system", "content": self.default_system_prompt},
             {
                 "role": "user",
                 "content": generate_answer_relevance_verdicts_instruction(
@@ -376,7 +452,7 @@ class Evaluator:
 
         return verdicts
 
-    @retry_if_invalid_llm_response()
+    @retry_if_invalid_llm_response
     def _generate_bias_verdicts(
         self,
         opinions: list[str],
@@ -394,8 +470,14 @@ class Evaluator:
         list[dict[str,str]]
             The list of verdicts for each opinion. Each verdict is a dictionary with the "verdict" field.
         """
+
+        if self.client is None:
+            raise ValueError(
+                "A LLM client must be defined to use this function."
+            )
+
         messages = [
-            {"role": "system", "content": DEFAULT_SYSTEM_PROMPT},
+            {"role": "system", "content": self.default_system_prompt},
             {
                 "role": "user",
                 "content": generate_bias_verdicts_instruction(
@@ -425,7 +507,7 @@ class Evaluator:
 
         return verdicts
 
-    @retry_if_invalid_llm_response()
+    @retry_if_invalid_llm_response
     def _generate_context_precision_verdicts(
         self,
         query: str,
@@ -451,8 +533,14 @@ class Evaluator:
         list[dict[str,str]]
             The list of verdicts for each context. Each verdict is a dictionary with the "verdict" field.
         """
+
+        if self.client is None:
+            raise ValueError(
+                "A LLM client must be defined to use this function."
+            )
+
         messages = [
-            {"role": "system", "content": DEFAULT_SYSTEM_PROMPT},
+            {"role": "system", "content": self.default_system_prompt},
             {
                 "role": "user",
                 "content": generate_context_precision_verdicts_instruction(
@@ -484,7 +572,7 @@ class Evaluator:
 
         return verdicts
 
-    @retry_if_invalid_llm_response()
+    @retry_if_invalid_llm_response
     def _generate_context_recall_verdicts(
         self,
         context_list: list[str],
@@ -507,8 +595,14 @@ class Evaluator:
         list[dict[str,str]]
             The list of verdicts for each ground truth statement. Each verdict is a dictionary with the "verdict" field.
         """
+
+        if self.client is None:
+            raise ValueError(
+                "A LLM client must be defined to use this function."
+            )
+
         messages = [
-            {"role": "system", "content": DEFAULT_SYSTEM_PROMPT},
+            {"role": "system", "content": self.default_system_prompt},
             {
                 "role": "user",
                 "content": generate_context_recall_verdicts_instruction(
@@ -539,7 +633,7 @@ class Evaluator:
 
         return verdicts
 
-    @retry_if_invalid_llm_response()
+    @retry_if_invalid_llm_response
     def _generate_context_relevance_verdicts(
         self,
         query: str,
@@ -560,8 +654,14 @@ class Evaluator:
         list[dict[str,str]]
             The list of verdicts for each context. Each verdict is a dictionary with the "verdict" field.
         """
+
+        if self.client is None:
+            raise ValueError(
+                "A LLM client must be defined to use this function."
+            )
+
         messages = [
-            {"role": "system", "content": DEFAULT_SYSTEM_PROMPT},
+            {"role": "system", "content": self.default_system_prompt},
             {
                 "role": "user",
                 "content": generate_context_relevance_verdicts_instruction(
@@ -592,7 +692,7 @@ class Evaluator:
 
         return verdicts
 
-    @retry_if_invalid_llm_response()
+    @retry_if_invalid_llm_response
     def _generate_faithfulness_verdicts(
         self,
         claims: list[str],
@@ -613,8 +713,14 @@ class Evaluator:
         list[dict[str,str]]
             The list of verdicts for each claim. Each verdict is a dictionary with one key "verdict".
         """
+
+        if self.client is None:
+            raise ValueError(
+                "A LLM client must be defined to use this function."
+            )
+
         messages = [
-            {"role": "system", "content": DEFAULT_SYSTEM_PROMPT},
+            {"role": "system", "content": self.default_system_prompt},
             {
                 "role": "user",
                 "content": generate_faithfulness_verdicts_instruction(
@@ -645,7 +751,7 @@ class Evaluator:
 
         return verdicts
 
-    @retry_if_invalid_llm_response()
+    @retry_if_invalid_llm_response
     def _generate_hallucination_verdicts(
         self,
         text: str,
@@ -668,8 +774,14 @@ class Evaluator:
         list[dict[str,str]]
             The list of verdicts for each context. Each verdict is a dictionary with the "verdict" field.
         """
+
+        if self.client is None:
+            raise ValueError(
+                "A LLM client must be defined to use this function."
+            )
+
         messages = [
-            {"role": "system", "content": DEFAULT_SYSTEM_PROMPT},
+            {"role": "system", "content": self.default_system_prompt},
             {
                 "role": "user",
                 "content": generate_hallucination_verdicts_instruction(
@@ -700,7 +812,7 @@ class Evaluator:
 
         return verdicts
 
-    @retry_if_invalid_llm_response()
+    @retry_if_invalid_llm_response
     def _summary_coherence(
         self,
         text: str,
@@ -721,8 +833,14 @@ class Evaluator:
         int
             The summary coherence score will be evaluated as an integer, with 1 indicating the lowest summary coherence and 5 the highest summary coherence.
         """
+
+        if self.client is None:
+            raise ValueError(
+                "A LLM client must be defined to use this function."
+            )
+
         messages = [
-            {"role": "system", "content": DEFAULT_SYSTEM_PROMPT},
+            {"role": "system", "content": self.default_system_prompt},
             {
                 "role": "user",
                 "content": generate_summary_coherence_instruction(
@@ -748,7 +866,7 @@ class Evaluator:
 
         return ret
 
-    @retry_if_invalid_llm_response()
+    @retry_if_invalid_llm_response
     def _generate_toxicity_verdicts(
         self,
         opinions: list[str],
@@ -766,8 +884,14 @@ class Evaluator:
         list[dict[str,str]]
             The list of verdicts for each opinion. Each verdict is a dictionary with the "verdict" field.
         """
+
+        if self.client is None:
+            raise ValueError(
+                "A LLM client must be defined to use this function."
+            )
+
         messages = [
-            {"role": "system", "content": DEFAULT_SYSTEM_PROMPT},
+            {"role": "system", "content": self.default_system_prompt},
             {
                 "role": "user",
                 "content": generate_toxicity_verdicts_instruction(
@@ -797,10 +921,11 @@ class Evaluator:
 
         return verdicts
 
+    @llm_guided
     def compute_answer_correctness(
         self,
         query: Query,
-    ) -> float:
+    ) -> Metric:
         """
         Compute answer correctness. Answer correctness is computed as an f1 score obtained by comparing prediction statements to ground truth statements.
 
@@ -810,16 +935,12 @@ class Evaluator:
 
         Parameters
         ----------
-        query: str
-            The query that both the ground truth and prediction should be answering.
-        prediction: str
-            The prediction text to extract statements from.
-        groundtruth_list: list[str]
-            A list of ground truth texts to extract statements from.
+        query: Query
+            A user query with ground truth and generated response.
 
         Returns
         -------
-        float
+        Metric
             The answer correctness score between 0 and 1. Higher values indicate that the answer is more correct. A score of 1 indicates that all statements in the prediction are supported by the ground truth and all statements in the ground truth are present in the prediction.
         """
         if len(query.groundtruths) == 0:
@@ -847,22 +968,23 @@ class Evaluator:
 
             f1_scores.append(tp / (tp + 0.5 * (fp + fn)) if tp > 0 else 0)
 
-        return max(f1_scores)
+        max_f1 = max(f1_scores)
 
-    def compute_answer_relevance(self, query: Query) -> float:
+        return Metric.answer_correctness(value=max_f1)
+
+    @llm_guided
+    def compute_answer_relevance(self, query: Query) -> Metric:
         """
         Compute answer relevance, the proportion of statements that are relevant to the query, for a single piece of text.
 
         Parameters
         ----------
-        query: str
-            The query to evaluate the statements against.
-        text: str
-            The text to extract statements from.
+        query: Query
+            A user query with ground truth and generated response.
 
         Returns
         -------
-        float
+        Metric
             The answer relevance score between 0 and 1. A score of 1 indicates that all statements are relevant to the query.
         """
         statements = self._generate_statements(text=query.prediction.output)
@@ -870,21 +992,23 @@ class Evaluator:
             query=query.query,
             statements=statements,
         )
-        return sum(
+        result = sum(
             1 for verdict in verdicts if verdict["verdict"] == "yes"
         ) / len(verdicts)
+        return Metric.answer_relevance(value=result)
 
+    @llm_guided
     def compute_bias(
         self,
         query: Query,
-    ) -> float:
+    ) -> Metric:
         """
         Compute bias, the portion of opinions that are biased.
 
         Parameters
         ----------
-        text: str
-            The text to be evaluated.
+        query: Query
+            A user query with ground truth and generated response.
 
         Returns
         -------
@@ -897,14 +1021,17 @@ class Evaluator:
 
         verdicts = self._generate_bias_verdicts(opinions=opinions)
 
-        return sum(
+        result = sum(
             1 for verdict in verdicts if verdict["verdict"] == "yes"
         ) / len(verdicts)
 
+        return Metric.bias(value=result)
+
+    @llm_guided
     def compute_context_precision(
         self,
         query: Query,
-    ) -> float:
+    ) -> Metric:
         """
         Compute context precision, a score for evaluating the retrieval mechanism of a RAG model.
 
@@ -918,16 +1045,12 @@ class Evaluator:
 
         Parameters
         ----------
-        query: str
-            A query.
-        ordered_context_list: list[str]
-            The ordered list of contexts. Each context will be evaluated to determine if it is useful for producing the ground truth answer to the query. Contexts in this list are NOT treated equally in the computation of this score. The earlier a piece of context appears in the context list, the more important it is in the computation of this score.
-        groundtruth_list: list[str]
-            A list of ground truth answers to the query.
+        query: Query
+            A user query with ground truth and generated response.
 
         Returns
         -------
-        float
+        Metric
             The context precision score between 0 and 1. A higher score indicates better context precision.
         """
         if len(query.prediction.context) == 0:
@@ -972,12 +1095,15 @@ class Evaluator:
             return 0
 
         # Average over all the precision at k for which the kth context is relevant.
-        return sum(precision_at_k_list) / len(precision_at_k_list)
+        result = sum(precision_at_k_list) / len(precision_at_k_list)
 
+        return Metric.context_precision(value=result)
+
+    @llm_guided
     def compute_context_recall(
         self,
         query: Query,
-    ) -> float:
+    ) -> Metric:
         """
         Compute context recall, a score for evaluating the retrieval mechanism of a RAG model.
 
@@ -987,14 +1113,12 @@ class Evaluator:
 
         Parameters
         ----------
-        context_list: list[str]
-            The list of contexts to evaluate against.
-        groundtruth_list: str
-            A list of ground truth answers to extract statements from.
+        query: Query
+            A user query with ground truth and generated response.
 
         Returns
         -------
-        float
+        Metric
             The context recall score between 0 and 1. A score of 1 indicates that all ground truth statements are attributable to the contexts in the context list.
         """
         if len(query.prediction.context) == 0:
@@ -1020,25 +1144,26 @@ class Evaluator:
                 / len(verdicts)
             )
 
-        return max(scores)
+        result = max(scores)
 
+        return Metric.context_recall(value=result)
+
+    @llm_guided
     def compute_context_relevance(
         self,
         query: Query,
-    ) -> float:
+    ) -> Metric:
         """
         Compute context relevance, the proportion of contexts in the context list that are relevant to the query.
 
         Parameters
         ----------
-        query: str
-            The query to evaluate each context against.
-        context_list: list[str]
-            The list of contexts to evaluate the relevance of.
+        query: Query
+            A user query with ground truth and generated response.
 
         Returns
         -------
-        float
+        Metric
             The context relevance score between 0 and 1. A score of 0 indicates that none of the contexts are relevant and a score of 1 indicates that all of the contexts are relevant.
         """
         if len(query.prediction.context) == 0:
@@ -1051,27 +1176,28 @@ class Evaluator:
             context_list=query.prediction.context,
         )
 
-        return sum(
+        result = sum(
             1 for verdict in verdicts if verdict["verdict"] == "yes"
         ) / len(verdicts)
 
+        return Metric.context_relevance(value=result)
+
+    @llm_guided
     def compute_faithfulness(
         self,
         query: Query,
-    ) -> float:
+    ) -> Metric:
         """
         Compute the faithfulness score. The faithfulness score is the proportion of claims in the text that are implied by the list of contexts. Claims that contradict the list of contexts and claims that are unrelated to the list of contexts both count against the score.
 
         Parameters
         ----------
-        text: str
-            The text to evaluate for faithfulness.
-        context_list: list[str]
-            The list of contexts to compare against.
+        query: Query
+            A user query with ground truth and generated response.
 
         Returns
         -------
-        float
+        Metric
             The faithfulness score between 0 and 1. A score of 1 indicates that all claims in the text are implied by the list of contexts.
         """
         if len(query.prediction.context) == 0:
@@ -1090,29 +1216,30 @@ class Evaluator:
             context_list=query.prediction.context,
         )
 
-        return sum(
+        result = sum(
             1
             for verdict in faithfulness_verdicts
             if verdict["verdict"] == "yes"
         ) / len(faithfulness_verdicts)
 
+        return Metric.faithfulness(value=result)
+
+    @llm_guided
     def compute_hallucination(
         self,
         query: Query,
-    ) -> float:
+    ) -> Metric:
         """
         Compute the hallucination score, the proportion of contexts in the context list that are contradicted by the text.
 
         Parameters
         ----------
-        text: str
-            The text to evaluate for hallucination.
-        context_list: list[str]
-            The list of contexts to compare against.
+        query: Query
+            A user query with ground truth and generated response.
 
         Returns
         -------
-        float
+        Metric
             The hallucination score between 0 and 1. A score of 1 indicates that all contexts are contradicted by the text.
         """
         if len(query.prediction.context) == 0:
@@ -1125,49 +1252,52 @@ class Evaluator:
             context_list=query.prediction.context,
         )
 
-        return sum(
+        result = sum(
             1 for verdict in verdicts if verdict["verdict"] == "yes"
         ) / len(verdicts)
 
+        return Metric.hallucination(value=result)
+
+    @llm_guided
     def compute_summary_coherence(
         self,
         query: Query,
-    ) -> int:
+    ) -> Metric:
         """
         Compute summary coherence, the collective quality of a summary.
 
         Parameters
         ----------
-        text: str
-            The text that was summarized.
-        summary: str
-            The summary to be evaluated.
+        query: Query
+            A user query with ground truth and generated response.
 
         Returns
         -------
-        int
+        Metric
             The summary coherence score between 1 and 5. A score of 1 indicates the lowest summary coherence and a score of 5 indicates the highest summary coherence.
         """
-        return self._summary_coherence(
+        result = self._summary_coherence(
             text=query.query,
             summary=query.prediction.output,
         )
+        return Metric.summary_coherence(value=result)
 
+    @llm_guided
     def compute_toxicity(
         self,
         query: Query,
-    ) -> float:
+    ) -> Metric:
         """
         Compute toxicity, the portion of opinions that are toxic.
 
         Parameters
         ----------
-        text: str
-            The text to be evaluated.
+        query: Query
+            A user query with ground truth and generated response.
 
         Returns
         -------
-        float
+        Metric
             The toxicity score will be evaluated as a float between 0 and 1, with 1 indicating that all opinions in the text are toxic.
         """
         opinions = self._generate_opinions(text=query.prediction.output)
@@ -1176,18 +1306,45 @@ class Evaluator:
 
         verdicts = self._generate_toxicity_verdicts(opinions=opinions)
 
-        return sum(
+        result = sum(
             1 for verdict in verdicts if verdict["verdict"] == "yes"
         ) / len(verdicts)
+
+        return Metric.toxicity(value=result)
 
     def compute_rouge(
         self,
         query: Query,
-    ):
+        rouge_types: list[ROUGEType],
+        use_stemmer: bool = False,
+    ) -> list[Metric]:
+        """
+        Calculate ROUGE scores for a prediction given some set of references.
+
+        Parameters
+        ----------
+        query: Query
+            A user query with ground truth and generated response.
+        use_stemmer: bool, default=False
+            If True, uses Porter stemmer to strip word suffixes. Defaults to False.
+
+        Returns
+        -------
+        list[Metric]
+        """
         results = calculate_rouge_scores(
             predictions=[query.prediction.output],
             references=[query.groundtruth],
+            rouge_types=rouge_types,
+            use_stemmer=use_stemmer,
         )
+        return [
+            Metric.rouge(
+                value=result,
+                rouge_type=rouge_type,
+            )
+            for rouge_type, result in results.items()
+        ]
 
     def compute_sentence_bleu(
         self,
@@ -1199,18 +1356,20 @@ class Evaluator:
 
         Parameters
         ----------
-        predictions: list[str]
-            The predictions to score. Each prediction should be a string with tokens separated by spaces.
-        references: list[list[str]
-            A list of reference for each prediction or a list of several references per prediction. Each reference should be a string with tokens separated by spaces.
+        query: Query
+            A user query with ground truth and generated response.
         weights: list[float], default=[0.25, 0.25, 0.25, 0.25]
             The default BLEU calculates a score for up to 4-grams using uniform
             weights (this is called BLEU-4). To evaluate your translations with
             higher/lower order ngrams, use customized weights. Example: when accounting
             for up to 5-grams with uniform weights (this is called BLEU-5) use [1/5]*5
         """
-        results = calculate_sentence_bleu(
-            predictions=[query.prediction.output],
-            references=[query.groundtruth],
+        result = calculate_sentence_bleu(
+            predictions=query.prediction.output,
+            references=query.groundtruth,
+            weights=weights,
+        )
+        return Metric.bleu(
+            value=result,
             weights=weights,
         )

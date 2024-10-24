@@ -72,13 +72,6 @@ class MetricType(str, Enum):
         }
 
 
-class ROUGEType(str, Enum):
-    ROUGE1 = "rouge1"
-    ROUGE2 = "rouge2"
-    ROUGEL = "rougeL"
-    ROUGELSUM = "rougeLsum"
-
-
 class MetricStatus(str, Enum):
     SUCCESS = "success"
     FAILED = "error"
@@ -117,93 +110,67 @@ class Metric(BaseMetric):
         A dictionary containing metric parameters.
     """
 
-    def __post_init__(self):
-        """Validate instantiated class."""
-        if not isinstance(self.status, str):
-            raise TypeError(
-                f"Expected status to be a string, got {type(self.status).__name__}"
-            )
-        if self.status not in {"success", "error"}:
-            raise ValueError(
-                f"Expected status to be either 'success' or 'error', got {self.status}"
-            )
-        if self.status == "error":
-            if self.value is not None:
-                raise ValueError(
-                    f"Expected value to be None when status is 'error', got {self.value}"
-                )
-        if not isinstance(self.parameters, dict):
-            raise TypeError(
-                f"Expected parameters to be a dict, got {type(self.parameters).__name__}"
-            )
+    @classmethod
+    def error(
+        cls,
+        error_type: str,
+        error_message: str,
+    ):
+        return cls(
+            type="Error",
+            value={
+                "type": error_type,
+                "message": error_message,
+            },
+            parameters={},
+        )
 
     @classmethod
-    def AnswerCorrectness(
+    def answer_correctness(
         cls,
-        value: int | float | None,
-        status: MetricStatus,
-        parameters: dict,
+        value: float,
     ):
         """
         Defines an answer correctness metric.
 
         Parameters
         ----------
-        value : int | float | None
+        value : float
             The answer correctness score between 0 and 1, with higher values indicating that the answer is more correct. A score of 1 indicates that all statements in the prediction are supported by the ground truth and all statements in the ground truth are present in the prediction.
-        status : str
-            The status of the metric. The status should be "success" if the metric was calculated successfully and "error" if there was an error in calculating the metric.
-        parameters : dict
-            Any parameters associated with the metric, as well as any datum or prediction parameters that are relevant to the metric.
         """
-        _validate_text_generation_value(value, status)
+        if (value < 0) or (value > 1):
+            raise ValueError("Value should be a float between 0 and 1.")
         return cls(
             type=MetricType.AnswerCorrectness,
-            value={
-                "value": value,
-                "status": status.value,
-            },
-            parameters={
-                **parameters,
-            },
+            value=value,
+            parameters={},
         )
 
     @classmethod
-    def AnswerRelevance(
+    def answer_relevance(
         cls,
-        value: int | float | None,
-        status: MetricStatus,
-        parameters: dict,
+        value: float,
     ):
         """
         Defines an answer relevance metric.
 
         Parameters
         ----------
-        value : int | float | None
+        value : float
             The number of statements in the answer that are relevant to the query divided by the total number of statements in the answer.
-        status : str
-            The status of the metric. The status should be "success" if the metric was calculated successfully and "error" if there was an error in calculating the metric.
-        parameters : dict
-            Any parameters associated with the metric, as well as any datum or prediction parameters that are relevant to the metric.
         """
-        _validate_text_generation_value(value, status)
+        if (value < 0) or (value > 1):
+            raise ValueError("Value should be a float between 0 and 1.")
         return cls(
             type=MetricType.AnswerRelevance,
-            value={
-                "value": value,
-                "status": status.value,
-            },
-            parameters={
-                **parameters,
-            },
+            value=value,
+            parameters={},
         )
 
     @classmethod
-    def BLEU(
+    def bleu(
         cls,
-        value: int | float | None,
-        status: MetricStatus,
+        value: float,
         weights: list[float],
     ):
         """
@@ -211,217 +178,149 @@ class Metric(BaseMetric):
 
         Parameters
         ----------
-        value : int | float | None
+        value : float
             The BLEU score for an individual datapoint.
-        status : str
-            The status of the metric. The status should be "success" if the metric was calculated successfully and "error" if there was an error in calculating the metric.
-        parameters : dict
-            Any parameters associated with the metric, as well as any datum or prediction parameters that are relevant to the metric.
+        weights : list[float]
+            The list of weights that the score was calculated with.
         """
-        _validate_text_generation_value(value, status)
+        if (value < 0) or (value > 1):
+            raise ValueError("Value should be a float between 0 and 1.")
         return cls(
             type=MetricType.BLEU,
-            value={
-                "value": value,
-                "status": status.value,
-            },
+            value=value,
             parameters={
                 "weights": weights,
             },
         )
 
     @classmethod
-    def Bias(
+    def bias(
         cls,
-        value: int | float | None,
-        status: MetricStatus,
-        parameters: dict,
+        value: float,
     ):
         """
         Defines a bias metric.
 
         Parameters
         ----------
-        value : int | float | None
+        value : float
             The bias score for a datum. This is a float between 0 and 1, with 1 indicating that all opinions in the datum text are biased and 0 indicating that there is no bias.
-        status : str
-            The status of the metric. The status should be "success" if the metric was calculated successfully and "error" if there was an error in calculating the metric.
-        parameters : dict
-            Any parameters associated with the metric, as well as any datum or prediction parameters that are relevant to the metric.
         """
-        _validate_text_generation_value(value, status)
+        if (value < 0) or (value > 1):
+            raise ValueError("Value should be a float between 0 and 1.")
         return cls(
             type=MetricType.Bias,
-            value={
-                "value": value,
-                "status": status.value,
-            },
-            parameters={
-                **parameters,
-            },
+            value=value,
+            parameters={},
         )
 
     @classmethod
-    def ContextPrecision(
+    def context_precision(
         cls,
-        value: int | float | None,
-        status: MetricStatus,
-        parameters: dict,
+        value: float,
     ):
         """
         Defines a context precision metric.
 
         Parameters
         ----------
-        value : int | float | None
+        value : float
             The context precision score for a datum. This is a float between 0 and 1, with 0 indicating that none of the contexts are useful to arrive at the ground truth answer to the query and 1 indicating that all contexts are useful to arrive at the ground truth answer to the query. The score is more heavily influenced by earlier contexts in the list of contexts than later contexts.
-        status : str
-            The status of the metric. The status should be "success" if the metric was calculated successfully and "error" if there was an error in calculating the metric.
-        parameters : dict
-            Any parameters associated with the metric, as well as any datum or prediction parameters that are relevant to the metric.
         """
-        _validate_text_generation_value(value, status)
+        if (value < 0) or (value > 1):
+            raise ValueError("Value should be a float between 0 and 1.")
         return cls(
             type=MetricType.ContextPrecision,
-            value={
-                "value": value,
-                "status": status.value,
-            },
-            parameters={
-                **parameters,
-            },
+            value=value,
+            parameters={},
         )
 
     @classmethod
-    def ContextRecall(
+    def context_recall(
         cls,
-        value: int | float | None,
-        status: MetricStatus,
-        parameters: dict,
+        value: float,
     ):
         """
         Defines a context recall metric.
 
         Parameters
         ----------
-        value : int | float | None
+        value : float
             The context recall score for a datum. This is a float between 0 and 1, with 1 indicating that all ground truth statements are attributable to the context list.
-        status : str
-            The status of the metric. The status should be "success" if the metric was calculated successfully and "error" if there was an error in calculating the metric.
-        parameters : dict
-            Any parameters associated with the metric, as well as any datum or prediction parameters that are relevant to the metric.
         """
-        _validate_text_generation_value(value, status)
+        if (value < 0) or (value > 1):
+            raise ValueError("Value should be a float between 0 and 1.")
         return cls(
             type=MetricType.ContextRecall,
-            value={
-                "value": value,
-                "status": status.value,
-            },
-            parameters={
-                **parameters,
-            },
+            value=value,
+            parameters={},
         )
 
     @classmethod
-    def ContextRelevance(
+    def context_relevance(
         cls,
-        value: int | float | None,
-        status: MetricStatus,
-        parameters: dict,
+        value: float,
     ):
         """
         Defines a context relevance metric.
 
         Parameters
         ----------
-        value : int | float | None
+        value : float
             The context relevance score for a datum. This is a float between 0 and 1, with 0 indicating that none of the contexts are relevant and 1 indicating that all of the contexts are relevant.
-        status : str
-            The status of the metric. The status should be "success" if the metric was calculated successfully and "error" if there was an error in calculating the metric.
-        parameters : dict
-            Any parameters associated with the metric, as well as any datum or prediction parameters that are relevant to the metric.
         """
-        _validate_text_generation_value(value, status)
+        if (value < 0) or (value > 1):
+            raise ValueError("Value should be a float between 0 and 1.")
         return cls(
             type=MetricType.ContextRelevance,
-            value={
-                "value": value,
-                "status": status.value,
-            },
-            parameters={
-                **parameters,
-            },
+            value=value,
+            parameters={},
         )
 
     @classmethod
-    def Faithfulness(
+    def faithfulness(
         cls,
-        value: int | float | None,
-        status: MetricStatus,
-        parameters: dict,
+        value: float,
     ):
         """
         Defines a faithfulness metric.
 
         Parameters
         ----------
-        value : int | float | None
+        value : float
             The faithfulness score for a datum. This is a float between 0 and 1, with 1 indicating that all claims in the text are implied by the contexts.
-        status : str
-            The status of the metric. The status should be "success" if the metric was calculated successfully and "error" if there was an error in calculating the metric.
-        parameters : dict
-            Any parameters associated with the metric, as well as any datum or prediction parameters that are relevant to the metric.
         """
-        _validate_text_generation_value(value, status)
+        if (value < 0) or (value > 1):
+            raise ValueError("Value should be a float between 0 and 1.")
         return cls(
             type=MetricType.Faithfulness,
-            value={
-                "value": value,
-                "status": status.value,
-            },
-            parameters={
-                **parameters,
-            },
+            value=value,
+            parameters={},
         )
 
     @classmethod
-    def Hallucination(
-        cls,
-        value: int | float | None,
-        status: MetricStatus,
-        parameters: dict,
-    ):
+    def hallucination(cls, value: float):
         """
         Defines a hallucination metric.
 
         Parameters
         ----------
-        value : int | float | None
+        value : float
             The hallucination score for a datum. This is a float between 0 and 1, with 1 indicating that all contexts are contradicted by the text.
-        status : str
-            The status of the metric. The status should be "success" if the metric was calculated successfully and "error" if there was an error in calculating the metric.
-        parameters : dict
-            Any parameters associated with the metric, as well as any datum or prediction parameters that are relevant to the metric.
         """
-        _validate_text_generation_value(value, status)
+        if (value < 0) or (value > 1):
+            raise ValueError("Value should be a float between 0 and 1.")
         return cls(
             type=MetricType.Hallucination,
-            value={
-                "value": value,
-                "status": status.value,
-            },
-            parameters={
-                **parameters,
-            },
+            value=value,
+            parameters={},
         )
 
     @classmethod
-    def ROUGE(
+    def rouge(
         cls,
-        value: int | float | None,
-        status: MetricStatus,
-        types: list[ROUGEType],
+        value: float,
+        rouge_type: ROUGEType,
         use_stemmer: bool,
     ):
         """
@@ -429,108 +328,64 @@ class Metric(BaseMetric):
 
         Parameters
         ----------
-        value : int | float | None
-            A JSON containing individual ROUGE scores calculated in different ways. `rouge1` is unigram-based scoring, `rouge2` is bigram-based scoring, `rougeL` is scoring based on sentences (i.e., splitting on "." and ignoring "\n"), and `rougeLsum` is scoring based on splitting the text using "\n".
-        status : str
-            The status of the metric. The status should be "success" if the metric was calculated successfully and "error" if there was an error in calculating the metric.
-        parameters : dict
-            Any parameters associated with the metric, as well as any datum or prediction parameters that are relevant to the metric.
+        value : float
+            A ROUGE score.
+        rouge_type : ROUGEType
+            The ROUGE variation used to compute the value. `rouge1` is unigram-based scoring, `rouge2` is bigram-based scoring, `rougeL` is scoring based on sentences (i.e., splitting on "." and ignoring "\n"), and `rougeLsum` is scoring based on splitting the text using "\n".
+        use_stemmer: bool, default=False
+            If True, uses Porter stemmer to strip word suffixes. Defaults to False.
         """
-        if status == "success":
-            if not isinstance(value, dict):
-                raise TypeError(
-                    f"Expected value to be a dict[str, float], got {type(value).__name__}"
-                )
-            if not all(isinstance(k, str) for k in value.keys()):
-                raise TypeError(
-                    f"Expected keys in value to be strings, got {type(next(iter(value.keys()))).__name__}"
-                )
-            if not all(isinstance(v, (int, float)) for v in value.values()):
-                raise TypeError(
-                    f"Expected the values in self.value to be int or float, got {type(next(iter(value.values()))).__name__}"
-                )
-            if not all(0 <= v <= 1 for v in value.values()):
-                raise ValueError(
-                    f"Expected values in value to be between 0 and 1, got {value}"
-                )
+        if (value < 0) or (value > 1):
+            raise ValueError("Value should be a float between 0 and 1.")
         return cls(
             type=MetricType.ROUGE,
-            value={
-                "value": value,
-                "status": status.value,
-            },
+            value=value,
             parameters={
-                "types": [t.value for t in types],
+                "rouge_type": rouge_type.value,
                 "use_stemmer": use_stemmer,
             },
         )
 
     @classmethod
-    def SummaryCoherence(
+    def summary_coherence(
         cls,
-        value: int | None,
-        status: MetricStatus,
-        parameters: dict,
+        value: int,
     ):
         """
         Defines a summary coherence metric.
 
         Parameters
         ----------
-        value : int | float | None
+        value : int
             The summary coherence score for a datum. This is an integer with 1 being the lowest summary coherence and 5 the highest summary coherence.
-        status : str
-            The status of the metric. The status should be "success" if the metric was calculated successfully and "error" if there was an error in calculating the metric.
-        parameters : dict
-            Any parameters associated with the metric, as well as any datum or prediction parameters that are relevant to the metric.
         """
-        if status == "success":
-            if not isinstance(value, int):
-                raise TypeError(
-                    f"Expected value to be int, got {type(value).__name__}"
-                )
-            if value not in [1, 2, 3, 4, 5]:
-                raise ValueError(
-                    f"Expected value to be between 1 and 5, got {value}"
-                )
+        if value not in [1, 2, 3, 4, 5]:
+            raise ValueError(
+                f"Expected value to be between 1 and 5, got {value}"
+            )
         return cls(
             type=MetricType.SummaryCoherence,
-            value={
-                "value": value,
-                "status": status.value,
-            },
-            parameters={
-                **parameters,
-            },
+            value=value,
+            parameters={},
         )
 
     @classmethod
-    def Toxicity(
+    def toxicity(
         cls,
-        value: int | float | None,
-        status: MetricStatus,
-        parameters: dict,
+        value: float,
     ):
         """
         Defines a toxicity metric.
 
         Parameters
         ----------
-        value : int | float | None
+        value : float
             The toxicity score for a datum. This is a value between 0 and 1, with 1 indicating that all opinions in the datum text are toxic and 0 indicating that there is no toxicity.
-        status : str
-            The status of the metric. The status should be "success" if the metric was calculated successfully and "error" if there was an error in calculating the metric.
-        parameters : dict
-            Any parameters associated with the metric, as well as any datum or prediction parameters that are relevant to the metric.
         """
-        _validate_text_generation_value(value, status)
+        if (value < 0) or (value > 1):
+            raise ValueError("Value should be a float between 0 and 1.")
         return cls(
             type=MetricType.SummaryCoherence,
-            value={
-                "value": value,
-                "status": status.value,
-            },
-            parameters={
-                **parameters,
-            },
+            value=value,
+            parameters={},
         )

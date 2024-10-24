@@ -1,4 +1,3 @@
-from functools import wraps
 from typing import Any
 
 try:
@@ -10,8 +9,6 @@ try:
     from openai import OpenAI
 except ImportError:
     OpenAI = None
-
-DEFAULT_SYSTEM_PROMPT = "You are a helpful assistant."
 
 
 def _validate_messages(messages: list[dict[str, str]]):
@@ -43,33 +40,6 @@ def _validate_messages(messages: list[dict[str, str]]):
 
     if not all(isinstance(message["content"], str) for message in messages):
         raise TypeError("All content in messages must be strings.")
-
-
-def retry_if_invalid_llm_response():
-    """
-    Call the LLMClient class function with retries for InvalidLLMResponseError.
-
-    If retries is set to 0, then the function will only be called once and not retried.
-
-    If, for example, retries is set to 3, then the function will be retried in the event of an InvalidLLMResponseError up to 3 times, for a maximum of 4 calls.
-    """
-
-    def decorator(function):
-        @wraps(function)
-        def wrapper(self, *args, **kwargs):
-            error = None
-            retries = getattr(self, "retries", 0)
-            for _ in range(1 + retries):
-                try:
-                    return function(self, *args, **kwargs)
-                except InvalidLLMResponseError as e:
-                    error = e
-            if error is not None:
-                raise error
-
-        return wrapper
-
-    return decorator
 
 
 class _ClientWrapper:
@@ -130,8 +100,6 @@ class OpenAIWrapper(_ClientWrapper):
         The model to use. Defaults to "gpt-3.5-turbo".
     api_key : str, optional
         The OpenAI API key to use. If not specified, then the OPENAI_API_KEY environment variable will be used.
-    retries : int
-        The number of times to retry the API call if it fails. Defaults to 0, indicating that the call will not be retried. For example, if self.retries is set to 3, this means that the call will be retried up to 3 times, for a maximum of 4 calls.
     seed : int, optional
         An optional seed can be provided to GPT to get deterministic results.
     total_prompt_tokens : int
@@ -144,7 +112,6 @@ class OpenAIWrapper(_ClientWrapper):
         self,
         model_name: str,
         api_key: str | None = None,
-        retries: int = 0,
         seed: int | None = None,
     ):
         """
@@ -156,20 +123,12 @@ class OpenAIWrapper(_ClientWrapper):
             The model to use (e.g. "gpt-3.5-turbo").
         api_key : str, optional
             The OpenAI API key to use. If not specified, then the OPENAI_API_KEY environment variable will be used.
-        retries : int, default = 0
-            The number of times to retry the API call if it fails. Defaults to 0, indicating that the call will not be retried. For example, if self.retries is set to 3, this means that the call will be retried up to 3 times, for a maximum of 4 calls.
         seed : int, optional
             An optional seed can be provided to GPT to get deterministic results.
         """
-        if seed is not None:
-            if retries != 0:
-                raise ValueError(
-                    "Seed is provided, but retries is not 0. Retries should be 0 when seed is provided."
-                )
 
         self.api_key = api_key
         self.model_name = model_name
-        self.retries = retries
         self.seed = seed
 
         # logs
@@ -272,15 +231,12 @@ class MistralWrapper(_ClientWrapper):
         The Mistral API key to use. If not specified, then the MISTRAL_API_KEY environment variable will be used.
     model_name : str
         The model to use. Defaults to "mistral-small-latest".
-    retries : int
-        The number of times to retry the API call if it fails. Defaults to 0, indicating that the call will not be retried. For example, if self.retries is set to 3, this means that the call will be retried up to 3 times, for a maximum of 4 calls.
     """
 
     def __init__(
         self,
         model_name: str,
         api_key: str | None = None,
-        retries: int = 0,
     ):
         """
         Creates an instance of the Mistral interface.
@@ -291,12 +247,9 @@ class MistralWrapper(_ClientWrapper):
             The model to use (e.g. "mistral-small-latest").
         api_key : str, optional
             The Mistral API key to use. If not specified, then the MISTRAL_API_KEY environment variable will be used.
-        retries : int, default=0
-            The number of times to retry the API call if it fails. Defaults to 0, indicating that the call will not be retried. For example, if self.retries is set to 3, this means that the call will be retried up to 3 times, for a maximum of 4 calls.
         """
         self.api_key = api_key
         self.model_name = model_name
-        self.retries = retries
 
     def connect(
         self,
