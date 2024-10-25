@@ -18,83 +18,6 @@ class MetricType(str, Enum):
     SummaryCoherence = "SummaryCoherence"
     Toxicity = "Toxicity"
 
-    @classmethod
-    def text_generation(cls) -> set["MetricType"]:
-        """
-        All text generation metrics.
-        """
-        return {
-            cls.AnswerCorrectness,
-            cls.AnswerRelevance,
-            cls.Bias,
-            cls.BLEU,
-            cls.ContextPrecision,
-            cls.ContextRecall,
-            cls.ContextRelevance,
-            cls.Faithfulness,
-            cls.Hallucination,
-            cls.ROUGE,
-            cls.SummaryCoherence,
-            cls.Toxicity,
-        }
-
-    @classmethod
-    def llm_guided(cls) -> set["MetricType"]:
-        """
-        All text generation metrics that use an LLM for part of the metric computation.
-        """
-        return {
-            cls.AnswerCorrectness,
-            cls.AnswerRelevance,
-            cls.Bias,
-            cls.ContextPrecision,
-            cls.ContextRecall,
-            cls.ContextRelevance,
-            cls.Faithfulness,
-            cls.Hallucination,
-            cls.SummaryCoherence,
-            cls.Toxicity,
-        }
-
-    @classmethod
-    def text_comparison(cls) -> set["MetricType"]:
-        """
-        All text generation metrics that use ground truth text as part of the metric computation.
-
-        These metrics require ground truths to be used. They are not usable in certain settings, like streaming, where ground truths are not available.
-        """
-        return {
-            cls.AnswerCorrectness,
-            cls.BLEU,
-            cls.ContextPrecision,
-            cls.ContextRecall,
-            cls.ROUGE,
-        }
-
-
-class MetricStatus(str, Enum):
-    SUCCESS = "success"
-    FAILED = "error"
-
-
-def _validate_text_generation_value(
-    value: int | float | dict[str, float] | None,
-    status: MetricStatus,
-):
-    if not isinstance(status, MetricStatus):
-        raise TypeError(
-            f"Expected status to be of type MetricStatus but received {type(status)}"
-        )
-    if status == MetricStatus.SUCCESS:
-        if not isinstance(value, (int, float)):
-            raise TypeError(
-                f"Expected value to be int or float, got {type(value).__name__}"
-            )
-        if not 0 <= value <= 1:
-            raise ValueError(
-                f"Expected value to be between 0 and 1, got {value}"
-            )
-
 
 class Metric(BaseMetric):
     """
@@ -320,7 +243,7 @@ class Metric(BaseMetric):
     def rouge(
         cls,
         value: float,
-        rouge_type: ROUGEType,
+        rouge_type: str,
         use_stemmer: bool,
     ):
         """
@@ -341,7 +264,7 @@ class Metric(BaseMetric):
             type=MetricType.ROUGE,
             value=value,
             parameters={
-                "rouge_type": rouge_type.value,
+                "rouge_type": rouge_type,
                 "use_stemmer": use_stemmer,
             },
         )

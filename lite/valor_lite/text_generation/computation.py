@@ -4,46 +4,34 @@ from enum import Enum
 import evaluate
 from nltk.tokenize import RegexpTokenizer
 from nltk.translate import bleu_score
-from valor_lite.text_generation.metric import ROUGEType
-
-
-class ROUGEType(str, Enum):
-    ROUGE1 = "rouge1"
-    ROUGE2 = "rouge2"
-    ROUGEL = "rougeL"
-    ROUGELSUM = "rougeLsum"
 
 
 def calculate_rouge_scores(
     prediction: str,
     references: list[str],
-    rouge_types: list[ROUGEType] | None = None,
+    rouge_types: list[str],
     use_stemmer: bool = False,
 ) -> dict[str, float]:
     """
-    Calculate ROUGE scores for a prediction (or list of predictions) given some set of references.
+    Calculate ROUGE scores for a prediction given some set of references.
+
+    Computes scores using 'rouge1', 'rouge2', 'rougeL', and 'rougeLsum' where `rouge1`
+    is unigram-based scoring, `rouge2` is bigram-based scoring, `rougeL` is scoring
+    based on sentences (i.e., splitting on "." and ignoring "\n"), and `rougeLsum`
+    is scoring based on splitting the text using "\n".
 
     Parameters
     ----------
-    prediction: str
+    prediction : str
         A prediction to score. Each prediction should be a string with tokens separated by spaces.
-    references: list[list[str]]
+    references : list[str]
         A list of reference for a given prediction. Each reference should be a string with tokens separated by spaces.
-    rouge_types: list[ROUGEType], default=all
-        A list of rouge types to calculate. Defaults to ['rouge1', 'rouge2', 'rougeL', 'rougeLsum'], where `rouge1` is unigram-based scoring, `rouge2` is bigram-based scoring, `rougeL` is scoring based on sentences (i.e., splitting on "." and ignoring "\n"), and `rougeLsum` is scoring based on splitting the text using "\n".
+    rouge_types : list[str]
+        A list of rouge types to calculate.
     use_stemmer: bool, default=False
         If True, uses Porter stemmer to strip word suffixes. Defaults to False.
     """
-    if rouge_types is None or len(rouge_types) == 0:
-        return {}
-
     rouge = evaluate.load("rouge")
-    rouge_types = [
-        ROUGEType.ROUGE1,
-        ROUGEType.ROUGE2,
-        ROUGEType.ROUGEL,
-        ROUGEType.ROUGELSUM,
-    ]
 
     metrics = rouge.compute(
         predictions=[prediction],
@@ -54,30 +42,30 @@ def calculate_rouge_scores(
     )
 
     if not metrics:
-        raise ValueError("No ROUGE metrics were returned.")
+        return dict()
 
     # find the max value for each prediction
-    output = defaultdict(float)
+    results = defaultdict(float)
     for type_ in rouge_types:
-        output[type_] = max(metrics[type_], output[type_])
-    return output
+        results[type_] = max(metrics[type_], results[type_])
+    return results
 
 
 def calculate_sentence_bleu(
     prediction: str,
     references: list[str],
     weights: list[float],
-) -> dict[str, float]:
+) -> float:
     """
-    Calculate sentence BLEU scores for a set of prediction - ground truth pairs.
+    Calculate sentence BLEU scores for a of prediction - ground truth pair.
 
     Parameters
     ----------
-    prediction: str
-        The predictions to score. Each prediction should be a string with tokens separated by spaces.
-    references: list[str]
-        A list of reference for each prediction or a list of several references per prediction. Each reference should be a string with tokens separated by spaces.
-    weights: list[float]
+    prediction : str
+        The prediction to score. Each prediction should be a string with tokens separated by spaces.
+    references : list[str]
+        A list of references for the prediction. Each reference should be a string with tokens separated by spaces.
+    weights : list[float]
         The default BLEU calculates a score for up to 4-grams using uniform
         weights (this is called BLEU-4). To evaluate your translations with
         higher/lower order ngrams, use customized weights. Example: when accounting

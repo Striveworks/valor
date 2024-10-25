@@ -1,4 +1,4 @@
-from typing import Any
+from typing import Any, Protocol
 
 try:
     from mistralai.sdk import Mistral
@@ -42,55 +42,26 @@ def _validate_messages(messages: list[dict[str, str]]):
         raise TypeError("All content in messages must be strings.")
 
 
-class _ClientWrapper:
+class ClientWrapper(Protocol):
     def connect(
         self,
     ):
-        """
-        Setup the connection to the API. Not implemented for parent class.
-        """
-        raise NotImplementedError("_ClientWrapper is a template class.")
+        ...
 
     def _process_messages(
         self,
         messages: list[dict[str, str]],
     ) -> Any:
-        """
-        Format messages for the API.
-
-        Parameters
-        ----------
-        messages: list[dict[str, str]]
-            The messages formatted according to the OpenAI standard. Each message in messages is a dictionary with "role" and "content" keys.
-
-        Returns
-        -------
-        Any
-            The messages formatted for the API.
-        """
-        raise NotImplementedError("_ClientWrapper is a template class.")
+        ...
 
     def __call__(
         self,
         messages: list[dict[str, str]],
     ) -> str:
-        """
-        Call to the API. Not implemented for parent class.
-
-        Parameters
-        ----------
-        messages: list[dict[str, str]]
-            The messages formatted according to the OpenAI standard. Each message in messages is a dictionary with "role" and "content" keys.
-
-        Returns
-        -------
-        str
-            The response from the API.
-        """
-        raise NotImplementedError("_ClientWrapper is a template class.")
+        ...
 
 
-class OpenAIWrapper(_ClientWrapper):
+class OpenAIWrapper:
     """
     Wrapper for calls to OpenAI's API.
 
@@ -221,7 +192,7 @@ class OpenAIWrapper(_ClientWrapper):
         return response
 
 
-class MistralWrapper(_ClientWrapper):
+class MistralWrapper:
     """
     Wrapper for calls to Mistral's API.
 
@@ -335,7 +306,7 @@ class MistralWrapper(_ClientWrapper):
         return response
 
 
-class MockWrapper(_ClientWrapper):
+class MockWrapper:
     """
     A mocked LLM client for testing purposes.
     """
@@ -347,7 +318,7 @@ class MockWrapper(_ClientWrapper):
         """
         Neither the api_key nor the model_name are required for the mock client.
         """
-        super().__init__(**kwargs)
+        pass
 
     def connect(
         self,

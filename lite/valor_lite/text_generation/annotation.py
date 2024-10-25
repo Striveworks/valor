@@ -1,21 +1,28 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 
 @dataclass
-class Response:
+class Context:
     """
-    Response from a RAG pipeline.
+    Contextual ground truth and prediction.
 
     Attributes
     ----------
-    output : str
-        The model's response.
-    context : list[str]
-        Any retrieved context that the model was provided.
+    groundtruth : list[str]
+        The definitive context.
+    prediction : list[str]
+        Any retrieved context from a retrieval-augmented-generation (RAG) pipeline.
+
+    Examples
+    --------
+    ... context = Context(
+    ...     groundtruth=[...],
+    ...     prediction=[...],
+    ... )
     """
 
-    output: str
-    context: list[str]
+    groundtruth: list[str] = field(default_factory=list)
+    prediction: list[str] = field(default_factory=list)
 
 
 @dataclass
@@ -27,23 +34,23 @@ class Query:
     ----------
     query : str
         The user query.
-    groundtruths : list[str]
-        A list of ground truth contexts.
-    prediction : Response
-        The response from the LLM.
+    response : str
+        The language model's response.
+    context : Context
+        Any context provided to the model.
 
     Examples
     --------
     >>> query = Query(
     ...     query='When was George Washington born?',
-    ...     groundtruths=["02/22/1732"],
-    ...     predictions=Response(
-    ...         output="February 22, 1732",
-    ...         context=[...],
+    ...     response="February 22, 1732",
+    ...     context=Context(
+    ...         groundtruth=["02/22/1732"],
+    ...         prediction=["02/22/1732"],
     ...     ),
     ... )
     """
 
     query: str
-    groundtruth: list[str]
-    prediction: Response
+    response: str
+    context: Context | None = field(default=None)

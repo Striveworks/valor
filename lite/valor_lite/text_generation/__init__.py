@@ -1,38 +1,21 @@
-from .annotation import Annotation, Datum, GroundTruth, Prediction
-from .computation import evaluate_text_generation
-from .manager import ValorTextGenerationStreamingManager
-from .metric import (
-    AnswerCorrectnessMetric,
-    AnswerRelevanceMetric,
-    BiasMetric,
-    BLEUMetric,
-    ContextPrecisionMetric,
-    ContextRecallMetric,
-    ContextRelevanceMetric,
-    FaithfulnessMetric,
-    HallucinationMetric,
-    ROUGEMetric,
-    SummaryCoherenceMetric,
-    ToxicityMetric,
+from .annotation import Context, Query
+from .integrations import (
+    ClientWrapper,
+    MistralWrapper,
+    MockWrapper,
+    OpenAIWrapper,
 )
+from .manager import Evaluator
+from .metric import Metric, MetricType
 
 __all__ = [
-    "ValorTextGenerationStreamingManager",
-    "evaluate_text_generation",
-    "Annotation",
-    "Datum",
-    "GroundTruth",
-    "Prediction",
-    "AnswerCorrectnessMetric",
-    "AnswerRelevanceMetric",
-    "BiasMetric",
-    "BLEUMetric",
-    "ContextPrecisionMetric",
-    "ContextRecallMetric",
-    "ContextRelevanceMetric",
-    "FaithfulnessMetric",
-    "HallucinationMetric",
-    "ROUGEMetric",
-    "SummaryCoherenceMetric",
-    "ToxicityMetric",
+    "Query",
+    "Context",
+    "Evaluator",
+    "Metric",
+    "MetricType",
+    "ClientWrapper",
+    "OpenAIWrapper",
+    "MistralWrapper",
+    "MockWrapper",
 ]

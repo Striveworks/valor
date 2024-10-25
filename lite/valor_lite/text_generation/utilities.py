@@ -1,8 +1,7 @@
 import json
-from typing import Any, Sequence
+from typing import Any
 
 from valor_lite.text_generation.exceptions import InvalidLLMResponseError
-from valor_lite.text_generation.metric import MetricType, ROUGEType
 
 
 def trim_and_load_json(input_string: str) -> Any:

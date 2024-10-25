@@ -1,14 +1,18 @@
 import copy
+import json
 from unittest.mock import patch
 
-import pandas as pd
 import pytest
-from valor_lite.text_generation import annotation
-from valor_lite.text_generation.manager import (
+from valor_lite.text_generation import Evaluator
+from valor_lite.text_generation.exceptions import (
     MismatchingTextGenerationDatumError,
-    ValorTextGenerationStreamingManager,
 )
 from valor_lite.text_generation.metric import MetricType
+
+
+def _package_json(data: dict):
+    return f"```json \n{json.dumps(data, indent=4)}\n```"
+
 
 LLM_API_PARAMS = {
     "client": "openai",

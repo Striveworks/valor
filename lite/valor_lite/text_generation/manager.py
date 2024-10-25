@@ -6,11 +6,11 @@ from valor_lite.text_generation.computation import (
     calculate_sentence_bleu,
 )
 from valor_lite.text_generation.exceptions import InvalidLLMResponseError
-from valor_lite.text_generation.llm_client import (
+from valor_lite.text_generation.integrations import (
+    ClientWrapper,
     MistralWrapper,
     MockWrapper,
     OpenAIWrapper,
-    _ClientWrapper,
 )
 from valor_lite.text_generation.llm_instructions import (
     generate_answer_correctness_verdicts_instruction,
@@ -27,7 +27,7 @@ from valor_lite.text_generation.llm_instructions import (
     generate_summary_coherence_instruction,
     generate_toxicity_verdicts_instruction,
 )
-from valor_lite.text_generation.metric import Metric, MetricType, ROUGEType
+from valor_lite.text_generation.metric import Metric, MetricType
 from valor_lite.text_generation.utilities import trim_and_load_json
 
 
@@ -80,7 +80,7 @@ class Evaluator:
 
     Attributes
     ----------
-    client : _ClientWrapper, optional
+    client : ClientWrapper, optional
         An optional client to compute llm-guided metrics.
     retries : int
         The number of times to retry the API call if it fails. Defaults to 0, indicating that the call will not be retried.
@@ -88,7 +88,7 @@ class Evaluator:
 
     def __init__(
         self,
-        client: _ClientWrapper | None = None,
+        client: ClientWrapper | None = None,
         retries: int = 0,
     ):
         """
@@ -96,7 +96,7 @@ class Evaluator:
 
         Parameters
         ----------
-        client : _ClientWrapper, optional
+        client : ClientWrapper, optional
             Any LLM client that conforms to _ClientWrapper. Required for LLM-guided metrics.
         retries : int, default=0
             The number of times to retry the API call if it fails. Defaults to 0, indicating that the call will not be retried.
@@ -943,16 +943,14 @@ class Evaluator:
         Metric
             The answer correctness score between 0 and 1. Higher values indicate that the answer is more correct. A score of 1 indicates that all statements in the prediction are supported by the ground truth and all statements in the ground truth are present in the prediction.
         """
-        if len(query.groundtruths) == 0:
+        if len(query.context.groundtruth) == 0:
             raise ValueError(
                 "Answer correctness requires the definition of ground truth context."
             )
 
-        prediction_statements = self._generate_statements(
-            text=query.prediction.output
-        )
+        prediction_statements = self._generate_statements(text=query.response)
         f1_scores = []
-        for groundtruth in query.groundtruths:
+        for groundtruth in query.context.groundtruth:
             groundtruth_statements = self._generate_statements(
                 text=groundtruth
             )
@@ -987,7 +985,7 @@ class Evaluator:
         Metric
             The answer relevance score between 0 and 1. A score of 1 indicates that all statements are relevant to the query.
         """
-        statements = self._generate_statements(text=query.prediction.output)
+        statements = self._generate_statements(text=query.response)
         verdicts = self._generate_answer_relevance_verdicts(
             query=query.query,
             statements=statements,
@@ -1015,9 +1013,9 @@ class Evaluator:
         float
             The bias score between 0 and 1. A score of 1 indicates that all opinions in the text are biased.
         """
-        opinions = self._generate_opinions(text=query.prediction.output)
+        opinions = self._generate_opinions(text=query.response)
         if len(opinions) == 0:
-            return 0.0
+            return Metric.bias(value=0.0)
 
         verdicts = self._generate_bias_verdicts(opinions=opinions)
 
@@ -1053,22 +1051,22 @@ class Evaluator:
         Metric
             The context precision score between 0 and 1. A higher score indicates better context precision.
         """
-        if len(query.prediction.context) == 0:
+        if len(query.context.prediction) == 0:
             raise ValueError(
                 "Context precision requires context in the prediction response."
             )
-        if len(query.groundtruth) == 0:
+        if len(query.context.groundtruth) == 0:
             raise ValueError(
                 "Context precision requires ground truth contexts."
             )
 
         # Get verdicts for each ground truth, and aggregate by setting the verdict for
         # a context to "yes" if the verdict is "yes" for any ground truth.
-        aggregate_verdicts = ["no"] * len(query.prediction.context)
-        for groundtruth in query.groundtruth:
+        aggregate_verdicts = ["no"] * len(query.context.prediction)
+        for groundtruth in query.context.groundtruth:
             verdicts = self._generate_context_precision_verdicts(
-                query=query,
-                ordered_context_list=query.prediction.context,
+                query=query.query,
+                ordered_context_list=query.context.prediction,
                 groundtruth=groundtruth,
             )
             for i in range(len(verdicts)):
@@ -1077,7 +1075,7 @@ class Evaluator:
 
         # Use the aggregate verdicts to compute the precision at k for each k.
         precision_at_k_list = []
-        for k in range(1, len(query.prediction.context) + 1):
+        for k in range(1, len(query.context.prediction) + 1):
             # Only compute the precision at k if the kth context is relevant.
             if aggregate_verdicts[k - 1] == "yes":
                 precision_at_k = (
@@ -1092,7 +1090,7 @@ class Evaluator:
 
         # If none of the context are relevant, then the context precision is 0.
         if len(precision_at_k_list) == 0:
-            return 0
+            return Metric.context_precision(value=0)
 
         # Average over all the precision at k for which the kth context is relevant.
         result = sum(precision_at_k_list) / len(precision_at_k_list)
@@ -1121,21 +1119,21 @@ class Evaluator:
         Metric
             The context recall score between 0 and 1. A score of 1 indicates that all ground truth statements are attributable to the contexts in the context list.
         """
-        if len(query.prediction.context) == 0:
+        if len(query.context.prediction) == 0:
             raise ValueError(
                 "Context recall requires context in the prediction response."
             )
-        if len(query.groundtruth) == 0:
+        if len(query.context.groundtruth) == 0:
             raise ValueError("Context recall requires ground truth contexts.")
 
         scores = []
-        for groundtruth in query.groundtruth:
+        for groundtruth in query.context.groundtruth:
             groundtruth_statements = self._generate_statements(
                 text=groundtruth
             )
 
             verdicts = self._generate_context_recall_verdicts(
-                context_list=query.prediction.context,
+                context_list=query.context.prediction,
                 groundtruth_statements=groundtruth_statements,
             )
 
@@ -1166,14 +1164,14 @@ class Evaluator:
         Metric
             The context relevance score between 0 and 1. A score of 0 indicates that none of the contexts are relevant and a score of 1 indicates that all of the contexts are relevant.
         """
-        if len(query.prediction.context) == 0:
+        if len(query.context.prediction) == 0:
             raise ValueError(
                 "Context relevance requires context in the prediction response."
             )
 
         verdicts = self._generate_context_relevance_verdicts(
-            query=query,
-            context_list=query.prediction.context,
+            query=query.query,
+            context_list=query.context.prediction,
         )
 
         result = sum(
@@ -1200,20 +1198,20 @@ class Evaluator:
         Metric
             The faithfulness score between 0 and 1. A score of 1 indicates that all claims in the text are implied by the list of contexts.
         """
-        if len(query.prediction.context) == 0:
+        if len(query.context.prediction) == 0:
             raise ValueError(
                 "Faithfulness requires context in the prediction response."
             )
 
-        claims = self._generate_claims(text=query.prediction.output)
+        claims = self._generate_claims(text=query.response)
 
         # If there aren't any claims, then the text is perfectly faithful, as the text does not contain any non-faithful claims.
         if len(claims) == 0:
-            return 1
+            return Metric.faithfulness(value=1)
 
         faithfulness_verdicts = self._generate_faithfulness_verdicts(
             claims=claims,
-            context_list=query.prediction.context,
+            context_list=query.context.prediction,
         )
 
         result = sum(
@@ -1242,14 +1240,14 @@ class Evaluator:
         Metric
             The hallucination score between 0 and 1. A score of 1 indicates that all contexts are contradicted by the text.
         """
-        if len(query.prediction.context) == 0:
+        if len(query.context.prediction) == 0:
             raise ValueError(
                 "Hallucination requires context in the prediction response."
             )
 
         verdicts = self._generate_hallucination_verdicts(
-            text=query.prediction.output,
-            context_list=query.prediction.context,
+            text=query.response,
+            context_list=query.context.prediction,
         )
 
         result = sum(
@@ -1278,7 +1276,7 @@ class Evaluator:
         """
         result = self._summary_coherence(
             text=query.query,
-            summary=query.prediction.output,
+            summary=query.response,
         )
         return Metric.summary_coherence(value=result)
 
@@ -1300,9 +1298,9 @@ class Evaluator:
         Metric
             The toxicity score will be evaluated as a float between 0 and 1, with 1 indicating that all opinions in the text are toxic.
         """
-        opinions = self._generate_opinions(text=query.prediction.output)
+        opinions = self._generate_opinions(text=query.response)
         if len(opinions) == 0:
-            return 0.0
+            return Metric.toxicity(value=0.0)
 
         verdicts = self._generate_toxicity_verdicts(opinions=opinions)
 
@@ -1315,7 +1313,7 @@ class Evaluator:
     def compute_rouge(
         self,
         query: Query,
-        rouge_types: list[ROUGEType],
+        rouge_types: list[str] | None = None,
         use_stemmer: bool = False,
     ) -> list[Metric]:
         """
@@ -1325,6 +1323,8 @@ class Evaluator:
         ----------
         query: Query
             A user query with ground truth and generated response.
+        rouge_types : list[str], optional
+            A list of rouge types to calculate. Defaults to ['rouge1', 'rouge2', 'rougeL', 'rougeLsum'].
         use_stemmer: bool, default=False
             If True, uses Porter stemmer to strip word suffixes. Defaults to False.
 
@@ -1332,9 +1332,16 @@ class Evaluator:
         -------
         list[Metric]
         """
+        if rouge_types is None:
+            rouge_types = [
+                "rouge1",
+                "rouge2",
+                "rougeL",
+                "rougeLsum",
+            ]
         results = calculate_rouge_scores(
-            predictions=[query.prediction.output],
-            references=[query.groundtruth],
+            prediction=query.response,
+            references=query.context.groundtruth,
             rouge_types=rouge_types,
             use_stemmer=use_stemmer,
         )
@@ -1342,6 +1349,7 @@ class Evaluator:
             Metric.rouge(
                 value=result,
                 rouge_type=rouge_type,
+                use_stemmer=use_stemmer,
             )
             for rouge_type, result in results.items()
         ]
@@ -1350,7 +1358,7 @@ class Evaluator:
         self,
         query: Query,
         weights: list[float] = [0.25, 0.25, 0.25, 0.25],
-    ):
+    ) -> Metric:
         """
         Calculate sentence BLEU scores for a set of prediction - ground truth pairs.
 
@@ -1365,11 +1373,63 @@ class Evaluator:
             for up to 5-grams with uniform weights (this is called BLEU-5) use [1/5]*5
         """
         result = calculate_sentence_bleu(
-            predictions=query.prediction.output,
-            references=query.groundtruth,
+            prediction=query.response,
+            references=query.context.groundtruth,
             weights=weights,
         )
         return Metric.bleu(
             value=result,
             weights=weights,
         )
+
+    def compute_all(
+        self,
+        query: Query,
+        bleu_weights: list[float] = [0.25, 0.25, 0.25, 0.25],
+        rouge_use_stemmer: bool = False,
+    ) -> dict[MetricType, list[Metric]]:
+        """
+        Computes all available metrics.
+
+        Parameters
+        ----------
+        query: Query
+            A user query with ground truth and generated response.
+        bleu_weights: list[float], default=[0.25, 0.25, 0.25, 0.25]
+            The default BLEU calculates a score for up to 4-grams using uniform
+            weights (this is called BLEU-4). To evaluate your translations with
+            higher/lower order ngrams, use customized weights. Example: when accounting
+            for up to 5-grams with uniform weights (this is called BLEU-5) use [1/5]*5
+        rouge_use_stemmer: bool, default=False
+            If True, uses Porter stemmer to strip word suffixes. Defaults to False.
+        """
+        results = dict()
+        results[MetricType.AnswerCorrectness] = [
+            self.compute_answer_correctness(query)
+        ]
+        results[MetricType.AnswerRelevance] = [
+            self.compute_answer_relevance(query)
+        ]
+        results[MetricType.Bias] = [self.compute_bias(query)]
+        results[MetricType.ContextPrecision] = [
+            self.compute_context_precision(query)
+        ]
+        results[MetricType.ContextRecall] = [
+            self.compute_context_recall(query)
+        ]
+        results[MetricType.ContextRelevance] = [
+            self.compute_context_relevance(query)
+        ]
+        results[MetricType.Faithfulness] = [self.compute_faithfulness(query)]
+        results[MetricType.Hallucination] = [self.compute_hallucination(query)]
+        results[MetricType.SummaryCoherence] = [
+            self.compute_summary_coherence(query)
+        ]
+        results[MetricType.Toxicity] = [self.compute_toxicity(query)]
+        results[MetricType.ROUGE] = self.compute_rouge(
+            query, use_stemmer=rouge_use_stemmer
+        )
+        results[MetricType.BLEU] = [
+            self.compute_sentence_bleu(query, weights=bleu_weights)
+        ]
+        return results
