@@ -6,24 +6,24 @@ from nltk.translate import bleu_score
 from valor_lite.text_generation.exceptions import InvalidLLMResponseError
 from valor_lite.text_generation.integrations import ClientWrapper
 from valor_lite.text_generation.llm_instructions import (
-    generate_answer_correctness_verdicts_instruction,
-    generate_answer_relevance_verdicts_instruction,
-    generate_bias_verdicts_instruction,
-    generate_claims_instruction,
-    generate_context_precision_verdicts_instruction,
-    generate_context_recall_verdicts_instruction,
-    generate_context_relevance_verdicts_instruction,
-    generate_faithfulness_verdicts_instruction,
-    generate_hallucination_verdicts_instruction,
-    generate_opinions_instruction,
-    generate_statements_instruction,
-    generate_summary_coherence_instruction,
-    generate_toxicity_verdicts_instruction,
+    format_answer_correctness_verdicts_instruction,
+    format_answer_relevance_verdicts_instruction,
+    format_bias_verdicts_instruction,
+    format_claims_instruction,
+    format_context_precision_verdicts_instruction,
+    format_context_recall_verdicts_instruction,
+    format_context_relevance_verdicts_instruction,
+    format_faithfulness_verdicts_instruction,
+    format_hallucination_verdicts_instruction,
+    format_opinions_instruction,
+    format_statements_instruction,
+    format_summary_coherence_instruction,
+    format_toxicity_verdicts_instruction,
 )
 from valor_lite.text_generation.utilities import trim_and_load_json
 
 
-def generate_claims(
+def _generate_claims(
     client: ClientWrapper,
     system_prompt: str,
     text: str,
@@ -46,7 +46,7 @@ def generate_claims(
         {"role": "system", "content": system_prompt},
         {
             "role": "user",
-            "content": generate_claims_instruction(text=text),
+            "content": format_claims_instruction(text=text),
         },
     ]
 
@@ -64,7 +64,7 @@ def generate_claims(
     return claims
 
 
-def generate_opinions(
+def _generate_opinions(
     client: ClientWrapper,
     system_prompt: str,
     text: str,
@@ -87,7 +87,7 @@ def generate_opinions(
         {"role": "system", "content": system_prompt},
         {
             "role": "user",
-            "content": generate_opinions_instruction(text=text),
+            "content": format_opinions_instruction(text=text),
         },
     ]
 
@@ -107,7 +107,7 @@ def generate_opinions(
     return opinions
 
 
-def generate_statements(
+def _generate_statements(
     client: ClientWrapper,
     system_prompt: str,
     text: str,
@@ -130,7 +130,7 @@ def generate_statements(
         {"role": "system", "content": system_prompt},
         {
             "role": "user",
-            "content": generate_statements_instruction(text=text),
+            "content": format_statements_instruction(text=text),
         },
     ]
 
@@ -150,7 +150,7 @@ def generate_statements(
     return statements
 
 
-def generate_answer_correctness_verdicts(
+def _generate_answer_correctness_verdicts(
     client: ClientWrapper,
     system_prompt: str,
     query: str,
@@ -179,7 +179,7 @@ def generate_answer_correctness_verdicts(
         {"role": "system", "content": system_prompt},
         {
             "role": "user",
-            "content": generate_answer_correctness_verdicts_instruction(
+            "content": format_answer_correctness_verdicts_instruction(
                 query=query,
                 prediction_statements=prediction_statements,
                 groundtruth_statements=groundtruth_statements,
@@ -220,7 +220,7 @@ def generate_answer_correctness_verdicts(
     return response
 
 
-def generate_answer_relevance_verdicts(
+def _generate_answer_relevance_verdicts(
     client: ClientWrapper,
     system_prompt: str,
     query: str,
@@ -246,7 +246,7 @@ def generate_answer_relevance_verdicts(
         {"role": "system", "content": system_prompt},
         {
             "role": "user",
-            "content": generate_answer_relevance_verdicts_instruction(
+            "content": format_answer_relevance_verdicts_instruction(
                 query=query,
                 statements=statements,
             ),
@@ -275,7 +275,7 @@ def generate_answer_relevance_verdicts(
     return verdicts
 
 
-def generate_bias_verdicts(
+def _generate_bias_verdicts(
     client: ClientWrapper,
     system_prompt: str,
     opinions: list[str],
@@ -298,7 +298,7 @@ def generate_bias_verdicts(
         {"role": "system", "content": system_prompt},
         {
             "role": "user",
-            "content": generate_bias_verdicts_instruction(
+            "content": format_bias_verdicts_instruction(
                 opinions=opinions,
             ),
         },
@@ -324,7 +324,7 @@ def generate_bias_verdicts(
     return verdicts
 
 
-def generate_context_precision_verdicts(
+def _generate_context_precision_verdicts(
     client: ClientWrapper,
     system_prompt: str,
     query: str,
@@ -355,7 +355,7 @@ def generate_context_precision_verdicts(
         {"role": "system", "content": system_prompt},
         {
             "role": "user",
-            "content": generate_context_precision_verdicts_instruction(
+            "content": format_context_precision_verdicts_instruction(
                 query=query,
                 ordered_context_list=ordered_context_list,
                 groundtruth=groundtruth,
@@ -383,7 +383,7 @@ def generate_context_precision_verdicts(
     return verdicts
 
 
-def generate_context_recall_verdicts(
+def _generate_context_recall_verdicts(
     client: ClientWrapper,
     system_prompt: str,
     context_list: list[str],
@@ -411,7 +411,7 @@ def generate_context_recall_verdicts(
         {"role": "system", "content": system_prompt},
         {
             "role": "user",
-            "content": generate_context_recall_verdicts_instruction(
+            "content": format_context_recall_verdicts_instruction(
                 context_list=context_list,
                 groundtruth_statements=groundtruth_statements,
             ),
@@ -438,7 +438,7 @@ def generate_context_recall_verdicts(
     return verdicts
 
 
-def generate_context_relevance_verdicts(
+def _generate_context_relevance_verdicts(
     client: ClientWrapper,
     system_prompt: str,
     query: str,
@@ -464,7 +464,7 @@ def generate_context_relevance_verdicts(
         {"role": "system", "content": system_prompt},
         {
             "role": "user",
-            "content": generate_context_relevance_verdicts_instruction(
+            "content": format_context_relevance_verdicts_instruction(
                 query=query,
                 context_list=context_list,
             ),
@@ -491,7 +491,7 @@ def generate_context_relevance_verdicts(
     return verdicts
 
 
-def generate_faithfulness_verdicts(
+def _generate_faithfulness_verdicts(
     client: ClientWrapper,
     system_prompt: str,
     claims: list[str],
@@ -517,7 +517,7 @@ def generate_faithfulness_verdicts(
         {"role": "system", "content": system_prompt},
         {
             "role": "user",
-            "content": generate_faithfulness_verdicts_instruction(
+            "content": format_faithfulness_verdicts_instruction(
                 claims=claims,
                 context_list=context_list,
             ),
@@ -544,7 +544,7 @@ def generate_faithfulness_verdicts(
     return verdicts
 
 
-def generate_hallucination_verdicts(
+def _generate_hallucination_verdicts(
     client: ClientWrapper,
     system_prompt: str,
     text: str,
@@ -572,7 +572,7 @@ def generate_hallucination_verdicts(
         {"role": "system", "content": system_prompt},
         {
             "role": "user",
-            "content": generate_hallucination_verdicts_instruction(
+            "content": format_hallucination_verdicts_instruction(
                 text=text,
                 context_list=context_list,
             ),
@@ -599,7 +599,7 @@ def generate_hallucination_verdicts(
     return verdicts
 
 
-def generate_toxicity_verdicts(
+def _generate_toxicity_verdicts(
     client: ClientWrapper,
     system_prompt: str,
     opinions: list[str],
@@ -622,7 +622,7 @@ def generate_toxicity_verdicts(
         {"role": "system", "content": system_prompt},
         {
             "role": "user",
-            "content": generate_toxicity_verdicts_instruction(
+            "content": format_toxicity_verdicts_instruction(
                 opinions=opinions,
             ),
         },
@@ -655,19 +655,19 @@ def calculate_answer_correctness(
     response: str,
     groundtruths: list[str],
 ) -> float:
-    prediction_statements = generate_statements(
+    prediction_statements = _generate_statements(
         client=client,
         system_prompt=system_prompt,
         text=response,
     )
     f1_scores = []
     for groundtruth in groundtruths:
-        groundtruth_statements = generate_statements(
+        groundtruth_statements = _generate_statements(
             client=client,
             system_prompt=system_prompt,
             text=groundtruth,
         )
-        verdicts = generate_answer_correctness_verdicts(
+        verdicts = _generate_answer_correctness_verdicts(
             client=client,
             system_prompt=system_prompt,
             query=query,
@@ -690,12 +690,12 @@ def calculate_answer_relevance(
     query: str,
     response: str,
 ) -> float:
-    statements = generate_statements(
+    statements = _generate_statements(
         client=client,
         system_prompt=system_prompt,
         text=response,
     )
-    verdicts = generate_answer_relevance_verdicts(
+    verdicts = _generate_answer_relevance_verdicts(
         client=client,
         system_prompt=system_prompt,
         query=query,
@@ -712,7 +712,7 @@ def calculate_bias(
     response: str,
 ) -> float:
 
-    opinions = generate_opinions(
+    opinions = _generate_opinions(
         client=client,
         system_prompt=system_prompt,
         text=response,
@@ -720,7 +720,7 @@ def calculate_bias(
     if len(opinions) == 0:
         return 0.0
 
-    verdicts = generate_bias_verdicts(
+    verdicts = _generate_bias_verdicts(
         client=client, system_prompt=system_prompt, opinions=opinions
     )
     return sum(1 for verdict in verdicts if verdict["verdict"] == "yes") / len(
@@ -767,7 +767,7 @@ def calculate_context_precision(
     # a context to "yes" if the verdict is "yes" for any ground truth.
     aggregate_verdicts = ["no"] * len(retrieved_context)
     for groundtruth in groundtruth_context:
-        verdicts = generate_context_precision_verdicts(
+        verdicts = _generate_context_precision_verdicts(
             client=client,
             system_prompt=system_prompt,
             query=query,
@@ -824,10 +824,10 @@ def calculate_context_recall(
     """
     scores = []
     for groundtruth in groundtruth_context:
-        groundtruth_statements = generate_statements(
+        groundtruth_statements = _generate_statements(
             client=client, system_prompt=system_prompt, text=groundtruth
         )
-        verdicts = generate_context_recall_verdicts(
+        verdicts = _generate_context_recall_verdicts(
             client=client,
             system_prompt=system_prompt,
             context_list=retrieved_context,
@@ -860,7 +860,7 @@ def calculate_context_relevance(
     Metric
         The context relevance score between 0 and 1. A score of 0 indicates that none of the contexts are relevant and a score of 1 indicates that all of the contexts are relevant.
     """
-    verdicts = generate_context_relevance_verdicts(
+    verdicts = _generate_context_relevance_verdicts(
         client=client,
         system_prompt=system_prompt,
         query=query,
@@ -895,7 +895,7 @@ def calculate_faithfulness(
             "Faithfulness requires context in the prediction response."
         )
 
-    claims = generate_claims(
+    claims = _generate_claims(
         client=client, system_prompt=system_prompt, text=response
     )
 
@@ -903,7 +903,7 @@ def calculate_faithfulness(
     if len(claims) == 0:
         return 1
 
-    faithfulness_verdicts = generate_faithfulness_verdicts(
+    faithfulness_verdicts = _generate_faithfulness_verdicts(
         client=client,
         system_prompt=system_prompt,
         claims=claims,
@@ -938,7 +938,7 @@ def calculate_hallucination(
             "Hallucination requires context in the prediction response."
         )
 
-    verdicts = generate_hallucination_verdicts(
+    verdicts = _generate_hallucination_verdicts(
         client=client,
         system_prompt=system_prompt,
         text=response,
@@ -975,7 +975,7 @@ def calculate_summary_coherence(
         {"role": "system", "content": system_prompt},
         {
             "role": "user",
-            "content": generate_summary_coherence_instruction(
+            "content": format_summary_coherence_instruction(
                 text=text, summary=summary
             ),
         },
@@ -1017,13 +1017,13 @@ def calculate_toxicity(
     Metric
         The toxicity score will be evaluated as a float between 0 and 1, with 1 indicating that all opinions in the text are toxic.
     """
-    opinions = generate_opinions(
+    opinions = _generate_opinions(
         client=client, system_prompt=system_prompt, text=response
     )
     if len(opinions) == 0:
         return 0.0
 
-    verdicts = generate_toxicity_verdicts(
+    verdicts = _generate_toxicity_verdicts(
         client=client,
         system_prompt=system_prompt,
         opinions=opinions,

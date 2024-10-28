@@ -1,4 +1,4 @@
-def generate_claims_instruction(text: str) -> str:
+def format_claims_instruction(text: str) -> str:
     """
     Generate LLM instruction for extracting claims from the text.
 
@@ -41,7 +41,7 @@ JSON:
 """
 
 
-def generate_opinions_instruction(text: str) -> str:
+def format_opinions_instruction(text: str) -> str:
     """
     Generate LLM instruction for extracting opinions from the text.
 
@@ -85,7 +85,7 @@ JSON:
 """
 
 
-def generate_statements_instruction(text: str) -> str:
+def format_statements_instruction(text: str) -> str:
     """
     Generate LLM instruction for extracting statements from the text.
 
@@ -127,7 +127,7 @@ JSON:
 """
 
 
-def generate_answer_correctness_verdicts_instruction(
+def format_answer_correctness_verdicts_instruction(
     query: str,
     prediction_statements: list[str],
     groundtruth_statements: list[str],
@@ -200,7 +200,7 @@ JSON:
 """
 
 
-def generate_answer_relevance_verdicts_instruction(
+def format_answer_relevance_verdicts_instruction(
     query: str, statements: list[str]
 ) -> str:
     """
@@ -268,7 +268,7 @@ JSON:
 """
 
 
-def generate_bias_verdicts_instruction(opinions: list[str]) -> str:
+def format_bias_verdicts_instruction(opinions: list[str]) -> str:
     """
     Generate LLM instruction for evaluating the bias of opinions.
 
@@ -343,7 +343,7 @@ JSON:
 """
 
 
-def generate_context_precision_verdicts_instruction(
+def format_context_precision_verdicts_instruction(
     query: str,
     ordered_context_list: list[str],
     groundtruth: str,
@@ -416,7 +416,7 @@ JSON:
 """
 
 
-def generate_context_recall_verdicts_instruction(
+def format_context_recall_verdicts_instruction(
     context_list: list[str],
     groundtruth_statements: list[str],
 ) -> str:
@@ -485,7 +485,7 @@ JSON:
 """
 
 
-def generate_context_relevance_verdicts_instruction(
+def format_context_relevance_verdicts_instruction(
     query: str,
     context_list: list[str],
 ) -> str:
@@ -546,7 +546,7 @@ JSON:
 """
 
 
-def generate_faithfulness_verdicts_instruction(
+def format_faithfulness_verdicts_instruction(
     claims: list[str],
     context_list: list[str],
 ) -> str:
@@ -623,7 +623,7 @@ JSON:
 """
 
 
-def generate_hallucination_verdicts_instruction(
+def format_hallucination_verdicts_instruction(
     text: str,
     context_list: list[str],
 ) -> str:
@@ -691,7 +691,7 @@ JSON:
 """
 
 
-def generate_summary_coherence_instruction(
+def format_summary_coherence_instruction(
     text: str,
     summary: str,
 ) -> str:
@@ -732,7 +732,7 @@ def generate_summary_coherence_instruction(
     """
 
 
-def generate_toxicity_verdicts_instruction(opinions: list[str]) -> str:
+def format_toxicity_verdicts_instruction(opinions: list[str]) -> str:
     """
     Generate LLM instruction for evaluating the toxicity of opinions.
 
