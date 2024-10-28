@@ -6,7 +6,6 @@ from valor_lite.text_generation import (
     Context,
     Evaluator,
     MistralWrapper,
-    MockWrapper,
     OpenAIWrapper,
     Query,
 )
@@ -764,6 +763,7 @@ def _return_invalid4_toxicity_response(*args, **kwargs):
 
 def test_evaluator(
     monkeypatch,
+    client,
     valid_claims: str,
     valid_opinions: str,
     valid_statements: str,
@@ -785,13 +785,13 @@ def test_evaluator(
     Check the metric computations for LLMClient. The client children inherit all of these metric computations.
     """
 
-    evaluator = Evaluator.mock(api_key=None, model_name="model_name")
+    evaluator = Evaluator(client=client)
 
     # Patch __call__ with a valid response.
-    monkeypatch.setattr(
-        "valor_lite.text_generation.integrations.ClientWrapper.__call__",
-        _return_valid_answer_correctness_response,
-    )
+    # monkeypatch.setattr(
+    #     "valor_lite.text_generation.integrations.MockWrapper.__call__",
+    #     _return_valid_answer_correctness_response,
+    # )
     assert 0.6666666666666666 == evaluator.compute_answer_correctness(
         Query(
             query="some query",
@@ -802,7 +802,7 @@ def test_evaluator(
 
     # Need to include ground truth statements.
     monkeypatch.setattr(
-        "valor_lite.text_generation.integrations.ClientWrapper.__call__",
+        "valor_lite.text_generation.integrations.MockWrapper.__call__",
         _return_valid_answer_correctness_response,
     )
     with pytest.raises(ValueError):
@@ -815,7 +815,7 @@ def test_evaluator(
 
     # Needs to have 'statements' key.
     monkeypatch.setattr(
-        "valor_lite.text_generation.integrations.ClientWrapper.__call__",
+        "valor_lite.text_generation.integrations.MockWrapper.__call__",
         _return_invalid1_answer_correctness_response,
     )
     with pytest.raises(InvalidLLMResponseError):
@@ -831,7 +831,7 @@ def test_evaluator(
 
     # Should fail if ground truth statements are invalid even when prediction statements are valid
     monkeypatch.setattr(
-        "valor_lite.text_generation.integrations.ClientWrapper.__call__",
+        "valor_lite.text_generation.integrations.MockWrapper.__call__",
         _return_invalid2_answer_correctness_response,
     )
     with pytest.raises(InvalidLLMResponseError):
@@ -847,7 +847,7 @@ def test_evaluator(
 
     # Missing 'FN' in dictionary
     monkeypatch.setattr(
-        "valor_lite.text_generation.integrations.ClientWrapper.__call__",
+        "valor_lite.text_generation.integrations.MockWrapper.__call__",
         _return_invalid3_answer_correctness_response,
     )
     with pytest.raises(InvalidLLMResponseError):
@@ -863,7 +863,7 @@ def test_evaluator(
 
     # TP has an invalid value.
     monkeypatch.setattr(
-        "valor_lite.text_generation.integrations.ClientWrapper.__call__",
+        "valor_lite.text_generation.integrations.MockWrapper.__call__",
         _return_invalid4_answer_correctness_response,
     )
     with pytest.raises(InvalidLLMResponseError):
@@ -879,7 +879,7 @@ def test_evaluator(
 
     # Number of TP + FP does not equal the number of prediction statements
     monkeypatch.setattr(
-        "valor_lite.text_generation.integrations.ClientWrapper.__call__",
+        "valor_lite.text_generation.integrations.MockWrapper.__call__",
         _return_invalid5_answer_correctness_response,
     )
     with pytest.raises(InvalidLLMResponseError):
@@ -895,7 +895,7 @@ def test_evaluator(
 
     # The number of FN is more than the number of ground truth statements
     monkeypatch.setattr(
-        "valor_lite.text_generation.integrations.ClientWrapper.__call__",
+        "valor_lite.text_generation.integrations.MockWrapper.__call__",
         _return_invalid6_answer_correctness_response,
     )
     with pytest.raises(InvalidLLMResponseError):
@@ -911,7 +911,7 @@ def test_evaluator(
 
     # Patch __call__ with a valid response.
     monkeypatch.setattr(
-        "valor_lite.text_generation.integrations.ClientWrapper.__call__",
+        "valor_lite.text_generation.integrations.MockWrapper.__call__",
         _return_valid_answer_relevance_response,
     )
     assert 0.5 == evaluator.compute_answer_relevance(
@@ -920,7 +920,7 @@ def test_evaluator(
 
     # Needs to have 'statements' key.
     monkeypatch.setattr(
-        "valor_lite.text_generation.integrations.ClientWrapper.__call__",
+        "valor_lite.text_generation.integrations.MockWrapper.__call__",
         _return_invalid1_answer_relevance_response,
     )
     with pytest.raises(InvalidLLMResponseError):
@@ -930,7 +930,7 @@ def test_evaluator(
 
     # Statements must be strings.
     monkeypatch.setattr(
-        "valor_lite.text_generation.integrations.ClientWrapper.__call__",
+        "valor_lite.text_generation.integrations.MockWrapper.__call__",
         _return_invalid2_answer_relevance_response,
     )
     with pytest.raises(InvalidLLMResponseError):
@@ -940,7 +940,7 @@ def test_evaluator(
 
     # Needs to have 'verdicts' key.
     monkeypatch.setattr(
-        "valor_lite.text_generation.integrations.ClientWrapper.__call__",
+        "valor_lite.text_generation.integrations.MockWrapper.__call__",
         _return_invalid3_answer_relevance_response,
     )
     with pytest.raises(InvalidLLMResponseError):
@@ -950,7 +950,7 @@ def test_evaluator(
 
     # Invalid verdict, all verdicts must be yes, no or idk.
     monkeypatch.setattr(
-        "valor_lite.text_generation.integrations.ClientWrapper.__call__",
+        "valor_lite.text_generation.integrations.MockWrapper.__call__",
         _return_invalid4_answer_relevance_response,
     )
     with pytest.raises(InvalidLLMResponseError):
@@ -960,7 +960,7 @@ def test_evaluator(
 
     # Patch __call__ with a valid response.
     monkeypatch.setattr(
-        "valor_lite.text_generation.integrations.ClientWrapper.__call__",
+        "valor_lite.text_generation.integrations.MockWrapper.__call__",
         _return_valid1_bias_response,
     )
     assert 0.5 == evaluator.compute_bias(
@@ -969,7 +969,7 @@ def test_evaluator(
 
     # No opinions found, so no bias should be reported.
     monkeypatch.setattr(
-        "valor_lite.text_generation.integrations.ClientWrapper.__call__",
+        "valor_lite.text_generation.integrations.MockWrapper.__call__",
         _return_valid2_bias_response,
     )
     assert 0.0 == evaluator.compute_bias(
@@ -978,7 +978,7 @@ def test_evaluator(
 
     # Key 'verdicts' is returned but the key should be 'opinions'.
     monkeypatch.setattr(
-        "valor_lite.text_generation.integrations.ClientWrapper.__call__",
+        "valor_lite.text_generation.integrations.MockWrapper.__call__",
         _return_invalid1_bias_response,
     )
     with pytest.raises(InvalidLLMResponseError):
@@ -986,7 +986,7 @@ def test_evaluator(
 
     # Opinions must be strings.
     monkeypatch.setattr(
-        "valor_lite.text_generation.integrations.ClientWrapper.__call__",
+        "valor_lite.text_generation.integrations.MockWrapper.__call__",
         _return_invalid2_bias_response,
     )
     with pytest.raises(InvalidLLMResponseError):
@@ -994,7 +994,7 @@ def test_evaluator(
 
     # Key 'opinions' is returned but the key should be 'verdicts'.
     monkeypatch.setattr(
-        "valor_lite.text_generation.integrations.ClientWrapper.__call__",
+        "valor_lite.text_generation.integrations.MockWrapper.__call__",
         _return_invalid3_bias_response,
     )
     with pytest.raises(InvalidLLMResponseError):
@@ -1002,7 +1002,7 @@ def test_evaluator(
 
     # 'idk' is not a valid bias verdict.
     monkeypatch.setattr(
-        "valor_lite.text_generation.integrations.ClientWrapper.__call__",
+        "valor_lite.text_generation.integrations.MockWrapper.__call__",
         _return_invalid4_bias_response,
     )
     with pytest.raises(InvalidLLMResponseError):
@@ -1010,7 +1010,7 @@ def test_evaluator(
 
     # Patch __call__ with a valid response.
     monkeypatch.setattr(
-        "valor_lite.text_generation.integrations.ClientWrapper.__call__",
+        "valor_lite.text_generation.integrations.MockWrapper.__call__",
         _return_valid1_context_precision_response,
     )
     assert 0.45 == evaluator.compute_context_precision(
@@ -1032,7 +1032,7 @@ def test_evaluator(
 
     # If all verdicts are "no", the returned score should be 0.
     monkeypatch.setattr(
-        "valor_lite.text_generation.integrations.ClientWrapper.__call__",
+        "valor_lite.text_generation.integrations.MockWrapper.__call__",
         _return_valid2_context_precision_response,
     )
     assert 0.0 == evaluator.compute_context_precision(
@@ -1054,7 +1054,7 @@ def test_evaluator(
 
     # Context precision is meaningless if context_list is empty.
     monkeypatch.setattr(
-        "valor_lite.text_generation.integrations.ClientWrapper.__call__",
+        "valor_lite.text_generation.integrations.MockWrapper.__call__",
         _return_valid1_context_precision_response,
     )
     with pytest.raises(ValueError):
@@ -1071,7 +1071,7 @@ def test_evaluator(
 
     # Context precision is meaningless if groundtruth_list is empty.
     monkeypatch.setattr(
-        "valor_lite.text_generation.integrations.ClientWrapper.__call__",
+        "valor_lite.text_generation.integrations.MockWrapper.__call__",
         _return_valid1_context_precision_response,
     )
     with pytest.raises(ValueError):
@@ -1094,7 +1094,7 @@ def test_evaluator(
 
     # Only 1 context provided but 5 verdicts were returned.
     monkeypatch.setattr(
-        "valor_lite.text_generation.integrations.ClientWrapper.__call__",
+        "valor_lite.text_generation.integrations.MockWrapper.__call__",
         _return_valid1_context_precision_response,
     )
     with pytest.raises(InvalidLLMResponseError):
@@ -1113,7 +1113,7 @@ def test_evaluator(
 
     # Key 'invalid_key' is returned but the key should be 'verdicts'.
     monkeypatch.setattr(
-        "valor_lite.text_generation.integrations.ClientWrapper.__call__",
+        "valor_lite.text_generation.integrations.MockWrapper.__call__",
         _return_invalid1_context_precision_response,
     )
     with pytest.raises(InvalidLLMResponseError):
@@ -1136,7 +1136,7 @@ def test_evaluator(
 
     # Patch __call__ with a valid response.
     monkeypatch.setattr(
-        "valor_lite.text_generation.integrations.ClientWrapper.__call__",
+        "valor_lite.text_generation.integrations.MockWrapper.__call__",
         _return_valid_context_recall_response,
     )
     assert 0.75 == evaluator.compute_context_recall(
@@ -1155,7 +1155,7 @@ def test_evaluator(
 
     # Context recall is meaningless if context_list is empty.
     monkeypatch.setattr(
-        "valor_lite.text_generation.integrations.ClientWrapper.__call__",
+        "valor_lite.text_generation.integrations.MockWrapper.__call__",
         _return_valid_context_recall_response,
     )
     with pytest.raises(ValueError):
@@ -1172,7 +1172,7 @@ def test_evaluator(
 
     # Context recall is meaningless if groundtruth_list is empty.
     monkeypatch.setattr(
-        "valor_lite.text_generation.integrations.ClientWrapper.__call__",
+        "valor_lite.text_generation.integrations.MockWrapper.__call__",
         _return_valid_context_recall_response,
     )
     with pytest.raises(ValueError):
@@ -1192,7 +1192,7 @@ def test_evaluator(
 
     # Ground truth statements response must have key 'statements'.
     monkeypatch.setattr(
-        "valor_lite.text_generation.integrations.ClientWrapper.__call__",
+        "valor_lite.text_generation.integrations.MockWrapper.__call__",
         _return_invalid1_context_recall_response,
     )
     with pytest.raises(InvalidLLMResponseError):
@@ -1212,7 +1212,7 @@ def test_evaluator(
 
     # Ground truth statements must be strings.
     monkeypatch.setattr(
-        "valor_lite.text_generation.integrations.ClientWrapper.__call__",
+        "valor_lite.text_generation.integrations.MockWrapper.__call__",
         _return_invalid2_context_recall_response,
     )
     with pytest.raises(InvalidLLMResponseError):
@@ -1232,7 +1232,7 @@ def test_evaluator(
 
     # Context recall verdicts response must have key 'verdicts'.
     monkeypatch.setattr(
-        "valor_lite.text_generation.integrations.ClientWrapper.__call__",
+        "valor_lite.text_generation.integrations.MockWrapper.__call__",
         _return_invalid3_context_recall_response,
     )
     with pytest.raises(InvalidLLMResponseError):
@@ -1252,7 +1252,7 @@ def test_evaluator(
 
     # Number of context recall verdicts doesn't match the number of ground truth statements.
     monkeypatch.setattr(
-        "valor_lite.text_generation.integrations.ClientWrapper.__call__",
+        "valor_lite.text_generation.integrations.MockWrapper.__call__",
         _return_invalid4_context_recall_response,
     )
     with pytest.raises(InvalidLLMResponseError):
@@ -1272,7 +1272,7 @@ def test_evaluator(
 
     # Patch __call__ with a valid response.
     monkeypatch.setattr(
-        "valor_lite.text_generation.integrations.ClientWrapper.__call__",
+        "valor_lite.text_generation.integrations.MockWrapper.__call__",
         _return_valid_context_relevance_response,
     )
     assert 0.3333333333333333 == evaluator.compute_context_relevance(
@@ -1288,7 +1288,7 @@ def test_evaluator(
 
     # Context relevance is meaningless if context_list is empty.
     monkeypatch.setattr(
-        "valor_lite.text_generation.integrations.ClientWrapper.__call__",
+        "valor_lite.text_generation.integrations.MockWrapper.__call__",
         _return_valid_context_relevance_response,
     )
     with pytest.raises(ValueError):
@@ -1301,7 +1301,7 @@ def test_evaluator(
 
     # Only 1 context provided but 3 verdicts were returned.
     monkeypatch.setattr(
-        "valor_lite.text_generation.integrations.ClientWrapper.__call__",
+        "valor_lite.text_generation.integrations.MockWrapper.__call__",
         _return_valid_context_relevance_response,
     )
     with pytest.raises(InvalidLLMResponseError):
@@ -1320,7 +1320,7 @@ def test_evaluator(
 
     # Key 'all_verdicts' is returned but the key should be 'verdicts'.
     monkeypatch.setattr(
-        "valor_lite.text_generation.integrations.ClientWrapper.__call__",
+        "valor_lite.text_generation.integrations.MockWrapper.__call__",
         _return_invalid1_context_relevance_response,
     )
     with pytest.raises(InvalidLLMResponseError):
@@ -1337,7 +1337,7 @@ def test_evaluator(
 
     # Patch __call__ with a valid response.
     monkeypatch.setattr(
-        "valor_lite.text_generation.integrations.ClientWrapper.__call__",
+        "valor_lite.text_generation.integrations.MockWrapper.__call__",
         _return_valid1_faithfulness_response,
     )
     assert 0.6 == evaluator.compute_faithfulness(
@@ -1353,7 +1353,7 @@ def test_evaluator(
 
     # If no claims are found in the text, then the text should have a faithfulness score of 1.
     monkeypatch.setattr(
-        "valor_lite.text_generation.integrations.ClientWrapper.__call__",
+        "valor_lite.text_generation.integrations.MockWrapper.__call__",
         _return_valid2_faithfulness_response,
     )
     assert 1.0 == evaluator.compute_faithfulness(
@@ -1369,7 +1369,7 @@ def test_evaluator(
 
     # Faithfulness is meaningless if context_list is empty.
     monkeypatch.setattr(
-        "valor_lite.text_generation.integrations.ClientWrapper.__call__",
+        "valor_lite.text_generation.integrations.MockWrapper.__call__",
         _return_valid1_faithfulness_response,
     )
     with pytest.raises(ValueError):
@@ -1386,7 +1386,7 @@ def test_evaluator(
 
     # Bad key in the claims response.
     monkeypatch.setattr(
-        "valor_lite.text_generation.integrations.ClientWrapper.__call__",
+        "valor_lite.text_generation.integrations.MockWrapper.__call__",
         _return_invalid1_faithfulness_response,
     )
     with pytest.raises(InvalidLLMResponseError):
@@ -1406,7 +1406,7 @@ def test_evaluator(
 
     # Claims must be strings, not lists of strings.
     monkeypatch.setattr(
-        "valor_lite.text_generation.integrations.ClientWrapper.__call__",
+        "valor_lite.text_generation.integrations.MockWrapper.__call__",
         _return_invalid2_faithfulness_response,
     )
     with pytest.raises(InvalidLLMResponseError):
@@ -1426,7 +1426,7 @@ def test_evaluator(
 
     # Bad key in the verdicts response.
     monkeypatch.setattr(
-        "valor_lite.text_generation.integrations.ClientWrapper.__call__",
+        "valor_lite.text_generation.integrations.MockWrapper.__call__",
         _return_invalid3_faithfulness_response,
     )
     with pytest.raises(InvalidLLMResponseError):
@@ -1446,7 +1446,7 @@ def test_evaluator(
 
     # Number of verdicts does not match the number of claims.
     monkeypatch.setattr(
-        "valor_lite.text_generation.integrations.ClientWrapper.__call__",
+        "valor_lite.text_generation.integrations.MockWrapper.__call__",
         _return_invalid4_faithfulness_response,
     )
     with pytest.raises(InvalidLLMResponseError):
@@ -1466,7 +1466,7 @@ def test_evaluator(
 
     # 'idk' is not a valid verdict for faithfulness.
     monkeypatch.setattr(
-        "valor_lite.text_generation.integrations.ClientWrapper.__call__",
+        "valor_lite.text_generation.integrations.MockWrapper.__call__",
         _return_invalid5_faithfulness_response,
     )
     with pytest.raises(InvalidLLMResponseError):
@@ -1486,7 +1486,7 @@ def test_evaluator(
 
     # Patch __call__ with a valid response.
     monkeypatch.setattr(
-        "valor_lite.text_generation.integrations.ClientWrapper.__call__",
+        "valor_lite.text_generation.integrations.MockWrapper.__call__",
         _return_valid_hallucination_response,
     )
     assert 0.6666666666666666 == evaluator.compute_hallucination(
@@ -1502,7 +1502,7 @@ def test_evaluator(
 
     # Context relevance is meaningless if context_list is empty.
     monkeypatch.setattr(
-        "valor_lite.text_generation.integrations.ClientWrapper.__call__",
+        "valor_lite.text_generation.integrations.MockWrapper.__call__",
         _return_valid_hallucination_response,
     )
     with pytest.raises(ValueError):
@@ -1510,7 +1510,7 @@ def test_evaluator(
 
     # Only 1 context provided but 3 verdicts were returned.
     monkeypatch.setattr(
-        "valor_lite.text_generation.integrations.ClientWrapper.__call__",
+        "valor_lite.text_generation.integrations.MockWrapper.__call__",
         _return_valid_hallucination_response,
     )
     with pytest.raises(InvalidLLMResponseError):
@@ -1529,7 +1529,7 @@ def test_evaluator(
 
     # Key 'all_verdicts' is returned but the key should be 'verdicts'.
     monkeypatch.setattr(
-        "valor_lite.text_generation.integrations.ClientWrapper.__call__",
+        "valor_lite.text_generation.integrations.MockWrapper.__call__",
         _return_invalid1_hallucination_response,
     )
     with pytest.raises(InvalidLLMResponseError):
@@ -1546,7 +1546,7 @@ def test_evaluator(
 
     # Patch __call__ with a valid response.
     monkeypatch.setattr(
-        "valor_lite.text_generation.integrations.ClientWrapper.__call__",
+        "valor_lite.text_generation.integrations.MockWrapper.__call__",
         _return_valid_summary_coherence_response,
     )
     assert 5 == evaluator.compute_summary_coherence(
@@ -1558,7 +1558,7 @@ def test_evaluator(
 
     # Summary coherence score is not an integer.
     monkeypatch.setattr(
-        "valor_lite.text_generation.integrations.ClientWrapper.__call__",
+        "valor_lite.text_generation.integrations.MockWrapper.__call__",
         _return_invalid1_summary_coherence_response,
     )
     with pytest.raises(InvalidLLMResponseError):
@@ -1571,7 +1571,7 @@ def test_evaluator(
 
     # Summary coherence score is 0, which is not in {1,2,3,4,5}.
     monkeypatch.setattr(
-        "valor_lite.text_generation.integrations.ClientWrapper.__call__",
+        "valor_lite.text_generation.integrations.MockWrapper.__call__",
         _return_invalid2_summary_coherence_response,
     )
     with pytest.raises(InvalidLLMResponseError):
@@ -1584,7 +1584,7 @@ def test_evaluator(
 
     # Patch __call__ with a valid response.
     monkeypatch.setattr(
-        "valor_lite.text_generation.integrations.ClientWrapper.__call__",
+        "valor_lite.text_generation.integrations.MockWrapper.__call__",
         _return_valid1_toxicity_response,
     )
     assert 0.5 == evaluator.compute_toxicity(
@@ -1593,7 +1593,7 @@ def test_evaluator(
 
     # No opinions found, so no toxicity should be reported.
     monkeypatch.setattr(
-        "valor_lite.text_generation.integrations.ClientWrapper.__call__",
+        "valor_lite.text_generation.integrations.MockWrapper.__call__",
         _return_valid2_toxicity_response,
     )
     assert 0.0 == evaluator.compute_toxicity(
@@ -1602,7 +1602,7 @@ def test_evaluator(
 
     # Key 'verdicts' is returned but the key should be 'opinions'.
     monkeypatch.setattr(
-        "valor_lite.text_generation.integrations.ClientWrapper.__call__",
+        "valor_lite.text_generation.integrations.MockWrapper.__call__",
         _return_invalid1_toxicity_response,
     )
     with pytest.raises(InvalidLLMResponseError):
@@ -1612,7 +1612,7 @@ def test_evaluator(
 
     # Opinions must be strings.
     monkeypatch.setattr(
-        "valor_lite.text_generation.integrations.ClientWrapper.__call__",
+        "valor_lite.text_generation.integrations.MockWrapper.__call__",
         _return_invalid2_toxicity_response,
     )
     with pytest.raises(InvalidLLMResponseError):
@@ -1622,7 +1622,7 @@ def test_evaluator(
 
     # Key 'opinions' is returned but the key should be 'verdicts'.
     monkeypatch.setattr(
-        "valor_lite.text_generation.integrations.ClientWrapper.__call__",
+        "valor_lite.text_generation.integrations.MockWrapper.__call__",
         _return_invalid3_toxicity_response,
     )
     with pytest.raises(InvalidLLMResponseError):
@@ -1632,7 +1632,7 @@ def test_evaluator(
 
     # 'idk' is not a valid toxicity verdict.
     monkeypatch.setattr(
-        "valor_lite.text_generation.integrations.ClientWrapper.__call__",
+        "valor_lite.text_generation.integrations.MockWrapper.__call__",
         _return_invalid4_toxicity_response,
     )
     with pytest.raises(InvalidLLMResponseError):
@@ -1655,7 +1655,7 @@ def test_retrying(monkeypatch):
         return "The score is 5."
 
     monkeypatch.setattr(
-        "valor_lite.text_generation.integrations.ClientWrapper.__call__",
+        "valor_lite.text_generation.integrations.MockWrapper.__call__",
         _return_valid_summary_coherence_response,
     )
 
@@ -1681,7 +1681,7 @@ def test_retrying(monkeypatch):
 
     # mock_method returns a bad response three times but on the fourth call returns a valid response.
     monkeypatch.setattr(
-        "valor_lite.text_generation.integrations.ClientWrapper.__call__",
+        "valor_lite.text_generation.integrations.MockWrapper.__call__",
         Mock(side_effect=errors),
     )
     evaluator = Evaluator.mock(api_key=None, model_name="model_name")
@@ -1691,7 +1691,7 @@ def test_retrying(monkeypatch):
 
     # Test with retries=2 and invalid response
     monkeypatch.setattr(
-        "valor_lite.text_generation.integrations.ClientWrapper.__call__",
+        "valor_lite.text_generation.integrations.MockWrapper.__call__",
         Mock(side_effect=errors),
     )
     with pytest.raises(InvalidLLMResponseError):
@@ -1701,7 +1701,7 @@ def test_retrying(monkeypatch):
         )
 
     monkeypatch.setattr(
-        "valor_lite.text_generation.integrations.ClientWrapper.__call__",
+        "valor_lite.text_generation.integrations.MockWrapper.__call__",
         _return_invalid_summary_coherence_response,
     )
 

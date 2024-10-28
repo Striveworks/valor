@@ -2,48 +2,29 @@ from functools import wraps
 
 from valor_lite.text_generation.annotation import Query
 from valor_lite.text_generation.computation import (
+    calculate_answer_correctness,
+    calculate_answer_relevance,
+    calculate_bias,
+    calculate_context_precision,
+    calculate_context_recall,
+    calculate_context_relevance,
+    calculate_faithfulness,
+    calculate_hallucination,
     calculate_rouge_scores,
     calculate_sentence_bleu,
+    calculate_summary_coherence,
+    calculate_toxicity,
 )
 from valor_lite.text_generation.exceptions import InvalidLLMResponseError
 from valor_lite.text_generation.integrations import (
     ClientWrapper,
     MistralWrapper,
-    MockWrapper,
     OpenAIWrapper,
 )
-from valor_lite.text_generation.llm_instructions import (
-    generate_answer_correctness_verdicts_instruction,
-    generate_answer_relevance_verdicts_instruction,
-    generate_bias_verdicts_instruction,
-    generate_claims_instruction,
-    generate_context_precision_verdicts_instruction,
-    generate_context_recall_verdicts_instruction,
-    generate_context_relevance_verdicts_instruction,
-    generate_faithfulness_verdicts_instruction,
-    generate_hallucination_verdicts_instruction,
-    generate_opinions_instruction,
-    generate_statements_instruction,
-    generate_summary_coherence_instruction,
-    generate_toxicity_verdicts_instruction,
-)
 from valor_lite.text_generation.metric import Metric, MetricType
-from valor_lite.text_generation.utilities import trim_and_load_json
 
 
 def llm_guided(fn):
-    @wraps(fn)
-    def wrapper(self, *args, **kwargs):
-        if self.client is None:
-            raise ValueError(
-                f"{fn.__name__} requires the definition of an LLM client."
-            )
-        return fn(self, *args, **kwargs)
-
-    return wrapper
-
-
-def retry_if_invalid_llm_response(fn):
     """
     Call the LLMClient class function with retries for InvalidLLMResponseError.
 
@@ -68,7 +49,7 @@ def retry_if_invalid_llm_response(fn):
         if error is not None:
             return Metric.error(
                 error_type=type(error).__name__,
-                error_message=f"Failed after {retries} retries.",
+                error_message=str(error),
             )
 
     return wrapper
@@ -88,7 +69,7 @@ class Evaluator:
 
     def __init__(
         self,
-        client: ClientWrapper | None = None,
+        client: ClientWrapper,
         retries: int = 0,
     ):
         """
@@ -164,763 +145,6 @@ class Evaluator:
         )
         return cls(client=client, retries=retries)
 
-    @classmethod
-    def mock(
-        cls,
-        retries: int = 0,
-        **kwargs,
-    ):
-        """
-        Create an evaluator with a mocked LLM client.
-        """
-        client = MockWrapper(**kwargs, retries=retries)
-        return cls(client=client)
-
-    @retry_if_invalid_llm_response
-    def _generate_claims(
-        self,
-        text: str,
-    ) -> list[str]:
-        """
-        Generate a list of claims from a piece of text, using a call to the LLM API.
-
-        Parameters
-        ----------
-        text: str
-            The text to extract claims from.
-
-        Returns
-        -------
-        list[str]
-            The list of claims extracted from the text.
-        """
-
-        if self.client is None:
-            raise ValueError(
-                "A LLM client must be defined to use this function."
-            )
-
-        messages = [
-            {"role": "system", "content": self.default_system_prompt},
-            {
-                "role": "user",
-                "content": generate_claims_instruction(text=text),
-            },
-        ]
-
-        response = self.client(messages)
-        response = trim_and_load_json(response)
-        if type(response) != dict or "claims" not in response:
-            raise InvalidLLMResponseError(
-                f"LLM response was not a dictionary or 'claims' was not in response: {response}"
-            )
-        claims = response["claims"]
-        if type(claims) != list or not all(
-            type(claim) == str for claim in claims
-        ):
-            raise InvalidLLMResponseError(
-                f"LLM response was not a valid list of claims (list[str]): {response}"
-            )
-        return claims
-
-    @retry_if_invalid_llm_response
-    def _generate_opinions(
-        self,
-        text: str,
-    ) -> list[str]:
-        """
-        Generate a list of opinions from a piece of text, using a call to the LLM API.
-
-        Parameters
-        ----------
-        text: str
-            The text to extract opinions from.
-
-        Returns
-        -------
-        list[str]
-            The list of opinions extracted from the text.
-        """
-
-        if self.client is None:
-            raise ValueError(
-                "A LLM client must be defined to use this function."
-            )
-
-        messages = [
-            {"role": "system", "content": self.default_system_prompt},
-            {
-                "role": "user",
-                "content": generate_opinions_instruction(text=text),
-            },
-        ]
-
-        response = self.client(messages)
-        response = trim_and_load_json(response)
-        if type(response) != dict or "opinions" not in response:
-            raise InvalidLLMResponseError(
-                f"LLM response was not a dictionary or 'opinions' was not in response: {response}"
-            )
-        opinions = response["opinions"]
-        if type(opinions) != list or not all(
-            type(opinion) == str for opinion in opinions
-        ):
-            raise InvalidLLMResponseError(
-                f"LLM response was not a valid list of opinions (list[str]): {response}"
-            )
-        return opinions
-
-    @retry_if_invalid_llm_response
-    def _generate_statements(
-        self,
-        text: str,
-    ) -> list[str]:
-        """
-        Generate a list of statements from a piece of text, using a call to the LLM API.
-
-        Parameters
-        ----------
-        text: str
-            The text to extract statements from.
-
-        Returns
-        -------
-        list[str]
-            The list of statements extracted from the text.
-        """
-
-        if self.client is None:
-            raise ValueError(
-                "A LLM client must be defined to use this function."
-            )
-
-        messages = [
-            {"role": "system", "content": self.default_system_prompt},
-            {
-                "role": "user",
-                "content": generate_statements_instruction(text=text),
-            },
-        ]
-
-        response = self.client(messages)
-        response = trim_and_load_json(response)
-        if type(response) != dict or "statements" not in response:
-            raise InvalidLLMResponseError(
-                f"LLM response was not a dictionary or 'statements' was not in response: {response}"
-            )
-        statements = response["statements"]
-        if type(statements) != list or not all(
-            type(statement) == str for statement in statements
-        ):
-            raise InvalidLLMResponseError(
-                f"LLM response was not a valid list of statements (list[str]): {response}"
-            )
-        return statements
-
-    @retry_if_invalid_llm_response
-    def _generate_answer_correctness_verdicts(
-        self,
-        query: str,
-        prediction_statements: list[str],
-        groundtruth_statements: list[str],
-    ) -> dict[str, list[dict[str, str]]]:
-        """
-        Generate lists of true positives, false positives and false negatives, using a call to the LLM API.
-
-        Parameters
-        ----------
-        query: str
-            The query that both the prediction and ground truth should be answering.
-        prediction_statements: list[str]
-            The prediction statements to evaluate.
-        groundtruth_statements: list[str]
-            The ground truth statements to evaluate.
-
-        Returns
-        -------
-        dict[str, list[dict[str, str]]]
-            A dictionary of true positives, false positives and false negatives.
-        """
-
-        if self.client is None:
-            raise ValueError(
-                "A LLM client must be defined to use this function."
-            )
-
-        messages = [
-            {"role": "system", "content": self.default_system_prompt},
-            {
-                "role": "user",
-                "content": generate_answer_correctness_verdicts_instruction(
-                    query=query,
-                    prediction_statements=prediction_statements,
-                    groundtruth_statements=groundtruth_statements,
-                ),
-            },
-        ]
-        response = self.client(messages)
-        response = trim_and_load_json(response)
-        if (
-            type(response) != dict
-            or "TP" not in response
-            or "FP" not in response
-            or "FN" not in response
-        ):
-            raise InvalidLLMResponseError(
-                f"LLM response was not a dictionary of true positives, false positives and false negatives: {response}"
-            )
-
-        if (
-            type(response["TP"]) != list
-            or type(response["FP"]) != list
-            or type(response["FN"]) != list
-        ):
-            raise InvalidLLMResponseError(
-                f"LLM response did not contain valid lists of true positives, false positives and false negatives: {response}"
-            )
-
-        if len(response["TP"]) + len(response["FP"]) != len(
-            prediction_statements
-        ):
-            raise InvalidLLMResponseError(
-                f"Number of true positives and false positives did not match the number of prediction statements: {response}"
-            )
-
-        if len(response["FN"]) > len(groundtruth_statements):
-            raise InvalidLLMResponseError(
-                f"Number of false negatives exceeded the number of ground truth statements: {response}"
-            )
-
-        return response
-
-    @retry_if_invalid_llm_response
-    def _generate_answer_relevance_verdicts(
-        self,
-        query: str,
-        statements: list[str],
-    ) -> list[dict[str, str]]:
-        """
-        Generate a list of answer relevance verdicts for a list of statements, using a call to the LLM API.
-
-        Parameters
-        ----------
-        query: str
-            The query to evaluate the statements against.
-        statements: list[str]
-            The statements to evaluate the validity of.
-
-        Returns
-        -------
-        list[dict[str,str]]
-            The list of verdicts for each statement. Each verdict is a dictionary with the "verdict" field.
-        """
-        if self.client is None:
-            raise ValueError(
-                "A LLM client must be defined to use this function."
-            )
-
-        messages = [
-            {"role": "system", "content": self.default_system_prompt},
-            {
-                "role": "user",
-                "content": generate_answer_relevance_verdicts_instruction(
-                    query=query,
-                    statements=statements,
-                ),
-            },
-        ]
-
-        response = self.client(messages)
-        response = trim_and_load_json(response)
-        if type(response) != dict or "verdicts" not in response:
-            raise InvalidLLMResponseError(
-                f"LLM response was not a list of valid verdicts: {response}"
-            )
-
-        verdicts = response["verdicts"]
-        if (
-            type(verdicts) != list
-            or len(verdicts) != len(statements)
-            or not all(
-                verdict["verdict"] in ["yes", "no", "idk"]
-                for verdict in verdicts
-            )
-        ):
-            raise InvalidLLMResponseError(
-                f"LLM response was not a list of valid verdicts: {response}"
-            )
-
-        return verdicts
-
-    @retry_if_invalid_llm_response
-    def _generate_bias_verdicts(
-        self,
-        opinions: list[str],
-    ) -> list[dict[str, str]]:
-        """
-        Generate a list of bias verdicts for a list of opinions, using a call to the LLM API.
-
-        Parameters
-        ----------
-        opinions: list[str]
-            The opinions to evaluate the bias of.
-
-        Returns
-        -------
-        list[dict[str,str]]
-            The list of verdicts for each opinion. Each verdict is a dictionary with the "verdict" field.
-        """
-
-        if self.client is None:
-            raise ValueError(
-                "A LLM client must be defined to use this function."
-            )
-
-        messages = [
-            {"role": "system", "content": self.default_system_prompt},
-            {
-                "role": "user",
-                "content": generate_bias_verdicts_instruction(
-                    opinions=opinions,
-                ),
-            },
-        ]
-
-        response = self.client(messages)
-        response = trim_and_load_json(response)
-        if type(response) != dict or "verdicts" not in response:
-            raise InvalidLLMResponseError(
-                f"LLM response was not a list of valid verdicts: {response}"
-            )
-
-        verdicts = response["verdicts"]
-        if (
-            type(verdicts) != list
-            or len(verdicts) != len(opinions)
-            or not all(
-                verdict["verdict"] in ["yes", "no"] for verdict in verdicts
-            )
-        ):
-            raise InvalidLLMResponseError(
-                f"LLM response was not a list of valid verdicts: {response}"
-            )
-
-        return verdicts
-
-    @retry_if_invalid_llm_response
-    def _generate_context_precision_verdicts(
-        self,
-        query: str,
-        ordered_context_list: list[str],
-        groundtruth: str,
-    ) -> list[dict[str, str]]:
-        """
-        Generate a list of context precision verdicts for an ordered list of contexts, using a call to the LLM API.
-
-        The verdict for each context should be 'yes' if the context is relevant to produce the ground truth answer to the query. The verdict should be 'no' otherwise.
-
-        Parameters
-        ----------
-        query: str
-            The query.
-        ordered_context_list: list[str]
-            The ordered list of contexts. Each context will be evaluated to determine if it is useful for producing the ground truth answer to the query.
-        groundtruth: str
-            The ground truth answer to the query.
-
-        Returns
-        -------
-        list[dict[str,str]]
-            The list of verdicts for each context. Each verdict is a dictionary with the "verdict" field.
-        """
-
-        if self.client is None:
-            raise ValueError(
-                "A LLM client must be defined to use this function."
-            )
-
-        messages = [
-            {"role": "system", "content": self.default_system_prompt},
-            {
-                "role": "user",
-                "content": generate_context_precision_verdicts_instruction(
-                    query=query,
-                    ordered_context_list=ordered_context_list,
-                    groundtruth=groundtruth,
-                ),
-            },
-        ]
-
-        response = self.client(messages)
-        response = trim_and_load_json(response)
-        if type(response) != dict or "verdicts" not in response:
-            raise InvalidLLMResponseError(
-                f"LLM response was not a list of valid verdicts: {response}"
-            )
-
-        verdicts = response["verdicts"]
-        if (
-            type(verdicts) != list
-            or len(verdicts) != len(ordered_context_list)
-            or not all(
-                verdict["verdict"] in ["yes", "no"] for verdict in verdicts
-            )
-        ):
-            raise InvalidLLMResponseError(
-                f"LLM response was not a list of valid verdicts: {response}"
-            )
-
-        return verdicts
-
-    @retry_if_invalid_llm_response
-    def _generate_context_recall_verdicts(
-        self,
-        context_list: list[str],
-        groundtruth_statements: list[str],
-    ) -> list[dict[str, str]]:
-        """
-        Generate a list of context recall verdicts for a list of ground truth statements, using a call to the LLM API.
-
-        The verdict for each ground truth statement should be 'yes' if the ground truth statement is attributable to the context list and 'no' otherwise.
-
-        Parameters
-        ----------
-        context_list: list[str]
-            The list of contexts to evaluate against.
-        groundtruth_statements: str
-            A list of statements extracted from the ground truth answer.
-
-        Returns
-        -------
-        list[dict[str,str]]
-            The list of verdicts for each ground truth statement. Each verdict is a dictionary with the "verdict" field.
-        """
-
-        if self.client is None:
-            raise ValueError(
-                "A LLM client must be defined to use this function."
-            )
-
-        messages = [
-            {"role": "system", "content": self.default_system_prompt},
-            {
-                "role": "user",
-                "content": generate_context_recall_verdicts_instruction(
-                    context_list=context_list,
-                    groundtruth_statements=groundtruth_statements,
-                ),
-            },
-        ]
-
-        response = self.client(messages)
-        response = trim_and_load_json(response)
-        if type(response) != dict or "verdicts" not in response:
-            raise InvalidLLMResponseError(
-                f"LLM response was not a list of valid verdicts: {response}"
-            )
-
-        verdicts = response["verdicts"]
-        if (
-            type(verdicts) != list
-            or len(verdicts) != len(groundtruth_statements)
-            or not all(
-                verdict["verdict"] in ["yes", "no"] for verdict in verdicts
-            )
-        ):
-            raise InvalidLLMResponseError(
-                f"LLM response was not a list of valid verdicts: {response}"
-            )
-
-        return verdicts
-
-    @retry_if_invalid_llm_response
-    def _generate_context_relevance_verdicts(
-        self,
-        query: str,
-        context_list: list[str],
-    ) -> list[dict[str, str]]:
-        """
-        Generate a list of context relevance verdicts for a list of contexts, using a call to the LLM API.
-
-        Parameters
-        ----------
-        query: str
-            The query to evaluate each context against.
-        context_list: list[str]
-            The ordered list of contexts to evaluate the relevance of.
-
-        Returns
-        -------
-        list[dict[str,str]]
-            The list of verdicts for each context. Each verdict is a dictionary with the "verdict" field.
-        """
-
-        if self.client is None:
-            raise ValueError(
-                "A LLM client must be defined to use this function."
-            )
-
-        messages = [
-            {"role": "system", "content": self.default_system_prompt},
-            {
-                "role": "user",
-                "content": generate_context_relevance_verdicts_instruction(
-                    query=query,
-                    context_list=context_list,
-                ),
-            },
-        ]
-
-        response = self.client(messages)
-        response = trim_and_load_json(response)
-        if type(response) != dict or "verdicts" not in response:
-            raise InvalidLLMResponseError(
-                f"LLM response was not a list of valid verdicts: {response}"
-            )
-
-        verdicts = response["verdicts"]
-        if (
-            type(verdicts) != list
-            or len(verdicts) != len(context_list)
-            or not all(
-                verdict["verdict"] in ["yes", "no"] for verdict in verdicts
-            )
-        ):
-            raise InvalidLLMResponseError(
-                f"LLM response was not a list of valid verdicts: {response}"
-            )
-
-        return verdicts
-
-    @retry_if_invalid_llm_response
-    def _generate_faithfulness_verdicts(
-        self,
-        claims: list[str],
-        context_list: list[str],
-    ) -> list[dict[str, str]]:
-        """
-        Generate a list of faithfulness verdicts for a list of claims, using a call to the LLM API.
-
-        Parameters
-        ----------
-        claims: list[str]
-            The claims to evaluate the faithfulness of.
-        context_list: list[str]
-            The list of contexts to evaluate against.
-
-        Returns
-        -------
-        list[dict[str,str]]
-            The list of verdicts for each claim. Each verdict is a dictionary with one key "verdict".
-        """
-
-        if self.client is None:
-            raise ValueError(
-                "A LLM client must be defined to use this function."
-            )
-
-        messages = [
-            {"role": "system", "content": self.default_system_prompt},
-            {
-                "role": "user",
-                "content": generate_faithfulness_verdicts_instruction(
-                    claims=claims,
-                    context_list=context_list,
-                ),
-            },
-        ]
-
-        response = self.client(messages)
-        response = trim_and_load_json(response)
-        if type(response) != dict or "verdicts" not in response:
-            raise InvalidLLMResponseError(
-                f"LLM response was not a list of valid verdicts: {response}"
-            )
-
-        verdicts = response["verdicts"]
-        if (
-            type(verdicts) != list
-            or len(verdicts) != len(claims)
-            or not all(
-                verdict["verdict"] in ["yes", "no"] for verdict in verdicts
-            )
-        ):
-            raise InvalidLLMResponseError(
-                f"LLM response was not a list of valid verdicts: {response}"
-            )
-
-        return verdicts
-
-    @retry_if_invalid_llm_response
-    def _generate_hallucination_verdicts(
-        self,
-        text: str,
-        context_list: list[str],
-    ) -> list[dict[str, str]]:
-        """
-        Generate a list of hallucination verdicts for a list of contexts, using a call to the LLM API.
-
-        The verdict for each context should be 'yes' if the text contradicts that context. The verdict should be 'no' otherwise.
-
-        Parameters
-        ----------
-        text: str
-            The text to evaluate for hallucination.
-        context_list: list[str]
-            The list of contexts to compare against.
-
-        Returns
-        -------
-        list[dict[str,str]]
-            The list of verdicts for each context. Each verdict is a dictionary with the "verdict" field.
-        """
-
-        if self.client is None:
-            raise ValueError(
-                "A LLM client must be defined to use this function."
-            )
-
-        messages = [
-            {"role": "system", "content": self.default_system_prompt},
-            {
-                "role": "user",
-                "content": generate_hallucination_verdicts_instruction(
-                    text=text,
-                    context_list=context_list,
-                ),
-            },
-        ]
-
-        response = self.client(messages)
-        response = trim_and_load_json(response)
-        if type(response) != dict or "verdicts" not in response:
-            raise InvalidLLMResponseError(
-                f"LLM response was not a list of valid verdicts: {response}"
-            )
-
-        verdicts = response["verdicts"]
-        if (
-            type(verdicts) != list
-            or len(verdicts) != len(context_list)
-            or not all(
-                verdict["verdict"] in ["yes", "no"] for verdict in verdicts
-            )
-        ):
-            raise InvalidLLMResponseError(
-                f"LLM response was not a list of valid verdicts: {response}"
-            )
-
-        return verdicts
-
-    @retry_if_invalid_llm_response
-    def _summary_coherence(
-        self,
-        text: str,
-        summary: str,
-    ) -> int:
-        """
-        Compute summary coherence, the collective quality of a summary.
-
-        Parameters
-        ----------
-        text: str
-            The text that was summarized.
-        summary: str
-            The summary to be evaluated.
-
-        Returns
-        -------
-        int
-            The summary coherence score will be evaluated as an integer, with 1 indicating the lowest summary coherence and 5 the highest summary coherence.
-        """
-
-        if self.client is None:
-            raise ValueError(
-                "A LLM client must be defined to use this function."
-            )
-
-        messages = [
-            {"role": "system", "content": self.default_system_prompt},
-            {
-                "role": "user",
-                "content": generate_summary_coherence_instruction(
-                    text=text, summary=summary
-                ),
-            },
-        ]
-
-        response = self.client(messages)
-
-        try:
-            # Valid responses: "5", "\n5", "5\n", "5.", " 5", "5 {explanation}", etc.
-            ret = int(response.strip()[0])
-        except Exception:
-            raise InvalidLLMResponseError(
-                f"LLM response was not a valid summary coherence score: {response}"
-            )
-
-        if ret not in {1, 2, 3, 4, 5}:
-            raise InvalidLLMResponseError(
-                f"Summary coherence score was not an integer between 1 and 5: {ret}"
-            )
-
-        return ret
-
-    @retry_if_invalid_llm_response
-    def _generate_toxicity_verdicts(
-        self,
-        opinions: list[str],
-    ) -> list[dict[str, str]]:
-        """
-        Generate a list of toxicity verdicts for a list of opinions, using a call to the LLM API.
-
-        Parameters
-        ----------
-        opinions: list[str]
-            The opinions to evaluate the toxicity of.
-
-        Returns
-        -------
-        list[dict[str,str]]
-            The list of verdicts for each opinion. Each verdict is a dictionary with the "verdict" field.
-        """
-
-        if self.client is None:
-            raise ValueError(
-                "A LLM client must be defined to use this function."
-            )
-
-        messages = [
-            {"role": "system", "content": self.default_system_prompt},
-            {
-                "role": "user",
-                "content": generate_toxicity_verdicts_instruction(
-                    opinions=opinions,
-                ),
-            },
-        ]
-
-        response = self.client(messages)
-        response = trim_and_load_json(response)
-        if type(response) != dict or "verdicts" not in response:
-            raise InvalidLLMResponseError(
-                f"LLM response was not a list of valid verdicts: {response}"
-            )
-
-        verdicts = response["verdicts"]
-        if (
-            type(verdicts) != list
-            or len(verdicts) != len(opinions)
-            or not all(
-                verdict["verdict"] in ["yes", "no"] for verdict in verdicts
-            )
-        ):
-            raise InvalidLLMResponseError(
-                f"LLM response was not a list of valid verdicts: {response}"
-            )
-
-        return verdicts
-
     @llm_guided
     def compute_answer_correctness(
         self,
@@ -943,32 +167,19 @@ class Evaluator:
         Metric
             The answer correctness score between 0 and 1. Higher values indicate that the answer is more correct. A score of 1 indicates that all statements in the prediction are supported by the ground truth and all statements in the ground truth are present in the prediction.
         """
-        if len(query.context.groundtruth) == 0:
+        if not query.context or len(query.context.groundtruth) == 0:
             raise ValueError(
                 "Answer correctness requires the definition of ground truth context."
             )
 
-        prediction_statements = self._generate_statements(text=query.response)
-        f1_scores = []
-        for groundtruth in query.context.groundtruth:
-            groundtruth_statements = self._generate_statements(
-                text=groundtruth
-            )
-            verdicts = self._generate_answer_correctness_verdicts(
-                query=query.query,
-                groundtruth_statements=groundtruth_statements,
-                prediction_statements=prediction_statements,
-            )
-
-            tp = len(verdicts["TP"])
-            fp = len(verdicts["FP"])
-            fn = len(verdicts["FN"])
-
-            f1_scores.append(tp / (tp + 0.5 * (fp + fn)) if tp > 0 else 0)
-
-        max_f1 = max(f1_scores)
-
-        return Metric.answer_correctness(value=max_f1)
+        result = calculate_answer_correctness(
+            client=self.client,
+            system_prompt=self.default_system_prompt,
+            query=query.query,
+            response=query.response,
+            groundtruths=query.context.groundtruth,
+        )
+        return Metric.answer_correctness(value=result)
 
     @llm_guided
     def compute_answer_relevance(self, query: Query) -> Metric:
@@ -985,14 +196,12 @@ class Evaluator:
         Metric
             The answer relevance score between 0 and 1. A score of 1 indicates that all statements are relevant to the query.
         """
-        statements = self._generate_statements(text=query.response)
-        verdicts = self._generate_answer_relevance_verdicts(
+        result = calculate_answer_relevance(
+            client=self.client,
+            system_prompt=self.default_system_prompt,
             query=query.query,
-            statements=statements,
+            response=query.response,
         )
-        result = sum(
-            1 for verdict in verdicts if verdict["verdict"] == "yes"
-        ) / len(verdicts)
         return Metric.answer_relevance(value=result)
 
     @llm_guided
@@ -1013,16 +222,11 @@ class Evaluator:
         float
             The bias score between 0 and 1. A score of 1 indicates that all opinions in the text are biased.
         """
-        opinions = self._generate_opinions(text=query.response)
-        if len(opinions) == 0:
-            return Metric.bias(value=0.0)
-
-        verdicts = self._generate_bias_verdicts(opinions=opinions)
-
-        result = sum(
-            1 for verdict in verdicts if verdict["verdict"] == "yes"
-        ) / len(verdicts)
-
+        result = calculate_bias(
+            client=self.client,
+            system_prompt=self.default_system_prompt,
+            response=query.response,
+        )
         return Metric.bias(value=result)
 
     @llm_guided
@@ -1051,7 +255,7 @@ class Evaluator:
         Metric
             The context precision score between 0 and 1. A higher score indicates better context precision.
         """
-        if len(query.context.prediction) == 0:
+        if not query.context or len(query.context.prediction) == 0:
             raise ValueError(
                 "Context precision requires context in the prediction response."
             )
@@ -1060,41 +264,13 @@ class Evaluator:
                 "Context precision requires ground truth contexts."
             )
 
-        # Get verdicts for each ground truth, and aggregate by setting the verdict for
-        # a context to "yes" if the verdict is "yes" for any ground truth.
-        aggregate_verdicts = ["no"] * len(query.context.prediction)
-        for groundtruth in query.context.groundtruth:
-            verdicts = self._generate_context_precision_verdicts(
-                query=query.query,
-                ordered_context_list=query.context.prediction,
-                groundtruth=groundtruth,
-            )
-            for i in range(len(verdicts)):
-                if verdicts[i]["verdict"] == "yes":
-                    aggregate_verdicts[i] = "yes"
-
-        # Use the aggregate verdicts to compute the precision at k for each k.
-        precision_at_k_list = []
-        for k in range(1, len(query.context.prediction) + 1):
-            # Only compute the precision at k if the kth context is relevant.
-            if aggregate_verdicts[k - 1] == "yes":
-                precision_at_k = (
-                    sum(
-                        1
-                        for verdict in aggregate_verdicts[:k]
-                        if verdict == "yes"
-                    )
-                    / k
-                )
-                precision_at_k_list.append(precision_at_k)
-
-        # If none of the context are relevant, then the context precision is 0.
-        if len(precision_at_k_list) == 0:
-            return Metric.context_precision(value=0)
-
-        # Average over all the precision at k for which the kth context is relevant.
-        result = sum(precision_at_k_list) / len(precision_at_k_list)
-
+        result = calculate_context_precision(
+            client=self.client,
+            system_prompt=self.default_system_prompt,
+            query=query.query,
+            retrieved_context=query.context.prediction,
+            groundtruth_context=query.context.groundtruth,
+        )
         return Metric.context_precision(value=result)
 
     @llm_guided
@@ -1119,31 +295,19 @@ class Evaluator:
         Metric
             The context recall score between 0 and 1. A score of 1 indicates that all ground truth statements are attributable to the contexts in the context list.
         """
-        if len(query.context.prediction) == 0:
+        if not query.context or len(query.context.prediction) == 0:
             raise ValueError(
                 "Context recall requires context in the prediction response."
             )
         if len(query.context.groundtruth) == 0:
             raise ValueError("Context recall requires ground truth contexts.")
 
-        scores = []
-        for groundtruth in query.context.groundtruth:
-            groundtruth_statements = self._generate_statements(
-                text=groundtruth
-            )
-
-            verdicts = self._generate_context_recall_verdicts(
-                context_list=query.context.prediction,
-                groundtruth_statements=groundtruth_statements,
-            )
-
-            scores.append(
-                sum(1 for verdict in verdicts if verdict["verdict"] == "yes")
-                / len(verdicts)
-            )
-
-        result = max(scores)
-
+        result = calculate_context_recall(
+            client=self.client,
+            system_prompt=self.default_system_prompt,
+            retrieved_context=query.context.prediction,
+            groundtruth_context=query.context.groundtruth,
+        )
         return Metric.context_recall(value=result)
 
     @llm_guided
@@ -1164,20 +328,17 @@ class Evaluator:
         Metric
             The context relevance score between 0 and 1. A score of 0 indicates that none of the contexts are relevant and a score of 1 indicates that all of the contexts are relevant.
         """
-        if len(query.context.prediction) == 0:
+        if not query.context or len(query.context.prediction) == 0:
             raise ValueError(
                 "Context relevance requires context in the prediction response."
             )
 
-        verdicts = self._generate_context_relevance_verdicts(
+        result = calculate_context_relevance(
+            client=self.client,
+            system_prompt=self.default_system_prompt,
             query=query.query,
-            context_list=query.context.prediction,
+            context_prediction=query.context.prediction,
         )
-
-        result = sum(
-            1 for verdict in verdicts if verdict["verdict"] == "yes"
-        ) / len(verdicts)
-
         return Metric.context_relevance(value=result)
 
     @llm_guided
@@ -1198,28 +359,17 @@ class Evaluator:
         Metric
             The faithfulness score between 0 and 1. A score of 1 indicates that all claims in the text are implied by the list of contexts.
         """
-        if len(query.context.prediction) == 0:
+        if not query.context:
             raise ValueError(
                 "Faithfulness requires context in the prediction response."
             )
 
-        claims = self._generate_claims(text=query.response)
-
-        # If there aren't any claims, then the text is perfectly faithful, as the text does not contain any non-faithful claims.
-        if len(claims) == 0:
-            return Metric.faithfulness(value=1)
-
-        faithfulness_verdicts = self._generate_faithfulness_verdicts(
-            claims=claims,
-            context_list=query.context.prediction,
+        result = calculate_faithfulness(
+            client=self.client,
+            system_prompt=self.default_system_prompt,
+            response=query.response,
+            context_prediction=query.context.prediction,
         )
-
-        result = sum(
-            1
-            for verdict in faithfulness_verdicts
-            if verdict["verdict"] == "yes"
-        ) / len(faithfulness_verdicts)
-
         return Metric.faithfulness(value=result)
 
     @llm_guided
@@ -1240,20 +390,17 @@ class Evaluator:
         Metric
             The hallucination score between 0 and 1. A score of 1 indicates that all contexts are contradicted by the text.
         """
-        if len(query.context.prediction) == 0:
+        if not query.context or len(query.context.prediction) == 0:
             raise ValueError(
                 "Hallucination requires context in the prediction response."
             )
 
-        verdicts = self._generate_hallucination_verdicts(
-            text=query.response,
-            context_list=query.context.prediction,
+        result = calculate_hallucination(
+            client=self.client,
+            system_prompt=self.default_system_prompt,
+            response=query.response,
+            context_prediction=query.context.prediction,
         )
-
-        result = sum(
-            1 for verdict in verdicts if verdict["verdict"] == "yes"
-        ) / len(verdicts)
-
         return Metric.hallucination(value=result)
 
     @llm_guided
@@ -1274,7 +421,9 @@ class Evaluator:
         Metric
             The summary coherence score between 1 and 5. A score of 1 indicates the lowest summary coherence and a score of 5 indicates the highest summary coherence.
         """
-        result = self._summary_coherence(
+        result = calculate_summary_coherence(
+            client=self.client,
+            system_prompt=self.default_system_prompt,
             text=query.query,
             summary=query.response,
         )
@@ -1298,20 +447,15 @@ class Evaluator:
         Metric
             The toxicity score will be evaluated as a float between 0 and 1, with 1 indicating that all opinions in the text are toxic.
         """
-        opinions = self._generate_opinions(text=query.response)
-        if len(opinions) == 0:
-            return Metric.toxicity(value=0.0)
-
-        verdicts = self._generate_toxicity_verdicts(opinions=opinions)
-
-        result = sum(
-            1 for verdict in verdicts if verdict["verdict"] == "yes"
-        ) / len(verdicts)
-
+        result = calculate_toxicity(
+            client=self.client,
+            system_prompt=self.default_system_prompt,
+            response=query.response,
+        )
         return Metric.toxicity(value=result)
 
+    @staticmethod
     def compute_rouge(
-        self,
         query: Query,
         rouge_types: list[str] | None = None,
         use_stemmer: bool = False,
@@ -1354,8 +498,8 @@ class Evaluator:
             for rouge_type, result in results.items()
         ]
 
+    @staticmethod
     def compute_sentence_bleu(
-        self,
         query: Query,
         weights: list[float] = [0.25, 0.25, 0.25, 0.25],
     ) -> Metric:

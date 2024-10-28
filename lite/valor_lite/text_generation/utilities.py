@@ -18,6 +18,7 @@ def trim_and_load_json(input_string: str) -> Any:
     Any
         The json object.
     """
+    print(input_string)
     start = input_string.find("{")
     end = input_string.rfind("}") + 1
 
