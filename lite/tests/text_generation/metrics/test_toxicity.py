@@ -1,4 +1,3 @@
-from valor_lite.text_generation import Evaluator
 from valor_lite.text_generation.computation import calculate_toxicity
 
 
@@ -49,6 +48,3 @@ def test_calculate_toxicity(
         )
         == 0.0
     )
-
-
-def test_evaluate_toxicity()
