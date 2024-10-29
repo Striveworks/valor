@@ -15,8 +15,8 @@ from valor_lite.text_generation.computation import (
     calculate_summary_coherence,
     calculate_toxicity,
 )
-from valor_lite.text_generation.exceptions import InvalidLLMResponseError
-from valor_lite.text_generation.integrations import (
+from valor_lite.text_generation.llm.exceptions import InvalidLLMResponseError
+from valor_lite.text_generation.llm.integrations import (
     ClientWrapper,
     MistralWrapper,
     OpenAIWrapper,

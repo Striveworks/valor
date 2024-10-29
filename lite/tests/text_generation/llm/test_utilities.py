@@ -1,27 +1,13 @@
 import json
 
 import pytest
-from valor_lite.text_generation.exceptions import InvalidLLMResponseError
-from valor_lite.text_generation.utilities import trim_and_load_json
-
-
-def _package_json(data: dict):
-    return f"```json \n{json.dumps(data, indent=4)}\n```"
+from valor_lite.text_generation.llm.exceptions import InvalidLLMResponseError
+from valor_lite.text_generation.llm.utilities import trim_and_load_json
 
 
 def test_trim_and_load_json():
-    input = """this text should be trimmed
-{
-    "verdicts": [
-        {
-            "verdict": "yes"
-        },
-        {
-            "verdict": "no",
-            "reason": "The statement 'I also think puppies are cute.' is irrelevant to the question about who the cutest cat ever is."
-        }
-    ]
-}"""
+
+    # test removal of excess text
     expected = {
         "verdicts": [
             {"verdict": "yes"},
@@ -31,13 +17,15 @@ def test_trim_and_load_json():
             },
         ]
     }
+    input_string = "this text should be trimmed"
+    input_string += json.dumps(expected, indent=4)
+    assert trim_and_load_json(input_string) == expected
 
-    assert trim_and_load_json(input) == expected
+    # test that a '}' is added it one is not present.
+    input = '{"field": "value" '
+    assert trim_and_load_json(input) == {"field": "value"}
 
-    # This function should add an } if none are present.
-    input = """{"field": "value" """
-    trim_and_load_json(input)
-
+    # test missing comma edge case
     input = """{
     "verdicts": [
         {
@@ -49,16 +37,13 @@ def test_trim_and_load_json():
         }
     ]
 }"""
-
-    # Missing a comma
     with pytest.raises(InvalidLLMResponseError):
         trim_and_load_json(input)
 
+    # test missing starting bracket
     input = """
     "sentence": "Hello, world!",
     "value": 3
 }"""
-
-    # Missing starting bracket
     with pytest.raises(InvalidLLMResponseError):
         trim_and_load_json(input)

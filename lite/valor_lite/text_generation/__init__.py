@@ -1,5 +1,5 @@
 from .annotation import Context, Query
-from .integrations import ClientWrapper, MistralWrapper, OpenAIWrapper
+from .llm.integrations import ClientWrapper, MistralWrapper, OpenAIWrapper
 from .manager import Evaluator
 from .metric import Metric, MetricType
 

@@ -28,10 +28,9 @@ try:
 except ImportError:
     OPENAI_INSTALLED = False
 
-from valor_lite.text_generation.exceptions import InvalidLLMResponseError
-from valor_lite.text_generation.integrations import (
+from valor_lite.text_generation.llm.exceptions import InvalidLLMResponseError
+from valor_lite.text_generation.llm.integrations import (
     MistralWrapper,
-    MockWrapper,
     OpenAIWrapper,
     _validate_messages,
 )
@@ -379,17 +378,6 @@ def test_mistral_client():
         assert "Mistral AI response was not a string." in str(e)
 
 
-def test_mock_client():
-    client = MockWrapper()
-
-    # The MockWrapper should not alter the messages.
-    messages = [{"role": "system", "content": "You are a helpful assistant."}]
-    assert messages == client._process_messages(messages)
-
-    # The MockWrapper should return nothing by default.
-    assert "" == client(messages)
-
-
 def test_process_message():
     # The messages should pass the validation in _process_messages.
     messages = [
@@ -412,7 +400,6 @@ def test_process_message():
     MistralWrapper(model_name="mistral-small-latest")._process_messages(
         messages=messages
     )
-    MockWrapper()._process_messages(messages=messages)
 
     # The clients should raise a ValueError because "content" is missing in the second message.
     messages = [
@@ -437,5 +424,3 @@ def test_process_message():
         MistralWrapper(model_name="mistral-small-latest")._process_messages(
             messages=messages
         )
-    with pytest.raises(ValueError):
-        MockWrapper()._process_messages(messages=messages)
