@@ -1,7 +1,6 @@
 import datetime
-import json
 import os
-from unittest.mock import MagicMock, Mock
+from unittest.mock import MagicMock
 
 import pytest
 
@@ -28,7 +27,6 @@ try:
 except ImportError:
     OPENAI_INSTALLED = False
 
-from valor_lite.text_generation.llm.exceptions import InvalidLLMResponseError
 from valor_lite.text_generation.llm.integrations import (
     MistralWrapper,
     OpenAIWrapper,
