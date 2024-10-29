@@ -28,8 +28,8 @@ jobs:
           python -m coverage json
           export TOTAL=$(python -c "import json;print(json.load(open('coverage.json'))['totals']['percent_covered_display'])")
           echo "total=$TOTAL" >> $GITHUB_ENV
-          if (( $TOTAL < 90 )); then
-            echo "Coverage is below 90%"
+          if (( $TOTAL < 98 )); then
+            echo "Coverage is below 98%"
             exit 1
           fi
         working-directory: ./lite
@@ -42,8 +42,8 @@ jobs:
           python -m coverage json
           export TOTAL=$(python -c "import json;print(json.load(open('coverage.json'))['totals']['percent_covered_display'])")
           echo "total=$TOTAL" >> $GITHUB_ENV
-          if (( $TOTAL < 90 )); then
-            echo "Coverage is below 90%"
+          if (( $TOTAL < 98 )); then
+            echo "Coverage is below 98%"
             exit 1
           fi
         working-directory: ./lite
@@ -56,8 +56,8 @@ jobs:
           python -m coverage json
           export TOTAL=$(python -c "import json;print(json.load(open('coverage.json'))['totals']['percent_covered_display'])")
           echo "total=$TOTAL" >> $GITHUB_ENV
-          if (( $TOTAL < 90 )); then
-            echo "Coverage is below 90%"
+          if (( $TOTAL < 98 )); then
+            echo "Coverage is below 98%"
             exit 1
           fi
         working-directory: ./lite
@@ -70,8 +70,8 @@ jobs:
           python -m coverage json
           export TOTAL=$(python -c "import json;print(json.load(open('coverage.json'))['totals']['percent_covered_display'])")
           echo "total=$TOTAL" >> $GITHUB_ENV
-          if (( $TOTAL < 90 )); then
-            echo "Coverage is below 90%"
+          if (( $TOTAL < 98 )); then
+            echo "Coverage is below 98%"
             exit 1
           fi
         working-directory: ./lite
