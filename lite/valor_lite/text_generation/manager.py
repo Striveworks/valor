@@ -30,7 +30,7 @@ def llm_guided(fn):
 
     If retries is set to 0, then the function will only be called once and not retried.
 
-    If, for example, retries is set to 3, then the function will be retried in the 
+    If, for example, retries is set to 3, then the function will be retried in the
     event of an InvalidLLMResponseError up to 3 times, for a maximum of 4 calls.
     """
 
@@ -65,7 +65,7 @@ class Evaluator:
     client : ClientWrapper, optional
         An optional client to compute llm-guided metrics.
     retries : int
-        The number of times to retry the API call if it fails. Defaults to 0, indicating 
+        The number of times to retry the API call if it fails. Defaults to 0, indicating
         that the call will not be retried.
     """
 
@@ -82,7 +82,7 @@ class Evaluator:
         client : ClientWrapper, optional
             Any LLM client that conforms to _ClientWrapper. Required for LLM-guided metrics.
         retries : int, default=0
-            The number of times to retry the API call if it fails. Defaults to 0, indicating 
+            The number of times to retry the API call if it fails. Defaults to 0, indicating
             that the call will not be retried.
         """
         self.client = client
@@ -105,11 +105,11 @@ class Evaluator:
         model_name : str, default="gpt-3.5-turbo"
             The model to use. Defaults to "gpt-3.5-turbo".
         api_key : str, optional
-            The OpenAI API key to use. If not specified, then the OPENAI_API_KEY environment 
+            The OpenAI API key to use. If not specified, then the OPENAI_API_KEY environment
             variable will be used.
         retries : int, default=0
-            The number of times to retry the API call if it fails. Defaults to 0, indicating 
-            that the call will not be retried. For example, if self.retries is set to 3, 
+            The number of times to retry the API call if it fails. Defaults to 0, indicating
+            that the call will not be retried. For example, if self.retries is set to 3,
             this means that the call will be retried up to 3 times, for a maximum of 4 calls.
         seed : int, optional
             An optional seed can be provided to GPT to get deterministic results.
@@ -141,11 +141,11 @@ class Evaluator:
         model_name : str, default="mistral-small-latest"
             The model to use. Defaults to "mistral-small-latest".
         api_key : str, optional
-            The Mistral API key to use. If not specified, then the MISTRAL_API_KEY environment 
+            The Mistral API key to use. If not specified, then the MISTRAL_API_KEY environment
             variable will be used.
         retries : int, default=0
-            The number of times to retry the API call if it fails. Defaults to 0, indicating 
-            that the call will not be retried. For example, if self.retries is set to 3, 
+            The number of times to retry the API call if it fails. Defaults to 0, indicating
+            that the call will not be retried. For example, if self.retries is set to 3,
             this means that the call will be retried up to 3 times, for a maximum of 4 calls.
         """
         client = MistralWrapper(
@@ -160,14 +160,14 @@ class Evaluator:
         query: Query,
     ) -> Metric:
         """
-        Compute answer correctness. Answer correctness is computed as an f1 score obtained 
+        Compute answer correctness. Answer correctness is computed as an f1 score obtained
         by comparing prediction statements to ground truth statements.
 
-        If there are multiple ground truths, then the f1 score is computed for each ground 
+        If there are multiple ground truths, then the f1 score is computed for each ground
         truth and the maximum score is returned.
 
-        This metric was adapted from RAGAS. We follow a similar prompting strategy and 
-        computation, however we do not do a weighted sum with an answer similarity score 
+        This metric was adapted from RAGAS. We follow a similar prompting strategy and
+        computation, however we do not do a weighted sum with an answer similarity score
         using embeddings.
 
         Parameters
@@ -178,9 +178,9 @@ class Evaluator:
         Returns
         -------
         Metric
-            The answer correctness score between 0 and 1. Higher values indicate that the 
-            answer is more correct. A score of 1 indicates that all statements in the 
-            prediction are supported by the ground truth and all statements in the ground 
+            The answer correctness score between 0 and 1. Higher values indicate that the
+            answer is more correct. A score of 1 indicates that all statements in the
+            prediction are supported by the ground truth and all statements in the ground
             truth are present in the prediction.
         """
         if not query.context or len(query.context.groundtruth) == 0:
@@ -200,7 +200,7 @@ class Evaluator:
     @llm_guided
     def compute_answer_relevance(self, query: Query) -> Metric:
         """
-        Compute answer relevance, the proportion of statements that are relevant to the 
+        Compute answer relevance, the proportion of statements that are relevant to the
         query, for a single piece of text.
 
         Parameters
@@ -211,7 +211,7 @@ class Evaluator:
         Returns
         -------
         Metric
-            The answer relevance score between 0 and 1. A score of 1 indicates that all 
+            The answer relevance score between 0 and 1. A score of 1 indicates that all
             statements are relevant to the query.
         """
         result = calculate_answer_relevance(
@@ -238,7 +238,7 @@ class Evaluator:
         Returns
         -------
         float
-            The bias score between 0 and 1. A score of 1 indicates that all opinions in 
+            The bias score between 0 and 1. A score of 1 indicates that all opinions in
             the text are biased.
         """
         result = calculate_bias(
@@ -254,25 +254,25 @@ class Evaluator:
         query: Query,
     ) -> Metric:
         """
-        Compute context precision, a score for evaluating the retrieval 
+        Compute context precision, a score for evaluating the retrieval
         mechanism of a RAG model.
 
-        First, an LLM is prompted to determine if each context in the context 
+        First, an LLM is prompted to determine if each context in the context
         list is useful for producing the ground truth answer to the query.
 
-        If there are multiple ground truths, then the verdict is "yes" for a 
-        context if that context is useful for producing any of the ground truth 
+        If there are multiple ground truths, then the verdict is "yes" for a
+        context if that context is useful for producing any of the ground truth
         answers, and "no" otherwise.
 
-        Then, using these verdicts, the context precision score is computed as 
-        a weighted sum of the precision at k for each k from 1 to the length 
+        Then, using these verdicts, the context precision score is computed as
+        a weighted sum of the precision at k for each k from 1 to the length
         of the context list.
 
-        Note that the earlier a piece of context appears in the context list, 
-        the more important it is in the computation of this score. For example, 
-        the first context in the context list will be included in every precision 
-        at k computation, so will have a large influence on the final score, 
-        whereas the last context will only be used for the last precision at 
+        Note that the earlier a piece of context appears in the context list,
+        the more important it is in the computation of this score. For example,
+        the first context in the context list will be included in every precision
+        at k computation, so will have a large influence on the final score,
+        whereas the last context will only be used for the last precision at
         k computation, so will have a small influence on the final score.
 
         Parameters
@@ -283,7 +283,7 @@ class Evaluator:
         Returns
         -------
         Metric
-            The context precision score between 0 and 1. A higher score indicates 
+            The context precision score between 0 and 1. A higher score indicates
             better context precision.
         """
         if not query.context or len(query.context.prediction) == 0:
@@ -312,10 +312,10 @@ class Evaluator:
         """
         Compute context recall, a score for evaluating the retrieval mechanism of a RAG model.
 
-        The context recall score is the proportion of statements in the ground truth 
+        The context recall score is the proportion of statements in the ground truth
         that are attributable to the context list.
 
-        If multiple ground truths are provided, then the context recall score is 
+        If multiple ground truths are provided, then the context recall score is
         computed for each ground truth and the maximum score is returned.
 
         Parameters
@@ -326,7 +326,7 @@ class Evaluator:
         Returns
         -------
         Metric
-            The context recall score between 0 and 1. A score of 1 indicates that 
+            The context recall score between 0 and 1. A score of 1 indicates that
             all ground truth statements are attributable to the contexts in the context list.
         """
         if not query.context or len(query.context.prediction) == 0:
@@ -350,7 +350,7 @@ class Evaluator:
         query: Query,
     ) -> Metric:
         """
-        Compute context relevance, the proportion of contexts in the context list 
+        Compute context relevance, the proportion of contexts in the context list
         that are relevant to the query.
 
         Parameters
@@ -361,8 +361,8 @@ class Evaluator:
         Returns
         -------
         Metric
-            The context relevance score between 0 and 1. A score of 0 indicates 
-            that none of the contexts are relevant and a score of 1 indicates 
+            The context relevance score between 0 and 1. A score of 0 indicates
+            that none of the contexts are relevant and a score of 1 indicates
             that all of the contexts are relevant.
         """
         if not query.context or len(query.context.prediction) == 0:
@@ -384,9 +384,9 @@ class Evaluator:
         query: Query,
     ) -> Metric:
         """
-        Compute the faithfulness score. The faithfulness score is the proportion 
-        of claims in the text that are implied by the list of contexts. Claims 
-        that contradict the list of contexts and claims that are unrelated to 
+        Compute the faithfulness score. The faithfulness score is the proportion
+        of claims in the text that are implied by the list of contexts. Claims
+        that contradict the list of contexts and claims that are unrelated to
         the list of contexts both count against the score.
 
         Parameters
@@ -397,7 +397,7 @@ class Evaluator:
         Returns
         -------
         Metric
-            The faithfulness score between 0 and 1. A score of 1 indicates that 
+            The faithfulness score between 0 and 1. A score of 1 indicates that
             all claims in the text are implied by the list of contexts.
         """
         if not query.context:
@@ -419,7 +419,7 @@ class Evaluator:
         query: Query,
     ) -> Metric:
         """
-        Compute the hallucination score, the proportion of contexts in the context 
+        Compute the hallucination score, the proportion of contexts in the context
         list that are contradicted by the text.
 
         Parameters
@@ -430,7 +430,7 @@ class Evaluator:
         Returns
         -------
         Metric
-            The hallucination score between 0 and 1. A score of 1 indicates that 
+            The hallucination score between 0 and 1. A score of 1 indicates that
             all contexts are contradicted by the text.
         """
         if not query.context or len(query.context.prediction) == 0:
@@ -462,8 +462,8 @@ class Evaluator:
         Returns
         -------
         Metric
-            The summary coherence score between 1 and 5. A score of 1 indicates 
-            the lowest summary coherence and a score of 5 indicates the highest 
+            The summary coherence score between 1 and 5. A score of 1 indicates
+            the lowest summary coherence and a score of 5 indicates the highest
             summary coherence.
         """
         result = calculate_summary_coherence(
@@ -490,7 +490,7 @@ class Evaluator:
         Returns
         -------
         Metric
-            The toxicity score will be evaluated as a float between 0 and 1, with 
+            The toxicity score will be evaluated as a float between 0 and 1, with
             1 indicating that all opinions in the text are toxic.
         """
         result = calculate_toxicity(
@@ -503,7 +503,12 @@ class Evaluator:
     @staticmethod
     def compute_rouge(
         query: Query,
-        rouge_types: list[str] | None = None,
+        rouge_types: list[str] = [
+            "rouge1",
+            "rouge2",
+            "rougeL",
+            "rougeLsum",
+        ],
         use_stemmer: bool = False,
     ) -> list[Metric]:
         """
@@ -514,7 +519,7 @@ class Evaluator:
         query: Query
             A user query with ground truth and generated response.
         rouge_types : list[str], optional
-            A list of rouge types to calculate. 
+            A list of rouge types to calculate.
             Defaults to ['rouge1', 'rouge2', 'rougeL', 'rougeLsum'].
         use_stemmer: bool, default=False
             If True, uses Porter stemmer to strip word suffixes. Defaults to False.
@@ -525,13 +530,6 @@ class Evaluator:
         """
         if not query.context:
             raise ValueError("Context is required for rouge metric.")
-        if rouge_types is None:
-            rouge_types = [
-                "rouge1",
-                "rouge2",
-                "rougeL",
-                "rougeLsum",
-            ]
         results = calculate_rouge_scores(
             prediction=query.response,
             references=query.context.groundtruth,
@@ -581,6 +579,12 @@ class Evaluator:
         self,
         query: Query,
         bleu_weights: list[float] = [0.25, 0.25, 0.25, 0.25],
+        rouge_types: list[str] = [
+            "rouge1",
+            "rouge2",
+            "rougeL",
+            "rougeLsum",
+        ],
         rouge_use_stemmer: bool = False,
     ) -> dict[MetricType, list[Metric]]:
         """
@@ -595,6 +599,9 @@ class Evaluator:
             weights (this is called BLEU-4). To evaluate your translations with
             higher/lower order ngrams, use customized weights. Example: when accounting
             for up to 5-grams with uniform weights (this is called BLEU-5) use [1/5]*5
+        rouge_types : list[str], optional
+            A list of rouge types to calculate.
+            Defaults to ['rouge1', 'rouge2', 'rougeL', 'rougeLsum'].
         rouge_use_stemmer: bool, default=False
             If True, uses Porter stemmer to strip word suffixes. Defaults to False.
         """
@@ -622,7 +629,7 @@ class Evaluator:
         ]
         results[MetricType.Toxicity] = [self.compute_toxicity(query)]
         results[MetricType.ROUGE] = self.compute_rouge(
-            query, use_stemmer=rouge_use_stemmer
+            query, rouge_types=rouge_types, use_stemmer=rouge_use_stemmer
         )
         results[MetricType.BLEU] = [
             self.compute_sentence_bleu(query, weights=bleu_weights)
