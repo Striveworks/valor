@@ -399,7 +399,7 @@ def calculate_toxicity(
 
 def calculate_rouge_scores(
     prediction: str,
-    references: list[str],
+    references: str | list[str],
     rouge_types: list[str],
     use_stemmer: bool = False,
 ) -> dict[str, float]:
@@ -438,7 +438,7 @@ def calculate_rouge_scores(
     # find the max value for each prediction
     results = defaultdict(float)
     for type_ in rouge_types:
-        results[type_] = max(metrics[type_], results[type_])
+        results[type_] = max(metrics[type_][0], results[type_])
     return results
 
 

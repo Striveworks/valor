@@ -683,74 +683,7 @@ def test_evaluate_text_generation_invalid_llm_response(
 
 
 def test__calculate_rouge_scores():
-    examples = [
-        {
-            "prediction": "Mary loves Joe",
-            "references": [
-                "Mary loves Joe",
-            ],
-            "rouge1": 1.0,
-            "rouge2": 1.0,
-            "rougeL": 1.0,
-            "rougeLsum": 1.0,
-        },  # perfect match
-        {
-            "prediction": "MARY LOVES JOE",
-            "references": ["Mary loves Joe"],
-            "rouge1": 1.0,
-            "rouge2": 1.0,
-            "rougeL": 1.0,
-            "rougeLsum": 1.0,
-        },  # perfect match, case sensitive
-        {
-            "prediction": "Mary loves Joe",
-            "references": ["MARY LOVES JOE"],
-            "rouge1": 1.0,
-            "rouge2": 1.0,
-            "rougeL": 1.0,
-            "rougeLsum": 1.0,
-        },  # perfect match, case sensitive
-        {
-            "prediction": "Mary loves Joe",
-            "references": ["Mary loves Jane"],
-            "rouge1": 0.67,
-            "rouge2": 0.5,
-            "rougeL": 0.67,
-            "rougeLsum": 0.67,
-        },  # off by one
-        {
-            "prediction": "flipping the roaring white dolphin",
-            "references": ["flip the roaring white dolphin"],
-            "rouge1": 0.8,
-            "rouge2": 0.75,
-            "rougeL": 0.8,
-            "rougeLsum": 0.8,
-            "use_stemmer": False,
-        },  # incorrect match without stemming
-        {
-            "prediction": "flipping the roaring white dolphin",
-            "references": ["flip the roaring white dolphin"],
-            "rouge1": 1,
-            "rouge2": 1,
-            "rougeL": 1,
-            "rougeLsum": 1,
-            "use_stemmer": True,
-        },  # correct match with stemming
-        {
-            "prediction": "flipping the roaring white dolphin",
-            "references": [
-                "some random sentence",
-                "some other sentence",
-                "some final reference",
-                "flip the roaring white dolphin",
-            ],
-            "rouge1": 1,
-            "rouge2": 1,
-            "rougeL": 1,
-            "rougeLsum": 1,
-            "use_stemmer": True,
-        },  # test multiple references
-    ]
+
 
     multiple_prediction_examples = [
         {

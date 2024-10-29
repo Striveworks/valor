@@ -5,10 +5,6 @@ from valor_lite.text_generation import Context, Query
 from valor_lite.text_generation.llm.integrations import _validate_messages
 
 
-def _package_json(data: dict):
-    return f"```json \n{json.dumps(data, indent=4)}\n```"
-
-
 class MockWrapper:
     """
     A mocked LLM client for testing purposes.
