@@ -22,7 +22,7 @@ jobs:
       - name: run classification tests and report coverage
         run: |
           pip install -e ".[test]"
-          COVERAGE_FILE=.coverage.classification python -m coverage run --omit "tests/*"  -m pytest -v tests/classification/
+          COVERAGE_FILE=.coverage.classification python -m coverage run --source "valor_lite/*"  -m pytest -v tests/classification/
           python -m coverage combine
           python -m coverage report -m
           python -m coverage json
@@ -36,7 +36,7 @@ jobs:
       - name: run object detection tests and report coverage
         run: |
           pip install -e ".[test]"
-          COVERAGE_FILE=.coverage.detection python -m coverage run --omit "tests/*"  -m pytest -v tests/object_detection/
+          COVERAGE_FILE=.coverage.detection python -m coverage run --source "valor_lite/*"  -m pytest -v tests/object_detection/
           python -m coverage combine
           python -m coverage report -m
           python -m coverage json
@@ -50,7 +50,7 @@ jobs:
       - name: run semantic segmentation tests and report coverage
         run: |
           pip install -e ".[test]"
-          COVERAGE_FILE=.coverage.segmentation python -m coverage run --omit "tests/*"  -m pytest -v tests/semantic_segmentation/
+          COVERAGE_FILE=.coverage.segmentation python -m coverage run --source "valor_lite/*"  -m pytest -v tests/semantic_segmentation/
           python -m coverage combine
           python -m coverage report -m
           python -m coverage json
@@ -64,7 +64,7 @@ jobs:
       - name: run text generation tests and report coverage
         run: |
           pip install -e ".[test,openai,mistral]"
-          COVERAGE_FILE=.coverage.text_generation python -m coverage run --omit "tests/*"  -m pytest -v tests/text_generation/
+          COVERAGE_FILE=.coverage.text_generation python -m coverage run --source "valor_lite/*"  -m pytest -v tests/text_generation/
           python -m coverage combine
           python -m coverage report -m
           python -m coverage json
