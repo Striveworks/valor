@@ -3,7 +3,7 @@ from valor_lite.object_detection import DataLoader, Detection, MetricType
 from valor_lite.object_detection.computation import compute_precion_recall
 
 
-def test__compute_precision():
+def test__compute_f1():
 
     sorted_pairs = np.array(
         [
@@ -27,19 +27,19 @@ def test__compute_precision():
         score_thresholds=score_thresholds,
     )
 
-    precision = counts[:, :, :, 3]
+    f1 = counts[:, :, :, 5]
 
-    # precision
+    # f1
     expected = np.array(
         [
-            [0.2],  # iou = 0.1
-            [0.2],  # iou = 0.6
+            [[1 / 3]],  # iou = 0.1
+            [[1 / 3]],  # iou = 0.6
         ]
     )
-    assert (precision == expected).all()
+    assert np.isclose(f1, expected).all()
 
 
-def test_precision_metrics_first_class(
+def test_f1_metrics_first_class(
     basic_detections_first_class: list[Detection],
     basic_rotated_detections_first_class: list[Detection],
 ):
@@ -79,12 +79,12 @@ def test_precision_metrics_first_class(
         assert evaluator.n_groundtruths == 2
         assert evaluator.n_predictions == 1
 
-        # test Precision
-        actual_metrics = [m.to_dict() for m in metrics[MetricType.Precision]]
+        # test F1
+        actual_metrics = [m.to_dict() for m in metrics[MetricType.F1]]
         expected_metrics = [
             {
-                "type": "Precision",
-                "value": 1.0,
+                "type": "F1",
+                "value": 2 / 3,
                 "parameters": {
                     "iou_threshold": 0.1,
                     "score_threshold": 0.0,
@@ -92,8 +92,8 @@ def test_precision_metrics_first_class(
                 },
             },
             {
-                "type": "Precision",
-                "value": 1.0,
+                "type": "F1",
+                "value": 2 / 3,
                 "parameters": {
                     "iou_threshold": 0.6,
                     "score_threshold": 0.0,
@@ -101,7 +101,7 @@ def test_precision_metrics_first_class(
                 },
             },
             {
-                "type": "Precision",
+                "type": "F1",
                 "value": 0.0,
                 "parameters": {
                     "iou_threshold": 0.1,
@@ -110,7 +110,7 @@ def test_precision_metrics_first_class(
                 },
             },
             {
-                "type": "Precision",
+                "type": "F1",
                 "value": 0.0,
                 "parameters": {
                     "iou_threshold": 0.6,
@@ -125,7 +125,7 @@ def test_precision_metrics_first_class(
             assert m in actual_metrics
 
 
-def test_precision_metrics_second_class(
+def test_f1_metrics_second_class(
     basic_detections_second_class: list[Detection],
     basic_rotated_detections_second_class: list[Detection],
 ):
@@ -163,11 +163,11 @@ def test_precision_metrics_second_class(
         assert evaluator.n_groundtruths == 1
         assert evaluator.n_predictions == 1
 
-        # test Precision
-        actual_metrics = [m.to_dict() for m in metrics[MetricType.Precision]]
+        # test F1
+        actual_metrics = [m.to_dict() for m in metrics[MetricType.F1]]
         expected_metrics = [
             {
-                "type": "Precision",
+                "type": "F1",
                 "value": 0.0,
                 "parameters": {
                     "iou_threshold": 0.1,
@@ -176,7 +176,7 @@ def test_precision_metrics_second_class(
                 },
             },
             {
-                "type": "Precision",
+                "type": "F1",
                 "value": 0.0,
                 "parameters": {
                     "iou_threshold": 0.6,
@@ -185,7 +185,7 @@ def test_precision_metrics_second_class(
                 },
             },
             {
-                "type": "Precision",
+                "type": "F1",
                 "value": 0.0,
                 "parameters": {
                     "iou_threshold": 0.1,
@@ -194,7 +194,7 @@ def test_precision_metrics_second_class(
                 },
             },
             {
-                "type": "Precision",
+                "type": "F1",
                 "value": 0.0,
                 "parameters": {
                     "iou_threshold": 0.6,
@@ -209,7 +209,7 @@ def test_precision_metrics_second_class(
             assert m in actual_metrics
 
 
-def test_precision_false_negatives_single_datum_baseline(
+def test_f1_false_negatives_single_datum_baseline(
     false_negatives_single_datum_baseline_detections: list[Detection],
 ):
     """This is the baseline for the below test. In this case there are two predictions and
@@ -226,11 +226,11 @@ def test_precision_false_negatives_single_datum_baseline(
         score_thresholds=[0.0, 0.9],
     )
 
-    actual_metrics = [m.to_dict() for m in metrics[MetricType.Precision]]
+    actual_metrics = [m.to_dict() for m in metrics[MetricType.F1]]
     expected_metrics = [
         {
-            "type": "Precision",
-            "value": 0.5,
+            "type": "F1",
+            "value": 2 / 3,
             "parameters": {
                 "iou_threshold": 0.5,
                 "score_threshold": 0.0,
@@ -238,7 +238,7 @@ def test_precision_false_negatives_single_datum_baseline(
             },
         },
         {
-            "type": "Precision",
+            "type": "F1",
             "value": 0.0,
             "parameters": {
                 "iou_threshold": 0.5,
@@ -253,7 +253,7 @@ def test_precision_false_negatives_single_datum_baseline(
         assert m in actual_metrics
 
 
-def test_precision_false_negatives_single_datum(
+def test_f1_false_negatives_single_datum(
     false_negatives_single_datum_detections: list[Detection],
 ):
     """Tests where high confidence false negative was not being penalized. The
@@ -269,11 +269,11 @@ def test_precision_false_negatives_single_datum(
         score_thresholds=[0.0],
     )
 
-    actual_metrics = [m.to_dict() for m in metrics[MetricType.Precision]]
+    actual_metrics = [m.to_dict() for m in metrics[MetricType.F1]]
     expected_metrics = [
         {
-            "type": "Precision",
-            "value": 0.5,
+            "type": "F1",
+            "value": 2 / 3,
             "parameters": {
                 "iou_threshold": 0.5,
                 "score_threshold": 0.0,
@@ -287,7 +287,7 @@ def test_precision_false_negatives_single_datum(
         assert m in actual_metrics
 
 
-def test_precision_false_negatives_two_datums_one_empty_low_confidence_of_fp(
+def test_f1_false_negatives_two_datums_one_empty_low_confidence_of_fp(
     false_negatives_two_datums_one_empty_low_confidence_of_fp_detections: list[
         Detection
     ],
@@ -311,11 +311,11 @@ def test_precision_false_negatives_two_datums_one_empty_low_confidence_of_fp(
         score_thresholds=[0.0],
     )
 
-    actual_metrics = [m.to_dict() for m in metrics[MetricType.Precision]]
+    actual_metrics = [m.to_dict() for m in metrics[MetricType.F1]]
     expected_metrics = [
         {
-            "type": "Precision",
-            "value": 0.5,
+            "type": "F1",
+            "value": 2 / 3,
             "parameters": {
                 "iou_threshold": 0.5,
                 "score_threshold": 0.0,
@@ -329,7 +329,7 @@ def test_precision_false_negatives_two_datums_one_empty_low_confidence_of_fp(
         assert m in actual_metrics
 
 
-def test_precision_false_negatives_two_datums_one_empty_high_confidence_of_fp(
+def test_f1_false_negatives_two_datums_one_empty_high_confidence_of_fp(
     false_negatives_two_datums_one_empty_high_confidence_of_fp_detections: list[
         Detection
     ],
@@ -352,11 +352,11 @@ def test_precision_false_negatives_two_datums_one_empty_high_confidence_of_fp(
         score_thresholds=[0.0],
     )
 
-    actual_metrics = [m.to_dict() for m in metrics[MetricType.Precision]]
+    actual_metrics = [m.to_dict() for m in metrics[MetricType.F1]]
     expected_metrics = [
         {
-            "type": "Precision",
-            "value": 0.5,
+            "type": "F1",
+            "value": 2 / 3,
             "parameters": {
                 "iou_threshold": 0.5,
                 "score_threshold": 0.0,
@@ -370,7 +370,7 @@ def test_precision_false_negatives_two_datums_one_empty_high_confidence_of_fp(
         assert m in actual_metrics
 
 
-def test_precision_false_negatives_two_datums_one_only_with_different_class_low_confidence_of_fp(
+def test_f1_false_negatives_two_datums_one_only_with_different_class_low_confidence_of_fp(
     false_negatives_two_datums_one_only_with_different_class_low_confidence_of_fp_detections: list[
         Detection
     ],
@@ -393,11 +393,11 @@ def test_precision_false_negatives_two_datums_one_only_with_different_class_low_
         score_thresholds=[0.0],
     )
 
-    actual_metrics = [m.to_dict() for m in metrics[MetricType.Precision]]
+    actual_metrics = [m.to_dict() for m in metrics[MetricType.F1]]
     expected_metrics = [
         {
-            "type": "Precision",
-            "value": 0.5,
+            "type": "F1",
+            "value": 2 / 3,
             "parameters": {
                 "iou_threshold": 0.5,
                 "score_threshold": 0.0,
@@ -405,7 +405,7 @@ def test_precision_false_negatives_two_datums_one_only_with_different_class_low_
             },
         },
         {
-            "type": "Precision",
+            "type": "F1",
             "value": 0.0,
             "parameters": {
                 "iou_threshold": 0.5,
@@ -420,7 +420,7 @@ def test_precision_false_negatives_two_datums_one_only_with_different_class_low_
         assert m in actual_metrics
 
 
-def test_precision_false_negatives_two_datums_one_only_with_different_class_high_confidence_of_fp(
+def test_f1_false_negatives_two_datums_one_only_with_different_class_high_confidence_of_fp(
     false_negatives_two_images_one_only_with_different_class_high_confidence_of_fp_detections: list[
         Detection
     ],
@@ -443,11 +443,11 @@ def test_precision_false_negatives_two_datums_one_only_with_different_class_high
         score_thresholds=[0.0],
     )
 
-    actual_metrics = [m.to_dict() for m in metrics[MetricType.Precision]]
+    actual_metrics = [m.to_dict() for m in metrics[MetricType.F1]]
     expected_metrics = [
         {
-            "type": "Precision",
-            "value": 0.5,
+            "type": "F1",
+            "value": 2 / 3,
             "parameters": {
                 "iou_threshold": 0.5,
                 "score_threshold": 0.0,
@@ -455,7 +455,7 @@ def test_precision_false_negatives_two_datums_one_only_with_different_class_high
             },
         },
         {
-            "type": "Precision",
+            "type": "F1",
             "value": 0.0,
             "parameters": {
                 "iou_threshold": 0.5,
