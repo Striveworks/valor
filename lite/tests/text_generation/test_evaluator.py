@@ -9,7 +9,7 @@ from valor_lite.text_generation import (
     OpenAIWrapper,
     Query,
 )
-from valor_lite.text_generation.exceptions import InvalidLLMResponseError
+from valor_lite.text_generation.llm.exceptions import InvalidLLMResponseError
 
 
 class BadValueInTestLLMClientsError(Exception):

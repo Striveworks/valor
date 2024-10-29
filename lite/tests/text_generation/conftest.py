@@ -178,3 +178,63 @@ def summarization_annotations(
         )
         for i in range(len(summarization_texts))
     ]
+
+
+@pytest.fixture
+def verdicts_all_yes() -> str:
+    return json.dumps(
+        {
+            "verdicts": [
+                {"verdict": "yes", "analysis": "some text"},
+                {"verdict": "yes", "analysis": "some text"},
+                {"verdict": "yes", "analysis": "some text"},
+            ],
+            "statements": ["x", "y", "z"],
+            "opinions": ["x", "y", "z"],
+            "claims": ["x", "y", "z"],
+        }
+    )
+
+
+@pytest.fixture
+def verdicts_all_no() -> str:
+    return json.dumps(
+        {
+            "verdicts": [
+                {"verdict": "no", "analysis": "some text"},
+                {"verdict": "no", "analysis": "some text"},
+                {"verdict": "no", "analysis": "some text"},
+            ],
+            "statements": ["x", "y", "z"],
+            "opinions": ["x", "y", "z"],
+            "claims": ["x", "y", "z"],
+        }
+    )
+
+
+@pytest.fixture
+def verdicts_two_yes_one_no() -> str:
+    return json.dumps(
+        {
+            "verdicts": [
+                {"verdict": "yes", "analysis": "some text"},
+                {"verdict": "no", "analysis": "some text"},
+                {"verdict": "yes", "analysis": "some text"},
+            ],
+            "statements": ["x", "y", "z"],
+            "opinions": ["x", "y", "z"],
+            "claims": ["x", "y", "z"],
+        }
+    )
+
+
+@pytest.fixture
+def verdicts_empty() -> str:
+    return json.dumps(
+        {
+            "verdicts": [],
+            "statements": [],
+            "opinions": [],
+            "claims": [],
+        }
+    )

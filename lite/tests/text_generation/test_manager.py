@@ -4,7 +4,7 @@ from unittest.mock import patch
 
 import pytest
 from valor_lite.text_generation import Evaluator
-from valor_lite.text_generation.exceptions import (
+from valor_lite.text_generation.llm.exceptions import (
     MismatchingTextGenerationDatumError,
 )
 from valor_lite.text_generation.metric import MetricType

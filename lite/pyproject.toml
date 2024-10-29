@@ -10,8 +10,6 @@ dependencies = [
     "importlib_metadata; python_version < '3.8'",
     "nltk",
     "numpy",
-    "pandas>=2.2.2",
-    "pandas-stubs",
     "Pillow >= 9.1.0",
     "requests",
     "rouge_score",
@@ -29,7 +27,7 @@ build-backend = "setuptools.build_meta"
 [project.optional-dependencies]
 mistral = ["mistralai >= 1.0"]
 openai = ["openai"]
-test = ["pytest", "coverage"]
+test = ["pytest", "coverage", "pre-commit"]
 
 [tool.black]
 line-length = 79

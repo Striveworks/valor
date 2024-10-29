@@ -445,7 +445,7 @@ def calculate_rouge_scores(
 def calculate_sentence_bleu(
     prediction: str,
     references: list[str],
-    weights: list[float],
+    weights: tuple[float, ...] | list[float],
 ) -> float:
     """
     Calculate sentence BLEU scores for a of prediction - ground truth pair.
@@ -456,7 +456,7 @@ def calculate_sentence_bleu(
         The prediction to score. Each prediction should be a string with tokens separated by spaces.
     references : list[str]
         A list of references for the prediction. Each reference should be a string with tokens separated by spaces.
-    weights : list[float]
+    weights : tuple[float]
         The default BLEU calculates a score for up to 4-grams using uniform
         weights (this is called BLEU-4). To evaluate your translations with
         higher/lower order ngrams, use customized weights. Example: when accounting
