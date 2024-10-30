@@ -1,5 +1,5 @@
 import pytest
-from valor_lite.text_generation import Evaluator, QueryResponse
+from valor_lite.text_generation import Context, Evaluator, QueryResponse
 from valor_lite.text_generation.computation import calculate_rouge_scores
 
 
@@ -145,3 +145,98 @@ def test_calculate_rouge_scores():
             references=["Mary loves June"],
             rouge_types=rouge_types,
         )
+
+
+def test_evaluate_rouge():
+
+    evaluator = Evaluator()
+
+    # perfect match
+    metrics = evaluator.compute_rouge(
+        response=QueryResponse(
+            query="n/a",
+            response="Mary loves Joe",
+            context=Context(
+                groundtruth=["Mary loves Joe"],
+            ),
+        )
+    )
+    assert [m.to_dict() for m in metrics] == [
+        {
+            "type": "ROUGE",
+            "value": 1.0,
+            "parameters": {
+                "rouge_type": "rouge1",
+                "use_stemmer": False,
+            },
+        },
+        {
+            "type": "ROUGE",
+            "value": 1.0,
+            "parameters": {
+                "rouge_type": "rouge2",
+                "use_stemmer": False,
+            },
+        },
+        {
+            "type": "ROUGE",
+            "value": 1.0,
+            "parameters": {
+                "rouge_type": "rougeL",
+                "use_stemmer": False,
+            },
+        },
+        {
+            "type": "ROUGE",
+            "value": 1.0,
+            "parameters": {
+                "rouge_type": "rougeLsum",
+                "use_stemmer": False,
+            },
+        },
+    ]
+
+    # off by one
+    metrics = evaluator.compute_rouge(
+        response=QueryResponse(
+            query="n/a",
+            response="Mary loves Joe",
+            context=Context(
+                groundtruth=["Mary loves Jane"],
+            ),
+        )
+    )
+    assert [m.to_dict() for m in metrics] == [
+        {
+            "type": "ROUGE",
+            "value": 2 / 3,
+            "parameters": {
+                "rouge_type": "rouge1",
+                "use_stemmer": False,
+            },
+        },
+        {
+            "type": "ROUGE",
+            "value": 0.5,
+            "parameters": {
+                "rouge_type": "rouge2",
+                "use_stemmer": False,
+            },
+        },
+        {
+            "type": "ROUGE",
+            "value": 2 / 3,
+            "parameters": {
+                "rouge_type": "rougeL",
+                "use_stemmer": False,
+            },
+        },
+        {
+            "type": "ROUGE",
+            "value": 2 / 3,
+            "parameters": {
+                "rouge_type": "rougeLsum",
+                "use_stemmer": False,
+            },
+        },
+    ]

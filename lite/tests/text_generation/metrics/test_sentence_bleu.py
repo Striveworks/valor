@@ -1,5 +1,5 @@
 import pytest
-from valor_lite.text_generation import Evaluator, QueryResponse
+from valor_lite.text_generation import Context, Evaluator, QueryResponse
 from valor_lite.text_generation.computation import calculate_sentence_bleu
 
 
@@ -181,3 +181,44 @@ def test_calculate_sentence_bleu():
             ],
             weights=[],
         )
+
+
+def test_evaluate_sentence_bleu():
+
+    evaluator = Evaluator()
+
+    # perfect match
+    assert evaluator.compute_sentence_bleu(
+        response=QueryResponse(
+            query="n/a",
+            response="Mary loves Joe",
+            context=Context(
+                groundtruth=["Mary loves Joe"],
+            ),
+        ),
+        weights=[1],
+    ).to_dict() == {
+        "type": "BLEU",
+        "value": 1.0,
+        "parameters": {
+            "weights": [1],
+        },
+    }
+
+    # off by one
+    assert evaluator.compute_sentence_bleu(
+        response=QueryResponse(
+            query="n/a",
+            response="Mary loves Joe",
+            context=Context(
+                groundtruth=["Mary loves Jane"],
+            ),
+        ),
+        weights=[1],
+    ).to_dict() == {
+        "type": "BLEU",
+        "value": 2 / 3,
+        "parameters": {
+            "weights": [1],
+        },
+    }
