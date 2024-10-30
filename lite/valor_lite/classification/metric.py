@@ -28,6 +28,24 @@ class Metric(BaseMetric):
         A dictionary containing metric parameters.
     """
 
+    def __post_init__(self):
+        if not isinstance(self.type, str):
+            raise TypeError(
+                f"Metric type should be of type 'str': {self.type}"
+            )
+        elif not isinstance(self.value, (int, float, dict)):
+            raise TypeError(
+                f"Metric value must be of type 'int', 'float' or 'dict': {self.value}"
+            )
+        elif not isinstance(self.parameters, dict):
+            raise TypeError(
+                f"Metric parameters must be of type 'dict[str, Any]': {self.parameters}"
+            )
+        elif not all([isinstance(k, str) for k in self.parameters.keys()]):
+            raise TypeError(
+                f"Metric parameter dictionary should only have keys with type 'str': {self.parameters}"
+            )
+
     @classmethod
     def precision(
         cls,
