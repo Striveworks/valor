@@ -187,16 +187,11 @@ def test_openai_client():
         {"role": "system", "content": "You are a helpful assistant."}
     ]
     with pytest.raises(OpenAIError):  # type: ignore - test is not run if openai is not installed
-        client.connect()
         client(fake_message)
-
-    # Check that the OpenAIWrapper does not alter the messages.
-    assert fake_message == client._process_messages(fake_message)
 
     # The OpenAI Client should be able to connect if the API key is set as the environment variable.
     os.environ["OPENAI_API_KEY"] = "dummy_key"
     client = OpenAIWrapper(model_name="model_name")
-    client.connect()
 
     client.client = MagicMock()
 
@@ -336,15 +331,11 @@ def test_mistral_client():
     client = MistralWrapper(api_key="invalid_key", model_name="model_name")
     fake_message = [{"role": "assistant", "content": "content"}]
     with pytest.raises(MistralSDKError):  # type: ignore - test is not run if mistralai is not installed
-        client.connect()
         client(fake_message)
-
-    assert fake_message == client._process_messages(fake_message)
 
     # The Mistral Client should be able to connect if the API key is set as the environment variable.
     os.environ["MISTRAL_API_KEY"] = "dummy_key"
     client = MistralWrapper(model_name="model_name")
-    client.connect()
 
     client.client = MagicMock()
 
@@ -374,51 +365,3 @@ def test_mistral_client():
     with pytest.raises(TypeError) as e:
         client(fake_message)
         assert "Mistral AI response was not a string." in str(e)
-
-
-def test_process_message():
-    # The messages should pass the validation in _process_messages.
-    messages = [
-        {
-            "role": "system",
-            "content": "You are a helpful assistant.",
-        },
-        {
-            "role": "user",
-            "content": "What is the weather like today?",
-        },
-        {
-            "role": "assistant",
-            "content": "The weather is sunny.",
-        },
-    ]
-    OpenAIWrapper(model_name="gpt-3.5-turbo")._process_messages(
-        messages=messages
-    )
-    MistralWrapper(model_name="mistral-small-latest")._process_messages(
-        messages=messages
-    )
-
-    # The clients should raise a ValueError because "content" is missing in the second message.
-    messages = [
-        {
-            "role": "system",
-            "content": "You are a helpful assistant.",
-        },
-        {
-            "role": "user",
-            "value": "What is the weather like today?",
-        },
-        {
-            "role": "assistant",
-            "content": "The weather is sunny.",
-        },
-    ]
-    with pytest.raises(ValueError):
-        OpenAIWrapper(model_name="gpt-3.5-turbo")._process_messages(
-            messages=messages
-        )
-    with pytest.raises(ValueError):
-        MistralWrapper(model_name="mistral-small-latest")._process_messages(
-            messages=messages
-        )
