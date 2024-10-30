@@ -1,6 +1,6 @@
 from functools import wraps
 
-from valor_lite.text_generation.annotation import Query
+from valor_lite.text_generation.annotation import QueryResponse
 from valor_lite.text_generation.computation import (
     calculate_answer_correctness,
     calculate_answer_relevance,
@@ -24,7 +24,7 @@ from valor_lite.text_generation.llm.integrations import (
 from valor_lite.text_generation.metric import Metric, MetricType
 
 
-def llm_guided(fn):
+def llm_guided_metric(fn):
     """
     Call the LLMClient class function with retries for InvalidLLMResponseError.
 
@@ -36,10 +36,16 @@ def llm_guided(fn):
 
     @wraps(fn)
     def wrapper(self, *args, **kwargs):
-        if self.client is None:
+        client = getattr(self, "client", None)
+        if client is None:
             raise ValueError(
                 f"{fn.__name__} requires the definition of an LLM client."
             )
+        if getattr(client, "model_name", None) is None:
+            raise AttributeError(
+                "Client wrapper should contain 'model_name' as a string attribute."
+            )
+
         error = None
         retries = getattr(self, "retries", 0)
         for _ in range(1 + retries):
@@ -51,6 +57,8 @@ def llm_guided(fn):
             return Metric.error(
                 error_type=type(error).__name__,
                 error_message=str(error),
+                model_name=client.model_name,
+                retries=retries,
             )
 
     return wrapper
@@ -71,7 +79,7 @@ class Evaluator:
 
     def __init__(
         self,
-        client: ClientWrapper,
+        client: ClientWrapper | None = None,
         retries: int = 0,
     ):
         """
@@ -85,6 +93,7 @@ class Evaluator:
             The number of times to retry the API call if it fails. Defaults to 0, indicating
             that the call will not be retried.
         """
+
         self.client = client
         self.retries = retries
         self.default_system_prompt = "You are a helpful assistant."
@@ -154,10 +163,10 @@ class Evaluator:
         )
         return cls(client=client, retries=retries)
 
-    @llm_guided
+    @llm_guided_metric
     def compute_answer_correctness(
         self,
-        query: Query,
+        response: QueryResponse,
     ) -> Metric:
         """
         Compute answer correctness. Answer correctness is computed as an f1 score obtained
@@ -172,7 +181,7 @@ class Evaluator:
 
         Parameters
         ----------
-        query: Query
+        response: QueryResponse
             A user query with ground truth and generated response.
 
         Returns
@@ -183,29 +192,31 @@ class Evaluator:
             prediction are supported by the ground truth and all statements in the ground
             truth are present in the prediction.
         """
-        if not query.context or len(query.context.groundtruth) == 0:
-            raise ValueError(
-                "Answer correctness requires the definition of ground truth context."
-            )
+        if not response.context:
+            raise ValueError("The answer correctness metric requires context.")
 
         result = calculate_answer_correctness(
-            client=self.client,
+            client=self.client,  # type: ignore - wrapper handles None case
             system_prompt=self.default_system_prompt,
-            query=query.query,
-            response=query.response,
-            groundtruths=query.context.groundtruth,
+            query=response.query,
+            response=response.response,
+            groundtruths=response.context.groundtruth,
         )
-        return Metric.answer_correctness(value=result)
+        return Metric.answer_correctness(
+            value=result,
+            model_name=self.client.model_name,  # type: ignore - wrapper handles None case
+            retries=self.retries,
+        )
 
-    @llm_guided
-    def compute_answer_relevance(self, query: Query) -> Metric:
+    @llm_guided_metric
+    def compute_answer_relevance(self, response: QueryResponse) -> Metric:
         """
         Compute answer relevance, the proportion of statements that are relevant to the
         query, for a single piece of text.
 
         Parameters
         ----------
-        query: Query
+        response: QueryResponse
             A user query with ground truth and generated response.
 
         Returns
@@ -215,24 +226,28 @@ class Evaluator:
             statements are relevant to the query.
         """
         result = calculate_answer_relevance(
-            client=self.client,
+            client=self.client,  # type: ignore - wrapper handles None case
             system_prompt=self.default_system_prompt,
-            query=query.query,
-            response=query.response,
+            query=response.query,
+            response=response.response,
         )
-        return Metric.answer_relevance(value=result)
+        return Metric.answer_relevance(
+            value=result,
+            model_name=self.client.model_name,  # type: ignore - wrapper handles None case
+            retries=self.retries,
+        )
 
-    @llm_guided
+    @llm_guided_metric
     def compute_bias(
         self,
-        query: Query,
+        response: QueryResponse,
     ) -> Metric:
         """
         Compute bias, the portion of opinions that are biased.
 
         Parameters
         ----------
-        query: Query
+        response: QueryResponse
             A user query with ground truth and generated response.
 
         Returns
@@ -242,16 +257,20 @@ class Evaluator:
             the text are biased.
         """
         result = calculate_bias(
-            client=self.client,
+            client=self.client,  # type: ignore - wrapper handles None case
             system_prompt=self.default_system_prompt,
-            response=query.response,
+            response=response.response,
         )
-        return Metric.bias(value=result)
+        return Metric.bias(
+            value=result,
+            model_name=self.client.model_name,  # type: ignore - wrapper handles None case
+            retries=self.retries,
+        )
 
-    @llm_guided
+    @llm_guided_metric
     def compute_context_precision(
         self,
-        query: Query,
+        response: QueryResponse,
     ) -> Metric:
         """
         Compute context precision, a score for evaluating the retrieval
@@ -277,7 +296,7 @@ class Evaluator:
 
         Parameters
         ----------
-        query: Query
+        response: QueryResponse
             A user query with ground truth and generated response.
 
         Returns
@@ -286,28 +305,26 @@ class Evaluator:
             The context precision score between 0 and 1. A higher score indicates
             better context precision.
         """
-        if not query.context or len(query.context.prediction) == 0:
-            raise ValueError(
-                "Context precision requires context in the prediction response."
-            )
-        if len(query.context.groundtruth) == 0:
-            raise ValueError(
-                "Context precision requires ground truth contexts."
-            )
+        if not response.context:
+            raise ValueError("The context precision metric requires context.")
 
         result = calculate_context_precision(
-            client=self.client,
+            client=self.client,  # type: ignore - wrapper handles None case
             system_prompt=self.default_system_prompt,
-            query=query.query,
-            retrieved_context=query.context.prediction,
-            groundtruth_context=query.context.groundtruth,
+            query=response.query,
+            retrieved_context=response.context.prediction,
+            groundtruth_context=response.context.groundtruth,
         )
-        return Metric.context_precision(value=result)
+        return Metric.context_precision(
+            value=result,
+            model_name=self.client.model_name,  # type: ignore - wrapper handles None case
+            retries=self.retries,
+        )
 
-    @llm_guided
+    @llm_guided_metric
     def compute_context_recall(
         self,
-        query: Query,
+        response: QueryResponse,
     ) -> Metric:
         """
         Compute context recall, a score for evaluating the retrieval mechanism of a RAG model.
@@ -320,7 +337,7 @@ class Evaluator:
 
         Parameters
         ----------
-        query: Query
+        response: QueryResponse
             A user query with ground truth and generated response.
 
         Returns
@@ -329,25 +346,25 @@ class Evaluator:
             The context recall score between 0 and 1. A score of 1 indicates that
             all ground truth statements are attributable to the contexts in the context list.
         """
-        if not query.context or len(query.context.prediction) == 0:
-            raise ValueError(
-                "Context recall requires context in the prediction response."
-            )
-        if len(query.context.groundtruth) == 0:
-            raise ValueError("Context recall requires ground truth contexts.")
+        if not response.context:
+            raise ValueError("The context recall metric requires context.")
 
         result = calculate_context_recall(
-            client=self.client,
+            client=self.client,  # type: ignore - wrapper handles None case
             system_prompt=self.default_system_prompt,
-            retrieved_context=query.context.prediction,
-            groundtruth_context=query.context.groundtruth,
+            retrieved_context=response.context.prediction,
+            groundtruth_context=response.context.groundtruth,
         )
-        return Metric.context_recall(value=result)
+        return Metric.context_recall(
+            value=result,
+            model_name=self.client.model_name,  # type: ignore - wrapper handles None case
+            retries=self.retries,
+        )
 
-    @llm_guided
+    @llm_guided_metric
     def compute_context_relevance(
         self,
-        query: Query,
+        response: QueryResponse,
     ) -> Metric:
         """
         Compute context relevance, the proportion of contexts in the context list
@@ -355,7 +372,7 @@ class Evaluator:
 
         Parameters
         ----------
-        query: Query
+        response: QueryResponse
             A user query with ground truth and generated response.
 
         Returns
@@ -365,23 +382,25 @@ class Evaluator:
             that none of the contexts are relevant and a score of 1 indicates
             that all of the contexts are relevant.
         """
-        if not query.context or len(query.context.prediction) == 0:
-            raise ValueError(
-                "Context relevance requires context in the prediction response."
-            )
+        if not response.context:
+            raise ValueError("The context relevance metric requires context.")
 
         result = calculate_context_relevance(
-            client=self.client,
+            client=self.client,  # type: ignore - wrapper handles None case
             system_prompt=self.default_system_prompt,
-            query=query.query,
-            context=query.context.prediction,
+            query=response.query,
+            context=response.context.prediction,
         )
-        return Metric.context_relevance(value=result)
+        return Metric.context_relevance(
+            value=result,
+            model_name=self.client.model_name,  # type: ignore - wrapper handles None case
+            retries=self.retries,
+        )
 
-    @llm_guided
+    @llm_guided_metric
     def compute_faithfulness(
         self,
-        query: Query,
+        response: QueryResponse,
     ) -> Metric:
         """
         Compute the faithfulness score. The faithfulness score is the proportion
@@ -391,7 +410,7 @@ class Evaluator:
 
         Parameters
         ----------
-        query: Query
+        response: QueryResponse
             A user query with ground truth and generated response.
 
         Returns
@@ -400,23 +419,26 @@ class Evaluator:
             The faithfulness score between 0 and 1. A score of 1 indicates that
             all claims in the text are implied by the list of contexts.
         """
-        if not query.context:
-            raise ValueError(
-                "Faithfulness requires context in the prediction response."
-            )
+
+        if not response.context:
+            raise ValueError("The faithfulness metric requires context.")
 
         result = calculate_faithfulness(
-            client=self.client,
+            client=self.client,  # type: ignore - wrapper handles None case
             system_prompt=self.default_system_prompt,
-            response=query.response,
-            context=query.context.prediction,
+            response=response.response,
+            context=response.context.prediction,
         )
-        return Metric.faithfulness(value=result)
+        return Metric.faithfulness(
+            value=result,
+            model_name=self.client.model_name,  # type: ignore - wrapper handles None case
+            retries=self.retries,
+        )
 
-    @llm_guided
+    @llm_guided_metric
     def compute_hallucination(
         self,
-        query: Query,
+        response: QueryResponse,
     ) -> Metric:
         """
         Compute the hallucination score, the proportion of contexts in the context
@@ -424,7 +446,7 @@ class Evaluator:
 
         Parameters
         ----------
-        query: Query
+        response: QueryResponse
             A user query with ground truth and generated response.
 
         Returns
@@ -433,30 +455,33 @@ class Evaluator:
             The hallucination score between 0 and 1. A score of 1 indicates that
             all contexts are contradicted by the text.
         """
-        if not query.context or len(query.context.prediction) == 0:
-            raise ValueError(
-                "Hallucination requires context in the prediction response."
-            )
+
+        if not response.context:
+            raise ValueError("The hallucination metric requires context.")
 
         result = calculate_hallucination(
-            client=self.client,
+            client=self.client,  # type: ignore - wrapper handles None case
             system_prompt=self.default_system_prompt,
-            response=query.response,
-            context=query.context.prediction,
+            response=response.response,
+            context=response.context.prediction,
         )
-        return Metric.hallucination(value=result)
+        return Metric.hallucination(
+            value=result,
+            model_name=self.client.model_name,  # type: ignore - wrapper handles None case
+            retries=self.retries,
+        )
 
-    @llm_guided
+    @llm_guided_metric
     def compute_summary_coherence(
         self,
-        query: Query,
+        response: QueryResponse,
     ) -> Metric:
         """
         Compute summary coherence, the collective quality of a summary.
 
         Parameters
         ----------
-        query: Query
+        response: QueryResponse
             A user query with ground truth and generated response.
 
         Returns
@@ -467,24 +492,28 @@ class Evaluator:
             summary coherence.
         """
         result = calculate_summary_coherence(
-            client=self.client,
+            client=self.client,  # type: ignore - wrapper handles None case
             system_prompt=self.default_system_prompt,
-            text=query.query,
-            summary=query.response,
+            text=response.query,
+            summary=response.response,
         )
-        return Metric.summary_coherence(value=result)
+        return Metric.summary_coherence(
+            value=result,
+            model_name=self.client.model_name,  # type: ignore - wrapper handles None case
+            retries=self.retries,
+        )
 
-    @llm_guided
+    @llm_guided_metric
     def compute_toxicity(
         self,
-        query: Query,
+        response: QueryResponse,
     ) -> Metric:
         """
         Compute toxicity, the portion of opinions that are toxic.
 
         Parameters
         ----------
-        query: Query
+        response: QueryResponse
             A user query with ground truth and generated response.
 
         Returns
@@ -494,15 +523,19 @@ class Evaluator:
             1 indicating that all opinions in the text are toxic.
         """
         result = calculate_toxicity(
-            client=self.client,
+            client=self.client,  # type: ignore - wrapper handles None case
             system_prompt=self.default_system_prompt,
-            response=query.response,
+            response=response.response,
         )
-        return Metric.toxicity(value=result)
+        return Metric.toxicity(
+            value=result,
+            model_name=self.client.model_name,  # type: ignore - wrapper handles None case
+            retries=self.retries,
+        )
 
     @staticmethod
     def compute_rouge(
-        query: Query,
+        response: QueryResponse,
         rouge_types: list[str] = [
             "rouge1",
             "rouge2",
@@ -516,7 +549,7 @@ class Evaluator:
 
         Parameters
         ----------
-        query: Query
+        response: QueryResponse
             A user query with ground truth and generated response.
         rouge_types : list[str], optional
             A list of rouge types to calculate.
@@ -528,11 +561,13 @@ class Evaluator:
         -------
         list[Metric]
         """
-        if not query.context:
-            raise ValueError("Context is required for rouge metric.")
+
+        if not response.context:
+            raise ValueError("ROUGE metrics require context.")
+
         results = calculate_rouge_scores(
-            prediction=query.response,
-            references=query.context.groundtruth,
+            prediction=response.response,
+            references=response.context.groundtruth,
             rouge_types=rouge_types,
             use_stemmer=use_stemmer,
         )
@@ -547,7 +582,7 @@ class Evaluator:
 
     @staticmethod
     def compute_sentence_bleu(
-        query: Query,
+        response: QueryResponse,
         weights: list[float] = [0.25, 0.25, 0.25, 0.25],
     ) -> Metric:
         """
@@ -555,7 +590,7 @@ class Evaluator:
 
         Parameters
         ----------
-        query: Query
+        response: QueryResponse
             A user query with ground truth and generated response.
         weights: list[float], default=[0.25, 0.25, 0.25, 0.25]
             The default BLEU calculates a score for up to 4-grams using uniform
@@ -563,11 +598,13 @@ class Evaluator:
             higher/lower order ngrams, use customized weights. Example: when accounting
             for up to 5-grams with uniform weights (this is called BLEU-5) use [1/5]*5
         """
-        if not query.context:
-            raise ValueError("Context is required for sentence BLEU metric.")
+
+        if not response.context:
+            raise ValueError("The sentence BLEU metric requires context.")
+
         result = calculate_sentence_bleu(
-            prediction=query.response,
-            references=query.context.groundtruth,
+            prediction=response.response,
+            references=response.context.groundtruth,
             weights=weights,
         )
         return Metric.bleu(
@@ -577,7 +614,7 @@ class Evaluator:
 
     def compute_all(
         self,
-        query: Query,
+        response: QueryResponse,
         bleu_weights: list[float] = [0.25, 0.25, 0.25, 0.25],
         rouge_types: list[str] = [
             "rouge1",
@@ -592,7 +629,7 @@ class Evaluator:
 
         Parameters
         ----------
-        query: Query
+        response: QueryResponse
             A user query with ground truth and generated response.
         bleu_weights: list[float], default=[0.25, 0.25, 0.25, 0.25]
             The default BLEU calculates a score for up to 4-grams using uniform
@@ -607,31 +644,37 @@ class Evaluator:
         """
         results = dict()
         results[MetricType.AnswerCorrectness] = [
-            self.compute_answer_correctness(query)
+            self.compute_answer_correctness(response)
         ]
         results[MetricType.AnswerRelevance] = [
-            self.compute_answer_relevance(query)
+            self.compute_answer_relevance(response)
         ]
-        results[MetricType.Bias] = [self.compute_bias(query)]
+        results[MetricType.Bias] = [self.compute_bias(response)]
         results[MetricType.ContextPrecision] = [
-            self.compute_context_precision(query)
+            self.compute_context_precision(response)
         ]
         results[MetricType.ContextRecall] = [
-            self.compute_context_recall(query)
+            self.compute_context_recall(response)
         ]
         results[MetricType.ContextRelevance] = [
-            self.compute_context_relevance(query)
+            self.compute_context_relevance(response)
         ]
-        results[MetricType.Faithfulness] = [self.compute_faithfulness(query)]
-        results[MetricType.Hallucination] = [self.compute_hallucination(query)]
+        results[MetricType.Faithfulness] = [
+            self.compute_faithfulness(response)
+        ]
+        results[MetricType.Hallucination] = [
+            self.compute_hallucination(response)
+        ]
         results[MetricType.SummaryCoherence] = [
-            self.compute_summary_coherence(query)
+            self.compute_summary_coherence(response)
         ]
-        results[MetricType.Toxicity] = [self.compute_toxicity(query)]
+        results[MetricType.Toxicity] = [self.compute_toxicity(response)]
         results[MetricType.ROUGE] = self.compute_rouge(
-            query, rouge_types=rouge_types, use_stemmer=rouge_use_stemmer
+            response=response,
+            rouge_types=rouge_types,
+            use_stemmer=rouge_use_stemmer,
         )
         results[MetricType.BLEU] = [
-            self.compute_sentence_bleu(query, weights=bleu_weights)
+            self.compute_sentence_bleu(response=response, weights=bleu_weights)
         ]
         return results

@@ -1,7 +1,7 @@
 import json
 
 import pytest
-from valor_lite.text_generation import Context, Query
+from valor_lite.text_generation import Context, QueryResponse
 from valor_lite.text_generation.llm.integrations import _validate_messages
 
 
@@ -14,6 +14,7 @@ class MockWrapper:
         self,
         **kwargs,
     ):
+        self.model_name = "mock"
         self.returning = "test payload"
 
     def _process_messages(
@@ -130,9 +131,9 @@ def rag_annotations(
     rag_context: list[list[str]],
     rag_predictions: list[str],
     rag_references: list[str],
-) -> list[Query]:
+) -> list[QueryResponse]:
     return [
-        Query(
+        QueryResponse(
             query=rag_queries[i],
             response=rag_predictions[i],
             context=Context(
@@ -151,9 +152,9 @@ def rag_annotations(
 @pytest.fixture
 def content_gen_annotations(
     content_gen_queries: list[str], content_gen_predictions: list[str], content
-) -> list[Query]:
+) -> list[QueryResponse]:
     return [
-        Query(
+        QueryResponse(
             query=content_gen_queries[i],
             response=content_gen_predictions[i],
         )
@@ -165,9 +166,9 @@ def content_gen_annotations(
 def summarization_annotations(
     summarization_texts: list[str],
     summarization_predictions: list[str],
-) -> list[Query]:
+) -> list[QueryResponse]:
     return [
-        Query(
+        QueryResponse(
             query=summarization_texts[i],
             response=summarization_predictions[i],
         )

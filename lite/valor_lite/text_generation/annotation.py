@@ -26,7 +26,7 @@ class Context:
 
 
 @dataclass
-class Query:
+class QueryResponse:
     """
     Text generation data structure containing ground truths and predictions.
 
@@ -41,7 +41,7 @@ class Query:
 
     Examples
     --------
-    >>> query = Query(
+    >>> query = QueryResponse(
     ...     query='When was George Washington born?',
     ...     response="February 22, 1732",
     ...     context=Context(

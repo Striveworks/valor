@@ -1,4 +1,5 @@
 import json
+import re
 from typing import Any
 
 from valor_lite.text_generation.llm.exceptions import InvalidLLMResponseError
@@ -34,3 +35,10 @@ def trim_and_load_json(input_string: str) -> Any:
             "Evaluation LLM outputted an invalid JSON. Please use a better evaluation model. JSONDecodeError: "
             + str(e)
         )
+
+
+def find_first_int(s):
+    match = re.search(r"-?\d+", s)
+    if match:
+        return int(match.group())
+    return None

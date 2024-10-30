@@ -1,3 +1,4 @@
+from valor_lite.text_generation import Evaluator, QueryResponse
 from valor_lite.text_generation.computation import calculate_answer_relevance
 
 
@@ -9,6 +10,8 @@ def test_calculate_answer_relevance(
     verdicts_empty: str,
 ):
 
+    evaluator = Evaluator(client=mock_client)
+
     mock_client.returning = verdicts_all_yes
     assert (
         calculate_answer_relevance(
@@ -19,6 +22,19 @@ def test_calculate_answer_relevance(
         )
         == 1.0
     )
+    assert evaluator.compute_answer_relevance(
+        response=QueryResponse(
+            query="a",
+            response="a",
+        )
+    ).to_dict() == {
+        "type": "AnswerRelevance",
+        "value": 1.0,
+        "parameters": {
+            "model_name": "mock",
+            "retries": 0,
+        },
+    }
 
     mock_client.returning = verdicts_two_yes_one_no
     assert (
@@ -30,6 +46,19 @@ def test_calculate_answer_relevance(
         )
         == 2 / 3
     )
+    assert evaluator.compute_answer_relevance(
+        response=QueryResponse(
+            query="a",
+            response="a",
+        )
+    ).to_dict() == {
+        "type": "AnswerRelevance",
+        "value": 2 / 3,
+        "parameters": {
+            "model_name": "mock",
+            "retries": 0,
+        },
+    }
 
     mock_client.returning = verdicts_all_no
     assert (
@@ -41,6 +70,19 @@ def test_calculate_answer_relevance(
         )
         == 0.0
     )
+    assert evaluator.compute_answer_relevance(
+        response=QueryResponse(
+            query="a",
+            response="a",
+        )
+    ).to_dict() == {
+        "type": "AnswerRelevance",
+        "value": 0.0,
+        "parameters": {
+            "model_name": "mock",
+            "retries": 0,
+        },
+    }
 
     mock_client.returning = verdicts_empty
     assert (
@@ -52,3 +94,16 @@ def test_calculate_answer_relevance(
         )
         == 0.0
     )
+    assert evaluator.compute_answer_relevance(
+        response=QueryResponse(
+            query="a",
+            response="a",
+        )
+    ).to_dict() == {
+        "type": "AnswerRelevance",
+        "value": 0.0,
+        "parameters": {
+            "model_name": "mock",
+            "retries": 0,
+        },
+    }

@@ -1,10 +1,10 @@
-from .annotation import Context, Query
+from .annotation import Context, QueryResponse
 from .llm.integrations import ClientWrapper, MistralWrapper, OpenAIWrapper
 from .manager import Evaluator
 from .metric import Metric, MetricType
 
 __all__ = [
-    "Query",
+    "QueryResponse",
     "Context",
     "Evaluator",
     "Metric",

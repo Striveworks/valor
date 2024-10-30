@@ -17,7 +17,10 @@ from valor_lite.text_generation.llm.instructions import (
     format_toxicity_verdicts_instruction,
 )
 from valor_lite.text_generation.llm.integrations import ClientWrapper
-from valor_lite.text_generation.llm.utilities import trim_and_load_json
+from valor_lite.text_generation.llm.utilities import (
+    find_first_int,
+    trim_and_load_json,
+)
 from valor_lite.text_generation.llm.validators import (
     validate_statements,
     validate_verdicts,
@@ -830,19 +833,15 @@ def generate_summary_coherence(
 
     response = client(messages)
 
-    try:
-        # Valid responses: "5", "\n5", "5\n", "5.", " 5", "5 {explanation}", etc.
-        ret = int(response.strip()[0])
-    except Exception:
+    ret = find_first_int(response)
+    if ret is None:
         raise InvalidLLMResponseError(
             f"LLM response was not a valid summary coherence score: {response}"
         )
-
     if ret not in {1, 2, 3, 4, 5}:
         raise InvalidLLMResponseError(
             f"Summary coherence score was not an integer between 1 and 5: {ret}"
         )
-
     return ret
 
 

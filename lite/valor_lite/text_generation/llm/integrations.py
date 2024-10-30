@@ -1,5 +1,5 @@
 import os
-from typing import Any, Protocol
+from typing import Protocol
 
 try:
     from mistralai.sdk import Mistral
@@ -105,28 +105,6 @@ class OpenAIWrapper:
         self.total_prompt_tokens = 0
         self.total_completion_tokens = 0
 
-    def _process_messages(
-        self,
-        messages: list[dict[str, str]],
-    ) -> list[dict[str, str]]:
-        """
-        Format messages for the API.
-
-        Parameters
-        ----------
-        messages: list[dict[str, str]]
-            The messages formatted according to the OpenAI standard. Each message in messages is a dictionary with "role" and "content" keys.
-
-        Returns
-        -------
-        list[dict[str, str]]
-            The messages are left in the OpenAI standard.
-        """
-        # Validate that the input is a list of dictionaries with "role" and "content" keys.
-        _validate_messages(messages=messages)  # type: ignore
-
-        return messages
-
     def __call__(
         self,
         messages: list[dict[str, str]],
@@ -144,10 +122,11 @@ class OpenAIWrapper:
         str
             The response from the API.
         """
-        processed_messages = self._process_messages(messages)
+        _validate_messages(messages=messages)
+
         openai_response = self.client.chat.completions.create(
             model=self.model_name,
-            messages=processed_messages,  # type: ignore - mistralai issue
+            messages=messages,  # type: ignore - mistralai issue
             seed=self.seed,
         )
 
@@ -213,28 +192,6 @@ class MistralWrapper:
 
         self.model_name = model_name
 
-    def _process_messages(
-        self,
-        messages: list[dict[str, str]],
-    ) -> Any:
-        """
-        Format messages for Mistral's API.
-
-        Parameters
-        ----------
-        messages: list[dict[str, str]]
-            The messages formatted according to the OpenAI standard. Each message in messages is a dictionary with "role" and "content" keys.
-
-        Returns
-        -------
-        Any
-            The messages formatted for Mistral's API. With mistralai>=1.0.0, the messages can be left in the OpenAI standard.
-        """
-        # Validate that the input is a list of dictionaries with "role" and "content" keys.
-        _validate_messages(messages=messages)  # type: ignore
-
-        return messages
-
     def __call__(
         self,
         messages: list[dict[str, str]],
@@ -252,10 +209,11 @@ class MistralWrapper:
         str
             The response from the API.
         """
-        processed_messages = self._process_messages(messages)
+        _validate_messages(messages)
+
         mistral_response = self.client.chat.complete(
             model=self.model_name,
-            messages=processed_messages,
+            messages=messages,  # type: ignore - mistral complaining about native types
         )
         if (
             mistral_response is None

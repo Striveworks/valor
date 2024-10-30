@@ -1,5 +1,18 @@
 import pytest
+from valor_lite.text_generation import Context, Evaluator, QueryResponse
 from valor_lite.text_generation.computation import calculate_hallucination
+
+
+def test_hallucination_no_context(mock_client):
+
+    evaluator = Evaluator(client=mock_client)
+    with pytest.raises(ValueError):
+        assert evaluator.compute_hallucination(
+            response=QueryResponse(
+                query="a",
+                response="a",
+            )
+        )
 
 
 def test_calculate_hallucination(
@@ -9,6 +22,8 @@ def test_calculate_hallucination(
     verdicts_two_yes_one_no: str,
     verdicts_empty: str,
 ):
+
+    evaluator = Evaluator(client=mock_client)
 
     mock_client.returning = verdicts_all_yes
     assert (
@@ -20,6 +35,20 @@ def test_calculate_hallucination(
         )
         == 1.0
     )
+    assert evaluator.compute_hallucination(
+        response=QueryResponse(
+            query="a",
+            response="a",
+            context=Context(prediction=["x", "y", "z"]),
+        )
+    ).to_dict() == {
+        "type": "Hallucination",
+        "value": 1.0,
+        "parameters": {
+            "model_name": "mock",
+            "retries": 0,
+        },
+    }
 
     mock_client.returning = verdicts_two_yes_one_no
     assert (
@@ -31,6 +60,20 @@ def test_calculate_hallucination(
         )
         == 2 / 3
     )
+    assert evaluator.compute_hallucination(
+        response=QueryResponse(
+            query="a",
+            response="a",
+            context=Context(prediction=["x", "y", "z"]),
+        )
+    ).to_dict() == {
+        "type": "Hallucination",
+        "value": 2 / 3,
+        "parameters": {
+            "model_name": "mock",
+            "retries": 0,
+        },
+    }
 
     mock_client.returning = verdicts_all_no
     assert (
@@ -42,6 +85,20 @@ def test_calculate_hallucination(
         )
         == 0.0
     )
+    assert evaluator.compute_hallucination(
+        response=QueryResponse(
+            query="a",
+            response="a",
+            context=Context(prediction=["x", "y", "z"]),
+        )
+    ).to_dict() == {
+        "type": "Hallucination",
+        "value": 0.0,
+        "parameters": {
+            "model_name": "mock",
+            "retries": 0,
+        },
+    }
 
     # hallucination score is dependent on context
     with pytest.raises(ValueError):
@@ -51,4 +108,11 @@ def test_calculate_hallucination(
             system_prompt="",
             response="a",
             context=[],
+        )
+    with pytest.raises(ValueError):
+        evaluator.compute_hallucination(
+            response=QueryResponse(
+                query="a",
+                response="a",
+            )
         )

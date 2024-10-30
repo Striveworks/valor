@@ -1,5 +1,18 @@
 import pytest
+from valor_lite.text_generation import Evaluator, QueryResponse
 from valor_lite.text_generation.computation import calculate_sentence_bleu
+
+
+def test_sentence_bleu_no_context(mock_client):
+
+    evaluator = Evaluator(client=mock_client)
+    with pytest.raises(ValueError):
+        assert evaluator.compute_sentence_bleu(
+            response=QueryResponse(
+                query="a",
+                response="a",
+            )
+        )
 
 
 def test_calculate_sentence_bleu():

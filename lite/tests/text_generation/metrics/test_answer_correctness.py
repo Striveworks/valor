@@ -1,11 +1,26 @@
 import json
 
+import pytest
+from valor_lite.text_generation import Context, Evaluator, QueryResponse
 from valor_lite.text_generation.computation import calculate_answer_correctness
 
 
-def test_calculate_answer_correctness(
-    mock_client,
-):
+def test_answer_correctness_no_context(mock_client):
+
+    evaluator = Evaluator(client=mock_client)
+    with pytest.raises(ValueError):
+        assert evaluator.compute_answer_correctness(
+            response=QueryResponse(
+                query="a",
+                response="a",
+            )
+        )
+
+
+def test_calculate_answer_correctness(mock_client):
+
+    evaluator = Evaluator(client=mock_client)
+
     mock_client.returning = json.dumps(
         {
             "TP": ["a", "b", "c"],
@@ -24,6 +39,22 @@ def test_calculate_answer_correctness(
         )
         == 2 / 3
     )
+    assert evaluator.compute_answer_correctness(
+        response=QueryResponse(
+            query="a",
+            response="a",
+            context=Context(
+                groundtruth=["a", "b", "c"],
+            ),
+        )
+    ).to_dict() == {
+        "type": "AnswerCorrectness",
+        "value": 2 / 3,
+        "parameters": {
+            "model_name": "mock",
+            "retries": 0,
+        },
+    }
 
     mock_client.returning = json.dumps(
         {"TP": [], "FP": ["a"], "FN": ["b"], "statements": ["c"]}
@@ -38,3 +69,19 @@ def test_calculate_answer_correctness(
         )
         == 0
     )
+    assert evaluator.compute_answer_correctness(
+        response=QueryResponse(
+            query="a",
+            response="a",
+            context=Context(
+                groundtruth=["a", "b", "c"],
+            ),
+        )
+    ).to_dict() == {
+        "type": "AnswerCorrectness",
+        "value": 0,
+        "parameters": {
+            "model_name": "mock",
+            "retries": 0,
+        },
+    }

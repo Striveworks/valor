@@ -37,6 +37,8 @@ class Metric(BaseMetric):
         cls,
         error_type: str,
         error_message: str,
+        model_name: str,
+        retries: int,
     ):
         return cls(
             type="Error",
@@ -44,13 +46,18 @@ class Metric(BaseMetric):
                 "type": error_type,
                 "message": error_message,
             },
-            parameters={},
+            parameters={
+                "model_name": model_name,
+                "retries": retries,
+            },
         )
 
     @classmethod
     def answer_correctness(
         cls,
         value: float,
+        model_name: str,
+        retries: int,
     ):
         """
         Defines an answer correctness metric.
@@ -65,13 +72,18 @@ class Metric(BaseMetric):
         return cls(
             type=MetricType.AnswerCorrectness,
             value=value,
-            parameters={},
+            parameters={
+                "model_name": model_name,
+                "retries": retries,
+            },
         )
 
     @classmethod
     def answer_relevance(
         cls,
         value: float,
+        model_name: str,
+        retries: int,
     ):
         """
         Defines an answer relevance metric.
@@ -86,7 +98,10 @@ class Metric(BaseMetric):
         return cls(
             type=MetricType.AnswerRelevance,
             value=value,
-            parameters={},
+            parameters={
+                "model_name": model_name,
+                "retries": retries,
+            },
         )
 
     @classmethod
@@ -119,6 +134,8 @@ class Metric(BaseMetric):
     def bias(
         cls,
         value: float,
+        model_name: str,
+        retries: int,
     ):
         """
         Defines a bias metric.
@@ -133,13 +150,18 @@ class Metric(BaseMetric):
         return cls(
             type=MetricType.Bias,
             value=value,
-            parameters={},
+            parameters={
+                "model_name": model_name,
+                "retries": retries,
+            },
         )
 
     @classmethod
     def context_precision(
         cls,
         value: float,
+        model_name: str,
+        retries: int,
     ):
         """
         Defines a context precision metric.
@@ -154,13 +176,18 @@ class Metric(BaseMetric):
         return cls(
             type=MetricType.ContextPrecision,
             value=value,
-            parameters={},
+            parameters={
+                "model_name": model_name,
+                "retries": retries,
+            },
         )
 
     @classmethod
     def context_recall(
         cls,
         value: float,
+        model_name: str,
+        retries: int,
     ):
         """
         Defines a context recall metric.
@@ -175,13 +202,18 @@ class Metric(BaseMetric):
         return cls(
             type=MetricType.ContextRecall,
             value=value,
-            parameters={},
+            parameters={
+                "model_name": model_name,
+                "retries": retries,
+            },
         )
 
     @classmethod
     def context_relevance(
         cls,
         value: float,
+        model_name: str,
+        retries: int,
     ):
         """
         Defines a context relevance metric.
@@ -196,13 +228,18 @@ class Metric(BaseMetric):
         return cls(
             type=MetricType.ContextRelevance,
             value=value,
-            parameters={},
+            parameters={
+                "model_name": model_name,
+                "retries": retries,
+            },
         )
 
     @classmethod
     def faithfulness(
         cls,
         value: float,
+        model_name: str,
+        retries: int,
     ):
         """
         Defines a faithfulness metric.
@@ -217,11 +254,19 @@ class Metric(BaseMetric):
         return cls(
             type=MetricType.Faithfulness,
             value=value,
-            parameters={},
+            parameters={
+                "model_name": model_name,
+                "retries": retries,
+            },
         )
 
     @classmethod
-    def hallucination(cls, value: float):
+    def hallucination(
+        cls,
+        value: float,
+        model_name: str,
+        retries: int,
+    ):
         """
         Defines a hallucination metric.
 
@@ -235,7 +280,10 @@ class Metric(BaseMetric):
         return cls(
             type=MetricType.Hallucination,
             value=value,
-            parameters={},
+            parameters={
+                "model_name": model_name,
+                "retries": retries,
+            },
         )
 
     @classmethod
@@ -272,6 +320,8 @@ class Metric(BaseMetric):
     def summary_coherence(
         cls,
         value: int,
+        model_name: str,
+        retries: int,
     ):
         """
         Defines a summary coherence metric.
@@ -288,13 +338,18 @@ class Metric(BaseMetric):
         return cls(
             type=MetricType.SummaryCoherence,
             value=value,
-            parameters={},
+            parameters={
+                "model_name": model_name,
+                "retries": retries,
+            },
         )
 
     @classmethod
     def toxicity(
         cls,
         value: float,
+        model_name: str,
+        retries: int,
     ):
         """
         Defines a toxicity metric.
@@ -309,5 +364,8 @@ class Metric(BaseMetric):
         return cls(
             type=MetricType.Toxicity,
             value=value,
-            parameters={},
+            parameters={
+                "model_name": model_name,
+                "retries": retries,
+            },
         )

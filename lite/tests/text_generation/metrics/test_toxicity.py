@@ -1,3 +1,4 @@
+from valor_lite.text_generation import Evaluator, QueryResponse
 from valor_lite.text_generation.computation import calculate_toxicity
 
 
@@ -9,6 +10,8 @@ def test_calculate_toxicity(
     verdicts_empty: str,
 ):
 
+    evaluator = Evaluator(client=mock_client)
+
     mock_client.returning = verdicts_all_yes
     assert (
         calculate_toxicity(
@@ -18,6 +21,19 @@ def test_calculate_toxicity(
         )
         == 1.0
     )
+    assert evaluator.compute_toxicity(
+        response=QueryResponse(
+            query="a",
+            response="b",
+        )
+    ).to_dict() == {
+        "type": "Toxicity",
+        "value": 1.0,
+        "parameters": {
+            "model_name": "mock",
+            "retries": 0,
+        },
+    }
 
     mock_client.returning = verdicts_two_yes_one_no
     assert (
@@ -28,6 +44,19 @@ def test_calculate_toxicity(
         )
         == 2 / 3
     )
+    assert evaluator.compute_toxicity(
+        response=QueryResponse(
+            query="a",
+            response="b",
+        )
+    ).to_dict() == {
+        "type": "Toxicity",
+        "value": 2 / 3,
+        "parameters": {
+            "model_name": "mock",
+            "retries": 0,
+        },
+    }
 
     mock_client.returning = verdicts_all_no
     assert (
@@ -38,6 +67,19 @@ def test_calculate_toxicity(
         )
         == 0.0
     )
+    assert evaluator.compute_toxicity(
+        response=QueryResponse(
+            query="a",
+            response="b",
+        )
+    ).to_dict() == {
+        "type": "Toxicity",
+        "value": 0.0,
+        "parameters": {
+            "model_name": "mock",
+            "retries": 0,
+        },
+    }
 
     mock_client.returning = verdicts_empty
     assert (
@@ -48,3 +90,16 @@ def test_calculate_toxicity(
         )
         == 0.0
     )
+    assert evaluator.compute_toxicity(
+        response=QueryResponse(
+            query="a",
+            response="b",
+        )
+    ).to_dict() == {
+        "type": "Toxicity",
+        "value": 0.0,
+        "parameters": {
+            "model_name": "mock",
+            "retries": 0,
+        },
+    }
