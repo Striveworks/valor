@@ -1,3 +1,4 @@
+import os
 from typing import Any, Protocol
 
 try:
@@ -43,17 +44,6 @@ def _validate_messages(messages: list[dict[str, str]]):
 
 
 class ClientWrapper(Protocol):
-    def connect(
-        self,
-    ):
-        ...
-
-    def _process_messages(
-        self,
-        messages: list[dict[str, str]],
-    ) -> Any:
-        ...
-
     def __call__(
         self,
         messages: list[dict[str, str]],
@@ -98,29 +88,22 @@ class OpenAIWrapper:
             An optional seed can be provided to GPT to get deterministic results.
         """
 
-        self.api_key = api_key
+        if OpenAI is None:
+            raise ImportError(
+                "OpenAI must be installed to use the OpenAIWrapper."
+            )
+
+        if api_key is None:
+            self.client = OpenAI()
+        else:
+            self.client = OpenAI(api_key=api_key)
+
         self.model_name = model_name
         self.seed = seed
 
         # logs
         self.total_prompt_tokens = 0
         self.total_completion_tokens = 0
-
-    def connect(
-        self,
-    ):
-        """
-        Setup the connection to the API.
-        """
-        if OpenAI is None:
-            raise ImportError(
-                "OpenAI must be installed to use the OpenAIWrapper."
-            )
-
-        if self.api_key is None:
-            self.client = OpenAI()
-        else:
-            self.client = OpenAI(api_key=self.api_key)
 
     def _process_messages(
         self,
@@ -219,23 +202,16 @@ class MistralWrapper:
         api_key : str, optional
             The Mistral API key to use. If not specified, then the MISTRAL_API_KEY environment variable will be used.
         """
-        self.api_key = api_key
-        self.model_name = model_name
-
-    def connect(
-        self,
-    ):
-        """
-        Setup the connection to the API.
-        """
         if Mistral is None:
             raise ImportError(
                 "Mistral must be installed to use the MistralWrapper."
             )
-        if self.api_key is None:
-            self.client = Mistral()
+        if api_key is None:
+            self.client = Mistral(api_key=os.getenv("MISTRAL_API_KEY"))
         else:
-            self.client = Mistral(api_key=self.api_key)
+            self.client = Mistral(api_key=api_key)
+
+        self.model_name = model_name
 
     def _process_messages(
         self,

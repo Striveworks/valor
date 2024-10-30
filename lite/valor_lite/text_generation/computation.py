@@ -206,7 +206,9 @@ def calculate_context_recall(
     scores = []
     for groundtruth in groundtruth_context:
         groundtruth_statements = generate_statements(
-            client=client, system_prompt=system_prompt, text=groundtruth
+            client=client,
+            system_prompt=system_prompt,
+            text=groundtruth,
         )
         verdicts = generate_context_recall_verdicts(
             client=client,
@@ -382,7 +384,9 @@ def calculate_toxicity(
         The toxicity score will be evaluated as a float between 0 and 1, with 1 indicating that all opinions in the text are toxic.
     """
     opinions = generate_opinions(
-        client=client, system_prompt=system_prompt, text=response
+        client=client,
+        system_prompt=system_prompt,
+        text=response,
     )
     if len(opinions) == 0:
         return 0.0

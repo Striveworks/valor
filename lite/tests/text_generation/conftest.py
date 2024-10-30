@@ -16,11 +16,6 @@ class MockWrapper:
     ):
         self.returning = "test payload"
 
-    def connect(
-        self,
-    ):
-        pass
-
     def _process_messages(
         self,
         messages: list[dict[str, str]],

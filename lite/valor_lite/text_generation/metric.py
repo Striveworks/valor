@@ -307,7 +307,7 @@ class Metric(BaseMetric):
         if (value < 0) or (value > 1):
             raise ValueError("Value should be a float between 0 and 1.")
         return cls(
-            type=MetricType.SummaryCoherence,
+            type=MetricType.Toxicity,
             value=value,
             parameters={},
         )
