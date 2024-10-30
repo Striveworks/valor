@@ -1,3 +1,4 @@
+from dataclasses import dataclass
 from enum import Enum
 
 from valor_lite.schemas import BaseMetric
@@ -21,6 +22,7 @@ class MetricType(str, Enum):
     ConfusionMatrix = "ConfusionMatrix"
 
 
+@dataclass
 class Metric(BaseMetric):
     """
     Object Detection Metric.
