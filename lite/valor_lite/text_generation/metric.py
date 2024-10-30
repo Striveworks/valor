@@ -67,8 +67,6 @@ class Metric(BaseMetric):
         value : float
             The answer correctness score between 0 and 1, with higher values indicating that the answer is more correct. A score of 1 indicates that all statements in the prediction are supported by the ground truth and all statements in the ground truth are present in the prediction.
         """
-        if (value < 0) or (value > 1):
-            raise ValueError("Value should be a float between 0 and 1.")
         return cls(
             type=MetricType.AnswerCorrectness,
             value=value,
@@ -93,8 +91,6 @@ class Metric(BaseMetric):
         value : float
             The number of statements in the answer that are relevant to the query divided by the total number of statements in the answer.
         """
-        if (value < 0) or (value > 1):
-            raise ValueError("Value should be a float between 0 and 1.")
         return cls(
             type=MetricType.AnswerRelevance,
             value=value,
@@ -120,8 +116,6 @@ class Metric(BaseMetric):
         weights : list[float]
             The list of weights that the score was calculated with.
         """
-        if (value < 0) or (value > 1):
-            raise ValueError("Value should be a float between 0 and 1.")
         return cls(
             type=MetricType.BLEU,
             value=value,
@@ -145,8 +139,6 @@ class Metric(BaseMetric):
         value : float
             The bias score for a datum. This is a float between 0 and 1, with 1 indicating that all opinions in the datum text are biased and 0 indicating that there is no bias.
         """
-        if (value < 0) or (value > 1):
-            raise ValueError("Value should be a float between 0 and 1.")
         return cls(
             type=MetricType.Bias,
             value=value,
@@ -171,8 +163,6 @@ class Metric(BaseMetric):
         value : float
             The context precision score for a datum. This is a float between 0 and 1, with 0 indicating that none of the contexts are useful to arrive at the ground truth answer to the query and 1 indicating that all contexts are useful to arrive at the ground truth answer to the query. The score is more heavily influenced by earlier contexts in the list of contexts than later contexts.
         """
-        if (value < 0) or (value > 1):
-            raise ValueError("Value should be a float between 0 and 1.")
         return cls(
             type=MetricType.ContextPrecision,
             value=value,
@@ -197,8 +187,6 @@ class Metric(BaseMetric):
         value : float
             The context recall score for a datum. This is a float between 0 and 1, with 1 indicating that all ground truth statements are attributable to the context list.
         """
-        if (value < 0) or (value > 1):
-            raise ValueError("Value should be a float between 0 and 1.")
         return cls(
             type=MetricType.ContextRecall,
             value=value,
@@ -223,8 +211,6 @@ class Metric(BaseMetric):
         value : float
             The context relevance score for a datum. This is a float between 0 and 1, with 0 indicating that none of the contexts are relevant and 1 indicating that all of the contexts are relevant.
         """
-        if (value < 0) or (value > 1):
-            raise ValueError("Value should be a float between 0 and 1.")
         return cls(
             type=MetricType.ContextRelevance,
             value=value,
@@ -249,8 +235,6 @@ class Metric(BaseMetric):
         value : float
             The faithfulness score for a datum. This is a float between 0 and 1, with 1 indicating that all claims in the text are implied by the contexts.
         """
-        if (value < 0) or (value > 1):
-            raise ValueError("Value should be a float between 0 and 1.")
         return cls(
             type=MetricType.Faithfulness,
             value=value,
@@ -275,8 +259,6 @@ class Metric(BaseMetric):
         value : float
             The hallucination score for a datum. This is a float between 0 and 1, with 1 indicating that all contexts are contradicted by the text.
         """
-        if (value < 0) or (value > 1):
-            raise ValueError("Value should be a float between 0 and 1.")
         return cls(
             type=MetricType.Hallucination,
             value=value,
@@ -305,8 +287,6 @@ class Metric(BaseMetric):
         use_stemmer: bool, default=False
             If True, uses Porter stemmer to strip word suffixes. Defaults to False.
         """
-        if (value < 0) or (value > 1):
-            raise ValueError("Value should be a float between 0 and 1.")
         return cls(
             type=MetricType.ROUGE,
             value=value,
@@ -331,10 +311,6 @@ class Metric(BaseMetric):
         value : int
             The summary coherence score for a datum. This is an integer with 1 being the lowest summary coherence and 5 the highest summary coherence.
         """
-        if value not in [1, 2, 3, 4, 5]:
-            raise ValueError(
-                f"Expected value to be between 1 and 5, got {value}"
-            )
         return cls(
             type=MetricType.SummaryCoherence,
             value=value,
@@ -359,8 +335,6 @@ class Metric(BaseMetric):
         value : float
             The toxicity score for a datum. This is a value between 0 and 1, with 1 indicating that all opinions in the datum text are toxic and 0 indicating that there is no toxicity.
         """
-        if (value < 0) or (value > 1):
-            raise ValueError("Value should be a float between 0 and 1.")
         return cls(
             type=MetricType.Toxicity,
             value=value,
