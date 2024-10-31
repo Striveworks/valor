@@ -33,7 +33,7 @@ def test_calculate_context_precision(
             client=mock_client,
             system_prompt="",
             query="abcdefg",
-            retrieved_context=["a", "b", "c"],
+            predicted_context=["a", "b", "c"],
             groundtruth_context=["x", "y", "z"],
         )
         == 1.0
@@ -62,7 +62,7 @@ def test_calculate_context_precision(
             client=mock_client,
             system_prompt="",
             query="abcdefg",
-            retrieved_context=["a", "b", "c"],
+            predicted_context=["a", "b", "c"],
             groundtruth_context=["x", "y", "z"],
         ),
         5 / 6,
@@ -91,7 +91,7 @@ def test_calculate_context_precision(
             client=mock_client,
             system_prompt="",
             query="abcdefg",
-            retrieved_context=["a", "b", "c"],
+            predicted_context=["a", "b", "c"],
             groundtruth_context=["x", "y", "z"],
         )
         == 0.0
@@ -120,7 +120,7 @@ def test_calculate_context_precision(
             client=mock_client,
             system_prompt="",
             query="abcdefg",
-            retrieved_context=[],
+            predicted_context=[],
             groundtruth_context=[],
         )
         == 1.0
@@ -142,7 +142,7 @@ def test_calculate_context_precision(
             client=mock_client,
             system_prompt="",
             query="abcdefg",
-            retrieved_context=["a"],
+            predicted_context=["a"],
             groundtruth_context=[],
         )
         == 0.0
@@ -171,7 +171,7 @@ def test_calculate_context_precision(
             client=mock_client,
             system_prompt="",
             query="abcdefg",
-            retrieved_context=[],
+            predicted_context=[],
             groundtruth_context=["b"],
         )
         == 0.0

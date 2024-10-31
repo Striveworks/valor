@@ -30,7 +30,7 @@ def test_calculate_context_recall(
         calculate_context_recall(
             client=mock_client,
             system_prompt="",
-            retrieved_context=["a", "b", "c"],
+            predicted_context=["a", "b", "c"],
             groundtruth_context=["x", "y", "z"],
         )
         == 1.0
@@ -58,7 +58,7 @@ def test_calculate_context_recall(
         calculate_context_recall(
             client=mock_client,
             system_prompt="",
-            retrieved_context=["a", "b", "c"],
+            predicted_context=["a", "b", "c"],
             groundtruth_context=["x", "y", "z"],
         )
         == 2 / 3
@@ -86,7 +86,7 @@ def test_calculate_context_recall(
         calculate_context_recall(
             client=mock_client,
             system_prompt="",
-            retrieved_context=["a", "b", "c"],
+            predicted_context=["a", "b", "c"],
             groundtruth_context=["x", "y", "z"],
         )
         == 0.0
@@ -114,7 +114,7 @@ def test_calculate_context_recall(
         calculate_context_recall(
             client=mock_client,
             system_prompt="",
-            retrieved_context=[],
+            predicted_context=[],
             groundtruth_context=[],
         )
         == 1.0
@@ -142,7 +142,7 @@ def test_calculate_context_recall(
         calculate_context_recall(
             client=mock_client,
             system_prompt="",
-            retrieved_context=["a"],
+            predicted_context=["a"],
             groundtruth_context=[],
         )
         == 0.0
@@ -170,7 +170,7 @@ def test_calculate_context_recall(
         calculate_context_recall(
             client=mock_client,
             system_prompt="",
-            retrieved_context=[],
+            predicted_context=[],
             groundtruth_context=["b"],
         )
         == 0.0
