@@ -22,56 +22,56 @@ jobs:
       - name: run classification tests and report coverage
         run: |
           pip install -e ".[test]"
-          COVERAGE_FILE=.coverage.classification python -m coverage run --omit "tests/*"  -m pytest -v tests/classification/
+          COVERAGE_FILE=.coverage.classification python -m coverage run --include "valor_lite/*"  -m pytest -v tests/classification/
           python -m coverage combine
           python -m coverage report -m
           python -m coverage json
           export TOTAL=$(python -c "import json;print(json.load(open('coverage.json'))['totals']['percent_covered_display'])")
           echo "total=$TOTAL" >> $GITHUB_ENV
-          if (( $TOTAL < 90 )); then
-            echo "Coverage is below 90%"
+          if (( $TOTAL < 99 )); then
+            echo "Coverage is below 99%"
             exit 1
           fi
         working-directory: ./lite
       - name: run object detection tests and report coverage
         run: |
           pip install -e ".[test]"
-          COVERAGE_FILE=.coverage.detection python -m coverage run --omit "tests/*"  -m pytest -v tests/object_detection/
+          COVERAGE_FILE=.coverage.detection python -m coverage run --include "valor_lite/*"  -m pytest -v tests/object_detection/
           python -m coverage combine
           python -m coverage report -m
           python -m coverage json
           export TOTAL=$(python -c "import json;print(json.load(open('coverage.json'))['totals']['percent_covered_display'])")
           echo "total=$TOTAL" >> $GITHUB_ENV
-          if (( $TOTAL < 90 )); then
-            echo "Coverage is below 90%"
+          if (( $TOTAL < 99 )); then
+            echo "Coverage is below 99%"
             exit 1
           fi
         working-directory: ./lite
       - name: run semantic segmentation tests and report coverage
         run: |
           pip install -e ".[test]"
-          COVERAGE_FILE=.coverage.segmentation python -m coverage run --omit "tests/*"  -m pytest -v tests/semantic_segmentation/
+          COVERAGE_FILE=.coverage.segmentation python -m coverage run --include "valor_lite/*"  -m pytest -v tests/semantic_segmentation/
           python -m coverage combine
           python -m coverage report -m
           python -m coverage json
           export TOTAL=$(python -c "import json;print(json.load(open('coverage.json'))['totals']['percent_covered_display'])")
           echo "total=$TOTAL" >> $GITHUB_ENV
-          if (( $TOTAL < 90 )); then
-            echo "Coverage is below 90%"
+          if (( $TOTAL < 99 )); then
+            echo "Coverage is below 99%"
             exit 1
           fi
         working-directory: ./lite
-      # - name: run nlp generation tests and report coverage
-      #   run: |
-      #     pip install -e ".[test]"
-      #     COVERAGE_FILE=.coverage.generation python -m coverage run --omit "tests/*"  -m pytest -v tests/text_generation
-      #     python -m coverage combine
-      #     python -m coverage report -m
-      #     python -m coverage json
-      #     export TOTAL=$(python -c "import json;print(json.load(open('coverage.json'))['totals']['percent_covered_display'])")
-      #     echo "total=$TOTAL" >> $GITHUB_ENV
-      #     if (( $TOTAL < 90 )); then
-      #       echo "Coverage is below 90%"
-      #       exit 1
-      #     fi
-      #   working-directory: ./lite
+      - name: run text generation tests and report coverage
+        run: |
+          pip install -e ".[test,openai,mistral]"
+          COVERAGE_FILE=.coverage.text_generation python -m coverage run --include "valor_lite/*"  -m pytest -v tests/text_generation/
+          python -m coverage combine
+          python -m coverage report -m
+          python -m coverage json
+          export TOTAL=$(python -c "import json;print(json.load(open('coverage.json'))['totals']['percent_covered_display'])")
+          echo "total=$TOTAL" >> $GITHUB_ENV
+          if (( $TOTAL < 99 )); then
+            echo "Coverage is below 99%"
+            exit 1
+          fi
+        working-directory: ./lite

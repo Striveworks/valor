@@ -31,6 +31,9 @@ core-tests:
 	pytest ./core/tests/unit-tests
 	pytest ./core/tests/functional-tests
 
+lite-tests:
+	pytest ./lite/tests/text_generation
+
 start-server:
 	POSTGRES_PASSWORD=password POSTGRES_HOST=localhost POSTGRES_DB=valor uvicorn valor_api.main:app --host 0.0.0.0
 
