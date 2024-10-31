@@ -2,7 +2,10 @@ import json
 
 import pytest
 from valor_lite.text_generation.llm.exceptions import InvalidLLMResponseError
-from valor_lite.text_generation.llm.generation import _generate
+from valor_lite.text_generation.llm.generation import (
+    _generate,
+    generate_answer_correctness_verdicts,
+)
 from valor_lite.text_generation.llm.validators import validate_statements
 
 
@@ -108,3 +111,30 @@ def test__generate(mock_client):
             enforce_length=3,
             validator=validate_statements,
         )
+
+
+def test_generate_answer_correctness_verdicts(mock_client):
+
+    mock_client.returning = json.dumps({"TP": ["a"], "FP": ["b"], "FN": ["c"]})
+    with pytest.raises(InvalidLLMResponseError) as e:
+        generate_answer_correctness_verdicts(
+            client=mock_client,
+            system_prompt="",
+            query="question?",
+            prediction_statements=["x"],
+            groundtruth_statements=["m"],
+        )
+    assert "true positives and false positives" in str(e)
+
+    mock_client.returning = json.dumps(
+        {"TP": ["a"], "FP": ["b"], "FN": ["c", "d"]}
+    )
+    with pytest.raises(InvalidLLMResponseError) as e:
+        generate_answer_correctness_verdicts(
+            client=mock_client,
+            system_prompt="",
+            query="question?",
+            prediction_statements=["x", "y"],
+            groundtruth_statements=["m"],
+        )
+    assert "false negatives exceeded the number of ground truth" in str(e)

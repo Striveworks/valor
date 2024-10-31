@@ -18,7 +18,7 @@ from valor_lite.text_generation.llm.instructions import (
 )
 from valor_lite.text_generation.llm.integrations import ClientWrapper
 from valor_lite.text_generation.llm.utilities import (
-    find_first_int,
+    find_first_signed_integer,
     trim_and_load_json,
 )
 from valor_lite.text_generation.llm.validators import (
@@ -55,10 +55,6 @@ def _generate(
     """
     response = client(messages)
     response = trim_and_load_json(response)
-    if not isinstance(response, dict):
-        raise InvalidLLMResponseError(
-            f"LLM did not include a dictionary in its response: {response}"
-        )
     for key in keys:
         validator(
             response=response,
@@ -833,7 +829,7 @@ def generate_summary_coherence(
 
     response = client(messages)
 
-    ret = find_first_int(response)
+    ret = find_first_signed_integer(response)
     if ret is None:
         raise InvalidLLMResponseError(
             f"LLM response was not a valid summary coherence score: {response}"
