@@ -26,6 +26,38 @@ def calculate_answer_correctness(
     response: str,
     groundtruths: list[str],
 ) -> float:
+    """
+    Compute answer correctness. Answer correctness is computed as an f1 score obtained
+    by comparing prediction statements to ground truth statements.
+
+    If there are multiple ground truths, then the f1 score is computed for each ground
+    truth and the maximum score is returned.
+
+    This metric was adapted from RAGAS. We follow a similar prompting strategy and
+    computation, however we do not do a weighted sum with an answer similarity score
+    using embeddings.
+
+    Parameters
+    ----------
+    client : ClientWrapper
+        The LLM client used to perform evaluation.
+    system_prompt : str
+        A system prompt to pass with the evaluation query.
+    query : str
+        The user query.
+    response : str
+        A generated response.
+    groundtruths : list[str]
+        A list of ground truth references.
+
+    Returns
+    -------
+    float
+        The answer correctness score between 0 and 1. Higher values indicate that the
+        answer is more correct. A score of 1 indicates that all statements in the
+        prediction are supported by the ground truth and all statements in the ground
+        truth are present in the prediction.
+    """
     prediction_statements = generate_statements(
         client=client,
         system_prompt=system_prompt,
@@ -61,6 +93,27 @@ def calculate_answer_relevance(
     query: str,
     response: str,
 ) -> float:
+    """
+    Compute answer relevance, the proportion of the model response that is
+    relevant to the query, for a single piece of text.
+
+    Parameters
+    ----------
+    client : ClientWrapper
+        The LLM client used to perform evaluation.
+    system_prompt : str
+        A system prompt to pass with the evaluation query.
+    query : str
+        The user query.
+    response : str
+        A generated response.
+
+    Returns
+    -------
+    float
+        The answer relevance score between 0 and 1. A score of 1 indicates that all
+        statements are relevant to the query.
+    """
     statements = generate_statements(
         client=client,
         system_prompt=system_prompt,
@@ -85,6 +138,24 @@ def calculate_bias(
     system_prompt: str,
     response: str,
 ) -> float:
+    """
+    Compute bias, the proportion of model opinions that are biased.
+
+    Parameters
+    ----------
+    client : ClientWrapper
+        The LLM client used to perform evaluation.
+    system_prompt : str
+        A system prompt to pass with the evaluation query.
+    response : str
+        A generated response.
+
+    Returns
+    -------
+    float
+        The bias score between 0 and 1. A score of 1 indicates that all opinions in
+        the text are biased.
+    """
 
     opinions = generate_opinions(
         client=client,
@@ -108,44 +179,66 @@ def calculate_context_precision(
     client: ClientWrapper,
     system_prompt: str,
     query: str,
-    retrieved_context: list[str],
+    predicted_context: list[str],
     groundtruth_context: list[str],
 ) -> float:
     """
-    Compute context precision, a score for evaluating the retrieval mechanism of a RAG model.
+    Compute context precision, a score for evaluating the retrieval
+    mechanism of a RAG model.
 
-    First, an LLM is prompted to determine if each context in the context list is useful for producing the ground truth answer to the query.
+    First, an LLM is prompted to determine if each context in the context
+    list is useful for producing the ground truth answer to the query.
 
-    If there are multiple ground truths, then the verdict is "yes" for a context if that context is useful for producing any of the ground truth answers, and "no" otherwise.
+    If there are multiple ground truths, then the verdict is "yes" for a
+    context if that context is useful for producing any of the ground truth
+    answers, and "no" otherwise.
 
-    Then, using these verdicts, the context precision score is computed as a weighted sum of the precision at k for each k from 1 to the length of the context list.
+    Then, using these verdicts, the context precision score is computed as
+    a weighted sum of the precision at k for each k from 1 to the length
+    of the context list.
 
-    Note that the earlier a piece of context appears in the context list, the more important it is in the computation of this score. For example, the first context in the context list will be included in every precision at k computation, so will have a large influence on the final score, whereas the last context will only be used for the last precision at k computation, so will have a small influence on the final score.
+    Note that the earlier a piece of context appears in the context list,
+    the more important it is in the computation of this score. For example,
+    the first context in the context list will be included in every precision
+    at k computation, so will have a large influence on the final score,
+    whereas the last context will only be used for the last precision at
+    k computation, so will have a small influence on the final score.
 
     Parameters
     ----------
-    query: Query
-        A user query with ground truth and generated response.
+    client : ClientWrapper
+        The LLM client used to perform evaluation.
+    system_prompt : str
+        A system prompt to pass with the evaluation query.
+    query : str
+        The user query.
+    response : str
+        A generated response.
+    predicted_context : list[str]
+        A list of predicted context.
+    groundtruths : list[str]
+        A list of ground truth references.
 
     Returns
     -------
-    Metric
-        The context precision score between 0 and 1. A higher score indicates better context precision.
+    float
+        The context precision score between 0 and 1. A higher score indicates
+        better context precision.
     """
-    if len(retrieved_context) == 0 and len(groundtruth_context) == 0:
+    if len(predicted_context) == 0 and len(groundtruth_context) == 0:
         return 1.0
-    elif len(retrieved_context) == 0 or len(groundtruth_context) == 0:
+    elif len(predicted_context) == 0 or len(groundtruth_context) == 0:
         return 0.0
 
     # Get verdicts for each ground truth, and aggregate by setting the verdict for
     # a context to "yes" if the verdict is "yes" for any ground truth.
-    aggregate_verdicts = ["no"] * len(retrieved_context)
+    aggregate_verdicts = ["no"] * len(predicted_context)
     for groundtruth in groundtruth_context:
         verdicts = generate_context_precision_verdicts(
             client=client,
             system_prompt=system_prompt,
             query=query,
-            ordered_context_list=retrieved_context,
+            ordered_context_list=predicted_context,
             groundtruth=groundtruth,
         )
         for i in range(len(verdicts)):
@@ -154,7 +247,7 @@ def calculate_context_precision(
 
     # Use the aggregate verdicts to compute the precision at k for each k.
     precision_at_k_list = []
-    for k in range(1, len(retrieved_context) + 1):
+    for k in range(1, len(predicted_context) + 1):
         # Only compute the precision at k if the kth context is relevant.
         if aggregate_verdicts[k - 1] == "yes":
             precision_at_k = (
@@ -173,29 +266,38 @@ def calculate_context_precision(
 def calculate_context_recall(
     client: ClientWrapper,
     system_prompt: str,
-    retrieved_context: list[str],
+    predicted_context: list[str],
     groundtruth_context: list[str],
 ) -> float:
     """
     Compute context recall, a score for evaluating the retrieval mechanism of a RAG model.
 
-    The context recall score is the proportion of statements in the ground truth that are attributable to the context list.
+    The context recall score is the proportion of statements in the ground truth
+    that are attributable to the context list.
 
-    If multiple ground truths are provided, then the context recall score is computed for each ground truth and the maximum score is returned.
+    If multiple ground truths are provided, then the context recall score is
+    computed for each ground truth and the maximum score is returned.
 
     Parameters
     ----------
-    query: Query
-        A user query with ground truth and generated response.
+    client : ClientWrapper
+        The LLM client used to perform evaluation.
+    system_prompt : str
+        A system prompt to pass with the evaluation query.
+    predicted_context : list[str]
+        A list of predicted context.
+    groundtruths : list[str]
+        A list of ground truth references.
 
     Returns
     -------
-    Metric
-        The context recall score between 0 and 1. A score of 1 indicates that all ground truth statements are attributable to the contexts in the context list.
+    float
+        The context recall score between 0 and 1. A score of 1 indicates that
+        all ground truth statements are attributable to the contexts in the context list.
     """
-    if len(retrieved_context) == 0 and len(groundtruth_context) == 0:
+    if len(predicted_context) == 0 and len(groundtruth_context) == 0:
         return 1.0
-    elif len(retrieved_context) == 0 or len(groundtruth_context) == 0:
+    elif len(predicted_context) == 0 or len(groundtruth_context) == 0:
         return 0.0
 
     scores = []
@@ -208,7 +310,7 @@ def calculate_context_recall(
         verdicts = generate_context_recall_verdicts(
             client=client,
             system_prompt=system_prompt,
-            context_list=retrieved_context,
+            context_list=predicted_context,
             groundtruth_statements=groundtruth_statements,
         )
         scores.append(
@@ -226,17 +328,26 @@ def calculate_context_relevance(
     context: list[str],
 ) -> float:
     """
-    Compute context relevance, the proportion of contexts in the context list that are relevant to the query.
+    Compute context relevance, the proportion of contexts in the context list
+    that are relevant to the query.
 
     Parameters
     ----------
-    query: Query
-        A user query with ground truth and generated response.
+    client : ClientWrapper
+        The LLM client used to perform evaluation.
+    system_prompt : str
+        A system prompt to pass with the evaluation query.
+    query : str
+        The user query.
+    context : list[str]
+        A list of predicted context.
 
     Returns
     -------
-    Metric
-        The context relevance score between 0 and 1. A score of 0 indicates that none of the contexts are relevant and a score of 1 indicates that all of the contexts are relevant.
+    float
+        The context relevance score between 0 and 1. A score of 0 indicates
+        that none of the contexts are relevant and a score of 1 indicates
+        that all of the contexts are relevant.
     """
     if len(context) == 0:
         return 0.0
@@ -258,23 +369,27 @@ def calculate_faithfulness(
     context: list[str],
 ) -> float:
     """
-    Compute the faithfulness score.
-
-    The faithfulness score is the proportion of claims in the text that are
-    implied by the list of contexts. Claims that contradict the list of
-    contexts and claims that are unrelated to the list of contexts both
-    count against the score.
+    Compute the faithfulness score. The faithfulness score is the proportion
+    of claims in the text that are implied by the list of contexts. Claims
+    that contradict the list of contexts and claims that are unrelated to
+    the list of contexts both count against the score.
 
     Parameters
     ----------
-    query: Query
-        A user query with ground truth and generated response.
+    client : ClientWrapper
+        The LLM client used to perform evaluation.
+    system_prompt : str
+        A system prompt to pass with the evaluation query.
+    response : str
+        A generated response.
+    context : list[str]
+        A list of predicted context.
 
     Returns
     -------
-    Metric
-        The faithfulness score between 0 and 1. A score of 1 indicates
-        that all claims in the text are implied by the list of contexts.
+    float
+        The faithfulness score between 0 and 1. A score of 1 indicates that
+        all claims in the text are implied by the list of contexts.
     """
     if len(context) == 0:
         return 0.0
@@ -305,17 +420,25 @@ def calculate_hallucination(
     context: list[str],
 ) -> float:
     """
-    Compute the hallucination score, the proportion of contexts in the context list that are contradicted by the text.
+    Compute the hallucination score, the proportion of contexts in the context
+    list that are contradicted by the text.
 
     Parameters
     ----------
-    query: Query
-        A user query with ground truth and generated response.
+    client : ClientWrapper
+        The LLM client used to perform evaluation.
+    system_prompt : str
+        A system prompt to pass with the evaluation query.
+    response : str
+        A generated response.
+    context : list[str]
+        A list of predicted context.
 
     Returns
     -------
-    Metric
-        The hallucination score between 0 and 1. A score of 1 indicates that all contexts are contradicted by the text.
+    float
+        The hallucination score between 0 and 1. A score of 1 indicates that
+        all contexts are contradicted by the text.
     """
     if len(context) == 0:
         raise ValueError("Hallucination requires context to be calculated.")
@@ -342,15 +465,21 @@ def calculate_summary_coherence(
 
     Parameters
     ----------
-    text: str
-        The text that was summarized.
-    summary: str
-        The summary to be evaluated.
+    client : ClientWrapper
+        The LLM client used to perform evaluation.
+    system_prompt : str
+        A system prompt to pass with the evaluation query.
+    text : str
+        The original text.
+    summary : str
+        The generated summary.
 
     Returns
     -------
     int
-        The summary coherence score will be evaluated as an integer, with 1 indicating the lowest summary coherence and 5 the highest summary coherence.
+        The summary coherence score between 1 and 5. A score of 1 indicates
+        the lowest summary coherence and a score of 5 indicates the highest
+        summary coherence.
     """
     return generate_summary_coherence(
         client=client,
@@ -366,17 +495,22 @@ def calculate_toxicity(
     response: str,
 ) -> float:
     """
-    Compute toxicity, the portion of opinions that are toxic.
+    Compute toxicity, the proportion of opinions that are toxic.
 
     Parameters
     ----------
-    query: Query
-        A user query with ground truth and generated response.
+    client : ClientWrapper
+        The LLM client used to perform evaluation.
+    system_prompt : str
+        A system prompt to pass with the evaluation query.
+    response : str
+        A generated response.
 
     Returns
     -------
     Metric
-        The toxicity score will be evaluated as a float between 0 and 1, with 1 indicating that all opinions in the text are toxic.
+        The toxicity score will be evaluated as a float between 0 and 1, with
+        1 indicating that all opinions in the text are toxic.
     """
     opinions = generate_opinions(
         client=client,
@@ -405,17 +539,12 @@ def calculate_rouge_scores(
     """
     Calculate ROUGE scores for a prediction given some set of references.
 
-    Computes scores using 'rouge1', 'rouge2', 'rougeL', and 'rougeLsum' where `rouge1`
-    is unigram-based scoring, `rouge2` is bigram-based scoring, `rougeL` is scoring
-    based on sentences (i.e., splitting on "." and ignoring "\n"), and `rougeLsum`
-    is scoring based on splitting the text using "\n".
-
     Parameters
     ----------
     prediction : str
-        A prediction to score. Each prediction should be a string with tokens separated by spaces.
-    references : list[str]
-        A list of reference for a given prediction. Each reference should be a string with tokens separated by spaces.
+        A generated response to score. Each prediction should be a string with tokens separated by spaces.
+    references : str | list[str]
+        A list of references for a given response. Each reference should be a string with tokens separated by spaces.
     rouge_types : list[str]
         A list of rouge types to calculate.
     use_stemmer: bool, default=False
@@ -450,9 +579,9 @@ def calculate_sentence_bleu(
     Parameters
     ----------
     prediction : str
-        The prediction to score. Each prediction should be a string with tokens separated by spaces.
+        A generated response to score. Each prediction should be a string with tokens separated by spaces.
     references : list[str]
-        A list of references for the prediction. Each reference should be a string with tokens separated by spaces.
+        A list of references for a given response. Each reference should be a string with tokens separated by spaces.
     weights : tuple[float]
         The default BLEU calculates a score for up to 4-grams using uniform
         weights (this is called BLEU-4). To evaluate your translations with

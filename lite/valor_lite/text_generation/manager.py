@@ -228,8 +228,8 @@ class Evaluator:
     @llm_guided_metric
     def compute_answer_relevance(self, response: QueryResponse) -> Metric:
         """
-        Compute answer relevance, the proportion of statements that are relevant to the
-        query, for a single piece of text.
+        Compute answer relevance, the proportion of the model response that is
+        relevant to the query, for a single piece of text.
 
         Parameters
         ----------
@@ -260,7 +260,7 @@ class Evaluator:
         response: QueryResponse,
     ) -> Metric:
         """
-        Compute bias, the portion of opinions that are biased.
+        Compute bias, the proportion of model opinions that are biased.
 
         Parameters
         ----------
@@ -329,7 +329,7 @@ class Evaluator:
             client=self.client,  # type: ignore - wrapper handles None case
             system_prompt=self.default_system_prompt,
             query=response.query,
-            retrieved_context=response.context.prediction,
+            predicted_context=response.context.prediction,
             groundtruth_context=response.context.groundtruth,
         )
         return Metric.context_precision(
@@ -369,7 +369,7 @@ class Evaluator:
         result = calculate_context_recall(
             client=self.client,  # type: ignore - wrapper handles None case
             system_prompt=self.default_system_prompt,
-            retrieved_context=response.context.prediction,
+            predicted_context=response.context.prediction,
             groundtruth_context=response.context.groundtruth,
         )
         return Metric.context_recall(
@@ -562,7 +562,7 @@ class Evaluator:
         use_stemmer: bool = False,
     ) -> list[Metric]:
         """
-        Calculate ROUGE scores for a prediction given some set of references.
+        Calculate ROUGE scores for a model response given some set of references.
 
         Parameters
         ----------
@@ -603,7 +603,7 @@ class Evaluator:
         weights: list[float] = [0.25, 0.25, 0.25, 0.25],
     ) -> Metric:
         """
-        Calculate sentence BLEU scores for a set of prediction - ground truth pairs.
+        Calculate sentence BLEU scores for a set of model response - ground truth pairs.
 
         Parameters
         ----------

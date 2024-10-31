@@ -1,4 +1,5 @@
 import pytest
+from valor_lite.text_generation import Context, Evaluator, QueryResponse
 
 try:
     import mistralai
@@ -9,8 +10,6 @@ try:
     import openai
 except ImportError:
     openai = None
-
-from valor_lite.text_generation import Context, Evaluator, QueryResponse
 
 
 @pytest.mark.skipif(

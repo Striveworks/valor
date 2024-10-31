@@ -3,6 +3,11 @@ import os
 from unittest.mock import MagicMock
 
 import pytest
+from valor_lite.text_generation.llm.integrations import (
+    MistralWrapper,
+    OpenAIWrapper,
+    _validate_messages,
+)
 
 try:
     import mistralai
@@ -24,12 +29,6 @@ try:
     from openai.types.completion_usage import CompletionUsage
 except ImportError:
     openai = None
-
-from valor_lite.text_generation.llm.integrations import (
-    MistralWrapper,
-    OpenAIWrapper,
-    _validate_messages,
-)
 
 
 def test__validate_messages():
