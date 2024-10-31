@@ -51,7 +51,7 @@ def test_calculate_context_precision(
         "type": "ContextPrecision",
         "value": 1.0,
         "parameters": {
-            "model_name": "mock",
+            "evaluator": "mock",
             "retries": 0,
         },
     }
@@ -80,7 +80,7 @@ def test_calculate_context_precision(
         "type": "ContextPrecision",
         "value": 0.8333333333333333,
         "parameters": {
-            "model_name": "mock",
+            "evaluator": "mock",
             "retries": 0,
         },
     }
@@ -109,7 +109,7 @@ def test_calculate_context_precision(
         "type": "ContextPrecision",
         "value": 0.0,
         "parameters": {
-            "model_name": "mock",
+            "evaluator": "mock",
             "retries": 0,
         },
     }
@@ -160,7 +160,7 @@ def test_calculate_context_precision(
         "type": "ContextPrecision",
         "value": 0.0,
         "parameters": {
-            "model_name": "mock",
+            "evaluator": "mock",
             "retries": 0,
         },
     }
@@ -189,7 +189,7 @@ def test_calculate_context_precision(
         "type": "ContextPrecision",
         "value": 0.0,
         "parameters": {
-            "model_name": "mock",
+            "evaluator": "mock",
             "retries": 0,
         },
     }

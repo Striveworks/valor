@@ -47,7 +47,7 @@ def test_calculate_context_relevance(
         "type": "ContextRelevance",
         "value": 1.0,
         "parameters": {
-            "model_name": "mock",
+            "evaluator": "mock",
             "retries": 0,
         },
     }
@@ -74,7 +74,7 @@ def test_calculate_context_relevance(
         "type": "ContextRelevance",
         "value": 2 / 3,
         "parameters": {
-            "model_name": "mock",
+            "evaluator": "mock",
             "retries": 0,
         },
     }
@@ -101,7 +101,7 @@ def test_calculate_context_relevance(
         "type": "ContextRelevance",
         "value": 0.0,
         "parameters": {
-            "model_name": "mock",
+            "evaluator": "mock",
             "retries": 0,
         },
     }
@@ -129,7 +129,7 @@ def test_calculate_context_relevance(
         "type": "ContextRelevance",
         "value": 0.0,
         "parameters": {
-            "model_name": "mock",
+            "evaluator": "mock",
             "retries": 0,
         },
     }

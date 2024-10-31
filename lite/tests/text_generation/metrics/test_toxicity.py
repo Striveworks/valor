@@ -30,7 +30,7 @@ def test_calculate_toxicity(
         "type": "Toxicity",
         "value": 1.0,
         "parameters": {
-            "model_name": "mock",
+            "evaluator": "mock",
             "retries": 0,
         },
     }
@@ -53,7 +53,7 @@ def test_calculate_toxicity(
         "type": "Toxicity",
         "value": 2 / 3,
         "parameters": {
-            "model_name": "mock",
+            "evaluator": "mock",
             "retries": 0,
         },
     }
@@ -76,7 +76,7 @@ def test_calculate_toxicity(
         "type": "Toxicity",
         "value": 0.0,
         "parameters": {
-            "model_name": "mock",
+            "evaluator": "mock",
             "retries": 0,
         },
     }
@@ -99,7 +99,7 @@ def test_calculate_toxicity(
         "type": "Toxicity",
         "value": 0.0,
         "parameters": {
-            "model_name": "mock",
+            "evaluator": "mock",
             "retries": 0,
         },
     }

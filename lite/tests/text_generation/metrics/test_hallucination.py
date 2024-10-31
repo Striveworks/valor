@@ -45,7 +45,7 @@ def test_calculate_hallucination(
         "type": "Hallucination",
         "value": 1.0,
         "parameters": {
-            "model_name": "mock",
+            "evaluator": "mock",
             "retries": 0,
         },
     }
@@ -70,7 +70,7 @@ def test_calculate_hallucination(
         "type": "Hallucination",
         "value": 2 / 3,
         "parameters": {
-            "model_name": "mock",
+            "evaluator": "mock",
             "retries": 0,
         },
     }
@@ -95,7 +95,7 @@ def test_calculate_hallucination(
         "type": "Hallucination",
         "value": 0.0,
         "parameters": {
-            "model_name": "mock",
+            "evaluator": "mock",
             "retries": 0,
         },
     }

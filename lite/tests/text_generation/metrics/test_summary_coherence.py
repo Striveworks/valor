@@ -28,7 +28,7 @@ def test_calculate_summary_coherence(mock_client):
             "type": "SummaryCoherence",
             "value": i,
             "parameters": {
-                "model_name": "mock",
+                "evaluator": "mock",
                 "retries": 0,
             },
         }
@@ -55,7 +55,7 @@ def test_calculate_summary_coherence(mock_client):
                 "message": f"Summary coherence score was not an integer between 1 and 5: {i}",
             },
             "parameters": {
-                "model_name": "mock",
+                "evaluator": "mock",
                 "retries": 0,
             },
         }
@@ -82,7 +82,7 @@ def test_calculate_summary_coherence(mock_client):
                 "message": f"LLM response was not a valid summary coherence score: {i}",
             },
             "parameters": {
-                "model_name": "mock",
+                "evaluator": "mock",
                 "retries": 0,
             },
         }

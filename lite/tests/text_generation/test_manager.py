@@ -52,7 +52,7 @@ def test_llm_guided_metric_wrapper(mock_client):
         "type": "Bias",
         "value": 1.0,
         "parameters": {
-            "model_name": "mock",
+            "evaluator": "mock",
             "retries": 0,
         },
     }
@@ -65,7 +65,7 @@ def test_llm_guided_metric_wrapper(mock_client):
             "message": "abc",
         },
         "parameters": {
-            "model_name": "mock",
+            "evaluator": "mock",
             "retries": 0,
         },
     }
@@ -94,7 +94,7 @@ def test_llm_guided_metric_retrying(mock_client):
                 "message": "abc",
             },
             "parameters": {
-                "model_name": "mock",
+                "evaluator": "mock",
                 "retries": i,
             },
         }
@@ -104,7 +104,7 @@ def test_llm_guided_metric_retrying(mock_client):
         "type": "Bias",
         "value": 1.0,
         "parameters": {
-            "model_name": "mock",
+            "evaluator": "mock",
             "retries": 2,
         },
     }

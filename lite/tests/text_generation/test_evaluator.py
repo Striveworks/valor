@@ -69,70 +69,70 @@ def test_compute_all(
             {
                 "type": "AnswerCorrectness",
                 "value": 0.8,
-                "parameters": {"model_name": "mock", "retries": 0},
+                "parameters": {"evaluator": "mock", "retries": 0},
             }
         ],
         "AnswerRelevance": [
             {
                 "type": "AnswerRelevance",
                 "value": 0.6666666666666666,
-                "parameters": {"model_name": "mock", "retries": 0},
+                "parameters": {"evaluator": "mock", "retries": 0},
             }
         ],
         "Bias": [
             {
                 "type": "Bias",
                 "value": 0.6666666666666666,
-                "parameters": {"model_name": "mock", "retries": 0},
+                "parameters": {"evaluator": "mock", "retries": 0},
             }
         ],
         "ContextPrecision": [
             {
                 "type": "ContextPrecision",
                 "value": 0.8333333333333333,
-                "parameters": {"model_name": "mock", "retries": 0},
+                "parameters": {"evaluator": "mock", "retries": 0},
             }
         ],
         "ContextRecall": [
             {
                 "type": "ContextRecall",
                 "value": 0.6666666666666666,
-                "parameters": {"model_name": "mock", "retries": 0},
+                "parameters": {"evaluator": "mock", "retries": 0},
             }
         ],
         "ContextRelevance": [
             {
                 "type": "ContextRelevance",
                 "value": 0.6666666666666666,
-                "parameters": {"model_name": "mock", "retries": 0},
+                "parameters": {"evaluator": "mock", "retries": 0},
             }
         ],
         "Faithfulness": [
             {
                 "type": "Faithfulness",
                 "value": 0.6666666666666666,
-                "parameters": {"model_name": "mock", "retries": 0},
+                "parameters": {"evaluator": "mock", "retries": 0},
             }
         ],
         "Hallucination": [
             {
                 "type": "Hallucination",
                 "value": 0.6666666666666666,
-                "parameters": {"model_name": "mock", "retries": 0},
+                "parameters": {"evaluator": "mock", "retries": 0},
             }
         ],
         "SummaryCoherence": [
             {
                 "type": "SummaryCoherence",
                 "value": 4,
-                "parameters": {"model_name": "mock", "retries": 0},
+                "parameters": {"evaluator": "mock", "retries": 0},
             }
         ],
         "Toxicity": [
             {
                 "type": "Toxicity",
                 "value": 0.6666666666666666,
-                "parameters": {"model_name": "mock", "retries": 0},
+                "parameters": {"evaluator": "mock", "retries": 0},
             }
         ],
         "ROUGE": [

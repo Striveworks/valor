@@ -67,7 +67,7 @@ class Metric(BaseMetric):
                 "message": error_message,
             },
             parameters={
-                "model_name": model_name,
+                "evaluator": model_name,
                 "retries": retries,
             },
         )
@@ -91,7 +91,7 @@ class Metric(BaseMetric):
             type=MetricType.AnswerCorrectness,
             value=value,
             parameters={
-                "model_name": model_name,
+                "evaluator": model_name,
                 "retries": retries,
             },
         )
@@ -115,7 +115,7 @@ class Metric(BaseMetric):
             type=MetricType.AnswerRelevance,
             value=value,
             parameters={
-                "model_name": model_name,
+                "evaluator": model_name,
                 "retries": retries,
             },
         )
@@ -163,7 +163,7 @@ class Metric(BaseMetric):
             type=MetricType.Bias,
             value=value,
             parameters={
-                "model_name": model_name,
+                "evaluator": model_name,
                 "retries": retries,
             },
         )
@@ -187,7 +187,7 @@ class Metric(BaseMetric):
             type=MetricType.ContextPrecision,
             value=value,
             parameters={
-                "model_name": model_name,
+                "evaluator": model_name,
                 "retries": retries,
             },
         )
@@ -211,7 +211,7 @@ class Metric(BaseMetric):
             type=MetricType.ContextRecall,
             value=value,
             parameters={
-                "model_name": model_name,
+                "evaluator": model_name,
                 "retries": retries,
             },
         )
@@ -235,7 +235,7 @@ class Metric(BaseMetric):
             type=MetricType.ContextRelevance,
             value=value,
             parameters={
-                "model_name": model_name,
+                "evaluator": model_name,
                 "retries": retries,
             },
         )
@@ -259,7 +259,7 @@ class Metric(BaseMetric):
             type=MetricType.Faithfulness,
             value=value,
             parameters={
-                "model_name": model_name,
+                "evaluator": model_name,
                 "retries": retries,
             },
         )
@@ -283,7 +283,7 @@ class Metric(BaseMetric):
             type=MetricType.Hallucination,
             value=value,
             parameters={
-                "model_name": model_name,
+                "evaluator": model_name,
                 "retries": retries,
             },
         )
@@ -335,7 +335,7 @@ class Metric(BaseMetric):
             type=MetricType.SummaryCoherence,
             value=value,
             parameters={
-                "model_name": model_name,
+                "evaluator": model_name,
                 "retries": retries,
             },
         )
@@ -359,7 +359,7 @@ class Metric(BaseMetric):
             type=MetricType.Toxicity,
             value=value,
             parameters={
-                "model_name": model_name,
+                "evaluator": model_name,
                 "retries": retries,
             },
         )
