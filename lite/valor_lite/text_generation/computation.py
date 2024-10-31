@@ -1,5 +1,3 @@
-from collections import defaultdict
-
 import evaluate
 from nltk.tokenize import RegexpTokenizer
 from nltk.translate import bleu_score
@@ -101,9 +99,6 @@ def calculate_bias(
         system_prompt=system_prompt,
         opinions=opinions,
     )
-    if len(verdicts) == 0:
-        return 0.0
-
     return sum(verdict["verdict"] == "yes" for verdict in verdicts) / len(
         verdicts
     )
@@ -436,13 +431,11 @@ def calculate_rouge_scores(
         use_aggregator=False,  # aggregation gives us an average across all predictions, which isn't what we want
     )
 
-    if not metrics:
-        return dict()
-
     # find the max value for each prediction
-    results = defaultdict(float)
-    for type_ in rouge_types:
-        results[type_] = max(metrics[type_][0], results[type_])
+    results = dict()
+    if metrics is not None:
+        for type_ in rouge_types:
+            results[type_] = max(metrics[type_][0], 0.0)
     return results
 
 
