@@ -81,6 +81,7 @@ class Evaluator:
         self,
         client: ClientWrapper | None = None,
         retries: int = 0,
+        default_system_prompt: str = "You are a helpful assistant.",
     ):
         """
         Creates an instance of a generic LLM client.
@@ -92,11 +93,13 @@ class Evaluator:
         retries : int, default=0
             The number of times to retry the API call if it fails. Defaults to 0, indicating
             that the call will not be retried.
+        default_system_prompt : str, default="You are a helpful assistant."
+            The default system prompt that is given to the evaluating LLM.
         """
 
         self.client = client
         self.retries = retries
-        self.default_system_prompt = "You are a helpful assistant."
+        self.default_system_prompt = default_system_prompt
 
     @classmethod
     def openai(
@@ -105,6 +108,7 @@ class Evaluator:
         api_key: str | None = None,
         retries: int = 0,
         seed: int | None = None,
+        default_system_prompt: str = "You are a helpful assistant.",
     ):
         """
         Create an evaluator using OpenAI's client.
@@ -122,6 +126,8 @@ class Evaluator:
             this means that the call will be retried up to 3 times, for a maximum of 4 calls.
         seed : int, optional
             An optional seed can be provided to GPT to get deterministic results.
+        default_system_prompt : str, default="You are a helpful assistant."
+            The default system prompt that is given to the evaluating LLM.
         """
         if seed is not None:
             if retries != 0:
@@ -133,7 +139,11 @@ class Evaluator:
             model_name=model_name,
             seed=seed,
         )
-        return cls(client=client, retries=retries)
+        return cls(
+            client=client,
+            retries=retries,
+            default_system_prompt=default_system_prompt,
+        )
 
     @classmethod
     def mistral(
@@ -141,6 +151,7 @@ class Evaluator:
         model_name: str = "mistral-small-latest",
         api_key: str | None = None,
         retries: int = 0,
+        default_system_prompt: str = "You are a helpful assistant.",
     ):
         """
         Create an evaluator using the Mistral API.
@@ -156,12 +167,18 @@ class Evaluator:
             The number of times to retry the API call if it fails. Defaults to 0, indicating
             that the call will not be retried. For example, if self.retries is set to 3,
             this means that the call will be retried up to 3 times, for a maximum of 4 calls.
+        default_system_prompt : str, default="You are a helpful assistant."
+            The default system prompt that is given to the evaluating LLM.
         """
         client = MistralWrapper(
             api_key=api_key,
             model_name=model_name,
         )
-        return cls(client=client, retries=retries)
+        return cls(
+            client=client,
+            retries=retries,
+            default_system_prompt=default_system_prompt,
+        )
 
     @llm_guided_metric
     def compute_answer_correctness(

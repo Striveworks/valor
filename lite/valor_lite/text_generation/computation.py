@@ -470,13 +470,11 @@ def calculate_sentence_bleu(
     tokenized_references = [tokenizer.tokenize(ref) for ref in references]
 
     # find the max value for each prediction
-    return max(
-        float(
-            bleu_score.sentence_bleu(
-                references=tokenized_references,
-                hypothesis=tokenized_prediction,
-                weights=weights,
-            ),  # type: ignore
-        ),
-        0.0,
+    result = float(
+        bleu_score.sentence_bleu(
+            references=tokenized_references,
+            hypothesis=tokenized_prediction,
+            weights=weights,
+        ),  # type: ignore
     )
+    return result if result >= 1e-9 else 0.0

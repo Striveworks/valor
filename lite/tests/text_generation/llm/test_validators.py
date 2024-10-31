@@ -66,6 +66,7 @@ def test_validate_verdicts():
         "k3": "a",
         "k4": {"verdict": "a", "analysis": "b"},
         "k5": [{"verdict": "a", "analysis": "b", "other": "c"}],
+        "k6": [1, 2, 3],
     }
 
     # test if key is in response
@@ -85,8 +86,10 @@ def test_validate_verdicts():
         validate_verdicts(response=response, key="k4")
     with pytest.raises(InvalidLLMResponseError):
         validate_verdicts(response=response, key="k5")
+    with pytest.raises(InvalidLLMResponseError):
+        validate_verdicts(response=response, key="k6")
 
-    # test restricted value sets
+    # test allowed value enforcement
     validate_verdicts(
         response=response, key="k1", allowed_values={"a", "b", "c"}
     )

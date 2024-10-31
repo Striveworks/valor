@@ -51,9 +51,7 @@ def validate_verdicts(
         )
 
     for value in response[key]:
-        if not isinstance(value, dict) or not all(
-            [isinstance(v, str) for v in value.values()]
-        ):
+        if not isinstance(value, dict):
             raise InvalidLLMResponseError(
                 f"LLM response should follow the format 'dict[str, list[dict[str, str]]]': {response}"
             )

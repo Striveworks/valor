@@ -220,6 +220,10 @@ def verdicts_two_yes_one_no() -> str:
             "statements": ["x", "y", "z"],
             "opinions": ["x", "y", "z"],
             "claims": ["x", "y", "z"],
+            "TP": ["x", "y"],
+            "FP": ["z"],
+            "FN": [],
+            "unused": 4,
         }
     )
 
