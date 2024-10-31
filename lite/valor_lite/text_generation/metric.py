@@ -85,7 +85,9 @@ class Metric(BaseMetric):
         Parameters
         ----------
         value : float
-            The answer correctness score between 0 and 1, with higher values indicating that the answer is more correct. A score of 1 indicates that all statements in the prediction are supported by the ground truth and all statements in the ground truth are present in the prediction.
+            The answer correctness score between 0 and 1, with higher values indicating that the answer
+            is more correct. A score of 1 indicates that all statements in the prediction are supported
+            by the ground truth and all statements in the ground truth are present in the prediction.
         """
         return cls(
             type=MetricType.AnswerCorrectness,
@@ -109,7 +111,8 @@ class Metric(BaseMetric):
         Parameters
         ----------
         value : float
-            The number of statements in the answer that are relevant to the query divided by the total number of statements in the answer.
+            The number of statements in the answer that are relevant to the query divided by the total
+            number of statements in the answer.
         """
         return cls(
             type=MetricType.AnswerRelevance,
@@ -157,7 +160,8 @@ class Metric(BaseMetric):
         Parameters
         ----------
         value : float
-            The bias score for a datum. This is a float between 0 and 1, with 1 indicating that all opinions in the datum text are biased and 0 indicating that there is no bias.
+            The bias score for a datum. This is a float between 0 and 1, with 1 indicating that all
+            opinions in the datum text are biased and 0 indicating that there is no bias.
         """
         return cls(
             type=MetricType.Bias,
@@ -181,7 +185,11 @@ class Metric(BaseMetric):
         Parameters
         ----------
         value : float
-            The context precision score for a datum. This is a float between 0 and 1, with 0 indicating that none of the contexts are useful to arrive at the ground truth answer to the query and 1 indicating that all contexts are useful to arrive at the ground truth answer to the query. The score is more heavily influenced by earlier contexts in the list of contexts than later contexts.
+            The context precision score for a datum. This is a float between 0 and 1, with 0 indicating
+            that none of the contexts are useful to arrive at the ground truth answer to the query
+            and 1 indicating that all contexts are useful to arrive at the ground truth answer to the
+            query. The score is more heavily influenced by earlier contexts in the list of contexts
+            than later contexts.
         """
         return cls(
             type=MetricType.ContextPrecision,
@@ -205,7 +213,8 @@ class Metric(BaseMetric):
         Parameters
         ----------
         value : float
-            The context recall score for a datum. This is a float between 0 and 1, with 1 indicating that all ground truth statements are attributable to the context list.
+            The context recall score for a datum. This is a float between 0 and 1, with 1 indicating
+            that all ground truth statements are attributable to the context list.
         """
         return cls(
             type=MetricType.ContextRecall,
@@ -229,7 +238,8 @@ class Metric(BaseMetric):
         Parameters
         ----------
         value : float
-            The context relevance score for a datum. This is a float between 0 and 1, with 0 indicating that none of the contexts are relevant and 1 indicating that all of the contexts are relevant.
+            The context relevance score for a datum. This is a float between 0 and 1, with 0 indicating
+            that none of the contexts are relevant and 1 indicating that all of the contexts are relevant.
         """
         return cls(
             type=MetricType.ContextRelevance,
@@ -253,7 +263,8 @@ class Metric(BaseMetric):
         Parameters
         ----------
         value : float
-            The faithfulness score for a datum. This is a float between 0 and 1, with 1 indicating that all claims in the text are implied by the contexts.
+            The faithfulness score for a datum. This is a float between 0 and 1, with 1 indicating that
+            all claims in the text are implied by the contexts.
         """
         return cls(
             type=MetricType.Faithfulness,
@@ -277,7 +288,8 @@ class Metric(BaseMetric):
         Parameters
         ----------
         value : float
-            The hallucination score for a datum. This is a float between 0 and 1, with 1 indicating that all contexts are contradicted by the text.
+            The hallucination score for a datum. This is a float between 0 and 1, with 1 indicating that
+            all contexts are contradicted by the text.
         """
         return cls(
             type=MetricType.Hallucination,
@@ -303,7 +315,9 @@ class Metric(BaseMetric):
         value : float
             A ROUGE score.
         rouge_type : ROUGEType
-            The ROUGE variation used to compute the value. `rouge1` is unigram-based scoring, `rouge2` is bigram-based scoring, `rougeL` is scoring based on sentences (i.e., splitting on "." and ignoring "\n"), and `rougeLsum` is scoring based on splitting the text using "\n".
+            The ROUGE variation used to compute the value. `rouge1` is unigram-based scoring, `rouge2` is bigram-based
+            scoring, `rougeL` is scoring based on sentences (i.e., splitting on "." and ignoring "\n"), and `rougeLsum`
+            is scoring based on splitting the text using "\n".
         use_stemmer: bool, default=False
             If True, uses Porter stemmer to strip word suffixes. Defaults to False.
         """
@@ -329,7 +343,8 @@ class Metric(BaseMetric):
         Parameters
         ----------
         value : int
-            The summary coherence score for a datum. This is an integer with 1 being the lowest summary coherence and 5 the highest summary coherence.
+            The summary coherence score for a datum. This is an integer with 1 being the lowest summary coherence
+            and 5 the highest summary coherence.
         """
         return cls(
             type=MetricType.SummaryCoherence,
@@ -353,7 +368,8 @@ class Metric(BaseMetric):
         Parameters
         ----------
         value : float
-            The toxicity score for a datum. This is a value between 0 and 1, with 1 indicating that all opinions in the datum text are toxic and 0 indicating that there is no toxicity.
+            The toxicity score for a datum. This is a value between 0 and 1, with 1 indicating that all opinions
+            in the datum text are toxic and 0 indicating that there is no toxicity.
         """
         return cls(
             type=MetricType.Toxicity,
