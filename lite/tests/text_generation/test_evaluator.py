@@ -1,24 +1,20 @@
 import pytest
 
 try:
-    import mistralai  # noqa: F401 - unused
-
-    MISTRALAI_INSTALLED = True
+    import mistralai
 except ImportError:
-    MISTRALAI_INSTALLED = False
+    mistralai = None
 
 try:
-    import openai  # noqa: F401 - unused
-
-    OPENAI_INSTALLED = True
+    import openai
 except ImportError:
-    OPENAI_INSTALLED = False
+    openai = None
 
 from valor_lite.text_generation import Context, Evaluator, QueryResponse
 
 
 @pytest.mark.skipif(
-    not OPENAI_INSTALLED,
+    openai is None,
     reason="Openai is not installed.",
 )
 def test_openai_integration():
@@ -34,7 +30,7 @@ def test_openai_integration():
 
 
 @pytest.mark.skipif(
-    not MISTRALAI_INSTALLED,
+    mistralai is None,
     reason="MistralAI is not installed.",
 )
 def test_mistral_integration():

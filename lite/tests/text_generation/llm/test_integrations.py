@@ -5,6 +5,7 @@ from unittest.mock import MagicMock
 import pytest
 
 try:
+    import mistralai
     from mistralai.models import (
         AssistantMessage,
         ChatCompletionChoice,
@@ -12,20 +13,17 @@ try:
         UsageInfo,
     )
     from mistralai.models.sdkerror import SDKError as MistralSDKError
-
-    MISTRALAI_INSTALLED = True
 except ImportError:
-    MISTRALAI_INSTALLED = False
+    mistralai = None
 
 try:
+    import openai
     from openai import OpenAIError
     from openai.types.chat import ChatCompletionMessage
     from openai.types.chat.chat_completion import ChatCompletion, Choice
     from openai.types.completion_usage import CompletionUsage
-
-    OPENAI_INSTALLED = True
 except ImportError:
-    OPENAI_INSTALLED = False
+    openai = None
 
 from valor_lite.text_generation.llm.integrations import (
     MistralWrapper,
@@ -84,7 +82,7 @@ def test__validate_messages():
 
 
 @pytest.mark.skipif(
-    not OPENAI_INSTALLED,
+    openai is None,
     reason="Openai is not installed.",
 )
 def test_openai_client():
@@ -228,7 +226,7 @@ def test_openai_client():
 
 
 @pytest.mark.skipif(
-    not MISTRALAI_INSTALLED,
+    mistralai is None,
     reason="MistralAI is not installed.",
 )
 def test_mistral_client():

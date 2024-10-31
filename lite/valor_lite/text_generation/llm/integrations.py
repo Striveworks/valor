@@ -1,16 +1,6 @@
 import os
 from typing import Protocol
 
-try:
-    from mistralai.sdk import Mistral
-except ImportError:
-    Mistral = None
-
-try:
-    from openai import OpenAI
-except ImportError:
-    OpenAI = None
-
 
 def _validate_messages(messages: list[dict[str, str]]):
     """
@@ -88,10 +78,7 @@ class OpenAIWrapper:
             An optional seed can be provided to GPT to get deterministic results.
         """
 
-        if OpenAI is None:
-            raise ImportError(
-                "OpenAI must be installed to use the OpenAIWrapper."
-            )
+        from openai import OpenAI
 
         if api_key is None:
             self.client = OpenAI()
@@ -181,10 +168,9 @@ class MistralWrapper:
         api_key : str, optional
             The Mistral API key to use. If not specified, then the MISTRAL_API_KEY environment variable will be used.
         """
-        if Mistral is None:
-            raise ImportError(
-                "Mistral must be installed to use the MistralWrapper."
-            )
+
+        from mistralai import Mistral
+
         if api_key is None:
             self.client = Mistral(api_key=os.getenv("MISTRAL_API_KEY"))
         else:
