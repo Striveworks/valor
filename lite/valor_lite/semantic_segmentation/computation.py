@@ -46,8 +46,8 @@ def compute_intermediate_confusion_matrices(
         predictions.reshape(1, n_pd_labels, -1),
     ).sum(axis=2)
 
-    intersected_groundtruth_counts = intersection_counts.sum(axis=0)
-    intersected_prediction_counts = intersection_counts.sum(axis=1)
+    intersected_groundtruth_counts = intersection_counts.sum(axis=1)
+    intersected_prediction_counts = intersection_counts.sum(axis=0)
 
     confusion_matrix = np.zeros((n_labels + 1, n_labels + 1), dtype=np.int32)
     confusion_matrix[0, 0] = background_counts
