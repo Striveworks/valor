@@ -1,4 +1,6 @@
+import numpy as np
 from valor_lite.semantic_segmentation import (
+    Bitmask,
     DataLoader,
     MetricType,
     Segmentation,
@@ -89,3 +91,63 @@ def test_confusion_matrix_segmentations_from_boxes(
         assert m in expected_metrics
     for m in expected_metrics:
         assert m in actual_metrics
+
+
+def test_confusion_matrix_intermediate_counting():
+
+    segmentation = Segmentation(
+        uid="uid1",
+        groundtruths=[
+            Bitmask(
+                mask=np.array([[False, False], [True, False]]),
+                label="a",
+            ),
+            Bitmask(
+                mask=np.array([[False, False], [False, True]]),
+                label="b",
+            ),
+            Bitmask(
+                mask=np.array([[True, False], [False, False]]),
+                label="c",
+            ),
+            Bitmask(
+                mask=np.array([[False, True], [False, False]]),
+                label="d",
+            ),
+        ],
+        predictions=[
+            Bitmask(
+                mask=np.array([[False, False], [False, False]]),
+                label="a",
+            ),
+            Bitmask(
+                mask=np.array([[False, False], [False, False]]),
+                label="b",
+            ),
+            Bitmask(
+                mask=np.array([[True, True], [True, True]]),
+                label="c",
+            ),
+            Bitmask(
+                mask=np.array([[False, False], [False, False]]),
+                label="d",
+            ),
+        ],
+    )
+
+    loader = DataLoader()
+    loader.add_data([segmentation])
+
+    assert len(loader.matrices) == 1
+    assert (
+        loader.matrices[0]
+        == np.array(
+            [
+                [0, 0, 0, 0, 0],
+                [0, 0, 0, 1, 0],
+                [0, 0, 0, 1, 0],
+                [0, 0, 0, 1, 0],
+                [0, 0, 0, 1, 0],
+            ]
+        )
+    ).all()
