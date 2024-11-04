@@ -1,5 +1,4 @@
 import numpy as np
-from numpy.typing import NDArray
 from valor_lite.semantic_segmentation import Bitmask, DataLoader, Segmentation
 
 
@@ -7,7 +6,7 @@ def generate_segmentation(
     uid: str,
     height: int,
     width: int,
-    labels: list[str],
+    labels: list[str | None],
     proba: list[float],
 ) -> Segmentation:
     """
@@ -19,8 +18,8 @@ def generate_segmentation(
         The height of the bitmask.
     width : int
         The width of the bitmask.
-    labels : list[str]
-        A list of labels.
+    labels : list[str | None]
+        A list of labels with None representing background.
     proba : list[float]
         A list of probabilities for each label that sum to 1.0. Should be given in increments of 0.01.
     Returns
@@ -48,17 +47,19 @@ def generate_segmentation(
     gts = []
     pds = []
     for lidx in range(N):
-        print(masks[lidx, :, :])
+        label = labels[lidx]
+        if label is None:
+            continue
         gts.append(
             Bitmask(
                 mask=masks[lidx, :height, :],
-                label=labels[lidx],
+                label=label,
             )
         )
         pds.append(
             Bitmask(
                 mask=masks[lidx, height:, :],
-                label=labels[lidx],
+                label=label,
             )
         )
 
@@ -79,7 +80,7 @@ if __name__ == "__main__":
         uid="uid",
         height=2,
         width=2,
-        labels=["a", "b", "c", "d"],
+        labels=["a", "b", "c", None],
         proba=[0.25, 0.25, 0.25, 0.25],
     )
 
