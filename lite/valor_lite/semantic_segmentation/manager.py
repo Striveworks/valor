@@ -243,6 +243,10 @@ class Evaluator:
         return self.compute_precision_recall_iou(filter_=filter_)
 
 
+def defaultdict_int():
+    return defaultdict(int)
+
+
 class DataLoader:
     """
     Segmentation DataLoader.
@@ -250,8 +254,8 @@ class DataLoader:
 
     def __init__(self):
         self._evaluator = Evaluator()
-        self.groundtruth_count = defaultdict(lambda: defaultdict(int))
-        self.prediction_count = defaultdict(lambda: defaultdict(int))
+        self.groundtruth_count = defaultdict(defaultdict_int)
+        self.prediction_count = defaultdict(defaultdict_int)
         self.matrices = list()
         self.pixel_count = list()
 

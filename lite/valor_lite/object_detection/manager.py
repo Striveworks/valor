@@ -341,6 +341,10 @@ class Evaluator:
         return metrics
 
 
+def defaultdict_int():
+    return defaultdict(int)
+
+
 class DataLoader:
     """
     Object Detection DataLoader
@@ -349,8 +353,8 @@ class DataLoader:
     def __init__(self):
         self._evaluator = Evaluator()
         self.pairs: list[NDArray[np.float64]] = list()
-        self.groundtruth_count = defaultdict(lambda: defaultdict(int))
-        self.prediction_count = defaultdict(lambda: defaultdict(int))
+        self.groundtruth_count = defaultdict(defaultdict_int)
+        self.prediction_count = defaultdict(defaultdict_int)
 
     def _add_datum(self, uid: str) -> int:
         """
