@@ -1,6 +1,5 @@
 from collections import defaultdict
 from dataclasses import dataclass
-from typing import Type
 
 import numpy as np
 from numpy.typing import NDArray
@@ -406,14 +405,14 @@ class DataLoader:
 
         Parameters
         ----------
-        uid_index: int
+        uid_index : int
             The index of the detection.
-        groundtruths: list
+        groundtruths : list
             A list of groundtruths.
-        predictions: list
+        predictions : list
             A list of predictions.
-        annotation_type: type[BoundingBox] | type[Polygon] | type[Bitmask]
-            The type of annotation to compute IOUs for.
+        ious : NDArray[np.float64]
+            An array with shape (n_preds, n_gts) containing IOUs.
         """
 
         predictions_with_iou_of_zero = np.where((ious < 1e-9).all(axis=1))[0]
@@ -485,8 +484,8 @@ class DataLoader:
         ----------
         detections : list[Detection]
             A list of Detection objects.
-        annotation_type : type[Bitmask] | type[BoundingBox] | type[Polygon]
-            The annotation type to process.
+        detection_ious : list[NDArray[np.float64]]
+            A list of arrays containing IOUs per detection.
         show_progress : bool, default=False
             Toggle for tqdm progress bar.
         """
@@ -603,7 +602,7 @@ class DataLoader:
             compute_polygon_iou(
                 np.array(
                     [
-                        [gt.annotation, pd.annotation]
+                        [gt.shape, pd.shape]  # type: ignore - using the AttributeError as a validator
                         for pd in detection.predictions
                         for gt in detection.groundtruths
                     ]
@@ -636,7 +635,7 @@ class DataLoader:
             compute_bitmask_iou(
                 np.array(
                     [
-                        [gt.annotation, pd.annotation]
+                        [gt.mask, pd.mask]  # type: ignore - using the AttributeError as a validator
                         for pd in detection.predictions
                         for gt in detection.groundtruths
                     ]
