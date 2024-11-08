@@ -150,6 +150,78 @@ def generate_random_bbox_pair(
     return (gt, pd)
 
 
+def generate_cache(
+    n_datums: int,
+    n_labels: int,
+    n_boxes_per_datum: tuple[int, int],
+) -> DataLoader:
+    """
+    This skips the IOU computation.
+
+    Not ideal since we are dealing directly with internals.
+    """
+
+    gts = []
+    pds = []
+    n_matched, n_unmatched = n_boxes_per_datum
+    for _ in range(n_matched):
+        gt, pd = generate_random_bbox_pair(n_labels)
+        gts.append(gt)
+        pds.append(pd)
+    for _ in range(n_unmatched):
+        gt = generate_random_bbox(n_labels, is_prediction=False)
+        pd = generate_random_bbox(n_labels, is_prediction=True)
+        gts.append(gt)
+        pds.append(pd)
+
+    detection = Detection(
+        uid="0",
+        groundtruths=gts,
+        predictions=pds,
+    )
+
+    loader = DataLoader()
+    loader.add_bounding_boxes([detection])
+
+    # loader cache duplication
+    assert len(loader.pairs) == 1
+
+    # duplicate all iou pairs
+    master_pair = loader.pairs[0]
+    duplicated_pairs = list()
+    for i in range(n_datums):
+        duplicate_pair = master_pair.copy()
+        duplicate_pair[:, 0] = i
+        duplicated_pairs.append(duplicate_pair)
+    loader.pairs = duplicated_pairs
+
+    loader.groundtruth_count = {
+        label_idx: {
+            datum_idx: count * n_datums for datum_idx, count in values.items()
+        }
+        for label_idx, values in loader.groundtruth_count.items()
+    }
+    loader.prediction_count = {
+        label_idx: {
+            datum_idx: count * n_datums for datum_idx, count in values.items()
+        }
+        for label_idx, values in loader.prediction_count.items()
+    }
+
+    # evaluator cache duplication
+    assert loader._evaluator.n_datums == 1
+    loader._evaluator.n_datums = n_datums
+    loader._evaluator.n_groundtruths = n_matched + n_unmatched
+    loader._evaluator.n_predictions = n_matched + n_unmatched
+    loader._evaluator.n_labels = n_labels
+    loader._evaluator.uid_to_index = {str(i): i for i in range(n_datums)}
+    loader._evaluator.index_to_uid = {i: str(i) for i in range(n_datums)}
+    loader._evaluator.label_to_index = {str(i): i for i in range(n_labels)}
+    loader._evaluator.index_to_label = {i: str(i) for i in range(n_labels)}
+
+    return loader
+
+
 def benchmark_add_bounding_boxes(
     n_labels: int,
     n_boxes_per_datum: tuple[int, int],
@@ -162,11 +234,9 @@ def benchmark_add_bounding_boxes(
         repeat=repeat,
     )
 
-    n_matched, n_unmatched = n_boxes_per_datum
-
     elapsed = 0
+    n_matched, n_unmatched = n_boxes_per_datum
     for _ in range(repeat):
-
         gts = []
         pds = []
         for _ in range(n_matched):
@@ -202,30 +272,13 @@ def benchmark_finalize(
         repeat=repeat,
     )
 
-    n_matched, n_unmatched = n_boxes_per_datum
-
-    gts = []
-    pds = []
-    for _ in range(n_matched):
-        gt, pd = generate_random_bbox_pair(n_labels)
-        gts.append(gt)
-        pds.append(pd)
-    for _ in range(n_unmatched):
-        gt = generate_random_bbox(n_labels, is_prediction=False)
-        gts.append(gt)
-        pd = generate_random_bbox(n_labels, is_prediction=True)
-        pds.append(pd)
-
     elapsed = 0
     for _ in range(repeat):
-        loader = DataLoader()
-        for i in range(n_datums):
-            detection = Detection(
-                uid=f"uid{i}",
-                groundtruths=gts,
-                predictions=pds,
-            )
-            loader.add_bounding_boxes([detection])
+        loader = generate_cache(
+            n_datums=n_datums,
+            n_labels=n_labels,
+            n_boxes_per_datum=n_boxes_per_datum,
+        )
         elapsed += profile(loader.finalize)()
     return elapsed / repeat
 
@@ -233,22 +286,27 @@ def benchmark_finalize(
 if __name__ == "__main__":
 
     n_datums = [
+        1000000,
+        100000,
+        10000,
+        1000,
         100,
         10,
-        1,
     ]
 
     n_labels = [
-        # 1000,
+        1000,
         100,
-        10,
-        1,
+        20,
+        5,
     ]
 
     n_boxes_per_datum = [
-        (100, 1),
-        (10, 10),
-        (1, 100),
+        (1000, 1),
+        (100, 10),
+        (10, 2),
+        (10, 100),
+        (1, 1000),
     ]
 
     b = Benchmark(
@@ -258,11 +316,11 @@ if __name__ == "__main__":
         verbose=True,
     )
 
-    # b.run(
-    #     benchmark=benchmark_add_bounding_boxes,
-    #     n_labels=n_labels,
-    #     n_boxes_per_datum=n_boxes_per_datum,
-    # )
+    b.run(
+        benchmark=benchmark_add_bounding_boxes,
+        n_labels=n_labels,
+        n_boxes_per_datum=n_boxes_per_datum,
+    )
 
     b.run(
         benchmark=benchmark_finalize,
@@ -272,13 +330,17 @@ if __name__ == "__main__":
     )
 
     # b.run(
-    #     benchmark=benchmark_finalize,
-    #     n_datums=n_datums,
-    #     n_labels=n_labels,
-    # )
-
-    # b.run(
     #     benchmark=benchmark_evaluate,
     #     n_datums=n_datums,
     #     n_labels=n_labels,
     # )
+
+    loader = generate_cache(
+        n_datums=1,
+        n_labels=10,
+        n_boxes_per_datum=(2, 0),
+    )
+    evaluator = loader.finalize()
+
+    for pair in evaluator._detailed_pairs:
+        print(pair.tolist())
