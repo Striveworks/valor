@@ -16,6 +16,49 @@ def test_no_data():
         loader.finalize()
 
 
+def test_iou_computation():
+
+    detection = Detection(
+        uid="uid",
+        groundtruths=[
+            BoundingBox(xmin=0, xmax=10, ymin=0, ymax=10, labels=["0"]),
+            BoundingBox(xmin=100, xmax=110, ymin=100, ymax=110, labels=["0"]),
+            BoundingBox(
+                xmin=1000, xmax=1100, ymin=1000, ymax=1100, labels=["0"]
+            ),
+        ],
+        predictions=[
+            BoundingBox(
+                xmin=1,
+                xmax=11,
+                ymin=1,
+                ymax=11,
+                labels=["0", "1", "2"],
+                scores=[0.5, 0.25, 0.25],
+            ),
+            BoundingBox(
+                xmin=105,
+                xmax=116,
+                ymin=105,
+                ymax=116,
+                labels=["0", "1", "2"],
+                scores=[0.5, 0.25, 0.25],
+            ),
+        ],
+    )
+
+    loader = DataLoader()
+    loader.add_bounding_boxes([detection])
+
+    assert len(loader.pairs) == 1
+
+    # show that three unique IOUs exist
+    unique_ious = np.unique(loader.pairs[0][:, 3])
+    assert np.isclose(
+        unique_ious, np.array([0.0, 0.12755102, 0.68067227])
+    ).all()
+
+
 def test_mixed_annotations(
     rect1: tuple[float, float, float, float],
     rect1_rotated_5_degrees_around_origin: tuple[float, float, float, float],
@@ -87,7 +130,15 @@ def test_mixed_annotations(
 
     loader = DataLoader()
 
-    for input_ in mixed_detections:
-        with pytest.raises(ValueError) as e:
-            loader.add_bounding_boxes([input_])
-        assert "but annotation is of type" in str(e)
+    for detection in mixed_detections:
+
+        # anything can be converted to a bbox
+        loader.add_bounding_boxes([detection])
+
+        with pytest.raises(AttributeError) as e:
+            loader.add_polygons([detection])
+        assert "no attribute 'shape'" in str(e)
+
+        with pytest.raises(AttributeError) as e:
+            loader.add_bitmasks([detection])
+        assert "no attribute 'mask'" in str(e)

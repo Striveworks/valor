@@ -142,18 +142,6 @@ class Polygon:
         xmin, ymin, xmax, ymax = self.shape.bounds
         return (xmin, xmax, ymin, ymax)
 
-    @property
-    def annotation(self) -> ShapelyPolygon:
-        """
-        Returns the annotation's data representation.
-
-        Returns
-        -------
-        shapely.geometry.Polygon
-            The polygon shape.
-        """
-        return self.shape
-
 
 @dataclass
 class Bitmask:
@@ -221,18 +209,6 @@ class Bitmask:
         """
         rows, cols = np.nonzero(self.mask)
         return (cols.min(), cols.max(), rows.min(), rows.max())
-
-    @property
-    def annotation(self) -> NDArray[np.bool_]:
-        """
-        Returns the annotation's data representation.
-
-        Returns
-        -------
-        NDArray[np.bool_]
-            The binary mask array.
-        """
-        return self.mask
 
 
 @dataclass
