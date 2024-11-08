@@ -1,17 +1,10 @@
 from collections import defaultdict
 from dataclasses import dataclass
-from typing import Type
 
 import numpy as np
-import valor_lite.object_detection.annotation as annotation
 from numpy.typing import NDArray
 from tqdm import tqdm
-from valor_lite.object_detection.annotation import (
-    Bitmask,
-    BoundingBox,
-    Detection,
-    Polygon,
-)
+from valor_lite.object_detection.annotation import Detection
 from valor_lite.object_detection.computation import (
     compute_bbox_iou,
     compute_bitmask_iou,
@@ -396,74 +389,47 @@ class DataLoader:
 
         return self._evaluator.label_to_index[label]
 
-    def _compute_ious_and_cache_pairs(
+    def _cache_pairs(
         self,
         uid_index: int,
         groundtruths: list,
         predictions: list,
-        annotation_type: Type[BoundingBox] | Type[Polygon] | Type[Bitmask],
+        ious: NDArray[np.float64],
     ) -> None:
         """
         Compute IOUs between groundtruths and preditions before storing as pairs.
 
         Parameters
         ----------
-        uid_index: int
+        uid_index : int
             The index of the detection.
-        groundtruths: list
+        groundtruths : list
             A list of groundtruths.
-        predictions: list
+        predictions : list
             A list of predictions.
-        annotation_type: type[BoundingBox] | type[Polygon] | type[Bitmask]
-            The type of annotation to compute IOUs for.
+        ious : NDArray[np.float64]
+            An array with shape (n_preds, n_gts) containing IOUs.
         """
 
-        pairs = list()
-        n_predictions = len(predictions)
-        n_groundtruths = len(groundtruths)
-
-        all_pairs = np.array(
-            [
-                np.array([gann, pann])
-                for _, _, _, pann in predictions
-                for _, _, gann in groundtruths
-            ]
-        )
-
-        match annotation_type:
-            case annotation.BoundingBox:
-                ious = compute_bbox_iou(all_pairs)
-            case annotation.Polygon:
-                ious = compute_polygon_iou(all_pairs)
-            case annotation.Bitmask:
-                ious = compute_bitmask_iou(all_pairs)
-            case _:
-                raise ValueError(
-                    f"Invalid annotation type `{annotation_type}`."
-                )
-
-        ious = ious.reshape(n_predictions, n_groundtruths)
         predictions_with_iou_of_zero = np.where((ious < 1e-9).all(axis=1))[0]
         groundtruths_with_iou_of_zero = np.where((ious < 1e-9).all(axis=0))[0]
 
-        pairs.extend(
-            [
-                np.array(
-                    [
-                        float(uid_index),
-                        float(gidx),
-                        float(pidx),
-                        ious[pidx, gidx],
-                        float(glabel),
-                        float(plabel),
-                        float(score),
-                    ]
-                )
-                for pidx, plabel, score, _ in predictions
-                for gidx, glabel, _ in groundtruths
-                if ious[pidx, gidx] >= 1e-9
-            ]
-        )
+        pairs = [
+            np.array(
+                [
+                    float(uid_index),
+                    float(gidx),
+                    float(pidx),
+                    ious[pidx, gidx],
+                    float(glabel),
+                    float(plabel),
+                    float(score),
+                ]
+            )
+            for pidx, plabel, score in predictions
+            for gidx, glabel in groundtruths
+            if ious[pidx, gidx] >= 1e-9
+        ]
         pairs.extend(
             [
                 np.array(
@@ -496,13 +462,12 @@ class DataLoader:
                 for index in groundtruths_with_iou_of_zero
             ]
         )
-
         self.pairs.append(np.array(pairs))
 
     def _add_data(
         self,
         detections: list[Detection],
-        annotation_type: type[Bitmask] | type[BoundingBox] | type[Polygon],
+        detection_ious: list[NDArray[np.float64]],
         show_progress: bool = False,
     ):
         """
@@ -512,13 +477,15 @@ class DataLoader:
         ----------
         detections : list[Detection]
             A list of Detection objects.
-        annotation_type : type[Bitmask] | type[BoundingBox] | type[Polygon]
-            The annotation type to process.
+        detection_ious : list[NDArray[np.float64]]
+            A list of arrays containing IOUs per detection.
         show_progress : bool, default=False
             Toggle for tqdm progress bar.
         """
         disable_tqdm = not show_progress
-        for detection in tqdm(detections, disable=disable_tqdm):
+        for detection, ious in tqdm(
+            zip(detections, detection_ious), disable=disable_tqdm
+        ):
 
             # update metadata
             self._evaluator.n_datums += 1
@@ -541,11 +508,6 @@ class DataLoader:
             predictions = list()
 
             for gidx, gann in enumerate(detection.groundtruths):
-                if not isinstance(gann, annotation_type):
-                    raise ValueError(
-                        f"Expected {annotation_type}, but annotation is of type {type(gann)}."
-                    )
-
                 self._evaluator.groundtruth_examples[uid_index][
                     gidx
                 ] = gann.extrema
@@ -556,16 +518,10 @@ class DataLoader:
                         (
                             gidx,
                             label_idx,
-                            gann.annotation,
                         )
                     )
 
             for pidx, pann in enumerate(detection.predictions):
-                if not isinstance(pann, annotation_type):
-                    raise ValueError(
-                        f"Expected {annotation_type}, but annotation is of type {type(pann)}."
-                    )
-
                 self._evaluator.prediction_examples[uid_index][
                     pidx
                 ] = pann.extrema
@@ -577,15 +533,14 @@ class DataLoader:
                             pidx,
                             label_idx,
                             pscore,
-                            pann.annotation,
                         )
                     )
 
-            self._compute_ious_and_cache_pairs(
+            self._cache_pairs(
                 uid_index=uid_index,
                 groundtruths=groundtruths,
                 predictions=predictions,
-                annotation_type=annotation_type,
+                ious=ious,
             )
 
     def add_bounding_boxes(
@@ -603,10 +558,22 @@ class DataLoader:
         show_progress : bool, default=False
             Toggle for tqdm progress bar.
         """
+        ious = [
+            compute_bbox_iou(
+                np.array(
+                    [
+                        [gt.extrema, pd.extrema]
+                        for pd in detection.predictions
+                        for gt in detection.groundtruths
+                    ]
+                )
+            ).reshape(len(detection.predictions), len(detection.groundtruths))
+            for detection in detections
+        ]
         return self._add_data(
             detections=detections,
+            detection_ious=ious,
             show_progress=show_progress,
-            annotation_type=BoundingBox,
         )
 
     def add_polygons(
@@ -624,10 +591,22 @@ class DataLoader:
         show_progress : bool, default=False
             Toggle for tqdm progress bar.
         """
+        ious = [
+            compute_polygon_iou(
+                np.array(
+                    [
+                        [gt.shape, pd.shape]  # type: ignore - using the AttributeError as a validator
+                        for pd in detection.predictions
+                        for gt in detection.groundtruths
+                    ]
+                )
+            ).reshape(len(detection.predictions), len(detection.groundtruths))
+            for detection in detections
+        ]
         return self._add_data(
             detections=detections,
+            detection_ious=ious,
             show_progress=show_progress,
-            annotation_type=Polygon,
         )
 
     def add_bitmasks(
@@ -645,10 +624,22 @@ class DataLoader:
         show_progress : bool, default=False
             Toggle for tqdm progress bar.
         """
+        ious = [
+            compute_bitmask_iou(
+                np.array(
+                    [
+                        [gt.mask, pd.mask]  # type: ignore - using the AttributeError as a validator
+                        for pd in detection.predictions
+                        for gt in detection.groundtruths
+                    ]
+                )
+            ).reshape(len(detection.predictions), len(detection.groundtruths))
+            for detection in detections
+        ]
         return self._add_data(
             detections=detections,
+            detection_ious=ious,
             show_progress=show_progress,
-            annotation_type=Bitmask,
         )
 
     def finalize(self) -> Evaluator:
