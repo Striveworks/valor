@@ -418,25 +418,22 @@ class DataLoader:
         predictions_with_iou_of_zero = np.where((ious < 1e-9).all(axis=1))[0]
         groundtruths_with_iou_of_zero = np.where((ious < 1e-9).all(axis=0))[0]
 
-        pairs = list()
-        pairs.extend(
-            [
-                np.array(
-                    [
-                        float(uid_index),
-                        float(gidx),
-                        float(pidx),
-                        ious[pidx, gidx],
-                        float(glabel),
-                        float(plabel),
-                        float(score),
-                    ]
-                )
-                for pidx, plabel, score in predictions
-                for gidx, glabel in groundtruths
-                if ious[pidx, gidx] >= 1e-9
-            ]
-        )
+        pairs = [
+            np.array(
+                [
+                    float(uid_index),
+                    float(gidx),
+                    float(pidx),
+                    ious[pidx, gidx],
+                    float(glabel),
+                    float(plabel),
+                    float(score),
+                ]
+            )
+            for pidx, plabel, score in predictions
+            for gidx, glabel in groundtruths
+            if ious[pidx, gidx] >= 1e-9
+        ]
         pairs.extend(
             [
                 np.array(
