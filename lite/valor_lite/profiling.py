@@ -102,12 +102,13 @@ def pretty_print_results(results: tuple):
     print()
     print("Failed")
     if len(invalid) > 0:
-        keys = ["error", *invalid[0]["details"].keys(), "msg"]
+        keys = ["complexity", "error", *invalid[0]["details"].keys(), "msg"]
         header = " | ".join(f"{header:^15}" for header in keys)
         print(header)
         print("-" * len(header))
         for entry in invalid:
             values = [
+                entry["complexity"],
                 entry["error"],
                 *entry["details"].values(),
                 entry["msg"],
@@ -245,6 +246,7 @@ class Benchmark:
                 k: v[current_indices[idx]]
                 for idx, (k, v) in enumerate(zip(keys, vars))
             }
+            complexity = calculate_complexity(tuple(parameters.values()))
 
             details: dict = {k: str(v) for k, v in parameters.items()}
 
@@ -272,9 +274,7 @@ class Benchmark:
                 )
                 valid_combinations.append(
                     {
-                        "complexity": calculate_complexity(
-                            tuple(parameters.values())
-                        ),
+                        "complexity": complexity,
                         "runtime": runtime,
                         "details": details,
                     }
@@ -283,6 +283,7 @@ class Benchmark:
             except Exception as e:
                 invalid_combinations.append(
                     {
+                        "complexity": complexity,
                         "error": type(e).__name__,
                         "msg": str(e),
                         "details": details,
@@ -299,6 +300,7 @@ class Benchmark:
                         explored.add(new_indices_tuple)
 
         valid_combinations.sort(key=lambda x: -x["complexity"])
+        invalid_combinations.sort(key=lambda x: -x["complexity"])
 
         # clear terminal and display results
         self.clear_status()

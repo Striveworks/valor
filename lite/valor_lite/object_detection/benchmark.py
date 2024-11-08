@@ -153,7 +153,7 @@ def generate_random_bbox_pair(
 def generate_cache(
     n_datums: int,
     n_labels: int,
-    n_boxes_per_datum: tuple[int, int],
+    n_annotations_per_datum: tuple[int, int],
 ) -> DataLoader:
     """
     This skips the IOU computation.
@@ -163,7 +163,7 @@ def generate_cache(
 
     gts = []
     pds = []
-    n_matched, n_unmatched = n_boxes_per_datum
+    n_matched, n_unmatched = n_annotations_per_datum
     for _ in range(n_matched):
         gt, pd = generate_random_bbox_pair(n_labels)
         gts.append(gt)
@@ -224,7 +224,7 @@ def generate_cache(
 
 def benchmark_add_bounding_boxes(
     n_labels: int,
-    n_boxes_per_datum: tuple[int, int],
+    n_annotations_per_datum: tuple[int, int],
     time_limit: float | None,
     repeat: int = 1,
 ):
@@ -235,7 +235,7 @@ def benchmark_add_bounding_boxes(
     )
 
     elapsed = 0
-    n_matched, n_unmatched = n_boxes_per_datum
+    n_matched, n_unmatched = n_annotations_per_datum
     for _ in range(repeat):
         gts = []
         pds = []
@@ -262,7 +262,7 @@ def benchmark_add_bounding_boxes(
 def benchmark_finalize(
     n_datums: int,
     n_labels: int,
-    n_boxes_per_datum: tuple[int, int],
+    n_annotations_per_datum: tuple[int, int],
     time_limit: float | None,
     repeat: int = 1,
 ):
@@ -277,9 +277,62 @@ def benchmark_finalize(
         loader = generate_cache(
             n_datums=n_datums,
             n_labels=n_labels,
-            n_boxes_per_datum=n_boxes_per_datum,
+            n_annotations_per_datum=n_annotations_per_datum,
         )
         elapsed += profile(loader.finalize)()
+    return elapsed / repeat
+
+
+def benchmark_compute_precision_recall(
+    n_datums: int,
+    n_labels: int,
+    n_annotations_per_datum: tuple[int, int],
+    time_limit: float | None,
+    repeat: int = 1,
+):
+
+    profile = create_runtime_profiler(
+        time_limit=time_limit,
+        repeat=repeat,
+    )
+
+    elapsed = 0
+    for _ in range(repeat):
+        loader = generate_cache(
+            n_datums=n_datums,
+            n_labels=n_labels,
+            n_annotations_per_datum=n_annotations_per_datum,
+        )
+        evaluator = loader.finalize()
+        elapsed += profile(evaluator.compute_precision_recall)()
+    return elapsed / repeat
+
+
+def benchmark_compute_confusion_matrix(
+    n_datums: int,
+    n_labels: int,
+    n_annotations_per_datum: tuple[int, int],
+    n_examples: int,
+    time_limit: float | None,
+    repeat: int = 1,
+):
+
+    profile = create_runtime_profiler(
+        time_limit=time_limit,
+        repeat=repeat,
+    )
+
+    elapsed = 0
+    for _ in range(repeat):
+        loader = generate_cache(
+            n_datums=n_datums,
+            n_labels=n_labels,
+            n_annotations_per_datum=n_annotations_per_datum,
+        )
+        evaluator = loader.finalize()
+        elapsed += profile(evaluator.compute_confusion_matrix)(
+            number_of_examples=n_examples
+        )
     return elapsed / repeat
 
 
@@ -301,12 +354,17 @@ if __name__ == "__main__":
         5,
     ]
 
-    n_boxes_per_datum = [
+    n_annotations_per_datum = [
         (1000, 1),
         (100, 10),
         (10, 2),
-        (10, 100),
-        (1, 1000),
+    ]
+
+    n_examples = [
+        10,
+        5,
+        1,
+        0,
     ]
 
     b = Benchmark(
@@ -319,28 +377,19 @@ if __name__ == "__main__":
     b.run(
         benchmark=benchmark_add_bounding_boxes,
         n_labels=n_labels,
-        n_boxes_per_datum=n_boxes_per_datum,
+        n_annotations_per_datum=n_annotations_per_datum,
     )
 
     b.run(
         benchmark=benchmark_finalize,
         n_datums=n_datums,
         n_labels=n_labels,
-        n_boxes_per_datum=n_boxes_per_datum,
+        n_annotations_per_datum=n_annotations_per_datum,
     )
 
-    # b.run(
-    #     benchmark=benchmark_evaluate,
-    #     n_datums=n_datums,
-    #     n_labels=n_labels,
-    # )
-
-    loader = generate_cache(
-        n_datums=1,
-        n_labels=10,
-        n_boxes_per_datum=(2, 0),
+    b.run(
+        benchmark=benchmark_compute_precision_recall,
+        n_datums=n_datums,
+        n_labels=n_labels,
+        n_annotations_per_datum=n_annotations_per_datum,
     )
-    evaluator = loader.finalize()
-
-    for pair in evaluator._detailed_pairs:
-        print(pair.tolist())
