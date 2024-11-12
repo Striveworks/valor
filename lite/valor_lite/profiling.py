@@ -249,14 +249,36 @@ class Benchmark:
         **kwargs: list[Any],
     ):
         """
-        Runs a benchmark.
+        Runs a benchmark with ranges of parameters.
 
         Parameters
         ----------
         benchmark : Callable
             The benchmark function.
-        kwargs : dict[str, list]
-            Lists of arguments to
+        **kwargs : list[Any]
+            Keyword arguments passing lists of parameters to benchmark. The values should be sorted in
+            decreasing complexity. For example, if the number of labels is a parameter then a higher
+            number of unique labels would be considered "more" complex.
+
+        Example
+        -------
+        >>> b = Benchmark(
+        ...     time_limit=10.0,
+        ...     memory_limit=8 * (1024**3),
+        ...     repeat=1,
+        ...     verbose=False,
+        ... )
+        >>> results = b.run(
+        ...     benchmark=semseg_add_data,
+        ...     n_labels=[
+        ...         100,
+        ...         10,
+        ...     ],
+        ...     shape=[
+        ...         (1000, 1000),
+        ...         (100, 100),
+        ...     ],
+        ... )
         """
 
         nvars = len(kwargs)
