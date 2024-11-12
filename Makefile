@@ -13,7 +13,7 @@ unit-tests:
 
 start-postgres-docker:
 	docker build -t pgvalor ./database
-	docker run -p 5432:5432 -e POSTGRES_PASSWORD=password -e POSTGRES_DB=valor -d pgvalor
+	docker run -p 5432:5432 -e POSTGRES_PASSWORD=password -e POSTGRESQL_REPLICATION_USE_PASSFILE=false -e POSTGRES_DB=valor -d pgvalor
 
 run-migrations:
 ifeq ($(shell uname -s),Darwin)

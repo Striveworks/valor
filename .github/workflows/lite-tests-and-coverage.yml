@@ -1,4 +1,4 @@
-name: Run valor-lite code coverage report
+name: "[valor-lite] code coverage report"
 
 on:
   push:
