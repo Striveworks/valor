@@ -1,4 +1,4 @@
-name: Run API + client benchmarks
+name: "[valor-service] benchmarks"
 
 on:
   push:
