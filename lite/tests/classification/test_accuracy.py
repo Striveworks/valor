@@ -49,7 +49,7 @@ def test_accuracy_computation():
         label_metadata=label_metadata,
         score_thresholds=score_thresholds,
         n_datums=3,
-        hardmax=False,
+        one_hot=False,
     )
 
     # score threshold, label, count metric
@@ -84,7 +84,7 @@ def test_accuracy_basic(basic_classifications: list[Classification]):
             "value": 2 / 3,
             "parameters": {
                 "score_threshold": 0.25,
-                "hardmax": True,
+                "one_hot": True,
             },
         },
         {
@@ -92,7 +92,7 @@ def test_accuracy_basic(basic_classifications: list[Classification]):
             "value": 1 / 3,
             "parameters": {
                 "score_threshold": 0.75,
-                "hardmax": True,
+                "one_hot": True,
             },
         },
     ]
@@ -119,7 +119,7 @@ def test_accuracy_with_animal_example(
             "value": 2 / 6,
             "parameters": {
                 "score_threshold": 0.5,
-                "hardmax": True,
+                "one_hot": True,
             },
         },
     ]
@@ -146,7 +146,7 @@ def test_accuracy_color_example(
             "value": 2 / 6,
             "parameters": {
                 "score_threshold": 0.5,
-                "hardmax": True,
+                "one_hot": True,
             },
         },
     ]
@@ -181,7 +181,7 @@ def test_accuracy_with_image_example(
             "value": 0.5,
             "parameters": {
                 "score_threshold": 0.0,
-                "hardmax": True,
+                "one_hot": True,
             },
         },
     ]
@@ -216,7 +216,7 @@ def test_accuracy_with_tabular_example(
             "value": 0.5,
             "parameters": {
                 "score_threshold": 0.0,
-                "hardmax": True,
+                "one_hot": True,
             },
         },
     ]

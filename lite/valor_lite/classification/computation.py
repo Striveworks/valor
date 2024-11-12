@@ -68,7 +68,7 @@ def compute_precision_recall_rocauc(
     data: NDArray[np.float64],
     label_metadata: NDArray[np.int32],
     score_thresholds: NDArray[np.float64],
-    hardmax: bool,
+    one_hot: bool,
     n_datums: int,
 ) -> tuple[
     NDArray[np.int32],
@@ -98,7 +98,7 @@ def compute_precision_recall_rocauc(
         An array containing metadata related to labels.
     score_thresholds : NDArray[np.float64]
         A 1-D array contains score thresholds to compute metrics over.
-    hardmax : bool
+    one_hot : bool
         Option to only allow a single positive prediction.
     n_datums : int
         The number of datums being operated over.
@@ -128,7 +128,7 @@ def compute_precision_recall_rocauc(
 
     mask_matching_labels = np.isclose(data[:, 1], data[:, 2])
     mask_score_nonzero = ~np.isclose(data[:, 3], 0.0)
-    mask_hardmax = data[:, 4] > 0.5
+    mask_one_hot = data[:, 4] > 0.5
 
     # calculate ROCAUC
     rocauc, mean_rocauc = _compute_rocauc(
@@ -146,8 +146,8 @@ def compute_precision_recall_rocauc(
         mask_score_threshold = data[:, 3] >= score_thresholds[score_idx]
         mask_score = mask_score_nonzero & mask_score_threshold
 
-        if hardmax:
-            mask_score &= mask_hardmax
+        if one_hot:
+            mask_score &= mask_one_hot
 
         mask_tp = mask_matching_labels & mask_score
         mask_fp = ~mask_matching_labels & mask_score
@@ -250,7 +250,7 @@ def compute_confusion_matrix(
     data: NDArray[np.float64],
     label_metadata: NDArray[np.int32],
     score_thresholds: NDArray[np.float64],
-    hardmax: bool,
+    one_hot: bool,
     n_examples: int,
 ) -> tuple[NDArray[np.float64], NDArray[np.int32]]:
     """
@@ -304,7 +304,7 @@ def compute_confusion_matrix(
 
     for score_idx in range(n_scores):
         mask_score &= data[:, 3] >= score_thresholds[score_idx]
-        if hardmax:
+        if one_hot:
             mask_score &= data[:, 4] > 0.5
 
         mask_tp = mask_label_match & mask_score

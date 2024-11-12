@@ -53,7 +53,7 @@ class Metric(BaseMetric):
         cls,
         value: float,
         score_threshold: float,
-        hardmax: bool,
+        one_hot: bool,
         label: str,
     ):
         """
@@ -69,8 +69,8 @@ class Metric(BaseMetric):
             Precision value computed at a specific score threshold.
         score_threshold : float
             Score threshold at which the precision value is computed.
-        hardmax : bool
-            Indicates whether hardmax thresholding was used.
+        one_hot : bool
+            Indicates whether the prediction used one_hot format.
         label : str
             The class label for which the precision is computed.
 
@@ -83,7 +83,7 @@ class Metric(BaseMetric):
             value=value,
             parameters={
                 "score_threshold": score_threshold,
-                "hardmax": hardmax,
+                "one_hot": one_hot,
                 "label": label,
             },
         )
@@ -93,7 +93,7 @@ class Metric(BaseMetric):
         cls,
         value: float,
         score_threshold: float,
-        hardmax: bool,
+        one_hot: bool,
         label: str,
     ):
         """
@@ -109,8 +109,8 @@ class Metric(BaseMetric):
             Recall value computed at a specific score threshold.
         score_threshold : float
             Score threshold at which the recall value is computed.
-        hardmax : bool
-            Indicates whether hardmax thresholding was used.
+        one_hot : bool
+            Indicates whether the prediction used one_hot format.
         label : str
             The class label for which the recall is computed.
 
@@ -123,7 +123,7 @@ class Metric(BaseMetric):
             value=value,
             parameters={
                 "score_threshold": score_threshold,
-                "hardmax": hardmax,
+                "one_hot": one_hot,
                 "label": label,
             },
         )
@@ -133,7 +133,7 @@ class Metric(BaseMetric):
         cls,
         value: float,
         score_threshold: float,
-        hardmax: bool,
+        one_hot: bool,
         label: str,
     ):
         """
@@ -145,8 +145,8 @@ class Metric(BaseMetric):
             F1 score computed at a specific score threshold.
         score_threshold : float
             Score threshold at which the F1 score is computed.
-        hardmax : bool
-            Indicates whether hardmax thresholding was used.
+        one_hot : bool
+            Indicates whether the prediction used one_hot format.
         label : str
             The class label for which the F1 score is computed.
 
@@ -159,7 +159,7 @@ class Metric(BaseMetric):
             value=value,
             parameters={
                 "score_threshold": score_threshold,
-                "hardmax": hardmax,
+                "one_hot": one_hot,
                 "label": label,
             },
         )
@@ -169,7 +169,7 @@ class Metric(BaseMetric):
         cls,
         value: float,
         score_threshold: float,
-        hardmax: bool,
+        one_hot: bool,
     ):
         """
         Multiclass accuracy metric.
@@ -182,8 +182,8 @@ class Metric(BaseMetric):
             Accuracy value computed at a specific score threshold.
         score_threshold : float
             Score threshold at which the accuracy value is computed.
-        hardmax : bool
-            Indicates whether hardmax thresholding was used.
+        one_hot : bool
+            Indicates whether the prediction used one_hot format.
 
         Returns
         -------
@@ -194,7 +194,7 @@ class Metric(BaseMetric):
             value=value,
             parameters={
                 "score_threshold": score_threshold,
-                "hardmax": hardmax,
+                "one_hot": one_hot,
             },
         )
 
@@ -257,7 +257,7 @@ class Metric(BaseMetric):
         fn: int,
         tn: int,
         score_threshold: float,
-        hardmax: bool,
+        one_hot: bool,
         label: str,
     ):
         """
@@ -278,8 +278,8 @@ class Metric(BaseMetric):
             True negative counts at each score threshold.
         score_threshold : float
             Score thresholds at which the counts are computed.
-        hardmax : bool
-            Indicates whether hardmax thresholding was used.
+        one_hot : bool
+            Indicates whether the prediction used one_hot format.
         label : str
             The class label for which the counts are computed.
 
@@ -297,7 +297,7 @@ class Metric(BaseMetric):
             },
             parameters={
                 "score_threshold": score_threshold,
-                "hardmax": hardmax,
+                "one_hot": one_hot,
                 "label": label,
             },
         )

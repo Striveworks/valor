@@ -188,7 +188,7 @@ class Evaluator:
     def compute_precision_recall_rocauc(
         self,
         score_thresholds: list[float] = [0.0],
-        hardmax: bool = True,
+        one_hot: bool = True,
         filter_: Filter | None = None,
     ) -> dict[MetricType, list]:
         """
@@ -198,8 +198,8 @@ class Evaluator:
         ----------
         score_thresholds : list[float]
             A list of score thresholds to compute metrics over.
-        hardmax : bool
-            Toggles whether a hardmax is applied to predictions.
+        one_hot : bool
+            Toggles whether predictions are treated as one_hot output.
         filter_ : Filter, optional
             An optional filter object.
 
@@ -222,14 +222,14 @@ class Evaluator:
             data=data,
             label_metadata=label_metadata,
             score_thresholds=np.array(score_thresholds),
-            hardmax=hardmax,
+            one_hot=one_hot,
             n_datums=n_datums,
         )
 
         return unpack_precision_recall_rocauc_into_metric_lists(
             results=results,
             score_thresholds=score_thresholds,
-            hardmax=hardmax,
+            one_hot=one_hot,
             label_metadata=label_metadata,
             index_to_label=self.index_to_label,
         )
@@ -237,7 +237,7 @@ class Evaluator:
     def compute_confusion_matrix(
         self,
         score_thresholds: list[float] = [0.0],
-        hardmax: bool = True,
+        one_hot: bool = True,
         number_of_examples: int = 0,
         filter_: Filter | None = None,
     ) -> list[Metric]:
@@ -248,8 +248,8 @@ class Evaluator:
         ----------
         score_thresholds : list[float]
             A list of score thresholds to compute metrics over.
-        hardmax : bool
-            Toggles whether a hardmax is applied to predictions.
+        one_hot : bool
+            Toggles whether predictions are treated as one_hot output.
         number_of_examples : int, default=0
             The number of examples to return per count.
         filter_ : Filter, optional
@@ -275,7 +275,7 @@ class Evaluator:
             data=data,
             label_metadata=label_metadata,
             score_thresholds=np.array(score_thresholds),
-            hardmax=hardmax,
+            one_hot=one_hot,
             n_examples=number_of_examples,
         )
 
@@ -290,7 +290,7 @@ class Evaluator:
     def evaluate(
         self,
         score_thresholds: list[float] = [0.0],
-        hardmax: bool = True,
+        one_hot: bool = True,
         number_of_examples: int = 0,
         filter_: Filter | None = None,
     ) -> dict[MetricType, list[Metric]]:
@@ -301,8 +301,8 @@ class Evaluator:
         ----------
         score_thresholds : list[float]
             A list of score thresholds to compute metrics over.
-        hardmax : bool
-            Toggles whether a hardmax is applied to predictions.
+        one_hot : bool
+            Toggles whether predictions are treated as one_hot output.
         number_of_examples : int, default=0
             The number of examples to return per count.
         filter_ : Filter, optional
@@ -316,13 +316,13 @@ class Evaluator:
 
         metrics = self.compute_precision_recall_rocauc(
             score_thresholds=score_thresholds,
-            hardmax=hardmax,
+            one_hot=one_hot,
             filter_=filter_,
         )
 
         metrics[MetricType.ConfusionMatrix] = self.compute_confusion_matrix(
             score_thresholds=score_thresholds,
-            hardmax=hardmax,
+            one_hot=one_hot,
             number_of_examples=number_of_examples,
             filter_=filter_,
         )

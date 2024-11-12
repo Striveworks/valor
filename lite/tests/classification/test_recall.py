@@ -49,7 +49,7 @@ def test_recall_computation():
         label_metadata=label_metadata,
         score_thresholds=score_thresholds,
         n_datums=3,
-        hardmax=False,
+        one_hot=False,
     )
 
     # score threshold, label, count metric
@@ -93,7 +93,7 @@ def test_recall_basic(basic_classifications: list[Classification]):
             "value": 0.5,
             "parameters": {
                 "score_threshold": 0.25,
-                "hardmax": True,
+                "one_hot": True,
                 "label": "0",
             },
         },
@@ -102,7 +102,7 @@ def test_recall_basic(basic_classifications: list[Classification]):
             "value": 1.0,
             "parameters": {
                 "score_threshold": 0.25,
-                "hardmax": True,
+                "one_hot": True,
                 "label": "3",
             },
         },
@@ -112,7 +112,7 @@ def test_recall_basic(basic_classifications: list[Classification]):
             "value": 0.5,
             "parameters": {
                 "score_threshold": 0.75,
-                "hardmax": True,
+                "one_hot": True,
                 "label": "0",
             },
         },
@@ -121,7 +121,7 @@ def test_recall_basic(basic_classifications: list[Classification]):
             "value": 0.0,
             "parameters": {
                 "score_threshold": 0.75,
-                "hardmax": True,
+                "one_hot": True,
                 "label": "3",
             },
         },
@@ -151,7 +151,7 @@ def test_recall_with_animal_example(
             "value": 1.0 / 3.0,
             "parameters": {
                 "score_threshold": 0.5,
-                "hardmax": True,
+                "one_hot": True,
                 "label": "bird",
             },
         },
@@ -160,7 +160,7 @@ def test_recall_with_animal_example(
             "value": 0.0,
             "parameters": {
                 "score_threshold": 0.5,
-                "hardmax": True,
+                "one_hot": True,
                 "label": "dog",
             },
         },
@@ -169,7 +169,7 @@ def test_recall_with_animal_example(
             "value": 1.0,
             "parameters": {
                 "score_threshold": 0.5,
-                "hardmax": True,
+                "one_hot": True,
                 "label": "cat",
             },
         },
@@ -199,7 +199,7 @@ def test_recall_with_color_example(
             "value": 0.5,
             "parameters": {
                 "score_threshold": 0.5,
-                "hardmax": True,
+                "one_hot": True,
                 "label": "white",
             },
         },
@@ -208,7 +208,7 @@ def test_recall_with_color_example(
             "value": 0.5,
             "parameters": {
                 "score_threshold": 0.5,
-                "hardmax": True,
+                "one_hot": True,
                 "label": "red",
             },
         },
@@ -217,7 +217,7 @@ def test_recall_with_color_example(
             "value": 0.0,
             "parameters": {
                 "score_threshold": 0.5,
-                "hardmax": True,
+                "one_hot": True,
                 "label": "blue",
             },
         },
@@ -226,7 +226,7 @@ def test_recall_with_color_example(
             "value": 0.0,
             "parameters": {
                 "score_threshold": 0.5,
-                "hardmax": True,
+                "one_hot": True,
                 "label": "black",
             },
         },
@@ -262,7 +262,7 @@ def test_recall_with_image_example(
             "value": 0.5,
             "parameters": {
                 "score_threshold": 0.0,
-                "hardmax": True,
+                "one_hot": True,
                 "label": "v4",
             },
         },
@@ -298,7 +298,7 @@ def test_recall_with_tabular_example(
             "value": 1.0,
             "parameters": {
                 "score_threshold": 0.0,
-                "hardmax": True,
+                "one_hot": True,
                 "label": "0",
             },
         },
@@ -307,7 +307,7 @@ def test_recall_with_tabular_example(
             "value": 1 / 3,
             "parameters": {
                 "score_threshold": 0.0,
-                "hardmax": True,
+                "one_hot": True,
                 "label": "1",
             },
         },
@@ -316,7 +316,7 @@ def test_recall_with_tabular_example(
             "value": 0.0,
             "parameters": {
                 "score_threshold": 0.0,
-                "hardmax": True,
+                "one_hot": True,
                 "label": "2",
             },
         },

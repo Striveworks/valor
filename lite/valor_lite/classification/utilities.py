@@ -16,7 +16,7 @@ def unpack_precision_recall_rocauc_into_metric_lists(
         float,
     ],
     score_thresholds: list[float],
-    hardmax: bool,
+    one_hot: bool,
     label_metadata: NDArray[np.int32],
     index_to_label: dict[int, str],
 ) -> dict[MetricType, list[Metric]]:
@@ -51,7 +51,7 @@ def unpack_precision_recall_rocauc_into_metric_lists(
         Metric.accuracy(
             value=float(accuracy[score_idx]),
             score_threshold=score_threshold,
-            hardmax=hardmax,
+            one_hot=one_hot,
         )
         for score_idx, score_threshold in enumerate(score_thresholds)
     ]
@@ -61,7 +61,7 @@ def unpack_precision_recall_rocauc_into_metric_lists(
 
             kwargs = {
                 "label": label,
-                "hardmax": hardmax,
+                "one_hot": one_hot,
                 "score_threshold": score_threshold,
             }
             row = counts[:, label_idx]

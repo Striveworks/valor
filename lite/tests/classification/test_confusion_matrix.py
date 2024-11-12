@@ -44,7 +44,7 @@ def test_compute_confusion_matrix():
         data=data,
         label_metadata=label_metadata,
         score_thresholds=score_thresholds,
-        hardmax=True,
+        one_hot=True,
         n_examples=0,
     )
 
@@ -511,7 +511,7 @@ def test_confusion_matrix_multiclass(
         assert m in actual_metrics
 
 
-def test_confusion_matrix_without_hardmax_animal_example(
+def test_confusion_matrix_without_one_hot_animal_example(
     classifications_multiclass_true_negatives_check: list[Classification],
 ):
     loader = DataLoader()
@@ -530,7 +530,7 @@ def test_confusion_matrix_without_hardmax_animal_example(
     actual_metrics = evaluator.compute_confusion_matrix(
         score_thresholds=[0.05, 0.4, 0.5],
         number_of_examples=6,
-        hardmax=False,
+        one_hot=False,
     )
 
     actual_metrics = [m.to_dict() for m in actual_metrics]

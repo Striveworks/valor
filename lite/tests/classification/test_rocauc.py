@@ -91,7 +91,7 @@ def test_compute_rocauc_animals():
         label_metadata=label_metadata,
         n_datums=6,
         score_thresholds=np.array([]),
-        hardmax=False,
+        one_hot=False,
     )
 
     # test ROCAUC
@@ -191,7 +191,7 @@ def test_compute_rocauc_colors():
         label_metadata=label_metadata,
         n_datums=6,
         score_thresholds=np.array([]),
-        hardmax=False,
+        one_hot=False,
     )
 
     # test ROCAUC
@@ -264,7 +264,7 @@ def test_rocauc_with_color_example(
     loader.add_data(classifications_color_example)
     evaluator = loader.finalize()
 
-    metrics = evaluator.evaluate(hardmax=False)
+    metrics = evaluator.evaluate(one_hot=False)
 
     # test ROCAUC
     actual_metrics = [m.to_dict() for m in metrics[MetricType.ROCAUC]]

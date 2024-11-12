@@ -39,7 +39,7 @@ assert metrics[MetricType.Precision][0].to_dict() == {
     'value': [0.5],
     'parameters': {
         'score_thresholds': [0.0],
-        'hardmax': True,
+        'one_hot': True,
         'label': 'dog'
     }
 }

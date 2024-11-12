@@ -49,7 +49,7 @@ def test_counts_computation():
         label_metadata=label_metadata,
         score_thresholds=score_thresholds,
         n_datums=3,
-        hardmax=False,
+        one_hot=False,
     )
 
     # score threshold, label, count metric
@@ -135,7 +135,7 @@ def test_counts_basic(basic_classifications: list[Classification]):
             },
             "parameters": {
                 "score_threshold": 0.25,
-                "hardmax": True,
+                "one_hot": True,
                 "label": "0",
             },
         },
@@ -149,7 +149,7 @@ def test_counts_basic(basic_classifications: list[Classification]):
             },
             "parameters": {
                 "score_threshold": 0.25,
-                "hardmax": True,
+                "one_hot": True,
                 "label": "1",
             },
         },
@@ -163,7 +163,7 @@ def test_counts_basic(basic_classifications: list[Classification]):
             },
             "parameters": {
                 "score_threshold": 0.25,
-                "hardmax": True,
+                "one_hot": True,
                 "label": "2",
             },
         },
@@ -177,7 +177,7 @@ def test_counts_basic(basic_classifications: list[Classification]):
             },
             "parameters": {
                 "score_threshold": 0.25,
-                "hardmax": True,
+                "one_hot": True,
                 "label": "3",
             },
         },
@@ -192,7 +192,7 @@ def test_counts_basic(basic_classifications: list[Classification]):
             },
             "parameters": {
                 "score_threshold": 0.75,
-                "hardmax": True,
+                "one_hot": True,
                 "label": "0",
             },
         },
@@ -206,7 +206,7 @@ def test_counts_basic(basic_classifications: list[Classification]):
             },
             "parameters": {
                 "score_threshold": 0.75,
-                "hardmax": True,
+                "one_hot": True,
                 "label": "1",
             },
         },
@@ -220,7 +220,7 @@ def test_counts_basic(basic_classifications: list[Classification]):
             },
             "parameters": {
                 "score_threshold": 0.75,
-                "hardmax": True,
+                "one_hot": True,
                 "label": "2",
             },
         },
@@ -234,7 +234,7 @@ def test_counts_basic(basic_classifications: list[Classification]):
             },
             "parameters": {
                 "score_threshold": 0.75,
-                "hardmax": True,
+                "one_hot": True,
                 "label": "3",
             },
         },
@@ -269,7 +269,7 @@ def test_counts_unit(
             },
             "parameters": {
                 "score_threshold": 0.5,
-                "hardmax": True,
+                "one_hot": True,
                 "label": "0",
             },
         },
@@ -283,7 +283,7 @@ def test_counts_unit(
             },
             "parameters": {
                 "score_threshold": 0.5,
-                "hardmax": True,
+                "one_hot": True,
                 "label": "1",
             },
         },
@@ -297,7 +297,7 @@ def test_counts_unit(
             },
             "parameters": {
                 "score_threshold": 0.5,
-                "hardmax": True,
+                "one_hot": True,
                 "label": "2",
             },
         },
@@ -333,7 +333,7 @@ def test_counts_with_animal_example(
             },
             "parameters": {
                 "score_threshold": 0.05,
-                "hardmax": True,
+                "one_hot": True,
                 "label": "bird",
             },
         },
@@ -347,7 +347,7 @@ def test_counts_with_animal_example(
             },
             "parameters": {
                 "score_threshold": 0.05,
-                "hardmax": True,
+                "one_hot": True,
                 "label": "dog",
             },
         },
@@ -361,7 +361,7 @@ def test_counts_with_animal_example(
             },
             "parameters": {
                 "score_threshold": 0.05,
-                "hardmax": True,
+                "one_hot": True,
                 "label": "cat",
             },
         },
@@ -376,7 +376,7 @@ def test_counts_with_animal_example(
             },
             "parameters": {
                 "score_threshold": 0.5,
-                "hardmax": True,
+                "one_hot": True,
                 "label": "bird",
             },
         },
@@ -390,7 +390,7 @@ def test_counts_with_animal_example(
             },
             "parameters": {
                 "score_threshold": 0.5,
-                "hardmax": True,
+                "one_hot": True,
                 "label": "dog",
             },
         },
@@ -404,7 +404,7 @@ def test_counts_with_animal_example(
             },
             "parameters": {
                 "score_threshold": 0.5,
-                "hardmax": True,
+                "one_hot": True,
                 "label": "cat",
             },
         },
@@ -419,7 +419,7 @@ def test_counts_with_animal_example(
             },
             "parameters": {
                 "score_threshold": 0.95,
-                "hardmax": True,
+                "one_hot": True,
                 "label": "bird",
             },
         },
@@ -433,7 +433,7 @@ def test_counts_with_animal_example(
             },
             "parameters": {
                 "score_threshold": 0.95,
-                "hardmax": True,
+                "one_hot": True,
                 "label": "dog",
             },
         },
@@ -447,7 +447,7 @@ def test_counts_with_animal_example(
             },
             "parameters": {
                 "score_threshold": 0.95,
-                "hardmax": True,
+                "one_hot": True,
                 "label": "cat",
             },
         },
@@ -483,7 +483,7 @@ def test_counts_with_color_example(
             },
             "parameters": {
                 "score_threshold": 0.05,
-                "hardmax": True,
+                "one_hot": True,
                 "label": "white",
             },
         },
@@ -497,7 +497,7 @@ def test_counts_with_color_example(
             },
             "parameters": {
                 "score_threshold": 0.05,
-                "hardmax": True,
+                "one_hot": True,
                 "label": "red",
             },
         },
@@ -511,7 +511,7 @@ def test_counts_with_color_example(
             },
             "parameters": {
                 "score_threshold": 0.05,
-                "hardmax": True,
+                "one_hot": True,
                 "label": "blue",
             },
         },
@@ -525,7 +525,7 @@ def test_counts_with_color_example(
             },
             "parameters": {
                 "score_threshold": 0.05,
-                "hardmax": True,
+                "one_hot": True,
                 "label": "black",
             },
         },
@@ -540,7 +540,7 @@ def test_counts_with_color_example(
             },
             "parameters": {
                 "score_threshold": 0.5,
-                "hardmax": True,
+                "one_hot": True,
                 "label": "white",
             },
         },
@@ -554,7 +554,7 @@ def test_counts_with_color_example(
             },
             "parameters": {
                 "score_threshold": 0.5,
-                "hardmax": True,
+                "one_hot": True,
                 "label": "red",
             },
         },
@@ -568,7 +568,7 @@ def test_counts_with_color_example(
             },
             "parameters": {
                 "score_threshold": 0.5,
-                "hardmax": True,
+                "one_hot": True,
                 "label": "blue",
             },
         },
@@ -582,7 +582,7 @@ def test_counts_with_color_example(
             },
             "parameters": {
                 "score_threshold": 0.5,
-                "hardmax": True,
+                "one_hot": True,
                 "label": "black",
             },
         },
@@ -597,7 +597,7 @@ def test_counts_with_color_example(
             },
             "parameters": {
                 "score_threshold": 0.95,
-                "hardmax": True,
+                "one_hot": True,
                 "label": "white",
             },
         },
@@ -611,7 +611,7 @@ def test_counts_with_color_example(
             },
             "parameters": {
                 "score_threshold": 0.95,
-                "hardmax": True,
+                "one_hot": True,
                 "label": "red",
             },
         },
@@ -625,7 +625,7 @@ def test_counts_with_color_example(
             },
             "parameters": {
                 "score_threshold": 0.95,
-                "hardmax": True,
+                "one_hot": True,
                 "label": "blue",
             },
         },
@@ -639,7 +639,7 @@ def test_counts_with_color_example(
             },
             "parameters": {
                 "score_threshold": 0.95,
-                "hardmax": True,
+                "one_hot": True,
                 "label": "black",
             },
         },
@@ -679,7 +679,7 @@ def test_counts_with_image_example(
             },
             "parameters": {
                 "score_threshold": 0.0,
-                "hardmax": True,
+                "one_hot": True,
                 "label": "v1",
             },
         },
@@ -693,7 +693,7 @@ def test_counts_with_image_example(
             },
             "parameters": {
                 "score_threshold": 0.0,
-                "hardmax": True,
+                "one_hot": True,
                 "label": "v4",
             },
         },
@@ -707,7 +707,7 @@ def test_counts_with_image_example(
             },
             "parameters": {
                 "score_threshold": 0.0,
-                "hardmax": True,
+                "one_hot": True,
                 "label": "v5",
             },
         },
@@ -721,7 +721,7 @@ def test_counts_with_image_example(
             },
             "parameters": {
                 "score_threshold": 0.0,
-                "hardmax": True,
+                "one_hot": True,
                 "label": "v8",
             },
         },
@@ -762,7 +762,7 @@ def test_counts_with_tabular_example(
             },
             "parameters": {
                 "score_threshold": 0.0,
-                "hardmax": True,
+                "one_hot": True,
                 "label": "0",
             },
         },
@@ -776,7 +776,7 @@ def test_counts_with_tabular_example(
             },
             "parameters": {
                 "score_threshold": 0.0,
-                "hardmax": True,
+                "one_hot": True,
                 "label": "1",
             },
         },
@@ -790,7 +790,7 @@ def test_counts_with_tabular_example(
             },
             "parameters": {
                 "score_threshold": 0.0,
-                "hardmax": True,
+                "one_hot": True,
                 "label": "2",
             },
         },
@@ -833,7 +833,7 @@ def test_counts_multiclass(
             },
             "parameters": {
                 "score_threshold": 0.05,
-                "hardmax": True,
+                "one_hot": True,
                 "label": "cat",
             },
             "type": "Counts",
@@ -847,7 +847,7 @@ def test_counts_multiclass(
             },
             "parameters": {
                 "score_threshold": 0.05,
-                "hardmax": True,
+                "one_hot": True,
                 "label": "dog",
             },
             "type": "Counts",
@@ -861,7 +861,7 @@ def test_counts_multiclass(
             },
             "parameters": {
                 "score_threshold": 0.05,
-                "hardmax": True,
+                "one_hot": True,
                 "label": "bee",
             },
             "type": "Counts",
@@ -876,7 +876,7 @@ def test_counts_multiclass(
             },
             "parameters": {
                 "score_threshold": 0.1,
-                "hardmax": True,
+                "one_hot": True,
                 "label": "cat",
             },
             "type": "Counts",
@@ -890,7 +890,7 @@ def test_counts_multiclass(
             },
             "parameters": {
                 "score_threshold": 0.1,
-                "hardmax": True,
+                "one_hot": True,
                 "label": "dog",
             },
             "type": "Counts",
@@ -904,7 +904,7 @@ def test_counts_multiclass(
             },
             "parameters": {
                 "score_threshold": 0.1,
-                "hardmax": True,
+                "one_hot": True,
                 "label": "bee",
             },
             "type": "Counts",
@@ -919,7 +919,7 @@ def test_counts_multiclass(
             },
             "parameters": {
                 "score_threshold": 0.3,
-                "hardmax": True,
+                "one_hot": True,
                 "label": "cat",
             },
             "type": "Counts",
@@ -933,7 +933,7 @@ def test_counts_multiclass(
             },
             "parameters": {
                 "score_threshold": 0.3,
-                "hardmax": True,
+                "one_hot": True,
                 "label": "dog",
             },
             "type": "Counts",
@@ -947,7 +947,7 @@ def test_counts_multiclass(
             },
             "parameters": {
                 "score_threshold": 0.3,
-                "hardmax": True,
+                "one_hot": True,
                 "label": "bee",
             },
             "type": "Counts",
@@ -962,7 +962,7 @@ def test_counts_multiclass(
             },
             "parameters": {
                 "score_threshold": 0.85,
-                "hardmax": True,
+                "one_hot": True,
                 "label": "cat",
             },
             "type": "Counts",
@@ -976,7 +976,7 @@ def test_counts_multiclass(
             },
             "parameters": {
                 "score_threshold": 0.85,
-                "hardmax": True,
+                "one_hot": True,
                 "label": "dog",
             },
             "type": "Counts",
@@ -990,7 +990,7 @@ def test_counts_multiclass(
             },
             "parameters": {
                 "score_threshold": 0.85,
-                "hardmax": True,
+                "one_hot": True,
                 "label": "bee",
             },
             "type": "Counts",
@@ -1033,7 +1033,7 @@ def test_counts_true_negatives_check_animals(
             },
             "parameters": {
                 "score_threshold": 0.05,
-                "hardmax": True,
+                "one_hot": True,
                 "label": "ant",
             },
             "type": "Counts",
@@ -1047,7 +1047,7 @@ def test_counts_true_negatives_check_animals(
             },
             "parameters": {
                 "score_threshold": 0.05,
-                "hardmax": True,
+                "one_hot": True,
                 "label": "bee",
             },
             "type": "Counts",
@@ -1061,7 +1061,7 @@ def test_counts_true_negatives_check_animals(
             },
             "parameters": {
                 "score_threshold": 0.05,
-                "hardmax": True,
+                "one_hot": True,
                 "label": "cat",
             },
             "type": "Counts",
@@ -1076,7 +1076,7 @@ def test_counts_true_negatives_check_animals(
             },
             "parameters": {
                 "score_threshold": 0.15,
-                "hardmax": True,
+                "one_hot": True,
                 "label": "ant",
             },
             "type": "Counts",
@@ -1090,7 +1090,7 @@ def test_counts_true_negatives_check_animals(
             },
             "parameters": {
                 "score_threshold": 0.15,
-                "hardmax": True,
+                "one_hot": True,
                 "label": "bee",
             },
             "type": "Counts",
@@ -1104,7 +1104,7 @@ def test_counts_true_negatives_check_animals(
             },
             "parameters": {
                 "score_threshold": 0.15,
-                "hardmax": True,
+                "one_hot": True,
                 "label": "cat",
             },
             "type": "Counts",
@@ -1119,7 +1119,7 @@ def test_counts_true_negatives_check_animals(
             },
             "parameters": {
                 "score_threshold": 0.95,
-                "hardmax": True,
+                "one_hot": True,
                 "label": "ant",
             },
             "type": "Counts",
@@ -1133,7 +1133,7 @@ def test_counts_true_negatives_check_animals(
             },
             "parameters": {
                 "score_threshold": 0.95,
-                "hardmax": True,
+                "one_hot": True,
                 "label": "bee",
             },
             "type": "Counts",
@@ -1147,7 +1147,7 @@ def test_counts_true_negatives_check_animals(
             },
             "parameters": {
                 "score_threshold": 0.95,
-                "hardmax": True,
+                "one_hot": True,
                 "label": "cat",
             },
             "type": "Counts",
@@ -1192,7 +1192,7 @@ def test_counts_zero_count_check(
             },
             "parameters": {
                 "score_threshold": 0.05,
-                "hardmax": True,
+                "one_hot": True,
                 "label": "ant",
             },
             "type": "Counts",
@@ -1206,7 +1206,7 @@ def test_counts_zero_count_check(
             },
             "parameters": {
                 "score_threshold": 0.05,
-                "hardmax": True,
+                "one_hot": True,
                 "label": "bee",
             },
             "type": "Counts",
@@ -1220,7 +1220,7 @@ def test_counts_zero_count_check(
             },
             "parameters": {
                 "score_threshold": 0.05,
-                "hardmax": True,
+                "one_hot": True,
                 "label": "cat",
             },
             "type": "Counts",
@@ -1235,7 +1235,7 @@ def test_counts_zero_count_check(
             },
             "parameters": {
                 "score_threshold": 0.2,
-                "hardmax": True,
+                "one_hot": True,
                 "label": "ant",
             },
             "type": "Counts",
@@ -1249,7 +1249,7 @@ def test_counts_zero_count_check(
             },
             "parameters": {
                 "score_threshold": 0.2,
-                "hardmax": True,
+                "one_hot": True,
                 "label": "bee",
             },
             "type": "Counts",
@@ -1263,7 +1263,7 @@ def test_counts_zero_count_check(
             },
             "parameters": {
                 "score_threshold": 0.2,
-                "hardmax": True,
+                "one_hot": True,
                 "label": "cat",
             },
             "type": "Counts",
@@ -1278,7 +1278,7 @@ def test_counts_zero_count_check(
             },
             "parameters": {
                 "score_threshold": 0.95,
-                "hardmax": True,
+                "one_hot": True,
                 "label": "ant",
             },
             "type": "Counts",
@@ -1292,7 +1292,7 @@ def test_counts_zero_count_check(
             },
             "parameters": {
                 "score_threshold": 0.95,
-                "hardmax": True,
+                "one_hot": True,
                 "label": "bee",
             },
             "type": "Counts",
@@ -1306,7 +1306,7 @@ def test_counts_zero_count_check(
             },
             "parameters": {
                 "score_threshold": 0.95,
-                "hardmax": True,
+                "one_hot": True,
                 "label": "cat",
             },
             "type": "Counts",
