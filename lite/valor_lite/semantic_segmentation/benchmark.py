@@ -1,9 +1,5 @@
 import numpy as np
-from valor_lite.profiling import (
-    Benchmark,
-    BenchmarkError,
-    create_runtime_profiler,
-)
+from valor_lite.profiling import create_runtime_profiler
 from valor_lite.semantic_segmentation import Bitmask, DataLoader, Segmentation
 
 
@@ -14,16 +10,22 @@ def generate_segmentation(
     width: int,
 ) -> Segmentation:
     """
-    Generates a list of segmentation annotations.
+    Generates a semantic segmentation annotation.
 
     Parameters
     ----------
     uid : str
         The datum UID for the generated segmentation.
+    n_labels : int
+        The number of unique labels.
+    height : int
+        The height of the mask in pixels.
+    width : int
+        The width of the mask in pixels.
 
     Returns
     -------
-    Segmenation
+    Segmentation
         A generated semantic segmenatation annotation.
     """
 
@@ -83,7 +85,26 @@ def benchmark_add_data(
     shape: tuple[int, int],
     time_limit: float | None,
     repeat: int = 1,
-):
+) -> float:
+    """
+    Benchmarks 'Dataloader.add_data' for semantic segmentation.
+
+    Parameters
+    ----------
+    n_labels : int
+        The number of unique labels to generate.
+    shape : tuple[int, int]
+        The size (h,w) of the mask to generate.
+    time_limit : float, optional
+        An optional time limit to constrain the benchmark.
+    repeat : int
+        The number of times to run the benchmark to produce a runtime average.
+
+    Returns
+    -------
+    float
+        The average runtime.
+    """
 
     profile = create_runtime_profiler(
         time_limit=time_limit,
@@ -109,6 +130,25 @@ def benchmark_finalize(
     time_limit: float | None,
     repeat: int = 1,
 ):
+    """
+    Benchmarks 'Dataloader.finalize' for semantic segmentation.
+
+    Parameters
+    ----------
+    n_datums : int
+        The number of datums to generate.
+    n_labels : int
+        The number of unique labels to generate.
+    time_limit : float, optional
+        An optional time limit to constrain the benchmark.
+    repeat : int
+        The number of times to run the benchmark to produce a runtime average.
+
+    Returns
+    -------
+    float
+        The average runtime.
+    """
 
     profile = create_runtime_profiler(
         time_limit=time_limit,
@@ -136,6 +176,25 @@ def benchmark_evaluate(
     time_limit: float | None,
     repeat: int = 1,
 ):
+    """
+    Benchmarks 'Evaluator.evaluate' for semantic segmentation.
+
+    Parameters
+    ----------
+    n_datums : int
+        The number of datums to generate.
+    n_labels : int
+        The number of unique labels to generate.
+    time_limit : float, optional
+        An optional time limit to constrain the benchmark.
+    repeat : int
+        The number of times to run the benchmark to produce a runtime average.
+
+    Returns
+    -------
+    float
+        The average runtime.
+    """
 
     profile = create_runtime_profiler(
         time_limit=time_limit,
@@ -156,78 +215,3 @@ def benchmark_evaluate(
         evaluator = loader.finalize()
         elapsed += profile(evaluator.evaluate)()
     return elapsed / repeat
-
-
-def benchmark(
-    bitmask_shape: tuple[int, int],
-    number_of_unique_labels: int,
-    number_of_images: int,
-    *_,
-    memory_limit: float = 4.0,
-    time_limit: float = 10.0,
-    repeat: int = 1,
-    verbose: bool = False,
-):
-    """
-    Runs a single benchmark.
-
-    Parameters
-    ----------
-    bitmask_shape : tuple[int, int]
-        The size (h, w) of the bitmask array.
-    number_of_unique_labels : int
-        The number of unique labels used in the synthetic example.
-    number_of_images : int
-        The number of distinct datums that are created.
-    memory_limit : float
-        The maximum amount of system memory allowed in gigabytes (GB).
-    time_limit : float
-        The maximum amount of time permitted before killing the benchmark.
-    repeat : int
-        The number of times to run a benchmark to produce an average runtime.
-    verbose : bool, default=False
-        Toggles terminal output of benchmark results.
-    """
-
-    b = Benchmark(
-        time_limit=time_limit,
-        memory_limit=int(memory_limit * (1024**3)),
-        repeat=repeat,
-        verbose=verbose,
-    )
-
-    _, failed, details = b.run(
-        benchmark=benchmark_add_data,
-        n_labels=[number_of_unique_labels],
-        shape=[bitmask_shape],
-    )
-    if failed:
-        raise BenchmarkError(
-            benchmark=details["benchmark"],
-            error_type=failed[0]["error"],
-            error_message=failed[0]["msg"],
-        )
-
-    _, failed, details = b.run(
-        benchmark=benchmark_finalize,
-        n_datums=[number_of_images],
-        n_labels=[number_of_unique_labels],
-    )
-    if failed:
-        raise BenchmarkError(
-            benchmark=details["benchmark"],
-            error_type=failed[0]["error"],
-            error_message=failed[0]["msg"],
-        )
-
-    _, failed, details = b.run(
-        benchmark=benchmark_evaluate,
-        n_datums=[number_of_images],
-        n_labels=[number_of_unique_labels],
-    )
-    if failed:
-        raise BenchmarkError(
-            benchmark=details["benchmark"],
-            error_type=failed[0]["error"],
-            error_message=failed[0]["msg"],
-        )
