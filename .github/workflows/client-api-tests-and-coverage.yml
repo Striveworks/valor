@@ -1,4 +1,4 @@
-name: Run API + client code coverage report
+name: "[valor-service] code coverage report"
 
 on:
   push:
