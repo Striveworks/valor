@@ -7,6 +7,17 @@ import time
 from collections import deque
 from multiprocessing import Queue
 
+from tqdm import tqdm
+
+
+class BenchmarkError(Exception):
+    def __init__(
+        self, benchmark: str, error_type: str, error_message: str
+    ) -> None:
+        super().__init__(
+            f"'{benchmark}' raised '{error_type}' with the following message: {error_message}"
+        )
+
 
 def _timeit_subprocess(*args, __fn, __queue: Queue, **kwargs):
     try:
@@ -131,9 +142,6 @@ class Benchmark:
         self.repeat = repeat
         self.verbose = verbose
 
-        # printing
-        self.line_count = 0
-
     def get_limits(
         self,
         *_,
@@ -198,22 +206,6 @@ class Benchmark:
             _, hard = resource.getrlimit(resource.RLIMIT_AS)
             resource.setrlimit(resource.RLIMIT_AS, (limit, hard))
 
-    def clear_status(self):
-        if not self.verbose:
-            return
-        for _ in range(self.line_count):
-            sys.stdout.write("\033[F")
-            sys.stdout.write("\033[K")
-        self.line_count = 0
-
-    def write_status(self, text: str):
-        if not self.verbose:
-            return
-        self.clear_status()
-        self.line_count = text.count("\n") + 1
-        sys.stdout.write(text + "\n")
-        sys.stdout.flush()
-
     def run(
         self,
         benchmark,
@@ -239,6 +231,8 @@ class Benchmark:
         valid_combinations = []
         invalid_combinations = []
 
+        pbar = tqdm(total=math.prod(max_indices), disable=(not self.verbose))
+        prev_count = 0
         while queue:
 
             current_indices = queue.popleft()
@@ -251,20 +245,9 @@ class Benchmark:
             details: dict = {k: str(v) for k, v in parameters.items()}
 
             # update terminal with status
-            self.write_status(
-                f"Running '{benchmark.__name__}'\n"
-                + json.dumps(
-                    {
-                        **details,
-                        **self.get_limits(
-                            readable=True,
-                            memory_unit="GB",
-                            time_unit="seconds",
-                        ),
-                    },
-                    indent=4,
-                )
-            )
+            count = len(valid_combinations) + len(invalid_combinations)
+            pbar.update(count - prev_count)
+            prev_count = count
 
             try:
                 runtime = benchmark(
@@ -303,7 +286,6 @@ class Benchmark:
         invalid_combinations.sort(key=lambda x: -x["complexity"])
 
         # clear terminal and display results
-        self.clear_status()
         results = (
             valid_combinations,
             invalid_combinations,
@@ -315,6 +297,7 @@ class Benchmark:
                 "total": permutations,
             },
         )
+        pbar.close()
         if self.verbose:
             pretty_print_results(results)
 

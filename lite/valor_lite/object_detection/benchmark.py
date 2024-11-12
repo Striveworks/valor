@@ -368,8 +368,8 @@ if __name__ == "__main__":
     ]
 
     b = Benchmark(
-        time_limit=10.0,
-        memory_limit=8 * (1024**3),
+        time_limit=5.0,
+        memory_limit=4 * (1024**3),
         repeat=1,
         verbose=True,
     )
