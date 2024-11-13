@@ -50,11 +50,6 @@ def compute_intermediate_confusion_matrices(
     confusion_matrix[
         np.ix_(groundtruth_labels + 1, prediction_labels + 1)
     ] = intersection_counts
-    print(
-        confusion_matrix[0, 1:].shape,
-        prediction_counts.shape,
-        intersected_prediction_counts.shape,
-    )
     confusion_matrix[0, prediction_labels + 1] = (
         prediction_counts - intersected_prediction_counts
     )
