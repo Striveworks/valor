@@ -138,8 +138,8 @@ def benchmark_evaluate(
             generate_segmentation(
                 datum_uid=str(i),
                 number_of_unique_labels=n_labels,
-                mask_height=10,
-                mask_width=10,
+                mask_height=100,
+                mask_width=100,
             )
             for i in range(10)
         ]
