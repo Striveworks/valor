@@ -35,4 +35,3 @@ jobs:
           export BENCHMARK_RESULTS=$(python -c "import os;import json;print(json.dumps(json.load(open('objdet_results.json', 'r')), indent=4));")
           echo "$BENCHMARK_RESULTS"
         working-directory: ./lite/benchmarks/
-      - run: make stop-env

@@ -29,7 +29,7 @@ class Bitmask:
     def __post_init__(self):
         if self.mask.dtype != np.bool_:
             raise ValueError(
-                f"Bitmask recieved mask with dtype `{self.mask.dtype}`."
+                f"Bitmask recieved mask with dtype '{self.mask.dtype}'."
             )
 
 
@@ -94,3 +94,86 @@ class Segmentation:
 
         self.shape = groundtruth_shape.pop()
         self.size = int(np.prod(np.array(self.shape)))
+
+
+def generate_segmentation(
+    datum_uid: str,
+    number_of_unique_labels: int,
+    mask_height: int,
+    mask_width: int,
+) -> Segmentation:
+    """
+    Generates a semantic segmentation annotation.
+
+    Parameters
+    ----------
+    datum_uid : str
+        The datum UID for the generated segmentation.
+    number_of_unique_labels : int
+        The number of unique labels.
+    mask_height : int
+        The height of the mask in pixels.
+    mask_width : int
+        The width of the mask in pixels.
+
+    Returns
+    -------
+    Segmentation
+        A generated semantic segmenatation annotation.
+    """
+
+    if number_of_unique_labels > 1:
+        common_proba = 0.4 / (number_of_unique_labels - 1)
+        min_proba = min(common_proba, 0.1)
+        labels = [str(i) for i in range(number_of_unique_labels)] + [None]
+        proba = (
+            [0.5]
+            + [common_proba for _ in range(number_of_unique_labels - 1)]
+            + [0.1]
+        )
+    elif number_of_unique_labels == 1:
+        labels = ["0", None]
+        proba = [0.9, 0.1]
+        min_proba = 0.1
+    else:
+        raise ValueError(
+            "The number of unique labels should be greater than zero."
+        )
+
+    probabilities = np.array(proba, dtype=np.float64)
+    weights = (probabilities / min_proba).astype(np.int32)
+
+    indices = np.random.choice(
+        np.arange(len(weights)),
+        size=(mask_height * 2, mask_width),
+        p=probabilities,
+    )
+
+    N = len(labels)
+
+    masks = np.arange(N)[:, None, None] == indices
+
+    gts = []
+    pds = []
+    for lidx in range(N):
+        label = labels[lidx]
+        if label is None:
+            continue
+        gts.append(
+            Bitmask(
+                mask=masks[lidx, :mask_height, :],
+                label=label,
+            )
+        )
+        pds.append(
+            Bitmask(
+                mask=masks[lidx, mask_height:, :],
+                label=label,
+            )
+        )
+
+    return Segmentation(
+        uid=datum_uid,
+        groundtruths=gts,
+        predictions=pds,
+    )
