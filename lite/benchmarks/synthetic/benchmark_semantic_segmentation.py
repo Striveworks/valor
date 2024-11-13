@@ -85,7 +85,7 @@ if __name__ == "__main__":
 
     benchmark(
         bitmask_shape=(4000, 4000),
-        number_of_images=10,
+        number_of_images=1000,
         number_of_unique_labels=10,
         memory_limit=4.0,
         time_limit=10.0,

@@ -101,9 +101,9 @@ def pretty_print_results(results: tuple):
     print("Details")
     print(json.dumps(permutations, indent=4))
 
-    print()
-    print("Passed")
     if len(valid) > 0:
+        print()
+        print("Passed")
         keys = ["complexity", "runtime", *valid[0]["details"].keys()]
         header = " | ".join(f"{header:^15}" for header in keys)
         print(header)
@@ -117,9 +117,9 @@ def pretty_print_results(results: tuple):
             row = " | ".join(f"{str(value):^15}" for value in values)
             print(row)
 
-    print()
-    print("Failed")
     if len(invalid) > 0:
+        print()
+        print("Failed")
         keys = ["complexity", "error", *invalid[0]["details"].keys(), "msg"]
         header = " | ".join(f"{header:^15}" for header in keys)
         print(header)
