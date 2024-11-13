@@ -1,4 +1,11 @@
-from .annotation import Bitmask, BoundingBox, Detection, Polygon
+from .annotation import (
+    Bitmask,
+    BoundingBox,
+    Detection,
+    Polygon,
+    generate_bounding_box,
+    generate_bounding_box_pair,
+)
 from .computation import (
     compute_bbox_iou,
     compute_bitmask_iou,
@@ -23,6 +30,8 @@ __all__ = [
     "compute_ranked_pairs",
     "compute_precion_recall",
     "compute_confusion_matrix",
+    "generate_bounding_box",
+    "generate_bounding_box_pair",
     "DataLoader",
     "Evaluator",
 ]
