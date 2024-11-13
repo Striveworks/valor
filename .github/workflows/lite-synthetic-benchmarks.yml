@@ -22,4 +22,3 @@ jobs:
       - name: benchmark semantic segmentation
         run: python benchmark_semantic_segmentation.py
         working-directory: ./lite/benchmarks/synthetic/
-      - run: make stop-env
