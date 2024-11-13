@@ -77,8 +77,6 @@ def benchmark_finalize(
         repeat=repeat,
     )
 
-    from tqdm import tqdm
-
     elapsed = 0
     for _ in range(repeat):
 
@@ -92,7 +90,7 @@ def benchmark_finalize(
             for i in range(10)
         ]
         loader = DataLoader()
-        for datum_idx in tqdm(range(n_datums)):
+        for datum_idx in range(n_datums):
             segmentation = data[datum_idx % 10]
             segmentation.uid = str(datum_idx)
             loader.add_data([segmentation])
@@ -138,8 +136,8 @@ def benchmark_evaluate(
             generate_segmentation(
                 datum_uid=str(i),
                 number_of_unique_labels=n_labels,
-                mask_height=100,
-                mask_width=100,
+                mask_height=5,
+                mask_width=5,
             )
             for i in range(10)
         ]
@@ -151,15 +149,3 @@ def benchmark_evaluate(
         evaluator = loader.finalize()
         elapsed += profile(evaluator.evaluate)()
     return elapsed / repeat
-
-
-if __name__ == "__main__":
-
-    print(
-        benchmark_finalize(
-            n_datums=10000,
-            n_labels=1000,
-            time_limit=10,
-            repeat=1,
-        )
-    )
