@@ -2,10 +2,10 @@ import json
 import math
 import multiprocessing as mp
 import resource
-import sys
 import time
 from collections import deque
 from multiprocessing import Queue
+from typing import Any
 
 from tqdm import tqdm
 
@@ -20,6 +20,11 @@ class BenchmarkError(Exception):
 
 
 def _timeit_subprocess(*args, __fn, __queue: Queue, **kwargs):
+    """
+    Multiprocessing subprocess that reports either runtime or errors.
+
+    This is handled within a subprocess to protect the benchmark against OOM errors.
+    """
     try:
         timer_start = time.perf_counter()
         __fn(*args, **kwargs)
@@ -34,7 +39,16 @@ def create_runtime_profiler(
     repeat: int = 1,
 ):
     """
-    This profiles the runtime of the wrapped function in a subprocess.
+    Creates a runtime profiler as a decorating function.
+
+    The profiler reports runtime of the wrapped function from a subprocess to protect against OOM errors.
+
+    Parameters
+    ----------
+    time_limit : float, optional
+        An optional time limit to constrain the benchmark.
+    repeat : int, default=1
+        The number of times to repeat the benchmark to produce an average runtime.
     """
     ctx = mp.get_context("spawn")
 
@@ -78,13 +92,6 @@ def create_runtime_profiler(
     return decorator
 
 
-def calculate_complexity(params: list[int | tuple[int]]) -> int:
-    flattened_params = [
-        math.prod(p) if isinstance(p, tuple) else p for p in params
-    ]
-    return math.prod(flattened_params)
-
-
 def pretty_print_results(results: tuple):
     valid, invalid, permutations = results
 
@@ -94,9 +101,9 @@ def pretty_print_results(results: tuple):
     print("Details")
     print(json.dumps(permutations, indent=4))
 
-    print()
-    print("Passed")
     if len(valid) > 0:
+        print()
+        print("Passed")
         keys = ["complexity", "runtime", *valid[0]["details"].keys()]
         header = " | ".join(f"{header:^15}" for header in keys)
         print(header)
@@ -110,9 +117,9 @@ def pretty_print_results(results: tuple):
             row = " | ".join(f"{str(value):^15}" for value in values)
             print(row)
 
-    print()
-    print("Failed")
     if len(invalid) > 0:
+        print()
+        print("Failed")
         keys = ["complexity", "error", *invalid[0]["details"].keys(), "msg"]
         header = " | ".join(f"{header:^15}" for header in keys)
         print(header)
@@ -126,6 +133,16 @@ def pretty_print_results(results: tuple):
             ]
             row = " | ".join(f"{str(value):^15}" for value in values)
             print(row)
+
+
+def _calculate_complexity(params: list[int | tuple[int]]) -> int:
+    """
+    Basic metric of benchmark complexity.
+    """
+    flattened_params = [
+        math.prod(p) if isinstance(p, tuple) else p for p in params
+    ]
+    return math.prod(flattened_params)
 
 
 class Benchmark:
@@ -149,6 +166,23 @@ class Benchmark:
         memory_unit: str = "GB",
         time_unit: str = "seconds",
     ) -> dict[str, str | int | float | None]:
+        """
+        Returns a dictionary of benchmark limits.
+
+        Parameters
+        ----------
+        readable : bool, default=True
+            Toggles whether the output should be human readable.
+        memory_unit : str, default="GB"
+            Toggles what unit to display the memory limit with when 'readable=True'.
+        time_unit : str, default="seconds"
+            Toggles what unit to display the time limit with when 'readable=True'.
+
+        Returns
+        -------
+        dict[str, str | int | float | None]
+            The benchmark limits.
+        """
 
         memory_value = self.memory_limit
         if readable and memory_value is not None:
@@ -194,6 +228,9 @@ class Benchmark:
 
     @property
     def memory_limit(self) -> int | None:
+        """
+        The memory limit in bytes (B).
+        """
         return self._memory_limit
 
     @memory_limit.setter
@@ -209,8 +246,41 @@ class Benchmark:
     def run(
         self,
         benchmark,
-        **kwargs,
+        **kwargs: list[Any],
     ):
+        """
+        Runs a benchmark with ranges of parameters.
+
+        Parameters
+        ----------
+        benchmark : Callable
+            The benchmark function.
+        **kwargs : list[Any]
+            Keyword arguments passing lists of parameters to benchmark. The values should be sorted in
+            decreasing complexity. For example, if the number of labels is a parameter then a higher
+            number of unique labels would be considered "more" complex.
+
+        Example
+        -------
+        >>> b = Benchmark(
+        ...     time_limit=10.0,
+        ...     memory_limit=8 * (1024**3),
+        ...     repeat=1,
+        ...     verbose=False,
+        ... )
+        >>> results = b.run(
+        ...     benchmark=semseg_add_data,
+        ...     n_labels=[
+        ...         100,
+        ...         10,
+        ...     ],
+        ...     shape=[
+        ...         (1000, 1000),
+        ...         (100, 100),
+        ...     ],
+        ... )
+        """
+
         nvars = len(kwargs)
         keys = tuple(kwargs.keys())
         vars = tuple(kwargs[key] for key in keys)
@@ -240,7 +310,7 @@ class Benchmark:
                 k: v[current_indices[idx]]
                 for idx, (k, v) in enumerate(zip(keys, vars))
             }
-            complexity = calculate_complexity(tuple(parameters.values()))
+            complexity = _calculate_complexity(list(parameters.values()))
 
             details: dict = {k: str(v) for k, v in parameters.items()}
 

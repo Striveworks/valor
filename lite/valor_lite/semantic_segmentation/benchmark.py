@@ -1,81 +1,5 @@
-import numpy as np
-from valor_lite.profiling import (
-    Benchmark,
-    BenchmarkError,
-    create_runtime_profiler,
-)
-from valor_lite.semantic_segmentation import Bitmask, DataLoader, Segmentation
-
-
-def generate_segmentation(
-    uid: str,
-    n_labels: int,
-    height: int,
-    width: int,
-) -> Segmentation:
-    """
-    Generates a list of segmentation annotations.
-
-    Parameters
-    ----------
-    uid : str
-        The datum UID for the generated segmentation.
-
-    Returns
-    -------
-    Segmenation
-        A generated semantic segmenatation annotation.
-    """
-
-    if n_labels > 1:
-        common_proba = 0.4 / (n_labels - 1)
-        min_proba = min(common_proba, 0.1)
-        labels = [str(i) for i in range(n_labels)] + [None]
-        proba = [0.5] + [common_proba for _ in range(n_labels - 1)] + [0.1]
-    elif n_labels == 1:
-        labels = ["0", None]
-        proba = [0.9, 0.1]
-        min_proba = 0.1
-    else:
-        labels = [None]
-        proba = [1.0]
-        min_proba = 1.0
-
-    probabilities = np.array(proba, dtype=np.float64)
-    weights = (probabilities / min_proba).astype(np.int32)
-
-    indices = np.random.choice(
-        np.arange(len(weights)), size=(height * 2, width), p=probabilities
-    )
-
-    N = len(labels)
-
-    masks = np.arange(N)[:, None, None] == indices
-
-    gts = []
-    pds = []
-    for lidx in range(N):
-        label = labels[lidx]
-        if label is None:
-            continue
-        gts.append(
-            Bitmask(
-                mask=masks[lidx, :height, :],
-                label=label,
-            )
-        )
-        pds.append(
-            Bitmask(
-                mask=masks[lidx, height:, :],
-                label=label,
-            )
-        )
-
-    return Segmentation(
-        uid=uid,
-        groundtruths=gts,
-        predictions=pds,
-    )
+from valor_lite.profiling import create_runtime_profiler
+from valor_lite.semantic_segmentation import DataLoader, generate_segmentation
 
 
 def benchmark_add_data(
@@ -83,7 +7,26 @@ def benchmark_add_data(
     shape: tuple[int, int],
     time_limit: float | None,
     repeat: int = 1,
-):
+) -> float:
+    """
+    Benchmarks 'Dataloader.add_data' for semantic segmentation.
+
+    Parameters
+    ----------
+    n_labels : int
+        The number of unique labels to generate.
+    shape : tuple[int, int]
+        The size (h,w) of the mask to generate.
+    time_limit : float, optional
+        An optional time limit to constrain the benchmark.
+    repeat : int
+        The number of times to run the benchmark to produce a runtime average.
+
+    Returns
+    -------
+    float
+        The average runtime.
+    """
 
     profile = create_runtime_profiler(
         time_limit=time_limit,
@@ -93,10 +36,10 @@ def benchmark_add_data(
     elapsed = 0
     for _ in range(repeat):
         data = generate_segmentation(
-            uid="uid",
-            n_labels=n_labels,
-            height=shape[0],
-            width=shape[1],
+            datum_uid="uid",
+            number_of_unique_labels=n_labels,
+            mask_height=shape[0],
+            mask_width=shape[1],
         )
         loader = DataLoader()
         elapsed += profile(loader.add_data)([data])
@@ -109,6 +52,25 @@ def benchmark_finalize(
     time_limit: float | None,
     repeat: int = 1,
 ):
+    """
+    Benchmarks 'Dataloader.finalize' for semantic segmentation.
+
+    Parameters
+    ----------
+    n_datums : int
+        The number of datums to generate.
+    n_labels : int
+        The number of unique labels to generate.
+    time_limit : float, optional
+        An optional time limit to constrain the benchmark.
+    repeat : int
+        The number of times to run the benchmark to produce a runtime average.
+
+    Returns
+    -------
+    float
+        The average runtime.
+    """
 
     profile = create_runtime_profiler(
         time_limit=time_limit,
@@ -117,15 +79,21 @@ def benchmark_finalize(
 
     elapsed = 0
     for _ in range(repeat):
+
+        data = [
+            generate_segmentation(
+                datum_uid=str(i),
+                number_of_unique_labels=n_labels,
+                mask_height=5,
+                mask_width=5,
+            )
+            for i in range(10)
+        ]
         loader = DataLoader()
         for datum_idx in range(n_datums):
-            data = generate_segmentation(
-                uid=str(datum_idx),
-                n_labels=n_labels,
-                height=100,
-                width=100,
-            )
-            loader.add_data([data])
+            segmentation = data[datum_idx % 10]
+            segmentation.uid = str(datum_idx)
+            loader.add_data([segmentation])
         elapsed += profile(loader.finalize)()
     return elapsed / repeat
 
@@ -136,6 +104,25 @@ def benchmark_evaluate(
     time_limit: float | None,
     repeat: int = 1,
 ):
+    """
+    Benchmarks 'Evaluator.evaluate' for semantic segmentation.
+
+    Parameters
+    ----------
+    n_datums : int
+        The number of datums to generate.
+    n_labels : int
+        The number of unique labels to generate.
+    time_limit : float, optional
+        An optional time limit to constrain the benchmark.
+    repeat : int
+        The number of times to run the benchmark to produce a runtime average.
+
+    Returns
+    -------
+    float
+        The average runtime.
+    """
 
     profile = create_runtime_profiler(
         time_limit=time_limit,
@@ -144,90 +131,21 @@ def benchmark_evaluate(
 
     elapsed = 0
     for _ in range(repeat):
+
+        data = [
+            generate_segmentation(
+                datum_uid=str(i),
+                number_of_unique_labels=n_labels,
+                mask_height=5,
+                mask_width=5,
+            )
+            for i in range(10)
+        ]
         loader = DataLoader()
         for datum_idx in range(n_datums):
-            data = generate_segmentation(
-                uid=str(datum_idx),
-                n_labels=n_labels,
-                height=100,
-                width=100,
-            )
-            loader.add_data([data])
+            segmentation = data[datum_idx % 10]
+            segmentation.uid = str(datum_idx)
+            loader.add_data([segmentation])
         evaluator = loader.finalize()
         elapsed += profile(evaluator.evaluate)()
     return elapsed / repeat
-
-
-def benchmark(
-    bitmask_shape: tuple[int, int],
-    number_of_unique_labels: int,
-    number_of_images: int,
-    *_,
-    memory_limit: float = 4.0,
-    time_limit: float = 10.0,
-    repeat: int = 1,
-    verbose: bool = False,
-):
-    """
-    Runs a single benchmark.
-
-    Parameters
-    ----------
-    bitmask_shape : tuple[int, int]
-        The size (h, w) of the bitmask array.
-    number_of_unique_labels : int
-        The number of unique labels used in the synthetic example.
-    number_of_images : int
-        The number of distinct datums that are created.
-    memory_limit : float
-        The maximum amount of system memory allowed in gigabytes (GB).
-    time_limit : float
-        The maximum amount of time permitted before killing the benchmark.
-    repeat : int
-        The number of times to run a benchmark to produce an average runtime.
-    verbose : bool, default=False
-        Toggles terminal output of benchmark results.
-    """
-
-    b = Benchmark(
-        time_limit=time_limit,
-        memory_limit=int(memory_limit * (1024**3)),
-        repeat=repeat,
-        verbose=verbose,
-    )
-
-    _, failed, details = b.run(
-        benchmark=benchmark_add_data,
-        n_labels=[number_of_unique_labels],
-        shape=[bitmask_shape],
-    )
-    if failed:
-        raise BenchmarkError(
-            benchmark=details["benchmark"],
-            error_type=failed[0]["error"],
-            error_message=failed[0]["msg"],
-        )
-
-    _, failed, details = b.run(
-        benchmark=benchmark_finalize,
-        n_datums=[number_of_images],
-        n_labels=[number_of_unique_labels],
-    )
-    if failed:
-        raise BenchmarkError(
-            benchmark=details["benchmark"],
-            error_type=failed[0]["error"],
-            error_message=failed[0]["msg"],
-        )
-
-    _, failed, details = b.run(
-        benchmark=benchmark_evaluate,
-        n_datums=[number_of_images],
-        n_labels=[number_of_unique_labels],
-    )
-    if failed:
-        raise BenchmarkError(
-            benchmark=details["benchmark"],
-            error_type=failed[0]["error"],
-            error_message=failed[0]["msg"],
-        )
