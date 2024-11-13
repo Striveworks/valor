@@ -136,9 +136,9 @@ def generate_segmentation(
         proba = [0.9, 0.1]
         min_proba = 0.1
     else:
-        labels = [None]
-        proba = [1.0]
-        min_proba = 1.0
+        raise ValueError(
+            "The number of unique labels should be greater than zero."
+        )
 
     probabilities = np.array(proba, dtype=np.float64)
     weights = (probabilities / min_proba).astype(np.int32)
