@@ -98,9 +98,9 @@ def compute_metrics(
     NDArray[np.float64]
         Confusion matrix containing IOU values.
     NDArray[np.float64]
-        Hallucination ratios.
+        Unmatched prediction ratios.
     NDArray[np.float64]
-        Missing prediction ratios.
+        Unmatched ground truth ratios.
     """
     n_labels = label_metadata.shape[0]
     gt_counts = label_metadata[:, 0]
@@ -108,7 +108,7 @@ def compute_metrics(
 
     counts = data.sum(axis=0)
 
-    # compute iou, missing_predictions and hallucinations
+    # compute iou, unmatched_ground_truth and unmatched predictions
     intersection_ = counts[1:, 1:]
     union_ = (
         gt_counts[:, np.newaxis] + pd_counts[np.newaxis, :] - intersection_
@@ -122,20 +122,20 @@ def compute_metrics(
         out=ious,
     )
 
-    hallucination_ratio = np.zeros((n_labels), dtype=np.float64)
+    unmatched_prediction_ratio = np.zeros((n_labels), dtype=np.float64)
     np.divide(
         counts[0, 1:],
         pd_counts,
         where=pd_counts > 1e-9,
-        out=hallucination_ratio,
+        out=unmatched_prediction_ratio,
     )
 
-    missing_prediction_ratio = np.zeros((n_labels), dtype=np.float64)
+    unmatched_ground_truth_ratio = np.zeros((n_labels), dtype=np.float64)
     np.divide(
         counts[1:, 0],
         gt_counts,
         where=gt_counts > 1e-9,
-        out=missing_prediction_ratio,
+        out=unmatched_ground_truth_ratio,
     )
 
     # compute precision, recall, f1
@@ -168,6 +168,6 @@ def compute_metrics(
         f1_score,
         accuracy,
         ious,
-        hallucination_ratio,
-        missing_prediction_ratio,
+        unmatched_prediction_ratio,
+        unmatched_ground_truth_ratio,
     )

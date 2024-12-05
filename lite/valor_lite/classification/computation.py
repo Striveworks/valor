@@ -282,7 +282,7 @@ def compute_confusion_matrix(
     NDArray[np.float64]
         Confusion matrix.
     NDArray[np.int32]
-        Ground truths with missing predictions.
+        Unmatched Ground Truths.
     """
 
     n_labels = label_metadata.shape[0]
@@ -292,7 +292,7 @@ def compute_confusion_matrix(
         (n_scores, n_labels, n_labels, 2 * n_examples + 1),
         dtype=np.float32,
     )
-    missing_predictions = -1 * np.ones(
+    unmatched_ground_truths = -1 * np.ones(
         (n_scores, n_labels, n_examples + 1),
         dtype=np.int32,
     )
@@ -339,7 +339,7 @@ def compute_confusion_matrix(
             score_idx, misclf_labels[:, 0], misclf_labels[:, 1], 0
         ] = misclf_counts
 
-        missing_predictions[score_idx, misprd_labels, 0] = misprd_counts
+        unmatched_ground_truths[score_idx, misprd_labels, 0] = misprd_counts
 
         if n_examples > 0:
             for label_idx in range(n_labels):
@@ -375,16 +375,16 @@ def compute_confusion_matrix(
                                 1 : 2 * misclf_label_examples.shape[0] + 1,
                             ] = misclf_label_examples[:, [0, 3]].flatten()
 
-                # missing prediction examples
+                # unmatched ground truth examples
                 mask_misprd_label = misprd_examples[:, 1] == label_idx
                 if misprd_examples.size > 0:
                     misprd_label_examples = misprd_examples[mask_misprd_label][
                         :n_examples
                     ]
-                    missing_predictions[
+                    unmatched_ground_truths[
                         score_idx,
                         label_idx,
                         1 : misprd_label_examples.shape[0] + 1,
                     ] = misprd_label_examples[:, 0].flatten()
 
-    return confusion_matrix, missing_predictions
+    return confusion_matrix, unmatched_ground_truths

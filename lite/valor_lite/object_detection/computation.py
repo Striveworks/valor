@@ -669,9 +669,9 @@ def compute_confusion_matrix(
     NDArray[np.float64]
         Confusion matrix.
     NDArray[np.float64]
-        Hallucinations.
+        Unmatched Predictions.
     NDArray[np.int32]
-        Missing Predictions.
+        Unmatched Ground Truths.
     """
 
     n_labels = label_metadata.shape[0]
@@ -683,12 +683,12 @@ def compute_confusion_matrix(
         (n_ious, n_scores, n_labels, n_labels, 4 * n_examples + 1),
         dtype=np.float32,
     )
-    hallucinations = -1 * np.ones(
+    unmatched_predictions = -1 * np.ones(
         # (datum idx, pd idx, pd score) * n_examples + count
         (n_ious, n_scores, n_labels, 3 * n_examples + 1),
         dtype=np.float32,
     )
-    missing_predictions = -1 * np.ones(
+    unmatched_ground_truths = -1 * np.ones(
         # (datum idx, gt idx) * n_examples + count
         (n_ious, n_scores, n_labels, 2 * n_examples + 1),
         dtype=np.int32,
@@ -793,7 +793,7 @@ def compute_confusion_matrix(
                 data[mask_misclf], unique_idx=[0, 1, 2, 4, 5], label_idx=[3, 4]
             )
 
-            # count hallucinations
+            # count unmatched predictions
             (
                 halluc_examples,
                 halluc_labels,
@@ -802,7 +802,7 @@ def compute_confusion_matrix(
                 data[mask_halluc], unique_idx=[0, 2, 5], label_idx=2
             )
 
-            # count missing predictions
+            # count unmatched ground truths
             (
                 misprd_examples,
                 misprd_labels,
@@ -822,13 +822,13 @@ def compute_confusion_matrix(
                 misclf_labels[:, 1],
                 0,
             ] = misclf_counts
-            hallucinations[
+            unmatched_predictions[
                 iou_idx,
                 score_idx,
                 halluc_labels,
                 0,
             ] = halluc_counts
-            missing_predictions[
+            unmatched_ground_truths[
                 iou_idx,
                 score_idx,
                 misprd_labels,
@@ -877,26 +877,26 @@ def compute_confusion_matrix(
                                     :, [0, 1, 2, 6]
                                 ].flatten()
 
-                    # hallucination examples
+                    # unmatched prediction examples
                     mask_halluc_label = halluc_examples[:, 5] == label_idx
                     if mask_halluc_label.sum() > 0:
                         halluc_label_examples = halluc_examples[
                             mask_halluc_label
                         ][:n_examples]
-                        hallucinations[
+                        unmatched_predictions[
                             iou_idx,
                             score_idx,
                             label_idx,
                             1 : 3 * halluc_label_examples.shape[0] + 1,
                         ] = halluc_label_examples[:, [0, 2, 6]].flatten()
 
-                    # missing prediction examples
+                    # unmatched ground truth examples
                     mask_misprd_label = misprd_examples[:, 4] == label_idx
                     if misprd_examples.size > 0:
                         misprd_label_examples = misprd_examples[
                             mask_misprd_label
                         ][:n_examples]
-                        missing_predictions[
+                        unmatched_ground_truths[
                             iou_idx,
                             score_idx,
                             label_idx,
@@ -905,6 +905,6 @@ def compute_confusion_matrix(
 
     return (
         confusion_matrix,
-        hallucinations,
-        missing_predictions,
+        unmatched_predictions,
+        unmatched_ground_truths,
     )

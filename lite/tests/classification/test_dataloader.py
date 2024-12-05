@@ -8,7 +8,7 @@ def test_no_data():
         loader.finalize()
 
 
-def test_missing_predictions(
+def test_unmatched_ground_truths(
     classifications_no_predictions: list[Classification],
 ):
     loader = DataLoader()

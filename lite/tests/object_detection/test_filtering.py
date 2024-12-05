@@ -68,7 +68,7 @@ def test_filtering_one_detection(one_detection: list[Detection]):
     groundtruths
         datum uid1
             box 1 - label v1 - tp
-            box 3 - label v2 - fn missing prediction
+            box 3 - label v2 - fn unmatched ground truths
 
     predictions
         datum uid1
@@ -184,7 +184,7 @@ def test_filtering_two_detections(two_detections: list[Detection]):
     groundtruths
         datum uid1
             box 1 - label v1 - tp
-            box 3 - label v2 - fn missing prediction
+            box 3 - label v2 - fn unmatched ground truths
         datum uid2
             box 2 - label v1 - fn misclassification
 
@@ -305,12 +305,12 @@ def test_filtering_four_detections(four_detections: list[Detection]):
     groundtruths
         datum uid1
             box 1 - label v1 - tp
-            box 3 - label v2 - fn missing prediction
+            box 3 - label v2 - fn unmatched ground truths
         datum uid2
             box 2 - label v1 - fn misclassification
         datum uid3
             box 1 - label v1 - tp
-            box 3 - label v2 - fn missing prediction
+            box 3 - label v2 - fn unmatched ground truths
         datum uid4
             box 2 - label v1 - fn misclassification
 
@@ -443,12 +443,12 @@ def test_filtering_all_detections(four_detections: list[Detection]):
     groundtruths
         datum uid1
             box 1 - label v1 - tp
-            box 3 - label v2 - fn missing prediction
+            box 3 - label v2 - fn unmatched ground truths
         datum uid2
             box 2 - label v1 - fn misclassification
         datum uid3
             box 1 - label v1 - tp
-            box 3 - label v2 - fn missing prediction
+            box 3 - label v2 - fn unmatched ground truths
         datum uid4
             box 2 - label v1 - fn misclassification
 

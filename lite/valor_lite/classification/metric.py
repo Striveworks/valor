@@ -321,7 +321,7 @@ class Metric(BaseMetric):
                 ],
             ],
         ],
-        missing_predictions: dict[
+        unmatched_ground_truths: dict[
             str,  # ground truth label value
             dict[
                 str,  # either `count` or `examples`
@@ -335,8 +335,8 @@ class Metric(BaseMetric):
         The confusion matrix and related metrics for the classification task.
 
         This class encapsulates detailed information about the model's performance, including correct
-        predictions, misclassifications, hallucinations (false positives), and missing predictions
-        (false negatives). It provides counts and examples for each category to facilitate in-depth analysis.
+        predictions, misclassifications, unmatched predictions (subset of false positives), and unmatched ground truths
+        (subset of false negatives). It provides counts and examples for each category to facilitate in-depth analysis.
 
         Confusion Matrix Structure:
         {
@@ -358,7 +358,7 @@ class Metric(BaseMetric):
             ...
         }
 
-        Missing Prediction Structure:
+        Unmatched Ground Truths Structure:
         {
             ground_truth_label: {
                 'count': int,
@@ -379,7 +379,7 @@ class Metric(BaseMetric):
             A nested dictionary where the first key is the ground truth label value, the second key
             is the prediction label value, and the innermost dictionary contains either a `count`
             or a list of `examples`. Each example includes the datum UID and prediction score.
-        missing_predictions : dict
+        unmatched_ground_truths : dict
             A dictionary where each key is a ground truth label value for which the model failed to predict
             (false negatives). The value is a dictionary containing either a `count` or a list of `examples`.
             Each example includes the datum UID.
@@ -396,7 +396,7 @@ class Metric(BaseMetric):
             type=MetricType.ConfusionMatrix.value,
             value={
                 "confusion_matrix": confusion_matrix,
-                "missing_predictions": missing_predictions,
+                "unmatched_ground_truths": unmatched_ground_truths,
             },
             parameters={
                 "score_threshold": score_threshold,

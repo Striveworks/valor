@@ -209,11 +209,11 @@ class Metric(BaseMetric):
                 dict[str, float],  # iou
             ],
         ],
-        hallucinations: dict[
+        unmatched_predictions: dict[
             str,  # prediction label value
             dict[str, float],  # pixel ratio
         ],
-        missing_predictions: dict[
+        unmatched_ground_truths: dict[
             str,  # ground truth label value
             dict[str, float],  # pixel ratio
         ],
@@ -222,8 +222,8 @@ class Metric(BaseMetric):
         The confusion matrix and related metrics for semantic segmentation tasks.
 
         This class encapsulates detailed information about the model's performance, including correct
-        predictions, misclassifications, hallucinations (false positives), and missing predictions
-        (false negatives). It provides counts for each category to facilitate in-depth analysis.
+        predictions, misclassifications, unmatched_predictions (subset of false positives), and unmatched ground truths
+        (subset of false negatives). It provides counts for each category to facilitate in-depth analysis.
 
         Confusion Matrix Format:
         {
@@ -234,14 +234,14 @@ class Metric(BaseMetric):
             },
         }
 
-        Hallucinations Format:
+        Unmatched Predictions Format:
         {
             <prediction label>: {
                 'iou': <float>,
             },
         }
 
-        Missing Predictions Format:
+        Unmatched Ground Truths Format:
         {
             <ground truth label>: {
                 'iou': <float>,
@@ -253,10 +253,10 @@ class Metric(BaseMetric):
         confusion_matrix : dict
             Nested dictionaries representing the Intersection over Union (IOU) scores for each
             ground truth label and prediction label pair.
-        hallucinations : dict
+        unmatched_predictions : dict
             Dictionary representing the pixel ratios for predicted labels that do not correspond
             to any ground truth labels (false positives).
-        missing_predictions : dict
+        unmatched_ground_truths : dict
             Dictionary representing the pixel ratios for ground truth labels that were not predicted
             (false negatives).
 
@@ -268,8 +268,8 @@ class Metric(BaseMetric):
             type=MetricType.ConfusionMatrix.value,
             value={
                 "confusion_matrix": confusion_matrix,
-                "hallucinations": hallucinations,
-                "missing_predictions": missing_predictions,
+                "unmatched_predictions": unmatched_predictions,
+                "unmatched_ground_truths": unmatched_ground_truths,
             },
             parameters={},
         )

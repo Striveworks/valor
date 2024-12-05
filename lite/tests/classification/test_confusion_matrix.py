@@ -40,7 +40,7 @@ def test_compute_confusion_matrix():
 
     score_thresholds = np.array([0.25, 0.75], dtype=np.float64)
 
-    confusion_matrix, missing_predictions = compute_confusion_matrix(
+    confusion_matrix, unmatched_ground_truths = compute_confusion_matrix(
         data=data,
         label_metadata=label_metadata,
         score_thresholds=score_thresholds,
@@ -74,15 +74,15 @@ def test_compute_confusion_matrix():
         )
     ).all()
 
-    assert missing_predictions.shape == (2, 4, 1)
+    assert unmatched_ground_truths.shape == (2, 4, 1)
     assert (
         # score >= 0.25
-        missing_predictions[0, :, 0]
+        unmatched_ground_truths[0, :, 0]
         == np.array([-1.0, -1.0, -1.0, -1.0])
     ).all()
     assert (
         # score >= 0.75
-        missing_predictions[1, :, 0]
+        unmatched_ground_truths[1, :, 0]
         == np.array([-1.0, -1.0, -1.0, 1.0])
     ).all()
 
@@ -144,7 +144,7 @@ def test_confusion_matrix_basic(basic_classifications: list[Classification]):
                         }
                     },
                 },
-                "missing_predictions": {},
+                "unmatched_ground_truths": {},
             },
             "parameters": {
                 "score_threshold": 0.25,
@@ -166,7 +166,7 @@ def test_confusion_matrix_basic(basic_classifications: list[Classification]):
                         },
                     }
                 },
-                "missing_predictions": {
+                "unmatched_ground_truths": {
                     "3": {"count": 1, "examples": [{"datum": "uid2"}]}
                 },
             },
@@ -179,7 +179,7 @@ def test_confusion_matrix_basic(basic_classifications: list[Classification]):
     for m in actual_metrics:
         _filter_elements_with_zero_count(
             cm=m["value"]["confusion_matrix"],
-            mp=m["value"]["missing_predictions"],
+            mp=m["value"]["unmatched_ground_truths"],
         )
         assert m in expected_metrics
     for m in expected_metrics:
@@ -212,7 +212,7 @@ def test_confusion_matrix_unit(
                     "1": {"1": {"count": 1, "examples": []}},
                     "2": {"1": {"count": 2, "examples": []}},
                 },
-                "missing_predictions": {},
+                "unmatched_ground_truths": {},
             },
             "parameters": {
                 "score_threshold": 0.5,
@@ -223,7 +223,7 @@ def test_confusion_matrix_unit(
     for m in actual_metrics:
         _filter_elements_with_zero_count(
             cm=m["value"]["confusion_matrix"],
-            mp=m["value"]["missing_predictions"],
+            mp=m["value"]["unmatched_ground_truths"],
         )
         assert m in expected_metrics
     for m in expected_metrics:
@@ -282,7 +282,7 @@ def test_confusion_matrix_with_animal_example(
                         }
                     },
                 },
-                "missing_predictions": {
+                "unmatched_ground_truths": {
                     "dog": {"count": 1, "examples": [{"datum": "uid5"}]}
                 },
             },
@@ -295,7 +295,7 @@ def test_confusion_matrix_with_animal_example(
     for m in actual_metrics:
         _filter_elements_with_zero_count(
             cm=m["value"]["confusion_matrix"],
-            mp=m["value"]["missing_predictions"],
+            mp=m["value"]["unmatched_ground_truths"],
         )
         assert m in expected_metrics
     for m in expected_metrics:
@@ -356,7 +356,7 @@ def test_confusion_matrix_with_color_example(
                         }
                     },
                 },
-                "missing_predictions": {
+                "unmatched_ground_truths": {
                     "red": {"count": 1, "examples": [{"datum": "uid2"}]}
                 },
             },
@@ -369,7 +369,7 @@ def test_confusion_matrix_with_color_example(
     for m in actual_metrics:
         _filter_elements_with_zero_count(
             cm=m["value"]["confusion_matrix"],
-            mp=m["value"]["missing_predictions"],
+            mp=m["value"]["unmatched_ground_truths"],
         )
         assert m in expected_metrics
     for m in expected_metrics:
@@ -438,7 +438,7 @@ def test_confusion_matrix_multiclass(
                         }
                     },
                 },
-                "missing_predictions": {},
+                "unmatched_ground_truths": {},
             },
             "parameters": {
                 "score_threshold": 0.05,
@@ -466,7 +466,7 @@ def test_confusion_matrix_multiclass(
                         }
                     },
                 },
-                "missing_predictions": {
+                "unmatched_ground_truths": {
                     "cat": {
                         "count": 2,
                         "examples": [{"datum": "uid0"}, {"datum": "uid2"}],
@@ -483,7 +483,7 @@ def test_confusion_matrix_multiclass(
             "type": "ConfusionMatrix",
             "value": {
                 "confusion_matrix": {},
-                "missing_predictions": {
+                "unmatched_ground_truths": {
                     "cat": {
                         "count": 2,
                         "examples": [{"datum": "uid0"}, {"datum": "uid2"}],
@@ -504,7 +504,7 @@ def test_confusion_matrix_multiclass(
     for m in actual_metrics:
         _filter_elements_with_zero_count(
             cm=m["value"]["confusion_matrix"],
-            mp=m["value"]["missing_predictions"],
+            mp=m["value"]["unmatched_ground_truths"],
         )
         assert m in expected_metrics
     for m in expected_metrics:
@@ -560,7 +560,7 @@ def test_confusion_matrix_without_hardmax_animal_example(
                         },
                     }
                 },
-                "missing_predictions": {},
+                "unmatched_ground_truths": {},
             },
             "parameters": {
                 "score_threshold": 0.05,
@@ -580,7 +580,7 @@ def test_confusion_matrix_without_hardmax_animal_example(
                         }
                     }
                 },
-                "missing_predictions": {},
+                "unmatched_ground_truths": {},
             },
             "parameters": {
                 "score_threshold": 0.4,
@@ -591,7 +591,7 @@ def test_confusion_matrix_without_hardmax_animal_example(
             "type": "ConfusionMatrix",
             "value": {
                 "confusion_matrix": {},
-                "missing_predictions": {
+                "unmatched_ground_truths": {
                     "ant": {
                         "count": 1,
                         "examples": [
@@ -611,7 +611,7 @@ def test_confusion_matrix_without_hardmax_animal_example(
     for m in actual_metrics:
         _filter_elements_with_zero_count(
             cm=m["value"]["confusion_matrix"],
-            mp=m["value"]["missing_predictions"],
+            mp=m["value"]["unmatched_ground_truths"],
         )
         assert m in expected_metrics
     for m in expected_metrics:
