@@ -321,8 +321,8 @@ def _unpack_confusion_matrix_value(
     }
 
 
-def _unpack_hallucinations_value(
-    hallucinations: NDArray[np.float64],
+def _unpack_unmatched_predictions_value(
+    unmatched_predictions: NDArray[np.float64],
     number_of_labels: int,
     number_of_examples: int,
     index_to_uid: dict[int, str],
@@ -336,12 +336,12 @@ def _unpack_hallucinations_value(
     ],
 ]:
     """
-    Unpacks a numpy array of hallucination counts and examples.
+    Unpacks a numpy array of unmatched_prediction counts and examples.
     """
 
     datum_idx = (
         lambda pd_label_idx, example_idx: int(  # noqa: E731 - lambda fn
-            hallucinations[
+            unmatched_predictions[
                 pd_label_idx,
                 example_idx * 3 + 1,
             ]
@@ -350,7 +350,7 @@ def _unpack_hallucinations_value(
 
     prediction_idx = (
         lambda pd_label_idx, example_idx: int(  # noqa: E731 - lambda fn
-            hallucinations[
+            unmatched_predictions[
                 pd_label_idx,
                 example_idx * 3 + 2,
             ]
@@ -359,7 +359,7 @@ def _unpack_hallucinations_value(
 
     score_idx = (
         lambda pd_label_idx, example_idx: float(  # noqa: E731 - lambda fn
-            hallucinations[
+            unmatched_predictions[
                 pd_label_idx,
                 example_idx * 3 + 3,
             ]
@@ -369,7 +369,7 @@ def _unpack_hallucinations_value(
     return {
         index_to_label[pd_label_idx]: {
             "count": max(
-                int(hallucinations[pd_label_idx, 0]),
+                int(unmatched_predictions[pd_label_idx, 0]),
                 0,
             ),
             "examples": [
@@ -392,8 +392,8 @@ def _unpack_hallucinations_value(
     }
 
 
-def _unpack_missing_predictions_value(
-    missing_predictions: NDArray[np.int32],
+def _unpack_unmatched_ground_truths_value(
+    unmatched_ground_truths: NDArray[np.int32],
     number_of_labels: int,
     number_of_examples: int,
     index_to_uid: dict[int, str],
@@ -401,12 +401,12 @@ def _unpack_missing_predictions_value(
     groundtruth_examples: dict[int, NDArray[np.float16]],
 ) -> dict[str, dict[str, int | list[dict[str, str | dict[str, float]]]]]:
     """
-    Unpacks a numpy array of missing prediction counts and examples.
+    Unpacks a numpy array of unmatched ground truth counts and examples.
     """
 
     datum_idx = (
         lambda gt_label_idx, example_idx: int(  # noqa: E731 - lambda fn
-            missing_predictions[
+            unmatched_ground_truths[
                 gt_label_idx,
                 example_idx * 2 + 1,
             ]
@@ -415,7 +415,7 @@ def _unpack_missing_predictions_value(
 
     groundtruth_idx = (
         lambda gt_label_idx, example_idx: int(  # noqa: E731 - lambda fn
-            missing_predictions[
+            unmatched_ground_truths[
                 gt_label_idx,
                 example_idx * 2 + 2,
             ]
@@ -425,7 +425,7 @@ def _unpack_missing_predictions_value(
     return {
         index_to_label[gt_label_idx]: {
             "count": max(
-                int(missing_predictions[gt_label_idx, 0]),
+                int(unmatched_ground_truths[gt_label_idx, 0]),
                 0,
             ),
             "examples": [
@@ -463,8 +463,8 @@ def unpack_confusion_matrix_into_metric_list(
 ) -> list[Metric]:
     (
         confusion_matrix,
-        hallucinations,
-        missing_predictions,
+        unmatched_predictions,
+        unmatched_ground_truths,
     ) = results
     n_labels = len(index_to_label)
     return [
@@ -481,16 +481,18 @@ def unpack_confusion_matrix_into_metric_list(
                 groundtruth_examples=groundtruth_examples,
                 prediction_examples=prediction_examples,
             ),
-            hallucinations=_unpack_hallucinations_value(
-                hallucinations=hallucinations[iou_idx, score_idx, :, :],
+            unmatched_predictions=_unpack_unmatched_predictions_value(
+                unmatched_predictions=unmatched_predictions[
+                    iou_idx, score_idx, :, :
+                ],
                 number_of_labels=n_labels,
                 number_of_examples=number_of_examples,
                 index_to_label=index_to_label,
                 index_to_uid=index_to_uid,
                 prediction_examples=prediction_examples,
             ),
-            missing_predictions=_unpack_missing_predictions_value(
-                missing_predictions=missing_predictions[
+            unmatched_ground_truths=_unpack_unmatched_ground_truths_value(
+                unmatched_ground_truths=unmatched_ground_truths[
                     iou_idx, score_idx, :, :
                 ],
                 number_of_labels=n_labels,

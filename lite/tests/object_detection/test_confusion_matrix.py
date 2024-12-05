@@ -35,8 +35,8 @@ def _test_compute_confusion_matrix(
 
     (
         confusion_matrix,
-        hallucinations,
-        missing_predictions,
+        unmatched_predictions,
+        unmatched_ground_truths,
     ) = compute_confusion_matrix(
         data=sorted_pairs,
         label_metadata=label_metadata,
@@ -52,37 +52,37 @@ def _test_compute_confusion_matrix(
         2,
         1 + n_examples * 4,
     )  # iou, score, gt label, pd label, metrics
-    assert hallucinations.shape == (
+    assert unmatched_predictions.shape == (
         1,
         100,
         2,
         1 + n_examples * 3,
     )  # iou, score, pd label, metrics
-    assert missing_predictions.shape == (
+    assert unmatched_ground_truths.shape == (
         1,
         100,
         2,
         1 + n_examples * 2,
     )  # iou, score, gt label, metrics
 
-    return (confusion_matrix, hallucinations, missing_predictions)
+    return (confusion_matrix, unmatched_predictions, unmatched_ground_truths)
 
 
 def test_compute_confusion_matrix():
 
     (
         confusion_matrix,
-        hallucinations,
-        missing_predictions,
+        unmatched_predictions,
+        unmatched_ground_truths,
     ) = _test_compute_confusion_matrix(n_examples=0)
 
     """
     @ iou=0.5, score<0.1
     3x tp
     1x fp misclassification
-    1x fp hallucination
+    1x fp unmatched prediction
     0x fn misclassification
-    1x fn missing prediction
+    1x fn unmatched ground truth
     """
 
     indices = slice(10)
@@ -98,25 +98,26 @@ def test_compute_confusion_matrix():
 
     hal_pd0 = np.array([1.0])
     hal_pd1 = np.array([-1.0])
-    expected_hallucinations = np.array([hal_pd0, hal_pd1])
+    expected_unmatched_predictions = np.array([hal_pd0, hal_pd1])
     assert np.isclose(
-        hallucinations[0, indices, :, :], expected_hallucinations
+        unmatched_predictions[0, indices, :, :], expected_unmatched_predictions
     ).all()
 
     misprd_gt0 = np.array([1.0])
     misprd_gt1 = np.array([-1.0])
-    expected_missing_predictions = np.array([misprd_gt0, misprd_gt1])
+    expected_unmatched_ground_truths = np.array([misprd_gt0, misprd_gt1])
     assert np.isclose(
-        missing_predictions[0, indices, :, :], expected_missing_predictions
+        unmatched_ground_truths[0, indices, :, :],
+        expected_unmatched_ground_truths,
     ).all()
 
     """
     @ iou=0.5, 0.1 <= score < 0.65
     1x tp
     1x fp misclassification
-    1x fp hallucination
+    1x fp unmatched prediction
     1x fn misclassification
-    3x fn missing prediction
+    3x fn unmatched ground truth
     """
 
     indices = slice(10, 65)
@@ -132,25 +133,26 @@ def test_compute_confusion_matrix():
 
     hal_pd0 = np.array([1.0])
     hal_pd1 = np.array([-1.0])
-    expected_hallucinations = np.array([hal_pd0, hal_pd1])
+    expected_unmatched_predictions = np.array([hal_pd0, hal_pd1])
     assert np.isclose(
-        hallucinations[0, indices, :, :], expected_hallucinations
+        unmatched_predictions[0, indices, :, :], expected_unmatched_predictions
     ).all()
 
     misprd_gt0 = np.array([3.0])
     misprd_gt1 = np.array([-1.0])
-    expected_missing_predictions = np.array([misprd_gt0, misprd_gt1])
+    expected_unmatched_ground_truths = np.array([misprd_gt0, misprd_gt1])
     assert np.isclose(
-        missing_predictions[0, indices, :, :], expected_missing_predictions
+        unmatched_ground_truths[0, indices, :, :],
+        expected_unmatched_ground_truths,
     ).all()
 
     """
     @ iou=0.5, 0.65 <= score < 0.9
     1x tp
     1x fp misclassification
-    0x fp hallucination
+    0x fp unmatched prediction
     1x fn misclassification
-    3x fn missing prediction
+    3x fn unmatched ground truth
     """
 
     indices = slice(65, 90)
@@ -166,25 +168,26 @@ def test_compute_confusion_matrix():
 
     hal_pd0 = np.array([-1.0])
     hal_pd1 = np.array([-1.0])
-    expected_hallucinations = np.array([hal_pd0, hal_pd1])
+    expected_unmatched_predictions = np.array([hal_pd0, hal_pd1])
     assert np.isclose(
-        hallucinations[0, indices, :, :], expected_hallucinations
+        unmatched_predictions[0, indices, :, :], expected_unmatched_predictions
     ).all()
 
     misprd_gt0 = np.array([3.0])
     misprd_gt1 = np.array([-1.0])
-    expected_missing_predictions = np.array([misprd_gt0, misprd_gt1])
+    expected_unmatched_ground_truths = np.array([misprd_gt0, misprd_gt1])
     assert np.isclose(
-        missing_predictions[0, indices, :, :], expected_missing_predictions
+        unmatched_ground_truths[0, indices, :, :],
+        expected_unmatched_ground_truths,
     ).all()
 
     """
     @ iou=0.5, score>=0.9
     0x tp
     0x fp misclassification
-    0x fp hallucination
+    0x fp unmatched prediction
     0x fn misclassification
-    4x fn missing prediction
+    4x fn unmatched ground truth
     """
 
     indices = slice(90, None)
@@ -200,16 +203,17 @@ def test_compute_confusion_matrix():
 
     hal_pd0 = np.array([-1.0])
     hal_pd1 = np.array([-1.0])
-    expected_hallucinations = np.array([hal_pd0, hal_pd1])
+    expected_unmatched_predictions = np.array([hal_pd0, hal_pd1])
     assert np.isclose(
-        hallucinations[0, indices, :, :], expected_hallucinations
+        unmatched_predictions[0, indices, :, :], expected_unmatched_predictions
     ).all()
 
     misprd_gt0 = np.array([4.0])
     misprd_gt1 = np.array([1.0])
-    expected_missing_predictions = np.array([misprd_gt0, misprd_gt1])
+    expected_unmatched_ground_truths = np.array([misprd_gt0, misprd_gt1])
     assert np.isclose(
-        missing_predictions[0, indices, :, :], expected_missing_predictions
+        unmatched_ground_truths[0, indices, :, :],
+        expected_unmatched_ground_truths,
     ).all()
 
 
@@ -217,17 +221,17 @@ def test_compute_confusion_matrix_with_examples():
 
     (
         confusion_matrix,
-        hallucinations,
-        missing_predictions,
+        unmatched_predictions,
+        unmatched_ground_truths,
     ) = _test_compute_confusion_matrix(n_examples=2)
 
     """
     @ iou=0.5, score<0.1
     3x tp
     1x fp misclassification
-    1x fp hallucination
+    1x fp unmatched prediction
     0x fn misclassification
-    1x fn missing prediction
+    1x fn unmatched ground truth
     """
 
     indices = slice(10)
@@ -249,26 +253,27 @@ def test_compute_confusion_matrix_with_examples():
     # total count, datum 0, pd 0, score 0, datum 1, pd 1, score 1
     hal_pd0 = np.array([1.0, 2.0, 4.0, 0.65, -1.0, -1.0, -1.0])
     hal_pd1 = np.array([-1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0])
-    expected_hallucinations = np.array([hal_pd0, hal_pd1])
+    expected_unmatched_predictions = np.array([hal_pd0, hal_pd1])
     assert np.isclose(
-        hallucinations[0, indices, :, :], expected_hallucinations
+        unmatched_predictions[0, indices, :, :], expected_unmatched_predictions
     ).all()
 
     # total count, datum 0, gt 0, datum1, gt 1
     misprd_gt0 = np.array([1.0, 4.0, 5.0, -1.0, -1.0])
     misprd_gt1 = np.array([-1.0, -1.0, -1.0, -1.0, -1.0])
-    expected_missing_predictions = np.array([misprd_gt0, misprd_gt1])
+    expected_unmatched_ground_truths = np.array([misprd_gt0, misprd_gt1])
     assert np.isclose(
-        missing_predictions[0, indices, :, :], expected_missing_predictions
+        unmatched_ground_truths[0, indices, :, :],
+        expected_unmatched_ground_truths,
     ).all()
 
     """
     @ iou=0.5, 0.1 <= score < 0.65
     1x tp
     1x fp misclassification
-    1x fp hallucination
+    1x fp unmatched prediction
     1x fn misclassification
-    2x fn missing prediction
+    2x fn unmatched ground truth
     """
 
     indices = slice(10, 65)
@@ -290,26 +295,27 @@ def test_compute_confusion_matrix_with_examples():
     # total count, datum 0, pd 0, score 0, datum 1, pd 1, score 1
     hal_pd0 = np.array([1.0, 2.0, 4.0, 0.65, -1.0, -1.0, -1.0])
     hal_pd1 = np.array([-1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0])
-    expected_hallucinations = np.array([hal_pd0, hal_pd1])
+    expected_unmatched_predictions = np.array([hal_pd0, hal_pd1])
     assert np.isclose(
-        hallucinations[0, indices, :, :], expected_hallucinations
+        unmatched_predictions[0, indices, :, :], expected_unmatched_predictions
     ).all()
 
     # total count, datum 0, gt 0, datum1, gt 1
     misprd_gt0 = np.array([3.0, 1.0, 2.0, 3.0, 4.0])
     misprd_gt1 = np.array([-1.0, -1.0, -1.0, -1.0, -1.0])
-    expected_missing_predictions = np.array([misprd_gt0, misprd_gt1])
+    expected_unmatched_ground_truths = np.array([misprd_gt0, misprd_gt1])
     assert np.isclose(
-        missing_predictions[0, indices, :, :], expected_missing_predictions
+        unmatched_ground_truths[0, indices, :, :],
+        expected_unmatched_ground_truths,
     ).all()
 
     """
     @ iou=0.5, 0.65 <= score < 0.9
     1x tp
     1x fp misclassification
-    0x fp hallucination
+    0x fp unmatched prediction
     1x fn misclassification
-    2x fn missing prediction
+    2x fn unmatched ground truth
     """
 
     indices = slice(65, 90)
@@ -331,26 +337,27 @@ def test_compute_confusion_matrix_with_examples():
     # total count, datum 0, pd 0, score 0, datum 1, pd 1, score 1
     hal_pd0 = np.array([-1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0])
     hal_pd1 = np.array([-1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0])
-    expected_hallucinations = np.array([hal_pd0, hal_pd1])
+    expected_unmatched_predictions = np.array([hal_pd0, hal_pd1])
     assert np.isclose(
-        hallucinations[0, indices, :, :], expected_hallucinations
+        unmatched_predictions[0, indices, :, :], expected_unmatched_predictions
     ).all()
 
     # total count, datum 0, gt 0, datum1, gt 1
     misprd_gt0 = np.array([3.0, 1.0, 2.0, 3.0, 4.0])
     misprd_gt1 = np.array([-1.0, -1.0, -1.0, -1.0, -1.0])
-    expected_missing_predictions = np.array([misprd_gt0, misprd_gt1])
+    expected_unmatched_ground_truths = np.array([misprd_gt0, misprd_gt1])
     assert np.isclose(
-        missing_predictions[0, indices, :, :], expected_missing_predictions
+        unmatched_ground_truths[0, indices, :, :],
+        expected_unmatched_ground_truths,
     ).all()
 
     """
     @ iou=0.5, score>=0.9
     0x tp
     0x fp misclassification
-    0x fp hallucination
+    0x fp unmatched prediction
     0x fn misclassification
-    4x fn missing prediction
+    4x fn unmatched ground truth
     """
 
     indices = slice(90, None)
@@ -376,17 +383,18 @@ def test_compute_confusion_matrix_with_examples():
     # total count, datum 0, pd 0, score 0, datum 1, pd 1, score 1
     hal_pd0 = np.array([-1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0])
     hal_pd1 = np.array([-1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0])
-    expected_hallucinations = np.array([hal_pd0, hal_pd1])
+    expected_unmatched_predictions = np.array([hal_pd0, hal_pd1])
     assert np.isclose(
-        hallucinations[0, indices, :, :], expected_hallucinations
+        unmatched_predictions[0, indices, :, :], expected_unmatched_predictions
     ).all()
 
     # total count, datum 0, gt 0, datum1, gt 1
     misprd_gt0 = np.array([4.0, 0.0, 0.0, 1.0, 2.0])
     misprd_gt1 = np.array([1.0, 1.0, 1.0, -1.0, -1.0])
-    expected_missing_predictions = np.array([misprd_gt0, misprd_gt1])
+    expected_unmatched_ground_truths = np.array([misprd_gt0, misprd_gt1])
     assert np.isclose(
-        missing_predictions[0, indices, :, :], expected_missing_predictions
+        unmatched_ground_truths[0, indices, :, :],
+        expected_unmatched_ground_truths,
     ).all()
 
 
@@ -424,7 +432,7 @@ def test_confusion_matrix(
 
     assert evaluator.ignored_prediction_labels == [
         "not_v2",
-        "hallucination",
+        "no_overlap",
     ]
     assert evaluator.missing_prediction_labels == [
         "missed_detection",
@@ -467,7 +475,7 @@ def test_confusion_matrix(
                         }
                     }
                 },
-                "hallucinations": {
+                "unmatched_predictions": {
                     "not_v2": {
                         "count": 1,
                         "examples": [
@@ -478,7 +486,7 @@ def test_confusion_matrix(
                             }
                         ],
                     },
-                    "hallucination": {
+                    "no_overlap": {
                         "count": 1,
                         "examples": [
                             {
@@ -499,7 +507,7 @@ def test_confusion_matrix(
                         ],
                     },
                 },
-                "missing_predictions": {
+                "unmatched_ground_truths": {
                     "missed_detection": {
                         "count": 1,
                         "examples": [
@@ -544,7 +552,7 @@ def test_confusion_matrix(
                         }
                     }
                 },
-                "hallucinations": {
+                "unmatched_predictions": {
                     "not_v2": {
                         "count": 1,
                         "examples": [
@@ -566,7 +574,7 @@ def test_confusion_matrix(
                         ],
                     },
                 },
-                "missing_predictions": {
+                "unmatched_ground_truths": {
                     "missed_detection": {
                         "count": 1,
                         "examples": [
@@ -611,7 +619,7 @@ def test_confusion_matrix(
                         }
                     }
                 },
-                "hallucinations": {
+                "unmatched_predictions": {
                     "low_iou": {
                         "count": 1,
                         "examples": [
@@ -623,7 +631,7 @@ def test_confusion_matrix(
                         ],
                     }
                 },
-                "missing_predictions": {
+                "unmatched_ground_truths": {
                     "missed_detection": {
                         "count": 1,
                         "examples": [
@@ -668,7 +676,7 @@ def test_confusion_matrix(
                         }
                     }
                 },
-                "hallucinations": {
+                "unmatched_predictions": {
                     "low_iou": {
                         "count": 1,
                         "examples": [
@@ -680,7 +688,7 @@ def test_confusion_matrix(
                         ],
                     }
                 },
-                "missing_predictions": {
+                "unmatched_ground_truths": {
                     "missed_detection": {
                         "count": 1,
                         "examples": [
@@ -711,8 +719,8 @@ def test_confusion_matrix(
             "type": "ConfusionMatrix",
             "value": {
                 "confusion_matrix": {},
-                "hallucinations": {},
-                "missing_predictions": {
+                "unmatched_predictions": {},
+                "unmatched_ground_truths": {
                     "v1": {
                         "count": 1,
                         "examples": [
@@ -749,8 +757,8 @@ def test_confusion_matrix(
             "type": "ConfusionMatrix",
             "value": {
                 "confusion_matrix": {},
-                "hallucinations": {},
-                "missing_predictions": {
+                "unmatched_predictions": {},
+                "unmatched_ground_truths": {
                     "v1": {
                         "count": 1,
                         "examples": [
@@ -787,8 +795,8 @@ def test_confusion_matrix(
     for m in actual_metrics:
         _filter_out_zero_counts(
             m["value"]["confusion_matrix"],
-            m["value"]["hallucinations"],
-            m["value"]["missing_predictions"],
+            m["value"]["unmatched_predictions"],
+            m["value"]["unmatched_ground_truths"],
         )
         assert m in expected_metrics
     for m in expected_metrics:
@@ -835,8 +843,8 @@ def test_confusion_matrix(
                         }
                     },
                 },
-                "hallucinations": {
-                    "hallucination": {
+                "unmatched_predictions": {
+                    "no_overlap": {
                         "count": 1,
                         "examples": [
                             {
@@ -857,7 +865,7 @@ def test_confusion_matrix(
                         ],
                     },
                 },
-                "missing_predictions": {
+                "unmatched_ground_truths": {
                     "missed_detection": {
                         "count": 1,
                         "examples": [
@@ -912,7 +920,7 @@ def test_confusion_matrix(
                         }
                     },
                 },
-                "hallucinations": {
+                "unmatched_predictions": {
                     "low_iou": {
                         "count": 1,
                         "examples": [
@@ -924,7 +932,7 @@ def test_confusion_matrix(
                         ],
                     }
                 },
-                "missing_predictions": {
+                "unmatched_ground_truths": {
                     "missed_detection": {
                         "count": 1,
                         "examples": [
@@ -966,7 +974,7 @@ def test_confusion_matrix(
                         }
                     }
                 },
-                "hallucinations": {
+                "unmatched_predictions": {
                     "low_iou": {
                         "count": 1,
                         "examples": [
@@ -978,7 +986,7 @@ def test_confusion_matrix(
                         ],
                     }
                 },
-                "missing_predictions": {
+                "unmatched_ground_truths": {
                     "missed_detection": {
                         "count": 1,
                         "examples": [
@@ -1026,7 +1034,7 @@ def test_confusion_matrix(
                         }
                     }
                 },
-                "hallucinations": {
+                "unmatched_predictions": {
                     "low_iou": {
                         "count": 1,
                         "examples": [
@@ -1038,7 +1046,7 @@ def test_confusion_matrix(
                         ],
                     }
                 },
-                "missing_predictions": {
+                "unmatched_ground_truths": {
                     "missed_detection": {
                         "count": 1,
                         "examples": [
@@ -1072,8 +1080,8 @@ def test_confusion_matrix(
             "type": "ConfusionMatrix",
             "value": {
                 "confusion_matrix": {},
-                "hallucinations": {},
-                "missing_predictions": {
+                "unmatched_predictions": {},
+                "unmatched_ground_truths": {
                     "v1": {
                         "count": 1,
                         "examples": [
@@ -1116,8 +1124,8 @@ def test_confusion_matrix(
             "type": "ConfusionMatrix",
             "value": {
                 "confusion_matrix": {},
-                "hallucinations": {},
-                "missing_predictions": {
+                "unmatched_predictions": {},
+                "unmatched_ground_truths": {
                     "v1": {
                         "count": 1,
                         "examples": [
@@ -1161,8 +1169,8 @@ def test_confusion_matrix(
     for m in actual_metrics:
         _filter_out_zero_counts(
             m["value"]["confusion_matrix"],
-            m["value"]["hallucinations"],
-            m["value"]["missing_predictions"],
+            m["value"]["unmatched_predictions"],
+            m["value"]["unmatched_ground_truths"],
         )
         assert m in expected_metrics
     for m in expected_metrics:
@@ -1210,8 +1218,10 @@ def test_confusion_matrix_using_torch_metrics_example(
                     "0": {"0": {"count": 5, "examples": []}},
                     "49": {"49": {"count": 9, "examples": []}},
                 },
-                "hallucinations": {},
-                "missing_predictions": {"49": {"count": 1, "examples": []}},
+                "unmatched_predictions": {},
+                "unmatched_ground_truths": {
+                    "49": {"count": 1, "examples": []}
+                },
             },
             "parameters": {
                 "score_threshold": 0.05,
@@ -1232,8 +1242,8 @@ def test_confusion_matrix_using_torch_metrics_example(
                     "0": {"0": {"count": 5, "examples": []}},
                     "49": {"49": {"count": 6, "examples": []}},
                 },
-                "hallucinations": {},
-                "missing_predictions": {
+                "unmatched_predictions": {},
+                "unmatched_ground_truths": {
                     "4": {"count": 1, "examples": []},
                     "49": {"count": 4, "examples": []},
                 },
@@ -1253,8 +1263,8 @@ def test_confusion_matrix_using_torch_metrics_example(
                     "0": {"0": {"count": 4, "examples": []}},
                     "49": {"49": {"count": 4, "examples": []}},
                 },
-                "hallucinations": {},
-                "missing_predictions": {
+                "unmatched_predictions": {},
+                "unmatched_ground_truths": {
                     "4": {"count": 1, "examples": []},
                     "2": {"count": 1, "examples": []},
                     "1": {"count": 1, "examples": []},
@@ -1276,8 +1286,8 @@ def test_confusion_matrix_using_torch_metrics_example(
                     "0": {"0": {"count": 3, "examples": []}},
                     "49": {"49": {"count": 3, "examples": []}},
                 },
-                "hallucinations": {},
-                "missing_predictions": {
+                "unmatched_predictions": {},
+                "unmatched_ground_truths": {
                     "4": {"count": 2, "examples": []},
                     "2": {"count": 1, "examples": []},
                     "1": {"count": 1, "examples": []},
@@ -1298,8 +1308,8 @@ def test_confusion_matrix_using_torch_metrics_example(
                     "0": {"0": {"count": 2, "examples": []}},
                     "49": {"49": {"count": 2, "examples": []}},
                 },
-                "hallucinations": {},
-                "missing_predictions": {
+                "unmatched_predictions": {},
+                "unmatched_ground_truths": {
                     "4": {"count": 2, "examples": []},
                     "2": {"count": 2, "examples": []},
                     "1": {"count": 1, "examples": []},
@@ -1320,8 +1330,8 @@ def test_confusion_matrix_using_torch_metrics_example(
                     "0": {"0": {"count": 2, "examples": []}},
                     "49": {"49": {"count": 1, "examples": []}},
                 },
-                "hallucinations": {},
-                "missing_predictions": {
+                "unmatched_predictions": {},
+                "unmatched_ground_truths": {
                     "4": {"count": 2, "examples": []},
                     "2": {"count": 2, "examples": []},
                     "1": {"count": 1, "examples": []},
@@ -1342,8 +1352,8 @@ def test_confusion_matrix_using_torch_metrics_example(
                     "0": {"0": {"count": 1, "examples": []}},
                     "49": {"49": {"count": 1, "examples": []}},
                 },
-                "hallucinations": {},
-                "missing_predictions": {
+                "unmatched_predictions": {},
+                "unmatched_ground_truths": {
                     "4": {"count": 2, "examples": []},
                     "2": {"count": 2, "examples": []},
                     "1": {"count": 1, "examples": []},
@@ -1361,8 +1371,8 @@ def test_confusion_matrix_using_torch_metrics_example(
             "type": "ConfusionMatrix",
             "value": {
                 "confusion_matrix": {"0": {"0": {"count": 1, "examples": []}}},
-                "hallucinations": {},
-                "missing_predictions": {
+                "unmatched_predictions": {},
+                "unmatched_ground_truths": {
                     "4": {"count": 2, "examples": []},
                     "2": {"count": 2, "examples": []},
                     "1": {"count": 1, "examples": []},
@@ -1384,14 +1394,14 @@ def test_confusion_matrix_using_torch_metrics_example(
                     "0": {"0": {"count": 1, "examples": []}},
                     "49": {"49": {"count": 2, "examples": []}},
                 },
-                "hallucinations": {
+                "unmatched_predictions": {
                     "4": {"count": 2, "examples": []},
                     "3": {"count": 1, "examples": []},
                     "1": {"count": 1, "examples": []},
                     "0": {"count": 4, "examples": []},
                     "49": {"count": 7, "examples": []},
                 },
-                "missing_predictions": {
+                "unmatched_ground_truths": {
                     "4": {"count": 2, "examples": []},
                     "2": {"count": 1, "examples": []},
                     "1": {"count": 1, "examples": []},
@@ -1413,14 +1423,14 @@ def test_confusion_matrix_using_torch_metrics_example(
                     "0": {"0": {"count": 1, "examples": []}},
                     "49": {"49": {"count": 2, "examples": []}},
                 },
-                "hallucinations": {
+                "unmatched_predictions": {
                     "4": {"count": 1, "examples": []},
                     "3": {"count": 1, "examples": []},
                     "1": {"count": 1, "examples": []},
                     "0": {"count": 4, "examples": []},
                     "49": {"count": 4, "examples": []},
                 },
-                "missing_predictions": {
+                "unmatched_ground_truths": {
                     "4": {"count": 2, "examples": []},
                     "2": {"count": 1, "examples": []},
                     "1": {"count": 1, "examples": []},
@@ -1441,12 +1451,12 @@ def test_confusion_matrix_using_torch_metrics_example(
                     "2": {"2": {"count": 1, "examples": []}},
                     "49": {"49": {"count": 2, "examples": []}},
                 },
-                "hallucinations": {
+                "unmatched_predictions": {
                     "4": {"count": 1, "examples": []},
                     "0": {"count": 4, "examples": []},
                     "49": {"count": 2, "examples": []},
                 },
-                "missing_predictions": {
+                "unmatched_ground_truths": {
                     "4": {"count": 2, "examples": []},
                     "2": {"count": 1, "examples": []},
                     "1": {"count": 1, "examples": []},
@@ -1467,11 +1477,11 @@ def test_confusion_matrix_using_torch_metrics_example(
                     "2": {"2": {"count": 1, "examples": []}},
                     "49": {"49": {"count": 1, "examples": []}},
                 },
-                "hallucinations": {
+                "unmatched_predictions": {
                     "0": {"count": 3, "examples": []},
                     "49": {"count": 2, "examples": []},
                 },
-                "missing_predictions": {
+                "unmatched_ground_truths": {
                     "4": {"count": 2, "examples": []},
                     "2": {"count": 1, "examples": []},
                     "1": {"count": 1, "examples": []},
@@ -1491,11 +1501,11 @@ def test_confusion_matrix_using_torch_metrics_example(
                 "confusion_matrix": {
                     "49": {"49": {"count": 1, "examples": []}}
                 },
-                "hallucinations": {
+                "unmatched_predictions": {
                     "0": {"count": 2, "examples": []},
                     "49": {"count": 1, "examples": []},
                 },
-                "missing_predictions": {
+                "unmatched_ground_truths": {
                     "4": {"count": 2, "examples": []},
                     "2": {"count": 2, "examples": []},
                     "1": {"count": 1, "examples": []},
@@ -1515,8 +1525,8 @@ def test_confusion_matrix_using_torch_metrics_example(
                 "confusion_matrix": {
                     "49": {"49": {"count": 1, "examples": []}}
                 },
-                "hallucinations": {"0": {"count": 2, "examples": []}},
-                "missing_predictions": {
+                "unmatched_predictions": {"0": {"count": 2, "examples": []}},
+                "unmatched_ground_truths": {
                     "4": {"count": 2, "examples": []},
                     "2": {"count": 2, "examples": []},
                     "1": {"count": 1, "examples": []},
@@ -1536,8 +1546,8 @@ def test_confusion_matrix_using_torch_metrics_example(
                 "confusion_matrix": {
                     "49": {"49": {"count": 1, "examples": []}}
                 },
-                "hallucinations": {"0": {"count": 1, "examples": []}},
-                "missing_predictions": {
+                "unmatched_predictions": {"0": {"count": 1, "examples": []}},
+                "unmatched_ground_truths": {
                     "4": {"count": 2, "examples": []},
                     "2": {"count": 2, "examples": []},
                     "1": {"count": 1, "examples": []},
@@ -1555,8 +1565,8 @@ def test_confusion_matrix_using_torch_metrics_example(
             "type": "ConfusionMatrix",
             "value": {
                 "confusion_matrix": {},
-                "hallucinations": {"0": {"count": 1, "examples": []}},
-                "missing_predictions": {
+                "unmatched_predictions": {"0": {"count": 1, "examples": []}},
+                "unmatched_ground_truths": {
                     "4": {"count": 2, "examples": []},
                     "2": {"count": 2, "examples": []},
                     "1": {"count": 1, "examples": []},
@@ -1574,20 +1584,20 @@ def test_confusion_matrix_using_torch_metrics_example(
     for m in actual_metrics:
         _filter_out_zero_counts(
             m["value"]["confusion_matrix"],
-            m["value"]["hallucinations"],
-            m["value"]["missing_predictions"],
+            m["value"]["unmatched_predictions"],
+            m["value"]["unmatched_ground_truths"],
         )
         assert m in expected_metrics
     for m in expected_metrics:
         assert m in actual_metrics
 
 
-def test_confusion_matrix_fp_hallucination_edge_case(
-    detections_fp_hallucination_edge_case: list[Detection],
+def test_confusion_matrix_fp_unmatched_prediction_edge_case(
+    detections_fp_unmatched_prediction_edge_case: list[Detection],
 ):
 
     loader = DataLoader()
-    loader.add_bounding_boxes(detections_fp_hallucination_edge_case)
+    loader.add_bounding_boxes(detections_fp_unmatched_prediction_edge_case)
     evaluator = loader.finalize()
 
     assert evaluator.ignored_prediction_labels == []
@@ -1635,7 +1645,7 @@ def test_confusion_matrix_fp_hallucination_edge_case(
                         }
                     }
                 },
-                "hallucinations": {
+                "unmatched_predictions": {
                     "v1": {
                         "count": 1,
                         "examples": [
@@ -1652,7 +1662,7 @@ def test_confusion_matrix_fp_hallucination_edge_case(
                         ],
                     }
                 },
-                "missing_predictions": {
+                "unmatched_ground_truths": {
                     "v1": {
                         "count": 1,
                         "examples": [
@@ -1679,8 +1689,8 @@ def test_confusion_matrix_fp_hallucination_edge_case(
             "type": "ConfusionMatrix",
             "value": {
                 "confusion_matrix": {},
-                "hallucinations": {},
-                "missing_predictions": {
+                "unmatched_predictions": {},
+                "unmatched_ground_truths": {
                     "v1": {
                         "count": 2,
                         "examples": [
@@ -1707,8 +1717,8 @@ def test_confusion_matrix_fp_hallucination_edge_case(
     for m in actual_metrics:
         _filter_out_zero_counts(
             m["value"]["confusion_matrix"],
-            m["value"]["hallucinations"],
-            m["value"]["missing_predictions"],
+            m["value"]["unmatched_predictions"],
+            m["value"]["unmatched_ground_truths"],
         )
         assert m in expected_metrics
     for m in expected_metrics:
@@ -1763,11 +1773,11 @@ def test_confusion_matrix_ranked_pair_ordering(
                         "label1": {"label1": {"count": 1, "examples": []}},
                         "label2": {"label2": {"count": 1, "examples": []}},
                     },
-                    "hallucinations": {
+                    "unmatched_predictions": {
                         "label3": {"count": 1, "examples": []},
                         "label4": {"count": 1, "examples": []},
                     },
-                    "missing_predictions": {
+                    "unmatched_ground_truths": {
                         "label3": {"count": 1, "examples": []}
                     },
                 },
@@ -1781,8 +1791,8 @@ def test_confusion_matrix_ranked_pair_ordering(
         for m in actual_metrics:
             _filter_out_zero_counts(
                 m["value"]["confusion_matrix"],
-                m["value"]["hallucinations"],
-                m["value"]["missing_predictions"],
+                m["value"]["unmatched_predictions"],
+                m["value"]["unmatched_ground_truths"],
             )
             assert m in expected_metrics
         for m in expected_metrics:

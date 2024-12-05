@@ -50,7 +50,7 @@ def test_recall_metrics_first_class(
         datum uid1
             box 1 - label v1 - tp
         datum uid2
-            box 2 - label v1 - fn missing prediction
+            box 2 - label v1 - fn unmatched ground truths
 
     predictions
         datum uid1
@@ -133,7 +133,7 @@ def test_recall_metrics_second_class(
 
     groundtruths
         datum uid1
-            box 3 - label v2 - fn missing prediction
+            box 3 - label v2 - fn unmatched ground truths
         datum uid2
            none
     predictions

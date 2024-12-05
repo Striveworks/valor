@@ -619,7 +619,7 @@ class Metric(BaseMetric):
                 ],
             ],
         ],
-        hallucinations: dict[
+        unmatched_predictions: dict[
             str,  # prediction label value
             dict[
                 str,  # either `count` or `examples`
@@ -636,7 +636,7 @@ class Metric(BaseMetric):
                 ],
             ],
         ],
-        missing_predictions: dict[
+        unmatched_ground_truths: dict[
             str,  # ground truth label value
             dict[
                 str,  # either `count` or `examples`
@@ -660,8 +660,8 @@ class Metric(BaseMetric):
         Confusion matrix for object detection tasks.
 
         This class encapsulates detailed information about the model's performance, including correct
-        predictions, misclassifications, hallucinations (false positives), and missing predictions
-        (false negatives). It provides counts and examples for each category to facilitate in-depth analysis.
+        predictions, misclassifications, unmatched_predictions (subset of false positives), and unmatched ground truths
+        (subset of false negatives). It provides counts and examples for each category to facilitate in-depth analysis.
 
         Confusion Matrix Format:
         {
@@ -683,7 +683,7 @@ class Metric(BaseMetric):
             ...
         }
 
-        Hallucinations Format:
+        Unmatched Predictions Format:
         {
             <prediction label>: {
                 'count': int,
@@ -699,7 +699,7 @@ class Metric(BaseMetric):
             ...
         }
 
-        Missing Prediction Format:
+        Unmatched Ground Truths Format:
         {
             <ground truth label>: {
                 'count': int,
@@ -721,13 +721,13 @@ class Metric(BaseMetric):
             is the prediction label value, and the innermost dictionary contains either a `count`
             or a list of `examples`. Each example includes the datum UID, ground truth bounding box,
             predicted bounding box, and prediction scores.
-        hallucinations : dict
+        unmatched_predictions : dict
             A dictionary where each key is a prediction label value with no corresponding ground truth
-            (false positives). The value is a dictionary containing either a `count` or a list of
+            (subset of false positives). The value is a dictionary containing either a `count` or a list of
             `examples`. Each example includes the datum UID, predicted bounding box, and prediction score.
-        missing_predictions : dict
+        unmatched_ground_truths : dict
             A dictionary where each key is a ground truth label value for which the model failed to predict
-            (false negatives). The value is a dictionary containing either a `count` or a list of `examples`.
+            (subset of false negatives). The value is a dictionary containing either a `count` or a list of `examples`.
             Each example includes the datum UID and ground truth bounding box.
         score_threshold : float
             The confidence score threshold used to filter predictions.
@@ -744,8 +744,8 @@ class Metric(BaseMetric):
             type=MetricType.ConfusionMatrix.value,
             value={
                 "confusion_matrix": confusion_matrix,
-                "hallucinations": hallucinations,
-                "missing_predictions": missing_predictions,
+                "unmatched_predictions": unmatched_predictions,
+                "unmatched_ground_truths": unmatched_ground_truths,
             },
             parameters={
                 "score_threshold": score_threshold,

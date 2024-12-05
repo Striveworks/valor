@@ -25,11 +25,11 @@ def test_confusion_matrix_basic_segmentations(
                     "v1": {"v1": {"iou": 0.5}, "v2": {"iou": 0.0}},
                     "v2": {"v1": {"iou": 0.0}, "v2": {"iou": 0.5}},
                 },
-                "hallucinations": {
+                "unmatched_predictions": {
                     "v1": {"ratio": 0.0},
                     "v2": {"ratio": 0.5},
                 },
-                "missing_predictions": {
+                "unmatched_ground_truths": {
                     "v1": {"ratio": 0.5},
                     "v2": {"ratio": 0.0},
                 },
@@ -71,13 +71,13 @@ def test_confusion_matrix_segmentations_from_boxes(
                         },
                     },
                 },
-                "hallucinations": {
+                "unmatched_predictions": {
                     "v1": {"ratio": 5000 / 10000},  # 50% overlap
                     "v2": {
                         "ratio": 4999 / 5000
                     },  # overlaps 1 pixel out of 5000 predictions
                 },
-                "missing_predictions": {
+                "unmatched_ground_truths": {
                     "v1": {"ratio": 5000 / 10000},
                     "v2": {
                         "ratio": 14999 / 15000

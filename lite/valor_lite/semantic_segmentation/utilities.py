@@ -18,8 +18,8 @@ def unpack_precision_recall_iou_into_metric_lists(
         f1_score,
         accuracy,
         ious,
-        hallucination_ratios,
-        missing_prediction_ratios,
+        unmatched_prediction_ratios,
+        unmatched_ground_truth_ratios,
     ) = results
 
     metrics = defaultdict(list)
@@ -43,16 +43,16 @@ def unpack_precision_recall_iou_into_metric_lists(
                 for gt_label_idx in range(n_labels)
                 if label_metadata[gt_label_idx, 0] > 0
             },
-            hallucinations={
+            unmatched_predictions={
                 index_to_label[pd_label_idx]: {
-                    "ratio": float(hallucination_ratios[pd_label_idx])
+                    "ratio": float(unmatched_prediction_ratios[pd_label_idx])
                 }
                 for pd_label_idx in range(n_labels)
                 if label_metadata[pd_label_idx, 0] > 0
             },
-            missing_predictions={
+            unmatched_ground_truths={
                 index_to_label[gt_label_idx]: {
-                    "ratio": float(missing_prediction_ratios[gt_label_idx])
+                    "ratio": float(unmatched_ground_truth_ratios[gt_label_idx])
                 }
                 for gt_label_idx in range(n_labels)
                 if label_metadata[gt_label_idx, 0] > 0

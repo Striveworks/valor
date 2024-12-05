@@ -704,7 +704,7 @@ def false_negatives_two_images_one_only_with_different_class_high_confidence_of_
 
 
 @pytest.fixture
-def detections_fp_hallucination_edge_case() -> list[Detection]:
+def detections_fp_unmatched_prediction_edge_case() -> list[Detection]:
     return [
         Detection(
             uid="uid1",
@@ -1093,7 +1093,7 @@ def detections_for_detailed_counting(
                     xmax=rect4[1],
                     ymin=rect4[2],
                     ymax=rect4[3],
-                    labels=["hallucination"],
+                    labels=["no_overlap"],
                     scores=[0.1],
                 ),
             ],
