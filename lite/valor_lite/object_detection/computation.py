@@ -793,7 +793,7 @@ def compute_confusion_matrix(
                 data[mask_misclf], unique_idx=[0, 1, 2, 4, 5], label_idx=[3, 4]
             )
 
-            # count unmatched_predictions
+            # count unmatched predictions
             (
                 halluc_examples,
                 halluc_labels,
