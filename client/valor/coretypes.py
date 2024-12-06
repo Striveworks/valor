@@ -1115,6 +1115,7 @@ class Model(StaticCollection):
                 if api_key is not None:
                     llm_api_params["api_key"] = api_key
 
+        bleu_smoothing_function = None
         bleu_weights = None
         rouge_types = None
         rouge_use_stemmer = None
@@ -1127,6 +1128,9 @@ class Model(StaticCollection):
                 )
 
             if MetricType.BLEU in metric_params:
+                bleu_smoothing_function = metric_params[MetricType.BLEU].get(
+                    "smoothing_function"
+                )
                 bleu_weights = metric_params[MetricType.BLEU].get("weights")
 
             if MetricType.ROUGE in metric_params:
@@ -1148,6 +1152,7 @@ class Model(StaticCollection):
                 task_type=TaskType.TEXT_GENERATION,
                 metrics_to_return=metrics_to_return,
                 llm_api_params=llm_api_params,
+                bleu_smoothing_function=bleu_smoothing_function,
                 bleu_weights=bleu_weights,
                 rouge_types=rouge_types,
                 rouge_use_stemmer=rouge_use_stemmer,

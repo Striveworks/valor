@@ -2126,6 +2126,7 @@ def test__calculate_bleu_scores():
         output = _calculate_sentence_bleu(
             predictions=example["prediction"],
             references=example["references"],
+            smoothing_function=example.get("smoothing_function", None),
             weights=example["weights"],
         )
         assert (
@@ -2137,5 +2138,6 @@ def test__calculate_bleu_scores():
             _calculate_sentence_bleu(
                 predictions=example["prediction"],
                 references=example["references"],
+                smoothing_function=example.get("smoothing_function", None),
                 weights=example["weights"],
             )
