@@ -1,0 +1,50 @@
+name: Run benchmarks
+
+on:
+  push:
+    branches: "**"
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  run-benchmarks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-python@v4
+        with:
+          python-version: "3.10"
+      - name: install lite
+        run: pip install -e .
+        working-directory: ./lite
+      - name: run classification benchmarks
+        run: python benchmark_classification.py
+        working-directory: ./lite/benchmarks/
+      - name: print classification results
+        run: |
+          export BENCHMARK_RESULTS=$(python -c "import os;import json;print(json.dumps(json.load(open('clf_results.json', 'r')), indent=4));")
+          echo "$BENCHMARK_RESULTS"
+        working-directory: ./lite/benchmarks/
+      - name: run object detection benchmarks
+        run: python benchmark_objdet.py
+        working-directory: ./lite/benchmarks/
+      - name: print object detection results
+        run: |
+          export BENCHMARK_RESULTS=$(python -c "import os;import json;print(json.dumps(json.load(open('objdet_results.json', 'r')), indent=4));")
+          echo "$BENCHMARK_RESULTS"
+        working-directory: ./lite/benchmarks/
+  run-synthetic-benchmarks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-python@v4
+        with:
+          python-version: "3.10"
+      - name: install lite
+        run: pip install -e .
+        working-directory: ./lite
+      - name: benchmark semantic segmentation
+        run: python benchmark_semantic_segmentation.py
+        working-directory: ./lite/benchmarks/synthetic/

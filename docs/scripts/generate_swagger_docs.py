@@ -2,7 +2,6 @@
 import json
 
 from fastapi.openapi.utils import get_openapi
-
 from valor_api.main import app
 
 with open("docs/static/openapi.json", "w") as f:
