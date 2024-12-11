@@ -11,18 +11,16 @@ extra_javascript:
   - https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js
 nav:
   - Overview: "index.md"
-  - Installation: "installation.md"
-  - Getting Started Notebook: "https://github.com/Striveworks/valor/blob/main/examples/getting_started.ipynb/"
-  - All Sample Notebooks: "https://github.com/Striveworks/valor/blob/main/examples/"
-  - Metadata & Filtering: "metadata_and_filtering.md"
-  - Metrics: "metrics.md"
-  - Endpoints: "endpoints.md"
-  - Technical Concepts: "technical_concepts.md"
+  - Classification:
+    - Metrics: "classification/metrics.md"
+  - Object Detection:
+    - Metrics: "object_detection/metrics.md"
+  - Semantic Segmentation:
+    - Metrics: "semantic_segmentation/metrics.md"
+  - Text Generation:
+    - Metrics: "text_generation/metrics.md"
+  - Example Notebooks: "https://github.com/Striveworks/valor/blob/main/examples/"
   - Contributing & Development: "contributing.md"
-  - Python Client:
-    - "client_api/core"
-    - Schemas: "client_api/schemas"
-    - Filtering: "client_api/filtering"
 markdown_extensions:
   - pymdownx.highlight:
       anchor_linenums: true

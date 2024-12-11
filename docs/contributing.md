@@ -32,31 +32,6 @@ For questions or comments on this process, please reach out to us at any time on
 
 ## Development Tips and Tricks
 
-### Deploying the Back End for Development
-
-#### Docker Compose
-
-The fastest way to test the API and Python client is via Docker Compose. Start by setting the environment variable `POSTGRES_PASSWORD` to your liking, and then start Docker and build the container:
-
-```shell
-export POSTGRES_PASSWORD="my_password"
-docker compose up
-```
-
-#### Makefile (requires Docker)
-
-Alternatively, you may want to run the API service from a terminal to enable faster debugging. To start the service, you can run:
-
-```shell
-pip install api # Install the API in your python environment
-
-export POSTGRES_PASSWORD=password
-export POSTGRES_HOST=localhost
-make start-postgres-docker # Start the custom postgres service in Docker
-make run-migrations # Instantiate the table schemas in Postgres
-make start-server # Start the API service locally
-```
-
 ### Setting Up Your Environment
 
 Creating a Valor-specific Python environment at the start of development can help you avoid dependency and versioning issues later on. To start, we'd recommend activating a new Python environment:
@@ -71,61 +46,17 @@ conda create --name valor python=3.11
 conda activate valor
 ```
 
-Next, install [pre-commit](https://pre-commit.com/) to ensure formatting consistency throughout your repo:
-
+Install the `valor-lite` module along with any packages required for development:
 ```bash
-pip install pre-commit
-pre-commit install
-```
-
-Finally, you're ready to install your client and API modules:
-
-```bash
-# Install the Client module
-python -m pip install -e client/.
-
-# Install the API module
-python -m pip install -e api/.
-```
-
-### Use pgAdmin to Debug PostGIS
-
-You can use the pgAdmin utility to debug your PostGIS tables as you code. Start by [installing pgAdmin](https://www.pgadmin.org/download/), and then select `Object > Register > Server` to connect to your PostGIS container. The default connection details are listed below for convenience:
-
-```
-- *Host name/address*: 0.0.0.0
-- *Port*: 5432
-- *Maintenance database*: postgres
-- *Username*: postgres
+make install-dev
 ```
 
 ### Running Tests
 
-All of our tests are run automatically via GitHub Actions on every push, so it's important to double-check that your code passes all local tests before committing your code. All of the tests below require `pytest`:
+All of our tests are run automatically via GitHub Actions on every push, so it's important to double-check that your code passes all local tests before committing your code.
 
 ```shell
-pip install pytest
-```
-
-
-#### Running integration tests
-
-```shell
-pytest integration_tests
-```
-
-#### Running back end unit tests
-
-```shell
-pytest api/tests/unit-tests
-```
-
-#### Running back end functional tests
-
-> **Note:** Functional tests require a running instance of PostgreSQL, which you can start using `make start-postgres-docker`.
-
-```shell
-POSTGRES_PASSWORD=password \
-POSTGRES_HOST=localhost \
-pytest api/tests/functional-tests/
+make pre-commit
+make tests
+make external-tests
 ```

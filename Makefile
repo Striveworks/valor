@@ -1,44 +1,36 @@
-test-env:
-	docker compose -p valor --env-file ./api/.env.testing up --build -d
+.PHONY: install install-dev pre-commit tests external-tests clean help
 
-dev-env:
-	docker compose -p valor -f docker-compose.yml --env-file ./api/.env.testing up --build -d
+install:
+	@echo "Installing from source..."
+	pip install -e src/[mistral, openai]
 
-stop-env:
-	docker compose -p valor down
+install-dev:
+	pip install -e src/[all]
+	pre-commit install
 
-unit-tests:
-	python -m pytest -v ./api/tests/unit-tests
-	python -m pytest -v ./client/unit-tests
+pre-commit:
+	@echo "Running pre-commit..."
+	pre-commit run --all
 
-start-postgres-docker:
-	docker build -t pgvalor ./database
-	docker run -p 5432:5432 -e POSTGRES_PASSWORD=password -e POSTGRESQL_REPLICATION_USE_PASSFILE=false -e POSTGRES_DB=valor -d pgvalor
+tests:
+	@echo "Running unit tests..."
+	poetry run pytest ./lite/tests/text_generation -v
 
-run-migrations:
-ifeq ($(shell uname -s),Darwin)
-	docker build -f=migrations/Dockerfile ./migrations -t migrations && \
-	docker run -e POSTGRES_PASSWORD=password -e POSTGRES_HOST=host.docker.internal -e POSTGRES_DB=valor -e POSTGRES_USERNAME=postgres -e POSTGRES_PORT=5432 migrations
-else
-	docker build -f=migrations/Dockerfile ./migrations -t migrations && \
-	docker run -e POSTGRES_PASSWORD=password --network "host" -e POSTGRES_HOST=localhost -e POSTGRES_DB=valor -e POSTGRES_USERNAME=postgres -e POSTGRES_PORT=5432 migrations
-endif
+external-tests:
+	@echo "Running external integration tests..."
+	poetry run pytest ./lite/tests/text_generation -v
+	poetry run pytest ./integration_tests/external -v
 
-functional-tests:
-	POSTGRES_PASSWORD=password POSTGRES_HOST=localhost POSTGRES_DB=valor POSTGRES_USERNAME=postgres POSTGRES_PORT=5432  pytest ./api/tests/functional-tests
+clean:
+	@echo "Cleaning up temporary files..."
+	rm -rf .pytest_cache __pycache__ valor_lite.egg-info
 
-core-tests:
-	pytest ./core/tests/unit-tests
-	pytest ./core/tests/functional-tests
-
-lite-tests:
-	pytest ./lite/tests/text_generation
-
-start-server:
-	POSTGRES_PASSWORD=password POSTGRES_HOST=localhost POSTGRES_DB=valor uvicorn valor_api.main:app --host 0.0.0.0
-
-integration-tests:
-	python -m pytest -v ./integration_tests/client
-
-external-integration-tests:
-	python -m pytest -v ./integration_tests/external
+help:
+	@echo "Available targets:"
+	@echo "  install          Install the valor_lite library from source."
+	@echo "  install-dev      Install valor_lite along with development tools."
+	@echo "  pre-commit       Run pre-commit."
+	@echo "  tests            Run unit tests."
+	@echo "  external-tests   Run external integration tests."
+	@echo "  clean            Remove temporary files."
+	@echo "  help             Show this help message."
