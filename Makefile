@@ -27,7 +27,10 @@ clean:
 
 help:
 	@echo "Available targets:"
-	@echo "  tests            Run unit tests using pytest."
-	@echo "  external-tests   Run external integration tests with verbose output."
-	@echo "  clean            Remove temporary files like .pytest_cache and __pycache__."
+	@echo "  install          Install the valor_lite library from source."
+	@echo "  install-dev      Install valor_lite along with development tools."
+	@echo "  pre-commit       Run pre-commit."
+	@echo "  tests            Run unit tests."
+	@echo "  external-tests   Run external integration tests."
+	@echo "  clean            Remove temporary files."
 	@echo "  help             Show this help message."
