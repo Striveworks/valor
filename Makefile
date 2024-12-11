@@ -1,13 +1,16 @@
-.PHONY: install tests external-tests clean help
+.PHONY: install install-dev pre-commit tests external-tests clean help
 
 install:
 	@echo "Installing from source..."
-	pre-commit install
+	pip install -e src/[mistral, openai]
+
+install-dev:
 	pip install -e src/[all]
+	pre-commit install
 
 pre-commit:
 	@echo "Running pre-commit..."
-
+	pre-commit run --all
 
 tests:
 	@echo "Running unit tests..."
