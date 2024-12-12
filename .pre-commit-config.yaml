@@ -33,28 +33,14 @@ repos:
     hooks:
       - id: pyright
         additional_dependencies: [
-            "requests",
-            "Pillow >= 9.1.0",
             "numpy",
-            "pandas>=2.2.2",
-            "pandas-stubs", # fixes pyright issues with pandas
-            "pandas[performance]",
             "pytest",
             "python-dotenv",
-            "SQLAlchemy>=2.0",
-            "fastapi[all]>=0.100.0",
             "importlib_metadata; python_version < '3.8'",
-            "pydantic-settings",
             "tqdm",
             "packaging",
-            "PyJWT[crypto]",
-            "structlog",
-            "GeoAlchemy2",
-            "psycopg2-binary",
-            "pgvector",
             "openai",
             "mistralai>=1.0",
-            "absl-py",
             "nltk",
             "rouge_score",
             "evaluate",
