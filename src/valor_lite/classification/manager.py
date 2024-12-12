@@ -39,7 +39,7 @@ filtered_metrics = evaluator.evaluate(filter_mask=filter_mask)
 
 @dataclass
 class Filter:
-    indices: NDArray[np.int32]
+    indices: NDArray[np.intp]
     label_metadata: NDArray[np.int32]
     n_datums: int
 
@@ -170,8 +170,7 @@ class Evaluator:
         label_metadata_per_datum = self._label_metadata_per_datum.copy()
         label_metadata_per_datum[:, ~mask] = 0
 
-        label_metadata = np.zeros_like(self._label_metadata, dtype=np.int32)
-        label_metadata = np.transpose(
+        label_metadata: NDArray[np.int32] = np.transpose(
             np.sum(
                 label_metadata_per_datum,
                 axis=1,

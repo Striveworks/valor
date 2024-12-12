@@ -43,8 +43,8 @@ filtered_metrics = evaluator.evaluate(iou_thresholds=[0.5], filter_mask=filter_m
 
 @dataclass
 class Filter:
-    ranked_indices: NDArray[np.int32]
-    detailed_indices: NDArray[np.int32]
+    ranked_indices: NDArray[np.intp]
+    detailed_indices: NDArray[np.intp]
     label_metadata: NDArray[np.int32]
 
 
@@ -570,7 +570,8 @@ class DataLoader:
                         [gt.extrema, pd.extrema]
                         for pd in detection.predictions
                         for gt in detection.groundtruths
-                    ]
+                    ],
+                    dtype=np.float64,
                 )
             ).reshape(len(detection.predictions), len(detection.groundtruths))
             for detection in detections

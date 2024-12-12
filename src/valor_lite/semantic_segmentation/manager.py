@@ -38,7 +38,7 @@ filtered_metrics = evaluator.evaluate(filter_mask=filter_mask)
 
 @dataclass
 class Filter:
-    indices: NDArray[np.int32]
+    indices: NDArray[np.intp]
     label_metadata: NDArray[np.int32]
     n_pixels: int
 

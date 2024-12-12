@@ -381,9 +381,9 @@ def compute_precion_recall(
             _, indices_gt_unique = np.unique(
                 tp_candidates[:, [0, 1, 4]], axis=0, return_index=True
             )
-            mask_gt_unique = np.zeros(tp_candidates.shape[0], dtype=bool)
+            mask_gt_unique = np.zeros(tp_candidates.shape[0], dtype=np.bool_)
             mask_gt_unique[indices_gt_unique] = True
-            true_positives_mask = np.zeros(n_rows, dtype=bool)
+            true_positives_mask = np.zeros(n_rows, dtype=np.bool_)
             true_positives_mask[mask_tp_inner] = mask_gt_unique
 
             # calculate intermediates
@@ -452,9 +452,9 @@ def compute_precion_recall(
         _, indices_gt_unique = np.unique(
             tp_candidates[:, [0, 1, 4]], axis=0, return_index=True
         )
-        mask_gt_unique = np.zeros(tp_candidates.shape[0], dtype=bool)
+        mask_gt_unique = np.zeros(tp_candidates.shape[0], dtype=np.bool_)
         mask_gt_unique[indices_gt_unique] = True
-        true_positives_mask = np.zeros(n_rows, dtype=bool)
+        true_positives_mask = np.zeros(n_rows, dtype=np.bool_)
         true_positives_mask[mask_tp_outer] = mask_gt_unique
 
         # count running tp and total for AP
@@ -501,8 +501,8 @@ def compute_precion_recall(
         )
 
     # calculate average precision
-    running_max_precision = np.zeros((n_ious, n_labels))
-    running_max_score = np.zeros((n_labels))
+    running_max_precision = np.zeros((n_ious, n_labels), dtype=np.float64)
+    running_max_score = np.zeros((n_labels), dtype=np.float64)
     for recall in range(100, -1, -1):
 
         # running max precision
@@ -528,8 +528,12 @@ def compute_precion_recall(
 
     # calculate mAP and mAR
     if unique_pd_labels.size > 0:
-        mAP = average_precision[:, unique_pd_labels].mean(axis=1)
-        mAR = average_recall[:, unique_pd_labels].mean(axis=1)
+        mAP: NDArray[np.float64] = average_precision[:, unique_pd_labels].mean(
+            axis=1
+        )
+        mAR: NDArray[np.float64] = average_recall[:, unique_pd_labels].mean(
+            axis=1
+        )
     else:
         mAP = np.zeros(n_ious, dtype=np.float64)
         mAR = np.zeros(n_scores, dtype=np.float64)
@@ -561,14 +565,14 @@ def compute_precion_recall(
         accuracy,
         counts,
         pr_curve,
-    )
+    )  # type: ignore[reportReturnType]
 
 
 def _count_with_examples(
     data: NDArray[np.float64],
     unique_idx: int | list[int],
     label_idx: int | list[int],
-) -> tuple[NDArray[np.float64], NDArray[np.int32], NDArray[np.int32]]:
+) -> tuple[NDArray[np.float64], NDArray[np.int32], NDArray[np.intp]]:
     """
     Helper function for counting occurences of unique detailed pairs.
 
@@ -587,7 +591,7 @@ def _count_with_examples(
         Examples drawn from the data input.
     NDArray[np.int32]
         Unique label indices.
-    NDArray[np.int32]
+    NDArray[np.intp]
         Counts for each unique label index.
     """
     unique_rows, indices = np.unique(
@@ -681,12 +685,12 @@ def compute_confusion_matrix(
     confusion_matrix = -1 * np.ones(
         # (datum idx, gt idx, pd idx, pd score) * n_examples + count
         (n_ious, n_scores, n_labels, n_labels, 4 * n_examples + 1),
-        dtype=np.float32,
+        dtype=np.float64,
     )
     unmatched_predictions = -1 * np.ones(
         # (datum idx, pd idx, pd score) * n_examples + count
         (n_ious, n_scores, n_labels, 3 * n_examples + 1),
-        dtype=np.float32,
+        dtype=np.float64,
     )
     unmatched_ground_truths = -1 * np.ones(
         # (datum idx, gt idx) * n_examples + count
@@ -907,4 +911,4 @@ def compute_confusion_matrix(
         confusion_matrix,
         unmatched_predictions,
         unmatched_ground_truths,
-    )
+    )  # type: ignore[reportReturnType]

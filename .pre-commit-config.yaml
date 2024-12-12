@@ -29,14 +29,13 @@ repos:
         args: [--line-length=79]
 
   - repo: https://github.com/RobertCraigie/pyright-python
-    rev: v1.1.376
+    rev: v1.1.390
     hooks:
       - id: pyright
         additional_dependencies: [
             "numpy",
             "pytest",
             "python-dotenv",
-            "importlib_metadata; python_version < '3.8'",
             "tqdm",
             "packaging",
             "openai",

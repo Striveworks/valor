@@ -212,7 +212,7 @@ def _count_with_examples(
     data: NDArray[np.float64],
     unique_idx: int | list[int],
     label_idx: int | list[int],
-) -> tuple[NDArray[np.float64], NDArray[np.int32], NDArray[np.int32]]:
+) -> tuple[NDArray[np.float64], NDArray[np.int32], NDArray[np.intp]]:
     """
     Helper function for counting occurences of unique detailed pairs.
 
@@ -231,7 +231,7 @@ def _count_with_examples(
         Examples drawn from the data input.
     NDArray[np.int32]
         Unique label indices.
-    NDArray[np.int32]
+    NDArray[np.intp]
         Counts for each unique label index.
     """
     unique_rows, indices = np.unique(
@@ -288,12 +288,14 @@ def compute_confusion_matrix(
     n_labels = label_metadata.shape[0]
     n_scores = score_thresholds.shape[0]
 
-    confusion_matrix = -1 * np.ones(
+    confusion_matrix = np.full(
         (n_scores, n_labels, n_labels, 2 * n_examples + 1),
-        dtype=np.float32,
+        fill_value=-1.0,
+        dtype=np.float64,
     )
-    unmatched_ground_truths = -1 * np.ones(
+    unmatched_ground_truths = np.full(
         (n_scores, n_labels, n_examples + 1),
+        fill_value=-1,
         dtype=np.int32,
     )
 

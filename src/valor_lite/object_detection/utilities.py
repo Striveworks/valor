@@ -137,10 +137,8 @@ def unpack_precision_recall_into_metric_lists(
 
     metrics[MetricType.PrecisionRecallCurve] = [
         Metric.precision_recall_curve(
-            precisions=pr_curves[iou_idx, label_idx, :, 0]
-            .astype(float)
-            .tolist(),
-            scores=pr_curves[iou_idx, label_idx, :, 1].astype(float).tolist(),
+            precisions=pr_curves[iou_idx, label_idx, :, 0].tolist(),  # type: ignore[reportArgumentType]
+            scores=pr_curves[iou_idx, label_idx, :, 1].tolist(),  # type: ignore[reportArgumentType]
             iou_threshold=iou_threshold,
             label=label,
         )
