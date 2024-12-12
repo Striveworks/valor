@@ -9,7 +9,7 @@ permissions:
   contents: read
 
 jobs:
-  lite-tests:
+  combined-coverage-report:
     runs-on: ubuntu-latest
     defaults:
       run:
