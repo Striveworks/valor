@@ -1,5 +1,7 @@
 # Text Generation Metrics
 
+::: valor_lite.text_generation.metric
+
 ## Locally Computed Metrics
 
 | Name | Description | Equation |
