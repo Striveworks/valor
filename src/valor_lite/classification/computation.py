@@ -291,7 +291,7 @@ def compute_confusion_matrix(
     confusion_matrix = np.full(
         (n_scores, n_labels, n_labels, 2 * n_examples + 1),
         fill_value=-1.0,
-        dtype=np.float64,
+        dtype=np.float32,
     )
     unmatched_ground_truths = np.full(
         (n_scores, n_labels, n_examples + 1),
@@ -389,4 +389,4 @@ def compute_confusion_matrix(
                         1 : misprd_label_examples.shape[0] + 1,
                     ] = misprd_label_examples[:, 0].flatten()
 
-    return confusion_matrix, unmatched_ground_truths
+    return confusion_matrix, unmatched_ground_truths  # type: ignore[reportReturnType]

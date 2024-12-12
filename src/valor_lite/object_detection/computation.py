@@ -685,12 +685,12 @@ def compute_confusion_matrix(
     confusion_matrix = -1 * np.ones(
         # (datum idx, gt idx, pd idx, pd score) * n_examples + count
         (n_ious, n_scores, n_labels, n_labels, 4 * n_examples + 1),
-        dtype=np.float64,
+        dtype=np.float32,
     )
     unmatched_predictions = -1 * np.ones(
         # (datum idx, pd idx, pd score) * n_examples + count
         (n_ious, n_scores, n_labels, 3 * n_examples + 1),
-        dtype=np.float64,
+        dtype=np.float32,
     )
     unmatched_ground_truths = -1 * np.ones(
         # (datum idx, gt idx) * n_examples + count

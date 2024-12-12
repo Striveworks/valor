@@ -61,12 +61,7 @@ For linting and code formatting use:
 make pre-commit
 ```
 
-For unit and functional testing:
+Run all tests using:
 ```shell
 make tests
-```
-
-For integration testing:
-```shell
-make external-tests
 ```

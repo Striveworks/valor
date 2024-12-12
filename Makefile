@@ -12,13 +12,12 @@ pre-commit:
 	pre-commit install
 	pre-commit run --all
 
-tests:
-	@echo "Running unit tests..."
-	pytest ./lite/tests/text_generation -v
-
-integration-tests:
-	@echo "Running external integration tests..."
-	pytest ./lite/tests/text_generation -v
+test:
+	@echo "Running tests..."
+	pytest tests/classification
+	pytest tests/object_detection
+	pytest tests/semantic_segmentation
+	pytest tests/text_generation
 
 clean:
 	@echo "Cleaning up temporary files..."
