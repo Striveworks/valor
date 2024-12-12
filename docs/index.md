@@ -18,7 +18,17 @@ cd valor
 make install
 ```
 
-# Quick Links
+## Quick Links
 
+- **Documentation**
+    - Classification
+        - [DataLoader](classification/dataloader.md)
+        - [Metrics](classification/metrics.md)
+    - Object Detection
+        - [Metrics](object_detection/metrics.md)
+    - Semantic Segmentation
+        - [Metrics](semantic_segmentation/metrics.md)
+    - Text Generation
+        - [Metrics](text_generation/metrics.md)
 - **[Example Notebooks](https://github.com/Striveworks/valor/blob/main/examples/)**: Collection of descriptive Jupyter notebooks giving examples of how to evaluate model performance using Valor.
 - **[Contributing and Development](contributing.md)**: Explains how you can build on and contribute to Valor.
