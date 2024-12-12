@@ -20,5 +20,5 @@ help:
 	@echo "Available targets:"
 	@echo "  install          Install from source with developer tools."
 	@echo "  pre-commit       Run pre-commit."
-	@echo "  tests            Run tests."
+	@echo "  test             Run tests."
 	@echo "  help             Show this help message."
