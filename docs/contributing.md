@@ -1,8 +1,10 @@
-# Contributing to Valor
+# Contibuting & Development
+
+## Contributing to Valor
 
 We welcome all contributions, bug reports, bug fixes, documentation improvements, enhancements, and ideas aimed at improving Valor. This doc describes the high-level process for how to contribute to this repository. If you have any questions or comments about this process, please feel free to reach out to us on [Slack](https://striveworks-public.slack.com/join/shared_invite/zt-1a0jx768y-2J1fffN~b4fXYM8GecvOhA#/shared-invite/email).
 
-## On GitHub
+### On GitHub
 
 We use [Git](https://git-scm.com/doc) on [GitHub](https://github.com) to manage this repo, which means you will need to sign up for a free GitHub account to submit issues, ideas, and pull requests. We use Git for version control to allow contributors from all over the world to work together on this project.
 
@@ -12,7 +14,7 @@ If you are new to Git, these official resources can help bring you up to speed:
 - [GitHub documentation for collaborating with pull requests](https://docs.github.com/en/pull-requests/collaborating-with-pull-requests)
 - [GitHub documentation for working with forks](https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/working-with-forks)
 
-## Contribution Workflow
+### Contribution Workflow
 
 Generally, the high-level workflow for contributing to this repo includes:
 
@@ -30,7 +32,7 @@ Generally, the high-level workflow for contributing to this repo includes:
 For questions or comments on this process, please reach out to us at any time on [Slack](https://striveworks-public.slack.com/join/shared_invite/zt-1a0jx768y-2J1fffN~b4fXYM8GecvOhA#/shared-invite/email).
 
 
-## Development Tips and Tricks
+## Development
 
 ### Setting Up Your Environment
 
@@ -42,7 +44,7 @@ python3 -m venv .env-valor
 source .env-valor/bin/activate
 
 # conda
-conda create --name valor python=3.11
+conda create --name valor python=3.10
 conda activate valor
 ```
 
@@ -55,8 +57,17 @@ make install-dev
 
 All of our tests are run automatically via GitHub Actions on every push, so it's important to double-check that your code passes all local tests before committing your code.
 
+For linting and code formatting use:
 ```shell
 make pre-commit
+```
+
+For unit and functional testing:
+```shell
 make tests
+```
+
+For integration testing:
+```shell
 make external-tests
 ```

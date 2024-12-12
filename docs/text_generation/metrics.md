@@ -22,15 +22,15 @@
 | Summary Coherence | Rates the coherence of a textual summary relative to some source text using a score from 1 to 5, where 5 means "This summary is extremely coherent based on the information provided in the source text". | See [appendix](#summary-coherence-llm-guided) for details. |
 | Toxicity | The proportion of opinions in the predicted text that are toxic. | $\dfrac{\textnormal{Number of Toxic Opinions}}{\textnormal{Total Number of Opinions}}$ |
 
-# Appendix: Metric Calculations
+## Appendix: Metric Calculations
 
-## General Text Generation Metrics
+### General Text Generation Metrics
 
 The general text generation metrics apply to a broad set of text generation tasks. These metrics don't compare to ground truths and don't require context. The metrics are evaluated purely based on the predicted text.
 
 Some of the general text generation metrics are not necessarily useful in all tasks, but still can be used. For example, the bias and toxicity metrics evaluate opinions in the predicted text for bias/toxicity. If a task should have few/no opinions, then these metrics might not be useful. However bias and toxicity can still be evaluated on the predicted text, and if there are no opinions, then the bias/toxicity scores should be 0, indicating that there were no biased/toxic opinions.
 
-### Bias (LLM-Guided)
+#### Bias (LLM-Guided)
 
 Uses
 - Prediction - Annotation.text
@@ -62,7 +62,7 @@ In DeepEval, bias is defined according to the following rubric:
     - Biased: Crime rates are always higher in those big cities.
     - Not Biased: Studies show a correlation between population density and certain types of crime.
 
-### Toxicity (LLM-Guided)
+#### Toxicity (LLM-Guided)
 
 Uses
 - Prediction - Annotation.text
@@ -101,7 +101,7 @@ In DeepEval, whether an opinion is toxic is defined according to the following r
 
 Question and Answering (Q&A) is a subcategory of text generation tasks in which the datum is a query/question, and the prediction is an answer to that query. In this setting we can evaluate the predicted text based on properties such as relevance to the query or the correctness of the answer. These metrics will not apply to all text generation tasks. For example, not all text generation tasks have a single correct answer.
 
-### Answer Correctness (LLM-Guided)
+#### Answer Correctness (LLM-Guided)
 
 Uses
 - GroundTruth - Annotation.text
@@ -121,7 +121,7 @@ If there are multiple ground truth answers for a datum, then the answer correctn
 
 Our implementation was adapted from [RAGAS's implementation](https://github.com/explodinggradients/ragas/blob/main/src/ragas/metrics/_answer_correctness.py). We follow a similar prompting strategy and computation, however we do not do a weighted sum with an answer similarity score using embeddings. RAGAS's answer correctness metric is a weighted sum of the f1 score described here with the answer similarity score. RAGAS computes answer similarity by embedding both the ground truth and prediction and taking their inner product. They use default weights of 0.75 for the f1 score and 0.25 for the answer similarity score. In Valor, we decided to implement answer correctness as just the f1 score, so that users are not required to supply an embedding model.
 
-### Answer Relevance (LLM-Guided)
+#### Answer Relevance (LLM-Guided)
 
 Uses
 - Datum.text
@@ -135,11 +135,11 @@ $$AnswerRelevance = \frac{\textnormal{Number of Relevant Statements}}{\textnorma
 
 Our implementation closely follows [DeepEval's implementation](https://github.com/confident-ai/deepeval/tree/main/deepeval/metrics/answer_relevancy). We use the same two step prompting strategy and modified DeepEval's instructions.
 
-## RAG Metrics
+### RAG Metrics
 
 Retrieval Augmented Generation (RAG) is a subcategory of Q&A where the model retrieves contexts from a database, then uses the retrieved contexts to aid in generating an answer. RAG models can be evaluated with Q&A metrics (AnswerCorrectness and AnswerRelevance) that evaluate the quality of the generated answer to the query, but RAG models can also be evaluated with RAG specific metrics. Some RAG metrics (Faithfulness and Hallucination) evaluate the quality of the generated answer relative to the retrieved contexts. Other RAG metrics (ContextPrecision, ContextRecall and ContextRelevance) evaluate the retrieval mechanism by evaluating the quality of the retrieved contexts relative to the query and/or ground truth answers.
 
-### Context Precision (LLM-Guided)
+#### Context Precision (LLM-Guided)
 
 Uses
 - Datum.text
@@ -170,7 +170,7 @@ If multiple ground truth answers are provided for a datum, then the verdict for 
 
 Our implementation uses the same computation as both [RAGAS](https://docs.ragas.io/en/latest/concepts/metrics/context_precision.html) and [DeepEval](https://docs.confident-ai.com/docs/metrics-contextual-precision). Our instruction is loosely adapted from [DeepEval's instruction](https://github.com/confident-ai/deepeval/blob/main/deepeval/metrics/contextual_precision/template.py).
 
-### Context Recall (LLM-Guided)
+#### Context Recall (LLM-Guided)
 
 Uses
 - GroundTruth - Annotation.text
@@ -186,7 +186,7 @@ If multiple ground truth answers are provided for a datum, then the context reca
 
 Our implementation loosely follows [RAGAS](https://docs.ragas.io/en/latest/concepts/metrics/context_recall.html). The example in Valor's instruction was adapted from the example in [RAGAS's instruction](https://github.com/explodinggradients/ragas/blob/main/src/ragas/metrics/_context_recall.py).
 
-### Context Relevance (LLM-Guided)
+#### Context Relevance (LLM-Guided)
 
 Uses
 - Datum.text
@@ -200,7 +200,7 @@ $$Context Relevance = \frac{\textnormal{Number of Relevant Contexts}}{\textnorma
 
 Our implementation follows [DeepEval's implementation](https://github.com/confident-ai/deepeval/tree/main/deepeval/metrics/context_relevancy). The LLM instruction was adapted from DeepEval's instruction.
 
-### Faithfulness (LLM-Guided)
+#### Faithfulness (LLM-Guided)
 
 Uses
 - Prediction - Annotation.text
@@ -216,7 +216,7 @@ Our implementation loosely follows and combines the strategies of [DeepEval](htt
 
 We follow [DeepEval's prompting strategy](https://github.com/confident-ai/deepeval/blob/main/deepeval/metrics/faithfulness) as this strategy is closer to the other prompting strategies in Valor, however we heavily modify the instructions. Most notably, we reword the instructions and examples to follow RAGAS's definition of faithfulness.
 
-### Hallucination (LLM-Guided)
+#### Hallucination (LLM-Guided)
 
 Uses
 - Prediction - Annotation.text
@@ -232,13 +232,13 @@ Note the differences between faithfulness and hallucination. First, for hallucin
 
 Our implementation follows [DeepEval's implementation](https://github.com/confident-ai/deepeval/tree/main/deepeval/metrics/hallucination).
 
-## Summarization Metrics
+### Summarization Metrics
 
 Summarization is the task of generating a shorter version of a piece of text that retains the most important information. Summarization metrics evaluate the quality of a summary by comparing it to the original text.
 
 Note that Datum.text is used differently for summarization than for Q&A and RAG tasks. For summarization, the Datum.text should be the text that was summarized and the prediction text should be the generated summary. This is different than Q&A and RAG where the Datum.text is the query and the prediction text is the generated answer.
 
-### Summary Coherence (LLM-Guided)
+#### Summary Coherence (LLM-Guided)
 
 Uses
 - Datum.text
@@ -250,11 +250,11 @@ An LLM is prompted to evaluate the collective quality of a summary given the tex
 
 Valor's implementation of the summary coherence metric uses an instruction that was adapted from appendix A of DeepEval's paper G-EVAL: [NLG Evaluation using GPT-4 with Better Human Alignment](https://arxiv.org/pdf/2303.16634). The instruction in appendix A of DeepEval's paper is specific to news articles, but Valor generalized this instruction to apply to any text summarization task.
 
-## Non-LLM-Guided Text Comparison Metrics
+### Non-LLM-Guided Text Comparison Metrics
 
 This section contains non-LLM-guided metrics for comparing a predicted text to one or more ground truth texts. These metrics can be run without specifying any LLM api parameters.
 
-### ROUGE
+#### ROUGE
 
 Uses
 - GroundTruth - Annotation.text
@@ -276,7 +276,7 @@ In Valor, the ROUGE output value is a dictionary containing the following elemen
 Behind the scenes, we use [Hugging Face's `evaluate` package](https://huggingface.co/spaces/evaluate-metric/rouge) to calculate these scores. Users can pass `rouge_types` and `rouge_use_stemmer` to EvaluationParameters in order to gain access to additional functionality from this package.
 
 
-### BLEU
+#### BLEU
 
 Uses
 - GroundTruth - Annotation.text

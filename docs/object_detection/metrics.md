@@ -14,15 +14,15 @@
 | Precision-Recall Curves | | See [Precision-Recall Curve](#precision-recall-curve)|
 | Confusion Matrix | | See [Confusion Matrix](#confusion-matrix)|
 
-# Appendix: Metric Calculations
+## Appendix: Metric Calculations
 
-## Counts
+### Counts
 
-## Average Precision (AP)
+### Average Precision (AP)
 
 For object detection and instance segmentation tasks, average precision is calculated from the intersection-over-union (IOU) of geometric predictions and ground truths.
 
-### Multiclass Precision and Recall
+#### Multiclass Precision and Recall
 
 Tasks that predict geometries (such as object detection or instance segmentation) use the ratio intersection-over-union (IOU) to calculate precision and recall. IOU is the ratio of the intersecting area over the joint area spanned by the two geometries, and is defined in the following equation.
 
@@ -41,7 +41,7 @@ Using different IOU thresholds, we can determine whether we count a pairing betw
 
 - $Recall = \dfrac{|TP|}{|TP| + |FN|} = \dfrac{\text{Number of True Predictions}}{|\text{Groundtruths}|}$
 
-### Matching Ground Truths with Predictions
+#### Matching Ground Truths with Predictions
 
 To properly evaluate a detection, we must first find the best pairings of predictions to ground truths. We start by iterating over our predictions, ordering them by highest scores first. We pair each prediction with the ground truth that has the highest calculated IOU. Both the prediction and ground truth are now considered paired and removed from the pool of choices.
 
@@ -60,7 +60,7 @@ def rank_ious(
         retval.append(calculate_iou(groundtruth, prediction))
 ```
 
-### Precision-Recall Curve
+#### Precision-Recall Curve
 
 We can now compute the precision-recall curve using our previously ranked IOU's. We do this by iterating through the ranked IOU's and creating points cumulatively using recall and precision.
 
@@ -82,7 +82,7 @@ def create_precision_recall_curve(
         retval.append((recall, precision))
 ```
 
-### Calculating Average Precision
+#### Calculating Average Precision
 
 Average precision is defined as the area under the precision-recall curve.
 
@@ -92,12 +92,12 @@ $AP = \frac{1}{101} \sum\limits_{r\in\{ 0, 0.01, \ldots , 1 \}}\rho_{interp}(r)$
 
 $\rho_{interp} = \underset{\tilde{r}:\tilde{r} \ge r}{max \ \rho (\tilde{r})}$
 
-### References
+#### References
 - [MS COCO Detection Evaluation](https://cocodataset.org/#detection-eval)
 - [The PASCAL Visual Object Classes (VOC) Challenge](https://link.springer.com/article/10.1007/s11263-009-0275-4)
 - [Mean Average Precision (mAP) Using the COCO Evaluator](https://pyimagesearch.com/2022/05/02/mean-average-precision-map-using-the-coco-evaluator/)
 
-## Average Recall (AR)
+### Average Recall (AR)
 
 To calculate Average Recall (AR), we:
 
@@ -111,7 +111,7 @@ Note that this metric differs from COCO's calculation in two ways:
 - COCO averages across classes while calculating AR, while we calculate AR separately for each class. Our AR calculations matches the original FAIR definition of AR, while our mAR calculations match what COCO calls AR.
 - COCO calculates three different AR metrics (AR@1, AR@5, AR@100) by considering only the top 1/5/100 most confident predictions during the matching process. Valor, on the other hand, allows users to input a `recall_score_threshold` value that will prevent low-confidence predictions from being counted as true positives when calculating AR.
 
-## Precision-Recall Curve
+### Precision-Recall Curve
 Precision-recall curves offer insight into which confidence threshold you should pick for your production pipeline. The `PrecisionRecallCurve` metric includes the true positives, false positives, true negatives, false negatives, precision, recall, and F1 score for each (label key, label value, confidence threshold) combination. When using the Valor Python client, the output will be formatted as follows:
 
 ```python
@@ -151,7 +151,7 @@ The `PrecisionRecallCurve` values differ from the precision-recall curves used t
 - The `PrecisionRecallCurve` values visualize how precision and recall change as confidence thresholds vary from 0.05 to 0.95 in increments of 0.05. In contrast, the precision-recall curves used to calculate Average Precision are non-uniform; they vary over the actual confidence scores for each ground truth-prediction match.
 - If your pipeline predicts a label on an image, but that label doesn't exist on any ground truths in that particular image, then the `PrecisionRecallCurve` values will consider that prediction to be a false positive, whereas the other detection metrics will ignore that particular prediction.
 
-## Confusion Matrix
+### Confusion Matrix
 
 Valor also includes a more detailed version of `PrecisionRecallCurve` which can be useful for debugging your model's false positives and false negatives. When calculating `DetailedPrecisionCurve`, Valor will classify false positives as either `hallucinations` or `misclassifications` and your false negatives as either `missed_detections` or `misclassifications` using the following logic:
 

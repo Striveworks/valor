@@ -6,20 +6,19 @@ install:
 
 install-dev:
 	pip install -e src/[all]
-	pre-commit install
 
 pre-commit:
 	@echo "Running pre-commit..."
+	pre-commit install
 	pre-commit run --all
 
 tests:
 	@echo "Running unit tests..."
-	poetry run pytest ./lite/tests/text_generation -v
+	pytest ./lite/tests/text_generation -v
 
-external-tests:
+integration-tests:
 	@echo "Running external integration tests..."
-	poetry run pytest ./lite/tests/text_generation -v
-	poetry run pytest ./integration_tests/external -v
+	pytest ./lite/tests/text_generation -v
 
 clean:
 	@echo "Cleaning up temporary files..."
@@ -31,6 +30,6 @@ help:
 	@echo "  install-dev      Install valor_lite along with development tools."
 	@echo "  pre-commit       Run pre-commit."
 	@echo "  tests            Run unit tests."
-	@echo "  external-tests   Run external integration tests."
+	@echo "  integration-tests   Run external integration tests."
 	@echo "  clean            Remove temporary files."
 	@echo "  help             Show this help message."

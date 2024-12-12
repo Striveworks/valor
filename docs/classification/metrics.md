@@ -10,9 +10,9 @@
 | Counts | A dictionary containing counts of true positives, false positives, true negatives, false negatives, for each label. | See [Counts](#counts). |
 | Confusion Matrix | | See [Confusion Matrix](#confusion-matrix). |
 
-# Appendix: Metric Calculations
+## Appendix: Metric Calculations
 
-## Counts
+### Counts
 Precision-recall curves offer insight into which confidence threshold you should pick for your production pipeline. The `PrecisionRecallCurve` metric includes the true positives, false positives, true negatives, false negatives, precision, recall, and F1 score for each (label key, label value, confidence threshold) combination. When using the Valor Python client, the output will be formatted as follows:
 
 ```python
@@ -45,15 +45,15 @@ print(pr_evaluation)
 }]
 ```
 
-## Binary ROC AUC
+### Binary ROC AUC
 
-### Receiver Operating Characteristic (ROC)
+#### Receiver Operating Characteristic (ROC)
 
 An ROC curve plots the True Positive Rate (TPR) vs. the False Positive Rate (FPR) at different confidence thresholds.
 
 In Valor, we use the confidence scores sorted in decreasing order as our thresholds. Using these thresholds, we can calculate our TPR and FPR as follows:
 
-#### Determining the Rate of Correct Predictions
+##### Determining the Rate of Correct Predictions
 
 | Element | Description |
 | ------- | ------------ |
@@ -70,7 +70,7 @@ We now use the confidence scores, sorted in decreasing order, as our thresholds 
 
 $Point(score) = (FPR(score), \ TPR(score))$
 
-### Area Under the ROC Curve (ROC AUC)
+#### Area Under the ROC Curve (ROC AUC)
 
 After calculating the ROC curve, we find the ROC AUC metric by approximating the integral using the trapezoidal rule formula.
 
@@ -78,11 +78,11 @@ $ROC AUC =  \sum_{i=1}^{|scores|} \frac{  \lVert Point(score_{i-1}) - Point(scor
 
 See [Classification: ROC Curve and AUC](https://developers.google.com/machine-learning/crash-course/classification/roc-and-auc) for more information.
 
-## Confusion Matrix
+### Confusion Matrix
 
 Valor also includes a more detailed version of `PrecisionRecallCurve` which can be useful for debugging your model's false positives and false negatives. When calculating `DetailedPrecisionCurve`, Valor will classify false positives as either `hallucinations` or `misclassifications` and your false negatives as either `missed_detections` or `misclassifications` using the following logic:
 
-### Classification Tasks
+#### Classification Tasks
   - A **false positive** occurs when there is a qualified prediction (with `score >= score_threshold`) with the same `Label.key` as the ground truth on the datum, but the `Label.value` is incorrect.
     - **Example**: if there's a photo with one ground truth label on it (e.g., `Label(key='animal', value='dog')`), and we predicted another label value (e.g., `Label(key='animal', value='cat')`) on that datum, we'd say it's a `misclassification` since the key was correct but the value was not.
   - Similarly, a **false negative** occurs when there is a prediction with the same `Label.key` as the ground truth on the datum, but the `Label.value` is incorrect.

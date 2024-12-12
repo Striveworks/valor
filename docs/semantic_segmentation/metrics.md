@@ -9,12 +9,12 @@
 | Mean IOU | The average of IOU across labels, grouped by label key. | $\dfrac{1}{\text{number of labels}} \sum\limits_{label \in labels} IOU_{c}$ |
 | Confusion Matrix | | See [Confusion Matrix](#confusion-matrix) |
 
-# Appendix: Metric Calculations
+## Appendix: Metric Calculations
 
-## Confusion Matrix
+### Confusion Matrix
 
 Description
 
-### Unmatched Predictions
+#### Unmatched Predictions
 
-### Unmatched Ground Truths
+#### Unmatched Ground Truths
