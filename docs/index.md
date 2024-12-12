@@ -22,13 +22,16 @@ make install
 
 - **Documentation**
     - Classification
-        - [DataLoader](classification/dataloader.md)
+        - [Documentation](classification/documentation.md)
         - [Metrics](classification/metrics.md)
     - Object Detection
+        - [Documentation](object_detection/documentation.md)
         - [Metrics](object_detection/metrics.md)
     - Semantic Segmentation
+        - [Documentation](semantic_segmentation/documentation.md)
         - [Metrics](semantic_segmentation/metrics.md)
     - Text Generation
+        - [Documentation](text_generation/documentation.md)
         - [Metrics](text_generation/metrics.md)
 - **[Example Notebooks](https://github.com/Striveworks/valor/blob/main/examples/)**: Collection of descriptive Jupyter notebooks giving examples of how to evaluate model performance using Valor.
 - **[Contributing and Development](contributing.md)**: Explains how you can build on and contribute to Valor.

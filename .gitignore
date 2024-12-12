@@ -12,6 +12,8 @@ build
 */.venv
 *.env
 
+src/build
+
 .vscode
 .idea
 */dist/*
