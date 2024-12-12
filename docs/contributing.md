@@ -28,7 +28,6 @@ Generally, the high-level workflow for contributing to this repo includes:
      5. Ping us on [Slack](https://striveworks-public.slack.com/join/shared_invite/zt-1a0jx768y-2J1fffN~b4fXYM8GecvOhA#/shared-invite/email) to ensure timely review.
 4. Working with repo maintainers to review and improve your PR before it is merged into the official repo.
 
-
 For questions or comments on this process, please reach out to us at any time on [Slack](https://striveworks-public.slack.com/join/shared_invite/zt-1a0jx768y-2J1fffN~b4fXYM8GecvOhA#/shared-invite/email).
 
 
