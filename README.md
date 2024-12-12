@@ -1,4 +1,4 @@
-# Valor: Methods for Evaluating Machine Learning Models
+# Valor: Fast and Efficient ML Evaluation
 
 ![badge](https://img.shields.io/endpoint?url=https://gist.githubusercontent.com/ekorman/c002bbe8c0e479921401b884f4b9fc53/raw/valor-coverage.json)
 
