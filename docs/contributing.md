@@ -47,9 +47,9 @@ conda create --name valor python=3.10
 conda activate valor
 ```
 
-Install the `valor-lite` module along with any packages required for development:
+Install the `valor-lite` module from source:
 ```bash
-make install-dev
+make install
 ```
 
 ### Running Tests
@@ -63,5 +63,5 @@ make pre-commit
 
 Run all tests using:
 ```shell
-make tests
+make test
 ```

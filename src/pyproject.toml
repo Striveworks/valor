@@ -33,7 +33,7 @@ docs = [
     "mkdocs-include-dir-to-nav",
     "mkdocs-swagger-ui-tag",
 ]
-all = ["valor-lite[mistral, openai, test, docs]"]
+dev = ["valor-lite[openai, mistral, test, docs]"]
 
 [tool.black]
 line-length = 79
