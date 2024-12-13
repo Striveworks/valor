@@ -5,12 +5,11 @@
 <head>
 <meta charset="utf-8"/>
 <meta content="width=device-width,initial-scale=1" name="viewport"/>
-<link href="../technical_concepts/" rel="prev"/>
-<link href="../client_api/core/Annotation/" rel="next"/>
+<link href="../text_generation/metrics/" rel="prev"/>
 <link href="../assets/images/favicon.png" rel="icon"/>
-<meta content="mkdocs-1.6.1, mkdocs-material-9.5.41" name="generator"/>
+<meta content="mkdocs-1.6.1, mkdocs-material-9.5.48" name="generator"/>
 <title>Contributing &amp; Development - Valor</title>
-<link href="../assets/stylesheets/main.0253249f.min.css" rel="stylesheet"/>
+<link href="../assets/stylesheets/main.6f8fc17f.min.css" rel="stylesheet"/>
 <link href="../assets/stylesheets/palette.06af60db.min.css" rel="stylesheet"/>
 <link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
 <link href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&amp;display=fallback" rel="stylesheet"/>
@@ -23,7 +22,7 @@
 <input autocomplete="off" class="md-toggle" data-md-toggle="search" id="__search" type="checkbox"/>
 <label class="md-overlay" for="__drawer"></label>
 <div data-md-component="skip">
-<a class="md-skip" href="#contributing-to-valor">
+<a class="md-skip" href="#contibuting-development">
           Skip to content
         </a>
 </div>
@@ -86,7 +85,7 @@
 <div class="md-header__source">
 <a class="md-source" data-md-component="source" href="https://github.com/striveworks/valor" title="Go to repository">
 <div class="md-source__icon md-icon">
-<svg viewbox="0 0 448 512" xmlns="http://www.w3.org/2000/svg"><!--! Font Awesome Free 6.6.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2024 Fonticons, Inc.--><path d="M439.55 236.05 244 40.45a28.87 28.87 0 0 0-40.81 0l-40.66 40.63 51.52 51.52c27.06-9.14 52.68 16.77 43.39 43.68l49.66 49.66c34.23-11.8 61.18 31 35.47 56.69-26.49 26.49-70.21-2.87-56-37.34L240.22 199v121.85c25.3 12.54 22.26 41.85 9.08 55a34.34 34.34 0 0 1-48.55 0c-17.57-17.6-11.07-46.91 11.25-56v-123c-20.8-8.51-24.6-30.74-18.64-45L142.57 101 8.45 235.14a28.86 28.86 0 0 0 0 40.81l195.61 195.6a28.86 28.86 0 0 0 40.8 0l194.69-194.69a28.86 28.86 0 0 0 0-40.81"></path></svg>
+<svg viewbox="0 0 448 512" xmlns="http://www.w3.org/2000/svg"><!--! Font Awesome Free 6.7.1 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2024 Fonticons, Inc.--><path d="M439.55 236.05 244 40.45a28.87 28.87 0 0 0-40.81 0l-40.66 40.63 51.52 51.52c27.06-9.14 52.68 16.77 43.39 43.68l49.66 49.66c34.23-11.8 61.18 31 35.47 56.69-26.49 26.49-70.21-2.87-56-37.34L240.22 199v121.85c25.3 12.54 22.26 41.85 9.08 55a34.34 34.34 0 0 1-48.55 0c-17.57-17.6-11.07-46.91 11.25-56v-123c-20.8-8.51-24.6-30.74-18.64-45L142.57 101 8.45 235.14a28.86 28.86 0 0 0 0 40.81l195.61 195.6a28.86 28.86 0 0 0 40.8 0l194.69-194.69a28.86 28.86 0 0 0 0-40.81"></path></svg>
 </div>
 <div class="md-source__repository">
     GitHub
@@ -111,7 +110,7 @@
 <div class="md-nav__source">
 <a class="md-source" data-md-component="source" href="https://github.com/striveworks/valor" title="Go to repository">
 <div class="md-source__icon md-icon">
-<svg viewbox="0 0 448 512" xmlns="http://www.w3.org/2000/svg"><!--! Font Awesome Free 6.6.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2024 Fonticons, Inc.--><path d="M439.55 236.05 244 40.45a28.87 28.87 0 0 0-40.81 0l-40.66 40.63 51.52 51.52c27.06-9.14 52.68 16.77 43.39 43.68l49.66 49.66c34.23-11.8 61.18 31 35.47 56.69-26.49 26.49-70.21-2.87-56-37.34L240.22 199v121.85c25.3 12.54 22.26 41.85 9.08 55a34.34 34.34 0 0 1-48.55 0c-17.57-17.6-11.07-46.91 11.25-56v-123c-20.8-8.51-24.6-30.74-18.64-45L142.57 101 8.45 235.14a28.86 28.86 0 0 0 0 40.81l195.61 195.6a28.86 28.86 0 0 0 40.8 0l194.69-194.69a28.86 28.86 0 0 0 0-40.81"></path></svg>
+<svg viewbox="0 0 448 512" xmlns="http://www.w3.org/2000/svg"><!--! Font Awesome Free 6.7.1 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2024 Fonticons, Inc.--><path d="M439.55 236.05 244 40.45a28.87 28.87 0 0 0-40.81 0l-40.66 40.63 51.52 51.52c27.06-9.14 52.68 16.77 43.39 43.68l49.66 49.66c34.23-11.8 61.18 31 35.47 56.69-26.49 26.49-70.21-2.87-56-37.34L240.22 199v121.85c25.3 12.54 22.26 41.85 9.08 55a34.34 34.34 0 0 1-48.55 0c-17.57-17.6-11.07-46.91 11.25-56v-123c-20.8-8.51-24.6-30.74-18.64-45L142.57 101 8.45 235.14a28.86 28.86 0 0 0 0 40.81l195.61 195.6a28.86 28.86 0 0 0 40.8 0l194.69-194.69a28.86 28.86 0 0 0 0-40.81"></path></svg>
 </div>
 <div class="md-source__repository">
     GitHub
@@ -126,52 +125,134 @@
   </span>
 </a>
 </li>
-<li class="md-nav__item">
-<a class="md-nav__link" href="../installation/">
+<li class="md-nav__item md-nav__item--nested">
+<input class="md-nav__toggle md-toggle md-toggle--indeterminate" id="__nav_2" type="checkbox"/>
+<label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="0">
 <span class="md-ellipsis">
-    Installation
+    Classification
+  </span>
+<span class="md-nav__icon md-icon"></span>
+</label>
+<nav aria-expanded="false" aria-labelledby="__nav_2_label" class="md-nav" data-md-level="1">
+<label class="md-nav__title" for="__nav_2">
+<span class="md-nav__icon md-icon"></span>
+            Classification
+          </label>
+<ul class="md-nav__list" data-md-scrollfix="">
+<li class="md-nav__item">
+<a class="md-nav__link" href="../classification/documentation/">
+<span class="md-ellipsis">
+    Documentation
   </span>
 </a>
 </li>
 <li class="md-nav__item">
-<a class="md-nav__link" href="https://github.com/Striveworks/valor/blob/main/examples/getting_started.ipynb/">
-<span class="md-ellipsis">
-    Getting Started Notebook
-  </span>
-</a>
-</li>
-<li class="md-nav__item">
-<a class="md-nav__link" href="https://github.com/Striveworks/valor/blob/main/examples/">
-<span class="md-ellipsis">
-    All Sample Notebooks
-  </span>
-</a>
-</li>
-<li class="md-nav__item">
-<a class="md-nav__link" href="../metadata_and_filtering/">
-<span class="md-ellipsis">
-    Metadata &amp; Filtering
-  </span>
-</a>
-</li>
-<li class="md-nav__item">
-<a class="md-nav__link" href="../metrics/">
+<a class="md-nav__link" href="../classification/metrics/">
 <span class="md-ellipsis">
     Metrics
   </span>
 </a>
 </li>
-<li class="md-nav__item">
-<a class="md-nav__link" href="../endpoints/">
+</ul>
+</nav>
+</li>
+<li class="md-nav__item md-nav__item--nested">
+<input class="md-nav__toggle md-toggle md-toggle--indeterminate" id="__nav_3" type="checkbox"/>
+<label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
 <span class="md-ellipsis">
-    Endpoints
+    Object Detection
+  </span>
+<span class="md-nav__icon md-icon"></span>
+</label>
+<nav aria-expanded="false" aria-labelledby="__nav_3_label" class="md-nav" data-md-level="1">
+<label class="md-nav__title" for="__nav_3">
+<span class="md-nav__icon md-icon"></span>
+            Object Detection
+          </label>
+<ul class="md-nav__list" data-md-scrollfix="">
+<li class="md-nav__item">
+<a class="md-nav__link" href="../object_detection/documentation/">
+<span class="md-ellipsis">
+    Documentation
   </span>
 </a>
 </li>
 <li class="md-nav__item">
-<a class="md-nav__link" href="../technical_concepts/">
+<a class="md-nav__link" href="../object_detection/metrics/">
 <span class="md-ellipsis">
-    Technical Concepts
+    Metrics
+  </span>
+</a>
+</li>
+</ul>
+</nav>
+</li>
+<li class="md-nav__item md-nav__item--nested">
+<input class="md-nav__toggle md-toggle md-toggle--indeterminate" id="__nav_4" type="checkbox"/>
+<label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
+<span class="md-ellipsis">
+    Semantic Segmentation
+  </span>
+<span class="md-nav__icon md-icon"></span>
+</label>
+<nav aria-expanded="false" aria-labelledby="__nav_4_label" class="md-nav" data-md-level="1">
+<label class="md-nav__title" for="__nav_4">
+<span class="md-nav__icon md-icon"></span>
+            Semantic Segmentation
+          </label>
+<ul class="md-nav__list" data-md-scrollfix="">
+<li class="md-nav__item">
+<a class="md-nav__link" href="../semantic_segmentation/documentation/">
+<span class="md-ellipsis">
+    Documentation
+  </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="../semantic_segmentation/metrics/">
+<span class="md-ellipsis">
+    Metrics
+  </span>
+</a>
+</li>
+</ul>
+</nav>
+</li>
+<li class="md-nav__item md-nav__item--nested">
+<input class="md-nav__toggle md-toggle md-toggle--indeterminate" id="__nav_5" type="checkbox"/>
+<label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="0">
+<span class="md-ellipsis">
+    Text Generation
+  </span>
+<span class="md-nav__icon md-icon"></span>
+</label>
+<nav aria-expanded="false" aria-labelledby="__nav_5_label" class="md-nav" data-md-level="1">
+<label class="md-nav__title" for="__nav_5">
+<span class="md-nav__icon md-icon"></span>
+            Text Generation
+          </label>
+<ul class="md-nav__list" data-md-scrollfix="">
+<li class="md-nav__item">
+<a class="md-nav__link" href="../text_generation/documentation/">
+<span class="md-ellipsis">
+    Documentation
+  </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="../text_generation/metrics/">
+<span class="md-ellipsis">
+    Metrics
+  </span>
+</a>
+</li>
+</ul>
+</nav>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="https://github.com/Striveworks/valor/blob/main/examples/">
+<span class="md-ellipsis">
+    Example Notebooks
   </span>
 </a>
 </li>
@@ -195,6 +276,14 @@
     </label>
 <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix="">
 <li class="md-nav__item">
+<a class="md-nav__link" href="#contributing-to-valor">
+<span class="md-ellipsis">
+      Contributing to Valor
+    </span>
+</a>
+<nav aria-label="Contributing to Valor" class="md-nav">
+<ul class="md-nav__list">
+<li class="md-nav__item">
 <a class="md-nav__link" href="#on-github">
 <span class="md-ellipsis">
       On GitHub
@@ -208,50 +297,21 @@
     </span>
 </a>
 </li>
-<li class="md-nav__item">
-<a class="md-nav__link" href="#development-tips-and-tricks">
-<span class="md-ellipsis">
-      Development Tips and Tricks
-    </span>
-</a>
-<nav aria-label="Development Tips and Tricks" class="md-nav">
-<ul class="md-nav__list">
-<li class="md-nav__item">
-<a class="md-nav__link" href="#deploying-the-back-end-for-development">
-<span class="md-ellipsis">
-      Deploying the Back End for Development
-    </span>
-</a>
-<nav aria-label="Deploying the Back End for Development" class="md-nav">
-<ul class="md-nav__list">
-<li class="md-nav__item">
-<a class="md-nav__link" href="#docker-compose">
-<span class="md-ellipsis">
-      Docker Compose
-    </span>
-</a>
-</li>
-<li class="md-nav__item">
-<a class="md-nav__link" href="#makefile-requires-docker">
-<span class="md-ellipsis">
-      Makefile (requires Docker)
-    </span>
-</a>
-</li>
 </ul>
 </nav>
 </li>
 <li class="md-nav__item">
+<a class="md-nav__link" href="#development">
+<span class="md-ellipsis">
+      Development
+    </span>
+</a>
+<nav aria-label="Development" class="md-nav">
+<ul class="md-nav__list">
+<li class="md-nav__item">
 <a class="md-nav__link" href="#setting-up-your-environment">
 <span class="md-ellipsis">
       Setting Up Your Environment
-    </span>
-</a>
-</li>
-<li class="md-nav__item">
-<a class="md-nav__link" href="#use-pgadmin-to-debug-postgis">
-<span class="md-ellipsis">
-      Use pgAdmin to Debug PostGIS
     </span>
 </a>
 </li>
@@ -261,388 +321,6 @@
       Running Tests
     </span>
 </a>
-<nav aria-label="Running Tests" class="md-nav">
-<ul class="md-nav__list">
-<li class="md-nav__item">
-<a class="md-nav__link" href="#running-integration-tests">
-<span class="md-ellipsis">
-      Running integration tests
-    </span>
-</a>
-</li>
-<li class="md-nav__item">
-<a class="md-nav__link" href="#running-back-end-unit-tests">
-<span class="md-ellipsis">
-      Running back end unit tests
-    </span>
-</a>
-</li>
-<li class="md-nav__item">
-<a class="md-nav__link" href="#running-back-end-functional-tests">
-<span class="md-ellipsis">
-      Running back end functional tests
-    </span>
-</a>
-</li>
-</ul>
-</nav>
-</li>
-</ul>
-</nav>
-</li>
-</ul>
-</nav>
-</li>
-<li class="md-nav__item md-nav__item--nested">
-<input class="md-nav__toggle md-toggle md-toggle--indeterminate" id="__nav_10" type="checkbox"/>
-<label class="md-nav__link" for="__nav_10" id="__nav_10_label" tabindex="0">
-<span class="md-ellipsis">
-    Python Client
-  </span>
-<span class="md-nav__icon md-icon"></span>
-</label>
-<nav aria-expanded="false" aria-labelledby="__nav_10_label" class="md-nav" data-md-level="1">
-<label class="md-nav__title" for="__nav_10">
-<span class="md-nav__icon md-icon"></span>
-            Python Client
-          </label>
-<ul class="md-nav__list" data-md-scrollfix="">
-<li class="md-nav__item">
-<a class="md-nav__link" href="../client_api/core/Annotation/">
-<span class="md-ellipsis">
-    Annotation
-  </span>
-</a>
-</li>
-<li class="md-nav__item">
-<a class="md-nav__link" href="../client_api/core/Client/">
-<span class="md-ellipsis">
-    Client
-  </span>
-</a>
-</li>
-<li class="md-nav__item">
-<a class="md-nav__link" href="../client_api/core/Dataset/">
-<span class="md-ellipsis">
-    Dataset
-  </span>
-</a>
-</li>
-<li class="md-nav__item">
-<a class="md-nav__link" href="../client_api/core/Datum/">
-<span class="md-ellipsis">
-    Datum
-  </span>
-</a>
-</li>
-<li class="md-nav__item">
-<a class="md-nav__link" href="../client_api/core/Evaluation/">
-<span class="md-ellipsis">
-    Evaluation
-  </span>
-</a>
-</li>
-<li class="md-nav__item">
-<a class="md-nav__link" href="../client_api/core/Groundtruth/">
-<span class="md-ellipsis">
-    Groundtruth
-  </span>
-</a>
-</li>
-<li class="md-nav__item">
-<a class="md-nav__link" href="../client_api/core/Label/">
-<span class="md-ellipsis">
-    Label
-  </span>
-</a>
-</li>
-<li class="md-nav__item">
-<a class="md-nav__link" href="../client_api/core/Model/">
-<span class="md-ellipsis">
-    Model
-  </span>
-</a>
-</li>
-<li class="md-nav__item">
-<a class="md-nav__link" href="../client_api/core/Prediction/">
-<span class="md-ellipsis">
-    Prediction
-  </span>
-</a>
-</li>
-<li class="md-nav__item">
-<a class="md-nav__link" href="../client_api/core/Viz/">
-<span class="md-ellipsis">
-    Viz
-  </span>
-</a>
-</li>
-<li class="md-nav__item md-nav__item--nested">
-<input class="md-nav__toggle md-toggle md-toggle--indeterminate" id="__nav_10_11" type="checkbox"/>
-<label class="md-nav__link" for="__nav_10_11" id="__nav_10_11_label" tabindex="0">
-<span class="md-ellipsis">
-    Schemas
-  </span>
-<span class="md-nav__icon md-icon"></span>
-</label>
-<nav aria-expanded="false" aria-labelledby="__nav_10_11_label" class="md-nav" data-md-level="2">
-<label class="md-nav__title" for="__nav_10_11">
-<span class="md-nav__icon md-icon"></span>
-            Schemas
-          </label>
-<ul class="md-nav__list" data-md-scrollfix="">
-<li class="md-nav__item md-nav__item--nested">
-<input class="md-nav__toggle md-toggle md-toggle--indeterminate" id="__nav_10_11_1" type="checkbox"/>
-<label class="md-nav__link" for="__nav_10_11_1" id="__nav_10_11_1_label" tabindex="0">
-<span class="md-ellipsis">
-    Evaluation
-  </span>
-<span class="md-nav__icon md-icon"></span>
-</label>
-<nav aria-expanded="false" aria-labelledby="__nav_10_11_1_label" class="md-nav" data-md-level="3">
-<label class="md-nav__title" for="__nav_10_11_1">
-<span class="md-nav__icon md-icon"></span>
-            Evaluation
-          </label>
-<ul class="md-nav__list" data-md-scrollfix="">
-<li class="md-nav__item">
-<a class="md-nav__link" href="../client_api/schemas/Evaluation/EvaluationParameters/">
-<span class="md-ellipsis">
-    EvaluationParameters
-  </span>
-</a>
-</li>
-</ul>
-</nav>
-</li>
-<li class="md-nav__item md-nav__item--nested">
-<input class="md-nav__toggle md-toggle md-toggle--indeterminate" id="__nav_10_11_2" type="checkbox"/>
-<label class="md-nav__link" for="__nav_10_11_2" id="__nav_10_11_2_label" tabindex="0">
-<span class="md-ellipsis">
-    Spatial
-  </span>
-<span class="md-nav__icon md-icon"></span>
-</label>
-<nav aria-expanded="false" aria-labelledby="__nav_10_11_2_label" class="md-nav" data-md-level="3">
-<label class="md-nav__title" for="__nav_10_11_2">
-<span class="md-nav__icon md-icon"></span>
-            Spatial
-          </label>
-<ul class="md-nav__list" data-md-scrollfix="">
-<li class="md-nav__item">
-<a class="md-nav__link" href="../client_api/schemas/Spatial/Box/">
-<span class="md-ellipsis">
-    Box
-  </span>
-</a>
-</li>
-<li class="md-nav__item">
-<a class="md-nav__link" href="../client_api/schemas/Spatial/LineString/">
-<span class="md-ellipsis">
-    LineString
-  </span>
-</a>
-</li>
-<li class="md-nav__item">
-<a class="md-nav__link" href="../client_api/schemas/Spatial/MultiLineString/">
-<span class="md-ellipsis">
-    MultiLineString
-  </span>
-</a>
-</li>
-<li class="md-nav__item">
-<a class="md-nav__link" href="../client_api/schemas/Spatial/MultiPoint/">
-<span class="md-ellipsis">
-    MultiPoint
-  </span>
-</a>
-</li>
-<li class="md-nav__item">
-<a class="md-nav__link" href="../client_api/schemas/Spatial/MultiPolygon/">
-<span class="md-ellipsis">
-    MultiPolygon
-  </span>
-</a>
-</li>
-<li class="md-nav__item">
-<a class="md-nav__link" href="../client_api/schemas/Spatial/Point/">
-<span class="md-ellipsis">
-    Point
-  </span>
-</a>
-</li>
-<li class="md-nav__item">
-<a class="md-nav__link" href="../client_api/schemas/Spatial/Polygon/">
-<span class="md-ellipsis">
-    Polygon
-  </span>
-</a>
-</li>
-<li class="md-nav__item">
-<a class="md-nav__link" href="../client_api/schemas/Spatial/Raster/">
-<span class="md-ellipsis">
-    Raster
-  </span>
-</a>
-</li>
-</ul>
-</nav>
-</li>
-</ul>
-</nav>
-</li>
-<li class="md-nav__item md-nav__item--nested">
-<input class="md-nav__toggle md-toggle md-toggle--indeterminate" id="__nav_10_12" type="checkbox"/>
-<label class="md-nav__link" for="__nav_10_12" id="__nav_10_12_label" tabindex="0">
-<span class="md-ellipsis">
-    Filtering
-  </span>
-<span class="md-nav__icon md-icon"></span>
-</label>
-<nav aria-expanded="false" aria-labelledby="__nav_10_12_label" class="md-nav" data-md-level="2">
-<label class="md-nav__title" for="__nav_10_12">
-<span class="md-nav__icon md-icon"></span>
-            Filtering
-          </label>
-<ul class="md-nav__list" data-md-scrollfix="">
-<li class="md-nav__item">
-<a class="md-nav__link" href="../client_api/filtering/Filter/">
-<span class="md-ellipsis">
-    Filter
-  </span>
-</a>
-</li>
-<li class="md-nav__item md-nav__item--nested">
-<input class="md-nav__toggle md-toggle md-toggle--indeterminate" id="__nav_10_12_2" type="checkbox"/>
-<label class="md-nav__link" for="__nav_10_12_2" id="__nav_10_12_2_label" tabindex="0">
-<span class="md-ellipsis">
-    Conditions
-  </span>
-<span class="md-nav__icon md-icon"></span>
-</label>
-<nav aria-expanded="false" aria-labelledby="__nav_10_12_2_label" class="md-nav" data-md-level="3">
-<label class="md-nav__title" for="__nav_10_12_2">
-<span class="md-nav__icon md-icon"></span>
-            Conditions
-          </label>
-<ul class="md-nav__list" data-md-scrollfix="">
-<li class="md-nav__item">
-<a class="md-nav__link" href="../client_api/filtering/Conditions/Contains/">
-<span class="md-ellipsis">
-    Contains
-  </span>
-</a>
-</li>
-<li class="md-nav__item">
-<a class="md-nav__link" href="../client_api/filtering/Conditions/Gt/">
-<span class="md-ellipsis">
-    Gt
-  </span>
-</a>
-</li>
-<li class="md-nav__item">
-<a class="md-nav__link" href="../client_api/filtering/Conditions/Gte/">
-<span class="md-ellipsis">
-    Gte
-  </span>
-</a>
-</li>
-<li class="md-nav__item">
-<a class="md-nav__link" href="../client_api/filtering/Conditions/Inside/">
-<span class="md-ellipsis">
-    Inside
-  </span>
-</a>
-</li>
-<li class="md-nav__item">
-<a class="md-nav__link" href="../client_api/filtering/Conditions/Intersects/">
-<span class="md-ellipsis">
-    Intersects
-  </span>
-</a>
-</li>
-<li class="md-nav__item">
-<a class="md-nav__link" href="../client_api/filtering/Conditions/IsNotNull/">
-<span class="md-ellipsis">
-    IsNotNull
-  </span>
-</a>
-</li>
-<li class="md-nav__item">
-<a class="md-nav__link" href="../client_api/filtering/Conditions/IsNull/">
-<span class="md-ellipsis">
-    IsNull
-  </span>
-</a>
-</li>
-<li class="md-nav__item">
-<a class="md-nav__link" href="../client_api/filtering/Conditions/Lt/">
-<span class="md-ellipsis">
-    Lt
-  </span>
-</a>
-</li>
-<li class="md-nav__item">
-<a class="md-nav__link" href="../client_api/filtering/Conditions/Lte/">
-<span class="md-ellipsis">
-    Lte
-  </span>
-</a>
-</li>
-<li class="md-nav__item">
-<a class="md-nav__link" href="../client_api/filtering/Conditions/Ne/">
-<span class="md-ellipsis">
-    Ne
-  </span>
-</a>
-</li>
-<li class="md-nav__item">
-<a class="md-nav__link" href="../client_api/filtering/Conditions/Outside/">
-<span class="md-ellipsis">
-    Outside
-  </span>
-</a>
-</li>
-</ul>
-</nav>
-</li>
-<li class="md-nav__item md-nav__item--nested">
-<input class="md-nav__toggle md-toggle md-toggle--indeterminate" id="__nav_10_12_3" type="checkbox"/>
-<label class="md-nav__link" for="__nav_10_12_3" id="__nav_10_12_3_label" tabindex="0">
-<span class="md-ellipsis">
-    Logic
-  </span>
-<span class="md-nav__icon md-icon"></span>
-</label>
-<nav aria-expanded="false" aria-labelledby="__nav_10_12_3_label" class="md-nav" data-md-level="3">
-<label class="md-nav__title" for="__nav_10_12_3">
-<span class="md-nav__icon md-icon"></span>
-            Logic
-          </label>
-<ul class="md-nav__list" data-md-scrollfix="">
-<li class="md-nav__item">
-<a class="md-nav__link" href="../client_api/filtering/Logic/And/">
-<span class="md-ellipsis">
-    And
-  </span>
-</a>
-</li>
-<li class="md-nav__item">
-<a class="md-nav__link" href="../client_api/filtering/Logic/Not/">
-<span class="md-ellipsis">
-    Not
-  </span>
-</a>
-</li>
-<li class="md-nav__item">
-<a class="md-nav__link" href="../client_api/filtering/Logic/Or/">
-<span class="md-ellipsis">
-    Or
-  </span>
-</a>
-</li>
-</ul>
-</nav>
 </li>
 </ul>
 </nav>
@@ -665,6 +343,14 @@
     </label>
 <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix="">
 <li class="md-nav__item">
+<a class="md-nav__link" href="#contributing-to-valor">
+<span class="md-ellipsis">
+      Contributing to Valor
+    </span>
+</a>
+<nav aria-label="Contributing to Valor" class="md-nav">
+<ul class="md-nav__list">
+<li class="md-nav__item">
 <a class="md-nav__link" href="#on-github">
 <span class="md-ellipsis">
       On GitHub
@@ -678,50 +364,21 @@
     </span>
 </a>
 </li>
-<li class="md-nav__item">
-<a class="md-nav__link" href="#development-tips-and-tricks">
-<span class="md-ellipsis">
-      Development Tips and Tricks
-    </span>
-</a>
-<nav aria-label="Development Tips and Tricks" class="md-nav">
-<ul class="md-nav__list">
-<li class="md-nav__item">
-<a class="md-nav__link" href="#deploying-the-back-end-for-development">
-<span class="md-ellipsis">
-      Deploying the Back End for Development
-    </span>
-</a>
-<nav aria-label="Deploying the Back End for Development" class="md-nav">
-<ul class="md-nav__list">
-<li class="md-nav__item">
-<a class="md-nav__link" href="#docker-compose">
-<span class="md-ellipsis">
-      Docker Compose
-    </span>
-</a>
-</li>
-<li class="md-nav__item">
-<a class="md-nav__link" href="#makefile-requires-docker">
-<span class="md-ellipsis">
-      Makefile (requires Docker)
-    </span>
-</a>
-</li>
 </ul>
 </nav>
 </li>
 <li class="md-nav__item">
+<a class="md-nav__link" href="#development">
+<span class="md-ellipsis">
+      Development
+    </span>
+</a>
+<nav aria-label="Development" class="md-nav">
+<ul class="md-nav__list">
+<li class="md-nav__item">
 <a class="md-nav__link" href="#setting-up-your-environment">
 <span class="md-ellipsis">
       Setting Up Your Environment
-    </span>
-</a>
-</li>
-<li class="md-nav__item">
-<a class="md-nav__link" href="#use-pgadmin-to-debug-postgis">
-<span class="md-ellipsis">
-      Use pgAdmin to Debug PostGIS
     </span>
 </a>
 </li>
@@ -731,31 +388,6 @@
       Running Tests
     </span>
 </a>
-<nav aria-label="Running Tests" class="md-nav">
-<ul class="md-nav__list">
-<li class="md-nav__item">
-<a class="md-nav__link" href="#running-integration-tests">
-<span class="md-ellipsis">
-      Running integration tests
-    </span>
-</a>
-</li>
-<li class="md-nav__item">
-<a class="md-nav__link" href="#running-back-end-unit-tests">
-<span class="md-ellipsis">
-      Running back end unit tests
-    </span>
-</a>
-</li>
-<li class="md-nav__item">
-<a class="md-nav__link" href="#running-back-end-functional-tests">
-<span class="md-ellipsis">
-      Running back end functional tests
-    </span>
-</a>
-</li>
-</ul>
-</nav>
 </li>
 </ul>
 </nav>
@@ -767,9 +399,10 @@
 </div>
 <div class="md-content" data-md-component="content">
 <article class="md-content__inner md-typeset">
-<h1 id="contributing-to-valor">Contributing to Valor</h1>
+<h1 id="contibuting-development">Contibuting &amp; Development</h1>
+<h2 id="contributing-to-valor">Contributing to Valor</h2>
 <p>We welcome all contributions, bug reports, bug fixes, documentation improvements, enhancements, and ideas aimed at improving Valor. This doc describes the high-level process for how to contribute to this repository. If you have any questions or comments about this process, please feel free to reach out to us on <a href="https://striveworks-public.slack.com/join/shared_invite/zt-1a0jx768y-2J1fffN~b4fXYM8GecvOhA#/shared-invite/email">Slack</a>.</p>
-<h2 id="on-github">On GitHub</h2>
+<h3 id="on-github">On GitHub</h3>
 <p>We use <a href="https://git-scm.com/doc">Git</a> on <a href="https://github.com">GitHub</a> to manage this repo, which means you will need to sign up for a free GitHub account to submit issues, ideas, and pull requests. We use Git for version control to allow contributors from all over the world to work together on this project.</p>
 <p>If you are new to Git, these official resources can help bring you up to speed:</p>
 <ul>
@@ -777,7 +410,7 @@
 <li><a href="https://docs.github.com/en/pull-requests/collaborating-with-pull-requests">GitHub documentation for collaborating with pull requests</a></li>
 <li><a href="https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/working-with-forks">GitHub documentation for working with forks</a></li>
 </ul>
-<h2 id="contribution-workflow">Contribution Workflow</h2>
+<h3 id="contribution-workflow">Contribution Workflow</h3>
 <p>Generally, the high-level workflow for contributing to this repo includes:</p>
 <ol>
 <li>Submitting an issue or enhancement request using the appropriate template on <a href="https://github.com/Striveworks/valor/issues">GitHub Issues</a>.</li>
@@ -793,69 +426,28 @@
 <li>Working with repo maintainers to review and improve your PR before it is merged into the official repo.</li>
 </ol>
 <p>For questions or comments on this process, please reach out to us at any time on <a href="https://striveworks-public.slack.com/join/shared_invite/zt-1a0jx768y-2J1fffN~b4fXYM8GecvOhA#/shared-invite/email">Slack</a>.</p>
-<h2 id="development-tips-and-tricks">Development Tips and Tricks</h2>
-<h3 id="deploying-the-back-end-for-development">Deploying the Back End for Development</h3>
-<h4 id="docker-compose">Docker Compose</h4>
-<p>The fastest way to test the API and Python client is via Docker Compose. Start by setting the environment variable <code>POSTGRES_PASSWORD</code> to your liking, and then start Docker and build the container:</p>
-<div class="language-shell highlight"><pre><span></span><code><span id="__span-0-1"><a href="#__codelineno-0-1" id="__codelineno-0-1" name="__codelineno-0-1"></a><span class="nb">export</span><span class="w"> </span><span class="nv">POSTGRES_PASSWORD</span><span class="o">=</span><span class="s2">"my_password"</span>
-</span><span id="__span-0-2"><a href="#__codelineno-0-2" id="__codelineno-0-2" name="__codelineno-0-2"></a>docker<span class="w"> </span>compose<span class="w"> </span>up
-</span></code></pre></div>
-<h4 id="makefile-requires-docker">Makefile (requires Docker)</h4>
-<p>Alternatively, you may want to run the API service from a terminal to enable faster debugging. To start the service, you can run:</p>
-<div class="language-shell highlight"><pre><span></span><code><span id="__span-1-1"><a href="#__codelineno-1-1" id="__codelineno-1-1" name="__codelineno-1-1"></a>pip<span class="w"> </span>install<span class="w"> </span>api<span class="w"> </span><span class="c1"># Install the API in your python environment</span>
-</span><span id="__span-1-2"><a href="#__codelineno-1-2" id="__codelineno-1-2" name="__codelineno-1-2"></a>
-</span><span id="__span-1-3"><a href="#__codelineno-1-3" id="__codelineno-1-3" name="__codelineno-1-3"></a><span class="nb">export</span><span class="w"> </span><span class="nv">POSTGRES_PASSWORD</span><span class="o">=</span>password
-</span><span id="__span-1-4"><a href="#__codelineno-1-4" id="__codelineno-1-4" name="__codelineno-1-4"></a><span class="nb">export</span><span class="w"> </span><span class="nv">POSTGRES_HOST</span><span class="o">=</span>localhost
-</span><span id="__span-1-5"><a href="#__codelineno-1-5" id="__codelineno-1-5" name="__codelineno-1-5"></a>make<span class="w"> </span>start-postgres-docker<span class="w"> </span><span class="c1"># Start the custom postgres service in Docker</span>
-</span><span id="__span-1-6"><a href="#__codelineno-1-6" id="__codelineno-1-6" name="__codelineno-1-6"></a>make<span class="w"> </span>run-migrations<span class="w"> </span><span class="c1"># Instantiate the table schemas in Postgres</span>
-</span><span id="__span-1-7"><a href="#__codelineno-1-7" id="__codelineno-1-7" name="__codelineno-1-7"></a>make<span class="w"> </span>start-server<span class="w"> </span><span class="c1"># Start the API service locally</span>
-</span></code></pre></div>
+<h2 id="development">Development</h2>
 <h3 id="setting-up-your-environment">Setting Up Your Environment</h3>
 <p>Creating a Valor-specific Python environment at the start of development can help you avoid dependency and versioning issues later on. To start, we'd recommend activating a new Python environment:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-2-1"><a href="#__codelineno-2-1" id="__codelineno-2-1" name="__codelineno-2-1"></a><span class="c1"># venv</span>
-</span><span id="__span-2-2"><a href="#__codelineno-2-2" id="__codelineno-2-2" name="__codelineno-2-2"></a>python3<span class="w"> </span>-m<span class="w"> </span>venv<span class="w"> </span>.env-valor
-</span><span id="__span-2-3"><a href="#__codelineno-2-3" id="__codelineno-2-3" name="__codelineno-2-3"></a><span class="nb">source</span><span class="w"> </span>.env-valor/bin/activate
-</span><span id="__span-2-4"><a href="#__codelineno-2-4" id="__codelineno-2-4" name="__codelineno-2-4"></a>
-</span><span id="__span-2-5"><a href="#__codelineno-2-5" id="__codelineno-2-5" name="__codelineno-2-5"></a><span class="c1"># conda</span>
-</span><span id="__span-2-6"><a href="#__codelineno-2-6" id="__codelineno-2-6" name="__codelineno-2-6"></a>conda<span class="w"> </span>create<span class="w"> </span>--name<span class="w"> </span>valor<span class="w"> </span><span class="nv">python</span><span class="o">=</span><span class="m">3</span>.11
-</span><span id="__span-2-7"><a href="#__codelineno-2-7" id="__codelineno-2-7" name="__codelineno-2-7"></a>conda<span class="w"> </span>activate<span class="w"> </span>valor
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-0-1"><a href="#__codelineno-0-1" id="__codelineno-0-1" name="__codelineno-0-1"></a><span class="c1"># venv</span>
+</span><span id="__span-0-2"><a href="#__codelineno-0-2" id="__codelineno-0-2" name="__codelineno-0-2"></a>python3<span class="w"> </span>-m<span class="w"> </span>venv<span class="w"> </span>.env-valor
+</span><span id="__span-0-3"><a href="#__codelineno-0-3" id="__codelineno-0-3" name="__codelineno-0-3"></a><span class="nb">source</span><span class="w"> </span>.env-valor/bin/activate
+</span><span id="__span-0-4"><a href="#__codelineno-0-4" id="__codelineno-0-4" name="__codelineno-0-4"></a>
+</span><span id="__span-0-5"><a href="#__codelineno-0-5" id="__codelineno-0-5" name="__codelineno-0-5"></a><span class="c1"># conda</span>
+</span><span id="__span-0-6"><a href="#__codelineno-0-6" id="__codelineno-0-6" name="__codelineno-0-6"></a>conda<span class="w"> </span>create<span class="w"> </span>--name<span class="w"> </span>valor<span class="w"> </span><span class="nv">python</span><span class="o">=</span><span class="m">3</span>.10
+</span><span id="__span-0-7"><a href="#__codelineno-0-7" id="__codelineno-0-7" name="__codelineno-0-7"></a>conda<span class="w"> </span>activate<span class="w"> </span>valor
 </span></code></pre></div>
-<p>Next, install <a href="https://pre-commit.com/">pre-commit</a> to ensure formatting consistency throughout your repo:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-3-1"><a href="#__codelineno-3-1" id="__codelineno-3-1" name="__codelineno-3-1"></a>pip<span class="w"> </span>install<span class="w"> </span>pre-commit
-</span><span id="__span-3-2"><a href="#__codelineno-3-2" id="__codelineno-3-2" name="__codelineno-3-2"></a>pre-commit<span class="w"> </span>install
-</span></code></pre></div>
-<p>Finally, you're ready to install your client and API modules:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-4-1"><a href="#__codelineno-4-1" id="__codelineno-4-1" name="__codelineno-4-1"></a><span class="c1"># Install the Client module</span>
-</span><span id="__span-4-2"><a href="#__codelineno-4-2" id="__codelineno-4-2" name="__codelineno-4-2"></a>python<span class="w"> </span>-m<span class="w"> </span>pip<span class="w"> </span>install<span class="w"> </span>-e<span class="w"> </span>client/.
-</span><span id="__span-4-3"><a href="#__codelineno-4-3" id="__codelineno-4-3" name="__codelineno-4-3"></a>
-</span><span id="__span-4-4"><a href="#__codelineno-4-4" id="__codelineno-4-4" name="__codelineno-4-4"></a><span class="c1"># Install the API module</span>
-</span><span id="__span-4-5"><a href="#__codelineno-4-5" id="__codelineno-4-5" name="__codelineno-4-5"></a>python<span class="w"> </span>-m<span class="w"> </span>pip<span class="w"> </span>install<span class="w"> </span>-e<span class="w"> </span>api/.
-</span></code></pre></div>
-<h3 id="use-pgadmin-to-debug-postgis">Use pgAdmin to Debug PostGIS</h3>
-<p>You can use the pgAdmin utility to debug your PostGIS tables as you code. Start by <a href="https://www.pgadmin.org/download/">installing pgAdmin</a>, and then select <code>Object &gt; Register &gt; Server</code> to connect to your PostGIS container. The default connection details are listed below for convenience:</p>
-<div class="language-text highlight"><pre><span></span><code><span id="__span-5-1"><a href="#__codelineno-5-1" id="__codelineno-5-1" name="__codelineno-5-1"></a>- *Host name/address*: 0.0.0.0
-</span><span id="__span-5-2"><a href="#__codelineno-5-2" id="__codelineno-5-2" name="__codelineno-5-2"></a>- *Port*: 5432
-</span><span id="__span-5-3"><a href="#__codelineno-5-3" id="__codelineno-5-3" name="__codelineno-5-3"></a>- *Maintenance database*: postgres
-</span><span id="__span-5-4"><a href="#__codelineno-5-4" id="__codelineno-5-4" name="__codelineno-5-4"></a>- *Username*: postgres
-</span></code></pre></div>
+<p>Install the <code>valor-lite</code> module from source:
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-1-1"><a href="#__codelineno-1-1" id="__codelineno-1-1" name="__codelineno-1-1"></a>make<span class="w"> </span>install
+</span></code></pre></div></p>
 <h3 id="running-tests">Running Tests</h3>
-<p>All of our tests are run automatically via GitHub Actions on every push, so it's important to double-check that your code passes all local tests before committing your code. All of the tests below require <code>pytest</code>:</p>
-<div class="language-shell highlight"><pre><span></span><code><span id="__span-6-1"><a href="#__codelineno-6-1" id="__codelineno-6-1" name="__codelineno-6-1"></a>pip<span class="w"> </span>install<span class="w"> </span>pytest
-</span></code></pre></div>
-<h4 id="running-integration-tests">Running integration tests</h4>
-<div class="language-shell highlight"><pre><span></span><code><span id="__span-7-1"><a href="#__codelineno-7-1" id="__codelineno-7-1" name="__codelineno-7-1"></a>pytest<span class="w"> </span>integration_tests
-</span></code></pre></div>
-<h4 id="running-back-end-unit-tests">Running back end unit tests</h4>
-<div class="language-shell highlight"><pre><span></span><code><span id="__span-8-1"><a href="#__codelineno-8-1" id="__codelineno-8-1" name="__codelineno-8-1"></a>pytest<span class="w"> </span>api/tests/unit-tests
-</span></code></pre></div>
-<h4 id="running-back-end-functional-tests">Running back end functional tests</h4>
-<blockquote>
-<p><strong>Note:</strong> Functional tests require a running instance of PostgreSQL, which you can start using <code>make start-postgres-docker</code>.</p>
-</blockquote>
-<div class="language-shell highlight"><pre><span></span><code><span id="__span-9-1"><a href="#__codelineno-9-1" id="__codelineno-9-1" name="__codelineno-9-1"></a><span class="nv">POSTGRES_PASSWORD</span><span class="o">=</span>password<span class="w"> </span><span class="se">\</span>
-</span><span id="__span-9-2"><a href="#__codelineno-9-2" id="__codelineno-9-2" name="__codelineno-9-2"></a><span class="nv">POSTGRES_HOST</span><span class="o">=</span>localhost<span class="w"> </span><span class="se">\</span>
-</span><span id="__span-9-3"><a href="#__codelineno-9-3" id="__codelineno-9-3" name="__codelineno-9-3"></a>pytest<span class="w"> </span>api/tests/functional-tests/
-</span></code></pre></div>
+<p>All of our tests are run automatically via GitHub Actions on every push, so it's important to double-check that your code passes all local tests before committing your code.</p>
+<p>For linting and code formatting use:
+<div class="language-shell highlight"><pre><span></span><code><span id="__span-2-1"><a href="#__codelineno-2-1" id="__codelineno-2-1" name="__codelineno-2-1"></a>make<span class="w"> </span>pre-commit
+</span></code></pre></div></p>
+<p>Run all tests using:
+<div class="language-shell highlight"><pre><span></span><code><span id="__span-3-1"><a href="#__codelineno-3-1" id="__codelineno-3-1" name="__codelineno-3-1"></a>make<span class="w"> </span><span class="nb">test</span>
+</span></code></pre></div></p>
 </article>
 </div>
 <script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
