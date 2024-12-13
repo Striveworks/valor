@@ -1,6 +1,6 @@
 repos:
   - repo: https://github.com/PyCQA/flake8
-    rev: 5.0.4
+    rev: 6.1.0
     hooks:
       - id: flake8
         args: ["--ignore=E501,E203,W503"]
@@ -9,7 +9,7 @@ repos:
     rev: 5.12.0
     hooks:
       - id: isort
-        args: [--profile=black, --src=client, --src=api, --line-length=79]
+        args: [--profile=black, --src=src, --line-length=79]
 
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v4.3.0
@@ -29,32 +29,17 @@ repos:
         args: [--line-length=79]
 
   - repo: https://github.com/RobertCraigie/pyright-python
-    rev: v1.1.376
+    rev: v1.1.390
     hooks:
       - id: pyright
         additional_dependencies: [
-            "requests",
-            "Pillow >= 9.1.0",
             "numpy",
-            "pandas>=2.2.2",
-            "pandas-stubs", # fixes pyright issues with pandas
-            "pandas[performance]",
             "pytest",
             "python-dotenv",
-            "SQLAlchemy>=2.0",
-            "fastapi[all]>=0.100.0",
-            "importlib_metadata; python_version < '3.8'",
-            "pydantic-settings",
             "tqdm",
             "packaging",
-            "PyJWT[crypto]",
-            "structlog",
-            "GeoAlchemy2",
-            "psycopg2-binary",
-            "pgvector",
             "openai",
             "mistralai>=1.0",
-            "absl-py",
             "nltk",
             "rouge_score",
             "evaluate",

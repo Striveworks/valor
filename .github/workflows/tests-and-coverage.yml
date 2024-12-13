@@ -1,0 +1,77 @@
+name: Run code coverage report
+
+on:
+  push:
+    branches: "**"
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  combined-coverage-report:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: .
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-python@v4
+        with:
+          python-version: "3.10"
+      - name: run classification tests and report coverage
+        run: |
+          pip install -e "./src/[test]"
+          COVERAGE_FILE=.coverage.classification python -m coverage run --include "src/valor_lite/*" -m pytest -v tests/classification/
+          python -m coverage combine
+          python -m coverage report -m
+          python -m coverage json
+          export TOTAL=$(python -c "import json;print(json.load(open('coverage.json'))['totals']['percent_covered_display'])")
+          echo "total=$TOTAL" >> $GITHUB_ENV
+          if (( $TOTAL < 99 )); then
+            echo "Coverage is below 99%"
+            exit 1
+          fi
+        working-directory: .
+      - name: run object detection tests and report coverage
+        run: |
+          pip install -e "./src/[test]"
+          COVERAGE_FILE=.coverage.detection python -m coverage run --include "src/valor_lite/*" -m pytest -v tests/object_detection/
+          python -m coverage combine
+          python -m coverage report -m
+          python -m coverage json
+          export TOTAL=$(python -c "import json;print(json.load(open('coverage.json'))['totals']['percent_covered_display'])")
+          echo "total=$TOTAL" >> $GITHUB_ENV
+          if (( $TOTAL < 99 )); then
+            echo "Coverage is below 99%"
+            exit 1
+          fi
+        working-directory: .
+      - name: run semantic segmentation tests and report coverage
+        run: |
+          pip install -e "./src/[test]"
+          COVERAGE_FILE=.coverage.segmentation python -m coverage run --include "src/valor_lite/*" -m pytest -v tests/semantic_segmentation/
+          python -m coverage combine
+          python -m coverage report -m
+          python -m coverage json
+          export TOTAL=$(python -c "import json;print(json.load(open('coverage.json'))['totals']['percent_covered_display'])")
+          echo "total=$TOTAL" >> $GITHUB_ENV
+          if (( $TOTAL < 99 )); then
+            echo "Coverage is below 99%"
+            exit 1
+          fi
+        working-directory: .
+      - name: run text generation tests and report coverage
+        run: |
+          pip install -e "./src/[test,openai,mistral]"
+          COVERAGE_FILE=.coverage.text_generation python -m coverage run --include "src/valor_lite/*" -m pytest -v tests/text_generation/
+          python -m coverage combine
+          python -m coverage report -m
+          python -m coverage json
+          export TOTAL=$(python -c "import json;print(json.load(open('coverage.json'))['totals']['percent_covered_display'])")
+          echo "total=$TOTAL" >> $GITHUB_ENV
+          if (( $TOTAL < 99 )); then
+            echo "Coverage is below 99%"
+            exit 1
+          fi
+        working-directory: .

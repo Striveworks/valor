@@ -1,1 +1,0 @@
-ALTER TABLE evaluation ADD COLUMN meta jsonb;

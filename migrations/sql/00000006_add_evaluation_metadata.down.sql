@@ -1,1 +1,0 @@
-ALTER TABLE evaluation DROP COLUMN meta;

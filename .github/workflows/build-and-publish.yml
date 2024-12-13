@@ -1,4 +1,4 @@
-name: Build and publish python and typescript packages
+name: Build and publish python package
 
 on:
   push:
@@ -10,24 +10,7 @@ jobs:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: ./client
-    steps:
-      - uses: actions/checkout@v3
-      - uses: actions/setup-python@v4
-        with:
-          python-version: "3.10"
-      - name: Build wheel
-        run: pip install build && python -m build
-      - name: Publish to PyPI
-        uses: pypa/gh-action-pypi-publish@release/v1
-        with:
-          password: ${{ secrets.PYPI_API_TOKEN }}
-          packages-dir: ./client/dist
-  build-and-publish-py-lite-package:
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: ./lite
+        working-directory: src
     steps:
       - uses: actions/checkout@v3
       - uses: actions/setup-python@v4
@@ -39,23 +22,4 @@ jobs:
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
           password: ${{ secrets.VALOR_LITE_PYPI_API_TOKEN }}
-          packages-dir: ./lite/dist
-  build-and-publish-ts-package:
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: ./ts-client
-    steps:
-      - uses: actions/checkout@v3
-      - uses: actions/setup-node@v4
-        with:
-          node-version: "20"
-          registry-url: "https://registry.npmjs.org"
-      - name: Set version from the git tag
-        run: npm version ${{ github.ref_name }}
-      - run: npm ci
-      - run: npm run build
-      - name: Publish to npm
-        run: npm publish --access public
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_API_TOKEN }}
+          packages-dir: src/dist

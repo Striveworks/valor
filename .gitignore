@@ -1,5 +1,6 @@
 __pycache__
 *.egg-info
+.pytest_cache
 build
 .tox
 .coverage*
@@ -9,23 +10,20 @@ build
 .env-*
 */.env
 */.venv
+*.env
+
+src/build
 
 .vscode
 .idea
 */dist/*
 .DS_Store
 site/*
-*.ipynb
-
-node_modules
-
-.npmrc
-runs
 
 .ipynb_checkpoints
-*.dat
-*.env
+*.ipynb
 
+*.dat
 *.jsonl
 *.jpeg
 *.pt
