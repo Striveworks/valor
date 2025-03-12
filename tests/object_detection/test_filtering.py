@@ -572,6 +572,7 @@ def test_filtering_all_detections(four_detections: list[Detection]):
     )
     evaluator.compute_confusion_matrix(
         iou_thresholds=[0.5],
+        score_thresholds=[0.5],
         filter_=filter_,
     )
 

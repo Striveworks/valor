@@ -195,8 +195,8 @@ class Evaluator:
 
     def compute_precision_recall(
         self,
-        iou_thresholds: list[float] = [0.5, 0.75, 0.9],
-        score_thresholds: list[float] = [0.5],
+        iou_thresholds: list[float],
+        score_thresholds: list[float],
         filter_: Filter | None = None,
     ) -> dict[MetricType, list[Metric]]:
         """
@@ -240,8 +240,8 @@ class Evaluator:
 
     def compute_confusion_matrix(
         self,
-        iou_thresholds: list[float] = [0.5, 0.75, 0.9],
-        score_thresholds: list[float] = [0.5],
+        iou_thresholds: list[float],
+        score_thresholds: list[float],
         number_of_examples: int = 0,
         filter_: Filter | None = None,
     ) -> list[Metric]:
@@ -295,7 +295,7 @@ class Evaluator:
 
     def evaluate(
         self,
-        iou_thresholds: list[float] = [0.5, 0.75, 0.9],
+        iou_thresholds: list[float] = [0.1, 0.5, 0.75],
         score_thresholds: list[float] = [0.5],
         number_of_examples: int = 0,
         filter_: Filter | None = None,
