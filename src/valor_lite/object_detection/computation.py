@@ -560,12 +560,12 @@ def compute_precion_recall(
     )
 
     return (
-        ap_results,
+        ap_results,  # type: ignore[reportReturnType]
         ar_results,
         accuracy,
         counts,
         pr_curve,
-    )  # type: ignore[reportReturnType]
+    )
 
 
 def _count_with_examples(

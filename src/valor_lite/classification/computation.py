@@ -9,7 +9,7 @@ def _compute_rocauc(
     n_labels: int,
     mask_matching_labels: NDArray[np.bool_],
     pd_labels: NDArray[np.int32],
-):
+) -> tuple[NDArray[np.float64], float]:
     """
     Compute ROCAUC and mean ROCAUC.
     """
@@ -56,12 +56,12 @@ def _compute_rocauc(
     np.maximum.accumulate(tpr, axis=1, out=tpr)
 
     # compute rocauc
-    rocauc = np.trapz(x=fpr, y=tpr, axis=1)  # type: ignore - numpy will be switching to `trapezoid` in the future.
+    rocauc = np.trapezoid(x=fpr, y=tpr, axis=1)
 
     # compute mean rocauc
     mean_rocauc = rocauc.mean()
 
-    return rocauc, mean_rocauc
+    return rocauc, mean_rocauc  # type: ignore[reportReturnType]
 
 
 def compute_precision_recall_rocauc(
