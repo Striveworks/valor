@@ -242,7 +242,7 @@ class Evaluator:
         self,
         iou_thresholds: list[float],
         score_thresholds: list[float],
-        number_of_examples: int = 0,
+        number_of_examples: int,
         filter_: Filter | None = None,
     ) -> list[Metric]:
         """
@@ -254,7 +254,7 @@ class Evaluator:
             A list of IOU thresholds to compute metrics over.
         score_thresholds : list[float]
             A list of score thresholds to compute metrics over.
-        number_of_examples : int, default=0
+        number_of_examples : int
             Maximum number of annotation examples to return in ConfusionMatrix.
         filter_ : Filter, optional
             An optional filter object.
@@ -305,9 +305,9 @@ class Evaluator:
 
         Parameters
         ----------
-        iou_thresholds : list[float]
+        iou_thresholds : list[float], default=[0.1, 0.5, 0.75]
             A list of IOU thresholds to compute metrics over.
-        score_thresholds : list[float]
+        score_thresholds : list[float], default=[0.5]
             A list of score thresholds to compute metrics over.
         number_of_examples : int, default=0
             Maximum number of annotation examples to return in ConfusionMatrix.
