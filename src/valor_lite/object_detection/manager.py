@@ -195,8 +195,8 @@ class Evaluator:
 
     def compute_precision_recall(
         self,
-        iou_thresholds: list[float] = [0.5, 0.75, 0.9],
-        score_thresholds: list[float] = [0.5],
+        iou_thresholds: list[float],
+        score_thresholds: list[float],
         filter_: Filter | None = None,
     ) -> dict[MetricType, list[Metric]]:
         """
@@ -240,9 +240,9 @@ class Evaluator:
 
     def compute_confusion_matrix(
         self,
-        iou_thresholds: list[float] = [0.5, 0.75, 0.9],
-        score_thresholds: list[float] = [0.5],
-        number_of_examples: int = 0,
+        iou_thresholds: list[float],
+        score_thresholds: list[float],
+        number_of_examples: int,
         filter_: Filter | None = None,
     ) -> list[Metric]:
         """
@@ -254,7 +254,7 @@ class Evaluator:
             A list of IOU thresholds to compute metrics over.
         score_thresholds : list[float]
             A list of score thresholds to compute metrics over.
-        number_of_examples : int, default=0
+        number_of_examples : int
             Maximum number of annotation examples to return in ConfusionMatrix.
         filter_ : Filter, optional
             An optional filter object.
@@ -295,7 +295,7 @@ class Evaluator:
 
     def evaluate(
         self,
-        iou_thresholds: list[float] = [0.5, 0.75, 0.9],
+        iou_thresholds: list[float] = [0.1, 0.5, 0.75],
         score_thresholds: list[float] = [0.5],
         number_of_examples: int = 0,
         filter_: Filter | None = None,
@@ -305,9 +305,9 @@ class Evaluator:
 
         Parameters
         ----------
-        iou_thresholds : list[float]
+        iou_thresholds : list[float], default=[0.1, 0.5, 0.75]
             A list of IOU thresholds to compute metrics over.
-        score_thresholds : list[float]
+        score_thresholds : list[float], default=[0.5]
             A list of score thresholds to compute metrics over.
         number_of_examples : int, default=0
             Maximum number of annotation examples to return in ConfusionMatrix.

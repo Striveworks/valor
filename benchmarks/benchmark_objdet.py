@@ -323,7 +323,10 @@ def run_benchmarking_analysis(
                 )
 
             # evaluate - base metrics only
-            eval_time, metrics = time_it(evaluator.compute_precision_recall)()
+            eval_time, metrics = time_it(evaluator.compute_precision_recall)(
+                score_thresholds=[0.5, 0.75, 0.9],
+                iou_thresholds=[0.1, 0.5, 0.75],
+            )
             if eval_time > evaluation_timeout and evaluation_timeout != -1:
                 raise TimeoutError(
                     f"Base evaluation timed out with {evaluator.n_datums} datums."
@@ -333,6 +336,8 @@ def run_benchmarking_analysis(
             detailed_counts_time_no_samples, metrics = time_it(
                 evaluator.compute_confusion_matrix
             )(
+                score_thresholds=[0.5, 0.75, 0.9],
+                iou_thresholds=[0.1, 0.5, 0.75],
                 number_of_examples=0,
             )
             if (
@@ -347,6 +352,8 @@ def run_benchmarking_analysis(
             detailed_counts_time_three_samples, metrics = time_it(
                 evaluator.compute_confusion_matrix
             )(
+                score_thresholds=[0.5, 0.75, 0.9],
+                iou_thresholds=[0.1, 0.5, 0.75],
                 number_of_examples=3,
             )
             if (
