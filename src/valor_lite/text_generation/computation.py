@@ -1,7 +1,3 @@
-import evaluate
-from nltk.tokenize import RegexpTokenizer
-from nltk.translate import bleu_score
-
 from valor_lite.text_generation.llm.generation import (
     generate_answer_correctness_verdicts,
     generate_answer_relevance_verdicts,
@@ -551,6 +547,8 @@ def calculate_rouge_scores(
     use_stemmer: bool, default=False
         If True, uses Porter stemmer to strip word suffixes. Defaults to False.
     """
+    import evaluate
+
     rouge = evaluate.load("rouge")
 
     metrics = rouge.compute(
@@ -589,6 +587,9 @@ def calculate_sentence_bleu(
         higher/lower order ngrams, use customized weights. Example: when accounting
         for up to 5-grams with uniform weights (this is called BLEU-5) use [1/5]*5
     """
+    from nltk.tokenize import RegexpTokenizer
+    from nltk.translate import bleu_score
+
     if len(weights) == 0:
         raise ValueError("At least one weight should be defined.")
 

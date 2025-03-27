@@ -9,9 +9,6 @@ dependencies = [
     "numpy",
     "tqdm",
     "shapely",
-    "evaluate",
-    "nltk",
-    "rouge_score",
 ]
 
 [project.urls]
@@ -22,6 +19,7 @@ requires = ["setuptools>=61.0", "setuptools_scm[toml]>=6.2"]
 build-backend = "setuptools.build_meta"
 
 [project.optional-dependencies]
+nlp = ["evaluate", "nltk"]
 mistral = ["mistralai >= 1.0"]
 openai = ["openai"]
 test = ["pytest", "coverage", "pre-commit"]
@@ -33,7 +31,7 @@ docs = [
     "mkdocs-include-dir-to-nav",
     "mkdocs-swagger-ui-tag",
 ]
-dev = ["valor-lite[openai, mistral, test, docs]"]
+dev = ["valor-lite[nlp, openai, mistral, test, docs]"]
 
 [tool.black]
 line-length = 79
