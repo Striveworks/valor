@@ -31,7 +31,8 @@ docs = [
     "mkdocs-include-dir-to-nav",
     "mkdocs-swagger-ui-tag",
 ]
-dev = ["valor-lite[nlp, openai, mistral, test, docs]"]
+benchmark = ["requests"]
+dev = ["valor-lite[benchmark, nlp, openai, mistral, test, docs]"]
 
 [tool.black]
 line-length = 79

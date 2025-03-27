@@ -17,7 +17,7 @@ jobs:
         with:
           python-version: "3.10"
       - name: install lite
-        run: pip install -e .
+        run: pip install -e .[dev]
         working-directory: ./src
       - name: run classification benchmarks
         run: python benchmark_classification.py
@@ -43,7 +43,7 @@ jobs:
         with:
           python-version: "3.10"
       - name: install lite
-        run: pip install -e .
+        run: pip install -e .[dev]
         working-directory: ./src
       - name: benchmark semantic segmentation
         run: python benchmark_semantic_segmentation.py
