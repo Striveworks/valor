@@ -22,7 +22,6 @@ build-backend = "setuptools.build_meta"
 nlp = ["evaluate", "nltk"]
 mistral = ["mistralai >= 1.0"]
 openai = ["openai"]
-test = ["pytest", "coverage", "pre-commit"]
 docs = [
     "mkdocs",
     "mkdocs-material",
@@ -31,8 +30,9 @@ docs = [
     "mkdocs-include-dir-to-nav",
     "mkdocs-swagger-ui-tag",
 ]
+test = ["pytest", "coverage", "pre-commit"]
 benchmark = ["requests"]
-dev = ["valor-lite[benchmark, nlp, openai, mistral, test, docs]"]
+dev = ["valor-lite[nlp, openai, mistral, benchmark, test, docs]"]
 
 [tool.black]
 line-length = 79
