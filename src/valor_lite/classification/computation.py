@@ -1,6 +1,8 @@
 import numpy as np
 from numpy.typing import NDArray
 
+import valor_lite.classification.numpy_compatibility as npc
+
 
 def _compute_rocauc(
     data: NDArray[np.float64],
@@ -56,7 +58,7 @@ def _compute_rocauc(
     np.maximum.accumulate(tpr, axis=1, out=tpr)
 
     # compute rocauc
-    rocauc = np.trapezoid(x=fpr, y=tpr, axis=1)
+    rocauc = npc.trapezoid(x=fpr, y=tpr, axis=1)
 
     # compute mean rocauc
     mean_rocauc = rocauc.mean()
