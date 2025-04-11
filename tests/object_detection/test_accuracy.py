@@ -480,3 +480,24 @@ def test_accuracy_false_negatives_two_datums_one_only_with_different_class_high_
         assert m in expected_metrics
     for m in expected_metrics:
         assert m in actual_metrics
+
+
+def test_accuracy_model_one_class_spam_fp(
+    detections_model_single_class_spam_fp: list[Detection],
+):
+    loader = DataLoader()
+    loader.add_bounding_boxes(detections_model_single_class_spam_fp)
+    evaluator = loader.finalize()
+    metrics = evaluator.evaluate(score_thresholds=[0.5], iou_thresholds=[0.5])
+    actual_metrics = [m.to_dict() for m in metrics[MetricType.Accuracy]]
+    expected_metrics = [
+        {
+            "type": "Accuracy",
+            "value": 1.0,
+            "parameters": {
+                "iou_threshold": 0.5,
+                "score_threshold": 0.5,
+            },
+        },
+    ]
+    assert actual_metrics == expected_metrics
