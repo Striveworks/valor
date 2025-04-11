@@ -1,6 +1,11 @@
 import numpy as np
 
-from valor_lite.object_detection import DataLoader, Detection, MetricType
+from valor_lite.object_detection import (
+    BoundingBox,
+    DataLoader,
+    Detection,
+    MetricType,
+)
 from valor_lite.object_detection.computation import compute_precion_recall
 
 
@@ -471,5 +476,44 @@ def test_precision_false_negatives_two_datums_one_only_with_different_class_high
         assert m in actual_metrics
 
 
-def test_precision_model_only_outputs_one_class_per_box():
-    pass
+def test_precision_model_one_class_spam_fp():
+    detection = Detection(
+        uid="uid0",
+        groundtruths=[
+            BoundingBox(xmin=0, xmax=5, ymin=0, ymax=5, labels=["dog"])
+        ],
+        predictions=[
+            BoundingBox(
+                xmin=0, xmax=5, ymin=0, ymax=5, labels=["dog"], scores=[1.0]
+            )
+        ]
+        + [
+            BoundingBox(
+                xmin=10,
+                xmax=15,
+                ymin=10,
+                ymax=15,
+                labels=["dog"],
+                scores=[0.01],
+            )
+            for _ in range(10)
+        ],
+    )
+    loader = DataLoader()
+    loader.add_bounding_boxes([detection])
+    evaluator = loader.finalize()
+
+    metrics = evaluator.evaluate(score_thresholds=[0.5], iou_thresholds=[0.5])
+    actual_metrics = [m.to_dict() for m in metrics[MetricType.Precision]]
+    expected_metrics = [
+        {
+            "type": "Precision",
+            "value": 1.0,
+            "parameters": {
+                "iou_threshold": 0.5,
+                "score_threshold": 0.5,
+                "label": "dog",
+            },
+        },
+    ]
+    assert actual_metrics == expected_metrics
