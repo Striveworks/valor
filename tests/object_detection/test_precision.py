@@ -477,27 +477,24 @@ def test_precision_false_negatives_two_datums_one_only_with_different_class_high
 
 
 def test_precision_model_one_class_spam_fp():
+
+    gt_box = BoundingBox(xmin=0, xmax=5, ymin=0, ymax=5, labels=["dog"])
+    tp_box = BoundingBox(
+        xmin=0, xmax=5, ymin=0, ymax=5, labels=["dog"], scores=[1.0]
+    )
+    fp_box = BoundingBox(
+        xmin=10,
+        xmax=15,
+        ymin=10,
+        ymax=15,
+        labels=["dog"],
+        scores=[0.01],
+    )
+
     detection = Detection(
         uid="uid0",
-        groundtruths=[
-            BoundingBox(xmin=0, xmax=5, ymin=0, ymax=5, labels=["dog"])
-        ],
-        predictions=[
-            BoundingBox(
-                xmin=0, xmax=5, ymin=0, ymax=5, labels=["dog"], scores=[1.0]
-            )
-        ]
-        + [
-            BoundingBox(
-                xmin=10,
-                xmax=15,
-                ymin=10,
-                ymax=15,
-                labels=["dog"],
-                scores=[0.01],
-            )
-            for _ in range(10)
-        ],
+        groundtruths=[gt_box],
+        predictions=[tp_box] + [fp_box for _ in range(10)],
     )
     loader = DataLoader()
     loader.add_bounding_boxes([detection])
