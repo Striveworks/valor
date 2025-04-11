@@ -21,7 +21,7 @@ def test__compute_precision():
     iou_thresholds = np.array([0.1, 0.6])
     score_thresholds = np.array([0.0])
 
-    (_, _, _, counts, _) = compute_precion_recall(
+    (_, _, counts, _) = compute_precion_recall(
         sorted_pairs,
         label_metadata=label_metadata,
         iou_thresholds=iou_thresholds,
@@ -469,3 +469,25 @@ def test_precision_false_negatives_two_datums_one_only_with_different_class_high
         assert m in expected_metrics
     for m in expected_metrics:
         assert m in actual_metrics
+
+
+def test_precision_model_one_class_spam_fp(
+    detections_model_single_class_spam_fp: list[Detection],
+):
+    loader = DataLoader()
+    loader.add_bounding_boxes(detections_model_single_class_spam_fp)
+    evaluator = loader.finalize()
+    metrics = evaluator.evaluate(score_thresholds=[0.5], iou_thresholds=[0.5])
+    actual_metrics = [m.to_dict() for m in metrics[MetricType.Precision]]
+    expected_metrics = [
+        {
+            "type": "Precision",
+            "value": 1.0,
+            "parameters": {
+                "iou_threshold": 0.5,
+                "score_threshold": 0.5,
+                "label": "dog",
+            },
+        },
+    ]
+    assert actual_metrics == expected_metrics

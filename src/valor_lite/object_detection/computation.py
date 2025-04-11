@@ -282,7 +282,6 @@ def compute_precion_recall(
     ],
     NDArray[np.float64],
     NDArray[np.float64],
-    NDArray[np.float64],
 ]:
     """
     Computes Object Detection metrics.
@@ -315,8 +314,6 @@ def compute_precion_recall(
     tuple[NDArray[np.float64], NDArray[np.float64], NDArray[np.float64], float]
         Average Recall results.
     NDArray[np.float64]
-        Accuracy.
-    NDArray[np.float64]
         Precision, Recall, TP, FP, FN, F1 Score.
     NDArray[np.float64]
         Interpolated Precision-Recall Curves.
@@ -334,7 +331,6 @@ def compute_precion_recall(
 
     average_precision = np.zeros((n_ious, n_labels), dtype=np.float64)
     average_recall = np.zeros((n_scores, n_labels), dtype=np.float64)
-    accuracy = np.zeros((n_ious, n_scores), dtype=np.float64)
     counts = np.zeros((n_ious, n_scores, n_labels, 6), dtype=np.float64)
 
     pd_labels = data[:, 5].astype(np.int32)
@@ -383,37 +379,38 @@ def compute_precion_recall(
             )
             mask_gt_unique = np.zeros(tp_candidates.shape[0], dtype=np.bool_)
             mask_gt_unique[indices_gt_unique] = True
+
             true_positives_mask = np.zeros(n_rows, dtype=np.bool_)
             true_positives_mask[mask_tp_inner] = mask_gt_unique
 
+            mask_fp_inner |= mask_tp_inner & ~true_positives_mask
+
             # calculate intermediates
-            pd_count = np.bincount(pd_labels, minlength=n_labels).astype(
-                np.float64
-            )
             tp_count = np.bincount(
                 pd_labels,
                 weights=true_positives_mask,
                 minlength=n_labels,
             ).astype(np.float64)
-
             fp_count = np.bincount(
                 pd_labels[mask_fp_inner],
                 minlength=n_labels,
             ).astype(np.float64)
-
             fn_count = np.bincount(
                 pd_labels[mask_fn_inner],
                 minlength=n_labels,
             )
+
+            fn_count = gt_count - tp_count
+            tp_fp_count = tp_count + fp_count
 
             # calculate component metrics
             recall = np.zeros_like(tp_count)
             np.divide(tp_count, gt_count, where=gt_count > 1e-9, out=recall)
 
             precision = np.zeros_like(tp_count)
-            np.divide(tp_count, pd_count, where=pd_count > 1e-9, out=precision)
-
-            fn_count = gt_count - tp_count
+            np.divide(
+                tp_count, tp_fp_count, where=tp_fp_count > 1e-9, out=precision
+            )
 
             f1_score = np.zeros_like(precision)
             np.divide(
@@ -434,14 +431,6 @@ def compute_precion_recall(
                     f1_score[:, np.newaxis],
                 ),
                 axis=1,
-            )
-
-            # caluculate accuracy
-            total_pd_count = label_metadata[:, 1].sum()
-            accuracy[iou_idx, score_idx] = (
-                (tp_count.sum() / total_pd_count)
-                if total_pd_count > 1e-9
-                else 0.0
             )
 
             # calculate recall for AR
@@ -562,7 +551,6 @@ def compute_precion_recall(
     return (
         ap_results,  # type: ignore[reportReturnType]
         ar_results,
-        accuracy,
         counts,
         pr_curve,
     )

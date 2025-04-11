@@ -26,7 +26,7 @@ def test__compute_average_recall():
     iou_thresholds = np.array([0.1, 0.6])
     score_thresholds = np.array([0.5, 0.93, 0.98])
 
-    (_, results, _, _, _,) = compute_precion_recall(
+    (_, results, _, _,) = compute_precion_recall(
         sorted_pairs,
         label_metadata=label_metadata,
         iou_thresholds=iou_thresholds,
@@ -497,7 +497,7 @@ def test_ar_true_positive_deassignment(
         score_thresholds=[0.5],
     )
 
-    assert len(metrics) == 15
+    assert len(metrics) == 14
 
     # test AR
     actual_metrics = [m.to_dict() for m in metrics[MetricType.AR]]

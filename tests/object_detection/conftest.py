@@ -1122,3 +1122,25 @@ def detections_for_detailed_counting(
             ],
         ),
     ]
+
+
+@pytest.fixture
+def detections_model_single_class_spam_fp() -> list[Detection]:
+    gt_box = BoundingBox(xmin=0, xmax=5, ymin=0, ymax=5, labels=["dog"])
+    tp_box = BoundingBox(
+        xmin=0, xmax=5, ymin=0, ymax=5, labels=["dog"], scores=[1.0]
+    )
+    fp_box = BoundingBox(
+        xmin=10,
+        xmax=15,
+        ymin=10,
+        ymax=15,
+        labels=["dog"],
+        scores=[0.01],
+    )
+    detection = Detection(
+        uid="uid0",
+        groundtruths=[gt_box],
+        predictions=[tp_box] + [fp_box for _ in range(10)],
+    )
+    return [detection]

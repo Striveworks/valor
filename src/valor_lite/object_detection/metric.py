@@ -6,7 +6,6 @@ from valor_lite.schemas import BaseMetric
 
 class MetricType(str, Enum):
     Counts = "Counts"
-    Accuracy = "Accuracy"
     Precision = "Precision"
     Recall = "Recall"
     F1 = "F1"
@@ -170,41 +169,6 @@ class Metric(BaseMetric):
             value=value,
             parameters={
                 "label": label,
-                "iou_threshold": iou_threshold,
-                "score_threshold": score_threshold,
-            },
-        )
-
-    @classmethod
-    def accuracy(
-        cls,
-        value: float,
-        iou_threshold: float,
-        score_threshold: float,
-    ):
-        """
-        Accuracy metric for the object detection task type.
-
-        This class encapsulates a metric value at a specific Intersection
-        over Union (IOU) threshold and confidence score threshold.
-
-        Parameters
-        ----------
-        value : float
-            The metric value.
-        iou_threshold : float
-            The IOU threshold used to determine matches between predicted and ground truth boxes.
-        score_threshold : float
-            The confidence score threshold above which predictions are considered.
-
-        Returns
-        -------
-        Metric
-        """
-        return cls(
-            type=MetricType.Accuracy.value,
-            value=value,
-            parameters={
                 "iou_threshold": iou_threshold,
                 "score_threshold": score_threshold,
             },
