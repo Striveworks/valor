@@ -438,7 +438,7 @@ def compute_precion_recall(
                 axis=1,
             )
 
-            # caluculate accuracy
+            # calculate accuracy
             total_pd_count = label_metadata[:, 1].sum()
             accuracy[iou_idx, score_idx] = (
                 (tp_count.sum() / tp_fp_fn_count.sum())

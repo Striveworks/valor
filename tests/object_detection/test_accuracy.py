@@ -414,7 +414,7 @@ def test_accuracy_false_negatives_two_datums_one_only_with_different_class_low_c
         2. A second image with a groundtruth annotation with class `"other value"` and a prediction with lower confidence
         then the prediction on the first image.
 
-    Accuracy should be 1/3 as there are one TP, one FP and one FN samples.
+    Accuracy should be 1/3 since there is one TP, one FP and one FN.
     """
     loader = DataLoader()
     loader.add_bounding_boxes(
@@ -453,7 +453,7 @@ def test_accuracy_false_negatives_two_datums_one_only_with_different_class_high_
         2. A second image with a groundtruth annotation with class `"other value"` and a prediction with higher confidence
         then the prediction on the first image.
 
-    Accuracy should be 1 / 3 since there is one TP and one FP and one FN.
+    Accuracy should be 1 / 3 since there is one TP, one FP and one FN.
     """
     loader = DataLoader()
     loader.add_bounding_boxes(
