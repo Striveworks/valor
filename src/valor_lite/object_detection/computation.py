@@ -408,8 +408,6 @@ def compute_precion_recall(
             tp_fp_count = tp_count + fp_count
             tp_fp_fn_count = tp_fp_count + fn_count
 
-            print(tp_fp_fn_count.sum())
-
             # calculate component metrics
             recall = np.zeros_like(tp_count)
             np.divide(tp_count, gt_count, where=gt_count > 1e-9, out=recall)
