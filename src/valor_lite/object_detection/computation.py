@@ -282,6 +282,7 @@ def compute_precion_recall(
     ],
     NDArray[np.float64],
     NDArray[np.float64],
+    NDArray[np.float64],
 ]:
     """
     Computes Object Detection metrics.
@@ -314,6 +315,8 @@ def compute_precion_recall(
     tuple[NDArray[np.float64], NDArray[np.float64], NDArray[np.float64], float]
         Average Recall results.
     NDArray[np.float64]
+        Accuracy.
+    NDArray[np.float64]
         Precision, Recall, TP, FP, FN, F1 Score.
     NDArray[np.float64]
         Interpolated Precision-Recall Curves.
@@ -331,6 +334,7 @@ def compute_precion_recall(
 
     average_precision = np.zeros((n_ious, n_labels), dtype=np.float64)
     average_recall = np.zeros((n_scores, n_labels), dtype=np.float64)
+    accuracy = np.zeros((n_ious, n_scores), dtype=np.float64)
     counts = np.zeros((n_ious, n_scores, n_labels, 6), dtype=np.float64)
 
     pd_labels = data[:, 5].astype(np.int32)
@@ -402,6 +406,7 @@ def compute_precion_recall(
 
             fn_count = gt_count - tp_count
             tp_fp_count = tp_count + fp_count
+            tp_fp_fn_count = tp_fp_count + fn_count
 
             # calculate component metrics
             recall = np.zeros_like(tp_count)
@@ -431,6 +436,14 @@ def compute_precion_recall(
                     f1_score[:, np.newaxis],
                 ),
                 axis=1,
+            )
+
+            # calculate accuracy
+            total_pd_count = label_metadata[:, 1].sum()
+            accuracy[iou_idx, score_idx] = (
+                (tp_count.sum() / tp_fp_fn_count.sum())
+                if total_pd_count > 1e-9
+                else 0.0
             )
 
             # calculate recall for AR
@@ -551,6 +564,7 @@ def compute_precion_recall(
     return (
         ap_results,  # type: ignore[reportReturnType]
         ar_results,
+        accuracy,
         counts,
         pr_curve,
     )
