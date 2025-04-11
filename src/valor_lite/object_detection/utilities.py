@@ -22,6 +22,7 @@ def unpack_precision_recall_into_metric_lists(
         ],
         NDArray[np.float64],
         NDArray[np.float64],
+        NDArray[np.float64],
     ],
     iou_thresholds: list[float],
     score_thresholds: list[float],
@@ -41,6 +42,7 @@ def unpack_precision_recall_into_metric_lists(
             average_recall_averaged_over_scores,
             mean_average_recall_averaged_over_scores,
         ),
+        accuracy,
         precision_recall,
         pr_curves,
     ) = results
@@ -121,6 +123,16 @@ def unpack_precision_recall_into_metric_lists(
             score_thresholds=score_thresholds,
             iou_thresholds=iou_thresholds,
         )
+    ]
+
+    metrics[MetricType.Accuracy] = [
+        Metric.accuracy(
+            value=float(accuracy[iou_idx, score_idx]),
+            iou_threshold=iou_threshold,
+            score_threshold=score_threshold,
+        )
+        for iou_idx, iou_threshold in enumerate(iou_thresholds)
+        for score_idx, score_threshold in enumerate(score_thresholds)
     ]
 
     metrics[MetricType.PrecisionRecallCurve] = [
