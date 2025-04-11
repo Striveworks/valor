@@ -4,7 +4,7 @@ from valor_lite.object_detection import DataLoader, Detection, MetricType
 from valor_lite.object_detection.computation import compute_precion_recall
 
 
-def test__compute_average_precision():
+def test__compute_accuracy():
 
     sorted_pairs = np.array(
         [
@@ -37,7 +37,7 @@ def test__compute_average_precision():
     assert (accuracy == expected).all()
 
 
-def test_ap_using_torch_metrics_example(
+def test_accuracy_using_torch_metrics_example(
     torchmetrics_detections: list[Detection],
 ):
     """
@@ -65,7 +65,7 @@ def test_ap_using_torch_metrics_example(
     expected_metrics = [
         {
             "type": "Accuracy",
-            "value": 9 / 19,
+            "value": 9 / 20,
             "parameters": {
                 "iou_threshold": 0.5,
                 "score_threshold": 0.5,
@@ -73,7 +73,7 @@ def test_ap_using_torch_metrics_example(
         },
         {
             "type": "Accuracy",
-            "value": 8 / 19,
+            "value": 8 / 21,
             "parameters": {
                 "iou_threshold": 0.75,
                 "score_threshold": 0.5,
@@ -131,7 +131,7 @@ def test_accuracy_metrics_first_class(
         expected_metrics = [
             {
                 "type": "Accuracy",
-                "value": 1.0,
+                "value": 1 / 2,
                 "parameters": {
                     "iou_threshold": 0.1,
                     "score_threshold": 0.0,
@@ -139,7 +139,7 @@ def test_accuracy_metrics_first_class(
             },
             {
                 "type": "Accuracy",
-                "value": 1.0,
+                "value": 1 / 2,
                 "parameters": {
                     "iou_threshold": 0.6,
                     "score_threshold": 0.0,
@@ -414,8 +414,7 @@ def test_accuracy_false_negatives_two_datums_one_only_with_different_class_low_c
         2. A second image with a groundtruth annotation with class `"other value"` and a prediction with lower confidence
         then the prediction on the first image.
 
-    In this case, the Accuracy for class `"value"` should be 1 since the false positive has lower confidence than the true positive.
-    Accuracy for class `"other value"` should be 0 since there is no prediction for the `"other value"` groundtruth
+    Accuracy should be 1/3 as there are one TP, one FP and one FN samples.
     """
     loader = DataLoader()
     loader.add_bounding_boxes(
@@ -431,7 +430,7 @@ def test_accuracy_false_negatives_two_datums_one_only_with_different_class_low_c
     expected_metrics = [
         {
             "type": "Accuracy",
-            "value": 0.5,
+            "value": 1 / 3,
             "parameters": {
                 "iou_threshold": 0.5,
                 "score_threshold": 0.0,
@@ -454,8 +453,7 @@ def test_accuracy_false_negatives_two_datums_one_only_with_different_class_high_
         2. A second image with a groundtruth annotation with class `"other value"` and a prediction with higher confidence
         then the prediction on the first image.
 
-    In this case, the Accuracy for class `"value"` should be 0.5 since the false positive has higher confidence than the true positive.
-    Accuracy for class `"other value"` should be 0 since there is no prediction for the `"other value"` groundtruth
+    Accuracy should be 1 / 3 since there is one TP and one FP and one FN.
     """
     loader = DataLoader()
     loader.add_bounding_boxes(
@@ -471,7 +469,7 @@ def test_accuracy_false_negatives_two_datums_one_only_with_different_class_high_
     expected_metrics = [
         {
             "type": "Accuracy",
-            "value": 0.5,
+            "value": 1 / 3,
             "parameters": {
                 "iou_threshold": 0.5,
                 "score_threshold": 0.0,
