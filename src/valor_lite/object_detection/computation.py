@@ -402,6 +402,7 @@ def compute_precion_recall(
 
             fn_count = gt_count - tp_count
             tp_fp_count = tp_count + fp_count
+            tp_fp_fn_count = tp_fp_count + fn_count
 
             # calculate component metrics
             recall = np.zeros_like(tp_count)
@@ -431,6 +432,14 @@ def compute_precion_recall(
                     f1_score[:, np.newaxis],
                 ),
                 axis=1,
+            )
+
+            # caluculate accuracy
+            total_pd_count = label_metadata[:, 1].sum()
+            accuracy[iou_idx, score_idx] = (
+                (tp_count.sum() / tp_fp_fn_count.sum())
+                if total_pd_count > 1e-9
+                else 0.0
             )
 
             # calculate recall for AR
