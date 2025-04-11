@@ -469,3 +469,7 @@ def test_precision_false_negatives_two_datums_one_only_with_different_class_high
         assert m in expected_metrics
     for m in expected_metrics:
         assert m in actual_metrics
+
+
+def test_precision_model_only_outputs_one_class_per_box():
+    pass

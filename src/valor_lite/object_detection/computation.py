@@ -383,37 +383,41 @@ def compute_precion_recall(
             )
             mask_gt_unique = np.zeros(tp_candidates.shape[0], dtype=np.bool_)
             mask_gt_unique[indices_gt_unique] = True
+
             true_positives_mask = np.zeros(n_rows, dtype=np.bool_)
             true_positives_mask[mask_tp_inner] = mask_gt_unique
 
+            mask_fp_inner |= mask_tp_inner & ~true_positives_mask
+
             # calculate intermediates
-            pd_count = np.bincount(pd_labels, minlength=n_labels).astype(
-                np.float64
-            )
             tp_count = np.bincount(
                 pd_labels,
                 weights=true_positives_mask,
                 minlength=n_labels,
             ).astype(np.float64)
-
             fp_count = np.bincount(
                 pd_labels[mask_fp_inner],
                 minlength=n_labels,
             ).astype(np.float64)
-
             fn_count = np.bincount(
                 pd_labels[mask_fn_inner],
                 minlength=n_labels,
             )
+
+            fn_count = gt_count - tp_count
+            tp_fp_count = tp_count + fp_count
+            tp_fp_fn_count = tp_fp_count + fn_count
+
+            print(tp_fp_fn_count.sum())
 
             # calculate component metrics
             recall = np.zeros_like(tp_count)
             np.divide(tp_count, gt_count, where=gt_count > 1e-9, out=recall)
 
             precision = np.zeros_like(tp_count)
-            np.divide(tp_count, pd_count, where=pd_count > 1e-9, out=precision)
-
-            fn_count = gt_count - tp_count
+            np.divide(
+                tp_count, tp_fp_count, where=tp_fp_count > 1e-9, out=precision
+            )
 
             f1_score = np.zeros_like(precision)
             np.divide(
@@ -439,7 +443,7 @@ def compute_precion_recall(
             # caluculate accuracy
             total_pd_count = label_metadata[:, 1].sum()
             accuracy[iou_idx, score_idx] = (
-                (tp_count.sum() / total_pd_count)
+                (tp_count.sum() / tp_fp_fn_count.sum())
                 if total_pd_count > 1e-9
                 else 0.0
             )
