@@ -25,7 +25,7 @@ def test__compute_average_precision():
     iou_thresholds = np.array([0.1, 0.6])
     score_thresholds = np.array([0.0])
 
-    (results, _, _, _) = compute_precion_recall(
+    (results, _, _, _, _) = compute_precion_recall(
         sorted_pairs,
         label_metadata=label_metadata,
         iou_thresholds=iou_thresholds,
@@ -838,7 +838,7 @@ def test_ap_true_positive_deassignment(
         score_thresholds=[0.5],
     )
 
-    assert len(metrics) == 14
+    assert len(metrics) == 15
 
     # test AP
     actual_metrics = [m.to_dict() for m in metrics[MetricType.AP]]
