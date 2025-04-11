@@ -282,6 +282,7 @@ def compute_precion_recall(
     ],
     NDArray[np.float64],
     NDArray[np.float64],
+    NDArray[np.float64],
 ]:
     """
     Computes Object Detection metrics.
@@ -314,6 +315,8 @@ def compute_precion_recall(
     tuple[NDArray[np.float64], NDArray[np.float64], NDArray[np.float64], float]
         Average Recall results.
     NDArray[np.float64]
+        Accuracy.
+    NDArray[np.float64]
         Precision, Recall, TP, FP, FN, F1 Score.
     NDArray[np.float64]
         Interpolated Precision-Recall Curves.
@@ -331,6 +334,7 @@ def compute_precion_recall(
 
     average_precision = np.zeros((n_ious, n_labels), dtype=np.float64)
     average_recall = np.zeros((n_scores, n_labels), dtype=np.float64)
+    accuracy = np.zeros((n_ious, n_scores), dtype=np.float64)
     counts = np.zeros((n_ious, n_scores, n_labels, 6), dtype=np.float64)
 
     pd_labels = data[:, 5].astype(np.int32)
@@ -560,6 +564,7 @@ def compute_precion_recall(
     return (
         ap_results,  # type: ignore[reportReturnType]
         ar_results,
+        accuracy,
         counts,
         pr_curve,
     )
