@@ -1,4 +1,5 @@
 from random import choice, uniform
+from uuid import uuid4
 
 from valor_lite.object_detection import BoundingBox, DataLoader, Detection
 
@@ -12,6 +13,7 @@ def _generate_random_detections(
         xmax, ymax = uniform(xmin, xmin + width), uniform(ymin, ymin + height)
         kw = {"scores": [uniform(0, 1)]} if is_prediction else {}
         return BoundingBox(
+            str(uuid4()),
             xmin,
             xmax,
             ymin,

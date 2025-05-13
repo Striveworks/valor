@@ -12,6 +12,8 @@ class BoundingBox:
 
     Parameters
     ----------
+    uid : str
+        A unique identifier.
     xmin : float
         The minimum x-coordinate of the bounding box.
     xmax : float
@@ -34,11 +36,13 @@ class BoundingBox:
     Prediction Example:
 
     >>> bbox = BoundingBox(
+    ...     uid="abc",
     ...     xmin=10.0, xmax=50.0, ymin=20.0, ymax=60.0,
     ...     labels=['cat', 'dog'], scores=[0.9, 0.1]
     ... )
     """
 
+    uid: str
     xmin: float
     xmax: float
     ymin: float
@@ -57,18 +61,6 @@ class BoundingBox:
             )
 
     @property
-    def extrema(self) -> tuple[float, float, float, float]:
-        """
-        Returns the bounding box extrema.
-
-        Returns
-        -------
-        tuple[float, float, float, float]
-            A tuple in the form (xmin, xmax, ymin, ymax).
-        """
-        return (self.xmin, self.xmax, self.ymin, self.ymax)
-
-    @property
     def annotation(self) -> tuple[float, float, float, float]:
         """
         Returns the annotation's data representation.
@@ -78,7 +70,7 @@ class BoundingBox:
         tuple[float, float, float, float]
             A tuple in the form (xmin, xmax, ymin, ymax).
         """
-        return self.extrema
+        return (self.xmin, self.xmax, self.ymin, self.ymax)
 
 
 @dataclass
@@ -88,7 +80,9 @@ class Polygon:
 
     Parameters
     ----------
-    shape : ShapelyPolygon
+    uid : str
+        A unique identifier.
+    shape : shapely.geometry.Polygon
         A Shapely polygon object representing the shape.
     labels : list of str
         List of labels associated with the polygon.
@@ -106,10 +100,11 @@ class Polygon:
     Prediction Example:
 
     >>> polygon = Polygon(
-    ...     shape=shape, labels=['building'], scores=[0.95]
+    ...     uid="abc", shape=shape, labels=['building'], scores=[0.95]
     ... )
     """
 
+    uid: str
     shape: ShapelyPolygon
     labels: list[str]
     scores: list[float] = field(default_factory=list)
@@ -130,17 +125,15 @@ class Polygon:
             )
 
     @property
-    def extrema(self) -> tuple[float, float, float, float]:
+    def annotation(self) -> ShapelyPolygon:
         """
-        Returns the polygon's bounding box extrema.
+        Returns the annotation's data representation.
 
         Returns
         -------
-        tuple[float, float, float, float]
-            A tuple in the form (xmin, xmax, ymin, ymax).
+        shapely.geometry.Polygon
         """
-        xmin, ymin, xmax, ymax = self.shape.bounds
-        return (xmin, xmax, ymin, ymax)
+        return self.shape
 
 
 @dataclass
@@ -150,6 +143,8 @@ class Bitmask:
 
     Parameters
     ----------
+    uid : str
+        A unique identifier.
     mask : NDArray[np.bool_]
         A NumPy array of boolean values representing the mask.
     labels : list of str
@@ -163,7 +158,7 @@ class Bitmask:
 
     >>> import numpy as np
     >>> mask = np.array([[True, False], [False, True]], dtype=np.bool_)
-    >>> bitmask = Bitmask(mask=mask, labels=['tree'])
+    >>> bitmask = Bitmask(uid="abc", mask=mask, labels=['tree'])
 
     Prediction Example:
 
@@ -172,6 +167,7 @@ class Bitmask:
     ... )
     """
 
+    uid: str
     mask: NDArray[np.bool_]
     labels: list[str]
     scores: list[float] = field(default_factory=list)
@@ -198,17 +194,15 @@ class Bitmask:
             )
 
     @property
-    def extrema(self) -> tuple[float, float, float, float]:
+    def annotation(self) -> NDArray[np.bool_]:
         """
-        Returns the bounding box extrema of the mask.
+        Returns the annotation's data representation.
 
         Returns
         -------
-        tuple[float, float, float, float]
-            A tuple in the form (xmin, xmax, ymin, ymax).
+        NDArray[np.bool_]
         """
-        rows, cols = np.nonzero(self.mask)
-        return (cols.min(), cols.max(), rows.min(), rows.max())
+        return self.mask
 
 
 @dataclass

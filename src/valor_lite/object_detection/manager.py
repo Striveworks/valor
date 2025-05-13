@@ -5,7 +5,12 @@ import numpy as np
 from numpy.typing import NDArray
 from tqdm import tqdm
 
-from valor_lite.object_detection.annotation import Detection
+from valor_lite.object_detection.annotation import (
+    Bitmask,
+    BoundingBox,
+    Detection,
+    Polygon,
+)
 from valor_lite.object_detection.computation import (
     compute_bbox_iou,
     compute_bitmask_iou,
@@ -61,17 +66,18 @@ class Evaluator:
         self.n_predictions = 0
         self.n_labels = 0
 
-        # datum reference
-        self.uid_to_index: dict[str, int] = dict()
-        self.index_to_uid: dict[int, str] = dict()
+        # external reference
+        self.datum_id_to_index: dict[str, int] = dict()
+        self.groundtruth_id_to_index: dict[str, int] = dict()
+        self.prediction_id_to_index: dict[str, int] = dict()
 
-        # annotation reference
-        self.groundtruth_examples: dict[int, NDArray[np.float16]] = dict()
-        self.prediction_examples: dict[int, NDArray[np.float16]] = dict()
+        self.index_to_datum_id: list[str] = list()
+        self.index_to_groundtruth_id: list[str] = list()
+        self.index_to_prediction_id: list[str] = list()
 
         # label reference
         self.label_to_index: dict[str, int] = dict()
-        self.index_to_label: dict[int, str] = dict()
+        self.index_to_label: list[str] = list()
 
         # computation caches
         self._detailed_pairs: NDArray[np.float64] = np.array([])
@@ -117,7 +123,7 @@ class Evaluator:
 
     def create_filter(
         self,
-        datum_uids: list[str] | NDArray[np.int32] | None = None,
+        datum_ids: list[str] | NDArray[np.int32] | None = None,
         labels: list[str] | NDArray[np.int32] | None = None,
     ) -> Filter:
         """
@@ -146,19 +152,19 @@ class Evaluator:
         mask_datums = np.ones(n_datums, dtype=np.bool_)
         mask_labels = np.ones(n_labels, dtype=np.bool_)
 
-        if datum_uids is not None:
-            if isinstance(datum_uids, list):
-                datum_uids = np.array(
-                    [self.uid_to_index[uid] for uid in datum_uids],
+        if datum_ids is not None:
+            if isinstance(datum_ids, list):
+                datum_ids = np.array(
+                    [self.datum_id_to_index[uid] for uid in datum_ids],
                     dtype=np.int32,
                 )
             mask_ranked[
-                ~np.isin(self._ranked_pairs[:, 0].astype(int), datum_uids)
+                ~np.isin(self._ranked_pairs[:, 0].astype(int), datum_ids)
             ] = False
             mask_detailed[
-                ~np.isin(self._detailed_pairs[:, 0].astype(int), datum_uids)
+                ~np.isin(self._detailed_pairs[:, 0].astype(int), datum_ids)
             ] = False
-            mask_datums[~np.isin(np.arange(n_datums), datum_uids)] = False
+            mask_datums[~np.isin(np.arange(n_datums), datum_ids)] = False
 
         if labels is not None:
             if isinstance(labels, list):
@@ -287,10 +293,10 @@ class Evaluator:
             iou_thresholds=iou_thresholds,
             score_thresholds=score_thresholds,
             number_of_examples=number_of_examples,
-            index_to_uid=self.index_to_uid,
+            index_to_datum_id=self.index_to_datum_id,
+            index_to_groundtruth_id=self.index_to_groundtruth_id,
+            index_to_prediction_id=self.index_to_prediction_id,
             index_to_label=self.index_to_label,
-            groundtruth_examples=self.groundtruth_examples,
-            prediction_examples=self.prediction_examples,
         )
 
     def evaluate(
@@ -350,25 +356,77 @@ class DataLoader:
         self.groundtruth_count = defaultdict(defaultdict_int)
         self.prediction_count = defaultdict(defaultdict_int)
 
-    def _add_datum(self, uid: str) -> int:
+    def _add_datum(self, datum_id: str) -> int:
         """
         Helper function for adding a datum to the cache.
 
         Parameters
         ----------
-        uid : str
-            The datum uid.
+        datum_id : str
+            The datum identifier.
 
         Returns
         -------
         int
             The datum index.
         """
-        if uid not in self._evaluator.uid_to_index:
-            index = len(self._evaluator.uid_to_index)
-            self._evaluator.uid_to_index[uid] = index
-            self._evaluator.index_to_uid[index] = uid
-        return self._evaluator.uid_to_index[uid]
+        if datum_id not in self._evaluator.datum_id_to_index:
+            if len(self._evaluator.datum_id_to_index) != len(
+                self._evaluator.index_to_datum_id
+            ):
+                raise RuntimeError("datum cache size mismatch")
+            idx = len(self._evaluator.datum_id_to_index)
+            self._evaluator.datum_id_to_index[datum_id] = idx
+            self._evaluator.index_to_datum_id.append(datum_id)
+        return self._evaluator.datum_id_to_index[datum_id]
+
+    def _add_groundtruth(self, annotation_id: str) -> int:
+        """
+        Helper function for adding a ground truth annotation identifier to the cache.
+
+        Parameters
+        ----------
+        annotation_id : str
+            The ground truth annotation identifier.
+
+        Returns
+        -------
+        int
+            The ground truth annotation index.
+        """
+        if annotation_id not in self._evaluator.groundtruth_id_to_index:
+            if len(self._evaluator.groundtruth_id_to_index) != len(
+                self._evaluator.index_to_groundtruth_id
+            ):
+                raise RuntimeError("ground truth cache size mismatch")
+            idx = len(self._evaluator.groundtruth_id_to_index)
+            self._evaluator.groundtruth_id_to_index[annotation_id] = idx
+            self._evaluator.index_to_groundtruth_id.append(annotation_id)
+        return self._evaluator.groundtruth_id_to_index[annotation_id]
+
+    def _add_prediction(self, annotation_id: str) -> int:
+        """
+        Helper function for adding a prediction annotation identifier to the cache.
+
+        Parameters
+        ----------
+        annotation_id : str
+            The prediction annotation identifier.
+
+        Returns
+        -------
+        int
+            The prediction annotation index.
+        """
+        if annotation_id not in self._evaluator.prediction_id_to_index:
+            if len(self._evaluator.prediction_id_to_index) != len(
+                self._evaluator.index_to_prediction_id
+            ):
+                raise RuntimeError("prediction cache size mismatch")
+            idx = len(self._evaluator.prediction_id_to_index)
+            self._evaluator.prediction_id_to_index[annotation_id] = idx
+            self._evaluator.index_to_prediction_id.append(annotation_id)
+        return self._evaluator.prediction_id_to_index[annotation_id]
 
     def _add_label(self, label: str) -> int:
         """
@@ -388,86 +446,11 @@ class DataLoader:
         label_id = len(self._evaluator.index_to_label)
         if label not in self._evaluator.label_to_index:
             self._evaluator.label_to_index[label] = label_id
-            self._evaluator.index_to_label[label_id] = label
+            self._evaluator.index_to_label.append(label)
 
             label_id += 1
 
         return self._evaluator.label_to_index[label]
-
-    def _cache_pairs(
-        self,
-        uid_index: int,
-        groundtruths: list,
-        predictions: list,
-        ious: NDArray[np.float64],
-    ) -> None:
-        """
-        Compute IOUs between groundtruths and preditions before storing as pairs.
-
-        Parameters
-        ----------
-        uid_index : int
-            The index of the detection.
-        groundtruths : list
-            A list of groundtruths.
-        predictions : list
-            A list of predictions.
-        ious : NDArray[np.float64]
-            An array with shape (n_preds, n_gts) containing IOUs.
-        """
-
-        predictions_with_iou_of_zero = np.where((ious < 1e-9).all(axis=1))[0]
-        groundtruths_with_iou_of_zero = np.where((ious < 1e-9).all(axis=0))[0]
-
-        pairs = [
-            np.array(
-                [
-                    float(uid_index),
-                    float(gidx),
-                    float(pidx),
-                    ious[pidx, gidx],
-                    float(glabel),
-                    float(plabel),
-                    float(score),
-                ]
-            )
-            for pidx, plabel, score in predictions
-            for gidx, glabel in groundtruths
-            if ious[pidx, gidx] >= 1e-9
-        ]
-        pairs.extend(
-            [
-                np.array(
-                    [
-                        float(uid_index),
-                        -1.0,
-                        float(predictions[index][0]),
-                        0.0,
-                        -1.0,
-                        float(predictions[index][1]),
-                        float(predictions[index][2]),
-                    ]
-                )
-                for index in predictions_with_iou_of_zero
-            ]
-        )
-        pairs.extend(
-            [
-                np.array(
-                    [
-                        float(uid_index),
-                        float(groundtruths[index][0]),
-                        -1.0,
-                        0.0,
-                        float(groundtruths[index][1]),
-                        -1.0,
-                        -1.0,
-                    ]
-                )
-                for index in groundtruths_with_iou_of_zero
-            ]
-        )
-        self.pairs.append(np.array(pairs))
 
     def _add_data(
         self,
@@ -497,56 +480,66 @@ class DataLoader:
             self._evaluator.n_groundtruths += len(detection.groundtruths)
             self._evaluator.n_predictions += len(detection.predictions)
 
-            # update datum uid index
-            uid_index = self._add_datum(uid=detection.uid)
-
-            # initialize bounding box examples
-            self._evaluator.groundtruth_examples[uid_index] = np.zeros(
-                (len(detection.groundtruths), 4), dtype=np.float16
-            )
-            self._evaluator.prediction_examples[uid_index] = np.zeros(
-                (len(detection.predictions), 4), dtype=np.float16
-            )
-
-            # cache labels and annotations
-            groundtruths = list()
-            predictions = list()
-
+            # cache labels and annotation pairs
+            pairs = list()
+            datum_idx = self._add_datum(detection.uid)
+            groundtruths_with_iou_of_zero = np.where(
+                (ious < 1e-9).all(axis=0)
+            )[0]
             for gidx, gann in enumerate(detection.groundtruths):
-                self._evaluator.groundtruth_examples[uid_index][
-                    gidx
-                ] = gann.extrema
+                groundtruth_idx = self._add_groundtruth(gann.uid)
                 for glabel in gann.labels:
-                    label_idx = self._add_label(glabel)
-                    self.groundtruth_count[label_idx][uid_index] += 1
-                    groundtruths.append(
-                        (
-                            gidx,
-                            label_idx,
+                    glabel_idx = self._add_label(glabel)
+                    if groundtruths_with_iou_of_zero[gidx]:
+                        pairs.append(
+                            np.array(
+                                [
+                                    float(datum_idx),
+                                    float(groundtruth_idx),
+                                    -1.0,
+                                    0.0,
+                                    float(glabel_idx),
+                                    -1.0,
+                                    -1.0,
+                                ]
+                            )
                         )
-                    )
-
-            for pidx, pann in enumerate(detection.predictions):
-                self._evaluator.prediction_examples[uid_index][
-                    pidx
-                ] = pann.extrema
-                for plabel, pscore in zip(pann.labels, pann.scores):
-                    label_idx = self._add_label(plabel)
-                    self.prediction_count[label_idx][uid_index] += 1
-                    predictions.append(
-                        (
-                            pidx,
-                            label_idx,
-                            pscore,
-                        )
-                    )
-
-            self._cache_pairs(
-                uid_index=uid_index,
-                groundtruths=groundtruths,
-                predictions=predictions,
-                ious=ious,
-            )
+                    else:
+                        for pidx, pann in enumerate(detection.predictions):
+                            prediction_idx = self._add_prediction(pann.uid)
+                            for plabel, pscore in zip(
+                                pann.labels, pann.scores
+                            ):
+                                plabel_idx = self._add_label(plabel)
+                                if ious[gidx, pidx] >= 1e-9:
+                                    pairs.append(
+                                        np.array(
+                                            [
+                                                float(datum_idx),
+                                                float(groundtruth_idx),
+                                                float(prediction_idx),
+                                                ious[pidx, gidx],
+                                                float(glabel_idx),
+                                                float(plabel_idx),
+                                                float(pscore),
+                                            ]
+                                        )
+                                    )
+                                else:
+                                    pairs.append(
+                                        np.array(
+                                            [
+                                                float(datum_idx),
+                                                -1.0,
+                                                float(prediction_idx),
+                                                0.0,
+                                                -1.0,
+                                                float(plabel_idx),
+                                                float(pscore),
+                                            ]
+                                        )
+                                    )
+            self.pairs.append(np.array(pairs))
 
     def add_bounding_boxes(
         self,
@@ -567,9 +560,11 @@ class DataLoader:
             compute_bbox_iou(
                 np.array(
                     [
-                        [gt.extrema, pd.extrema]
+                        [gt.annotation, pd.annotation]
                         for pd in detection.predictions
                         for gt in detection.groundtruths
+                        if isinstance(gt, BoundingBox)
+                        and isinstance(pd, BoundingBox)
                     ],
                     dtype=np.float64,
                 )
@@ -601,9 +596,10 @@ class DataLoader:
             compute_polygon_iou(
                 np.array(
                     [
-                        [gt.shape, pd.shape]  # type: ignore - using the AttributeError as a validator
+                        [gt.annotation, pd.annotation]
                         for pd in detection.predictions
                         for gt in detection.groundtruths
+                        if isinstance(gt, Polygon) and isinstance(pd, Polygon)
                     ]
                 )
             ).reshape(len(detection.predictions), len(detection.groundtruths))
@@ -634,9 +630,10 @@ class DataLoader:
             compute_bitmask_iou(
                 np.array(
                     [
-                        [gt.mask, pd.mask]  # type: ignore - using the AttributeError as a validator
+                        [gt.annotation, pd.annotation]
                         for pd in detection.predictions
                         for gt in detection.groundtruths
+                        if isinstance(gt, Bitmask) and isinstance(pd, Bitmask)
                     ]
                 )
             ).reshape(len(detection.predictions), len(detection.groundtruths))
