@@ -171,6 +171,47 @@ def compute_polygon_iou(
     return ious
 
 
+def compute_label_metadata(detailed_pairs: NDArray[np.float64], n_labels: int):
+    """
+    Computes label metadata returning a count of annotations per label.
+
+    Parameters
+    ----------
+    detailed_pairs : NDArray[np.float64]
+        Detailed annotation pairings with shape (N, 7).
+            Index 0 - Datum Index
+            Index 1 - GroundTruth Index
+            Index 2 - Prediction Index
+            Index 3 - IOU
+            Index 4 - GroundTruth Label Index
+            Index 5 - Prediction Label Index
+            Index 6 - Score
+    num_labels : int
+        The total number of unique labels.
+
+    Returns
+    -------
+    NDArray[np.int32]
+        The label metadata array with shape (n_labels, 2).
+            Index 0 - Ground truth label count
+            Index 1 - Prediction label count
+    """
+    label_metadata = np.zeros((n_labels, 2), dtype=np.int32)
+
+    ground_truth_pairs = detailed_pairs[:, (0, 1, 4)]
+    ground_truth_pairs = ground_truth_pairs[ground_truth_pairs[:, 1] >= 0]
+    unique_pairs = np.unique(ground_truth_pairs, axis=0)
+    label_indices, unique_counts = np.unique(unique_pairs[:, 2], return_counts=True)
+    label_metadata[label_indices.astype(np.int32), 0] = unique_counts
+
+    prediction_pairs = detailed_pairs[:, (0, 2, 5)]
+    prediction_pairs = prediction_pairs[prediction_pairs[:, 1] >= 0]
+    unique_pairs = np.unique(prediction_pairs, axis=0)
+    label_indices, unique_counts = np.unique(unique_pairs[:, 2], return_counts=True)
+    label_metadata[label_indices.astype(np.int32), 1] = unique_counts
+
+    return label_metadata
+
 def _compute_ranked_pairs_for_datum(
     data: NDArray[np.float64],
     label_metadata: NDArray[np.int32],
@@ -214,44 +255,43 @@ def _compute_ranked_pairs_for_datum(
 
 
 def compute_ranked_pairs(
-    data: list[NDArray[np.float64]],
+    detailed_pairs: NDArray[np.float64],
     label_metadata: NDArray[np.int32],
 ) -> NDArray[np.float64]:
     """
     Performs pair ranking on input data.
 
-    Takes data with shape (N, 7):
-
-    Index 0 - Datum Index
-    Index 1 - GroundTruth Index
-    Index 2 - Prediction Index
-    Index 3 - IOU
-    Index 4 - GroundTruth Label Index
-    Index 5 - Prediction Label Index
-    Index 6 - Score
-
-    Returns data with shape (N - M, 7)
-
     Parameters
     ----------
-    data : NDArray[np.float64]
-        A sorted array summarizing the IOU calculations of one or more pairs.
+    detailed_pairs : NDArray[np.float64]
+        An unsorted array containing both matched and unmatched annotations with shape (N, 7).
+            Index 0 - Datum Index
+            Index 1 - GroundTruth Index
+            Index 2 - Prediction Index
+            Index 3 - IOU
+            Index 4 - GroundTruth Label Index
+            Index 5 - Prediction Label Index
+            Index 6 - Score
     label_metadata : NDArray[np.int32]
-        An array containing metadata related to labels.
+        The label metadata array with shape (n_labels, 2).
+            Index 0 - Ground truth label count
+            Index 1 - Prediction label count
 
     Returns
     -------
     NDArray[np.float64]
-        A filtered array containing only ranked pairs.
+        A filtered array containing only ranked pairs with shape (N - M, 7).
     """
-
+    unique_datums = np.unique(detailed_pairs[:, 0])
     ranked_pairs_by_datum = [
         _compute_ranked_pairs_for_datum(
-            data=datum,
+            data=detailed_pairs[np.isclose(detailed_pairs[:, 0], unique_datums[idx])],
             label_metadata=label_metadata,
         )
-        for datum in data
+        for idx in range(unique_datums.size)
     ]
+    if not ranked_pairs_by_datum:
+        return np.array([], dtype=np.float64)
     ranked_pairs = np.concatenate(ranked_pairs_by_datum, axis=0)
     indices = np.lexsort(
         (
@@ -263,7 +303,7 @@ def compute_ranked_pairs(
 
 
 def compute_precion_recall(
-    data: NDArray[np.float64],
+    ranked_pairs: NDArray[np.float64],
     label_metadata: NDArray[np.int32],
     iou_thresholds: NDArray[np.float64],
     score_thresholds: NDArray[np.float64],
@@ -298,8 +338,8 @@ def compute_precion_recall(
 
     Parameters
     ----------
-    data : NDArray[np.float64]
-        A sorted array summarizing the IOU calculations of one or more pairs.
+    ranked_pairs : NDArray[np.float64]
+        A ranked array summarizing the IOU calculations of one or more pairs.
     label_metadata : NDArray[np.int32]
         An array containing metadata related to labels.
     iou_thresholds : NDArray[np.float64]
@@ -318,6 +358,7 @@ def compute_precion_recall(
     NDArray[np.float64]
         Interpolated Precision-Recall Curves.
     """
+    data = ranked_pairs
 
     n_rows = data.shape[0]
     n_labels = label_metadata.shape[0]
@@ -614,17 +655,17 @@ def _isin(
         Returns a bool mask with shape (N,).
     """
     combined_data = (data[:, 0].astype(np.int64) << 32) | data[:, 1].astype(
-        np.uint32
+        np.int32
     )
     combined_subset = (subset[:, 0].astype(np.int64) << 32) | subset[
         :, 1
-    ].astype(np.uint32)
+    ].astype(np.int32)
     mask = np.isin(combined_data, combined_subset, assume_unique=False)
     return mask
 
 
 def compute_confusion_matrix(
-    data: NDArray[np.float64],
+    detailed_pairs: NDArray[np.float64],
     label_metadata: NDArray[np.int32],
     iou_thresholds: NDArray[np.float64],
     score_thresholds: NDArray[np.float64],
@@ -646,7 +687,7 @@ def compute_confusion_matrix(
     Parameters
     ----------
     data : NDArray[np.float64]
-        A sorted array summarizing the IOU calculations of one or more pairs.
+        An unsorted array summarizing the IOU calculations of one or more pairs.
     label_metadata : NDArray[np.int32]
         An array containing metadata related to labels.
     iou_thresholds : NDArray[np.float64]
@@ -665,6 +706,7 @@ def compute_confusion_matrix(
     NDArray[np.int32]
         Unmatched Ground Truths.
     """
+    data = detailed_pairs
 
     n_labels = label_metadata.shape[0]
     n_ious = iou_thresholds.shape[0]

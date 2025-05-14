@@ -1,4 +1,5 @@
 from dataclasses import replace
+from uuid import uuid4
 
 import numpy as np
 import pytest
@@ -44,6 +45,7 @@ def _generate_random_detections(
         xmax, ymax = uniform(xmin, 15), uniform(ymin, 15)
         kw = {"scores": [uniform(0, 1)]} if is_prediction else {}
         return BoundingBox(
+            str(uuid4()),
             xmin,
             xmax,
             ymin,
@@ -80,37 +82,13 @@ def test_filtering_one_detection(one_detection: list[Detection]):
     loader.add_bounding_boxes(one_detection)
     evaluator = loader.finalize()
 
-    assert (
-        evaluator._ranked_pairs
-        == np.array(
-            [
-                [0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.3],
-            ]
-        )
-    ).all()
-
-    assert (
-        evaluator._label_metadata_per_datum
-        == np.array(
-            [
-                [
-                    [1, 1],
-                ],
-                [
-                    [1, 0],
-                ],
-            ]
-        )
-    ).all()
-
-    assert (evaluator._label_metadata == np.array([[1, 1], [1, 0]])).all()
+    assert (evaluator.label_metadata == np.array([[1, 1], [1, 0]])).all()
 
     # test datum filtering
-    filter_ = evaluator.create_filter(datum_uids=["uid1"])
-    assert (filter_.ranked_indices == np.array([0])).all()
-    assert (filter_.detailed_indices == np.array([0, 1])).all()
+    evaluator.apply_filter(datum_ids=["uid1"])
+    assert (evaluator.detailed_pairs == np.array([0, 1])).all()
     assert (
-        filter_.label_metadata
+        evaluator.label_metadata
         == np.array(
             [
                 [
@@ -123,36 +101,29 @@ def test_filtering_one_detection(one_detection: list[Detection]):
     ).all()
 
     with pytest.raises(KeyError) as e:
-        evaluator.create_filter(datum_uids=["uid2"])
+        evaluator.apply_filter(datum_ids=["uid2"])
     assert "uid2" in str(e)
 
     # test label filtering
-    filter_ = evaluator.create_filter(labels=["v1"])
-    assert (filter_.ranked_indices == np.array([0])).all()
-    assert (filter_.detailed_indices == np.array([0])).all()
-    assert (filter_.label_metadata == np.array([[1, 1], [0, 0]])).all()
+    evaluator.apply_filter(labels=["v1"])
+    assert (evaluator.detailed_pairs == np.array([0])).all()
+    assert (evaluator.label_metadata == np.array([[1, 1], [0, 0]])).all()
 
-    filter_ = evaluator.create_filter(labels=["v2"])
-    assert (filter_.ranked_indices == np.array([])).all()
-    assert (filter_.detailed_indices == np.array([1])).all()
-    assert (filter_.label_metadata == np.array([[0, 0], [1, 0]])).all()
+    evaluator.apply_filter(labels=["v2"])
+    assert (evaluator.detailed_pairs == np.array([1])).all()
+    assert (evaluator.label_metadata == np.array([[0, 0], [1, 0]])).all()
 
     # test combo
-    filter_ = evaluator.create_filter(
-        datum_uids=["uid1"],
+    evaluator.apply_filter(
+        datum_ids=["uid1"],
         labels=["v1"],
     )
-    assert (filter_.ranked_indices == np.array([0])).all()
-    assert (filter_.detailed_indices == np.array([0])).all()
-    assert (filter_.label_metadata == np.array([[1, 1], [0, 0]])).all()
+    assert (evaluator.detailed_pairs == np.array([0])).all()
+    assert (evaluator.label_metadata == np.array([[1, 1], [0, 0]])).all()
 
     # test evaluation
-    filter_ = evaluator.create_filter(datum_uids=["uid1"])
-    metrics = evaluator.evaluate(
-        iou_thresholds=[0.5],
-        filter_=filter_,
-    )
-
+    evaluator.apply_filter(datum_ids=["uid1"])
+    metrics = evaluator.evaluate(iou_thresholds=[0.5])
     actual_metrics = [m.to_dict() for m in metrics[MetricType.AP]]
     expected_metrics = [
         {
@@ -200,45 +171,28 @@ def test_filtering_two_detections(two_detections: list[Detection]):
     loader.add_bounding_boxes(two_detections)
     evaluator = loader.finalize()
 
-    assert (
-        evaluator._ranked_pairs
-        == np.array(
-            [
-                [1.0, 0.0, 0.0, 1.0, 0.0, 1.0, 0.98],
-                [0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.3],
-            ]
-        )
-    ).all()
-
-    assert (
-        evaluator._label_metadata_per_datum
-        == np.array(
-            [
-                [
-                    [1, 1],
-                    [1, 0],
-                ],
-                [
-                    [1, 0],
-                    [0, 1],
-                ],
-            ]
-        )
-    ).all()
-
-    assert (evaluator._label_metadata == np.array([[2, 1], [1, 1]])).all()
+    assert (evaluator.label_metadata == np.array([[2, 1], [1, 1]])).all()
 
     # test datum filtering
-    filter_ = evaluator.create_filter(datum_uids=["uid1"])
-    assert (filter_.ranked_indices == np.array([1])).all()
-    assert (filter_.detailed_indices == np.array([0, 1])).all()
-    assert (filter_.label_metadata == np.array([[1, 1], [1, 0]])).all()
-
-    filter_ = evaluator.create_filter(datum_uids=["uid2"])
-    assert (filter_.ranked_indices == np.array([0])).all()
-    assert (filter_.detailed_indices == np.array([2])).all()
+    evaluator.apply_filter(datum_ids=["uid1"])
     assert (
-        filter_.label_metadata
+        evaluator.detailed_pairs
+        == np.array(
+            [
+                [0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.3],
+                [0.0, 1.0, -1.0, 0.0, 1.0, -1.0, -1.0],
+            ]
+        )
+    ).all()
+    assert (evaluator.label_metadata == np.array([[1, 1], [1, 0]])).all()
+
+    evaluator.apply_filter(datum_ids=["uid2"])
+    assert (
+        evaluator.detailed_pairs
+        == np.array([[1.0, 2.0, 1.0, 1.0, 0.0, 1.0, 0.98]])
+    ).all()
+    assert (
+        evaluator.label_metadata
         == np.array(
             [
                 [
@@ -254,31 +208,42 @@ def test_filtering_two_detections(two_detections: list[Detection]):
     ).all()
 
     # test label filtering
-    filter_ = evaluator.create_filter(labels=["v1"])
-    assert (filter_.ranked_indices == np.array([0, 1])).all()
-    assert (filter_.detailed_indices == np.array([0, 2])).all()
-    assert (filter_.label_metadata == np.array([[2, 1], [0, 0]])).all()
+    evaluator.apply_filter(labels=["v1"])
+    assert (
+        evaluator.detailed_pairs
+        == np.array(
+            [
+                [0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.3],
+                [1.0, 2.0, -1.0, 0.0, 0.0, -1.0, 0.0],
+            ]
+        )
+    ).all()
+    assert (evaluator.label_metadata == np.array([[2, 1], [0, 0]])).all()
 
-    filter_ = evaluator.create_filter(labels=["v2"])
-    assert (filter_.ranked_indices == np.array([])).all()
-    assert (filter_.detailed_indices == np.array([1])).all()
-    assert (filter_.label_metadata == np.array([[0, 0], [1, 1]])).all()
+    evaluator.apply_filter(labels=["v2"])
+    assert (
+        evaluator.detailed_pairs
+        == np.array(
+            [
+                [0.0, -1.0, -1.0, 0.0, -1.0, -1.0, 0.0],
+                [0.0, 1.0, -1.0, 0.0, 1.0, -1.0, -1.0],
+                [1.0, -1.0, 1.0, 0.0, -1.0, 1.0, 0.98],
+            ]
+        )
+    ).all()
+    assert (evaluator.label_metadata == np.array([[0, 0], [1, 1]])).all()
 
     # test combo
-    filter_ = evaluator.create_filter(
-        datum_uids=["uid1"],
+    evaluator.apply_filter(
+        datum_ids=["uid1"],
         labels=["v1"],
     )
-    assert (filter_.ranked_indices == np.array([1])).all()
-    assert (filter_.detailed_indices == np.array([0])).all()
-    assert (filter_.label_metadata == np.array([[1, 1], [0, 0]])).all()
+    assert (evaluator.detailed_pairs == np.array([0])).all()
+    assert (evaluator.label_metadata == np.array([[1, 1], [0, 0]])).all()
 
     # test evaluation
-    filter_ = evaluator.create_filter(datum_uids=["uid1"])
-    metrics = evaluator.evaluate(
-        iou_thresholds=[0.5],
-        filter_=filter_,
-    )
+    evaluator.apply_filter(datum_ids=["uid1"])
+    metrics = evaluator.evaluate(iou_thresholds=[0.5])
 
     actual_metrics = [m.to_dict() for m in metrics[MetricType.AP]]
     expected_metrics = [
@@ -330,72 +295,70 @@ def test_filtering_four_detections(four_detections: list[Detection]):
     loader.add_bounding_boxes(four_detections)
     evaluator = loader.finalize()
 
+    assert (evaluator.label_metadata == np.array([[4, 2], [2, 2]])).all()
+
+    # test datum filtering
+    evaluator.apply_filter(datum_ids=["uid1"])
     assert (
-        evaluator._ranked_pairs
+        evaluator.detailed_pairs
         == np.array(
             [
-                [1.0, 0.0, 0.0, 1.0, 0.0, 1.0, 0.98],
-                [3.0, 0.0, 0.0, 1.0, 0.0, 1.0, 0.98],
                 [0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.3],
-                [2.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.3],
+                [0.0, 1.0, -1.0, 0.0, 1.0, -1.0, -1.0],
             ]
         )
     ).all()
+    assert (evaluator.label_metadata == np.array([[1, 1], [1, 0]])).all()
 
+    evaluator.apply_filter(datum_ids=["uid2"])
     assert (
-        evaluator._label_metadata_per_datum
-        == np.array(
-            [
-                [
-                    [1, 1],
-                    [1, 0],
-                    [1, 1],
-                    [1, 0],
-                ],
-                [
-                    [1, 0],
-                    [0, 1],
-                    [1, 0],
-                    [0, 1],
-                ],
-            ],
-            dtype=np.int32,
-        )
+        evaluator.detailed_pairs
+        == np.array([[1.0, 2.0, 1.0, 1.0, 0.0, 1.0, 0.98]])
     ).all()
-
-    assert (evaluator._label_metadata == np.array([[4, 2], [2, 2]])).all()
-
-    # test datum filtering
-    filter_ = evaluator.create_filter(datum_uids=["uid1"])
-    assert (filter_.ranked_indices == np.array([2])).all()
-    assert (filter_.detailed_indices == np.array([0, 1])).all()
-    assert (filter_.label_metadata == np.array([[1, 1], [1, 0]])).all()
-
-    filter_ = evaluator.create_filter(datum_uids=["uid2"])
-    assert (filter_.ranked_indices == np.array([0])).all()
-    assert (filter_.detailed_indices == np.array([2])).all()
-    assert (filter_.label_metadata == np.array([[1, 0], [0, 1]])).all()
+    assert (evaluator.label_metadata == np.array([[1, 0], [0, 1]])).all()
 
     # test label filtering
-    filter_ = evaluator.create_filter(labels=["v1"])
-    assert (filter_.ranked_indices == np.array([0, 1, 2, 3])).all()
-    assert (filter_.detailed_indices == np.array([0, 2, 3, 5])).all()
-    assert (filter_.label_metadata == np.array([[4, 2], [0, 0]])).all()
+    evaluator.apply_filter(labels=["v1"])
+    assert (
+        evaluator.detailed_pairs
+        == np.array(
+            [
+                [0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.3],
+                [1.0, 2.0, -1.0, 0.0, 0.0, -1.0, 0.0],
+                [2.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.3],
+                [3.0, 2.0, -1.0, 0.0, 0.0, -1.0, 0.0],
+            ]
+        )
+    ).all()
+    assert (evaluator.label_metadata == np.array([[4, 2], [0, 0]])).all()
 
-    filter_ = evaluator.create_filter(labels=["v2"])
-    assert (filter_.ranked_indices == np.array([])).all()
-    assert (filter_.detailed_indices == np.array([1, 4])).all()
-    assert (filter_.label_metadata == np.array([[0, 0], [2, 2]])).all()
+    evaluator.apply_filter(labels=["v2"])
+    assert (
+        evaluator.detailed_pairs
+        == np.array(
+            [
+                [0.0, -1.0, -1.0, 0.0, -1.0, -1.0, 0.0],
+                [0.0, 1.0, -1.0, 0.0, 1.0, -1.0, -1.0],
+                [1.0, -1.0, 1.0, 0.0, -1.0, 1.0, 0.98],
+                [2.0, -1.0, -1.0, 0.0, -1.0, -1.0, 0.0],
+                [2.0, 1.0, -1.0, 0.0, 1.0, -1.0, -1.0],
+                [3.0, -1.0, 1.0, 0.0, -1.0, 1.0, 0.98],
+            ]
+        )
+    ).all()
+    assert (evaluator.label_metadata == np.array([[0, 0], [2, 2]])).all()
 
     # test combo
-    filter_ = evaluator.create_filter(
-        datum_uids=["uid1"],
+    evaluator.apply_filter(
+        datum_ids=["uid1"],
         labels=["v1"],
     )
-    assert (filter_.ranked_indices == np.array([2])).all()
-    assert (filter_.detailed_indices == np.array([0])).all()
     assert (
-        filter_.label_metadata
+        evaluator.detailed_pairs
+        == np.array([[0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.3]])
+    ).all()
+    assert (
+        evaluator.label_metadata
         == np.array(
             [
                 [
@@ -411,13 +374,8 @@ def test_filtering_four_detections(four_detections: list[Detection]):
     ).all()
 
     # test evaluation
-    filter_ = evaluator.create_filter(datum_uids=["uid1"])
-
-    metrics = evaluator.evaluate(
-        iou_thresholds=[0.5],
-        filter_=filter_,
-    )
-
+    evaluator.apply_filter(datum_ids=["uid1"])
+    metrics = evaluator.evaluate(iou_thresholds=[0.5])
     actual_metrics = [m.to_dict() for m in metrics[MetricType.AP]]
     expected_metrics = [
         {
@@ -468,47 +426,13 @@ def test_filtering_all_detections(four_detections: list[Detection]):
     loader.add_bounding_boxes(four_detections)
     evaluator = loader.finalize()
 
-    assert (
-        evaluator._ranked_pairs
-        == np.array(
-            [
-                [1.0, 0.0, 0.0, 1.0, 0.0, 1.0, 0.98],
-                [3.0, 0.0, 0.0, 1.0, 0.0, 1.0, 0.98],
-                [0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.3],
-                [2.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.3],
-            ]
-        )
-    ).all()
-
-    assert (
-        evaluator._label_metadata_per_datum
-        == np.array(
-            [
-                [
-                    [1, 1],
-                    [1, 0],
-                    [1, 1],
-                    [1, 0],
-                ],
-                [
-                    [1, 0],
-                    [0, 1],
-                    [1, 0],
-                    [0, 1],
-                ],
-            ],
-            dtype=np.int32,
-        )
-    ).all()
-
-    assert (evaluator._label_metadata == np.array([[4, 2], [2, 2]])).all()
+    assert (evaluator.label_metadata == np.array([[4, 2], [2, 2]])).all()
 
     # test datum filtering
-    filter_ = evaluator.create_filter(datum_uids=[])
-    assert (filter_.ranked_indices == np.array([])).all()
-    assert (filter_.detailed_indices == np.array([])).all()
+    evaluator.apply_filter(datum_ids=[])
+    assert (evaluator.detailed_pairs == np.zeros((0, 7))).all()
     assert (
-        filter_.label_metadata
+        evaluator.label_metadata
         == np.array(
             [
                 [
@@ -524,11 +448,20 @@ def test_filtering_all_detections(four_detections: list[Detection]):
     ).all()
 
     # test label filtering
-    filter_ = evaluator.create_filter(labels=[])
-    assert (filter_.ranked_indices == np.array([])).all()
-    assert (filter_.detailed_indices == np.array([])).all()
+    evaluator.apply_filter(labels=[])
     assert (
-        filter_.label_metadata
+        evaluator.detailed_pairs
+        == np.array(
+            [
+                [0.0, -1.0, -1.0, 0.0, -1.0, -1.0, 0.0],
+                [1.0, -1.0, -1.0, 0.0, -1.0, -1.0, 0.0],
+                [2.0, -1.0, -1.0, 0.0, -1.0, -1.0, 0.0],
+                [3.0, -1.0, -1.0, 0.0, -1.0, -1.0, 0.0],
+            ]
+        )
+    ).all()
+    assert (
+        evaluator.label_metadata
         == np.array(
             [
                 [
@@ -544,14 +477,13 @@ def test_filtering_all_detections(four_detections: list[Detection]):
     ).all()
 
     # test combo
-    filter_ = evaluator.create_filter(
-        datum_uids=[],
+    evaluator.apply_filter(
+        datum_ids=[],
         labels=["v1"],
     )
-    assert (filter_.ranked_indices == np.array([])).all()
-    assert (filter_.detailed_indices == np.array([])).all()
+    assert (evaluator.detailed_pairs == np.zeros((0, 7))).all()
     assert (
-        filter_.label_metadata
+        evaluator.label_metadata
         == np.array(
             [
                 [
@@ -564,17 +496,12 @@ def test_filtering_all_detections(four_detections: list[Detection]):
     ).all()
 
     # test evaluation
-    filter_ = evaluator.create_filter(datum_uids=[])
-
-    metrics = evaluator.evaluate(
-        iou_thresholds=[0.5],
-        filter_=filter_,
-    )
+    evaluator.apply_filter(datum_ids=[])
+    metrics = evaluator.evaluate(iou_thresholds=[0.5])
     evaluator.compute_confusion_matrix(
         iou_thresholds=[0.5],
         score_thresholds=[0.5],
         number_of_examples=0,
-        filter_=filter_,
     )
 
     actual_metrics = [m.to_dict() for m in metrics[MetricType.AP]]
@@ -585,5 +512,5 @@ def test_filtering_random_detections():
     loader = DataLoader()
     loader.add_bounding_boxes(_generate_random_detections(13, 4, "abc"))
     evaluator = loader.finalize()
-    f = evaluator.create_filter(datum_uids=["uid1"])
-    evaluator.evaluate(filter_=f)
+    evaluator.apply_filter(datum_ids=["uid1"])
+    evaluator.evaluate()
