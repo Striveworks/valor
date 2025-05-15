@@ -297,7 +297,6 @@ class Evaluator:
         self,
         iou_thresholds: list[float],
         score_thresholds: list[float],
-        number_of_examples: int,
     ) -> list[Metric]:
         """
         Computes confusion matrices at various thresholds.
@@ -308,27 +307,23 @@ class Evaluator:
             A list of IOU thresholds to compute metrics over.
         score_thresholds : list[float]
             A list of score thresholds to compute metrics over.
-        number_of_examples : int
-            Maximum number of annotation examples to return in ConfusionMatrix.
 
         Returns
         -------
         list[Metric]
             List of confusion matrices per threshold pair.
         """
-        label_metadata = self.label_metadata
         results = compute_confusion_matrix(
             detailed_pairs=self.detailed_pairs,
-            label_metadata=label_metadata,
+            label_metadata=self.label_metadata,
             iou_thresholds=np.array(iou_thresholds),
             score_thresholds=np.array(score_thresholds),
-            n_examples=number_of_examples,
         )
         return unpack_confusion_matrix_into_metric_list(
             results=results,
+            detailed_pairs=self.detailed_pairs,
             iou_thresholds=iou_thresholds,
             score_thresholds=score_thresholds,
-            number_of_examples=number_of_examples,
             index_to_datum_id=self.index_to_datum_id,
             index_to_groundtruth_id=self.index_to_groundtruth_id,
             index_to_prediction_id=self.index_to_prediction_id,
@@ -339,7 +334,6 @@ class Evaluator:
         self,
         iou_thresholds: list[float] = [0.1, 0.5, 0.75],
         score_thresholds: list[float] = [0.5],
-        number_of_examples: int = 0,
     ) -> dict[MetricType, list[Metric]]:
         """
         Computes all available metrics.
@@ -350,8 +344,6 @@ class Evaluator:
             A list of IOU thresholds to compute metrics over.
         score_thresholds : list[float], default=[0.5]
             A list of score thresholds to compute metrics over.
-        number_of_examples : int, default=0
-            Maximum number of annotation examples to return in ConfusionMatrix.
 
         Returns
         -------
@@ -365,7 +357,6 @@ class Evaluator:
         metrics[MetricType.ConfusionMatrix] = self.compute_confusion_matrix(
             iou_thresholds=iou_thresholds,
             score_thresholds=score_thresholds,
-            number_of_examples=number_of_examples,
         )
         return metrics
 

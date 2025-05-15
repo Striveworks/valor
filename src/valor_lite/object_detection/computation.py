@@ -663,8 +663,7 @@ def compute_confusion_matrix(
     label_metadata: NDArray[np.int32],
     iou_thresholds: NDArray[np.float64],
     score_thresholds: NDArray[np.float64],
-    n_examples: int,
-) -> tuple[NDArray[np.float64], NDArray[np.float64], NDArray[np.int32]]:
+) -> NDArray[np.int32]:
     """
     Compute detailed counts.
 
@@ -680,7 +679,7 @@ def compute_confusion_matrix(
 
     Parameters
     ----------
-    data : NDArray[np.float64]
+    detailed_pairs : NDArray[np.float64]
         An unsorted array summarizing the IOU calculations of one or more pairs.
     label_metadata : NDArray[np.int32]
         An array containing metadata related to labels.
@@ -688,8 +687,6 @@ def compute_confusion_matrix(
         A 1-D array containing IOU thresholds.
     score_thresholds : NDArray[np.float64]
         A 1-D array containing score thresholds.
-    n_examples : int
-        The maximum number of examples to return per count.
 
     Returns
     -------
@@ -700,77 +697,71 @@ def compute_confusion_matrix(
     NDArray[np.int32]
         Unmatched Ground Truths.
     """
-    data = detailed_pairs
-
+    n_pairs = detailed_pairs.shape[0]
     n_labels = label_metadata.shape[0]
     n_ious = iou_thresholds.shape[0]
     n_scores = score_thresholds.shape[0]
 
-    confusion_matrix = -1 * np.ones(
-        # (datum idx, gt idx, pd idx, pd score) * n_examples + count
-        (n_ious, n_scores, n_labels, n_labels, 4 * n_examples + 1),
-        dtype=np.float32,
-    )
-    unmatched_predictions = -1 * np.ones(
-        # (datum idx, pd idx, pd score) * n_examples + count
-        (n_ious, n_scores, n_labels, 3 * n_examples + 1),
-        dtype=np.float32,
-    )
-    unmatched_ground_truths = -1 * np.ones(
-        # (datum idx, gt idx) * n_examples + count
-        (n_ious, n_scores, n_labels, 2 * n_examples + 1),
+    examples = -1 * np.ones(
+        (n_ious, n_scores, n_pairs),
         dtype=np.int32,
     )
+    if detailed_pairs.size == 0:
+        return examples
 
-    mask_gt_exists = data[:, 1] > -0.5
-    mask_pd_exists = data[:, 2] > -0.5
-    mask_label_match = np.isclose(data[:, 4], data[:, 5])
-    mask_score_nonzero = data[:, 6] > 1e-9
-    mask_iou_nonzero = data[:, 3] > 1e-9
+    groundtruths = detailed_pairs[:, (0, 1)].astype(np.int32)
+    predictions = detailed_pairs[:, (0, 2)].astype(np.int32)
+    gt_labels = detailed_pairs[:, 4].astype(np.int32)
+    pd_labels = detailed_pairs[:, 5].astype(np.int32)
+    scores = detailed_pairs[:, 6]
+    ious = detailed_pairs[:, 3]
+    position_encodings = (gt_labels + 1) + ((pd_labels + 1) * (n_labels + 1))
+
+    mask_gt_exists = detailed_pairs[:, 1] > -0.5
+    mask_pd_exists = detailed_pairs[:, 2] > -0.5
+    mask_label_match = np.isclose(detailed_pairs[:, 4], detailed_pairs[:, 5])
+    mask_score_nonzero = detailed_pairs[:, 6] > 1e-9
+    mask_iou_nonzero = detailed_pairs[:, 3] > 1e-9
 
     mask_gt_pd_exists = mask_gt_exists & mask_pd_exists
     mask_gt_pd_match = mask_gt_pd_exists & mask_label_match
     mask_gt_pd_mismatch = mask_gt_pd_exists & ~mask_label_match
 
-    groundtruths = data[:, [0, 1]].astype(np.int32)
-    predictions = data[:, [0, 2]].astype(np.int32)
     for iou_idx in range(n_ious):
-        mask_iou_threshold = data[:, 3] >= iou_thresholds[iou_idx]
+        mask_iou_threshold = ious >= iou_thresholds[iou_idx]
         mask_iou = mask_iou_nonzero & mask_iou_threshold
 
         groundtruths_passing_ious = np.unique(groundtruths[mask_iou], axis=0)
-        mask_groundtruths_with_passing_ious = _isin(
+        mask_groundtruths_passing_ious = _isin(
             data=groundtruths,
             subset=groundtruths_passing_ious,
         )
-        mask_groundtruths_without_passing_ious = (
-            ~mask_groundtruths_with_passing_ious & mask_gt_exists
+        mask_groundtruths_not_passing_ious = (
+            ~mask_groundtruths_passing_ious & mask_gt_exists
         )
 
-        predictions_with_passing_ious = np.unique(
-            predictions[mask_iou], axis=0
-        )
-        mask_predictions_with_passing_ious = _isin(
+        predictions_passing_ious = np.unique(predictions[mask_iou], axis=0)
+        mask_predictions_passing_ious = _isin(
             data=predictions,
-            subset=predictions_with_passing_ious,
+            subset=predictions_passing_ious,
         )
-        mask_predictions_without_passing_ious = (
-            ~mask_predictions_with_passing_ious & mask_pd_exists
+        mask_predictions_not_passing_ious = (
+            ~mask_predictions_passing_ious & mask_pd_exists
         )
 
         for score_idx in range(n_scores):
-            mask_score_threshold = data[:, 6] >= score_thresholds[score_idx]
+            mask_score_threshold = scores >= score_thresholds[score_idx]
             mask_score = mask_score_nonzero & mask_score_threshold
 
-            groundtruths_with_passing_score = np.unique(
+            groundtruths_passing_score = np.unique(
                 groundtruths[mask_iou & mask_score], axis=0
             )
-            mask_groundtruths_with_passing_score = _isin(
+            mask_groundtruths_passing_score = _isin(
                 data=groundtruths,
-                subset=groundtruths_with_passing_score,
+                subset=groundtruths_passing_score,
             )
-            mask_groundtruths_without_passing_score = (
-                ~mask_groundtruths_with_passing_score & mask_gt_exists
+            mask_groundtruths_not_passing_score = (
+                ~mask_groundtruths_passing_score & mask_gt_exists
             )
 
             # create category masks
@@ -779,14 +770,14 @@ def compute_confusion_matrix(
                 (
                     ~mask_score
                     & mask_gt_pd_match
-                    & mask_groundtruths_with_passing_score
+                    & mask_groundtruths_passing_score
                 )
                 | (mask_score & mask_gt_pd_mismatch)
             )
-            mask_halluc = mask_score & mask_predictions_without_passing_ious
+            mask_halluc = mask_score & mask_predictions_not_passing_ious
             mask_misprd = (
-                mask_groundtruths_without_passing_ious
-                | mask_groundtruths_without_passing_score
+                mask_groundtruths_not_passing_ious
+                | mask_groundtruths_not_passing_score
             )
 
             # filter out true-positives from misclf and misprd
@@ -806,133 +797,27 @@ def compute_confusion_matrix(
             )
 
             # count true positives
-            tp_examples, tp_labels, tp_counts = _count_with_examples(
-                data[mask_tp],
-                unique_idx=[0, 2, 5],
-                label_idx=2,
-            )
+            tp_indices = np.where(mask_tp)[0]
+            examples[iou_idx, score_idx, tp_indices] = position_encodings[
+                tp_indices
+            ]
 
             # count misclassifications
-            (
-                misclf_examples,
-                misclf_labels,
-                misclf_counts,
-            ) = _count_with_examples(
-                data[mask_misclf], unique_idx=[0, 1, 2, 4, 5], label_idx=[3, 4]
-            )
+            misclf_indices = np.where(mask_misclf)[0]
+            examples[iou_idx, score_idx, misclf_indices] = position_encodings[
+                misclf_indices
+            ]
 
             # count unmatched predictions
-            (
-                halluc_examples,
-                halluc_labels,
-                halluc_counts,
-            ) = _count_with_examples(
-                data[mask_halluc], unique_idx=[0, 2, 5], label_idx=2
-            )
+            halluc_indices = np.where(mask_halluc)[0]
+            examples[iou_idx, score_idx, halluc_indices] = (
+                pd_labels[halluc_indices] + 1
+            ) * (n_labels + 1)
 
             # count unmatched ground truths
-            (
-                misprd_examples,
-                misprd_labels,
-                misprd_counts,
-            ) = _count_with_examples(
-                data[mask_misprd], unique_idx=[0, 1, 4], label_idx=2
+            misprd_indices = np.where(mask_misprd)[0]
+            examples[iou_idx, score_idx, misprd_indices] = (
+                gt_labels[misprd_indices] + 1
             )
 
-            # store the counts
-            confusion_matrix[
-                iou_idx, score_idx, tp_labels, tp_labels, 0
-            ] = tp_counts
-            confusion_matrix[
-                iou_idx,
-                score_idx,
-                misclf_labels[:, 0],
-                misclf_labels[:, 1],
-                0,
-            ] = misclf_counts
-            unmatched_predictions[
-                iou_idx,
-                score_idx,
-                halluc_labels,
-                0,
-            ] = halluc_counts
-            unmatched_ground_truths[
-                iou_idx,
-                score_idx,
-                misprd_labels,
-                0,
-            ] = misprd_counts
-
-            # store examples
-            if n_examples > 0:
-                for label_idx in range(n_labels):
-
-                    # true-positive examples
-                    mask_tp_label = tp_examples[:, 5] == label_idx
-                    if mask_tp_label.sum() > 0:
-                        tp_label_examples = tp_examples[mask_tp_label][
-                            :n_examples
-                        ]
-                        confusion_matrix[
-                            iou_idx,
-                            score_idx,
-                            label_idx,
-                            label_idx,
-                            1 : 4 * tp_label_examples.shape[0] + 1,
-                        ] = tp_label_examples[:, [0, 1, 2, 6]].flatten()
-
-                    # misclassification examples
-                    mask_misclf_gt_label = misclf_examples[:, 4] == label_idx
-                    if mask_misclf_gt_label.sum() > 0:
-                        for pd_label_idx in range(n_labels):
-                            mask_misclf_pd_label = (
-                                misclf_examples[:, 5] == pd_label_idx
-                            )
-                            mask_misclf_label_combo = (
-                                mask_misclf_gt_label & mask_misclf_pd_label
-                            )
-                            if mask_misclf_label_combo.sum() > 0:
-                                misclf_label_examples = misclf_examples[
-                                    mask_misclf_label_combo
-                                ][:n_examples]
-                                confusion_matrix[
-                                    iou_idx,
-                                    score_idx,
-                                    label_idx,
-                                    pd_label_idx,
-                                    1 : 4 * misclf_label_examples.shape[0] + 1,
-                                ] = misclf_label_examples[
-                                    :, [0, 1, 2, 6]
-                                ].flatten()
-
-                    # unmatched prediction examples
-                    mask_halluc_label = halluc_examples[:, 5] == label_idx
-                    if mask_halluc_label.sum() > 0:
-                        halluc_label_examples = halluc_examples[
-                            mask_halluc_label
-                        ][:n_examples]
-                        unmatched_predictions[
-                            iou_idx,
-                            score_idx,
-                            label_idx,
-                            1 : 3 * halluc_label_examples.shape[0] + 1,
-                        ] = halluc_label_examples[:, [0, 2, 6]].flatten()
-
-                    # unmatched ground truth examples
-                    mask_misprd_label = misprd_examples[:, 4] == label_idx
-                    if misprd_examples.size > 0:
-                        misprd_label_examples = misprd_examples[
-                            mask_misprd_label
-                        ][:n_examples]
-                        unmatched_ground_truths[
-                            iou_idx,
-                            score_idx,
-                            label_idx,
-                            1 : 2 * misprd_label_examples.shape[0] + 1,
-                        ] = misprd_label_examples[:, [0, 1]].flatten()
-
-    return (
-        confusion_matrix,
-        unmatched_predictions,
-        unmatched_ground_truths,
-    )  # type: ignore[reportReturnType]
+    return examples

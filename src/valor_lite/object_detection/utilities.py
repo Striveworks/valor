@@ -1,4 +1,5 @@
 from collections import defaultdict
+from typing import Iterator
 
 import numpy as np
 from numpy.typing import NDArray
@@ -175,277 +176,148 @@ def unpack_precision_recall_into_metric_lists(
     return metrics
 
 
-def _unpack_confusion_matrix_value(
-    confusion_matrix: NDArray[np.float64],
-    number_of_labels: int,
-    number_of_examples: int,
+def defaultdict_dict():
+    return defaultdict(dict)
+
+
+def _unpack_confusion_matrix(
+    results: NDArray[np.int32],
+    detailed_pairs: NDArray[np.float64],
+    n_labels: int,
     index_to_datum_id: list[str],
     index_to_groundtruth_id: list[str],
     index_to_prediction_id: list[str],
     index_to_label: list[str],
-) -> dict[
-    str,
-    dict[
-        str,
-        dict[
-            str,
-            int
-            | list[
-                dict[
-                    str,
-                    str | dict[str, float] | float,
-                ]
+    iou_idx: int,
+    iou_threhsold: float,
+    score_idx: int,
+    score_threshold: float,
+):
+    def get_position_encoding(gt_label_idx: int, pd_label_idx: int) -> int:
+        n_positions = n_labels + 1
+        gt_label_idx += 1
+        pd_label_idx += 1
+        return (pd_label_idx * n_positions) + gt_label_idx
+
+    def get_counts(gt_label_idx: int, pd_label_idx: int) -> int:
+        key = get_position_encoding(
+            gt_label_idx=gt_label_idx, pd_label_idx=pd_label_idx
+        )
+        return int((results[iou_idx, score_idx, :] == key).sum())
+
+    def get_example_indices(
+        gt_label_idx: int, pd_label_idx: int
+    ) -> Iterator[tuple[int, int, int]]:
+        key = get_position_encoding(
+            gt_label_idx=gt_label_idx, pd_label_idx=pd_label_idx
+        )
+        mask = results[iou_idx, score_idx, :] == key
+        if not mask.any():
+            return
+        indices = np.where(mask)[0]
+        pairs = detailed_pairs[np.ix_(indices, (0, 1, 2))]  # type: ignore - numpy typing being annoying
+        for idx in range(pairs.shape[0]):
+            yield tuple(pairs[idx].astype(int).tolist())
+
+    confusion_matrix = dict()
+    unmatched_ground_truths = dict()
+    unmatched_predictions = dict()
+
+    for label_idx, label in enumerate(index_to_label):
+        # unmatched ground truths
+        unmatched_ground_truths[label] = {
+            "counts": get_counts(
+                gt_label_idx=label_idx,
+                pd_label_idx=-1,
+            ),
+            "examples": [
+                {
+                    "datum_id": index_to_datum_id[datum_id],
+                    "ground_truth_id": index_to_groundtruth_id[gt_id],
+                }
+                for datum_id, gt_id, _ in get_example_indices(
+                    gt_label_idx=label_idx,
+                    pd_label_idx=-1,
+                )
             ],
-        ],
-    ],
-]:
-    """
-    Unpacks a numpy array of confusion matrix counts and examples.
-    """
+        }
 
-    datum_idx = lambda gt_label_idx, pd_label_idx, example_idx: int(  # noqa: E731 - lambda fn
-        confusion_matrix[
-            gt_label_idx,
-            pd_label_idx,
-            example_idx * 4 + 1,
-        ]
-    )
+        # unmatched predictions
+        unmatched_predictions[label] = {
+            "counts": get_counts(
+                gt_label_idx=-1,
+                pd_label_idx=label_idx,
+            ),
+            "examples": [
+                {
+                    "datum_id": index_to_datum_id[datum_id],
+                    "prediction_id": index_to_prediction_id[pd_id],
+                }
+                for datum_id, pd_id, _ in get_example_indices(
+                    gt_label_idx=-1,
+                    pd_label_idx=label_idx,
+                )
+            ],
+        }
 
-    groundtruth_idx = lambda gt_label_idx, pd_label_idx, example_idx: int(  # noqa: E731 - lambda fn
-        confusion_matrix[
-            gt_label_idx,
-            pd_label_idx,
-            example_idx * 4 + 2,
-        ]
-    )
-
-    prediction_idx = lambda gt_label_idx, pd_label_idx, example_idx: int(  # noqa: E731 - lambda fn
-        confusion_matrix[
-            gt_label_idx,
-            pd_label_idx,
-            example_idx * 4 + 3,
-        ]
-    )
-
-    score = lambda gt_label_idx, pd_label_idx, example_idx: float(  # noqa: E731 - lambda fn
-        confusion_matrix[
-            gt_label_idx,
-            pd_label_idx,
-            example_idx * 4 + 4,
-        ]
-    )
-
-    return {
-        index_to_label[gt_label_idx]: {
-            index_to_label[pd_label_idx]: {
-                "count": max(
-                    int(confusion_matrix[gt_label_idx, pd_label_idx, 0]),
-                    0,
+        # confusion matrix
+        confusion_matrix[label] = {}
+        for pd_label_idx, pd_label in enumerate(index_to_label):
+            gt_label_idx = label_idx
+            gt_label = label
+            confusion_matrix[gt_label][pd_label] = {
+                "counts": get_counts(
+                    gt_label_idx=gt_label_idx,
+                    pd_label_idx=pd_label_idx,
                 ),
                 "examples": [
                     {
-                        "datum": index_to_datum_id[
-                            datum_idx(gt_label_idx, pd_label_idx, example_idx)
-                        ],
-                        "groundtruth": index_to_groundtruth_id[
-                            groundtruth_idx(
-                                gt_label_idx, pd_label_idx, example_idx
-                            )
-                        ],
-                        "prediction": index_to_prediction_id[
-                            prediction_idx(
-                                gt_label_idx, pd_label_idx, example_idx
-                            )
-                        ],
-                        "score": score(
-                            gt_label_idx, pd_label_idx, example_idx
-                        ),
+                        "datum_id": index_to_datum_id[datum_id],
+                        "ground_truth_id": index_to_groundtruth_id[gt_id],
+                        "prediction_id": index_to_prediction_id[pd_id],
                     }
-                    for example_idx in range(number_of_examples)
-                    if datum_idx(gt_label_idx, pd_label_idx, example_idx) >= 0
+                    for datum_id, gt_id, pd_id in get_example_indices(
+                        gt_label_idx=gt_label_idx,
+                        pd_label_idx=pd_label_idx,
+                    )
                 ],
             }
-            for pd_label_idx in range(number_of_labels)
-        }
-        for gt_label_idx in range(number_of_labels)
-    }
 
-
-def _unpack_unmatched_predictions_value(
-    unmatched_predictions: NDArray[np.float64],
-    number_of_labels: int,
-    number_of_examples: int,
-    index_to_datum_id: list[str],
-    index_to_prediction_id: list[str],
-    index_to_label: list[str],
-) -> dict[
-    str,
-    dict[
-        str,
-        int | list[dict[str, str | float | dict[str, float]]],
-    ],
-]:
-    """
-    Unpacks a numpy array of unmatched_prediction counts and examples.
-    """
-
-    datum_idx = (
-        lambda pd_label_idx, example_idx: int(  # noqa: E731 - lambda fn
-            unmatched_predictions[
-                pd_label_idx,
-                example_idx * 3 + 1,
-            ]
-        )
+    return Metric.confusion_matrix(
+        confusion_matrix=confusion_matrix,
+        unmatched_ground_truths=unmatched_ground_truths,
+        unmatched_predictions=unmatched_predictions,
+        iou_threshold=iou_threhsold,
+        score_threshold=score_threshold,
     )
-
-    prediction_idx = (
-        lambda pd_label_idx, example_idx: int(  # noqa: E731 - lambda fn
-            unmatched_predictions[
-                pd_label_idx,
-                example_idx * 3 + 2,
-            ]
-        )
-    )
-
-    score = lambda pd_label_idx, example_idx: float(  # noqa: E731 - lambda fn
-        unmatched_predictions[
-            pd_label_idx,
-            example_idx * 3 + 3,
-        ]
-    )
-
-    return {
-        index_to_label[pd_label_idx]: {
-            "count": max(
-                int(unmatched_predictions[pd_label_idx, 0]),
-                0,
-            ),
-            "examples": [
-                {
-                    "datum": index_to_datum_id[
-                        datum_idx(pd_label_idx, example_idx)
-                    ],
-                    "prediction": index_to_prediction_id[
-                        prediction_idx(pd_label_idx, example_idx)
-                    ],
-                    "score": score(pd_label_idx, example_idx),
-                }
-                for example_idx in range(number_of_examples)
-                if datum_idx(pd_label_idx, example_idx) >= 0
-            ],
-        }
-        for pd_label_idx in range(number_of_labels)
-    }
-
-
-def _unpack_unmatched_ground_truths_value(
-    unmatched_ground_truths: NDArray[np.int32],
-    number_of_labels: int,
-    number_of_examples: int,
-    index_to_datum_id: list[str],
-    index_to_groundtruth_id: list[str],
-    index_to_label: list[str],
-) -> dict[str, dict[str, int | list[dict[str, str | dict[str, float]]]]]:
-    """
-    Unpacks a numpy array of unmatched ground truth counts and examples.
-    """
-
-    datum_idx = (
-        lambda gt_label_idx, example_idx: int(  # noqa: E731 - lambda fn
-            unmatched_ground_truths[
-                gt_label_idx,
-                example_idx * 2 + 1,
-            ]
-        )
-    )
-
-    groundtruth_idx = (
-        lambda gt_label_idx, example_idx: int(  # noqa: E731 - lambda fn
-            unmatched_ground_truths[
-                gt_label_idx,
-                example_idx * 2 + 2,
-            ]
-        )
-    )
-
-    return {
-        index_to_label[gt_label_idx]: {
-            "count": max(
-                int(unmatched_ground_truths[gt_label_idx, 0]),
-                0,
-            ),
-            "examples": [
-                {
-                    "datum": index_to_datum_id[
-                        datum_idx(gt_label_idx, example_idx)
-                    ],
-                    "groundtruth": index_to_groundtruth_id[
-                        groundtruth_idx(gt_label_idx, example_idx)
-                    ],
-                }
-                for example_idx in range(number_of_examples)
-                if datum_idx(gt_label_idx, example_idx) >= 0
-            ],
-        }
-        for gt_label_idx in range(number_of_labels)
-    }
 
 
 def unpack_confusion_matrix_into_metric_list(
-    results: tuple[
-        NDArray[np.float64],
-        NDArray[np.float64],
-        NDArray[np.int32],
-    ],
+    results: NDArray[np.int32],
+    detailed_pairs: NDArray[np.float64],
     iou_thresholds: list[float],
     score_thresholds: list[float],
-    number_of_examples: int,
     index_to_datum_id: list[str],
     index_to_groundtruth_id: list[str],
     index_to_prediction_id: list[str],
     index_to_label: list[str],
 ) -> list[Metric]:
-    (
-        confusion_matrix,
-        unmatched_predictions,
-        unmatched_ground_truths,
-    ) = results
     n_labels = len(index_to_label)
     return [
-        Metric.confusion_matrix(
-            iou_threshold=iou_threshold,
+        _unpack_confusion_matrix(
+            results=results,
+            detailed_pairs=detailed_pairs,
+            n_labels=n_labels,
+            index_to_datum_id=index_to_datum_id,
+            index_to_groundtruth_id=index_to_groundtruth_id,
+            index_to_prediction_id=index_to_prediction_id,
+            index_to_label=index_to_label,
+            iou_idx=iou_idx,
+            iou_threhsold=iou_threshold,
+            score_idx=score_idx,
             score_threshold=score_threshold,
-            maximum_number_of_examples=number_of_examples,
-            confusion_matrix=_unpack_confusion_matrix_value(
-                confusion_matrix=confusion_matrix[iou_idx, score_idx, :, :, :],
-                number_of_labels=n_labels,
-                number_of_examples=number_of_examples,
-                index_to_datum_id=index_to_datum_id,
-                index_to_groundtruth_id=index_to_groundtruth_id,
-                index_to_prediction_id=index_to_prediction_id,
-                index_to_label=index_to_label,
-            ),
-            unmatched_predictions=_unpack_unmatched_predictions_value(
-                unmatched_predictions=unmatched_predictions[
-                    iou_idx, score_idx, :, :
-                ],
-                number_of_labels=n_labels,
-                number_of_examples=number_of_examples,
-                index_to_datum_id=index_to_datum_id,
-                index_to_prediction_id=index_to_prediction_id,
-                index_to_label=index_to_label,
-            ),
-            unmatched_ground_truths=_unpack_unmatched_ground_truths_value(
-                unmatched_ground_truths=unmatched_ground_truths[
-                    iou_idx, score_idx, :, :
-                ],
-                number_of_labels=n_labels,
-                number_of_examples=number_of_examples,
-                index_to_datum_id=index_to_datum_id,
-                index_to_groundtruth_id=index_to_groundtruth_id,
-                index_to_label=index_to_label,
-            ),
         )
         for iou_idx, iou_threshold in enumerate(iou_thresholds)
         for score_idx, score_threshold in enumerate(score_thresholds)
+        if (results[iou_idx, score_idx] != -1).any()
     ]

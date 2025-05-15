@@ -1122,7 +1122,7 @@ def detections_for_detailed_counting(
             uid="uid1",
             groundtruths=[
                 BoundingBox(
-                    uid=str(uuid4()),
+                    uid="uid_1_gt_0",
                     xmin=rect1[0],
                     xmax=rect1[1],
                     ymin=rect1[2],
@@ -1130,7 +1130,7 @@ def detections_for_detailed_counting(
                     labels=["v1"],
                 ),
                 BoundingBox(
-                    uid=str(uuid4()),
+                    uid="uid_1_gt_1",
                     xmin=rect2[0],
                     xmax=rect2[1],
                     ymin=rect2[2],
@@ -1138,7 +1138,7 @@ def detections_for_detailed_counting(
                     labels=["missed_detection"],
                 ),
                 BoundingBox(
-                    uid=str(uuid4()),
+                    uid="uid_1_gt_2",
                     xmin=rect3[0],
                     xmax=rect3[1],
                     ymin=rect3[2],
@@ -1148,7 +1148,7 @@ def detections_for_detailed_counting(
             ],
             predictions=[
                 BoundingBox(
-                    uid=str(uuid4()),
+                    uid="uid_1_pd_0",
                     xmin=rect1[0],
                     xmax=rect1[1],
                     ymin=rect1[2],
@@ -1157,7 +1157,7 @@ def detections_for_detailed_counting(
                     scores=[0.5],
                 ),
                 BoundingBox(
-                    uid=str(uuid4()),
+                    uid="uid_1_pd_1",
                     xmin=rect5[0],
                     xmax=rect5[1],
                     ymin=rect5[2],
@@ -1166,7 +1166,7 @@ def detections_for_detailed_counting(
                     scores=[0.3],
                 ),
                 BoundingBox(
-                    uid=str(uuid4()),
+                    uid="uid_1_pd_2",
                     xmin=rect4[0],
                     xmax=rect4[1],
                     ymin=rect4[2],
@@ -1180,7 +1180,7 @@ def detections_for_detailed_counting(
             uid="uid2",
             groundtruths=[
                 BoundingBox(
-                    uid=str(uuid4()),
+                    uid="uid_2_gt_0",
                     xmin=rect1[0],
                     xmax=rect1[1],
                     ymin=rect1[2],
@@ -1190,7 +1190,7 @@ def detections_for_detailed_counting(
             ],
             predictions=[
                 BoundingBox(
-                    uid=str(uuid4()),
+                    uid="uid_2_pd_0",
                     xmin=rect2[0],
                     xmax=rect2[1],
                     ymin=rect2[2],
