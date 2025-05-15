@@ -75,14 +75,10 @@ def test_fuzz_detections_with_filtering():
 
         datum_subset = [f"uid{i}" for i in range(len(detections) // 2)]
 
-        filter_ = evaluator.create_filter(
-            datum_uids=datum_subset,
-        )
-
+        evaluator.apply_filter(datum_ids=datum_subset)
         evaluator.evaluate(
             iou_thresholds=[0.25, 0.75],
             score_thresholds=[0.25, 0.75],
-            filter_=filter_,
         )
 
 

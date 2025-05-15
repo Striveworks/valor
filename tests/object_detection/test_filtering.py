@@ -86,7 +86,15 @@ def test_filtering_one_detection(one_detection: list[Detection]):
 
     # test datum filtering
     evaluator.apply_filter(datum_ids=["uid1"])
-    assert (evaluator.detailed_pairs == np.array([0, 1])).all()
+    assert (
+        evaluator.detailed_pairs
+        == np.array(
+            [
+                [0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.3],
+                [0.0, 1.0, -1.0, 0.0, 1.0, -1.0, -1.0],
+            ]
+        )
+    ).all()
     assert (
         evaluator.label_metadata
         == np.array(
@@ -106,11 +114,17 @@ def test_filtering_one_detection(one_detection: list[Detection]):
 
     # test label filtering
     evaluator.apply_filter(labels=["v1"])
-    assert (evaluator.detailed_pairs == np.array([0])).all()
+    assert (
+        evaluator.detailed_pairs
+        == np.array([[0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.3]])
+    ).all()
     assert (evaluator.label_metadata == np.array([[1, 1], [0, 0]])).all()
 
     evaluator.apply_filter(labels=["v2"])
-    assert (evaluator.detailed_pairs == np.array([1])).all()
+    assert (
+        evaluator.detailed_pairs
+        == np.array([[0.0, 1.0, -1.0, 0.0, 1.0, -1.0, -1.0]])
+    ).all()
     assert (evaluator.label_metadata == np.array([[0, 0], [1, 0]])).all()
 
     # test combo
@@ -118,7 +132,10 @@ def test_filtering_one_detection(one_detection: list[Detection]):
         datum_ids=["uid1"],
         labels=["v1"],
     )
-    assert (evaluator.detailed_pairs == np.array([0])).all()
+    assert (
+        evaluator.detailed_pairs
+        == np.array([[0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.3]])
+    ).all()
     assert (evaluator.label_metadata == np.array([[1, 1], [0, 0]])).all()
 
     # test evaluation
@@ -214,7 +231,7 @@ def test_filtering_two_detections(two_detections: list[Detection]):
         == np.array(
             [
                 [0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.3],
-                [1.0, 2.0, -1.0, 0.0, 0.0, -1.0, 0.0],
+                [1.0, 2.0, -1.0, 0.0, 0.0, -1.0, -1.0],
             ]
         )
     ).all()
@@ -225,7 +242,6 @@ def test_filtering_two_detections(two_detections: list[Detection]):
         evaluator.detailed_pairs
         == np.array(
             [
-                [0.0, -1.0, -1.0, 0.0, -1.0, -1.0, 0.0],
                 [0.0, 1.0, -1.0, 0.0, 1.0, -1.0, -1.0],
                 [1.0, -1.0, 1.0, 0.0, -1.0, 1.0, 0.98],
             ]
@@ -238,7 +254,10 @@ def test_filtering_two_detections(two_detections: list[Detection]):
         datum_ids=["uid1"],
         labels=["v1"],
     )
-    assert (evaluator.detailed_pairs == np.array([0])).all()
+    assert (
+        evaluator.detailed_pairs
+        == np.array([[0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.3]])
+    ).all()
     assert (evaluator.label_metadata == np.array([[1, 1], [0, 0]])).all()
 
     # test evaluation
@@ -324,9 +343,9 @@ def test_filtering_four_detections(four_detections: list[Detection]):
         == np.array(
             [
                 [0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.3],
-                [1.0, 2.0, -1.0, 0.0, 0.0, -1.0, 0.0],
+                [1.0, 2.0, -1.0, 0.0, 0.0, -1.0, -1.0],
                 [2.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.3],
-                [3.0, 2.0, -1.0, 0.0, 0.0, -1.0, 0.0],
+                [3.0, 2.0, -1.0, 0.0, 0.0, -1.0, -1.0],
             ]
         )
     ).all()
@@ -337,10 +356,8 @@ def test_filtering_four_detections(four_detections: list[Detection]):
         evaluator.detailed_pairs
         == np.array(
             [
-                [0.0, -1.0, -1.0, 0.0, -1.0, -1.0, 0.0],
                 [0.0, 1.0, -1.0, 0.0, 1.0, -1.0, -1.0],
                 [1.0, -1.0, 1.0, 0.0, -1.0, 1.0, 0.98],
-                [2.0, -1.0, -1.0, 0.0, -1.0, -1.0, 0.0],
                 [2.0, 1.0, -1.0, 0.0, 1.0, -1.0, -1.0],
                 [3.0, -1.0, 1.0, 0.0, -1.0, 1.0, 0.98],
             ]
@@ -449,17 +466,7 @@ def test_filtering_all_detections(four_detections: list[Detection]):
 
     # test label filtering
     evaluator.apply_filter(labels=[])
-    assert (
-        evaluator.detailed_pairs
-        == np.array(
-            [
-                [0.0, -1.0, -1.0, 0.0, -1.0, -1.0, 0.0],
-                [1.0, -1.0, -1.0, 0.0, -1.0, -1.0, 0.0],
-                [2.0, -1.0, -1.0, 0.0, -1.0, -1.0, 0.0],
-                [3.0, -1.0, -1.0, 0.0, -1.0, -1.0, 0.0],
-            ]
-        )
-    ).all()
+    assert (evaluator.detailed_pairs == np.zeros((0, 7))).all()
     assert (
         evaluator.label_metadata
         == np.array(

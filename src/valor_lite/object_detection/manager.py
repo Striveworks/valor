@@ -1,4 +1,3 @@
-import warnings
 from collections import defaultdict
 from dataclasses import dataclass
 
@@ -178,6 +177,7 @@ class Evaluator:
         labels : list[str], optional
             An optional list of labels.
         """
+        # mask by datums and annotations
         mask_detailed = np.ones(self._cache.shape[0], dtype=np.bool_)
         if datum_ids is not None:
             datum_ids_array = np.array(
@@ -204,6 +204,7 @@ class Evaluator:
                 ~np.isin(self._cache[:, 2].astype(int), prediction_ids_array)
             ] = False
 
+        # mask by labels
         mask_invalid_groundtruths = np.zeros_like(mask_detailed)
         mask_invalid_predictions = np.zeros_like(mask_detailed)
         if labels is not None:
@@ -217,6 +218,7 @@ class Evaluator:
                 ~np.isin(self._cache[:, 5].astype(int), labels_array)
             ] = True
 
+        # filter cache
         self._filtered_cache = self._cache.copy()
         if mask_invalid_groundtruths.any():
             invalid_groundtruth_indices = np.where(mask_invalid_groundtruths)[
@@ -229,9 +231,10 @@ class Evaluator:
             invalid_prediction_indices = np.where(mask_invalid_predictions)[0]
             self._filtered_cache[
                 invalid_prediction_indices[:, None], (2, 3, 5, 6)
-            ] = np.array([[-1, 0, -1, 0]])
+            ] = np.array([[-1, 0, -1, -1]])
         self._filtered_cache = self._filtered_cache[np.where(mask_detailed)[0]]
 
+        # filter null pairs
         mask_null_pairs = np.all(
             np.isclose(
                 self._filtered_cache[:, 1:],
@@ -241,6 +244,7 @@ class Evaluator:
         )
         self._filtered_cache = self._filtered_cache[~mask_null_pairs]
 
+        # filter label metadata
         self._filtered_label_metadata = compute_label_metadata(
             detailed_pairs=self._filtered_cache,
             n_labels=self.n_labels,
@@ -271,24 +275,19 @@ class Evaluator:
         dict[MetricType, list]
             A dictionary mapping MetricType enumerations to lists of computed metrics.
         """
-        label_metadata = self.label_metadata
         ranked_pairs = compute_ranked_pairs(
             detailed_pairs=self.detailed_pairs,
-            label_metadata=label_metadata,
+            label_metadata=self.label_metadata,
         )
-        if ranked_pairs.size == 0:
-            warnings.warn("no valid annotation pairs")
-            return {metric: [] for metric in MetricType}
-
         results = compute_precion_recall(
             ranked_pairs=ranked_pairs,
-            label_metadata=label_metadata,
+            label_metadata=self.label_metadata,
             iou_thresholds=np.array(iou_thresholds),
             score_thresholds=np.array(score_thresholds),
         )
         return unpack_precision_recall_into_metric_lists(
             results=results,
-            label_metadata=label_metadata,
+            label_metadata=self.label_metadata,
             iou_thresholds=iou_thresholds,
             score_thresholds=score_thresholds,
             index_to_label=self.index_to_label,
@@ -581,7 +580,7 @@ class DataLoader:
 
     def add_bounding_boxes(
         self,
-        detections: list[Detection],
+        detections: list[Detection[BoundingBox]],
         show_progress: bool = False,
     ):
         """
@@ -598,11 +597,9 @@ class DataLoader:
             compute_bbox_iou(
                 np.array(
                     [
-                        [gt.annotation, pd.annotation]
+                        [gt.extrema, pd.extrema]
                         for pd in detection.predictions
                         for gt in detection.groundtruths
-                        if isinstance(gt, BoundingBox)
-                        and isinstance(pd, BoundingBox)
                     ],
                     dtype=np.float64,
                 )
@@ -617,7 +614,7 @@ class DataLoader:
 
     def add_polygons(
         self,
-        detections: list[Detection],
+        detections: list[Detection[Polygon]],
         show_progress: bool = False,
     ):
         """
@@ -634,10 +631,9 @@ class DataLoader:
             compute_polygon_iou(
                 np.array(
                     [
-                        [gt.annotation, pd.annotation]
+                        [gt.shape, pd.shape]
                         for pd in detection.predictions
                         for gt in detection.groundtruths
-                        if isinstance(gt, Polygon) and isinstance(pd, Polygon)
                     ]
                 )
             ).reshape(len(detection.predictions), len(detection.groundtruths))
@@ -651,7 +647,7 @@ class DataLoader:
 
     def add_bitmasks(
         self,
-        detections: list[Detection],
+        detections: list[Detection[Bitmask]],
         show_progress: bool = False,
     ):
         """
@@ -668,10 +664,9 @@ class DataLoader:
             compute_bitmask_iou(
                 np.array(
                     [
-                        [gt.annotation, pd.annotation]
+                        [gt.mask, pd.mask]
                         for pd in detection.predictions
                         for gt in detection.groundtruths
-                        if isinstance(gt, Bitmask) and isinstance(pd, Bitmask)
                     ]
                 )
             ).reshape(len(detection.predictions), len(detection.groundtruths))

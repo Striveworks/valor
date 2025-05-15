@@ -34,9 +34,11 @@ def test__compute_average_precision():
     (
         average_precision,
         mean_average_precision,
-        average_precision_averaged_over_ious,
-        mean_average_precision_averaged_over_ious,
     ) = results
+
+    # TODO - (c.zaloom) will be removed in the future
+    average_precision_averaged_over_ious = average_precision.mean(axis=0)
+    mean_average_precision_averaged_over_ious = mean_average_precision.mean()
 
     expected = np.array(
         [

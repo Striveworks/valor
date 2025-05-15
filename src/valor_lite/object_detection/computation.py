@@ -1,3 +1,5 @@
+import warnings
+
 import numpy as np
 import shapely
 from numpy.typing import NDArray
@@ -201,16 +203,21 @@ def compute_label_metadata(detailed_pairs: NDArray[np.float64], n_labels: int):
     ground_truth_pairs = detailed_pairs[:, (0, 1, 4)]
     ground_truth_pairs = ground_truth_pairs[ground_truth_pairs[:, 1] >= 0]
     unique_pairs = np.unique(ground_truth_pairs, axis=0)
-    label_indices, unique_counts = np.unique(unique_pairs[:, 2], return_counts=True)
+    label_indices, unique_counts = np.unique(
+        unique_pairs[:, 2], return_counts=True
+    )
     label_metadata[label_indices.astype(np.int32), 0] = unique_counts
 
     prediction_pairs = detailed_pairs[:, (0, 2, 5)]
     prediction_pairs = prediction_pairs[prediction_pairs[:, 1] >= 0]
     unique_pairs = np.unique(prediction_pairs, axis=0)
-    label_indices, unique_counts = np.unique(unique_pairs[:, 2], return_counts=True)
+    label_indices, unique_counts = np.unique(
+        unique_pairs[:, 2], return_counts=True
+    )
     label_metadata[label_indices.astype(np.int32), 1] = unique_counts
 
     return label_metadata
+
 
 def _compute_ranked_pairs_for_datum(
     data: NDArray[np.float64],
@@ -285,7 +292,9 @@ def compute_ranked_pairs(
     unique_datums = np.unique(detailed_pairs[:, 0])
     ranked_pairs_by_datum = [
         _compute_ranked_pairs_for_datum(
-            data=detailed_pairs[np.isclose(detailed_pairs[:, 0], unique_datums[idx])],
+            data=detailed_pairs[
+                np.isclose(detailed_pairs[:, 0], unique_datums[idx])
+            ],
             label_metadata=label_metadata,
         )
         for idx in range(unique_datums.size)
@@ -311,14 +320,10 @@ def compute_precion_recall(
     tuple[
         NDArray[np.float64],
         NDArray[np.float64],
-        NDArray[np.float64],
-        float,
     ],
     tuple[
         NDArray[np.float64],
         NDArray[np.float64],
-        NDArray[np.float64],
-        float,
     ],
     NDArray[np.float64],
     NDArray[np.float64],
@@ -349,10 +354,10 @@ def compute_precion_recall(
 
     Returns
     -------
-    tuple[NDArray[np.float64], NDArray[np.float64], NDArray[np.float64], float]
-        Average Precision results.
-    tuple[NDArray[np.float64], NDArray[np.float64], NDArray[np.float64], float]
-        Average Recall results.
+    tuple[NDArray[np.float64], NDArray[np.float64]]
+        Average Precision results (AP, mAP).
+    tuple[NDArray[np.float64], NDArray[np.float64]]
+        Average Recall results (AR, mAR).
     NDArray[np.float64]
         Precision, Recall, TP, FP, FN, F1 Score.
     NDArray[np.float64]
@@ -370,10 +375,24 @@ def compute_precion_recall(
     elif n_scores == 0:
         raise ValueError("At least one score threshold must be passed.")
 
+    # initialize result arrays
     average_precision = np.zeros((n_ious, n_labels), dtype=np.float64)
+    mAP = np.zeros(n_ious, dtype=np.float64)
     average_recall = np.zeros((n_scores, n_labels), dtype=np.float64)
+    mAR = np.zeros(n_scores, dtype=np.float64)
     counts = np.zeros((n_ious, n_scores, n_labels, 6), dtype=np.float64)
+    pr_curve = np.zeros((n_ious, n_labels, 101, 2))
 
+    if ranked_pairs.size == 0:
+        warnings.warn("no valid ranked pairs")
+        return (
+            (average_precision, mAP),
+            (average_recall, mAR),
+            counts,
+            pr_curve,
+        )
+
+    # start computation
     pd_labels = data[:, 5].astype(np.int32)
     scores = data[:, 6]
     unique_pd_labels, unique_pd_indices = np.unique(
@@ -517,7 +536,6 @@ def compute_precion_recall(
     recall_index = np.floor(recall * 100.0).astype(np.int32)
 
     # bin precision-recall curve
-    pr_curve = np.zeros((n_ious, n_labels, 101, 2))
     for iou_idx in range(n_ious):
         p = precision[iou_idx]
         r = recall_index[iou_idx]
@@ -564,34 +582,10 @@ def compute_precion_recall(
         mAR: NDArray[np.float64] = average_recall[:, unique_pd_labels].mean(
             axis=1
         )
-    else:
-        mAP = np.zeros(n_ious, dtype=np.float64)
-        mAR = np.zeros(n_scores, dtype=np.float64)
-
-    # calculate AR and AR averaged over thresholds
-    APAveragedOverIOUs = average_precision.mean(axis=0)
-    ARAveragedOverScores = average_recall.mean(axis=0)
-
-    # calculate mAP and mAR averaged over thresholds
-    mAPAveragedOverIOUs = mAP.mean(axis=0)
-    mARAveragedOverScores = mAR.mean(axis=0)
-
-    ap_results = (
-        average_precision,
-        mAP,
-        APAveragedOverIOUs,
-        mAPAveragedOverIOUs,
-    )
-    ar_results = (
-        average_recall,
-        mAR,
-        ARAveragedOverScores,
-        mARAveragedOverScores,
-    )
 
     return (
-        ap_results,  # type: ignore[reportReturnType]
-        ar_results,
+        (average_precision, mAP),
+        (average_recall, mAR),
         counts,
         pr_curve,
     )

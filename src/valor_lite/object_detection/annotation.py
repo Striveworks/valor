@@ -1,4 +1,5 @@
 from dataclasses import dataclass, field
+from typing import Generic, TypeVar
 
 import numpy as np
 from numpy.typing import NDArray
@@ -61,7 +62,7 @@ class BoundingBox:
             )
 
     @property
-    def annotation(self) -> tuple[float, float, float, float]:
+    def extrema(self) -> tuple[float, float, float, float]:
         """
         Returns the annotation's data representation.
 
@@ -124,17 +125,6 @@ class Polygon:
                 "If scores are defined, there must be a 1:1 pairing with labels."
             )
 
-    @property
-    def annotation(self) -> ShapelyPolygon:
-        """
-        Returns the annotation's data representation.
-
-        Returns
-        -------
-        shapely.geometry.Polygon
-        """
-        return self.shape
-
 
 @dataclass
 class Bitmask:
@@ -193,20 +183,12 @@ class Bitmask:
                 "If scores are defined, there must be a 1:1 pairing with labels."
             )
 
-    @property
-    def annotation(self) -> NDArray[np.bool_]:
-        """
-        Returns the annotation's data representation.
 
-        Returns
-        -------
-        NDArray[np.bool_]
-        """
-        return self.mask
+AnnotationType = TypeVar("AnnotationType", BoundingBox, Polygon, Bitmask)
 
 
 @dataclass
-class Detection:
+class Detection(Generic[AnnotationType]):
     """
     Detection data structure holding ground truths and predictions for object detection tasks.
 
@@ -214,9 +196,9 @@ class Detection:
     ----------
     uid : str
         Unique identifier for the image or sample.
-    groundtruths : list of BoundingBox or Bitmask or Polygon
+    groundtruths : list[BoundingBox] | list[Polygon] | list[Bitmask]
         List of ground truth annotations.
-    predictions : list of BoundingBox or Bitmask or Polygon
+    predictions : list[BoundingBox] | list[Polygon] | list[Bitmask]
         List of predicted annotations.
 
     Examples
@@ -233,8 +215,8 @@ class Detection:
     """
 
     uid: str
-    groundtruths: list[BoundingBox] | list[Bitmask] | list[Polygon]
-    predictions: list[BoundingBox] | list[Bitmask] | list[Polygon]
+    groundtruths: list[AnnotationType]
+    predictions: list[AnnotationType]
 
     def __post_init__(self):
         for prediction in self.predictions:

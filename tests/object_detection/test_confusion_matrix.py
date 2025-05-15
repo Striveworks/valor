@@ -38,7 +38,7 @@ def _test_compute_confusion_matrix(
         unmatched_predictions,
         unmatched_ground_truths,
     ) = compute_confusion_matrix(
-        data=sorted_pairs,
+        detailed_pairs=sorted_pairs,
         label_metadata=label_metadata,
         iou_thresholds=iou_thresholds,
         score_thresholds=score_thresholds,

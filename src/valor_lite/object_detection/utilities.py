@@ -11,14 +11,10 @@ def unpack_precision_recall_into_metric_lists(
         tuple[
             NDArray[np.float64],
             NDArray[np.float64],
-            NDArray[np.float64],
-            float,
         ],
         tuple[
             NDArray[np.float64],
             NDArray[np.float64],
-            NDArray[np.float64],
-            float,
         ],
         NDArray[np.float64],
         NDArray[np.float64],
@@ -32,14 +28,10 @@ def unpack_precision_recall_into_metric_lists(
         (
             average_precision,
             mean_average_precision,
-            average_precision_average_over_ious,
-            mean_average_precision_average_over_ious,
         ),
         (
             average_recall,
             mean_average_recall,
-            average_recall_averaged_over_scores,
-            mean_average_recall_averaged_over_scores,
         ),
         precision_recall,
         pr_curves,
@@ -66,9 +58,10 @@ def unpack_precision_recall_into_metric_lists(
         for iou_idx, iou_threshold in enumerate(iou_thresholds)
     ]
 
+    # TODO - (c.zaloom) will be removed in the future
     metrics[MetricType.APAveragedOverIOUs] = [
         Metric.average_precision_averaged_over_IOUs(
-            value=float(average_precision_average_over_ious[label_idx]),
+            value=float(average_precision.mean(axis=0)[label_idx]),
             iou_thresholds=iou_thresholds,
             label=label,
         )
@@ -76,9 +69,10 @@ def unpack_precision_recall_into_metric_lists(
         if int(label_metadata[label_idx, 0]) > 0
     ]
 
+    # TODO - (c.zaloom) will be removed in the future
     metrics[MetricType.mAPAveragedOverIOUs] = [
         Metric.mean_average_precision_averaged_over_IOUs(
-            value=float(mean_average_precision_average_over_ious),
+            value=float(mean_average_precision.mean()),
             iou_thresholds=iou_thresholds,
         )
     ]
@@ -104,9 +98,10 @@ def unpack_precision_recall_into_metric_lists(
         for score_idx, score_threshold in enumerate(score_thresholds)
     ]
 
+    # TODO - (c.zaloom) will be removed in the future
     metrics[MetricType.ARAveragedOverScores] = [
         Metric.average_recall_averaged_over_scores(
-            value=float(average_recall_averaged_over_scores[label_idx]),
+            value=float(average_recall.mean(axis=0)[label_idx]),
             score_thresholds=score_thresholds,
             iou_thresholds=iou_thresholds,
             label=label,
@@ -115,9 +110,10 @@ def unpack_precision_recall_into_metric_lists(
         if int(label_metadata[label_idx, 0]) > 0
     ]
 
+    # TODO - (c.zaloom) will be removed in the future
     metrics[MetricType.mARAveragedOverScores] = [
         Metric.mean_average_recall_averaged_over_scores(
-            value=float(mean_average_recall_averaged_over_scores),
+            value=float(mean_average_recall.mean()),
             score_thresholds=score_thresholds,
             iou_thresholds=iou_thresholds,
         )

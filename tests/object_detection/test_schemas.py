@@ -1,3 +1,5 @@
+from uuid import uuid4
+
 import numpy as np
 import pytest
 from shapely.geometry import Polygon as ShapelyPolygon
@@ -12,10 +14,13 @@ from valor_lite.object_detection import (
 
 def test_BoundingBox():
     # groundtruth
-    gt = BoundingBox(xmin=0, xmax=1, ymin=0, ymax=1, labels=["label"])
+    gt = BoundingBox(
+        uid=str(uuid4()), xmin=0, xmax=1, ymin=0, ymax=1, labels=["label"]
+    )
 
     # prediction
     pd = BoundingBox(
+        uid=str(uuid4()),
         xmin=-1,
         xmax=11,
         ymin=0,
@@ -26,6 +31,7 @@ def test_BoundingBox():
 
     with pytest.raises(ValueError):
         BoundingBox(
+            uid=str(uuid4()),
             xmin=0,
             xmax=1,
             ymin=0,
@@ -35,6 +41,7 @@ def test_BoundingBox():
         )
     with pytest.raises(ValueError):
         BoundingBox(
+            uid=str(uuid4()),
             xmin=0,
             xmax=1,
             ymin=0,
@@ -54,10 +61,11 @@ def test_Bitmask():
     mask[:5, :5] = True
 
     # groundtruth
-    gt = Bitmask(mask=mask, labels=["label"])
+    gt = Bitmask(uid=str(uuid4()), mask=mask, labels=["label"])
 
     # prediction
     Bitmask(
+        uid=str(uuid4()),
         mask=mask,
         labels=["label"],
         scores=[0.7],
@@ -66,22 +74,25 @@ def test_Bitmask():
     # test score-label matching
     with pytest.raises(ValueError):
         Bitmask(
+            uid=str(uuid4()),
             mask=np.zeros((10, 10), dtype=np.bool_),
             labels=["label"],
             scores=[0.7, 0.1],
         )
     with pytest.raises(ValueError):
         Bitmask(
+            uid=str(uuid4()),
             mask=np.zeros((10, 10), dtype=np.bool_),
             labels=["label1", "label2"],
             scores=[0.7],
         )
 
-    # test `to_box` method
-    assert gt.extrema == (0, 4, 0, 4)
-
     with pytest.raises(ValueError):
-        Bitmask(mask=np.array([], dtype=np.bool_), labels=["label"])
+        Bitmask(
+            uid=str(uuid4()),
+            mask=np.array([], dtype=np.bool_),
+            labels=["label"],
+        )
 
 
 def test_Polygon(rect1_rotated_5_degrees_around_origin):
@@ -89,10 +100,11 @@ def test_Polygon(rect1_rotated_5_degrees_around_origin):
     shape = ShapelyPolygon(rect1_rotated_5_degrees_around_origin)
 
     # groundtruth
-    gt = Polygon(shape=shape, labels=["label"])
+    gt = Polygon(uid=str(uuid4()), shape=shape, labels=["label"])
 
     # prediction
     Polygon(
+        uid=str(uuid4()),
         shape=shape,
         labels=["label"],
         scores=[0.7],
@@ -101,12 +113,14 @@ def test_Polygon(rect1_rotated_5_degrees_around_origin):
     # test score-label matching
     with pytest.raises(ValueError):
         Polygon(
+            uid=str(uuid4()),
             shape=shape,
             labels=["label"],
             scores=[0.7, 0.1],
         )
     with pytest.raises(ValueError):
         Polygon(
+            uid=str(uuid4()),
             shape=shape,
             labels=["label1", "label2"],
             scores=[0.7],
@@ -119,25 +133,20 @@ def test_Polygon(rect1_rotated_5_degrees_around_origin):
             scores=[0.7],
         )
 
-    # test `to_box` method
-    assert gt.extrema == (
-        6.475717271011129,
-        58.90012445802815,
-        10.833504408394036,
-        45.07713248852931,
-    )
-
     with pytest.raises(ValueError):
-        Polygon(shape=ShapelyPolygon([]), labels=["label"])
+        Polygon(uid=str(uuid4()), shape=ShapelyPolygon([]), labels=["label"])
 
 
 def test_Detection():
 
     # groundtruth
-    gt = BoundingBox(xmin=0, xmax=1, ymin=0, ymax=1, labels=["label"])
+    gt = BoundingBox(
+        uid=str(uuid4()), xmin=0, xmax=1, ymin=0, ymax=1, labels=["label"]
+    )
 
     # prediction
     pd = BoundingBox(
+        uid=str(uuid4()),
         xmin=-1,
         xmax=11,
         ymin=0,

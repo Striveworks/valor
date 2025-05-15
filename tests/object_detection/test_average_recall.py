@@ -35,9 +35,11 @@ def test__compute_average_recall():
     (
         average_recall,
         mean_average_recall,
-        average_recall_averaged_over_scores,
-        mean_average_recall_averaged_over_scores,
     ) = results
+
+    # TODO - (c.zaloom) will be removed in the future
+    average_recall_averaged_over_scores = average_recall.mean(axis=0)
+    mean_average_recall_averaged_over_scores = mean_average_recall.mean()
 
     expected = np.array(
         [

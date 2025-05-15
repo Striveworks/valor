@@ -1042,7 +1042,7 @@ def detection_ranked_pair_ordering_with_polygons(
 def detections_no_groundtruths() -> list[Detection]:
     return [
         Detection(
-            uid="uid",
+            uid="uid0",
             groundtruths=[],
             predictions=[
                 BoundingBox(
@@ -1057,7 +1057,7 @@ def detections_no_groundtruths() -> list[Detection]:
             ],
         ),
         Detection(
-            uid="uid",
+            uid="uid1",
             groundtruths=[],
             predictions=[
                 BoundingBox(
@@ -1078,18 +1078,30 @@ def detections_no_groundtruths() -> list[Detection]:
 def detections_no_predictions() -> list[Detection]:
     return [
         Detection(
-            uid="uid",
+            uid="uid1",
             groundtruths=[
                 BoundingBox(
-                    uid=str(uuid4()), xmin=0, xmax=10, ymin=0, ymax=10, labels=["v1"]),
+                    uid=str(uuid4()),
+                    xmin=0,
+                    xmax=10,
+                    ymin=0,
+                    ymax=10,
+                    labels=["v1"],
+                ),
             ],
             predictions=[],
         ),
         Detection(
-            uid="uid",
+            uid="uid2",
             groundtruths=[
                 BoundingBox(
-                    uid=str(uuid4()), xmin=0, xmax=10, ymin=0, ymax=10, labels=["v1"]),
+                    uid=str(uuid4()),
+                    xmin=0,
+                    xmax=10,
+                    ymin=0,
+                    ymax=10,
+                    labels=["v1"],
+                ),
             ],
             predictions=[],
         ),
@@ -1193,9 +1205,17 @@ def detections_for_detailed_counting(
 
 @pytest.fixture
 def detections_model_single_class_spam_fp() -> list[Detection]:
-    gt_box = BoundingBox(uid=str(uuid4()), xmin=0, xmax=5, ymin=0, ymax=5, labels=["dog"])
+    gt_box = BoundingBox(
+        uid=str(uuid4()), xmin=0, xmax=5, ymin=0, ymax=5, labels=["dog"]
+    )
     tp_box = BoundingBox(
-        uid=str(uuid4()), xmin=0, xmax=5, ymin=0, ymax=5, labels=["dog"], scores=[1.0]
+        uid=str(uuid4()),
+        xmin=0,
+        xmax=5,
+        ymin=0,
+        ymax=5,
+        labels=["dog"],
+        scores=[1.0],
     )
     fp_box = BoundingBox(
         uid=str(uuid4()),
