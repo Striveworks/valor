@@ -1,5 +1,4 @@
 from collections import defaultdict
-from dataclasses import dataclass
 
 import numpy as np
 from numpy.typing import NDArray
@@ -67,11 +66,16 @@ class Evaluator:
         self.index_to_label: list[str] = list()
 
         # cache
-        self._cache: NDArray[np.float64] = np.array([])
+        self._cache = (
+            np.array([], dtype=np.int32),
+            np.array([], dtype=np.float64),
+        )
         self._label_metadata: NDArray[np.int32] = np.array([])
 
         # optional filter cache
-        self._filtered_cache: NDArray[np.float64] | None = None
+        self._filtered_cache: tuple[
+            NDArray[np.int32], NDArray[np.float64]
+        ] | None = None
         self._filtered_label_metadata: NDArray[np.int32] | None = None
 
     @property
@@ -87,7 +91,7 @@ class Evaluator:
         )
 
     @property
-    def detailed_pairs(self) -> NDArray[np.float64]:
+    def detailed_pairs(self) -> tuple[NDArray[np.int32], NDArray[np.float64]]:
         return (
             self._filtered_cache
             if self._filtered_cache is not None
@@ -102,18 +106,18 @@ class Evaluator:
     @property
     def n_datums(self) -> int:
         """Returns the number of datums."""
-        return np.unique(self.detailed_pairs[:, 0]).size
+        return np.unique(self.detailed_pairs[0][:, 0]).size
 
     @property
     def n_groundtruths(self) -> int:
         """Returns the number of ground truth annotations."""
-        unique_ids = np.unique(self.detailed_pairs[:, (1, 4)], axis=0)
+        unique_ids = np.unique(self.detailed_pairs[0][:, (1, 3)], axis=0)
         return (unique_ids[:, 0] >= 0.0).sum()
 
     @property
     def n_predictions(self) -> int:
         """Returns the number of prediction annotations."""
-        unique_ids = np.unique(self.detailed_pairs[:, (2, 5)], axis=0)
+        unique_ids = np.unique(self.detailed_pairs[0][:, (2, 4)], axis=0)
         return (unique_ids[:, 0] >= 0.0).sum()
 
     @property
@@ -178,14 +182,14 @@ class Evaluator:
             An optional list of labels.
         """
         # mask by datums and annotations
-        mask_detailed = np.ones(self._cache.shape[0], dtype=np.bool_)
+        mask_detailed = np.ones(self._cache[0].shape[0], dtype=np.bool_)
         if datum_ids is not None:
             datum_ids_array = np.array(
                 [self.datum_id_to_index[uid] for uid in datum_ids],
                 dtype=np.int32,
             )
             mask_detailed[
-                ~np.isin(self._cache[:, 0].astype(int), datum_ids_array)
+                ~np.isin(self._cache[0][:, 0], datum_ids_array)
             ] = False
         if groundtruth_ids is not None:
             groundtruth_ids_array = np.array(
@@ -193,7 +197,7 @@ class Evaluator:
                 dtype=np.int32,
             )
             mask_detailed[
-                ~np.isin(self._cache[:, 1].astype(int), groundtruth_ids_array)
+                ~np.isin(self._cache[0][:, 1], groundtruth_ids_array)
             ] = False
         if prediction_ids is not None:
             prediction_ids_array = np.array(
@@ -201,7 +205,7 @@ class Evaluator:
                 dtype=np.int32,
             )
             mask_detailed[
-                ~np.isin(self._cache[:, 2].astype(int), prediction_ids_array)
+                ~np.isin(self._cache[0][:, 2], prediction_ids_array)
             ] = False
 
         # mask by labels
@@ -212,43 +216,52 @@ class Evaluator:
                 [self.label_to_index[label] for label in labels] + [-1]
             )
             mask_invalid_groundtruths[
-                ~np.isin(self._cache[:, 4].astype(int), labels_array)
+                ~np.isin(self._cache[0][:, 3], labels_array)
             ] = True
             mask_invalid_predictions[
-                ~np.isin(self._cache[:, 5].astype(int), labels_array)
+                ~np.isin(self._cache[0][:, 4], labels_array)
             ] = True
 
         # filter cache
-        self._filtered_cache = self._cache.copy()
+        id_cache = self._cache[0].copy()
+        fp_cache = self._cache[1].copy()
         if mask_invalid_groundtruths.any():
             invalid_groundtruth_indices = np.where(mask_invalid_groundtruths)[
                 0
             ]
-            self._filtered_cache[
-                invalid_groundtruth_indices[:, None], (1, 3, 4)
-            ] = np.array([[-1, 0, -1]])
+            id_cache[invalid_groundtruth_indices[:, None], (1, 3)] = np.array(
+                [[-1, -1]]
+            )
+            fp_cache[invalid_groundtruth_indices[:, None], 0] = np.array([[0]])
         if mask_invalid_predictions.any():
             invalid_prediction_indices = np.where(mask_invalid_predictions)[0]
-            self._filtered_cache[
-                invalid_prediction_indices[:, None], (2, 3, 5, 6)
-            ] = np.array([[-1, 0, -1, -1]])
-        self._filtered_cache = self._filtered_cache[np.where(mask_detailed)[0]]
+            id_cache[invalid_prediction_indices[:, None], (2, 4)] = np.array(
+                [[-1, -1]]
+            )
+            fp_cache[invalid_prediction_indices[:, None], :] = np.array(
+                [[0, -1]]
+            )
+        indices = np.where(mask_detailed)[0]
+        id_cache = id_cache[indices]
+        fp_cache = fp_cache[indices]
 
         # filter null pairs
         mask_null_pairs = np.all(
             np.isclose(
-                self._filtered_cache[:, 1:],
-                np.array([-1.0, -1.0, 0.0, -1.0, -1.0, -1.0]),
+                id_cache[:, 1:],
+                np.array([-1.0, -1.0, -1.0, -1.0]),
             ),
             axis=1,
         )
-        self._filtered_cache = self._filtered_cache[~mask_null_pairs]
+        id_cache = id_cache[~mask_null_pairs]
+        fp_cache = fp_cache[~mask_null_pairs]
 
         # filter label metadata
         self._filtered_label_metadata = compute_label_metadata(
-            detailed_pairs=self._filtered_cache,
+            ids=id_cache,
             n_labels=self.n_labels,
         )
+        self._filtered_cache = (id_cache, fp_cache)
 
     def clear_filter(self):
         """Removes a filter if one exists."""
@@ -315,7 +328,6 @@ class Evaluator:
         """
         results = compute_confusion_matrix(
             detailed_pairs=self.detailed_pairs,
-            label_metadata=self.label_metadata,
             iou_thresholds=np.array(iou_thresholds),
             score_thresholds=np.array(score_thresholds),
         )
@@ -681,12 +693,16 @@ class DataLoader:
         self.pairs = [pair for pair in self.pairs if pair.size > 0]
         if len(self.pairs) == 0:
             raise ValueError("No data available to create evaluator.")
-        self._evaluator._cache = np.concatenate(
+        cache = np.concatenate(
             self.pairs,
             axis=0,
         )
+        self._evaluator._cache = (
+            cache[:, (0, 1, 2, 4, 5)].astype(np.int32),
+            cache[:, (3, 6)],
+        )
         self._evaluator._label_metadata = compute_label_metadata(
-            detailed_pairs=self._evaluator._cache,
+            ids=self._evaluator._cache[0],
             n_labels=self._evaluator.n_labels,
         )
         return self._evaluator

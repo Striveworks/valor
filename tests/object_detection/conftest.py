@@ -893,21 +893,21 @@ def detection_ranked_pair_ordering() -> Detection:
 
     groundtruths = [
         BoundingBox(
-            uid=str(uuid4()),
+            uid=f"gt_{idx}",
             xmin=xmin,
             xmax=xmax,
             ymin=ymin,
             ymax=ymax,
             labels=[label_value],
         )
-        for (xmin, xmax, ymin, ymax), label_value in zip(
-            gts["boxes"], gts["label_values"]
+        for idx, ((xmin, xmax, ymin, ymax), label_value) in enumerate(
+            zip(gts["boxes"], gts["label_values"])
         )
     ]
 
     predictions = [
         BoundingBox(
-            uid=str(uuid4()),
+            uid=f"pd_{idx}",
             xmin=xmin,
             xmax=xmax,
             ymin=ymin,
@@ -915,8 +915,8 @@ def detection_ranked_pair_ordering() -> Detection:
             labels=[label_value],
             scores=[score],
         )
-        for (xmin, xmax, ymin, ymax), label_value, score in zip(
-            preds["boxes"], preds["label_values"], preds["scores"]
+        for idx, ((xmin, xmax, ymin, ymax), label_value, score) in enumerate(
+            zip(preds["boxes"], preds["label_values"], preds["scores"])
         )
     ]
 
@@ -957,22 +957,24 @@ def detection_ranked_pair_ordering_with_bitmasks() -> Detection:
 
     groundtruths = [
         Bitmask(
-            uid=str(uuid4()),
+            uid=f"gt_{idx}",
             mask=mask,
             labels=[label_value],
         )
-        for mask, label_value in zip(gts["bitmasks"], gts["label_values"])
+        for idx, (mask, label_value) in enumerate(
+            zip(gts["bitmasks"], gts["label_values"])
+        )
     ]
 
     predictions = [
         Bitmask(
-            uid=str(uuid4()),
+            uid=f"pd_{idx}",
             mask=mask,
             labels=[label_value],
             scores=[score],
         )
-        for mask, label_value, score in zip(
-            preds["bitmasks"], preds["label_values"], preds["scores"]
+        for idx, (mask, label_value, score) in enumerate(
+            zip(preds["bitmasks"], preds["label_values"], preds["scores"])
         )
     ]
 
@@ -1014,22 +1016,24 @@ def detection_ranked_pair_ordering_with_polygons(
 
     groundtruths = [
         Polygon(
-            uid=str(uuid4()),
+            uid=f"gt_{idx}",
             shape=ShapelyPolygon(polygon),
             labels=[label_value],
         )
-        for polygon, label_value in zip(gts["polygons"], gts["label_values"])
+        for idx, (polygon, label_value) in enumerate(
+            zip(gts["polygons"], gts["label_values"])
+        )
     ]
 
     predictions = [
         Polygon(
-            uid=str(uuid4()),
+            uid=f"pd_{idx}",
             shape=ShapelyPolygon(polygon),
             labels=[label_value],
             scores=[score],
         )
-        for polygon, label_value, score in zip(
-            preds["polygons"], preds["label_values"], preds["scores"]
+        for idx, (polygon, label_value, score) in enumerate(
+            zip(preds["polygons"], preds["label_values"], preds["scores"])
         )
     ]
 
@@ -1135,7 +1139,7 @@ def detections_for_detailed_counting(
                     xmax=rect2[1],
                     ymin=rect2[2],
                     ymax=rect2[3],
-                    labels=["missed_detection"],
+                    labels=["unmatched_groundtruth"],
                 ),
                 BoundingBox(
                     uid="uid_1_gt_2",
@@ -1171,7 +1175,7 @@ def detections_for_detailed_counting(
                     xmax=rect4[1],
                     ymin=rect4[2],
                     ymax=rect4[3],
-                    labels=["no_overlap"],
+                    labels=["unmatched_prediction"],
                     scores=[0.1],
                 ),
             ],
@@ -1185,7 +1189,7 @@ def detections_for_detailed_counting(
                     xmax=rect1[1],
                     ymin=rect1[2],
                     ymax=rect1[3],
-                    labels=["low_iou"],
+                    labels=["matched_low_iou"],
                 ),
             ],
             predictions=[
@@ -1195,7 +1199,7 @@ def detections_for_detailed_counting(
                     xmax=rect2[1],
                     ymin=rect2[2],
                     ymax=rect2[3],
-                    labels=["low_iou"],
+                    labels=["matched_low_iou"],
                     scores=[0.5],
                 ),
             ],

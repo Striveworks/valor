@@ -1,9 +1,9 @@
 from collections import defaultdict
-from typing import Iterator
 
 import numpy as np
 from numpy.typing import NDArray
 
+from valor_lite.object_detection.computation import PairClassification
 from valor_lite.object_detection.metric import Metric, MetricType
 
 
@@ -181,105 +181,109 @@ def defaultdict_dict():
 
 
 def _unpack_confusion_matrix(
-    results: NDArray[np.int32],
-    detailed_pairs: NDArray[np.float64],
-    n_labels: int,
+    results: NDArray[np.uint8],
+    detailed_pairs: tuple[NDArray[np.int32], NDArray[np.float64]],
     index_to_datum_id: list[str],
     index_to_groundtruth_id: list[str],
     index_to_prediction_id: list[str],
     index_to_label: list[str],
-    iou_idx: int,
     iou_threhsold: float,
-    score_idx: int,
     score_threshold: float,
 ):
-    def get_position_encoding(gt_label_idx: int, pd_label_idx: int) -> int:
-        n_positions = n_labels + 1
-        gt_label_idx += 1
-        pd_label_idx += 1
-        return (pd_label_idx * n_positions) + gt_label_idx
+    ids, _ = detailed_pairs
+    gt_labels = ids[:, 3]
+    pd_labels = ids[:, 4]
 
-    def get_counts(gt_label_idx: int, pd_label_idx: int) -> int:
-        key = get_position_encoding(
-            gt_label_idx=gt_label_idx, pd_label_idx=pd_label_idx
+    mask_matched = (
+        np.bitwise_and(
+            results, PairClassification.TP | PairClassification.FP_FN_MISCLF
         )
-        return int((results[iou_idx, score_idx, :] == key).sum())
-
-    def get_example_indices(
-        gt_label_idx: int, pd_label_idx: int
-    ) -> Iterator[tuple[int, int, int]]:
-        key = get_position_encoding(
-            gt_label_idx=gt_label_idx, pd_label_idx=pd_label_idx
-        )
-        mask = results[iou_idx, score_idx, :] == key
-        if not mask.any():
-            return
-        indices = np.where(mask)[0]
-        pairs = detailed_pairs[np.ix_(indices, (0, 1, 2))]  # type: ignore - numpy typing being annoying
-        for idx in range(pairs.shape[0]):
-            yield tuple(pairs[idx].astype(int).tolist())
+        > 0
+    )
+    mask_fp_unmatched = (
+        np.bitwise_and(results, PairClassification.FP_UNMATCHED) > 0
+    )
+    mask_fn_unmatched = (
+        np.bitwise_and(results, PairClassification.FN_UNMATCHED) > 0
+    )
 
     confusion_matrix = dict()
     unmatched_ground_truths = dict()
     unmatched_predictions = dict()
-
     for label_idx, label in enumerate(index_to_label):
+
+        mask_gt_labels = gt_labels == label_idx
+        mask_pd_labels = pd_labels == label_idx
+
         # unmatched ground truths
+        mask_fn_unmatched_labels = mask_fn_unmatched & mask_gt_labels
+        unmatched_groundtruth_ids = ids[
+            np.ix_(mask_fn_unmatched_labels, (0, 1))
+        ]
+        unmatched_groundtruth_ids = np.unique(
+            unmatched_groundtruth_ids, axis=0
+        )
+        unmatched_groundtruth_count = unmatched_groundtruth_ids.shape[0]
         unmatched_ground_truths[label] = {
-            "counts": get_counts(
-                gt_label_idx=label_idx,
-                pd_label_idx=-1,
-            ),
+            "count": unmatched_groundtruth_count,
             "examples": [
                 {
-                    "datum_id": index_to_datum_id[datum_id],
-                    "ground_truth_id": index_to_groundtruth_id[gt_id],
+                    "datum_id": index_to_datum_id[
+                        unmatched_groundtruth_ids[idx, 0]
+                    ],
+                    "ground_truth_id": index_to_groundtruth_id[
+                        unmatched_groundtruth_ids[idx, 1]
+                    ],
                 }
-                for datum_id, gt_id, _ in get_example_indices(
-                    gt_label_idx=label_idx,
-                    pd_label_idx=-1,
-                )
+                for idx in range(unmatched_groundtruth_count)
             ],
         }
 
         # unmatched predictions
+        mask_fp_unmatched_labels = mask_fp_unmatched & mask_pd_labels
+        unmatched_predictions_ids = ids[
+            np.ix_(mask_fp_unmatched_labels, (0, 2))
+        ]
+        unmatched_predictions_ids = np.unique(
+            unmatched_predictions_ids, axis=0
+        )
+        unmatched_predictions_count = unmatched_predictions_ids.shape[0]
         unmatched_predictions[label] = {
-            "counts": get_counts(
-                gt_label_idx=-1,
-                pd_label_idx=label_idx,
-            ),
+            "count": unmatched_predictions_count,
             "examples": [
                 {
-                    "datum_id": index_to_datum_id[datum_id],
-                    "prediction_id": index_to_prediction_id[pd_id],
+                    "datum_id": index_to_datum_id[
+                        unmatched_predictions_ids[idx, 0]
+                    ],
+                    "prediction_id": index_to_prediction_id[
+                        unmatched_predictions_ids[idx, 1]
+                    ],
                 }
-                for datum_id, pd_id, _ in get_example_indices(
-                    gt_label_idx=-1,
-                    pd_label_idx=label_idx,
-                )
+                for idx in range(unmatched_predictions_count)
             ],
         }
 
         # confusion matrix
         confusion_matrix[label] = {}
         for pd_label_idx, pd_label in enumerate(index_to_label):
-            gt_label_idx = label_idx
-            gt_label = label
-            confusion_matrix[gt_label][pd_label] = {
-                "counts": get_counts(
-                    gt_label_idx=gt_label_idx,
-                    pd_label_idx=pd_label_idx,
-                ),
+            mask_pd_labels_inner = pd_labels == pd_label_idx
+            matched_ids = ids[
+                mask_matched & mask_gt_labels & mask_pd_labels_inner
+            ]
+            matched_count = matched_ids.shape[0]
+            confusion_matrix[label][pd_label] = {
+                "count": matched_count,
                 "examples": [
                     {
-                        "datum_id": index_to_datum_id[datum_id],
-                        "ground_truth_id": index_to_groundtruth_id[gt_id],
-                        "prediction_id": index_to_prediction_id[pd_id],
+                        "datum_id": index_to_datum_id[matched_ids[idx, 0]],
+                        "ground_truth_id": index_to_groundtruth_id[
+                            matched_ids[idx, 1]
+                        ],
+                        "prediction_id": index_to_prediction_id[
+                            matched_ids[idx, 2]
+                        ],
                     }
-                    for datum_id, gt_id, pd_id in get_example_indices(
-                        gt_label_idx=gt_label_idx,
-                        pd_label_idx=pd_label_idx,
-                    )
+                    for idx in range(matched_count)
                 ],
             }
 
@@ -293,8 +297,8 @@ def _unpack_confusion_matrix(
 
 
 def unpack_confusion_matrix_into_metric_list(
-    results: NDArray[np.int32],
-    detailed_pairs: NDArray[np.float64],
+    results: NDArray[np.uint8],
+    detailed_pairs: tuple[NDArray[np.int32], NDArray[np.float64]],
     iou_thresholds: list[float],
     score_thresholds: list[float],
     index_to_datum_id: list[str],
@@ -302,19 +306,15 @@ def unpack_confusion_matrix_into_metric_list(
     index_to_prediction_id: list[str],
     index_to_label: list[str],
 ) -> list[Metric]:
-    n_labels = len(index_to_label)
     return [
         _unpack_confusion_matrix(
-            results=results,
+            results=results[iou_idx, score_idx, :],
             detailed_pairs=detailed_pairs,
-            n_labels=n_labels,
             index_to_datum_id=index_to_datum_id,
             index_to_groundtruth_id=index_to_groundtruth_id,
             index_to_prediction_id=index_to_prediction_id,
             index_to_label=index_to_label,
-            iou_idx=iou_idx,
             iou_threhsold=iou_threshold,
-            score_idx=score_idx,
             score_threshold=score_threshold,
         )
         for iou_idx, iou_threshold in enumerate(iou_thresholds)
