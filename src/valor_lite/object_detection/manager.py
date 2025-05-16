@@ -111,13 +111,13 @@ class Evaluator:
     @property
     def n_groundtruths(self) -> int:
         """Returns the number of ground truth annotations."""
-        unique_ids = np.unique(self.detailed_pairs[0][:, (1, 3)], axis=0)
+        unique_ids = np.unique(self.detailed_pairs[0][:, (0, 1)], axis=0)
         return (unique_ids[:, 0] >= 0.0).sum()
 
     @property
     def n_predictions(self) -> int:
         """Returns the number of prediction annotations."""
-        unique_ids = np.unique(self.detailed_pairs[0][:, (2, 4)], axis=0)
+        unique_ids = np.unique(self.detailed_pairs[0][:, (0, 2)], axis=0)
         return (unique_ids[:, 0] >= 0.0).sum()
 
     @property
@@ -697,6 +697,7 @@ class DataLoader:
             self.pairs,
             axis=0,
         )
+        print(cache)
         self._evaluator._cache = (
             cache[:, (0, 1, 2, 4, 5)].astype(np.int32),
             cache[:, (3, 6)],

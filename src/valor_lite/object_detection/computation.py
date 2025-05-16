@@ -782,9 +782,15 @@ def compute_confusion_matrix(
 
             mask_misclf = ~mask_tp_related & mask_iou & mask_score
 
+            print(ids)
+            print(values)
+            print(mask_iou)
+            print(mask_predictions_not_passing_ious)
             mask_fp_unmatched = mask_predictions_not_passing_ious & mask_score
 
-            mask_fn_unmatched = ~mask_tp_groundtruths & ~mask_misclf
+            mask_fn_unmatched = (
+                ~mask_tp_groundtruths & ~mask_misclf & mask_gt_exists
+            )
 
             # classify pairings
             pair_classifications[

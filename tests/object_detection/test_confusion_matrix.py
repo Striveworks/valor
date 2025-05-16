@@ -1427,18 +1427,8 @@ def test_confusion_matrix_fp_unmatched_prediction_edge_case(
                             "examples": [
                                 {
                                     "datum_id": "uid1",
-                                    "ground_truth_id": {
-                                        "xmin": 0.0,
-                                        "xmax": 5.0,
-                                        "ymin": 0.0,
-                                        "ymax": 5.0,
-                                    },
-                                    "prediction_id": {
-                                        "xmin": 0.0,
-                                        "xmax": 5.0,
-                                        "ymin": 0.0,
-                                        "ymax": 5.0,
-                                    },
+                                    "ground_truth_id": "uid1_gt0",
+                                    "prediction_id": "uid1_pd0",
                                 }
                             ],
                         }
@@ -1450,12 +1440,7 @@ def test_confusion_matrix_fp_unmatched_prediction_edge_case(
                         "examples": [
                             {
                                 "datum_id": "uid2",
-                                "prediction_id": {
-                                    "xmin": 10.0,
-                                    "xmax": 20.0,
-                                    "ymin": 10.0,
-                                    "ymax": 20.0,
-                                },
+                                "prediction_id": "uid2_pd0",
                             }
                         ],
                     }
@@ -1466,12 +1451,7 @@ def test_confusion_matrix_fp_unmatched_prediction_edge_case(
                         "examples": [
                             {
                                 "datum_id": "uid2",
-                                "ground_truth_id": {
-                                    "xmin": 0.0,
-                                    "xmax": 5.0,
-                                    "ymin": 0.0,
-                                    "ymax": 5.0,
-                                },
+                                "ground_truth_id": "uid2_gt0",
                             }
                         ],
                     }
@@ -1493,12 +1473,7 @@ def test_confusion_matrix_fp_unmatched_prediction_edge_case(
                         "examples": [
                             {
                                 "datum_id": "uid1",
-                                "ground_truth_id": {
-                                    "xmin": 0.0,
-                                    "xmax": 5.0,
-                                    "ymin": 0.0,
-                                    "ymax": 5.0,
-                                },
+                                "ground_truth_id": "uid1_gt0",
                             }
                         ],
                     }
@@ -1516,6 +1491,9 @@ def test_confusion_matrix_fp_unmatched_prediction_edge_case(
             m["value"]["unmatched_predictions"],
             m["value"]["unmatched_ground_truths"],
         )
+        import json
+
+        print(json.dumps(m, indent=4))
         assert m in expected_metrics
     for m in expected_metrics:
         assert m in actual_metrics

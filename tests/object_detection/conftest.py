@@ -750,7 +750,7 @@ def detections_fp_unmatched_prediction_edge_case() -> list[Detection]:
             uid="uid1",
             groundtruths=[
                 BoundingBox(
-                    uid=str(uuid4()),
+                    uid="uid1_gt0",
                     xmin=0,
                     xmax=5,
                     ymin=0,
@@ -760,7 +760,7 @@ def detections_fp_unmatched_prediction_edge_case() -> list[Detection]:
             ],
             predictions=[
                 BoundingBox(
-                    uid=str(uuid4()),
+                    uid="uid1_pd0",
                     xmin=0,
                     xmax=5,
                     ymin=0,
@@ -774,7 +774,7 @@ def detections_fp_unmatched_prediction_edge_case() -> list[Detection]:
             uid="uid2",
             groundtruths=[
                 BoundingBox(
-                    uid=str(uuid4()),
+                    uid="uid2_gt0",
                     xmin=0,
                     xmax=5,
                     ymin=0,
@@ -784,7 +784,7 @@ def detections_fp_unmatched_prediction_edge_case() -> list[Detection]:
             ],
             predictions=[
                 BoundingBox(
-                    uid=str(uuid4()),
+                    uid="uid2_pd0",
                     xmin=10,
                     xmax=20,
                     ymin=10,
