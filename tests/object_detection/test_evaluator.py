@@ -47,12 +47,12 @@ def test_no_thresholds(detection_ranked_pair_ordering):
         score_thresholds=[0.5],
     )
     with pytest.raises(ValueError):
-        evaluator.evaluate(
+        evaluator.compute_precision_recall(
             iou_thresholds=[],
             score_thresholds=[0.5],
         )
     with pytest.raises(ValueError):
-        evaluator.evaluate(
+        evaluator.compute_confusion_matrix(
             iou_thresholds=[0.5],
             score_thresholds=[],
         )
