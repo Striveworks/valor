@@ -366,6 +366,9 @@ class Evaluator:
             raise ValueError("At least one IOU threshold must be passed.")
         elif not score_thresholds:
             raise ValueError("At least one score threshold must be passed.")
+        elif self.detailed_pairs.size == 0:
+            warnings.warn("attempted to compute over an empty set")
+            return []
         results = compute_confusion_matrix(
             detailed_pairs=self.detailed_pairs,
             iou_thresholds=np.array(iou_thresholds),
