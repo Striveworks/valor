@@ -77,7 +77,7 @@ def test_iou_computation():
     assert len(loader.pairs) == 1
 
     # show that three unique IOUs exist
-    unique_ious = np.unique(loader.pairs[0][:, 3])
+    unique_ious = np.unique(loader.pairs[0][:, 5])
     assert np.isclose(
         unique_ious, np.array([0.0, 0.12755102, 0.68067227])
     ).all()

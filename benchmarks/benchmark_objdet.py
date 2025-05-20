@@ -209,7 +209,7 @@ class Benchmark:
     preprocessing: float
     precomputation: float
     evaluation: float
-    detailed_curves: list[tuple[int, float]]
+    detailed_evaluation: float
 
     def result(self) -> dict:
         return {
@@ -230,14 +230,7 @@ class Benchmark:
                 "total": f"{round(self.ingestion + self.precomputation, 2)} seconds",
             },
             "base_evaluation": f"{round(self.evaluation, 2)} seconds",
-            "detailed_evaluation": [
-                {
-                    "n_points": 10,
-                    "n_examples": curve[0],
-                    "computation": f"{round(curve[1], 2)} seconds",
-                }
-                for curve in self.detailed_curves
-            ],
+            "detailed_evaluation": f"{round(self.detailed_evaluation, 2)} seconds",
         }
 
 
@@ -334,36 +327,19 @@ def run_benchmarking_analysis(
                     f"Base evaluation timed out with {evaluator.n_datums} datums."
                 )
 
-            # evaluate - base metrics + detailed counts with no samples
-            detailed_counts_time_no_samples, metrics = time_it(
+            # evaluate - base metrics + detailed
+            detailed_evaluation_time, metrics = time_it(
                 evaluator.compute_confusion_matrix
             )(
                 score_thresholds=[0.5, 0.75, 0.9],
                 iou_thresholds=[0.1, 0.5, 0.75],
-                number_of_examples=0,
             )
             if (
-                detailed_counts_time_no_samples > evaluation_timeout
+                detailed_evaluation_time > evaluation_timeout
                 and evaluation_timeout != -1
             ):
                 raise TimeoutError(
-                    f"Detailed evaluation w/ no samples timed out with {evaluator.n_datums} datums."
-                )
-
-            # evaluate - base metrics + detailed counts with 3 samples
-            detailed_counts_time_three_samples, metrics = time_it(
-                evaluator.compute_confusion_matrix
-            )(
-                score_thresholds=[0.5, 0.75, 0.9],
-                iou_thresholds=[0.1, 0.5, 0.75],
-                number_of_examples=3,
-            )
-            if (
-                detailed_counts_time_three_samples > evaluation_timeout
-                and evaluation_timeout != -1
-            ):
-                raise TimeoutError(
-                    f"Detailed w/ 3 samples evaluation timed out with {evaluator.n_datums} datums."
+                    f"Detailed evaluation timed out with {evaluator.n_datums} datums."
                 )
 
             results.append(
@@ -380,10 +356,7 @@ def run_benchmarking_analysis(
                     preprocessing=preprocessing_time,
                     precomputation=finalization_time,
                     evaluation=eval_time,
-                    detailed_curves=[
-                        (0, detailed_counts_time_no_samples),
-                        (3, detailed_counts_time_three_samples),
-                    ],
+                    detailed_evaluation=detailed_evaluation_time,
                 ).result()
             )
 

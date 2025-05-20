@@ -19,26 +19,15 @@ def test_confusion_matrix_no_data():
 
 def test_compute_confusion_matrix():
 
-    sorted_ids = np.array(
+    sorted_pairs = np.array(
         [
             # dt, gt, pd, gl, pl
-            [0, 0, 1, 0, 0],
-            [1, 1, 2, 1, 0],
-            [2, -1, 4, -1, 0],
-            [3, 4, 5, 0, 0],
-            [1, 2, 3, 0, 0],
-            [4, 5, -1, 0, -1],
-        ]
-    )
-    sorted_values = np.array(
-        [
-            # iou, score
-            [0.98, 0.9],
-            [0.55, 0.9],
-            [0.0, 0.65],
-            [1.0, 0.1],
-            [0.55, 0.1],
-            [0.0, -1.0],
+            [0.0, 0.0, 1.0, 0.0, 0.0, 0.98, 0.9],
+            [1.0, 1.0, 2.0, 1.0, 0.0, 0.55, 0.9],
+            [2.0, -1.0, 4.0, -1.0, 0, 0.0, 0.65],
+            [3.0, 4, 5.0, 0.0, 0.0, 1.0, 0.1],
+            [1.0, 2.0, 3.0, 0.0, 0.0, 0.55, 0.1],
+            [4.0, 5.0, -1.0, 0.0, -1.0, 0.0, -1.0],
         ]
     )
 
@@ -46,7 +35,7 @@ def test_compute_confusion_matrix():
     score_thresholds = np.array([score / 100.0 for score in range(1, 101)])
 
     results = compute_confusion_matrix(
-        detailed_pairs=(sorted_ids, sorted_values),
+        detailed_pairs=sorted_pairs,
         iou_thresholds=iou_thresholds,
         score_thresholds=score_thresholds,
     )

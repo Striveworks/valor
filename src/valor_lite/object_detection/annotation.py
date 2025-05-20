@@ -32,7 +32,7 @@ class BoundingBox:
     --------
     Ground Truth Example:
 
-    >>> bbox = BoundingBox(xmin=10.0, xmax=50.0, ymin=20.0, ymax=60.0, labels=['cat'])
+    >>> bbox = BoundingBox(uid="xyz", xmin=10.0, xmax=50.0, ymin=20.0, ymax=60.0, labels=['cat'])
 
     Prediction Example:
 
@@ -96,7 +96,7 @@ class Polygon:
 
     >>> from shapely.geometry import Polygon as ShapelyPolygon
     >>> shape = ShapelyPolygon([(0, 0), (1, 0), (1, 1), (0, 1)])
-    >>> polygon = Polygon(shape=shape, labels=['building'])
+    >>> polygon = Polygon(uid="xyz", shape=shape, labels=['building'])
 
     Prediction Example:
 
@@ -153,7 +153,7 @@ class Bitmask:
     Prediction Example:
 
     >>> bitmask = Bitmask(
-    ...     mask=mask, labels=['tree'], scores=[0.85]
+    ...     uid="xyz", mask=mask, labels=['tree'], scores=[0.85]
     ... )
     """
 

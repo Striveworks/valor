@@ -219,115 +219,98 @@ def compute_label_metadata(ids: NDArray[np.int32], n_labels: int):
 
 
 def _compute_ranked_pairs_for_datum(
-    ids: NDArray[np.int32],
-    values: NDArray[np.float64],
+    data: NDArray[np.float64],
     label_metadata: NDArray[np.int32],
-) -> tuple[NDArray[np.int32], NDArray[np.float64]]:
+) -> NDArray[np.float64]:
     """
     Computes ranked pairs for a datum.
     """
+
+    # remove null predictions
+    data = data[data[:, 2] >= 0.0]
+
     # find best fits for prediction
-    mask_label_match = ids[:, 3] == ids[:, 4]
-    matched_predictions = np.unique(ids[mask_label_match, 2].astype(np.int32))
-    mask_unmatched_predictions = ~np.isin(ids[:, 2], matched_predictions)
-    mask_best_fit = mask_label_match | mask_unmatched_predictions
-    ids = ids[mask_best_fit]
-    values = values[mask_best_fit]
+    mask_label_match = data[:, 3] == data[:, 4]
+    matched_predicitons = np.unique(data[mask_label_match, 2].astype(np.int32))
+    mask_unmatched_predictions = ~np.isin(data[:, 2], matched_predicitons)
+    data = data[mask_label_match | mask_unmatched_predictions]
 
     # sort by gt_id, iou, score
     indices = np.lexsort(
         (
-            ids[:, 1],
-            -values[:, 0],
-            -values[:, 1],
+            data[:, 1],
+            -data[:, 5],
+            -data[:, 6],
         )
     )
-    ids = ids[indices]
-    values = values[indices]
+    data = data[indices]
 
     # remove ignored predictions
     for label_idx, count in enumerate(label_metadata[:, 0]):
         if count > 0:
             continue
-        mask_ignored_predictions = ids[:, 4] != label_idx
-        ids = ids[mask_ignored_predictions]
-        values = values[mask_ignored_predictions]
+        data = data[data[:, 4] != label_idx]
 
     # only keep the highest ranked pair
-    _, indices = np.unique(ids[:, [0, 2, 4]], axis=0, return_index=True)
+    _, indices = np.unique(data[:, [0, 2, 4]], axis=0, return_index=True)
 
     # np.unique orders its results by value, we need to sort the indices to maintain the results of the lexsort
-    ids = ids[indices, :]
-    values = values[indices, :]
+    data = data[indices, :]
 
-    return (ids, values)
+    return data
 
 
 def compute_ranked_pairs(
-    detailed_pairs: tuple[NDArray[np.int32], NDArray[np.float64]],
+    data: list[NDArray[np.float64]],
     label_metadata: NDArray[np.int32],
-) -> tuple[NDArray[np.int32], NDArray[np.float64]]:
+) -> NDArray[np.float64]:
     """
     Performs pair ranking on input data.
 
+    Takes data with shape (N, 7):
+
+    Index 0 - Datum Index
+    Index 1 - GroundTruth Index
+    Index 2 - Prediction Index
+    Index 3 - IOU
+    Index 4 - GroundTruth Label Index
+    Index 5 - Prediction Label Index
+    Index 6 - Score
+
+    Returns data with shape (N - M, 7)
+
     Parameters
     ----------
-    detailed_pairs : NDArray[np.float64]
-        An unsorted array containing both matched and unmatched annotations with shape (N, 7).
-            Index 0 - Datum Index
-            Index 1 - GroundTruth Index
-            Index 2 - Prediction Index
-            Index 3 - IOU
-            Index 4 - GroundTruth Label Index
-            Index 5 - Prediction Label Index
-            Index 6 - Score
+    data : NDArray[np.float64]
+        A sorted array summarizing the IOU calculations of one or more pairs.
     label_metadata : NDArray[np.int32]
-        The label metadata array with shape (n_labels, 2).
-            Index 0 - Ground truth label count
-            Index 1 - Prediction label count
+        An array containing metadata related to labels.
 
     Returns
     -------
-    NDArray[np.int32]
-        A filtered array containing only ranked pairs with shape (N - M, 7).
     NDArray[np.float64]
-        A filtered array containing only ranked pairs with shape (N - M, 7).
+        A filtered array containing only ranked pairs.
     """
-    ids = detailed_pairs[0]
-    values = detailed_pairs[1]
 
-    # remove null predictions
-    mask_null_predictions = ids[:, 2] >= 0
-    ids = ids[mask_null_predictions]
-    values = values[mask_null_predictions]
-
-    unique_datums = np.unique(detailed_pairs[0][:, 0])
-    ranked_ids_by_datum = []
-    ranked_values_by_datum = []
-    for idx in range(unique_datums.size):
-        mask_datum = ids[:, 0] == idx
-        ids_per_datum, values_per_datum = _compute_ranked_pairs_for_datum(
-            ids=ids[mask_datum],
-            values=values[mask_datum],
+    ranked_pairs_by_datum = [
+        _compute_ranked_pairs_for_datum(
+            data=datum,
             label_metadata=label_metadata,
         )
-        ranked_ids_by_datum.append(ids_per_datum)
-        ranked_values_by_datum.append(values_per_datum)
-    if not ranked_ids_by_datum or not ranked_values_by_datum:
-        return (np.array([], dtype=np.int32), np.array([], dtype=np.float64))
-    ranked_ids = np.concatenate(ranked_ids_by_datum, axis=0)
-    ranked_values = np.concatenate(ranked_values_by_datum, axis=0)
+        for datum in data
+    ]
+    ranked_pairs = np.concatenate(ranked_pairs_by_datum, axis=0)
     indices = np.lexsort(
         (
-            -ranked_values[:, 0],  # iou
-            -ranked_values[:, 1],  # score
+            -ranked_pairs[:, 5],  # iou
+            -ranked_pairs[:, 6],  # score
         )
     )
-    return (ranked_ids[indices], ranked_values[indices])
+    return ranked_pairs[indices]
 
 
 def compute_precion_recall(
-    ranked_pairs: tuple[NDArray[np.int32], NDArray[np.float64]],
+    ranked_pairs: NDArray[np.float64],
     label_metadata: NDArray[np.int32],
     iou_thresholds: NDArray[np.float64],
     score_thresholds: NDArray[np.float64],
@@ -378,9 +361,7 @@ def compute_precion_recall(
     NDArray[np.float64]
         Interpolated Precision-Recall Curves.
     """
-    ids, values = ranked_pairs
-
-    n_rows = ids.shape[0]
+    n_rows = ranked_pairs.shape[0]
     n_labels = label_metadata.shape[0]
     n_ious = iou_thresholds.shape[0]
     n_scores = score_thresholds.shape[0]
@@ -398,7 +379,7 @@ def compute_precion_recall(
     counts = np.zeros((n_ious, n_scores, n_labels, 6), dtype=np.float64)
     pr_curve = np.zeros((n_ious, n_labels, 101, 2))
 
-    if ids.size == 0 or values.size == 0:
+    if ranked_pairs.size == 0:
         warnings.warn("no valid ranked pairs")
         return (
             (average_precision, mAP),
@@ -408,11 +389,12 @@ def compute_precion_recall(
         )
 
     # start computation
+    ids = ranked_pairs[:, :5].astype(np.int32)
     gt_ids = ids[:, 1]
     gt_labels = ids[:, 3]
     pd_labels = ids[:, 4]
-    ious = values[:, 0]
-    scores = values[:, 1]
+    ious = ranked_pairs[:, 5]
+    scores = ranked_pairs[:, 6]
 
     unique_pd_labels, unique_pd_indices = np.unique(
         pd_labels, return_index=True
@@ -647,21 +629,19 @@ class PairClassification(IntFlag):
 
 
 def mask_pairs_greedily(
-    ids: NDArray[np.int32],
-    values: NDArray[np.float64],
+    pairs: NDArray[np.float64],
 ):
     indices = np.lexsort(
         (
-            ids[:, 1],  # ground truth id
-            -values[:, 0],  # iou
-            -values[:, 1],  # score
+            pairs[:, 1],  # ground truth id
+            -pairs[:, 5],  # iou
+            -pairs[:, 6],  # score
         )
     )
-    ids = ids[indices]
-    values = values[indices]
+    pairs = pairs[indices]
 
-    groundtruths = ids[:, 1]
-    predictions = ids[:, 2]
+    groundtruths = pairs[:, 1].astype(np.int32)
+    predictions = pairs[:, 2].astype(np.int32)
 
     # Pre‑allocate “seen” flags for every possible x and y
     max_gt = groundtruths.max()
@@ -670,7 +650,7 @@ def mask_pairs_greedily(
     used_pd = np.zeros(max_pd + 1, dtype=np.bool_)
 
     # This mask will mark which pairs to keep
-    keep = np.zeros(ids.shape[0], dtype=bool)
+    keep = np.zeros(pairs.shape[0], dtype=bool)
 
     for idx in range(groundtruths.shape[0]):
         gidx = groundtruths[idx]
@@ -682,15 +662,15 @@ def mask_pairs_greedily(
             used_pd[pidx] = True
 
     mask_matches = _isin(
-        data=ids[:, (1, 2)],
-        subset=np.unique(ids[np.ix_(keep, (1, 2))], axis=0),  # type: ignore - np.ix_ typing
+        data=pairs[:, (1, 2)].astype(np.int32),
+        subset=np.unique(pairs[np.ix_(keep, (1, 2))], axis=0),  # type: ignore - np.ix_ typing
     )
 
     return mask_matches
 
 
 def compute_confusion_matrix(
-    detailed_pairs: tuple[NDArray[np.int32], NDArray[np.float64]],
+    detailed_pairs: NDArray[np.float64],
     iou_thresholds: NDArray[np.float64],
     score_thresholds: NDArray[np.float64],
 ) -> NDArray[np.uint8]:
@@ -702,9 +682,9 @@ def compute_confusion_matrix(
     Index 0 - Datum Index
     Index 1 - GroundTruth Index
     Index 2 - Prediction Index
-    Index 3 - IOU
-    Index 4 - GroundTruth Label Index
-    Index 5 - Prediction Label Index
+    Index 3 - GroundTruth Label Index
+    Index 4 - Prediction Label Index
+    Index 5 - IOU
     Index 6 - Score
 
     Parameters
@@ -723,9 +703,7 @@ def compute_confusion_matrix(
     NDArray[np.uint8]
         Confusion matrix.
     """
-    ids, values = detailed_pairs
-
-    n_pairs = ids.shape[0]
+    n_pairs = detailed_pairs.shape[0]
     n_ious = iou_thresholds.shape[0]
     n_scores = score_thresholds.shape[0]
 
@@ -733,17 +711,18 @@ def compute_confusion_matrix(
         (n_ious, n_scores, n_pairs),
         dtype=np.uint8,
     )
-    if ids.size == 0 or values.size == 0:
+    if detailed_pairs.size == 0:
         return pair_classifications
 
+    ids = detailed_pairs[:, :5].astype(np.int32)
     groundtruths = ids[:, (0, 1)]
     predictions = ids[:, (0, 2)]
     gt_ids = ids[:, 1]
     pd_ids = ids[:, 2]
     gt_labels = ids[:, 3]
     pd_labels = ids[:, 4]
-    ious = values[:, 0]
-    scores = values[:, 1]
+    ious = detailed_pairs[:, 5]
+    scores = detailed_pairs[:, 6]
 
     mask_gt_exists = gt_ids > -0.5
     mask_pd_exists = pd_ids > -0.5
@@ -754,12 +733,11 @@ def compute_confusion_matrix(
     mask_gt_pd_exists = mask_gt_exists & mask_pd_exists
     mask_gt_pd_match = mask_gt_pd_exists & mask_label_match
 
-    mask_matched_pairs = mask_pairs_greedily(ids=ids, values=values)
+    mask_matched_pairs = mask_pairs_greedily(pairs=detailed_pairs)
 
     for iou_idx in range(n_ious):
         mask_iou_threshold = ious >= iou_thresholds[iou_idx]
         mask_iou = mask_iou_nonzero & mask_iou_threshold
-
         for score_idx in range(n_scores):
             mask_score_threshold = scores >= score_thresholds[score_idx]
             mask_score = mask_score_nonzero & mask_score_threshold

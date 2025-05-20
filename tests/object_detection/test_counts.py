@@ -199,6 +199,9 @@ def test_counts_metrics_second_class(
             },
         ]
         for m in actual_metrics:
+            import json
+
+            print(json.dumps(m, indent=4))
             assert m in expected_metrics
         for m in expected_metrics:
             assert m in actual_metrics
