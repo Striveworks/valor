@@ -92,16 +92,23 @@ def test_Bitmask():
     with pytest.raises(ValueError):
         Bitmask(
             uid=str(uuid4()),
-            mask=np.zeros((10, 10), dtype=np.bool_),
+            mask=mask,
             labels=["label1", "label2"],
             scores=[0.7],
         )
     with pytest.raises(ValueError):
         Bitmask(
             uid=str(uuid4()),
-            mask=np.zeros((10, 10), dtype=np.bool_),
+            mask=mask,
             labels=["label1", "label2"],
             scores=[],
+        )
+    with pytest.raises(ValueError):
+        Bitmask(
+            uid=str(uuid4()),
+            mask=[[0, 0], [0, 0]],  # type: ignore - testing
+            labels=["label"],
+            scores=[0.7],
         )
 
     with pytest.raises(ValueError):
