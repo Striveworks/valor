@@ -8,7 +8,7 @@ def test__compute_precision():
 
     sorted_pairs = np.array(
         [
-            # dt, gt, pd, gl, pl
+            # dt, gt, pd, gl, pl, iou, score
             [0.0, 0.0, 2.0, 0.0, 0.0, 0.25, 0.95],
             [0.0, 0.0, 3.0, 0.0, 0.0, 0.33333, 0.9],
             [0.0, 0.0, 4.0, 0.0, 0.0, 0.66667, 0.65],
