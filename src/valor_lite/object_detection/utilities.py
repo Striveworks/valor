@@ -209,13 +209,13 @@ def _unpack_confusion_matrix(
     )
 
     unique_matches = np.unique(
-        ids[np.ix_(mask_matched, (0, 1, 2, 3, 4))], axis=0
+        ids[np.ix_(mask_matched, (0, 1, 2, 3, 4))], axis=0  # type: ignore - numpy ix_ typing
     )
     unique_unmatched_predictions = np.unique(
-        ids[np.ix_(mask_fp_unmatched, (0, 2, 4))], axis=0
+        ids[np.ix_(mask_fp_unmatched, (0, 2, 4))], axis=0  # type: ignore - numpy ix_ typing
     )
     unique_unmatched_groundtruths = np.unique(
-        ids[np.ix_(mask_fn_unmatched, (0, 1, 3))], axis=0
+        ids[np.ix_(mask_fn_unmatched, (0, 1, 3))], axis=0  # type: ignore - numpy ix_ typing
     )
 
     confusion_matrix = dict()
