@@ -706,8 +706,6 @@ def compute_confusion_matrix(
         (n_ious, n_scores, n_pairs),
         dtype=np.uint8,
     )
-    if detailed_pairs.size == 0:
-        return pair_classifications
 
     ids = detailed_pairs[:, :5].astype(np.int32)
     groundtruths = ids[:, (0, 1)]

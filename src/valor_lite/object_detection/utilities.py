@@ -225,102 +225,53 @@ def _unpack_confusion_matrix(
         ids[np.ix_(mask_fn_unmatched, (0, 1, 3))], axis=0  # type: ignore - numpy ix_ typing
     )
 
-    for idx in range(unique_unmatched_groundtruths.shape[0]):
-        label = index_to_label[unique_unmatched_groundtruths[idx, 2]]
-        unmatched_ground_truths[label]["count"] += 1
-        unmatched_ground_truths[label]["examples"].append(
-            {
-                "datum_id": index_to_datum_id[
-                    unique_unmatched_groundtruths[idx, 0]
-                ],
-                "ground_truth_id": index_to_groundtruth_id[
-                    unique_unmatched_groundtruths[idx, 1]
-                ],
-            }
-        )
+    n_matched = unique_matches.shape[0]
+    n_unmatched_predictions = unique_unmatched_predictions.shape[0]
+    n_unmatched_groundtruths = unique_unmatched_groundtruths.shape[0]
+    n_max = max(n_matched, n_unmatched_groundtruths, n_unmatched_predictions)
 
-    for idx in range(unique_unmatched_predictions.shape[0]):
-        label = index_to_label[unique_unmatched_predictions[idx, 2]]
-        unmatched_predictions[label]["count"] += 1
-        unmatched_predictions[label]["examples"].append(
-            {
-                "datum_id": index_to_datum_id[
-                    unique_unmatched_predictions[idx, 0]
-                ],
-                "prediction_id": index_to_prediction_id[
-                    unique_unmatched_predictions[idx, 1]
-                ],
-            }
-        )
-
-    for idx in range(unique_matches.shape[0]):
-        glabel = index_to_label[unique_matches[idx, 3]]
-        plabel = index_to_label[unique_matches[idx, 4]]
-        confusion_matrix[glabel][plabel]["count"] += 1
-        confusion_matrix[glabel][plabel]["examples"].append(
-            {
-                "datum_id": index_to_datum_id[unique_matches[idx, 0]],
-                "ground_truth_id": index_to_groundtruth_id[
-                    unique_matches[idx, 1]
-                ],
-                "prediction_id": index_to_prediction_id[
-                    unique_matches[idx, 2]
-                ],
-            }
-        )
-
-    # confusion_matrix = dict()
-    # unmatched_ground_truths = dict()
-    # unmatched_predictions = dict()
-    # for label_idx, label in enumerate(index_to_label):
-
-    #     mask_glabel = ids[:, 3] == label_idx
-    #     mask_plabel = ids[:, 4] == label_idx
-
-    #     unmatched_fn = unique_unmatched_groundtruths[
-    #         unique_unmatched_groundtruths[:, 2] == label_idx
-    #     ]
-
-    #     unmatched_fp = unique_unmatched_predictions[
-    #         unique_unmatched_predictions[:, 2] == label_idx
-    #     ]
-    #     unmatched_predictions[label] = {
-    #         "count": unmatched_fp.shape[0],
-    #         "examples": [
-    #             {
-    #                 "datum_id": index_to_datum_id[unmatched_fp[idx, 0]],
-    #                 "prediction_id": index_to_prediction_id[
-    #                     unmatched_fp[idx, 1]
-    #                 ],
-    #             }
-    #             for idx in range(unmatched_fp.shape[0])
-    #         ],
-    #     }
-
-    #     confusion_matrix[label] = {}
-    #     for plabel_idx, plabel in enumerate(index_to_label):
-    #         mask_inner_plabel = ids[:, 4] == plabel_idx
-    #         mask_labels = mask_glabel & mask_inner_plabel
-    #         # mask_labels = np.all(
-    #         #     unique_matches[:, (3, 4)] == np.array([label_idx, plabel_idx]),
-    #         #     axis=1,
-    #         # )
-    #         matches = unique_matches[mask_labels]
-    #         confusion_matrix[label][plabel] = {
-    #             "count": matches.shape[0],
-    #             "examples": [
-    #                 {
-    #                     "datum_id": index_to_datum_id[matches[idx, 0]],
-    #                     "ground_truth_id": index_to_groundtruth_id[
-    #                         matches[idx, 1]
-    #                     ],
-    #                     "prediction_id": index_to_prediction_id[
-    #                         matches[idx, 2]
-    #                     ],
-    #                 }
-    #                 for idx in range(matches.shape[0])
-    #             ],
-    #         }
+    for idx in range(n_max):
+        if idx < n_unmatched_groundtruths:
+            label = index_to_label[unique_unmatched_groundtruths[idx, 2]]
+            unmatched_ground_truths[label]["count"] += 1
+            unmatched_ground_truths[label]["examples"].append(
+                {
+                    "datum_id": index_to_datum_id[
+                        unique_unmatched_groundtruths[idx, 0]
+                    ],
+                    "ground_truth_id": index_to_groundtruth_id[
+                        unique_unmatched_groundtruths[idx, 1]
+                    ],
+                }
+            )
+        if idx < n_unmatched_predictions:
+            label = index_to_label[unique_unmatched_predictions[idx, 2]]
+            unmatched_predictions[label]["count"] += 1
+            unmatched_predictions[label]["examples"].append(
+                {
+                    "datum_id": index_to_datum_id[
+                        unique_unmatched_predictions[idx, 0]
+                    ],
+                    "prediction_id": index_to_prediction_id[
+                        unique_unmatched_predictions[idx, 1]
+                    ],
+                }
+            )
+        if idx < n_matched:
+            glabel = index_to_label[unique_matches[idx, 3]]
+            plabel = index_to_label[unique_matches[idx, 4]]
+            confusion_matrix[glabel][plabel]["count"] += 1
+            confusion_matrix[glabel][plabel]["examples"].append(
+                {
+                    "datum_id": index_to_datum_id[unique_matches[idx, 0]],
+                    "ground_truth_id": index_to_groundtruth_id[
+                        unique_matches[idx, 1]
+                    ],
+                    "prediction_id": index_to_prediction_id[
+                        unique_matches[idx, 2]
+                    ],
+                }
+            )
 
     return Metric.confusion_matrix(
         confusion_matrix=confusion_matrix,
