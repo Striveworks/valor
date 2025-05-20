@@ -1,4 +1,4 @@
-from dataclasses import replace
+from copy import deepcopy
 from uuid import uuid4
 
 import numpy as np
@@ -26,11 +26,17 @@ def two_detections(basic_detections: list[Detection]) -> list[Detection]:
 def four_detections(basic_detections: list[Detection]) -> list[Detection]:
     det1 = basic_detections[0]
     det2 = basic_detections[1]
-    det3 = replace(basic_detections[0])
-    det4 = replace(basic_detections[1])
+    det3 = deepcopy(basic_detections[0])
+    det4 = deepcopy(basic_detections[1])
 
     det3.uid = "uid3"
     det4.uid = "uid4"
+
+    for det in [det1, det2, det3, det4]:
+        for gidx, gt in enumerate(det.groundtruths):
+            gt.uid = f"{det.uid}_gt_{gidx}"
+        for pidx, pd in enumerate(det.predictions):
+            pd.uid = f"{det.uid}_pd_{pidx}"
 
     return [det1, det2, det3, det4]
 
@@ -460,6 +466,102 @@ def test_filtering_all_detections(four_detections: list[Detection]):
                     0,
                     0,
                 ],
+            ]
+        )
+    ).all()
+
+    # test ground truth annotation filtering
+    evaluator.apply_filter(groundtruth_ids=[])
+    assert np.all(
+        evaluator.detailed_pairs
+        == np.array(
+            [
+                [1.0, -1.0, 1.0, -1.0, 1.0, 0.0, 0.98],
+                [3.0, -1.0, 3.0, -1.0, 1.0, 0.0, 0.98],
+                [0.0, -1.0, 0.0, -1.0, 0.0, 0.0, 0.3],
+                [2.0, -1.0, 2.0, -1.0, 0.0, 0.0, 0.3],
+            ]
+        )
+    )
+    assert (
+        evaluator.label_metadata
+        == np.array(
+            [
+                [0, 2],
+                [0, 2],
+            ]
+        )
+    ).all()
+
+    evaluator.apply_filter(groundtruth_ids=["uid1_gt_0"])
+    assert np.all(
+        evaluator.detailed_pairs
+        == np.array(
+            [
+                [1.0, -1.0, 1.0, -1.0, 1.0, 0.0, 0.98],
+                [3.0, -1.0, 3.0, -1.0, 1.0, 0.0, 0.98],
+                [0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.3],
+                [2.0, -1.0, 2.0, -1.0, 0.0, 0.0, 0.3],
+            ]
+        )
+    )
+    assert (
+        evaluator.label_metadata
+        == np.array(
+            [
+                [1, 2],
+                [0, 2],
+            ]
+        )
+    ).all()
+
+    # test prediction annotation filtering
+    evaluator.apply_filter(prediction_ids=[])
+    print(evaluator.detailed_pairs)
+    assert np.all(
+        evaluator.detailed_pairs
+        == np.array(
+            [
+                [0.0, 0.0, -1.0, 0.0, -1.0, 0.0, -1.0],
+                [0.0, 1.0, -1.0, 1.0, -1.0, 0.0, -1.0],
+                [1.0, 2.0, -1.0, 0.0, -1.0, 0.0, -1.0],
+                [2.0, 3.0, -1.0, 0.0, -1.0, 0.0, -1.0],
+                [2.0, 4.0, -1.0, 1.0, -1.0, 0.0, -1.0],
+                [3.0, 5.0, -1.0, 0.0, -1.0, 0.0, -1.0],
+            ]
+        )
+    )
+    assert (
+        evaluator.label_metadata
+        == np.array(
+            [
+                [4, 0],
+                [2, 0],
+            ]
+        )
+    ).all()
+
+    evaluator.apply_filter(prediction_ids=["uid1_pd_0"])
+    print("here", evaluator.detailed_pairs)
+    assert np.all(
+        evaluator.detailed_pairs
+        == np.array(
+            [
+                [0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.3],
+                [0.0, 1.0, -1.0, 1.0, -1.0, 0.0, -1.0],
+                [1.0, 2.0, -1.0, 0.0, -1.0, 0.0, -1.0],
+                [2.0, 3.0, -1.0, 0.0, -1.0, 0.0, -1.0],
+                [2.0, 4.0, -1.0, 1.0, -1.0, 0.0, -1.0],
+                [3.0, 5.0, -1.0, 0.0, -1.0, 0.0, -1.0],
+            ]
+        )
+    )
+    assert (
+        evaluator.label_metadata
+        == np.array(
+            [
+                [4, 1],
+                [2, 0],
             ]
         )
     ).all()
