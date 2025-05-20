@@ -106,7 +106,6 @@ class Evaluator:
     @property
     def n_datums(self) -> int:
         """Returns the number of datums."""
-        print(self.detailed_pairs)
         return np.unique(self.detailed_pairs[0][:, 0]).size
 
     @property
@@ -713,7 +712,6 @@ class DataLoader:
             self.pairs,
             axis=0,
         )
-        print(cache)
         indices = np.lexsort(
             (
                 cache[:, 1],
