@@ -324,6 +324,10 @@ class Evaluator:
         dict[MetricType, list]
             A dictionary mapping MetricType enumerations to lists of computed metrics.
         """
+        if not iou_thresholds:
+            raise ValueError("At least one IOU threshold must be passed.")
+        elif not score_thresholds:
+            raise ValueError("At least one score threshold must be passed.")
         results = compute_precion_recall(
             ranked_pairs=self.ranked_pairs,
             label_metadata=self.label_metadata,
@@ -358,6 +362,10 @@ class Evaluator:
         list[Metric]
             List of confusion matrices per threshold pair.
         """
+        if not iou_thresholds:
+            raise ValueError("At least one IOU threshold must be passed.")
+        elif not score_thresholds:
+            raise ValueError("At least one score threshold must be passed.")
         results = compute_confusion_matrix(
             detailed_pairs=self.detailed_pairs,
             iou_thresholds=np.array(iou_thresholds),

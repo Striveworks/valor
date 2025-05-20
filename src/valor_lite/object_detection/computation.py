@@ -366,11 +366,6 @@ def compute_precion_recall(
     n_ious = iou_thresholds.shape[0]
     n_scores = score_thresholds.shape[0]
 
-    if n_ious == 0:
-        raise ValueError("At least one IOU threshold must be passed.")
-    elif n_scores == 0:
-        raise ValueError("At least one score threshold must be passed.")
-
     # initialize result arrays
     average_precision = np.zeros((n_ious, n_labels), dtype=np.float64)
     mAP = np.zeros(n_ious, dtype=np.float64)

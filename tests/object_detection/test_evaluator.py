@@ -1,4 +1,5 @@
 import numpy as np
+import pytest
 
 from valor_lite.object_detection import (
     DataLoader,
@@ -34,6 +35,27 @@ def test_metadata_using_torch_metrics_example(
         "n_groundtruths": 20,
         "n_predictions": 19,
     }
+
+
+def test_no_thresholds(detection_ranked_pair_ordering):
+    loader = DataLoader()
+    loader.add_bounding_boxes([detection_ranked_pair_ordering])
+    evaluator = loader.finalize()
+
+    evaluator.evaluate(
+        iou_thresholds=[0.5],
+        score_thresholds=[0.5],
+    )
+    with pytest.raises(ValueError):
+        evaluator.evaluate(
+            iou_thresholds=[],
+            score_thresholds=[0.5],
+        )
+    with pytest.raises(ValueError):
+        evaluator.evaluate(
+            iou_thresholds=[0.5],
+            score_thresholds=[],
+        )
 
 
 def test_no_groundtruths(detections_no_groundtruths):
