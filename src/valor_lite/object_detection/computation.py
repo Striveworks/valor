@@ -777,15 +777,15 @@ def compute_confusion_matrix(
             # classify pairings
             pair_classifications[
                 iou_idx, score_idx, mask_true_positives
-            ] |= PairClassification.TP
-            pair_classifications[
-                iou_idx, score_idx, mask_misclf
-            ] |= PairClassification.FP_FN_MISCLF
+            ] |= np.uint8(PairClassification.TP)
+            pair_classifications[iou_idx, score_idx, mask_misclf] |= np.uint8(
+                PairClassification.FP_FN_MISCLF
+            )
             pair_classifications[
                 iou_idx, score_idx, mask_unmatched_predictions
-            ] |= PairClassification.FP_UNMATCHED
+            ] |= np.uint8(PairClassification.FP_UNMATCHED)
             pair_classifications[
                 iou_idx, score_idx, mask_unmatched_groundtruths
-            ] |= PairClassification.FN_UNMATCHED
+            ] |= np.uint8(PairClassification.FN_UNMATCHED)
 
     return pair_classifications

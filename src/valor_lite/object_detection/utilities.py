@@ -190,9 +190,6 @@ def _unpack_confusion_matrix(
     iou_threhsold: float,
     score_threshold: float,
 ):
-    import time
-
-    start = time.time()
     ids = detailed_pairs[:, :5].astype(np.int32)
 
     mask_matched = (
@@ -277,7 +274,6 @@ def _unpack_confusion_matrix(
                 ],
             }
 
-    print(time.time() - start, "seconds")
     return Metric.confusion_matrix(
         confusion_matrix=confusion_matrix,
         unmatched_ground_truths=unmatched_ground_truths,
