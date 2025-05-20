@@ -61,7 +61,7 @@ def test_Bitmask():
     mask[:5, :5] = True
 
     # groundtruth
-    gt = Bitmask(uid=str(uuid4()), mask=mask, labels=["label"])
+    assert Bitmask(uid=str(uuid4()), mask=mask, labels=["label"])
 
     # prediction
     Bitmask(
@@ -100,7 +100,7 @@ def test_Polygon(rect1_rotated_5_degrees_around_origin):
     shape = ShapelyPolygon(rect1_rotated_5_degrees_around_origin)
 
     # groundtruth
-    gt = Polygon(uid=str(uuid4()), shape=shape, labels=["label"])
+    assert Polygon(uid=str(uuid4()), shape=shape, labels=["label"])
 
     # prediction
     Polygon(

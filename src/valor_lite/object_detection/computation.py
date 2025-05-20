@@ -228,8 +228,8 @@ def _compute_ranked_pairs_for_datum(
     """
     # find best fits for prediction
     mask_label_match = ids[:, 3] == ids[:, 4]
-    matched_predicitons = np.unique(ids[mask_label_match, 2].astype(np.int32))
-    mask_unmatched_predictions = ~np.isin(ids[:, 2], matched_predicitons)
+    matched_predictions = np.unique(ids[mask_label_match, 2].astype(np.int32))
+    mask_unmatched_predictions = ~np.isin(ids[:, 2], matched_predictions)
     mask_best_fit = mask_label_match | mask_unmatched_predictions
     ids = ids[mask_best_fit]
     values = values[mask_best_fit]
@@ -610,44 +610,6 @@ def compute_precion_recall(
     )
 
 
-def _count_with_examples(
-    data: NDArray[np.float64],
-    unique_idx: int | list[int],
-    label_idx: int | list[int],
-) -> tuple[NDArray[np.float64], NDArray[np.int32], NDArray[np.intp]]:
-    """
-    Helper function for counting occurences of unique detailed pairs.
-
-    Parameters
-    ----------
-    data : NDArray[np.float64]
-        A masked portion of a detailed pairs array.
-    unique_idx : int | list[int]
-        The index or indices upon which uniqueness is constrained.
-    label_idx : int | list[int]
-        The index or indices within the unique index or indices that encode labels.
-
-    Returns
-    -------
-    NDArray[np.float64]
-        Examples drawn from the data input.
-    NDArray[np.int32]
-        Unique label indices.
-    NDArray[np.intp]
-        Counts for each unique label index.
-    """
-    unique_rows, indices = np.unique(
-        data.astype(np.int32)[:, unique_idx],
-        return_index=True,
-        axis=0,
-    )
-    examples = data[indices]
-    labels, counts = np.unique(
-        unique_rows[:, label_idx], return_counts=True, axis=0
-    )
-    return examples, labels, counts
-
-
 def _isin(
     data: NDArray[np.int32],
     subset: NDArray[np.int32],
@@ -682,6 +644,49 @@ class PairClassification(IntFlag):
     FP_FN_MISCLF = auto()
     FP_UNMATCHED = auto()
     FN_UNMATCHED = auto()
+
+
+def mask_pairs_greedily(
+    ids: NDArray[np.int32],
+    values: NDArray[np.float64],
+):
+    indices = np.lexsort(
+        (
+            ids[:, 1],  # ground truth id
+            -values[:, 0],  # iou
+            -values[:, 1],  # score
+        )
+    )
+    ids = ids[indices]
+    values = values[indices]
+
+    groundtruths = ids[:, 1]
+    predictions = ids[:, 2]
+
+    # Pre‑allocate “seen” flags for every possible x and y
+    max_gt = groundtruths.max()
+    max_pd = predictions.max()
+    used_gt = np.zeros(max_gt + 1, dtype=np.bool_)
+    used_pd = np.zeros(max_pd + 1, dtype=np.bool_)
+
+    # This mask will mark which pairs to keep
+    keep = np.zeros(ids.shape[0], dtype=bool)
+
+    for idx in range(groundtruths.shape[0]):
+        gidx = groundtruths[idx]
+        pidx = predictions[idx]
+
+        if not (gidx < 0 or pidx < 0 or used_gt[gidx] or used_pd[pidx]):
+            keep[idx] = True
+            used_gt[gidx] = True
+            used_pd[pidx] = True
+
+    mask_matches = _isin(
+        data=ids[:, (1, 2)],
+        subset=np.unique(ids[np.ix_(keep, (1, 2))], axis=0),  # type: ignore - np.ix_ typing
+    )
+
+    return mask_matches
 
 
 def compute_confusion_matrix(
@@ -749,61 +754,60 @@ def compute_confusion_matrix(
     mask_gt_pd_exists = mask_gt_exists & mask_pd_exists
     mask_gt_pd_match = mask_gt_pd_exists & mask_label_match
 
+    mask_matched_pairs = mask_pairs_greedily(ids=ids, values=values)
+
     for iou_idx in range(n_ious):
         mask_iou_threshold = ious >= iou_thresholds[iou_idx]
         mask_iou = mask_iou_nonzero & mask_iou_threshold
-
-        predictions_passing_ious = np.unique(predictions[mask_iou], axis=0)
-        mask_predictions_passing_ious = _isin(
-            data=predictions,
-            subset=predictions_passing_ious,
-        )
-        mask_predictions_not_passing_ious = (
-            ~mask_predictions_passing_ious & mask_pd_exists
-        )
 
         for score_idx in range(n_scores):
             mask_score_threshold = scores >= score_thresholds[score_idx]
             mask_score = mask_score_nonzero & mask_score_threshold
 
-            # create category masks
-            mask_tp = mask_iou & mask_score & mask_gt_pd_match
+            mask_thresholded_matched_pairs = (
+                mask_matched_pairs & mask_iou & mask_score
+            )
 
-            tp_predictions = np.unique(predictions[mask_tp], axis=0)
-            mask_tp_predictions = _isin(
+            mask_true_positives = (
+                mask_thresholded_matched_pairs & mask_gt_pd_match
+            )
+            mask_misclf = mask_thresholded_matched_pairs & ~mask_gt_pd_match
+
+            mask_groundtruths_in_thresholded_matched_pairs = _isin(
+                data=groundtruths,
+                subset=np.unique(
+                    groundtruths[mask_thresholded_matched_pairs], axis=0
+                ),
+            )
+            mask_predictions_in_thresholded_matched_pairs = _isin(
                 data=predictions,
-                subset=tp_predictions,
+                subset=np.unique(
+                    predictions[mask_thresholded_matched_pairs], axis=0
+                ),
             )
-            tp_groundtruths = np.unique(groundtruths[mask_tp], axis=0)
-            mask_tp_groundtruths = _isin(
-                data=groundtruths, subset=tp_groundtruths
+
+            mask_unmatched_predictions = (
+                ~mask_predictions_in_thresholded_matched_pairs
+                & mask_pd_exists
+                & mask_score
             )
-            mask_tp_related = mask_tp_predictions | mask_tp_groundtruths
-
-            mask_misclf = ~mask_tp_related & mask_iou & mask_score
-
-            print(ids)
-            print(values)
-            print(mask_iou)
-            print(mask_predictions_not_passing_ious)
-            mask_fp_unmatched = mask_predictions_not_passing_ious & mask_score
-
-            mask_fn_unmatched = (
-                ~mask_tp_groundtruths & ~mask_misclf & mask_gt_exists
+            mask_unmatched_groundtruths = (
+                ~mask_groundtruths_in_thresholded_matched_pairs
+                & mask_gt_exists
             )
 
             # classify pairings
             pair_classifications[
-                iou_idx, score_idx, mask_tp
+                iou_idx, score_idx, mask_true_positives
             ] |= PairClassification.TP
             pair_classifications[
                 iou_idx, score_idx, mask_misclf
             ] |= PairClassification.FP_FN_MISCLF
             pair_classifications[
-                iou_idx, score_idx, mask_fp_unmatched
+                iou_idx, score_idx, mask_unmatched_predictions
             ] |= PairClassification.FP_UNMATCHED
             pair_classifications[
-                iou_idx, score_idx, mask_fn_unmatched
+                iou_idx, score_idx, mask_unmatched_groundtruths
             ] |= PairClassification.FN_UNMATCHED
 
     return pair_classifications

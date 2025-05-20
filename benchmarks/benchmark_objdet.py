@@ -26,7 +26,7 @@ def _convert_valor_dicts_into_Detection(gt_dict: dict, pd_dict: dict):
     gts = []
     pds = []
 
-    for gann in gt_dict["annotations"]:
+    for gidx, gann in enumerate(gt_dict["annotations"]):
         labels = []
         for valor_label in gann["labels"]:
             # NOTE: we only include labels where the key is "name"
@@ -43,6 +43,7 @@ def _convert_valor_dicts_into_Detection(gt_dict: dict, pd_dict: dict):
 
         gts.append(
             BoundingBox(
+                uid=f"gt_{gidx}",
                 xmin=x_min,
                 xmax=x_max,
                 ymin=y_min,
@@ -51,7 +52,7 @@ def _convert_valor_dicts_into_Detection(gt_dict: dict, pd_dict: dict):
             )
         )
 
-    for pann in pd_dict["annotations"]:
+    for pidx, pann in enumerate(pd_dict["annotations"]):
         labels, scores = [], []
         for valor_label in pann["labels"]:
             if valor_label["key"] != "name":
@@ -65,6 +66,7 @@ def _convert_valor_dicts_into_Detection(gt_dict: dict, pd_dict: dict):
 
         pds.append(
             BoundingBox(
+                uid=f"pd_{pidx}",
                 xmin=x_min,
                 xmax=x_max,
                 ymin=y_min,

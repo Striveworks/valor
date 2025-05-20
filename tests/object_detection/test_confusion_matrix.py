@@ -186,8 +186,8 @@ def test_confusion_matrix(
     evaluator = loader.finalize()
 
     assert evaluator.ignored_prediction_labels == [
-        "not_v2",
         "unmatched_prediction",
+        "not_v2",
     ]
     assert evaluator.missing_prediction_labels == [
         "unmatched_groundtruth",
@@ -979,6 +979,32 @@ def test_confusion_matrix(
         assert m in actual_metrics
 
 
+def _filter_out_examples_and_zero_counts(cm: dict, hl: dict, mp: dict):
+    gt_labels = list(mp.keys())
+    pd_labels = list(hl.keys())
+
+    for gt_label in gt_labels:
+        for pd_label in pd_labels:
+            if cm[gt_label][pd_label]["count"] == 0:
+                cm[gt_label].pop(pd_label)
+            else:
+                cm[gt_label][pd_label]["examples"] = list()
+        if len(cm[gt_label]) == 0:
+            cm.pop(gt_label)
+
+    for pd_label in pd_labels:
+        if hl[pd_label]["count"] == 0:
+            hl.pop(pd_label)
+        else:
+            hl[pd_label]["examples"] = list()
+
+    for gt_label in gt_labels:
+        if mp[gt_label]["count"] == 0:
+            mp.pop(gt_label)
+        else:
+            mp[gt_label]["examples"] = list()
+
+
 def test_confusion_matrix_using_torch_metrics_example(
     torchmetrics_detections: list[Detection],
 ):
@@ -1017,17 +1043,16 @@ def test_confusion_matrix_using_torch_metrics_example(
                     },
                     "1": {"1": {"count": 1, "examples": []}},
                     "0": {"0": {"count": 5, "examples": []}},
-                    "49": {"49": {"count": 9, "examples": []}},
+                    "49": {"49": {"count": 8, "examples": []}},
                 },
-                "unmatched_predictions": {},
+                "unmatched_predictions": {"49": {"count": 1, "examples": []}},
                 "unmatched_ground_truths": {
-                    "49": {"count": 1, "examples": []}
+                    "49": {"count": 2, "examples": []}
                 },
             },
             "parameters": {
                 "score_threshold": 0.05,
                 "iou_threshold": 0.5,
-                "maximum_number_of_examples": 0,
             },
         },
         {
@@ -1052,7 +1077,6 @@ def test_confusion_matrix_using_torch_metrics_example(
             "parameters": {
                 "score_threshold": 0.25,
                 "iou_threshold": 0.5,
-                "maximum_number_of_examples": 0,
             },
         },
         {
@@ -1076,7 +1100,6 @@ def test_confusion_matrix_using_torch_metrics_example(
             "parameters": {
                 "score_threshold": 0.35,
                 "iou_threshold": 0.5,
-                "maximum_number_of_examples": 0,
             },
         },
         {
@@ -1099,7 +1122,6 @@ def test_confusion_matrix_using_torch_metrics_example(
             "parameters": {
                 "score_threshold": 0.55,
                 "iou_threshold": 0.5,
-                "maximum_number_of_examples": 0,
             },
         },
         {
@@ -1121,7 +1143,6 @@ def test_confusion_matrix_using_torch_metrics_example(
             "parameters": {
                 "score_threshold": 0.75,
                 "iou_threshold": 0.5,
-                "maximum_number_of_examples": 0,
             },
         },
         {
@@ -1143,7 +1164,6 @@ def test_confusion_matrix_using_torch_metrics_example(
             "parameters": {
                 "score_threshold": 0.8,
                 "iou_threshold": 0.5,
-                "maximum_number_of_examples": 0,
             },
         },
         {
@@ -1165,7 +1185,6 @@ def test_confusion_matrix_using_torch_metrics_example(
             "parameters": {
                 "score_threshold": 0.85,
                 "iou_threshold": 0.5,
-                "maximum_number_of_examples": 0,
             },
         },
         {
@@ -1184,7 +1203,6 @@ def test_confusion_matrix_using_torch_metrics_example(
             "parameters": {
                 "score_threshold": 0.95,
                 "iou_threshold": 0.5,
-                "maximum_number_of_examples": 0,
             },
         },
         {
@@ -1213,7 +1231,6 @@ def test_confusion_matrix_using_torch_metrics_example(
             "parameters": {
                 "score_threshold": 0.05,
                 "iou_threshold": 0.9,
-                "maximum_number_of_examples": 0,
             },
         },
         {
@@ -1242,7 +1259,6 @@ def test_confusion_matrix_using_torch_metrics_example(
             "parameters": {
                 "score_threshold": 0.25,
                 "iou_threshold": 0.9,
-                "maximum_number_of_examples": 0,
             },
         },
         {
@@ -1268,7 +1284,6 @@ def test_confusion_matrix_using_torch_metrics_example(
             "parameters": {
                 "score_threshold": 0.35,
                 "iou_threshold": 0.9,
-                "maximum_number_of_examples": 0,
             },
         },
         {
@@ -1293,7 +1308,6 @@ def test_confusion_matrix_using_torch_metrics_example(
             "parameters": {
                 "score_threshold": 0.55,
                 "iou_threshold": 0.9,
-                "maximum_number_of_examples": 0,
             },
         },
         {
@@ -1317,7 +1331,6 @@ def test_confusion_matrix_using_torch_metrics_example(
             "parameters": {
                 "score_threshold": 0.75,
                 "iou_threshold": 0.9,
-                "maximum_number_of_examples": 0,
             },
         },
         {
@@ -1338,7 +1351,6 @@ def test_confusion_matrix_using_torch_metrics_example(
             "parameters": {
                 "score_threshold": 0.8,
                 "iou_threshold": 0.9,
-                "maximum_number_of_examples": 0,
             },
         },
         {
@@ -1359,7 +1371,6 @@ def test_confusion_matrix_using_torch_metrics_example(
             "parameters": {
                 "score_threshold": 0.85,
                 "iou_threshold": 0.9,
-                "maximum_number_of_examples": 0,
             },
         },
         {
@@ -1378,16 +1389,18 @@ def test_confusion_matrix_using_torch_metrics_example(
             "parameters": {
                 "score_threshold": 0.95,
                 "iou_threshold": 0.9,
-                "maximum_number_of_examples": 0,
             },
         },
     ]
     for m in actual_metrics:
-        _filter_out_zero_counts(
+        _filter_out_examples_and_zero_counts(
             m["value"]["confusion_matrix"],
             m["value"]["unmatched_predictions"],
             m["value"]["unmatched_ground_truths"],
         )
+        import json
+
+        print(json.dumps(m, indent=4))
         assert m in expected_metrics
     for m in expected_metrics:
         assert m in actual_metrics
@@ -1474,7 +1487,11 @@ def test_confusion_matrix_fp_unmatched_prediction_edge_case(
                             {
                                 "datum_id": "uid1",
                                 "ground_truth_id": "uid1_gt0",
-                            }
+                            },
+                            {
+                                "datum_id": "uid2",
+                                "ground_truth_id": "uid2_gt0",
+                            },
                         ],
                     }
                 },
@@ -1491,9 +1508,6 @@ def test_confusion_matrix_fp_unmatched_prediction_edge_case(
             m["value"]["unmatched_predictions"],
             m["value"]["unmatched_ground_truths"],
         )
-        import json
-
-        print(json.dumps(m, indent=4))
         assert m in expected_metrics
     for m in expected_metrics:
         assert m in actual_metrics
@@ -1544,25 +1558,25 @@ def test_confusion_matrix_ranked_pair_ordering(
                 "value": {
                     "confusion_matrix": {
                         "label1": {
-                            "label1": {
-                                "count": 1,
-                                "examples": [
-                                    {
-                                        "datum_id": "uid1",
-                                        "ground_truth_id": "gt_0",
-                                        "prediction_id": "pd_0",
-                                    }
-                                ],
-                            }
-                        },
-                        "label2": {
                             "label2": {
                                 "count": 1,
                                 "examples": [
                                     {
                                         "datum_id": "uid1",
-                                        "ground_truth_id": "gt_1",
+                                        "ground_truth_id": "gt_0",
                                         "prediction_id": "pd_1",
+                                    }
+                                ],
+                            }
+                        },
+                        "label2": {
+                            "label1": {
+                                "count": 1,
+                                "examples": [
+                                    {
+                                        "datum_id": "uid1",
+                                        "ground_truth_id": "gt_1",
+                                        "prediction_id": "pd_0",
                                     }
                                 ],
                             }
@@ -1603,6 +1617,9 @@ def test_confusion_matrix_ranked_pair_ordering(
                 m["value"]["unmatched_predictions"],
                 m["value"]["unmatched_ground_truths"],
             )
+            import json
+
+            print(json.dumps(m, indent=4))
             assert m in expected_metrics
         for m in expected_metrics:
             assert m in actual_metrics

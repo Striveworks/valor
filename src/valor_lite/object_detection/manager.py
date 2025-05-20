@@ -106,19 +106,26 @@ class Evaluator:
     @property
     def n_datums(self) -> int:
         """Returns the number of datums."""
+        print(self.detailed_pairs)
         return np.unique(self.detailed_pairs[0][:, 0]).size
 
     @property
     def n_groundtruths(self) -> int:
         """Returns the number of ground truth annotations."""
-        unique_ids = np.unique(self.detailed_pairs[0][:, (0, 1)], axis=0)
-        return (unique_ids[:, 0] >= 0.0).sum()
+        mask_valid_gts = self.detailed_pairs[0][:, 1] >= 0
+        unique_ids = np.unique(
+            self.detailed_pairs[0][np.ix_(mask_valid_gts, (0, 1))], axis=0  # type: ignore - np.ix_ typing
+        )
+        return int(unique_ids.shape[0])
 
     @property
     def n_predictions(self) -> int:
         """Returns the number of prediction annotations."""
-        unique_ids = np.unique(self.detailed_pairs[0][:, (0, 2)], axis=0)
-        return (unique_ids[:, 0] >= 0.0).sum()
+        mask_valid_pds = self.detailed_pairs[0][:, 2] >= 0
+        unique_ids = np.unique(
+            self.detailed_pairs[0][np.ix_(mask_valid_pds, (0, 2))], axis=0  # type: ignore - np.ix_ typing
+        )
+        return int(unique_ids.shape[0])
 
     @property
     def ignored_prediction_labels(self) -> list[str]:
@@ -510,10 +517,10 @@ class DataLoader:
             if detection.groundtruths:
                 for gidx, gann in enumerate(detection.groundtruths):
                     groundtruth_idx = self._add_groundtruth(gann.uid)
-                    for glabel in gann.labels:
-                        glabel_idx = self._add_label(glabel)
-                        if (ious[:, gidx] < 1e-9).all():
-                            pairs.append(
+                    glabel_idx = self._add_label(gann.labels[0])
+                    if (ious[:, gidx] < 1e-9).all():
+                        pairs.extend(
+                            [
                                 np.array(
                                     [
                                         float(datum_idx),
@@ -525,48 +532,54 @@ class DataLoader:
                                         -1.0,
                                     ]
                                 )
+                            ]
+                        )
+                    for pidx, pann in enumerate(detection.predictions):
+                        prediction_idx = self._add_prediction(pann.uid)
+                        if (ious[pidx, :] < 1e-9).all():
+                            pairs.extend(
+                                [
+                                    np.array(
+                                        [
+                                            float(datum_idx),
+                                            -1.0,
+                                            float(prediction_idx),
+                                            0.0,
+                                            -1.0,
+                                            float(self._add_label(plabel)),
+                                            float(pscore),
+                                        ]
+                                    )
+                                    for plabel, pscore in zip(
+                                        pann.labels, pann.scores
+                                    )
+                                ]
                             )
-                        else:
-                            for pidx, pann in enumerate(detection.predictions):
-                                prediction_idx = self._add_prediction(pann.uid)
-                                for plabel, pscore in zip(
-                                    pann.labels, pann.scores
-                                ):
-                                    plabel_idx = self._add_label(plabel)
-                                    if ious[pidx, gidx] >= 1e-9:
-                                        pairs.append(
-                                            np.array(
-                                                [
-                                                    float(datum_idx),
-                                                    float(groundtruth_idx),
-                                                    float(prediction_idx),
-                                                    ious[pidx, gidx],
-                                                    float(glabel_idx),
-                                                    float(plabel_idx),
-                                                    float(pscore),
-                                                ]
-                                            )
-                                        )
-                                    else:
-                                        pairs.append(
-                                            np.array(
-                                                [
-                                                    float(datum_idx),
-                                                    -1.0,
-                                                    float(prediction_idx),
-                                                    0.0,
-                                                    -1.0,
-                                                    float(plabel_idx),
-                                                    float(pscore),
-                                                ]
-                                            )
-                                        )
-            else:
+                        if ious[pidx, gidx] >= 1e-9:
+                            pairs.extend(
+                                [
+                                    np.array(
+                                        [
+                                            float(datum_idx),
+                                            float(groundtruth_idx),
+                                            float(prediction_idx),
+                                            ious[pidx, gidx],
+                                            float(self._add_label(glabel)),
+                                            float(self._add_label(plabel)),
+                                            float(pscore),
+                                        ]
+                                    )
+                                    for glabel in gann.labels
+                                    for plabel, pscore in zip(
+                                        pann.labels, pann.scores
+                                    )
+                                ]
+                            )
+            elif detection.predictions:
                 for pidx, pann in enumerate(detection.predictions):
                     prediction_idx = self._add_prediction(pann.uid)
-                    for plabel, pscore in zip(pann.labels, pann.scores):
-                        plabel_idx = self._add_label(plabel)
-                        pairs.append(
+                    pairs.extend(
+                        [
                             np.array(
                                 [
                                     float(datum_idx),
@@ -574,11 +587,14 @@ class DataLoader:
                                     float(prediction_idx),
                                     0.0,
                                     -1.0,
-                                    float(plabel_idx),
+                                    float(self._add_label(plabel)),
                                     float(pscore),
                                 ]
                             )
-                        )
+                            for plabel, pscore in zip(pann.labels, pann.scores)
+                        ]
+                    )
+
             self.pairs.append(np.array(pairs))
 
     def add_bounding_boxes(
@@ -698,6 +714,14 @@ class DataLoader:
             axis=0,
         )
         print(cache)
+        indices = np.lexsort(
+            (
+                cache[:, 1],
+                -cache[:, 3],
+                -cache[:, 6],
+            )
+        )
+        cache = cache[indices]
         self._evaluator._cache = (
             cache[:, (0, 1, 2, 4, 5)].astype(np.int32),
             cache[:, (3, 6)],

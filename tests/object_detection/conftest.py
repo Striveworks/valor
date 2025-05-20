@@ -427,18 +427,20 @@ def torchmetrics_detections() -> list[Detection]:
             uid=str(idx),
             groundtruths=[
                 BoundingBox(
-                    uid=str(uuid4()),
+                    uid=f"uid_{idx}_gt_{gidx}",
                     xmin=box[0],
                     ymin=box[1],
                     xmax=box[2],
                     ymax=box[3],
                     labels=[label_value],
                 )
-                for box, label_value in zip(gt["boxes"], gt["labels"])
+                for gidx, (box, label_value) in enumerate(
+                    zip(gt["boxes"], gt["labels"])
+                )
             ],
             predictions=[
                 BoundingBox(
-                    uid=str(uuid4()),
+                    uid=f"uid_{idx}_pd_{pidx}",
                     xmin=box[0],
                     ymin=box[1],
                     xmax=box[2],
@@ -446,8 +448,8 @@ def torchmetrics_detections() -> list[Detection]:
                     labels=[label_value],
                     scores=[score],
                 )
-                for box, label_value, score in zip(
-                    pd["boxes"], pd["labels"], pd["scores"]
+                for pidx, (box, label_value, score) in enumerate(
+                    zip(pd["boxes"], pd["labels"], pd["scores"])
                 )
             ],
         )
