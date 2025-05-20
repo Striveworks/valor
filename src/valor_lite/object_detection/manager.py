@@ -1,5 +1,4 @@
 import warnings
-from collections import defaultdict
 
 import numpy as np
 from numpy.typing import NDArray
@@ -415,20 +414,6 @@ class Evaluator:
         )
         return metrics
 
-
-def defaultdict_int():
-    return defaultdict(int)
-
-
-class DataLoader:
-    """
-    Object Detection DataLoader
-    """
-
-    def __init__(self):
-        self._evaluator = Evaluator()
-        self.pairs: list[NDArray[np.float64]] = list()
-
     def _add_datum(self, datum_id: str) -> int:
         """
         Helper function for adding a datum to the cache.
@@ -443,15 +428,13 @@ class DataLoader:
         int
             The datum index.
         """
-        if datum_id not in self._evaluator.datum_id_to_index:
-            if len(self._evaluator.datum_id_to_index) != len(
-                self._evaluator.index_to_datum_id
-            ):
+        if datum_id not in self.datum_id_to_index:
+            if len(self.datum_id_to_index) != len(self.index_to_datum_id):
                 raise RuntimeError("datum cache size mismatch")
-            idx = len(self._evaluator.datum_id_to_index)
-            self._evaluator.datum_id_to_index[datum_id] = idx
-            self._evaluator.index_to_datum_id.append(datum_id)
-        return self._evaluator.datum_id_to_index[datum_id]
+            idx = len(self.datum_id_to_index)
+            self.datum_id_to_index[datum_id] = idx
+            self.index_to_datum_id.append(datum_id)
+        return self.datum_id_to_index[datum_id]
 
     def _add_groundtruth(self, annotation_id: str) -> int:
         """
@@ -467,15 +450,15 @@ class DataLoader:
         int
             The ground truth annotation index.
         """
-        if annotation_id not in self._evaluator.groundtruth_id_to_index:
-            if len(self._evaluator.groundtruth_id_to_index) != len(
-                self._evaluator.index_to_groundtruth_id
+        if annotation_id not in self.groundtruth_id_to_index:
+            if len(self.groundtruth_id_to_index) != len(
+                self.index_to_groundtruth_id
             ):
                 raise RuntimeError("ground truth cache size mismatch")
-            idx = len(self._evaluator.groundtruth_id_to_index)
-            self._evaluator.groundtruth_id_to_index[annotation_id] = idx
-            self._evaluator.index_to_groundtruth_id.append(annotation_id)
-        return self._evaluator.groundtruth_id_to_index[annotation_id]
+            idx = len(self.groundtruth_id_to_index)
+            self.groundtruth_id_to_index[annotation_id] = idx
+            self.index_to_groundtruth_id.append(annotation_id)
+        return self.groundtruth_id_to_index[annotation_id]
 
     def _add_prediction(self, annotation_id: str) -> int:
         """
@@ -491,15 +474,15 @@ class DataLoader:
         int
             The prediction annotation index.
         """
-        if annotation_id not in self._evaluator.prediction_id_to_index:
-            if len(self._evaluator.prediction_id_to_index) != len(
-                self._evaluator.index_to_prediction_id
+        if annotation_id not in self.prediction_id_to_index:
+            if len(self.prediction_id_to_index) != len(
+                self.index_to_prediction_id
             ):
                 raise RuntimeError("prediction cache size mismatch")
-            idx = len(self._evaluator.prediction_id_to_index)
-            self._evaluator.prediction_id_to_index[annotation_id] = idx
-            self._evaluator.index_to_prediction_id.append(annotation_id)
-        return self._evaluator.prediction_id_to_index[annotation_id]
+            idx = len(self.prediction_id_to_index)
+            self.prediction_id_to_index[annotation_id] = idx
+            self.index_to_prediction_id.append(annotation_id)
+        return self.prediction_id_to_index[annotation_id]
 
     def _add_label(self, label: str) -> int:
         """
@@ -516,14 +499,14 @@ class DataLoader:
             Label index.
         """
 
-        label_id = len(self._evaluator.index_to_label)
-        if label not in self._evaluator.label_to_index:
-            self._evaluator.label_to_index[label] = label_id
-            self._evaluator.index_to_label.append(label)
+        label_id = len(self.index_to_label)
+        if label not in self.label_to_index:
+            self.label_to_index[label] = label_id
+            self.index_to_label.append(label)
 
             label_id += 1
 
-        return self._evaluator.label_to_index[label]
+        return self.label_to_index[label]
 
     def _add_data(
         self,
@@ -631,7 +614,9 @@ class DataLoader:
                         ]
                     )
 
-            self.pairs.append(np.array(pairs))
+            data = np.array(pairs)
+            if data.size > 0:
+                self._cache.append(data)
 
     def add_bounding_boxes(
         self,
@@ -733,7 +718,7 @@ class DataLoader:
             show_progress=show_progress,
         )
 
-    def finalize(self) -> Evaluator:
+    def finalize(self):
         """
         Performs data finalization and some preprocessing steps.
 
@@ -742,10 +727,13 @@ class DataLoader:
         Evaluator
             A ready-to-use evaluator object.
         """
-        self.pairs = [pair for pair in self.pairs if pair.size > 0]
-        if len(self.pairs) == 0:
-            raise ValueError("No data available to create evaluator.")
+        self._create_pairings(self._cache)
+        return self
 
-        self._evaluator._cache = self.pairs
-        self._evaluator._create_pairings(self._evaluator._cache)
-        return self._evaluator
+
+class DataLoader(Evaluator):
+    """
+    Used for backwards compatibility as the Evaluator now handles ingestion.
+    """
+
+    pass
