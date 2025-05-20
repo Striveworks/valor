@@ -1,4 +1,5 @@
 from dataclasses import dataclass, field
+from typing import Generic, TypeVar
 
 import numpy as np
 from numpy.typing import NDArray
@@ -12,6 +13,8 @@ class BoundingBox:
 
     Parameters
     ----------
+    uid : str
+        A unique identifier.
     xmin : float
         The minimum x-coordinate of the bounding box.
     xmax : float
@@ -34,11 +37,13 @@ class BoundingBox:
     Prediction Example:
 
     >>> bbox = BoundingBox(
+    ...     uid="abc",
     ...     xmin=10.0, xmax=50.0, ymin=20.0, ymax=60.0,
     ...     labels=['cat', 'dog'], scores=[0.9, 0.1]
     ... )
     """
 
+    uid: str
     xmin: float
     xmax: float
     ymin: float
@@ -59,18 +64,6 @@ class BoundingBox:
     @property
     def extrema(self) -> tuple[float, float, float, float]:
         """
-        Returns the bounding box extrema.
-
-        Returns
-        -------
-        tuple[float, float, float, float]
-            A tuple in the form (xmin, xmax, ymin, ymax).
-        """
-        return (self.xmin, self.xmax, self.ymin, self.ymax)
-
-    @property
-    def annotation(self) -> tuple[float, float, float, float]:
-        """
         Returns the annotation's data representation.
 
         Returns
@@ -78,7 +71,7 @@ class BoundingBox:
         tuple[float, float, float, float]
             A tuple in the form (xmin, xmax, ymin, ymax).
         """
-        return self.extrema
+        return (self.xmin, self.xmax, self.ymin, self.ymax)
 
 
 @dataclass
@@ -88,7 +81,9 @@ class Polygon:
 
     Parameters
     ----------
-    shape : ShapelyPolygon
+    uid : str
+        A unique identifier.
+    shape : shapely.geometry.Polygon
         A Shapely polygon object representing the shape.
     labels : list of str
         List of labels associated with the polygon.
@@ -106,10 +101,11 @@ class Polygon:
     Prediction Example:
 
     >>> polygon = Polygon(
-    ...     shape=shape, labels=['building'], scores=[0.95]
+    ...     uid="abc", shape=shape, labels=['building'], scores=[0.95]
     ... )
     """
 
+    uid: str
     shape: ShapelyPolygon
     labels: list[str]
     scores: list[float] = field(default_factory=list)
@@ -129,19 +125,6 @@ class Polygon:
                 "If scores are defined, there must be a 1:1 pairing with labels."
             )
 
-    @property
-    def extrema(self) -> tuple[float, float, float, float]:
-        """
-        Returns the polygon's bounding box extrema.
-
-        Returns
-        -------
-        tuple[float, float, float, float]
-            A tuple in the form (xmin, xmax, ymin, ymax).
-        """
-        xmin, ymin, xmax, ymax = self.shape.bounds
-        return (xmin, xmax, ymin, ymax)
-
 
 @dataclass
 class Bitmask:
@@ -150,6 +133,8 @@ class Bitmask:
 
     Parameters
     ----------
+    uid : str
+        A unique identifier.
     mask : NDArray[np.bool_]
         A NumPy array of boolean values representing the mask.
     labels : list of str
@@ -163,7 +148,7 @@ class Bitmask:
 
     >>> import numpy as np
     >>> mask = np.array([[True, False], [False, True]], dtype=np.bool_)
-    >>> bitmask = Bitmask(mask=mask, labels=['tree'])
+    >>> bitmask = Bitmask(uid="abc", mask=mask, labels=['tree'])
 
     Prediction Example:
 
@@ -172,6 +157,7 @@ class Bitmask:
     ... )
     """
 
+    uid: str
     mask: NDArray[np.bool_]
     labels: list[str]
     scores: list[float] = field(default_factory=list)
@@ -197,22 +183,12 @@ class Bitmask:
                 "If scores are defined, there must be a 1:1 pairing with labels."
             )
 
-    @property
-    def extrema(self) -> tuple[float, float, float, float]:
-        """
-        Returns the bounding box extrema of the mask.
 
-        Returns
-        -------
-        tuple[float, float, float, float]
-            A tuple in the form (xmin, xmax, ymin, ymax).
-        """
-        rows, cols = np.nonzero(self.mask)
-        return (cols.min(), cols.max(), rows.min(), rows.max())
+AnnotationType = TypeVar("AnnotationType", BoundingBox, Polygon, Bitmask)
 
 
 @dataclass
-class Detection:
+class Detection(Generic[AnnotationType]):
     """
     Detection data structure holding ground truths and predictions for object detection tasks.
 
@@ -220,9 +196,9 @@ class Detection:
     ----------
     uid : str
         Unique identifier for the image or sample.
-    groundtruths : list of BoundingBox or Bitmask or Polygon
+    groundtruths : list[BoundingBox] | list[Polygon] | list[Bitmask]
         List of ground truth annotations.
-    predictions : list of BoundingBox or Bitmask or Polygon
+    predictions : list[BoundingBox] | list[Polygon] | list[Bitmask]
         List of predicted annotations.
 
     Examples
@@ -239,8 +215,8 @@ class Detection:
     """
 
     uid: str
-    groundtruths: list[BoundingBox] | list[Bitmask] | list[Polygon]
-    predictions: list[BoundingBox] | list[Bitmask] | list[Polygon]
+    groundtruths: list[AnnotationType]
+    predictions: list[AnnotationType]
 
     def __post_init__(self):
         for prediction in self.predictions:

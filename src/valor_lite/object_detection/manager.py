@@ -5,7 +5,12 @@ import numpy as np
 from numpy.typing import NDArray
 from tqdm import tqdm
 
-from valor_lite.object_detection.annotation import Detection
+from valor_lite.object_detection.annotation import (
+    Bitmask,
+    BoundingBox,
+    Detection,
+    Polygon,
+)
 from valor_lite.object_detection.computation import (
     compute_bbox_iou,
     compute_bitmask_iou,
@@ -550,7 +555,7 @@ class DataLoader:
 
     def add_bounding_boxes(
         self,
-        detections: list[Detection],
+        detections: list[Detection[BoundingBox]],
         show_progress: bool = False,
     ):
         """
@@ -584,7 +589,7 @@ class DataLoader:
 
     def add_polygons(
         self,
-        detections: list[Detection],
+        detections: list[Detection[Polygon]],
         show_progress: bool = False,
     ):
         """
@@ -601,7 +606,7 @@ class DataLoader:
             compute_polygon_iou(
                 np.array(
                     [
-                        [gt.shape, pd.shape]  # type: ignore - using the AttributeError as a validator
+                        [gt.shape, pd.shape]
                         for pd in detection.predictions
                         for gt in detection.groundtruths
                     ]
@@ -617,7 +622,7 @@ class DataLoader:
 
     def add_bitmasks(
         self,
-        detections: list[Detection],
+        detections: list[Detection[Bitmask]],
         show_progress: bool = False,
     ):
         """
@@ -634,7 +639,7 @@ class DataLoader:
             compute_bitmask_iou(
                 np.array(
                     [
-                        [gt.mask, pd.mask]  # type: ignore - using the AttributeError as a validator
+                        [gt.mask, pd.mask]
                         for pd in detection.predictions
                         for gt in detection.groundtruths
                     ]
