@@ -49,6 +49,16 @@ def test_BoundingBox():
             labels=["label1", "label2"],
             scores=[0.7],
         )
+    with pytest.raises(ValueError):
+        BoundingBox(
+            uid=str(uuid4()),
+            xmin=0,
+            xmax=1,
+            ymin=0,
+            ymax=1,
+            labels=["label1", "label2"],
+            scores=[],
+        )
 
     # test `extrema` property
     assert gt.extrema == (0, 1, 0, 1)
@@ -85,6 +95,13 @@ def test_Bitmask():
             mask=np.zeros((10, 10), dtype=np.bool_),
             labels=["label1", "label2"],
             scores=[0.7],
+        )
+    with pytest.raises(ValueError):
+        Bitmask(
+            uid=str(uuid4()),
+            mask=np.zeros((10, 10), dtype=np.bool_),
+            labels=["label1", "label2"],
+            scores=[],
         )
 
     with pytest.raises(ValueError):
@@ -125,9 +142,17 @@ def test_Polygon(rect1_rotated_5_degrees_around_origin):
             labels=["label1", "label2"],
             scores=[0.7],
         )
+    with pytest.raises(ValueError):
+        Polygon(
+            uid=str(uuid4()),
+            shape=shape,
+            labels=["label1", "label2"],
+            scores=[],
+        )
     # test that we throw a type error if the shape isn't a shapely.geometry.Polygon
     with pytest.raises(TypeError):
         Polygon(
+            uid="uid",
             shape=np.zeros((10, 10), dtype=np.bool_),  # type: ignore - purposefully throwing error
             labels=["label1", "label2"],
             scores=[0.7],
