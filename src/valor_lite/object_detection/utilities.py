@@ -176,11 +176,7 @@ def unpack_precision_recall_into_metric_lists(
     return metrics
 
 
-def defaultdict_dict():
-    return defaultdict(dict)
-
-
-def create_empty_confusion_matrix(index_to_labels: list[str]):
+def _create_empty_confusion_matrix(index_to_labels: list[str]):
     unmatched_ground_truths = dict()
     unmatched_predictions = dict()
     confusion_matrix = dict()
@@ -213,7 +209,7 @@ def _unpack_confusion_matrix(
         confusion_matrix,
         unmatched_predictions,
         unmatched_ground_truths,
-    ) = create_empty_confusion_matrix(index_to_label)
+    ) = _create_empty_confusion_matrix(index_to_label)
 
     unique_matches = np.unique(
         ids[np.ix_(mask_matched, (0, 1, 2, 3, 4))], axis=0  # type: ignore - numpy ix_ typing
