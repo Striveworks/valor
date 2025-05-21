@@ -54,16 +54,15 @@ class Evaluator:
     def __init__(self):
 
         # external reference
-        self.datum_id_to_index: dict[str, int] = dict()
-        self.groundtruth_id_to_index: dict[str, int] = dict()
-        self.prediction_id_to_index: dict[str, int] = dict()
+        self.datum_id_to_index: dict[str, int] = {}
+        self.groundtruth_id_to_index: dict[str, int] = {}
+        self.prediction_id_to_index: dict[str, int] = {}
+        self.label_to_index: dict[str, int] = {}
 
-        self.index_to_datum_id: list[str] = list()
-        self.index_to_groundtruth_id: list[str] = list()
-        self.index_to_prediction_id: list[str] = list()
-
-        self.label_to_index: dict[str, int] = dict()
-        self.index_to_label: list[str] = list()
+        self.index_to_datum_id: list[str] = []
+        self.index_to_groundtruth_id: list[str] = []
+        self.index_to_prediction_id: list[str] = []
+        self.index_to_label: list[str] = []
 
         # temporary cache
         self._temp_cache: list[NDArray[np.float64]] | None = []
@@ -400,7 +399,7 @@ class Evaluator:
             zip(detections, detection_ious), disable=disable_tqdm
         ):
             # cache labels and annotation pairs
-            pairs = list()
+            pairs = []
             datum_idx = self._add_datum(detection.uid)
             if detection.groundtruths:
                 for gidx, gann in enumerate(detection.groundtruths):
