@@ -174,7 +174,10 @@ def compute_polygon_iou(
     return ious
 
 
-def compute_label_metadata(ids: NDArray[np.int32], n_labels: int):
+def compute_label_metadata(
+    ids: NDArray[np.int32],
+    n_labels: int,
+) -> NDArray[np.int32]:
     """
     Computes label metadata returning a count of annotations per label.
 
