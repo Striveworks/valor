@@ -620,3 +620,29 @@ def test_filtering_random_detections():
     evaluator = loader.finalize()
     evaluator.apply_filter(datum_ids=["uid1"])
     evaluator.evaluate()
+
+
+def test_is_filtered(basic_detections: list[Detection]):
+    manager = DataLoader()
+    manager.add_bounding_boxes(basic_detections)
+    evaluator = manager.finalize()
+
+    assert evaluator.is_filtered is False
+    assert evaluator._filtered_detailed_pairs is None
+    assert evaluator._filtered_ranked_pairs is None
+    assert evaluator._filtered_label_metadata is None
+
+    evaluator.apply_filter(datum_ids=["uid1"])
+    assert evaluator.is_filtered is True
+    assert evaluator._filtered_detailed_pairs is not None
+    assert evaluator._filtered_detailed_pairs.shape == (2, 7)
+    assert evaluator._filtered_ranked_pairs is not None
+    assert evaluator._filtered_ranked_pairs.shape == (1, 7)
+    assert evaluator._filtered_label_metadata is not None
+    assert evaluator._filtered_label_metadata.shape == (2, 2)
+
+    evaluator.clear_filter()
+    assert evaluator.is_filtered is False
+    assert evaluator._filtered_detailed_pairs is None
+    assert evaluator._filtered_ranked_pairs is None
+    assert evaluator._filtered_label_metadata is None

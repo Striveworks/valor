@@ -655,7 +655,6 @@ class Evaluator:
         labels : list[str], optional
             An optional list of labels.
         """
-
         self._filtered_detailed_pairs = self._detailed_pairs.copy()
         self._filtered_ranked_pairs = np.array([], dtype=np.float64)
         self._filtered_label_metadata = np.zeros(
