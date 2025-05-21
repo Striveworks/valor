@@ -614,9 +614,9 @@ class Evaluator:
             self._detailed_pairs = np.concatenate(self._temp_cache, axis=0)
             self._temp_cache = None
 
+        # order pairs by descending score, iou
         indices = np.lexsort(
             (
-                self._detailed_pairs[:, 1],  # ground truth id
                 -self._detailed_pairs[:, 5],  # iou
                 -self._detailed_pairs[:, 6],  # score
             )
@@ -774,11 +774,12 @@ class Evaluator:
             warnings.warn("no valid filtered pairs")
             return
 
+        # sorts by score, iou with ground truth id as a tie-breaker
         indices = np.lexsort(
             (
-                self._filtered_detailed_pairs[:, 1],
-                -self._filtered_detailed_pairs[:, 5],
-                -self._filtered_detailed_pairs[:, 6],
+                self._filtered_detailed_pairs[:, 1],  # ground truth id
+                -self._filtered_detailed_pairs[:, 5],  # iou
+                -self._filtered_detailed_pairs[:, 6],  # score
             )
         )
         self._filtered_detailed_pairs = self._filtered_detailed_pairs[indices]
