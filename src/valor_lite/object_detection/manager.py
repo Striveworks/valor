@@ -17,7 +17,7 @@ from valor_lite.object_detection.computation import (
     compute_label_metadata,
     compute_polygon_iou,
     compute_precion_recall,
-    compute_ranked_pairs,
+    rank_pairs,
 )
 from valor_lite.object_detection.metric import Metric, MetricType
 from valor_lite.object_detection.utilities import (
@@ -65,25 +65,46 @@ class Evaluator:
         self.label_to_index: dict[str, int] = dict()
         self.index_to_label: list[str] = list()
 
-        # cache
-        self._cache: list[NDArray[np.float64]] = []
+        # temporary cache
+        self._temp_cache: list[NDArray[np.float64]] | None = []
 
-        #
-        self._detailed_pairs = np.array([], dtype=np.float64)
-        self._ranked_pairs = np.array([], dtype=np.float64)
-        self._label_metadata: NDArray[np.int32] = np.array([])
+        # cache
+        self._detailed_pairs = np.array([[]], dtype=np.float64)
+        self._ranked_pairs = np.array([[]], dtype=np.float64)
+        self._label_metadata: NDArray[np.int32] = np.array([[]])
+
+        # filter cache
+        self._filtered_detailed_pairs: NDArray[np.float64] | None = None
+        self._filtered_ranked_pairs: NDArray[np.float64] | None = None
+        self._filtered_label_metadata: NDArray[np.int32] | None = None
+
+    @property
+    def is_filtered(self) -> bool:
+        return self._filtered_detailed_pairs is not None
 
     @property
     def label_metadata(self) -> NDArray[np.int32]:
-        return self._label_metadata
+        return (
+            self._filtered_label_metadata
+            if self._filtered_label_metadata is not None
+            else self._label_metadata
+        )
 
     @property
     def detailed_pairs(self) -> NDArray[np.float64]:
-        return self._detailed_pairs
+        return (
+            self._filtered_detailed_pairs
+            if self._filtered_detailed_pairs is not None
+            else self._detailed_pairs
+        )
 
     @property
     def ranked_pairs(self) -> NDArray[np.float64]:
-        return self._ranked_pairs
+        return (
+            self._filtered_ranked_pairs
+            if self._filtered_ranked_pairs is not None
+            else self._ranked_pairs
+        )
 
     @property
     def n_labels(self) -> int:
@@ -150,158 +171,6 @@ class Evaluator:
             "ignored_prediction_labels": self.ignored_prediction_labels,
             "missing_prediction_labels": self.missing_prediction_labels,
         }
-
-    def _create_pairings(self, pairing_by_datum: list[NDArray[np.float64]]):
-        if not pairing_by_datum:
-            self._detailed_pairs = np.array([], dtype=np.float64)
-            self._ranked_pairs = np.array([], dtype=np.float64)
-            self._label_metadata = np.zeros((self.n_labels, 2), dtype=np.int32)
-            warnings.warn("no valid pairs")
-            return
-
-        cache = np.concatenate(
-            pairing_by_datum,
-            axis=0,
-        )
-        indices = np.lexsort(
-            (
-                cache[:, 1],
-                -cache[:, 5],
-                -cache[:, 6],
-            )
-        )
-        self._detailed_pairs = cache[indices]
-        self._label_metadata = compute_label_metadata(
-            ids=self._detailed_pairs[:, :5].astype(np.int32),
-            n_labels=self.n_labels,
-        )
-        self._ranked_pairs = compute_ranked_pairs(
-            data=pairing_by_datum,
-            label_metadata=self._label_metadata,
-        )
-
-    def apply_filter(
-        self,
-        datum_ids: list[str] | None = None,
-        groundtruth_ids: list[str] | None = None,
-        prediction_ids: list[str] | None = None,
-        labels: list[str] | None = None,
-    ):
-        """
-        Apply a filter on the evaluator.
-
-        Can be reset by calling 'clear_filter'.
-
-        Parameters
-        ----------
-        datum_uids : list[str], optional
-            An optional list of string uids representing datums.
-        groundtruth_ids : list[str], optional
-            An optional list of string uids representing ground truth annotations.
-        prediction_ids : list[str], optional
-            An optional list of string uids representing prediction annotations.
-        labels : list[str], optional
-            An optional list of labels.
-        """
-
-        valid_datum_indices = None
-        if datum_ids is not None:
-            if not datum_ids:
-                self._create_pairings([])
-                return
-            valid_datum_indices = {
-                self.datum_id_to_index[uid] for uid in datum_ids
-            }
-
-        valid_groundtruth_indices = None
-        if groundtruth_ids is not None:
-            valid_groundtruth_indices = np.array(
-                [self.groundtruth_id_to_index[uid] for uid in groundtruth_ids],
-                dtype=np.int32,
-            )
-
-        valid_prediction_indices = None
-        if prediction_ids is not None:
-            valid_prediction_indices = np.array(
-                [self.prediction_id_to_index[uid] for uid in prediction_ids],
-                dtype=np.int32,
-            )
-
-        valid_label_indices = None
-        if labels is not None:
-            valid_label_indices = np.array(
-                [self.label_to_index[label] for label in labels] + [-1]
-            )
-
-        # filter datums
-        filtered_cache = []
-        for datum_idx, datum_pairs in enumerate(self._cache):
-
-            n_rows = datum_pairs.shape[0]
-            mask_detailed = np.ones(n_rows, dtype=np.bool_)
-            mask_invalid_groundtruths = np.zeros_like(mask_detailed)
-            mask_invalid_predictions = np.zeros_like(mask_detailed)
-
-            if (
-                valid_datum_indices is not None
-                and datum_idx not in valid_datum_indices
-            ):
-                continue
-
-            if valid_groundtruth_indices is not None:
-                mask_invalid_groundtruths[
-                    ~np.isin(datum_pairs[:, 1], valid_groundtruth_indices)
-                ] = True
-
-            if valid_prediction_indices is not None:
-                mask_invalid_predictions[
-                    ~np.isin(datum_pairs[:, 2], valid_prediction_indices)
-                ] = True
-
-            if valid_label_indices is not None:
-                mask_invalid_groundtruths[
-                    ~np.isin(datum_pairs[:, 3], valid_label_indices)
-                ] = True
-                mask_invalid_predictions[
-                    ~np.isin(datum_pairs[:, 4], valid_label_indices)
-                ] = True
-
-            # filter cache
-            filtered_datum_pairs = datum_pairs.copy()
-            if mask_invalid_groundtruths.any():
-                invalid_groundtruth_indices = np.where(
-                    mask_invalid_groundtruths
-                )[0]
-                filtered_datum_pairs[
-                    invalid_groundtruth_indices[:, None], (1, 3, 5)
-                ] = np.array([[-1, -1, 0]])
-            if mask_invalid_predictions.any():
-                invalid_prediction_indices = np.where(
-                    mask_invalid_predictions
-                )[0]
-                filtered_datum_pairs[
-                    invalid_prediction_indices[:, None], (2, 4, 5, 6)
-                ] = np.array([[-1, -1, 0, -1]])
-            indices = np.where(mask_detailed)[0]
-            filtered_datum_pairs = filtered_datum_pairs[indices]
-
-            # filter null pairs
-            mask_null_pairs = np.all(
-                np.isclose(
-                    filtered_datum_pairs[:, 1:5],
-                    np.array([-1.0, -1.0, -1.0, -1.0]),
-                ),
-                axis=1,
-            )
-            filtered_datum_pairs = filtered_datum_pairs[~mask_null_pairs]
-            if filtered_datum_pairs.size != 0:
-                filtered_cache.append(filtered_datum_pairs)
-
-        self._create_pairings(filtered_cache)
-
-    def clear_filter(self):
-        """Removes a filter if one exists."""
-        self._create_pairings(self._cache)
 
     def compute_precision_recall(
         self,
@@ -616,7 +485,13 @@ class Evaluator:
 
             data = np.array(pairs)
             if data.size > 0:
-                self._cache.append(data)
+                # reset filtered cache if it exists
+                self.clear_filter()
+                if self._temp_cache is None:
+                    raise RuntimeError(
+                        "cannot add data as evaluator has already been finalized"
+                    )
+                self._temp_cache.append(data)
 
     def add_bounding_boxes(
         self,
@@ -727,8 +602,201 @@ class Evaluator:
         Evaluator
             A ready-to-use evaluator object.
         """
-        self._create_pairings(self._cache)
+        if self._temp_cache is None:
+            warnings.warn("evaluator is already finalized or in a bad state")
+            return self
+        elif not self._temp_cache:
+            self._detailed_pairs = np.array([], dtype=np.float64)
+            self._ranked_pairs = np.array([], dtype=np.float64)
+            self._label_metadata = np.zeros((self.n_labels, 2), dtype=np.int32)
+            warnings.warn("no valid pairs")
+            return self
+        else:
+            self._detailed_pairs = np.concatenate(self._temp_cache, axis=0)
+            self._temp_cache = None
+
+        indices = np.lexsort(
+            (
+                self._detailed_pairs[:, 1],
+                -self._detailed_pairs[:, 5],
+                -self._detailed_pairs[:, 6],
+            )
+        )
+        self._detailed_pairs = self._detailed_pairs[indices]
+        self._label_metadata = compute_label_metadata(
+            ids=self._detailed_pairs[:, :5].astype(np.int32),
+            n_labels=self.n_labels,
+        )
+        self._ranked_pairs = rank_pairs(
+            detailed_pairs=self.detailed_pairs,
+            label_metadata=self._label_metadata,
+        )
         return self
+
+    def apply_filter(
+        self,
+        datum_ids: list[str] | None = None,
+        groundtruth_ids: list[str] | None = None,
+        prediction_ids: list[str] | None = None,
+        labels: list[str] | None = None,
+    ):
+        """
+        Apply a filter on the evaluator.
+
+        Can be reset by calling 'clear_filter'.
+
+        Parameters
+        ----------
+        datum_uids : list[str], optional
+            An optional list of string uids representing datums.
+        groundtruth_ids : list[str], optional
+            An optional list of string uids representing ground truth annotations.
+        prediction_ids : list[str], optional
+            An optional list of string uids representing prediction annotations.
+        labels : list[str], optional
+            An optional list of labels.
+        """
+
+        self._filtered_detailed_pairs = self._detailed_pairs.copy()
+        self._filtered_ranked_pairs = np.array([], dtype=np.float64)
+        self._filtered_label_metadata = np.zeros(
+            (self.n_labels, 2), dtype=np.int32
+        )
+
+        valid_datum_indices = None
+        if datum_ids is not None:
+            if not datum_ids:
+                self._filtered_detailed_pairs = np.array([], dtype=np.float64)
+                warnings.warn("no valid filtered pairs")
+                return
+            valid_datum_indices = np.array(
+                [self.datum_id_to_index[uid] for uid in datum_ids],
+                dtype=np.int32,
+            )
+
+        valid_groundtruth_indices = None
+        if groundtruth_ids is not None:
+            valid_groundtruth_indices = np.array(
+                [self.groundtruth_id_to_index[uid] for uid in groundtruth_ids],
+                dtype=np.int32,
+            )
+
+        valid_prediction_indices = None
+        if prediction_ids is not None:
+            valid_prediction_indices = np.array(
+                [self.prediction_id_to_index[uid] for uid in prediction_ids],
+                dtype=np.int32,
+            )
+
+        valid_label_indices = None
+        if labels is not None:
+            if not labels:
+                self._filtered_detailed_pairs = np.array([], dtype=np.float64)
+                warnings.warn("no valid filtered pairs")
+                return
+            valid_label_indices = np.array(
+                [self.label_to_index[label] for label in labels] + [-1]
+            )
+
+        # filter datums
+        if valid_datum_indices is not None:
+            mask_valid_datums = np.isin(
+                self._filtered_detailed_pairs[:, 0], valid_datum_indices
+            )
+            self._filtered_detailed_pairs = self._filtered_detailed_pairs[
+                mask_valid_datums
+            ]
+
+        n_rows = self._filtered_detailed_pairs.shape[0]
+        mask_invalid_groundtruths = np.zeros(n_rows, dtype=np.bool_)
+        mask_invalid_predictions = np.zeros_like(mask_invalid_groundtruths)
+
+        # filter ground truth annotations
+        if valid_groundtruth_indices is not None:
+            mask_invalid_groundtruths[
+                ~np.isin(
+                    self._filtered_detailed_pairs[:, 1],
+                    valid_groundtruth_indices,
+                )
+            ] = True
+
+        # filter prediction annotations
+        if valid_prediction_indices is not None:
+            mask_invalid_predictions[
+                ~np.isin(
+                    self._filtered_detailed_pairs[:, 2],
+                    valid_prediction_indices,
+                )
+            ] = True
+
+        # filter labels
+        if valid_label_indices is not None:
+            mask_invalid_groundtruths[
+                ~np.isin(
+                    self._filtered_detailed_pairs[:, 3], valid_label_indices
+                )
+            ] = True
+            mask_invalid_predictions[
+                ~np.isin(
+                    self._filtered_detailed_pairs[:, 4], valid_label_indices
+                )
+            ] = True
+
+        # filter cache
+        if mask_invalid_groundtruths.any():
+            invalid_groundtruth_indices = np.where(mask_invalid_groundtruths)[
+                0
+            ]
+            self._filtered_detailed_pairs[
+                invalid_groundtruth_indices[:, None], (1, 3, 5)
+            ] = np.array([[-1, -1, 0]])
+
+        if mask_invalid_predictions.any():
+            invalid_prediction_indices = np.where(mask_invalid_predictions)[0]
+            self._filtered_detailed_pairs[
+                invalid_prediction_indices[:, None], (2, 4, 5, 6)
+            ] = np.array([[-1, -1, 0, -1]])
+
+        # filter null pairs
+        mask_null_pairs = np.all(
+            np.isclose(
+                self._filtered_detailed_pairs[:, 1:5],
+                np.array([-1.0, -1.0, -1.0, -1.0]),
+            ),
+            axis=1,
+        )
+        self._filtered_detailed_pairs = self._filtered_detailed_pairs[
+            ~mask_null_pairs
+        ]
+
+        if self._filtered_detailed_pairs.size == 0:
+            self._ranked_pairs = np.array([], dtype=np.float64)
+            self._label_metadata = np.zeros((self.n_labels, 2), dtype=np.int32)
+            warnings.warn("no valid filtered pairs")
+            return
+
+        indices = np.lexsort(
+            (
+                self._filtered_detailed_pairs[:, 1],
+                -self._filtered_detailed_pairs[:, 5],
+                -self._filtered_detailed_pairs[:, 6],
+            )
+        )
+        self._filtered_detailed_pairs = self._filtered_detailed_pairs[indices]
+        self._filtered_label_metadata = compute_label_metadata(
+            ids=self._filtered_detailed_pairs[:, :5].astype(np.int32),
+            n_labels=self.n_labels,
+        )
+        self._filtered_ranked_pairs = rank_pairs(
+            detailed_pairs=self._filtered_detailed_pairs,
+            label_metadata=self._filtered_label_metadata,
+        )
+
+    def clear_filter(self):
+        """Removes a filter if one exists."""
+        self._filtered_detailed_pairs = None
+        self._filtered_ranked_pairs = None
+        self._filtered_label_metadata = None
 
 
 class DataLoader(Evaluator):

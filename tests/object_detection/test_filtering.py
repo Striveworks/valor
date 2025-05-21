@@ -358,7 +358,6 @@ def test_filtering_four_detections(four_detections: list[Detection]):
     assert (evaluator.label_metadata == np.array([[4, 2], [0, 0]])).all()
 
     evaluator.apply_filter(labels=["v2"])
-    print(evaluator.detailed_pairs)
     assert np.all(
         evaluator.detailed_pairs
         == np.array(
@@ -518,7 +517,6 @@ def test_filtering_all_detections(four_detections: list[Detection]):
 
     # test prediction annotation filtering
     evaluator.apply_filter(prediction_ids=[])
-    print(evaluator.detailed_pairs)
     assert np.all(
         evaluator.detailed_pairs
         == np.array(
@@ -543,7 +541,6 @@ def test_filtering_all_detections(four_detections: list[Detection]):
     ).all()
 
     evaluator.apply_filter(prediction_ids=["uid1_pd_0"])
-    print("here", evaluator.detailed_pairs)
     assert np.all(
         evaluator.detailed_pairs
         == np.array(

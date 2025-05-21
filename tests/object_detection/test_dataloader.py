@@ -16,7 +16,6 @@ from valor_lite.object_detection import (
 def test_no_data():
     loader = DataLoader()
     loader.finalize()
-    assert loader._cache == []
     assert loader._detailed_pairs.size == 0
     assert loader._ranked_pairs.size == 0
     assert loader._label_metadata.size == 0
@@ -76,11 +75,12 @@ def test_iou_computation():
 
     loader = DataLoader()
     loader.add_bounding_boxes([detection])
+    loader.finalize()
 
-    assert len(loader._cache) == 1
+    assert loader._detailed_pairs.shape == (7, 7)
 
     # show that three unique IOUs exist
-    unique_ious = np.unique(loader._cache[0][:, 5])
+    unique_ious = np.unique(loader._detailed_pairs[:, 5])
     assert np.isclose(
         unique_ious, np.array([0.0, 0.12755102, 0.68067227])
     ).all()

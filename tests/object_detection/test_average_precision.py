@@ -1,11 +1,7 @@
 import numpy as np
 
-from valor_lite.object_detection import (
-    DataLoader,
-    Detection,
-    MetricType,
-    compute_precion_recall,
-)
+from valor_lite.object_detection import DataLoader, Detection, MetricType
+from valor_lite.object_detection.computation import compute_precion_recall
 
 
 def test__compute_average_precision():

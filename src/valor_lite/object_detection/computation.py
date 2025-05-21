@@ -218,95 +218,68 @@ def compute_label_metadata(ids: NDArray[np.int32], n_labels: int):
     return label_metadata
 
 
-def _compute_ranked_pairs_for_datum(
-    data: NDArray[np.float64],
+def rank_pairs(
+    detailed_pairs: NDArray[np.float64],
     label_metadata: NDArray[np.int32],
 ) -> NDArray[np.float64]:
     """
-    Computes ranked pairs for a datum.
-    """
+    Highly optimized pair ranking for computing precision and recall based metrics.
 
-    # remove null predictions
-    data = data[data[:, 2] >= 0.0]
-
-    # find best fits for prediction
-    mask_label_match = data[:, 3] == data[:, 4]
-    matched_predicitons = np.unique(data[mask_label_match, 2].astype(np.int32))
-    mask_unmatched_predictions = ~np.isin(data[:, 2], matched_predicitons)
-    data = data[mask_label_match | mask_unmatched_predictions]
-
-    # sort by gt_id, iou, score
-    indices = np.lexsort(
-        (
-            data[:, 1],
-            -data[:, 5],
-            -data[:, 6],
-        )
-    )
-    data = data[indices]
-
-    # remove ignored predictions
-    for label_idx, count in enumerate(label_metadata[:, 0]):
-        if count > 0:
-            continue
-        data = data[data[:, 4] != label_idx]
-
-    # only keep the highest ranked pair
-    _, indices = np.unique(data[:, [0, 2, 4]], axis=0, return_index=True)
-
-    # np.unique orders its results by value, we need to sort the indices to maintain the results of the lexsort
-    data = data[indices, :]
-
-    return data
-
-
-def compute_ranked_pairs(
-    data: list[NDArray[np.float64]],
-    label_metadata: NDArray[np.int32],
-) -> NDArray[np.float64]:
-    """
-    Performs pair ranking on input data.
-
-    Takes data with shape (N, 7):
-
-    Index 0 - Datum Index
-    Index 1 - GroundTruth Index
-    Index 2 - Prediction Index
-    Index 3 - IOU
-    Index 4 - GroundTruth Label Index
-    Index 5 - Prediction Label Index
-    Index 6 - Score
-
-    Returns data with shape (N - M, 7)
+    Only ground truths and predictions that provide unique information are kept. The unkept
+    pairs are represented via the label metadata array.
 
     Parameters
     ----------
-    data : NDArray[np.float64]
-        A sorted array summarizing the IOU calculations of one or more pairs.
+    detailed_pairs : NDArray[np.float64]
+        Detailed annotation pairs with shape (n_pairs, 7).
+            Index 0 - Datum Index
+            Index 1 - GroundTruth Index
+            Index 2 - Prediction Index
+            Index 3 - GroundTruth Label Index
+            Index 4 - Prediction Label Index
+            Index 5 - IOU
+            Index 6 - Score
     label_metadata : NDArray[np.int32]
-        An array containing metadata related to labels.
+        Array containing label counts with shape (n_labels, 2)
+            Index 0 - Ground truth label count
+            Index 1 - Prediction label count
 
     Returns
     -------
     NDArray[np.float64]
-        A filtered array containing only ranked pairs.
+        Array of ranked pairs for precision-recall metric computation.
     """
+    pairs = detailed_pairs
 
-    ranked_pairs_by_datum = [
-        _compute_ranked_pairs_for_datum(
-            data=datum,
-            label_metadata=label_metadata,
-        )
-        for datum in data
-    ]
-    ranked_pairs = np.concatenate(ranked_pairs_by_datum, axis=0)
+    # remove null predictions
+    pairs = pairs[pairs[:, 2] >= 0.0]
+
+    # find best fits for prediction
+    mask_label_match = np.isclose(pairs[:, 3], pairs[:, 4])
+    matched_predictions = np.unique(pairs[mask_label_match, 2])
+    mask_unmatched_predictions = ~np.isin(pairs[:, 2], matched_predictions)
+    pairs = pairs[mask_label_match | mask_unmatched_predictions]
+
+    # remove predictions for labels that have no ground truths
+    for label_idx, count in enumerate(label_metadata[:, 0]):
+        if count > 0:
+            continue
+        pairs = pairs[pairs[:, 4] != label_idx]
+
+    # only keep the highest ranked pair
+    _, indices = np.unique(pairs[:, [0, 2, 4]], axis=0, return_index=True)
+    pairs = pairs[indices]
+
+    # np.unique orders its results by value, we need to sort the indices to maintain the results of the lexsort
     indices = np.lexsort(
         (
-            -ranked_pairs[:, 5],  # iou
-            -ranked_pairs[:, 6],  # score
+            -pairs[:, 5],  # iou
+            -pairs[:, 6],  # score
         )
     )
-    return ranked_pairs[indices]
+    pairs = pairs[indices]
+
+    return pairs
 
 
 def compute_precion_recall(
@@ -588,8 +561,8 @@ def compute_precion_recall(
 
 
 def _isin(
-    data: NDArray[np.int32],
-    subset: NDArray[np.int32],
+    data: NDArray,
+    subset: NDArray,
 ) -> NDArray[np.bool_]:
     """
     Creates a mask of rows that exist within the subset.
@@ -626,19 +599,10 @@ class PairClassification(IntFlag):
 def mask_pairs_greedily(
     pairs: NDArray[np.float64],
 ):
-    indices = np.lexsort(
-        (
-            pairs[:, 1],  # ground truth id
-            -pairs[:, 5],  # iou
-            -pairs[:, 6],  # score
-        )
-    )
-    pairs = pairs[indices]
-
     groundtruths = pairs[:, 1].astype(np.int32)
     predictions = pairs[:, 2].astype(np.int32)
 
-    # Pre‑allocate “seen” flags for every possible x and y
+    # Pre‑allocate "seen" flags for every possible x and y
     max_gt = groundtruths.max()
     max_pd = predictions.max()
     used_gt = np.zeros(max_gt + 1, dtype=np.bool_)
@@ -657,7 +621,7 @@ def mask_pairs_greedily(
             used_pd[pidx] = True
 
     mask_matches = _isin(
-        data=pairs[:, (1, 2)].astype(np.int32),
+        data=pairs[:, (1, 2)],
         subset=np.unique(pairs[np.ix_(keep, (1, 2))], axis=0),  # type: ignore - np.ix_ typing
     )
 
