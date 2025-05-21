@@ -617,9 +617,9 @@ class Evaluator:
 
         indices = np.lexsort(
             (
-                self._detailed_pairs[:, 1],
-                -self._detailed_pairs[:, 5],
-                -self._detailed_pairs[:, 6],
+                self._detailed_pairs[:, 1],  # ground truth id
+                -self._detailed_pairs[:, 5],  # iou
+                -self._detailed_pairs[:, 6],  # score
             )
         )
         self._detailed_pairs = self._detailed_pairs[indices]
