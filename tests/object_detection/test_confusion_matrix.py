@@ -1387,8 +1387,6 @@ def test_confusion_matrix_using_torch_metrics_example(
             m["value"]["unmatched_predictions"],
             m["value"]["unmatched_ground_truths"],
         )
-        # import json
-        # print(json.dumps(m, indent=4))
         assert m in expected_metrics
     for m in expected_metrics:
         assert m in actual_metrics
@@ -1605,9 +1603,6 @@ def test_confusion_matrix_ranked_pair_ordering(
                 m["value"]["unmatched_predictions"],
                 m["value"]["unmatched_ground_truths"],
             )
-            import json
-
-            print(json.dumps(m, indent=4))
             assert m in expected_metrics
         for m in expected_metrics:
             assert m in actual_metrics
