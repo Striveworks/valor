@@ -9,6 +9,7 @@ from valor_lite.object_detection import (
     BoundingBox,
     DataLoader,
     Detection,
+    Evaluator,
     Polygon,
 )
 
@@ -175,3 +176,32 @@ def test_mixed_annotations(
         with pytest.raises(AttributeError) as e:
             loader.add_bitmasks([detection])
         assert "no attribute 'mask'" in str(e)
+
+
+def test_corrupted_cache():
+
+    evaluator = Evaluator()
+
+    # test datum cache size mismatch
+    evaluator.datum_id_to_index = {"x": 0}
+    evaluator.index_to_datum_id = []
+    with pytest.raises(RuntimeError):
+        evaluator._add_datum(datum_id="a")
+
+    # test ground truth annotation cache size mismatch
+    evaluator.groundtruth_id_to_index = {"x": 0}
+    evaluator.index_to_groundtruth_id = []
+    with pytest.raises(RuntimeError):
+        evaluator._add_groundtruth(annotation_id="a")
+
+    # test ground truth annotation cache size mismatch
+    evaluator.prediction_id_to_index = {"x": 0}
+    evaluator.index_to_prediction_id = []
+    with pytest.raises(RuntimeError):
+        evaluator._add_prediction(annotation_id="a")
+
+    # test ground truth annotation cache size mismatch
+    evaluator.label_to_index = {"x": 0}
+    evaluator.index_to_label = []
+    with pytest.raises(RuntimeError):
+        evaluator._add_label(label="a")

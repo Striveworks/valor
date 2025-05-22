@@ -366,14 +366,13 @@ class Evaluator:
         int
             Label index.
         """
-
         label_id = len(self.index_to_label)
         if label not in self.label_to_index:
+            if len(self.label_to_index) != len(self.index_to_label):
+                raise RuntimeError("label cache size mismatch")
             self.label_to_index[label] = label_id
             self.index_to_label.append(label)
-
             label_id += 1
-
         return self.label_to_index[label]
 
     def _add_data(
