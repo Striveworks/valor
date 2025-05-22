@@ -1,28 +1,24 @@
 import numpy as np
 
-from valor_lite.object_detection import (
-    DataLoader,
-    Detection,
-    MetricType,
-    compute_precion_recall,
-)
+from valor_lite.object_detection import DataLoader, Detection, MetricType
+from valor_lite.object_detection.computation import compute_precion_recall
 
 
 def test__compute_average_recall():
 
     sorted_pairs = np.array(
         [
-            # dt,  gt,  pd,  iou,  gl,  pl, score,
-            [0.0, 0.0, 2.0, 0.25, 0.0, 0.0, 0.95],
-            [0.0, 1.0, 3.0, 0.33333, 0.0, 0.0, 0.9],
-            [0.0, 0.0, 4.0, 0.66667, 0.0, 0.0, 0.65],
-            [0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.1],
-            [0.0, 0.0, 1.0, 0.5, 0.0, 0.0, 0.01],
-            [0.0, 2.0, 5.0, 0.5, 1.0, 1.0, 0.95],
+            # dt,  gt,  pd,  gl,  pl, iou, score
+            [0.0, 0.0, 2.0, 0.0, 0.0, 0.25, 0.95],
+            [0.0, 1.0, 3.0, 0.0, 0.0, 0.33333, 0.9],
+            [0.0, 0.0, 4.0, 0.0, 0.0, 0.66667, 0.65],
+            [0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.1],
+            [0.0, 0.0, 1.0, 0.0, 0.0, 0.5, 0.01],
+            [0.0, 2.0, 5.0, 1.0, 1.0, 0.5, 0.95],
         ]
     )
 
-    label_metadata = np.array([[2, 5, 0], [1, 1, 0]])
+    label_metadata = np.array([[2, 5], [1, 1]])
     iou_thresholds = np.array([0.1, 0.6])
     score_thresholds = np.array([0.5, 0.93, 0.98])
 
@@ -35,9 +31,11 @@ def test__compute_average_recall():
     (
         average_recall,
         mean_average_recall,
-        average_recall_averaged_over_scores,
-        mean_average_recall_averaged_over_scores,
     ) = results
+
+    # TODO - (c.zaloom) will be removed in the future
+    average_recall_averaged_over_scores = average_recall.mean(axis=0)
+    mean_average_recall_averaged_over_scores = mean_average_recall.mean()
 
     expected = np.array(
         [

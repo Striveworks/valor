@@ -1,3 +1,5 @@
+from uuid import uuid4
+
 import numpy as np
 import pytest
 from shapely.geometry import Polygon as ShapelyPolygon
@@ -86,6 +88,7 @@ def basic_detections_first_class(
             uid="uid1",
             groundtruths=[
                 BoundingBox(
+                    uid=str(uuid4()),
                     xmin=rect1[0],
                     xmax=rect1[1],
                     ymin=rect1[2],
@@ -95,6 +98,7 @@ def basic_detections_first_class(
             ],
             predictions=[
                 BoundingBox(
+                    uid=str(uuid4()),
                     xmin=rect1[0],
                     xmax=rect1[1],
                     ymin=rect1[2],
@@ -108,6 +112,7 @@ def basic_detections_first_class(
             uid="uid2",
             groundtruths=[
                 BoundingBox(
+                    uid=str(uuid4()),
                     xmin=rect2[0],
                     xmax=rect2[1],
                     ymin=rect2[2],
@@ -130,6 +135,7 @@ def basic_detections_second_class(
             uid="uid1",
             groundtruths=[
                 BoundingBox(
+                    uid=str(uuid4()),
                     xmin=rect3[0],
                     xmax=rect3[1],
                     ymin=rect3[2],
@@ -144,6 +150,7 @@ def basic_detections_second_class(
             groundtruths=[],
             predictions=[
                 BoundingBox(
+                    uid=str(uuid4()),
                     xmin=rect2[0],
                     xmax=rect2[1],
                     ymin=rect2[2],
@@ -168,6 +175,7 @@ def basic_detections(
             uid="uid1",
             groundtruths=[
                 BoundingBox(
+                    uid=str(uuid4()),
                     xmin=rect1[0],
                     xmax=rect1[1],
                     ymin=rect1[2],
@@ -175,6 +183,7 @@ def basic_detections(
                     labels=["v1"],
                 ),
                 BoundingBox(
+                    uid=str(uuid4()),
                     xmin=rect3[0],
                     xmax=rect3[1],
                     ymin=rect3[2],
@@ -184,6 +193,7 @@ def basic_detections(
             ],
             predictions=[
                 BoundingBox(
+                    uid=str(uuid4()),
                     xmin=rect1[0],
                     xmax=rect1[1],
                     ymin=rect1[2],
@@ -197,6 +207,7 @@ def basic_detections(
             uid="uid2",
             groundtruths=[
                 BoundingBox(
+                    uid=str(uuid4()),
                     xmin=rect2[0],
                     xmax=rect2[1],
                     ymin=rect2[2],
@@ -206,6 +217,7 @@ def basic_detections(
             ],
             predictions=[
                 BoundingBox(
+                    uid=str(uuid4()),
                     xmin=rect2[0],
                     xmax=rect2[1],
                     ymin=rect2[2],
@@ -228,6 +240,7 @@ def basic_rotated_detections_first_class(
             uid="uid1",
             groundtruths=[
                 Polygon(
+                    uid=str(uuid4()),
                     shape=ShapelyPolygon(
                         rect1_rotated_5_degrees_around_origin
                     ),
@@ -236,6 +249,7 @@ def basic_rotated_detections_first_class(
             ],
             predictions=[
                 Polygon(
+                    uid=str(uuid4()),
                     shape=ShapelyPolygon(
                         rect1_rotated_5_degrees_around_origin
                     ),
@@ -248,6 +262,7 @@ def basic_rotated_detections_first_class(
             uid="uid2",
             groundtruths=[
                 Polygon(
+                    uid=str(uuid4()),
                     shape=ShapelyPolygon(
                         rect2_rotated_5_degrees_around_origin
                     ),
@@ -269,6 +284,7 @@ def basic_rotated_detections_second_class(
             uid="uid1",
             groundtruths=[
                 Polygon(
+                    uid=str(uuid4()),
                     shape=ShapelyPolygon(
                         rect3_rotated_5_degrees_around_origin
                     ),
@@ -282,6 +298,7 @@ def basic_rotated_detections_second_class(
             groundtruths=[],
             predictions=[
                 Polygon(
+                    uid=str(uuid4()),
                     shape=ShapelyPolygon(
                         rect2_rotated_5_degrees_around_origin
                     ),
@@ -410,16 +427,20 @@ def torchmetrics_detections() -> list[Detection]:
             uid=str(idx),
             groundtruths=[
                 BoundingBox(
+                    uid=f"uid_{idx}_gt_{gidx}",
                     xmin=box[0],
                     ymin=box[1],
                     xmax=box[2],
                     ymax=box[3],
                     labels=[label_value],
                 )
-                for box, label_value in zip(gt["boxes"], gt["labels"])
+                for gidx, (box, label_value) in enumerate(
+                    zip(gt["boxes"], gt["labels"])
+                )
             ],
             predictions=[
                 BoundingBox(
+                    uid=f"uid_{idx}_pd_{pidx}",
                     xmin=box[0],
                     ymin=box[1],
                     xmax=box[2],
@@ -427,8 +448,8 @@ def torchmetrics_detections() -> list[Detection]:
                     labels=[label_value],
                     scores=[score],
                 )
-                for box, label_value, score in zip(
-                    pd["boxes"], pd["labels"], pd["scores"]
+                for pidx, (box, label_value, score) in enumerate(
+                    zip(pd["boxes"], pd["labels"], pd["scores"])
                 )
             ],
         )
@@ -443,6 +464,7 @@ def false_negatives_single_datum_baseline_detections() -> list[Detection]:
             uid="uid1",
             groundtruths=[
                 BoundingBox(
+                    uid=str(uuid4()),
                     xmin=10,
                     xmax=20,
                     ymin=10,
@@ -452,6 +474,7 @@ def false_negatives_single_datum_baseline_detections() -> list[Detection]:
             ],
             predictions=[
                 BoundingBox(
+                    uid=str(uuid4()),
                     xmin=10,
                     xmax=20,
                     ymin=10,
@@ -460,6 +483,7 @@ def false_negatives_single_datum_baseline_detections() -> list[Detection]:
                     scores=[0.8],
                 ),
                 BoundingBox(
+                    uid=str(uuid4()),
                     xmin=100,
                     xmax=110,
                     ymin=100,
@@ -479,6 +503,7 @@ def false_negatives_single_datum_detections() -> list[Detection]:
             uid="uid1",
             groundtruths=[
                 BoundingBox(
+                    uid=str(uuid4()),
                     xmin=10,
                     xmax=20,
                     ymin=10,
@@ -488,6 +513,7 @@ def false_negatives_single_datum_detections() -> list[Detection]:
             ],
             predictions=[
                 BoundingBox(
+                    uid=str(uuid4()),
                     xmin=10,
                     xmax=20,
                     ymin=10,
@@ -496,6 +522,7 @@ def false_negatives_single_datum_detections() -> list[Detection]:
                     scores=[0.8],
                 ),
                 BoundingBox(
+                    uid=str(uuid4()),
                     xmin=100,
                     xmax=110,
                     ymin=100,
@@ -518,6 +545,7 @@ def false_negatives_two_datums_one_empty_low_confidence_of_fp_detections() -> (
             uid="uid1",
             groundtruths=[
                 BoundingBox(
+                    uid=str(uuid4()),
                     xmin=10,
                     xmax=20,
                     ymin=10,
@@ -527,6 +555,7 @@ def false_negatives_two_datums_one_empty_low_confidence_of_fp_detections() -> (
             ],
             predictions=[
                 BoundingBox(
+                    uid=str(uuid4()),
                     xmin=10,
                     xmax=20,
                     ymin=10,
@@ -541,6 +570,7 @@ def false_negatives_two_datums_one_empty_low_confidence_of_fp_detections() -> (
             groundtruths=[],
             predictions=[
                 BoundingBox(
+                    uid=str(uuid4()),
                     xmin=10,
                     xmax=20,
                     ymin=10,
@@ -563,6 +593,7 @@ def false_negatives_two_datums_one_empty_high_confidence_of_fp_detections() -> (
             uid="uid1",
             groundtruths=[
                 BoundingBox(
+                    uid=str(uuid4()),
                     xmin=10,
                     xmax=20,
                     ymin=10,
@@ -572,6 +603,7 @@ def false_negatives_two_datums_one_empty_high_confidence_of_fp_detections() -> (
             ],
             predictions=[
                 BoundingBox(
+                    uid=str(uuid4()),
                     xmin=10,
                     xmax=20,
                     ymin=10,
@@ -586,6 +618,7 @@ def false_negatives_two_datums_one_empty_high_confidence_of_fp_detections() -> (
             groundtruths=[],
             predictions=[
                 BoundingBox(
+                    uid=str(uuid4()),
                     xmin=10,
                     xmax=20,
                     ymin=10,
@@ -608,6 +641,7 @@ def false_negatives_two_datums_one_only_with_different_class_low_confidence_of_f
             uid="uid1",
             groundtruths=[
                 BoundingBox(
+                    uid=str(uuid4()),
                     xmin=10,
                     xmax=20,
                     ymin=10,
@@ -617,6 +651,7 @@ def false_negatives_two_datums_one_only_with_different_class_low_confidence_of_f
             ],
             predictions=[
                 BoundingBox(
+                    uid=str(uuid4()),
                     xmin=10,
                     xmax=20,
                     ymin=10,
@@ -630,6 +665,7 @@ def false_negatives_two_datums_one_only_with_different_class_low_confidence_of_f
             uid="uid2",
             groundtruths=[
                 BoundingBox(
+                    uid=str(uuid4()),
                     xmin=10,
                     xmax=20,
                     ymin=10,
@@ -639,6 +675,7 @@ def false_negatives_two_datums_one_only_with_different_class_low_confidence_of_f
             ],
             predictions=[
                 BoundingBox(
+                    uid=str(uuid4()),
                     xmin=10,
                     xmax=20,
                     ymin=10,
@@ -661,6 +698,7 @@ def false_negatives_two_images_one_only_with_different_class_high_confidence_of_
             uid="uid1",
             groundtruths=[
                 BoundingBox(
+                    uid=str(uuid4()),
                     xmin=10,
                     xmax=20,
                     ymin=10,
@@ -670,6 +708,7 @@ def false_negatives_two_images_one_only_with_different_class_high_confidence_of_
             ],
             predictions=[
                 BoundingBox(
+                    uid=str(uuid4()),
                     xmin=10,
                     xmax=20,
                     ymin=10,
@@ -683,6 +722,7 @@ def false_negatives_two_images_one_only_with_different_class_high_confidence_of_
             uid="uid2",
             groundtruths=[
                 BoundingBox(
+                    uid=str(uuid4()),
                     xmin=10,
                     xmax=20,
                     ymin=10,
@@ -692,6 +732,7 @@ def false_negatives_two_images_one_only_with_different_class_high_confidence_of_
             ],
             predictions=[
                 BoundingBox(
+                    uid=str(uuid4()),
                     xmin=10,
                     xmax=20,
                     ymin=10,
@@ -711,6 +752,7 @@ def detections_fp_unmatched_prediction_edge_case() -> list[Detection]:
             uid="uid1",
             groundtruths=[
                 BoundingBox(
+                    uid="uid1_gt0",
                     xmin=0,
                     xmax=5,
                     ymin=0,
@@ -720,6 +762,7 @@ def detections_fp_unmatched_prediction_edge_case() -> list[Detection]:
             ],
             predictions=[
                 BoundingBox(
+                    uid="uid1_pd0",
                     xmin=0,
                     xmax=5,
                     ymin=0,
@@ -733,6 +776,7 @@ def detections_fp_unmatched_prediction_edge_case() -> list[Detection]:
             uid="uid2",
             groundtruths=[
                 BoundingBox(
+                    uid="uid2_gt0",
                     xmin=0,
                     xmax=5,
                     ymin=0,
@@ -742,6 +786,7 @@ def detections_fp_unmatched_prediction_edge_case() -> list[Detection]:
             ],
             predictions=[
                 BoundingBox(
+                    uid="uid2_pd0",
                     xmin=10,
                     xmax=20,
                     ymin=10,
@@ -761,6 +806,7 @@ def detections_tp_deassignment_edge_case() -> list[Detection]:
             uid="uid0",
             groundtruths=[
                 BoundingBox(
+                    uid=str(uuid4()),
                     xmin=10,
                     xmax=20,
                     ymin=10,
@@ -768,6 +814,7 @@ def detections_tp_deassignment_edge_case() -> list[Detection]:
                     labels=["v1"],
                 ),
                 BoundingBox(
+                    uid=str(uuid4()),
                     xmin=10,
                     xmax=15,
                     ymin=20,
@@ -777,6 +824,7 @@ def detections_tp_deassignment_edge_case() -> list[Detection]:
             ],
             predictions=[
                 BoundingBox(
+                    uid=str(uuid4()),
                     xmin=10,
                     xmax=20,
                     ymin=10,
@@ -785,6 +833,7 @@ def detections_tp_deassignment_edge_case() -> list[Detection]:
                     scores=[0.78],
                 ),
                 BoundingBox(
+                    uid=str(uuid4()),
                     xmin=10,
                     xmax=20,
                     ymin=12,
@@ -793,6 +842,7 @@ def detections_tp_deassignment_edge_case() -> list[Detection]:
                     scores=[0.96],
                 ),
                 BoundingBox(
+                    uid=str(uuid4()),
                     xmin=10,
                     xmax=20,
                     ymin=12,
@@ -801,6 +851,7 @@ def detections_tp_deassignment_edge_case() -> list[Detection]:
                     scores=[0.96],
                 ),
                 BoundingBox(
+                    uid=str(uuid4()),
                     xmin=101,
                     xmax=102,
                     ymin=101,
@@ -844,19 +895,21 @@ def detection_ranked_pair_ordering() -> Detection:
 
     groundtruths = [
         BoundingBox(
+            uid=f"gt_{idx}",
             xmin=xmin,
             xmax=xmax,
             ymin=ymin,
             ymax=ymax,
             labels=[label_value],
         )
-        for (xmin, xmax, ymin, ymax), label_value in zip(
-            gts["boxes"], gts["label_values"]
+        for idx, ((xmin, xmax, ymin, ymax), label_value) in enumerate(
+            zip(gts["boxes"], gts["label_values"])
         )
     ]
 
     predictions = [
         BoundingBox(
+            uid=f"pd_{idx}",
             xmin=xmin,
             xmax=xmax,
             ymin=ymin,
@@ -864,8 +917,8 @@ def detection_ranked_pair_ordering() -> Detection:
             labels=[label_value],
             scores=[score],
         )
-        for (xmin, xmax, ymin, ymax), label_value, score in zip(
-            preds["boxes"], preds["label_values"], preds["scores"]
+        for idx, ((xmin, xmax, ymin, ymax), label_value, score) in enumerate(
+            zip(preds["boxes"], preds["label_values"], preds["scores"])
         )
     ]
 
@@ -906,20 +959,24 @@ def detection_ranked_pair_ordering_with_bitmasks() -> Detection:
 
     groundtruths = [
         Bitmask(
+            uid=f"gt_{idx}",
             mask=mask,
             labels=[label_value],
         )
-        for mask, label_value in zip(gts["bitmasks"], gts["label_values"])
+        for idx, (mask, label_value) in enumerate(
+            zip(gts["bitmasks"], gts["label_values"])
+        )
     ]
 
     predictions = [
         Bitmask(
+            uid=f"pd_{idx}",
             mask=mask,
             labels=[label_value],
             scores=[score],
         )
-        for mask, label_value, score in zip(
-            preds["bitmasks"], preds["label_values"], preds["scores"]
+        for idx, (mask, label_value, score) in enumerate(
+            zip(preds["bitmasks"], preds["label_values"], preds["scores"])
         )
     ]
 
@@ -961,20 +1018,24 @@ def detection_ranked_pair_ordering_with_polygons(
 
     groundtruths = [
         Polygon(
+            uid=f"gt_{idx}",
             shape=ShapelyPolygon(polygon),
             labels=[label_value],
         )
-        for polygon, label_value in zip(gts["polygons"], gts["label_values"])
+        for idx, (polygon, label_value) in enumerate(
+            zip(gts["polygons"], gts["label_values"])
+        )
     ]
 
     predictions = [
         Polygon(
+            uid=f"pd_{idx}",
             shape=ShapelyPolygon(polygon),
             labels=[label_value],
             scores=[score],
         )
-        for polygon, label_value, score in zip(
-            preds["polygons"], preds["label_values"], preds["scores"]
+        for idx, (polygon, label_value, score) in enumerate(
+            zip(preds["polygons"], preds["label_values"], preds["scores"])
         )
     ]
 
@@ -987,10 +1048,11 @@ def detection_ranked_pair_ordering_with_polygons(
 def detections_no_groundtruths() -> list[Detection]:
     return [
         Detection(
-            uid="uid",
+            uid="uid0",
             groundtruths=[],
             predictions=[
                 BoundingBox(
+                    uid=str(uuid4()),
                     xmin=0,
                     xmax=10,
                     ymin=0,
@@ -1001,10 +1063,11 @@ def detections_no_groundtruths() -> list[Detection]:
             ],
         ),
         Detection(
-            uid="uid",
+            uid="uid1",
             groundtruths=[],
             predictions=[
                 BoundingBox(
+                    uid=str(uuid4()),
                     xmin=0,
                     xmax=10,
                     ymin=0,
@@ -1021,16 +1084,30 @@ def detections_no_groundtruths() -> list[Detection]:
 def detections_no_predictions() -> list[Detection]:
     return [
         Detection(
-            uid="uid",
+            uid="uid1",
             groundtruths=[
-                BoundingBox(xmin=0, xmax=10, ymin=0, ymax=10, labels=["v1"]),
+                BoundingBox(
+                    uid=str(uuid4()),
+                    xmin=0,
+                    xmax=10,
+                    ymin=0,
+                    ymax=10,
+                    labels=["v1"],
+                ),
             ],
             predictions=[],
         ),
         Detection(
-            uid="uid",
+            uid="uid2",
             groundtruths=[
-                BoundingBox(xmin=0, xmax=10, ymin=0, ymax=10, labels=["v1"]),
+                BoundingBox(
+                    uid=str(uuid4()),
+                    xmin=0,
+                    xmax=10,
+                    ymin=0,
+                    ymax=10,
+                    labels=["v1"],
+                ),
             ],
             predictions=[],
         ),
@@ -1051,6 +1128,7 @@ def detections_for_detailed_counting(
             uid="uid1",
             groundtruths=[
                 BoundingBox(
+                    uid="uid_1_gt_0",
                     xmin=rect1[0],
                     xmax=rect1[1],
                     ymin=rect1[2],
@@ -1058,13 +1136,15 @@ def detections_for_detailed_counting(
                     labels=["v1"],
                 ),
                 BoundingBox(
+                    uid="uid_1_gt_1",
                     xmin=rect2[0],
                     xmax=rect2[1],
                     ymin=rect2[2],
                     ymax=rect2[3],
-                    labels=["missed_detection"],
+                    labels=["unmatched_groundtruth"],
                 ),
                 BoundingBox(
+                    uid="uid_1_gt_2",
                     xmin=rect3[0],
                     xmax=rect3[1],
                     ymin=rect3[2],
@@ -1074,6 +1154,7 @@ def detections_for_detailed_counting(
             ],
             predictions=[
                 BoundingBox(
+                    uid="uid_1_pd_0",
                     xmin=rect1[0],
                     xmax=rect1[1],
                     ymin=rect1[2],
@@ -1082,6 +1163,7 @@ def detections_for_detailed_counting(
                     scores=[0.5],
                 ),
                 BoundingBox(
+                    uid="uid_1_pd_1",
                     xmin=rect5[0],
                     xmax=rect5[1],
                     ymin=rect5[2],
@@ -1090,11 +1172,12 @@ def detections_for_detailed_counting(
                     scores=[0.3],
                 ),
                 BoundingBox(
+                    uid="uid_1_pd_2",
                     xmin=rect4[0],
                     xmax=rect4[1],
                     ymin=rect4[2],
                     ymax=rect4[3],
-                    labels=["no_overlap"],
+                    labels=["unmatched_prediction"],
                     scores=[0.1],
                 ),
             ],
@@ -1103,20 +1186,22 @@ def detections_for_detailed_counting(
             uid="uid2",
             groundtruths=[
                 BoundingBox(
+                    uid="uid_2_gt_0",
                     xmin=rect1[0],
                     xmax=rect1[1],
                     ymin=rect1[2],
                     ymax=rect1[3],
-                    labels=["low_iou"],
+                    labels=["matched_low_iou"],
                 ),
             ],
             predictions=[
                 BoundingBox(
+                    uid="uid_2_pd_0",
                     xmin=rect2[0],
                     xmax=rect2[1],
                     ymin=rect2[2],
                     ymax=rect2[3],
-                    labels=["low_iou"],
+                    labels=["matched_low_iou"],
                     scores=[0.5],
                 ),
             ],
@@ -1126,11 +1211,20 @@ def detections_for_detailed_counting(
 
 @pytest.fixture
 def detections_model_single_class_spam_fp() -> list[Detection]:
-    gt_box = BoundingBox(xmin=0, xmax=5, ymin=0, ymax=5, labels=["dog"])
+    gt_box = BoundingBox(
+        uid=str(uuid4()), xmin=0, xmax=5, ymin=0, ymax=5, labels=["dog"]
+    )
     tp_box = BoundingBox(
-        xmin=0, xmax=5, ymin=0, ymax=5, labels=["dog"], scores=[1.0]
+        uid=str(uuid4()),
+        xmin=0,
+        xmax=5,
+        ymin=0,
+        ymax=5,
+        labels=["dog"],
+        scores=[1.0],
     )
     fp_box = BoundingBox(
+        uid=str(uuid4()),
         xmin=10,
         xmax=15,
         ymin=10,

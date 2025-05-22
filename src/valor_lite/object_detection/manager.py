@@ -1,18 +1,23 @@
-from collections import defaultdict
-from dataclasses import dataclass
+import warnings
 
 import numpy as np
 from numpy.typing import NDArray
 from tqdm import tqdm
 
-from valor_lite.object_detection.annotation import Detection
+from valor_lite.object_detection.annotation import (
+    Bitmask,
+    BoundingBox,
+    Detection,
+    Polygon,
+)
 from valor_lite.object_detection.computation import (
     compute_bbox_iou,
     compute_bitmask_iou,
     compute_confusion_matrix,
+    compute_label_metadata,
     compute_polygon_iou,
     compute_precion_recall,
-    compute_ranked_pairs,
+    rank_pairs,
 )
 from valor_lite.object_detection.metric import Metric, MetricType
 from valor_lite.object_detection.utilities import (
@@ -41,13 +46,6 @@ filtered_metrics = evaluator.evaluate(iou_thresholds=[0.5], filter_mask=filter_m
 """
 
 
-@dataclass
-class Filter:
-    ranked_indices: NDArray[np.intp]
-    detailed_indices: NDArray[np.intp]
-    label_metadata: NDArray[np.int32]
-
-
 class Evaluator:
     """
     Object Detection Evaluator
@@ -55,37 +53,94 @@ class Evaluator:
 
     def __init__(self):
 
-        # metadata
-        self.n_datums = 0
-        self.n_groundtruths = 0
-        self.n_predictions = 0
-        self.n_labels = 0
+        # external reference
+        self.datum_id_to_index: dict[str, int] = {}
+        self.groundtruth_id_to_index: dict[str, int] = {}
+        self.prediction_id_to_index: dict[str, int] = {}
+        self.label_to_index: dict[str, int] = {}
 
-        # datum reference
-        self.uid_to_index: dict[str, int] = dict()
-        self.index_to_uid: dict[int, str] = dict()
+        self.index_to_datum_id: list[str] = []
+        self.index_to_groundtruth_id: list[str] = []
+        self.index_to_prediction_id: list[str] = []
+        self.index_to_label: list[str] = []
 
-        # annotation reference
-        self.groundtruth_examples: dict[int, NDArray[np.float16]] = dict()
-        self.prediction_examples: dict[int, NDArray[np.float16]] = dict()
+        # temporary cache
+        self._temp_cache: list[NDArray[np.float64]] | None = []
 
-        # label reference
-        self.label_to_index: dict[str, int] = dict()
-        self.index_to_label: dict[int, str] = dict()
+        # cache
+        self._detailed_pairs = np.array([[]], dtype=np.float64)
+        self._ranked_pairs = np.array([[]], dtype=np.float64)
+        self._label_metadata: NDArray[np.int32] = np.array([[]])
 
-        # computation caches
-        self._detailed_pairs: NDArray[np.float64] = np.array([])
-        self._ranked_pairs: NDArray[np.float64] = np.array([])
-        self._label_metadata: NDArray[np.int32] = np.array([])
-        self._label_metadata_per_datum: NDArray[np.int32] = np.array([])
+        # filter cache
+        self._filtered_detailed_pairs: NDArray[np.float64] | None = None
+        self._filtered_ranked_pairs: NDArray[np.float64] | None = None
+        self._filtered_label_metadata: NDArray[np.int32] | None = None
+
+    @property
+    def is_filtered(self) -> bool:
+        return self._filtered_detailed_pairs is not None
+
+    @property
+    def label_metadata(self) -> NDArray[np.int32]:
+        return (
+            self._filtered_label_metadata
+            if self._filtered_label_metadata is not None
+            else self._label_metadata
+        )
+
+    @property
+    def detailed_pairs(self) -> NDArray[np.float64]:
+        return (
+            self._filtered_detailed_pairs
+            if self._filtered_detailed_pairs is not None
+            else self._detailed_pairs
+        )
+
+    @property
+    def ranked_pairs(self) -> NDArray[np.float64]:
+        return (
+            self._filtered_ranked_pairs
+            if self._filtered_ranked_pairs is not None
+            else self._ranked_pairs
+        )
+
+    @property
+    def n_labels(self) -> int:
+        """Returns the total number of unique labels."""
+        return len(self.index_to_label)
+
+    @property
+    def n_datums(self) -> int:
+        """Returns the number of datums."""
+        return np.unique(self.detailed_pairs[:, 0]).size
+
+    @property
+    def n_groundtruths(self) -> int:
+        """Returns the number of ground truth annotations."""
+        mask_valid_gts = self.detailed_pairs[:, 1] >= 0
+        unique_ids = np.unique(
+            self.detailed_pairs[np.ix_(mask_valid_gts, (0, 1))], axis=0  # type: ignore - np.ix_ typing
+        )
+        return int(unique_ids.shape[0])
+
+    @property
+    def n_predictions(self) -> int:
+        """Returns the number of prediction annotations."""
+        mask_valid_pds = self.detailed_pairs[:, 2] >= 0
+        unique_ids = np.unique(
+            self.detailed_pairs[np.ix_(mask_valid_pds, (0, 2))], axis=0  # type: ignore - np.ix_ typing
+        )
+        return int(unique_ids.shape[0])
 
     @property
     def ignored_prediction_labels(self) -> list[str]:
         """
         Prediction labels that are not present in the ground truth set.
         """
-        glabels = set(np.where(self._label_metadata[:, 0] > 0)[0])
-        plabels = set(np.where(self._label_metadata[:, 1] > 0)[0])
+        label_metadata = self.label_metadata
+        glabels = set(np.where(label_metadata[:, 0] > 0)[0])
+        plabels = set(np.where(label_metadata[:, 1] > 0)[0])
         return [
             self.index_to_label[label_id] for label_id in (plabels - glabels)
         ]
@@ -95,8 +150,9 @@ class Evaluator:
         """
         Ground truth labels that are not present in the prediction set.
         """
-        glabels = set(np.where(self._label_metadata[:, 0] > 0)[0])
-        plabels = set(np.where(self._label_metadata[:, 1] > 0)[0])
+        label_metadata = self.label_metadata
+        glabels = set(np.where(label_metadata[:, 0] > 0)[0])
+        plabels = set(np.where(label_metadata[:, 1] > 0)[0])
         return [
             self.index_to_label[label_id] for label_id in (glabels - plabels)
         ]
@@ -115,89 +171,10 @@ class Evaluator:
             "missing_prediction_labels": self.missing_prediction_labels,
         }
 
-    def create_filter(
-        self,
-        datum_uids: list[str] | NDArray[np.int32] | None = None,
-        labels: list[str] | NDArray[np.int32] | None = None,
-    ) -> Filter:
-        """
-        Creates a filter that can be passed to an evaluation.
-
-        Parameters
-        ----------
-        datum_uids : list[str] | NDArray[np.int32], optional
-            An optional list of string uids or a numpy array of uid indices.
-        labels : list[str] | NDArray[np.int32], optional
-            An optional list of labels or a numpy array of label indices.
-
-        Returns
-        -------
-        Filter
-            A filter object that can be passed to the `evaluate` method.
-        """
-
-        n_datums = self._label_metadata_per_datum.shape[1]
-        n_labels = self._label_metadata_per_datum.shape[2]
-
-        mask_ranked = np.ones((self._ranked_pairs.shape[0], 1), dtype=np.bool_)
-        mask_detailed = np.ones(
-            (self._detailed_pairs.shape[0], 1), dtype=np.bool_
-        )
-        mask_datums = np.ones(n_datums, dtype=np.bool_)
-        mask_labels = np.ones(n_labels, dtype=np.bool_)
-
-        if datum_uids is not None:
-            if isinstance(datum_uids, list):
-                datum_uids = np.array(
-                    [self.uid_to_index[uid] for uid in datum_uids],
-                    dtype=np.int32,
-                )
-            mask_ranked[
-                ~np.isin(self._ranked_pairs[:, 0].astype(int), datum_uids)
-            ] = False
-            mask_detailed[
-                ~np.isin(self._detailed_pairs[:, 0].astype(int), datum_uids)
-            ] = False
-            mask_datums[~np.isin(np.arange(n_datums), datum_uids)] = False
-
-        if labels is not None:
-            if isinstance(labels, list):
-                labels = np.array(
-                    [self.label_to_index[label] for label in labels]
-                )
-            mask_ranked[
-                ~np.isin(self._ranked_pairs[:, 4].astype(int), labels)
-            ] = False
-            mask_detailed[
-                ~np.isin(self._detailed_pairs[:, 4].astype(int), labels)
-            ] = False
-            mask_labels[~np.isin(np.arange(n_labels), labels)] = False
-
-        mask_label_metadata = (
-            mask_datums[:, np.newaxis] & mask_labels[np.newaxis, :]
-        )
-        label_metadata_per_datum = self._label_metadata_per_datum.copy()
-        label_metadata_per_datum[:, ~mask_label_metadata] = 0
-
-        label_metadata = np.zeros_like(self._label_metadata, dtype=np.int32)
-        label_metadata = np.transpose(
-            np.sum(
-                label_metadata_per_datum,
-                axis=1,
-            )
-        )
-
-        return Filter(
-            ranked_indices=np.where(mask_ranked)[0],
-            detailed_indices=np.where(mask_detailed)[0],
-            label_metadata=label_metadata,
-        )
-
     def compute_precision_recall(
         self,
         iou_thresholds: list[float],
         score_thresholds: list[float],
-        filter_: Filter | None = None,
     ) -> dict[MetricType, list[Metric]]:
         """
         Computes all metrics except for ConfusionMatrix
@@ -208,31 +185,25 @@ class Evaluator:
             A list of IOU thresholds to compute metrics over.
         score_thresholds : list[float]
             A list of score thresholds to compute metrics over.
-        filter_ : Filter, optional
-            An optional filter object.
 
         Returns
         -------
         dict[MetricType, list]
             A dictionary mapping MetricType enumerations to lists of computed metrics.
         """
-
-        ranked_pairs = self._ranked_pairs
-        label_metadata = self._label_metadata
-        if filter_ is not None:
-            ranked_pairs = ranked_pairs[filter_.ranked_indices]
-            label_metadata = filter_.label_metadata
-
+        if not iou_thresholds:
+            raise ValueError("At least one IOU threshold must be passed.")
+        elif not score_thresholds:
+            raise ValueError("At least one score threshold must be passed.")
         results = compute_precion_recall(
-            data=ranked_pairs,
-            label_metadata=label_metadata,
+            ranked_pairs=self.ranked_pairs,
+            label_metadata=self.label_metadata,
             iou_thresholds=np.array(iou_thresholds),
             score_thresholds=np.array(score_thresholds),
         )
-
         return unpack_precision_recall_into_metric_lists(
             results=results,
-            label_metadata=label_metadata,
+            label_metadata=self.label_metadata,
             iou_thresholds=iou_thresholds,
             score_thresholds=score_thresholds,
             index_to_label=self.index_to_label,
@@ -242,8 +213,6 @@ class Evaluator:
         self,
         iou_thresholds: list[float],
         score_thresholds: list[float],
-        number_of_examples: int,
-        filter_: Filter | None = None,
     ) -> list[Metric]:
         """
         Computes confusion matrices at various thresholds.
@@ -254,51 +223,39 @@ class Evaluator:
             A list of IOU thresholds to compute metrics over.
         score_thresholds : list[float]
             A list of score thresholds to compute metrics over.
-        number_of_examples : int
-            Maximum number of annotation examples to return in ConfusionMatrix.
-        filter_ : Filter, optional
-            An optional filter object.
 
         Returns
         -------
         list[Metric]
             List of confusion matrices per threshold pair.
         """
-
-        detailed_pairs = self._detailed_pairs
-        label_metadata = self._label_metadata
-        if filter_ is not None:
-            detailed_pairs = detailed_pairs[filter_.detailed_indices]
-            label_metadata = filter_.label_metadata
-
-        if detailed_pairs.size == 0:
-            return list()
-
+        if not iou_thresholds:
+            raise ValueError("At least one IOU threshold must be passed.")
+        elif not score_thresholds:
+            raise ValueError("At least one score threshold must be passed.")
+        elif self.detailed_pairs.size == 0:
+            warnings.warn("attempted to compute over an empty set")
+            return []
         results = compute_confusion_matrix(
-            data=detailed_pairs,
-            label_metadata=label_metadata,
+            detailed_pairs=self.detailed_pairs,
             iou_thresholds=np.array(iou_thresholds),
             score_thresholds=np.array(score_thresholds),
-            n_examples=number_of_examples,
         )
-
         return unpack_confusion_matrix_into_metric_list(
             results=results,
+            detailed_pairs=self.detailed_pairs,
             iou_thresholds=iou_thresholds,
             score_thresholds=score_thresholds,
-            number_of_examples=number_of_examples,
-            index_to_uid=self.index_to_uid,
+            index_to_datum_id=self.index_to_datum_id,
+            index_to_groundtruth_id=self.index_to_groundtruth_id,
+            index_to_prediction_id=self.index_to_prediction_id,
             index_to_label=self.index_to_label,
-            groundtruth_examples=self.groundtruth_examples,
-            prediction_examples=self.prediction_examples,
         )
 
     def evaluate(
         self,
         iou_thresholds: list[float] = [0.1, 0.5, 0.75],
         score_thresholds: list[float] = [0.5],
-        number_of_examples: int = 0,
-        filter_: Filter | None = None,
     ) -> dict[MetricType, list[Metric]]:
         """
         Computes all available metrics.
@@ -309,10 +266,6 @@ class Evaluator:
             A list of IOU thresholds to compute metrics over.
         score_thresholds : list[float], default=[0.5]
             A list of score thresholds to compute metrics over.
-        number_of_examples : int, default=0
-            Maximum number of annotation examples to return in ConfusionMatrix.
-        filter_ : Filter, optional
-            An optional filter object.
 
         Returns
         -------
@@ -322,53 +275,82 @@ class Evaluator:
         metrics = self.compute_precision_recall(
             iou_thresholds=iou_thresholds,
             score_thresholds=score_thresholds,
-            filter_=filter_,
         )
-
         metrics[MetricType.ConfusionMatrix] = self.compute_confusion_matrix(
             iou_thresholds=iou_thresholds,
             score_thresholds=score_thresholds,
-            number_of_examples=number_of_examples,
-            filter_=filter_,
         )
-
         return metrics
 
-
-def defaultdict_int():
-    return defaultdict(int)
-
-
-class DataLoader:
-    """
-    Object Detection DataLoader
-    """
-
-    def __init__(self):
-        self._evaluator = Evaluator()
-        self.pairs: list[NDArray[np.float64]] = list()
-        self.groundtruth_count = defaultdict(defaultdict_int)
-        self.prediction_count = defaultdict(defaultdict_int)
-
-    def _add_datum(self, uid: str) -> int:
+    def _add_datum(self, datum_id: str) -> int:
         """
         Helper function for adding a datum to the cache.
 
         Parameters
         ----------
-        uid : str
-            The datum uid.
+        datum_id : str
+            The datum identifier.
 
         Returns
         -------
         int
             The datum index.
         """
-        if uid not in self._evaluator.uid_to_index:
-            index = len(self._evaluator.uid_to_index)
-            self._evaluator.uid_to_index[uid] = index
-            self._evaluator.index_to_uid[index] = uid
-        return self._evaluator.uid_to_index[uid]
+        if datum_id not in self.datum_id_to_index:
+            if len(self.datum_id_to_index) != len(self.index_to_datum_id):
+                raise RuntimeError("datum cache size mismatch")
+            idx = len(self.datum_id_to_index)
+            self.datum_id_to_index[datum_id] = idx
+            self.index_to_datum_id.append(datum_id)
+        return self.datum_id_to_index[datum_id]
+
+    def _add_groundtruth(self, annotation_id: str) -> int:
+        """
+        Helper function for adding a ground truth annotation identifier to the cache.
+
+        Parameters
+        ----------
+        annotation_id : str
+            The ground truth annotation identifier.
+
+        Returns
+        -------
+        int
+            The ground truth annotation index.
+        """
+        if annotation_id not in self.groundtruth_id_to_index:
+            if len(self.groundtruth_id_to_index) != len(
+                self.index_to_groundtruth_id
+            ):
+                raise RuntimeError("ground truth cache size mismatch")
+            idx = len(self.groundtruth_id_to_index)
+            self.groundtruth_id_to_index[annotation_id] = idx
+            self.index_to_groundtruth_id.append(annotation_id)
+        return self.groundtruth_id_to_index[annotation_id]
+
+    def _add_prediction(self, annotation_id: str) -> int:
+        """
+        Helper function for adding a prediction annotation identifier to the cache.
+
+        Parameters
+        ----------
+        annotation_id : str
+            The prediction annotation identifier.
+
+        Returns
+        -------
+        int
+            The prediction annotation index.
+        """
+        if annotation_id not in self.prediction_id_to_index:
+            if len(self.prediction_id_to_index) != len(
+                self.index_to_prediction_id
+            ):
+                raise RuntimeError("prediction cache size mismatch")
+            idx = len(self.prediction_id_to_index)
+            self.prediction_id_to_index[annotation_id] = idx
+            self.index_to_prediction_id.append(annotation_id)
+        return self.prediction_id_to_index[annotation_id]
 
     def _add_label(self, label: str) -> int:
         """
@@ -384,90 +366,14 @@ class DataLoader:
         int
             Label index.
         """
-
-        label_id = len(self._evaluator.index_to_label)
-        if label not in self._evaluator.label_to_index:
-            self._evaluator.label_to_index[label] = label_id
-            self._evaluator.index_to_label[label_id] = label
-
+        label_id = len(self.index_to_label)
+        if label not in self.label_to_index:
+            if len(self.label_to_index) != len(self.index_to_label):
+                raise RuntimeError("label cache size mismatch")
+            self.label_to_index[label] = label_id
+            self.index_to_label.append(label)
             label_id += 1
-
-        return self._evaluator.label_to_index[label]
-
-    def _cache_pairs(
-        self,
-        uid_index: int,
-        groundtruths: list,
-        predictions: list,
-        ious: NDArray[np.float64],
-    ) -> None:
-        """
-        Compute IOUs between groundtruths and preditions before storing as pairs.
-
-        Parameters
-        ----------
-        uid_index : int
-            The index of the detection.
-        groundtruths : list
-            A list of groundtruths.
-        predictions : list
-            A list of predictions.
-        ious : NDArray[np.float64]
-            An array with shape (n_preds, n_gts) containing IOUs.
-        """
-
-        predictions_with_iou_of_zero = np.where((ious < 1e-9).all(axis=1))[0]
-        groundtruths_with_iou_of_zero = np.where((ious < 1e-9).all(axis=0))[0]
-
-        pairs = [
-            np.array(
-                [
-                    float(uid_index),
-                    float(gidx),
-                    float(pidx),
-                    ious[pidx, gidx],
-                    float(glabel),
-                    float(plabel),
-                    float(score),
-                ]
-            )
-            for pidx, plabel, score in predictions
-            for gidx, glabel in groundtruths
-            if ious[pidx, gidx] >= 1e-9
-        ]
-        pairs.extend(
-            [
-                np.array(
-                    [
-                        float(uid_index),
-                        -1.0,
-                        float(predictions[index][0]),
-                        0.0,
-                        -1.0,
-                        float(predictions[index][1]),
-                        float(predictions[index][2]),
-                    ]
-                )
-                for index in predictions_with_iou_of_zero
-            ]
-        )
-        pairs.extend(
-            [
-                np.array(
-                    [
-                        float(uid_index),
-                        float(groundtruths[index][0]),
-                        -1.0,
-                        0.0,
-                        float(groundtruths[index][1]),
-                        -1.0,
-                        -1.0,
-                    ]
-                )
-                for index in groundtruths_with_iou_of_zero
-            ]
-        )
-        self.pairs.append(np.array(pairs))
+        return self.label_to_index[label]
 
     def _add_data(
         self,
@@ -491,66 +397,103 @@ class DataLoader:
         for detection, ious in tqdm(
             zip(detections, detection_ious), disable=disable_tqdm
         ):
-
-            # update metadata
-            self._evaluator.n_datums += 1
-            self._evaluator.n_groundtruths += len(detection.groundtruths)
-            self._evaluator.n_predictions += len(detection.predictions)
-
-            # update datum uid index
-            uid_index = self._add_datum(uid=detection.uid)
-
-            # initialize bounding box examples
-            self._evaluator.groundtruth_examples[uid_index] = np.zeros(
-                (len(detection.groundtruths), 4), dtype=np.float16
-            )
-            self._evaluator.prediction_examples[uid_index] = np.zeros(
-                (len(detection.predictions), 4), dtype=np.float16
-            )
-
-            # cache labels and annotations
-            groundtruths = list()
-            predictions = list()
-
-            for gidx, gann in enumerate(detection.groundtruths):
-                self._evaluator.groundtruth_examples[uid_index][
-                    gidx
-                ] = gann.extrema
-                for glabel in gann.labels:
-                    label_idx = self._add_label(glabel)
-                    self.groundtruth_count[label_idx][uid_index] += 1
-                    groundtruths.append(
-                        (
-                            gidx,
-                            label_idx,
+            # cache labels and annotation pairs
+            pairs = []
+            datum_idx = self._add_datum(detection.uid)
+            if detection.groundtruths:
+                for gidx, gann in enumerate(detection.groundtruths):
+                    groundtruth_idx = self._add_groundtruth(gann.uid)
+                    glabel_idx = self._add_label(gann.labels[0])
+                    if (ious[:, gidx] < 1e-9).all():
+                        pairs.extend(
+                            [
+                                np.array(
+                                    [
+                                        float(datum_idx),
+                                        float(groundtruth_idx),
+                                        -1.0,
+                                        float(glabel_idx),
+                                        -1.0,
+                                        0.0,
+                                        -1.0,
+                                    ]
+                                )
+                            ]
                         )
+                    for pidx, pann in enumerate(detection.predictions):
+                        prediction_idx = self._add_prediction(pann.uid)
+                        if (ious[pidx, :] < 1e-9).all():
+                            pairs.extend(
+                                [
+                                    np.array(
+                                        [
+                                            float(datum_idx),
+                                            -1.0,
+                                            float(prediction_idx),
+                                            -1.0,
+                                            float(self._add_label(plabel)),
+                                            0.0,
+                                            float(pscore),
+                                        ]
+                                    )
+                                    for plabel, pscore in zip(
+                                        pann.labels, pann.scores
+                                    )
+                                ]
+                            )
+                        if ious[pidx, gidx] >= 1e-9:
+                            pairs.extend(
+                                [
+                                    np.array(
+                                        [
+                                            float(datum_idx),
+                                            float(groundtruth_idx),
+                                            float(prediction_idx),
+                                            float(self._add_label(glabel)),
+                                            float(self._add_label(plabel)),
+                                            ious[pidx, gidx],
+                                            float(pscore),
+                                        ]
+                                    )
+                                    for glabel in gann.labels
+                                    for plabel, pscore in zip(
+                                        pann.labels, pann.scores
+                                    )
+                                ]
+                            )
+            elif detection.predictions:
+                for pidx, pann in enumerate(detection.predictions):
+                    prediction_idx = self._add_prediction(pann.uid)
+                    pairs.extend(
+                        [
+                            np.array(
+                                [
+                                    float(datum_idx),
+                                    -1.0,
+                                    float(prediction_idx),
+                                    -1.0,
+                                    float(self._add_label(plabel)),
+                                    0.0,
+                                    float(pscore),
+                                ]
+                            )
+                            for plabel, pscore in zip(pann.labels, pann.scores)
+                        ]
                     )
 
-            for pidx, pann in enumerate(detection.predictions):
-                self._evaluator.prediction_examples[uid_index][
-                    pidx
-                ] = pann.extrema
-                for plabel, pscore in zip(pann.labels, pann.scores):
-                    label_idx = self._add_label(plabel)
-                    self.prediction_count[label_idx][uid_index] += 1
-                    predictions.append(
-                        (
-                            pidx,
-                            label_idx,
-                            pscore,
-                        )
+            data = np.array(pairs)
+            if data.size > 0:
+                # reset filtered cache if it exists
+                self.clear_filter()
+                if self._temp_cache is None:
+                    raise RuntimeError(
+                        "cannot add data as evaluator has already been finalized"
                     )
-
-            self._cache_pairs(
-                uid_index=uid_index,
-                groundtruths=groundtruths,
-                predictions=predictions,
-                ious=ious,
-            )
+                self._temp_cache.append(data)
 
     def add_bounding_boxes(
         self,
-        detections: list[Detection],
+        detections: list[Detection[BoundingBox]],
         show_progress: bool = False,
     ):
         """
@@ -584,7 +527,7 @@ class DataLoader:
 
     def add_polygons(
         self,
-        detections: list[Detection],
+        detections: list[Detection[Polygon]],
         show_progress: bool = False,
     ):
         """
@@ -601,7 +544,7 @@ class DataLoader:
             compute_polygon_iou(
                 np.array(
                     [
-                        [gt.shape, pd.shape]  # type: ignore - using the AttributeError as a validator
+                        [gt.shape, pd.shape]
                         for pd in detection.predictions
                         for gt in detection.groundtruths
                     ]
@@ -617,7 +560,7 @@ class DataLoader:
 
     def add_bitmasks(
         self,
-        detections: list[Detection],
+        detections: list[Detection[Bitmask]],
         show_progress: bool = False,
     ):
         """
@@ -634,7 +577,7 @@ class DataLoader:
             compute_bitmask_iou(
                 np.array(
                     [
-                        [gt.mask, pd.mask]  # type: ignore - using the AttributeError as a validator
+                        [gt.mask, pd.mask]
                         for pd in detection.predictions
                         for gt in detection.groundtruths
                     ]
@@ -648,7 +591,7 @@ class DataLoader:
             show_progress=show_progress,
         )
 
-    def finalize(self) -> Evaluator:
+    def finalize(self):
         """
         Performs data finalization and some preprocessing steps.
 
@@ -657,65 +600,206 @@ class DataLoader:
         Evaluator
             A ready-to-use evaluator object.
         """
+        if self._temp_cache is None:
+            warnings.warn("evaluator is already finalized or in a bad state")
+            return self
+        elif not self._temp_cache:
+            self._detailed_pairs = np.array([], dtype=np.float64)
+            self._ranked_pairs = np.array([], dtype=np.float64)
+            self._label_metadata = np.zeros((self.n_labels, 2), dtype=np.int32)
+            warnings.warn("no valid pairs")
+            return self
+        else:
+            self._detailed_pairs = np.concatenate(self._temp_cache, axis=0)
+            self._temp_cache = None
 
-        self.pairs = [pair for pair in self.pairs if pair.size > 0]
-        if len(self.pairs) == 0:
-            raise ValueError("No data available to create evaluator.")
-
-        n_datums = self._evaluator.n_datums
-        n_labels = len(self._evaluator.index_to_label)
-
-        self._evaluator.n_labels = n_labels
-
-        self._evaluator._label_metadata_per_datum = np.zeros(
-            (2, n_datums, n_labels), dtype=np.int32
+        # order pairs by descending score, iou
+        indices = np.lexsort(
+            (
+                -self._detailed_pairs[:, 5],  # iou
+                -self._detailed_pairs[:, 6],  # score
+            )
         )
-        for datum_idx in range(n_datums):
-            for label_idx in range(n_labels):
-                gt_count = (
-                    self.groundtruth_count[label_idx].get(datum_idx, 0)
-                    if label_idx in self.groundtruth_count
-                    else 0
-                )
-                pd_count = (
-                    self.prediction_count[label_idx].get(datum_idx, 0)
-                    if label_idx in self.prediction_count
-                    else 0
-                )
-                self._evaluator._label_metadata_per_datum[
-                    :, datum_idx, label_idx
-                ] = np.array([gt_count, pd_count])
+        self._detailed_pairs = self._detailed_pairs[indices]
+        self._label_metadata = compute_label_metadata(
+            ids=self._detailed_pairs[:, :5].astype(np.int32),
+            n_labels=self.n_labels,
+        )
+        self._ranked_pairs = rank_pairs(
+            detailed_pairs=self.detailed_pairs,
+            label_metadata=self._label_metadata,
+        )
+        return self
 
-        self._evaluator._label_metadata = np.array(
-            [
-                [
-                    float(
-                        np.sum(
-                            self._evaluator._label_metadata_per_datum[
-                                0, :, label_idx
-                            ]
-                        )
-                    ),
-                    float(
-                        np.sum(
-                            self._evaluator._label_metadata_per_datum[
-                                1, :, label_idx
-                            ]
-                        )
-                    ),
-                ]
-                for label_idx in range(n_labels)
+    def apply_filter(
+        self,
+        datum_ids: list[str] | None = None,
+        groundtruth_ids: list[str] | None = None,
+        prediction_ids: list[str] | None = None,
+        labels: list[str] | None = None,
+    ):
+        """
+        Apply a filter on the evaluator.
+
+        Can be reset by calling 'clear_filter'.
+
+        Parameters
+        ----------
+        datum_uids : list[str], optional
+            An optional list of string uids representing datums.
+        groundtruth_ids : list[str], optional
+            An optional list of string uids representing ground truth annotations.
+        prediction_ids : list[str], optional
+            An optional list of string uids representing prediction annotations.
+        labels : list[str], optional
+            An optional list of labels.
+        """
+        self._filtered_detailed_pairs = self._detailed_pairs.copy()
+        self._filtered_ranked_pairs = np.array([], dtype=np.float64)
+        self._filtered_label_metadata = np.zeros(
+            (self.n_labels, 2), dtype=np.int32
+        )
+
+        valid_datum_indices = None
+        if datum_ids is not None:
+            if not datum_ids:
+                self._filtered_detailed_pairs = np.array([], dtype=np.float64)
+                warnings.warn("no valid filtered pairs")
+                return
+            valid_datum_indices = np.array(
+                [self.datum_id_to_index[uid] for uid in datum_ids],
+                dtype=np.int32,
+            )
+
+        valid_groundtruth_indices = None
+        if groundtruth_ids is not None:
+            valid_groundtruth_indices = np.array(
+                [self.groundtruth_id_to_index[uid] for uid in groundtruth_ids],
+                dtype=np.int32,
+            )
+
+        valid_prediction_indices = None
+        if prediction_ids is not None:
+            valid_prediction_indices = np.array(
+                [self.prediction_id_to_index[uid] for uid in prediction_ids],
+                dtype=np.int32,
+            )
+
+        valid_label_indices = None
+        if labels is not None:
+            if not labels:
+                self._filtered_detailed_pairs = np.array([], dtype=np.float64)
+                warnings.warn("no valid filtered pairs")
+                return
+            valid_label_indices = np.array(
+                [self.label_to_index[label] for label in labels] + [-1]
+            )
+
+        # filter datums
+        if valid_datum_indices is not None:
+            mask_valid_datums = np.isin(
+                self._filtered_detailed_pairs[:, 0], valid_datum_indices
+            )
+            self._filtered_detailed_pairs = self._filtered_detailed_pairs[
+                mask_valid_datums
             ]
+
+        n_rows = self._filtered_detailed_pairs.shape[0]
+        mask_invalid_groundtruths = np.zeros(n_rows, dtype=np.bool_)
+        mask_invalid_predictions = np.zeros_like(mask_invalid_groundtruths)
+
+        # filter ground truth annotations
+        if valid_groundtruth_indices is not None:
+            mask_invalid_groundtruths[
+                ~np.isin(
+                    self._filtered_detailed_pairs[:, 1],
+                    valid_groundtruth_indices,
+                )
+            ] = True
+
+        # filter prediction annotations
+        if valid_prediction_indices is not None:
+            mask_invalid_predictions[
+                ~np.isin(
+                    self._filtered_detailed_pairs[:, 2],
+                    valid_prediction_indices,
+                )
+            ] = True
+
+        # filter labels
+        if valid_label_indices is not None:
+            mask_invalid_groundtruths[
+                ~np.isin(
+                    self._filtered_detailed_pairs[:, 3], valid_label_indices
+                )
+            ] = True
+            mask_invalid_predictions[
+                ~np.isin(
+                    self._filtered_detailed_pairs[:, 4], valid_label_indices
+                )
+            ] = True
+
+        # filter cache
+        if mask_invalid_groundtruths.any():
+            invalid_groundtruth_indices = np.where(mask_invalid_groundtruths)[
+                0
+            ]
+            self._filtered_detailed_pairs[
+                invalid_groundtruth_indices[:, None], (1, 3, 5)
+            ] = np.array([[-1, -1, 0]])
+
+        if mask_invalid_predictions.any():
+            invalid_prediction_indices = np.where(mask_invalid_predictions)[0]
+            self._filtered_detailed_pairs[
+                invalid_prediction_indices[:, None], (2, 4, 5, 6)
+            ] = np.array([[-1, -1, 0, -1]])
+
+        # filter null pairs
+        mask_null_pairs = np.all(
+            np.isclose(
+                self._filtered_detailed_pairs[:, 1:5],
+                np.array([-1.0, -1.0, -1.0, -1.0]),
+            ),
+            axis=1,
+        )
+        self._filtered_detailed_pairs = self._filtered_detailed_pairs[
+            ~mask_null_pairs
+        ]
+
+        if self._filtered_detailed_pairs.size == 0:
+            self._ranked_pairs = np.array([], dtype=np.float64)
+            self._label_metadata = np.zeros((self.n_labels, 2), dtype=np.int32)
+            warnings.warn("no valid filtered pairs")
+            return
+
+        # sorts by score, iou with ground truth id as a tie-breaker
+        indices = np.lexsort(
+            (
+                self._filtered_detailed_pairs[:, 1],  # ground truth id
+                -self._filtered_detailed_pairs[:, 5],  # iou
+                -self._filtered_detailed_pairs[:, 6],  # score
+            )
+        )
+        self._filtered_detailed_pairs = self._filtered_detailed_pairs[indices]
+        self._filtered_label_metadata = compute_label_metadata(
+            ids=self._filtered_detailed_pairs[:, :5].astype(np.int32),
+            n_labels=self.n_labels,
+        )
+        self._filtered_ranked_pairs = rank_pairs(
+            detailed_pairs=self._filtered_detailed_pairs,
+            label_metadata=self._filtered_label_metadata,
         )
 
-        self._evaluator._detailed_pairs = np.concatenate(
-            self.pairs,
-            axis=0,
-        )
+    def clear_filter(self):
+        """Removes a filter if one exists."""
+        self._filtered_detailed_pairs = None
+        self._filtered_ranked_pairs = None
+        self._filtered_label_metadata = None
 
-        self._evaluator._ranked_pairs = compute_ranked_pairs(
-            self.pairs,
-            label_metadata=self._evaluator._label_metadata,
-        )
 
-        return self._evaluator
+class DataLoader(Evaluator):
+    """
+    Used for backwards compatibility as the Evaluator now handles ingestion.
+    """
+
+    pass

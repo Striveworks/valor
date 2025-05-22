@@ -26,7 +26,7 @@ def _convert_valor_dicts_into_Detection(gt_dict: dict, pd_dict: dict):
     gts = []
     pds = []
 
-    for gann in gt_dict["annotations"]:
+    for gidx, gann in enumerate(gt_dict["annotations"]):
         labels = []
         for valor_label in gann["labels"]:
             # NOTE: we only include labels where the key is "name"
@@ -43,6 +43,7 @@ def _convert_valor_dicts_into_Detection(gt_dict: dict, pd_dict: dict):
 
         gts.append(
             BoundingBox(
+                uid=f"gt_{gidx}",
                 xmin=x_min,
                 xmax=x_max,
                 ymin=y_min,
@@ -51,7 +52,7 @@ def _convert_valor_dicts_into_Detection(gt_dict: dict, pd_dict: dict):
             )
         )
 
-    for pann in pd_dict["annotations"]:
+    for pidx, pann in enumerate(pd_dict["annotations"]):
         labels, scores = [], []
         for valor_label in pann["labels"]:
             if valor_label["key"] != "name":
@@ -65,6 +66,7 @@ def _convert_valor_dicts_into_Detection(gt_dict: dict, pd_dict: dict):
 
         pds.append(
             BoundingBox(
+                uid=f"pd_{pidx}",
                 xmin=x_min,
                 xmax=x_max,
                 ymin=y_min,
@@ -205,9 +207,9 @@ class Benchmark:
     chunk_size: int
     ingestion: float
     preprocessing: float
-    precomputation: float
-    evaluation: float
-    detailed_curves: list[tuple[int, float]]
+    finalization: float
+    precision_recall_computation: float
+    confusion_matrix: float
 
     def result(self) -> dict:
         return {
@@ -223,19 +225,12 @@ class Benchmark:
             "chunk_size": self.chunk_size,
             "ingestion": {
                 "loading_from_file": f"{round(self.ingestion - self.preprocessing, 2)} seconds",
-                "numpy_conversion + IoU": f"{round(self.preprocessing, 2)} seconds",
-                "ranking_pairs": f"{round(self.precomputation, 2)} seconds",
-                "total": f"{round(self.ingestion + self.precomputation, 2)} seconds",
+                "add_data": f"{round(self.preprocessing, 2)} seconds",
+                "finalization": f"{round(self.finalization, 2)} seconds",
+                "total": f"{round(self.ingestion + self.finalization, 2)} seconds",
             },
-            "base_evaluation": f"{round(self.evaluation, 2)} seconds",
-            "detailed_evaluation": [
-                {
-                    "n_points": 10,
-                    "n_examples": curve[0],
-                    "computation": f"{round(curve[1], 2)} seconds",
-                }
-                for curve in self.detailed_curves
-            ],
+            "precision_recall_computation": f"{round(self.precision_recall_computation, 2)} seconds",
+            "confusion_matrix_computation": f"{round(self.confusion_matrix, 2)} seconds",
         }
 
 
@@ -244,8 +239,6 @@ def run_benchmarking_analysis(
     combinations: list[tuple[AnnotationType, AnnotationType]] | None = None,
     results_file: str = "objdet_results.json",
     chunk_size: int = -1,
-    compute_pr: bool = True,
-    compute_detailed: bool = True,
     ingestion_timeout=30,
     evaluation_timeout=30,
 ):
@@ -332,36 +325,19 @@ def run_benchmarking_analysis(
                     f"Base evaluation timed out with {evaluator.n_datums} datums."
                 )
 
-            # evaluate - base metrics + detailed counts with no samples
-            detailed_counts_time_no_samples, metrics = time_it(
+            # evaluate - base metrics + detailed
+            confusion_matrix_time, metrics = time_it(
                 evaluator.compute_confusion_matrix
             )(
                 score_thresholds=[0.5, 0.75, 0.9],
                 iou_thresholds=[0.1, 0.5, 0.75],
-                number_of_examples=0,
             )
             if (
-                detailed_counts_time_no_samples > evaluation_timeout
+                confusion_matrix_time > evaluation_timeout
                 and evaluation_timeout != -1
             ):
                 raise TimeoutError(
-                    f"Detailed evaluation w/ no samples timed out with {evaluator.n_datums} datums."
-                )
-
-            # evaluate - base metrics + detailed counts with 3 samples
-            detailed_counts_time_three_samples, metrics = time_it(
-                evaluator.compute_confusion_matrix
-            )(
-                score_thresholds=[0.5, 0.75, 0.9],
-                iou_thresholds=[0.1, 0.5, 0.75],
-                number_of_examples=3,
-            )
-            if (
-                detailed_counts_time_three_samples > evaluation_timeout
-                and evaluation_timeout != -1
-            ):
-                raise TimeoutError(
-                    f"Detailed w/ 3 samples evaluation timed out with {evaluator.n_datums} datums."
+                    f"Detailed evaluation timed out with {evaluator.n_datums} datums."
                 )
 
             results.append(
@@ -376,12 +352,9 @@ def run_benchmarking_analysis(
                     chunk_size=chunk_size,
                     ingestion=ingest_time,
                     preprocessing=preprocessing_time,
-                    precomputation=finalization_time,
-                    evaluation=eval_time,
-                    detailed_curves=[
-                        (0, detailed_counts_time_no_samples),
-                        (3, detailed_counts_time_three_samples),
-                    ],
+                    finalization=finalization_time,
+                    precision_recall_computation=eval_time,
+                    confusion_matrix=confusion_matrix_time,
                 ).result()
             )
 
@@ -396,7 +369,6 @@ if __name__ == "__main__":
             (AnnotationType.BOX, AnnotationType.BOX),
         ],
         limits_to_test=[5000, 5000],
-        compute_detailed=False,
     )
 
     # # run polygon benchmark

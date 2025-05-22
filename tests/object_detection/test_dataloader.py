@@ -1,3 +1,5 @@
+from uuid import uuid4
+
 import numpy as np
 import pytest
 from shapely.geometry import Polygon as ShapelyPolygon
@@ -7,14 +9,17 @@ from valor_lite.object_detection import (
     BoundingBox,
     DataLoader,
     Detection,
+    Evaluator,
     Polygon,
 )
 
 
 def test_no_data():
     loader = DataLoader()
-    with pytest.raises(ValueError):
-        loader.finalize()
+    loader.finalize()
+    assert loader._detailed_pairs.size == 0
+    assert loader._ranked_pairs.size == 0
+    assert loader._label_metadata.size == 0
 
 
 def test_iou_computation():
@@ -22,14 +27,34 @@ def test_iou_computation():
     detection = Detection(
         uid="uid",
         groundtruths=[
-            BoundingBox(xmin=0, xmax=10, ymin=0, ymax=10, labels=["0"]),
-            BoundingBox(xmin=100, xmax=110, ymin=100, ymax=110, labels=["0"]),
             BoundingBox(
-                xmin=1000, xmax=1100, ymin=1000, ymax=1100, labels=["0"]
+                uid=str(uuid4()),
+                xmin=0,
+                xmax=10,
+                ymin=0,
+                ymax=10,
+                labels=["0"],
+            ),
+            BoundingBox(
+                uid=str(uuid4()),
+                xmin=100,
+                xmax=110,
+                ymin=100,
+                ymax=110,
+                labels=["0"],
+            ),
+            BoundingBox(
+                uid=str(uuid4()),
+                xmin=1000,
+                xmax=1100,
+                ymin=1000,
+                ymax=1100,
+                labels=["0"],
             ),
         ],
         predictions=[
             BoundingBox(
+                uid=str(uuid4()),
                 xmin=1,
                 xmax=11,
                 ymin=1,
@@ -38,6 +63,7 @@ def test_iou_computation():
                 scores=[0.5, 0.25, 0.25],
             ),
             BoundingBox(
+                uid=str(uuid4()),
                 xmin=105,
                 xmax=116,
                 ymin=105,
@@ -50,11 +76,12 @@ def test_iou_computation():
 
     loader = DataLoader()
     loader.add_bounding_boxes([detection])
+    loader.finalize()
 
-    assert len(loader.pairs) == 1
+    assert loader._detailed_pairs.shape == (7, 7)
 
     # show that three unique IOUs exist
-    unique_ious = np.unique(loader.pairs[0][:, 3])
+    unique_ious = np.unique(loader._detailed_pairs[:, 5])
     assert np.isclose(
         unique_ious, np.array([0.0, 0.12755102, 0.68067227])
     ).all()
@@ -72,6 +99,7 @@ def test_mixed_annotations(
             uid="uid1",
             groundtruths=[
                 BoundingBox(
+                    uid=str(uuid4()),
                     xmin=rect1[0],
                     xmax=rect1[1],
                     ymin=rect1[2],
@@ -81,18 +109,20 @@ def test_mixed_annotations(
             ],
             predictions=[
                 Polygon(
+                    uid=str(uuid4()),
                     shape=ShapelyPolygon(
                         rect1_rotated_5_degrees_around_origin
                     ),
                     labels=["v1"],
                     scores=[0.3],
-                ),
+                ),  # type: ignore - testing
             ],
         ),
         Detection(
             uid="uid1",
             groundtruths=[
                 BoundingBox(
+                    uid=str(uuid4()),
                     xmin=rect1[0],
                     xmax=rect1[1],
                     ymin=rect1[2],
@@ -102,16 +132,18 @@ def test_mixed_annotations(
             ],
             predictions=[
                 Bitmask(
+                    uid=str(uuid4()),
                     mask=np.ones((80, 32), dtype=bool),
                     labels=["v1"],
                     scores=[0.3],
-                ),
+                ),  # type: ignore - testing
             ],
         ),
         Detection(
             uid="uid1",
             groundtruths=[
                 Bitmask(
+                    uid=str(uuid4()),
                     mask=np.ones((80, 32), dtype=bool),
                     labels=["v1"],
                     scores=[0.3],
@@ -119,12 +151,13 @@ def test_mixed_annotations(
             ],
             predictions=[
                 Polygon(
+                    uid=str(uuid4()),
                     shape=ShapelyPolygon(
                         rect1_rotated_5_degrees_around_origin
                     ),
                     labels=["v1"],
                     scores=[0.3],
-                ),
+                ),  # type: ignore - testing
             ],
         ),
     ]
@@ -132,9 +165,9 @@ def test_mixed_annotations(
     loader = DataLoader()
 
     for detection in mixed_detections:
-
-        # anything can be converted to a bbox
-        loader.add_bounding_boxes([detection])
+        with pytest.raises(AttributeError) as e:
+            loader.add_bounding_boxes([detection])
+        assert "no attribute 'extrema'" in str(e)
 
         with pytest.raises(AttributeError) as e:
             loader.add_polygons([detection])
@@ -143,3 +176,32 @@ def test_mixed_annotations(
         with pytest.raises(AttributeError) as e:
             loader.add_bitmasks([detection])
         assert "no attribute 'mask'" in str(e)
+
+
+def test_corrupted_cache():
+
+    evaluator = Evaluator()
+
+    # test datum cache size mismatch
+    evaluator.datum_id_to_index = {"x": 0}
+    evaluator.index_to_datum_id = []
+    with pytest.raises(RuntimeError):
+        evaluator._add_datum(datum_id="a")
+
+    # test ground truth annotation cache size mismatch
+    evaluator.groundtruth_id_to_index = {"x": 0}
+    evaluator.index_to_groundtruth_id = []
+    with pytest.raises(RuntimeError):
+        evaluator._add_groundtruth(annotation_id="a")
+
+    # test ground truth annotation cache size mismatch
+    evaluator.prediction_id_to_index = {"x": 0}
+    evaluator.index_to_prediction_id = []
+    with pytest.raises(RuntimeError):
+        evaluator._add_prediction(annotation_id="a")
+
+    # test ground truth annotation cache size mismatch
+    evaluator.label_to_index = {"x": 0}
+    evaluator.index_to_label = []
+    with pytest.raises(RuntimeError):
+        evaluator._add_label(label="a")

@@ -572,12 +572,8 @@ class Metric(BaseMetric):
                     int
                     | list[
                         dict[
-                            str,  # either `datum`, `groundtruth`, `prediction` or score
-                            str  # datum uid
-                            | dict[
-                                str, float
-                            ]  # bounding box (xmin, xmax, ymin, ymax)
-                            | float,  # prediction score
+                            str,  # either `datum_id`, `ground_truth_id`, `prediction_id`
+                            str,  # string identifier
                         ]
                     ],
                 ],
@@ -590,12 +586,8 @@ class Metric(BaseMetric):
                 int
                 | list[
                     dict[
-                        str,  # either `datum`, `prediction` or score
-                        str  # datum uid
-                        | float  # prediction score
-                        | dict[
-                            str, float
-                        ],  # bounding box (xmin, xmax, ymin, ymax)
+                        str,  # either `datum_id` or `prediction_id``
+                        str,  # string identifier
                     ]
                 ],
             ],
@@ -607,18 +599,14 @@ class Metric(BaseMetric):
                 int
                 | list[
                     dict[
-                        str,  # either `datum` or `groundtruth`
-                        str  # datum uid
-                        | dict[
-                            str, float
-                        ],  # bounding box (xmin, xmax, ymin, ymax)
+                        str,  # either `datum_id` or `ground_truth_id`
+                        str,  # string identifier
                     ]
                 ],
             ],
         ],
         score_threshold: float,
         iou_threshold: float,
-        maximum_number_of_examples: int,
     ):
         """
         Confusion matrix for object detection tasks.
@@ -634,10 +622,9 @@ class Metric(BaseMetric):
                     'count': int,
                     'examples': [
                         {
-                            'datum': str,
-                            'groundtruth': dict,  # {'xmin': float, 'xmax': float, 'ymin': float, 'ymax': float}
-                            'prediction': dict,   # {'xmin': float, 'xmax': float, 'ymin': float, 'ymax': float}
-                            'score': float,
+                            'datum_id': str,
+                            'groundtruth_id': str,
+                            'prediction_id': str
                         },
                         ...
                     ],
@@ -653,9 +640,8 @@ class Metric(BaseMetric):
                 'count': int,
                 'examples': [
                     {
-                        'datum': str,
-                        'prediction': dict,  # {'xmin': float, 'xmax': float, 'ymin': float, 'ymax': float}
-                        'score': float,
+                        'datum_id': str,
+                        'prediction_id': str
                     },
                     ...
                 ],
@@ -669,8 +655,8 @@ class Metric(BaseMetric):
                 'count': int,
                 'examples': [
                     {
-                        'datum': str,
-                        'groundtruth': dict,  # {'xmin': float, 'xmax': float, 'ymin': float, 'ymax': float}
+                        'datum_id': str,
+                        'groundtruth_id': str
                     },
                     ...
                 ],
@@ -683,22 +669,19 @@ class Metric(BaseMetric):
         confusion_matrix : dict
             A nested dictionary where the first key is the ground truth label value, the second key
             is the prediction label value, and the innermost dictionary contains either a `count`
-            or a list of `examples`. Each example includes the datum UID, ground truth bounding box,
-            predicted bounding box, and prediction scores.
+            or a list of `examples`. Each example includes annotation and datum identifers.
         unmatched_predictions : dict
             A dictionary where each key is a prediction label value with no corresponding ground truth
             (subset of false positives). The value is a dictionary containing either a `count` or a list of
-            `examples`. Each example includes the datum UID, predicted bounding box, and prediction score.
+            `examples`. Each example includes annotation and datum identifers.
         unmatched_ground_truths : dict
             A dictionary where each key is a ground truth label value for which the model failed to predict
             (subset of false negatives). The value is a dictionary containing either a `count` or a list of `examples`.
-            Each example includes the datum UID and ground truth bounding box.
+            Each example includes annotation and datum identifers.
         score_threshold : float
             The confidence score threshold used to filter predictions.
         iou_threshold : float
             The Intersection over Union (IOU) threshold used to determine true positives.
-        maximum_number_of_examples : int
-            The maximum number of examples per element.
 
         Returns
         -------
@@ -714,6 +697,5 @@ class Metric(BaseMetric):
             parameters={
                 "score_threshold": score_threshold,
                 "iou_threshold": iou_threshold,
-                "maximum_number_of_examples": maximum_number_of_examples,
             },
         )

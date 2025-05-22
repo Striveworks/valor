@@ -1,4 +1,5 @@
 from random import choice, uniform
+from uuid import uuid4
 
 from valor_lite.object_detection import BoundingBox, DataLoader, Detection
 
@@ -12,6 +13,7 @@ def _generate_random_detections(
         xmax, ymax = uniform(xmin, xmin + width), uniform(ymin, ymin + height)
         kw = {"scores": [uniform(0, 1)]} if is_prediction else {}
         return BoundingBox(
+            str(uuid4()),
             xmin,
             xmax,
             ymin,
@@ -73,14 +75,10 @@ def test_fuzz_detections_with_filtering():
 
         datum_subset = [f"uid{i}" for i in range(len(detections) // 2)]
 
-        filter_ = evaluator.create_filter(
-            datum_uids=datum_subset,
-        )
-
+        evaluator.apply_filter(datum_ids=datum_subset)
         evaluator.evaluate(
             iou_thresholds=[0.25, 0.75],
             score_thresholds=[0.25, 0.75],
-            filter_=filter_,
         )
 
 
