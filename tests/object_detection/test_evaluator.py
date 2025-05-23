@@ -34,6 +34,7 @@ def test_metadata_using_torch_metrics_example(
         "n_labels": 6,
         "n_groundtruths": 20,
         "n_predictions": 19,
+        "is_filtered": False,
     }
 
 
