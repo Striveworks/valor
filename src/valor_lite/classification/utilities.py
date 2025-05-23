@@ -137,7 +137,7 @@ def _unpack_confusion_matrix_value(
                 ),
                 "examples": [
                     {
-                        "datum": index_to_datum_id[
+                        "datum_id": index_to_datum_id[
                             datum_idx(gt_label_idx, pd_label_idx, example_idx)
                         ],
                         "score": score_idx(
@@ -182,7 +182,7 @@ def _unpack_unmatched_ground_truths_value(
             ),
             "examples": [
                 {
-                    "datum": index_to_datum_id[
+                    "datum_id": index_to_datum_id[
                         datum_idx(gt_label_idx, example_idx)
                     ]
                 }
@@ -203,7 +203,7 @@ def unpack_confusion_matrix_into_metric_list(
 ) -> list[Metric]:
 
     (confusion_matrix, unmatched_ground_truths) = results
-    n_scores, n_labels, _, _ = confusion_matrix.shape
+    _, n_labels, _, _ = confusion_matrix.shape
     return [
         Metric.confusion_matrix(
             score_threshold=score_threshold,
