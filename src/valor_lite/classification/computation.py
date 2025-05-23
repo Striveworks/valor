@@ -4,6 +4,50 @@ from numpy.typing import NDArray
 import valor_lite.classification.numpy_compatibility as npc
 
 
+def compute_label_metadata(
+    ids: NDArray[np.int32],
+    n_labels: int,
+) -> NDArray[np.int32]:
+    """
+    Computes label metadata returning a count of annotations per label.
+
+    Parameters
+    ----------
+    detailed_pairs : NDArray[np.int32]
+        Detailed annotation pairings with shape (n_pairs, 3).
+            Index 0 - Datum Index
+            Index 1 - GroundTruth Label Index
+            Index 2 - Prediction Label Index
+    n_labels : int
+        The total number of unique labels.
+
+    Returns
+    -------
+    NDArray[np.int32]
+        The label metadata array with shape (n_labels, 2).
+            Index 0 - Ground truth label count
+            Index 1 - Prediction label count
+    """
+    label_metadata = np.zeros((n_labels, 2), dtype=np.int32)
+    ground_truth_pairs = ids[:, (0, 1)]
+    ground_truth_pairs = ground_truth_pairs[ground_truth_pairs[:, 1] >= 0]
+    unique_pairs = np.unique(ground_truth_pairs, axis=0)
+    label_indices, unique_counts = np.unique(
+        unique_pairs[:, 1], return_counts=True
+    )
+    label_metadata[label_indices.astype(np.int32), 0] = unique_counts
+
+    prediction_pairs = ids[:, (0, 2)]
+    prediction_pairs = prediction_pairs[prediction_pairs[:, 1] >= 0]
+    unique_pairs = np.unique(prediction_pairs, axis=0)
+    label_indices, unique_counts = np.unique(
+        unique_pairs[:, 1], return_counts=True
+    )
+    label_metadata[label_indices.astype(np.int32), 1] = unique_counts
+
+    return label_metadata
+
+
 def _compute_rocauc(
     data: NDArray[np.float64],
     label_metadata: NDArray[np.int32],
@@ -84,20 +128,19 @@ def compute_precision_recall_rocauc(
     """
     Computes classification metrics.
 
-    Takes data with shape (N, 5):
-
-    Index 0 - Datum Index
-    Index 1 - GroundTruth Label Index
-    Index 2 - Prediction Label Index
-    Index 3 - Score
-    Index 4 - Hard-Max Score
-
     Parameters
     ----------
     data : NDArray[np.float64]
-        A sorted array of classification pairs.
+        A sorted array of classification pairs with shape (n_pairs, 5).
+            Index 0 - Datum Index
+            Index 1 - GroundTruth Label Index
+            Index 2 - Prediction Label Index
+            Index 3 - Score
+            Index 4 - Hard-Max Score
     label_metadata : NDArray[np.int32]
-        An array containing metadata related to labels.
+        An array containing metadata related to labels with shape (n_labels, 2).
+            Index 0 - GroundTruth Label Count
+            Index 1 - Prediction Label Count
     score_thresholds : NDArray[np.float64]
         A 1-D array contains score thresholds to compute metrics over.
     hardmax : bool
@@ -260,18 +303,19 @@ def compute_confusion_matrix(
 
     Takes data with shape (N, 5):
 
-    Index 0 - Datum Index
-    Index 1 - GroundTruth Label Index
-    Index 2 - Prediction Label Index
-    Index 3 - Score
-    Index 4 - Hard Max Score
-
     Parameters
     ----------
     data : NDArray[np.float64]
-        A sorted array summarizing the IOU calculations of one or more pairs.
+        A 2-D sorted array summarizing the IOU calculations of one or more pairs with shape (n_pairs, 5).
+            Index 0 - Datum Index
+            Index 1 - GroundTruth Label Index
+            Index 2 - Prediction Label Index
+            Index 3 - Score
+            Index 4 - Hard Max Score
     label_metadata : NDArray[np.int32]
-        An array containing metadata related to labels.
+        A 2-D array containing metadata related to labels with shape (n_labels, 2).
+            Index 0 - GroundTruth Label Count
+            Index 1 - Prediction Label Count
     iou_thresholds : NDArray[np.float64]
         A 1-D array containing IOU thresholds.
     score_thresholds : NDArray[np.float64]

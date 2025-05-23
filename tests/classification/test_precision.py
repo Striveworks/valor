@@ -80,6 +80,7 @@ def test_precision_basic(basic_classifications: list[Classification]):
         "n_labels": 4,
         "ignored_prediction_labels": ["1", "2"],
         "missing_prediction_labels": [],
+        "is_filtered": False,
     }
 
     metrics = evaluator.evaluate(
@@ -317,6 +318,7 @@ def test_precision_with_image_example(
         "n_labels": 4,
         "ignored_prediction_labels": ["v1", "v8", "v5"],
         "missing_prediction_labels": [],
+        "is_filtered": False,
     }
 
     metrics = evaluator.evaluate()
@@ -353,6 +355,7 @@ def test_precision_with_tabular_example(
         "n_labels": 3,
         "ignored_prediction_labels": [],
         "missing_prediction_labels": [],
+        "is_filtered": False,
     }
 
     metrics = evaluator.evaluate()

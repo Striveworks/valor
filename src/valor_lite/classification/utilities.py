@@ -19,7 +19,7 @@ def unpack_precision_recall_rocauc_into_metric_lists(
     score_thresholds: list[float],
     hardmax: bool,
     label_metadata: NDArray[np.int32],
-    index_to_label: dict[int, str],
+    index_to_label: list[str],
 ) -> dict[MetricType, list[Metric]]:
     (
         counts,
@@ -38,7 +38,7 @@ def unpack_precision_recall_rocauc_into_metric_lists(
             value=float(rocauc[label_idx]),
             label=label,
         )
-        for label_idx, label in index_to_label.items()
+        for label_idx, label in enumerate(index_to_label)
         if label_metadata[label_idx, 0] > 0
     ]
 
@@ -57,7 +57,7 @@ def unpack_precision_recall_rocauc_into_metric_lists(
         for score_idx, score_threshold in enumerate(score_thresholds)
     ]
 
-    for label_idx, label in index_to_label.items():
+    for label_idx, label in enumerate(index_to_label):
         for score_idx, score_threshold in enumerate(score_thresholds):
 
             kwargs = {
@@ -105,8 +105,8 @@ def _unpack_confusion_matrix_value(
     confusion_matrix: NDArray[np.float64],
     number_of_labels: int,
     number_of_examples: int,
-    index_to_uid: dict[int, str],
-    index_to_label: dict[int, str],
+    index_to_datum_id: list[str],
+    index_to_label: list[str],
 ) -> dict[str, dict[str, dict[str, int | list[dict[str, str | float]]]]]:
     """
     Unpacks a numpy array of confusion matrix counts and examples.
@@ -137,7 +137,7 @@ def _unpack_confusion_matrix_value(
                 ),
                 "examples": [
                     {
-                        "datum": index_to_uid[
+                        "datum_id": index_to_datum_id[
                             datum_idx(gt_label_idx, pd_label_idx, example_idx)
                         ],
                         "score": score_idx(
@@ -158,8 +158,8 @@ def _unpack_unmatched_ground_truths_value(
     unmatched_ground_truths: NDArray[np.int32],
     number_of_labels: int,
     number_of_examples: int,
-    index_to_uid: dict[int, str],
-    index_to_label: dict[int, str],
+    index_to_datum_id: list[str],
+    index_to_label: list[str],
 ) -> dict[str, dict[str, int | list[dict[str, str]]]]:
     """
     Unpacks a numpy array of unmatched ground truth counts and examples.
@@ -181,7 +181,11 @@ def _unpack_unmatched_ground_truths_value(
                 0,
             ),
             "examples": [
-                {"datum": index_to_uid[datum_idx(gt_label_idx, example_idx)]}
+                {
+                    "datum_id": index_to_datum_id[
+                        datum_idx(gt_label_idx, example_idx)
+                    ]
+                }
                 for example_idx in range(number_of_examples)
                 if datum_idx(gt_label_idx, example_idx) >= 0
             ],
@@ -194,12 +198,12 @@ def unpack_confusion_matrix_into_metric_list(
     results: tuple[NDArray[np.float64], NDArray[np.int32]],
     score_thresholds: list[float],
     number_of_examples: int,
-    index_to_uid: dict[int, str],
-    index_to_label: dict[int, str],
+    index_to_datum_id: list[str],
+    index_to_label: list[str],
 ) -> list[Metric]:
 
     (confusion_matrix, unmatched_ground_truths) = results
-    n_scores, n_labels, _, _ = confusion_matrix.shape
+    _, n_labels, _, _ = confusion_matrix.shape
     return [
         Metric.confusion_matrix(
             score_threshold=score_threshold,
@@ -209,7 +213,7 @@ def unpack_confusion_matrix_into_metric_list(
                 number_of_labels=n_labels,
                 number_of_examples=number_of_examples,
                 index_to_label=index_to_label,
-                index_to_uid=index_to_uid,
+                index_to_datum_id=index_to_datum_id,
             ),
             unmatched_ground_truths=_unpack_unmatched_ground_truths_value(
                 unmatched_ground_truths=unmatched_ground_truths[
@@ -218,7 +222,7 @@ def unpack_confusion_matrix_into_metric_list(
                 number_of_labels=n_labels,
                 number_of_examples=number_of_examples,
                 index_to_label=index_to_label,
-                index_to_uid=index_to_uid,
+                index_to_datum_id=index_to_datum_id,
             ),
         )
         for score_idx, score_threshold in enumerate(score_thresholds)

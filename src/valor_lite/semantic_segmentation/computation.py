@@ -2,6 +2,33 @@ import numpy as np
 from numpy.typing import NDArray
 
 
+def compute_label_metadata(
+    confusion_matrices: NDArray[np.int32],
+    n_labels: int,
+) -> NDArray[np.int32]:
+    """
+    Computes label metadata returning a count of annotations per label.
+
+    Parameters
+    ----------
+    confusion_matrices : NDArray[np.int32]
+        Confusion matrices per datum with shape (n_datums, n_labels + 1, n_labels + 1).
+    n_labels : int
+        The total number of unique labels.
+
+    Returns
+    -------
+    NDArray[np.int32]
+        The label metadata array with shape (n_labels, 2).
+            Index 0 - Ground truth label count
+            Index 1 - Prediction label count
+    """
+    label_metadata = np.zeros((n_labels, 2), dtype=np.int32)
+    label_metadata[:, 0] = confusion_matrices[:, 1:, :].sum(axis=(0,2))
+    label_metadata[:, 1] = confusion_matrices[:, :, 1:].sum(axis=(0,1))
+    return label_metadata
+
+
 def compute_intermediate_confusion_matrices(
     groundtruths: NDArray[np.bool_],
     predictions: NDArray[np.bool_],
@@ -61,7 +88,7 @@ def compute_intermediate_confusion_matrices(
 
 
 def compute_metrics(
-    data: NDArray[np.float64],
+    confusion_matrices: NDArray[np.int32],
     label_metadata: NDArray[np.int32],
     n_pixels: int,
 ) -> tuple[
@@ -80,10 +107,12 @@ def compute_metrics(
 
     Parameters
     ----------
-    data : NDArray[np.float64]
-        A 3-D array containing confusion matrices for each datum.
+    confusion_matrices : NDArray[np.int32]
+        A 3-D array containing confusion matrices for each datum with shape (n_datums, n_labels + 1, n_labels + 1).
     label_metadata : NDArray[np.int32]
-        A 2-D array containing label metadata.
+        A 2-D array containing label metadata with shape (n_labels, 2).
+            Index 0: Ground Truth Label Count
+            Index 1: Prediction Label Count
 
     Returns
     -------
@@ -106,7 +135,7 @@ def compute_metrics(
     gt_counts = label_metadata[:, 0]
     pd_counts = label_metadata[:, 1]
 
-    counts = data.sum(axis=0)
+    counts = confusion_matrices.sum(axis=0)
 
     # compute iou, unmatched_ground_truth and unmatched predictions
     intersection_ = counts[1:, 1:]
