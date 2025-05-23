@@ -649,3 +649,18 @@ def test_filtering_random_classifications():
     evaluator = loader.finalize()
     evaluator.apply_filter(datum_ids=["uid0"])
     evaluator.evaluate(score_thresholds=[0.5], hardmax=False)
+
+
+def test_filtering_empty(six_classifications: list[Classification]):
+    loader = DataLoader()
+    loader.add_data(six_classifications)
+    evaluator = loader.finalize()
+    assert evaluator.detailed_pairs.shape == (24, 5)
+    with pytest.warns():
+        evaluator.apply_filter(datum_ids=[])
+        assert evaluator.detailed_pairs.shape == (0,)
+    with pytest.warns():
+        evaluator.apply_filter(labels=[])
+        assert evaluator.detailed_pairs.shape == (0,)
+    evaluator.clear_filter()
+    assert evaluator.detailed_pairs.shape == (24, 5)

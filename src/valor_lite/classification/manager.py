@@ -195,6 +195,8 @@ class Evaluator:
                 mask_valid_datums
             ]
 
+        print(valid_datum_indices)
+
         n_rows = self._filtered_detailed_pairs.shape[0]
         mask_invalid_groundtruths = np.zeros(n_rows, dtype=np.bool_)
         mask_invalid_predictions = np.zeros_like(mask_invalid_groundtruths)
@@ -239,10 +241,6 @@ class Evaluator:
             ~mask_null_pairs
         ]
 
-        if self._filtered_detailed_pairs.size == 0:
-            warnings.warn("no valid filtered pairs")
-            return
-
         self._filtered_detailed_pairs = np.unique(
             self._filtered_detailed_pairs, axis=0
         )
@@ -258,6 +256,13 @@ class Evaluator:
             ids=self._filtered_detailed_pairs[:, :3].astype(np.int32),
             n_labels=self.n_labels,
         )
+
+    def clear_filter(self):
+        """
+        Clears any applied filters.
+        """
+        self._filtered_detailed_pairs = None
+        self._filtered_label_metadata = None
 
     def compute_precision_recall_rocauc(
         self,

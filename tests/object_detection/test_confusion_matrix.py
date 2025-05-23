@@ -1,4 +1,5 @@
 import numpy as np
+import pytest
 
 from valor_lite.object_detection import DataLoader, Detection, Evaluator
 from valor_lite.object_detection.computation import (
@@ -9,10 +10,11 @@ from valor_lite.object_detection.computation import (
 
 def test_confusion_matrix_no_data():
     evaluator = Evaluator()
-    curves = evaluator.compute_confusion_matrix(
-        iou_thresholds=[0.5],
-        score_thresholds=[0.5],
-    )
+    with pytest.warns():
+        curves = evaluator.compute_confusion_matrix(
+            iou_thresholds=[0.5],
+            score_thresholds=[0.5],
+        )
     assert isinstance(curves, list)
     assert len(curves) == 0
 
