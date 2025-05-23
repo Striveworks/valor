@@ -681,6 +681,7 @@ def test_ap_ranked_pair_ordering(
             "n_groundtruths": 3,
             "n_labels": 4,
             "n_predictions": 4,
+            "is_filtered": False,
         }
 
         metrics = evaluator.evaluate(

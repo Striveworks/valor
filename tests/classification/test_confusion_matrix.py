@@ -113,6 +113,7 @@ def test_confusion_matrix_basic(basic_classifications: list[Classification]):
         "n_labels": 4,
         "ignored_prediction_labels": ["1", "2"],
         "missing_prediction_labels": [],
+        "is_filtered": False,
     }
 
     actual_metrics = evaluator.compute_confusion_matrix(
@@ -129,18 +130,21 @@ def test_confusion_matrix_basic(basic_classifications: list[Classification]):
                     "0": {
                         "0": {
                             "count": 1,
-                            "examples": [{"datum": "uid0", "score": 1.0}],
+                            "examples": [{"datum_id": "uid0", "score": 1.0}],
                         },
                         "2": {
                             "count": 1,
-                            "examples": [{"datum": "uid1", "score": 1.0}],
+                            "examples": [{"datum_id": "uid1", "score": 1.0}],
                         },
                     },
                     "3": {
                         "3": {
                             "count": 1,
                             "examples": [
-                                {"datum": "uid2", "score": 0.30000001192092896}
+                                {
+                                    "datum_id": "uid2",
+                                    "score": 0.30000001192092896,
+                                }
                             ],
                         }
                     },
@@ -159,16 +163,16 @@ def test_confusion_matrix_basic(basic_classifications: list[Classification]):
                     "0": {
                         "0": {
                             "count": 1,
-                            "examples": [{"datum": "uid0", "score": 1.0}],
+                            "examples": [{"datum_id": "uid0", "score": 1.0}],
                         },
                         "2": {
                             "count": 1,
-                            "examples": [{"datum": "uid1", "score": 1.0}],
+                            "examples": [{"datum_id": "uid1", "score": 1.0}],
                         },
                     }
                 },
                 "unmatched_ground_truths": {
-                    "3": {"count": 1, "examples": [{"datum": "uid2"}]}
+                    "3": {"count": 1, "examples": [{"datum_id": "uid2"}]}
                 },
             },
             "parameters": {
@@ -254,17 +258,23 @@ def test_confusion_matrix_with_animal_example(
                         "bird": {
                             "count": 1,
                             "examples": [
-                                {"datum": "uid0", "score": 0.6000000238418579}
+                                {
+                                    "datum_id": "uid0",
+                                    "score": 0.6000000238418579,
+                                }
                             ],
                         },
                         "dog": {
                             "count": 1,
-                            "examples": [{"datum": "uid3", "score": 0.75}],
+                            "examples": [{"datum_id": "uid3", "score": 0.75}],
                         },
                         "cat": {
                             "count": 1,
                             "examples": [
-                                {"datum": "uid2", "score": 0.800000011920929}
+                                {
+                                    "datum_id": "uid2",
+                                    "score": 0.800000011920929,
+                                }
                             ],
                         },
                     },
@@ -272,19 +282,22 @@ def test_confusion_matrix_with_animal_example(
                         "cat": {
                             "count": 1,
                             "examples": [
-                                {"datum": "uid1", "score": 0.8999999761581421}
+                                {
+                                    "datum_id": "uid1",
+                                    "score": 0.8999999761581421,
+                                }
                             ],
                         }
                     },
                     "cat": {
                         "cat": {
                             "count": 1,
-                            "examples": [{"datum": "uid4", "score": 1.0}],
+                            "examples": [{"datum_id": "uid4", "score": 1.0}],
                         }
                     },
                 },
                 "unmatched_ground_truths": {
-                    "dog": {"count": 1, "examples": [{"datum": "uid5"}]}
+                    "dog": {"count": 1, "examples": [{"datum_id": "uid5"}]}
                 },
             },
             "parameters": {
@@ -326,39 +339,48 @@ def test_confusion_matrix_with_color_example(
                         "white": {
                             "count": 1,
                             "examples": [
-                                {"datum": "uid0", "score": 0.6499999761581421}
+                                {
+                                    "datum_id": "uid0",
+                                    "score": 0.6499999761581421,
+                                }
                             ],
                         },
                         "blue": {
                             "count": 1,
-                            "examples": [{"datum": "uid1", "score": 0.5}],
+                            "examples": [{"datum_id": "uid1", "score": 0.5}],
                         },
                     },
                     "red": {
                         "red": {
                             "count": 1,
                             "examples": [
-                                {"datum": "uid5", "score": 0.8999999761581421}
+                                {
+                                    "datum_id": "uid5",
+                                    "score": 0.8999999761581421,
+                                }
                             ],
                         }
                     },
                     "blue": {
                         "white": {
                             "count": 1,
-                            "examples": [{"datum": "uid3", "score": 1.0}],
+                            "examples": [{"datum_id": "uid3", "score": 1.0}],
                         }
                     },
                     "black": {
                         "red": {
                             "count": 1,
                             "examples": [
-                                {"datum": "uid4", "score": 0.800000011920929}
+                                {
+                                    "datum_id": "uid4",
+                                    "score": 0.800000011920929,
+                                }
                             ],
                         }
                     },
                 },
                 "unmatched_ground_truths": {
-                    "red": {"count": 1, "examples": [{"datum": "uid2"}]}
+                    "red": {"count": 1, "examples": [{"datum_id": "uid2"}]}
                 },
             },
             "parameters": {
@@ -391,6 +413,7 @@ def test_confusion_matrix_multiclass(
         "n_groundtruths": 5,
         "n_labels": 3,
         "n_predictions": 15,
+        "is_filtered": False,
     }
 
     actual_metrics = evaluator.compute_confusion_matrix(
@@ -408,13 +431,19 @@ def test_confusion_matrix_multiclass(
                         "cat": {
                             "count": 1,
                             "examples": [
-                                {"datum": "uid0", "score": 0.44598543643951416}
+                                {
+                                    "datum_id": "uid0",
+                                    "score": 0.44598543643951416,
+                                }
                             ],
                         },
                         "bee": {
                             "count": 1,
                             "examples": [
-                                {"datum": "uid2", "score": 0.4026564359664917}
+                                {
+                                    "datum_id": "uid2",
+                                    "score": 0.4026564359664917,
+                                }
                             ],
                         },
                     },
@@ -422,7 +451,10 @@ def test_confusion_matrix_multiclass(
                         "dog": {
                             "count": 1,
                             "examples": [
-                                {"datum": "uid4", "score": 0.5890645980834961}
+                                {
+                                    "datum_id": "uid4",
+                                    "score": 0.5890645980834961,
+                                }
                             ],
                         }
                     },
@@ -431,10 +463,13 @@ def test_confusion_matrix_multiclass(
                             "count": 2,
                             "examples": [
                                 {
-                                    "datum": "uid1",
+                                    "datum_id": "uid1",
                                     "score": 0.44450607895851135,
                                 },
-                                {"datum": "uid3", "score": 0.5510573983192444},
+                                {
+                                    "datum_id": "uid3",
+                                    "score": 0.5510573983192444,
+                                },
                             ],
                         }
                     },
@@ -454,7 +489,10 @@ def test_confusion_matrix_multiclass(
                         "dog": {
                             "count": 1,
                             "examples": [
-                                {"datum": "uid4", "score": 0.5890645980834961}
+                                {
+                                    "datum_id": "uid4",
+                                    "score": 0.5890645980834961,
+                                }
                             ],
                         }
                     },
@@ -462,7 +500,10 @@ def test_confusion_matrix_multiclass(
                         "bee": {
                             "count": 1,
                             "examples": [
-                                {"datum": "uid3", "score": 0.5510573983192444}
+                                {
+                                    "datum_id": "uid3",
+                                    "score": 0.5510573983192444,
+                                }
                             ],
                         }
                     },
@@ -470,9 +511,12 @@ def test_confusion_matrix_multiclass(
                 "unmatched_ground_truths": {
                     "cat": {
                         "count": 2,
-                        "examples": [{"datum": "uid0"}, {"datum": "uid2"}],
+                        "examples": [
+                            {"datum_id": "uid0"},
+                            {"datum_id": "uid2"},
+                        ],
                     },
-                    "bee": {"count": 1, "examples": [{"datum": "uid1"}]},
+                    "bee": {"count": 1, "examples": [{"datum_id": "uid1"}]},
                 },
             },
             "parameters": {
@@ -487,12 +531,18 @@ def test_confusion_matrix_multiclass(
                 "unmatched_ground_truths": {
                     "cat": {
                         "count": 2,
-                        "examples": [{"datum": "uid0"}, {"datum": "uid2"}],
+                        "examples": [
+                            {"datum_id": "uid0"},
+                            {"datum_id": "uid2"},
+                        ],
                     },
-                    "dog": {"count": 1, "examples": [{"datum": "uid4"}]},
+                    "dog": {"count": 1, "examples": [{"datum_id": "uid4"}]},
                     "bee": {
                         "count": 2,
-                        "examples": [{"datum": "uid1"}, {"datum": "uid3"}],
+                        "examples": [
+                            {"datum_id": "uid1"},
+                            {"datum_id": "uid3"},
+                        ],
                     },
                 },
             },
@@ -526,6 +576,7 @@ def test_confusion_matrix_without_hardmax_animal_example(
         "n_labels": 3,
         "ignored_prediction_labels": ["bee", "cat"],
         "missing_prediction_labels": [],
+        "is_filtered": False,
     }
 
     actual_metrics = evaluator.compute_confusion_matrix(
@@ -544,19 +595,28 @@ def test_confusion_matrix_without_hardmax_animal_example(
                         "ant": {
                             "count": 1,
                             "examples": [
-                                {"datum": "uid1", "score": 0.15000000596046448}
+                                {
+                                    "datum_id": "uid1",
+                                    "score": 0.15000000596046448,
+                                }
                             ],
                         },
                         "bee": {
                             "count": 1,
                             "examples": [
-                                {"datum": "uid1", "score": 0.47999998927116394}
+                                {
+                                    "datum_id": "uid1",
+                                    "score": 0.47999998927116394,
+                                }
                             ],
                         },
                         "cat": {
                             "count": 1,
                             "examples": [
-                                {"datum": "uid1", "score": 0.3700000047683716}
+                                {
+                                    "datum_id": "uid1",
+                                    "score": 0.3700000047683716,
+                                }
                             ],
                         },
                     }
@@ -576,7 +636,10 @@ def test_confusion_matrix_without_hardmax_animal_example(
                         "bee": {
                             "count": 1,
                             "examples": [
-                                {"datum": "uid1", "score": 0.47999998927116394}
+                                {
+                                    "datum_id": "uid1",
+                                    "score": 0.47999998927116394,
+                                }
                             ],
                         }
                     }
@@ -597,7 +660,7 @@ def test_confusion_matrix_without_hardmax_animal_example(
                         "count": 1,
                         "examples": [
                             {
-                                "datum": "uid1",
+                                "datum_id": "uid1",
                             }
                         ],
                     }
