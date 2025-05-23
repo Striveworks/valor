@@ -77,10 +77,5 @@ def test_fuzz_segmentations_with_filtering():
 
         datum_subset = [f"uid{i}" for i in range(len(segmentations) // 2)]
 
-        filter_ = evaluator.create_filter(
-            datum_uids=datum_subset,
-        )
-
-        evaluator.evaluate(
-            filter_=filter_,
-        )
+        evaluator.apply_filter(datum_ids=datum_subset)
+        evaluator.evaluate()

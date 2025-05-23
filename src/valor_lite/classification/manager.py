@@ -195,8 +195,6 @@ class Evaluator:
                 mask_valid_datums
             ]
 
-        print(valid_datum_indices)
-
         n_rows = self._filtered_detailed_pairs.shape[0]
         mask_invalid_groundtruths = np.zeros(n_rows, dtype=np.bool_)
         mask_invalid_predictions = np.zeros_like(mask_invalid_groundtruths)

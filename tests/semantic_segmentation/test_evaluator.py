@@ -14,20 +14,20 @@ def test_metadata_using_large_random_segmentations(
     assert evaluator.missing_prediction_labels == []
     assert evaluator.n_datums == 3
     assert evaluator.n_labels == 9
-    assert evaluator.n_groundtruths == 9
-    assert evaluator.n_predictions == 9
-    assert evaluator.n_groundtruth_pixels == 36000000
-    assert evaluator.n_prediction_pixels == 36000000
+    assert evaluator.n_groundtruths == 11200000
+    assert evaluator.n_predictions == 11200000
+    assert evaluator.n_pixels == 12842734
+    assert evaluator.is_filtered == False
 
     assert evaluator.metadata == {
         "ignored_prediction_labels": [],
         "missing_prediction_labels": [],
         "number_of_datums": 3,
         "number_of_labels": 9,
-        "number_of_groundtruths": 9,
-        "number_of_predictions": 9,
-        "number_of_groundtruth_pixels": 36000000,
-        "number_of_prediction_pixels": 36000000,
+        "number_of_groundtruths": 11200000,
+        "number_of_predictions": 11200000,
+        "number_of_pixels": 12842734,
+        "is_filtered": False,
     }
 
 
