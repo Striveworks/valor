@@ -3,8 +3,6 @@ import pytest
 
 from valor_lite.semantic_segmentation import Bitmask, Segmentation
 
-from .conftest import generate_segmentation
-
 
 def test_bitmask():
 
@@ -182,53 +180,20 @@ def test_segmentation():
     )
 
 
-def test_generate_segmentation():
-
-    # N labels > 1
-    segmentation = generate_segmentation(
-        datum_uid="uid1",
-        number_of_unique_labels=3,
-        mask_height=2,
-        mask_width=3,
-    )
-
-    assert segmentation.uid == "uid1"
-    assert segmentation.shape == (2, 3)
-    assert segmentation.size == 6
-
-    assert len(segmentation.groundtruths) == 3
-    assert all(gt.mask.dtype == np.bool_ for gt in segmentation.groundtruths)
-    assert all(gt.mask.shape == (2, 3) for gt in segmentation.groundtruths)
-
-    assert len(segmentation.predictions) == 3
-    assert all(pd.mask.dtype == np.bool_ for pd in segmentation.predictions)
-    assert all(pd.mask.shape == (2, 3) for pd in segmentation.predictions)
-
-    # N labels = 1
-    segmentation = generate_segmentation(
-        datum_uid="uid1",
-        number_of_unique_labels=1,
-        mask_height=2,
-        mask_width=3,
-    )
-
-    assert segmentation.uid == "uid1"
-    assert segmentation.shape == (2, 3)
-    assert segmentation.size == 6
-
-    assert len(segmentation.groundtruths) == 1
-    assert all(gt.mask.dtype == np.bool_ for gt in segmentation.groundtruths)
-    assert all(gt.mask.shape == (2, 3) for gt in segmentation.groundtruths)
-
-    assert len(segmentation.predictions) == 1
-    assert all(pd.mask.dtype == np.bool_ for pd in segmentation.predictions)
-    assert all(pd.mask.shape == (2, 3) for pd in segmentation.predictions)
-
-    # N labels = 0
+def test_segmentation_shape():
+    Segmentation(uid="uid", groundtruths=[], predictions=[], shape=(1, 1))
+    Segmentation(uid="uid", groundtruths=[], predictions=[], shape=(100, 100))
     with pytest.raises(ValueError):
-        generate_segmentation(
-            datum_uid="uid1",
-            number_of_unique_labels=0,
-            mask_height=2,
-            mask_width=3,
+        Segmentation(uid="uid", groundtruths=[], predictions=[], shape=(1,))
+    with pytest.raises(ValueError):
+        Segmentation(
+            uid="uid", groundtruths=[], predictions=[], shape=(1, 2, 3)
+        )
+    with pytest.raises(ValueError):
+        Segmentation(
+            uid="uid", groundtruths=[], predictions=[], shape=(0, 100)
+        )
+    with pytest.raises(ValueError):
+        Segmentation(
+            uid="uid", groundtruths=[], predictions=[], shape=(-100, 100)
         )

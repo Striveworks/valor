@@ -144,3 +144,26 @@ def test_filtering(segmentations_from_boxes: list[Segmentation]):
         evaluator.apply_filter(datum_ids=[])
     assert np.all(evaluator.confusion_matrices == np.array([]))
     assert (evaluator.label_metadata == np.array([[0, 0], [0, 0]])).all()
+
+
+def test_filtering_warning(segmentations_from_boxes: list[Segmentation]):
+
+    loader = DataLoader()
+    loader.add_data(segmentations_from_boxes)
+    evaluator = loader.finalize()
+
+    assert evaluator.confusion_matrices.shape == (2, 3, 3)
+
+    with pytest.warns():
+        evaluator.apply_filter(labels=[])
+    assert evaluator.confusion_matrices.shape == (0,)
+
+    evaluator.clear_filter()
+    assert evaluator.confusion_matrices.shape == (2, 3, 3)
+
+    with pytest.warns():
+        evaluator.apply_filter(datum_ids=[])
+    assert evaluator.confusion_matrices.shape == (0,)
+
+    evaluator.clear_filter()
+    assert evaluator.confusion_matrices.shape == (2, 3, 3)
