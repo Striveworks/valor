@@ -1,6 +1,11 @@
 import numpy as np
 
-from valor_lite.semantic_segmentation import DataLoader, Metric, Segmentation
+from valor_lite.semantic_segmentation import (
+    Bitmask,
+    DataLoader,
+    Metric,
+    Segmentation,
+)
 
 
 def test_metadata_using_large_random_segmentations(
@@ -65,3 +70,186 @@ def test_output_types_dont_contain_numpy(
     for value in values:
         if isinstance(value, (np.generic, np.ndarray)):
             raise TypeError(value)
+
+
+def test_label_mismatch():
+
+    loader = DataLoader()
+    loader.add_data(
+        segmentations=[
+            Segmentation(
+                uid="uid0",
+                groundtruths=[
+                    Bitmask(
+                        mask=np.array(
+                            [
+                                [True, True],
+                                [False, False],
+                            ]
+                        ),
+                        label="v1",
+                    )
+                ],
+                predictions=[
+                    Bitmask(
+                        mask=np.array(
+                            [
+                                [True, False],
+                                [False, False],
+                            ]
+                        ),
+                        label="v2",
+                    ),
+                    Bitmask(
+                        mask=np.array(
+                            [
+                                [False, False],
+                                [False, True],
+                            ]
+                        ),
+                        label="v3",
+                    ),
+                ],
+                shape=(2, 2),
+            )
+        ]
+    )
+    evaluator = loader.finalize()
+    print(evaluator.confusion_matrices)
+    assert np.all(
+        evaluator.confusion_matrices
+        == np.array(
+            [
+                [
+                    [1, 0, 0, 1],
+                    [1, 0, 1, 0],
+                    [0, 0, 0, 0],
+                    [0, 0, 0, 0],
+                ]
+            ]
+        )
+    )
+    assert np.all(
+        evaluator.label_metadata
+        == np.array(
+            [
+                [2, 0],
+                [0, 1],
+                [0, 1],
+            ]
+        )
+    )
+
+
+def test_empty_groundtruths():
+
+    loader = DataLoader()
+    loader.add_data(
+        segmentations=[
+            Segmentation(
+                uid="uid0",
+                groundtruths=[],
+                predictions=[
+                    Bitmask(
+                        mask=np.array(
+                            [
+                                [True, False],
+                                [False, False],
+                            ]
+                        ),
+                        label="v2",
+                    ),
+                    Bitmask(
+                        mask=np.array(
+                            [
+                                [False, False],
+                                [False, True],
+                            ]
+                        ),
+                        label="v3",
+                    ),
+                ],
+                shape=(2, 2),
+            )
+        ]
+    )
+    evaluator = loader.finalize()
+    print(evaluator.confusion_matrices)
+    assert np.all(
+        evaluator.confusion_matrices
+        == np.array(
+            [
+                [
+                    [2, 1, 1],
+                    [0, 0, 0],
+                    [0, 0, 0],
+                ]
+            ]
+        )
+    )
+    assert np.all(
+        evaluator.label_metadata
+        == np.array(
+            [
+                [0, 1],
+                [0, 1],
+            ]
+        )
+    )
+
+
+def test_empty_predictions():
+
+    loader = DataLoader()
+    loader.add_data(
+        segmentations=[
+            Segmentation(
+                uid="uid0",
+                groundtruths=[
+                    Bitmask(
+                        mask=np.array(
+                            [
+                                [True, False],
+                                [False, False],
+                            ]
+                        ),
+                        label="v2",
+                    ),
+                    Bitmask(
+                        mask=np.array(
+                            [
+                                [False, False],
+                                [False, True],
+                            ]
+                        ),
+                        label="v3",
+                    ),
+                ],
+                predictions=[],
+                shape=(2, 2),
+            )
+        ]
+    )
+    evaluator = loader.finalize()
+    print(evaluator.confusion_matrices)
+    assert np.all(
+        evaluator.confusion_matrices
+        == np.array(
+            [
+                [
+                    [2, 0, 0],
+                    [1, 0, 0],
+                    [1, 0, 0],
+                ]
+            ]
+        )
+    )
+    assert np.all(
+        evaluator.label_metadata
+        == np.array(
+            [
+                [1, 0],
+                [1, 0],
+            ]
+        )
+    )

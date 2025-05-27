@@ -352,12 +352,6 @@ class DataLoader:
         disable_tqdm = not show_progress
         for segmentation in tqdm(segmentations, disable=disable_tqdm):
             # update datum cache
-            if segmentation.size == 0:
-                warnings.warn(
-                    f"skipping datum '{segmentation.uid}' as it contains no mask information."
-                )
-                continue
-
             self._add_datum(segmentation.uid)
 
             groundtruth_labels = -1 * np.ones(
@@ -374,20 +368,33 @@ class DataLoader:
                 label_idx = self._add_label(prediction.label)
                 prediction_labels[idx] = label_idx
 
-            combined_groundtruths = np.stack(
-                [
-                    groundtruth.mask.flatten()
-                    for groundtruth in segmentation.groundtruths
-                ],
-                axis=0,
-            )
-            combined_predictions = np.stack(
-                [
-                    prediction.mask.flatten()
-                    for prediction in segmentation.predictions
-                ],
-                axis=0,
-            )
+            if segmentation.groundtruths:
+                combined_groundtruths = np.stack(
+                    [
+                        groundtruth.mask.flatten()
+                        for groundtruth in segmentation.groundtruths
+                    ],
+                    axis=0,
+                )
+            else:
+                combined_groundtruths = np.zeros(
+                    (1, segmentation.shape[0] * segmentation.shape[1]),
+                    dtype=np.bool_,
+                )
+
+            if segmentation.predictions:
+                combined_predictions = np.stack(
+                    [
+                        prediction.mask.flatten()
+                        for prediction in segmentation.predictions
+                    ],
+                    axis=0,
+                )
+            else:
+                combined_predictions = np.zeros(
+                    (1, segmentation.shape[0] * segmentation.shape[1]),
+                    dtype=np.bool_,
+                )
 
             self.matrices.append(
                 compute_intermediate_confusion_matrices(
