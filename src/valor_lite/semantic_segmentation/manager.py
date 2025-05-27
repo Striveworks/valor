@@ -1,5 +1,4 @@
 import warnings
-from collections import defaultdict
 from dataclasses import dataclass
 
 import numpy as np
@@ -9,8 +8,8 @@ from tqdm import tqdm
 from valor_lite.semantic_segmentation.annotation import Segmentation
 from valor_lite.semantic_segmentation.computation import (
     compute_intermediate_confusion_matrices,
-    compute_metrics,
     compute_label_metadata,
+    compute_metrics,
 )
 from valor_lite.semantic_segmentation.metric import Metric, MetricType
 from valor_lite.semantic_segmentation.utilities import (
@@ -41,7 +40,7 @@ filtered_metrics = evaluator.evaluate(filter_mask=filter_mask)
 @dataclass
 class Filter:
     indices: NDArray[np.intp]
-    label_metadata: NDArray[np.int32]
+    label_metadata: NDArray[np.int64]
     n_pixels: int
 
 
@@ -60,21 +59,21 @@ class Evaluator:
         self.index_to_label: list[str] = []
 
         # internal caches
-        self._confusion_matrices = np.array([], dtype=np.int32)
-        self._label_metadata = np.array([], dtype=np.int32)
-        self._n_pixels_per_datum = np.array([], dtype=np.int32)
+        self._confusion_matrices = np.array([], dtype=np.int64)
+        self._label_metadata = np.array([], dtype=np.int64)
+        self._n_pixels_per_datum = np.array([], dtype=np.int64)
 
         # filtered internal cache
-        self._filtered_confusion_matrices: NDArray[np.int32] | None = None
-        self._filtered_label_metadata: NDArray[np.int32] | None = None
-        self._filtered_n_pixels_per_datum: NDArray[np.int32] | None = None
+        self._filtered_confusion_matrices: NDArray[np.int64] | None = None
+        self._filtered_label_metadata: NDArray[np.int64] | None = None
+        self._filtered_n_pixels_per_datum: NDArray[np.int64] | None = None
 
     @property
     def is_filtered(self) -> bool:
         return self._filtered_confusion_matrices is not None
 
     @property
-    def label_metadata(self) -> NDArray[np.int32]:
+    def label_metadata(self) -> NDArray[np.int64]:
         return (
             self._filtered_label_metadata
             if self._filtered_label_metadata is not None
@@ -82,7 +81,7 @@ class Evaluator:
         )
 
     @property
-    def confusion_matrices(self) -> NDArray[np.int32]:
+    def confusion_matrices(self) -> NDArray[np.int64]:
         return (
             self._filtered_confusion_matrices
             if self._filtered_confusion_matrices is not None
@@ -93,7 +92,7 @@ class Evaluator:
     def n_labels(self) -> int:
         """Returns the total number of unique labels."""
         return len(self.index_to_label)
-    
+
     @property
     def n_pixels(self) -> int:
         """Returns the total number of evaluated pixels."""
@@ -135,7 +134,7 @@ class Evaluator:
         return [
             self.index_to_label[label_id] for label_id in (glabels - plabels)
         ]
-    
+
     @property
     def metadata(self) -> dict:
         """
@@ -171,44 +170,78 @@ class Evaluator:
         """
         self._filtered_confusion_matrices = self._confusion_matrices.copy()
         self._filtered_label_metadata = np.zeros(
-            (self.n_labels, 2), dtype=np.int32
+            (self.n_labels, 2), dtype=np.int64
         )
 
-        mask_labels = np.ones(self.n_labels, dtype=np.bool_)
-        mask_datums = np.ones(self._filtered_confusion_matrices.shape[0], dtype=np.bool_)
+        mask_datums = np.ones(
+            self._filtered_confusion_matrices.shape[0], dtype=np.bool_
+        )
 
         if datum_ids is not None:
             if not datum_ids:
-                self._filtered_confusion_matrices = np.array([], dtype=np.int32)
+                self._filtered_confusion_matrices = np.array(
+                    [], dtype=np.int64
+                )
                 warnings.warn("datum filter results in empty data array")
                 return
             datum_id_array = np.array(
                 [self.datum_id_to_index[uid] for uid in datum_ids],
-                dtype=np.int32,
+                dtype=np.int64,
             )
             datum_id_array.sort()
             mask_valid_datums = (
-                np.arange(self._filtered_confusion_matrices.shape[0]).reshape(-1, 1)
+                np.arange(self._filtered_confusion_matrices.shape[0]).reshape(
+                    -1, 1
+                )
                 == datum_id_array.reshape(1, -1)
             ).any(axis=1)
             mask_datums[~mask_valid_datums] = False
 
         if labels is not None:
             if not labels:
-                self._filtered_confusion_matrices = np.array([], dtype=np.int32)
+                self._filtered_confusion_matrices = np.array(
+                    [], dtype=np.int64
+                )
                 warnings.warn("label filter results in empty data array")
                 return
             labels_id_array = np.array(
-                [self.label_to_index[label] for label in labels],
-                dtype=np.int32,
+                [self.label_to_index[label] for label in labels] + [-1],
+                dtype=np.int64,
             )
+            label_range = np.arange(self.n_labels + 1) - 1
             mask_valid_labels = (
-                np.arange(self.n_labels).reshape(-1, 1) == labels_id_array.reshape(1, -1)
+                label_range.reshape(-1, 1) == labels_id_array.reshape(1, -1)
             ).any(axis=1)
-            mask_labels[~mask_valid_labels] = False
+            mask_invalid_labels = ~mask_valid_labels
 
-        self._filtered_confusion_matrices = self._filtered_confusion_matrices[mask_datums]
-        self._filtered_label_metadata = None
+            # add filtered labels to background
+            null_predictions = self._filtered_confusion_matrices[
+                :, mask_invalid_labels, :
+            ].sum(axis=(1, 2))
+            null_groundtruths = self._filtered_confusion_matrices[
+                :, :, mask_invalid_labels
+            ].sum(axis=(1, 2))
+            null_intersection = (
+                self._filtered_confusion_matrices[
+                    :, mask_invalid_labels, mask_invalid_labels
+                ]
+                .reshape(self._filtered_confusion_matrices.shape[0], -1)
+                .sum(axis=1)
+            )
+            self._filtered_confusion_matrices[:, 0, 0] += (
+                null_groundtruths + null_predictions - null_intersection
+            )
+            self._filtered_confusion_matrices[:, mask_invalid_labels, :] = 0
+            self._filtered_confusion_matrices[:, :, mask_invalid_labels] = 0
+
+        self._filtered_confusion_matrices = self._filtered_confusion_matrices[
+            mask_datums
+        ]
+
+        self._filtered_label_metadata = compute_label_metadata(
+            confusion_matrices=self._filtered_confusion_matrices,
+            n_labels=self.n_labels,
+        )
 
     def clear_filter(self):
         """
@@ -216,7 +249,7 @@ class Evaluator:
         """
         self._filtered_confusion_matrices = None
         self._filtered_label_metadata = None
-            
+
     def compute_precision_recall_iou(self) -> dict[MetricType, list]:
         """
         Performs an evaluation and returns metrics.
@@ -319,17 +352,23 @@ class DataLoader:
         disable_tqdm = not show_progress
         for segmentation in tqdm(segmentations, disable=disable_tqdm):
             # update datum cache
-            uid_index = self._add_datum(segmentation.uid)
+            if segmentation.size == 0:
+                warnings.warn(
+                    f"skipping datum '{segmentation.uid}' as it contains no mask information."
+                )
+                continue
 
-            groundtruth_labels = np.full(
-                len(segmentation.groundtruths), fill_value=-1
+            self._add_datum(segmentation.uid)
+
+            groundtruth_labels = -1 * np.ones(
+                len(segmentation.groundtruths), dtype=np.int64
             )
             for idx, groundtruth in enumerate(segmentation.groundtruths):
                 label_idx = self._add_label(groundtruth.label)
                 groundtruth_labels[idx] = label_idx
 
-            prediction_labels = np.full(
-                len(segmentation.predictions), fill_value=-1
+            prediction_labels = -1 * np.ones(
+                len(segmentation.predictions), dtype=np.int64
             )
             for idx, prediction in enumerate(segmentation.predictions):
                 label_idx = self._add_label(prediction.label)
@@ -376,7 +415,7 @@ class DataLoader:
         n_labels = len(self._evaluator.index_to_label)
         n_datums = len(self._evaluator.index_to_datum_id)
         self._evaluator._confusion_matrices = np.zeros(
-            (n_datums, n_labels + 1, n_labels + 1), dtype=np.int32
+            (n_datums, n_labels + 1, n_labels + 1), dtype=np.int64
         )
         for idx, matrix in enumerate(self.matrices):
             h, w = matrix.shape

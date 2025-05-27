@@ -8,7 +8,7 @@ from valor_lite.semantic_segmentation.metric import Metric, MetricType
 
 def unpack_precision_recall_iou_into_metric_lists(
     results: tuple,
-    label_metadata: NDArray[np.int32],
+    label_metadata: NDArray[np.int64],
     index_to_label: list[str],
 ) -> dict[MetricType, list[Metric]]:
 

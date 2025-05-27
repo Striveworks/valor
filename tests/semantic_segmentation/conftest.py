@@ -4,6 +4,90 @@ import pytest
 from valor_lite.semantic_segmentation import Bitmask, Segmentation
 
 
+def generate_segmentation(
+    datum_uid: str,
+    number_of_unique_labels: int,
+    mask_height: int,
+    mask_width: int,
+) -> Segmentation:
+    """
+    Generates a semantic segmentation annotation.
+
+    Parameters
+    ----------
+    datum_uid : str
+        The datum UID for the generated segmentation.
+    number_of_unique_labels : int
+        The number of unique labels.
+    mask_height : int
+        The height of the mask in pixels.
+    mask_width : int
+        The width of the mask in pixels.
+
+    Returns
+    -------
+    Segmentation
+        A generated semantic segmenatation annotation.
+    """
+
+    if number_of_unique_labels > 1:
+        common_proba = 0.4 / (number_of_unique_labels - 1)
+        min_proba = min(common_proba, 0.1)
+        labels = [str(i) for i in range(number_of_unique_labels)] + [None]
+        proba = (
+            [0.5]
+            + [common_proba for _ in range(number_of_unique_labels - 1)]
+            + [0.1]
+        )
+    elif number_of_unique_labels == 1:
+        labels = ["0", None]
+        proba = [0.9, 0.1]
+        min_proba = 0.1
+    else:
+        raise ValueError(
+            "The number of unique labels should be greater than zero."
+        )
+
+    probabilities = np.array(proba, dtype=np.float64)
+    weights = (probabilities / min_proba).astype(np.int32)
+
+    indices = np.random.choice(
+        np.arange(len(weights)),
+        size=(mask_height * 2, mask_width),
+        p=probabilities,
+    )
+
+    N = len(labels)
+
+    masks = np.arange(N)[:, None, None] == indices
+
+    gts = []
+    pds = []
+    for lidx in range(N):
+        label = labels[lidx]
+        if label is None:
+            continue
+        gts.append(
+            Bitmask(
+                mask=masks[lidx, :mask_height, :],
+                label=label,
+            )
+        )
+        pds.append(
+            Bitmask(
+                mask=masks[lidx, mask_height:, :],
+                label=label,
+            )
+        )
+
+    return Segmentation(
+        uid=datum_uid,
+        groundtruths=gts,
+        predictions=pds,
+        shape=(mask_height, mask_width),
+    )
+
+
 def _generate_boolean_mask(
     mask_shape: tuple[int, int],
     annotation_shape: tuple[int, int, int, int],
@@ -24,8 +108,7 @@ def _generate_boolean_mask(
 def _generate_random_boolean_mask(
     mask_shape: tuple[int, int],
     infill: float,
-    label: str,
-) -> Bitmask:
+) -> np.ndarray:
     mask_size = mask_shape[0] * mask_shape[1]
     mask = np.zeros(mask_size, dtype=np.bool_)
 
@@ -33,11 +116,7 @@ def _generate_random_boolean_mask(
     mask[:n_positives] = True
     np.random.shuffle(mask)
     mask = mask.reshape(mask_shape)
-
-    return Bitmask(
-        mask=mask,
-        label=label,
-    )
+    return mask
 
 
 @pytest.fixture
@@ -66,6 +145,7 @@ def basic_segmentations() -> list[Segmentation]:
             uid="uid0",
             groundtruths=[gmask1, gmask2],
             predictions=[pmask1, pmask2],
+            shape=tuple(pmask1.mask.shape),
         )
     ]
 
@@ -91,11 +171,13 @@ def segmentations_from_boxes() -> list[Segmentation]:
             uid="uid1",
             groundtruths=[gmask1],
             predictions=[pmask1],
+            shape=tuple(gmask1.mask.shape),
         ),
         Segmentation(
             uid="uid2",
             groundtruths=[gmask2],
             predictions=[pmask2],
+            shape=tuple(pmask2.mask.shape),
         ),
     ]
 
@@ -115,19 +197,52 @@ def large_random_segmentations() -> list[Segmentation]:
         ("v7", "v8", "v9"),
     ]
 
+    gt_bitmasks_per_datum = []
+    pd_bitmasks_per_datum = []
+    for infills in infills_per_seg:
+        gt_accum = None
+        pd_accum = None
+        gt_masks = []
+        pd_masks = []
+        for infill in infills:
+            gt = _generate_random_boolean_mask(mask_shape, infill)
+            if gt_accum is None:
+                gt_accum = gt.copy()
+            else:
+                gt = gt & ~(gt & gt_accum)
+                gt_accum = gt_accum | gt
+            gt_masks.append(gt)
+
+            pd = _generate_random_boolean_mask(mask_shape, infill)
+            if pd_accum is None:
+                pd_accum = pd.copy()
+            else:
+                pd = pd & ~(pd & pd_accum)
+                pd_accum = pd_accum | pd
+            pd_masks.append(pd)
+        gt_bitmasks_per_datum.append(gt_masks)
+        pd_bitmasks_per_datum.append(pd_masks)
+
     return [
         Segmentation(
             uid=f"uid{idx}",
             groundtruths=[
-                _generate_random_boolean_mask(mask_shape, infill, label)
-                for infill, label in zip(infills, labels)
+                Bitmask(
+                    mask=mask,
+                    label=label,
+                )
+                for mask, label in zip(gts, labels)
             ],
             predictions=[
-                _generate_random_boolean_mask(mask_shape, infill, label)
-                for infill, label in zip(infills, labels)
+                Bitmask(
+                    mask=mask,
+                    label=label,
+                )
+                for mask, label in zip(pds, labels)
             ],
+            shape=mask_shape,
         )
-        for idx, (infills, labels) in enumerate(
-            zip(infills_per_seg, labels_per_seg)
+        for idx, (gts, pds, labels) in enumerate(
+            zip(gt_bitmasks_per_datum, pd_bitmasks_per_datum, labels_per_seg)
         )
     ]

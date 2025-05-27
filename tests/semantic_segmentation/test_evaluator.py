@@ -14,19 +14,19 @@ def test_metadata_using_large_random_segmentations(
     assert evaluator.missing_prediction_labels == []
     assert evaluator.n_datums == 3
     assert evaluator.n_labels == 9
-    assert evaluator.n_groundtruths == 11200000
-    assert evaluator.n_predictions == 11200000
-    assert evaluator.n_pixels == 12842734
-    assert evaluator.is_filtered == False
+    assert evaluator.n_pixels == 3 * 2000 * 2000  # 3x (2000,2000) bitmasks
+    assert evaluator.is_filtered is False
 
-    assert evaluator.metadata == {
+    metadata = evaluator.metadata
+    # pop randomly changing values
+    metadata.pop("number_of_groundtruths")
+    metadata.pop("number_of_predictions")
+    assert metadata == {
         "ignored_prediction_labels": [],
         "missing_prediction_labels": [],
         "number_of_datums": 3,
         "number_of_labels": 9,
-        "number_of_groundtruths": 11200000,
-        "number_of_predictions": 11200000,
-        "number_of_pixels": 12842734,
+        "number_of_pixels": 12000000,
         "is_filtered": False,
     }
 

@@ -32,6 +32,7 @@ def _generate_random_segmentations(
                 )
                 for label in labels
             ],
+            shape=(size_, size_),
         )
         for i in range(n_segmentations)
     ]

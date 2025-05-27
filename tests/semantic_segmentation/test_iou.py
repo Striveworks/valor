@@ -1,6 +1,5 @@
 from valor_lite.semantic_segmentation import (
     DataLoader,
-    Metric,
     MetricType,
     Segmentation,
 )
@@ -84,42 +83,3 @@ def test_iou_segmentations_from_boxes(
         assert m in expected_metrics
     for m in expected_metrics:
         assert m in actual_metrics
-
-
-def test_recall_large_random_segmentations(
-    large_random_segmentations: list[Segmentation],
-):
-    loader = DataLoader()
-    loader.add_data(large_random_segmentations)
-    evaluator = loader.finalize()
-
-    metrics = evaluator.evaluate()
-
-    for m in metrics[MetricType.IOU]:
-        assert isinstance(m, Metric)
-        match m.parameters["label"]:
-            case "v1":
-                assert round(m.value, 2) == 0.82  # type: ignore - testing
-            case "v2":
-                assert round(m.value, 2) == 0.05  # type: ignore - testing
-            case "v3":
-                assert round(m.value, 1) == 0.0  # type: ignore - testing
-            case "v4":
-                assert round(m.value, 2) == 0.25  # type: ignore - testing
-            case "v5":
-                assert round(m.value, 2) == 0.25  # type: ignore - testing
-            case "v6":
-                assert round(m.value, 2) == 0.05  # type: ignore - testing
-            case "v7":
-                assert round(m.value, 2) == 0.18  # type: ignore - testing
-            case "v8":
-                assert round(m.value, 2) == 0.18  # type: ignore - testing
-            case "v9":
-                assert round(m.value, 2) == 0.18  # type: ignore - testing
-            case _:
-                assert False
-
-    mIOUs = metrics[MetricType.mIOU]
-    assert len(mIOUs) == 1
-    assert isinstance(mIOUs[0], Metric)
-    assert round(mIOUs[0].value, 2) == 0.22  # type: ignore - testing

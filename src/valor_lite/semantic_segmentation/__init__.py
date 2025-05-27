@@ -1,4 +1,4 @@
-from .annotation import Bitmask, Segmentation, generate_segmentation
+from .annotation import Bitmask, Segmentation
 from .manager import DataLoader, Evaluator
 from .metric import Metric, MetricType
 
@@ -9,5 +9,4 @@ __all__ = [
     "Bitmask",
     "Metric",
     "MetricType",
-    "generate_segmentation",
 ]
