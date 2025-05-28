@@ -106,13 +106,13 @@ def test_confusion_matrix_basic(basic_classifications: list[Classification]):
     loader.add_data(basic_classifications)
     evaluator = loader.finalize()
 
-    assert evaluator.metadata == {
-        "n_datums": 3,
-        "n_groundtruths": 3,
-        "n_predictions": 12,
-        "n_labels": 4,
-        "ignored_prediction_labels": ["1", "2"],
-        "missing_prediction_labels": [],
+    assert evaluator.ignored_prediction_labels == ["1", "2"]
+    assert evaluator.missing_prediction_labels == []
+    assert evaluator.metadata.to_dict() == {
+        "number_of_datums": 3,
+        "number_of_ground_truths": 3,
+        "number_of_predictions": 12,
+        "number_of_labels": 4,
         "is_filtered": False,
     }
 
@@ -406,13 +406,13 @@ def test_confusion_matrix_multiclass(
     loader.add_data(classifications_multiclass)
     evaluator = loader.finalize()
 
-    assert evaluator.metadata == {
-        "ignored_prediction_labels": [],
-        "missing_prediction_labels": [],
-        "n_datums": 5,
-        "n_groundtruths": 5,
-        "n_labels": 3,
-        "n_predictions": 15,
+    assert evaluator.ignored_prediction_labels == []
+    assert evaluator.missing_prediction_labels == []
+    assert evaluator.metadata.to_dict() == {
+        "number_of_datums": 5,
+        "number_of_ground_truths": 5,
+        "number_of_labels": 3,
+        "number_of_predictions": 15,
         "is_filtered": False,
     }
 
@@ -569,13 +569,13 @@ def test_confusion_matrix_without_hardmax_animal_example(
     loader.add_data(classifications_multiclass_true_negatives_check)
     evaluator = loader.finalize()
 
-    assert evaluator.metadata == {
-        "n_datums": 1,
-        "n_groundtruths": 1,
-        "n_predictions": 3,
-        "n_labels": 3,
-        "ignored_prediction_labels": ["bee", "cat"],
-        "missing_prediction_labels": [],
+    assert evaluator.ignored_prediction_labels == ["bee", "cat"]
+    assert evaluator.missing_prediction_labels == []
+    assert evaluator.metadata.to_dict() == {
+        "number_of_datums": 1,
+        "number_of_ground_truths": 1,
+        "number_of_predictions": 3,
+        "number_of_labels": 3,
         "is_filtered": False,
     }
 

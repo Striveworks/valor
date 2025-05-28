@@ -12,18 +12,18 @@ def test_metadata_using_classification_example(
 
     assert evaluator.ignored_prediction_labels == []
     assert evaluator.missing_prediction_labels == []
-    assert evaluator.n_datums == 6
-    assert evaluator.n_labels == 3
-    assert evaluator.n_groundtruths == 6
-    assert evaluator.n_predictions == 3 * 6
+    assert evaluator.metadata.number_of_datums == 6
+    assert evaluator.metadata.number_of_labels == 3
+    assert evaluator.metadata.number_of_groundtruths == 6
+    assert evaluator.metadata.number_of_predictions == 3 * 6
 
-    assert evaluator.metadata == {
-        "n_datums": 6,
-        "n_groundtruths": 6,
-        "n_predictions": 3 * 6,
-        "n_labels": 3,
-        "ignored_prediction_labels": [],
-        "missing_prediction_labels": [],
+    assert evaluator.ignored_prediction_labels == []
+    assert evaluator.missing_prediction_labels == []
+    assert evaluator.metadata.to_dict() == {
+        "number_of_datums": 6,
+        "number_of_ground_truths": 6,
+        "number_of_predictions": 3 * 6,
+        "number_of_labels": 3,
         "is_filtered": False,
     }
 

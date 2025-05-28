@@ -106,7 +106,7 @@ def test_filtering_one_classification(
 
     # test datum filtering
 
-    evaluator.apply_filter(datum_ids=["uid0"])
+    filter_ = evaluator.create_filter(datum_ids=["uid0"])
     assert np.all(
         evaluator.detailed_pairs
         == np.array(
@@ -123,7 +123,7 @@ def test_filtering_one_classification(
     )
 
     # test label filtering
-    evaluator.apply_filter(labels=["0"])
+    filter_ = evaluator.create_filter(labels=["0"])
     assert np.all(
         evaluator.detailed_pairs
         == np.array(
@@ -137,7 +137,7 @@ def test_filtering_one_classification(
         evaluator.label_metadata == np.array([[1, 1], [0, 0], [0, 0], [0, 0]])
     )
 
-    evaluator.apply_filter(labels=["1"])
+    filter_ = evaluator.create_filter(labels=["1"])
     assert np.all(
         evaluator.detailed_pairs
         == np.array(
@@ -151,7 +151,7 @@ def test_filtering_one_classification(
     )
 
     # test combo
-    evaluator.apply_filter(
+    filter_ = evaluator.create_filter(
         datum_ids=["uid0"],
         labels=["0"],
     )
@@ -169,7 +169,7 @@ def test_filtering_one_classification(
     )
 
     # test evaluation
-    evaluator.apply_filter(datum_ids=["uid0"])
+    filter_ = evaluator.create_filter(datum_ids=["uid0"])
     metrics = evaluator.evaluate(
         score_thresholds=[0.5],
         hardmax=False,
@@ -273,7 +273,7 @@ def test_filtering_three_classifications(
 
     # test datum filtering
 
-    evaluator.apply_filter(datum_ids=["uid0"])
+    filter_ = evaluator.create_filter(datum_ids=["uid0"])
     assert np.all(
         evaluator.detailed_pairs
         == np.array(
@@ -289,7 +289,7 @@ def test_filtering_three_classifications(
         evaluator.label_metadata == np.array([[1, 1], [0, 1], [0, 1], [0, 1]])
     )
 
-    evaluator.apply_filter(datum_ids=["uid2"])
+    filter_ = evaluator.create_filter(datum_ids=["uid2"])
     assert np.all(
         evaluator.detailed_pairs
         == np.array(
@@ -306,7 +306,7 @@ def test_filtering_three_classifications(
     )
 
     # test label filtering
-    evaluator.apply_filter(labels=["0"])
+    filter_ = evaluator.create_filter(labels=["0"])
     assert np.all(
         evaluator.detailed_pairs
         == np.array(
@@ -323,7 +323,7 @@ def test_filtering_three_classifications(
         evaluator.label_metadata == np.array([[2, 3], [0, 0], [0, 0], [0, 0]])
     )
 
-    evaluator.apply_filter(labels=["1"])
+    filter_ = evaluator.create_filter(labels=["1"])
     assert np.all(
         evaluator.detailed_pairs
         == np.array(
@@ -339,10 +339,10 @@ def test_filtering_three_classifications(
     )
 
     with pytest.raises(KeyError):
-        evaluator.apply_filter(labels=["other"])
+        filter_ = evaluator.create_filter(labels=["other"])
 
     # test combo
-    evaluator.apply_filter(
+    filter_ = evaluator.create_filter(
         datum_ids=["uid0"],
         labels=["0"],
     )
@@ -360,7 +360,7 @@ def test_filtering_three_classifications(
     )
 
     # test evaluation
-    evaluator.apply_filter(datum_ids=["uid0"])
+    filter_ = evaluator.create_filter(datum_ids=["uid0"])
     metrics = evaluator.evaluate(
         score_thresholds=[0.5],
         hardmax=False,
@@ -477,9 +477,10 @@ def test_filtering_six_classifications(
 
     # test datum filtering
 
-    evaluator.apply_filter(datum_ids=["uid0"])
+    filter_ = evaluator.create_filter(datum_ids=["uid0"])
+    detailed_pairs, label_metadata = evaluator.filter(filter_)
     assert np.all(
-        evaluator.detailed_pairs
+        detailed_pairs
         == np.array(
             [
                 [0.0, 0.0, 0.0, 1.0, 1.0],
@@ -490,12 +491,13 @@ def test_filtering_six_classifications(
         )
     )
     assert np.all(
-        evaluator.label_metadata == np.array([[1, 1], [0, 1], [0, 1], [0, 1]])
+        label_metadata == np.array([[1, 1], [0, 1], [0, 1], [0, 1]])
     )
 
-    evaluator.apply_filter(datum_ids=["uid2"])
+    filter_ = evaluator.create_filter(datum_ids=["uid2"])
+    detailed_pairs, label_metadata = evaluator.filter(filter_)
     assert np.all(
-        evaluator.detailed_pairs
+        detailed_pairs
         == np.array(
             [
                 [2.0, 3.0, 3.0, 0.3, 1.0],
@@ -506,14 +508,15 @@ def test_filtering_six_classifications(
         )
     )
     assert np.all(
-        evaluator.label_metadata == np.array([[0, 1], [0, 1], [0, 1], [1, 1]])
+        label_metadata == np.array([[0, 1], [0, 1], [0, 1], [1, 1]])
     )
 
     # test label filtering
 
-    evaluator.apply_filter(labels=["0"])
+    filter_ = evaluator.create_filter(labels=["0"])
+    detailed_pairs, label_metadata = evaluator.filter(filter_)
     assert np.all(
-        evaluator.detailed_pairs
+        detailed_pairs
         == np.array(
             [
                 [0.0, 0.0, 0.0, 1.0, 1.0],
@@ -530,12 +533,13 @@ def test_filtering_six_classifications(
         )
     )
     assert np.all(
-        evaluator.label_metadata == np.array([[4, 6], [0, 0], [0, 0], [0, 0]])
+        label_metadata == np.array([[4, 6], [0, 0], [0, 0], [0, 0]])
     )
 
-    evaluator.apply_filter(labels=["1"])
+    filter_ = evaluator.create_filter(labels=["1"])
+    detailed_pairs, label_metadata = evaluator.filter(filter_)
     assert np.all(
-        evaluator.detailed_pairs
+        detailed_pairs
         == np.array(
             [
                 [0.0, -1.0, 1.0, 0.0, 0.0],
@@ -548,19 +552,20 @@ def test_filtering_six_classifications(
         )
     )
     assert np.all(
-        evaluator.label_metadata == np.array([[0, 0], [0, 6], [0, 0], [0, 0]])
+        label_metadata == np.array([[0, 0], [0, 6], [0, 0], [0, 0]])
     )
 
     with pytest.raises(KeyError):
-        evaluator.apply_filter(labels=["other"])
+        filter_ = evaluator.create_filter(labels=["other"])
 
     # test combo
-    evaluator.apply_filter(
+    filter_ = evaluator.create_filter(
         datum_ids=["uid0"],
         labels=["0"],
     )
+    detailed_pairs, label_metadata = evaluator.filter(filter_)
     assert np.all(
-        evaluator.detailed_pairs
+        detailed_pairs
         == np.array(
             [
                 [0.0, 0.0, 0.0, 1.0, 1.0],
@@ -569,11 +574,11 @@ def test_filtering_six_classifications(
         )
     )
     assert np.all(
-        evaluator.label_metadata == np.array([[1, 1], [0, 0], [0, 0], [0, 0]])
+        label_metadata == np.array([[1, 1], [0, 0], [0, 0], [0, 0]])
     )
 
     # test evaluation
-    evaluator.apply_filter(datum_ids=["uid0"])
+    filter_ = evaluator.create_filter(datum_ids=["uid0"])
     metrics = evaluator.evaluate(
         score_thresholds=[0.5],
         hardmax=False,
@@ -647,7 +652,7 @@ def test_filtering_random_classifications():
     loader = DataLoader()
     loader.add_data(generate_random_classifications(13, 2, 10))
     evaluator = loader.finalize()
-    evaluator.apply_filter(datum_ids=["uid0"])
+    filter_ = evaluator.create_filter(datum_ids=["uid0"])
     evaluator.evaluate(score_thresholds=[0.5], hardmax=False)
 
 
@@ -655,12 +660,18 @@ def test_filtering_empty(six_classifications: list[Classification]):
     loader = DataLoader()
     loader.add_data(six_classifications)
     evaluator = loader.finalize()
-    assert evaluator.detailed_pairs.shape == (24, 5)
-    with pytest.warns():
-        evaluator.apply_filter(datum_ids=[])
-        assert evaluator.detailed_pairs.shape == (0,)
-    with pytest.warns():
-        evaluator.apply_filter(labels=[])
-        assert evaluator.detailed_pairs.shape == (0,)
-    evaluator.clear_filter()
-    assert evaluator.detailed_pairs.shape == (24, 5)
+    assert evaluator._detailed_pairs.shape == (24, 5)
+
+    with pytest.warns(UserWarning):
+        filter_ = evaluator.create_filter(datum_ids=[])
+    with pytest.warns(UserWarning):
+        detailed_pairs, label_metadata = evaluator.filter(filter_)
+    assert detailed_pairs.shape == (0,)
+
+    with pytest.warns(UserWarning):
+        filter_ = evaluator.create_filter(labels=[])
+    with pytest.warns(UserWarning):
+        detailed_pairs, label_metadata = evaluator.filter(filter_)
+    assert detailed_pairs.shape == (0,)
+
+    assert evaluator._detailed_pairs.shape == (24, 5)

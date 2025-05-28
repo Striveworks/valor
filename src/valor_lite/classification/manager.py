@@ -1,4 +1,5 @@
 import warnings
+from dataclasses import asdict, dataclass
 
 import numpy as np
 from numpy.typing import NDArray
@@ -9,6 +10,7 @@ from valor_lite.classification.computation import (
     compute_confusion_matrix,
     compute_label_metadata,
     compute_precision_recall_rocauc,
+    filter_cache,
 )
 from valor_lite.classification.metric import Metric, MetricType
 from valor_lite.classification.utilities import (
@@ -37,6 +39,54 @@ filtered_metrics = evaluator.evaluate(filter_mask=filter_mask)
 """
 
 
+@dataclass
+class Metadata:
+    number_of_datums: int = 0
+    number_of_ground_truths: int = 0
+    number_of_predictions: int = 0
+    number_of_labels: int = 0
+    is_filtered: int = False
+
+    @classmethod
+    def create(
+        cls,
+        detailed_pairs: NDArray[np.float64],
+        number_of_datums: int,
+        number_of_labels: int,
+    ):
+        # count number of unique ground truths
+        mask_valid_gts = detailed_pairs[:, 1] >= 0
+        unique_ids = np.unique(
+            detailed_pairs[np.ix_(mask_valid_gts, (0, 1))],  # type: ignore - np.ix_ typing
+            axis=0,
+        )
+        number_of_ground_truths = int(unique_ids.shape[0])
+
+        # count number of unqiue predictions
+        mask_valid_pds = detailed_pairs[:, 2] >= 0
+        unique_ids = np.unique(
+            detailed_pairs[np.ix_(mask_valid_pds, (0, 2))], axis=0  # type: ignore - np.ix_ typing
+        )
+        number_of_predictions = int(unique_ids.shape[0])
+
+        return cls(
+            number_of_datums=number_of_datums,
+            number_of_ground_truths=number_of_ground_truths,
+            number_of_predictions=number_of_predictions,
+            number_of_labels=number_of_labels,
+        )
+
+    def to_dict(self) -> dict[str, int | bool]:
+        return asdict(self)
+
+
+@dataclass
+class Filter:
+    datum_mask: NDArray[np.bool_]
+    valid_label_indices: NDArray[np.int32] | None
+    metadata: Metadata
+
+
 class Evaluator:
     """
     Classification Evaluator
@@ -50,69 +100,22 @@ class Evaluator:
         self.index_to_datum_id: list[str] = []
         self.index_to_label: list[str] = []
 
-        # computation caches
+        # internal caches
         self._detailed_pairs = np.array([])
         self._label_metadata = np.array([], dtype=np.int32)
-
-        # filtered internal cache
-        self._filtered_detailed_pairs: NDArray[np.float64] | None = None
-        self._filtered_label_metadata: NDArray[np.int32] | None = None
+        self._metadata = Metadata()
 
     @property
-    def is_filtered(self) -> bool:
-        return self._filtered_detailed_pairs is not None
-
-    @property
-    def label_metadata(self) -> NDArray[np.int32]:
-        return (
-            self._filtered_label_metadata
-            if self._filtered_label_metadata is not None
-            else self._label_metadata
-        )
-
-    @property
-    def detailed_pairs(self) -> NDArray[np.float64]:
-        return (
-            self._filtered_detailed_pairs
-            if self._filtered_detailed_pairs is not None
-            else self._detailed_pairs
-        )
-
-    @property
-    def n_labels(self) -> int:
-        """Returns the total number of unique labels."""
-        return len(self.index_to_label)
-
-    @property
-    def n_datums(self) -> int:
-        """Returns the number of datums."""
-        return np.unique(self.detailed_pairs[:, 0]).size
-
-    @property
-    def n_groundtruths(self) -> int:
-        """Returns the number of ground truth annotations."""
-        mask_valid_gts = self.detailed_pairs[:, 1] >= 0
-        unique_ids = np.unique(
-            self.detailed_pairs[np.ix_(mask_valid_gts, (0, 1))], axis=0  # type: ignore - np.ix_ typing
-        )
-        return int(unique_ids.shape[0])
-
-    @property
-    def n_predictions(self) -> int:
-        """Returns the number of prediction annotations."""
-        mask_valid_pds = self.detailed_pairs[:, 2] >= 0
-        unique_ids = np.unique(
-            self.detailed_pairs[np.ix_(mask_valid_pds, (0, 2))], axis=0  # type: ignore - np.ix_ typing
-        )
-        return int(unique_ids.shape[0])
+    def metadata(self) -> Metadata:
+        return self._metadata
 
     @property
     def ignored_prediction_labels(self) -> list[str]:
         """
         Prediction labels that are not present in the ground truth set.
         """
-        glabels = set(np.where(self.label_metadata[:, 0] > 0)[0])
-        plabels = set(np.where(self.label_metadata[:, 1] > 0)[0])
+        glabels = set(np.where(self._label_metadata[:, 0] > 0)[0])
+        plabels = set(np.where(self._label_metadata[:, 1] > 0)[0])
         return [
             self.index_to_label[label_id] for label_id in (plabels - glabels)
         ]
@@ -122,36 +125,19 @@ class Evaluator:
         """
         Ground truth labels that are not present in the prediction set.
         """
-        glabels = set(np.where(self.label_metadata[:, 0] > 0)[0])
-        plabels = set(np.where(self.label_metadata[:, 1] > 0)[0])
+        glabels = set(np.where(self._label_metadata[:, 0] > 0)[0])
+        plabels = set(np.where(self._label_metadata[:, 1] > 0)[0])
         return [
             self.index_to_label[label_id] for label_id in (glabels - plabels)
         ]
 
-    @property
-    def metadata(self) -> dict:
-        """
-        Evaluation metadata.
-        """
-        return {
-            "n_datums": self.n_datums,
-            "n_groundtruths": self.n_groundtruths,
-            "n_predictions": self.n_predictions,
-            "n_labels": self.n_labels,
-            "ignored_prediction_labels": self.ignored_prediction_labels,
-            "missing_prediction_labels": self.missing_prediction_labels,
-            "is_filtered": self.is_filtered,
-        }
-
-    def apply_filter(
+    def create_filter(
         self,
         datum_ids: list[str] | None = None,
         labels: list[str] | None = None,
-    ):
+    ) -> Filter:
         """
-        Apply a filter on the evaluator.
-
-        Can be reset by calling 'clear_filter'.
+        Creates a filter object.
 
         Parameters
         ----------
@@ -159,113 +145,98 @@ class Evaluator:
             An optional list of string uids representing datums.
         labels : list[str], optional
             An optional list of labels.
-        """
-        self._filtered_detailed_pairs = self._detailed_pairs.copy()
-        self._filtered_label_metadata = np.zeros(
-            (self.n_labels, 2), dtype=np.int32
-        )
 
-        valid_datum_indices = None
+        Returns
+        -------
+        Filter
+            The filter object representing the input parameters.
+        """
+        # create datum mask
+        n_pairs = self._detailed_pairs.shape[0]
+        datum_mask = np.ones(n_pairs, dtype=np.bool_)
         if datum_ids is not None:
             if not datum_ids:
-                self._filtered_detailed_pairs = np.array([], dtype=np.float64)
                 warnings.warn("no valid filtered pairs")
-                return
+                return Filter(
+                    datum_mask=np.zeros_like(datum_mask),
+                    valid_label_indices=None,
+                    metadata=Metadata(),
+                )
             valid_datum_indices = np.array(
                 [self.datum_id_to_index[uid] for uid in datum_ids],
                 dtype=np.int32,
             )
+            datum_mask = np.isin(
+                self._detailed_pairs[:, 0], valid_datum_indices
+            )
 
+        # collect valid label indices
         valid_label_indices = None
         if labels is not None:
             if not labels:
-                self._filtered_detailed_pairs = np.array([], dtype=np.float64)
                 warnings.warn("no valid filtered pairs")
-                return
+                return Filter(
+                    datum_mask=datum_mask,
+                    valid_label_indices=np.array([], dtype=np.int32),
+                    metadata=Metadata(),
+                )
             valid_label_indices = np.array(
                 [self.label_to_index[label] for label in labels] + [-1]
             )
 
-        # filter datums
-        if valid_datum_indices is not None:
-            mask_valid_datums = np.isin(
-                self._filtered_detailed_pairs[:, 0], valid_datum_indices
-            )
-            self._filtered_detailed_pairs = self._filtered_detailed_pairs[
-                mask_valid_datums
-            ]
+        filtered_detailed_pairs, _ = filter_cache(
+            detailed_pairs=self._detailed_pairs,
+            datum_mask=datum_mask,
+            valid_label_indices=valid_label_indices,
+            n_labels=self.metadata.number_of_labels,
+        )
 
-        n_rows = self._filtered_detailed_pairs.shape[0]
-        mask_invalid_groundtruths = np.zeros(n_rows, dtype=np.bool_)
-        mask_invalid_predictions = np.zeros_like(mask_invalid_groundtruths)
+        number_of_datums = (
+            len(datum_ids)
+            if datum_ids is not None
+            else self.metadata.number_of_datums
+        )
 
-        # filter labels
-        if valid_label_indices is not None:
-            mask_invalid_groundtruths[
-                ~np.isin(
-                    self._filtered_detailed_pairs[:, 1], valid_label_indices
-                )
-            ] = True
-            mask_invalid_predictions[
-                ~np.isin(
-                    self._filtered_detailed_pairs[:, 2], valid_label_indices
-                )
-            ] = True
-
-        # filter cache
-        if mask_invalid_groundtruths.any():
-            invalid_groundtruth_indices = np.where(mask_invalid_groundtruths)[
-                0
-            ]
-            self._filtered_detailed_pairs[
-                invalid_groundtruth_indices[:, None], 1
-            ] = np.array([[-1.0]])
-
-        if mask_invalid_predictions.any():
-            invalid_prediction_indices = np.where(mask_invalid_predictions)[0]
-            self._filtered_detailed_pairs[
-                invalid_prediction_indices[:, None], (2, 3, 4)
-            ] = np.array([[-1.0, -1.0, -1.0]])
-
-        # filter null pairs
-        mask_null_pairs = np.all(
-            np.isclose(
-                self._filtered_detailed_pairs[:, 1:5],
-                np.array([-1.0, -1.0, -1.0, -1.0]),
+        return Filter(
+            datum_mask=datum_mask,
+            valid_label_indices=valid_label_indices,
+            metadata=Metadata.create(
+                detailed_pairs=filtered_detailed_pairs,
+                number_of_datums=number_of_datums,
+                number_of_labels=self.metadata.number_of_labels,
             ),
-            axis=1,
-        )
-        self._filtered_detailed_pairs = self._filtered_detailed_pairs[
-            ~mask_null_pairs
-        ]
-
-        self._filtered_detailed_pairs = np.unique(
-            self._filtered_detailed_pairs, axis=0
-        )
-        indices = np.lexsort(
-            (
-                self._filtered_detailed_pairs[:, 1],  # ground truth
-                self._filtered_detailed_pairs[:, 2],  # prediction
-                -self._filtered_detailed_pairs[:, 3],  # score
-            )
-        )
-        self._filtered_detailed_pairs = self._filtered_detailed_pairs[indices]
-        self._filtered_label_metadata = compute_label_metadata(
-            ids=self._filtered_detailed_pairs[:, :3].astype(np.int32),
-            n_labels=self.n_labels,
         )
 
-    def clear_filter(self):
+    def filter(
+        self, filter_: Filter
+    ) -> tuple[NDArray[np.float64], NDArray[np.int32]]:
         """
-        Clears any applied filters.
+        Performs filtering over the internal cache.
+
+        Parameters
+        ----------
+        filter_ : Filter
+            The filter object representation.
+
+        Returns
+        -------
+        NDArray[float64]
+            The filtered detailed pairs.
+        NDArray[int32]
+            The filtered label metadata.
         """
-        self._filtered_detailed_pairs = None
-        self._filtered_label_metadata = None
+        return filter_cache(
+            detailed_pairs=self._detailed_pairs,
+            datum_mask=filter_.datum_mask,
+            valid_label_indices=filter_.valid_label_indices,
+            n_labels=self.metadata.number_of_labels,
+        )
 
     def compute_precision_recall_rocauc(
         self,
         score_thresholds: list[float] = [0.0],
         hardmax: bool = True,
+        filter_: Filter | None = None,
     ) -> dict[MetricType, list]:
         """
         Performs an evaluation and returns metrics.
@@ -276,26 +247,30 @@ class Evaluator:
             A list of score thresholds to compute metrics over.
         hardmax : bool
             Toggles whether a hardmax is applied to predictions.
+        filter_ : Filter, optional
+            Applies a filter to the internal cache.
 
         Returns
         -------
         dict[MetricType, list]
             A dictionary mapping MetricType enumerations to lists of computed metrics.
         """
-
         # apply filters
-        data = self.detailed_pairs
-        label_metadata = self.label_metadata
-        n_datums = self.n_datums
+        if filter_ is not None:
+            detailed_pairs, label_metadata = self.filter(filter_=filter_)
+            n_datums = filter_.metadata.number_of_datums
+        else:
+            detailed_pairs = self._detailed_pairs
+            label_metadata = self._label_metadata
+            n_datums = self.metadata.number_of_datums
 
         results = compute_precision_recall_rocauc(
-            data=data,
+            detailed_pairs=detailed_pairs,
             label_metadata=label_metadata,
             score_thresholds=np.array(score_thresholds),
             hardmax=hardmax,
             n_datums=n_datums,
         )
-
         return unpack_precision_recall_rocauc_into_metric_lists(
             results=results,
             score_thresholds=score_thresholds,
@@ -309,6 +284,7 @@ class Evaluator:
         score_thresholds: list[float] = [0.0],
         hardmax: bool = True,
         number_of_examples: int = 0,
+        filter_: Filter | None = None,
     ) -> list[Metric]:
         """
         Computes a detailed confusion matrix..
@@ -321,28 +297,31 @@ class Evaluator:
             Toggles whether a hardmax is applied to predictions.
         number_of_examples : int, default=0
             The number of examples to return per count.
+        filter_ : Filter, optional
+            Applies a filter to the internal cache.
 
         Returns
         -------
         list[Metric]
             A list of confusion matrices.
         """
-
         # apply filters
-        data = self.detailed_pairs
-        label_metadata = self.label_metadata
+        if filter_ is not None:
+            detailed_pairs, label_metadata = self.filter(filter_=filter_)
+        else:
+            detailed_pairs = self._detailed_pairs
+            label_metadata = self._label_metadata
 
-        if data.size == 0:
+        if detailed_pairs.size == 0:
             return list()
 
         results = compute_confusion_matrix(
-            data=data,
+            detailed_pairs=detailed_pairs,
             label_metadata=label_metadata,
             score_thresholds=np.array(score_thresholds),
             hardmax=hardmax,
             n_examples=number_of_examples,
         )
-
         return unpack_confusion_matrix_into_metric_list(
             results=results,
             score_thresholds=score_thresholds,
@@ -356,6 +335,7 @@ class Evaluator:
         score_thresholds: list[float] = [0.0],
         hardmax: bool = True,
         number_of_examples: int = 0,
+        filter_: Filter | None = None,
     ) -> dict[MetricType, list[Metric]]:
         """
         Computes a detailed confusion matrix..
@@ -368,24 +348,25 @@ class Evaluator:
             Toggles whether a hardmax is applied to predictions.
         number_of_examples : int, default=0
             The number of examples to return per count.
+        filter_ : Filter, optional
+            Applies a filter to the internal cache.
 
         Returns
         -------
         dict[MetricType, list[Metric]]
             Lists of metrics organized by metric type.
         """
-
         metrics = self.compute_precision_recall_rocauc(
             score_thresholds=score_thresholds,
             hardmax=hardmax,
+            filter_=filter_,
         )
-
         metrics[MetricType.ConfusionMatrix] = self.compute_confusion_matrix(
             score_thresholds=score_thresholds,
             hardmax=hardmax,
             number_of_examples=number_of_examples,
+            filter_=filter_,
         )
-
         return metrics
 
     def _add_datum(self, uid: str) -> int:
@@ -513,7 +494,7 @@ class Evaluator:
 
         self._label_metadata = compute_label_metadata(
             ids=self._detailed_pairs[:, :3].astype(np.int32),
-            n_labels=self.n_labels,
+            n_labels=len(self.index_to_label),
         )
         indices = np.lexsort(
             (
@@ -523,6 +504,11 @@ class Evaluator:
             )
         )
         self._detailed_pairs = self._detailed_pairs[indices]
+        self._metadata = Metadata.create(
+            detailed_pairs=self._detailed_pairs,
+            number_of_datums=len(self.index_to_datum_id),
+            number_of_labels=len(self.index_to_label),
+        )
         return self
 
 

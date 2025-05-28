@@ -46,7 +46,7 @@ def test_f1_score_computation():
     score_thresholds = np.array([0.25, 0.75], dtype=np.float64)
 
     (_, _, _, _, f1_score, _, _) = compute_precision_recall_rocauc(
-        data=data,
+        detailed_pairs=data,
         label_metadata=label_metadata,
         score_thresholds=score_thresholds,
         n_datums=3,
@@ -73,13 +73,13 @@ def test_f1_score_basic(basic_classifications: list[Classification]):
     loader.add_data(basic_classifications)
     evaluator = loader.finalize()
 
-    assert evaluator.metadata == {
-        "n_datums": 3,
-        "n_groundtruths": 3,
-        "n_predictions": 12,
-        "n_labels": 4,
-        "ignored_prediction_labels": ["1", "2"],
-        "missing_prediction_labels": [],
+    assert evaluator.ignored_prediction_labels == ["1", "2"]
+    assert evaluator.missing_prediction_labels == []
+    assert evaluator.metadata.to_dict() == {
+        "number_of_datums": 3,
+        "number_of_ground_truths": 3,
+        "number_of_predictions": 12,
+        "number_of_labels": 4,
         "is_filtered": False,
     }
 
@@ -313,13 +313,13 @@ def test_f1_score_with_image_example(
     loader.add_data(classifications_image_example)
     evaluator = loader.finalize()
 
-    assert evaluator.metadata == {
-        "n_datums": 2,
-        "n_groundtruths": 2,
-        "n_predictions": 4,
-        "n_labels": 4,
-        "ignored_prediction_labels": ["v1", "v8", "v5"],
-        "missing_prediction_labels": [],
+    assert evaluator.ignored_prediction_labels == ["v1", "v8", "v5"]
+    assert evaluator.missing_prediction_labels == []
+    assert evaluator.metadata.to_dict() == {
+        "number_of_datums": 2,
+        "number_of_ground_truths": 2,
+        "number_of_predictions": 4,
+        "number_of_labels": 4,
         "is_filtered": False,
     }
 
@@ -350,13 +350,13 @@ def test_f1_score_with_tabular_example(
     loader.add_data(classifications_tabular_example)
     evaluator = loader.finalize()
 
-    assert evaluator.metadata == {
-        "n_datums": 10,
-        "n_groundtruths": 10,
-        "n_predictions": 30,
-        "n_labels": 3,
-        "ignored_prediction_labels": [],
-        "missing_prediction_labels": [],
+    assert evaluator.ignored_prediction_labels == []
+    assert evaluator.missing_prediction_labels == []
+    assert evaluator.metadata.to_dict() == {
+        "number_of_datums": 10,
+        "number_of_ground_truths": 10,
+        "number_of_predictions": 30,
+        "number_of_labels": 3,
         "is_filtered": False,
     }
 
