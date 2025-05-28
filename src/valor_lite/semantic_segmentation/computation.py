@@ -29,6 +29,59 @@ def compute_label_metadata(
     return label_metadata
 
 
+def filter_cache(
+    confusion_matrices: NDArray[np.int64],
+    datum_mask: NDArray[np.bool_],
+    label_mask: NDArray[np.bool_],
+    number_of_labels: int,
+) -> tuple[NDArray[np.int64], NDArray[np.int64]]:
+    """
+    Performs the filter operation over the internal cache.
+
+    Parameters
+    ----------
+    confusion_matrices : NDArray[int64]
+        The internal evaluator cache.
+    datum_mask : NDArray[bool]
+        A mask that filters out datums.
+    datum_mask : NDArray[bool]
+        A mask that filters out labels.
+
+    Returns
+    -------
+    NDArray[int64]
+        Filtered confusion matrices.
+    NDArray[int64]
+        Filtered label metadata.
+    """
+    if label_mask.any():
+        # add filtered labels to background
+        null_predictions = confusion_matrices[:, label_mask, :].sum(
+            axis=(1, 2)
+        )
+        null_groundtruths = confusion_matrices[:, :, label_mask].sum(
+            axis=(1, 2)
+        )
+        null_intersection = (
+            confusion_matrices[:, label_mask, label_mask]
+            .reshape(confusion_matrices.shape[0], -1)
+            .sum(axis=1)
+        )
+        confusion_matrices[:, 0, 0] += (
+            null_groundtruths + null_predictions - null_intersection
+        )
+        confusion_matrices[:, label_mask, :] = 0
+        confusion_matrices[:, :, label_mask] = 0
+
+    confusion_matrices = confusion_matrices[datum_mask]
+
+    label_metadata = compute_label_metadata(
+        confusion_matrices=confusion_matrices,
+        n_labels=number_of_labels,
+    )
+    return confusion_matrices, label_metadata
+
+
 def compute_intermediate_confusion_matrices(
     groundtruths: NDArray[np.bool_],
     predictions: NDArray[np.bool_],

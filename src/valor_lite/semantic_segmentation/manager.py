@@ -1,5 +1,5 @@
 import warnings
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 
 import numpy as np
 from numpy.typing import NDArray
@@ -10,6 +10,7 @@ from valor_lite.semantic_segmentation.computation import (
     compute_intermediate_confusion_matrices,
     compute_label_metadata,
     compute_metrics,
+    filter_cache,
 )
 from valor_lite.semantic_segmentation.metric import Metric, MetricType
 from valor_lite.semantic_segmentation.utilities import (
@@ -38,10 +39,40 @@ filtered_metrics = evaluator.evaluate(filter_mask=filter_mask)
 
 
 @dataclass
+class Metadata:
+    number_of_labels: int = 0
+    number_of_pixels: int = 0
+    number_of_datums: int = 0
+    number_of_ground_truths: int = 0
+    number_of_predictions: int = 0
+    is_filtered: bool = False
+
+    @classmethod
+    def create(
+        cls,
+        confusion_matrices: NDArray[np.int64],
+        is_filtered: bool = False,
+    ):
+        if confusion_matrices.size == 0:
+            return cls()
+        return cls(
+            number_of_labels=confusion_matrices.shape[1] - 1,
+            number_of_pixels=confusion_matrices.sum(),
+            number_of_datums=confusion_matrices.shape[0],
+            number_of_ground_truths=confusion_matrices[:, 1:, :].sum(),
+            number_of_predictions=confusion_matrices[:, :, 1:].sum(),
+            is_filtered=is_filtered,
+        )
+
+    def to_dict(self) -> dict[str, int | bool]:
+        return asdict(self)
+
+
+@dataclass
 class Filter:
-    indices: NDArray[np.intp]
-    label_metadata: NDArray[np.int64]
-    n_pixels: int
+    datum_mask: NDArray[np.bool_]
+    label_mask: NDArray[np.bool_]
+    metadata: Metadata
 
 
 class Evaluator:
@@ -50,76 +81,29 @@ class Evaluator:
     """
 
     def __init__(self):
-
+        """Initializes evaluator caches."""
         # external references
         self.datum_id_to_index: dict[str, int] = {}
-        self.label_to_index: dict[str, int] = {}
-
         self.index_to_datum_id: list[str] = []
+        self.label_to_index: dict[str, int] = {}
         self.index_to_label: list[str] = []
 
         # internal caches
         self._confusion_matrices = np.array([], dtype=np.int64)
         self._label_metadata = np.array([], dtype=np.int64)
-        self._n_pixels_per_datum = np.array([], dtype=np.int64)
-
-        # filtered internal cache
-        self._filtered_confusion_matrices: NDArray[np.int64] | None = None
-        self._filtered_label_metadata: NDArray[np.int64] | None = None
-        self._filtered_n_pixels_per_datum: NDArray[np.int64] | None = None
+        self._metadata = Metadata()
 
     @property
-    def is_filtered(self) -> bool:
-        return self._filtered_confusion_matrices is not None
-
-    @property
-    def label_metadata(self) -> NDArray[np.int64]:
-        return (
-            self._filtered_label_metadata
-            if self._filtered_label_metadata is not None
-            else self._label_metadata
-        )
-
-    @property
-    def confusion_matrices(self) -> NDArray[np.int64]:
-        return (
-            self._filtered_confusion_matrices
-            if self._filtered_confusion_matrices is not None
-            else self._confusion_matrices
-        )
-
-    @property
-    def n_labels(self) -> int:
-        """Returns the total number of unique labels."""
-        return len(self.index_to_label)
-
-    @property
-    def n_pixels(self) -> int:
-        """Returns the total number of evaluated pixels."""
-        return self.confusion_matrices.sum()
-
-    @property
-    def n_datums(self) -> int:
-        """Returns the number of datums."""
-        return self.confusion_matrices.shape[0]
-
-    @property
-    def n_groundtruths(self) -> int:
-        """Returns the number of ground truth annotations."""
-        return self.confusion_matrices[:, 1:, :].sum()
-
-    @property
-    def n_predictions(self) -> int:
-        """Returns the number of prediction annotations."""
-        return self.confusion_matrices[:, :, 1:].sum()
+    def metadata(self) -> Metadata:
+        return self._metadata
 
     @property
     def ignored_prediction_labels(self) -> list[str]:
         """
         Prediction labels that are not present in the ground truth set.
         """
-        glabels = set(np.where(self.label_metadata[:, 0] > 0)[0])
-        plabels = set(np.where(self.label_metadata[:, 1] > 0)[0])
+        glabels = set(np.where(self._label_metadata[:, 0] > 0)[0])
+        plabels = set(np.where(self._label_metadata[:, 1] > 0)[0])
         return [
             self.index_to_label[label_id] for label_id in (plabels - glabels)
         ]
@@ -129,37 +113,19 @@ class Evaluator:
         """
         Ground truth labels that are not present in the prediction set.
         """
-        glabels = set(np.where(self.label_metadata[:, 0] > 0)[0])
-        plabels = set(np.where(self.label_metadata[:, 1] > 0)[0])
+        glabels = set(np.where(self._label_metadata[:, 0] > 0)[0])
+        plabels = set(np.where(self._label_metadata[:, 1] > 0)[0])
         return [
             self.index_to_label[label_id] for label_id in (glabels - plabels)
         ]
 
-    @property
-    def metadata(self) -> dict:
-        """
-        Evaluation metadata.
-        """
-        return {
-            "number_of_datums": self.n_datums,
-            "number_of_groundtruths": self.n_groundtruths,
-            "number_of_predictions": self.n_predictions,
-            "number_of_labels": self.n_labels,
-            "number_of_pixels": self.n_pixels,
-            "ignored_prediction_labels": self.ignored_prediction_labels,
-            "missing_prediction_labels": self.missing_prediction_labels,
-            "is_filtered": self.is_filtered,
-        }
-
-    def apply_filter(
+    def create_filter(
         self,
         datum_ids: list[str] | None = None,
         labels: list[str] | None = None,
-    ):
+    ) -> Filter:
         """
-        Apply a filter on the evaluator.
-
-        Can be reset by calling 'clear_filter'.
+        Creates a filter for use with the evaluator.
 
         Parameters
         ----------
@@ -167,90 +133,110 @@ class Evaluator:
             An optional list of string uids representing datums.
         labels : list[str], optional
             An optional list of labels.
+
+        Returns
+        -------
+        Filter
+            The filter object containing a mask and metadata.
         """
-        self._filtered_confusion_matrices = self._confusion_matrices.copy()
-        self._filtered_label_metadata = np.zeros(
-            (self.n_labels, 2), dtype=np.int64
+        datum_mask = np.ones(self._confusion_matrices.shape[0], dtype=np.bool_)
+        label_mask = np.zeros(
+            self.metadata.number_of_labels + 1, dtype=np.bool_
         )
-
-        mask_datums = np.ones(
-            self._filtered_confusion_matrices.shape[0], dtype=np.bool_
-        )
-
         if datum_ids is not None:
             if not datum_ids:
-                self._filtered_confusion_matrices = np.array(
-                    [], dtype=np.int64
-                )
+                filtered_confusion_matrices = np.array([], dtype=np.int64)
                 warnings.warn("datum filter results in empty data array")
-                return
+                return Filter(
+                    datum_mask=np.zeros_like(datum_mask),
+                    label_mask=label_mask,
+                    metadata=Metadata(),
+                )
             datum_id_array = np.array(
                 [self.datum_id_to_index[uid] for uid in datum_ids],
                 dtype=np.int64,
             )
             datum_id_array.sort()
             mask_valid_datums = (
-                np.arange(self._filtered_confusion_matrices.shape[0]).reshape(
-                    -1, 1
-                )
+                np.arange(self._confusion_matrices.shape[0]).reshape(-1, 1)
                 == datum_id_array.reshape(1, -1)
             ).any(axis=1)
-            mask_datums[~mask_valid_datums] = False
-
+            datum_mask[~mask_valid_datums] = False
         if labels is not None:
             if not labels:
-                self._filtered_confusion_matrices = np.array(
-                    [], dtype=np.int64
-                )
+                filtered_confusion_matrices = np.array([], dtype=np.int64)
                 warnings.warn("label filter results in empty data array")
-                return
+                return Filter(
+                    datum_mask=datum_mask,
+                    label_mask=np.ones_like(label_mask),
+                    metadata=Metadata(),
+                )
             labels_id_array = np.array(
                 [self.label_to_index[label] for label in labels] + [-1],
                 dtype=np.int64,
             )
-            label_range = np.arange(self.n_labels + 1) - 1
+            label_range = np.arange(self.metadata.number_of_labels + 1) - 1
             mask_valid_labels = (
                 label_range.reshape(-1, 1) == labels_id_array.reshape(1, -1)
             ).any(axis=1)
-            mask_invalid_labels = ~mask_valid_labels
+            label_mask[~mask_valid_labels] = True
 
-            # add filtered labels to background
-            null_predictions = self._filtered_confusion_matrices[
-                :, mask_invalid_labels, :
-            ].sum(axis=(1, 2))
-            null_groundtruths = self._filtered_confusion_matrices[
-                :, :, mask_invalid_labels
-            ].sum(axis=(1, 2))
-            null_intersection = (
-                self._filtered_confusion_matrices[
-                    :, mask_invalid_labels, mask_invalid_labels
-                ]
-                .reshape(self._filtered_confusion_matrices.shape[0], -1)
-                .sum(axis=1)
-            )
-            self._filtered_confusion_matrices[:, 0, 0] += (
-                null_groundtruths + null_predictions - null_intersection
-            )
-            self._filtered_confusion_matrices[:, mask_invalid_labels, :] = 0
-            self._filtered_confusion_matrices[:, :, mask_invalid_labels] = 0
-
-        self._filtered_confusion_matrices = self._filtered_confusion_matrices[
-            mask_datums
-        ]
-
-        self._filtered_label_metadata = compute_label_metadata(
-            confusion_matrices=self._filtered_confusion_matrices,
-            n_labels=self.n_labels,
+        filtered_confusion_matrices, _ = filter_cache(
+            confusion_matrices=self._confusion_matrices.copy(),
+            datum_mask=datum_mask,
+            label_mask=label_mask,
+            number_of_labels=self.metadata.number_of_labels,
         )
 
-    def clear_filter(self):
-        """
-        Clears any applied filters.
-        """
-        self._filtered_confusion_matrices = None
-        self._filtered_label_metadata = None
+        return Filter(
+            datum_mask=datum_mask,
+            label_mask=label_mask,
+            metadata=Metadata.create(
+                confusion_matrices=filtered_confusion_matrices,
+                is_filtered=True,
+            ),
+        )
 
-    def compute_precision_recall_iou(self) -> dict[MetricType, list]:
+    def filter(
+        self, filter_: Filter
+    ) -> tuple[NDArray[np.int64], NDArray[np.int64]]:
+        """
+        Performs the filter operation over the internal cache.
+
+        Parameters
+        ----------
+        filter_ : Filter
+            An object describing the filter operation.
+
+        Returns
+        -------
+        NDArray[int64]
+            Filtered confusion matrices.
+        NDArray[int64]
+            Filtered label metadata
+        """
+        empty_datum_mask = not filter_.datum_mask.any()
+        empty_label_mask = filter_.label_mask.all()
+        if empty_datum_mask or empty_label_mask:
+            if empty_datum_mask:
+                warnings.warn("filter does not allow any datum")
+            if empty_label_mask:
+                warnings.warn("filter removes all labels")
+            return (
+                np.array([], dtype=np.int64),
+                np.zeros((self.metadata.number_of_labels, 2), dtype=np.int64),
+            )
+
+        return filter_cache(
+            confusion_matrices=self._confusion_matrices.copy(),
+            datum_mask=filter_.datum_mask,
+            label_mask=filter_.label_mask,
+            number_of_labels=self.metadata.number_of_labels,
+        )
+
+    def compute_precision_recall_iou(
+        self, filter_: Filter | None = None
+    ) -> dict[MetricType, list]:
         """
         Performs an evaluation and returns metrics.
 
@@ -259,11 +245,18 @@ class Evaluator:
         dict[MetricType, list]
             A dictionary mapping MetricType enumerations to lists of computed metrics.
         """
-        label_metadata = self.label_metadata
+        if filter_ is not None:
+            confusion_matrices, label_metadata = self.filter(filter_)
+            n_pixels = filter_.metadata.number_of_pixels
+        else:
+            confusion_matrices = self._confusion_matrices
+            label_metadata = self._label_metadata
+            n_pixels = self.metadata.number_of_pixels
+
         results = compute_metrics(
-            confusion_matrices=self.confusion_matrices,
+            confusion_matrices=confusion_matrices,
             label_metadata=label_metadata,
-            n_pixels=self.n_pixels,
+            n_pixels=n_pixels,
         )
         return unpack_precision_recall_iou_into_metric_lists(
             results=results,
@@ -271,7 +264,9 @@ class Evaluator:
             index_to_label=self.index_to_label,
         )
 
-    def evaluate(self) -> dict[MetricType, list[Metric]]:
+    def evaluate(
+        self, filter_: Filter | None = None
+    ) -> dict[MetricType, list[Metric]]:
         """
         Computes all available metrics.
 
@@ -280,7 +275,7 @@ class Evaluator:
         dict[MetricType, list[Metric]]
             Lists of metrics organized by metric type.
         """
-        return self.compute_precision_recall_iou()
+        return self.compute_precision_recall_iou(filter_=filter_)
 
 
 class DataLoader:
@@ -431,5 +426,8 @@ class DataLoader:
             confusion_matrices=self._evaluator._confusion_matrices,
             n_labels=n_labels,
         )
-
+        self._evaluator._metadata = Metadata.create(
+            confusion_matrices=self._evaluator._confusion_matrices,
+            is_filtered=False,
+        )
         return self._evaluator

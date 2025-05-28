@@ -10,26 +10,27 @@ def test_filtering(segmentations_from_boxes: list[Segmentation]):
     loader.add_data(segmentations_from_boxes)
     evaluator = loader.finalize()
 
-    assert evaluator.metadata == {
-        "ignored_prediction_labels": [],
-        "missing_prediction_labels": [],
+    assert evaluator.metadata.to_dict() == {
         "number_of_datums": 2,
         "number_of_labels": 2,
-        "number_of_groundtruths": 25000,
+        "number_of_ground_truths": 25000,
         "number_of_predictions": 15000,
         "number_of_pixels": 540000,
         "is_filtered": False,
     }
 
-    assert evaluator.n_datums == 2
+    assert evaluator.ignored_prediction_labels == []
+    assert evaluator.missing_prediction_labels == []
+    assert evaluator.metadata.number_of_datums == 2
     assert (
         evaluator._label_metadata == np.array([[10000, 10000], [15000, 5000]])
     ).all()
 
     # test datum filtering
-    evaluator.apply_filter(datum_ids=["uid1"])
+    filter_ = evaluator.create_filter(datum_ids=["uid1"])
+    confusion_matrices, label_metadata = evaluator.filter(filter_)
     assert np.all(
-        evaluator.confusion_matrices
+        confusion_matrices
         == np.array(
             [
                 [
@@ -40,13 +41,12 @@ def test_filtering(segmentations_from_boxes: list[Segmentation]):
             ]
         )
     )
-    assert np.all(
-        evaluator.label_metadata == np.array([[10000, 10000], [0, 0]])
-    )
+    assert np.all(label_metadata == np.array([[10000, 10000], [0, 0]]))
 
-    evaluator.apply_filter(datum_ids=["uid2"])
+    filter_ = evaluator.create_filter(datum_ids=["uid2"])
+    confusion_matrices, label_metadata = evaluator.filter(filter_)
     assert np.all(
-        evaluator.confusion_matrices
+        confusion_matrices
         == np.array(
             [
                 [
@@ -57,14 +57,13 @@ def test_filtering(segmentations_from_boxes: list[Segmentation]):
             ]
         )
     )
-    assert (
-        evaluator.label_metadata == np.array([[0, 0], [15000, 5000]])
-    ).all()
+    assert (label_metadata == np.array([[0, 0], [15000, 5000]])).all()
 
     # test label filtering
-    evaluator.apply_filter(labels=["v1"])
+    filter_ = evaluator.create_filter(labels=["v1"])
+    confusion_matrices, label_metadata = evaluator.filter(filter_)
     assert np.all(
-        evaluator.confusion_matrices
+        confusion_matrices
         == np.array(
             [
                 [
@@ -80,13 +79,12 @@ def test_filtering(segmentations_from_boxes: list[Segmentation]):
             ]
         )
     )
-    assert (
-        evaluator.label_metadata == np.array([[10000, 10000], [0, 0]])
-    ).all()
+    assert (label_metadata == np.array([[10000, 10000], [0, 0]])).all()
 
-    evaluator.apply_filter(labels=["v2"])
+    filter_ = evaluator.create_filter(labels=["v2"])
+    confusion_matrices, label_metadata = evaluator.filter(filter_)
     assert np.all(
-        evaluator.confusion_matrices
+        confusion_matrices
         == np.array(
             [
                 [
@@ -102,14 +100,13 @@ def test_filtering(segmentations_from_boxes: list[Segmentation]):
             ]
         )
     )
-    assert (
-        evaluator.label_metadata == np.array([[0, 0], [15000, 5000]])
-    ).all()
+    assert (label_metadata == np.array([[0, 0], [15000, 5000]])).all()
 
     # test joint filtering
-    evaluator.apply_filter(datum_ids=["uid1"], labels=["v1"])
+    filter_ = evaluator.create_filter(datum_ids=["uid1"], labels=["v1"])
+    confusion_matrices, label_metadata = evaluator.filter(filter_)
     assert np.all(
-        evaluator.confusion_matrices
+        confusion_matrices
         == np.array(
             [
                 [
@@ -120,13 +117,12 @@ def test_filtering(segmentations_from_boxes: list[Segmentation]):
             ]
         )
     )
-    assert (
-        evaluator.label_metadata == np.array([[10000, 10000], [0, 0]])
-    ).all()
+    assert (label_metadata == np.array([[10000, 10000], [0, 0]])).all()
 
-    evaluator.apply_filter(datum_ids=["uid1"], labels=["v2"])
+    filter_ = evaluator.create_filter(datum_ids=["uid1"], labels=["v2"])
+    confusion_matrices, label_metadata = evaluator.filter(filter_)
     assert np.all(
-        evaluator.confusion_matrices
+        confusion_matrices
         == np.array(
             [
                 [
@@ -137,13 +133,15 @@ def test_filtering(segmentations_from_boxes: list[Segmentation]):
             ]
         )
     )
-    assert (evaluator.label_metadata == np.array([[0, 0], [0, 0]])).all()
+    assert (label_metadata == np.array([[0, 0], [0, 0]])).all()
 
     # test filter all
     with pytest.warns(UserWarning):
-        evaluator.apply_filter(datum_ids=[])
-    assert np.all(evaluator.confusion_matrices == np.array([]))
-    assert (evaluator.label_metadata == np.array([[0, 0], [0, 0]])).all()
+        filter_ = evaluator.create_filter(datum_ids=[])
+    with pytest.warns(UserWarning):
+        confusion_matrices, label_metadata = evaluator.filter(filter_)
+    assert np.all(confusion_matrices == np.array([]))
+    assert (label_metadata == np.array([[0, 0], [0, 0]])).all()
 
 
 def test_filtering_warning(segmentations_from_boxes: list[Segmentation]):
@@ -152,18 +150,20 @@ def test_filtering_warning(segmentations_from_boxes: list[Segmentation]):
     loader.add_data(segmentations_from_boxes)
     evaluator = loader.finalize()
 
-    assert evaluator.confusion_matrices.shape == (2, 3, 3)
+    assert evaluator._confusion_matrices.shape == (2, 3, 3)
 
     with pytest.warns():
-        evaluator.apply_filter(labels=[])
-    assert evaluator.confusion_matrices.shape == (0,)
+        filter_ = evaluator.create_filter(labels=[])
+    with pytest.warns(UserWarning):
+        confusion_matrices, _ = evaluator.filter(filter_)
+    assert confusion_matrices.shape == (0,)
 
-    evaluator.clear_filter()
-    assert evaluator.confusion_matrices.shape == (2, 3, 3)
+    assert evaluator._confusion_matrices.shape == (2, 3, 3)
 
     with pytest.warns():
-        evaluator.apply_filter(datum_ids=[])
-    assert evaluator.confusion_matrices.shape == (0,)
+        filter_ = evaluator.create_filter(datum_ids=[])
+    with pytest.warns(UserWarning):
+        confusion_matrices, _ = evaluator.filter(filter_)
+    assert confusion_matrices.shape == (0,)
 
-    evaluator.clear_filter()
-    assert evaluator.confusion_matrices.shape == (2, 3, 3)
+    assert evaluator._confusion_matrices.shape == (2, 3, 3)

@@ -17,18 +17,18 @@ def test_metadata_using_large_random_segmentations(
 
     assert evaluator.ignored_prediction_labels == []
     assert evaluator.missing_prediction_labels == []
-    assert evaluator.n_datums == 3
-    assert evaluator.n_labels == 9
-    assert evaluator.n_pixels == 3 * 2000 * 2000  # 3x (2000,2000) bitmasks
-    assert evaluator.is_filtered is False
+    assert evaluator.metadata.number_of_datums == 3
+    assert evaluator.metadata.number_of_labels == 9
+    assert (
+        evaluator.metadata.number_of_pixels == 3 * 2000 * 2000
+    )  # 3x (2000,2000) bitmasks
+    assert evaluator.metadata.is_filtered is False
 
-    metadata = evaluator.metadata
+    metadata = evaluator.metadata.to_dict()
     # pop randomly changing values
-    metadata.pop("number_of_groundtruths")
+    metadata.pop("number_of_ground_truths")
     metadata.pop("number_of_predictions")
     assert metadata == {
-        "ignored_prediction_labels": [],
-        "missing_prediction_labels": [],
         "number_of_datums": 3,
         "number_of_labels": 9,
         "number_of_pixels": 12000000,
@@ -115,9 +115,9 @@ def test_label_mismatch():
         ]
     )
     evaluator = loader.finalize()
-    print(evaluator.confusion_matrices)
+    print(evaluator._confusion_matrices)
     assert np.all(
-        evaluator.confusion_matrices
+        evaluator._confusion_matrices
         == np.array(
             [
                 [
@@ -130,7 +130,7 @@ def test_label_mismatch():
         )
     )
     assert np.all(
-        evaluator.label_metadata
+        evaluator._label_metadata
         == np.array(
             [
                 [2, 0],
@@ -174,9 +174,9 @@ def test_empty_groundtruths():
         ]
     )
     evaluator = loader.finalize()
-    print(evaluator.confusion_matrices)
+    print(evaluator._confusion_matrices)
     assert np.all(
-        evaluator.confusion_matrices
+        evaluator._confusion_matrices
         == np.array(
             [
                 [
@@ -188,7 +188,7 @@ def test_empty_groundtruths():
         )
     )
     assert np.all(
-        evaluator.label_metadata
+        evaluator._label_metadata
         == np.array(
             [
                 [0, 1],
@@ -231,9 +231,9 @@ def test_empty_predictions():
         ]
     )
     evaluator = loader.finalize()
-    print(evaluator.confusion_matrices)
+    print(evaluator._confusion_matrices)
     assert np.all(
-        evaluator.confusion_matrices
+        evaluator._confusion_matrices
         == np.array(
             [
                 [
@@ -245,7 +245,7 @@ def test_empty_predictions():
         )
     )
     assert np.all(
-        evaluator.label_metadata
+        evaluator._label_metadata
         == np.array(
             [
                 [1, 0],
