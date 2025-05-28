@@ -138,8 +138,9 @@ class Evaluator:
         """
         Prediction labels that are not present in the ground truth set.
         """
-        glabels = set(np.where(self.label_metadata[:, 0] > 0)[0])
-        plabels = set(np.where(self.label_metadata[:, 1] > 0)[0])
+        label_metadata = self.label_metadata
+        glabels = set(np.where(label_metadata[:, 0] > 0)[0])
+        plabels = set(np.where(label_metadata[:, 1] > 0)[0])
         return [
             self.index_to_label[label_id] for label_id in (plabels - glabels)
         ]
@@ -149,8 +150,9 @@ class Evaluator:
         """
         Ground truth labels that are not present in the prediction set.
         """
-        glabels = set(np.where(self.label_metadata[:, 0] > 0)[0])
-        plabels = set(np.where(self.label_metadata[:, 1] > 0)[0])
+        label_metadata = self.label_metadata
+        glabels = set(np.where(label_metadata[:, 0] > 0)[0])
+        plabels = set(np.where(label_metadata[:, 1] > 0)[0])
         return [
             self.index_to_label[label_id] for label_id in (glabels - plabels)
         ]
@@ -167,7 +169,6 @@ class Evaluator:
             "n_labels": self.n_labels,
             "ignored_prediction_labels": self.ignored_prediction_labels,
             "missing_prediction_labels": self.missing_prediction_labels,
-            "is_filtered": self.is_filtered,
         }
 
     def compute_precision_recall(
@@ -766,6 +767,8 @@ class Evaluator:
         ]
 
         if self._filtered_detailed_pairs.size == 0:
+            self._ranked_pairs = np.array([], dtype=np.float64)
+            self._label_metadata = np.zeros((self.n_labels, 2), dtype=np.int32)
             warnings.warn("no valid filtered pairs")
             return
 
