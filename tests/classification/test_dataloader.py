@@ -5,7 +5,7 @@ from valor_lite.classification import Classification, DataLoader
 
 def test_no_data():
     loader = DataLoader()
-    with pytest.warns():
+    with pytest.raises(ValueError):
         loader.finalize()
 
 

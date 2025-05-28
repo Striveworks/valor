@@ -335,8 +335,8 @@ class Metric(BaseMetric):
         The confusion matrix and related metrics for the classification task.
 
         This class encapsulates detailed information about the model's performance, including correct
-        predictions, misclassifications and unmatched ground truths (subset of false negatives).
-        It provides counts and examples for each category to facilitate in-depth analysis.
+        predictions, misclassifications, unmatched predictions (subset of false positives), and unmatched ground truths
+        (subset of false negatives). It provides counts and examples for each category to facilitate in-depth analysis.
 
         Confusion Matrix Structure:
         {
@@ -345,8 +345,10 @@ class Metric(BaseMetric):
                     'count': int,
                     'examples': [
                         {
-                            "datum_id": str,
-                            "score": float
+                            'datum': str,
+                            'groundtruth': dict,  # {'xmin': float, 'xmax': float, 'ymin': float, 'ymax': float}
+                            'prediction': dict,   # {'xmin': float, 'xmax': float, 'ymin': float, 'ymax': float}
+                            'score': float,
                         },
                         ...
                     ],
@@ -362,7 +364,8 @@ class Metric(BaseMetric):
                 'count': int,
                 'examples': [
                     {
-                        "datum_id": str
+                        'datum': str,
+                        'groundtruth': dict,  # {'xmin': float, 'xmax': float, 'ymin': float, 'ymax': float}
                     },
                     ...
                 ],

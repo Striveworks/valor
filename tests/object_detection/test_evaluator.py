@@ -34,7 +34,6 @@ def test_metadata_using_torch_metrics_example(
         "n_labels": 6,
         "n_groundtruths": 20,
         "n_predictions": 19,
-        "is_filtered": False,
     }
 
 
@@ -86,11 +85,10 @@ def test_no_groundtruths(detections_no_groundtruths):
     assert evaluator.n_groundtruths == 0
     assert evaluator.n_predictions == 2
 
-    with pytest.warns():
-        metrics = evaluator.evaluate(
-            iou_thresholds=[0.5],
-            score_thresholds=[0.5],
-        )
+    metrics = evaluator.evaluate(
+        iou_thresholds=[0.5],
+        score_thresholds=[0.5],
+    )
 
     assert len(metrics[MetricType.AP]) == 0
 
@@ -108,11 +106,10 @@ def test_no_predictions(detections_no_predictions):
     assert evaluator.n_groundtruths == 2
     assert evaluator.n_predictions == 0
 
-    with pytest.warns():
-        metrics = evaluator.evaluate(
-            iou_thresholds=[0.5],
-            score_thresholds=[0.5],
-        )
+    metrics = evaluator.evaluate(
+        iou_thresholds=[0.5],
+        score_thresholds=[0.5],
+    )
 
     assert len(metrics[MetricType.AP]) == 1
 

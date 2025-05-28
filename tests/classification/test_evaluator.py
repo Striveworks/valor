@@ -24,7 +24,6 @@ def test_metadata_using_classification_example(
         "n_labels": 3,
         "ignored_prediction_labels": [],
         "missing_prediction_labels": [],
-        "is_filtered": False,
     }
 
 

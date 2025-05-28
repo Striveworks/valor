@@ -94,7 +94,6 @@ def test_fuzz_confusion_matrix():
         "n_groundtruths": 30000,
         "n_predictions": 30000,
         "n_labels": 5,
-        "is_filtered": False,
     }
     evaluator.evaluate(
         iou_thresholds=[0.25, 0.75],

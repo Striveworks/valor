@@ -452,8 +452,7 @@ def test_filtering_all_detections(four_detections: list[Detection]):
     assert (evaluator.label_metadata == np.array([[4, 2], [2, 2]])).all()
 
     # test datum filtering
-    with pytest.warns():
-        evaluator.apply_filter(datum_ids=[])
+    evaluator.apply_filter(datum_ids=[])
     assert np.all(evaluator.detailed_pairs == np.array([]))
     assert (
         evaluator.label_metadata
@@ -566,8 +565,7 @@ def test_filtering_all_detections(four_detections: list[Detection]):
     ).all()
 
     # test label filtering
-    with pytest.warns():
-        evaluator.apply_filter(labels=[])
+    evaluator.apply_filter(labels=[])
     assert np.all(evaluator.detailed_pairs == np.array([]))
     assert (
         evaluator.label_metadata
@@ -586,11 +584,10 @@ def test_filtering_all_detections(four_detections: list[Detection]):
     ).all()
 
     # test combo
-    with pytest.warns():
-        evaluator.apply_filter(
-            datum_ids=[],
-            labels=["v1"],
-        )
+    evaluator.apply_filter(
+        datum_ids=[],
+        labels=["v1"],
+    )
     assert np.all(evaluator.detailed_pairs == np.array([]))
     assert (
         evaluator.label_metadata
@@ -606,15 +603,12 @@ def test_filtering_all_detections(four_detections: list[Detection]):
     ).all()
 
     # test evaluation
-    with pytest.warns():
-        evaluator.apply_filter(datum_ids=[])
-    with pytest.warns():
-        metrics = evaluator.evaluate(iou_thresholds=[0.5])
-    with pytest.warns():
-        evaluator.compute_confusion_matrix(
-            iou_thresholds=[0.5],
-            score_thresholds=[0.5],
-        )
+    evaluator.apply_filter(datum_ids=[])
+    metrics = evaluator.evaluate(iou_thresholds=[0.5])
+    evaluator.compute_confusion_matrix(
+        iou_thresholds=[0.5],
+        score_thresholds=[0.5],
+    )
 
     actual_metrics = [m.to_dict() for m in metrics[MetricType.AP]]
     assert len(actual_metrics) == 0
@@ -652,18 +646,3 @@ def test_is_filtered(basic_detections: list[Detection]):
     assert evaluator._filtered_detailed_pairs is None
     assert evaluator._filtered_ranked_pairs is None
     assert evaluator._filtered_label_metadata is None
-
-
-def test_filtering_empty(four_detections: list[Detection]):
-    loader = DataLoader()
-    loader.add_bounding_boxes(four_detections)
-    evaluator = loader.finalize()
-    assert evaluator.detailed_pairs.shape == (6, 7)
-    with pytest.warns():
-        evaluator.apply_filter(datum_ids=[])
-        assert evaluator.detailed_pairs.shape == (0,)
-    with pytest.warns():
-        evaluator.apply_filter(labels=[])
-        assert evaluator.detailed_pairs.shape == (0,)
-    evaluator.clear_filter()
-    assert evaluator.detailed_pairs.shape == (6, 7)
