@@ -225,6 +225,21 @@ class Evaluator:
         NDArray[int32]
             The filtered label metadata.
         """
+        empty_datum_mask = not filter_.datum_mask.any()
+        empty_label_mask = (
+            filter_.valid_label_indices.size == 0
+            if filter_.valid_label_indices is not None
+            else False
+        )
+        if empty_datum_mask or empty_label_mask:
+            if empty_datum_mask:
+                warnings.warn("filter removes all datums")
+            if empty_label_mask:
+                warnings.warn("filter removes all labels")
+            return (
+                np.array([], dtype=np.float64),
+                np.zeros((self.metadata.number_of_labels, 2), dtype=np.int32),
+            )
         return filter_cache(
             detailed_pairs=self._detailed_pairs,
             datum_mask=filter_.datum_mask,

@@ -1173,7 +1173,7 @@ def test_counts_zero_count_check(
     loader.add_data(classifications_multiclass_zero_count)
     evaluator = loader.finalize()
 
-    assert evaluator.ignored_prediction_labels == ["bee", "cat", "v5"]
+    assert evaluator.ignored_prediction_labels == ["bee", "cat"]
     assert evaluator.missing_prediction_labels == []
     assert evaluator.metadata.to_dict() == {
         "number_of_datums": 1,

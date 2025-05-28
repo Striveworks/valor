@@ -14,7 +14,7 @@ def test_metadata_using_classification_example(
     assert evaluator.missing_prediction_labels == []
     assert evaluator.metadata.number_of_datums == 6
     assert evaluator.metadata.number_of_labels == 3
-    assert evaluator.metadata.number_of_groundtruths == 6
+    assert evaluator.metadata.number_of_ground_truths == 6
     assert evaluator.metadata.number_of_predictions == 3 * 6
 
     assert evaluator.ignored_prediction_labels == []

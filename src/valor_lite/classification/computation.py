@@ -64,24 +64,18 @@ def filter_cache(
     # filter labels
     if valid_label_indices is not None:
         mask_invalid_groundtruths[
-            ~np.isin(
-                detailed_pairs[:, 1], valid_label_indices
-            )
+            ~np.isin(detailed_pairs[:, 1], valid_label_indices)
         ] = True
         mask_invalid_predictions[
-            ~np.isin(
-                detailed_pairs[:, 2], valid_label_indices
-            )
+            ~np.isin(detailed_pairs[:, 2], valid_label_indices)
         ] = True
 
     # filter cache
     if mask_invalid_groundtruths.any():
-        invalid_groundtruth_indices = np.where(mask_invalid_groundtruths)[
-            0
-        ]
-        detailed_pairs[
-            invalid_groundtruth_indices[:, None], 1
-        ] = np.array([[-1.0]])
+        invalid_groundtruth_indices = np.where(mask_invalid_groundtruths)[0]
+        detailed_pairs[invalid_groundtruth_indices[:, None], 1] = np.array(
+            [[-1.0]]
+        )
 
     if mask_invalid_predictions.any():
         invalid_prediction_indices = np.where(mask_invalid_predictions)[0]
@@ -97,13 +91,9 @@ def filter_cache(
         ),
         axis=1,
     )
-    detailed_pairs = detailed_pairs[
-        ~mask_null_pairs
-    ]
+    detailed_pairs = detailed_pairs[~mask_null_pairs]
 
-    detailed_pairs = np.unique(
-        detailed_pairs, axis=0
-    )
+    detailed_pairs = np.unique(detailed_pairs, axis=0)
     indices = np.lexsort(
         (
             detailed_pairs[:, 1],  # ground truth
@@ -242,7 +232,9 @@ def compute_precision_recall_rocauc(
 
     pd_labels = detailed_pairs[:, 2].astype(int)
 
-    mask_matching_labels = np.isclose(detailed_pairs[:, 1], detailed_pairs[:, 2])
+    mask_matching_labels = np.isclose(
+        detailed_pairs[:, 1], detailed_pairs[:, 2]
+    )
     mask_score_nonzero = ~np.isclose(detailed_pairs[:, 3], 0.0)
     mask_hardmax = detailed_pairs[:, 4] > 0.5
 
@@ -259,7 +251,9 @@ def compute_precision_recall_rocauc(
     # calculate metrics at various score thresholds
     counts = np.zeros((n_scores, n_labels, 4), dtype=np.int32)
     for score_idx in range(n_scores):
-        mask_score_threshold = detailed_pairs[:, 3] >= score_thresholds[score_idx]
+        mask_score_threshold = (
+            detailed_pairs[:, 3] >= score_thresholds[score_idx]
+        )
         mask_score = mask_score_nonzero & mask_score_threshold
 
         if hardmax:

@@ -42,7 +42,7 @@ def test_compute_confusion_matrix():
     score_thresholds = np.array([0.25, 0.75], dtype=np.float64)
 
     confusion_matrix, unmatched_ground_truths = compute_confusion_matrix(
-        data=data,
+        detailed_pairs=data,
         label_metadata=label_metadata,
         score_thresholds=score_thresholds,
         hardmax=True,
