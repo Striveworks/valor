@@ -20,7 +20,7 @@ build-backend = "setuptools.build_meta"
 
 [project.optional-dependencies]
 nlp = ["evaluate", "nltk", "rouge_score"]
-mistral = ["mistralai >= 1.0"]
+mistral = ["mistralai>=1.0.0,<1.8.0"]
 openai = ["openai"]
 docs = [
     "mkdocs",
