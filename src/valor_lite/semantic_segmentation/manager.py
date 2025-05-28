@@ -45,13 +45,11 @@ class Metadata:
     number_of_datums: int = 0
     number_of_ground_truths: int = 0
     number_of_predictions: int = 0
-    is_filtered: bool = False
 
     @classmethod
     def create(
         cls,
         confusion_matrices: NDArray[np.int64],
-        is_filtered: bool = False,
     ):
         if confusion_matrices.size == 0:
             return cls()
@@ -61,7 +59,6 @@ class Metadata:
             number_of_datums=confusion_matrices.shape[0],
             number_of_ground_truths=confusion_matrices[:, 1:, :].sum(),
             number_of_predictions=confusion_matrices[:, :, 1:].sum(),
-            is_filtered=is_filtered,
         )
 
     def to_dict(self) -> dict[str, int | bool]:
@@ -193,7 +190,6 @@ class Evaluator:
             label_mask=label_mask,
             metadata=Metadata.create(
                 confusion_matrices=filtered_confusion_matrices,
-                is_filtered=True,
             ),
         )
 
@@ -428,6 +424,5 @@ class DataLoader:
         )
         self._evaluator._metadata = Metadata.create(
             confusion_matrices=self._evaluator._confusion_matrices,
-            is_filtered=False,
         )
         return self._evaluator

@@ -22,7 +22,6 @@ def test_metadata_using_large_random_segmentations(
     assert (
         evaluator.metadata.number_of_pixels == 3 * 2000 * 2000
     )  # 3x (2000,2000) bitmasks
-    assert evaluator.metadata.is_filtered is False
 
     metadata = evaluator.metadata.to_dict()
     # pop randomly changing values
@@ -32,7 +31,6 @@ def test_metadata_using_large_random_segmentations(
         "number_of_datums": 3,
         "number_of_labels": 9,
         "number_of_pixels": 12000000,
-        "is_filtered": False,
     }
 
 

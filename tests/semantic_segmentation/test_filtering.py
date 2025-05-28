@@ -16,7 +16,6 @@ def test_filtering(segmentations_from_boxes: list[Segmentation]):
         "number_of_ground_truths": 25000,
         "number_of_predictions": 15000,
         "number_of_pixels": 540000,
-        "is_filtered": False,
     }
 
     assert evaluator.ignored_prediction_labels == []
