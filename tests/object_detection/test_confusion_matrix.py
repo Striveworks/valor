@@ -1,4 +1,5 @@
 import numpy as np
+import pytest
 
 from valor_lite.object_detection import DataLoader, Detection, Evaluator
 from valor_lite.object_detection.computation import (
@@ -9,12 +10,13 @@ from valor_lite.object_detection.computation import (
 
 def test_confusion_matrix_no_data():
     evaluator = Evaluator()
-    curves = evaluator.compute_confusion_matrix(
-        iou_thresholds=[0.5],
-        score_thresholds=[0.5],
-    )
-    assert isinstance(curves, list)
-    assert len(curves) == 0
+    with pytest.warns(UserWarning):
+        cm = evaluator.compute_confusion_matrix(
+            iou_thresholds=[0.5],
+            score_thresholds=[0.5],
+        )
+    assert isinstance(cm, list)
+    assert len(cm) == 0
 
 
 def test_compute_confusion_matrix():
@@ -182,10 +184,10 @@ def test_confusion_matrix(
         "unmatched_groundtruth",
         "v2",
     ]
-    assert evaluator.n_datums == 2
-    assert evaluator.n_labels == 6
-    assert evaluator.n_groundtruths == 4
-    assert evaluator.n_predictions == 4
+    assert evaluator.metadata.number_of_datums == 2
+    assert evaluator.metadata.number_of_labels == 6
+    assert evaluator.metadata.number_of_ground_truths == 4
+    assert evaluator.metadata.number_of_predictions == 4
 
     actual_metrics = evaluator.compute_confusion_matrix(
         iou_thresholds=[0.5],
@@ -1007,10 +1009,10 @@ def test_confusion_matrix_using_torch_metrics_example(
 
     assert evaluator.ignored_prediction_labels == ["3"]
     assert evaluator.missing_prediction_labels == []
-    assert evaluator.n_datums == 4
-    assert evaluator.n_labels == 6
-    assert evaluator.n_groundtruths == 20
-    assert evaluator.n_predictions == 19
+    assert evaluator.metadata.number_of_datums == 4
+    assert evaluator.metadata.number_of_labels == 6
+    assert evaluator.metadata.number_of_ground_truths == 20
+    assert evaluator.metadata.number_of_predictions == 19
 
     actual_metrics = evaluator.compute_confusion_matrix(
         iou_thresholds=[0.5, 0.9],
@@ -1402,10 +1404,10 @@ def test_confusion_matrix_fp_unmatched_prediction_edge_case(
 
     assert evaluator.ignored_prediction_labels == []
     assert evaluator.missing_prediction_labels == []
-    assert evaluator.n_datums == 2
-    assert evaluator.n_labels == 1
-    assert evaluator.n_groundtruths == 2
-    assert evaluator.n_predictions == 2
+    assert evaluator.metadata.number_of_datums == 2
+    assert evaluator.metadata.number_of_labels == 1
+    assert evaluator.metadata.number_of_ground_truths == 2
+    assert evaluator.metadata.number_of_predictions == 2
 
     actual_metrics = evaluator.compute_confusion_matrix(
         iou_thresholds=[0.5],
@@ -1521,15 +1523,14 @@ def test_confusion_matrix_ranked_pair_ordering(
 
         evaluator = loader.finalize()
 
-        assert evaluator.metadata == {
-            "ignored_prediction_labels": [
-                "label4",
-            ],
-            "missing_prediction_labels": [],
-            "n_datums": 1,
-            "n_groundtruths": 3,
-            "n_labels": 4,
-            "n_predictions": 4,
+        assert evaluator.ignored_prediction_labels == ["label4"]
+        assert evaluator.missing_prediction_labels == []
+        assert evaluator.metadata.to_dict() == {
+            "number_of_datums": 1,
+            "number_of_ground_truths": 3,
+            "number_of_labels": 4,
+            "number_of_predictions": 4,
+            "is_filtered": False,
         }
 
         actual_metrics = evaluator.compute_confusion_matrix(

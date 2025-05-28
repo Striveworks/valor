@@ -22,18 +22,19 @@ def test_metadata_using_torch_metrics_example(
 
     assert evaluator.ignored_prediction_labels == ["3"]
     assert evaluator.missing_prediction_labels == []
-    assert evaluator.n_datums == 4
-    assert evaluator.n_labels == 6
-    assert evaluator.n_groundtruths == 20
-    assert evaluator.n_predictions == 19
+    assert evaluator.metadata.number_of_datums == 4
+    assert evaluator.metadata.number_of_labels == 6
+    assert evaluator.metadata.number_of_ground_truths == 20
+    assert evaluator.metadata.number_of_predictions == 19
 
-    assert evaluator.metadata == {
-        "ignored_prediction_labels": ["3"],
-        "missing_prediction_labels": [],
-        "n_datums": 4,
-        "n_labels": 6,
-        "n_groundtruths": 20,
-        "n_predictions": 19,
+    assert evaluator.ignored_prediction_labels == ["3"]
+    assert evaluator.missing_prediction_labels == []
+    assert evaluator.metadata.to_dict() == {
+        "number_of_datums": 4,
+        "number_of_labels": 6,
+        "number_of_ground_truths": 20,
+        "number_of_predictions": 19,
+        "is_filtered": False,
     }
 
 
@@ -80,15 +81,16 @@ def test_no_groundtruths(detections_no_groundtruths):
 
     assert evaluator.ignored_prediction_labels == ["v1"]
     assert evaluator.missing_prediction_labels == []
-    assert evaluator.n_datums == 2
-    assert evaluator.n_labels == 1
-    assert evaluator.n_groundtruths == 0
-    assert evaluator.n_predictions == 2
+    assert evaluator.metadata.number_of_datums == 2
+    assert evaluator.metadata.number_of_labels == 1
+    assert evaluator.metadata.number_of_ground_truths == 0
+    assert evaluator.metadata.number_of_predictions == 2
 
-    metrics = evaluator.evaluate(
-        iou_thresholds=[0.5],
-        score_thresholds=[0.5],
-    )
+    with pytest.warns(UserWarning):
+        metrics = evaluator.evaluate(
+            iou_thresholds=[0.5],
+            score_thresholds=[0.5],
+        )
 
     assert len(metrics[MetricType.AP]) == 0
 
@@ -101,15 +103,16 @@ def test_no_predictions(detections_no_predictions):
 
     assert evaluator.ignored_prediction_labels == []
     assert evaluator.missing_prediction_labels == ["v1"]
-    assert evaluator.n_datums == 2
-    assert evaluator.n_labels == 1
-    assert evaluator.n_groundtruths == 2
-    assert evaluator.n_predictions == 0
+    assert evaluator.metadata.number_of_datums == 2
+    assert evaluator.metadata.number_of_labels == 1
+    assert evaluator.metadata.number_of_ground_truths == 2
+    assert evaluator.metadata.number_of_predictions == 0
 
-    metrics = evaluator.evaluate(
-        iou_thresholds=[0.5],
-        score_thresholds=[0.5],
-    )
+    with pytest.warns(UserWarning):
+        metrics = evaluator.evaluate(
+            iou_thresholds=[0.5],
+            score_thresholds=[0.5],
+        )
 
     assert len(metrics[MetricType.AP]) == 1
 

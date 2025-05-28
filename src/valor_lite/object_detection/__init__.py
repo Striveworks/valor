@@ -1,5 +1,5 @@
 from .annotation import Bitmask, BoundingBox, Detection, Polygon
-from .manager import DataLoader, Evaluator
+from .manager import DataLoader, Evaluator, Filter
 from .metric import Metric, MetricType
 
 __all__ = [
@@ -11,4 +11,5 @@ __all__ = [
     "MetricType",
     "DataLoader",
     "Evaluator",
+    "Filter",
 ]

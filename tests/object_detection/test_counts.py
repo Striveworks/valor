@@ -36,10 +36,10 @@ def test_counts_metrics_first_class(
 
         assert evaluator.ignored_prediction_labels == []
         assert evaluator.missing_prediction_labels == []
-        assert evaluator.n_datums == 2
-        assert evaluator.n_labels == 1
-        assert evaluator.n_groundtruths == 2
-        assert evaluator.n_predictions == 1
+        assert evaluator.metadata.number_of_datums == 2
+        assert evaluator.metadata.number_of_labels == 1
+        assert evaluator.metadata.number_of_ground_truths == 2
+        assert evaluator.metadata.number_of_predictions == 1
 
         # test Counts
         actual_metrics = [m.to_dict() for m in metrics[MetricType.Counts]]
@@ -137,10 +137,10 @@ def test_counts_metrics_second_class(
 
         assert evaluator.ignored_prediction_labels == []
         assert evaluator.missing_prediction_labels == []
-        assert evaluator.n_datums == 2
-        assert evaluator.n_labels == 1
-        assert evaluator.n_groundtruths == 1
-        assert evaluator.n_predictions == 1
+        assert evaluator.metadata.number_of_datums == 2
+        assert evaluator.metadata.number_of_labels == 1
+        assert evaluator.metadata.number_of_ground_truths == 1
+        assert evaluator.metadata.number_of_predictions == 1
 
         # test Counts
         actual_metrics = [m.to_dict() for m in metrics[MetricType.Counts]]
@@ -522,15 +522,14 @@ def test_counts_ranked_pair_ordering(
         method(loader, detections=[input_])
         evaluator = loader.finalize()
 
-        assert evaluator.metadata == {
-            "ignored_prediction_labels": [
-                "label4",
-            ],
-            "missing_prediction_labels": [],
-            "n_datums": 1,
-            "n_groundtruths": 3,
-            "n_labels": 4,
-            "n_predictions": 4,
+        assert evaluator.ignored_prediction_labels == ["label4"]
+        assert evaluator.missing_prediction_labels == []
+        assert evaluator.metadata.to_dict() == {
+            "number_of_datums": 1,
+            "number_of_ground_truths": 3,
+            "number_of_labels": 4,
+            "number_of_predictions": 4,
+            "is_filtered": False,
         }
 
         metrics = evaluator.evaluate(

@@ -75,10 +75,11 @@ def test_fuzz_detections_with_filtering():
 
         datum_subset = [f"uid{i}" for i in range(len(detections) // 2)]
 
-        evaluator.apply_filter(datum_ids=datum_subset)
+        filter_ = evaluator.create_filter(datum_ids=datum_subset)
         evaluator.evaluate(
             iou_thresholds=[0.25, 0.75],
             score_thresholds=[0.25, 0.75],
+            filter_=filter_,
         )
 
 
@@ -87,13 +88,14 @@ def test_fuzz_confusion_matrix():
     loader = DataLoader()
     loader.add_bounding_boxes(dets)
     evaluator = loader.finalize()
-    assert evaluator.metadata == {
-        "ignored_prediction_labels": [],
-        "missing_prediction_labels": [],
-        "n_datums": 1000,
-        "n_groundtruths": 30000,
-        "n_predictions": 30000,
-        "n_labels": 5,
+    assert evaluator.ignored_prediction_labels == []
+    assert evaluator.missing_prediction_labels == []
+    assert evaluator.metadata.to_dict() == {
+        "number_of_datums": 1000,
+        "number_of_ground_truths": 30000,
+        "number_of_predictions": 30000,
+        "number_of_labels": 5,
+        "is_filtered": False,
     }
     evaluator.evaluate(
         iou_thresholds=[0.25, 0.75],

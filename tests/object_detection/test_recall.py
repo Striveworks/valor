@@ -73,10 +73,10 @@ def test_recall_metrics_first_class(
 
         assert evaluator.ignored_prediction_labels == []
         assert evaluator.missing_prediction_labels == []
-        assert evaluator.n_datums == 2
-        assert evaluator.n_labels == 1
-        assert evaluator.n_groundtruths == 2
-        assert evaluator.n_predictions == 1
+        assert evaluator.metadata.number_of_datums == 2
+        assert evaluator.metadata.number_of_labels == 1
+        assert evaluator.metadata.number_of_ground_truths == 2
+        assert evaluator.metadata.number_of_predictions == 1
 
         # test Recall
         actual_metrics = [m.to_dict() for m in metrics[MetricType.Recall]]
@@ -157,10 +157,10 @@ def test_recall_metrics_second_class(
 
         assert evaluator.ignored_prediction_labels == []
         assert evaluator.missing_prediction_labels == []
-        assert evaluator.n_datums == 2
-        assert evaluator.n_labels == 1
-        assert evaluator.n_groundtruths == 1
-        assert evaluator.n_predictions == 1
+        assert evaluator.metadata.number_of_datums == 2
+        assert evaluator.metadata.number_of_labels == 1
+        assert evaluator.metadata.number_of_ground_truths == 1
+        assert evaluator.metadata.number_of_predictions == 1
 
         # test Recall
         actual_metrics = [m.to_dict() for m in metrics[MetricType.Recall]]

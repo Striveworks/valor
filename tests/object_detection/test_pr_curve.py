@@ -51,10 +51,10 @@ def test_pr_curve_using_torch_metrics_example(
 
     assert evaluator.ignored_prediction_labels == ["3"]
     assert evaluator.missing_prediction_labels == []
-    assert evaluator.n_datums == 4
-    assert evaluator.n_labels == 6
-    assert evaluator.n_groundtruths == 20
-    assert evaluator.n_predictions == 19
+    assert evaluator.metadata.number_of_datums == 4
+    assert evaluator.metadata.number_of_labels == 6
+    assert evaluator.metadata.number_of_ground_truths == 20
+    assert evaluator.metadata.number_of_predictions == 19
 
     metrics = evaluator.evaluate(
         iou_thresholds=[0.5, 0.75],
