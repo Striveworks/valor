@@ -117,7 +117,6 @@ def test_counts_basic(basic_classifications: list[Classification]):
         "number_of_ground_truths": 3,
         "number_of_predictions": 12,
         "number_of_labels": 4,
-        "is_filtered": False,
     }
 
     metrics = evaluator.evaluate(
@@ -666,7 +665,6 @@ def test_counts_with_image_example(
         "number_of_ground_truths": 2,
         "number_of_predictions": 4,
         "number_of_labels": 4,
-        "is_filtered": False,
     }
     metrics = evaluator.evaluate()
 
@@ -749,7 +747,6 @@ def test_counts_with_tabular_example(
         "number_of_ground_truths": 10,
         "number_of_predictions": 30,
         "number_of_labels": 3,
-        "is_filtered": False,
     }
 
     metrics = evaluator.evaluate()
@@ -819,7 +816,6 @@ def test_counts_multiclass(
         "number_of_ground_truths": 5,
         "number_of_labels": 3,
         "number_of_predictions": 15,
-        "is_filtered": False,
     }
 
     metrics = evaluator.evaluate(
@@ -1021,7 +1017,6 @@ def test_counts_true_negatives_check_animals(
         "number_of_ground_truths": 1,
         "number_of_predictions": 3,
         "number_of_labels": 3,
-        "is_filtered": False,
     }
     metrics = evaluator.evaluate(
         score_thresholds=[0.05, 0.15, 0.95],
@@ -1180,7 +1175,6 @@ def test_counts_zero_count_check(
         "number_of_ground_truths": 1,
         "number_of_labels": 3,
         "number_of_predictions": 3,
-        "is_filtered": False,
     }
 
     metrics = evaluator.evaluate(

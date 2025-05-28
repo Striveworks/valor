@@ -45,7 +45,6 @@ class Metadata:
     number_of_ground_truths: int = 0
     number_of_predictions: int = 0
     number_of_labels: int = 0
-    is_filtered: int = False
 
     @classmethod
     def create(

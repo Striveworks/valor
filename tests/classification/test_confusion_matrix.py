@@ -113,7 +113,6 @@ def test_confusion_matrix_basic(basic_classifications: list[Classification]):
         "number_of_ground_truths": 3,
         "number_of_predictions": 12,
         "number_of_labels": 4,
-        "is_filtered": False,
     }
 
     actual_metrics = evaluator.compute_confusion_matrix(
@@ -413,7 +412,6 @@ def test_confusion_matrix_multiclass(
         "number_of_ground_truths": 5,
         "number_of_labels": 3,
         "number_of_predictions": 15,
-        "is_filtered": False,
     }
 
     actual_metrics = evaluator.compute_confusion_matrix(
@@ -576,7 +574,6 @@ def test_confusion_matrix_without_hardmax_animal_example(
         "number_of_ground_truths": 1,
         "number_of_predictions": 3,
         "number_of_labels": 3,
-        "is_filtered": False,
     }
 
     actual_metrics = evaluator.compute_confusion_matrix(

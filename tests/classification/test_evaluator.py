@@ -24,7 +24,6 @@ def test_metadata_using_classification_example(
         "number_of_ground_truths": 6,
         "number_of_predictions": 3 * 6,
         "number_of_labels": 3,
-        "is_filtered": False,
     }
 
 

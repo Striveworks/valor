@@ -80,7 +80,6 @@ def test_recall_basic(basic_classifications: list[Classification]):
         "number_of_ground_truths": 3,
         "number_of_predictions": 12,
         "number_of_labels": 4,
-        "is_filtered": False,
     }
 
     metrics = evaluator.evaluate(
@@ -253,7 +252,6 @@ def test_recall_with_image_example(
         "number_of_ground_truths": 2,
         "number_of_predictions": 4,
         "number_of_labels": 4,
-        "is_filtered": False,
     }
 
     metrics = evaluator.evaluate()
@@ -290,7 +288,6 @@ def test_recall_with_tabular_example(
         "number_of_ground_truths": 10,
         "number_of_predictions": 30,
         "number_of_labels": 3,
-        "is_filtered": False,
     }
 
     metrics = evaluator.evaluate()
