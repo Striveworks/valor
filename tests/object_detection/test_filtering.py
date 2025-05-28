@@ -649,12 +649,21 @@ def test_filtering_random_detections():
     evaluator.evaluate(filter_=filter_)
 
 
-def test_is_filtered(basic_detections: list[Detection]):
+def test_filter_metadata(basic_detections: list[Detection]):
     manager = DataLoader()
     manager.add_bounding_boxes(basic_detections)
     evaluator = manager.finalize()
 
-    assert evaluator.metadata.is_filtered is False
+    assert evaluator.metadata.number_of_datums == 2
+    assert evaluator.metadata.number_of_ground_truths == 3
+    assert evaluator.metadata.number_of_predictions == 2
 
     filter_ = evaluator.create_filter(datum_ids=["uid1"])
-    assert filter_.metadata.is_filtered is True
+    assert filter_.metadata.number_of_datums == 1
+    assert filter_.metadata.number_of_ground_truths == 2
+    assert filter_.metadata.number_of_predictions == 1
+
+    assert (
+        evaluator.metadata.number_of_labels
+        == filter_.metadata.number_of_labels
+    )

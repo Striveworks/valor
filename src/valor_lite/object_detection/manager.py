@@ -54,7 +54,6 @@ class Metadata:
     number_of_ground_truths: int = 0
     number_of_predictions: int = 0
     number_of_labels: int = 0
-    is_filtered: bool = False
 
     @classmethod
     def create(
@@ -62,7 +61,6 @@ class Metadata:
         detailed_pairs: NDArray[np.float64],
         number_of_datums: int,
         number_of_labels: int,
-        is_filtered: bool,
     ):
         # count number of ground truths
         mask_valid_gts = detailed_pairs[:, 1] >= 0
@@ -83,7 +81,6 @@ class Metadata:
             number_of_ground_truths=number_of_ground_truths,
             number_of_predictions=number_of_predictions,
             number_of_labels=number_of_labels,
-            is_filtered=is_filtered,
         )
 
     def to_dict(self) -> dict[str, int | bool]:
@@ -507,7 +504,6 @@ class Evaluator:
             detailed_pairs=self._detailed_pairs,
             number_of_datums=n_datums,
             number_of_labels=n_labels,
-            is_filtered=False,
         )
         return self
 
@@ -542,7 +538,7 @@ class Evaluator:
                     mask_datums=np.zeros_like(mask_datums),
                     mask_groundtruths=np.array([], dtype=np.bool_),
                     mask_predictions=np.array([], dtype=np.bool_),
-                    metadata=Metadata(is_filtered=True),
+                    metadata=Metadata(),
                 )
             valid_datum_indices = np.array(
                 [self.datum_id_to_index[uid] for uid in datum_ids],
@@ -597,7 +593,7 @@ class Evaluator:
                     mask_datums=mask_datums,
                     mask_groundtruths=np.ones_like(mask_datums),
                     mask_predictions=np.ones_like(mask_datums),
-                    metadata=Metadata(is_filtered=True),
+                    metadata=Metadata(),
                 )
             valid_label_indices = np.array(
                 [self.label_to_index[label] for label in labels] + [-1]
@@ -631,7 +627,6 @@ class Evaluator:
                 detailed_pairs=filtered_detailed_pairs,
                 number_of_datums=number_of_datums,
                 number_of_labels=len(self.index_to_label),
-                is_filtered=True,
             ),
         )
 

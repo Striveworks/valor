@@ -1530,7 +1530,6 @@ def test_confusion_matrix_ranked_pair_ordering(
             "number_of_ground_truths": 3,
             "number_of_labels": 4,
             "number_of_predictions": 4,
-            "is_filtered": False,
         }
 
         actual_metrics = evaluator.compute_confusion_matrix(
