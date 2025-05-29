@@ -4,23 +4,23 @@ import numpy as np
 import pytest
 from shapely.geometry import Polygon as ShapelyPolygon
 
+from valor_lite.exceptions import (
+    EmptyEvaluatorException,
+    InternalCacheException,
+)
 from valor_lite.object_detection import (
     Bitmask,
     BoundingBox,
     DataLoader,
     Detection,
-    Evaluator,
     Polygon,
 )
 
 
 def test_no_data():
     loader = DataLoader()
-    with pytest.warns(UserWarning):
+    with pytest.raises(EmptyEvaluatorException):
         loader.finalize()
-    assert loader._detailed_pairs.size == 0
-    assert loader._ranked_pairs.size == 0
-    assert loader._label_metadata.size == 0
 
 
 def test_iou_computation():
@@ -77,12 +77,12 @@ def test_iou_computation():
 
     loader = DataLoader()
     loader.add_bounding_boxes([detection])
-    loader.finalize()
+    evaluator = loader.finalize()
 
-    assert loader._detailed_pairs.shape == (7, 7)
+    assert evaluator._detailed_pairs.shape == (7, 7)
 
     # show that three unique IOUs exist
-    unique_ious = np.unique(loader._detailed_pairs[:, 5])
+    unique_ious = np.unique(evaluator._detailed_pairs[:, 5])
     assert np.isclose(
         unique_ious, np.array([0.0, 0.12755102, 0.68067227])
     ).all()
@@ -181,28 +181,28 @@ def test_mixed_annotations(
 
 def test_corrupted_cache():
 
-    evaluator = Evaluator()
+    loader = DataLoader()
 
     # test datum cache size mismatch
-    evaluator.datum_id_to_index = {"x": 0}
-    evaluator.index_to_datum_id = []
-    with pytest.raises(RuntimeError):
-        evaluator._add_datum(datum_id="a")
+    loader._evaluator.datum_id_to_index = {"x": 0}
+    loader._evaluator.index_to_datum_id = []
+    with pytest.raises(InternalCacheException):
+        loader._add_datum(datum_id="a")
 
     # test ground truth annotation cache size mismatch
-    evaluator.groundtruth_id_to_index = {"x": 0}
-    evaluator.index_to_groundtruth_id = []
-    with pytest.raises(RuntimeError):
-        evaluator._add_groundtruth(annotation_id="a")
+    loader._evaluator.groundtruth_id_to_index = {"x": 0}
+    loader._evaluator.index_to_groundtruth_id = []
+    with pytest.raises(InternalCacheException):
+        loader._add_groundtruth(annotation_id="a")
 
     # test ground truth annotation cache size mismatch
-    evaluator.prediction_id_to_index = {"x": 0}
-    evaluator.index_to_prediction_id = []
-    with pytest.raises(RuntimeError):
-        evaluator._add_prediction(annotation_id="a")
+    loader._evaluator.prediction_id_to_index = {"x": 0}
+    loader._evaluator.index_to_prediction_id = []
+    with pytest.raises(InternalCacheException):
+        loader._add_prediction(annotation_id="a")
 
     # test ground truth annotation cache size mismatch
-    evaluator.label_to_index = {"x": 0}
-    evaluator.index_to_label = []
-    with pytest.raises(RuntimeError):
-        evaluator._add_label(label="a")
+    loader._evaluator.label_to_index = {"x": 0}
+    loader._evaluator.index_to_label = []
+    with pytest.raises(InternalCacheException):
+        loader._add_label(label="a")

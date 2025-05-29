@@ -1,4 +1,3 @@
-import warnings
 from dataclasses import asdict, dataclass
 
 import numpy as np
@@ -17,6 +16,7 @@ from valor_lite.classification.utilities import (
     unpack_confusion_matrix_into_metric_list,
     unpack_precision_recall_rocauc_into_metric_lists,
 )
+from valor_lite.exceptions import EmptyEvaluatorException, EmptyFilterException
 
 """
 Usage
@@ -84,6 +84,18 @@ class Filter:
     datum_mask: NDArray[np.bool_]
     valid_label_indices: NDArray[np.int32] | None
     metadata: Metadata
+
+    def __post_init__(self):
+        # validate datum mask
+        if not self.datum_mask.any():
+            raise EmptyFilterException("filter removes all datums")
+
+        # validate label indices
+        if (
+            self.valid_label_indices is not None
+            and self.valid_label_indices.size == 0
+        ):
+            raise EmptyFilterException("filter removes all labels")
 
 
 class Evaluator:
@@ -155,7 +167,6 @@ class Evaluator:
         datum_mask = np.ones(n_pairs, dtype=np.bool_)
         if datum_ids is not None:
             if not datum_ids:
-                warnings.warn("no valid filtered pairs")
                 return Filter(
                     datum_mask=np.zeros_like(datum_mask),
                     valid_label_indices=None,
@@ -173,7 +184,6 @@ class Evaluator:
         valid_label_indices = None
         if labels is not None:
             if not labels:
-                warnings.warn("no valid filtered pairs")
                 return Filter(
                     datum_mask=datum_mask,
                     valid_label_indices=np.array([], dtype=np.int32),
@@ -224,21 +234,6 @@ class Evaluator:
         NDArray[int32]
             The filtered label metadata.
         """
-        empty_datum_mask = not filter_.datum_mask.any()
-        empty_label_mask = (
-            filter_.valid_label_indices.size == 0
-            if filter_.valid_label_indices is not None
-            else False
-        )
-        if empty_datum_mask or empty_label_mask:
-            if empty_datum_mask:
-                warnings.warn("filter removes all datums")
-            if empty_label_mask:
-                warnings.warn("filter removes all labels")
-            return (
-                np.array([], dtype=np.float64),
-                np.zeros((self.metadata.number_of_labels, 2), dtype=np.int32),
-            )
         return filter_cache(
             detailed_pairs=self._detailed_pairs,
             datum_mask=filter_.datum_mask,
@@ -502,9 +497,7 @@ class Evaluator:
             A ready-to-use evaluator object.
         """
         if self._detailed_pairs.size == 0:
-            self._label_metadata = np.array([], dtype=np.int32)
-            warnings.warn("evaluator is empty")
-            return self
+            raise EmptyEvaluatorException
 
         self._label_metadata = compute_label_metadata(
             ids=self._detailed_pairs[:, :3].astype(np.int32),

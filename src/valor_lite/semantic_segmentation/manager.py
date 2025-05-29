@@ -1,10 +1,10 @@
-import warnings
 from dataclasses import asdict, dataclass
 
 import numpy as np
 from numpy.typing import NDArray
 from tqdm import tqdm
 
+from valor_lite.exceptions import EmptyEvaluatorException, EmptyFilterException
 from valor_lite.semantic_segmentation.annotation import Segmentation
 from valor_lite.semantic_segmentation.computation import (
     compute_intermediate_confusion_matrices,
@@ -70,6 +70,15 @@ class Filter:
     datum_mask: NDArray[np.bool_]
     label_mask: NDArray[np.bool_]
     metadata: Metadata
+
+    def __post_init__(self):
+        # validate datum mask
+        if not self.datum_mask.any():
+            raise EmptyFilterException("filter removes all datums")
+
+        # validate label mask
+        if self.label_mask.all():
+            raise EmptyFilterException("filter removes all labels")
 
 
 class Evaluator:
@@ -140,10 +149,9 @@ class Evaluator:
         label_mask = np.zeros(
             self.metadata.number_of_labels + 1, dtype=np.bool_
         )
+
         if datum_ids is not None:
             if not datum_ids:
-                filtered_confusion_matrices = np.array([], dtype=np.int64)
-                warnings.warn("datum filter results in empty data array")
                 return Filter(
                     datum_mask=np.zeros_like(datum_mask),
                     label_mask=label_mask,
@@ -159,10 +167,9 @@ class Evaluator:
                 == datum_id_array.reshape(1, -1)
             ).any(axis=1)
             datum_mask[~mask_valid_datums] = False
+
         if labels is not None:
             if not labels:
-                filtered_confusion_matrices = np.array([], dtype=np.int64)
-                warnings.warn("label filter results in empty data array")
                 return Filter(
                     datum_mask=datum_mask,
                     label_mask=np.ones_like(label_mask),
@@ -211,18 +218,6 @@ class Evaluator:
         NDArray[int64]
             Filtered label metadata
         """
-        empty_datum_mask = not filter_.datum_mask.any()
-        empty_label_mask = filter_.label_mask.all()
-        if empty_datum_mask or empty_label_mask:
-            if empty_datum_mask:
-                warnings.warn("filter does not allow any datum")
-            if empty_label_mask:
-                warnings.warn("filter removes all labels")
-            return (
-                np.array([], dtype=np.int64),
-                np.zeros((self.metadata.number_of_labels, 2), dtype=np.int64),
-            )
-
         return filter_cache(
             confusion_matrices=self._confusion_matrices.copy(),
             datum_mask=filter_.datum_mask,
@@ -408,7 +403,7 @@ class DataLoader:
         """
 
         if len(self.matrices) == 0:
-            raise ValueError("No data available to create evaluator.")
+            raise EmptyEvaluatorException
 
         n_labels = len(self._evaluator.index_to_label)
         n_datums = len(self._evaluator.index_to_datum_id)

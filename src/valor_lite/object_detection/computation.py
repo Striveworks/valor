@@ -1,4 +1,3 @@
-import warnings
 from enum import IntFlag, auto
 
 import numpy as np
@@ -280,14 +279,6 @@ def filter_cache(
     )
     detailed_pairs = detailed_pairs[~mask_null_pairs]
 
-    if detailed_pairs.size == 0:
-        warnings.warn("no valid filtered pairs")
-        return (
-            np.array([], dtype=np.float64),
-            np.array([], dtype=np.float64),
-            np.zeros((n_labels, 2), dtype=np.int32),
-        )
-
     # sorts by score, iou with ground truth id as a tie-breaker
     indices = np.lexsort(
         (
@@ -440,15 +431,6 @@ def compute_precion_recall(
     mAR = np.zeros(n_scores, dtype=np.float64)
     counts = np.zeros((n_ious, n_scores, n_labels, 6), dtype=np.float64)
     pr_curve = np.zeros((n_ious, n_labels, 101, 2))
-
-    if ranked_pairs.size == 0:
-        warnings.warn("no valid ranked pairs")
-        return (
-            (average_precision, mAP),
-            (average_recall, mAR),
-            counts,
-            pr_curve,
-        )
 
     # start computation
     ids = ranked_pairs[:, :5].astype(np.int32)

@@ -85,11 +85,10 @@ def test_no_groundtruths(detections_no_groundtruths):
     assert evaluator.metadata.number_of_ground_truths == 0
     assert evaluator.metadata.number_of_predictions == 2
 
-    with pytest.warns(UserWarning):
-        metrics = evaluator.evaluate(
-            iou_thresholds=[0.5],
-            score_thresholds=[0.5],
-        )
+    metrics = evaluator.evaluate(
+        iou_thresholds=[0.5],
+        score_thresholds=[0.5],
+    )
 
     assert len(metrics[MetricType.AP]) == 0
 
@@ -107,11 +106,10 @@ def test_no_predictions(detections_no_predictions):
     assert evaluator.metadata.number_of_ground_truths == 2
     assert evaluator.metadata.number_of_predictions == 0
 
-    with pytest.warns(UserWarning):
-        metrics = evaluator.evaluate(
-            iou_thresholds=[0.5],
-            score_thresholds=[0.5],
-        )
+    metrics = evaluator.evaluate(
+        iou_thresholds=[0.5],
+        score_thresholds=[0.5],
+    )
 
     assert len(metrics[MetricType.AP]) == 1
 
