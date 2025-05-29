@@ -1,11 +1,12 @@
 import pytest
 
 from valor_lite.classification import Classification, DataLoader
+from valor_lite.exceptions import EmptyEvaluatorException
 
 
-def test_no_data():
+def test_finalization_no_data():
     loader = DataLoader()
-    with pytest.warns(UserWarning):
+    with pytest.raises(EmptyEvaluatorException):
         loader.finalize()
 
 

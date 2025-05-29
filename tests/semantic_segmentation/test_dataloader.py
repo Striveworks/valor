@@ -1,11 +1,12 @@
 import pytest
 
+from valor_lite.exceptions import EmptyEvaluatorException
 from valor_lite.semantic_segmentation import DataLoader, Segmentation
 
 
 def test_no_data():
     loader = DataLoader()
-    with pytest.raises(ValueError):
+    with pytest.raises(EmptyEvaluatorException):
         loader.finalize()
 
 

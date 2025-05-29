@@ -2,6 +2,7 @@ from random import choice
 
 import numpy as np
 
+from valor_lite.exceptions import EmptyFilterException
 from valor_lite.semantic_segmentation import Bitmask, DataLoader, Segmentation
 
 
@@ -78,5 +79,9 @@ def test_fuzz_segmentations_with_filtering():
 
         datum_subset = [f"uid{i}" for i in range(len(segmentations) // 2)]
 
-        filter_ = evaluator.create_filter(datum_ids=datum_subset)
-        evaluator.evaluate(filter_=filter_)
+        try:
+            filter_ = evaluator.create_filter(datum_ids=datum_subset)
+        except EmptyFilterException:
+            pass
+        else:
+            evaluator.evaluate(filter_=filter_)

@@ -1,6 +1,7 @@
 import numpy as np
 import pytest
 
+from valor_lite.exceptions import EmptyFilterException
 from valor_lite.semantic_segmentation import DataLoader, Segmentation
 
 
@@ -135,15 +136,11 @@ def test_filtering(segmentations_from_boxes: list[Segmentation]):
     assert (label_metadata == np.array([[0, 0], [0, 0]])).all()
 
     # test filter all
-    with pytest.warns(UserWarning):
-        filter_ = evaluator.create_filter(datum_ids=[])
-    with pytest.warns(UserWarning):
-        confusion_matrices, label_metadata = evaluator.filter(filter_)
-    assert np.all(confusion_matrices == np.array([]))
-    assert (label_metadata == np.array([[0, 0], [0, 0]])).all()
+    with pytest.raises(EmptyFilterException):
+        evaluator.create_filter(datum_ids=[])
 
 
-def test_filtering_warning(segmentations_from_boxes: list[Segmentation]):
+def test_filtering_raises(segmentations_from_boxes: list[Segmentation]):
 
     loader = DataLoader()
     loader.add_data(segmentations_from_boxes)
@@ -151,18 +148,12 @@ def test_filtering_warning(segmentations_from_boxes: list[Segmentation]):
 
     assert evaluator._confusion_matrices.shape == (2, 3, 3)
 
-    with pytest.warns():
-        filter_ = evaluator.create_filter(labels=[])
-    with pytest.warns(UserWarning):
-        confusion_matrices, _ = evaluator.filter(filter_)
-    assert confusion_matrices.shape == (0,)
+    with pytest.raises(EmptyFilterException):
+        evaluator.create_filter(labels=[])
 
     assert evaluator._confusion_matrices.shape == (2, 3, 3)
 
-    with pytest.warns():
-        filter_ = evaluator.create_filter(datum_ids=[])
-    with pytest.warns(UserWarning):
-        confusion_matrices, _ = evaluator.filter(filter_)
-    assert confusion_matrices.shape == (0,)
+    with pytest.raises(EmptyFilterException):
+        evaluator.create_filter(datum_ids=[])
 
     assert evaluator._confusion_matrices.shape == (2, 3, 3)
