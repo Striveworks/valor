@@ -39,7 +39,7 @@ repos:
             "tqdm",
             "packaging",
             "openai",
-            "mistralai>=1.0",
+            "mistralai>=1.0,<1.8.0",
             "nltk",
             "rouge_score",
             "evaluate",
