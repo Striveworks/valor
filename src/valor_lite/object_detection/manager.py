@@ -768,14 +768,14 @@ class DataLoader:
             A ready-to-use evaluator object.
         """
         if not self.pairs:
-            raise EmptyEvaluatorException
+            raise EmptyEvaluatorException()
 
         n_labels = len(self._evaluator.index_to_label)
         n_datums = len(self._evaluator.index_to_datum_id)
 
         self._evaluator._detailed_pairs = np.concatenate(self.pairs, axis=0)
         if self._evaluator._detailed_pairs.size == 0:
-            raise EmptyEvaluatorException
+            raise EmptyEvaluatorException()
 
         # order pairs by descending score, iou
         indices = np.lexsort(

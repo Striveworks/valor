@@ -497,7 +497,7 @@ class Evaluator:
             A ready-to-use evaluator object.
         """
         if self._detailed_pairs.size == 0:
-            raise EmptyEvaluatorException
+            raise EmptyEvaluatorException()
 
         self._label_metadata = compute_label_metadata(
             ids=self._detailed_pairs[:, :3].astype(np.int32),

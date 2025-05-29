@@ -403,7 +403,7 @@ class DataLoader:
         """
 
         if len(self.matrices) == 0:
-            raise EmptyEvaluatorException
+            raise EmptyEvaluatorException()
 
         n_labels = len(self._evaluator.index_to_label)
         n_datums = len(self._evaluator.index_to_datum_id)
