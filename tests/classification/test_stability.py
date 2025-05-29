@@ -59,11 +59,7 @@ def test_fuzz_classifications_with_filtering():
         evaluator = loader.finalize()
 
         datum_subset = [f"uid{i}" for i in range(len(classifications) // 2)]
-
-        filter_ = evaluator.create_filter(
-            datum_uids=datum_subset,
-        )
-
+        filter_ = evaluator.create_filter(datum_ids=datum_subset)
         evaluator.evaluate(
             score_thresholds=[0.25, 0.75],
             filter_=filter_,
