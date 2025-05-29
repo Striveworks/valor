@@ -1,22 +1,18 @@
 import numpy as np
 import pytest
 
-from valor_lite.semantic_segmentation import (
-    Bitmask,
-    Segmentation,
-    generate_segmentation,
-)
+from valor_lite.semantic_segmentation import Bitmask, Segmentation
 
 
 def test_bitmask():
 
     Bitmask(
-        mask=np.array([True, False]),
+        mask=np.array([[True, False]]),
         label="label",
     )
 
     with pytest.raises(ValueError) as e:
-        Bitmask(mask=np.array([1, 2]), label="label")
+        Bitmask(mask=np.array([[1, 2]]), label="label")
     assert "int64" in str(e)
 
 
@@ -26,112 +22,178 @@ def test_segmentation():
         uid="uid",
         groundtruths=[
             Bitmask(
-                mask=np.array([True, False]),
+                mask=np.array([[True, False]]),
                 label="label",
             )
         ],
         predictions=[
             Bitmask(
-                mask=np.array([True, False]),
+                mask=np.array([[True, False]]),
                 label="label",
             )
         ],
+        shape=(1, 2),
     )
-    assert s.shape == (2,)
+    assert s.shape == (1, 2)
     assert s.size == 2
 
+    # test shape mismatch within ground truths
     with pytest.raises(ValueError) as e:
         Segmentation(
             uid="uid",
             groundtruths=[
                 Bitmask(
-                    mask=np.array([True, False, False]),
-                    label="label",
-                )
+                    mask=np.array([[True, False, False]]),
+                    label="label1",
+                ),
+                Bitmask(
+                    mask=np.array([[False, False]]),
+                    label="label2",
+                ),
             ],
             predictions=[
                 Bitmask(
-                    mask=np.array([True, False]),
+                    mask=np.array([[True, False]]),
                     label="label",
                 )
             ],
+            shape=(1, 3),
         )
-    assert "mismatch" in str(e)
+    assert "Received mask with shape '(1, 2)'" in str(e)
 
-    with pytest.raises(ValueError) as e:
-        Segmentation(
-            uid="uid",
-            groundtruths=[],
-            predictions=[
-                Bitmask(
-                    mask=np.array([True, False]),
-                    label="label",
-                )
-            ],
-        )
-    assert "missing ground truths" in str(e)
-
+    # test shape mismatch within predictions
     with pytest.raises(ValueError) as e:
         Segmentation(
             uid="uid",
             groundtruths=[
                 Bitmask(
-                    mask=np.array([True, False]),
+                    mask=np.array([[True, False, False]]),
+                    label="label1",
+                ),
+            ],
+            predictions=[
+                Bitmask(
+                    mask=np.array([[True, False, False]]),
+                    label="label",
+                ),
+                Bitmask(
+                    mask=np.array([[False, False]]),
+                    label="label2",
+                ),
+            ],
+            shape=(1, 3),
+        )
+    assert "Received mask with shape '(1, 2)'" in str(e)
+
+    # test shape mismatch between ground truths and predictions
+    with pytest.raises(ValueError) as e:
+        Segmentation(
+            uid="uid",
+            groundtruths=[
+                Bitmask(
+                    mask=np.array([[True, False, False]]),
                     label="label",
                 )
             ],
-            predictions=[],
+            predictions=[
+                Bitmask(
+                    mask=np.array([[True, False]]),
+                    label="label",
+                )
+            ],
+            shape=(1, 3),
         )
-    assert "missing predictions" in str(e)
+    assert "Received mask with shape '(1, 2)'" in str(e)
 
+    # test ground truths cannot overlap
+    with pytest.raises(ValueError) as e:
+        Segmentation(
+            uid="uid",
+            groundtruths=[
+                Bitmask(
+                    mask=np.array([[True, True, True]]),
+                    label="label1",
+                ),
+                Bitmask(
+                    mask=np.array([[False, False, True]]),
+                    label="label2",
+                ),
+            ],
+            predictions=[
+                Bitmask(
+                    mask=np.array([[True, False, False]]),
+                    label="label",
+                )
+            ],
+            shape=(1, 3),
+        )
+    assert "ground truth masks cannot overlap" in str(e)
 
-def test_generate_segmentation():
+    # test predictions cannot overlap
+    with pytest.raises(ValueError) as e:
+        Segmentation(
+            uid="uid",
+            groundtruths=[
+                Bitmask(
+                    mask=np.array([[True, True, True]]),
+                    label="label1",
+                ),
+            ],
+            predictions=[
+                Bitmask(
+                    mask=np.array([[True, False, True]]),
+                    label="label",
+                ),
+                Bitmask(
+                    mask=np.array([[False, False, True]]),
+                    label="label2",
+                ),
+            ],
+            shape=(1, 3),
+        )
+    assert "prediction masks cannot overlap" in str(e)
 
-    # N labels > 1
-    segmentation = generate_segmentation(
-        datum_uid="uid1",
-        number_of_unique_labels=3,
-        mask_height=2,
-        mask_width=3,
+    # allow missing ground truths
+    Segmentation(
+        uid="uid",
+        groundtruths=[],
+        predictions=[
+            Bitmask(
+                mask=np.array([[True, False]]),
+                label="label",
+            )
+        ],
+        shape=(1, 2),
     )
 
-    assert segmentation.uid == "uid1"
-    assert segmentation.shape == (2, 3)
-    assert segmentation.size == 6
-
-    assert len(segmentation.groundtruths) == 3
-    assert all(gt.mask.dtype == np.bool_ for gt in segmentation.groundtruths)
-    assert all(gt.mask.shape == (2, 3) for gt in segmentation.groundtruths)
-
-    assert len(segmentation.predictions) == 3
-    assert all(pd.mask.dtype == np.bool_ for pd in segmentation.predictions)
-    assert all(pd.mask.shape == (2, 3) for pd in segmentation.predictions)
-
-    # N labels = 1
-    segmentation = generate_segmentation(
-        datum_uid="uid1",
-        number_of_unique_labels=1,
-        mask_height=2,
-        mask_width=3,
+    # allow missing predictions
+    Segmentation(
+        uid="uid",
+        groundtruths=[
+            Bitmask(
+                mask=np.array([[True, False]]),
+                label="label",
+            )
+        ],
+        predictions=[],
+        shape=(1, 2),
     )
 
-    assert segmentation.uid == "uid1"
-    assert segmentation.shape == (2, 3)
-    assert segmentation.size == 6
 
-    assert len(segmentation.groundtruths) == 1
-    assert all(gt.mask.dtype == np.bool_ for gt in segmentation.groundtruths)
-    assert all(gt.mask.shape == (2, 3) for gt in segmentation.groundtruths)
-
-    assert len(segmentation.predictions) == 1
-    assert all(pd.mask.dtype == np.bool_ for pd in segmentation.predictions)
-    assert all(pd.mask.shape == (2, 3) for pd in segmentation.predictions)
-
-    # N labels = 0
+def test_segmentation_shape():
+    Segmentation(uid="uid", groundtruths=[], predictions=[], shape=(1, 1))
+    Segmentation(uid="uid", groundtruths=[], predictions=[], shape=(100, 100))
     with pytest.raises(ValueError):
-        generate_segmentation(
-            datum_uid="uid1",
-            number_of_unique_labels=0,
-            mask_height=2,
-            mask_width=3,
+        Segmentation(uid="uid", groundtruths=[], predictions=[], shape=(1,))
+    with pytest.raises(ValueError):
+        Segmentation(
+            uid="uid", groundtruths=[], predictions=[], shape=(1, 2, 3)
+        )
+    with pytest.raises(ValueError):
+        Segmentation(
+            uid="uid", groundtruths=[], predictions=[], shape=(0, 100)
+        )
+    with pytest.raises(ValueError):
+        Segmentation(
+            uid="uid", groundtruths=[], predictions=[], shape=(-100, 100)
         )

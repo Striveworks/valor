@@ -134,6 +134,7 @@ def test_confusion_matrix_intermediate_counting():
                 label="d",
             ),
         ],
+        shape=(2, 2),
     )
 
     loader = DataLoader()

@@ -1,5 +1,5 @@
-from .annotation import Bitmask, Segmentation, generate_segmentation
-from .manager import DataLoader, Evaluator
+from .annotation import Bitmask, Segmentation
+from .manager import DataLoader, Evaluator, Filter
 from .metric import Metric, MetricType
 
 __all__ = [
@@ -9,5 +9,5 @@ __all__ = [
     "Bitmask",
     "Metric",
     "MetricType",
-    "generate_segmentation",
+    "Filter",
 ]

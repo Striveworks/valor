@@ -8,8 +8,8 @@ from valor_lite.semantic_segmentation.metric import Metric, MetricType
 
 def unpack_precision_recall_iou_into_metric_lists(
     results: tuple,
-    label_metadata: NDArray[np.int32],
-    index_to_label: dict[int, str],
+    label_metadata: NDArray[np.int64],
+    index_to_label: list[str],
 ) -> dict[MetricType, list[Metric]]:
 
     n_labels = len(index_to_label)
@@ -67,7 +67,7 @@ def unpack_precision_recall_iou_into_metric_lists(
         )
     ]
 
-    for label_idx, label in index_to_label.items():
+    for label_idx, label in enumerate(index_to_label):
 
         kwargs = {
             "label": label,
