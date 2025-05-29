@@ -24,8 +24,7 @@ def _generate_boolean_mask(
 def _generate_random_boolean_mask(
     mask_shape: tuple[int, int],
     infill: float,
-    label: str,
-) -> Bitmask:
+) -> np.ndarray:
     mask_size = mask_shape[0] * mask_shape[1]
     mask = np.zeros(mask_size, dtype=np.bool_)
 
@@ -33,11 +32,7 @@ def _generate_random_boolean_mask(
     mask[:n_positives] = True
     np.random.shuffle(mask)
     mask = mask.reshape(mask_shape)
-
-    return Bitmask(
-        mask=mask,
-        label=label,
-    )
+    return mask
 
 
 @pytest.fixture
@@ -66,6 +61,7 @@ def basic_segmentations() -> list[Segmentation]:
             uid="uid0",
             groundtruths=[gmask1, gmask2],
             predictions=[pmask1, pmask2],
+            shape=tuple(pmask1.mask.shape),
         )
     ]
 
@@ -91,11 +87,13 @@ def segmentations_from_boxes() -> list[Segmentation]:
             uid="uid1",
             groundtruths=[gmask1],
             predictions=[pmask1],
+            shape=tuple(gmask1.mask.shape),
         ),
         Segmentation(
             uid="uid2",
             groundtruths=[gmask2],
             predictions=[pmask2],
+            shape=tuple(pmask2.mask.shape),
         ),
     ]
 
@@ -115,19 +113,52 @@ def large_random_segmentations() -> list[Segmentation]:
         ("v7", "v8", "v9"),
     ]
 
+    gt_bitmasks_per_datum = []
+    pd_bitmasks_per_datum = []
+    for infills in infills_per_seg:
+        gt_accum = None
+        pd_accum = None
+        gt_masks = []
+        pd_masks = []
+        for infill in infills:
+            gt = _generate_random_boolean_mask(mask_shape, infill)
+            if gt_accum is None:
+                gt_accum = gt.copy()
+            else:
+                gt = gt & ~(gt & gt_accum)
+                gt_accum = gt_accum | gt
+            gt_masks.append(gt)
+
+            pd = _generate_random_boolean_mask(mask_shape, infill)
+            if pd_accum is None:
+                pd_accum = pd.copy()
+            else:
+                pd = pd & ~(pd & pd_accum)
+                pd_accum = pd_accum | pd
+            pd_masks.append(pd)
+        gt_bitmasks_per_datum.append(gt_masks)
+        pd_bitmasks_per_datum.append(pd_masks)
+
     return [
         Segmentation(
             uid=f"uid{idx}",
             groundtruths=[
-                _generate_random_boolean_mask(mask_shape, infill, label)
-                for infill, label in zip(infills, labels)
+                Bitmask(
+                    mask=mask,
+                    label=label,
+                )
+                for mask, label in zip(gts, labels)
             ],
             predictions=[
-                _generate_random_boolean_mask(mask_shape, infill, label)
-                for infill, label in zip(infills, labels)
+                Bitmask(
+                    mask=mask,
+                    label=label,
+                )
+                for mask, label in zip(pds, labels)
             ],
+            shape=mask_shape,
         )
-        for idx, (infills, labels) in enumerate(
-            zip(infills_per_seg, labels_per_seg)
+        for idx, (gts, pds, labels) in enumerate(
+            zip(gt_bitmasks_per_datum, pd_bitmasks_per_datum, labels_per_seg)
         )
     ]

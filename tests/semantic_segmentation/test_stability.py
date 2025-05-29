@@ -32,6 +32,7 @@ def _generate_random_segmentations(
                 )
                 for label in labels
             ],
+            shape=(size_, size_),
         )
         for i in range(n_segmentations)
     ]
@@ -77,10 +78,5 @@ def test_fuzz_segmentations_with_filtering():
 
         datum_subset = [f"uid{i}" for i in range(len(segmentations) // 2)]
 
-        filter_ = evaluator.create_filter(
-            datum_uids=datum_subset,
-        )
-
-        evaluator.evaluate(
-            filter_=filter_,
-        )
+        filter_ = evaluator.create_filter(datum_ids=datum_subset)
+        evaluator.evaluate(filter_=filter_)

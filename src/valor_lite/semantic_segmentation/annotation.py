@@ -68,112 +68,41 @@ class Segmentation:
     uid: str
     groundtruths: list[Bitmask]
     predictions: list[Bitmask]
-    shape: tuple[int, ...] = field(default_factory=lambda: (0, 0))
+    shape: tuple[int, ...]
     size: int = field(default=0)
 
     def __post_init__(self):
 
-        groundtruth_shape = {
-            groundtruth.mask.shape for groundtruth in self.groundtruths
-        }
-        prediction_shape = {
-            prediction.mask.shape for prediction in self.predictions
-        }
-        if len(groundtruth_shape) == 0:
-            raise ValueError("The segmenation is missing ground truths.")
-        elif len(prediction_shape) == 0:
-            raise ValueError("The segmenation is missing predictions.")
-        elif (
-            len(groundtruth_shape) != 1
-            or len(prediction_shape) != 1
-            or groundtruth_shape != prediction_shape
-        ):
+        if len(self.shape) != 2 or self.shape[0] <= 0 or self.shape[1] <= 0:
             raise ValueError(
-                "A shape mismatch exists within the segmentation."
+                f"segmentations must be 2-dimensional and have non-zero dimensions. Recieved shape '{self.shape}'"
             )
+        self.size = self.shape[0] * self.shape[1]
 
-        self.shape = groundtruth_shape.pop()
-        self.size = int(np.prod(np.array(self.shape)))
+        mask_accumulation = None
+        for groundtruth in self.groundtruths:
+            if self.shape != groundtruth.mask.shape:
+                raise ValueError(
+                    f"ground truth masks for datum '{self.uid}' should have shape '{self.shape}'. Received mask with shape '{groundtruth.mask.shape}'"
+                )
 
+            if mask_accumulation is None:
+                mask_accumulation = groundtruth.mask.copy()
+            elif np.logical_and(mask_accumulation, groundtruth.mask).any():
+                raise ValueError("ground truth masks cannot overlap")
+            else:
+                mask_accumulation = mask_accumulation | groundtruth.mask
 
-def generate_segmentation(
-    datum_uid: str,
-    number_of_unique_labels: int,
-    mask_height: int,
-    mask_width: int,
-) -> Segmentation:
-    """
-    Generates a semantic segmentation annotation.
+        mask_accumulation = None
+        for prediction in self.predictions:
+            if self.shape != prediction.mask.shape:
+                raise ValueError(
+                    f"prediction masks for datum '{self.uid}' should have shape '{self.shape}'. Received mask with shape '{prediction.mask.shape}'"
+                )
 
-    Parameters
-    ----------
-    datum_uid : str
-        The datum UID for the generated segmentation.
-    number_of_unique_labels : int
-        The number of unique labels.
-    mask_height : int
-        The height of the mask in pixels.
-    mask_width : int
-        The width of the mask in pixels.
-
-    Returns
-    -------
-    Segmentation
-        A generated semantic segmenatation annotation.
-    """
-
-    if number_of_unique_labels > 1:
-        common_proba = 0.4 / (number_of_unique_labels - 1)
-        min_proba = min(common_proba, 0.1)
-        labels = [str(i) for i in range(number_of_unique_labels)] + [None]
-        proba = (
-            [0.5]
-            + [common_proba for _ in range(number_of_unique_labels - 1)]
-            + [0.1]
-        )
-    elif number_of_unique_labels == 1:
-        labels = ["0", None]
-        proba = [0.9, 0.1]
-        min_proba = 0.1
-    else:
-        raise ValueError(
-            "The number of unique labels should be greater than zero."
-        )
-
-    probabilities = np.array(proba, dtype=np.float64)
-    weights = (probabilities / min_proba).astype(np.int32)
-
-    indices = np.random.choice(
-        np.arange(len(weights)),
-        size=(mask_height * 2, mask_width),
-        p=probabilities,
-    )
-
-    N = len(labels)
-
-    masks = np.arange(N)[:, None, None] == indices
-
-    gts = []
-    pds = []
-    for lidx in range(N):
-        label = labels[lidx]
-        if label is None:
-            continue
-        gts.append(
-            Bitmask(
-                mask=masks[lidx, :mask_height, :],
-                label=label,
-            )
-        )
-        pds.append(
-            Bitmask(
-                mask=masks[lidx, mask_height:, :],
-                label=label,
-            )
-        )
-
-    return Segmentation(
-        uid=datum_uid,
-        groundtruths=gts,
-        predictions=pds,
-    )
+            if mask_accumulation is None:
+                mask_accumulation = prediction.mask.copy()
+            elif np.logical_and(mask_accumulation, prediction.mask).any():
+                raise ValueError("prediction masks cannot overlap")
+            else:
+                mask_accumulation = mask_accumulation | prediction.mask
