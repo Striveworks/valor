@@ -88,7 +88,7 @@ def test_compute_rocauc_animals():
 
     # compute ROCAUC and mROCAUC
     (_, _, _, _, _, rocauc, mean_rocauc) = compute_precision_recall_rocauc(
-        data=animals,
+        detailed_pairs=animals,
         label_metadata=label_metadata,
         n_datums=6,
         score_thresholds=np.array([]),
@@ -188,7 +188,7 @@ def test_compute_rocauc_colors():
 
     # compute ROCAUC and mROCAUC
     (_, _, _, _, _, rocauc, mean_rocauc) = compute_precision_recall_rocauc(
-        data=colors,
+        detailed_pairs=colors,
         label_metadata=label_metadata,
         n_datums=6,
         score_thresholds=np.array([]),
