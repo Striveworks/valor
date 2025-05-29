@@ -230,26 +230,6 @@ def compute_precision_recall_rocauc(
     n_labels = label_metadata.shape[0]
     n_scores = score_thresholds.shape[0]
 
-    # allocate results
-    rocauc = np.zeros(n_labels, dtype=np.float64)
-    mean_rocauc = 0.0
-    counts = np.zeros((n_scores, n_labels, 4), dtype=np.int32)
-    recall = np.zeros((n_scores, n_labels), dtype=np.float64)
-    precision = np.zeros_like(recall)
-    accuracy = np.zeros(n_scores, dtype=np.float64)
-    f1_score = np.zeros_like(recall)
-
-    if detailed_pairs.size == 0:
-        return (
-            counts,
-            precision,
-            recall,
-            accuracy,
-            f1_score,
-            rocauc,
-            mean_rocauc,
-        )
-
     pd_labels = detailed_pairs[:, 2].astype(int)
 
     mask_matching_labels = np.isclose(
@@ -269,6 +249,7 @@ def compute_precision_recall_rocauc(
     )
 
     # calculate metrics at various score thresholds
+    counts = np.zeros((n_scores, n_labels, 4), dtype=np.int32)
     for score_idx in range(n_scores):
         mask_score_threshold = (
             detailed_pairs[:, 3] >= score_thresholds[score_idx]
@@ -295,6 +276,7 @@ def compute_precision_recall_rocauc(
         counts[score_idx, :, 2] = np.bincount(fn[:, 1], minlength=n_labels)
         counts[score_idx, :, 3] = np.bincount(tn[:, 1], minlength=n_labels)
 
+    recall = np.zeros((n_scores, n_labels), dtype=np.float64)
     np.divide(
         counts[:, :, 0],
         (counts[:, :, 0] + counts[:, :, 2]),
@@ -302,6 +284,7 @@ def compute_precision_recall_rocauc(
         out=recall,
     )
 
+    precision = np.zeros_like(recall)
     np.divide(
         counts[:, :, 0],
         (counts[:, :, 0] + counts[:, :, 1]),
@@ -309,12 +292,14 @@ def compute_precision_recall_rocauc(
         out=precision,
     )
 
+    accuracy = np.zeros(n_scores, dtype=np.float64)
     np.divide(
         counts[:, :, 0].sum(axis=1),
         float(n_datums),
         out=accuracy,
     )
 
+    f1_score = np.zeros_like(recall)
     np.divide(
         (2 * precision * recall),
         (precision + recall),
