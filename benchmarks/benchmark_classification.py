@@ -215,7 +215,7 @@ def run_benchmarking_analysis(
         eval_time, _ = time_it(evaluator.compute_precision_recall_rocauc)()
         if eval_time > evaluation_timeout and evaluation_timeout != -1:
             raise TimeoutError(
-                f"Base evaluation timed out with {evaluator.n_datums} datums."
+                f"Base evaluation timed out with {evaluator.metadata.number_of_datums} datums."
             )
 
         detail_no_examples_time, _ = time_it(
@@ -228,7 +228,7 @@ def run_benchmarking_analysis(
             and evaluation_timeout != -1
         ):
             raise TimeoutError(
-                f"Base evaluation timed out with {evaluator.n_datums} datums."
+                f"Base evaluation timed out with {evaluator.metadata.number_of_datums} datums."
             )
 
         detail_three_examples_time, _ = time_it(
@@ -241,16 +241,16 @@ def run_benchmarking_analysis(
             and evaluation_timeout != -1
         ):
             raise TimeoutError(
-                f"Base evaluation timed out with {evaluator.n_datums} datums."
+                f"Base evaluation timed out with {evaluator.metadata.number_of_datums} datums."
             )
 
         results.append(
             Benchmark(
                 limit=limit,
-                n_datums=evaluator.n_datums,
-                n_groundtruths=evaluator.n_groundtruths,
-                n_predictions=evaluator.n_predictions,
-                n_labels=evaluator.n_labels,
+                n_datums=evaluator.metadata.number_of_datums,
+                n_groundtruths=evaluator.metadata.number_of_ground_truths,
+                n_predictions=evaluator.metadata.number_of_predictions,
+                n_labels=evaluator.metadata.number_of_labels,
                 chunk_size=chunk_size,
                 ingestion=ingest_time,
                 preprocessing=preprocessing_time,

@@ -4,6 +4,111 @@ from numpy.typing import NDArray
 import valor_lite.classification.numpy_compatibility as npc
 
 
+def compute_label_metadata(
+    ids: NDArray[np.int32],
+    n_labels: int,
+) -> NDArray[np.int32]:
+    """
+    Computes label metadata returning a count of annotations per label.
+
+    Parameters
+    ----------
+    detailed_pairs : NDArray[np.int32]
+        Detailed annotation pairings with shape (n_pairs, 3).
+            Index 0 - Datum Index
+            Index 1 - GroundTruth Label Index
+            Index 2 - Prediction Label Index
+    n_labels : int
+        The total number of unique labels.
+
+    Returns
+    -------
+    NDArray[np.int32]
+        The label metadata array with shape (n_labels, 2).
+            Index 0 - Ground truth label count
+            Index 1 - Prediction label count
+    """
+    label_metadata = np.zeros((n_labels, 2), dtype=np.int32)
+    ground_truth_pairs = ids[:, (0, 1)]
+    ground_truth_pairs = ground_truth_pairs[ground_truth_pairs[:, 1] >= 0]
+    unique_pairs = np.unique(ground_truth_pairs, axis=0)
+    label_indices, unique_counts = np.unique(
+        unique_pairs[:, 1], return_counts=True
+    )
+    label_metadata[label_indices.astype(np.int32), 0] = unique_counts
+
+    prediction_pairs = ids[:, (0, 2)]
+    prediction_pairs = prediction_pairs[prediction_pairs[:, 1] >= 0]
+    unique_pairs = np.unique(prediction_pairs, axis=0)
+    label_indices, unique_counts = np.unique(
+        unique_pairs[:, 1], return_counts=True
+    )
+    label_metadata[label_indices.astype(np.int32), 1] = unique_counts
+
+    return label_metadata
+
+
+def filter_cache(
+    detailed_pairs: NDArray[np.float64],
+    datum_mask: NDArray[np.bool_],
+    valid_label_indices: NDArray[np.int32] | None,
+    n_labels: int,
+) -> tuple[NDArray[np.float64], NDArray[np.int32]]:
+    # filter by datum
+    detailed_pairs = detailed_pairs[datum_mask].copy()
+
+    n_rows = detailed_pairs.shape[0]
+    mask_invalid_groundtruths = np.zeros(n_rows, dtype=np.bool_)
+    mask_invalid_predictions = np.zeros_like(mask_invalid_groundtruths)
+
+    # filter labels
+    if valid_label_indices is not None:
+        mask_invalid_groundtruths[
+            ~np.isin(detailed_pairs[:, 1], valid_label_indices)
+        ] = True
+        mask_invalid_predictions[
+            ~np.isin(detailed_pairs[:, 2], valid_label_indices)
+        ] = True
+
+    # filter cache
+    if mask_invalid_groundtruths.any():
+        invalid_groundtruth_indices = np.where(mask_invalid_groundtruths)[0]
+        detailed_pairs[invalid_groundtruth_indices[:, None], 1] = np.array(
+            [[-1.0]]
+        )
+
+    if mask_invalid_predictions.any():
+        invalid_prediction_indices = np.where(mask_invalid_predictions)[0]
+        detailed_pairs[
+            invalid_prediction_indices[:, None], (2, 3, 4)
+        ] = np.array([[-1.0, -1.0, -1.0]])
+
+    # filter null pairs
+    mask_null_pairs = np.all(
+        np.isclose(
+            detailed_pairs[:, 1:5],
+            np.array([-1.0, -1.0, -1.0, -1.0]),
+        ),
+        axis=1,
+    )
+    detailed_pairs = detailed_pairs[~mask_null_pairs]
+
+    detailed_pairs = np.unique(detailed_pairs, axis=0)
+    indices = np.lexsort(
+        (
+            detailed_pairs[:, 1],  # ground truth
+            detailed_pairs[:, 2],  # prediction
+            -detailed_pairs[:, 3],  # score
+        )
+    )
+    detailed_pairs = detailed_pairs[indices]
+    label_metadata = compute_label_metadata(
+        ids=detailed_pairs[:, :3].astype(np.int32),
+        n_labels=n_labels,
+    )
+    return detailed_pairs, label_metadata
+
+
 def _compute_rocauc(
     data: NDArray[np.float64],
     label_metadata: NDArray[np.int32],
@@ -67,7 +172,7 @@ def _compute_rocauc(
 
 
 def compute_precision_recall_rocauc(
-    data: NDArray[np.float64],
+    detailed_pairs: NDArray[np.float64],
     label_metadata: NDArray[np.int32],
     score_thresholds: NDArray[np.float64],
     hardmax: bool,
@@ -84,20 +189,19 @@ def compute_precision_recall_rocauc(
     """
     Computes classification metrics.
 
-    Takes data with shape (N, 5):
-
-    Index 0 - Datum Index
-    Index 1 - GroundTruth Label Index
-    Index 2 - Prediction Label Index
-    Index 3 - Score
-    Index 4 - Hard-Max Score
-
     Parameters
     ----------
-    data : NDArray[np.float64]
-        A sorted array of classification pairs.
+    detailed_pairs : NDArray[np.float64]
+        A sorted array of classification pairs with shape (n_pairs, 5).
+            Index 0 - Datum Index
+            Index 1 - GroundTruth Label Index
+            Index 2 - Prediction Label Index
+            Index 3 - Score
+            Index 4 - Hard-Max Score
     label_metadata : NDArray[np.int32]
-        An array containing metadata related to labels.
+        An array containing metadata related to labels with shape (n_labels, 2).
+            Index 0 - GroundTruth Label Count
+            Index 1 - Prediction Label Count
     score_thresholds : NDArray[np.float64]
         A 1-D array contains score thresholds to compute metrics over.
     hardmax : bool
@@ -126,15 +230,17 @@ def compute_precision_recall_rocauc(
     n_labels = label_metadata.shape[0]
     n_scores = score_thresholds.shape[0]
 
-    pd_labels = data[:, 2].astype(int)
+    pd_labels = detailed_pairs[:, 2].astype(int)
 
-    mask_matching_labels = np.isclose(data[:, 1], data[:, 2])
-    mask_score_nonzero = ~np.isclose(data[:, 3], 0.0)
-    mask_hardmax = data[:, 4] > 0.5
+    mask_matching_labels = np.isclose(
+        detailed_pairs[:, 1], detailed_pairs[:, 2]
+    )
+    mask_score_nonzero = ~np.isclose(detailed_pairs[:, 3], 0.0)
+    mask_hardmax = detailed_pairs[:, 4] > 0.5
 
     # calculate ROCAUC
     rocauc, mean_rocauc = _compute_rocauc(
-        data=data,
+        data=detailed_pairs,
         label_metadata=label_metadata,
         n_datums=n_datums,
         n_labels=n_labels,
@@ -145,7 +251,9 @@ def compute_precision_recall_rocauc(
     # calculate metrics at various score thresholds
     counts = np.zeros((n_scores, n_labels, 4), dtype=np.int32)
     for score_idx in range(n_scores):
-        mask_score_threshold = data[:, 3] >= score_thresholds[score_idx]
+        mask_score_threshold = (
+            detailed_pairs[:, 3] >= score_thresholds[score_idx]
+        )
         mask_score = mask_score_nonzero & mask_score_threshold
 
         if hardmax:
@@ -156,8 +264,8 @@ def compute_precision_recall_rocauc(
         mask_fn = (mask_matching_labels & ~mask_score) | mask_fp
         mask_tn = ~mask_matching_labels & ~mask_score
 
-        fn = np.unique(data[mask_fn][:, [0, 1]].astype(int), axis=0)
-        tn = np.unique(data[mask_tn][:, [0, 2]].astype(int), axis=0)
+        fn = np.unique(detailed_pairs[mask_fn][:, [0, 1]].astype(int), axis=0)
+        tn = np.unique(detailed_pairs[mask_tn][:, [0, 2]].astype(int), axis=0)
 
         counts[score_idx, :, 0] = np.bincount(
             pd_labels[mask_tp], minlength=n_labels
@@ -249,7 +357,7 @@ def _count_with_examples(
 
 
 def compute_confusion_matrix(
-    data: NDArray[np.float64],
+    detailed_pairs: NDArray[np.float64],
     label_metadata: NDArray[np.int32],
     score_thresholds: NDArray[np.float64],
     hardmax: bool,
@@ -260,18 +368,19 @@ def compute_confusion_matrix(
 
     Takes data with shape (N, 5):
 
-    Index 0 - Datum Index
-    Index 1 - GroundTruth Label Index
-    Index 2 - Prediction Label Index
-    Index 3 - Score
-    Index 4 - Hard Max Score
-
     Parameters
     ----------
-    data : NDArray[np.float64]
-        A sorted array summarizing the IOU calculations of one or more pairs.
+    detailed_pairs : NDArray[np.float64]
+        A 2-D sorted array summarizing the IOU calculations of one or more pairs with shape (n_pairs, 5).
+            Index 0 - Datum Index
+            Index 1 - GroundTruth Label Index
+            Index 2 - Prediction Label Index
+            Index 3 - Score
+            Index 4 - Hard Max Score
     label_metadata : NDArray[np.int32]
-        An array containing metadata related to labels.
+        A 2-D array containing metadata related to labels with shape (n_labels, 2).
+            Index 0 - GroundTruth Label Count
+            Index 1 - Prediction Label Count
     iou_thresholds : NDArray[np.float64]
         A 1-D array containing IOU thresholds.
     score_thresholds : NDArray[np.float64]
@@ -301,15 +410,15 @@ def compute_confusion_matrix(
         dtype=np.int32,
     )
 
-    mask_label_match = np.isclose(data[:, 1], data[:, 2])
-    mask_score = data[:, 3] > 1e-9
+    mask_label_match = np.isclose(detailed_pairs[:, 1], detailed_pairs[:, 2])
+    mask_score = detailed_pairs[:, 3] > 1e-9
 
-    groundtruths = data[:, [0, 1]].astype(int)
+    groundtruths = detailed_pairs[:, [0, 1]].astype(int)
 
     for score_idx in range(n_scores):
-        mask_score &= data[:, 3] >= score_thresholds[score_idx]
+        mask_score &= detailed_pairs[:, 3] >= score_thresholds[score_idx]
         if hardmax:
-            mask_score &= data[:, 4] > 0.5
+            mask_score &= detailed_pairs[:, 4] > 0.5
 
         mask_tp = mask_label_match & mask_score
         mask_misclf = ~mask_label_match & mask_score
@@ -323,17 +432,17 @@ def compute_confusion_matrix(
         )
 
         tp_examples, tp_labels, tp_counts = _count_with_examples(
-            data=data[mask_tp],
+            data=detailed_pairs[mask_tp],
             unique_idx=[0, 2],
             label_idx=1,
         )
         misclf_examples, misclf_labels, misclf_counts = _count_with_examples(
-            data=data[mask_misclf],
+            data=detailed_pairs[mask_misclf],
             unique_idx=[0, 1, 2],
             label_idx=[1, 2],
         )
         misprd_examples, misprd_labels, misprd_counts = _count_with_examples(
-            data=data[mask_misprd],
+            data=detailed_pairs[mask_misprd],
             unique_idx=[0, 1],
             label_idx=1,
         )
