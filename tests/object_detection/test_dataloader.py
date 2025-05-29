@@ -16,7 +16,8 @@ from valor_lite.object_detection import (
 
 def test_no_data():
     loader = DataLoader()
-    loader.finalize()
+    with pytest.warns(UserWarning):
+        loader.finalize()
     assert loader._detailed_pairs.size == 0
     assert loader._ranked_pairs.size == 0
     assert loader._label_metadata.size == 0

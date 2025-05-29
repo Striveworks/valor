@@ -94,10 +94,10 @@ def test_ap_metrics_first_class(
 
         assert evaluator.ignored_prediction_labels == []
         assert evaluator.missing_prediction_labels == []
-        assert evaluator.n_datums == 2
-        assert evaluator.n_labels == 1
-        assert evaluator.n_groundtruths == 2
-        assert evaluator.n_predictions == 1
+        assert evaluator.metadata.number_of_datums == 2
+        assert evaluator.metadata.number_of_labels == 1
+        assert evaluator.metadata.number_of_ground_truths == 2
+        assert evaluator.metadata.number_of_predictions == 1
 
         # test AP
         actual_metrics = [m.to_dict() for m in metrics[MetricType.AP]]
@@ -215,10 +215,10 @@ def test_ap_metrics_second_class(
 
         assert evaluator.ignored_prediction_labels == []
         assert evaluator.missing_prediction_labels == []
-        assert evaluator.n_datums == 2
-        assert evaluator.n_labels == 1
-        assert evaluator.n_groundtruths == 1
-        assert evaluator.n_predictions == 1
+        assert evaluator.metadata.number_of_datums == 2
+        assert evaluator.metadata.number_of_labels == 1
+        assert evaluator.metadata.number_of_ground_truths == 1
+        assert evaluator.metadata.number_of_predictions == 1
 
         # test AP
         actual_metrics = [m.to_dict() for m in metrics[MetricType.AP]]
@@ -317,10 +317,10 @@ def test_ap_using_torch_metrics_example(
 
     assert evaluator.ignored_prediction_labels == ["3"]
     assert evaluator.missing_prediction_labels == []
-    assert evaluator.n_datums == 4
-    assert evaluator.n_labels == 6
-    assert evaluator.n_groundtruths == 20
-    assert evaluator.n_predictions == 19
+    assert evaluator.metadata.number_of_datums == 4
+    assert evaluator.metadata.number_of_labels == 6
+    assert evaluator.metadata.number_of_ground_truths == 20
+    assert evaluator.metadata.number_of_predictions == 19
 
     metrics = evaluator.evaluate(
         iou_thresholds=[0.5, 0.75],
@@ -672,15 +672,13 @@ def test_ap_ranked_pair_ordering(
         method(loader, detections=[input_])
         evaluator = loader.finalize()
 
-        assert evaluator.metadata == {
-            "ignored_prediction_labels": [
-                "label4",
-            ],
-            "missing_prediction_labels": [],
-            "n_datums": 1,
-            "n_groundtruths": 3,
-            "n_labels": 4,
-            "n_predictions": 4,
+        assert evaluator.ignored_prediction_labels == ["label4"]
+        assert evaluator.missing_prediction_labels == []
+        assert evaluator.metadata.to_dict() == {
+            "number_of_datums": 1,
+            "number_of_ground_truths": 3,
+            "number_of_labels": 4,
+            "number_of_predictions": 4,
         }
 
         metrics = evaluator.evaluate(
@@ -826,10 +824,10 @@ def test_ap_true_positive_deassignment(
 
     assert evaluator.ignored_prediction_labels == []
     assert evaluator.missing_prediction_labels == []
-    assert evaluator.n_datums == 1
-    assert evaluator.n_labels == 1
-    assert evaluator.n_groundtruths == 2
-    assert evaluator.n_predictions == 4
+    assert evaluator.metadata.number_of_datums == 1
+    assert evaluator.metadata.number_of_labels == 1
+    assert evaluator.metadata.number_of_ground_truths == 2
+    assert evaluator.metadata.number_of_predictions == 4
 
     metrics = evaluator.evaluate(
         iou_thresholds=[0.5],
