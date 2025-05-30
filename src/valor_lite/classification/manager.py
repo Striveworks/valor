@@ -16,7 +16,7 @@ from valor_lite.classification.utilities import (
     unpack_confusion_matrix_into_metric_list,
     unpack_precision_recall_rocauc_into_metric_lists,
 )
-from valor_lite.exceptions import EmptyEvaluatorException, EmptyFilterException
+from valor_lite.exceptions import EmptyEvaluatorError, EmptyFilterError
 
 """
 Usage
@@ -88,14 +88,14 @@ class Filter:
     def __post_init__(self):
         # validate datum mask
         if not self.datum_mask.any():
-            raise EmptyFilterException("filter removes all datums")
+            raise EmptyFilterError("filter removes all datums")
 
         # validate label indices
         if (
             self.valid_label_indices is not None
             and self.valid_label_indices.size == 0
         ):
-            raise EmptyFilterException("filter removes all labels")
+            raise EmptyFilterError("filter removes all labels")
 
 
 class Evaluator:
@@ -381,11 +381,17 @@ class Evaluator:
         -------
         int
             The datum index.
+
+        Raises
+        ------
+        ValueError
+            If datum id already exists.
         """
-        if uid not in self.datum_id_to_index:
-            index = len(self.datum_id_to_index)
-            self.datum_id_to_index[uid] = index
-            self.index_to_datum_id.append(uid)
+        if uid in self.datum_id_to_index:
+            raise ValueError("datum with id '{uid}' already exists")
+        index = len(self.datum_id_to_index)
+        self.datum_id_to_index[uid] = index
+        self.index_to_datum_id.append(uid)
         return self.datum_id_to_index[uid]
 
     def _add_label(self, label: str) -> int:
@@ -487,7 +493,7 @@ class Evaluator:
             A ready-to-use evaluator object.
         """
         if self._detailed_pairs.size == 0:
-            raise EmptyEvaluatorException()
+            raise EmptyEvaluatorError()
 
         self._label_metadata = compute_label_metadata(
             ids=self._detailed_pairs[:, :3].astype(np.int32),

@@ -2,7 +2,7 @@ from random import choice
 
 import numpy as np
 
-from valor_lite.exceptions import EmptyFilterException
+from valor_lite.exceptions import EmptyFilterError
 from valor_lite.semantic_segmentation import Bitmask, DataLoader, Segmentation
 
 
@@ -81,7 +81,7 @@ def test_fuzz_segmentations_with_filtering():
 
         try:
             filter_ = evaluator.create_filter(datum_ids=datum_subset)
-        except EmptyFilterException:
+        except EmptyFilterError:
             pass
         else:
             evaluator.evaluate(filter_=filter_)
