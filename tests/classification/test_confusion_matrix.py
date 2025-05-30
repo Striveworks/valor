@@ -112,7 +112,6 @@ def test_confusion_matrix_basic(basic_classifications: list[Classification]):
 
     actual_metrics = evaluator.compute_confusion_matrix(
         score_thresholds=[0.25, 0.75],
-        number_of_examples=1,
     )
 
     actual_metrics = [m.to_dict() for m in actual_metrics]
@@ -264,7 +263,6 @@ def test_confusion_matrix_with_animal_example(
 
     actual_metrics = evaluator.compute_confusion_matrix(
         score_thresholds=[0.5],
-        number_of_examples=6,
     )
 
     actual_metrics = [m.to_dict() for m in actual_metrics]
@@ -342,10 +340,7 @@ def test_confusion_matrix_with_color_example(
     loader.add_data(classifications_color_example)
     evaluator = loader.finalize()
 
-    actual_metrics = evaluator.compute_confusion_matrix(
-        score_thresholds=[0.5],
-        number_of_examples=6,
-    )
+    actual_metrics = evaluator.compute_confusion_matrix(score_thresholds=[0.5])
 
     actual_metrics = [m.to_dict() for m in actual_metrics]
     expected_metrics = [
@@ -434,7 +429,6 @@ def test_confusion_matrix_multiclass(
 
     actual_metrics = evaluator.compute_confusion_matrix(
         score_thresholds=[0.05, 0.5, 0.85],
-        number_of_examples=5,
     )
 
     actual_metrics = [m.to_dict() for m in actual_metrics]
@@ -593,7 +587,6 @@ def test_confusion_matrix_without_hardmax_animal_example(
 
     actual_metrics = evaluator.compute_confusion_matrix(
         score_thresholds=[0.05, 0.4, 0.5],
-        number_of_examples=6,
         hardmax=False,
     )
 
