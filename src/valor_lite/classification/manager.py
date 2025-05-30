@@ -292,7 +292,6 @@ class Evaluator:
         self,
         score_thresholds: list[float] = [0.0],
         hardmax: bool = True,
-        number_of_examples: int = 0,
         filter_: Filter | None = None,
     ) -> list[Metric]:
         """
@@ -304,8 +303,6 @@ class Evaluator:
             A list of score thresholds to compute metrics over.
         hardmax : bool
             Toggles whether a hardmax is applied to predictions.
-        number_of_examples : int, default=0
-            The number of examples to return per count.
         filter_ : Filter, optional
             Applies a filter to the internal cache.
 
@@ -340,7 +337,6 @@ class Evaluator:
         self,
         score_thresholds: list[float] = [0.0],
         hardmax: bool = True,
-        number_of_examples: int = 0,
         filter_: Filter | None = None,
     ) -> dict[MetricType, list[Metric]]:
         """
@@ -352,8 +348,6 @@ class Evaluator:
             A list of score thresholds to compute metrics over.
         hardmax : bool
             Toggles whether a hardmax is applied to predictions.
-        number_of_examples : int, default=0
-            The number of examples to return per count.
         filter_ : Filter, optional
             Applies a filter to the internal cache.
 
@@ -370,7 +364,6 @@ class Evaluator:
         metrics[MetricType.ConfusionMatrix] = self.compute_confusion_matrix(
             score_thresholds=score_thresholds,
             hardmax=hardmax,
-            number_of_examples=number_of_examples,
             filter_=filter_,
         )
         return metrics
