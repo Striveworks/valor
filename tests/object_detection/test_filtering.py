@@ -4,7 +4,7 @@ from uuid import uuid4
 import numpy as np
 import pytest
 
-from valor_lite.exceptions import EmptyFilterException
+from valor_lite.exceptions import EmptyFilterError
 from valor_lite.object_detection import (
     BoundingBox,
     DataLoader,
@@ -460,7 +460,7 @@ def test_filtering_all_detections(four_detections: list[Detection]):
     assert (evaluator._label_metadata == np.array([[4, 2], [2, 2]])).all()
 
     # test datum filtering
-    with pytest.raises(EmptyFilterException):
+    with pytest.raises(EmptyFilterError):
         evaluator.create_filter(datum_ids=[])
 
     # test ground truth annotation filtering
@@ -564,11 +564,11 @@ def test_filtering_all_detections(four_detections: list[Detection]):
     ).all()
 
     # test label filtering
-    with pytest.raises(EmptyFilterException):
+    with pytest.raises(EmptyFilterError):
         filter_ = evaluator.create_filter(labels=[])
 
     # test combo
-    with pytest.raises(EmptyFilterException):
+    with pytest.raises(EmptyFilterError):
         filter_ = evaluator.create_filter(
             datum_ids=[],
             labels=["v1"],

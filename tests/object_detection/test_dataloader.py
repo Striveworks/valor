@@ -4,10 +4,7 @@ import numpy as np
 import pytest
 from shapely.geometry import Polygon as ShapelyPolygon
 
-from valor_lite.exceptions import (
-    EmptyEvaluatorException,
-    InternalCacheException,
-)
+from valor_lite.exceptions import EmptyEvaluatorError, InternalCacheError
 from valor_lite.object_detection import (
     Bitmask,
     BoundingBox,
@@ -19,7 +16,7 @@ from valor_lite.object_detection import (
 
 def test_no_data():
     loader = DataLoader()
-    with pytest.raises(EmptyEvaluatorException):
+    with pytest.raises(EmptyEvaluatorError):
         loader.finalize()
 
 
@@ -186,23 +183,23 @@ def test_corrupted_cache():
     # test datum cache size mismatch
     loader._evaluator.datum_id_to_index = {"x": 0}
     loader._evaluator.index_to_datum_id = []
-    with pytest.raises(InternalCacheException):
+    with pytest.raises(InternalCacheError):
         loader._add_datum(datum_id="a")
 
     # test ground truth annotation cache size mismatch
     loader._evaluator.groundtruth_id_to_index = {"x": 0}
     loader._evaluator.index_to_groundtruth_id = []
-    with pytest.raises(InternalCacheException):
+    with pytest.raises(InternalCacheError):
         loader._add_groundtruth(annotation_id="a")
 
     # test ground truth annotation cache size mismatch
     loader._evaluator.prediction_id_to_index = {"x": 0}
     loader._evaluator.index_to_prediction_id = []
-    with pytest.raises(InternalCacheException):
+    with pytest.raises(InternalCacheError):
         loader._add_prediction(annotation_id="a")
 
     # test ground truth annotation cache size mismatch
     loader._evaluator.label_to_index = {"x": 0}
     loader._evaluator.index_to_label = []
-    with pytest.raises(InternalCacheException):
+    with pytest.raises(InternalCacheError):
         loader._add_label(label="a")

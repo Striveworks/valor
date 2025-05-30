@@ -329,7 +329,6 @@ class Metric(BaseMetric):
             ],
         ],
         score_threshold: float,
-        maximum_number_of_examples: int,
     ):
         """
         The confusion matrix and related metrics for the classification task.
@@ -382,8 +381,6 @@ class Metric(BaseMetric):
             Each example includes the datum UID.
         score_threshold : float
             The confidence score threshold used to filter predictions.
-        maximum_number_of_examples : int
-            The maximum number of examples per element.
 
         Returns
         -------
@@ -397,6 +394,5 @@ class Metric(BaseMetric):
             },
             parameters={
                 "score_threshold": score_threshold,
-                "maximum_number_of_examples": maximum_number_of_examples,
             },
         )

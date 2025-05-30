@@ -5,7 +5,7 @@ import numpy as np
 import pytest
 
 from valor_lite.classification import Classification, DataLoader, MetricType
-from valor_lite.exceptions import EmptyFilterException
+from valor_lite.exceptions import EmptyFilterError
 
 
 @pytest.fixture
@@ -651,10 +651,10 @@ def test_filtering_empty(six_classifications: list[Classification]):
     evaluator = loader.finalize()
     assert evaluator._detailed_pairs.shape == (24, 5)
 
-    with pytest.raises(EmptyFilterException):
+    with pytest.raises(EmptyFilterError):
         evaluator.create_filter(datum_ids=[])
 
-    with pytest.raises(EmptyFilterException):
+    with pytest.raises(EmptyFilterError):
         evaluator.create_filter(labels=[])
 
     assert evaluator._detailed_pairs.shape == (24, 5)

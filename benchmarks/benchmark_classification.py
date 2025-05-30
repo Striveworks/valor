@@ -136,9 +136,9 @@ class Benchmark:
     chunk_size: int
     ingestion: float
     preprocessing: float
-    precomputation: float
+    finalization: float
     evaluation: float
-    detailed_evaluation: list[tuple[int, float]]
+    examples_time: float
 
     def result(self) -> dict:
         return {
@@ -150,19 +150,12 @@ class Benchmark:
             "chunk_size": self.chunk_size,
             "ingestion": {
                 "loading_from_file": f"{round(self.ingestion - self.preprocessing, 2)} seconds",
-                "numpy_conversion": f"{round(self.preprocessing, 2)} seconds",
-                "finalization": f"{round(self.precomputation, 2)} seconds",
-                "total": f"{round(self.ingestion + self.precomputation, 2)} seconds",
+                "preprocessing": f"{round(self.preprocessing, 2)} seconds",
+                "finalization": f"{round(self.finalization, 2)} seconds",
+                "total": f"{round(self.ingestion + self.finalization, 2)} seconds",
             },
-            "base_evaluation": f"{round(self.evaluation, 2)} seconds",
-            "detailed_evaluation": [
-                {
-                    "n_points": 10,
-                    "n_examples": curve[0],
-                    "computation": f"{round(curve[1], 2)} seconds",
-                }
-                for curve in self.detailed_evaluation
-            ],
+            "evaluation": f"{round(self.evaluation, 2)} seconds",
+            "examples": f"{round(self.evaluation, 2)} seconds",
         }
 
 
@@ -218,28 +211,8 @@ def run_benchmarking_analysis(
                 f"Base evaluation timed out with {evaluator.metadata.number_of_datums} datums."
             )
 
-        detail_no_examples_time, _ = time_it(
-            evaluator.compute_confusion_matrix
-        )(
-            number_of_examples=0,
-        )
-        if (
-            detail_no_examples_time > evaluation_timeout
-            and evaluation_timeout != -1
-        ):
-            raise TimeoutError(
-                f"Base evaluation timed out with {evaluator.metadata.number_of_datums} datums."
-            )
-
-        detail_three_examples_time, _ = time_it(
-            evaluator.compute_confusion_matrix
-        )(
-            number_of_examples=3,
-        )
-        if (
-            detail_three_examples_time > evaluation_timeout
-            and evaluation_timeout != -1
-        ):
+        examples_time, _ = time_it(evaluator.compute_confusion_matrix)()
+        if examples_time > evaluation_timeout and evaluation_timeout != -1:
             raise TimeoutError(
                 f"Base evaluation timed out with {evaluator.metadata.number_of_datums} datums."
             )
@@ -254,12 +227,9 @@ def run_benchmarking_analysis(
                 chunk_size=chunk_size,
                 ingestion=ingest_time,
                 preprocessing=preprocessing_time,
-                precomputation=finalization_time,
+                finalization=finalization_time,
                 evaluation=eval_time,
-                detailed_evaluation=[
-                    (0, detail_no_examples_time),
-                    (3, detail_three_examples_time),
-                ],
+                examples_time=examples_time,
             ).result()
         )
 

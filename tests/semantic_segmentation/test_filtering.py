@@ -1,7 +1,7 @@
 import numpy as np
 import pytest
 
-from valor_lite.exceptions import EmptyFilterException
+from valor_lite.exceptions import EmptyFilterError
 from valor_lite.semantic_segmentation import DataLoader, Segmentation
 
 
@@ -136,7 +136,7 @@ def test_filtering(segmentations_from_boxes: list[Segmentation]):
     assert (label_metadata == np.array([[0, 0], [0, 0]])).all()
 
     # test filter all
-    with pytest.raises(EmptyFilterException):
+    with pytest.raises(EmptyFilterError):
         evaluator.create_filter(datum_ids=[])
 
 
@@ -148,12 +148,12 @@ def test_filtering_raises(segmentations_from_boxes: list[Segmentation]):
 
     assert evaluator._confusion_matrices.shape == (2, 3, 3)
 
-    with pytest.raises(EmptyFilterException):
+    with pytest.raises(EmptyFilterError):
         evaluator.create_filter(labels=[])
 
     assert evaluator._confusion_matrices.shape == (2, 3, 3)
 
-    with pytest.raises(EmptyFilterException):
+    with pytest.raises(EmptyFilterError):
         evaluator.create_filter(datum_ids=[])
 
     assert evaluator._confusion_matrices.shape == (2, 3, 3)
