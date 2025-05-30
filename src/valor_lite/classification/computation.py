@@ -320,44 +320,6 @@ def compute_precision_recall_rocauc(
     )
 
 
-def _count_with_examples(
-    data: NDArray[np.float64],
-    unique_idx: int | list[int],
-    label_idx: int | list[int],
-) -> tuple[NDArray[np.float64], NDArray[np.int32], NDArray[np.intp]]:
-    """
-    Helper function for counting occurences of unique detailed pairs.
-
-    Parameters
-    ----------
-    data : NDArray[np.float64]
-        A masked portion of a detailed pairs array.
-    unique_idx : int | list[int]
-        The index or indices upon which uniqueness is constrained.
-    label_idx : int | list[int]
-        The index or indices within the unique index or indices that encode labels.
-
-    Returns
-    -------
-    NDArray[np.float64]
-        Examples drawn from the data input.
-    NDArray[np.int32]
-        Unique label indices.
-    NDArray[np.intp]
-        Counts for each unique label index.
-    """
-    unique_rows, indices = np.unique(
-        data.astype(int)[:, unique_idx],
-        return_index=True,
-        axis=0,
-    )
-    examples = data[indices]
-    labels, counts = np.unique(
-        unique_rows[:, label_idx], return_counts=True, axis=0
-    )
-    return examples, labels, counts
-
-
 class PairClassification(IntFlag):
     TP = auto()
     FP_FN_MISCLF = auto()

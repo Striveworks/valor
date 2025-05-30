@@ -1,6 +1,6 @@
 import numpy as np
 
-from valor_lite.classification import Classification, DataLoader
+from valor_lite.classification import Classification, DataLoader, Evaluator
 from valor_lite.classification.computation import (
     PairClassification,
     compute_confusion_matrix,
@@ -75,6 +75,12 @@ def test_compute_confusion_matrix():
             dtype=np.uint8,
         ),
     )
+
+
+def test_compute_confusion_matrix_empty_pairs():
+    evaluator = Evaluator()
+    metrics = evaluator.compute_confusion_matrix()
+    assert metrics == []
 
 
 def _filter_elements_with_zero_count(cm: dict, mp: dict):
