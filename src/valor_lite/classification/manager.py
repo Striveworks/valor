@@ -316,25 +316,22 @@ class Evaluator:
         """
         # apply filters
         if filter_ is not None:
-            detailed_pairs, label_metadata = self.filter(filter_=filter_)
+            detailed_pairs, _ = self.filter(filter_=filter_)
         else:
             detailed_pairs = self._detailed_pairs
-            label_metadata = self._label_metadata
 
         if detailed_pairs.size == 0:
             return list()
 
-        results = compute_confusion_matrix(
+        result = compute_confusion_matrix(
             detailed_pairs=detailed_pairs,
-            label_metadata=label_metadata,
             score_thresholds=np.array(score_thresholds),
             hardmax=hardmax,
-            n_examples=number_of_examples,
         )
         return unpack_confusion_matrix_into_metric_list(
-            results=results,
+            detailed_pairs=detailed_pairs,
+            result=result,
             score_thresholds=score_thresholds,
-            number_of_examples=number_of_examples,
             index_to_datum_id=self.index_to_datum_id,
             index_to_label=self.index_to_label,
         )

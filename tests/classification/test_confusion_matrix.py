@@ -1,7 +1,10 @@
 import numpy as np
 
 from valor_lite.classification import Classification, DataLoader
-from valor_lite.classification.computation import compute_confusion_matrix
+from valor_lite.classification.computation import (
+    PairClassification,
+    compute_confusion_matrix,
+)
 
 
 def test_compute_confusion_matrix():
@@ -27,65 +30,51 @@ def test_compute_confusion_matrix():
         ],
         dtype=np.float64,
     )
-
-    # groundtruth count, prediction count, label key
-    label_metadata = np.array(
-        [
-            [2, 1, 0],
-            [0, 2, 0],
-            [1, 0, 0],
-            [1, 1, 0],
-        ],
-        dtype=np.int32,
-    )
-
     score_thresholds = np.array([0.25, 0.75], dtype=np.float64)
 
-    confusion_matrix, unmatched_ground_truths = compute_confusion_matrix(
+    result = compute_confusion_matrix(
         detailed_pairs=data,
-        label_metadata=label_metadata,
         score_thresholds=score_thresholds,
         hardmax=True,
-        n_examples=0,
     )
 
-    assert confusion_matrix.shape == (2, 4, 4, 1)
-    assert (
-        # score >= 0.25
-        confusion_matrix[0, :, :, 0]
+    assert result.shape == (2, 12)
+    assert np.all(
+        result
         == np.array(
             [
-                [1.0, -1.0, 1.0, -1.0],
-                [-1.0, -1.0, -1.0, -1.0],
-                [-1.0, -1.0, -1.0, -1.0],
-                [-1.0, -1.0, -1.0, 1.0],
-            ]
-        )
-    ).all()
-    assert (
-        # score >= 0.75
-        confusion_matrix[1, :, :, 0]
-        == np.array(
-            [
-                [1.0, -1.0, 1.0, -1.0],
-                [-1.0, -1.0, -1.0, -1.0],
-                [-1.0, -1.0, -1.0, -1.0],
-                [-1.0, -1.0, -1.0, -1.0],
-            ]
-        )
-    ).all()
-
-    assert unmatched_ground_truths.shape == (2, 4, 1)
-    assert (
-        # score >= 0.25
-        unmatched_ground_truths[0, :, 0]
-        == np.array([-1.0, -1.0, -1.0, -1.0])
-    ).all()
-    assert (
-        # score >= 0.75
-        unmatched_ground_truths[1, :, 0]
-        == np.array([-1.0, -1.0, -1.0, 1.0])
-    ).all()
+                [
+                    PairClassification.TP,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    PairClassification.FP_FN_MISCLF,
+                    0,
+                    0,
+                    0,
+                    0,
+                    PairClassification.TP,
+                ],
+                [
+                    PairClassification.TP,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    PairClassification.FP_FN_MISCLF,
+                    0,
+                    PairClassification.FN_UNMATCHED,
+                    PairClassification.FN_UNMATCHED,
+                    PairClassification.FN_UNMATCHED,
+                    PairClassification.FN_UNMATCHED,
+                ],
+            ],
+            dtype=np.uint8,
+        ),
+    )
 
 
 def _filter_elements_with_zero_count(cm: dict, mp: dict):
@@ -142,7 +131,7 @@ def test_confusion_matrix_basic(basic_classifications: list[Classification]):
                             "examples": [
                                 {
                                     "datum_id": "uid2",
-                                    "score": 0.30000001192092896,
+                                    "score": 0.3,
                                 }
                             ],
                         }
@@ -152,7 +141,6 @@ def test_confusion_matrix_basic(basic_classifications: list[Classification]):
             },
             "parameters": {
                 "score_threshold": 0.25,
-                "maximum_number_of_examples": 1,
             },
         },
         {
@@ -176,7 +164,6 @@ def test_confusion_matrix_basic(basic_classifications: list[Classification]):
             },
             "parameters": {
                 "score_threshold": 0.75,
-                "maximum_number_of_examples": 1,
             },
         },
     ]
@@ -209,18 +196,45 @@ def test_confusion_matrix_unit(
             "value": {
                 "confusion_matrix": {
                     "0": {
-                        "0": {"count": 1, "examples": []},
-                        "1": {"count": 1, "examples": []},
-                        "2": {"count": 1, "examples": []},
+                        "0": {
+                            "count": 1,
+                            "examples": [
+                                {"datum_id": "uid0", "score": 1.0},
+                            ],
+                        },
+                        "1": {
+                            "count": 1,
+                            "examples": [
+                                {"datum_id": "uid1", "score": 1.0},
+                            ],
+                        },
+                        "2": {
+                            "count": 1,
+                            "examples": [
+                                {"datum_id": "uid2", "score": 1.0},
+                            ],
+                        },
                     },
-                    "1": {"1": {"count": 1, "examples": []}},
-                    "2": {"1": {"count": 2, "examples": []}},
+                    "1": {
+                        "1": {
+                            "count": 1,
+                            "examples": [{"datum_id": "uid3", "score": 1.0}],
+                        }
+                    },
+                    "2": {
+                        "1": {
+                            "count": 2,
+                            "examples": [
+                                {"datum_id": "uid4", "score": 1.0},
+                                {"datum_id": "uid5", "score": 1.0},
+                            ],
+                        }
+                    },
                 },
                 "unmatched_ground_truths": {},
             },
             "parameters": {
                 "score_threshold": 0.5,
-                "maximum_number_of_examples": 0,
             },
         },
     ]
@@ -259,7 +273,7 @@ def test_confusion_matrix_with_animal_example(
                             "examples": [
                                 {
                                     "datum_id": "uid0",
-                                    "score": 0.6000000238418579,
+                                    "score": 0.6,
                                 }
                             ],
                         },
@@ -272,7 +286,7 @@ def test_confusion_matrix_with_animal_example(
                             "examples": [
                                 {
                                     "datum_id": "uid2",
-                                    "score": 0.800000011920929,
+                                    "score": 0.8,
                                 }
                             ],
                         },
@@ -283,7 +297,7 @@ def test_confusion_matrix_with_animal_example(
                             "examples": [
                                 {
                                     "datum_id": "uid1",
-                                    "score": 0.8999999761581421,
+                                    "score": 0.9,
                                 }
                             ],
                         }
@@ -301,7 +315,6 @@ def test_confusion_matrix_with_animal_example(
             },
             "parameters": {
                 "score_threshold": 0.5,
-                "maximum_number_of_examples": 6,
             },
         },
     ]
@@ -340,7 +353,7 @@ def test_confusion_matrix_with_color_example(
                             "examples": [
                                 {
                                     "datum_id": "uid0",
-                                    "score": 0.6499999761581421,
+                                    "score": 0.65,
                                 }
                             ],
                         },
@@ -355,7 +368,7 @@ def test_confusion_matrix_with_color_example(
                             "examples": [
                                 {
                                     "datum_id": "uid5",
-                                    "score": 0.8999999761581421,
+                                    "score": 0.9,
                                 }
                             ],
                         }
@@ -372,7 +385,7 @@ def test_confusion_matrix_with_color_example(
                             "examples": [
                                 {
                                     "datum_id": "uid4",
-                                    "score": 0.800000011920929,
+                                    "score": 0.8,
                                 }
                             ],
                         }
@@ -384,7 +397,6 @@ def test_confusion_matrix_with_color_example(
             },
             "parameters": {
                 "score_threshold": 0.5,
-                "maximum_number_of_examples": 6,
             },
         },
     ]
@@ -431,7 +443,7 @@ def test_confusion_matrix_multiclass(
                             "examples": [
                                 {
                                     "datum_id": "uid0",
-                                    "score": 0.44598543643951416,
+                                    "score": 0.44598543489942505,
                                 }
                             ],
                         },
@@ -440,7 +452,7 @@ def test_confusion_matrix_multiclass(
                             "examples": [
                                 {
                                     "datum_id": "uid2",
-                                    "score": 0.4026564359664917,
+                                    "score": 0.4076893257212283,
                                 }
                             ],
                         },
@@ -451,7 +463,7 @@ def test_confusion_matrix_multiclass(
                             "examples": [
                                 {
                                     "datum_id": "uid4",
-                                    "score": 0.5890645980834961,
+                                    "score": 0.5890646197236098,
                                 }
                             ],
                         }
@@ -462,11 +474,11 @@ def test_confusion_matrix_multiclass(
                             "examples": [
                                 {
                                     "datum_id": "uid1",
-                                    "score": 0.44450607895851135,
+                                    "score": 0.4445060886392194,
                                 },
                                 {
                                     "datum_id": "uid3",
-                                    "score": 0.5510573983192444,
+                                    "score": 0.5510573702493565,
                                 },
                             ],
                         }
@@ -476,7 +488,6 @@ def test_confusion_matrix_multiclass(
             },
             "parameters": {
                 "score_threshold": 0.05,
-                "maximum_number_of_examples": 5,
             },
         },
         {
@@ -489,7 +500,7 @@ def test_confusion_matrix_multiclass(
                             "examples": [
                                 {
                                     "datum_id": "uid4",
-                                    "score": 0.5890645980834961,
+                                    "score": 0.5890646197236098,
                                 }
                             ],
                         }
@@ -500,7 +511,7 @@ def test_confusion_matrix_multiclass(
                             "examples": [
                                 {
                                     "datum_id": "uid3",
-                                    "score": 0.5510573983192444,
+                                    "score": 0.5510573702493565,
                                 }
                             ],
                         }
@@ -519,7 +530,6 @@ def test_confusion_matrix_multiclass(
             },
             "parameters": {
                 "score_threshold": 0.5,
-                "maximum_number_of_examples": 5,
             },
         },
         {
@@ -546,7 +556,6 @@ def test_confusion_matrix_multiclass(
             },
             "parameters": {
                 "score_threshold": 0.85,
-                "maximum_number_of_examples": 5,
             },
         },
     ]
@@ -594,7 +603,7 @@ def test_confusion_matrix_without_hardmax_animal_example(
                             "examples": [
                                 {
                                     "datum_id": "uid1",
-                                    "score": 0.15000000596046448,
+                                    "score": 0.15,
                                 }
                             ],
                         },
@@ -603,7 +612,7 @@ def test_confusion_matrix_without_hardmax_animal_example(
                             "examples": [
                                 {
                                     "datum_id": "uid1",
-                                    "score": 0.47999998927116394,
+                                    "score": 0.48,
                                 }
                             ],
                         },
@@ -612,7 +621,7 @@ def test_confusion_matrix_without_hardmax_animal_example(
                             "examples": [
                                 {
                                     "datum_id": "uid1",
-                                    "score": 0.3700000047683716,
+                                    "score": 0.37,
                                 }
                             ],
                         },
@@ -622,7 +631,6 @@ def test_confusion_matrix_without_hardmax_animal_example(
             },
             "parameters": {
                 "score_threshold": 0.05,
-                "maximum_number_of_examples": 6,
             },
         },
         {
@@ -635,7 +643,7 @@ def test_confusion_matrix_without_hardmax_animal_example(
                             "examples": [
                                 {
                                     "datum_id": "uid1",
-                                    "score": 0.47999998927116394,
+                                    "score": 0.48,
                                 }
                             ],
                         }
@@ -645,7 +653,6 @@ def test_confusion_matrix_without_hardmax_animal_example(
             },
             "parameters": {
                 "score_threshold": 0.4,
-                "maximum_number_of_examples": 6,
             },
         },
         {
@@ -665,7 +672,6 @@ def test_confusion_matrix_without_hardmax_animal_example(
             },
             "parameters": {
                 "score_threshold": 0.5,
-                "maximum_number_of_examples": 6,
             },
         },
     ]
