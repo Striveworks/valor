@@ -58,7 +58,6 @@ def test_output_types_dont_contain_numpy(
     metrics = evaluator.evaluate(
         score_thresholds=[0.25, 0.75],
     )
-
     values = _flatten_metrics(metrics)
     for value in values:
         if isinstance(value, (np.generic, np.ndarray, Metric)):

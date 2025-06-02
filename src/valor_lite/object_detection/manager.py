@@ -6,9 +6,9 @@ from numpy.typing import NDArray
 from tqdm import tqdm
 
 from valor_lite.exceptions import (
-    EmptyEvaluatorException,
-    EmptyFilterException,
-    InternalCacheException,
+    EmptyEvaluatorError,
+    EmptyFilterError,
+    InternalCacheError,
 )
 from valor_lite.object_detection.annotation import (
     Bitmask,
@@ -102,13 +102,13 @@ class Filter:
     def __post_init__(self):
         # validate datums mask
         if not self.mask_datums.any():
-            raise EmptyFilterException("filter removes all datums")
+            raise EmptyFilterError("filter removes all datums")
 
         # validate annotation masks
         no_gts = self.mask_groundtruths.all()
         no_pds = self.mask_predictions.all()
         if no_gts and no_pds:
-            raise EmptyFilterException("filter removes all annotations")
+            raise EmptyFilterError("filter removes all annotations")
         elif no_gts:
             warnings.warn("filter removes all ground truths")
         elif no_pds:
@@ -197,7 +197,7 @@ class Evaluator:
         # filter datums
         if datum_ids is not None:
             if not datum_ids:
-                raise EmptyFilterException("filter removes all datums")
+                raise EmptyFilterError("filter removes all datums")
             valid_datum_indices = np.array(
                 [self.datum_id_to_index[uid] for uid in datum_ids],
                 dtype=np.int32,
@@ -240,7 +240,7 @@ class Evaluator:
         # filter by labels
         if labels is not None:
             if not labels:
-                raise EmptyFilterException("filter removes all labels")
+                raise EmptyFilterError("filter removes all labels")
             valid_label_indices = np.array(
                 [self.label_to_index[label] for label in labels] + [-1]
             )
@@ -467,7 +467,7 @@ class DataLoader:
             if len(self._evaluator.datum_id_to_index) != len(
                 self._evaluator.index_to_datum_id
             ):
-                raise InternalCacheException("datum cache size mismatch")
+                raise InternalCacheError("datum cache size mismatch")
             idx = len(self._evaluator.datum_id_to_index)
             self._evaluator.datum_id_to_index[datum_id] = idx
             self._evaluator.index_to_datum_id.append(datum_id)
@@ -491,9 +491,7 @@ class DataLoader:
             if len(self._evaluator.groundtruth_id_to_index) != len(
                 self._evaluator.index_to_groundtruth_id
             ):
-                raise InternalCacheException(
-                    "ground truth cache size mismatch"
-                )
+                raise InternalCacheError("ground truth cache size mismatch")
             idx = len(self._evaluator.groundtruth_id_to_index)
             self._evaluator.groundtruth_id_to_index[annotation_id] = idx
             self._evaluator.index_to_groundtruth_id.append(annotation_id)
@@ -517,7 +515,7 @@ class DataLoader:
             if len(self._evaluator.prediction_id_to_index) != len(
                 self._evaluator.index_to_prediction_id
             ):
-                raise InternalCacheException("prediction cache size mismatch")
+                raise InternalCacheError("prediction cache size mismatch")
             idx = len(self._evaluator.prediction_id_to_index)
             self._evaluator.prediction_id_to_index[annotation_id] = idx
             self._evaluator.index_to_prediction_id.append(annotation_id)
@@ -542,7 +540,7 @@ class DataLoader:
             if len(self._evaluator.label_to_index) != len(
                 self._evaluator.index_to_label
             ):
-                raise InternalCacheException("label cache size mismatch")
+                raise InternalCacheError("label cache size mismatch")
             self._evaluator.label_to_index[label] = label_id
             self._evaluator.index_to_label.append(label)
             label_id += 1
@@ -768,14 +766,14 @@ class DataLoader:
             A ready-to-use evaluator object.
         """
         if not self.pairs:
-            raise EmptyEvaluatorException()
+            raise EmptyEvaluatorError()
 
         n_labels = len(self._evaluator.index_to_label)
         n_datums = len(self._evaluator.index_to_datum_id)
 
         self._evaluator._detailed_pairs = np.concatenate(self.pairs, axis=0)
         if self._evaluator._detailed_pairs.size == 0:
-            raise EmptyEvaluatorException()
+            raise EmptyEvaluatorError()
 
         # order pairs by descending score, iou
         indices = np.lexsort(

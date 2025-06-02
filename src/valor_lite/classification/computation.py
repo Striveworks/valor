@@ -1,3 +1,5 @@
+from enum import IntFlag, auto
+
 import numpy as np
 from numpy.typing import NDArray
 
@@ -318,55 +320,19 @@ def compute_precision_recall_rocauc(
     )
 
 
-def _count_with_examples(
-    data: NDArray[np.float64],
-    unique_idx: int | list[int],
-    label_idx: int | list[int],
-) -> tuple[NDArray[np.float64], NDArray[np.int32], NDArray[np.intp]]:
-    """
-    Helper function for counting occurences of unique detailed pairs.
-
-    Parameters
-    ----------
-    data : NDArray[np.float64]
-        A masked portion of a detailed pairs array.
-    unique_idx : int | list[int]
-        The index or indices upon which uniqueness is constrained.
-    label_idx : int | list[int]
-        The index or indices within the unique index or indices that encode labels.
-
-    Returns
-    -------
-    NDArray[np.float64]
-        Examples drawn from the data input.
-    NDArray[np.int32]
-        Unique label indices.
-    NDArray[np.intp]
-        Counts for each unique label index.
-    """
-    unique_rows, indices = np.unique(
-        data.astype(int)[:, unique_idx],
-        return_index=True,
-        axis=0,
-    )
-    examples = data[indices]
-    labels, counts = np.unique(
-        unique_rows[:, label_idx], return_counts=True, axis=0
-    )
-    return examples, labels, counts
+class PairClassification(IntFlag):
+    TP = auto()
+    FP_FN_MISCLF = auto()
+    FN_UNMATCHED = auto()
 
 
 def compute_confusion_matrix(
     detailed_pairs: NDArray[np.float64],
-    label_metadata: NDArray[np.int32],
     score_thresholds: NDArray[np.float64],
     hardmax: bool,
-    n_examples: int,
-) -> tuple[NDArray[np.float64], NDArray[np.int32]]:
+) -> NDArray[np.uint8]:
     """
     Compute detailed confusion matrix.
-
-    Takes data with shape (N, 5):
 
     Parameters
     ----------
@@ -377,37 +343,22 @@ def compute_confusion_matrix(
             Index 2 - Prediction Label Index
             Index 3 - Score
             Index 4 - Hard Max Score
-    label_metadata : NDArray[np.int32]
-        A 2-D array containing metadata related to labels with shape (n_labels, 2).
-            Index 0 - GroundTruth Label Count
-            Index 1 - Prediction Label Count
     iou_thresholds : NDArray[np.float64]
         A 1-D array containing IOU thresholds.
     score_thresholds : NDArray[np.float64]
         A 1-D array containing score thresholds.
-    n_examples : int
-        The maximum number of examples to return per count.
 
     Returns
     -------
-    NDArray[np.float64]
-        Confusion matrix.
-    NDArray[np.int32]
-        Unmatched Ground Truths.
+    NDArray[uint8]
+        Row-wise classification of pairs.
     """
-
-    n_labels = label_metadata.shape[0]
+    n_pairs = detailed_pairs.shape[0]
     n_scores = score_thresholds.shape[0]
 
-    confusion_matrix = np.full(
-        (n_scores, n_labels, n_labels, 2 * n_examples + 1),
-        fill_value=-1.0,
-        dtype=np.float32,
-    )
-    unmatched_ground_truths = np.full(
-        (n_scores, n_labels, n_examples + 1),
-        fill_value=-1,
-        dtype=np.int32,
+    pair_classifications = np.zeros(
+        (n_scores, n_pairs),
+        dtype=np.uint8,
     )
 
     mask_label_match = np.isclose(detailed_pairs[:, 1], detailed_pairs[:, 2])
@@ -420,9 +371,9 @@ def compute_confusion_matrix(
         if hardmax:
             mask_score &= detailed_pairs[:, 4] > 0.5
 
-        mask_tp = mask_label_match & mask_score
-        mask_misclf = ~mask_label_match & mask_score
-        mask_misprd = ~(
+        mask_true_positives = mask_label_match & mask_score
+        mask_misclassifications = ~mask_label_match & mask_score
+        mask_unmatched_groundtruths = ~(
             (
                 groundtruths.reshape(-1, 1, 2)
                 == groundtruths[mask_score].reshape(1, -1, 2)
@@ -431,73 +382,15 @@ def compute_confusion_matrix(
             .any(axis=1)
         )
 
-        tp_examples, tp_labels, tp_counts = _count_with_examples(
-            data=detailed_pairs[mask_tp],
-            unique_idx=[0, 2],
-            label_idx=1,
+        # classify pairings
+        pair_classifications[score_idx, mask_true_positives] |= np.uint8(
+            PairClassification.TP
         )
-        misclf_examples, misclf_labels, misclf_counts = _count_with_examples(
-            data=detailed_pairs[mask_misclf],
-            unique_idx=[0, 1, 2],
-            label_idx=[1, 2],
+        pair_classifications[score_idx, mask_misclassifications] |= np.uint8(
+            PairClassification.FP_FN_MISCLF
         )
-        misprd_examples, misprd_labels, misprd_counts = _count_with_examples(
-            data=detailed_pairs[mask_misprd],
-            unique_idx=[0, 1],
-            label_idx=1,
-        )
+        pair_classifications[
+            score_idx, mask_unmatched_groundtruths
+        ] |= np.uint8(PairClassification.FN_UNMATCHED)
 
-        confusion_matrix[score_idx, tp_labels, tp_labels, 0] = tp_counts
-        confusion_matrix[
-            score_idx, misclf_labels[:, 0], misclf_labels[:, 1], 0
-        ] = misclf_counts
-
-        unmatched_ground_truths[score_idx, misprd_labels, 0] = misprd_counts
-
-        if n_examples > 0:
-            for label_idx in range(n_labels):
-                # true-positive examples
-                mask_tp_label = tp_examples[:, 2] == label_idx
-                if mask_tp_label.sum() > 0:
-                    tp_label_examples = tp_examples[mask_tp_label][:n_examples]
-                    confusion_matrix[
-                        score_idx,
-                        label_idx,
-                        label_idx,
-                        1 : 2 * tp_label_examples.shape[0] + 1,
-                    ] = tp_label_examples[:, [0, 3]].flatten()
-
-                # misclassification examples
-                mask_misclf_gt_label = misclf_examples[:, 1] == label_idx
-                if mask_misclf_gt_label.sum() > 0:
-                    for pd_label_idx in range(n_labels):
-                        mask_misclf_pd_label = (
-                            misclf_examples[:, 2] == pd_label_idx
-                        )
-                        mask_misclf_label_combo = (
-                            mask_misclf_gt_label & mask_misclf_pd_label
-                        )
-                        if mask_misclf_label_combo.sum() > 0:
-                            misclf_label_examples = misclf_examples[
-                                mask_misclf_label_combo
-                            ][:n_examples]
-                            confusion_matrix[
-                                score_idx,
-                                label_idx,
-                                pd_label_idx,
-                                1 : 2 * misclf_label_examples.shape[0] + 1,
-                            ] = misclf_label_examples[:, [0, 3]].flatten()
-
-                # unmatched ground truth examples
-                mask_misprd_label = misprd_examples[:, 1] == label_idx
-                if misprd_examples.size > 0:
-                    misprd_label_examples = misprd_examples[mask_misprd_label][
-                        :n_examples
-                    ]
-                    unmatched_ground_truths[
-                        score_idx,
-                        label_idx,
-                        1 : misprd_label_examples.shape[0] + 1,
-                    ] = misprd_label_examples[:, 0].flatten()
-
-    return confusion_matrix, unmatched_ground_truths  # type: ignore[reportReturnType]
+    return pair_classifications

@@ -4,7 +4,7 @@ import numpy as np
 from numpy.typing import NDArray
 from tqdm import tqdm
 
-from valor_lite.exceptions import EmptyEvaluatorException, EmptyFilterException
+from valor_lite.exceptions import EmptyEvaluatorError, EmptyFilterError
 from valor_lite.semantic_segmentation.annotation import Segmentation
 from valor_lite.semantic_segmentation.computation import (
     compute_intermediate_confusion_matrices,
@@ -74,11 +74,11 @@ class Filter:
     def __post_init__(self):
         # validate datum mask
         if not self.datum_mask.any():
-            raise EmptyFilterException("filter removes all datums")
+            raise EmptyFilterError("filter removes all datums")
 
         # validate label mask
         if self.label_mask.all():
-            raise EmptyFilterException("filter removes all labels")
+            raise EmptyFilterError("filter removes all labels")
 
 
 class Evaluator:
@@ -403,7 +403,7 @@ class DataLoader:
         """
 
         if len(self.matrices) == 0:
-            raise EmptyEvaluatorException()
+            raise EmptyEvaluatorError()
 
         n_labels = len(self._evaluator.index_to_label)
         n_datums = len(self._evaluator.index_to_datum_id)
