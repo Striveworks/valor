@@ -9,6 +9,8 @@ from valor_lite.object_detection import (
     BoundingBox,
     DataLoader,
     Detection,
+    Filter,
+    Metadata,
     MetricType,
 )
 
@@ -780,3 +782,47 @@ def test_filtering_invalid_indices(
     with pytest.raises(ValueError) as e:
         evaluator.create_filter(labels=np.array([1000]))
     assert "cannot exceed total number of labels" in str(e)
+
+
+def test_filter_object():
+
+    mask = np.array([True, False, False])
+    true_mask = np.array([True, True, True])
+    false_mask = ~true_mask
+
+    # check that no datums are defined
+    with pytest.raises(EmptyFilterError) as e:
+        Filter(
+            mask_datums=false_mask,
+            mask_groundtruths=mask,
+            mask_predictions=mask,
+            metadata=Metadata(),
+        )
+    assert "filter removes all datums" in str(e)
+
+    # check that no annotations are defined
+    with pytest.raises(EmptyFilterError) as e:
+        Filter(
+            mask_datums=mask,
+            mask_groundtruths=true_mask,
+            mask_predictions=true_mask,
+            metadata=Metadata(),
+        )
+
+    # check that no ground truths are defined
+    with pytest.warns(UserWarning):
+        Filter(
+            mask_datums=mask,
+            mask_groundtruths=true_mask,
+            mask_predictions=mask,
+            metadata=Metadata(),
+        )
+
+    # check that no predictions are defined
+    with pytest.warns(UserWarning):
+        Filter(
+            mask_datums=mask,
+            mask_groundtruths=mask,
+            mask_predictions=true_mask,
+            metadata=Metadata(),
+        )

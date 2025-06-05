@@ -99,6 +99,21 @@ class Filter:
     mask_predictions: NDArray[np.bool_]
     metadata: Metadata
 
+    def __post_init__(self):
+        # validate datums mask
+        if not self.mask_datums.any():
+            raise EmptyFilterError("filter removes all datums")
+
+        # validate annotation masks
+        no_gts = self.mask_groundtruths.all()
+        no_pds = self.mask_predictions.all()
+        if no_gts and no_pds:
+            raise EmptyFilterError("filter removes all annotations")
+        elif no_gts:
+            warnings.warn("filter removes all ground truths")
+        elif no_pds:
+            warnings.warn("filter removes all predictions")
+
 
 class Evaluator:
     """

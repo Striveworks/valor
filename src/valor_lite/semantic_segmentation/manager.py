@@ -71,6 +71,15 @@ class Filter:
     label_mask: NDArray[np.bool_]
     metadata: Metadata
 
+    def __post_init__(self):
+        # validate datum mask
+        if not self.datum_mask.any():
+            raise EmptyFilterError("filter removes all datums")
+
+        # validate label mask
+        if self.label_mask.all():
+            raise EmptyFilterError("filter removes all labels")
+
 
 class Evaluator:
     """

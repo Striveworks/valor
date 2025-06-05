@@ -4,7 +4,13 @@ from random import choice, uniform
 import numpy as np
 import pytest
 
-from valor_lite.classification import Classification, DataLoader, MetricType
+from valor_lite.classification import (
+    Classification,
+    DataLoader,
+    Filter,
+    Metadata,
+    MetricType,
+)
 from valor_lite.exceptions import EmptyFilterError
 
 
@@ -890,3 +896,23 @@ def test_filtering_six_classifications_by_indices(
         assert m in expected_metrics
     for m in expected_metrics:
         assert m in actual_metrics
+
+
+def test_filter_object():
+
+    # check that no datums are defined
+    with pytest.raises(EmptyFilterError) as e:
+        Filter(
+            datum_mask=np.array([False, False, False]),
+            valid_label_indices=np.array([0, 1, 2]),
+            metadata=Metadata(),
+        )
+    assert "filter removes all datums" in str(e)
+
+    # check that no labels are defined
+    with pytest.raises(EmptyFilterError) as e:
+        Filter(
+            datum_mask=np.array([True, False, False]),
+            valid_label_indices=np.array([]),
+            metadata=Metadata(),
+        )

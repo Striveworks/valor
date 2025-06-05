@@ -2,7 +2,12 @@ import numpy as np
 import pytest
 
 from valor_lite.exceptions import EmptyFilterError
-from valor_lite.semantic_segmentation import DataLoader, Segmentation
+from valor_lite.semantic_segmentation import (
+    DataLoader,
+    Filter,
+    Metadata,
+    Segmentation,
+)
 
 
 def test_filtering(segmentations_from_boxes: list[Segmentation]):
@@ -182,3 +187,23 @@ def test_filtering_invalid_indices(
     with pytest.raises(ValueError) as e:
         evaluator.create_filter(labels=np.array([1000]))
     assert "cannot exceed total number of labels" in str(e)
+
+
+def test_filter_object():
+
+    mask = np.array([True, False, False])
+    true_mask = np.array([True, True, True])
+    false_mask = ~true_mask
+
+    # check that no datums are defined
+    with pytest.raises(EmptyFilterError) as e:
+        Filter(datum_mask=false_mask, label_mask=mask, metadata=Metadata())
+    assert "filter removes all datums" in str(e)
+
+    # check that no labels are defined
+    with pytest.raises(EmptyFilterError) as e:
+        Filter(
+            datum_mask=mask,
+            label_mask=true_mask,
+            metadata=Metadata(),
+        )
