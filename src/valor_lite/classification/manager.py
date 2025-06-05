@@ -144,18 +144,18 @@ class Evaluator:
 
     def create_filter(
         self,
-        datum_ids: list[str] | None = None,
-        labels: list[str] | None = None,
+        datums: list[str] | NDArray[np.int32] | None = None,
+        labels: list[str] | NDArray[np.int32] | None = None,
     ) -> Filter:
         """
         Creates a filter object.
 
         Parameters
         ----------
-        datum_uids : list[str], optional
-            An optional list of string uids representing datums.
-        labels : list[str], optional
-            An optional list of labels.
+        datums : list[str] | NDArray[int32], optional
+            An optional list of string uids or integer indices representing datums.
+        labels : list[str] | NDArray[int32], optional
+            An optional list of strings or integer indices representing labels.
 
         Returns
         -------
@@ -165,20 +165,19 @@ class Evaluator:
         # create datum mask
         n_pairs = self._detailed_pairs.shape[0]
         datum_mask = np.ones(n_pairs, dtype=np.bool_)
-        if datum_ids is not None:
-            if not datum_ids:
+        if datums is not None:
+            if not datums:
                 return Filter(
                     datum_mask=np.zeros_like(datum_mask),
                     valid_label_indices=None,
                     metadata=Metadata(),
                 )
-            valid_datum_indices = np.array(
-                [self.datum_id_to_index[uid] for uid in datum_ids],
-                dtype=np.int32,
-            )
-            datum_mask = np.isin(
-                self._detailed_pairs[:, 0], valid_datum_indices
-            )
+            if isinstance(datums, list):
+                datums = np.array(
+                    [self.datum_id_to_index[uid] for uid in datums],
+                    dtype=np.int32,
+                )
+            datum_mask = np.isin(self._detailed_pairs[:, 0], datums)
 
         # collect valid label indices
         valid_label_indices = None
@@ -189,9 +188,10 @@ class Evaluator:
                     valid_label_indices=np.array([], dtype=np.int32),
                     metadata=Metadata(),
                 )
-            valid_label_indices = np.array(
-                [self.label_to_index[label] for label in labels] + [-1]
-            )
+            if isinstance(labels, list):
+                valid_label_indices = np.array(
+                    [self.label_to_index[label] for label in labels] + [-1]
+                )
 
         filtered_detailed_pairs, _ = filter_cache(
             detailed_pairs=self._detailed_pairs,
@@ -201,8 +201,8 @@ class Evaluator:
         )
 
         number_of_datums = (
-            len(datum_ids)
-            if datum_ids is not None
+            datums.size
+            if datums is not None
             else self.metadata.number_of_datums
         )
 
