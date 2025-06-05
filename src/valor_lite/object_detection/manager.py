@@ -197,7 +197,7 @@ class Evaluator:
                 raise ValueError(
                     f"datum index cannot be negative '{datums.min()}'"
                 )
-            elif datums.max() >= len(self.index_to_prediction_id):
+            elif datums.max() >= len(self.index_to_datum_id):
                 raise ValueError(
                     f"datum index cannot exceed total number of datums '{datums.max()}'"
                 )
@@ -229,7 +229,7 @@ class Evaluator:
                 raise ValueError(
                     f"groundtruth annotation index cannot be negative '{groundtruths.min()}'"
                 )
-            elif groundtruths.max() >= len(self.index_to_prediction_id):
+            elif groundtruths.max() >= len(self.index_to_groundtruth_id):
                 raise ValueError(
                     f"groundtruth annotation index cannot exceed total number of groundtruths '{groundtruths.max()}'"
                 )

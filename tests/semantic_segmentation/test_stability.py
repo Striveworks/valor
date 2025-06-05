@@ -80,7 +80,7 @@ def test_fuzz_segmentations_with_filtering():
         datum_subset = [f"uid{i}" for i in range(len(segmentations) // 2)]
 
         try:
-            filter_ = evaluator.create_filter(datum_ids=datum_subset)
+            filter_ = evaluator.create_filter(datums=datum_subset)
         except EmptyFilterError:
             pass
         else:
