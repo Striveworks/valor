@@ -184,7 +184,7 @@ class Evaluator:
                 raise EmptyFilterError("filter removes all labels")
             elif labels.min() < 0:
                 raise ValueError(
-                    f"label index cannot be a negative value '{labels.min()}'"
+                    f"label index cannot be negative '{labels.min()}'"
                 )
             elif labels.max() >= len(self.index_to_label):
                 raise ValueError(
