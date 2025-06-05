@@ -99,21 +99,6 @@ class Filter:
     mask_predictions: NDArray[np.bool_]
     metadata: Metadata
 
-    def __post_init__(self):
-        # validate datums mask
-        if not self.mask_datums.any():
-            raise EmptyFilterError("filter removes all datums")
-
-        # validate annotation masks
-        no_gts = self.mask_groundtruths.all()
-        no_pds = self.mask_predictions.all()
-        if no_gts and no_pds:
-            raise EmptyFilterError("filter removes all annotations")
-        elif no_gts:
-            warnings.warn("filter removes all ground truths")
-        elif no_pds:
-            warnings.warn("filter removes all predictions")
-
 
 class Evaluator:
     """
@@ -173,38 +158,52 @@ class Evaluator:
 
     def create_filter(
         self,
-        datum_ids: list[str] | None = None,
-        groundtruth_ids: list[str] | None = None,
-        prediction_ids: list[str] | None = None,
-        labels: list[str] | None = None,
+        datums: list[str] | NDArray[np.int32] | None = None,
+        groundtruths: list[str] | NDArray[np.int32] | None = None,
+        predictions: list[str] | NDArray[np.int32] | None = None,
+        labels: list[str] | NDArray[np.int32] | None = None,
     ) -> Filter:
         """
         Creates a filter object.
 
         Parameters
         ----------
-        datum_uids : list[str], optional
-            An optional list of string uids representing datums to keep.
-        groundtruth_ids : list[str], optional
-            An optional list of string uids representing ground truth annotations to keep.
-        prediction_ids : list[str], optional
-            An optional list of string uids representing prediction annotations to keep.
-        labels : list[str], optional
-            An optional list of labels to keep.
+        datum : list[str] | NDArray[int32], optional
+            An optional list of string ids or indices representing datums to keep.
+        groundtruth : list[str] | NDArray[int32], optional
+            An optional list of string ids or indices representing ground truth annotations to keep.
+        prediction : list[str] | NDArray[int32], optional
+            An optional list of string ids or indices representing prediction annotations to keep.
+        labels : list[str] | NDArray[int32], optional
+            An optional list of labels or indices to keep.
         """
         mask_datums = np.ones(self._detailed_pairs.shape[0], dtype=np.bool_)
 
         # filter datums
-        if datum_ids is not None:
-            if not datum_ids:
-                raise EmptyFilterError("filter removes all datums")
-            valid_datum_indices = np.array(
-                [self.datum_id_to_index[uid] for uid in datum_ids],
-                dtype=np.int32,
-            )
-            mask_datums = np.isin(
-                self._detailed_pairs[:, 0], valid_datum_indices
-            )
+        if datums is not None:
+            # convert to indices
+            if isinstance(datums, list):
+                datums = np.array(
+                    [self.datum_id_to_index[uid] for uid in datums],
+                    dtype=np.int32,
+                )
+
+            # validate indices
+            if datums.size == 0:
+                raise EmptyFilterError(
+                    "filter removes all datums"
+                )  # validate indices
+            elif datums.min() < 0:
+                raise ValueError(
+                    f"datum index cannot be negative '{datums.min()}'"
+                )
+            elif datums.max() >= len(self.index_to_prediction_id):
+                raise ValueError(
+                    f"datum index cannot exceed total number of datums '{datums.max()}'"
+                )
+
+            # apply to mask
+            mask_datums = np.isin(self._detailed_pairs[:, 0], datums)
 
         filtered_detailed_pairs = self._detailed_pairs[mask_datums]
         n_pairs = self._detailed_pairs[mask_datums].shape[0]
@@ -212,43 +211,93 @@ class Evaluator:
         mask_predictions = np.zeros_like(mask_groundtruths)
 
         # filter by ground truth annotation ids
-        if groundtruth_ids is not None:
-            valid_groundtruth_indices = np.array(
-                [self.groundtruth_id_to_index[uid] for uid in groundtruth_ids],
-                dtype=np.int32,
-            )
+        if groundtruths is not None:
+            # convert to indices
+            if isinstance(groundtruths, list):
+                groundtruths = np.array(
+                    [
+                        self.groundtruth_id_to_index[uid]
+                        for uid in groundtruths
+                    ],
+                    dtype=np.int32,
+                )
+
+            # validate indices
+            if groundtruths.size == 0:
+                warnings.warn("filter removes all ground truths")
+            elif groundtruths.min() < 0:
+                raise ValueError(
+                    f"groundtruth annotation index cannot be negative '{groundtruths.min()}'"
+                )
+            elif groundtruths.max() >= len(self.index_to_prediction_id):
+                raise ValueError(
+                    f"groundtruth annotation index cannot exceed total number of groundtruths '{groundtruths.max()}'"
+                )
+
+            # apply to mask
             mask_groundtruths[
                 ~np.isin(
                     filtered_detailed_pairs[:, 1],
-                    valid_groundtruth_indices,
+                    groundtruths,
                 )
             ] = True
 
         # filter by prediction annotation ids
-        if prediction_ids is not None:
-            valid_prediction_indices = np.array(
-                [self.prediction_id_to_index[uid] for uid in prediction_ids],
-                dtype=np.int32,
-            )
+        if predictions is not None:
+            # convert to indices
+            if isinstance(predictions, list):
+                predictions = np.array(
+                    [self.prediction_id_to_index[uid] for uid in predictions],
+                    dtype=np.int32,
+                )
+
+            # validate indices
+            if predictions.size == 0:
+                warnings.warn("filter removes all predictions")
+            elif predictions.min() < 0:
+                raise ValueError(
+                    f"prediction annotation index cannot be negative '{predictions.min()}'"
+                )
+            elif predictions.max() >= len(self.index_to_prediction_id):
+                raise ValueError(
+                    f"prediction annotation index cannot exceed total number of predictions '{predictions.max()}'"
+                )
+
+            # apply to mask
             mask_predictions[
                 ~np.isin(
                     filtered_detailed_pairs[:, 2],
-                    valid_prediction_indices,
+                    predictions,
                 )
             ] = True
 
         # filter by labels
         if labels is not None:
-            if not labels:
+            # convert to indices
+            if isinstance(labels, list):
+                labels = np.array(
+                    [self.label_to_index[label] for label in labels]
+                )
+
+            # validate indices
+            if labels.size == 0:
                 raise EmptyFilterError("filter removes all labels")
-            valid_label_indices = np.array(
-                [self.label_to_index[label] for label in labels] + [-1]
-            )
+            elif labels.min() < 0:
+                raise ValueError(
+                    f"label index cannot be a negative value '{labels.min()}'"
+                )
+            elif labels.max() >= len(self.index_to_label):
+                raise ValueError(
+                    f"label index cannot exceed total number of labels '{labels.max()}'"
+                )
+
+            # apply to mask
+            labels = np.concatenate([labels, np.array([-1])])  # add null label
             mask_groundtruths[
-                ~np.isin(filtered_detailed_pairs[:, 3], valid_label_indices)
+                ~np.isin(filtered_detailed_pairs[:, 3], labels)
             ] = True
             mask_predictions[
-                ~np.isin(filtered_detailed_pairs[:, 4], valid_label_indices)
+                ~np.isin(filtered_detailed_pairs[:, 4], labels)
             ] = True
 
         filtered_detailed_pairs, _, _ = filter_cache(
@@ -260,8 +309,8 @@ class Evaluator:
         )
 
         number_of_datums = (
-            len(datum_ids)
-            if datum_ids
+            datums.size
+            if datums is not None
             else np.unique(filtered_detailed_pairs[:, 0]).size
         )
 

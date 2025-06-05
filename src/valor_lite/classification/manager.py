@@ -175,11 +175,7 @@ class Evaluator:
 
             # return early if all data removed
             if datums.size == 0:
-                return Filter(
-                    datum_mask=np.zeros_like(datum_mask),
-                    valid_label_indices=None,
-                    metadata=Metadata(),
-                )
+                raise EmptyFilterError("filter removes all datums")
 
             # validate indices
             if datums.max() >= len(self.index_to_datum_id):
@@ -204,11 +200,7 @@ class Evaluator:
 
             # return early if all data removed
             if labels.size == 0:
-                return Filter(
-                    datum_mask=datum_mask,
-                    valid_label_indices=np.array([], dtype=np.int32),
-                    metadata=Metadata(),
-                )
+                raise EmptyFilterError("filter removes all labels")
 
             # validate indices
             if labels.max() >= len(self.index_to_label):
