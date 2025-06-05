@@ -746,3 +746,37 @@ def test_filtering_four_detections_by_indices(
         assert m in expected_metrics
     for m in expected_metrics:
         assert m in actual_metrics
+
+
+def test_filtering_invalid_indices(
+    four_detections: list[Detection],
+):
+
+    loader = DataLoader()
+    loader.add_bounding_boxes(four_detections)
+    evaluator = loader.finalize()
+
+    # test negative indices
+    with pytest.raises(ValueError) as e:
+        evaluator.create_filter(datums=np.array([-1]))
+    assert "cannot be negative" in str(e)
+    with pytest.raises(ValueError) as e:
+        evaluator.create_filter(groundtruths=np.array([-1]))
+    assert "cannot be negative" in str(e)
+    with pytest.raises(ValueError) as e:
+        evaluator.create_filter(predictions=np.array([-1]))
+    assert "cannot be negative" in str(e)
+
+    # test indices larger than arrays
+    with pytest.raises(ValueError) as e:
+        evaluator.create_filter(datums=np.array([1000]))
+    assert "cannot exceed total number of datums" in str(e)
+    with pytest.raises(ValueError) as e:
+        evaluator.create_filter(groundtruths=np.array([1000]))
+    assert "cannot exceed total number of groundtruths" in str(e)
+    with pytest.raises(ValueError) as e:
+        evaluator.create_filter(predictions=np.array([1000]))
+    assert "cannot exceed total number of predictions" in str(e)
+    with pytest.raises(ValueError) as e:
+        evaluator.create_filter(labels=np.array([1000]))
+    assert "cannot exceed total number of labels" in str(e)
