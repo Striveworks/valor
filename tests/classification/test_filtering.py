@@ -658,3 +658,235 @@ def test_filtering_empty(six_classifications: list[Classification]):
         evaluator.create_filter(labels=[])
 
     assert evaluator._detailed_pairs.shape == (24, 5)
+
+
+def test_filtering_invalid_indices(six_classifications: list[Classification]):
+    loader = DataLoader()
+    loader.add_data(six_classifications)
+    evaluator = loader.finalize()
+    assert evaluator._detailed_pairs.shape == (24, 5)
+
+    # negative datum index
+    with pytest.raises(ValueError) as e:
+        evaluator.create_filter(datums=np.array([-1]))
+    assert "negative value" in str(e)
+
+    # datum index larger than array
+    with pytest.raises(ValueError) as e:
+        evaluator.create_filter(datums=np.array([1000]))
+    assert "exceeds total number of datums" in str(e)
+
+    # negative label index
+    with pytest.raises(ValueError) as e:
+        evaluator.create_filter(labels=np.array([-1]))
+    assert "negative value" in str(e)
+
+    # label index larger than array
+    with pytest.raises(ValueError) as e:
+        evaluator.create_filter(labels=np.array([1000]))
+    assert "exceeds total number of labels" in str(e)
+
+
+def test_filtering_six_classifications_by_indices(
+    six_classifications: list[Classification],
+):
+
+    manager = DataLoader()
+    manager.add_data(six_classifications)
+    evaluator = manager.finalize()
+
+    assert evaluator._detailed_pairs.shape == (24, 5)
+    assert (
+        evaluator._detailed_pairs
+        == np.array(
+            [
+                [0.0, 0.0, 0.0, 1.0, 1.0],
+                [3.0, 0.0, 0.0, 1.0, 1.0],
+                [1.0, 0.0, 2.0, 1.0, 1.0],
+                [4.0, 0.0, 2.0, 1.0, 1.0],
+                [2.0, 3.0, 3.0, 0.3, 1.0],
+                [5.0, 3.0, 3.0, 0.3, 1.0],
+                [1.0, 0.0, 0.0, 0.0, 0.0],
+                [4.0, 0.0, 0.0, 0.0, 0.0],
+                [2.0, 3.0, 0.0, 0.0, 0.0],
+                [5.0, 3.0, 0.0, 0.0, 0.0],
+                [0.0, 0.0, 1.0, 0.0, 0.0],
+                [1.0, 0.0, 1.0, 0.0, 0.0],
+                [3.0, 0.0, 1.0, 0.0, 0.0],
+                [4.0, 0.0, 1.0, 0.0, 0.0],
+                [2.0, 3.0, 1.0, 0.0, 0.0],
+                [5.0, 3.0, 1.0, 0.0, 0.0],
+                [0.0, 0.0, 2.0, 0.0, 0.0],
+                [3.0, 0.0, 2.0, 0.0, 0.0],
+                [2.0, 3.0, 2.0, 0.0, 0.0],
+                [5.0, 3.0, 2.0, 0.0, 0.0],
+                [0.0, 0.0, 3.0, 0.0, 0.0],
+                [1.0, 0.0, 3.0, 0.0, 0.0],
+                [3.0, 0.0, 3.0, 0.0, 0.0],
+                [4.0, 0.0, 3.0, 0.0, 0.0],
+            ]
+        )
+    ).all()
+
+    assert (
+        evaluator._label_metadata == np.array([[4, 6], [0, 6], [0, 6], [2, 6]])
+    ).all()
+
+    # test datum filtering
+
+    filter_ = evaluator.create_filter(datums=np.array([0], dtype=np.int32))
+    detailed_pairs, label_metadata = evaluator.filter(filter_)
+    assert np.all(
+        detailed_pairs
+        == np.array(
+            [
+                [0.0, 0.0, 0.0, 1.0, 1.0],
+                [0.0, 0.0, 1.0, 0.0, 0.0],
+                [0.0, 0.0, 2.0, 0.0, 0.0],
+                [0.0, 0.0, 3.0, 0.0, 0.0],
+            ]
+        )
+    )
+    assert np.all(label_metadata == np.array([[1, 1], [0, 1], [0, 1], [0, 1]]))
+
+    filter_ = evaluator.create_filter(datums=np.array([2]))
+    detailed_pairs, label_metadata = evaluator.filter(filter_)
+    assert np.all(
+        detailed_pairs
+        == np.array(
+            [
+                [2.0, 3.0, 3.0, 0.3, 1.0],
+                [2.0, 3.0, 0.0, 0.0, 0.0],
+                [2.0, 3.0, 1.0, 0.0, 0.0],
+                [2.0, 3.0, 2.0, 0.0, 0.0],
+            ]
+        )
+    )
+    assert np.all(label_metadata == np.array([[0, 1], [0, 1], [0, 1], [1, 1]]))
+
+    # test label filtering
+
+    filter_ = evaluator.create_filter(labels=np.array([0]))
+    detailed_pairs, label_metadata = evaluator.filter(filter_)
+    assert np.all(
+        detailed_pairs
+        == np.array(
+            [
+                [0.0, 0.0, 0.0, 1.0, 1.0],
+                [3.0, 0.0, 0.0, 1.0, 1.0],
+                [2.0, -1.0, 0.0, 0.0, 0.0],
+                [5.0, -1.0, 0.0, 0.0, 0.0],
+                [1.0, 0.0, 0.0, 0.0, 0.0],
+                [4.0, 0.0, 0.0, 0.0, 0.0],
+                [0.0, 0.0, -1.0, -1.0, -1.0],
+                [1.0, 0.0, -1.0, -1.0, -1.0],
+                [3.0, 0.0, -1.0, -1.0, -1.0],
+                [4.0, 0.0, -1.0, -1.0, -1.0],
+            ]
+        )
+    )
+    assert np.all(label_metadata == np.array([[4, 6], [0, 0], [0, 0], [0, 0]]))
+
+    filter_ = evaluator.create_filter(labels=np.array([1]))
+    detailed_pairs, label_metadata = evaluator.filter(filter_)
+    assert np.all(
+        detailed_pairs
+        == np.array(
+            [
+                [0.0, -1.0, 1.0, 0.0, 0.0],
+                [1.0, -1.0, 1.0, 0.0, 0.0],
+                [2.0, -1.0, 1.0, 0.0, 0.0],
+                [3.0, -1.0, 1.0, 0.0, 0.0],
+                [4.0, -1.0, 1.0, 0.0, 0.0],
+                [5.0, -1.0, 1.0, 0.0, 0.0],
+            ]
+        )
+    )
+    assert np.all(label_metadata == np.array([[0, 0], [0, 6], [0, 0], [0, 0]]))
+
+    # test combo
+    filter_ = evaluator.create_filter(
+        datums=np.array([0]), labels=np.array([0])
+    )
+    detailed_pairs, label_metadata = evaluator.filter(filter_)
+    assert np.all(
+        detailed_pairs
+        == np.array(
+            [
+                [0.0, 0.0, 0.0, 1.0, 1.0],
+                [0.0, 0.0, -1.0, -1.0, -1.0],
+            ]
+        )
+    )
+    assert np.all(label_metadata == np.array([[1, 1], [0, 0], [0, 0], [0, 0]]))
+
+    # test evaluation
+    filter_ = evaluator.create_filter(datums=np.array([0]))
+    metrics = evaluator.evaluate(
+        score_thresholds=[0.5],
+        hardmax=False,
+        filter_=filter_,
+    )
+    actual_metrics = [m.to_dict() for m in metrics[MetricType.Counts]]
+    expected_metrics = [
+        {
+            "type": "Counts",
+            "value": {
+                "tp": 1,
+                "fp": 0,
+                "fn": 0,
+                "tn": 0,
+            },
+            "parameters": {
+                "score_threshold": 0.5,
+                "hardmax": False,
+                "label": "0",
+            },
+        },
+        {
+            "type": "Counts",
+            "value": {
+                "tp": 0,
+                "fp": 0,
+                "fn": 0,
+                "tn": 1,
+            },
+            "parameters": {
+                "score_threshold": 0.5,
+                "hardmax": False,
+                "label": "1",
+            },
+        },
+        {
+            "type": "Counts",
+            "value": {
+                "tp": 0,
+                "fp": 0,
+                "fn": 0,
+                "tn": 1,
+            },
+            "parameters": {
+                "score_threshold": 0.5,
+                "hardmax": False,
+                "label": "2",
+            },
+        },
+        {
+            "type": "Counts",
+            "value": {
+                "tp": 0,
+                "fp": 0,
+                "fn": 0,
+                "tn": 1,
+            },
+            "parameters": {
+                "score_threshold": 0.5,
+                "hardmax": False,
+                "label": "3",
+            },
+        },
+    ]
+    for m in actual_metrics:
+        assert m in expected_metrics
+    for m in expected_metrics:
+        assert m in actual_metrics

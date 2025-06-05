@@ -166,37 +166,67 @@ class Evaluator:
         n_pairs = self._detailed_pairs.shape[0]
         datum_mask = np.ones(n_pairs, dtype=np.bool_)
         if datums is not None:
-            if not datums:
-                return Filter(
-                    datum_mask=np.zeros_like(datum_mask),
-                    valid_label_indices=None,
-                    metadata=Metadata(),
-                )
+            # convert to array of valid datum indices
             if isinstance(datums, list):
                 datums = np.array(
                     [self.datum_id_to_index[uid] for uid in datums],
                     dtype=np.int32,
                 )
+
+            # return early if all data removed
+            if datums.size == 0:
+                return Filter(
+                    datum_mask=np.zeros_like(datum_mask),
+                    valid_label_indices=None,
+                    metadata=Metadata(),
+                )
+
+            # validate indices
+            if datums.max() >= len(self.index_to_datum_id):
+                raise ValueError(
+                    f"datum index '{datums.max()}' exceeds total number of datums"
+                )
+            elif datums.min() < 0:
+                raise ValueError(
+                    f"datum index '{datums.min()}' is a negative value"
+                )
+
+            # create datum mask
             datum_mask = np.isin(self._detailed_pairs[:, 0], datums)
 
         # collect valid label indices
-        valid_label_indices = None
         if labels is not None:
-            if not labels:
+            # convert to array of valid label indices
+            if isinstance(labels, list):
+                labels = np.array(
+                    [self.label_to_index[label] for label in labels]
+                )
+
+            # return early if all data removed
+            if labels.size == 0:
                 return Filter(
                     datum_mask=datum_mask,
                     valid_label_indices=np.array([], dtype=np.int32),
                     metadata=Metadata(),
                 )
-            if isinstance(labels, list):
-                valid_label_indices = np.array(
-                    [self.label_to_index[label] for label in labels] + [-1]
+
+            # validate indices
+            if labels.max() >= len(self.index_to_label):
+                raise ValueError(
+                    f"label index '{labels.max()}' exceeds total number of labels"
                 )
+            elif labels.min() < 0:
+                raise ValueError(
+                    f"label index '{labels.min()}' is a negative value"
+                )
+
+            # add -1 to represent null labels which should not be filtered
+            labels = np.concatenate([labels, np.array([-1])])
 
         filtered_detailed_pairs, _ = filter_cache(
             detailed_pairs=self._detailed_pairs,
             datum_mask=datum_mask,
-            valid_label_indices=valid_label_indices,
+            valid_label_indices=labels,
             n_labels=self.metadata.number_of_labels,
         )
 
@@ -208,7 +238,7 @@ class Evaluator:
 
         return Filter(
             datum_mask=datum_mask,
-            valid_label_indices=valid_label_indices,
+            valid_label_indices=labels,
             metadata=Metadata.create(
                 detailed_pairs=filtered_detailed_pairs,
                 number_of_datums=number_of_datums,
