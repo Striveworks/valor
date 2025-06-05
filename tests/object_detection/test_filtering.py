@@ -613,3 +613,136 @@ def test_filter_metadata(basic_detections: list[Detection]):
         evaluator.metadata.number_of_labels
         == filter_.metadata.number_of_labels
     )
+
+
+def test_filtering_four_detections_by_indices(
+    four_detections: list[Detection],
+):
+    """
+    Basic object detection test that combines the labels of basic_detections_first_class and basic_detections_second_class.
+
+    groundtruths
+        datum uid1
+            box 1 - label v1 - tp
+            box 3 - label v2 - fn unmatched ground truths
+        datum uid2
+            box 2 - label v1 - fn misclassification
+        datum uid3
+            box 1 - label v1 - tp
+            box 3 - label v2 - fn unmatched ground truths
+        datum uid4
+            box 2 - label v1 - fn misclassification
+
+    predictions
+        datum uid1
+            box 1 - label v1 - score 0.3 - tp
+        datum uid2
+            box 2 - label v2 - score 0.98 - fp misclassification
+        datum uid3
+            box 1 - label v1 - score 0.3 - tp
+        datum uid4
+            box 2 - label v2 - score 0.98 - fp misclassification
+    """
+
+    loader = DataLoader()
+    loader.add_bounding_boxes(four_detections)
+    evaluator = loader.finalize()
+
+    assert (evaluator._label_metadata == np.array([[4, 2], [2, 2]])).all()
+
+    # test datum filtering
+    filter_ = evaluator.create_filter(datums=np.array([0]))
+    detailed_pairs, _, label_metadata = evaluator.filter(filter_)
+    assert np.all(
+        detailed_pairs
+        == np.array(
+            [
+                [0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.3],
+                [0.0, 1.0, -1.0, 1.0, -1.0, 0.0, -1.0],
+            ]
+        )
+    )
+    assert (label_metadata == np.array([[1, 1], [1, 0]])).all()
+
+    filter_ = evaluator.create_filter(datums=np.array([1]))
+    detailed_pairs, _, label_metadata = evaluator.filter(filter_)
+    assert np.all(
+        detailed_pairs == np.array([[1.0, 2.0, 1.0, 0.0, 1.0, 1.0, 0.98]])
+    )
+    assert (label_metadata == np.array([[1, 0], [0, 1]])).all()
+
+    # test label filtering
+    filter_ = evaluator.create_filter(labels=np.array([0]))
+    detailed_pairs, _, label_metadata = evaluator.filter(filter_)
+    assert np.all(
+        detailed_pairs
+        == np.array(
+            [
+                [0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.3],
+                [2.0, 3.0, 2.0, 0.0, 0.0, 1.0, 0.3],
+                [1.0, 2.0, -1.0, 0.0, -1.0, 0.0, -1.0],
+                [3.0, 5.0, -1.0, 0.0, -1.0, 0.0, -1.0],
+            ]
+        )
+    )
+    assert (label_metadata == np.array([[4, 2], [0, 0]])).all()
+
+    filter_ = evaluator.create_filter(labels=np.array([1]))
+    detailed_pairs, _, label_metadata = evaluator.filter(filter_)
+    assert np.all(
+        detailed_pairs
+        == np.array(
+            [
+                [1.0, -1.0, 1.0, -1.0, 1.0, 0.0, 0.98],
+                [3.0, -1.0, 3.0, -1.0, 1.0, 0.0, 0.98],
+                [0.0, 1.0, -1.0, 1.0, -1.0, 0.0, -1.0],
+                [2.0, 4.0, -1.0, 1.0, -1.0, 0.0, -1.0],
+            ]
+        )
+    )
+    assert (label_metadata == np.array([[0, 0], [2, 2]])).all()
+
+    # test combo
+    filter_ = evaluator.create_filter(
+        datums=np.array([0]), labels=np.array([0])
+    )
+    detailed_pairs, _, label_metadata = evaluator.filter(filter_)
+    assert np.all(
+        detailed_pairs == np.array([[0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.3]])
+    )
+    assert (
+        label_metadata
+        == np.array(
+            [
+                [
+                    1,
+                    1,
+                ],
+                [
+                    0,
+                    0,
+                ],
+            ]
+        )
+    ).all()
+
+    # test evaluation
+    filter_ = evaluator.create_filter(datums=np.array([0]))
+    metrics = evaluator.evaluate(iou_thresholds=[0.5], filter_=filter_)
+    actual_metrics = [m.to_dict() for m in metrics[MetricType.AP]]
+    expected_metrics = [
+        {
+            "type": "AP",
+            "value": 1.0,
+            "parameters": {"iou_threshold": 0.5, "label": "v1"},
+        },
+        {
+            "type": "AP",
+            "value": 0.0,
+            "parameters": {"iou_threshold": 0.5, "label": "v2"},
+        },
+    ]
+    for m in actual_metrics:
+        assert m in expected_metrics
+    for m in expected_metrics:
+        assert m in actual_metrics
