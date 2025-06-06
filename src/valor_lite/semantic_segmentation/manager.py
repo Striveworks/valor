@@ -127,18 +127,18 @@ class Evaluator:
 
     def create_filter(
         self,
-        datum_ids: list[str] | None = None,
-        labels: list[str] | None = None,
+        datums: list[str] | NDArray[np.int64] | None = None,
+        labels: list[str] | NDArray[np.int64] | None = None,
     ) -> Filter:
         """
         Creates a filter for use with the evaluator.
 
         Parameters
         ----------
-        datum_ids : list[str], optional
-            An optional list of string uids representing datums.
-        labels : list[str], optional
-            An optional list of labels.
+        datums : list[str] | NDArray[int64], optional
+            An optional list of string ids or array of indices representing datums.
+        labels : list[str] | NDArray[int64], optional
+            An optional list of labels or array of indices.
 
         Returns
         -------
@@ -150,38 +150,61 @@ class Evaluator:
             self.metadata.number_of_labels + 1, dtype=np.bool_
         )
 
-        if datum_ids is not None:
-            if not datum_ids:
-                return Filter(
-                    datum_mask=np.zeros_like(datum_mask),
-                    label_mask=label_mask,
-                    metadata=Metadata(),
+        if datums is not None:
+            # convert to indices
+            if isinstance(datums, list):
+                datums = np.array(
+                    [self.datum_id_to_index[uid] for uid in datums],
+                    dtype=np.int64,
                 )
-            datum_id_array = np.array(
-                [self.datum_id_to_index[uid] for uid in datum_ids],
-                dtype=np.int64,
-            )
-            datum_id_array.sort()
+
+            # validate indices
+            if datums.size == 0:
+                raise EmptyFilterError(
+                    "filter removes all datums"
+                )  # validate indices
+            elif datums.min() < 0:
+                raise ValueError(
+                    f"datum index cannot be negative '{datums.min()}'"
+                )
+            elif datums.max() >= len(self.index_to_datum_id):
+                raise ValueError(
+                    f"datum index cannot exceed total number of datums '{datums.max()}'"
+                )
+
+            # apply to mask
+            datums.sort()
             mask_valid_datums = (
                 np.arange(self._confusion_matrices.shape[0]).reshape(-1, 1)
-                == datum_id_array.reshape(1, -1)
+                == datums.reshape(1, -1)
             ).any(axis=1)
             datum_mask[~mask_valid_datums] = False
 
         if labels is not None:
-            if not labels:
-                return Filter(
-                    datum_mask=datum_mask,
-                    label_mask=np.ones_like(label_mask),
-                    metadata=Metadata(),
+            # convert to indices
+            if isinstance(labels, list):
+                labels = np.array(
+                    [self.label_to_index[label] for label in labels],
+                    dtype=np.int64,
                 )
-            labels_id_array = np.array(
-                [self.label_to_index[label] for label in labels] + [-1],
-                dtype=np.int64,
-            )
+
+            # validate indices
+            if labels.size == 0:
+                raise EmptyFilterError("filter removes all labels")
+            elif labels.min() < 0:
+                raise ValueError(
+                    f"label index cannot be negative '{labels.min()}'"
+                )
+            elif labels.max() >= len(self.index_to_label):
+                raise ValueError(
+                    f"label index cannot exceed total number of labels '{labels.max()}'"
+                )
+
+            # apply to mask
+            labels = np.concatenate([labels, np.array([-1])])
             label_range = np.arange(self.metadata.number_of_labels + 1) - 1
             mask_valid_labels = (
-                label_range.reshape(-1, 1) == labels_id_array.reshape(1, -1)
+                label_range.reshape(-1, 1) == labels.reshape(1, -1)
             ).any(axis=1)
             label_mask[~mask_valid_labels] = True
 

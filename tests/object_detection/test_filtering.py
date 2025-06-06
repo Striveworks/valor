@@ -9,6 +9,8 @@ from valor_lite.object_detection import (
     BoundingBox,
     DataLoader,
     Detection,
+    Filter,
+    Metadata,
     MetricType,
 )
 
@@ -92,7 +94,7 @@ def test_filtering_one_detection(one_detection: list[Detection]):
     assert (evaluator._label_metadata == np.array([[1, 1], [1, 0]])).all()
 
     # test datum filtering
-    filter_ = evaluator.create_filter(datum_ids=["uid1"])
+    filter_ = evaluator.create_filter(datums=["uid1"])
     detailed_pairs, _, label_metadata = evaluator.filter(filter_)
     assert np.all(
         detailed_pairs
@@ -117,7 +119,7 @@ def test_filtering_one_detection(one_detection: list[Detection]):
     ).all()
 
     with pytest.raises(KeyError) as e:
-        filter_ = evaluator.create_filter(datum_ids=["uid2"])
+        filter_ = evaluator.create_filter(datums=["uid2"])
     detailed_pairs, _, label_metadata = evaluator.filter(filter_)
     assert "uid2" in str(e)
 
@@ -138,7 +140,7 @@ def test_filtering_one_detection(one_detection: list[Detection]):
 
     # test combo
     filter_ = evaluator.create_filter(
-        datum_ids=["uid1"],
+        datums=["uid1"],
         labels=["v1"],
     )
     detailed_pairs, _, label_metadata = evaluator.filter(filter_)
@@ -148,7 +150,7 @@ def test_filtering_one_detection(one_detection: list[Detection]):
     assert (label_metadata == np.array([[1, 1], [0, 0]])).all()
 
     # test evaluation
-    filter_ = evaluator.create_filter(datum_ids=["uid1"])
+    filter_ = evaluator.create_filter(datums=["uid1"])
     metrics = evaluator.evaluate(iou_thresholds=[0.5])
     actual_metrics = [m.to_dict() for m in metrics[MetricType.AP]]
     expected_metrics = [
@@ -200,7 +202,7 @@ def test_filtering_two_detections(two_detections: list[Detection]):
     assert (evaluator._label_metadata == np.array([[2, 1], [1, 1]])).all()
 
     # test datum filtering
-    filter_ = evaluator.create_filter(datum_ids=["uid1"])
+    filter_ = evaluator.create_filter(datums=["uid1"])
     detailed_pairs, _, label_metadata = evaluator.filter(filter_)
     assert np.all(
         detailed_pairs
@@ -213,7 +215,7 @@ def test_filtering_two_detections(two_detections: list[Detection]):
     )
     assert (label_metadata == np.array([[1, 1], [1, 0]])).all()
 
-    filter_ = evaluator.create_filter(datum_ids=["uid2"])
+    filter_ = evaluator.create_filter(datums=["uid2"])
     detailed_pairs, _, label_metadata = evaluator.filter(filter_)
     assert np.all(
         detailed_pairs == np.array([[1.0, 2.0, 1.0, 0.0, 1.0, 1.0, 0.98]])
@@ -263,7 +265,7 @@ def test_filtering_two_detections(two_detections: list[Detection]):
 
     # test combo
     filter_ = evaluator.create_filter(
-        datum_ids=["uid1"],
+        datums=["uid1"],
         labels=["v1"],
     )
     detailed_pairs, _, label_metadata = evaluator.filter(filter_)
@@ -273,7 +275,7 @@ def test_filtering_two_detections(two_detections: list[Detection]):
     assert (label_metadata == np.array([[1, 1], [0, 0]])).all()
 
     # test evaluation
-    filter_ = evaluator.create_filter(datum_ids=["uid1"])
+    filter_ = evaluator.create_filter(datums=["uid1"])
     metrics = evaluator.evaluate(iou_thresholds=[0.5], filter_=filter_)
     actual_metrics = [m.to_dict() for m in metrics[MetricType.AP]]
     expected_metrics = [
@@ -328,7 +330,7 @@ def test_filtering_four_detections(four_detections: list[Detection]):
     assert (evaluator._label_metadata == np.array([[4, 2], [2, 2]])).all()
 
     # test datum filtering
-    filter_ = evaluator.create_filter(datum_ids=["uid1"])
+    filter_ = evaluator.create_filter(datums=["uid1"])
     detailed_pairs, _, label_metadata = evaluator.filter(filter_)
     assert np.all(
         detailed_pairs
@@ -341,7 +343,7 @@ def test_filtering_four_detections(four_detections: list[Detection]):
     )
     assert (label_metadata == np.array([[1, 1], [1, 0]])).all()
 
-    filter_ = evaluator.create_filter(datum_ids=["uid2"])
+    filter_ = evaluator.create_filter(datums=["uid2"])
     detailed_pairs, _, label_metadata = evaluator.filter(filter_)
     assert np.all(
         detailed_pairs == np.array([[1.0, 2.0, 1.0, 0.0, 1.0, 1.0, 0.98]])
@@ -381,7 +383,7 @@ def test_filtering_four_detections(four_detections: list[Detection]):
 
     # test combo
     filter_ = evaluator.create_filter(
-        datum_ids=["uid1"],
+        datums=["uid1"],
         labels=["v1"],
     )
     detailed_pairs, _, label_metadata = evaluator.filter(filter_)
@@ -405,7 +407,7 @@ def test_filtering_four_detections(four_detections: list[Detection]):
     ).all()
 
     # test evaluation
-    filter_ = evaluator.create_filter(datum_ids=["uid1"])
+    filter_ = evaluator.create_filter(datums=["uid1"])
     metrics = evaluator.evaluate(iou_thresholds=[0.5], filter_=filter_)
     actual_metrics = [m.to_dict() for m in metrics[MetricType.AP]]
     expected_metrics = [
@@ -461,11 +463,11 @@ def test_filtering_all_detections(four_detections: list[Detection]):
 
     # test datum filtering
     with pytest.raises(EmptyFilterError):
-        evaluator.create_filter(datum_ids=[])
+        evaluator.create_filter(datums=[])
 
     # test ground truth annotation filtering
     with pytest.warns(UserWarning):
-        filter_ = evaluator.create_filter(groundtruth_ids=[])
+        filter_ = evaluator.create_filter(groundtruths=[])
     detailed_pairs, _, label_metadata = evaluator.filter(filter_)
     assert np.all(
         detailed_pairs
@@ -488,7 +490,7 @@ def test_filtering_all_detections(four_detections: list[Detection]):
         )
     ).all()
 
-    filter_ = evaluator.create_filter(groundtruth_ids=["uid1_gt_0"])
+    filter_ = evaluator.create_filter(groundtruths=["uid1_gt_0"])
     detailed_pairs, _, label_metadata = evaluator.filter(filter_)
     assert np.all(
         detailed_pairs
@@ -513,7 +515,7 @@ def test_filtering_all_detections(four_detections: list[Detection]):
 
     # test prediction annotation filtering
     with pytest.warns(UserWarning):
-        filter_ = evaluator.create_filter(prediction_ids=[])
+        filter_ = evaluator.create_filter(predictions=[])
     detailed_pairs, _, label_metadata = evaluator.filter(filter_)
     assert np.all(
         detailed_pairs
@@ -538,7 +540,7 @@ def test_filtering_all_detections(four_detections: list[Detection]):
         )
     ).all()
 
-    filter_ = evaluator.create_filter(prediction_ids=["uid1_pd_0"])
+    filter_ = evaluator.create_filter(predictions=["uid1_pd_0"])
     detailed_pairs, _, label_metadata = evaluator.filter(filter_)
     assert np.all(
         detailed_pairs
@@ -570,13 +572,13 @@ def test_filtering_all_detections(four_detections: list[Detection]):
     # test combo
     with pytest.raises(EmptyFilterError):
         filter_ = evaluator.create_filter(
-            datum_ids=[],
+            datums=[],
             labels=["v1"],
         )
 
     # test evaluation
     with pytest.warns(UserWarning):
-        filter_ = evaluator.create_filter(groundtruth_ids=[])
+        filter_ = evaluator.create_filter(groundtruths=[])
     metrics = evaluator.evaluate(iou_thresholds=[0.5], filter_=filter_)
     evaluator.compute_confusion_matrix(
         iou_thresholds=[0.5],
@@ -591,7 +593,7 @@ def test_filtering_random_detections():
     loader = DataLoader()
     loader.add_bounding_boxes(_generate_random_detections(13, 4, "abc"))
     evaluator = loader.finalize()
-    filter_ = evaluator.create_filter(datum_ids=["uid1"])
+    filter_ = evaluator.create_filter(datums=["uid1"])
     evaluator.evaluate(filter_=filter_)
 
 
@@ -604,7 +606,7 @@ def test_filter_metadata(basic_detections: list[Detection]):
     assert evaluator.metadata.number_of_ground_truths == 3
     assert evaluator.metadata.number_of_predictions == 2
 
-    filter_ = evaluator.create_filter(datum_ids=["uid1"])
+    filter_ = evaluator.create_filter(datums=["uid1"])
     assert filter_.metadata.number_of_datums == 1
     assert filter_.metadata.number_of_ground_truths == 2
     assert filter_.metadata.number_of_predictions == 1
@@ -613,3 +615,214 @@ def test_filter_metadata(basic_detections: list[Detection]):
         evaluator.metadata.number_of_labels
         == filter_.metadata.number_of_labels
     )
+
+
+def test_filtering_four_detections_by_indices(
+    four_detections: list[Detection],
+):
+    """
+    Basic object detection test that combines the labels of basic_detections_first_class and basic_detections_second_class.
+
+    groundtruths
+        datum uid1
+            box 1 - label v1 - tp
+            box 3 - label v2 - fn unmatched ground truths
+        datum uid2
+            box 2 - label v1 - fn misclassification
+        datum uid3
+            box 1 - label v1 - tp
+            box 3 - label v2 - fn unmatched ground truths
+        datum uid4
+            box 2 - label v1 - fn misclassification
+
+    predictions
+        datum uid1
+            box 1 - label v1 - score 0.3 - tp
+        datum uid2
+            box 2 - label v2 - score 0.98 - fp misclassification
+        datum uid3
+            box 1 - label v1 - score 0.3 - tp
+        datum uid4
+            box 2 - label v2 - score 0.98 - fp misclassification
+    """
+
+    loader = DataLoader()
+    loader.add_bounding_boxes(four_detections)
+    evaluator = loader.finalize()
+
+    assert (evaluator._label_metadata == np.array([[4, 2], [2, 2]])).all()
+
+    # test datum filtering
+    filter_ = evaluator.create_filter(datums=np.array([0]))
+    detailed_pairs, _, label_metadata = evaluator.filter(filter_)
+    assert np.all(
+        detailed_pairs
+        == np.array(
+            [
+                [0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.3],
+                [0.0, 1.0, -1.0, 1.0, -1.0, 0.0, -1.0],
+            ]
+        )
+    )
+    assert (label_metadata == np.array([[1, 1], [1, 0]])).all()
+
+    filter_ = evaluator.create_filter(datums=np.array([1]))
+    detailed_pairs, _, label_metadata = evaluator.filter(filter_)
+    assert np.all(
+        detailed_pairs == np.array([[1.0, 2.0, 1.0, 0.0, 1.0, 1.0, 0.98]])
+    )
+    assert (label_metadata == np.array([[1, 0], [0, 1]])).all()
+
+    # test label filtering
+    filter_ = evaluator.create_filter(labels=np.array([0]))
+    detailed_pairs, _, label_metadata = evaluator.filter(filter_)
+    assert np.all(
+        detailed_pairs
+        == np.array(
+            [
+                [0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.3],
+                [2.0, 3.0, 2.0, 0.0, 0.0, 1.0, 0.3],
+                [1.0, 2.0, -1.0, 0.0, -1.0, 0.0, -1.0],
+                [3.0, 5.0, -1.0, 0.0, -1.0, 0.0, -1.0],
+            ]
+        )
+    )
+    assert (label_metadata == np.array([[4, 2], [0, 0]])).all()
+
+    filter_ = evaluator.create_filter(labels=np.array([1]))
+    detailed_pairs, _, label_metadata = evaluator.filter(filter_)
+    assert np.all(
+        detailed_pairs
+        == np.array(
+            [
+                [1.0, -1.0, 1.0, -1.0, 1.0, 0.0, 0.98],
+                [3.0, -1.0, 3.0, -1.0, 1.0, 0.0, 0.98],
+                [0.0, 1.0, -1.0, 1.0, -1.0, 0.0, -1.0],
+                [2.0, 4.0, -1.0, 1.0, -1.0, 0.0, -1.0],
+            ]
+        )
+    )
+    assert (label_metadata == np.array([[0, 0], [2, 2]])).all()
+
+    # test combo
+    filter_ = evaluator.create_filter(
+        datums=np.array([0]), labels=np.array([0])
+    )
+    detailed_pairs, _, label_metadata = evaluator.filter(filter_)
+    assert np.all(
+        detailed_pairs == np.array([[0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.3]])
+    )
+    assert (
+        label_metadata
+        == np.array(
+            [
+                [
+                    1,
+                    1,
+                ],
+                [
+                    0,
+                    0,
+                ],
+            ]
+        )
+    ).all()
+
+    # test evaluation
+    filter_ = evaluator.create_filter(datums=np.array([0]))
+    metrics = evaluator.evaluate(iou_thresholds=[0.5], filter_=filter_)
+    actual_metrics = [m.to_dict() for m in metrics[MetricType.AP]]
+    expected_metrics = [
+        {
+            "type": "AP",
+            "value": 1.0,
+            "parameters": {"iou_threshold": 0.5, "label": "v1"},
+        },
+        {
+            "type": "AP",
+            "value": 0.0,
+            "parameters": {"iou_threshold": 0.5, "label": "v2"},
+        },
+    ]
+    for m in actual_metrics:
+        assert m in expected_metrics
+    for m in expected_metrics:
+        assert m in actual_metrics
+
+
+def test_filtering_invalid_indices(
+    four_detections: list[Detection],
+):
+
+    loader = DataLoader()
+    loader.add_bounding_boxes(four_detections)
+    evaluator = loader.finalize()
+
+    # test negative indices
+    with pytest.raises(ValueError) as e:
+        evaluator.create_filter(datums=np.array([-1]))
+    assert "cannot be negative" in str(e)
+    with pytest.raises(ValueError) as e:
+        evaluator.create_filter(groundtruths=np.array([-1]))
+    assert "cannot be negative" in str(e)
+    with pytest.raises(ValueError) as e:
+        evaluator.create_filter(predictions=np.array([-1]))
+    assert "cannot be negative" in str(e)
+
+    # test indices larger than arrays
+    with pytest.raises(ValueError) as e:
+        evaluator.create_filter(datums=np.array([1000]))
+    assert "cannot exceed total number of datums" in str(e)
+    with pytest.raises(ValueError) as e:
+        evaluator.create_filter(groundtruths=np.array([1000]))
+    assert "cannot exceed total number of groundtruths" in str(e)
+    with pytest.raises(ValueError) as e:
+        evaluator.create_filter(predictions=np.array([1000]))
+    assert "cannot exceed total number of predictions" in str(e)
+    with pytest.raises(ValueError) as e:
+        evaluator.create_filter(labels=np.array([1000]))
+    assert "cannot exceed total number of labels" in str(e)
+
+
+def test_filter_object():
+
+    mask = np.array([True, False, False])
+    true_mask = np.array([True, True, True])
+    false_mask = ~true_mask
+
+    # check that no datums are defined
+    with pytest.raises(EmptyFilterError) as e:
+        Filter(
+            mask_datums=false_mask,
+            mask_groundtruths=mask,
+            mask_predictions=mask,
+            metadata=Metadata(),
+        )
+    assert "filter removes all datums" in str(e)
+
+    # check that no annotations are defined
+    with pytest.raises(EmptyFilterError) as e:
+        Filter(
+            mask_datums=mask,
+            mask_groundtruths=true_mask,
+            mask_predictions=true_mask,
+            metadata=Metadata(),
+        )
+
+    # check that no ground truths are defined
+    with pytest.warns(UserWarning):
+        Filter(
+            mask_datums=mask,
+            mask_groundtruths=true_mask,
+            mask_predictions=mask,
+            metadata=Metadata(),
+        )
+
+    # check that no predictions are defined
+    with pytest.warns(UserWarning):
+        Filter(
+            mask_datums=mask,
+            mask_groundtruths=mask,
+            mask_predictions=true_mask,
+            metadata=Metadata(),
+        )
