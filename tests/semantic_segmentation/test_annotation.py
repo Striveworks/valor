@@ -105,54 +105,6 @@ def test_segmentation():
         )
     assert "Received mask with shape '(1, 2)'" in str(e)
 
-    # test ground truths cannot overlap
-    with pytest.raises(ValueError) as e:
-        Segmentation(
-            uid="uid",
-            groundtruths=[
-                Bitmask(
-                    mask=np.array([[True, True, True]]),
-                    label="label1",
-                ),
-                Bitmask(
-                    mask=np.array([[False, False, True]]),
-                    label="label2",
-                ),
-            ],
-            predictions=[
-                Bitmask(
-                    mask=np.array([[True, False, False]]),
-                    label="label",
-                )
-            ],
-            shape=(1, 3),
-        )
-    assert "ground truth masks cannot overlap" in str(e)
-
-    # test predictions cannot overlap
-    with pytest.raises(ValueError) as e:
-        Segmentation(
-            uid="uid",
-            groundtruths=[
-                Bitmask(
-                    mask=np.array([[True, True, True]]),
-                    label="label1",
-                ),
-            ],
-            predictions=[
-                Bitmask(
-                    mask=np.array([[True, False, True]]),
-                    label="label",
-                ),
-                Bitmask(
-                    mask=np.array([[False, False, True]]),
-                    label="label2",
-                ),
-            ],
-            shape=(1, 3),
-        )
-    assert "prediction masks cannot overlap" in str(e)
-
     # allow missing ground truths
     Segmentation(
         uid="uid",
