@@ -1,3 +1,4 @@
+import warnings
 from dataclasses import dataclass, field
 
 import numpy as np
@@ -80,7 +81,8 @@ class Segmentation:
         self.size = self.shape[0] * self.shape[1]
 
         mask_accumulation = None
-        for groundtruth in self.groundtruths:
+        mask_overlap_accumulation = None
+        for idx, groundtruth in enumerate(self.groundtruths):
             if self.shape != groundtruth.mask.shape:
                 raise ValueError(
                     f"ground truth masks for datum '{self.uid}' should have shape '{self.shape}'. Received mask with shape '{groundtruth.mask.shape}'"
@@ -88,21 +90,56 @@ class Segmentation:
 
             if mask_accumulation is None:
                 mask_accumulation = groundtruth.mask.copy()
+                mask_overlap_accumulation = np.zeros_like(mask_accumulation)
             elif np.logical_and(mask_accumulation, groundtruth.mask).any():
-                raise ValueError("ground truth masks cannot overlap")
+                mask_overlap = np.logical_and(
+                    mask_accumulation, groundtruth.mask
+                )
+                self.groundtruths[idx].mask[mask_overlap] = False
+                mask_overlap_accumulation = (
+                    mask_overlap_accumulation | mask_overlap
+                )
             else:
                 mask_accumulation = mask_accumulation | groundtruth.mask
+        if (
+            mask_overlap_accumulation is not None
+            and mask_overlap_accumulation.any()
+        ):
+            count = mask_overlap_accumulation.sum()
+            total = mask_overlap_accumulation.size
+            warnings.warn(
+                f"ground truth masks for datum '{self.uid}' had {count} / {total} pixels overlapped."
+            )
 
         mask_accumulation = None
-        for prediction in self.predictions:
+        mask_overlap_accumulation = None
+        for idx, prediction in enumerate(self.predictions):
             if self.shape != prediction.mask.shape:
                 raise ValueError(
-                    f"prediction masks for datum '{self.uid}' should have shape '{self.shape}'. Received mask with shape '{prediction.mask.shape}'"
+                    f"prediction masks for datum '{self.uid}' should have shape '{self.shape}'. Received mask with shape '{prediction.mask.shape}'",
+                    UserWarning,
                 )
 
             if mask_accumulation is None:
                 mask_accumulation = prediction.mask.copy()
+                mask_overlap_accumulation = np.zeros_like(mask_accumulation)
             elif np.logical_and(mask_accumulation, prediction.mask).any():
-                raise ValueError("prediction masks cannot overlap")
+                mask_overlap = np.logical_and(
+                    mask_accumulation, prediction.mask
+                )
+                self.predictions[idx].mask[mask_overlap] = False
+                mask_overlap_accumulation = (
+                    mask_overlap_accumulation | mask_overlap
+                )
             else:
                 mask_accumulation = mask_accumulation | prediction.mask
+        if (
+            mask_overlap_accumulation is not None
+            and mask_overlap_accumulation.any()
+        ):
+            count = mask_overlap_accumulation.sum()
+            total = mask_overlap_accumulation.size
+            warnings.warn(
+                f"prediction masks for datum '{self.uid}' had {count} / {total} pixels overlapped.",
+                UserWarning,
+            )

@@ -197,3 +197,58 @@ def test_segmentation_shape():
         Segmentation(
             uid="uid", groundtruths=[], predictions=[], shape=(-100, 100)
         )
+
+
+def _create_overlapped_masks() -> tuple[Bitmask, Bitmask]:
+    mask0 = np.zeros((100, 100), dtype=np.bool_)
+    mask0[:50, :] = True
+    mask1 = np.ones((100, 100), dtype=np.bool_)
+    bitmask0 = Bitmask(mask=mask0, label="dog")
+    bitmask1 = Bitmask(mask=mask1, label="cat")
+    return bitmask0, bitmask1
+
+
+def test_segmentations_overlap():
+    bitmask0, bitmask1 = _create_overlapped_masks()
+    Segmentation(
+        uid="uid123",
+        groundtruths=[bitmask0],
+        predictions=[bitmask1],
+        shape=(100, 100),
+    )
+    assert bitmask0.mask.sum() == 5000
+    assert bitmask1.mask.sum() == 10000
+
+    bitmask0, bitmask1 = _create_overlapped_masks()
+    with pytest.warns(UserWarning) as e:
+        Segmentation(
+            uid="uid123",
+            groundtruths=[bitmask0, bitmask1],
+            predictions=[],
+            shape=(100, 100),
+        )
+    assert (
+        str(e._list[0].message)
+        == "ground truth masks for datum 'uid123' had 5000 / 10000 pixels overlapped."
+    )
+    assert bitmask0.mask.sum() == 5000
+    assert (
+        bitmask1.mask.sum() == 5000
+    )  # overlapped pixels omitted from second mask
+
+    bitmask0, bitmask1 = _create_overlapped_masks()
+    with pytest.warns(UserWarning) as e:
+        Segmentation(
+            uid="uid123",
+            groundtruths=[],
+            predictions=[bitmask0, bitmask1],
+            shape=(100, 100),
+        )
+    assert (
+        str(e._list[0].message)
+        == "prediction masks for datum 'uid123' had 5000 / 10000 pixels overlapped."
+    )
+    assert bitmask0.mask.sum() == 5000
+    assert (
+        bitmask1.mask.sum() == 5000
+    )  # overlapped pixels omitted from second mask
