@@ -131,6 +131,22 @@ def test_segmentation():
         shape=(1, 2),
     )
 
+    # wrong annotation type
+    with pytest.raises(ValueError):
+        Segmentation(
+            uid="uid",
+            groundtruths=[{"a": 1}],  # type: ignore - testing
+            predictions=[],
+            shape=(1, 2),
+        )
+    with pytest.raises(ValueError):
+        Segmentation(
+            uid="uid",
+            groundtruths=[],
+            predictions=[{"a": 1}],  # type: ignore - testing
+            shape=(1, 2),
+        )
+
 
 def test_segmentation_shape():
     Segmentation(uid="uid", groundtruths=[], predictions=[], shape=(1, 1))
