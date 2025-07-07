@@ -1,3 +1,4 @@
+import warnings
 from dataclasses import dataclass, field
 
 import numpy as np
@@ -79,30 +80,37 @@ class Segmentation:
             )
         self.size = self.shape[0] * self.shape[1]
 
+        self._validate_bitmasks(self.groundtruths, "ground truth")
+        self._validate_bitmasks(self.predictions, "prediction")
+
+    def _validate_bitmasks(self, bitmasks: list[Bitmask], key: str):
         mask_accumulation = None
-        for groundtruth in self.groundtruths:
-            if self.shape != groundtruth.mask.shape:
+        mask_overlap_accumulation = None
+        for idx, bitmask in enumerate(bitmasks):
+            if not isinstance(bitmask, Bitmask):
+                raise ValueError(f"expected 'Bitmask', got '{bitmask}'")
+            if self.shape != bitmask.mask.shape:
                 raise ValueError(
-                    f"ground truth masks for datum '{self.uid}' should have shape '{self.shape}'. Received mask with shape '{groundtruth.mask.shape}'"
+                    f"{key} masks for datum '{self.uid}' should have shape '{self.shape}'. Received mask with shape '{bitmask.mask.shape}'"
                 )
 
             if mask_accumulation is None:
-                mask_accumulation = groundtruth.mask.copy()
-            elif np.logical_and(mask_accumulation, groundtruth.mask).any():
-                raise ValueError("ground truth masks cannot overlap")
-            else:
-                mask_accumulation = mask_accumulation | groundtruth.mask
-
-        mask_accumulation = None
-        for prediction in self.predictions:
-            if self.shape != prediction.mask.shape:
-                raise ValueError(
-                    f"prediction masks for datum '{self.uid}' should have shape '{self.shape}'. Received mask with shape '{prediction.mask.shape}'"
+                mask_accumulation = bitmask.mask.copy()
+                mask_overlap_accumulation = np.zeros_like(mask_accumulation)
+            elif np.logical_and(mask_accumulation, bitmask.mask).any():
+                mask_overlap = np.logical_and(mask_accumulation, bitmask.mask)
+                bitmasks[idx].mask[mask_overlap] = False
+                mask_overlap_accumulation = (
+                    mask_overlap_accumulation | mask_overlap
                 )
-
-            if mask_accumulation is None:
-                mask_accumulation = prediction.mask.copy()
-            elif np.logical_and(mask_accumulation, prediction.mask).any():
-                raise ValueError("prediction masks cannot overlap")
             else:
-                mask_accumulation = mask_accumulation | prediction.mask
+                mask_accumulation = mask_accumulation | bitmask.mask
+        if (
+            mask_overlap_accumulation is not None
+            and mask_overlap_accumulation.any()
+        ):
+            count = mask_overlap_accumulation.sum()
+            total = mask_overlap_accumulation.size
+            warnings.warn(
+                f"{key} masks for datum '{self.uid}' had {count} / {total} pixels overlapped."
+            )
