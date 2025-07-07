@@ -197,7 +197,7 @@ def test_segmentations_overlap():
         )
     assert (
         str(e._list[0].message)
-        == "groundtruths for datum 'uid123' had 5000 / 10000 pixels overlapped."
+        == "ground truth masks for datum 'uid123' had 5000 / 10000 pixels overlapped."
     )
     assert bitmask0.mask.sum() == 5000
     assert (
@@ -214,7 +214,7 @@ def test_segmentations_overlap():
         )
     assert (
         str(e._list[0].message)
-        == "predictions for datum 'uid123' had 5000 / 10000 pixels overlapped."
+        == "prediction masks for datum 'uid123' had 5000 / 10000 pixels overlapped."
     )
     assert bitmask0.mask.sum() == 5000
     assert (

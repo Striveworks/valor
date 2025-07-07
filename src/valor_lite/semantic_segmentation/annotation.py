@@ -80,33 +80,31 @@ class Segmentation:
             )
         self.size = self.shape[0] * self.shape[1]
 
-        self._validate_bitmasks("groundtruths")
-        self._validate_bitmasks("predictions")
+        self._validate_bitmasks(self.groundtruths, "ground truth")
+        self._validate_bitmasks(self.predictions, "prediction")
 
-    def _validate_bitmasks(self, key: str):
+    def _validate_bitmasks(self, bitmasks: list[Bitmask], key: str):
         mask_accumulation = None
         mask_overlap_accumulation = None
-        for idx, annotation in enumerate(getattr(self, key)):
-            if not isinstance(annotation, Bitmask):
-                raise ValueError(f"expected 'Bitmask', got '{annotation}'")
-            if self.shape != annotation.mask.shape:
+        for idx, bitmask in enumerate(bitmasks):
+            if not isinstance(bitmask, Bitmask):
+                raise ValueError(f"expected 'Bitmask', got '{bitmask}'")
+            if self.shape != bitmask.mask.shape:
                 raise ValueError(
-                    f"{key} for datum '{self.uid}' should have shape '{self.shape}'. Received mask with shape '{annotation.mask.shape}'"
+                    f"{key} masks for datum '{self.uid}' should have shape '{self.shape}'. Received mask with shape '{bitmask.mask.shape}'"
                 )
 
             if mask_accumulation is None:
-                mask_accumulation = annotation.mask.copy()
+                mask_accumulation = bitmask.mask.copy()
                 mask_overlap_accumulation = np.zeros_like(mask_accumulation)
-            elif np.logical_and(mask_accumulation, annotation.mask).any():
-                mask_overlap = np.logical_and(
-                    mask_accumulation, annotation.mask
-                )
-                getattr(self, key)[idx].mask[mask_overlap] = False
+            elif np.logical_and(mask_accumulation, bitmask.mask).any():
+                mask_overlap = np.logical_and(mask_accumulation, bitmask.mask)
+                bitmasks[idx].mask[mask_overlap] = False
                 mask_overlap_accumulation = (
                     mask_overlap_accumulation | mask_overlap
                 )
             else:
-                mask_accumulation = mask_accumulation | annotation.mask
+                mask_accumulation = mask_accumulation | bitmask.mask
         if (
             mask_overlap_accumulation is not None
             and mask_overlap_accumulation.any()
@@ -114,5 +112,5 @@ class Segmentation:
             count = mask_overlap_accumulation.sum()
             total = mask_overlap_accumulation.size
             warnings.warn(
-                f"{key} for datum '{self.uid}' had {count} / {total} pixels overlapped."
+                f"{key} masks for datum '{self.uid}' had {count} / {total} pixels overlapped."
             )
