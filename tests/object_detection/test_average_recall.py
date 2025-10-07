@@ -415,6 +415,24 @@ def test_ar_using_torch_metrics_example(
     expected_metrics = [
         {
             "type": "ARAveragedOverScores",
+            "value": 0.45,
+            "parameters": {
+                "iou_thresholds": iou_thresholds,
+                "score_thresholds": [0.0],
+                "label": "2",
+            },
+        },
+        {
+            "type": "ARAveragedOverScores",
+            "value": 0.5800000000000001,
+            "parameters": {
+                "iou_thresholds": iou_thresholds,
+                "score_thresholds": [0.0],
+                "label": "49",
+            },
+        },
+        {
+            "type": "ARAveragedOverScores",
             "value": 0.78,
             "parameters": {
                 "iou_thresholds": iou_thresholds,
@@ -433,15 +451,6 @@ def test_ar_using_torch_metrics_example(
         },
         {
             "type": "ARAveragedOverScores",
-            "value": 0.45,
-            "parameters": {
-                "iou_thresholds": iou_thresholds,
-                "score_thresholds": [0.0],
-                "label": "2",
-            },
-        },
-        {
-            "type": "ARAveragedOverScores",
             "value": 0.0,
             "parameters": {
                 "iou_thresholds": iou_thresholds,
@@ -456,15 +465,6 @@ def test_ar_using_torch_metrics_example(
                 "iou_thresholds": iou_thresholds,
                 "score_thresholds": [0.0],
                 "label": "4",
-            },
-        },
-        {
-            "type": "ARAveragedOverScores",
-            "value": 0.5800000000000001,
-            "parameters": {
-                "iou_thresholds": iou_thresholds,
-                "score_thresholds": [0.0],
-                "label": "49",
             },
         },
     ]
