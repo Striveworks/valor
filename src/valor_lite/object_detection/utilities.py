@@ -48,7 +48,6 @@ def unpack_precision_recall_into_metric_lists(
         )
         for iou_idx, iou_threshold in enumerate(iou_thresholds)
         for label_idx, label in enumerate(index_to_label)
-        if int(label_metadata[label_idx, 0]) > 0
     ]
 
     metrics[MetricType.mAP] = [
@@ -67,7 +66,6 @@ def unpack_precision_recall_into_metric_lists(
             label=label,
         )
         for label_idx, label in enumerate(index_to_label)
-        if int(label_metadata[label_idx, 0]) > 0
     ]
 
     # TODO - (c.zaloom) will be removed in the future
@@ -87,7 +85,6 @@ def unpack_precision_recall_into_metric_lists(
         )
         for score_idx, score_threshold in enumerate(score_thresholds)
         for label_idx, label in enumerate(index_to_label)
-        if int(label_metadata[label_idx, 0]) > 0
     ]
 
     metrics[MetricType.mAR] = [
@@ -108,7 +105,6 @@ def unpack_precision_recall_into_metric_lists(
             label=label,
         )
         for label_idx, label in enumerate(index_to_label)
-        if int(label_metadata[label_idx, 0]) > 0
     ]
 
     # TODO - (c.zaloom) will be removed in the future
