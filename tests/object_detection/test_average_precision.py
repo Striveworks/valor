@@ -379,6 +379,22 @@ def test_ap_using_torch_metrics_example(
         },
         {
             "type": "AP",
+            "value": 0.0,
+            "parameters": {
+                "iou_threshold": 0.5,
+                "label": "3",
+            },
+        },
+        {
+            "type": "AP",
+            "value": 0.0,
+            "parameters": {
+                "iou_threshold": 0.75,
+                "label": "3",
+            },
+        },
+        {
+            "type": "AP",
             "value": 1.0,
             "parameters": {
                 "iou_threshold": 0.5,
@@ -420,14 +436,14 @@ def test_ap_using_torch_metrics_example(
     expected_metrics = [
         {
             "type": "mAP",
-            "value": 0.8591859185918592,
+            "value": 0.715988265493216,
             "parameters": {
                 "iou_threshold": 0.5,
             },
         },
         {
             "type": "mAP",
-            "value": 0.7606789250353607,
+            "value": 0.6338991041961339,
             "parameters": {
                 "iou_threshold": 0.75,
             },
@@ -735,6 +751,22 @@ def test_ap_ranked_pair_ordering(
                 "value": 0.0,
                 "type": "AP",
             },
+            {
+                "parameters": {
+                    "iou_threshold": 0.5,
+                    "label": "label4",
+                },
+                "value": 0.0,
+                "type": "AP",
+            },
+            {
+                "parameters": {
+                    "iou_threshold": 0.75,
+                    "label": "label4",
+                },
+                "value": 0.0,
+                "type": "AP",
+            },
         ]
         for m in actual_metrics:
             assert m in expected_metrics
@@ -745,12 +777,12 @@ def test_ap_ranked_pair_ordering(
         expected_metrics = [
             {
                 "parameters": {"iou_threshold": 0.5},
-                "value": 0.6666666666666666,
+                "value": 0.5,
                 "type": "mAP",
             },
             {
                 "parameters": {"iou_threshold": 0.75},
-                "value": 0.6666666666666666,
+                "value": 0.5,
                 "type": "mAP",
             },
         ]
@@ -787,6 +819,14 @@ def test_ap_ranked_pair_ordering(
                 "value": 0.0,
                 "type": "APAveragedOverIOUs",
             },
+            {
+                "parameters": {
+                    "iou_thresholds": [0.5, 0.75],
+                    "label": "label4",
+                },
+                "value": 0.0,
+                "type": "APAveragedOverIOUs",
+            },
         ]
         for m in actual_metrics:
             assert m in expected_metrics
@@ -804,7 +844,7 @@ def test_ap_ranked_pair_ordering(
                         0.75,
                     ],
                 },
-                "value": 0.6666666666666666,
+                "value": 0.5,
                 "type": "mAPAveragedOverIOUs",
             },
         ]

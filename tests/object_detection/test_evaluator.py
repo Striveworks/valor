@@ -89,8 +89,19 @@ def test_no_groundtruths(detections_no_groundtruths):
         iou_thresholds=[0.5],
         score_thresholds=[0.5],
     )
-
-    assert len(metrics[MetricType.AP]) == 0
+    actual_metrics = [m.to_dict() for m in metrics[MetricType.AP]]
+    assert len(actual_metrics) == 1
+    expected_metrics = [
+        {
+            "type": "AP",
+            "parameters": {"iou_threshold": 0.5, "label": "v1"},
+            "value": 0.0,
+        },
+    ]
+    for m in actual_metrics:
+        assert m in expected_metrics
+    for m in expected_metrics:
+        assert m in actual_metrics
 
 
 def test_no_predictions(detections_no_predictions):
