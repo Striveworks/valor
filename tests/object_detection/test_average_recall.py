@@ -333,6 +333,24 @@ def test_ar_using_torch_metrics_example(
     expected_metrics = [
         {
             "type": "AR",
+            "value": 0.45,
+            "parameters": {
+                "iou_thresholds": iou_thresholds,
+                "score_threshold": 0.0,
+                "label": "2",
+            },
+        },
+        {
+            "type": "AR",
+            "value": 0.5800000000000001,
+            "parameters": {
+                "iou_thresholds": iou_thresholds,
+                "score_threshold": 0.0,
+                "label": "49",
+            },
+        },
+        {
+            "type": "AR",
             "value": 0.78,
             "parameters": {
                 "iou_thresholds": iou_thresholds,
@@ -351,15 +369,6 @@ def test_ar_using_torch_metrics_example(
         },
         {
             "type": "AR",
-            "value": 0.45,
-            "parameters": {
-                "iou_thresholds": iou_thresholds,
-                "score_threshold": 0.0,
-                "label": "2",
-            },
-        },
-        {
-            "type": "AR",
             "value": 0.0,
             "parameters": {
                 "iou_thresholds": iou_thresholds,
@@ -374,15 +383,6 @@ def test_ar_using_torch_metrics_example(
                 "iou_thresholds": iou_thresholds,
                 "score_threshold": 0.0,
                 "label": "4",
-            },
-        },
-        {
-            "type": "AR",
-            "value": 0.5800000000000001,
-            "parameters": {
-                "iou_thresholds": iou_thresholds,
-                "score_threshold": 0.0,
-                "label": "49",
             },
         },
     ]
