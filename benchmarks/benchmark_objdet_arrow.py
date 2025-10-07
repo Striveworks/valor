@@ -192,7 +192,6 @@ def ingest(
             if detections:
                 timer, _ = time_it(manager.add_bounding_boxes)(detections)
                 accumulated_time += timer
-    manager.flush()
 
     return accumulated_time
 
@@ -301,7 +300,7 @@ def run_benchmarking_analysis(
             # === Base Evaluation ===
             manager = Loader("bench")
 
-            print("Check existing", manager.total_rows)
+            print("Check existing", manager._cache.total_rows)
 
             # ingest + preprocess
             (ingest_time, preprocessing_time,) = ingest(
@@ -313,7 +312,7 @@ def run_benchmarking_analysis(
             )  # type: ignore - time_it wrapper
 
             print(ingest_time, preprocessing_time)
-            print(json.dumps(manager.get_info(), indent=4))
+            print(json.dumps(manager._cache.get_info(), indent=4))
 
             finalization_time, evaluator = time_it(manager.finalize)()
             print("final", finalization_time)

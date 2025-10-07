@@ -1,5 +1,6 @@
 from pathlib import Path
 
+import json
 import numpy as np
 import pyarrow as pa
 from numpy.typing import NDArray
@@ -11,10 +12,10 @@ from valor_lite.object_detection.computation import compute_bbox_iou
 from valor_lite.object_detection.evaluator import Evaluator
 
 
-class Loader(Cache):
+class Loader:
     def __init__(
         self,
-        output_dir: str | Path,
+        directory: str | Path,
         batch_size: int = 10000,
         rows_per_file: int = 1_000_000,
         compression: str = "snappy",
@@ -71,8 +72,12 @@ class Loader(Cache):
             ]
         )
 
-        super().__init__(
-            output_dir=output_dir,
+        self._dir = Path(directory)
+        self._labels_path = self._dir / Path("labels.json")
+        self._cache_path = self._dir / Path("cache")
+
+        self._cache = Cache(
+            output_dir=self._cache_path,
             schema=schema,
             batch_size=batch_size,
             rows_per_file=rows_per_file,
@@ -80,10 +85,11 @@ class Loader(Cache):
         )
 
     def _add_label(self, value: str) -> int:
-        if idx := self._labels.get(value, None):
-            return idx
-        self._labels[value] = len(self._labels)
-        return self._labels[value]
+        idx = self._labels.get(value, None)
+        if idx is None:
+            idx = len(self._labels)
+            self._labels[value] = idx
+        return idx
 
     def _add_data(
         self,
@@ -217,7 +223,7 @@ class Loader(Cache):
                     )
 
             pairs = sorted(pairs, key=lambda x: (-x["score"], -x["iou"]))
-            self.write_many(pairs)
+            self._cache.write_many(pairs)
 
     def add_bounding_boxes(
         self,
@@ -262,8 +268,10 @@ class Loader(Cache):
         Evaluator
             A ready-to-use evaluator object.
         """
-        self.flush()
-        return Evaluator(self.output_dir)
+        self._cache.flush()
+        with open(self._labels_path, "w") as f:
+            json.dump({v: k for k, v in self._labels.items()}, f, indent=2)
+        return Evaluator(self._dir)
         # self._evaluator._ranked_pairs = rank_pairs(
         #     detailed_pairs=self._evaluator._detailed_pairs,
         #     label_metadata=self._evaluator._label_metadata,

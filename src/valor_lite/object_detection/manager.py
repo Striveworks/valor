@@ -413,7 +413,7 @@ class Evaluator:
             label_metadata=label_metadata,
             iou_thresholds=iou_thresholds,
             score_thresholds=score_thresholds,
-            index_to_label=self.index_to_label,
+            index_to_label={i : v for i, v in enumerate(self.index_to_label)},
         )
 
     def compute_confusion_matrix(
@@ -462,10 +462,10 @@ class Evaluator:
             detailed_pairs=detailed_pairs,
             iou_thresholds=iou_thresholds,
             score_thresholds=score_thresholds,
-            index_to_datum_id=self.index_to_datum_id,
-            index_to_groundtruth_id=self.index_to_groundtruth_id,
-            index_to_prediction_id=self.index_to_prediction_id,
-            index_to_label=self.index_to_label,
+            index_to_datum_id={i : v for i, v in enumerate(self.index_to_datum_id)},
+            index_to_groundtruth_id={i : v for i, v in enumerate(self.index_to_groundtruth_id)},
+            index_to_prediction_id={i : v for i, v in enumerate(self.index_to_prediction_id)},
+            index_to_label={i : v for i, v in enumerate(self.index_to_label)},
         )
 
     def evaluate(
@@ -855,7 +855,6 @@ class DataLoader:
         )
         self._evaluator._ranked_pairs = rank_pairs(
             detailed_pairs=self._evaluator._detailed_pairs,
-            label_metadata=self._evaluator._label_metadata,
         )
         self._evaluator._metadata = Metadata.create(
             detailed_pairs=self._evaluator._detailed_pairs,

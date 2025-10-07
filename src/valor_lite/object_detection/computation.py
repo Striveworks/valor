@@ -294,7 +294,6 @@ def filter_cache(
     )
     ranked_pairs = rank_pairs(
         detailed_pairs=detailed_pairs,
-        label_metadata=label_metadata,
     )
     return (
         detailed_pairs,

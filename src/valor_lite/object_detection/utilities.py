@@ -22,7 +22,7 @@ def unpack_precision_recall_into_metric_lists(
     ],
     iou_thresholds: list[float],
     score_thresholds: list[float],
-    index_to_label: list[str],
+    index_to_label: dict[int, str],
     label_metadata: NDArray[np.int32],
 ):
     (
@@ -47,7 +47,7 @@ def unpack_precision_recall_into_metric_lists(
             label=label,
         )
         for iou_idx, iou_threshold in enumerate(iou_thresholds)
-        for label_idx, label in enumerate(index_to_label)
+        for label_idx, label in index_to_label.items()
         if int(label_metadata[label_idx, 0]) > 0
     ]
 
@@ -66,7 +66,7 @@ def unpack_precision_recall_into_metric_lists(
             iou_thresholds=iou_thresholds,
             label=label,
         )
-        for label_idx, label in enumerate(index_to_label)
+        for label_idx, label in index_to_label.items()
         if int(label_metadata[label_idx, 0]) > 0
     ]
 
@@ -86,7 +86,7 @@ def unpack_precision_recall_into_metric_lists(
             label=label,
         )
         for score_idx, score_threshold in enumerate(score_thresholds)
-        for label_idx, label in enumerate(index_to_label)
+        for label_idx, label in index_to_label.items()
         if int(label_metadata[label_idx, 0]) > 0
     ]
 
@@ -107,7 +107,7 @@ def unpack_precision_recall_into_metric_lists(
             iou_thresholds=iou_thresholds,
             label=label,
         )
-        for label_idx, label in enumerate(index_to_label)
+        for label_idx, label in index_to_label.items()
         if int(label_metadata[label_idx, 0]) > 0
     ]
 
@@ -128,11 +128,11 @@ def unpack_precision_recall_into_metric_lists(
             label=label,
         )
         for iou_idx, iou_threshold in enumerate(iou_thresholds)
-        for label_idx, label in enumerate(index_to_label)
+        for label_idx, label in index_to_label.items()
         if label_metadata[label_idx, 0] > 0
     ]
 
-    for label_idx, label in enumerate(index_to_label):
+    for label_idx, label in index_to_label.items():
         if label_metadata[label_idx, 0] == 0:
             continue
 

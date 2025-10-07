@@ -1,3 +1,4 @@
+import json
 import numpy as np
 import pyarrow as pa
 import pyarrow as pc
@@ -12,7 +13,7 @@ from valor_lite.object_detection.utilities import (
     unpack_confusion_matrix_into_metric_list,
     unpack_precision_recall_into_metric_lists,
 )
-from valor_lite.object_detection.computation import compute_confusion_matrix
+from valor_lite.object_detection.computation import compute_confusion_matrix, compute_precion_recall
 
 
 def prune_pairs(
@@ -31,6 +32,7 @@ def prune_pairs(
     _, indices = np.unique(pairs[:, [0, 2, 4]], axis=0, return_index=True)
     pairs = pairs[indices]
 
+    return pairs
 
 
 def create_mapping(
@@ -51,18 +53,24 @@ def create_mapping(
 
 class Evaluator:
 
-    def __init__(self, cache_dir: str | Path):
-        self._cache_dir = cache_dir
-        self._dataset = ds.dataset(
-            str(self._cache_dir),
-            format="parquet",
-        )
+    def __init__(self, directory: str | Path):
+        self._dir = Path(directory)
+        self._dataset_path = self._dir / Path("cache")
+        self._labels_path = self._dir / Path("labels.json")
+        
+        self._dataset = ds.dataset(self._dataset_path, format="parquet")        
+        with open(self._labels_path, "r") as f:
+            labels = json.load(f)
+            self._index_to_label = {
+                int(k): v
+                for k, v in labels.items()
+            }
     
     @property
     def schema(self) -> pa.Schema:
         return self._dataset.schema
 
-    def _walk(
+    def _iterate_dataset(
         self,
         columns=None,
         datum_filter_expr=None,
@@ -76,13 +84,67 @@ class Evaluator:
         pyarrow.Table
             Batches of data as Tables
         """
-        scanner = self._dataset.scanner(
-            columns=columns,
-            filter=datum_filter_expr,
-        )
-        for batch in scanner.to_batches():
-            yield pa.Table.from_batches([batch])
+        for fragment in self._dataset.get_fragments():
+            yield fragment.to_table()
 
+    def compute_precision_recall(
+        self,
+        iou_thresholds: list[float],
+        score_thresholds: list[float],
+    ) -> dict[MetricType, list[Metric]]:
+        """
+        Computes all metrics except for ConfusionMatrix
+
+        Parameters
+        ----------
+        iou_thresholds : list[float]
+            A list of IOU thresholds to compute metrics over.
+        score_thresholds : list[float]
+            A list of score thresholds to compute metrics over.
+        filter_ : Filter, optional
+            A collection of filter parameters and masks.
+
+        Returns
+        -------
+        dict[MetricType, list]
+            A dictionary mapping MetricType enumerations to lists of computed metrics.
+        """
+        if not iou_thresholds:
+            raise ValueError("At least one IOU threshold must be passed.")
+        elif not score_thresholds:
+            raise ValueError("At least one score threshold must be passed.")
+        
+        numeric_cols = [
+            "datum_id",
+            "gt_id",
+            "pd_id",
+            "gt_label_id",
+            "pd_label_id",
+            "iou",
+            "score",
+        ]
+        metrics = defaultdict(list)
+        for tbl in self._iterate_dataset():
+            detailed = np.column_stack([tbl[col].to_numpy() for col in numeric_cols])
+            if detailed.size == 0:
+                continue
+            
+            ranked = prune_pairs(detailed)
+
+            results = compute_precion_recall(
+                ranked_pairs=ranked,
+                label_metadata=label_metadata,
+                iou_thresholds=np.array(iou_thresholds),
+                score_thresholds=np.array(score_thresholds),
+            )
+            return unpack_precision_recall_into_metric_lists(
+                results=results,
+                label_metadata=label_metadata,
+                iou_thresholds=iou_thresholds,
+                score_thresholds=score_thresholds,
+                index_to_label=self._index_to_label,
+            )
+    
     def compute_confusion_matrix(
         self,
         tbl: pa.Table,
@@ -111,33 +173,47 @@ class Evaluator:
             raise ValueError("At least one IOU threshold must be passed.")
         elif not score_thresholds:
             raise ValueError("At least one score threshold must be passed.")
-
-        if detailed.size == 0:
-            return []
         
-        # extract UIDs
-        index_to_datum_id = create_mapping(tbl, detailed, 0, "datum_id", "datum_uid")
-        index_to_groundtruth_id = create_mapping(tbl, detailed, 1, "gt_id", "gt_uid")
-        index_to_prediction_id = create_mapping(tbl, detailed, 2, "pd_id", "pd_uid")
-        index_to_gt_label = create_mapping(tbl, detailed, 3, "gt_label_id", "gt_label")
-        index_to_pd_label = create_mapping(tbl, detailed, 4, "pd_label_id", "pd_label")
-        index_to_label = index_to_gt_label | index_to_pd_label
+        numeric_cols = [
+            "datum_id",
+            "gt_id",
+            "pd_id",
+            "gt_label_id",
+            "pd_label_id",
+            "iou",
+            "score",
+        ]
+        metrics = []
+        for tbl in self._iterate_dataset():
+            detailed = np.column_stack([tbl[col].to_numpy() for col in numeric_cols])
+            if detailed.size == 0:
+                continue
+            
+            # extract UIDs
+            index_to_datum_id = create_mapping(tbl, detailed, 0, "datum_id", "datum_uid")
+            index_to_groundtruth_id = create_mapping(tbl, detailed, 1, "gt_id", "gt_uid")
+            index_to_prediction_id = create_mapping(tbl, detailed, 2, "pd_id", "pd_uid")
 
-        results = compute_confusion_matrix(
-            detailed_pairs=detailed,
-            iou_thresholds=np.array(iou_thresholds),
-            score_thresholds=np.array(score_thresholds),
-        )
-        return unpack_confusion_matrix_into_metric_list(
-            results=results,
-            detailed_pairs=detailed,
-            iou_thresholds=iou_thresholds,
-            score_thresholds=score_thresholds,
-            index_to_datum_id=index_to_datum_id,
-            index_to_groundtruth_id=index_to_groundtruth_id,
-            index_to_prediction_id=index_to_prediction_id,
-            index_to_label=index_to_label,
-        )
+            results = compute_confusion_matrix(
+                detailed_pairs=detailed,
+                iou_thresholds=np.array(iou_thresholds),
+                score_thresholds=np.array(score_thresholds),
+            )
+
+            metrics.append(
+                unpack_confusion_matrix_into_metric_list(
+                    results=results,
+                    detailed_pairs=detailed,
+                    iou_thresholds=iou_thresholds,
+                    score_thresholds=score_thresholds,
+                    index_to_datum_id=index_to_datum_id,
+                    index_to_groundtruth_id=index_to_groundtruth_id,
+                    index_to_prediction_id=index_to_prediction_id,
+                    index_to_label=self._index_to_label,
+                )
+            ) 
+        
+        return metrics
 
     def evaluate(
         self,
@@ -155,18 +231,38 @@ class Evaluator:
             "score",
         ]
         metrics = defaultdict(list)
-        for i, tbl in enumerate(self._walk()):
+        for tbl in self._iterate_dataset():
             detailed = np.column_stack([tbl[col].to_numpy() for col in numeric_cols])
+            if detailed.size == 0:
+                continue
+            
+            # base metrics
             ranked = prune_pairs(detailed)
 
+            # extract UIDs
+            index_to_datum_id = create_mapping(tbl, detailed, 0, "datum_id", "datum_uid")
+            index_to_groundtruth_id = create_mapping(tbl, detailed, 1, "gt_id", "gt_uid")
+            index_to_prediction_id = create_mapping(tbl, detailed, 2, "pd_id", "pd_uid")
+
+            cm = compute_confusion_matrix(
+                detailed_pairs=detailed,
+                iou_thresholds=np.array(iou_thresholds),
+                score_thresholds=np.array(score_thresholds),
+            )
+
             metrics[MetricType.ConfusionMatrix].extend(
-                self.compute_confusion_matrix(
-                    tbl=tbl,
-                    detailed=detailed,
+                unpack_confusion_matrix_into_metric_list(
+                    results=cm,
+                    detailed_pairs=detailed,
                     iou_thresholds=iou_thresholds,
                     score_thresholds=score_thresholds,
+                    index_to_datum_id=index_to_datum_id,
+                    index_to_groundtruth_id=index_to_groundtruth_id,
+                    index_to_prediction_id=index_to_prediction_id,
+                    index_to_label=self._index_to_label,
                 )
             )
+
         
         return metrics
 
