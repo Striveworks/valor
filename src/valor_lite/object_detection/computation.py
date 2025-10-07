@@ -305,7 +305,6 @@ def filter_cache(
 
 def rank_pairs(
     detailed_pairs: NDArray[np.float64],
-    label_metadata: NDArray[np.int32],
 ) -> NDArray[np.float64]:
     """
     Highly optimized pair ranking for computing precision and recall based metrics.
@@ -324,10 +323,6 @@ def rank_pairs(
             Index 4 - Prediction Label Index
             Index 5 - IOU
             Index 6 - Score
-    label_metadata : NDArray[np.int32]
-        Array containing label counts with shape (n_labels, 2)
-            Index 0 - Ground truth label count
-            Index 1 - Prediction label count
 
     Returns
     -------
@@ -344,12 +339,6 @@ def rank_pairs(
     matched_predictions = np.unique(pairs[mask_label_match, 2])
     mask_unmatched_predictions = ~np.isin(pairs[:, 2], matched_predictions)
     pairs = pairs[mask_label_match | mask_unmatched_predictions]
-
-    # remove predictions for labels that have no ground truths
-    for label_idx, count in enumerate(label_metadata[:, 0]):
-        if count > 0:
-            continue
-        pairs = pairs[pairs[:, 4] != label_idx]
 
     # only keep the highest ranked pair
     _, indices = np.unique(pairs[:, [0, 2, 4]], axis=0, return_index=True)

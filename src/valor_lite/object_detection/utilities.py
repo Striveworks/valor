@@ -176,15 +176,15 @@ def unpack_precision_recall_into_metric_lists(
     return metrics
 
 
-def _create_empty_confusion_matrix(index_to_labels: list[str]):
+def _create_empty_confusion_matrix(index_to_labels: dict[int, str]):
     unmatched_ground_truths = dict()
     unmatched_predictions = dict()
     confusion_matrix = dict()
-    for label in index_to_labels:
+    for label in index_to_labels.values():
         unmatched_ground_truths[label] = {"count": 0, "examples": []}
         unmatched_predictions[label] = {"count": 0, "examples": []}
         confusion_matrix[label] = {}
-        for plabel in index_to_labels:
+        for plabel in index_to_labels.values():
             confusion_matrix[label][plabel] = {"count": 0, "examples": []}
     return (
         confusion_matrix,
@@ -198,10 +198,10 @@ def _unpack_confusion_matrix(
     mask_matched: NDArray[np.bool_],
     mask_fp_unmatched: NDArray[np.bool_],
     mask_fn_unmatched: NDArray[np.bool_],
-    index_to_datum_id: list[str],
-    index_to_groundtruth_id: list[str],
-    index_to_prediction_id: list[str],
-    index_to_label: list[str],
+    index_to_datum_id: dict[int, str],
+    index_to_groundtruth_id: dict[int, str],
+    index_to_prediction_id: dict[int, str],
+    index_to_label: dict[int, str],
     iou_threhsold: float,
     score_threshold: float,
 ):
@@ -241,7 +241,8 @@ def _unpack_confusion_matrix(
                 }
             )
         if idx < n_unmatched_predictions:
-            label = index_to_label[unique_unmatched_predictions[idx, 2]]
+            label_id = unique_unmatched_predictions[idx, 2]
+            label = index_to_label[label_id]
             unmatched_predictions[label]["count"] += 1
             unmatched_predictions[label]["examples"].append(
                 {
@@ -283,10 +284,10 @@ def unpack_confusion_matrix_into_metric_list(
     detailed_pairs: NDArray[np.float64],
     iou_thresholds: list[float],
     score_thresholds: list[float],
-    index_to_datum_id: list[str],
-    index_to_groundtruth_id: list[str],
-    index_to_prediction_id: list[str],
-    index_to_label: list[str],
+    index_to_datum_id: dict[int, str],
+    index_to_groundtruth_id: dict[int, str],
+    index_to_prediction_id: dict[int, str],
+    index_to_label: dict[int, str],
 ) -> list[Metric]:
 
     ids = detailed_pairs[:, :5].astype(np.int32)

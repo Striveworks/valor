@@ -8,20 +8,23 @@ from tqdm import tqdm
 from valor_lite.cache import Cache, DataType
 from valor_lite.object_detection.annotation import BoundingBox, Detection
 from valor_lite.object_detection.computation import compute_bbox_iou
-from valor_lite.object_detection.manager import Evaluator
+from valor_lite.object_detection.evaluator import Evaluator
 
 
-class Loader:
+class Loader(Cache):
     def __init__(
         self,
-        output_dir: str,
-        batch_size: int = 1000,
-        rows_per_file: int = 10000,
+        output_dir: str | Path,
+        batch_size: int = 10000,
+        rows_per_file: int = 1_000_000,
         compression: str = "snappy",
         datum_metadata_types: dict[str, DataType] | None = None,
         groundtruth_metadata_types: dict[str, DataType] | None = None,
         prediction_metadata_types: dict[str, DataType] | None = None,
     ):
+        self._labels = {}
+        self._count = 0
+
         datum_metadata_schema = (
             [(k, v.to_arrow()) for k, v in datum_metadata_types.items()]
             if datum_metadata_types
@@ -45,8 +48,11 @@ class Loader:
             s[0]: None for s in prediction_metadata_schema
         }
 
-        annotation_pair_struct = pa.struct(
+        schema = pa.schema(
             [
+                ("datum_uid", pa.string()),
+                ("datum_id", pa.int64()),
+                *datum_metadata_schema,
                 # groundtruth
                 ("gt_uid", pa.string()),
                 ("gt_id", pa.int64()),
@@ -64,31 +70,14 @@ class Loader:
                 ("iou", pa.float64()),
             ]
         )
-        pair_list_type = pa.list_(annotation_pair_struct)
-        schema = pa.schema(
-            [
-                ("uid", pa.string()),
-                ("id", pa.int64()),
-                ("pairs", pair_list_type),
-                *datum_metadata_schema,
-            ]
-        )
 
-        self.detailed = Cache(
-            output_dir=Path(output_dir) / Path("detailed"),
+        super().__init__(
+            output_dir=output_dir,
             schema=schema,
             batch_size=batch_size,
             rows_per_file=rows_per_file,
             compression=compression,
         )
-        self.ranked = Cache(
-            output_dir=Path(output_dir) / Path("ranked"),
-            schema=schema,
-            batch_size=batch_size,
-            rows_per_file=rows_per_file,
-            compression=compression,
-        )
-        self._labels = {}
 
     def _add_label(self, value: str) -> int:
         if idx := self._labels.get(value, None):
@@ -119,18 +108,21 @@ class Loader:
             zip(detections, detection_ious), disable=disable_tqdm
         ):
             # cache labels and annotation pairs
-            datum_idx = self.detailed.total_rows
-            matched_annotations = []
-            unmatched_groundtruths = []
-            unmatched_predictions = []
+            datum_idx = self._count
+            self._count += 1
+            datum_metadata = detection.metadata if detection.metadata else {}
+            pairs = []
             if detection.groundtruths:
                 for gidx, gann in enumerate(detection.groundtruths):
                     glabel = gann.labels[0]
                     glabel_idx = self._add_label(gann.labels[0])
                     gann_metadata = gann.metadata if gann.metadata else {}
                     if (ious[:, gidx] < 1e-9).all():
-                        unmatched_groundtruths.append(
+                        pairs.append(
                             {
+                                "datum_uid": detection.uid,
+                                "datum_id": datum_idx,
+                                **datum_metadata,
                                 "gt_uid": gann.uid,
                                 "gt_id": gidx,
                                 "gt_label": glabel,
@@ -148,9 +140,12 @@ class Loader:
                     for pidx, pann in enumerate(detection.predictions):
                         pann_metadata = pann.metadata if pann.metadata else {}
                         if (ious[pidx, :] < 1e-9).all():
-                            unmatched_predictions.extend(
+                            pairs.extend(
                                 [
                                     {
+                                        "datum_uid": detection.uid,
+                                        "datum_id": datum_idx,
+                                        **datum_metadata,
                                         "gt_uid": None,
                                         "gt_id": -1,
                                         "gt_label": None,
@@ -170,9 +165,12 @@ class Loader:
                                 ]
                             )
                         if ious[pidx, gidx] >= 1e-9:
-                            matched_annotations.extend(
+                            pairs.extend(
                                 [
                                     {
+                                        "datum_uid": detection.uid,
+                                        "datum_id": datum_idx,
+                                        **datum_metadata,
                                         "gt_uid": gann.uid,
                                         "gt_id": gidx,
                                         "gt_label": glabel,
@@ -195,9 +193,12 @@ class Loader:
             elif detection.predictions:
                 for pidx, pann in enumerate(detection.predictions):
                     pann_metadata = pann.metadata if pann.metadata else {}
-                    unmatched_predictions.extend(
+                    pairs.extend(
                         [
                             {
+                                "datum_uid": detection.uid,
+                                "datum_id": datum_idx,
+                                **datum_metadata,
                                 "gt_uid": None,
                                 "gt_id": -1,
                                 "gt_label": None,
@@ -215,19 +216,8 @@ class Loader:
                         ]
                     )
 
-            annotations = sorted(
-                matched_annotations
-                + unmatched_groundtruths
-                + unmatched_predictions,
-                key=lambda x: (-x["score"], -x["iou"]),
-            )
-            self.detailed.write(
-                {
-                    "datum_uid": detection.uid,
-                    "datum_id": datum_idx,
-                    "pairs": annotations,
-                }
-            )
+            pairs = sorted(pairs, key=lambda x: (-x["score"], -x["iou"]))
+            self.write_many(pairs)
 
     def add_bounding_boxes(
         self,
@@ -263,26 +253,27 @@ class Loader:
             show_progress=show_progress,
         )
 
-    # def finalize(self) -> Evaluator:
-    #     """
-    #     Performs data finalization and some preprocessing steps.
+    def finalize(self):
+        """
+        Performs data finalization and some preprocessing steps.
 
-    #     Returns
-    #     -------
-    #     Evaluator
-    #         A ready-to-use evaluator object.
-    #     """
-
-    # self._evaluator._ranked_pairs = rank_pairs(
-    #     detailed_pairs=self._evaluator._detailed_pairs,
-    #     label_metadata=self._evaluator._label_metadata,
-    # )
-    # self._evaluator._metadata = Metadata.create(
-    #     detailed_pairs=self._evaluator._detailed_pairs,
-    #     number_of_datums=n_datums,
-    #     number_of_labels=n_labels,
-    # )
-    # return self._evaluator
+        Returns
+        -------
+        Evaluator
+            A ready-to-use evaluator object.
+        """
+        self.flush()
+        return Evaluator(self.output_dir)
+        # self._evaluator._ranked_pairs = rank_pairs(
+        #     detailed_pairs=self._evaluator._detailed_pairs,
+        #     label_metadata=self._evaluator._label_metadata,
+        # )
+        # self._evaluator._metadata = Metadata.create(
+        #     detailed_pairs=self._evaluator._detailed_pairs,
+        #     number_of_datums=n_datums,
+        #     number_of_labels=n_labels,
+        # )
+        # return self._evaluator
 
 
 if __name__ == "__main__":

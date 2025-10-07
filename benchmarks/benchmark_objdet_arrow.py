@@ -301,6 +301,8 @@ def run_benchmarking_analysis(
             # === Base Evaluation ===
             manager = Loader("bench")
 
+            print("Check existing", manager.total_rows)
+
             # ingest + preprocess
             (ingest_time, preprocessing_time,) = ingest(
                 manager=manager,
@@ -314,6 +316,14 @@ def run_benchmarking_analysis(
             print(json.dumps(manager.get_info(), indent=4))
 
             finalization_time, evaluator = time_it(manager.finalize)()
+            print("final", finalization_time)
+
+            # evaluate - base metrics only
+            eval_time, metrics = time_it(evaluator.evaluate)(
+                score_thresholds=[0.5, 0.75, 0.9],
+                iou_thresholds=[0.1, 0.5, 0.75],
+            )
+            print("evaluation time", eval_time)
 
             if ingest_time > ingestion_timeout and ingestion_timeout != -1:
                 raise TimeoutError(

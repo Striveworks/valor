@@ -101,8 +101,15 @@ class Cache:
         Args:
             rows: List of dictionaries containing row data
         """
-        for row in rows:
-            self.write(row)
+        # Add rows to batch buffer
+        for row in rows:            
+            for field in self.schema:
+                self._batch_buffer[field.name].append(row.get(field.name))
+            self._batch_count += 1
+
+        # Write batch if buffer is full
+        if self._batch_count >= self.batch_size:
+            self._flush_batch()
 
     def _flush_batch(self) -> None:
         """Flush the current batch buffer to disk."""
@@ -149,7 +156,7 @@ class Cache:
     def _open_new_file(self) -> None:
         """Open a new parquet file for writing."""
         self._current_file_path = (
-            self.output_dir / f"part-{self._file_index:06d}.parquet"
+            self.output_dir / f"{self._file_index:06d}.parquet"
         )
         self._current_writer = pq.ParquetWriter(
             self._current_file_path, self.schema, compression=self.compression
@@ -178,38 +185,6 @@ class Cache:
         # Close current file if open
         if self._current_writer is not None:
             self._close_current_file()
-
-    def get_dataset(self) -> ds.Dataset:
-        """
-        Get a PyArrow Dataset from the cached files.
-
-        Returns:
-            PyArrow Dataset object
-        """
-        # Make sure all data is flushed
-        self.flush()
-
-        if not self._files_written:
-            # Return empty dataset with schema
-            empty_table = pa.table(
-                {field.name: [] for field in self.schema}, schema=self.schema
-            )
-            return ds.dataset(empty_table)
-
-        return ds.dataset(
-            str(self.output_dir), format="parquet", schema=self.schema
-        )
-
-    def get_table(self) -> pa.Table:
-        """
-        Get a PyArrow Table from the cached files.
-        Note: This loads all data into memory.
-
-        Returns:
-            PyArrow Table object
-        """
-        dataset = self.get_dataset()
-        return dataset.to_table()
 
     def clear(self) -> None:
         """
@@ -253,6 +228,28 @@ class Cache:
     def total_rows(self) -> int:
         """Return the total number of rows (written + buffered)."""
         return self._total_rows_written + self._batch_count
+    
+    def get_dataset(self) -> ds.Dataset:
+        """
+        Get a PyArrow Dataset from the cached files.
+
+        Returns:
+            PyArrow Dataset object
+        """
+        return ds.dataset(
+            str(self.output_dir), format="parquet", schema=self.schema
+        )
+
+    def get_table(self) -> pa.Table:
+        """
+        Get a PyArrow Table from the cached files.
+        Note: This loads all data into memory.
+
+        Returns:
+            PyArrow Table object
+        """
+        dataset = self.get_dataset()
+        return dataset.to_table()
 
     def get_info(self) -> dict[str, Any]:
         """
