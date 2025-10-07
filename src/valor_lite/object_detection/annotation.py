@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from typing import Generic, TypeVar
+from typing import Any, Generic, TypeVar
 
 import numpy as np
 from numpy.typing import NDArray
@@ -50,6 +50,7 @@ class BoundingBox:
     ymax: float
     labels: list[str]
     scores: list[float] = field(default_factory=list)
+    metadata: dict[str, Any] | None = None
 
     def __post_init__(self):
         if len(self.scores) == 0 and len(self.labels) != 1:
@@ -109,6 +110,7 @@ class Polygon:
     shape: ShapelyPolygon
     labels: list[str]
     scores: list[float] = field(default_factory=list)
+    metadata: dict[str, Any] | None = None
 
     def __post_init__(self):
         if not isinstance(self.shape, ShapelyPolygon):
@@ -161,6 +163,7 @@ class Bitmask:
     mask: NDArray[np.bool_]
     labels: list[str]
     scores: list[float] = field(default_factory=list)
+    metadata: dict[str, Any] | None = None
 
     def __post_init__(self):
 
@@ -217,6 +220,7 @@ class Detection(Generic[AnnotationType]):
     uid: str
     groundtruths: list[AnnotationType]
     predictions: list[AnnotationType]
+    metadata: dict[str, Any] | None = None
 
     def __post_init__(self):
         for prediction in self.predictions:
