@@ -345,12 +345,6 @@ def rank_pairs(
     mask_unmatched_predictions = ~np.isin(pairs[:, 2], matched_predictions)
     pairs = pairs[mask_label_match | mask_unmatched_predictions]
 
-    # remove predictions for labels that have no ground truths
-    for label_idx, count in enumerate(label_metadata[:, 0]):
-        if count > 0:
-            continue
-        pairs = pairs[pairs[:, 4] != label_idx]
-
     # only keep the highest ranked pair
     _, indices = np.unique(pairs[:, [0, 2, 4]], axis=0, return_index=True)
     pairs = pairs[indices]

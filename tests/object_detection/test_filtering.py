@@ -586,7 +586,23 @@ def test_filtering_all_detections(four_detections: list[Detection]):
         filter_=filter_,
     )
     actual_metrics = [m.to_dict() for m in metrics[MetricType.AP]]
-    assert len(actual_metrics) == 0
+    assert len(actual_metrics) == 2
+    expected_metrics = [
+        {
+            "type": "AP",
+            "parameters": {"iou_threshold": 0.5, "label": "v1"},
+            "value": 0.0,
+        },
+        {
+            "type": "AP",
+            "parameters": {"iou_threshold": 0.5, "label": "v2"},
+            "value": 0.0,
+        },
+    ]
+    for m in actual_metrics:
+        assert m in expected_metrics
+    for m in expected_metrics:
+        assert m in actual_metrics
 
 
 def test_filtering_random_detections():
