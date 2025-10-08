@@ -176,7 +176,7 @@ def compute_polygon_iou(
 def compute_label_metadata(
     ids: NDArray[np.int32],
     n_labels: int,
-) -> NDArray[np.int32]:
+) -> NDArray[np.uint32]:
     """
     Computes label metadata returning a count of annotations per label.
 
@@ -199,7 +199,7 @@ def compute_label_metadata(
             Index 0 - Ground truth label count
             Index 1 - Prediction label count
     """
-    label_metadata = np.zeros((n_labels, 2), dtype=np.int32)
+    label_metadata = np.zeros((n_labels, 2), dtype=np.uint32)
 
     ground_truth_pairs = ids[:, (0, 1, 3)]
     ground_truth_pairs = ground_truth_pairs[ground_truth_pairs[:, 1] >= 0]
@@ -226,7 +226,7 @@ def filter_cache(
     mask_predictions: NDArray[np.bool_],
     mask_ground_truths: NDArray[np.bool_],
     n_labels: int,
-) -> tuple[NDArray[np.float64], NDArray[np.float64], NDArray[np.int32],]:
+) -> tuple[NDArray[np.float64], NDArray[np.float64], NDArray[np.uint32]]:
     """
     Performs filtering on a detailed cache.
 
@@ -302,6 +302,23 @@ def filter_cache(
     )
 
 
+def prune_pairs(pairs: NDArray[np.float64]):
+    # remove unmatched ground truths
+    pairs = pairs[pairs[:, 2] >= 0.0]
+
+    # find best fits for prediction
+    mask_label_match = np.isclose(pairs[:, 3], pairs[:, 4])
+    matched_predictions = np.unique(pairs[mask_label_match, 2])
+    mask_unmatched_predictions = ~np.isin(pairs[:, 2], matched_predictions)
+    pairs = pairs[mask_label_match | mask_unmatched_predictions]
+
+    # only keep the highest ranked pair
+    _, indices = np.unique(pairs[:, [0, 2, 4]], axis=0, return_index=True)
+    pairs = pairs[indices]
+
+    return pairs
+
+
 def rank_pairs(
     detailed_pairs: NDArray[np.float64],
 ) -> NDArray[np.float64]:
@@ -328,20 +345,7 @@ def rank_pairs(
     NDArray[np.float64]
         Array of ranked pairs for precision-recall metric computation.
     """
-    pairs = detailed_pairs
-
-    # remove null predictions
-    pairs = pairs[pairs[:, 2] >= 0.0]
-
-    # find best fits for prediction
-    mask_label_match = np.isclose(pairs[:, 3], pairs[:, 4])
-    matched_predictions = np.unique(pairs[mask_label_match, 2])
-    mask_unmatched_predictions = ~np.isin(pairs[:, 2], matched_predictions)
-    pairs = pairs[mask_label_match | mask_unmatched_predictions]
-
-    # only keep the highest ranked pair
-    _, indices = np.unique(pairs[:, [0, 2, 4]], axis=0, return_index=True)
-    pairs = pairs[indices]
+    pairs = prune_pairs(detailed_pairs)
 
     # np.unique orders its results by value, we need to sort the indices to maintain the results of the lexsort
     indices = np.lexsort(
@@ -355,23 +359,13 @@ def rank_pairs(
     return pairs
 
 
-def compute_precion_recall(
+def compute_counts(
     ranked_pairs: NDArray[np.float64],
-    label_metadata: NDArray[np.int32],
     iou_thresholds: NDArray[np.float64],
     score_thresholds: NDArray[np.float64],
-) -> tuple[
-    tuple[
-        NDArray[np.float64],
-        NDArray[np.float64],
-    ],
-    tuple[
-        NDArray[np.float64],
-        NDArray[np.float64],
-    ],
-    NDArray[np.float64],
-    NDArray[np.float64],
-]:
+    number_of_groundtruths_per_label: NDArray[np.uint64],
+    number_of_labels: int,
+) -> tuple:
     """
     Computes Object Detection metrics.
 
@@ -389,8 +383,6 @@ def compute_precion_recall(
     ----------
     ranked_pairs : NDArray[np.float64]
         A ranked array summarizing the IOU calculations of one or more pairs.
-    label_metadata : NDArray[np.int32]
-        An array containing metadata related to labels.
     iou_thresholds : NDArray[np.float64]
         A 1-D array containing IOU thresholds.
     score_thresholds : NDArray[np.float64]
@@ -408,20 +400,16 @@ def compute_precion_recall(
         Interpolated Precision-Recall Curves.
     """
     n_rows = ranked_pairs.shape[0]
-    n_labels = label_metadata.shape[0]
+    n_labels = number_of_labels
     n_ious = iou_thresholds.shape[0]
     n_scores = score_thresholds.shape[0]
 
     # initialize result arrays
-    average_precision = np.zeros((n_ious, n_labels), dtype=np.float64)
-    mAP = np.zeros(n_ious, dtype=np.float64)
-    average_recall = np.zeros((n_scores, n_labels), dtype=np.float64)
-    mAR = np.zeros(n_scores, dtype=np.float64)
-    counts = np.zeros((n_ious, n_scores, n_labels, 6), dtype=np.float64)
+    counts = np.zeros((n_ious, n_scores, 3, n_labels), dtype=np.uint64)
     pr_curve = np.zeros((n_ious, n_labels, 101, 2))
 
     # start computation
-    ids = ranked_pairs[:, :5].astype(np.int32)
+    ids = ranked_pairs[:, :5].astype(np.int64)
     gt_ids = ids[:, 1]
     gt_labels = ids[:, 3]
     pd_labels = ids[:, 4]
@@ -431,10 +419,10 @@ def compute_precion_recall(
     unique_pd_labels, unique_pd_indices = np.unique(
         pd_labels, return_index=True
     )
-    gt_count = label_metadata[:, 0]
+    gt_count = number_of_groundtruths_per_label
     running_total_count = np.zeros(
         (n_ious, n_rows),
-        dtype=np.float64,
+        dtype=np.uint64,
     )
     running_tp_count = np.zeros_like(running_total_count)
     running_gt_count = np.zeros_like(running_total_count)
@@ -447,7 +435,6 @@ def compute_precion_recall(
 
     mask_tp = mask_score_nonzero & mask_gt_exists_labels_match
     mask_fp = mask_score_nonzero
-    mask_fn = mask_gt_exists_labels_match
 
     for iou_idx in range(n_ious):
         mask_iou = ious >= iou_thresholds[iou_idx]
@@ -456,14 +443,12 @@ def compute_precion_recall(
         mask_fp_outer = mask_fp & (
             (~mask_gt_exists_labels_match & mask_iou) | ~mask_iou
         )
-        mask_fn_outer = mask_fn & mask_iou
 
         for score_idx in range(n_scores):
             mask_score_thresh = scores >= score_thresholds[score_idx]
 
             mask_tp_inner = mask_tp_outer & mask_score_thresh
             mask_fp_inner = mask_fp_outer & mask_score_thresh
-            mask_fn_inner = mask_fn_outer & ~mask_score_thresh
 
             # create true-positive mask score threshold
             tp_candidates = ids[mask_tp_inner]
@@ -479,55 +464,18 @@ def compute_precion_recall(
             mask_fp_inner |= mask_tp_inner & ~true_positives_mask
 
             # calculate intermediates
-            tp_count = np.bincount(
+            counts[iou_idx, score_idx, 0, :] = np.bincount(
                 pd_labels,
                 weights=true_positives_mask,
                 minlength=n_labels,
-            ).astype(np.float64)
-            fp_count = np.bincount(
+            )
+            # fp count
+            counts[iou_idx, score_idx, 1, :] = np.bincount(
                 pd_labels[mask_fp_inner],
                 minlength=n_labels,
-            ).astype(np.float64)
-            fn_count = np.bincount(
-                pd_labels[mask_fn_inner],
-                minlength=n_labels,
             )
-
-            fn_count = gt_count - tp_count
-            tp_fp_count = tp_count + fp_count
-
-            # calculate component metrics
-            recall = np.zeros_like(tp_count)
-            np.divide(tp_count, gt_count, where=gt_count > 1e-9, out=recall)
-
-            precision = np.zeros_like(tp_count)
-            np.divide(
-                tp_count, tp_fp_count, where=tp_fp_count > 1e-9, out=precision
-            )
-
-            f1_score = np.zeros_like(precision)
-            np.divide(
-                2 * np.multiply(precision, recall),
-                (precision + recall),
-                where=(precision + recall) > 1e-9,
-                out=f1_score,
-                dtype=np.float64,
-            )
-
-            counts[iou_idx][score_idx] = np.concatenate(
-                (
-                    tp_count[:, np.newaxis],
-                    fp_count[:, np.newaxis],
-                    fn_count[:, np.newaxis],
-                    precision[:, np.newaxis],
-                    recall[:, np.newaxis],
-                    f1_score[:, np.newaxis],
-                ),
-                axis=1,
-            )
-
-            # calculate recall for AR
-            average_recall[score_idx] += recall
+            # fn count
+            counts[iou_idx, score_idx, 2, :] = gt_count - counts[iou_idx, score_idx, 0, :]            
 
         # create true-positive mask score threshold
         tp_candidates = ids[mask_tp_outer]
@@ -550,20 +498,21 @@ def compute_precion_recall(
             running_tp_count[iou_idx][mask_tp_for_counting] = np.arange(
                 1, mask_tp_for_counting.sum() + 1
             )
-
+    
     # calculate running precision-recall points for AP
-    precision = np.zeros_like(running_total_count)
+    running_gt_count = number_of_groundtruths_per_label[pd_labels]
+    precision = np.zeros_like(running_total_count, dtype=np.float64)
     np.divide(
         running_tp_count,
         running_total_count,
-        where=running_total_count > 1e-9,
+        where=running_total_count > 0,
         out=precision,
     )
-    recall = np.zeros_like(running_total_count)
+    recall = np.zeros_like(running_total_count, dtype=np.float64)
     np.divide(
         running_tp_count,
         running_gt_count,
-        where=running_gt_count > 1e-9,
+        where=running_gt_count > 0,
         out=recall,
     )
     recall_index = np.floor(recall * 100.0).astype(np.int32)
@@ -580,6 +529,63 @@ def compute_precion_recall(
             pr_curve[iou_idx, pd_labels, r, 1],
             scores,
         )
+
+    return (
+        counts,
+        pr_curve,
+    )
+
+
+def compute_precision_recall_f1(
+    counts: NDArray[np.uint64],
+    number_of_groundtruths_per_label: NDArray[np.uint64],
+) -> NDArray[np.float64]:
+
+    prec_rec_f1 = np.zeros_like(counts, dtype=np.float64)
+
+    # alias        
+    tp_count = counts[:, :, 0, :]
+    fp_count = counts[:, :, 1, :]
+    tp_fp_count = tp_count + fp_count
+
+    # calculate component metrics
+    np.divide(
+        tp_count, 
+        tp_fp_count, 
+        where=tp_fp_count > 0, 
+        out=prec_rec_f1[:, :, 0, :],
+    )
+    np.divide(
+        tp_count, 
+        number_of_groundtruths_per_label, 
+        where=number_of_groundtruths_per_label > 0, 
+        out=prec_rec_f1[:, :, 1, :],
+    )            
+    p = prec_rec_f1[:, :, 0, :]
+    r = prec_rec_f1[:, :, 1, :]
+    np.divide(
+        2 * np.multiply(p, r),
+        (p + r),
+        where=(p + r) > 1e-9,
+        out=prec_rec_f1[:, :, 2, :],
+    )
+    return prec_rec_f1
+
+
+def compute_average_recall(prec_rec_f1: NDArray[np.float64]):  
+    recall = prec_rec_f1[:, :, 1, :]
+    average_recall = recall.mean(axis=0)
+    mAR = average_recall.mean(axis=-1)
+    return average_recall, mAR
+
+
+def compute_average_precision(pr_curve: NDArray[np.float64]):
+    n_ious = pr_curve.shape[0]
+    n_labels = pr_curve.shape[1]
+    
+    # initialize result arrays
+    average_precision = np.zeros((n_ious, n_labels), dtype=np.float64)
+    mAP = np.zeros(n_ious, dtype=np.float64)    
 
     # calculate average precision
     running_max_precision = np.zeros((n_ious, n_labels), dtype=np.float64)
@@ -604,25 +610,12 @@ def compute_precion_recall(
 
     average_precision = average_precision / 101.0
 
-    # calculate average recall
-    average_recall = average_recall / n_ious
-
     # calculate mAP and mAR
-    if unique_pd_labels.size > 0:
-        mAP: NDArray[np.float64] = average_precision[:, unique_pd_labels].mean(
-            axis=1
-        )
-        mAR: NDArray[np.float64] = average_recall[:, unique_pd_labels].mean(
-            axis=1
-        )
+    if average_precision.size > 0:
+        mAP = average_precision.mean(axis=1)
 
-    return (
-        (average_precision.astype(np.float64), mAP),
-        (average_recall, mAR),
-        counts,
-        pr_curve,
-    )
-
+    return average_precision, mAP, pr_curve
+    
 
 def _isin(
     data: NDArray,

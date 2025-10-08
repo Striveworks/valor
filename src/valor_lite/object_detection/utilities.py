@@ -8,36 +8,18 @@ from valor_lite.object_detection.metric import Metric, MetricType
 
 
 def unpack_precision_recall_into_metric_lists(
-    results: tuple[
-        tuple[
-            NDArray[np.float64],
-            NDArray[np.float64],
-        ],
-        tuple[
-            NDArray[np.float64],
-            NDArray[np.float64],
-        ],
-        NDArray[np.float64],
-        NDArray[np.float64],
-    ],
+    counts: NDArray[np.uint64],
+    precision_recall_f1: NDArray[np.float64],
+    average_precision: NDArray[np.float64],
+    mean_average_precision: NDArray[np.float64],
+    average_recall: NDArray[np.float64],
+    mean_average_recall: NDArray[np.float64],
+    pr_curve: NDArray[np.float64],
     iou_thresholds: list[float],
     score_thresholds: list[float],
     index_to_label: dict[int, str],
-    label_metadata: NDArray[np.int32],
+    label_metadata: NDArray[np.uint32],
 ):
-    (
-        (
-            average_precision,
-            mean_average_precision,
-        ),
-        (
-            average_recall,
-            mean_average_recall,
-        ),
-        precision_recall,
-        pr_curves,
-    ) = results
-
     metrics = defaultdict(list)
 
     metrics[MetricType.AP] = [
@@ -118,8 +100,8 @@ def unpack_precision_recall_into_metric_lists(
 
     metrics[MetricType.PrecisionRecallCurve] = [
         Metric.precision_recall_curve(
-            precisions=pr_curves[iou_idx, label_idx, :, 0].tolist(),  # type: ignore[reportArgumentType]
-            scores=pr_curves[iou_idx, label_idx, :, 1].tolist(),  # type: ignore[reportArgumentType]
+            precisions=pr_curve[iou_idx, label_idx, :, 0].tolist(),
+            scores=pr_curve[iou_idx, label_idx, :, 1].tolist(),
             iou_threshold=iou_threshold,
             label=label,
         )
@@ -135,7 +117,7 @@ def unpack_precision_recall_into_metric_lists(
         for score_idx, score_threshold in enumerate(score_thresholds):
             for iou_idx, iou_threshold in enumerate(iou_thresholds):
 
-                row = precision_recall[iou_idx, score_idx, label_idx, :]
+                row = counts[iou_idx, score_idx, :, label_idx]
                 kwargs = {
                     "label": label,
                     "iou_threshold": iou_threshold,
@@ -150,21 +132,22 @@ def unpack_precision_recall_into_metric_lists(
                     )
                 )
 
+                row = precision_recall_f1[iou_idx, score_idx, :, label_idx]
                 metrics[MetricType.Precision].append(
                     Metric.precision(
-                        value=float(row[3]),
+                        value=float(row[0]),
                         **kwargs,
                     )
                 )
                 metrics[MetricType.Recall].append(
                     Metric.recall(
-                        value=float(row[4]),
+                        value=float(row[1]),
                         **kwargs,
                     )
                 )
                 metrics[MetricType.F1].append(
                     Metric.f1_score(
-                        value=float(row[5]),
+                        value=float(row[2]),
                         **kwargs,
                     )
                 )

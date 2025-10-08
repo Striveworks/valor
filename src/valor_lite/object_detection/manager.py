@@ -22,7 +22,10 @@ from valor_lite.object_detection.computation import (
     compute_confusion_matrix,
     compute_label_metadata,
     compute_polygon_iou,
-    compute_precion_recall,
+    compute_counts,
+    compute_precision_recall_f1,
+    compute_average_precision,
+    compute_average_recall,
     filter_cache,
     rank_pairs,
 )
@@ -139,7 +142,7 @@ class Evaluator:
         # internal cache
         self._detailed_pairs = np.array([[]], dtype=np.float64)
         self._ranked_pairs = np.array([[]], dtype=np.float64)
-        self._label_metadata: NDArray[np.int32] = np.array([[]])
+        self._label_metadata: NDArray[np.uint32] = np.array([[]])
         self._metadata = Metadata()
 
     @property
@@ -342,7 +345,7 @@ class Evaluator:
 
     def filter(
         self, filter_: Filter
-    ) -> tuple[NDArray[np.float64], NDArray[np.float64], NDArray[np.int32],]:
+    ) -> tuple[NDArray[np.float64], NDArray[np.float64], NDArray[np.uint32],]:
         """
         Performs filtering over the internal cache.
 
@@ -402,14 +405,32 @@ class Evaluator:
             ranked_pairs = self._ranked_pairs
             label_metadata = self._label_metadata
 
-        results = compute_precion_recall(
+        # computation
+        (
+            counts,
+            pr_curve
+        ) = compute_counts(
             ranked_pairs=ranked_pairs,
-            label_metadata=label_metadata,
             iou_thresholds=np.array(iou_thresholds),
             score_thresholds=np.array(score_thresholds),
+            number_of_groundtruths_per_label=label_metadata[:, 0],
+            number_of_labels=label_metadata.shape[0],
         )
+        precision_recall_f1 = compute_precision_recall_f1(
+            counts=counts,
+            number_of_groundtruths_per_label=label_metadata[:, 0],
+        )
+        average_precision, mean_average_precision, pr_curve = compute_average_precision(pr_curve=pr_curve)
+        average_recall, mean_average_recall = compute_average_recall(prec_rec_f1=precision_recall_f1)
+
         return unpack_precision_recall_into_metric_lists(
-            results=results,
+            counts=counts,
+            precision_recall_f1=precision_recall_f1,
+            average_precision=average_precision,
+            mean_average_precision=mean_average_precision,
+            average_recall=average_recall,
+            mean_average_recall=mean_average_recall,
+            pr_curve=pr_curve,
             label_metadata=label_metadata,
             iou_thresholds=iou_thresholds,
             score_thresholds=score_thresholds,

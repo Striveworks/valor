@@ -298,9 +298,13 @@ def run_benchmarking_analysis(
             pd_filename = prediction_caches[pd_type]
 
             # === Base Evaluation ===
-            manager = Loader("bench")
+            manager = Loader(
+                "bench", 
+                batch_size=1000, 
+                rows_per_file=10000,
+            )
 
-            print("Check existing", manager._cache.total_rows)
+            # print("Check existing", manager._cache.num_rows)
 
             # ingest + preprocess
             (ingest_time, preprocessing_time,) = ingest(
@@ -312,10 +316,10 @@ def run_benchmarking_analysis(
             )  # type: ignore - time_it wrapper
 
             print(ingest_time, preprocessing_time)
-            print(json.dumps(manager._cache.get_info(), indent=4))
 
             finalization_time, evaluator = time_it(manager.finalize)()
             print("final", finalization_time)
+            print("n_files", manager._cache.num_files)
 
             # evaluate - base metrics only
             eval_time, metrics = time_it(evaluator.evaluate)(

@@ -77,7 +77,7 @@ class Loader:
         self._cache_path = self._dir / Path("cache")
 
         self._cache = Cache(
-            output_dir=self._cache_path,
+            where=self._cache_path,
             schema=schema,
             batch_size=batch_size,
             rows_per_file=rows_per_file,
@@ -223,7 +223,7 @@ class Loader:
                     )
 
             pairs = sorted(pairs, key=lambda x: (-x["score"], -x["iou"]))
-            self._cache.write_many(pairs)
+            self._cache.write_rows(pairs)
 
     def add_bounding_boxes(
         self,
