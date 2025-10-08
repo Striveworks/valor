@@ -1,24 +1,25 @@
 import json
+from collections import defaultdict
+from pathlib import Path
+
 import numpy as np
 import pyarrow as pa
 import pyarrow as pc
 import pyarrow.dataset as ds
-
 from numpy.typing import NDArray
-from collections import defaultdict
-from pathlib import Path
 
+from valor_lite.object_detection.computation import (
+    compute_confusion_matrix,
+    compute_precion_recall,
+)
 from valor_lite.object_detection.metric import Metric, MetricType
 from valor_lite.object_detection.utilities import (
     unpack_confusion_matrix_into_metric_list,
     unpack_precision_recall_into_metric_lists,
 )
-from valor_lite.object_detection.computation import compute_confusion_matrix, compute_precion_recall
 
 
-def prune_pairs(
-    pairs: NDArray[np.float64]
-):
+def prune_pairs(pairs: NDArray[np.float64]):
     # remove null predictions
     pairs = pairs[pairs[:, 2] >= 0.0]
 
@@ -46,26 +47,21 @@ def create_mapping(
     values, indices = np.unique(col, return_index=True)
     indices = indices[values >= 0]
     return {
-        tbl[id_col][idx].as_py(): tbl[uid_col][idx].as_py()
-        for idx in indices
+        tbl[id_col][idx].as_py(): tbl[uid_col][idx].as_py() for idx in indices
     }
 
 
 class Evaluator:
-
     def __init__(self, directory: str | Path):
         self._dir = Path(directory)
         self._dataset_path = self._dir / Path("cache")
         self._labels_path = self._dir / Path("labels.json")
-        
-        self._dataset = ds.dataset(self._dataset_path, format="parquet")        
+
+        self._dataset = ds.dataset(self._dataset_path, format="parquet")
         with open(self._labels_path, "r") as f:
             labels = json.load(f)
-            self._index_to_label = {
-                int(k): v
-                for k, v in labels.items()
-            }
-    
+            self._index_to_label = {int(k): v for k, v in labels.items()}
+
     @property
     def schema(self) -> pa.Schema:
         return self._dataset.schema
@@ -78,7 +74,7 @@ class Evaluator:
     ):
         """
         Generator that yields Tables from a PyArrow dataset.
-        
+
         Yields
         ------
         pyarrow.Table
@@ -113,7 +109,7 @@ class Evaluator:
             raise ValueError("At least one IOU threshold must be passed.")
         elif not score_thresholds:
             raise ValueError("At least one score threshold must be passed.")
-        
+
         numeric_cols = [
             "datum_id",
             "gt_id",
@@ -125,10 +121,12 @@ class Evaluator:
         ]
         metrics = defaultdict(list)
         for tbl in self._iterate_dataset():
-            detailed = np.column_stack([tbl[col].to_numpy() for col in numeric_cols])
+            detailed = np.column_stack(
+                [tbl[col].to_numpy() for col in numeric_cols]
+            )
             if detailed.size == 0:
                 continue
-            
+
             ranked = prune_pairs(detailed)
 
             results = compute_precion_recall(
@@ -144,7 +142,7 @@ class Evaluator:
                 score_thresholds=score_thresholds,
                 index_to_label=self._index_to_label,
             )
-    
+
     def compute_confusion_matrix(
         self,
         tbl: pa.Table,
@@ -173,7 +171,7 @@ class Evaluator:
             raise ValueError("At least one IOU threshold must be passed.")
         elif not score_thresholds:
             raise ValueError("At least one score threshold must be passed.")
-        
+
         numeric_cols = [
             "datum_id",
             "gt_id",
@@ -185,14 +183,22 @@ class Evaluator:
         ]
         metrics = []
         for tbl in self._iterate_dataset():
-            detailed = np.column_stack([tbl[col].to_numpy() for col in numeric_cols])
+            detailed = np.column_stack(
+                [tbl[col].to_numpy() for col in numeric_cols]
+            )
             if detailed.size == 0:
                 continue
-            
+
             # extract UIDs
-            index_to_datum_id = create_mapping(tbl, detailed, 0, "datum_id", "datum_uid")
-            index_to_groundtruth_id = create_mapping(tbl, detailed, 1, "gt_id", "gt_uid")
-            index_to_prediction_id = create_mapping(tbl, detailed, 2, "pd_id", "pd_uid")
+            index_to_datum_id = create_mapping(
+                tbl, detailed, 0, "datum_id", "datum_uid"
+            )
+            index_to_groundtruth_id = create_mapping(
+                tbl, detailed, 1, "gt_id", "gt_uid"
+            )
+            index_to_prediction_id = create_mapping(
+                tbl, detailed, 2, "pd_id", "pd_uid"
+            )
 
             results = compute_confusion_matrix(
                 detailed_pairs=detailed,
@@ -211,8 +217,8 @@ class Evaluator:
                     index_to_prediction_id=index_to_prediction_id,
                     index_to_label=self._index_to_label,
                 )
-            ) 
-        
+            )
+
         return metrics
 
     def evaluate(
@@ -232,17 +238,25 @@ class Evaluator:
         ]
         metrics = defaultdict(list)
         for tbl in self._iterate_dataset():
-            detailed = np.column_stack([tbl[col].to_numpy() for col in numeric_cols])
+            detailed = np.column_stack(
+                [tbl[col].to_numpy() for col in numeric_cols]
+            )
             if detailed.size == 0:
                 continue
-            
+
             # base metrics
             ranked = prune_pairs(detailed)
 
             # extract UIDs
-            index_to_datum_id = create_mapping(tbl, detailed, 0, "datum_id", "datum_uid")
-            index_to_groundtruth_id = create_mapping(tbl, detailed, 1, "gt_id", "gt_uid")
-            index_to_prediction_id = create_mapping(tbl, detailed, 2, "pd_id", "pd_uid")
+            index_to_datum_id = create_mapping(
+                tbl, detailed, 0, "datum_id", "datum_uid"
+            )
+            index_to_groundtruth_id = create_mapping(
+                tbl, detailed, 1, "gt_id", "gt_uid"
+            )
+            index_to_prediction_id = create_mapping(
+                tbl, detailed, 2, "pd_id", "pd_uid"
+            )
 
             cm = compute_confusion_matrix(
                 detailed_pairs=detailed,
@@ -263,7 +277,6 @@ class Evaluator:
                 )
             )
 
-        
         return metrics
 
 
@@ -272,4 +285,3 @@ if __name__ == "__main__":
     e = Evaluator("bench")
 
     e.evaluate([], [], None)
-
