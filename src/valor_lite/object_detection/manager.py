@@ -410,7 +410,6 @@ class Evaluator:
         )
         return unpack_precision_recall_into_metric_lists(
             results=results,
-            label_metadata=label_metadata,
             iou_thresholds=iou_thresholds,
             score_thresholds=score_thresholds,
             index_to_label=self.index_to_label,
