@@ -299,12 +299,10 @@ def run_benchmarking_analysis(
 
             # === Base Evaluation ===
             manager = Loader(
-                "bench",
-                # batch_size=1000,
+                "bench", 
+                # batch_size=1000, 
                 # rows_per_file=10000,
             )
-
-            # print("Check existing", manager._cache.num_rows)
 
             # ingest + preprocess
             (ingest_time, preprocessing_time,) = ingest(
