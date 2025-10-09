@@ -685,7 +685,7 @@ def mask_pairs_greedily(
     return mask_matches
 
 
-def compute_confusion_matrix(
+def compute_row_classification(
     detailed_pairs: NDArray[np.float64],
     iou_thresholds: NDArray[np.float64],
     score_thresholds: NDArray[np.float64],
@@ -803,3 +803,6 @@ def compute_confusion_matrix(
             ] |= np.uint8(PairClassification.FN_UNMATCHED)
 
     return pair_classifications
+
+def compute_confusion_matrix(pair_classifications: NDArray):
+    

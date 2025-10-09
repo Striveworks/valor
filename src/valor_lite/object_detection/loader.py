@@ -3,8 +3,9 @@ from pathlib import Path
 
 import numpy as np
 import pyarrow as pa
-from numpy.typing import NDArray
 from tqdm import tqdm
+from collections import defaultdict
+from numpy.typing import NDArray
 
 from valor_lite.cache import Cache, DataType
 from valor_lite.object_detection.annotation import BoundingBox, Detection
@@ -23,7 +24,14 @@ class Loader:
         groundtruth_metadata_types: dict[str, DataType] | None = None,
         prediction_metadata_types: dict[str, DataType] | None = None,
     ):
+        self._dir = Path(directory)
+        self._detailed_path = self._dir / Path("detailed")
+        self._ranked_path = self._dir / Path("ranked")
+        self._labels_path = self._dir / Path("labels.json")
+        self._number_of_groundtruths_per_label_path = self._dir / Path("groundtruths_per_label.json")
+
         self._labels = {}
+        self._number_of_groundtruths_per_label = defaultdict(int)
         self._count = 0
 
         datum_metadata_schema = (
@@ -70,13 +78,7 @@ class Loader:
                 # pair
                 ("iou", pa.float64()),
             ]
-        )
-
-        self._dir = Path(directory)
-        self._labels_path = self._dir / Path("labels.json")
-        self._detailed_path = self._dir / Path("detailed")
-        self._ranked_path = self._dir / Path("ranked")
-
+        )        
         self._detailed = Cache(
             where=self._detailed_path,
             schema=schema,
@@ -123,6 +125,7 @@ class Loader:
                 for gidx, gann in enumerate(detection.groundtruths):
                     glabel = gann.labels[0]
                     glabel_idx = self._add_label(gann.labels[0])
+                    self._number_of_groundtruths_per_label[glabel_idx] += 1
                     gann_metadata = gann.metadata if gann.metadata else {}
                     if (ious[:, gidx] < 1e-9).all():
                         pairs.append(
@@ -279,6 +282,8 @@ class Loader:
         )
         with open(self._labels_path, "w") as f:
             json.dump({v: k for k, v in self._labels.items()}, f, indent=2)
+        with open(self._number_of_groundtruths_per_label_path, "w") as f:
+            json.dump(self._number_of_groundtruths_per_label, f, indent=2)
         return Evaluator(self._dir)
 
 

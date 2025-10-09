@@ -49,13 +49,19 @@ class Evaluator:
         self._dir = Path(directory)
         self._detailed_path = self._dir / Path("detailed")
         self._ranked_path = self._dir / Path("ranked")
-        self._labels_path = self._dir / Path("labels.json")
+        self._labels_path = self._dir / Path("labels.json")        
+        self._number_of_groundtruths_per_label_path = self._dir / Path("groundtruths_per_label.json")
 
         self._detailed = ds.dataset(self._detailed_path, format="parquet")
         self._ranked = ds.dataset(self._ranked_path, format="parquet")
         with open(self._labels_path, "r") as f:
             labels = json.load(f)
             self._index_to_label = {int(k): v for k, v in labels.items()}
+        with open(self._number_of_groundtruths_per_label_path, "r") as f:
+            gts_per_lbl = json.load(f)
+            self._number_of_groundtruths_per_label = np.zeros(len(self._index_to_label), dtype=np.uint64)
+            for k, v in gts_per_lbl.items():
+                self._number_of_groundtruths_per_label[int(k)] = v
 
         print(json.dumps(self.info, indent=2))
 
@@ -143,7 +149,7 @@ class Evaluator:
                 ranked_pairs=ranked_pairs,
                 iou_thresholds=np.array(iou_thresholds),
                 score_thresholds=np.array(score_thresholds),
-                number_of_groundtruths_per_label=label_metadata[:, 0],
+                number_of_groundtruths_per_label=self._number_of_groundtruths_per_label,
                 number_of_labels=len(self._index_to_label),
             )
             counts += batch_counts
@@ -151,7 +157,7 @@ class Evaluator:
 
         precision_recall_f1 = compute_precision_recall_f1(
             counts=counts,
-            number_of_groundtruths_per_label=label_metadata[:, 0],
+            number_of_groundtruths_per_label=self._number_of_groundtruths_per_label,
         )
         (
             average_precision,
@@ -170,7 +176,6 @@ class Evaluator:
             average_recall=average_recall,
             mean_average_recall=mean_average_recall,
             pr_curve=pr_curve,
-            label_metadata=label_metadata,
             iou_thresholds=iou_thresholds,
             score_thresholds=score_thresholds,
             index_to_label=self._index_to_label,
@@ -178,10 +183,9 @@ class Evaluator:
 
     def compute_confusion_matrix(
         self,
-        tbl: pa.Table,
-        detailed: np.ndarray,
         iou_thresholds: list[float],
         score_thresholds: list[float],
+        filter_expr=None,
     ) -> list[Metric]:
         """
         Computes confusion matrices at various thresholds.
@@ -205,7 +209,8 @@ class Evaluator:
         elif not score_thresholds:
             raise ValueError("At least one score threshold must be passed.")
 
-        numeric_cols = [
+        metrics = []
+        columns = [
             "datum_id",
             "gt_id",
             "pd_id",
@@ -214,12 +219,14 @@ class Evaluator:
             "iou",
             "score",
         ]
-        metrics = []
-        for tbl in self._iterate_fragments():
-            detailed = np.column_stack(
-                [tbl[col].to_numpy() for col in numeric_cols]
+        for tbl in self.iterate_detailed_pairs(
+            columns=columns,
+            filter_expr=filter_expr,
+        ):
+            pairs = np.column_stack(
+                [tbl.column(i).to_numpy() for i in range(tbl.num_columns)]
             )
-            if detailed.size == 0:
+            if pairs.size == 0:
                 continue
 
             # extract UIDs
@@ -270,7 +277,7 @@ class Evaluator:
             "score",
         ]
         metrics = defaultdict(list)
-        for tbl in self._iterate_fragments():
+        for tbl in self.iterate_detailed_pairs():
             detailed = np.column_stack(
                 [tbl[col].to_numpy() for col in numeric_cols]
             )
