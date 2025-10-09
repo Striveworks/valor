@@ -299,9 +299,9 @@ def run_benchmarking_analysis(
 
             # === Base Evaluation ===
             manager = Loader(
-                "bench", 
-                batch_size=1000, 
-                rows_per_file=10000,
+                "bench",
+                # batch_size=1000,
+                # rows_per_file=10000,
             )
 
             # print("Check existing", manager._cache.num_rows)
@@ -319,7 +319,7 @@ def run_benchmarking_analysis(
 
             finalization_time, evaluator = time_it(manager.finalize)()
             print("final", finalization_time)
-            print("n_files", manager._cache.num_files)
+            print("n_files", manager._detailed.num_files)
 
             # evaluate - base metrics only
             eval_time, metrics = time_it(evaluator.evaluate)(

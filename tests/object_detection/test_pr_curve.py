@@ -2,7 +2,6 @@ import numpy as np
 
 from valor_lite.object_detection import DataLoader, Detection, MetricType
 
-
 # def test_pr_curve_simple():
 #     sorted_pairs = np.array(
 #         [
@@ -157,6 +156,28 @@ def test_pr_curve_using_torch_metrics_example(
             "parameters": {
                 "iou_threshold": 0.75,
                 "label": "2",
+            },
+        },
+        {
+            "type": "PrecisionRecallCurve",
+            "value": {
+                "precisions": [0.0 for _ in range(101)],
+                "scores": [0.318] + [0.0 for _ in range(100)],
+            },
+            "parameters": {
+                "iou_threshold": 0.5,
+                "label": "3",
+            },
+        },
+        {
+            "type": "PrecisionRecallCurve",
+            "value": {
+                "precisions": [0.0 for _ in range(101)],
+                "scores": [0.318] + [0.0 for _ in range(100)],
+            },
+            "parameters": {
+                "iou_threshold": 0.75,
+                "label": "3",
             },
         },
         {

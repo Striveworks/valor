@@ -17,15 +17,15 @@ from valor_lite.object_detection.annotation import (
     Polygon,
 )
 from valor_lite.object_detection.computation import (
+    compute_average_precision,
+    compute_average_recall,
     compute_bbox_iou,
     compute_bitmask_iou,
     compute_confusion_matrix,
+    compute_counts,
     compute_label_metadata,
     compute_polygon_iou,
-    compute_counts,
     compute_precision_recall_f1,
-    compute_average_precision,
-    compute_average_recall,
     filter_cache,
     rank_pairs,
 )
@@ -406,10 +406,7 @@ class Evaluator:
             label_metadata = self._label_metadata
 
         # computation
-        (
-            counts,
-            pr_curve
-        ) = compute_counts(
+        (counts, pr_curve) = compute_counts(
             ranked_pairs=ranked_pairs,
             iou_thresholds=np.array(iou_thresholds),
             score_thresholds=np.array(score_thresholds),
@@ -420,8 +417,14 @@ class Evaluator:
             counts=counts,
             number_of_groundtruths_per_label=label_metadata[:, 0],
         )
-        average_precision, mean_average_precision, pr_curve = compute_average_precision(pr_curve=pr_curve)
-        average_recall, mean_average_recall = compute_average_recall(prec_rec_f1=precision_recall_f1)
+        (
+            average_precision,
+            mean_average_precision,
+            pr_curve,
+        ) = compute_average_precision(pr_curve=pr_curve)
+        average_recall, mean_average_recall = compute_average_recall(
+            prec_rec_f1=precision_recall_f1
+        )
 
         return unpack_precision_recall_into_metric_lists(
             counts=counts,
@@ -431,10 +434,9 @@ class Evaluator:
             average_recall=average_recall,
             mean_average_recall=mean_average_recall,
             pr_curve=pr_curve,
-            label_metadata=label_metadata,
             iou_thresholds=iou_thresholds,
             score_thresholds=score_thresholds,
-            index_to_label={i : v for i, v in enumerate(self.index_to_label)},
+            index_to_label={i: v for i, v in enumerate(self.index_to_label)},
         )
 
     def compute_confusion_matrix(
@@ -483,10 +485,16 @@ class Evaluator:
             detailed_pairs=detailed_pairs,
             iou_thresholds=iou_thresholds,
             score_thresholds=score_thresholds,
-            index_to_datum_id={i : v for i, v in enumerate(self.index_to_datum_id)},
-            index_to_groundtruth_id={i : v for i, v in enumerate(self.index_to_groundtruth_id)},
-            index_to_prediction_id={i : v for i, v in enumerate(self.index_to_prediction_id)},
-            index_to_label={i : v for i, v in enumerate(self.index_to_label)},
+            index_to_datum_id={
+                i: v for i, v in enumerate(self.index_to_datum_id)
+            },
+            index_to_groundtruth_id={
+                i: v for i, v in enumerate(self.index_to_groundtruth_id)
+            },
+            index_to_prediction_id={
+                i: v for i, v in enumerate(self.index_to_prediction_id)
+            },
+            index_to_label={i: v for i, v in enumerate(self.index_to_label)},
         )
 
     def evaluate(

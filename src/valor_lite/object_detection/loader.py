@@ -1,6 +1,6 @@
+import json
 from pathlib import Path
 
-import json
 import numpy as np
 import pyarrow as pa
 from numpy.typing import NDArray
@@ -74,10 +74,11 @@ class Loader:
 
         self._dir = Path(directory)
         self._labels_path = self._dir / Path("labels.json")
-        self._cache_path = self._dir / Path("cache")
+        self._detailed_path = self._dir / Path("detailed")
+        self._ranked_path = self._dir / Path("ranked")
 
-        self._cache = Cache(
-            where=self._cache_path,
+        self._detailed = Cache(
+            where=self._detailed_path,
             schema=schema,
             batch_size=batch_size,
             rows_per_file=rows_per_file,
@@ -223,7 +224,7 @@ class Loader:
                     )
 
             pairs = sorted(pairs, key=lambda x: (-x["score"], -x["iou"]))
-            self._cache.write_rows(pairs)
+            self._detailed.write_rows(pairs)
 
     def add_bounding_boxes(
         self,
@@ -268,20 +269,17 @@ class Loader:
         Evaluator
             A ready-to-use evaluator object.
         """
-        self._cache.flush()
+        self._detailed.flush()
+        self._detailed.sort_by(
+            destination=self._ranked_path,
+            sorting=[
+                ("score", "descending"),
+                ("iou", "descending"),
+            ],
+        )
         with open(self._labels_path, "w") as f:
             json.dump({v: k for k, v in self._labels.items()}, f, indent=2)
         return Evaluator(self._dir)
-        # self._evaluator._ranked_pairs = rank_pairs(
-        #     detailed_pairs=self._evaluator._detailed_pairs,
-        #     label_metadata=self._evaluator._label_metadata,
-        # )
-        # self._evaluator._metadata = Metadata.create(
-        #     detailed_pairs=self._evaluator._detailed_pairs,
-        #     number_of_datums=n_datums,
-        #     number_of_labels=n_labels,
-        # )
-        # return self._evaluator
 
 
 if __name__ == "__main__":
