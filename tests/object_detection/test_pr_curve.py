@@ -154,6 +154,28 @@ def test_pr_curve_using_torch_metrics_example(
         {
             "type": "PrecisionRecallCurve",
             "value": {
+                "precisions": [0.0 for _ in range(101)],
+                "scores": [0.318] + [0.0 for _ in range(100)],
+            },
+            "parameters": {
+                "iou_threshold": 0.5,
+                "label": "3",
+            },
+        },
+        {
+            "type": "PrecisionRecallCurve",
+            "value": {
+                "precisions": [0.0 for _ in range(101)],
+                "scores": [0.318] + [0.0 for _ in range(100)],
+            },
+            "parameters": {
+                "iou_threshold": 0.75,
+                "label": "3",
+            },
+        },
+        {
+            "type": "PrecisionRecallCurve",
+            "value": {
                 "precisions": [1.0 for _ in range(101)],
                 "scores": [0.546 for _ in range(51)]
                 + [0.236 for _ in range(50)],

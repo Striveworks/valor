@@ -592,6 +592,24 @@ def test_counts_ranked_pair_ordering(
                     "label": "label3",
                 },
             },
+            {
+                "type": "Counts",
+                "value": {"tp": 0, "fp": 1, "fn": 0},
+                "parameters": {
+                    "iou_threshold": 0.5,
+                    "score_threshold": 0.0,
+                    "label": "label4",
+                },
+            },
+            {
+                "type": "Counts",
+                "value": {"tp": 0, "fp": 1, "fn": 0},
+                "parameters": {
+                    "iou_threshold": 0.75,
+                    "score_threshold": 0.0,
+                    "label": "label4",
+                },
+            },
         ]
         for m in actual_metrics:
             assert m in expected_metrics
