@@ -109,7 +109,6 @@ def unpack_precision_recall_into_metric_lists(
     ]
 
     for label_idx, label in index_to_label.items():
-
         for score_idx, score_threshold in enumerate(score_thresholds):
             for iou_idx, iou_threshold in enumerate(iou_thresholds):
 
