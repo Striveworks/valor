@@ -21,17 +21,18 @@ from valor_lite.object_detection.computation import (
     compute_average_recall,
     compute_bbox_iou,
     compute_bitmask_iou,
-    compute_confusion_matrix,
     compute_counts,
     compute_label_metadata,
     compute_polygon_iou,
     compute_precision_recall_f1,
+    compute_pair_classifications,
+    compute_confusion_matrix,
     filter_cache,
     rank_pairs,
 )
 from valor_lite.object_detection.metric import Metric, MetricType
 from valor_lite.object_detection.utilities import (
-    unpack_confusion_matrix_into_metric_list,
+    unpack_confusion_matrix_into_metric_list_legacy,
     unpack_precision_recall_into_metric_lists,
 )
 
@@ -475,14 +476,22 @@ class Evaluator:
         if detailed_pairs.size == 0:
             return []
 
-        results = compute_confusion_matrix(
+        (
+            mask_tp,
+            mask_fp_fn_misclf,
+            mask_fp_unmatched,
+            mask_fn_unmatched,
+        ) = compute_pair_classifications(
             detailed_pairs=detailed_pairs,
             iou_thresholds=np.array(iou_thresholds),
             score_thresholds=np.array(score_thresholds),
         )
-        return unpack_confusion_matrix_into_metric_list(
-            results=results,
+        return unpack_confusion_matrix_into_metric_list_legacy(
             detailed_pairs=detailed_pairs,
+            mask_tp=mask_tp,
+            mask_fp_fn_misclf=mask_fp_fn_misclf,
+            mask_fp_unmatched=mask_fp_unmatched,
+            mask_fn_unmatched=mask_fn_unmatched,
             iou_thresholds=iou_thresholds,
             score_thresholds=score_thresholds,
             index_to_datum_id={

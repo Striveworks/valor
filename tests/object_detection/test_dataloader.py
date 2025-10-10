@@ -76,10 +76,19 @@ def test_iou_computation():
     loader.add_bounding_boxes([detection])
     evaluator = loader.finalize()
 
-    assert evaluator._detailed_pairs.shape == (7, 7)
+    assert evaluator.info == {
+        "number_of_datums": 1,
+        "number_of_labels": 3,
+        "number_of_groundtruth_annotations": 3,
+        "number_of_prediction_annotations": 2,
+        "number_of_rows": 7,
+    }
+
+    tbl = evaluator._detailed.to_table()
+    assert tbl.shape == (7, 12)  # 7 rows, 12 columns
 
     # show that three unique IOUs exist
-    unique_ious = np.unique(evaluator._detailed_pairs[:, 5])
+    unique_ious = np.unique(tbl["iou"].to_numpy())
     assert np.isclose(
         unique_ious, np.array([0.0, 0.12755102, 0.68067227])
     ).all()
@@ -174,32 +183,3 @@ def test_mixed_annotations(
         with pytest.raises(AttributeError) as e:
             loader.add_bitmasks([detection])
         assert "no attribute 'mask'" in str(e)
-
-
-def test_corrupted_cache():
-
-    loader = DataLoader()
-
-    # test datum cache size mismatch
-    loader._evaluator.datum_id_to_index = {"x": 0}
-    loader._evaluator.index_to_datum_id = []
-    with pytest.raises(InternalCacheError):
-        loader._add_datum(datum_id="a")
-
-    # test ground truth annotation cache size mismatch
-    loader._evaluator.groundtruth_id_to_index = {"x": 0}
-    loader._evaluator.index_to_groundtruth_id = []
-    with pytest.raises(InternalCacheError):
-        loader._add_groundtruth(annotation_id="a")
-
-    # test ground truth annotation cache size mismatch
-    loader._evaluator.prediction_id_to_index = {"x": 0}
-    loader._evaluator.index_to_prediction_id = []
-    with pytest.raises(InternalCacheError):
-        loader._add_prediction(annotation_id="a")
-
-    # test ground truth annotation cache size mismatch
-    loader._evaluator.label_to_index = {"x": 0}
-    loader._evaluator.index_to_label = []
-    with pytest.raises(InternalCacheError):
-        loader._add_label(label="a")

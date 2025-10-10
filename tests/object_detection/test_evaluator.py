@@ -1,15 +1,24 @@
+import tempfile
 import numpy as np
 import pytest
+from pathlib import Path
 
 from valor_lite.object_detection import (
     DataLoader,
+    Evaluator,
     Detection,
     Metric,
     MetricType,
 )
 
 
-def test_metadata_using_torch_metrics_example(
+def test_evaluator_no_data():
+    with tempfile.TemporaryDirectory() as tmpdir:
+        with pytest.raises(FileNotFoundError):
+            Evaluator(Path(tmpdir))
+
+
+def test_info_using_torch_metrics_example(
     torchmetrics_detections: list[Detection],
 ):
     """
@@ -19,21 +28,12 @@ def test_metadata_using_torch_metrics_example(
     loader = DataLoader()
     loader.add_bounding_boxes(torchmetrics_detections)
     evaluator = loader.finalize()
-
-    assert evaluator.ignored_prediction_labels == ["3"]
-    assert evaluator.missing_prediction_labels == []
-    assert evaluator.metadata.number_of_datums == 4
-    assert evaluator.metadata.number_of_labels == 6
-    assert evaluator.metadata.number_of_ground_truths == 20
-    assert evaluator.metadata.number_of_predictions == 19
-
-    assert evaluator.ignored_prediction_labels == ["3"]
-    assert evaluator.missing_prediction_labels == []
-    assert evaluator.metadata.to_dict() == {
+    assert evaluator.info == {
         "number_of_datums": 4,
         "number_of_labels": 6,
-        "number_of_ground_truths": 20,
-        "number_of_predictions": 19,
+        "number_of_groundtruth_annotations": 20,
+        "number_of_prediction_annotations": 19,
+        "number_of_rows": 60,
     }
 
 
@@ -78,12 +78,10 @@ def test_no_groundtruths(detections_no_groundtruths):
     loader.add_bounding_boxes(detections_no_groundtruths)
     evaluator = loader.finalize()
 
-    assert evaluator.ignored_prediction_labels == ["v1"]
-    assert evaluator.missing_prediction_labels == []
-    assert evaluator.metadata.number_of_datums == 2
-    assert evaluator.metadata.number_of_labels == 1
-    assert evaluator.metadata.number_of_ground_truths == 0
-    assert evaluator.metadata.number_of_predictions == 2
+    assert evaluator.info["number_of_datums"] == 2
+    assert evaluator.info["number_of_labels"] == 1
+    assert evaluator.info["number_of_groundtruth_annotations"] == 0
+    assert evaluator.info["number_of_prediction_annotations"] == 2
 
     metrics = evaluator.evaluate(
         iou_thresholds=[0.5],
@@ -110,12 +108,10 @@ def test_no_predictions(detections_no_predictions):
     loader.add_bounding_boxes(detections_no_predictions)
     evaluator = loader.finalize()
 
-    assert evaluator.ignored_prediction_labels == []
-    assert evaluator.missing_prediction_labels == ["v1"]
-    assert evaluator.metadata.number_of_datums == 2
-    assert evaluator.metadata.number_of_labels == 1
-    assert evaluator.metadata.number_of_ground_truths == 2
-    assert evaluator.metadata.number_of_predictions == 0
+    assert evaluator.info["number_of_datums"] == 2
+    assert evaluator.info["number_of_labels"] == 1
+    assert evaluator.info["number_of_groundtruth_annotations"] == 2
+    assert evaluator.info["number_of_prediction_annotations"] == 0
 
     metrics = evaluator.evaluate(
         iou_thresholds=[0.5],

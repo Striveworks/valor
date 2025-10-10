@@ -56,12 +56,10 @@ def test_pr_curve_using_torch_metrics_example(
     loader.add_bounding_boxes(torchmetrics_detections)
     evaluator = loader.finalize()
 
-    assert evaluator.ignored_prediction_labels == ["3"]
-    assert evaluator.missing_prediction_labels == []
-    assert evaluator.metadata.number_of_datums == 4
-    assert evaluator.metadata.number_of_labels == 6
-    assert evaluator.metadata.number_of_ground_truths == 20
-    assert evaluator.metadata.number_of_predictions == 19
+    assert evaluator.info["number_of_datums"] == 4
+    assert evaluator.info["number_of_labels"] == 6
+    assert evaluator.info["number_of_groundtruth_annotations"] == 20
+    assert evaluator.info["number_of_prediction_annotations"] == 19
 
     metrics = evaluator.evaluate(
         iou_thresholds=[0.5, 0.75],

@@ -19,6 +19,7 @@ class MetricType(str, Enum):
     mARAveragedOverScores = "mARAveragedOverScores"
     PrecisionRecallCurve = "PrecisionRecallCurve"
     ConfusionMatrix = "ConfusionMatrix"
+    Examples = "Examples"
 
 
 @dataclass
@@ -563,48 +564,9 @@ class Metric(BaseMetric):
     @classmethod
     def confusion_matrix(
         cls,
-        confusion_matrix: dict[
-            str,  # ground truth label value
-            dict[
-                str,  # prediction label value
-                dict[
-                    str,  # either `count` or `examples`
-                    int
-                    | list[
-                        dict[
-                            str,  # either `datum_id`, `ground_truth_id`, `prediction_id`
-                            str,  # string identifier
-                        ]
-                    ],
-                ],
-            ],
-        ],
-        unmatched_predictions: dict[
-            str,  # prediction label value
-            dict[
-                str,  # either `count` or `examples`
-                int
-                | list[
-                    dict[
-                        str,  # either `datum_id` or `prediction_id``
-                        str,  # string identifier
-                    ]
-                ],
-            ],
-        ],
-        unmatched_ground_truths: dict[
-            str,  # ground truth label value
-            dict[
-                str,  # either `count` or `examples`
-                int
-                | list[
-                    dict[
-                        str,  # either `datum_id` or `ground_truth_id`
-                        str,  # string identifier
-                    ]
-                ],
-            ],
-        ],
+        confusion_matrix: dict[str, dict[str, int]],
+        unmatched_predictions: dict[str, int],
+        unmatched_ground_truths: dict[str, int],
         score_threshold: float,
         iou_threshold: float,
     ):
@@ -618,17 +580,7 @@ class Metric(BaseMetric):
         Confusion Matrix Format:
         {
             <ground truth label>: {
-                <prediction label>: {
-                    'count': int,
-                    'examples': [
-                        {
-                            'datum_id': str,
-                            'groundtruth_id': str,
-                            'prediction_id': str
-                        },
-                        ...
-                    ],
-                },
+                <prediction label>: 129
                 ...
             },
             ...
@@ -636,48 +588,27 @@ class Metric(BaseMetric):
 
         Unmatched Predictions Format:
         {
-            <prediction label>: {
-                'count': int,
-                'examples': [
-                    {
-                        'datum_id': str,
-                        'prediction_id': str
-                    },
-                    ...
-                ],
-            },
+            <prediction label>: 11
             ...
         }
 
         Unmatched Ground Truths Format:
         {
-            <ground truth label>: {
-                'count': int,
-                'examples': [
-                    {
-                        'datum_id': str,
-                        'groundtruth_id': str
-                    },
-                    ...
-                ],
-            },
+            <ground truth label>: 7
             ...
         }
 
         Parameters
         ----------
         confusion_matrix : dict
-            A nested dictionary where the first key is the ground truth label value, the second key
-            is the prediction label value, and the innermost dictionary contains either a `count`
-            or a list of `examples`. Each example includes annotation and datum identifers.
+            A nested dictionary containing integer counts of occurences where the first key is the ground truth label value 
+            and the second key is the prediction label value. 
         unmatched_predictions : dict
             A dictionary where each key is a prediction label value with no corresponding ground truth
-            (subset of false positives). The value is a dictionary containing either a `count` or a list of
-            `examples`. Each example includes annotation and datum identifers.
+            (subset of false positives). The value is a dictionary containing counts.
         unmatched_ground_truths : dict
             A dictionary where each key is a ground truth label value for which the model failed to predict
-            (subset of false negatives). The value is a dictionary containing either a `count` or a list of `examples`.
-            Each example includes annotation and datum identifers.
+            (subset of false negatives). The value is a dictionary containing counts.
         score_threshold : float
             The confidence score threshold used to filter predictions.
         iou_threshold : float
@@ -699,3 +630,28 @@ class Metric(BaseMetric):
                 "iou_threshold": iou_threshold,
             },
         )
+
+    @classmethod
+    def examples(
+        cls,
+        datum_id: str,
+        true_positives: list[tuple[str, str]],
+        false_positives: list[str],
+        false_negatives: list[str],
+        score_threshold: float,
+        iou_threshold: float,
+    ):
+        return cls(
+            type=MetricType.Examples.value,
+            value={
+                "datum_uid": datum_id,
+                "true_positives": true_positives,
+                "false_positives": false_positives,
+                "false_negatives": false_negatives,
+            },
+            parameters={
+                "score_threshold": score_threshold,
+                "iou_threshold": iou_threshold,
+            },
+        )
+    

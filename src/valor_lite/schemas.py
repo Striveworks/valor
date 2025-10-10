@@ -8,4 +8,5 @@ class BaseMetric:
     parameters: dict
 
     def to_dict(self) -> dict:
+        print(self)
         return asdict(self)

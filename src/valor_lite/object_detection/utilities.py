@@ -167,7 +167,7 @@ def _create_empty_confusion_matrix(index_to_labels: dict[int, str]):
     )
 
 
-def _unpack_confusion_matrix(
+def _unpack_confusion_matrix_legacy(
     ids: NDArray[np.int32],
     mask_matched: NDArray[np.bool_],
     mask_fp_unmatched: NDArray[np.bool_],
@@ -253,9 +253,12 @@ def _unpack_confusion_matrix(
     )
 
 
-def unpack_confusion_matrix_into_metric_list(
-    results: NDArray[np.uint8],
+def unpack_confusion_matrix_into_metric_list_legacy(
     detailed_pairs: NDArray[np.float64],
+    mask_tp: NDArray[np.bool_],
+    mask_fp_fn_misclf: NDArray[np.bool_],
+    mask_fp_unmatched: NDArray[np.bool_],
+    mask_fn_unmatched: NDArray[np.bool_],
     iou_thresholds: list[float],
     score_thresholds: list[float],
     index_to_datum_id: dict[int, str],
@@ -266,21 +269,10 @@ def unpack_confusion_matrix_into_metric_list(
 
     ids = detailed_pairs[:, :5].astype(np.int32)
 
-    mask_matched = (
-        np.bitwise_and(
-            results, PairClassification.TP | PairClassification.FP_FN_MISCLF
-        )
-        > 0
-    )
-    mask_fp_unmatched = (
-        np.bitwise_and(results, PairClassification.FP_UNMATCHED) > 0
-    )
-    mask_fn_unmatched = (
-        np.bitwise_and(results, PairClassification.FN_UNMATCHED) > 0
-    )
+    mask_matched = mask_tp | mask_fp_fn_misclf
 
     return [
-        _unpack_confusion_matrix(
+        _unpack_confusion_matrix_legacy(
             ids=ids,
             mask_matched=mask_matched[iou_idx, score_idx],
             mask_fp_unmatched=mask_fp_unmatched[iou_idx, score_idx],
@@ -294,5 +286,98 @@ def unpack_confusion_matrix_into_metric_list(
         )
         for iou_idx, iou_threshold in enumerate(iou_thresholds)
         for score_idx, score_threshold in enumerate(score_thresholds)
-        if (results[iou_idx, score_idx] != -1).any()
     ]
+
+
+def unpack_confusion_matrix(
+    confusion_matrices: NDArray[np.uint64],
+    unmatched_groundtruths: NDArray[np.uint64],
+    unmatched_predictions: NDArray[np.uint64],
+    index_to_label: dict[int, str],
+    iou_thresholds: list[float],
+    score_thresholds: list[float],
+) -> list[Metric]:
+    metrics = []
+    for iou_idx, iou_thresh in enumerate(iou_thresholds):
+        for score_idx, score_thresh in enumerate(score_thresholds):
+            cm_dict = {}
+            ugt_dict = {}
+            upd_dict = {}
+            for idx, label in index_to_label.items():
+                ugt_dict[label] = int(unmatched_groundtruths[iou_idx, score_idx, idx])
+                upd_dict[label] = int(unmatched_predictions[iou_idx, score_idx, idx])
+                for pidx, plabel in index_to_label.items():
+                    if label not in cm_dict:
+                        cm_dict[label] = {}
+                    cm_dict[label][plabel] = int(confusion_matrices[iou_idx, score_idx, idx, pidx])
+            metrics.append(
+                Metric.confusion_matrix(
+                    confusion_matrix=cm_dict,
+                    unmatched_ground_truths=ugt_dict,
+                    unmatched_predictions=upd_dict,
+                    iou_threshold=iou_thresh,
+                    score_threshold=score_thresh,
+                )
+            )
+    return metrics
+
+
+def unpack_examples(
+    detailed_pairs: NDArray[np.float64],
+    mask_tp: NDArray[np.bool_],
+    mask_fn: NDArray[np.bool_],
+    mask_fp: NDArray[np.bool_],
+    iou_thresholds: list[float],
+    score_thresholds: list[float],
+    index_to_datum_id: dict[int, str],
+    index_to_groundtruth_id: dict[int, str],
+    index_to_prediction_id: dict[int, str],
+) -> list[Metric]:
+    metrics = []
+    unique_datums = np.unique(detailed_pairs[:, 0].astype(np.int64))
+    for datum_index in unique_datums:
+        mask_datum = detailed_pairs[:, 0] == datum_index
+        mask_datum_tp = mask_tp & mask_datum
+        mask_datum_fp = mask_fp & mask_datum
+        mask_datum_fn = mask_fn & mask_datum
+        
+        datum_id = index_to_datum_id[datum_index]
+        for iou_idx, iou_thresh in enumerate(iou_thresholds):
+            for score_idx, score_thresh in enumerate(score_thresholds):
+
+                unique_tp = np.unique(
+                    ids[np.ix_(mask_datum_tp[iou_idx, score_idx], (0, 1, 2, 3, 4))], axis=0  # type: ignore - numpy ix_ typing
+                )
+                unique_fp = np.unique(
+                    ids[np.ix_(mask_datum_fp[iou_idx, score_idx], (0, 2, 4))], axis=0  # type: ignore - numpy ix_ typing
+                )
+                unique_fn = np.unique(
+                    ids[np.ix_(mask_datum_fn[iou_idx, score_idx], (0, 1, 3))], axis=0  # type: ignore - numpy ix_ typing
+                )
+
+                tp = [
+                    (
+                        index_to_groundtruth_id[row[1]],
+                        index_to_prediction_id[row[2]],
+                    )
+                    for row in unique_tp
+                ]
+                fp = [
+                    index_to_prediction_id[row[1]]
+                    for row in unique_fp
+                ]
+                fn = [
+                    index_to_prediction_id[row[1]]
+                    for row in unique_fn
+                ]
+                metrics.append(
+                    Metric.examples(
+                        datum_id=datum_id,
+                        true_positives=tp,
+                        false_negatives=fn,
+                        false_positives=fp,
+                        iou_threshold=iou_thresh,
+                        score_threshold=score_thresh,
+                    )
+                )
+    return metrics

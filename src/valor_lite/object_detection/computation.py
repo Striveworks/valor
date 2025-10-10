@@ -647,6 +647,7 @@ def _isin(
 
 
 class PairClassification(IntFlag):
+    NULL = auto()
     TP = auto()
     FP_FN_MISCLF = auto()
     FP_UNMATCHED = auto()
@@ -685,11 +686,11 @@ def mask_pairs_greedily(
     return mask_matches
 
 
-def compute_row_classification(
+def compute_pair_classifications(
     detailed_pairs: NDArray[np.float64],
     iou_thresholds: NDArray[np.float64],
     score_thresholds: NDArray[np.float64],
-) -> NDArray[np.uint8]:
+) -> tuple[NDArray[np.bool_], NDArray[np.bool_], NDArray[np.bool_], NDArray[np.bool_]]:
     """
     Compute detailed counts.
 
@@ -802,7 +803,71 @@ def compute_row_classification(
                 iou_idx, score_idx, mask_unmatched_groundtruths
             ] |= np.uint8(PairClassification.FN_UNMATCHED)
 
-    return pair_classifications
+    mask_tp = (
+        np.bitwise_and(pair_classifications, PairClassification.TP)> 0
+    )
+    mask_fp_fn_misclf = (
+        np.bitwise_and(pair_classifications, PairClassification.FP_FN_MISCLF) > 0
+    )
+    mask_fp_unmatched = (
+        np.bitwise_and(pair_classifications, PairClassification.FP_UNMATCHED) > 0
+    )
+    mask_fn_unmatched = (
+        np.bitwise_and(pair_classifications, PairClassification.FN_UNMATCHED) > 0
+    )
 
-def compute_confusion_matrix(pair_classifications: NDArray):
-    
+    return (
+        mask_tp,
+        mask_fp_fn_misclf,
+        mask_fp_unmatched,
+        mask_fn_unmatched,
+    )
+
+
+def compute_confusion_matrix(
+    detailed_pairs: NDArray[np.float64],
+    mask_tp: NDArray[np.bool_],
+    mask_fp_fn_misclf: NDArray[np.bool_],
+    mask_fp_unmatched: NDArray[np.bool_],
+    mask_fn_unmatched: NDArray[np.bool_],
+    number_of_labels: int,
+    iou_thresholds: NDArray[np.float64],
+    score_thresholds: NDArray[np.float64],
+):
+    n_ious = iou_thresholds.size
+    n_scores = score_thresholds.size
+    ids = detailed_pairs[:, :5].astype(np.int64)
+
+    # initialize arrays
+    confusion_matrices = np.zeros((n_ious, n_scores, number_of_labels, number_of_labels), dtype=np.uint64)
+    unmatched_groundtruths = np.zeros((n_ious, n_scores, number_of_labels), dtype=np.uint64)
+    unmatched_predictions = np.zeros_like(unmatched_groundtruths)
+
+    mask_matched = mask_tp | mask_fp_fn_misclf
+    for iou_idx in range(n_ious):
+        for score_idx in range(n_scores):
+            # matched annotations
+            unique_pairs = np.unique(
+                ids[np.ix_(mask_matched[iou_idx, score_idx], (0, 1, 2, 3, 4))], # type: ignore - numpy ix_ typing
+                axis=0,
+            )
+            unique_labels, unique_label_counts = np.unique(unique_pairs[:, (3, 4)], axis=0, return_counts=True)
+            confusion_matrices[iou_idx, score_idx, unique_labels[:, 0], unique_labels[:, 1]] = unique_label_counts
+
+            # unmatched groundtruths
+            unique_pairs = np.unique(
+                ids[np.ix_(mask_fn_unmatched[iou_idx, score_idx], (0, 1, 3))],   # type: ignore - numpy ix_ typing
+                axis=0,
+            )
+            unique_labels, unique_label_counts = np.unique(unique_pairs[:, 2], return_counts=True)
+            unmatched_groundtruths[iou_idx, score_idx, unique_labels] = unique_label_counts
+
+            # unmatched predictions
+            unique_pairs = np.unique(
+                ids[np.ix_(mask_fp_unmatched[iou_idx, score_idx], (0, 2, 4))],   # type: ignore - numpy ix_ typing
+                axis=0,
+            )
+            unique_labels, unique_label_counts = np.unique(unique_pairs[:, 2], return_counts=True)
+            unmatched_predictions[iou_idx, score_idx, unique_labels] = unique_label_counts
+
+    return confusion_matrices, unmatched_groundtruths, unmatched_predictions

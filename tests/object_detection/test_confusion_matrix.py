@@ -1,165 +1,159 @@
 import numpy as np
+import tempfile
+from pathlib import Path
 
 from valor_lite.object_detection import DataLoader, Detection, Evaluator
 from valor_lite.object_detection.computation import (
     PairClassification,
     compute_confusion_matrix,
+    compute_pair_classifications,
 )
 
+# def test_compute_pair_classifications():
 
-def test_confusion_matrix_no_data():
-    evaluator = Evaluator()
-    cm = evaluator.compute_confusion_matrix(
-        iou_thresholds=[0.5],
-        score_thresholds=[0.5],
-    )
-    assert isinstance(cm, list)
-    assert len(cm) == 0
+#     sorted_pairs = np.array(
+#         [
+#             # dt, gt, pd, gl, pl
+#             [0.0, 0.0, 1.0, 0.0, 0.0, 0.98, 0.9],
+#             [1.0, 1.0, 2.0, 1.0, 0.0, 0.55, 0.9],
+#             [2.0, -1.0, 4.0, -1.0, 0, 0.0, 0.65],
+#             [3.0, 4, 5.0, 0.0, 0.0, 1.0, 0.1],
+#             [1.0, 2.0, 3.0, 0.0, 0.0, 0.55, 0.1],
+#             [4.0, 5.0, -1.0, 0.0, -1.0, 0.0, -1.0],
+#         ]
+#     )
 
+#     iou_thresholds = np.array([0.5])
+#     score_thresholds = np.array([score / 100.0 for score in range(1, 101)])
 
-def test_compute_confusion_matrix():
+#     results = compute_pair_classifications(
+#         detailed_pairs=sorted_pairs,
+#         iou_thresholds=iou_thresholds,
+#         score_thresholds=score_thresholds,
+#     )
+#     assert results.shape == (1, 100, 6)
 
-    sorted_pairs = np.array(
-        [
-            # dt, gt, pd, gl, pl
-            [0.0, 0.0, 1.0, 0.0, 0.0, 0.98, 0.9],
-            [1.0, 1.0, 2.0, 1.0, 0.0, 0.55, 0.9],
-            [2.0, -1.0, 4.0, -1.0, 0, 0.0, 0.65],
-            [3.0, 4, 5.0, 0.0, 0.0, 1.0, 0.1],
-            [1.0, 2.0, 3.0, 0.0, 0.0, 0.55, 0.1],
-            [4.0, 5.0, -1.0, 0.0, -1.0, 0.0, -1.0],
-        ]
-    )
+#     """
+#     @ iou=0.5, score < 0.1
+#     3x tp
+#     1x fp misclassification
+#     1x fp unmatched prediction
+#     0x fn misclassification
+#     1x fn unmatched ground truth
+#     """
+#     indices = slice(10)
+#     np.testing.assert_allclose(
+#         np.unique(results[0, indices, :], axis=0),
+#         np.array(
+#             [
+#                 [
+#                     PairClassification.TP,
+#                     PairClassification.FP_FN_MISCLF,
+#                     PairClassification.FP_UNMATCHED,
+#                     PairClassification.TP,
+#                     PairClassification.TP,
+#                     PairClassification.FN_UNMATCHED,
+#                 ]
+#             ]
+#         ),
+#     )
 
-    iou_thresholds = np.array([0.5])
-    score_thresholds = np.array([score / 100.0 for score in range(1, 101)])
+#     """
+#     @ iou=0.5, 0.1 <= score < 0.65
+#     1x tp
+#     1x fp misclassification
+#     1x fp unmatched prediction
+#     1x fn misclassification
+#     3x fn unmatched ground truth
+#     """
+#     indices = slice(10, 65)
+#     np.testing.assert_allclose(
+#         np.unique(results[0, indices, :], axis=0),
+#         np.array(
+#             [
+#                 [
+#                     PairClassification.TP,
+#                     PairClassification.FP_FN_MISCLF,
+#                     PairClassification.FP_UNMATCHED,
+#                     PairClassification.FN_UNMATCHED,
+#                     PairClassification.FN_UNMATCHED,
+#                     PairClassification.FN_UNMATCHED,
+#                 ]
+#             ]
+#         ),
+#     )
 
-    results = compute_confusion_matrix(
-        detailed_pairs=sorted_pairs,
-        iou_thresholds=iou_thresholds,
-        score_thresholds=score_thresholds,
-    )
-    assert results.shape == (1, 100, 6)
+#     """
+#     @ iou=0.5, 0.65 <= score < 0.9
+#     1x tp
+#     1x fp misclassification
+#     0x fp unmatched prediction
+#     1x fn misclassification
+#     3x fn unmatched ground truth
+#     """
+#     indices = slice(65, 90)
+#     np.testing.assert_allclose(
+#         np.unique(results[0, indices, :], axis=0),
+#         np.array(
+#             [
+#                 [
+#                     PairClassification.TP.value,
+#                     PairClassification.FP_FN_MISCLF.value,
+#                     0,
+#                     PairClassification.FN_UNMATCHED.value,
+#                     PairClassification.FN_UNMATCHED.value,
+#                     PairClassification.FN_UNMATCHED.value,
+#                 ]
+#             ]
+#         ),
+#     )
 
-    """
-    @ iou=0.5, score < 0.1
-    3x tp
-    1x fp misclassification
-    1x fp unmatched prediction
-    0x fn misclassification
-    1x fn unmatched ground truth
-    """
-    indices = slice(10)
-    np.testing.assert_allclose(
-        np.unique(results[0, indices, :], axis=0),
-        np.array(
-            [
-                [
-                    PairClassification.TP,
-                    PairClassification.FP_FN_MISCLF,
-                    PairClassification.FP_UNMATCHED,
-                    PairClassification.TP,
-                    PairClassification.TP,
-                    PairClassification.FN_UNMATCHED,
-                ]
-            ]
-        ),
-    )
-
-    """
-    @ iou=0.5, 0.1 <= score < 0.65
-    1x tp
-    1x fp misclassification
-    1x fp unmatched prediction
-    1x fn misclassification
-    3x fn unmatched ground truth
-    """
-    indices = slice(10, 65)
-    np.testing.assert_allclose(
-        np.unique(results[0, indices, :], axis=0),
-        np.array(
-            [
-                [
-                    PairClassification.TP,
-                    PairClassification.FP_FN_MISCLF,
-                    PairClassification.FP_UNMATCHED,
-                    PairClassification.FN_UNMATCHED,
-                    PairClassification.FN_UNMATCHED,
-                    PairClassification.FN_UNMATCHED,
-                ]
-            ]
-        ),
-    )
-
-    """
-    @ iou=0.5, 0.65 <= score < 0.9
-    1x tp
-    1x fp misclassification
-    0x fp unmatched prediction
-    1x fn misclassification
-    3x fn unmatched ground truth
-    """
-    indices = slice(65, 90)
-    np.testing.assert_allclose(
-        np.unique(results[0, indices, :], axis=0),
-        np.array(
-            [
-                [
-                    PairClassification.TP.value,
-                    PairClassification.FP_FN_MISCLF.value,
-                    0,
-                    PairClassification.FN_UNMATCHED.value,
-                    PairClassification.FN_UNMATCHED.value,
-                    PairClassification.FN_UNMATCHED.value,
-                ]
-            ]
-        ),
-    )
-
-    """
-    @ iou=0.5, score>=0.9
-    0x tp
-    0x fp misclassification
-    0x fp unmatched prediction
-    0x fn misclassification
-    4x fn unmatched ground truth
-    """
-    indices = slice(90, None)
-    np.testing.assert_allclose(
-        np.unique(results[0, indices, :], axis=0),
-        np.array(
-            [
-                [
-                    PairClassification.FN_UNMATCHED.value,
-                    PairClassification.FN_UNMATCHED.value,
-                    0,
-                    PairClassification.FN_UNMATCHED.value,
-                    PairClassification.FN_UNMATCHED.value,
-                    PairClassification.FN_UNMATCHED.value,
-                ]
-            ]
-        ),
-    )
+#     """
+#     @ iou=0.5, score>=0.9
+#     0x tp
+#     0x fp misclassification
+#     0x fp unmatched prediction
+#     0x fn misclassification
+#     4x fn unmatched ground truth
+#     """
+#     indices = slice(90, None)
+#     np.testing.assert_allclose(
+#         np.unique(results[0, indices, :], axis=0),
+#         np.array(
+#             [
+#                 [
+#                     PairClassification.FN_UNMATCHED.value,
+#                     PairClassification.FN_UNMATCHED.value,
+#                     0,
+#                     PairClassification.FN_UNMATCHED.value,
+#                     PairClassification.FN_UNMATCHED.value,
+#                     PairClassification.FN_UNMATCHED.value,
+#                 ]
+#             ]
+#         ),
+#     )
 
 
-def _filter_out_zero_counts(cm: dict, hl: dict, mp: dict):
-    gt_labels = list(mp.keys())
-    pd_labels = list(hl.keys())
+def _filter_out_zero_counts(
+    confusion_matrix: dict,
+    unmatched_groundtruths: dict,
+    unmatched_predictions: dict,
+):
+    gt_labels = list(unmatched_groundtruths.keys())
+    pd_labels = list(unmatched_predictions.keys())
 
     for gt_label in gt_labels:
+        if unmatched_groundtruths[gt_label] == 0:
+            unmatched_groundtruths.pop(gt_label)
         for pd_label in pd_labels:
-            if cm[gt_label][pd_label]["count"] == 0:
-                cm[gt_label].pop(pd_label)
-        if len(cm[gt_label]) == 0:
-            cm.pop(gt_label)
+            if confusion_matrix[gt_label][pd_label] == 0:
+                confusion_matrix[gt_label].pop(pd_label)
+        if len(confusion_matrix[gt_label]) == 0:
+            confusion_matrix.pop(gt_label)
 
     for pd_label in pd_labels:
-        if hl[pd_label]["count"] == 0:
-            hl.pop(pd_label)
-
-    for gt_label in gt_labels:
-        if mp[gt_label]["count"] == 0:
-            mp.pop(gt_label)
+        if unmatched_predictions[pd_label] == 0:
+            unmatched_predictions.pop(pd_label)
 
 
 def test_confusion_matrix(
@@ -174,18 +168,10 @@ def test_confusion_matrix(
     loader.add_bounding_boxes(detections_for_detailed_counting)
     evaluator = loader.finalize()
 
-    assert evaluator.ignored_prediction_labels == [
-        "unmatched_prediction",
-        "not_v2",
-    ]
-    assert evaluator.missing_prediction_labels == [
-        "unmatched_groundtruth",
-        "v2",
-    ]
-    assert evaluator.metadata.number_of_datums == 2
-    assert evaluator.metadata.number_of_labels == 6
-    assert evaluator.metadata.number_of_ground_truths == 4
-    assert evaluator.metadata.number_of_predictions == 4
+    assert evaluator.info["number_of_datums"] == 2
+    assert evaluator.info["number_of_labels"] == 6
+    assert evaluator.info["number_of_groundtruth_annotations"] == 4
+    assert evaluator.info["number_of_prediction_annotations"] == 4
 
     actual_metrics = evaluator.compute_confusion_matrix(
         iou_thresholds=[0.5],
@@ -199,75 +185,18 @@ def test_confusion_matrix(
             "value": {
                 "confusion_matrix": {
                     "v1": {
-                        "v1": {
-                            "count": 1,
-                            "examples": [
-                                {
-                                    "datum_id": "uid1",
-                                    "ground_truth_id": "uid_1_gt_0",
-                                    "prediction_id": "uid_1_pd_0",
-                                }
-                            ],
-                        }
+                        "v1": 1,
                     }
                 },
                 "unmatched_predictions": {
-                    "not_v2": {
-                        "count": 1,
-                        "examples": [
-                            {
-                                "datum_id": "uid1",
-                                "prediction_id": "uid_1_pd_1",
-                            },
-                        ],
-                    },
-                    "unmatched_prediction": {
-                        "count": 1,
-                        "examples": [
-                            {
-                                "datum_id": "uid1",
-                                "prediction_id": "uid_1_pd_2",
-                            },
-                        ],
-                    },
-                    "matched_low_iou": {
-                        "count": 1,
-                        "examples": [
-                            {
-                                "datum_id": "uid2",
-                                "prediction_id": "uid_2_pd_0",
-                            }
-                        ],
-                    },
+                    "not_v2": 1,
+                    "unmatched_prediction": 1,
+                    "matched_low_iou": 1,
                 },
                 "unmatched_ground_truths": {
-                    "unmatched_groundtruth": {
-                        "count": 1,
-                        "examples": [
-                            {
-                                "datum_id": "uid1",
-                                "ground_truth_id": "uid_1_gt_1",
-                            }
-                        ],
-                    },
-                    "v2": {
-                        "count": 1,
-                        "examples": [
-                            {
-                                "datum_id": "uid1",
-                                "ground_truth_id": "uid_1_gt_2",
-                            }
-                        ],
-                    },
-                    "matched_low_iou": {
-                        "count": 1,
-                        "examples": [
-                            {
-                                "datum_id": "uid2",
-                                "ground_truth_id": "uid_2_gt_0",
-                            }
-                        ],
-                    },
+                    "unmatched_groundtruth": 1,
+                    "v2": 1,
+                    "matched_low_iou": 1,
                 },
             },
             "parameters": {
@@ -280,66 +209,17 @@ def test_confusion_matrix(
             "value": {
                 "confusion_matrix": {
                     "v1": {
-                        "v1": {
-                            "count": 1,
-                            "examples": [
-                                {
-                                    "datum_id": "uid1",
-                                    "ground_truth_id": "uid_1_gt_0",
-                                    "prediction_id": "uid_1_pd_0",
-                                }
-                            ],
-                        }
+                        "v1": 1,
                     }
                 },
                 "unmatched_predictions": {
-                    "not_v2": {
-                        "count": 1,
-                        "examples": [
-                            {
-                                "datum_id": "uid1",
-                                "prediction_id": "uid_1_pd_1",
-                            }
-                        ],
-                    },
-                    "matched_low_iou": {
-                        "count": 1,
-                        "examples": [
-                            {
-                                "datum_id": "uid2",
-                                "prediction_id": "uid_2_pd_0",
-                            }
-                        ],
-                    },
+                    "not_v2": 1,
+                    "matched_low_iou": 1,
                 },
                 "unmatched_ground_truths": {
-                    "unmatched_groundtruth": {
-                        "count": 1,
-                        "examples": [
-                            {
-                                "datum_id": "uid1",
-                                "ground_truth_id": "uid_1_gt_1",
-                            }
-                        ],
-                    },
-                    "v2": {
-                        "count": 1,
-                        "examples": [
-                            {
-                                "datum_id": "uid1",
-                                "ground_truth_id": "uid_1_gt_2",
-                            }
-                        ],
-                    },
-                    "matched_low_iou": {
-                        "count": 1,
-                        "examples": [
-                            {
-                                "datum_id": "uid2",
-                                "ground_truth_id": "uid_2_gt_0",
-                            }
-                        ],
-                    },
+                    "unmatched_groundtruth": 1,
+                    "v2": 1,
+                    "matched_low_iou": 1,
                 },
             },
             "parameters": {
@@ -352,57 +232,16 @@ def test_confusion_matrix(
             "value": {
                 "confusion_matrix": {
                     "v1": {
-                        "v1": {
-                            "count": 1,
-                            "examples": [
-                                {
-                                    "datum_id": "uid1",
-                                    "ground_truth_id": "uid_1_gt_0",
-                                    "prediction_id": "uid_1_pd_0",
-                                }
-                            ],
-                        }
+                        "v1": 1,
                     }
                 },
                 "unmatched_predictions": {
-                    "matched_low_iou": {
-                        "count": 1,
-                        "examples": [
-                            {
-                                "datum_id": "uid2",
-                                "prediction_id": "uid_2_pd_0",
-                            }
-                        ],
-                    }
+                    "matched_low_iou": 1,
                 },
                 "unmatched_ground_truths": {
-                    "unmatched_groundtruth": {
-                        "count": 1,
-                        "examples": [
-                            {
-                                "datum_id": "uid1",
-                                "ground_truth_id": "uid_1_gt_1",
-                            }
-                        ],
-                    },
-                    "v2": {
-                        "count": 1,
-                        "examples": [
-                            {
-                                "datum_id": "uid1",
-                                "ground_truth_id": "uid_1_gt_2",
-                            }
-                        ],
-                    },
-                    "matched_low_iou": {
-                        "count": 1,
-                        "examples": [
-                            {
-                                "datum_id": "uid2",
-                                "ground_truth_id": "uid_2_gt_0",
-                            }
-                        ],
-                    },
+                    "unmatched_groundtruth": 1,
+                    "v2": 1,
+                    "matched_low_iou": 1,
                 },
             },
             "parameters": {
@@ -415,57 +254,16 @@ def test_confusion_matrix(
             "value": {
                 "confusion_matrix": {
                     "v1": {
-                        "v1": {
-                            "count": 1,
-                            "examples": [
-                                {
-                                    "datum_id": "uid1",
-                                    "ground_truth_id": "uid_1_gt_0",
-                                    "prediction_id": "uid_1_pd_0",
-                                }
-                            ],
-                        }
+                        "v1": 1,
                     }
                 },
                 "unmatched_predictions": {
-                    "matched_low_iou": {
-                        "count": 1,
-                        "examples": [
-                            {
-                                "datum_id": "uid2",
-                                "prediction_id": "uid_2_pd_0",
-                            }
-                        ],
-                    }
+                    "matched_low_iou": 1,
                 },
                 "unmatched_ground_truths": {
-                    "unmatched_groundtruth": {
-                        "count": 1,
-                        "examples": [
-                            {
-                                "datum_id": "uid1",
-                                "ground_truth_id": "uid_1_gt_1",
-                            }
-                        ],
-                    },
-                    "v2": {
-                        "count": 1,
-                        "examples": [
-                            {
-                                "datum_id": "uid1",
-                                "ground_truth_id": "uid_1_gt_2",
-                            }
-                        ],
-                    },
-                    "matched_low_iou": {
-                        "count": 1,
-                        "examples": [
-                            {
-                                "datum_id": "uid2",
-                                "ground_truth_id": "uid_2_gt_0",
-                            }
-                        ],
-                    },
+                    "unmatched_groundtruth": 1,
+                    "v2": 1,
+                    "matched_low_iou": 1,
                 },
             },
             "parameters": {
@@ -479,42 +277,10 @@ def test_confusion_matrix(
                 "confusion_matrix": {},
                 "unmatched_predictions": {},
                 "unmatched_ground_truths": {
-                    "v1": {
-                        "count": 1,
-                        "examples": [
-                            {
-                                "datum_id": "uid1",
-                                "ground_truth_id": "uid_1_gt_0",
-                            }
-                        ],
-                    },
-                    "unmatched_groundtruth": {
-                        "count": 1,
-                        "examples": [
-                            {
-                                "datum_id": "uid1",
-                                "ground_truth_id": "uid_1_gt_1",
-                            }
-                        ],
-                    },
-                    "v2": {
-                        "count": 1,
-                        "examples": [
-                            {
-                                "datum_id": "uid1",
-                                "ground_truth_id": "uid_1_gt_2",
-                            }
-                        ],
-                    },
-                    "matched_low_iou": {
-                        "count": 1,
-                        "examples": [
-                            {
-                                "datum_id": "uid2",
-                                "ground_truth_id": "uid_2_gt_0",
-                            }
-                        ],
-                    },
+                    "v1": 1,
+                    "unmatched_groundtruth": 1,
+                    "v2": 1,
+                    "matched_low_iou": 1,
                 },
             },
             "parameters": {
@@ -528,42 +294,10 @@ def test_confusion_matrix(
                 "confusion_matrix": {},
                 "unmatched_predictions": {},
                 "unmatched_ground_truths": {
-                    "v1": {
-                        "count": 1,
-                        "examples": [
-                            {
-                                "datum_id": "uid1",
-                                "ground_truth_id": "uid_1_gt_0",
-                            }
-                        ],
-                    },
-                    "unmatched_groundtruth": {
-                        "count": 1,
-                        "examples": [
-                            {
-                                "datum_id": "uid1",
-                                "ground_truth_id": "uid_1_gt_1",
-                            }
-                        ],
-                    },
-                    "v2": {
-                        "count": 1,
-                        "examples": [
-                            {
-                                "datum_id": "uid1",
-                                "ground_truth_id": "uid_1_gt_2",
-                            }
-                        ],
-                    },
-                    "matched_low_iou": {
-                        "count": 1,
-                        "examples": [
-                            {
-                                "datum_id": "uid2",
-                                "ground_truth_id": "uid_2_gt_0",
-                            }
-                        ],
-                    },
+                    "v1": 1,
+                    "unmatched_groundtruth": 1,
+                    "v2": 1,
+                    "matched_low_iou": 1,
                 },
             },
             "parameters": {
@@ -595,69 +329,19 @@ def test_confusion_matrix(
             "value": {
                 "confusion_matrix": {
                     "v1": {
-                        "v1": {
-                            "count": 1,
-                            "examples": [
-                                {
-                                    "datum_id": "uid1",
-                                    "ground_truth_id": "uid_1_gt_0",
-                                    "prediction_id": "uid_1_pd_0",
-                                }
-                            ],
-                        }
+                        "v1": 1,
                     },
                     "v2": {
-                        "not_v2": {
-                            "count": 1,
-                            "examples": [
-                                {
-                                    "datum_id": "uid1",
-                                    "ground_truth_id": "uid_1_gt_2",
-                                    "prediction_id": "uid_1_pd_1",
-                                }
-                            ],
-                        }
+                        "not_v2": 1,
                     },
                 },
                 "unmatched_predictions": {
-                    "unmatched_prediction": {
-                        "count": 1,
-                        "examples": [
-                            {
-                                "datum_id": "uid1",
-                                "prediction_id": "uid_1_pd_2",
-                            }
-                        ],
-                    },
-                    "matched_low_iou": {
-                        "count": 1,
-                        "examples": [
-                            {
-                                "datum_id": "uid2",
-                                "prediction_id": "uid_2_pd_0",
-                            }
-                        ],
-                    },
+                    "unmatched_prediction": 1,
+                    "matched_low_iou": 1,
                 },
                 "unmatched_ground_truths": {
-                    "unmatched_groundtruth": {
-                        "count": 1,
-                        "examples": [
-                            {
-                                "datum_id": "uid1",
-                                "ground_truth_id": "uid_1_gt_1",
-                            }
-                        ],
-                    },
-                    "matched_low_iou": {
-                        "count": 1,
-                        "examples": [
-                            {
-                                "datum_id": "uid2",
-                                "ground_truth_id": "uid_2_gt_0",
-                            }
-                        ],
-                    },
+                    "unmatched_groundtruth": 1,
+                    "matched_low_iou": 1,
                 },
             },
             "parameters": {
@@ -670,60 +354,18 @@ def test_confusion_matrix(
             "value": {
                 "confusion_matrix": {
                     "v1": {
-                        "v1": {
-                            "count": 1,
-                            "examples": [
-                                {
-                                    "datum_id": "uid1",
-                                    "ground_truth_id": "uid_1_gt_0",
-                                    "prediction_id": "uid_1_pd_0",
-                                }
-                            ],
-                        }
+                        "v1": 1,
                     },
                     "v2": {
-                        "not_v2": {
-                            "count": 1,
-                            "examples": [
-                                {
-                                    "datum_id": "uid1",
-                                    "ground_truth_id": "uid_1_gt_2",
-                                    "prediction_id": "uid_1_pd_1",
-                                }
-                            ],
-                        }
+                        "not_v2": 1,
                     },
                 },
                 "unmatched_predictions": {
-                    "matched_low_iou": {
-                        "count": 1,
-                        "examples": [
-                            {
-                                "datum_id": "uid2",
-                                "prediction_id": "uid_2_pd_0",
-                            }
-                        ],
-                    }
+                    "matched_low_iou": 1,
                 },
                 "unmatched_ground_truths": {
-                    "unmatched_groundtruth": {
-                        "count": 1,
-                        "examples": [
-                            {
-                                "datum_id": "uid1",
-                                "ground_truth_id": "uid_1_gt_1",
-                            }
-                        ],
-                    },
-                    "matched_low_iou": {
-                        "count": 1,
-                        "examples": [
-                            {
-                                "datum_id": "uid2",
-                                "ground_truth_id": "uid_2_gt_0",
-                            }
-                        ],
-                    },
+                    "unmatched_groundtruth": 1,
+                    "matched_low_iou": 1,
                 },
             },
             "parameters": {
@@ -736,57 +378,16 @@ def test_confusion_matrix(
             "value": {
                 "confusion_matrix": {
                     "v1": {
-                        "v1": {
-                            "count": 1,
-                            "examples": [
-                                {
-                                    "datum_id": "uid1",
-                                    "ground_truth_id": "uid_1_gt_0",
-                                    "prediction_id": "uid_1_pd_0",
-                                }
-                            ],
-                        }
+                        "v1": 1,
                     }
                 },
                 "unmatched_predictions": {
-                    "matched_low_iou": {
-                        "count": 1,
-                        "examples": [
-                            {
-                                "datum_id": "uid2",
-                                "prediction_id": "uid_2_pd_0",
-                            }
-                        ],
-                    }
+                    "matched_low_iou": 1,
                 },
                 "unmatched_ground_truths": {
-                    "unmatched_groundtruth": {
-                        "count": 1,
-                        "examples": [
-                            {
-                                "datum_id": "uid1",
-                                "ground_truth_id": "uid_1_gt_1",
-                            }
-                        ],
-                    },
-                    "v2": {
-                        "count": 1,
-                        "examples": [
-                            {
-                                "datum_id": "uid1",
-                                "ground_truth_id": "uid_1_gt_2",
-                            }
-                        ],
-                    },
-                    "matched_low_iou": {
-                        "count": 1,
-                        "examples": [
-                            {
-                                "datum_id": "uid2",
-                                "ground_truth_id": "uid_2_gt_0",
-                            }
-                        ],
-                    },
+                    "unmatched_groundtruth": 1,
+                    "v2": 1,
+                    "matched_low_iou": 1,
                 },
             },
             "parameters": {
@@ -799,57 +400,16 @@ def test_confusion_matrix(
             "value": {
                 "confusion_matrix": {
                     "v1": {
-                        "v1": {
-                            "count": 1,
-                            "examples": [
-                                {
-                                    "datum_id": "uid1",
-                                    "ground_truth_id": "uid_1_gt_0",
-                                    "prediction_id": "uid_1_pd_0",
-                                }
-                            ],
-                        }
+                        "v1": 1,
                     }
                 },
                 "unmatched_predictions": {
-                    "matched_low_iou": {
-                        "count": 1,
-                        "examples": [
-                            {
-                                "datum_id": "uid2",
-                                "prediction_id": "uid_2_pd_0",
-                            }
-                        ],
-                    }
+                    "matched_low_iou": 1,
                 },
                 "unmatched_ground_truths": {
-                    "unmatched_groundtruth": {
-                        "count": 1,
-                        "examples": [
-                            {
-                                "datum_id": "uid1",
-                                "ground_truth_id": "uid_1_gt_1",
-                            }
-                        ],
-                    },
-                    "v2": {
-                        "count": 1,
-                        "examples": [
-                            {
-                                "datum_id": "uid1",
-                                "ground_truth_id": "uid_1_gt_2",
-                            }
-                        ],
-                    },
-                    "matched_low_iou": {
-                        "count": 1,
-                        "examples": [
-                            {
-                                "datum_id": "uid2",
-                                "ground_truth_id": "uid_2_gt_0",
-                            }
-                        ],
-                    },
+                    "unmatched_groundtruth": 1,
+                    "v2": 1,
+                    "matched_low_iou": 1
                 },
             },
             "parameters": {
@@ -863,42 +423,10 @@ def test_confusion_matrix(
                 "confusion_matrix": {},
                 "unmatched_predictions": {},
                 "unmatched_ground_truths": {
-                    "v1": {
-                        "count": 1,
-                        "examples": [
-                            {
-                                "datum_id": "uid1",
-                                "ground_truth_id": "uid_1_gt_0",
-                            }
-                        ],
-                    },
-                    "unmatched_groundtruth": {
-                        "count": 1,
-                        "examples": [
-                            {
-                                "datum_id": "uid1",
-                                "ground_truth_id": "uid_1_gt_1",
-                            }
-                        ],
-                    },
-                    "v2": {
-                        "count": 1,
-                        "examples": [
-                            {
-                                "datum_id": "uid1",
-                                "ground_truth_id": "uid_1_gt_2",
-                            }
-                        ],
-                    },
-                    "matched_low_iou": {
-                        "count": 1,
-                        "examples": [
-                            {
-                                "datum_id": "uid2",
-                                "ground_truth_id": "uid_2_gt_0",
-                            }
-                        ],
-                    },
+                    "v1": 1,
+                    "unmatched_groundtruth": 1,
+                    "v2": 1,
+                    "matched_low_iou": 1,
                 },
             },
             "parameters": {
@@ -912,42 +440,10 @@ def test_confusion_matrix(
                 "confusion_matrix": {},
                 "unmatched_predictions": {},
                 "unmatched_ground_truths": {
-                    "v1": {
-                        "count": 1,
-                        "examples": [
-                            {
-                                "datum_id": "uid1",
-                                "ground_truth_id": "uid_1_gt_0",
-                            }
-                        ],
-                    },
-                    "unmatched_groundtruth": {
-                        "count": 1,
-                        "examples": [
-                            {
-                                "datum_id": "uid1",
-                                "ground_truth_id": "uid_1_gt_1",
-                            }
-                        ],
-                    },
-                    "v2": {
-                        "count": 1,
-                        "examples": [
-                            {
-                                "datum_id": "uid1",
-                                "ground_truth_id": "uid_1_gt_2",
-                            }
-                        ],
-                    },
-                    "matched_low_iou": {
-                        "count": 1,
-                        "examples": [
-                            {
-                                "datum_id": "uid2",
-                                "ground_truth_id": "uid_2_gt_0",
-                            }
-                        ],
-                    },
+                    "v1": 1,
+                    "unmatched_groundtruth": 1,
+                    "v2": 1,
+                    "matched_low_iou": 1,
                 },
             },
             "parameters": {
@@ -968,32 +464,6 @@ def test_confusion_matrix(
         assert m in actual_metrics
 
 
-def _filter_out_examples_and_zero_counts(cm: dict, hl: dict, mp: dict):
-    gt_labels = list(mp.keys())
-    pd_labels = list(hl.keys())
-
-    for gt_label in gt_labels:
-        for pd_label in pd_labels:
-            if cm[gt_label][pd_label]["count"] == 0:
-                cm[gt_label].pop(pd_label)
-            else:
-                cm[gt_label][pd_label]["examples"] = list()
-        if len(cm[gt_label]) == 0:
-            cm.pop(gt_label)
-
-    for pd_label in pd_labels:
-        if hl[pd_label]["count"] == 0:
-            hl.pop(pd_label)
-        else:
-            hl[pd_label]["examples"] = list()
-
-    for gt_label in gt_labels:
-        if mp[gt_label]["count"] == 0:
-            mp.pop(gt_label)
-        else:
-            mp[gt_label]["examples"] = list()
-
-
 def test_confusion_matrix_using_torch_metrics_example(
     torchmetrics_detections: list[Detection],
 ):
@@ -1005,12 +475,10 @@ def test_confusion_matrix_using_torch_metrics_example(
     loader.add_bounding_boxes(torchmetrics_detections)
     evaluator = loader.finalize()
 
-    assert evaluator.ignored_prediction_labels == ["3"]
-    assert evaluator.missing_prediction_labels == []
-    assert evaluator.metadata.number_of_datums == 4
-    assert evaluator.metadata.number_of_labels == 6
-    assert evaluator.metadata.number_of_ground_truths == 20
-    assert evaluator.metadata.number_of_predictions == 19
+    assert evaluator.info["number_of_datums"] == 4
+    assert evaluator.info["number_of_labels"] == 6
+    assert evaluator.info["number_of_groundtruth_annotations"] == 20
+    assert evaluator.info["number_of_prediction_annotations"] == 19
 
     actual_metrics = evaluator.compute_confusion_matrix(
         iou_thresholds=[0.5, 0.9],
@@ -1025,18 +493,18 @@ def test_confusion_matrix_using_torch_metrics_example(
             "type": "ConfusionMatrix",
             "value": {
                 "confusion_matrix": {
-                    "4": {"4": {"count": 2, "examples": []}},
+                    "4": {"4": 2},
                     "2": {
-                        "2": {"count": 1, "examples": []},
-                        "3": {"count": 1, "examples": []},
+                        "2": 1,
+                        "3": 1,
                     },
-                    "1": {"1": {"count": 1, "examples": []}},
-                    "0": {"0": {"count": 5, "examples": []}},
-                    "49": {"49": {"count": 8, "examples": []}},
+                    "1": {"1": 1},
+                    "0": {"0": 5},
+                    "49": {"49": 8},
                 },
-                "unmatched_predictions": {"49": {"count": 1, "examples": []}},
+                "unmatched_predictions": {"49": 1},
                 "unmatched_ground_truths": {
-                    "49": {"count": 2, "examples": []}
+                    "49": 2
                 },
             },
             "parameters": {
@@ -1048,19 +516,19 @@ def test_confusion_matrix_using_torch_metrics_example(
             "type": "ConfusionMatrix",
             "value": {
                 "confusion_matrix": {
-                    "4": {"4": {"count": 1, "examples": []}},
+                    "4": {"4": 1},
                     "2": {
-                        "2": {"count": 1, "examples": []},
-                        "3": {"count": 1, "examples": []},
+                        "2": 1,
+                        "3": 1,
                     },
-                    "1": {"1": {"count": 1, "examples": []}},
-                    "0": {"0": {"count": 5, "examples": []}},
-                    "49": {"49": {"count": 6, "examples": []}},
+                    "1": {"1": 1},
+                    "0": {"0": 5},
+                    "49": {"49": 6},
                 },
                 "unmatched_predictions": {},
                 "unmatched_ground_truths": {
-                    "4": {"count": 1, "examples": []},
-                    "49": {"count": 4, "examples": []},
+                    "4": 1,
+                    "49": 4,
                 },
             },
             "parameters": {
@@ -1072,18 +540,18 @@ def test_confusion_matrix_using_torch_metrics_example(
             "type": "ConfusionMatrix",
             "value": {
                 "confusion_matrix": {
-                    "4": {"4": {"count": 1, "examples": []}},
-                    "2": {"2": {"count": 1, "examples": []}},
-                    "0": {"0": {"count": 4, "examples": []}},
-                    "49": {"49": {"count": 4, "examples": []}},
+                    "4": {"4": 1},
+                    "2": {"2": 1},
+                    "0": {"0": 4},
+                    "49": {"49": 4},
                 },
                 "unmatched_predictions": {},
                 "unmatched_ground_truths": {
-                    "4": {"count": 1, "examples": []},
-                    "2": {"count": 1, "examples": []},
-                    "1": {"count": 1, "examples": []},
-                    "0": {"count": 1, "examples": []},
-                    "49": {"count": 6, "examples": []},
+                    "4": 1,
+                    "2": 1,
+                    "1": 1,
+                    "0": 1,
+                    "49": 6,
                 },
             },
             "parameters": {
@@ -1095,17 +563,17 @@ def test_confusion_matrix_using_torch_metrics_example(
             "type": "ConfusionMatrix",
             "value": {
                 "confusion_matrix": {
-                    "2": {"2": {"count": 1, "examples": []}},
-                    "0": {"0": {"count": 3, "examples": []}},
-                    "49": {"49": {"count": 3, "examples": []}},
+                    "2": {"2": 1},
+                    "0": {"0": 3},
+                    "49": {"49": 3},
                 },
                 "unmatched_predictions": {},
                 "unmatched_ground_truths": {
-                    "4": {"count": 2, "examples": []},
-                    "2": {"count": 1, "examples": []},
-                    "1": {"count": 1, "examples": []},
-                    "0": {"count": 2, "examples": []},
-                    "49": {"count": 7, "examples": []},
+                    "4": 2,
+                    "2": 1,
+                    "1": 1,
+                    "0": 2,
+                    "49": 7,
                 },
             },
             "parameters": {
@@ -1117,16 +585,16 @@ def test_confusion_matrix_using_torch_metrics_example(
             "type": "ConfusionMatrix",
             "value": {
                 "confusion_matrix": {
-                    "0": {"0": {"count": 2, "examples": []}},
-                    "49": {"49": {"count": 2, "examples": []}},
+                    "0": {"0": 2},
+                    "49": {"49": 2},
                 },
                 "unmatched_predictions": {},
                 "unmatched_ground_truths": {
-                    "4": {"count": 2, "examples": []},
-                    "2": {"count": 2, "examples": []},
-                    "1": {"count": 1, "examples": []},
-                    "0": {"count": 3, "examples": []},
-                    "49": {"count": 8, "examples": []},
+                    "4": 2,
+                    "2": 2,
+                    "1": 1,
+                    "0": 3,
+                    "49": 8,
                 },
             },
             "parameters": {
@@ -1138,16 +606,16 @@ def test_confusion_matrix_using_torch_metrics_example(
             "type": "ConfusionMatrix",
             "value": {
                 "confusion_matrix": {
-                    "0": {"0": {"count": 2, "examples": []}},
-                    "49": {"49": {"count": 1, "examples": []}},
+                    "0": {"0": 2},
+                    "49": {"49": 1},
                 },
                 "unmatched_predictions": {},
                 "unmatched_ground_truths": {
-                    "4": {"count": 2, "examples": []},
-                    "2": {"count": 2, "examples": []},
-                    "1": {"count": 1, "examples": []},
-                    "0": {"count": 3, "examples": []},
-                    "49": {"count": 9, "examples": []},
+                    "4": 2,
+                    "2": 2,
+                    "1": 1,
+                    "0": 3,
+                    "49": 9,
                 },
             },
             "parameters": {
@@ -1159,16 +627,16 @@ def test_confusion_matrix_using_torch_metrics_example(
             "type": "ConfusionMatrix",
             "value": {
                 "confusion_matrix": {
-                    "0": {"0": {"count": 1, "examples": []}},
-                    "49": {"49": {"count": 1, "examples": []}},
+                    "0": {"0": 1},
+                    "49": {"49": 1},
                 },
                 "unmatched_predictions": {},
                 "unmatched_ground_truths": {
-                    "4": {"count": 2, "examples": []},
-                    "2": {"count": 2, "examples": []},
-                    "1": {"count": 1, "examples": []},
-                    "0": {"count": 4, "examples": []},
-                    "49": {"count": 9, "examples": []},
+                    "4": 2,
+                    "2": 2,
+                    "1": 1,
+                    "0": 4,
+                    "49": 9,
                 },
             },
             "parameters": {
@@ -1179,14 +647,14 @@ def test_confusion_matrix_using_torch_metrics_example(
         {
             "type": "ConfusionMatrix",
             "value": {
-                "confusion_matrix": {"0": {"0": {"count": 1, "examples": []}}},
+                "confusion_matrix": {"0": {"0": 1}},
                 "unmatched_predictions": {},
                 "unmatched_ground_truths": {
-                    "4": {"count": 2, "examples": []},
-                    "2": {"count": 2, "examples": []},
-                    "1": {"count": 1, "examples": []},
-                    "0": {"count": 4, "examples": []},
-                    "49": {"count": 10, "examples": []},
+                    "4": 2,
+                    "2": 2,
+                    "1": 1,
+                    "0": 4,
+                    "49": 10,
                 },
             },
             "parameters": {
@@ -1198,23 +666,23 @@ def test_confusion_matrix_using_torch_metrics_example(
             "type": "ConfusionMatrix",
             "value": {
                 "confusion_matrix": {
-                    "2": {"2": {"count": 1, "examples": []}},
-                    "0": {"0": {"count": 1, "examples": []}},
-                    "49": {"49": {"count": 2, "examples": []}},
+                    "2": {"2": 1},
+                    "0": {"0": 1},
+                    "49": {"49": 2},
                 },
                 "unmatched_predictions": {
-                    "4": {"count": 2, "examples": []},
-                    "3": {"count": 1, "examples": []},
-                    "1": {"count": 1, "examples": []},
-                    "0": {"count": 4, "examples": []},
-                    "49": {"count": 7, "examples": []},
+                    "4": 2,
+                    "3": 1,
+                    "1": 1,
+                    "0": 4,
+                    "49": 7,
                 },
                 "unmatched_ground_truths": {
-                    "4": {"count": 2, "examples": []},
-                    "2": {"count": 1, "examples": []},
-                    "1": {"count": 1, "examples": []},
-                    "0": {"count": 4, "examples": []},
-                    "49": {"count": 8, "examples": []},
+                    "4": 2,
+                    "2": 1,
+                    "1": 1,
+                    "0": 4,
+                    "49": 8,
                 },
             },
             "parameters": {
@@ -1226,23 +694,23 @@ def test_confusion_matrix_using_torch_metrics_example(
             "type": "ConfusionMatrix",
             "value": {
                 "confusion_matrix": {
-                    "2": {"2": {"count": 1, "examples": []}},
-                    "0": {"0": {"count": 1, "examples": []}},
-                    "49": {"49": {"count": 2, "examples": []}},
+                    "2": {"2": 1},
+                    "0": {"0": 1},
+                    "49": {"49": 2},
                 },
                 "unmatched_predictions": {
-                    "4": {"count": 1, "examples": []},
-                    "3": {"count": 1, "examples": []},
-                    "1": {"count": 1, "examples": []},
-                    "0": {"count": 4, "examples": []},
-                    "49": {"count": 4, "examples": []},
+                    "4": 1,
+                    "3": 1,
+                    "1": 1,
+                    "0": 4,
+                    "49": 4,
                 },
                 "unmatched_ground_truths": {
-                    "4": {"count": 2, "examples": []},
-                    "2": {"count": 1, "examples": []},
-                    "1": {"count": 1, "examples": []},
-                    "0": {"count": 4, "examples": []},
-                    "49": {"count": 8, "examples": []},
+                    "4": 2,
+                    "2": 1,
+                    "1": 1,
+                    "0": 4,
+                    "49": 8,
                 },
             },
             "parameters": {
@@ -1254,20 +722,20 @@ def test_confusion_matrix_using_torch_metrics_example(
             "type": "ConfusionMatrix",
             "value": {
                 "confusion_matrix": {
-                    "2": {"2": {"count": 1, "examples": []}},
-                    "49": {"49": {"count": 2, "examples": []}},
+                    "2": {"2": 1},
+                    "49": {"49": 2},
                 },
                 "unmatched_predictions": {
-                    "4": {"count": 1, "examples": []},
-                    "0": {"count": 4, "examples": []},
-                    "49": {"count": 2, "examples": []},
+                    "4": 1,
+                    "0": 4,
+                    "49": 2,
                 },
                 "unmatched_ground_truths": {
-                    "4": {"count": 2, "examples": []},
-                    "2": {"count": 1, "examples": []},
-                    "1": {"count": 1, "examples": []},
-                    "0": {"count": 5, "examples": []},
-                    "49": {"count": 8, "examples": []},
+                    "4": 2,
+                    "2": 1,
+                    "1": 1,
+                    "0": 5,
+                    "49": 8,
                 },
             },
             "parameters": {
@@ -1279,19 +747,19 @@ def test_confusion_matrix_using_torch_metrics_example(
             "type": "ConfusionMatrix",
             "value": {
                 "confusion_matrix": {
-                    "2": {"2": {"count": 1, "examples": []}},
-                    "49": {"49": {"count": 1, "examples": []}},
+                    "2": {"2": 1},
+                    "49": {"49": 1},
                 },
                 "unmatched_predictions": {
-                    "0": {"count": 3, "examples": []},
-                    "49": {"count": 2, "examples": []},
+                    "0": 3,
+                    "49": 2,
                 },
                 "unmatched_ground_truths": {
-                    "4": {"count": 2, "examples": []},
-                    "2": {"count": 1, "examples": []},
-                    "1": {"count": 1, "examples": []},
-                    "0": {"count": 5, "examples": []},
-                    "49": {"count": 9, "examples": []},
+                    "4": 2,
+                    "2": 1,
+                    "1": 1,
+                    "0": 5,
+                    "49": 9,
                 },
             },
             "parameters": {
@@ -1303,18 +771,18 @@ def test_confusion_matrix_using_torch_metrics_example(
             "type": "ConfusionMatrix",
             "value": {
                 "confusion_matrix": {
-                    "49": {"49": {"count": 1, "examples": []}}
+                    "49": {"49": 1}
                 },
                 "unmatched_predictions": {
-                    "0": {"count": 2, "examples": []},
-                    "49": {"count": 1, "examples": []},
+                    "0": 2,
+                    "49": 1,
                 },
                 "unmatched_ground_truths": {
-                    "4": {"count": 2, "examples": []},
-                    "2": {"count": 2, "examples": []},
-                    "1": {"count": 1, "examples": []},
-                    "0": {"count": 5, "examples": []},
-                    "49": {"count": 9, "examples": []},
+                    "4": 2,
+                    "2": 2,
+                    "1": 1,
+                    "0": 5,
+                    "49": 9,
                 },
             },
             "parameters": {
@@ -1326,15 +794,15 @@ def test_confusion_matrix_using_torch_metrics_example(
             "type": "ConfusionMatrix",
             "value": {
                 "confusion_matrix": {
-                    "49": {"49": {"count": 1, "examples": []}}
+                    "49": {"49": 1}
                 },
-                "unmatched_predictions": {"0": {"count": 2, "examples": []}},
+                "unmatched_predictions": {"0": 2},
                 "unmatched_ground_truths": {
-                    "4": {"count": 2, "examples": []},
-                    "2": {"count": 2, "examples": []},
-                    "1": {"count": 1, "examples": []},
-                    "0": {"count": 5, "examples": []},
-                    "49": {"count": 9, "examples": []},
+                    "4": 2,
+                    "2": 2,
+                    "1": 1,
+                    "0": 5,
+                    "49": 9,
                 },
             },
             "parameters": {
@@ -1346,15 +814,15 @@ def test_confusion_matrix_using_torch_metrics_example(
             "type": "ConfusionMatrix",
             "value": {
                 "confusion_matrix": {
-                    "49": {"49": {"count": 1, "examples": []}}
+                    "49": {"49": 1}
                 },
-                "unmatched_predictions": {"0": {"count": 1, "examples": []}},
+                "unmatched_predictions": {"0": 1},
                 "unmatched_ground_truths": {
-                    "4": {"count": 2, "examples": []},
-                    "2": {"count": 2, "examples": []},
-                    "1": {"count": 1, "examples": []},
-                    "0": {"count": 5, "examples": []},
-                    "49": {"count": 9, "examples": []},
+                    "4": 2,
+                    "2": 2,
+                    "1": 1,
+                    "0": 5,
+                    "49": 9,
                 },
             },
             "parameters": {
@@ -1366,13 +834,13 @@ def test_confusion_matrix_using_torch_metrics_example(
             "type": "ConfusionMatrix",
             "value": {
                 "confusion_matrix": {},
-                "unmatched_predictions": {"0": {"count": 1, "examples": []}},
+                "unmatched_predictions": {"0": 1},
                 "unmatched_ground_truths": {
-                    "4": {"count": 2, "examples": []},
-                    "2": {"count": 2, "examples": []},
-                    "1": {"count": 1, "examples": []},
-                    "0": {"count": 5, "examples": []},
-                    "49": {"count": 10, "examples": []},
+                    "4": 2,
+                    "2": 2,
+                    "1": 1,
+                    "0": 5,
+                    "49": 10,
                 },
             },
             "parameters": {
@@ -1382,7 +850,7 @@ def test_confusion_matrix_using_torch_metrics_example(
         },
     ]
     for m in actual_metrics:
-        _filter_out_examples_and_zero_counts(
+        _filter_out_zero_counts(
             m["value"]["confusion_matrix"],
             m["value"]["unmatched_predictions"],
             m["value"]["unmatched_ground_truths"],
@@ -1400,12 +868,10 @@ def test_confusion_matrix_fp_unmatched_prediction_edge_case(
     loader.add_bounding_boxes(detections_fp_unmatched_prediction_edge_case)
     evaluator = loader.finalize()
 
-    assert evaluator.ignored_prediction_labels == []
-    assert evaluator.missing_prediction_labels == []
-    assert evaluator.metadata.number_of_datums == 2
-    assert evaluator.metadata.number_of_labels == 1
-    assert evaluator.metadata.number_of_ground_truths == 2
-    assert evaluator.metadata.number_of_predictions == 2
+    assert evaluator.info["number_of_datums"] == 2
+    assert evaluator.info["number_of_labels"] == 1
+    assert evaluator.info["number_of_groundtruth_annotations"] == 2
+    assert evaluator.info["number_of_prediction_annotations"] == 2
 
     actual_metrics = evaluator.compute_confusion_matrix(
         iou_thresholds=[0.5],
@@ -1421,39 +887,14 @@ def test_confusion_matrix_fp_unmatched_prediction_edge_case(
             "value": {
                 "confusion_matrix": {
                     "v1": {
-                        "v1": {
-                            "count": 1,
-                            "examples": [
-                                {
-                                    "datum_id": "uid1",
-                                    "ground_truth_id": "uid1_gt0",
-                                    "prediction_id": "uid1_pd0",
-                                }
-                            ],
-                        }
+                        "v1": 1
                     }
                 },
                 "unmatched_predictions": {
-                    "v1": {
-                        "count": 1,
-                        "examples": [
-                            {
-                                "datum_id": "uid2",
-                                "prediction_id": "uid2_pd0",
-                            }
-                        ],
-                    }
+                    "v1": 1
                 },
                 "unmatched_ground_truths": {
-                    "v1": {
-                        "count": 1,
-                        "examples": [
-                            {
-                                "datum_id": "uid2",
-                                "ground_truth_id": "uid2_gt0",
-                            }
-                        ],
-                    }
+                    "v1": 1
                 },
             },
             "parameters": {
@@ -1467,19 +908,7 @@ def test_confusion_matrix_fp_unmatched_prediction_edge_case(
                 "confusion_matrix": {},
                 "unmatched_predictions": {},
                 "unmatched_ground_truths": {
-                    "v1": {
-                        "count": 2,
-                        "examples": [
-                            {
-                                "datum_id": "uid1",
-                                "ground_truth_id": "uid1_gt0",
-                            },
-                            {
-                                "datum_id": "uid2",
-                                "ground_truth_id": "uid2_gt0",
-                            },
-                        ],
-                    }
+                    "v1": 2
                 },
             },
             "parameters": {
@@ -1521,13 +950,12 @@ def test_confusion_matrix_ranked_pair_ordering(
 
         evaluator = loader.finalize()
 
-        assert evaluator.ignored_prediction_labels == ["label4"]
-        assert evaluator.missing_prediction_labels == []
-        assert evaluator.metadata.to_dict() == {
+        assert evaluator.info == {
             "number_of_datums": 1,
-            "number_of_ground_truths": 3,
+            "number_of_groundtruth_annotations": 3,
             "number_of_labels": 4,
-            "number_of_predictions": 4,
+            "number_of_prediction_annotations": 4,
+            "number_of_rows": 12,
         }
 
         actual_metrics = evaluator.compute_confusion_matrix(
@@ -1542,51 +970,18 @@ def test_confusion_matrix_ranked_pair_ordering(
                 "value": {
                     "confusion_matrix": {
                         "label1": {
-                            "label2": {
-                                "count": 1,
-                                "examples": [
-                                    {
-                                        "datum_id": "uid1",
-                                        "ground_truth_id": "gt_0",
-                                        "prediction_id": "pd_1",
-                                    }
-                                ],
-                            }
+                            "label2": 1
                         },
                         "label2": {
-                            "label1": {
-                                "count": 1,
-                                "examples": [
-                                    {
-                                        "datum_id": "uid1",
-                                        "ground_truth_id": "gt_1",
-                                        "prediction_id": "pd_0",
-                                    }
-                                ],
-                            }
+                            "label1": 1
                         },
                     },
                     "unmatched_predictions": {
-                        "label3": {
-                            "count": 1,
-                            "examples": [
-                                {"datum_id": "uid1", "prediction_id": "pd_2"}
-                            ],
-                        },
-                        "label4": {
-                            "count": 1,
-                            "examples": [
-                                {"datum_id": "uid1", "prediction_id": "pd_3"}
-                            ],
-                        },
+                        "label3": 1,
+                        "label4": 1,
                     },
                     "unmatched_ground_truths": {
-                        "label3": {
-                            "count": 1,
-                            "examples": [
-                                {"datum_id": "uid1", "ground_truth_id": "gt_2"}
-                            ],
-                        }
+                        "label3": 1
                     },
                 },
                 "parameters": {

@@ -110,12 +110,10 @@ def test_ar_metrics_first_class(
             score_thresholds=[0.0],
         )
 
-        assert evaluator.ignored_prediction_labels == []
-        assert evaluator.missing_prediction_labels == []
-        assert evaluator.metadata.number_of_datums == 2
-        assert evaluator.metadata.number_of_labels == 1
-        assert evaluator.metadata.number_of_ground_truths == 2
-        assert evaluator.metadata.number_of_predictions == 1
+        assert evaluator.info["number_of_datums"] == 2
+        assert evaluator.info["number_of_labels"] == 1
+        assert evaluator.info["number_of_groundtruth_annotations"] == 2
+        assert evaluator.info["number_of_prediction_annotations"] == 1
 
         # test AR
         actual_metrics = [m.to_dict() for m in metrics[MetricType.AR]]
@@ -223,12 +221,10 @@ def test_ar_metrics_second_class(
             score_thresholds=[0.0],
         )
 
-        assert evaluator.ignored_prediction_labels == []
-        assert evaluator.missing_prediction_labels == []
-        assert evaluator.metadata.number_of_datums == 2
-        assert evaluator.metadata.number_of_labels == 1
-        assert evaluator.metadata.number_of_ground_truths == 1
-        assert evaluator.metadata.number_of_predictions == 1
+        assert evaluator.info["number_of_datums"] == 2
+        assert evaluator.info["number_of_labels"] == 1
+        assert evaluator.info["number_of_groundtruth_annotations"] == 1
+        assert evaluator.info["number_of_prediction_annotations"] == 1
 
         # test AR
         actual_metrics = [m.to_dict() for m in metrics[MetricType.AR]]
@@ -317,12 +313,10 @@ def test_ar_using_torch_metrics_example(
     loader.add_bounding_boxes(torchmetrics_detections)
     evaluator = loader.finalize()
 
-    assert evaluator.ignored_prediction_labels == ["3"]
-    assert evaluator.missing_prediction_labels == []
-    assert evaluator.metadata.number_of_datums == 4
-    assert evaluator.metadata.number_of_labels == 6
-    assert evaluator.metadata.number_of_ground_truths == 20
-    assert evaluator.metadata.number_of_predictions == 19
+    assert evaluator.info["number_of_datums"] == 4
+    assert evaluator.info["number_of_labels"] == 6
+    assert evaluator.info["number_of_groundtruth_annotations"] == 20
+    assert evaluator.info["number_of_prediction_annotations"] == 19
 
     score_thresholds = [0.0]
     iou_thresholds = [0.5, 0.55, 0.6, 0.65, 0.7, 0.75, 0.8, 0.85, 0.9, 0.95]
@@ -505,12 +499,10 @@ def test_ar_true_positive_deassignment(
     loader.add_bounding_boxes(detections_tp_deassignment_edge_case)
     evaluator = loader.finalize()
 
-    assert evaluator.ignored_prediction_labels == []
-    assert evaluator.missing_prediction_labels == []
-    assert evaluator.metadata.number_of_datums == 1
-    assert evaluator.metadata.number_of_labels == 1
-    assert evaluator.metadata.number_of_ground_truths == 2
-    assert evaluator.metadata.number_of_predictions == 4
+    assert evaluator.info["number_of_datums"] == 1
+    assert evaluator.info["number_of_labels"] == 1
+    assert evaluator.info["number_of_groundtruth_annotations"] == 2
+    assert evaluator.info["number_of_prediction_annotations"] == 4
 
     metrics = evaluator.evaluate(
         iou_thresholds=[0.5],
@@ -559,13 +551,12 @@ def test_ar_ranked_pair_ordering(
         method(loader, detections=[input_])
         evaluator = loader.finalize()
 
-        assert evaluator.ignored_prediction_labels == ["label4"]
-        assert evaluator.missing_prediction_labels == []
-        assert evaluator.metadata.to_dict() == {
+        assert evaluator.info == {
             "number_of_datums": 1,
-            "number_of_ground_truths": 3,
+            "number_of_groundtruth_annotations": 3,
             "number_of_labels": 4,
-            "number_of_predictions": 4,
+            "number_of_prediction_annotations": 4,
+            "number_of_rows": 12,
         }
 
         metrics = evaluator.evaluate(

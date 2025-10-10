@@ -64,7 +64,7 @@ class Cache:
 
         # Internal state
         self._writer = None
-        self._buffer = None
+        self._buffer = []
         self._count = 0
 
     @property
@@ -110,23 +110,25 @@ class Cache:
         if isinstance(batch, dict):
             batch = pa.RecordBatch.from_pydict(batch)
 
+        size = batch.num_rows
         if self._buffer:
+            size += sum([b.num_rows for b in self._buffer])
+            
+        # check size
+        if size < self.batch_size and self._count < self.rows_per_file:
+            self._buffer.append(batch)
+            return
+        
+        if self._buffer:
+            self._buffer.append(batch)
             combined_arrays = [
-                pa.concat_arrays(
-                    [self._buffer.column(name), batch.column(name)]
-                )
+                pa.concat_arrays([b.column(name) for b in self._buffer])
                 for name in self.schema.names
             ]
             batch = pa.RecordBatch.from_arrays(
                 combined_arrays, schema=self.schema
             )
-            self._buffer = None
-
-        # check size
-        size = batch.num_rows
-        if size < self.batch_size and self._count < self.rows_per_file:
-            self._buffer = batch
-            return
+            self._buffer = []
 
         # write batch
         writer = self._get_or_create_writer()
@@ -145,12 +147,18 @@ class Cache:
         pq.write_table(table, where=self._next_filename())
 
     def flush(self):
-        if self._buffer is not None:
-            writer = self._get_or_create_writer()
-            writer.write_batch(
-                pa.RecordBatch.from_pydict(self._buffer, schema=self.schema)
+        if self._buffer:
+            combined_arrays = [
+                pa.concat_arrays([b.column(name) for b in self._buffer])
+                for name in self.schema.names
+            ]
+            batch = pa.RecordBatch.from_arrays(
+                combined_arrays, schema=self.schema
             )
-        self._buffer = None
+            self._buffer = []
+            writer = self._get_or_create_writer()
+            writer.write_batch(batch)
+        self._buffer = []
         self._count = 0
         self._close_writer()
 
@@ -187,7 +195,7 @@ class Cache:
         destination: str | Path,
         sorting: str | list[tuple[str, str]],
         columns: list[str] | None = None,
-    ):
+    ) -> "Cache":
 
         self.flush()
 
@@ -201,80 +209,106 @@ class Cache:
             )
 
         # TODO (c.zaloom) - this is slow
-        with Cache(
+        cache = Cache(
             destination,
             schema=schema,
             batch_size=self.batch_size,
             rows_per_file=self.rows_per_file,
             compression=self.compression,
-        ) as cache:
+        )
 
-            max_to_table = 0
-            max_sort = 0
-            max_merge = 0
+        max_to_table = 0
+        max_sort = 0
+        max_merge = 0
 
-            if self.num_files == 1:
-                pf = pq.ParquetFile(self.files[0])
+        if self.num_files == 1:
+            pf = pq.ParquetFile(self.files[0])
 
-                start = time.perf_counter()
-                tbl = pf.read()
-                end = time.perf_counter()
-                max_to_table = max([max_to_table, end - start])
+            start = time.perf_counter()
+            tbl = pf.read()
+            end = time.perf_counter()
+            max_to_table = max([max_to_table, end - start])
+
+            start = time.perf_counter()
+            sorted_tbl = tbl.sort_by(sorting)
+            end = time.perf_counter()
+            max_sort = max([max_sort, end - start])
+
+            start = time.perf_counter()
+            cache.write_table(sorted_tbl)
+            end = time.perf_counter()
+            max_merge = max([max_merge, end - start])
+
+            info = {
+                "number_of_files": 1,
+                "conversion_to_table": max_to_table,
+                "file_sort": max_sort,
+                "file_merge": max_merge,
+            }
+            import json
+
+            print(json.dumps(info, indent=2))
+            return info
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+
+            # sort individual files
+            tmpfiles = []
+            for idx, fragment in enumerate(self.dataset.get_fragments()):
+                tbl = fragment.to_table(columns=columns)
 
                 start = time.perf_counter()
                 sorted_tbl = tbl.sort_by(sorting)
                 end = time.perf_counter()
+                max_to_table = max([max_to_table, end - start])
+
+                path = Path(tmpdir) / f"{idx:06d}.parquet"
+
+                start = time.perf_counter()
+                pq.write_table(sorted_tbl, path)
+                end = time.perf_counter()
                 max_sort = max([max_sort, end - start])
 
-                start = time.perf_counter()
-                cache.write_table(sorted_tbl)
-                end = time.perf_counter()
-                max_merge = max([max_merge, end - start])
+                tmpfiles.append(path)
 
-                info = {
-                    "number_of_files": 1,
-                    "conversion_to_table": max_to_table,
-                    "file_sort": max_sort,
-                    "file_merge": max_merge,
-                }
-                import json
+            start = time.perf_counter()
 
-                print(json.dumps(info, indent=2))
-                return info
+            # merge sorted rows
+            # TODO (c.zaloom) - explore more performant ways of doing this...
+            heap = []
+            batch_iterators = []
+            batches = []
+            for idx, path in enumerate(tmpfiles):
+                pf = pq.ParquetFile(path)
+                batch_iter = pf.iter_batches(batch_size=self.batch_size)
+                batch_iterators.append(batch_iter)
+                batches.append(next(batch_iterators[idx], None))
+                if batches[idx] is not None and len(batches[idx]) > 0:
+                    sort_args = [
+                        -batches[idx][col][0].as_py()
+                        if order == "descending"
+                        else batches[idx][col][0].as_py()
+                        for col, order in sorting
+                    ]
+                    heapq.heappush(heap, (*sort_args, idx, 0))
 
-            with tempfile.TemporaryDirectory() as tmpdir:
+            while heap:
+                item = heapq.heappop(heap)
+                idx, row_idx = item[-2], item[-1]
+                row_table = batches[idx].slice(row_idx, 1)
+                cache.write_batch(row_table)
 
-                # sort individual files
-                tmpfiles = []
-                for idx, fragment in enumerate(self.dataset.get_fragments()):
-                    tbl = fragment.to_table(columns=columns)
-
-                    start = time.perf_counter()
-                    sorted_tbl = tbl.sort_by(sorting)
-                    end = time.perf_counter()
-                    max_to_table = max([max_to_table, end - start])
-
-                    path = Path(tmpdir) / f"{idx:06d}.parquet"
-
-                    start = time.perf_counter()
-                    pq.write_table(sorted_tbl, path)
-                    end = time.perf_counter()
-                    max_sort = max([max_sort, end - start])
-
-                    tmpfiles.append(path)
-
-                start = time.perf_counter()
-
-                # merge sorted rows
-                # TODO (c.zaloom) - explore more performant ways of doing this...
-                heap = []
-                batch_iterators = []
-                batches = []
-                for idx, path in enumerate(tmpfiles):
-                    pf = pq.ParquetFile(path)
-                    batch_iter = pf.iter_batches(batch_size=self.batch_size)
-                    batch_iterators.append(batch_iter)
-                    batches.append(next(batch_iterators[idx], None))
+                row_idx += 1
+                if row_idx < len(batches[idx]):
+                    sort_args = [
+                        batches[idx][col][0].as_py()
+                        if order == "ascending"
+                        else -batches[idx][col][0].as_py()
+                        for col, order in sorting
+                    ]
+                    heapq.heappush(heap, (*sort_args, idx, row_idx))
+                else:
+                    batches[idx] = next(batch_iterators[idx], None)
                     if batches[idx] is not None and len(batches[idx]) > 0:
                         sort_args = [
                             batches[idx][col][0].as_py()
@@ -284,41 +318,16 @@ class Cache:
                         ]
                         heapq.heappush(heap, (*sort_args, idx, 0))
 
-                while heap:
-                    _, _, idx, row_idx = heapq.heappop(heap)
-                    row_table = batches[idx].slice(row_idx, 1)
-                    cache.write_batch(row_table)
+            end = time.perf_counter()
+            max_merge = max([max_merge, end - start])
 
-                    row_idx += 1
-                    if row_idx < len(batches[idx]):
-                        sort_args = [
-                            batches[idx][col][0].as_py()
-                            if order == "ascending"
-                            else -batches[idx][col][0].as_py()
-                            for col, order in sorting
-                        ]
-                        heapq.heappush(heap, (*sort_args, idx, row_idx))
-                    else:
-                        batches[idx] = next(batch_iterators[idx], None)
-                        if batches[idx] is not None and len(batches[idx]) > 0:
-                            sort_args = [
-                                batches[idx][col][0].as_py()
-                                if order == "ascending"
-                                else -batches[idx][col][0].as_py()
-                                for col, order in sorting
-                            ]
-                            heapq.heappush(heap, (*sort_args, idx, 0))
+            info = {
+                "number_of_files": len(tmpfiles),
+                "conversion_to_table": max_to_table,
+                "file_sort": max_sort,
+                "file_merge": max_merge,
+            }
+            import json
+            print(json.dumps(info, indent=2))
 
-                end = time.perf_counter()
-                max_merge = max([max_merge, end - start])
-
-                info = {
-                    "number_of_files": len(tmpfiles),
-                    "conversion_to_table": max_to_table,
-                    "file_sort": max_sort,
-                    "file_merge": max_merge,
-                }
-                import json
-
-                print(json.dumps(info, indent=2))
-                return info
+        return cache

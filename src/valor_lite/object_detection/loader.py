@@ -4,19 +4,21 @@ from pathlib import Path
 import numpy as np
 import pyarrow as pa
 from tqdm import tqdm
+from itertools import count
 from collections import defaultdict
 from numpy.typing import NDArray
 
 from valor_lite.cache import Cache, DataType
-from valor_lite.object_detection.annotation import BoundingBox, Detection
-from valor_lite.object_detection.computation import compute_bbox_iou
+from valor_lite.object_detection.annotation import BoundingBox, Polygon, Bitmask, Detection
+from valor_lite.object_detection.computation import compute_bbox_iou, compute_polygon_iou, compute_bitmask_iou
 from valor_lite.object_detection.evaluator import Evaluator
+from valor_lite.exceptions import EmptyEvaluatorError
 
 
 class Loader:
     def __init__(
         self,
-        directory: str | Path,
+        directory: str | Path = ".valor",
         batch_size: int = 10000,
         rows_per_file: int = 1_000_000,
         compression: str = "snappy",
@@ -29,10 +31,13 @@ class Loader:
         self._ranked_path = self._dir / Path("ranked")
         self._labels_path = self._dir / Path("labels.json")
         self._number_of_groundtruths_per_label_path = self._dir / Path("groundtruths_per_label.json")
+        self._info_path = self._dir / Path("info.json")
 
         self._labels = {}
         self._number_of_groundtruths_per_label = defaultdict(int)
-        self._count = 0
+        self._datum_count = 0
+        self._groundtruth_count = 0
+        self._prediction_count = 0
 
         datum_metadata_schema = (
             [(k, v.to_arrow()) for k, v in datum_metadata_types.items()]
@@ -117,12 +122,12 @@ class Loader:
             zip(detections, detection_ious), disable=disable_tqdm
         ):
             # cache labels and annotation pairs
-            datum_idx = self._count
-            self._count += 1
+            datum_idx = self._datum_count
             datum_metadata = detection.metadata if detection.metadata else {}
             pairs = []
             if detection.groundtruths:
                 for gidx, gann in enumerate(detection.groundtruths):
+                    gt_id = self._groundtruth_count + gidx
                     glabel = gann.labels[0]
                     glabel_idx = self._add_label(gann.labels[0])
                     self._number_of_groundtruths_per_label[glabel_idx] += 1
@@ -134,7 +139,7 @@ class Loader:
                                 "datum_id": datum_idx,
                                 **datum_metadata,
                                 "gt_uid": gann.uid,
-                                "gt_id": gidx,
+                                "gt_id": gt_id,
                                 "gt_label": glabel,
                                 "gt_label_id": glabel_idx,
                                 **gann_metadata,
@@ -148,6 +153,7 @@ class Loader:
                             }
                         )
                     for pidx, pann in enumerate(detection.predictions):
+                        pann_id = self._prediction_count + pidx
                         pann_metadata = pann.metadata if pann.metadata else {}
                         if (ious[pidx, :] < 1e-9).all():
                             pairs.extend(
@@ -162,7 +168,7 @@ class Loader:
                                         "gt_label_id": -1,
                                         **self._null_gt_metadata,
                                         "pd_uid": pann.uid,
-                                        "pd_id": pidx,
+                                        "pd_id": pann_id,
                                         "pd_label": plabel,
                                         "pd_label_id": self._add_label(plabel),
                                         "score": float(pscore),
@@ -182,12 +188,12 @@ class Loader:
                                         "datum_id": datum_idx,
                                         **datum_metadata,
                                         "gt_uid": gann.uid,
-                                        "gt_id": gidx,
+                                        "gt_id": gt_id,
                                         "gt_label": glabel,
                                         "gt_label_id": self._add_label(glabel),
                                         **gann_metadata,
                                         "pd_uid": pann.uid,
-                                        "pd_id": pidx,
+                                        "pd_id": pann_id,
                                         "pd_label": plabel,
                                         "pd_label_id": self._add_label(plabel),
                                         "score": float(pscore),
@@ -202,6 +208,7 @@ class Loader:
                             )
             elif detection.predictions:
                 for pidx, pann in enumerate(detection.predictions):
+                    pann_id = self._prediction_count + pidx
                     pann_metadata = pann.metadata if pann.metadata else {}
                     pairs.extend(
                         [
@@ -215,7 +222,7 @@ class Loader:
                                 "gt_label_id": -1,
                                 **self._null_gt_metadata,
                                 "pd_uid": pann.uid,
-                                "pd_id": pidx,
+                                "pd_id": pann_id,
                                 "pd_label": plabel,
                                 "pd_label_id": self._add_label(plabel),
                                 "score": float(pscore),
@@ -225,6 +232,10 @@ class Loader:
                             for plabel, pscore in zip(pann.labels, pann.scores)
                         ]
                     )
+
+            self._datum_count += 1
+            self._groundtruth_count += len(detection.groundtruths)
+            self._prediction_count += len(detection.predictions)
 
             pairs = sorted(pairs, key=lambda x: (-x["score"], -x["iou"]))
             self._detailed.write_rows(pairs)
@@ -262,6 +273,72 @@ class Loader:
             detection_ious=ious,
             show_progress=show_progress,
         )
+    
+    def add_polygons(
+        self,
+        detections: list[Detection[Polygon]],
+        show_progress: bool = False,
+    ):
+        """
+        Adds polygon detections to the cache.
+
+        Parameters
+        ----------
+        detections : list[Detection]
+            A list of Detection objects.
+        show_progress : bool, default=False
+            Toggle for tqdm progress bar.
+        """
+        ious = [
+            compute_polygon_iou(
+                np.array(
+                    [
+                        [gt.shape, pd.shape]
+                        for pd in detection.predictions
+                        for gt in detection.groundtruths
+                    ]
+                )
+            ).reshape(len(detection.predictions), len(detection.groundtruths))
+            for detection in detections
+        ]
+        return self._add_data(
+            detections=detections,
+            detection_ious=ious,
+            show_progress=show_progress,
+        )
+
+    def add_bitmasks(
+        self,
+        detections: list[Detection[Bitmask]],
+        show_progress: bool = False,
+    ):
+        """
+        Adds bitmask detections to the cache.
+
+        Parameters
+        ----------
+        detections : list[Detection]
+            A list of Detection objects.
+        show_progress : bool, default=False
+            Toggle for tqdm progress bar.
+        """
+        ious = [
+            compute_bitmask_iou(
+                np.array(
+                    [
+                        [gt.mask, pd.mask]
+                        for pd in detection.predictions
+                        for gt in detection.groundtruths
+                    ]
+                )
+            ).reshape(len(detection.predictions), len(detection.groundtruths))
+            for detection in detections
+        ]
+        return self._add_data(
+            detections=detections,
+            detection_ious=ious,
+            show_progress=show_progress,
+        )
 
     def finalize(self):
         """
@@ -273,7 +350,9 @@ class Loader:
             A ready-to-use evaluator object.
         """
         self._detailed.flush()
-        self._detailed.sort_by(
+        if self._detailed.dataset.count_rows() == 0:
+            raise EmptyEvaluatorError()
+        _ = self._detailed.sort_by(
             destination=self._ranked_path,
             sorting=[
                 ("score", "descending"),
@@ -284,14 +363,13 @@ class Loader:
             json.dump({v: k for k, v in self._labels.items()}, f, indent=2)
         with open(self._number_of_groundtruths_per_label_path, "w") as f:
             json.dump(self._number_of_groundtruths_per_label, f, indent=2)
+        with open(self._info_path, "w") as f:
+            info = dict(
+                number_of_datums=self._datum_count,
+                number_of_groundtruth_annotations=self._groundtruth_count,
+                number_of_prediction_annotations=self._prediction_count,
+                number_of_labels=len(self._labels),
+                number_of_rows=self._detailed.dataset.count_rows(),
+            )
+            json.dump(info, f, indent=2)
         return Evaluator(self._dir)
-
-
-if __name__ == "__main__":
-    import pyarrow.compute as pc
-    import pyarrow.parquet as pq
-
-    tbl = pq.read_table("bench/part-000000.parquet")
-    print(tbl)
-    c = pc.list_value_length(tbl["pairs"]).to_numpy()
-    print(c.max(), c.min(), c.mean())

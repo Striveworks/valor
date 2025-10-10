@@ -359,10 +359,10 @@ def run_benchmarking_analysis(
             results.append(
                 Benchmark(
                     limit=limit,
-                    n_datums=evaluator.metadata.number_of_datums,
-                    n_groundtruths=evaluator.metadata.number_of_ground_truths,
-                    n_predictions=evaluator.metadata.number_of_predictions,
-                    n_labels=evaluator.metadata.number_of_labels,
+                    n_datums=0, #evaluator.metadata.number_of_datums,
+                    n_groundtruths=0, #evaluator.metadata.number_of_ground_truths,
+                    n_predictions=0, #evaluator.metadata.number_of_predictions,
+                    n_labels=0, #evaluator.metadata.number_of_labels,
                     gt_type=gt_type,
                     pd_type=pd_type,
                     chunk_size=chunk_size,
