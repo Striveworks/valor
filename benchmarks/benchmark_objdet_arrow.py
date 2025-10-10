@@ -299,9 +299,9 @@ def run_benchmarking_analysis(
 
             # === Base Evaluation ===
             manager = Loader(
-                "bench", 
-                # batch_size=1000, 
-                # rows_per_file=10000,
+                current_directory / ".valor", 
+                batch_size=1000, 
+                rows_per_file=10000,
             )
 
             # ingest + preprocess
