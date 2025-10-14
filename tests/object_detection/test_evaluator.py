@@ -1,12 +1,13 @@
 import tempfile
+from pathlib import Path
+
 import numpy as np
 import pytest
-from pathlib import Path
 
 from valor_lite.object_detection import (
     DataLoader,
-    Evaluator,
     Detection,
+    Evaluator,
     Metric,
     MetricType,
 )
@@ -28,13 +29,12 @@ def test_info_using_torch_metrics_example(
     loader = DataLoader()
     loader.add_bounding_boxes(torchmetrics_detections)
     evaluator = loader.finalize()
-    assert evaluator.info == {
-        "number_of_datums": 4,
-        "number_of_labels": 6,
-        "number_of_groundtruth_annotations": 20,
-        "number_of_prediction_annotations": 19,
-        "number_of_rows": 60,
-    }
+
+    assert evaluator.info["number_of_datums"] == 4
+    assert evaluator.info["number_of_labels"] == 6
+    assert evaluator.info["number_of_groundtruth_annotations"] == 20
+    assert evaluator.info["number_of_prediction_annotations"] == 19
+    assert evaluator.info["number_of_rows"] == 60
 
 
 def test_no_thresholds(detection_ranked_pair_ordering):

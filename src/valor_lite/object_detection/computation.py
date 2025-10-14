@@ -302,21 +302,90 @@ def filter_cache(
     )
 
 
-def prune_pairs(pairs: NDArray[np.float64]):
+def rank_pairs_returning_indices(sorted_pairs: NDArray[np.float64]):
+    """
+    Prunes and ranks prediction pairs.
+
+    Should result in a single pair per prediction annotation.
+    """
+
     # remove unmatched ground truths
-    pairs = pairs[pairs[:, 2] >= 0.0]
+    mask_predictions = sorted_pairs[:, 2] >= 0.0
+    pairs = sorted_pairs[mask_predictions]
+    indices = np.where(mask_predictions)[0]
 
     # find best fits for prediction
     mask_label_match = np.isclose(pairs[:, 3], pairs[:, 4])
     matched_predictions = np.unique(pairs[mask_label_match, 2])
+
     mask_unmatched_predictions = ~np.isin(pairs[:, 2], matched_predictions)
+
     pairs = pairs[mask_label_match | mask_unmatched_predictions]
+    indices = indices[mask_label_match | mask_unmatched_predictions]
 
     # only keep the highest ranked pair
-    _, indices = np.unique(pairs[:, [0, 2, 4]], axis=0, return_index=True)
-    pairs = pairs[indices]
+    _, unique_indices = np.unique(pairs[:, [0, 2]], axis=0, return_index=True)
+    pairs = pairs[unique_indices]
+    indices = indices[unique_indices]
 
-    return pairs
+    # np.unique orders its results by value, we need to sort the indices to maintain the results of the lexsort
+    sorted_indices = np.lexsort(
+        (
+            -pairs[:, 5],  # iou
+            -pairs[:, 6],  # score
+        )
+    )
+    pairs = pairs[sorted_indices]
+    indices = indices[sorted_indices]
+
+    return pairs, indices
+
+
+def calculate_ranking_boundaries(
+    ranked_pairs: NDArray[np.float64], number_of_labels: int
+):
+
+    unique_gts, gt_counts = np.unique(
+        ranked_pairs[:, (0, 1)].astype(np.int64),
+        return_counts=True,
+        axis=0,
+    )
+    unique_gts = unique_gts[gt_counts > 1]
+
+    ious = ranked_pairs[:, 5]
+
+    winning_predictions = np.ones_like(ious, dtype=np.bool_)
+    iou_boundary = np.zeros_like(ious)
+
+    for gt in unique_gts:
+        mask_gts = (
+            ranked_pairs[:, (0, 1)].astype(np.int64) == (gt[0], gt[1])
+        ).all(axis=1)
+        for label in range(number_of_labels):
+            mask_plabel = (ranked_pairs[:, 4] == label) & mask_gts
+            if mask_plabel.sum() <= 1:
+                continue
+
+            # mark sequence of increasing IOUs starting from index 0
+            labeled_ious = ranked_pairs[mask_plabel, 5]
+            mask_increasing_iou = np.ones_like(labeled_ious, dtype=np.bool_)
+            mask_increasing_iou[1:] = labeled_ious[1:] > labeled_ious[:-1]
+            idx_dec = np.where(~mask_increasing_iou)[0]
+            if idx_dec.size == 1:
+                mask_increasing_iou[idx_dec[0] :] = False
+
+            # define IOU lower bound
+            iou_boundary[mask_plabel][1:] = labeled_ious[:-1]
+            iou_boundary[mask_plabel][
+                ~mask_increasing_iou
+            ] = 2.0  # arbitrary >1.0 value
+
+        # mark first element (highest score)
+        print("MASKGTS", print(gt))
+        indices = np.where(mask_gts)[0][1:]
+        winning_predictions[indices] = False
+
+    return iou_boundary, winning_predictions
 
 
 def rank_pairs(
@@ -345,7 +414,18 @@ def rank_pairs(
     NDArray[np.float64]
         Array of ranked pairs for precision-recall metric computation.
     """
-    pairs = prune_pairs(detailed_pairs)
+    # remove unmatched ground truths
+    pairs = detailed_pairs[detailed_pairs[:, 2] >= 0.0]
+
+    # find best fits for prediction
+    mask_label_match = np.isclose(pairs[:, 3], pairs[:, 4])
+    matched_predictions = np.unique(pairs[mask_label_match, 2])
+    mask_unmatched_predictions = ~np.isin(pairs[:, 2], matched_predictions)
+    pairs = pairs[mask_label_match | mask_unmatched_predictions]
+
+    # only keep the highest ranked pair
+    _, indices = np.unique(pairs[:, [0, 2, 4]], axis=0, return_index=True)
+    pairs = pairs[indices]
 
     # np.unique orders its results by value, we need to sort the indices to maintain the results of the lexsort
     indices = np.lexsort(
@@ -365,6 +445,7 @@ def compute_counts(
     score_thresholds: NDArray[np.float64],
     number_of_groundtruths_per_label: NDArray[np.uint64],
     number_of_labels: int,
+    running_counts: NDArray[np.uint64],
 ) -> tuple:
     """
     Computes Object Detection metrics.
@@ -374,10 +455,12 @@ def compute_counts(
     Index 0 - Datum Index
     Index 1 - GroundTruth Index
     Index 2 - Prediction Index
-    Index 3 - IOU
-    Index 4 - GroundTruth Label Index
-    Index 5 - Prediction Label Index
+    Index 3 - GroundTruth Label Index
+    Index 4 - Prediction Label Index
+    Index 5 - IOU
     Index 6 - Score
+    Index 7 - IOU Lower Boundary
+    Index 8 - Winning Prediction
 
     Parameters
     ----------
@@ -415,17 +498,17 @@ def compute_counts(
     pd_labels = ids[:, 4]
     ious = ranked_pairs[:, 5]
     scores = ranked_pairs[:, 6]
+    prev_ious = ranked_pairs[:, 7]
+    winners = ranked_pairs[:, 8].astype(np.bool_)
 
-    unique_pd_labels, unique_pd_indices = np.unique(
-        pd_labels, return_index=True
-    )
-    gt_count = number_of_groundtruths_per_label
+    unique_pd_labels, _ = np.unique(pd_labels, return_index=True)
+
     running_total_count = np.zeros(
         (n_ious, n_rows),
         dtype=np.uint64,
     )
     running_tp_count = np.zeros_like(running_total_count)
-    running_gt_count = np.zeros_like(running_total_count)
+    running_gt_count = number_of_groundtruths_per_label[pd_labels]
 
     mask_score_nonzero = scores > 1e-9
     mask_gt_exists = gt_ids >= 0.0
@@ -436,12 +519,16 @@ def compute_counts(
     mask_tp = mask_score_nonzero & mask_gt_exists_labels_match
     mask_fp = mask_score_nonzero
 
-    for iou_idx in range(n_ious):
-        mask_iou = ious >= iou_thresholds[iou_idx]
+    print("WIN", winners[ranked_pairs[:, 4] == 5])
 
-        mask_tp_outer = mask_tp & mask_iou
+    for iou_idx in range(n_ious):
+        mask_iou_curr = ious >= iou_thresholds[iou_idx]
+        mask_iou_prev = prev_ious < iou_thresholds[iou_idx]
+        mask_iou = mask_iou_curr & mask_iou_prev
+
+        mask_tp_outer = mask_tp & mask_iou & winners
         mask_fp_outer = mask_fp & (
-            (~mask_gt_exists_labels_match & mask_iou) | ~mask_iou
+            (~mask_gt_exists_labels_match & mask_iou) | ~mask_iou | ~winners
         )
 
         for score_idx in range(n_scores):
@@ -474,8 +561,6 @@ def compute_counts(
                 pd_labels[mask_fp_inner],
                 minlength=n_labels,
             )
-            # fn count
-            counts[iou_idx, score_idx, 2, :] = gt_count - counts[iou_idx, score_idx, 0, :]            
 
         # create true-positive mask score threshold
         tp_candidates = ids[mask_tp_outer]
@@ -490,17 +575,25 @@ def compute_counts(
         # count running tp and total for AP
         for pd_label in unique_pd_labels:
             mask_pd_label = pd_labels == pd_label
-            running_gt_count[iou_idx][mask_pd_label] = gt_count[pd_label]
+
+            # running total prediction count
+            total_count = mask_pd_label.sum()
             running_total_count[iou_idx][mask_pd_label] = np.arange(
-                1, mask_pd_label.sum() + 1
+                running_counts[iou_idx, pd_label, 0],
+                running_counts[iou_idx, pd_label, 0] + total_count,
             )
+            running_counts[iou_idx, pd_label, 0] += total_count
+
+            # running true-positive count
             mask_tp_for_counting = mask_pd_label & true_positives_mask
+            tp_count = mask_tp_for_counting.sum()
             running_tp_count[iou_idx][mask_tp_for_counting] = np.arange(
-                1, mask_tp_for_counting.sum() + 1
+                running_counts[iou_idx, pd_label, 1],
+                running_counts[iou_idx, pd_label, 1] + tp_count,
             )
-    
+            running_counts[iou_idx, pd_label, 1] += tp_count
+
     # calculate running precision-recall points for AP
-    running_gt_count = number_of_groundtruths_per_label[pd_labels]
     precision = np.zeros_like(running_total_count, dtype=np.float64)
     np.divide(
         running_tp_count,
@@ -517,16 +610,18 @@ def compute_counts(
     )
     recall_index = np.floor(recall * 100.0).astype(np.int32)
 
+    print(running_total_count[0][pd_labels == 5])
+    print(running_tp_count[0][pd_labels == 5])
+    print(running_gt_count[0])
+
     # bin precision-recall curve
     for iou_idx in range(n_ious):
-        p = precision[iou_idx]
-        r = recall_index[iou_idx]
-        pr_curve[iou_idx, pd_labels, r, 0] = np.maximum(
-            pr_curve[iou_idx, pd_labels, r, 0],
-            p,
+        pr_curve[iou_idx, pd_labels, recall_index[iou_idx], 0] = np.maximum(
+            pr_curve[iou_idx, pd_labels, recall_index[iou_idx], 0],
+            precision[iou_idx],
         )
-        pr_curve[iou_idx, pd_labels, r, 1] = np.maximum(
-            pr_curve[iou_idx, pd_labels, r, 1],
+        pr_curve[iou_idx, pd_labels, recall_index[iou_idx], 1] = np.maximum(
+            pr_curve[iou_idx, pd_labels, recall_index[iou_idx], 1],
             scores,
         )
 
@@ -543,24 +638,24 @@ def compute_precision_recall_f1(
 
     prec_rec_f1 = np.zeros_like(counts, dtype=np.float64)
 
-    # alias        
+    # alias
     tp_count = counts[:, :, 0, :]
     fp_count = counts[:, :, 1, :]
     tp_fp_count = tp_count + fp_count
 
     # calculate component metrics
     np.divide(
-        tp_count, 
-        tp_fp_count, 
-        where=tp_fp_count > 0, 
+        tp_count,
+        tp_fp_count,
+        where=tp_fp_count > 0,
         out=prec_rec_f1[:, :, 0, :],
     )
     np.divide(
-        tp_count, 
-        number_of_groundtruths_per_label, 
-        where=number_of_groundtruths_per_label > 0, 
+        tp_count,
+        number_of_groundtruths_per_label,
+        where=number_of_groundtruths_per_label > 0,
         out=prec_rec_f1[:, :, 1, :],
-    )            
+    )
     p = prec_rec_f1[:, :, 0, :]
     r = prec_rec_f1[:, :, 1, :]
     np.divide(
@@ -572,7 +667,7 @@ def compute_precision_recall_f1(
     return prec_rec_f1
 
 
-def compute_average_recall(prec_rec_f1: NDArray[np.float64]):  
+def compute_average_recall(prec_rec_f1: NDArray[np.float64]):
     recall = prec_rec_f1[:, :, 1, :]
     average_recall = recall.mean(axis=0)
     mAR = average_recall.mean(axis=-1)
@@ -582,10 +677,10 @@ def compute_average_recall(prec_rec_f1: NDArray[np.float64]):
 def compute_average_precision(pr_curve: NDArray[np.float64]):
     n_ious = pr_curve.shape[0]
     n_labels = pr_curve.shape[1]
-    
+
     # initialize result arrays
     average_precision = np.zeros((n_ious, n_labels), dtype=np.float64)
-    mAP = np.zeros(n_ious, dtype=np.float64)    
+    mAP = np.zeros(n_ious, dtype=np.float64)
 
     # calculate average precision
     running_max_precision = np.zeros((n_ious, n_labels), dtype=np.float64)
@@ -615,7 +710,7 @@ def compute_average_precision(pr_curve: NDArray[np.float64]):
         mAP = average_precision.mean(axis=1)
 
     return average_precision, mAP, pr_curve
-    
+
 
 def _isin(
     data: NDArray,
@@ -690,7 +785,9 @@ def compute_pair_classifications(
     detailed_pairs: NDArray[np.float64],
     iou_thresholds: NDArray[np.float64],
     score_thresholds: NDArray[np.float64],
-) -> tuple[NDArray[np.bool_], NDArray[np.bool_], NDArray[np.bool_], NDArray[np.bool_]]:
+) -> tuple[
+    NDArray[np.bool_], NDArray[np.bool_], NDArray[np.bool_], NDArray[np.bool_]
+]:
     """
     Compute detailed counts.
 
@@ -803,17 +900,18 @@ def compute_pair_classifications(
                 iou_idx, score_idx, mask_unmatched_groundtruths
             ] |= np.uint8(PairClassification.FN_UNMATCHED)
 
-    mask_tp = (
-        np.bitwise_and(pair_classifications, PairClassification.TP)> 0
-    )
+    mask_tp = np.bitwise_and(pair_classifications, PairClassification.TP) > 0
     mask_fp_fn_misclf = (
-        np.bitwise_and(pair_classifications, PairClassification.FP_FN_MISCLF) > 0
+        np.bitwise_and(pair_classifications, PairClassification.FP_FN_MISCLF)
+        > 0
     )
     mask_fp_unmatched = (
-        np.bitwise_and(pair_classifications, PairClassification.FP_UNMATCHED) > 0
+        np.bitwise_and(pair_classifications, PairClassification.FP_UNMATCHED)
+        > 0
     )
     mask_fn_unmatched = (
-        np.bitwise_and(pair_classifications, PairClassification.FN_UNMATCHED) > 0
+        np.bitwise_and(pair_classifications, PairClassification.FN_UNMATCHED)
+        > 0
     )
 
     return (
@@ -839,8 +937,12 @@ def compute_confusion_matrix(
     ids = detailed_pairs[:, :5].astype(np.int64)
 
     # initialize arrays
-    confusion_matrices = np.zeros((n_ious, n_scores, number_of_labels, number_of_labels), dtype=np.uint64)
-    unmatched_groundtruths = np.zeros((n_ious, n_scores, number_of_labels), dtype=np.uint64)
+    confusion_matrices = np.zeros(
+        (n_ious, n_scores, number_of_labels, number_of_labels), dtype=np.uint64
+    )
+    unmatched_groundtruths = np.zeros(
+        (n_ious, n_scores, number_of_labels), dtype=np.uint64
+    )
     unmatched_predictions = np.zeros_like(unmatched_groundtruths)
 
     mask_matched = mask_tp | mask_fp_fn_misclf
@@ -848,26 +950,38 @@ def compute_confusion_matrix(
         for score_idx in range(n_scores):
             # matched annotations
             unique_pairs = np.unique(
-                ids[np.ix_(mask_matched[iou_idx, score_idx], (0, 1, 2, 3, 4))], # type: ignore - numpy ix_ typing
+                ids[np.ix_(mask_matched[iou_idx, score_idx], (0, 1, 2, 3, 4))],  # type: ignore - numpy ix_ typing
                 axis=0,
             )
-            unique_labels, unique_label_counts = np.unique(unique_pairs[:, (3, 4)], axis=0, return_counts=True)
-            confusion_matrices[iou_idx, score_idx, unique_labels[:, 0], unique_labels[:, 1]] = unique_label_counts
+            unique_labels, unique_label_counts = np.unique(
+                unique_pairs[:, (3, 4)], axis=0, return_counts=True
+            )
+            confusion_matrices[
+                iou_idx, score_idx, unique_labels[:, 0], unique_labels[:, 1]
+            ] = unique_label_counts
 
             # unmatched groundtruths
             unique_pairs = np.unique(
-                ids[np.ix_(mask_fn_unmatched[iou_idx, score_idx], (0, 1, 3))],   # type: ignore - numpy ix_ typing
+                ids[np.ix_(mask_fn_unmatched[iou_idx, score_idx], (0, 1, 3))],  # type: ignore - numpy ix_ typing
                 axis=0,
             )
-            unique_labels, unique_label_counts = np.unique(unique_pairs[:, 2], return_counts=True)
-            unmatched_groundtruths[iou_idx, score_idx, unique_labels] = unique_label_counts
+            unique_labels, unique_label_counts = np.unique(
+                unique_pairs[:, 2], return_counts=True
+            )
+            unmatched_groundtruths[
+                iou_idx, score_idx, unique_labels
+            ] = unique_label_counts
 
             # unmatched predictions
             unique_pairs = np.unique(
-                ids[np.ix_(mask_fp_unmatched[iou_idx, score_idx], (0, 2, 4))],   # type: ignore - numpy ix_ typing
+                ids[np.ix_(mask_fp_unmatched[iou_idx, score_idx], (0, 2, 4))],  # type: ignore - numpy ix_ typing
                 axis=0,
             )
-            unique_labels, unique_label_counts = np.unique(unique_pairs[:, 2], return_counts=True)
-            unmatched_predictions[iou_idx, score_idx, unique_labels] = unique_label_counts
+            unique_labels, unique_label_counts = np.unique(
+                unique_pairs[:, 2], return_counts=True
+            )
+            unmatched_predictions[
+                iou_idx, score_idx, unique_labels
+            ] = unique_label_counts
 
     return confusion_matrices, unmatched_groundtruths, unmatched_predictions

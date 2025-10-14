@@ -1,25 +1,35 @@
 import json
+from collections import defaultdict
 from pathlib import Path
 
 import numpy as np
 import pyarrow as pa
-from tqdm import tqdm
-from itertools import count
-from collections import defaultdict
 from numpy.typing import NDArray
+from tqdm import tqdm
 
-from valor_lite.cache import Cache, DataType
-from valor_lite.object_detection.annotation import BoundingBox, Polygon, Bitmask, Detection
-from valor_lite.object_detection.computation import compute_bbox_iou, compute_polygon_iou, compute_bitmask_iou
-from valor_lite.object_detection.evaluator import Evaluator
+from valor_lite.cache import CacheWriter, DataType
 from valor_lite.exceptions import EmptyEvaluatorError
+from valor_lite.object_detection.annotation import (
+    Bitmask,
+    BoundingBox,
+    Detection,
+    Polygon,
+)
+from valor_lite.object_detection.computation import (
+    compute_bbox_iou,
+    compute_bitmask_iou,
+    compute_polygon_iou,
+)
+from valor_lite.object_detection.evaluator import Evaluator
 
 
 class Loader:
     def __init__(
         self,
         directory: str | Path = ".valor",
-        batch_size: int = 10000,
+        # batch_size: int = 1,
+        # rows_per_file: int = 1,
+        batch_size: int = 10_000,
         rows_per_file: int = 1_000_000,
         compression: str = "snappy",
         datum_metadata_types: dict[str, DataType] | None = None,
@@ -30,7 +40,9 @@ class Loader:
         self._detailed_path = self._dir / Path("detailed")
         self._ranked_path = self._dir / Path("ranked")
         self._labels_path = self._dir / Path("labels.json")
-        self._number_of_groundtruths_per_label_path = self._dir / Path("groundtruths_per_label.json")
+        self._number_of_groundtruths_per_label_path = self._dir / Path(
+            "groundtruths_per_label.json"
+        )
         self._info_path = self._dir / Path("info.json")
 
         self._labels = {}
@@ -38,6 +50,10 @@ class Loader:
         self._datum_count = 0
         self._groundtruth_count = 0
         self._prediction_count = 0
+
+        self._datum_metadata_types = datum_metadata_types
+        self._groundtruth_metadata_types = groundtruth_metadata_types
+        self._prediction_metadata_types = prediction_metadata_types
 
         datum_metadata_schema = (
             [(k, v.to_arrow()) for k, v in datum_metadata_types.items()]
@@ -83,8 +99,8 @@ class Loader:
                 # pair
                 ("iou", pa.float64()),
             ]
-        )        
-        self._detailed = Cache(
+        )
+        self._detailed = CacheWriter(
             where=self._detailed_path,
             schema=schema,
             batch_size=batch_size,
@@ -273,7 +289,7 @@ class Loader:
             detection_ious=ious,
             show_progress=show_progress,
         )
-    
+
     def add_polygons(
         self,
         detections: list[Detection[Polygon]],
@@ -352,13 +368,6 @@ class Loader:
         self._detailed.flush()
         if self._detailed.dataset.count_rows() == 0:
             raise EmptyEvaluatorError()
-        _ = self._detailed.sort_by(
-            destination=self._ranked_path,
-            sorting=[
-                ("score", "descending"),
-                ("iou", "descending"),
-            ],
-        )
         with open(self._labels_path, "w") as f:
             json.dump({v: k for k, v in self._labels.items()}, f, indent=2)
         with open(self._number_of_groundtruths_per_label_path, "w") as f:
@@ -370,6 +379,17 @@ class Loader:
                 number_of_prediction_annotations=self._prediction_count,
                 number_of_labels=len(self._labels),
                 number_of_rows=self._detailed.dataset.count_rows(),
+                datum_metadata_types=self._datum_metadata_types,
+                groundtruth_metadata_types=self._groundtruth_metadata_types,
+                prediction_metadata_types=self._prediction_metadata_types,
             )
             json.dump(info, f, indent=2)
-        return Evaluator(self._dir)
+        evaluator = Evaluator(self._dir)
+        evaluator.create_ranked_cache(
+            destination=self._ranked_path,
+            sorting=[
+                ("score", "descending"),
+                ("iou", "descending"),
+            ],
+        )
+        return evaluator

@@ -1,7 +1,4 @@
-import numpy as np
-
 from valor_lite.object_detection import DataLoader, Detection, MetricType
-
 
 # def test__compute_recall():
 #     sorted_pairs = np.array(
@@ -467,7 +464,7 @@ def test_recall_false_negatives_two_datums_one_only_with_different_class_high_co
             },
         },
     ]
-    for m in expected_metrics:
-        assert m in actual_metrics
     for m in actual_metrics:
         assert m in expected_metrics
+    for m in expected_metrics:
+        assert m in actual_metrics

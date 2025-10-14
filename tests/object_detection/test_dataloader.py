@@ -4,7 +4,7 @@ import numpy as np
 import pytest
 from shapely.geometry import Polygon as ShapelyPolygon
 
-from valor_lite.exceptions import EmptyEvaluatorError, InternalCacheError
+from valor_lite.exceptions import EmptyEvaluatorError
 from valor_lite.object_detection import (
     Bitmask,
     BoundingBox,
@@ -76,13 +76,11 @@ def test_iou_computation():
     loader.add_bounding_boxes([detection])
     evaluator = loader.finalize()
 
-    assert evaluator.info == {
-        "number_of_datums": 1,
-        "number_of_labels": 3,
-        "number_of_groundtruth_annotations": 3,
-        "number_of_prediction_annotations": 2,
-        "number_of_rows": 7,
-    }
+    assert evaluator.info["number_of_datums"] == 1
+    assert evaluator.info["number_of_labels"] == 3
+    assert evaluator.info["number_of_groundtruth_annotations"] == 3
+    assert evaluator.info["number_of_prediction_annotations"] == 2
+    assert evaluator.info["number_of_rows"] == 7
 
     tbl = evaluator._detailed.to_table()
     assert tbl.shape == (7, 12)  # 7 rows, 12 columns

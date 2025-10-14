@@ -1,13 +1,4 @@
-import numpy as np
-import tempfile
-from pathlib import Path
-
-from valor_lite.object_detection import DataLoader, Detection, Evaluator
-from valor_lite.object_detection.computation import (
-    PairClassification,
-    compute_confusion_matrix,
-    compute_pair_classifications,
-)
+from valor_lite.object_detection import DataLoader, Detection
 
 # def test_compute_pair_classifications():
 
@@ -409,7 +400,7 @@ def test_confusion_matrix(
                 "unmatched_ground_truths": {
                     "unmatched_groundtruth": 1,
                     "v2": 1,
-                    "matched_low_iou": 1
+                    "matched_low_iou": 1,
                 },
             },
             "parameters": {
@@ -503,9 +494,7 @@ def test_confusion_matrix_using_torch_metrics_example(
                     "49": {"49": 8},
                 },
                 "unmatched_predictions": {"49": 1},
-                "unmatched_ground_truths": {
-                    "49": 2
-                },
+                "unmatched_ground_truths": {"49": 2},
             },
             "parameters": {
                 "score_threshold": 0.05,
@@ -770,9 +759,7 @@ def test_confusion_matrix_using_torch_metrics_example(
         {
             "type": "ConfusionMatrix",
             "value": {
-                "confusion_matrix": {
-                    "49": {"49": 1}
-                },
+                "confusion_matrix": {"49": {"49": 1}},
                 "unmatched_predictions": {
                     "0": 2,
                     "49": 1,
@@ -793,9 +780,7 @@ def test_confusion_matrix_using_torch_metrics_example(
         {
             "type": "ConfusionMatrix",
             "value": {
-                "confusion_matrix": {
-                    "49": {"49": 1}
-                },
+                "confusion_matrix": {"49": {"49": 1}},
                 "unmatched_predictions": {"0": 2},
                 "unmatched_ground_truths": {
                     "4": 2,
@@ -813,9 +798,7 @@ def test_confusion_matrix_using_torch_metrics_example(
         {
             "type": "ConfusionMatrix",
             "value": {
-                "confusion_matrix": {
-                    "49": {"49": 1}
-                },
+                "confusion_matrix": {"49": {"49": 1}},
                 "unmatched_predictions": {"0": 1},
                 "unmatched_ground_truths": {
                     "4": 2,
@@ -885,17 +868,9 @@ def test_confusion_matrix_fp_unmatched_prediction_edge_case(
         {
             "type": "ConfusionMatrix",
             "value": {
-                "confusion_matrix": {
-                    "v1": {
-                        "v1": 1
-                    }
-                },
-                "unmatched_predictions": {
-                    "v1": 1
-                },
-                "unmatched_ground_truths": {
-                    "v1": 1
-                },
+                "confusion_matrix": {"v1": {"v1": 1}},
+                "unmatched_predictions": {"v1": 1},
+                "unmatched_ground_truths": {"v1": 1},
             },
             "parameters": {
                 "score_threshold": 0.5,
@@ -907,9 +882,7 @@ def test_confusion_matrix_fp_unmatched_prediction_edge_case(
             "value": {
                 "confusion_matrix": {},
                 "unmatched_predictions": {},
-                "unmatched_ground_truths": {
-                    "v1": 2
-                },
+                "unmatched_ground_truths": {"v1": 2},
             },
             "parameters": {
                 "score_threshold": 0.85,
@@ -950,13 +923,11 @@ def test_confusion_matrix_ranked_pair_ordering(
 
         evaluator = loader.finalize()
 
-        assert evaluator.info == {
-            "number_of_datums": 1,
-            "number_of_groundtruth_annotations": 3,
-            "number_of_labels": 4,
-            "number_of_prediction_annotations": 4,
-            "number_of_rows": 12,
-        }
+        assert evaluator.info["number_of_datums"] == 1
+        assert evaluator.info["number_of_groundtruth_annotations"] == 3
+        assert evaluator.info["number_of_labels"] == 4
+        assert evaluator.info["number_of_prediction_annotations"] == 4
+        assert evaluator.info["number_of_rows"] == 12
 
         actual_metrics = evaluator.compute_confusion_matrix(
             iou_thresholds=[0.5],
@@ -969,20 +940,14 @@ def test_confusion_matrix_ranked_pair_ordering(
                 "type": "ConfusionMatrix",
                 "value": {
                     "confusion_matrix": {
-                        "label1": {
-                            "label2": 1
-                        },
-                        "label2": {
-                            "label1": 1
-                        },
+                        "label1": {"label2": 1},
+                        "label2": {"label1": 1},
                     },
                     "unmatched_predictions": {
                         "label3": 1,
                         "label4": 1,
                     },
-                    "unmatched_ground_truths": {
-                        "label3": 1
-                    },
+                    "unmatched_ground_truths": {"label3": 1},
                 },
                 "parameters": {
                     "score_threshold": 0.0,

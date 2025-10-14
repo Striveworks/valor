@@ -1,6 +1,5 @@
-import numpy as np
-
 from valor_lite.object_detection import DataLoader, Detection, MetricType
+
 # from valor_lite.object_detection.computation import compute_precion_recall
 
 
@@ -687,13 +686,11 @@ def test_ap_ranked_pair_ordering(
         method(loader, detections=[input_])
         evaluator = loader.finalize()
 
-        assert evaluator.info == {
-            "number_of_datums": 1,
-            "number_of_labels": 4,
-            "number_of_groundtruth_annotations": 3,
-            "number_of_prediction_annotations": 4,
-            "number_of_rows": 12,
-        }
+        assert evaluator.info["number_of_datums"] == 1
+        assert evaluator.info["number_of_labels"] == 4
+        assert evaluator.info["number_of_groundtruth_annotations"] == 3
+        assert evaluator.info["number_of_prediction_annotations"] == 4
+        assert evaluator.info["number_of_rows"] == 12
 
         metrics = evaluator.evaluate(
             iou_thresholds=[0.5, 0.75],
