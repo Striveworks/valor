@@ -299,9 +299,9 @@ def run_benchmarking_analysis(
 
             # === Base Evaluation ===
             manager = Loader(
-                current_directory / ".valor", 
-                batch_size=1000, 
-                rows_per_file=10000,
+                current_directory / ".valor",
+                batch_size=1_000,
+                rows_per_file=10_000,
             )
 
             # ingest + preprocess
@@ -359,10 +359,10 @@ def run_benchmarking_analysis(
             results.append(
                 Benchmark(
                     limit=limit,
-                    n_datums=0, #evaluator.metadata.number_of_datums,
-                    n_groundtruths=0, #evaluator.metadata.number_of_ground_truths,
-                    n_predictions=0, #evaluator.metadata.number_of_predictions,
-                    n_labels=0, #evaluator.metadata.number_of_labels,
+                    n_datums=0,  # evaluator.metadata.number_of_datums,
+                    n_groundtruths=0,  # evaluator.metadata.number_of_ground_truths,
+                    n_predictions=0,  # evaluator.metadata.number_of_predictions,
+                    n_labels=0,  # evaluator.metadata.number_of_labels,
                     gt_type=gt_type,
                     pd_type=pd_type,
                     chunk_size=chunk_size,

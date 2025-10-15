@@ -130,15 +130,18 @@ class Evaluator:
     def create_ranked_cache(
         self,
         where: str | Path,
-        batch_size: int | None = None,
         rows_per_file: int | None = None,
         compression: str | None = None,
+        write_batch_size: int | None = None,
+        read_batch_size: int = 1_000,
     ):
         n_labels = len(self._index_to_label)
         detailed_cache = CacheReader(self._detailed_path)
 
-        batch_size = (
-            batch_size if batch_size is not None else detailed_cache.batch_size
+        write_batch_size = (
+            write_batch_size
+            if write_batch_size is not None
+            else detailed_cache.batch_size
         )
         rows_per_file = (
             rows_per_file
@@ -154,7 +157,7 @@ class Evaluator:
         with CacheWriter(
             where=where,
             schema=self.ranked_schema,
-            batch_size=batch_size,
+            batch_size=write_batch_size,
             rows_per_file=rows_per_file,
             compression=compression,
         ) as ranked_cache:
@@ -195,7 +198,7 @@ class Evaluator:
                 batches = []
                 for batch_idx, path in enumerate(tmpfiles):
                     pf = pq.ParquetFile(path)
-                    batch_iter = pf.iter_batches(batch_size=batch_size)
+                    batch_iter = pf.iter_batches(batch_size=read_batch_size)
                     batch_iterators.append(batch_iter)
                     batches.append(next(batch_iterators[batch_idx], None))
                     if (
@@ -245,6 +248,7 @@ class Evaluator:
         iou_thresholds: list[float],
         score_thresholds: list[float],
         filter_expr=None,
+        where: str | Path | None = None,
     ) -> dict[MetricType, list[Metric]]:
         """
         Computes all metrics except for ConfusionMatrix
@@ -268,20 +272,14 @@ class Evaluator:
         elif not score_thresholds:
             raise ValueError("At least one score threshold must be passed.")
 
-        # if filter_expr is None:
-        ranked_dataset = ds.dataset(self._ranked_path, format="parquet")
+        if filter_expr is None:
+            ranked_dataset = ds.dataset(self._ranked_path, format="parquet")
+        else:
+            if where is None:
+                raise ValueError("path for filtered ranked pairs is required")
+            self.create_ranked_cache(where=where)
+            ranked_dataset = ds.dataset(where, format="parquet")
 
-        columns = [
-            "datum_id",
-            "gt_id",
-            "pd_id",
-            "gt_label_id",
-            "pd_label_id",
-            "iou",
-            "score",
-            "iou_prev",
-            "high_score",
-        ]
         n_ious = len(iou_thresholds)
         n_scores = len(score_thresholds)
         n_labels = len(self._index_to_label)
@@ -291,14 +289,24 @@ class Evaluator:
         running_counts = np.ones((n_ious, n_labels, 2), dtype=np.uint64)
         for tbl in self.iterate_pairs(
             dataset=ranked_dataset,
-            columns=columns,
+            columns=[
+                "datum_id",
+                "gt_id",
+                "pd_id",
+                "gt_label_id",
+                "pd_label_id",
+                "iou",
+                "score",
+                "iou_prev",
+                "high_score",
+            ],
             filter_expr=filter_expr,
         ):
-            pairs = np.column_stack([tbl[col].to_numpy() for col in columns])
+            pairs = np.column_stack(
+                [tbl.column(i).to_numpy() for i in range(tbl.num_columns)]
+            )
             if pairs.size == 0:
                 continue
-
-            print("LOOP", pairs.shape)
 
             (batch_counts, batch_pr_curve) = compute_counts(
                 ranked_pairs=pairs,
@@ -381,18 +389,17 @@ class Evaluator:
             (n_ious, n_scores, n_labels), dtype=np.uint64
         )
         unmatched_predictions = np.zeros_like(unmatched_groundtruths)
-        columns = [
-            "datum_id",
-            "gt_id",
-            "pd_id",
-            "gt_label_id",
-            "pd_label_id",
-            "iou",
-            "score",
-        ]
         for tbl in self.iterate_pairs(
             dataset=self._dataset,
-            columns=columns,
+            columns=[
+                "datum_id",
+                "gt_id",
+                "pd_id",
+                "gt_label_id",
+                "pd_label_id",
+                "iou",
+                "score",
+            ],
             filter_expr=filter_expr,
         ):
             pairs = np.column_stack(
@@ -521,6 +528,7 @@ class Evaluator:
             batch_mask_fn = batch_mask_fp_fn_misclf | batch_mask_fn_unmatched
             batch_mask_fp = batch_mask_fp_fn_misclf | batch_mask_fp_unmatched
 
+            # TODO - batch this computation
             pairs = (
                 np.concatenate([pairs, batch_pairs]) if pairs else batch_pairs
             )
