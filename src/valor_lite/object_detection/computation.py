@@ -381,7 +381,6 @@ def calculate_ranking_boundaries(
             ] = 2.0  # arbitrary >1.0 value
 
         # mark first element (highest score)
-        print("MASKGTS", print(gt))
         indices = np.where(mask_gts)[0][1:]
         winning_predictions[indices] = False
 

@@ -82,7 +82,7 @@ def test_iou_computation():
     assert evaluator.info["number_of_prediction_annotations"] == 2
     assert evaluator.info["number_of_rows"] == 7
 
-    tbl = evaluator._detailed.to_table()
+    tbl = evaluator._dataset.to_table()
     assert tbl.shape == (7, 12)  # 7 rows, 12 columns
 
     # show that three unique IOUs exist

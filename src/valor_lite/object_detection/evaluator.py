@@ -1,6 +1,7 @@
 import heapq
 import json
 import tempfile
+from dataclasses import dataclass
 from pathlib import Path
 
 import numpy as np
@@ -9,7 +10,7 @@ import pyarrow.dataset as ds
 import pyarrow.parquet as pq
 from numpy.typing import NDArray
 
-from valor_lite.cache import CacheReader, CacheWriter
+from valor_lite.cache import CacheReader, CacheWriter, DataType
 from valor_lite.object_detection.computation import (
     calculate_ranking_boundaries,
     compute_average_precision,
@@ -43,6 +44,21 @@ def create_mapping(
     }
 
 
+@dataclass
+class EvaluatorInfo:
+    number_of_datums: int
+    number_of_groundtruth_annotations: int
+    number_of_prediction_annotations: int
+    number_of_labels: int
+    number_of_rows: int
+    datum_metadata_types: dict[str, DataType] | None
+    groundtruth_metadata_types: dict[str, DataType] | None
+    prediction_metadata_types: dict[str, DataType] | None
+
+    def __getitem__(self, key: str):
+        return getattr(self, key)
+
+
 class Evaluator:
     def __init__(
         self,
@@ -57,62 +73,78 @@ class Evaluator:
             "groundtruths_per_label.json"
         )
 
-        self._detailed = ds.dataset(self._detailed_path, format="parquet")
+        # read from file
+        self._dataset = ds.dataset(self._detailed_path, format="parquet")
+
+        # load id to label mapping
         with open(self._labels_path, "r") as f:
             labels = json.load(f)
             self._index_to_label = {int(k): v for k, v in labels.items()}
+
+        # load label id to ground truth count mapping
         with open(self._number_of_groundtruths_per_label_path, "r") as f:
-            gts_per_lbl = json.load(f)
-            print("GTS/LBL", json.dumps(gts_per_lbl, indent=2))
             self._number_of_groundtruths_per_label = np.zeros(
                 len(self._index_to_label), dtype=np.uint64
             )
-            for k, v in gts_per_lbl.items():
+            for k, v in json.load(f).items():
                 self._number_of_groundtruths_per_label[int(k)] = v
+
+        # load evaluator info
         with open(self._info_path, "r") as f:
-            self._info = json.load(f)
-        print(self.info)
-        print("IDX2LBL", self._index_to_label)
+            self._info = EvaluatorInfo(**json.load(f))
+
+        # create ranked cache schema
+        annotation_metadata_keys = {
+            *(
+                set(self.info.groundtruth_metadata_types.keys())
+                if self.info.groundtruth_metadata_types
+                else {}
+            ),
+            *(
+                set(self.info.prediction_metadata_types.keys())
+                if self.info.prediction_metadata_types
+                else {}
+            ),
+        }
+        self._pruned_schema = pa.schema(
+            [
+                field
+                for field in self._dataset.schema
+                if field.name not in annotation_metadata_keys
+            ]
+        )
+        self.ranked_schema = self._pruned_schema.append(
+            pa.field("iou_prev", pa.float64())
+        )
+        self.ranked_schema = self.ranked_schema.append(
+            pa.field("high_score", pa.bool_())
+        )
 
     @property
     def _ranked(self):
         return ds.dataset(self._ranked_path, format="parquet")
 
     @property
-    def schema(self) -> pa.Schema:
-        return self._detailed.schema
-
-    @property
-    def info(self) -> dict[str, int]:
+    def info(self) -> EvaluatorInfo:
         return self._info
 
     def create_ranked_cache(
         self,
-        destination: str | Path,
-        sorting: str | list[tuple[str, str]],
-        columns: list[str] | None = None,
+        where: str | Path,
     ):
-        if isinstance(sorting, str):
-            sorting = [(sorting, "ascending")]
-
         detailed_cache = CacheReader(self._detailed_path)
 
-        schema = detailed_cache.schema
-        if columns:
-            schema = pa.schema(
-                [field for field in schema if field.name in columns]
-            )
-        schema = schema.append(pa.field("iou_prev", pa.float64()))
-        schema = schema.append(pa.field("winner", pa.bool_()))
-
         cache = CacheWriter(
-            destination,
-            schema=schema,
+            where=where,
+            schema=self.ranked_schema,
             batch_size=detailed_cache.batch_size,
             rows_per_file=detailed_cache.rows_per_file,
             compression=detailed_cache.compression,
         )
-
+        sorting_args = [
+            ("score", "descending"),
+            ("iou", "descending"),
+        ]
         numeric_columns = [
             "datum_id",
             "gt_id",
@@ -122,10 +154,11 @@ class Evaluator:
             "iou",
             "score",
         ]
+
         if detailed_cache.num_files == 1:
             pf = pq.ParquetFile(detailed_cache.files[0])
             tbl = pf.read()
-            sorted_tbl = tbl.sort_by(sorting)
+            sorted_tbl = tbl.sort_by(sorting_args)
 
             pairs = np.column_stack(
                 [sorted_tbl[col].to_numpy() for col in numeric_columns]
@@ -145,17 +178,19 @@ class Evaluator:
             column_field = pa.field("winner", pa.bool_())
             ranked_tbl = ranked_tbl.append_column(column_field, column_data)
 
-            ranked_tbl = ranked_tbl.sort_by(sorting)
+            ranked_tbl = ranked_tbl.sort_by(sorting_args)
             cache.write_table(ranked_tbl)
+
+        pruned_detailed_columns = [field.name for field in self._pruned_schema]
 
         with tempfile.TemporaryDirectory() as tmpdir:
 
             # sort individual files
             tmpfiles = []
-            for idx, fragment in enumerate(self._detailed.get_fragments()):
-                tbl = fragment.to_table(columns=columns)
+            for idx, fragment in enumerate(self._dataset.get_fragments()):
+                tbl = fragment.to_table(columns=pruned_detailed_columns)
 
-                sorted_tbl = tbl.sort_by(sorting)
+                sorted_tbl = tbl.sort_by(sorting_args)
 
                 path = Path(tmpdir) / f"{idx:06d}.parquet"
 
@@ -165,7 +200,10 @@ class Evaluator:
                 pairs, indices = rank_pairs_returning_indices(pairs)
                 ranked_tbl = sorted_tbl.take(indices)
 
-                lower_iou_bound, winners = calculate_ranking_boundaries(
+                (
+                    lower_iou_bound,
+                    winning_predictions,
+                ) = calculate_ranking_boundaries(
                     pairs, number_of_labels=len(self._index_to_label)
                 )
 
@@ -175,20 +213,17 @@ class Evaluator:
                     column_field, column_data
                 )
 
-                column_data = pa.array(winners, type=pa.bool_())
-                column_field = pa.field("winner", pa.bool_())
+                column_data = pa.array(winning_predictions, type=pa.bool_())
+                column_field = pa.field("high_score", pa.bool_())
                 ranked_tbl = ranked_tbl.append_column(
                     column_field, column_data
                 )
 
-                ranked_tbl = ranked_tbl.sort_by(sorting)
-
+                ranked_tbl = ranked_tbl.sort_by(sorting_args)
                 pq.write_table(ranked_tbl, path)
-
                 tmpfiles.append(path)
 
             # merge sorted rows
-            # TODO (c.zaloom) - explore more performant ways of doing this...
             heap = []
             batch_iterators = []
             batches = []
@@ -204,7 +239,7 @@ class Evaluator:
                         -batches[idx][col][0].as_py()
                         if order == "descending"
                         else batches[idx][col][0].as_py()
-                        for col, order in sorting
+                        for col, order in sorting_args
                     ]
                     heapq.heappush(heap, (*sort_args, idx, 0))
 
@@ -220,7 +255,7 @@ class Evaluator:
                         batches[idx][col][row_idx].as_py()
                         if order == "ascending"
                         else -batches[idx][col][row_idx].as_py()
-                        for col, order in sorting
+                        for col, order in sorting_args
                     ]
                     heapq.heappush(heap, (*sort_args, idx, row_idx))
                 else:
@@ -230,19 +265,17 @@ class Evaluator:
                             batches[idx][col][0].as_py()
                             if order == "ascending"
                             else -batches[idx][col][0].as_py()
-                            for col, order in sorting
+                            for col, order in sorting_args
                         ]
                         heapq.heappush(heap, (*sort_args, idx, 0))
 
-    def iterate_detailed_pairs(self, columns=None, filter_expr=None):
-        for fragment in self._detailed.get_fragments():
-            yield fragment.to_table(
-                columns=columns,
-                filter=filter_expr,
-            )
-
-    def iterate_ranked_pairs(self, columns=None, filter_expr=None):
-        for fragment in self._ranked.get_fragments():
+    def iterate_pairs(
+        self,
+        dataset: ds.Dataset,
+        columns=None,
+        filter_expr=None,
+    ):
+        for fragment in dataset.get_fragments():
             yield fragment.to_table(
                 columns=columns,
                 filter=filter_expr,
@@ -276,6 +309,9 @@ class Evaluator:
         elif not score_thresholds:
             raise ValueError("At least one score threshold must be passed.")
 
+        # if filter_expr is None:
+        ranked_dataset = ds.dataset(self._ranked_path, format="parquet")
+
         columns = [
             "datum_id",
             "gt_id",
@@ -294,7 +330,8 @@ class Evaluator:
         counts = np.zeros((n_ious, n_scores, 3, n_labels), dtype=np.uint64)
         pr_curve = np.zeros((n_ious, n_labels, 101, 2), dtype=np.float64)
         running_counts = np.ones((n_ious, n_labels, 2), dtype=np.uint64)
-        for tbl in self.iterate_ranked_pairs(
+        for tbl in self.iterate_pairs(
+            dataset=ranked_dataset,
             columns=columns,
             filter_expr=filter_expr,
         ):
@@ -392,7 +429,8 @@ class Evaluator:
             "iou",
             "score",
         ]
-        for tbl in self.iterate_detailed_pairs(
+        for tbl in self.iterate_pairs(
+            dataset=self._dataset,
             columns=columns,
             filter_expr=filter_expr,
         ):
@@ -486,7 +524,8 @@ class Evaluator:
             "iou",
             "score",
         ]
-        for tbl in self.iterate_detailed_pairs(
+        for tbl in self.iterate_pairs(
+            dataset=self._dataset,
             columns=columns,
             filter_expr=filter_expr,
         ):

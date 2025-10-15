@@ -385,11 +385,5 @@ class Loader:
             )
             json.dump(info, f, indent=2)
         evaluator = Evaluator(self._dir)
-        evaluator.create_ranked_cache(
-            destination=self._ranked_path,
-            sorting=[
-                ("score", "descending"),
-                ("iou", "descending"),
-            ],
-        )
+        evaluator.create_ranked_cache(where=self._ranked_path)
         return evaluator
