@@ -53,11 +53,19 @@ class CacheReader:
 
     @property
     def files(self) -> list[str]:
-        return glob.glob(f"{self._dir}/*.parquet")
+        return glob.glob(f"{self._dir}/*")
 
     @property
     def num_files(self) -> int:
         return len(self.files)
+
+    @property
+    def dataset_files(self) -> list[str]:
+        return glob.glob(f"{self._dir}/*.parquet")
+
+    @property
+    def num_dataset_files(self) -> int:
+        return len(self.dataset_files)
 
     @property
     def dataset(self):
@@ -131,12 +139,12 @@ class CacheWriter(CacheReader):
         )
 
     def delete_files(self):
-        for file in self.files:
+        for file in self.dataset_files:
             Path(file).unlink()
 
     @property
     def next_index(self):
-        files = self.files
+        files = self.dataset_files
         if not files:
             return 0
         return max([int(Path(f).stem) for f in files]) + 1

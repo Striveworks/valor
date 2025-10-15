@@ -12,14 +12,13 @@ from numpy.typing import NDArray
 
 from valor_lite.cache import CacheReader, CacheWriter, DataType
 from valor_lite.object_detection.computation import (
-    calculate_ranking_boundaries,
     compute_average_precision,
     compute_average_recall,
     compute_confusion_matrix,
     compute_counts,
     compute_pair_classifications,
     compute_precision_recall_f1,
-    rank_pairs_returning_indices,
+    rank_table,
 )
 from valor_lite.object_detection.metric import Metric, MetricType
 from valor_lite.object_detection.utilities import (
@@ -131,146 +130,106 @@ class Evaluator:
     def create_ranked_cache(
         self,
         where: str | Path,
+        batch_size: int | None = None,
+        rows_per_file: int | None = None,
+        compression: str | None = None,
     ):
+        n_labels = len(self._index_to_label)
         detailed_cache = CacheReader(self._detailed_path)
 
-        cache = CacheWriter(
+        batch_size = (
+            batch_size if batch_size is not None else detailed_cache.batch_size
+        )
+        rows_per_file = (
+            rows_per_file
+            if rows_per_file is not None
+            else detailed_cache.rows_per_file
+        )
+        compression = (
+            compression
+            if compression is not None
+            else detailed_cache.compression
+        )
+
+        with CacheWriter(
             where=where,
             schema=self.ranked_schema,
-            batch_size=detailed_cache.batch_size,
-            rows_per_file=detailed_cache.rows_per_file,
-            compression=detailed_cache.compression,
-        )
-        sorting_args = [
-            ("score", "descending"),
-            ("iou", "descending"),
-        ]
-        numeric_columns = [
-            "datum_id",
-            "gt_id",
-            "pd_id",
-            "gt_label_id",
-            "pd_label_id",
-            "iou",
-            "score",
-        ]
+            batch_size=batch_size,
+            rows_per_file=rows_per_file,
+            compression=compression,
+        ) as ranked_cache:
+            if detailed_cache.num_dataset_files == 1:
+                pf = pq.ParquetFile(detailed_cache.dataset_files[0])
+                tbl = pf.read()
+                ranked_tbl = rank_table(tbl, n_labels)
+                ranked_cache.write_table(ranked_tbl)
+                return
 
-        if detailed_cache.num_files == 1:
-            pf = pq.ParquetFile(detailed_cache.files[0])
-            tbl = pf.read()
-            sorted_tbl = tbl.sort_by(sorting_args)
+            pruned_detailed_columns = [
+                field.name for field in self._pruned_schema
+            ]
+            with tempfile.TemporaryDirectory() as tmpdir:
 
-            pairs = np.column_stack(
-                [sorted_tbl[col].to_numpy() for col in numeric_columns]
-            )
-            pairs, indices = rank_pairs_returning_indices(pairs)
-            ranked_tbl = sorted_tbl.take(indices)
+                # rank individual files
+                tmpfiles = []
+                for idx, fragment in enumerate(self._dataset.get_fragments()):
+                    path = Path(tmpdir) / f"{idx:06d}.parquet"
+                    tbl = fragment.to_table(columns=pruned_detailed_columns)
+                    ranked_tbl = rank_table(tbl, n_labels)
+                    pq.write_table(ranked_tbl, path)
+                    tmpfiles.append(path)
 
-            lower_iou_bound, winners = calculate_ranking_boundaries(
-                pairs, number_of_labels=len(self._index_to_label)
-            )
+                def generate_heap_item(batches, batch_idx, row_idx):
+                    score = batches[batch_idx]["score"][row_idx].as_py()
+                    iou = batches[batch_idx]["iou"][row_idx].as_py()
+                    return (
+                        -score,
+                        -iou,
+                        batch_idx,
+                        row_idx,
+                    )
 
-            column_data = pa.array(lower_iou_bound, type=pa.float64())
-            column_field = pa.field("iou_prev", pa.float64())
-            ranked_tbl = ranked_tbl.append_column(column_field, column_data)
+                # merge sorted rows
+                heap = []
+                batch_iterators = []
+                batches = []
+                for batch_idx, path in enumerate(tmpfiles):
+                    pf = pq.ParquetFile(path)
+                    batch_iter = pf.iter_batches(batch_size=batch_size)
+                    batch_iterators.append(batch_iter)
+                    batches.append(next(batch_iterators[batch_idx], None))
+                    if (
+                        batches[batch_idx] is not None
+                        and len(batches[batch_idx]) > 0
+                    ):
+                        heapq.heappush(
+                            heap, generate_heap_item(batches, batch_idx, 0)
+                        )
 
-            column_data = pa.array(winners, type=pa.bool_())
-            column_field = pa.field("winner", pa.bool_())
-            ranked_tbl = ranked_tbl.append_column(column_field, column_data)
+                while heap:
+                    _, _, batch_idx, row_idx = heapq.heappop(heap)
+                    row_table = batches[batch_idx].slice(row_idx, 1)
+                    ranked_cache.write_batch(row_table)
+                    row_idx += 1
+                    if row_idx < len(batches[batch_idx]):
+                        heapq.heappush(
+                            heap,
+                            generate_heap_item(batches, batch_idx, row_idx),
+                        )
+                    else:
+                        batches[batch_idx] = next(
+                            batch_iterators[batch_idx], None
+                        )
+                        if (
+                            batches[batch_idx] is not None
+                            and len(batches[batch_idx]) > 0
+                        ):
+                            heapq.heappush(
+                                heap, generate_heap_item(batches, batch_idx, 0)
+                            )
 
-            ranked_tbl = ranked_tbl.sort_by(sorting_args)
-            cache.write_table(ranked_tbl)
-
-        pruned_detailed_columns = [field.name for field in self._pruned_schema]
-
-        with tempfile.TemporaryDirectory() as tmpdir:
-
-            # sort individual files
-            tmpfiles = []
-            for idx, fragment in enumerate(self._dataset.get_fragments()):
-                tbl = fragment.to_table(columns=pruned_detailed_columns)
-
-                sorted_tbl = tbl.sort_by(sorting_args)
-
-                path = Path(tmpdir) / f"{idx:06d}.parquet"
-
-                pairs = np.column_stack(
-                    [sorted_tbl[col].to_numpy() for col in numeric_columns]
-                )
-                pairs, indices = rank_pairs_returning_indices(pairs)
-                ranked_tbl = sorted_tbl.take(indices)
-
-                (
-                    lower_iou_bound,
-                    winning_predictions,
-                ) = calculate_ranking_boundaries(
-                    pairs, number_of_labels=len(self._index_to_label)
-                )
-
-                column_data = pa.array(lower_iou_bound, type=pa.float64())
-                column_field = pa.field("iou_prev", pa.float64())
-                ranked_tbl = ranked_tbl.append_column(
-                    column_field, column_data
-                )
-
-                column_data = pa.array(winning_predictions, type=pa.bool_())
-                column_field = pa.field("high_score", pa.bool_())
-                ranked_tbl = ranked_tbl.append_column(
-                    column_field, column_data
-                )
-
-                ranked_tbl = ranked_tbl.sort_by(sorting_args)
-                pq.write_table(ranked_tbl, path)
-                tmpfiles.append(path)
-
-            # merge sorted rows
-            heap = []
-            batch_iterators = []
-            batches = []
-            for idx, path in enumerate(tmpfiles):
-                pf = pq.ParquetFile(path)
-                batch_iter = pf.iter_batches(
-                    batch_size=detailed_cache.batch_size
-                )
-                batch_iterators.append(batch_iter)
-                batches.append(next(batch_iterators[idx], None))
-                if batches[idx] is not None and len(batches[idx]) > 0:
-                    sort_args = [
-                        -batches[idx][col][0].as_py()
-                        if order == "descending"
-                        else batches[idx][col][0].as_py()
-                        for col, order in sorting_args
-                    ]
-                    heapq.heappush(heap, (*sort_args, idx, 0))
-
-            while heap:
-                item = heapq.heappop(heap)
-                idx, row_idx = item[-2], item[-1]
-                row_table = batches[idx].slice(row_idx, 1)
-                cache.write_batch(row_table)
-
-                row_idx += 1
-                if row_idx < len(batches[idx]):
-                    sort_args = [
-                        batches[idx][col][row_idx].as_py()
-                        if order == "ascending"
-                        else -batches[idx][col][row_idx].as_py()
-                        for col, order in sorting_args
-                    ]
-                    heapq.heappush(heap, (*sort_args, idx, row_idx))
-                else:
-                    batches[idx] = next(batch_iterators[idx], None)
-                    if batches[idx] is not None and len(batches[idx]) > 0:
-                        sort_args = [
-                            batches[idx][col][0].as_py()
-                            if order == "ascending"
-                            else -batches[idx][col][0].as_py()
-                            for col, order in sorting_args
-                        ]
-                        heapq.heappush(heap, (*sort_args, idx, 0))
-
+    @staticmethod
     def iterate_pairs(
-        self,
         dataset: ds.Dataset,
         columns=None,
         filter_expr=None,
@@ -321,7 +280,7 @@ class Evaluator:
             "iou",
             "score",
             "iou_prev",
-            "winner",
+            "high_score",
         ]
         n_ious = len(iou_thresholds)
         n_scores = len(score_thresholds)
@@ -338,6 +297,8 @@ class Evaluator:
             pairs = np.column_stack([tbl[col].to_numpy() for col in columns])
             if pairs.size == 0:
                 continue
+
+            print("LOOP", pairs.shape)
 
             (batch_counts, batch_pr_curve) = compute_counts(
                 ranked_pairs=pairs,

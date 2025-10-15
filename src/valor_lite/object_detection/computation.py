@@ -1,6 +1,7 @@
 from enum import IntFlag, auto
 
 import numpy as np
+import pyarrow as pa
 import shapely
 from numpy.typing import NDArray
 
@@ -344,17 +345,20 @@ def rank_pairs_returning_indices(sorted_pairs: NDArray[np.float64]):
 def calculate_ranking_boundaries(
     ranked_pairs: NDArray[np.float64], number_of_labels: int
 ):
+    dt_gt_ids = ranked_pairs[:, (0, 1)].astype(np.int64)
+    gt_ids = dt_gt_ids[:, 1]
+    ious = ranked_pairs[:, 5]
 
     unique_gts, gt_counts = np.unique(
-        ranked_pairs[:, (0, 1)].astype(np.int64),
+        dt_gt_ids,
         return_counts=True,
         axis=0,
     )
-    unique_gts = unique_gts[gt_counts > 1]
-
-    ious = ranked_pairs[:, 5]
+    unique_gts = unique_gts[gt_counts > 1]  # select gts with many pairs
+    unique_gts = unique_gts[unique_gts[:, 1] >= 0]  # remove null
 
     winning_predictions = np.ones_like(ious, dtype=np.bool_)
+    winning_predictions[gt_ids < 0] = False  # null gts cannot be won
     iou_boundary = np.zeros_like(ious)
 
     for gt in unique_gts:
@@ -385,6 +389,41 @@ def calculate_ranking_boundaries(
         winning_predictions[indices] = False
 
     return iou_boundary, winning_predictions
+
+
+def rank_table(tbl: pa.Table, number_of_labels: int) -> pa.Table:
+    numeric_columns = [
+        "datum_id",
+        "gt_id",
+        "pd_id",
+        "gt_label_id",
+        "pd_label_id",
+        "iou",
+        "score",
+    ]
+    sorting_args = [
+        ("score", "descending"),
+        ("iou", "descending"),
+    ]
+    sorted_tbl = tbl.sort_by(sorting_args)
+    pairs = np.column_stack(
+        [sorted_tbl[col].to_numpy() for col in numeric_columns]
+    )
+    pairs, indices = rank_pairs_returning_indices(pairs)
+    ranked_tbl = sorted_tbl.take(indices)
+    lower_iou_bound, winning_predictions = calculate_ranking_boundaries(
+        pairs, number_of_labels=number_of_labels
+    )
+    ranked_tbl = ranked_tbl.append_column(
+        pa.field("iou_prev", pa.float64()),
+        pa.array(lower_iou_bound, type=pa.float64()),
+    )
+    ranked_tbl = ranked_tbl.append_column(
+        pa.field("high_score", pa.bool_()),
+        pa.array(winning_predictions, type=pa.bool_()),
+    )
+    ranked_tbl = ranked_tbl.sort_by(sorting_args)
+    return ranked_tbl
 
 
 def rank_pairs(
@@ -518,8 +557,6 @@ def compute_counts(
     mask_tp = mask_score_nonzero & mask_gt_exists_labels_match
     mask_fp = mask_score_nonzero
 
-    print("WIN", winners[ranked_pairs[:, 4] == 5])
-
     for iou_idx in range(n_ious):
         mask_iou_curr = ious >= iou_thresholds[iou_idx]
         mask_iou_prev = prev_ious < iou_thresholds[iou_idx]
@@ -608,10 +645,6 @@ def compute_counts(
         out=recall,
     )
     recall_index = np.floor(recall * 100.0).astype(np.int32)
-
-    print(running_total_count[0][pd_labels == 5])
-    print(running_tp_count[0][pd_labels == 5])
-    print(running_gt_count[0])
 
     # bin precision-recall curve
     for iou_idx in range(n_ious):
