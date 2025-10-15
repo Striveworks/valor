@@ -8,14 +8,14 @@ from valor_lite.exceptions import EmptyEvaluatorError
 from valor_lite.object_detection import (
     Bitmask,
     BoundingBox,
-    DataLoader,
     Detection,
     Polygon,
 )
+from valor_lite.object_detection.loader import Loader
 
 
 def test_no_data():
-    loader = DataLoader()
+    loader = Loader()
     with pytest.raises(EmptyEvaluatorError):
         loader.finalize()
 
@@ -72,12 +72,18 @@ def test_iou_computation():
         ],
     )
 
-    loader = DataLoader()
+    loader = Loader()
     loader.add_bounding_boxes([detection])
     evaluator = loader.finalize()
 
-    tbl = evaluator._evaluator._dataset.to_table()
-    assert tbl.shape == (7, 12)
+    assert evaluator.info["number_of_datums"] == 1
+    assert evaluator.info["number_of_labels"] == 3
+    assert evaluator.info["number_of_groundtruth_annotations"] == 3
+    assert evaluator.info["number_of_prediction_annotations"] == 2
+    assert evaluator.info["number_of_rows"] == 7
+
+    tbl = evaluator._dataset.to_table()
+    assert tbl.shape == (7, 12)  # 7 rows, 12 columns
 
     # show that three unique IOUs exist
     unique_ious = np.unique(tbl["iou"].to_numpy())
@@ -161,7 +167,7 @@ def test_mixed_annotations(
         ),
     ]
 
-    loader = DataLoader()
+    loader = Loader()
 
     for detection in mixed_detections:
         with pytest.raises(AttributeError) as e:

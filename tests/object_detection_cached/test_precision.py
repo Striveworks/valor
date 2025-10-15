@@ -1,7 +1,8 @@
-from valor_lite.object_detection import DataLoader, Detection, MetricType
+from valor_lite.object_detection import Detection, MetricType
+from valor_lite.object_detection.loader import Loader
 
 
-def test_counts_metrics_first_class(
+def test_precision_metrics_first_class(
     basic_detections_first_class: list[Detection],
     basic_rotated_detections_first_class: list[Detection],
 ):
@@ -11,6 +12,7 @@ def test_counts_metrics_first_class(
     groundtruths
         datum uid1
             box 1 - label v1 - tp
+            box 3 - label v2 - fn unmatched ground truths
         datum uid2
             box 2 - label v1 - fn unmatched ground truths
 
@@ -18,14 +20,13 @@ def test_counts_metrics_first_class(
         datum uid1
             box 1 - label v1 - score 0.3 - tp
         datum uid2
-           none
+            box 2 - label v2 - score 0.98 - fp
     """
-
     for input_, method in [
-        (basic_detections_first_class, DataLoader.add_bounding_boxes),
-        (basic_rotated_detections_first_class, DataLoader.add_polygons),
+        (basic_detections_first_class, Loader.add_bounding_boxes),
+        (basic_rotated_detections_first_class, Loader.add_polygons),
     ]:
-        loader = DataLoader()
+        loader = Loader()
         method(loader, input_)
         evaluator = loader.finalize()
 
@@ -34,21 +35,17 @@ def test_counts_metrics_first_class(
             score_thresholds=[0.0, 0.5],
         )
 
-        assert evaluator.metadata.number_of_datums == 2
-        assert evaluator.metadata.number_of_labels == 1
-        assert evaluator.metadata.number_of_ground_truths == 2
-        assert evaluator.metadata.number_of_predictions == 1
+        assert evaluator.info["number_of_datums"] == 2
+        assert evaluator.info["number_of_labels"] == 1
+        assert evaluator.info["number_of_groundtruth_annotations"] == 2
+        assert evaluator.info["number_of_prediction_annotations"] == 1
 
-        # test Counts
-        actual_metrics = [m.to_dict() for m in metrics[MetricType.Counts]]
+        # test Precision
+        actual_metrics = [m.to_dict() for m in metrics[MetricType.Precision]]
         expected_metrics = [
             {
-                "type": "Counts",
-                "value": {
-                    "tp": 1,
-                    "fp": 0,
-                    "fn": 1,
-                },
+                "type": "Precision",
+                "value": 1.0,
                 "parameters": {
                     "iou_threshold": 0.1,
                     "score_threshold": 0.0,
@@ -56,12 +53,8 @@ def test_counts_metrics_first_class(
                 },
             },
             {
-                "type": "Counts",
-                "value": {
-                    "tp": 1,
-                    "fp": 0,
-                    "fn": 1,
-                },
+                "type": "Precision",
+                "value": 1.0,
                 "parameters": {
                     "iou_threshold": 0.6,
                     "score_threshold": 0.0,
@@ -69,12 +62,8 @@ def test_counts_metrics_first_class(
                 },
             },
             {
-                "type": "Counts",
-                "value": {
-                    "tp": 0,
-                    "fp": 0,
-                    "fn": 2,
-                },
+                "type": "Precision",
+                "value": 0.0,
                 "parameters": {
                     "iou_threshold": 0.1,
                     "score_threshold": 0.5,
@@ -82,12 +71,8 @@ def test_counts_metrics_first_class(
                 },
             },
             {
-                "type": "Counts",
-                "value": {
-                    "tp": 0,
-                    "fp": 0,
-                    "fn": 2,
-                },
+                "type": "Precision",
+                "value": 0.0,
                 "parameters": {
                     "iou_threshold": 0.6,
                     "score_threshold": 0.5,
@@ -101,7 +86,7 @@ def test_counts_metrics_first_class(
             assert m in actual_metrics
 
 
-def test_counts_metrics_second_class(
+def test_precision_metrics_second_class(
     basic_detections_second_class: list[Detection],
     basic_rotated_detections_second_class: list[Detection],
 ):
@@ -119,12 +104,11 @@ def test_counts_metrics_second_class(
         datum uid2
             box 2 - label v2 - score 0.98 - fp
     """
-
     for input_, method in [
-        (basic_detections_second_class, DataLoader.add_bounding_boxes),
-        (basic_rotated_detections_second_class, DataLoader.add_polygons),
+        (basic_detections_second_class, Loader.add_bounding_boxes),
+        (basic_rotated_detections_second_class, Loader.add_polygons),
     ]:
-        loader = DataLoader()
+        loader = Loader()
         method(loader, input_)
         evaluator = loader.finalize()
 
@@ -133,21 +117,17 @@ def test_counts_metrics_second_class(
             score_thresholds=[0.0, 0.5],
         )
 
-        assert evaluator.metadata.number_of_datums == 2
-        assert evaluator.metadata.number_of_labels == 1
-        assert evaluator.metadata.number_of_ground_truths == 1
-        assert evaluator.metadata.number_of_predictions == 1
+        assert evaluator.info["number_of_datums"] == 2
+        assert evaluator.info["number_of_labels"] == 1
+        assert evaluator.info["number_of_groundtruth_annotations"] == 1
+        assert evaluator.info["number_of_prediction_annotations"] == 1
 
-        # test Counts
-        actual_metrics = [m.to_dict() for m in metrics[MetricType.Counts]]
+        # test Precision
+        actual_metrics = [m.to_dict() for m in metrics[MetricType.Precision]]
         expected_metrics = [
             {
-                "type": "Counts",
-                "value": {
-                    "tp": 0,
-                    "fp": 1,
-                    "fn": 1,
-                },
+                "type": "Precision",
+                "value": 0.0,
                 "parameters": {
                     "iou_threshold": 0.1,
                     "score_threshold": 0.0,
@@ -155,12 +135,8 @@ def test_counts_metrics_second_class(
                 },
             },
             {
-                "type": "Counts",
-                "value": {
-                    "tp": 0,
-                    "fp": 1,
-                    "fn": 1,
-                },
+                "type": "Precision",
+                "value": 0.0,
                 "parameters": {
                     "iou_threshold": 0.6,
                     "score_threshold": 0.0,
@@ -168,12 +144,8 @@ def test_counts_metrics_second_class(
                 },
             },
             {
-                "type": "Counts",
-                "value": {
-                    "tp": 0,
-                    "fp": 1,
-                    "fn": 1,
-                },
+                "type": "Precision",
+                "value": 0.0,
                 "parameters": {
                     "iou_threshold": 0.1,
                     "score_threshold": 0.5,
@@ -181,12 +153,8 @@ def test_counts_metrics_second_class(
                 },
             },
             {
-                "type": "Counts",
-                "value": {
-                    "tp": 0,
-                    "fp": 1,
-                    "fn": 1,
-                },
+                "type": "Precision",
+                "value": 0.0,
                 "parameters": {
                     "iou_threshold": 0.6,
                     "score_threshold": 0.5,
@@ -200,7 +168,7 @@ def test_counts_metrics_second_class(
             assert m in actual_metrics
 
 
-def test_counts_false_negatives_single_datum_baseline(
+def test_precision_false_negatives_single_datum_baseline(
     false_negatives_single_datum_baseline_detections: list[Detection],
 ):
     """This is the baseline for the below test. In this case there are two predictions and
@@ -208,7 +176,7 @@ def test_counts_false_negatives_single_datum_baseline(
     so there is not a penalty for the false negative so the AP is 1
     """
 
-    loader = DataLoader()
+    loader = Loader()
     loader.add_bounding_boxes(false_negatives_single_datum_baseline_detections)
     evaluator = loader.finalize()
 
@@ -217,15 +185,11 @@ def test_counts_false_negatives_single_datum_baseline(
         score_thresholds=[0.0, 0.9],
     )
 
-    actual_metrics = [m.to_dict() for m in metrics[MetricType.Counts]]
+    actual_metrics = [m.to_dict() for m in metrics[MetricType.Precision]]
     expected_metrics = [
         {
-            "type": "Counts",
-            "value": {
-                "tp": 1,
-                "fp": 1,
-                "fn": 0,
-            },
+            "type": "Precision",
+            "value": 0.5,
             "parameters": {
                 "iou_threshold": 0.5,
                 "score_threshold": 0.0,
@@ -233,12 +197,8 @@ def test_counts_false_negatives_single_datum_baseline(
             },
         },
         {
-            "type": "Counts",
-            "value": {
-                "tp": 0,
-                "fp": 0,
-                "fn": 1,
-            },
+            "type": "Precision",
+            "value": 0.0,
             "parameters": {
                 "iou_threshold": 0.5,
                 "score_threshold": 0.9,
@@ -252,7 +212,7 @@ def test_counts_false_negatives_single_datum_baseline(
         assert m in actual_metrics
 
 
-def test_counts_false_negatives_single_datum(
+def test_precision_false_negatives_single_datum(
     false_negatives_single_datum_detections: list[Detection],
 ):
     """Tests where high confidence false negative was not being penalized. The
@@ -260,7 +220,7 @@ def test_counts_false_negatives_single_datum(
     does not sufficiently overlap the groundtruth and so is penalized and we get an AP of 0.5
     """
 
-    loader = DataLoader()
+    loader = Loader()
     loader.add_bounding_boxes(false_negatives_single_datum_detections)
     evaluator = loader.finalize()
     metrics = evaluator.evaluate(
@@ -268,15 +228,11 @@ def test_counts_false_negatives_single_datum(
         score_thresholds=[0.0],
     )
 
-    actual_metrics = [m.to_dict() for m in metrics[MetricType.Counts]]
+    actual_metrics = [m.to_dict() for m in metrics[MetricType.Precision]]
     expected_metrics = [
         {
-            "type": "Counts",
-            "value": {
-                "tp": 1,
-                "fp": 1,
-                "fn": 0,
-            },
+            "type": "Precision",
+            "value": 0.5,
             "parameters": {
                 "iou_threshold": 0.5,
                 "score_threshold": 0.0,
@@ -290,7 +246,7 @@ def test_counts_false_negatives_single_datum(
         assert m in actual_metrics
 
 
-def test_counts_false_negatives_two_datums_one_empty_low_confidence_of_fp(
+def test_precision_false_negatives_two_datums_one_empty_low_confidence_of_fp(
     false_negatives_two_datums_one_empty_low_confidence_of_fp_detections: list[
         Detection
     ],
@@ -304,7 +260,7 @@ def test_counts_false_negatives_two_datums_one_empty_low_confidence_of_fp(
 
     """
 
-    loader = DataLoader()
+    loader = Loader()
     loader.add_bounding_boxes(
         false_negatives_two_datums_one_empty_low_confidence_of_fp_detections
     )
@@ -314,15 +270,11 @@ def test_counts_false_negatives_two_datums_one_empty_low_confidence_of_fp(
         score_thresholds=[0.0],
     )
 
-    actual_metrics = [m.to_dict() for m in metrics[MetricType.Counts]]
+    actual_metrics = [m.to_dict() for m in metrics[MetricType.Precision]]
     expected_metrics = [
         {
-            "type": "Counts",
-            "value": {
-                "tp": 1,
-                "fp": 1,
-                "fn": 0,
-            },
+            "type": "Precision",
+            "value": 0.5,
             "parameters": {
                 "iou_threshold": 0.5,
                 "score_threshold": 0.0,
@@ -330,13 +282,13 @@ def test_counts_false_negatives_two_datums_one_empty_low_confidence_of_fp(
             },
         }
     ]
-    for m in expected_metrics:
-        assert m in actual_metrics
     for m in actual_metrics:
         assert m in expected_metrics
+    for m in expected_metrics:
+        assert m in actual_metrics
 
 
-def test_counts_false_negatives_two_datums_one_empty_high_confidence_of_fp(
+def test_precision_false_negatives_two_datums_one_empty_high_confidence_of_fp(
     false_negatives_two_datums_one_empty_high_confidence_of_fp_detections: list[
         Detection
     ],
@@ -349,7 +301,7 @@ def test_counts_false_negatives_two_datums_one_empty_high_confidence_of_fp(
     In this case, the AP should be 0.5 since the false positive has higher confidence than the true positive
     """
 
-    loader = DataLoader()
+    loader = Loader()
     loader.add_bounding_boxes(
         false_negatives_two_datums_one_empty_high_confidence_of_fp_detections
     )
@@ -359,15 +311,11 @@ def test_counts_false_negatives_two_datums_one_empty_high_confidence_of_fp(
         score_thresholds=[0.0],
     )
 
-    actual_metrics = [m.to_dict() for m in metrics[MetricType.Counts]]
+    actual_metrics = [m.to_dict() for m in metrics[MetricType.Precision]]
     expected_metrics = [
         {
-            "type": "Counts",
-            "value": {
-                "tp": 1,
-                "fp": 1,
-                "fn": 0,
-            },
+            "type": "Precision",
+            "value": 0.5,
             "parameters": {
                 "iou_threshold": 0.5,
                 "score_threshold": 0.0,
@@ -375,13 +323,13 @@ def test_counts_false_negatives_two_datums_one_empty_high_confidence_of_fp(
             },
         }
     ]
-    for m in expected_metrics:
-        assert m in actual_metrics
     for m in actual_metrics:
         assert m in expected_metrics
+    for m in expected_metrics:
+        assert m in actual_metrics
 
 
-def test_counts_false_negatives_two_datums_one_only_with_different_class_low_confidence_of_fp(
+def test_precision_false_negatives_two_datums_one_only_with_different_class_low_confidence_of_fp(
     false_negatives_two_datums_one_only_with_different_class_low_confidence_of_fp_detections: list[
         Detection
     ],
@@ -394,7 +342,7 @@ def test_counts_false_negatives_two_datums_one_only_with_different_class_low_con
     In this case, the AP for class `"value"` should be 1 since the false positive has lower confidence than the true positive.
     AP for class `"other value"` should be 0 since there is no prediction for the `"other value"` groundtruth
     """
-    loader = DataLoader()
+    loader = Loader()
     loader.add_bounding_boxes(
         false_negatives_two_datums_one_only_with_different_class_low_confidence_of_fp_detections
     )
@@ -404,15 +352,11 @@ def test_counts_false_negatives_two_datums_one_only_with_different_class_low_con
         score_thresholds=[0.0],
     )
 
-    actual_metrics = [m.to_dict() for m in metrics[MetricType.Counts]]
+    actual_metrics = [m.to_dict() for m in metrics[MetricType.Precision]]
     expected_metrics = [
         {
-            "type": "Counts",
-            "value": {
-                "tp": 1,
-                "fp": 1,
-                "fn": 0,
-            },
+            "type": "Precision",
+            "value": 0.5,
             "parameters": {
                 "iou_threshold": 0.5,
                 "score_threshold": 0.0,
@@ -420,12 +364,8 @@ def test_counts_false_negatives_two_datums_one_only_with_different_class_low_con
             },
         },
         {
-            "type": "Counts",
-            "value": {
-                "tp": 0,
-                "fp": 0,
-                "fn": 1,
-            },
+            "type": "Precision",
+            "value": 0.0,
             "parameters": {
                 "iou_threshold": 0.5,
                 "score_threshold": 0.0,
@@ -433,13 +373,13 @@ def test_counts_false_negatives_two_datums_one_only_with_different_class_low_con
             },
         },
     ]
-    for m in expected_metrics:
-        assert m in actual_metrics
     for m in actual_metrics:
         assert m in expected_metrics
+    for m in expected_metrics:
+        assert m in actual_metrics
 
 
-def test_counts_false_negatives_two_datums_one_only_with_different_class_high_confidence_of_fp(
+def test_precision_false_negatives_two_datums_one_only_with_different_class_high_confidence_of_fp(
     false_negatives_two_images_one_only_with_different_class_high_confidence_of_fp_detections: list[
         Detection
     ],
@@ -452,7 +392,7 @@ def test_counts_false_negatives_two_datums_one_only_with_different_class_high_co
     In this case, the AP for class `"value"` should be 0.5 since the false positive has higher confidence than the true positive.
     AP for class `"other value"` should be 0 since there is no prediction for the `"other value"` groundtruth
     """
-    loader = DataLoader()
+    loader = Loader()
     loader.add_bounding_boxes(
         false_negatives_two_images_one_only_with_different_class_high_confidence_of_fp_detections
     )
@@ -462,15 +402,11 @@ def test_counts_false_negatives_two_datums_one_only_with_different_class_high_co
         score_thresholds=[0.0],
     )
 
-    actual_metrics = [m.to_dict() for m in metrics[MetricType.Counts]]
+    actual_metrics = [m.to_dict() for m in metrics[MetricType.Precision]]
     expected_metrics = [
         {
-            "type": "Counts",
-            "value": {
-                "tp": 1,
-                "fp": 1,
-                "fn": 0,
-            },
+            "type": "Precision",
+            "value": 0.5,
             "parameters": {
                 "iou_threshold": 0.5,
                 "score_threshold": 0.0,
@@ -478,12 +414,8 @@ def test_counts_false_negatives_two_datums_one_only_with_different_class_high_co
             },
         },
         {
-            "type": "Counts",
-            "value": {
-                "tp": 0,
-                "fp": 0,
-                "fn": 1,
-            },
+            "type": "Precision",
+            "value": 0.0,
             "parameters": {
                 "iou_threshold": 0.5,
                 "score_threshold": 0.0,
@@ -491,121 +423,29 @@ def test_counts_false_negatives_two_datums_one_only_with_different_class_high_co
             },
         },
     ]
-    for m in expected_metrics:
-        assert m in actual_metrics
     for m in actual_metrics:
         assert m in expected_metrics
+    for m in expected_metrics:
+        assert m in actual_metrics
 
 
-def test_counts_ranked_pair_ordering(
-    detection_ranked_pair_ordering: Detection,
-    detection_ranked_pair_ordering_with_bitmasks: Detection,
-    detection_ranked_pair_ordering_with_polygons: Detection,
+def test_precision_model_one_class_spam_fp(
+    detections_model_single_class_spam_fp: list[Detection],
 ):
-
-    for input_, method in [
-        (detection_ranked_pair_ordering, DataLoader.add_bounding_boxes),
-        (
-            detection_ranked_pair_ordering_with_bitmasks,
-            DataLoader.add_bitmasks,
-        ),
-        (
-            detection_ranked_pair_ordering_with_polygons,
-            DataLoader.add_polygons,
-        ),
-    ]:
-        loader = DataLoader()
-        method(loader, detections=[input_])
-        evaluator = loader.finalize()
-
-        assert evaluator.metadata.to_dict() == {
-            "number_of_datums": 1,
-            "number_of_ground_truths": 3,
-            "number_of_labels": 4,
-            "number_of_predictions": 4,
-        }
-
-        metrics = evaluator.evaluate(
-            iou_thresholds=[0.5, 0.75],
-            score_thresholds=[0.0],
-        )
-
-        actual_metrics = [m.to_dict() for m in metrics[MetricType.Counts]]
-        expected_metrics = [
-            {
-                "type": "Counts",
-                "value": {"tp": 1, "fp": 0, "fn": 0},
-                "parameters": {
-                    "iou_threshold": 0.5,
-                    "score_threshold": 0.0,
-                    "label": "label1",
-                },
+    loader = Loader()
+    loader.add_bounding_boxes(detections_model_single_class_spam_fp)
+    evaluator = loader.finalize()
+    metrics = evaluator.evaluate(score_thresholds=[0.5], iou_thresholds=[0.5])
+    actual_metrics = [m.to_dict() for m in metrics[MetricType.Precision]]
+    expected_metrics = [
+        {
+            "type": "Precision",
+            "value": 1.0,
+            "parameters": {
+                "iou_threshold": 0.5,
+                "score_threshold": 0.5,
+                "label": "dog",
             },
-            {
-                "type": "Counts",
-                "value": {"tp": 1, "fp": 0, "fn": 0},
-                "parameters": {
-                    "iou_threshold": 0.75,
-                    "score_threshold": 0.0,
-                    "label": "label1",
-                },
-            },
-            {
-                "type": "Counts",
-                "value": {"tp": 1, "fp": 0, "fn": 0},
-                "parameters": {
-                    "iou_threshold": 0.5,
-                    "score_threshold": 0.0,
-                    "label": "label2",
-                },
-            },
-            {
-                "type": "Counts",
-                "value": {"tp": 1, "fp": 0, "fn": 0},
-                "parameters": {
-                    "iou_threshold": 0.75,
-                    "score_threshold": 0.0,
-                    "label": "label2",
-                },
-            },
-            {
-                "type": "Counts",
-                "value": {"tp": 0, "fp": 1, "fn": 1},
-                "parameters": {
-                    "iou_threshold": 0.5,
-                    "score_threshold": 0.0,
-                    "label": "label3",
-                },
-            },
-            {
-                "type": "Counts",
-                "value": {"tp": 0, "fp": 1, "fn": 1},
-                "parameters": {
-                    "iou_threshold": 0.75,
-                    "score_threshold": 0.0,
-                    "label": "label3",
-                },
-            },
-            {
-                "type": "Counts",
-                "value": {"tp": 0, "fp": 1, "fn": 0},
-                "parameters": {
-                    "iou_threshold": 0.5,
-                    "score_threshold": 0.0,
-                    "label": "label4",
-                },
-            },
-            {
-                "type": "Counts",
-                "value": {"tp": 0, "fp": 1, "fn": 0},
-                "parameters": {
-                    "iou_threshold": 0.75,
-                    "score_threshold": 0.0,
-                    "label": "label4",
-                },
-            },
-        ]
-        for m in actual_metrics:
-            assert m in expected_metrics
-        for m in expected_metrics:
-            assert m in actual_metrics
+        },
+    ]
+    assert actual_metrics == expected_metrics

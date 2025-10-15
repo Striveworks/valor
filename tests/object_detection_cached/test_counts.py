@@ -1,4 +1,5 @@
-from valor_lite.object_detection import DataLoader, Detection, MetricType
+from valor_lite.object_detection import Detection, MetricType
+from valor_lite.object_detection.loader import Loader
 
 
 def test_counts_metrics_first_class(
@@ -22,10 +23,10 @@ def test_counts_metrics_first_class(
     """
 
     for input_, method in [
-        (basic_detections_first_class, DataLoader.add_bounding_boxes),
-        (basic_rotated_detections_first_class, DataLoader.add_polygons),
+        (basic_detections_first_class, Loader.add_bounding_boxes),
+        (basic_rotated_detections_first_class, Loader.add_polygons),
     ]:
-        loader = DataLoader()
+        loader = Loader()
         method(loader, input_)
         evaluator = loader.finalize()
 
@@ -34,10 +35,10 @@ def test_counts_metrics_first_class(
             score_thresholds=[0.0, 0.5],
         )
 
-        assert evaluator.metadata.number_of_datums == 2
-        assert evaluator.metadata.number_of_labels == 1
-        assert evaluator.metadata.number_of_ground_truths == 2
-        assert evaluator.metadata.number_of_predictions == 1
+        assert evaluator.info["number_of_datums"] == 2
+        assert evaluator.info["number_of_labels"] == 1
+        assert evaluator.info["number_of_groundtruth_annotations"] == 2
+        assert evaluator.info["number_of_prediction_annotations"] == 1
 
         # test Counts
         actual_metrics = [m.to_dict() for m in metrics[MetricType.Counts]]
@@ -121,10 +122,10 @@ def test_counts_metrics_second_class(
     """
 
     for input_, method in [
-        (basic_detections_second_class, DataLoader.add_bounding_boxes),
-        (basic_rotated_detections_second_class, DataLoader.add_polygons),
+        (basic_detections_second_class, Loader.add_bounding_boxes),
+        (basic_rotated_detections_second_class, Loader.add_polygons),
     ]:
-        loader = DataLoader()
+        loader = Loader()
         method(loader, input_)
         evaluator = loader.finalize()
 
@@ -133,10 +134,10 @@ def test_counts_metrics_second_class(
             score_thresholds=[0.0, 0.5],
         )
 
-        assert evaluator.metadata.number_of_datums == 2
-        assert evaluator.metadata.number_of_labels == 1
-        assert evaluator.metadata.number_of_ground_truths == 1
-        assert evaluator.metadata.number_of_predictions == 1
+        assert evaluator.info["number_of_datums"] == 2
+        assert evaluator.info["number_of_labels"] == 1
+        assert evaluator.info["number_of_groundtruth_annotations"] == 1
+        assert evaluator.info["number_of_prediction_annotations"] == 1
 
         # test Counts
         actual_metrics = [m.to_dict() for m in metrics[MetricType.Counts]]
@@ -208,7 +209,7 @@ def test_counts_false_negatives_single_datum_baseline(
     so there is not a penalty for the false negative so the AP is 1
     """
 
-    loader = DataLoader()
+    loader = Loader()
     loader.add_bounding_boxes(false_negatives_single_datum_baseline_detections)
     evaluator = loader.finalize()
 
@@ -260,7 +261,7 @@ def test_counts_false_negatives_single_datum(
     does not sufficiently overlap the groundtruth and so is penalized and we get an AP of 0.5
     """
 
-    loader = DataLoader()
+    loader = Loader()
     loader.add_bounding_boxes(false_negatives_single_datum_detections)
     evaluator = loader.finalize()
     metrics = evaluator.evaluate(
@@ -304,7 +305,7 @@ def test_counts_false_negatives_two_datums_one_empty_low_confidence_of_fp(
 
     """
 
-    loader = DataLoader()
+    loader = Loader()
     loader.add_bounding_boxes(
         false_negatives_two_datums_one_empty_low_confidence_of_fp_detections
     )
@@ -349,7 +350,7 @@ def test_counts_false_negatives_two_datums_one_empty_high_confidence_of_fp(
     In this case, the AP should be 0.5 since the false positive has higher confidence than the true positive
     """
 
-    loader = DataLoader()
+    loader = Loader()
     loader.add_bounding_boxes(
         false_negatives_two_datums_one_empty_high_confidence_of_fp_detections
     )
@@ -394,7 +395,7 @@ def test_counts_false_negatives_two_datums_one_only_with_different_class_low_con
     In this case, the AP for class `"value"` should be 1 since the false positive has lower confidence than the true positive.
     AP for class `"other value"` should be 0 since there is no prediction for the `"other value"` groundtruth
     """
-    loader = DataLoader()
+    loader = Loader()
     loader.add_bounding_boxes(
         false_negatives_two_datums_one_only_with_different_class_low_confidence_of_fp_detections
     )
@@ -452,7 +453,7 @@ def test_counts_false_negatives_two_datums_one_only_with_different_class_high_co
     In this case, the AP for class `"value"` should be 0.5 since the false positive has higher confidence than the true positive.
     AP for class `"other value"` should be 0 since there is no prediction for the `"other value"` groundtruth
     """
-    loader = DataLoader()
+    loader = Loader()
     loader.add_bounding_boxes(
         false_negatives_two_images_one_only_with_different_class_high_confidence_of_fp_detections
     )
@@ -504,26 +505,25 @@ def test_counts_ranked_pair_ordering(
 ):
 
     for input_, method in [
-        (detection_ranked_pair_ordering, DataLoader.add_bounding_boxes),
+        (detection_ranked_pair_ordering, Loader.add_bounding_boxes),
         (
             detection_ranked_pair_ordering_with_bitmasks,
-            DataLoader.add_bitmasks,
+            Loader.add_bitmasks,
         ),
         (
             detection_ranked_pair_ordering_with_polygons,
-            DataLoader.add_polygons,
+            Loader.add_polygons,
         ),
     ]:
-        loader = DataLoader()
+        loader = Loader()
         method(loader, detections=[input_])
         evaluator = loader.finalize()
 
-        assert evaluator.metadata.to_dict() == {
-            "number_of_datums": 1,
-            "number_of_ground_truths": 3,
-            "number_of_labels": 4,
-            "number_of_predictions": 4,
-        }
+        assert evaluator.info["number_of_datums"] == 1
+        assert evaluator.info["number_of_groundtruth_annotations"] == 3
+        assert evaluator.info["number_of_labels"] == 4
+        assert evaluator.info["number_of_prediction_annotations"] == 4
+        assert evaluator.info["number_of_rows"] == 12
 
         metrics = evaluator.evaluate(
             iou_thresholds=[0.5, 0.75],

@@ -1,40 +1,40 @@
+import tempfile
+from pathlib import Path
+
 import numpy as np
 import pytest
 
-from valor_lite.object_detection import (
-    DataLoader,
-    Detection,
-    Metric,
-    MetricType,
-)
+from valor_lite.object_detection import Detection, Metric, MetricType
+from valor_lite.object_detection.evaluator import Evaluator
+from valor_lite.object_detection.loader import Loader
 
 
-def test_metadata_using_torch_metrics_example(
+def test_evaluator_no_data():
+    with tempfile.TemporaryDirectory() as tmpdir:
+        with pytest.raises(FileNotFoundError):
+            Evaluator(Path(tmpdir))
+
+
+def test_info_using_torch_metrics_example(
     torchmetrics_detections: list[Detection],
 ):
     """
     cf with torch metrics/pycocotools results listed here:
     https://github.com/Lightning-AI/metrics/blob/107dbfd5fb158b7ae6d76281df44bd94c836bfce/tests/unittests/detection/test_map.py#L231
     """
-    loader = DataLoader()
+    loader = Loader()
     loader.add_bounding_boxes(torchmetrics_detections)
     evaluator = loader.finalize()
 
-    assert evaluator.metadata.number_of_datums == 4
-    assert evaluator.metadata.number_of_labels == 6
-    assert evaluator.metadata.number_of_ground_truths == 20
-    assert evaluator.metadata.number_of_predictions == 19
-
-    assert evaluator.metadata.to_dict() == {
-        "number_of_datums": 4,
-        "number_of_labels": 6,
-        "number_of_ground_truths": 20,
-        "number_of_predictions": 19,
-    }
+    assert evaluator.info["number_of_datums"] == 4
+    assert evaluator.info["number_of_labels"] == 6
+    assert evaluator.info["number_of_groundtruth_annotations"] == 20
+    assert evaluator.info["number_of_prediction_annotations"] == 19
+    assert evaluator.info["number_of_rows"] == 60
 
 
 def test_no_thresholds(detection_ranked_pair_ordering):
-    loader = DataLoader()
+    loader = Loader()
     loader.add_bounding_boxes([detection_ranked_pair_ordering])
     evaluator = loader.finalize()
 
@@ -70,14 +70,14 @@ def test_no_thresholds(detection_ranked_pair_ordering):
 
 def test_no_groundtruths(detections_no_groundtruths):
 
-    loader = DataLoader()
+    loader = Loader()
     loader.add_bounding_boxes(detections_no_groundtruths)
     evaluator = loader.finalize()
 
-    assert evaluator.metadata.number_of_datums == 2
-    assert evaluator.metadata.number_of_labels == 1
-    assert evaluator.metadata.number_of_ground_truths == 0
-    assert evaluator.metadata.number_of_predictions == 2
+    assert evaluator.info["number_of_datums"] == 2
+    assert evaluator.info["number_of_labels"] == 1
+    assert evaluator.info["number_of_groundtruth_annotations"] == 0
+    assert evaluator.info["number_of_prediction_annotations"] == 2
 
     metrics = evaluator.evaluate(
         iou_thresholds=[0.5],
@@ -100,14 +100,14 @@ def test_no_groundtruths(detections_no_groundtruths):
 
 def test_no_predictions(detections_no_predictions):
 
-    loader = DataLoader()
+    loader = Loader()
     loader.add_bounding_boxes(detections_no_predictions)
     evaluator = loader.finalize()
 
-    assert evaluator.metadata.number_of_datums == 2
-    assert evaluator.metadata.number_of_labels == 1
-    assert evaluator.metadata.number_of_ground_truths == 2
-    assert evaluator.metadata.number_of_predictions == 0
+    assert evaluator.info["number_of_datums"] == 2
+    assert evaluator.info["number_of_labels"] == 1
+    assert evaluator.info["number_of_groundtruth_annotations"] == 2
+    assert evaluator.info["number_of_prediction_annotations"] == 0
 
     metrics = evaluator.evaluate(
         iou_thresholds=[0.5],
@@ -156,7 +156,7 @@ def _flatten_metrics(m) -> list:
 
 
 def test_output_types_dont_contain_numpy(basic_detections: list[Detection]):
-    manager = DataLoader()
+    manager = Loader()
     manager.add_bounding_boxes(basic_detections)
     evaluator = manager.finalize()
 

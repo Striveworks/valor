@@ -1,48 +1,5 @@
 from valor_lite.object_detection import DataLoader, Detection, MetricType
 
-# def test__compute_recall():
-#     sorted_pairs = np.array(
-#         [
-#             # dt, gt, pd, gl, pl, iou, score
-#             [0.0, 0.0, 2.0, 0.0, 0.0, 0.25, 0.95],
-#             [0.0, 0.0, 3.0, 0.0, 0.0, 0.33333, 0.9],
-#             [0.0, 0.0, 4.0, 0.0, 0.0, 0.66667, 0.65],
-#             [0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.1],
-#             [0.0, 0.0, 1.0, 0.0, 0.0, 0.5, 0.01],
-#         ]
-#     )
-
-#     label_metadata = np.array([[1, 5, 0]])
-#     iou_thresholds = np.array([0.1, 0.6])
-#     score_thresholds = np.array([0.0])
-
-#     (
-#         _,
-#         precision_recall_f1,
-#         _,
-#         _,
-#         _,
-#         _,
-#         _
-#     ) = compute_precion_recall(
-#         sorted_pairs,
-#         iou_thresholds=iou_thresholds,
-#         score_thresholds=score_thresholds,
-#         number_of_groundtruths_per_label=label_metadata[:, 0],
-#         number_of_labels=label_metadata.shape[0],
-#     )
-
-#     recall = precision_recall_f1[:, :, 1, :]
-
-#     # precision
-#     expected = np.array(
-#         [
-#             [1.0],  # iou = 0.1
-#             [1.0],  # iou = 0.6
-#         ]
-#     )
-#     assert (recall == expected).all()
-
 
 def test_recall_metrics_first_class(
     basic_detections_first_class: list[Detection],
@@ -76,10 +33,10 @@ def test_recall_metrics_first_class(
             score_thresholds=[0.0, 0.5],
         )
 
-        assert evaluator.info["number_of_datums"] == 2
-        assert evaluator.info["number_of_labels"] == 1
-        assert evaluator.info["number_of_groundtruth_annotations"] == 2
-        assert evaluator.info["number_of_prediction_annotations"] == 1
+        assert evaluator.metadata.number_of_datums == 2
+        assert evaluator.metadata.number_of_labels == 1
+        assert evaluator.metadata.number_of_ground_truths == 2
+        assert evaluator.metadata.number_of_predictions == 1
 
         # test Recall
         actual_metrics = [m.to_dict() for m in metrics[MetricType.Recall]]
@@ -158,10 +115,10 @@ def test_recall_metrics_second_class(
             score_thresholds=[0.0, 0.5],
         )
 
-        assert evaluator.info["number_of_datums"] == 2
-        assert evaluator.info["number_of_labels"] == 1
-        assert evaluator.info["number_of_groundtruth_annotations"] == 1
-        assert evaluator.info["number_of_prediction_annotations"] == 1
+        assert evaluator.metadata.number_of_datums == 2
+        assert evaluator.metadata.number_of_labels == 1
+        assert evaluator.metadata.number_of_ground_truths == 1
+        assert evaluator.metadata.number_of_predictions == 1
 
         # test Recall
         actual_metrics = [m.to_dict() for m in metrics[MetricType.Recall]]
@@ -464,7 +421,7 @@ def test_recall_false_negatives_two_datums_one_only_with_different_class_high_co
             },
         },
     ]
-    for m in actual_metrics:
-        assert m in expected_metrics
     for m in expected_metrics:
         assert m in actual_metrics
+    for m in actual_metrics:
+        assert m in expected_metrics

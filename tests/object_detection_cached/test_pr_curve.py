@@ -1,4 +1,5 @@
-from valor_lite.object_detection import DataLoader, Detection, MetricType
+from valor_lite.object_detection import Detection, MetricType
+from valor_lite.object_detection.loader import Loader
 
 
 def test_pr_curve_using_torch_metrics_example(
@@ -8,14 +9,14 @@ def test_pr_curve_using_torch_metrics_example(
     cf with torch metrics/pycocotools results listed here:
     https://github.com/Lightning-AI/metrics/blob/107dbfd5fb158b7ae6d76281df44bd94c836bfce/tests/unittests/detection/test_map.py#L231
     """
-    loader = DataLoader()
+    loader = Loader()
     loader.add_bounding_boxes(torchmetrics_detections)
     evaluator = loader.finalize()
 
-    assert evaluator.metadata.number_of_datums == 4
-    assert evaluator.metadata.number_of_labels == 6
-    assert evaluator.metadata.number_of_ground_truths == 20
-    assert evaluator.metadata.number_of_predictions == 19
+    assert evaluator.info["number_of_datums"] == 4
+    assert evaluator.info["number_of_labels"] == 6
+    assert evaluator.info["number_of_groundtruth_annotations"] == 20
+    assert evaluator.info["number_of_prediction_annotations"] == 19
 
     metrics = evaluator.evaluate(
         iou_thresholds=[0.5, 0.75],

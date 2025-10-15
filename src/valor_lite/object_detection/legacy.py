@@ -61,30 +61,6 @@ class Evaluator:
         self._evaluator = CachedEvaluator(".valor")
 
     @property
-    def ignored_prediction_labels(self) -> list[str]:
-        """
-        Prediction labels that are not present in the ground truth set.
-        """
-        glabels = set(np.where(self._label_metadata[:, 0] > 0)[0])
-        plabels = set(np.where(self._label_metadata[:, 1] > 0)[0])
-        return [
-            self._evaluator._index_to_label[label_id]
-            for label_id in (plabels - glabels)
-        ]
-
-    @property
-    def missing_prediction_labels(self) -> list[str]:
-        """
-        Ground truth labels that are not present in the prediction set.
-        """
-        glabels = set(np.where(self._label_metadata[:, 0] > 0)[0])
-        plabels = set(np.where(self._label_metadata[:, 1] > 0)[0])
-        return [
-            self._evaluator._index_to_label[label_id]
-            for label_id in (glabels - plabels)
-        ]
-
-    @property
     def metadata(self) -> Metadata:
         """
         Evaluation metadata.
@@ -204,6 +180,9 @@ class Evaluator:
         elif not score_thresholds:
             raise ValueError("At least one score threshold must be passed.")
 
+        # TODO - implement
+        return []
+
         if filter_ is not None:
             detailed_pairs, _, _ = self.filter(filter_=filter_)
         else:
@@ -289,3 +268,7 @@ class DataLoader(CachedLoader):
             batch_size=1_000,
             rows_per_file=10_000,
         )
+
+    def finalize(self) -> Evaluator:
+        _ = super().finalize()
+        return Evaluator()
