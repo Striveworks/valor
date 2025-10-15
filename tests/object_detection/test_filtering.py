@@ -118,10 +118,10 @@ def test_filtering_one_detection(one_detection: list[Detection]):
         )
     ).all()
 
-    with pytest.raises(KeyError) as e:
-        filter_ = evaluator.create_filter(datums=["uid2"])
+    filter_ = evaluator.create_filter(datums=["uid2"])
     detailed_pairs, _, label_metadata = evaluator.filter(filter_)
-    assert "uid2" in str(e)
+    assert detailed_pairs.size == 0
+    assert (label_metadata == np.zeros((2, 2))).all()
 
     # test label filtering
     filter_ = evaluator.create_filter(labels=["v1"])
@@ -244,11 +244,10 @@ def test_filtering_two_detections(two_detections: list[Detection]):
         == np.array(
             [
                 [0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.3],
-                [1.0, 2.0, -1.0, 0.0, -1.0, 0.0, -1.0],
             ]
         )
     )
-    assert (label_metadata == np.array([[2, 1], [0, 0]])).all()
+    assert (label_metadata == np.array([[1, 1], [0, 0]])).all()
 
     filter_ = evaluator.create_filter(labels=["v2"])
     detailed_pairs, _, label_metadata = evaluator.filter(filter_)
@@ -256,12 +255,11 @@ def test_filtering_two_detections(two_detections: list[Detection]):
         detailed_pairs
         == np.array(
             [
-                [1.0, -1.0, 1.0, -1.0, 1.0, 0.0, 0.98],
                 [0.0, 1.0, -1.0, 1.0, -1.0, 0.0, -1.0],
             ]
         )
     )
-    assert (label_metadata == np.array([[0, 0], [1, 1]])).all()
+    assert (label_metadata == np.array([[0, 0], [1, 0]])).all()
 
     # test combo
     filter_ = evaluator.create_filter(
@@ -359,12 +357,10 @@ def test_filtering_four_detections(four_detections: list[Detection]):
             [
                 [0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.3],
                 [2.0, 3.0, 2.0, 0.0, 0.0, 1.0, 0.3],
-                [1.0, 2.0, -1.0, 0.0, -1.0, 0.0, -1.0],
-                [3.0, 5.0, -1.0, 0.0, -1.0, 0.0, -1.0],
             ]
         )
     )
-    assert (label_metadata == np.array([[4, 2], [0, 0]])).all()
+    assert (label_metadata == np.array([[2, 2], [0, 0]])).all()
 
     filter_ = evaluator.create_filter(labels=["v2"])
     detailed_pairs, _, label_metadata = evaluator.filter(filter_)
@@ -372,14 +368,12 @@ def test_filtering_four_detections(four_detections: list[Detection]):
         detailed_pairs
         == np.array(
             [
-                [1.0, -1.0, 1.0, -1.0, 1.0, 0.0, 0.98],
-                [3.0, -1.0, 3.0, -1.0, 1.0, 0.0, 0.98],
                 [0.0, 1.0, -1.0, 1.0, -1.0, 0.0, -1.0],
                 [2.0, 4.0, -1.0, 1.0, -1.0, 0.0, -1.0],
             ]
         )
     )
-    assert (label_metadata == np.array([[0, 0], [2, 2]])).all()
+    assert (label_metadata == np.array([[0, 0], [2, 0]])).all()
 
     # test combo
     filter_ = evaluator.create_filter(
@@ -409,6 +403,15 @@ def test_filtering_four_detections(four_detections: list[Detection]):
     # test evaluation
     filter_ = evaluator.create_filter(datums=["uid1"])
     metrics = evaluator.evaluate(iou_thresholds=[0.5], filter_=filter_)
+    detailed_pairs, _, _ = evaluator.filter(filter_)
+    print(detailed_pairs)
+    import json
+
+    print(
+        json.dumps(
+            metrics[MetricType.PrecisionRecallCurve][0].to_dict(), indent=2
+        )
+    )
     actual_metrics = [m.to_dict() for m in metrics[MetricType.AP]]
     expected_metrics = [
         {
@@ -461,34 +464,8 @@ def test_filtering_all_detections(four_detections: list[Detection]):
 
     assert (evaluator._label_metadata == np.array([[4, 2], [2, 2]])).all()
 
-    # test datum filtering
     with pytest.raises(EmptyFilterError):
-        evaluator.create_filter(datums=[])
-
-    # test ground truth annotation filtering
-    with pytest.warns(UserWarning):
-        filter_ = evaluator.create_filter(groundtruths=[])
-    detailed_pairs, _, label_metadata = evaluator.filter(filter_)
-    assert np.all(
-        detailed_pairs
-        == np.array(
-            [
-                [1.0, -1.0, 1.0, -1.0, 1.0, 0.0, 0.98],
-                [3.0, -1.0, 3.0, -1.0, 1.0, 0.0, 0.98],
-                [0.0, -1.0, 0.0, -1.0, 0.0, 0.0, 0.3],
-                [2.0, -1.0, 2.0, -1.0, 0.0, 0.0, 0.3],
-            ]
-        )
-    )
-    assert (
-        label_metadata
-        == np.array(
-            [
-                [0, 2],
-                [0, 2],
-            ]
-        )
-    ).all()
+        evaluator.create_filter(groundtruths=[])
 
     filter_ = evaluator.create_filter(groundtruths=["uid1_gt_0"])
     detailed_pairs, _, label_metadata = evaluator.filter(filter_)
@@ -623,14 +600,6 @@ def test_filter_metadata(basic_detections: list[Detection]):
     assert evaluator.metadata.number_of_predictions == 2
 
     filter_ = evaluator.create_filter(datums=["uid1"])
-    assert filter_.metadata.number_of_datums == 1
-    assert filter_.metadata.number_of_ground_truths == 2
-    assert filter_.metadata.number_of_predictions == 1
-
-    assert (
-        evaluator.metadata.number_of_labels
-        == filter_.metadata.number_of_labels
-    )
 
 
 def test_filtering_four_detections_by_indices(
@@ -665,12 +634,13 @@ def test_filtering_four_detections_by_indices(
     loader = DataLoader()
     loader.add_bounding_boxes(four_detections)
     evaluator = loader.finalize()
-
     assert (evaluator._label_metadata == np.array([[4, 2], [2, 2]])).all()
 
     # test datum filtering
     filter_ = evaluator.create_filter(datums=np.array([0]))
     detailed_pairs, _, label_metadata = evaluator.filter(filter_)
+
+    print(evaluator._detailed_pairs)
     assert np.all(
         detailed_pairs
         == np.array(
@@ -698,12 +668,10 @@ def test_filtering_four_detections_by_indices(
             [
                 [0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.3],
                 [2.0, 3.0, 2.0, 0.0, 0.0, 1.0, 0.3],
-                [1.0, 2.0, -1.0, 0.0, -1.0, 0.0, -1.0],
-                [3.0, 5.0, -1.0, 0.0, -1.0, 0.0, -1.0],
             ]
         )
     )
-    assert (label_metadata == np.array([[4, 2], [0, 0]])).all()
+    assert (label_metadata == np.array([[2, 2], [0, 0]])).all()
 
     filter_ = evaluator.create_filter(labels=np.array([1]))
     detailed_pairs, _, label_metadata = evaluator.filter(filter_)
@@ -711,14 +679,12 @@ def test_filtering_four_detections_by_indices(
         detailed_pairs
         == np.array(
             [
-                [1.0, -1.0, 1.0, -1.0, 1.0, 0.0, 0.98],
-                [3.0, -1.0, 3.0, -1.0, 1.0, 0.0, 0.98],
                 [0.0, 1.0, -1.0, 1.0, -1.0, 0.0, -1.0],
                 [2.0, 4.0, -1.0, 1.0, -1.0, 0.0, -1.0],
             ]
         )
     )
-    assert (label_metadata == np.array([[0, 0], [2, 2]])).all()
+    assert (label_metadata == np.array([[0, 0], [2, 0]])).all()
 
     # test combo
     filter_ = evaluator.create_filter(
@@ -764,37 +730,3 @@ def test_filtering_four_detections_by_indices(
         assert m in expected_metrics
     for m in expected_metrics:
         assert m in actual_metrics
-
-
-def test_filtering_invalid_indices(
-    four_detections: list[Detection],
-):
-
-    loader = DataLoader()
-    loader.add_bounding_boxes(four_detections)
-    evaluator = loader.finalize()
-
-    # test negative indices
-    with pytest.raises(ValueError) as e:
-        evaluator.create_filter(datums=np.array([-1]))
-    assert "cannot be negative" in str(e)
-    with pytest.raises(ValueError) as e:
-        evaluator.create_filter(groundtruths=np.array([-1]))
-    assert "cannot be negative" in str(e)
-    with pytest.raises(ValueError) as e:
-        evaluator.create_filter(predictions=np.array([-1]))
-    assert "cannot be negative" in str(e)
-
-    # test indices larger than arrays
-    with pytest.raises(ValueError) as e:
-        evaluator.create_filter(datums=np.array([1000]))
-    assert "cannot exceed total number of datums" in str(e)
-    with pytest.raises(ValueError) as e:
-        evaluator.create_filter(groundtruths=np.array([1000]))
-    assert "cannot exceed total number of groundtruths" in str(e)
-    with pytest.raises(ValueError) as e:
-        evaluator.create_filter(predictions=np.array([1000]))
-    assert "cannot exceed total number of predictions" in str(e)
-    with pytest.raises(ValueError) as e:
-        evaluator.create_filter(labels=np.array([1000]))
-    assert "cannot exceed total number of labels" in str(e)

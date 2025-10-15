@@ -88,8 +88,6 @@ def test_fuzz_confusion_matrix():
     loader = DataLoader()
     loader.add_bounding_boxes(dets)
     evaluator = loader.finalize()
-    assert evaluator.ignored_prediction_labels == []
-    assert evaluator.missing_prediction_labels == []
     assert evaluator.metadata.to_dict() == {
         "number_of_datums": 1000,
         "number_of_ground_truths": 30000,

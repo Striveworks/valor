@@ -243,12 +243,39 @@ class Evaluator:
                 filter=filter_expr,
             )
 
+    def filter_number_of_groundtruths_per_label(self, filter_expr):
+        filtered_gts_per_lbl = np.zeros_like(
+            self._number_of_groundtruths_per_label
+        )
+        for tbl in self.iterate_pairs(
+            self._dataset,
+            columns=[
+                "datum_id",
+                "gt_id",
+                "gt_label_id",
+            ],
+            filter_expr=filter_expr,
+        ):
+            gts = np.column_stack(
+                [tbl.column(i).to_numpy() for i in range(tbl.num_columns)]
+            ).astype(np.int64)
+            unique_ann = np.unique(gts, axis=0)
+            unique_labels, label_counts = np.unique(
+                unique_ann[:, 2], return_counts=True
+            )
+            label_counts = label_counts[unique_labels >= 0]
+            unique_labels = unique_labels[unique_labels >= 0]
+            filtered_gts_per_lbl[
+                unique_labels.astype(np.uint64)
+            ] += label_counts.astype(np.uint64)
+        return filtered_gts_per_lbl
+
     def compute_precision_recall(
         self,
         iou_thresholds: list[float],
         score_thresholds: list[float],
         filter_expr=None,
-        where: str | Path | None = None,
+        name: str | None = None,
     ) -> dict[MetricType, list[Metric]]:
         """
         Computes all metrics except for ConfusionMatrix
@@ -274,11 +301,16 @@ class Evaluator:
 
         if filter_expr is None:
             ranked_dataset = ds.dataset(self._ranked_path, format="parquet")
+            number_gts_per_lbl = self._number_of_groundtruths_per_label
         else:
-            if where is None:
-                raise ValueError("path for filtered ranked pairs is required")
+            if name is None:
+                name = "filtered"
+            where = self._dir / name
             self.create_ranked_cache(where=where)
             ranked_dataset = ds.dataset(where, format="parquet")
+            number_gts_per_lbl = self.filter_number_of_groundtruths_per_label(
+                filter_expr
+            )
 
         n_ious = len(iou_thresholds)
         n_scores = len(score_thresholds)
@@ -305,6 +337,7 @@ class Evaluator:
             pairs = np.column_stack(
                 [tbl.column(i).to_numpy() for i in range(tbl.num_columns)]
             )
+            print("pairs", pairs)
             if pairs.size == 0:
                 continue
 
@@ -312,7 +345,7 @@ class Evaluator:
                 ranked_pairs=pairs,
                 iou_thresholds=np.array(iou_thresholds),
                 score_thresholds=np.array(score_thresholds),
-                number_of_groundtruths_per_label=self._number_of_groundtruths_per_label,
+                number_of_groundtruths_per_label=number_gts_per_lbl,
                 number_of_labels=len(self._index_to_label),
                 running_counts=running_counts,
             )
@@ -320,13 +353,11 @@ class Evaluator:
             pr_curve = np.maximum(batch_pr_curve, pr_curve)
 
         # fn count
-        counts[:, :, 2, :] = (
-            self._number_of_groundtruths_per_label - counts[:, :, 0, :]
-        )
+        counts[:, :, 2, :] = number_gts_per_lbl - counts[:, :, 0, :]
 
         precision_recall_f1 = compute_precision_recall_f1(
             counts=counts,
-            number_of_groundtruths_per_label=self._number_of_groundtruths_per_label,
+            number_of_groundtruths_per_label=number_gts_per_lbl,
         )
         (
             average_precision,

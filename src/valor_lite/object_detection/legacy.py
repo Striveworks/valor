@@ -5,6 +5,7 @@ import pyarrow.compute as pc
 import pyarrow.dataset as ds
 from numpy.typing import NDArray
 
+from valor_lite.exceptions import EmptyFilterError
 from valor_lite.object_detection.computation import (
     compute_pair_classifications,
 )
@@ -72,6 +73,84 @@ class Evaluator:
             number_of_predictions=self._evaluator.info.number_of_prediction_annotations,
         )
 
+    def _generate_detailed_pairs(self, filter_expr=None):
+        tbl = self._evaluator._dataset.to_table(
+            columns=[
+                "datum_id",
+                "gt_id",
+                "pd_id",
+                "gt_label_id",
+                "pd_label_id",
+                "iou",
+                "score",
+            ],
+            filter=filter_expr,
+        )
+        return np.column_stack(
+            [tbl.column(i).to_numpy() for i in range(tbl.num_columns)]
+        )
+
+    @property
+    def _detailed_pairs(self) -> np.ndarray:
+        return self._generate_detailed_pairs()
+
+    def _generate_label_metadata(self, detailed_pairs: np.ndarray):
+        label_metadata = np.zeros(
+            (len(self._evaluator._index_to_label), 2), dtype=np.int32
+        )
+
+        # groundtruth labels
+        unique_ann = np.unique(
+            detailed_pairs[:, (0, 1, 3)].astype(np.int64), axis=0
+        )
+        unique_labels, label_counts = np.unique(
+            unique_ann[:, 2], return_counts=True
+        )
+        label_counts = label_counts[unique_labels >= 0]
+        unique_labels = unique_labels[unique_labels >= 0]
+        label_metadata[unique_labels, 0] = label_counts
+
+        # prediction labels
+        unique_ann = np.unique(
+            detailed_pairs[:, (0, 2, 4)].astype(np.int64), axis=0
+        )
+        unique_labels, label_counts = np.unique(
+            unique_ann[:, 2], return_counts=True
+        )
+        label_counts = label_counts[unique_labels >= 0]
+        unique_labels = unique_labels[unique_labels >= 0]
+        label_metadata[unique_labels, 1] = label_counts
+
+        return label_metadata
+
+    @property
+    def _label_metadata(self) -> np.ndarray:
+        return self._generate_label_metadata(self._detailed_pairs)
+
+    def filter(
+        self, filter_: Filter
+    ) -> tuple[NDArray[np.float64], NDArray[np.float64], NDArray[np.int32],]:
+        """
+        Performs filtering over the internal cache.
+
+        Parameters
+        ----------
+        filter_ : Filter
+            The filter parameterization.
+
+        Returns
+        -------
+        NDArray[float64]
+            Filtered detailed pairs.
+        NDArray[float64]
+            Filtered ranked pairs.
+        NDArray[int32]
+            Label metadata.
+        """
+        detailed_pairs = self._generate_detailed_pairs(filter_.expr)
+        label_metadata = self._generate_label_metadata(detailed_pairs)
+        return detailed_pairs, detailed_pairs, label_metadata
+
     def create_filter(
         self,
         datums: list[str] | NDArray[np.int32] | None = None,
@@ -95,31 +174,56 @@ class Evaluator:
         """
         filter_expr = pc.scalar(True)
         if datums is not None:
-            if isinstance(datums, list):
-                filter_expr &= ds.field("datum_uid").isin(datums + [None])
-            else:
+            if isinstance(datums, list) and len(datums) > 0:
+                filter_expr &= (
+                    ds.field("datum_uid").isin(datums)
+                    | ds.field("datum_uid").is_null()
+                )
+            elif isinstance(datums, np.ndarray) and datums.size > 0:
                 filter_expr &= ds.field("datum_id").isin(
                     datums.tolist() + [-1]
                 )
-        if groundtruths is not None:
-            if isinstance(groundtruths, list):
-                filter_expr &= ds.field("gt_uid").isin(groundtruths + [None])
             else:
-                filter_expr &= ds.field("gt_id").isin(
-                    groundtruths.tolist() + [-1]
+                raise EmptyFilterError("datum filter contains no elements")
+        if groundtruths is not None:
+            if isinstance(groundtruths, list) and len(groundtruths) > 0:
+                filter_expr &= ds.field("gt_uid").isin(groundtruths)
+            elif (
+                isinstance(groundtruths, np.ndarray) and groundtruths.size > 0
+            ):
+                filter_expr &= ds.field("gt_id").isin(groundtruths.tolist())
+            else:
+                raise EmptyFilterError(
+                    "groundtruth filter contains no elements"
                 )
         if predictions is not None:
-            if isinstance(predictions, list):
-                filter_expr &= ds.field("pd_uid").isin(predictions + [None])
+            if isinstance(predictions, list) and len(predictions) > 0:
+                filter_expr &= ds.field("pd_uid").isin(predictions)
+            elif isinstance(predictions, np.ndarray) and predictions.size > 0:
+                filter_expr &= ds.field("pd_id").isin(predictions.tolist())
             else:
-                filter_expr &= ds.field("pd_id").isin(
-                    predictions.tolist() + [-1]
+                raise EmptyFilterError(
+                    "prediction filter contains no elements"
                 )
         if labels is not None:
-            if isinstance(labels, list):
-                filter_expr &= ds.field("pd_uid").isin(labels + [None])
+            if isinstance(labels, list) and len(labels) > 0:
+                filter_expr &= (
+                    ds.field("gt_label").isin(labels)
+                    | ds.field("gt_label").is_null()
+                )
+                filter_expr &= (
+                    ds.field("pd_label").isin(labels)
+                    | ds.field("pd_label").is_null()
+                )
+            elif isinstance(labels, np.ndarray) and labels.size > 0:
+                filter_expr &= ds.field("gt_label_id").isin(
+                    labels.tolist() + [-1]
+                )
+                filter_expr &= ds.field("pd_label_id").isin(
+                    labels.tolist() + [-1]
+                )
             else:
-                filter_expr &= ds.field("pd_id").isin(labels.tolist() + [-1])
+                raise EmptyFilterError("label filter contains no elements")
         return Filter(expr=filter_expr)
 
     def compute_precision_recall(
