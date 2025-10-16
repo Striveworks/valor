@@ -4,7 +4,7 @@ import numpy as np
 import pytest
 from shapely.geometry import Polygon as ShapelyPolygon
 
-from valor_lite.exceptions import EmptyEvaluatorError
+from valor_lite.exceptions import EmptyCacheError
 from valor_lite.object_detection import (
     Bitmask,
     BoundingBox,
@@ -16,7 +16,7 @@ from valor_lite.object_detection import (
 
 def test_no_data():
     loader = DataLoader()
-    with pytest.raises(EmptyEvaluatorError):
+    with pytest.raises(EmptyCacheError):
         loader.finalize()
 
 

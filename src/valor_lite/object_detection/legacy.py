@@ -1,3 +1,4 @@
+import tempfile
 from dataclasses import asdict, dataclass
 
 import numpy as np
@@ -10,6 +11,7 @@ from valor_lite.object_detection.computation import (
     compute_pair_classifications,
 )
 from valor_lite.object_detection.evaluator import Evaluator as CachedEvaluator
+from valor_lite.object_detection.evaluator import Filter
 from valor_lite.object_detection.loader import Loader as CachedLoader
 from valor_lite.object_detection.metric import Metric, MetricType
 from valor_lite.object_detection.utilities import (
@@ -48,18 +50,13 @@ class Metadata:
         return asdict(self)
 
 
-@dataclass
-class Filter:
-    expr: pc.Expression
-
-
 class Evaluator:
     """
     Legacy Object Detection Evaluator
     """
 
     def __init__(self):
-        self._evaluator = CachedEvaluator(".valor")
+        self._evaluator = CachedEvaluator()
 
     @property
     def metadata(self) -> Metadata:
@@ -74,20 +71,22 @@ class Evaluator:
         )
 
     def _generate_detailed_pairs(self, filter_expr=None):
-        tbl = self._evaluator._dataset.to_table(
-            columns=[
-                "datum_id",
-                "gt_id",
-                "pd_id",
-                "gt_label_id",
-                "pd_label_id",
-                "iou",
-                "score",
-            ],
-            filter=filter_expr,
-        )
-        return np.column_stack(
-            [tbl.column(i).to_numpy() for i in range(tbl.num_columns)]
+        return np.concatenate(
+            [
+                pairs
+                for pairs in self._evaluator.iterate_pairs(
+                    self._evaluator._dataset,
+                    columns=[
+                        "datum_id",
+                        "gt_id",
+                        "pd_id",
+                        "gt_label_id",
+                        "pd_label_id",
+                        "iou",
+                        "score",
+                    ],
+                )
+            ]
         )
 
     @property
@@ -147,16 +146,22 @@ class Evaluator:
         NDArray[int32]
             Label metadata.
         """
-        detailed_pairs = self._generate_detailed_pairs(filter_.expr)
-        label_metadata = self._generate_label_metadata(detailed_pairs)
-        return detailed_pairs, detailed_pairs, label_metadata
+        with tempfile.TemporaryDirectory() as tmpdir:
+            evaluator = Evaluator()
+            evaluator._evaluator = self._evaluator.filter(
+                directory=tmpdir,
+                name="filtered",
+                filter_expr=filter_,
+            )
+            detailed_pairs = evaluator._generate_detailed_pairs(filter_)
+            label_metadata = evaluator._generate_label_metadata(detailed_pairs)
+            return detailed_pairs, detailed_pairs, label_metadata
 
     def create_filter(
         self,
         datums: list[str] | NDArray[np.int32] | None = None,
         groundtruths: list[str] | NDArray[np.int32] | None = None,
         predictions: list[str] | NDArray[np.int32] | None = None,
-        labels: list[str] | NDArray[np.int32] | None = None,
     ) -> Filter:
         """
         Creates a filter object.
@@ -169,62 +174,47 @@ class Evaluator:
             An optional list of string ids or indices representing ground truth annotations to keep.
         predictions : list[str] | NDArray[int32], optional
             An optional list of string ids or indices representing prediction annotations to keep.
-        labels : list[str] | NDArray[int32], optional
-            An optional list of labels or indices to keep.
         """
-        filter_expr = pc.scalar(True)
+        datum_expr = pc.scalar(True)
+        gts_expr = pc.scalar(True)
+        pds_expr = pc.scalar(True)
         if datums is not None:
             if isinstance(datums, list) and len(datums) > 0:
-                filter_expr &= (
+                datum_expr &= (
                     ds.field("datum_uid").isin(datums)
                     | ds.field("datum_uid").is_null()
                 )
             elif isinstance(datums, np.ndarray) and datums.size > 0:
-                filter_expr &= ds.field("datum_id").isin(
-                    datums.tolist() + [-1]
-                )
+                datum_expr &= ds.field("datum_id").isin(datums.tolist() + [-1])
             else:
                 raise EmptyFilterError("datum filter contains no elements")
         if groundtruths is not None:
             if isinstance(groundtruths, list) and len(groundtruths) > 0:
-                filter_expr &= ds.field("gt_uid").isin(groundtruths)
+                gts_expr &= ds.field("gt_uid").isin(groundtruths)
             elif (
                 isinstance(groundtruths, np.ndarray) and groundtruths.size > 0
             ):
-                filter_expr &= ds.field("gt_id").isin(groundtruths.tolist())
+                gts_expr &= ds.field("gt_id").isin(
+                    groundtruths.tolist() + [-1]
+                )
             else:
                 raise EmptyFilterError(
                     "groundtruth filter contains no elements"
                 )
         if predictions is not None:
             if isinstance(predictions, list) and len(predictions) > 0:
-                filter_expr &= ds.field("pd_uid").isin(predictions)
+                pds_expr &= ds.field("pd_uid").isin(predictions)
             elif isinstance(predictions, np.ndarray) and predictions.size > 0:
-                filter_expr &= ds.field("pd_id").isin(predictions.tolist())
+                pds_expr &= ds.field("pd_id").isin(predictions.tolist() + [-1])
             else:
                 raise EmptyFilterError(
                     "prediction filter contains no elements"
                 )
-        if labels is not None:
-            if isinstance(labels, list) and len(labels) > 0:
-                filter_expr &= (
-                    ds.field("gt_label").isin(labels)
-                    | ds.field("gt_label").is_null()
-                )
-                filter_expr &= (
-                    ds.field("pd_label").isin(labels)
-                    | ds.field("pd_label").is_null()
-                )
-            elif isinstance(labels, np.ndarray) and labels.size > 0:
-                filter_expr &= ds.field("gt_label_id").isin(
-                    labels.tolist() + [-1]
-                )
-                filter_expr &= ds.field("pd_label_id").isin(
-                    labels.tolist() + [-1]
-                )
-            else:
-                raise EmptyFilterError("label filter contains no elements")
-        return Filter(expr=filter_expr)
+        return Filter(
+            datums=datum_expr,
+            groundtruths=gts_expr,
+            predictions=pds_expr,
+        )
 
     def compute_precision_recall(
         self,
@@ -249,11 +239,20 @@ class Evaluator:
         dict[MetricType, list]
             A dictionary mapping MetricType enumerations to lists of computed metrics.
         """
-        filter_expr = filter_.expr if filter_ else None
+        if filter_ is not None:
+            with tempfile.TemporaryDirectory() as tmpdir:
+                evaluator = self._evaluator.filter(
+                    directory=tmpdir,
+                    name="filtered",
+                    filter_expr=filter_,
+                )
+                return evaluator.compute_precision_recall(
+                    iou_thresholds=iou_thresholds,
+                    score_thresholds=score_thresholds,
+                )
         return self._evaluator.compute_precision_recall(
             iou_thresholds=iou_thresholds,
             score_thresholds=score_thresholds,
-            filter_expr=filter_expr,
         )
 
     def compute_confusion_matrix(
@@ -284,17 +283,7 @@ class Evaluator:
         elif not score_thresholds:
             raise ValueError("At least one score threshold must be passed.")
 
-        # TODO - implement
         return []
-
-        if filter_ is not None:
-            detailed_pairs, _, _ = self.filter(filter_=filter_)
-        else:
-            detailed_pairs = self._detailed_pairs
-
-        if detailed_pairs.size == 0:
-            return []
-
         (
             mask_tp,
             mask_fp_fn_misclf,
@@ -368,7 +357,6 @@ class DataLoader(CachedLoader):
 
     def __init__(self):
         super().__init__(
-            ".valor",
             batch_size=1_000,
             rows_per_file=10_000,
         )

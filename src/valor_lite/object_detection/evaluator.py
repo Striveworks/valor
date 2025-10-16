@@ -1,11 +1,13 @@
 import heapq
 import json
 import tempfile
+from collections import defaultdict
 from dataclasses import dataclass
 from pathlib import Path
 
 import numpy as np
 import pyarrow as pa
+import pyarrow.compute as pc
 import pyarrow.dataset as ds
 import pyarrow.parquet as pq
 from numpy.typing import NDArray
@@ -45,52 +47,61 @@ def create_mapping(
 
 @dataclass
 class EvaluatorInfo:
-    number_of_datums: int
-    number_of_groundtruth_annotations: int
-    number_of_prediction_annotations: int
-    number_of_labels: int
-    number_of_rows: int
-    datum_metadata_types: dict[str, DataType] | None
-    groundtruth_metadata_types: dict[str, DataType] | None
-    prediction_metadata_types: dict[str, DataType] | None
+    number_of_datums: int = 0
+    number_of_groundtruth_annotations: int = 0
+    number_of_prediction_annotations: int = 0
+    number_of_labels: int = 0
+    number_of_rows: int = 0
+    datum_metadata_types: dict[str, DataType] | None = None
+    groundtruth_metadata_types: dict[str, DataType] | None = None
+    prediction_metadata_types: dict[str, DataType] | None = None
 
     def __getitem__(self, key: str):
         return getattr(self, key)
 
 
+@dataclass
+class Filter:
+    datums: pc.Expression | None = None
+    groundtruths: pc.Expression | None = None
+    predictions: pc.Expression | None = None
+    labels: pc.Expression | None = None
+
+
 class Evaluator:
     def __init__(
         self,
-        directory: str | Path,
+        name: str = "default",
+        directory: str | Path = ".valor",
+        labels_override: dict[int, str] | None = None,
     ):
-        self._dir = Path(directory)
-        self._detailed_path = self._dir / Path("detailed")
-        self._ranked_path = self._dir / Path("ranked")
-        self._labels_path = self._dir / Path("labels.json")
-        self._info_path = self._dir / Path("info.json")
-        self._number_of_groundtruths_per_label_path = self._dir / Path(
-            "groundtruths_per_label.json"
-        )
+        self._directory = Path(directory)
+        self._name = name
+        self._path = self._directory / name
+        self._detailed_path = self._path / "detailed"
+        self._ranked_path = self._path / "ranked"
+        self._metadata_path = self._path / "metadata.json"
 
         # read from file
         self._dataset = ds.dataset(self._detailed_path, format="parquet")
 
-        # load id to label mapping
-        with open(self._labels_path, "r") as f:
-            labels = json.load(f)
-            self._index_to_label = {int(k): v for k, v in labels.items()}
+        # build evaluator meta
+        (
+            self._index_to_label,
+            self._number_of_groundtruths_per_label,
+            self._info,
+        ) = self._retrieve_meta(labels_override)
 
-        # load label id to ground truth count mapping
-        with open(self._number_of_groundtruths_per_label_path, "r") as f:
-            self._number_of_groundtruths_per_label = np.zeros(
-                len(self._index_to_label), dtype=np.uint64
-            )
-            for k, v in json.load(f).items():
-                self._number_of_groundtruths_per_label[int(k)] = v
-
-        # load evaluator info
-        with open(self._info_path, "r") as f:
-            self._info = EvaluatorInfo(**json.load(f))
+        with open(self._metadata_path, "r") as f:
+            types = json.load(f)
+            self._info.datum_metadata_types = types["datum"]
+            self._info.groundtruth_metadata_types = types["groundtruth"]
+            self._info.prediction_metadata_types = types["prediction"]
+        with open(self._detailed_path / ".cfg", "r") as f:
+            cfg = json.load(f)
+            self._detailed_batch_size = cfg["batch_size"]
+            self._detailed_rows_per_file = cfg["rows_per_file"]
+            self._detailed_compression = cfg["compression"]
 
         # create ranked cache schema
         annotation_metadata_keys = {
@@ -120,12 +131,108 @@ class Evaluator:
         )
 
     @property
-    def _ranked(self):
+    def detailed(self) -> ds.Dataset:
+        return self._dataset
+
+    @property
+    def ranked(self):
         return ds.dataset(self._ranked_path, format="parquet")
 
     @property
     def info(self) -> EvaluatorInfo:
         return self._info
+
+    def _retrieve_meta(self, labels_override: dict[int, str] | None):
+        gt_counts_per_lbl = defaultdict(int)
+        labels = labels_override if labels_override else {}
+        info = EvaluatorInfo()
+
+        for fragment in self.detailed.get_fragments():
+            tbl = fragment.to_table()
+            columns = (
+                "datum_id",
+                "gt_id",
+                "pd_id",
+                "gt_label_id",
+                "pd_label_id",
+            )
+            ids = np.column_stack(
+                [tbl[col].to_numpy() for col in columns]
+            ).astype(np.int64)
+
+            # count number of rows
+            info.number_of_rows += int(tbl.shape[0])
+
+            # count unique datums
+            datum_ids = np.unique(ids[:, 0])
+            info.number_of_datums += int(datum_ids.size)
+
+            # count unique groundtruths
+            gt_ids = ids[:, (0, 1)]
+            gt_ids = gt_ids[gt_ids[:, 1] >= 0]
+            gt_ids = np.unique(gt_ids, axis=0)
+            info.number_of_groundtruth_annotations += int(gt_ids.shape[0])
+
+            # count unique predictions
+            pd_ids = ids[:, (0, 2)]
+            pd_ids = pd_ids[pd_ids[:, 1] >= 0]
+            pd_ids = np.unique(pd_ids, axis=0)
+            info.number_of_prediction_annotations += int(pd_ids.shape[0])
+
+            # get gt labels
+            gt_label_ids, gt_indices = np.unique(ids[:, 3], return_index=True)
+            gt_labels = tbl["gt_label"].take(gt_indices).to_pylist()
+            gt_labels = dict(zip(gt_label_ids.astype(int).tolist(), gt_labels))
+            labels.update(gt_labels)
+
+            # get pd labels
+            pd_label_ids, pd_indices = np.unique(ids[:, 4], return_index=True)
+            pd_labels = tbl["pd_label"].take(pd_indices).to_pylist()
+            pd_labels = dict(zip(pd_label_ids.astype(int).tolist(), pd_labels))
+            labels.update(pd_labels)
+
+            # count gts per label
+            gts = ids[:, (0, 1, 3)].astype(np.int64)
+            unique_ann = np.unique(gts, axis=0)
+            unique_labels, label_counts = np.unique(
+                unique_ann[:, 2], return_counts=True
+            )
+            label_counts = label_counts[unique_labels >= 0]
+            unique_labels = unique_labels[unique_labels >= 0]
+            for label_id, count in zip(unique_labels, label_counts):
+                gt_counts_per_lbl[int(label_id)] += int(count)
+
+        # post-process
+        labels.pop(-1, None)
+
+        # complete info object
+        info.number_of_labels = len(labels)
+
+        # convert gt counts to numpy
+        number_of_groundtruths_per_label = np.zeros(
+            len(labels), dtype=np.uint64
+        )
+        for k, v in gt_counts_per_lbl.items():
+            number_of_groundtruths_per_label[int(k)] = v
+
+        return labels, number_of_groundtruths_per_label, info
+
+    def filter(
+        self,
+        filter_expr: Filter,
+        name: str | None = None,
+        directory: str | Path | None = None,
+    ) -> "Evaluator":
+        name = name if name else "filtered"
+        directory = directory if directory else self._directory
+        from valor_lite.object_detection.loader import Loader
+
+        return Loader.filter(
+            directory=directory,
+            name=name,
+            evaluator=self,
+            filter_expr=filter_expr,
+        )
 
     def create_ranked_cache(
         self,
@@ -234,48 +341,18 @@ class Evaluator:
     @staticmethod
     def iterate_pairs(
         dataset: ds.Dataset,
-        columns=None,
-        filter_expr=None,
+        columns: list[str] | None = None,
     ):
         for fragment in dataset.get_fragments():
-            yield fragment.to_table(
-                columns=columns,
-                filter=filter_expr,
-            )
-
-    def filter_number_of_groundtruths_per_label(self, filter_expr):
-        filtered_gts_per_lbl = np.zeros_like(
-            self._number_of_groundtruths_per_label
-        )
-        for tbl in self.iterate_pairs(
-            self._dataset,
-            columns=[
-                "datum_id",
-                "gt_id",
-                "gt_label_id",
-            ],
-            filter_expr=filter_expr,
-        ):
-            gts = np.column_stack(
+            tbl = fragment.to_table(columns=columns)
+            yield np.column_stack(
                 [tbl.column(i).to_numpy() for i in range(tbl.num_columns)]
-            ).astype(np.int64)
-            unique_ann = np.unique(gts, axis=0)
-            unique_labels, label_counts = np.unique(
-                unique_ann[:, 2], return_counts=True
             )
-            label_counts = label_counts[unique_labels >= 0]
-            unique_labels = unique_labels[unique_labels >= 0]
-            filtered_gts_per_lbl[
-                unique_labels.astype(np.uint64)
-            ] += label_counts.astype(np.uint64)
-        return filtered_gts_per_lbl
 
     def compute_precision_recall(
         self,
         iou_thresholds: list[float],
         score_thresholds: list[float],
-        filter_expr=None,
-        name: str | None = None,
     ) -> dict[MetricType, list[Metric]]:
         """
         Computes all metrics except for ConfusionMatrix
@@ -286,8 +363,6 @@ class Evaluator:
             A list of IOU thresholds to compute metrics over.
         score_thresholds : list[float]
             A list of score thresholds to compute metrics over.
-        filter_ : Filter, optional
-            A collection of filter parameters and masks.
 
         Returns
         -------
@@ -299,28 +374,17 @@ class Evaluator:
         elif not score_thresholds:
             raise ValueError("At least one score threshold must be passed.")
 
-        if filter_expr is None:
-            ranked_dataset = ds.dataset(self._ranked_path, format="parquet")
-            number_gts_per_lbl = self._number_of_groundtruths_per_label
-        else:
-            if name is None:
-                name = "filtered"
-            where = self._dir / name
-            self.create_ranked_cache(where=where)
-            ranked_dataset = ds.dataset(where, format="parquet")
-            number_gts_per_lbl = self.filter_number_of_groundtruths_per_label(
-                filter_expr
-            )
-
         n_ious = len(iou_thresholds)
         n_scores = len(score_thresholds)
         n_labels = len(self._index_to_label)
 
+        print(self._number_of_groundtruths_per_label)
+
         counts = np.zeros((n_ious, n_scores, 3, n_labels), dtype=np.uint64)
         pr_curve = np.zeros((n_ious, n_labels, 101, 2), dtype=np.float64)
         running_counts = np.ones((n_ious, n_labels, 2), dtype=np.uint64)
-        for tbl in self.iterate_pairs(
-            dataset=ranked_dataset,
+        for pairs in self.iterate_pairs(
+            dataset=self.ranked,
             columns=[
                 "datum_id",
                 "gt_id",
@@ -332,12 +396,7 @@ class Evaluator:
                 "iou_prev",
                 "high_score",
             ],
-            filter_expr=filter_expr,
         ):
-            pairs = np.column_stack(
-                [tbl.column(i).to_numpy() for i in range(tbl.num_columns)]
-            )
-            print("pairs", pairs)
             if pairs.size == 0:
                 continue
 
@@ -345,7 +404,7 @@ class Evaluator:
                 ranked_pairs=pairs,
                 iou_thresholds=np.array(iou_thresholds),
                 score_thresholds=np.array(score_thresholds),
-                number_of_groundtruths_per_label=number_gts_per_lbl,
+                number_of_groundtruths_per_label=self._number_of_groundtruths_per_label,
                 number_of_labels=len(self._index_to_label),
                 running_counts=running_counts,
             )
@@ -353,11 +412,13 @@ class Evaluator:
             pr_curve = np.maximum(batch_pr_curve, pr_curve)
 
         # fn count
-        counts[:, :, 2, :] = number_gts_per_lbl - counts[:, :, 0, :]
+        counts[:, :, 2, :] = (
+            self._number_of_groundtruths_per_label - counts[:, :, 0, :]
+        )
 
         precision_recall_f1 = compute_precision_recall_f1(
             counts=counts,
-            number_of_groundtruths_per_label=number_gts_per_lbl,
+            number_of_groundtruths_per_label=self._number_of_groundtruths_per_label,
         )
         (
             average_precision,
@@ -385,7 +446,6 @@ class Evaluator:
         self,
         iou_thresholds: list[float],
         score_thresholds: list[float],
-        filter_expr=None,
     ) -> list[Metric]:
         """
         Computes confusion matrices at various thresholds.
@@ -420,7 +480,7 @@ class Evaluator:
             (n_ious, n_scores, n_labels), dtype=np.uint64
         )
         unmatched_predictions = np.zeros_like(unmatched_groundtruths)
-        for tbl in self.iterate_pairs(
+        for pairs in self.iterate_pairs(
             dataset=self._dataset,
             columns=[
                 "datum_id",
@@ -431,11 +491,7 @@ class Evaluator:
                 "iou",
                 "score",
             ],
-            filter_expr=filter_expr,
         ):
-            pairs = np.column_stack(
-                [tbl.column(i).to_numpy() for i in range(tbl.num_columns)]
-            )
             if pairs.size == 0:
                 continue
 
@@ -480,7 +536,6 @@ class Evaluator:
         self,
         iou_thresholds: list[float],
         score_thresholds: list[float],
-        filter_expr=None,
     ) -> list[Metric]:
         """
         Computes examples at various thresholds.
@@ -514,23 +569,18 @@ class Evaluator:
         index_to_groundtruth_id = {}
         index_to_prediction_id = {}
 
-        columns = [
-            "datum_id",
-            "gt_id",
-            "pd_id",
-            "gt_label_id",
-            "pd_label_id",
-            "iou",
-            "score",
-        ]
-        for tbl in self.iterate_pairs(
+        for batch_pairs in self.iterate_pairs(
             dataset=self._dataset,
-            columns=columns,
-            filter_expr=filter_expr,
+            columns=[
+                "datum_id",
+                "gt_id",
+                "pd_id",
+                "gt_label_id",
+                "pd_label_id",
+                "iou",
+                "score",
+            ],
         ):
-            batch_pairs = np.column_stack(
-                [tbl.column(i).to_numpy() for i in range(tbl.num_columns)]
-            )
             if batch_pairs.size == 0:
                 continue
 
@@ -603,16 +653,13 @@ class Evaluator:
         self,
         iou_thresholds: list[float] = [0.1, 0.5, 0.75],
         score_thresholds: list[float] = [0.5, 0.75, 0.9],
-        filter_expr=None,
     ) -> dict[MetricType, list[Metric]]:
         metrics = self.compute_precision_recall(
             iou_thresholds=iou_thresholds,
             score_thresholds=score_thresholds,
-            filter_expr=filter_expr,
         )
         metrics[MetricType.ConfusionMatrix] = self.compute_confusion_matrix(
             iou_thresholds=iou_thresholds,
             score_thresholds=score_thresholds,
-            filter_expr=filter_expr,
         )
         return metrics

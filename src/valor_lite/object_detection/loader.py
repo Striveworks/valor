@@ -1,14 +1,16 @@
 import json
 from collections import defaultdict
+from dataclasses import asdict
 from pathlib import Path
 
 import numpy as np
 import pyarrow as pa
+import pyarrow.compute as pc
 from numpy.typing import NDArray
 from tqdm import tqdm
 
 from valor_lite.cache import CacheWriter, DataType
-from valor_lite.exceptions import EmptyEvaluatorError
+from valor_lite.exceptions import EmptyCacheError
 from valor_lite.object_detection.annotation import (
     Bitmask,
     BoundingBox,
@@ -20,13 +22,18 @@ from valor_lite.object_detection.computation import (
     compute_bitmask_iou,
     compute_polygon_iou,
 )
-from valor_lite.object_detection.evaluator import Evaluator
+from valor_lite.object_detection.evaluator import (
+    Evaluator,
+    EvaluatorInfo,
+    Filter,
+)
 
 
 class Loader:
     def __init__(
         self,
         directory: str | Path = ".valor",
+        name: str = "default",
         batch_size: int = 1,
         rows_per_file: int = 1,
         # batch_size: int = 10_000,
@@ -36,24 +43,27 @@ class Loader:
         groundtruth_metadata_types: dict[str, DataType] | None = None,
         prediction_metadata_types: dict[str, DataType] | None = None,
     ):
-        self._dir = Path(directory)
-        self._detailed_path = self._dir / Path("detailed")
-        self._ranked_path = self._dir / Path("ranked")
-        self._labels_path = self._dir / Path("labels.json")
-        self._number_of_groundtruths_per_label_path = self._dir / Path(
-            "groundtruths_per_label.json"
-        )
-        self._info_path = self._dir / Path("info.json")
+        self._directory = Path(directory)
+        self._name = name
+
+        self._path = self._directory / self._name
+        self._path.mkdir(parents=True, exist_ok=True)
+        self._detailed_path = self._path / "detailed"
+        self._ranked_path = self._path / "ranked"
+        self._metadata_path = self._path / "metadata.json"
 
         self._labels = {}
-        self._number_of_groundtruths_per_label = defaultdict(int)
         self._datum_count = 0
         self._groundtruth_count = 0
         self._prediction_count = 0
 
-        self._datum_metadata_types = datum_metadata_types
-        self._groundtruth_metadata_types = groundtruth_metadata_types
-        self._prediction_metadata_types = prediction_metadata_types
+        with open(self._metadata_path, "w") as f:
+            types = {
+                "datum": datum_metadata_types,
+                "groundtruth": groundtruth_metadata_types,
+                "prediction": prediction_metadata_types,
+            }
+            json.dump(types, f, indent=2)
 
         datum_metadata_schema = (
             [(k, v.to_arrow()) for k, v in datum_metadata_types.items()]
@@ -100,7 +110,7 @@ class Loader:
                 ("iou", pa.float64()),
             ]
         )
-        self._detailed = CacheWriter(
+        self._cache = CacheWriter(
             where=self._detailed_path,
             schema=schema,
             batch_size=batch_size,
@@ -146,7 +156,6 @@ class Loader:
                     gt_id = self._groundtruth_count + gidx
                     glabel = gann.labels[0]
                     glabel_idx = self._add_label(gann.labels[0])
-                    self._number_of_groundtruths_per_label[glabel_idx] += 1
                     gann_metadata = gann.metadata if gann.metadata else {}
                     if (ious[:, gidx] < 1e-9).all():
                         pairs.append(
@@ -254,7 +263,7 @@ class Loader:
             self._prediction_count += len(detection.predictions)
 
             pairs = sorted(pairs, key=lambda x: (-x["score"], -x["iou"]))
-            self._detailed.write_rows(pairs)
+            self._cache.write_rows(pairs)
 
     def add_bounding_boxes(
         self,
@@ -356,6 +365,104 @@ class Loader:
             show_progress=show_progress,
         )
 
+    @classmethod
+    def filter(
+        cls,
+        directory: str | Path,
+        name: str,
+        evaluator: Evaluator,
+        filter_expr: Filter,
+    ) -> Evaluator:
+        loader = cls(
+            directory=directory,
+            name=name,
+            batch_size=evaluator._detailed_batch_size,
+            rows_per_file=evaluator._detailed_rows_per_file,
+            compression=evaluator._detailed_compression,
+            datum_metadata_types=evaluator.info.datum_metadata_types,
+            groundtruth_metadata_types=evaluator.info.groundtruth_metadata_types,
+            prediction_metadata_types=evaluator.info.prediction_metadata_types,
+        )
+        for fragment in evaluator.detailed.get_fragments():
+            tbl = fragment.to_table(filter=filter_expr.datums)
+
+            columns = (
+                "datum_id",
+                "gt_id",
+                "pd_id",
+                "gt_label_id",
+                "pd_label_id",
+                "iou",
+                "score",
+            )
+            pairs = np.column_stack([tbl[col].to_numpy() for col in columns])
+
+            n_pairs = pairs.shape[0]
+            gt_ids = pairs[:, (0, 1)].astype(np.int64)
+            pd_ids = pairs[:, (0, 2)].astype(np.int64)
+            gt_lb_ids = pairs[:, 3].astype(np.int64)
+            pd_lb_ids = pairs[:, 4].astype(np.int64)
+
+            mask_valid_gt = np.zeros(n_pairs, dtype=np.bool_)
+            mask_valid_pd = np.zeros(n_pairs, dtype=np.bool_)
+
+            if filter_expr.groundtruths is not None:
+                gt_tbl = tbl.filter(filter_expr.groundtruths)
+                gt_pairs = np.column_stack(
+                    [gt_tbl[col].to_numpy() for col in ("datum_id", "gt_id")]
+                ).astype(np.int64)
+                for gt in np.unique(gt_pairs, axis=0):
+                    mask_valid_gt |= (gt_ids == gt).all(axis=1)
+
+            if filter_expr.predictions is not None:
+                pd_tbl = tbl.filter(filter_expr.predictions)
+                pd_pairs = np.column_stack(
+                    [pd_tbl[col].to_numpy() for col in ("datum_id", "pd_id")]
+                ).astype(np.int64)
+                for pd in np.unique(pd_pairs, axis=0):
+                    mask_valid_pd |= (pd_ids == pd).all(axis=1)
+
+            if filter_expr.labels is not None:
+                lb_tbl = tbl.filter(filter_expr.labels)
+                lb_pairs = np.column_stack(
+                    [
+                        lb_tbl[col].to_numpy()
+                        for col in ("gt_label_id", "pd_label_id")
+                    ]
+                ).astype(np.int64)
+                for lb in np.unique(lb_pairs):
+                    mask_valid_gt |= gt_lb_ids == lb
+                    mask_valid_pd |= pd_lb_ids == lb
+
+            mask_valid = mask_valid_gt | mask_valid_pd
+            mask_valid_gt &= mask_valid
+            mask_valid_pd &= mask_valid
+
+            pairs[np.ix_(~mask_valid_gt, (1, 3))] = -1.0
+            pairs[np.ix_(~mask_valid_pd, (2, 4, 6))] = -1.0
+            pairs[~mask_valid_pd | ~mask_valid_gt, 5] = 0.0
+
+            for idx, col in enumerate(columns):
+                tbl = tbl.set_column(
+                    tbl.schema.names.index(col), col, pa.array(pairs[:, idx])
+                )
+
+            mask_invalid = ~mask_valid | (pairs[:, (1, 2)] < 0).all(axis=1)
+            filtered_tbl = tbl.filter(pa.array(~mask_invalid))
+            loader._cache.write_table(filtered_tbl)
+
+        loader._cache.flush()
+        if loader._cache.dataset.count_rows() == 0:
+            raise EmptyCacheError()
+
+        evaluator = Evaluator(
+            directory=loader._directory,
+            name=loader._name,
+            labels_override=evaluator._index_to_label,
+        )
+        evaluator.create_ranked_cache(where=loader._ranked_path)
+        return evaluator
+
     def finalize(self):
         """
         Performs data finalization and some preprocessing steps.
@@ -365,25 +472,13 @@ class Loader:
         Evaluator
             A ready-to-use evaluator object.
         """
-        self._detailed.flush()
-        if self._detailed.dataset.count_rows() == 0:
-            raise EmptyEvaluatorError()
-        with open(self._labels_path, "w") as f:
-            json.dump({v: k for k, v in self._labels.items()}, f, indent=2)
-        with open(self._number_of_groundtruths_per_label_path, "w") as f:
-            json.dump(self._number_of_groundtruths_per_label, f, indent=2)
-        with open(self._info_path, "w") as f:
-            info = dict(
-                number_of_datums=self._datum_count,
-                number_of_groundtruth_annotations=self._groundtruth_count,
-                number_of_prediction_annotations=self._prediction_count,
-                number_of_labels=len(self._labels),
-                number_of_rows=self._detailed.dataset.count_rows(),
-                datum_metadata_types=self._datum_metadata_types,
-                groundtruth_metadata_types=self._groundtruth_metadata_types,
-                prediction_metadata_types=self._prediction_metadata_types,
-            )
-            json.dump(info, f, indent=2)
-        evaluator = Evaluator(self._dir)
+        self._cache.flush()
+        if self._cache.dataset.count_rows() == 0:
+            raise EmptyCacheError()
+
+        evaluator = Evaluator(
+            directory=self._directory,
+            name=self._name,
+        )
         evaluator.create_ranked_cache(where=self._ranked_path)
         return evaluator
