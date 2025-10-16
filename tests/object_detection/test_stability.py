@@ -19,6 +19,7 @@ def _generate_random_detections(
             ymin,
             ymax,
             [choice(labels)],
+            metadata=None,
             **kw,
         )
 
