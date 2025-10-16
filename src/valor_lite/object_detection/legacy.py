@@ -273,14 +273,19 @@ class Evaluator:
                     name="filtered",
                     filter_expr=filter_,
                 )
-                return evaluator.compute_confusion_matrix_with_examples(
+                metrics = evaluator.compute_confusion_matrix_with_examples(
                     iou_thresholds=iou_thresholds,
                     score_thresholds=score_thresholds,
                 )
-        return self._evaluator.compute_confusion_matrix_with_examples(
-            iou_thresholds=iou_thresholds,
-            score_thresholds=score_thresholds,
-        )
+        else:
+            metrics = self._evaluator.compute_confusion_matrix_with_examples(
+                iou_thresholds=iou_thresholds,
+                score_thresholds=score_thresholds,
+            )
+        # retain legacy support
+        for idx in range(len(metrics)):
+            metrics[idx].type = MetricType.ConfusionMatrix.value
+        return metrics
 
     def evaluate(
         self,
