@@ -46,7 +46,7 @@ def test_confusion_matrix_with_examples(
     actual_metrics = [m.to_dict() for m in actual_metrics]
     expected_metrics = [
         {
-            "type": "ConfusionMatrixWithExamples",
+            "type": "ConfusionMatrix",
             "value": {
                 "confusion_matrix": {
                     "v1": {
@@ -127,7 +127,7 @@ def test_confusion_matrix_with_examples(
             },
         },
         {
-            "type": "ConfusionMatrixWithExamples",
+            "type": "ConfusionMatrix",
             "value": {
                 "confusion_matrix": {
                     "v1": {
@@ -199,7 +199,7 @@ def test_confusion_matrix_with_examples(
             },
         },
         {
-            "type": "ConfusionMatrixWithExamples",
+            "type": "ConfusionMatrix",
             "value": {
                 "confusion_matrix": {
                     "v1": {
@@ -262,7 +262,7 @@ def test_confusion_matrix_with_examples(
             },
         },
         {
-            "type": "ConfusionMatrixWithExamples",
+            "type": "ConfusionMatrix",
             "value": {
                 "confusion_matrix": {
                     "v1": {
@@ -325,7 +325,7 @@ def test_confusion_matrix_with_examples(
             },
         },
         {
-            "type": "ConfusionMatrixWithExamples",
+            "type": "ConfusionMatrix",
             "value": {
                 "confusion_matrix": {},
                 "unmatched_predictions": {},
@@ -374,7 +374,7 @@ def test_confusion_matrix_with_examples(
             },
         },
         {
-            "type": "ConfusionMatrixWithExamples",
+            "type": "ConfusionMatrix",
             "value": {
                 "confusion_matrix": {},
                 "unmatched_predictions": {},
@@ -442,7 +442,7 @@ def test_confusion_matrix_with_examples(
     actual_metrics = [m.to_dict() for m in actual_metrics]
     expected_metrics = [
         {
-            "type": "ConfusionMatrixWithExamples",
+            "type": "ConfusionMatrix",
             "value": {
                 "confusion_matrix": {
                     "v1": {
@@ -517,7 +517,7 @@ def test_confusion_matrix_with_examples(
             },
         },
         {
-            "type": "ConfusionMatrixWithExamples",
+            "type": "ConfusionMatrix",
             "value": {
                 "confusion_matrix": {
                     "v1": {
@@ -583,7 +583,7 @@ def test_confusion_matrix_with_examples(
             },
         },
         {
-            "type": "ConfusionMatrixWithExamples",
+            "type": "ConfusionMatrix",
             "value": {
                 "confusion_matrix": {
                     "v1": {
@@ -646,7 +646,7 @@ def test_confusion_matrix_with_examples(
             },
         },
         {
-            "type": "ConfusionMatrixWithExamples",
+            "type": "ConfusionMatrix",
             "value": {
                 "confusion_matrix": {
                     "v1": {
@@ -709,7 +709,7 @@ def test_confusion_matrix_with_examples(
             },
         },
         {
-            "type": "ConfusionMatrixWithExamples",
+            "type": "ConfusionMatrix",
             "value": {
                 "confusion_matrix": {},
                 "unmatched_predictions": {},
@@ -758,7 +758,7 @@ def test_confusion_matrix_with_examples(
             },
         },
         {
-            "type": "ConfusionMatrixWithExamples",
+            "type": "ConfusionMatrix",
             "value": {
                 "confusion_matrix": {},
                 "unmatched_predictions": {},
@@ -871,7 +871,7 @@ def test_confusion_matrix_with_examples_using_torch_metrics_example(
     actual_metrics = [m.to_dict() for m in actual_metrics]
     expected_metrics = [
         {
-            "type": "ConfusionMatrixWithExamples",
+            "type": "ConfusionMatrix",
             "value": {
                 "confusion_matrix": {
                     "4": {"4": {"count": 2, "examples": []}},
@@ -894,7 +894,7 @@ def test_confusion_matrix_with_examples_using_torch_metrics_example(
             },
         },
         {
-            "type": "ConfusionMatrixWithExamples",
+            "type": "ConfusionMatrix",
             "value": {
                 "confusion_matrix": {
                     "4": {"4": {"count": 1, "examples": []}},
@@ -918,7 +918,7 @@ def test_confusion_matrix_with_examples_using_torch_metrics_example(
             },
         },
         {
-            "type": "ConfusionMatrixWithExamples",
+            "type": "ConfusionMatrix",
             "value": {
                 "confusion_matrix": {
                     "4": {"4": {"count": 1, "examples": []}},
@@ -941,7 +941,7 @@ def test_confusion_matrix_with_examples_using_torch_metrics_example(
             },
         },
         {
-            "type": "ConfusionMatrixWithExamples",
+            "type": "ConfusionMatrix",
             "value": {
                 "confusion_matrix": {
                     "2": {"2": {"count": 1, "examples": []}},
@@ -963,7 +963,7 @@ def test_confusion_matrix_with_examples_using_torch_metrics_example(
             },
         },
         {
-            "type": "ConfusionMatrixWithExamples",
+            "type": "ConfusionMatrix",
             "value": {
                 "confusion_matrix": {
                     "0": {"0": {"count": 2, "examples": []}},
@@ -984,7 +984,7 @@ def test_confusion_matrix_with_examples_using_torch_metrics_example(
             },
         },
         {
-            "type": "ConfusionMatrixWithExamples",
+            "type": "ConfusionMatrix",
             "value": {
                 "confusion_matrix": {
                     "0": {"0": {"count": 2, "examples": []}},
@@ -1005,7 +1005,7 @@ def test_confusion_matrix_with_examples_using_torch_metrics_example(
             },
         },
         {
-            "type": "ConfusionMatrixWithExamples",
+            "type": "ConfusionMatrix",
             "value": {
                 "confusion_matrix": {
                     "0": {"0": {"count": 1, "examples": []}},
@@ -1026,7 +1026,7 @@ def test_confusion_matrix_with_examples_using_torch_metrics_example(
             },
         },
         {
-            "type": "ConfusionMatrixWithExamples",
+            "type": "ConfusionMatrix",
             "value": {
                 "confusion_matrix": {"0": {"0": {"count": 1, "examples": []}}},
                 "unmatched_predictions": {},
@@ -1044,7 +1044,7 @@ def test_confusion_matrix_with_examples_using_torch_metrics_example(
             },
         },
         {
-            "type": "ConfusionMatrixWithExamples",
+            "type": "ConfusionMatrix",
             "value": {
                 "confusion_matrix": {
                     "2": {"2": {"count": 1, "examples": []}},
@@ -1072,7 +1072,7 @@ def test_confusion_matrix_with_examples_using_torch_metrics_example(
             },
         },
         {
-            "type": "ConfusionMatrixWithExamples",
+            "type": "ConfusionMatrix",
             "value": {
                 "confusion_matrix": {
                     "2": {"2": {"count": 1, "examples": []}},
@@ -1100,7 +1100,7 @@ def test_confusion_matrix_with_examples_using_torch_metrics_example(
             },
         },
         {
-            "type": "ConfusionMatrixWithExamples",
+            "type": "ConfusionMatrix",
             "value": {
                 "confusion_matrix": {
                     "2": {"2": {"count": 1, "examples": []}},
@@ -1125,7 +1125,7 @@ def test_confusion_matrix_with_examples_using_torch_metrics_example(
             },
         },
         {
-            "type": "ConfusionMatrixWithExamples",
+            "type": "ConfusionMatrix",
             "value": {
                 "confusion_matrix": {
                     "2": {"2": {"count": 1, "examples": []}},
@@ -1149,7 +1149,7 @@ def test_confusion_matrix_with_examples_using_torch_metrics_example(
             },
         },
         {
-            "type": "ConfusionMatrixWithExamples",
+            "type": "ConfusionMatrix",
             "value": {
                 "confusion_matrix": {
                     "49": {"49": {"count": 1, "examples": []}}
@@ -1172,7 +1172,7 @@ def test_confusion_matrix_with_examples_using_torch_metrics_example(
             },
         },
         {
-            "type": "ConfusionMatrixWithExamples",
+            "type": "ConfusionMatrix",
             "value": {
                 "confusion_matrix": {
                     "49": {"49": {"count": 1, "examples": []}}
@@ -1192,7 +1192,7 @@ def test_confusion_matrix_with_examples_using_torch_metrics_example(
             },
         },
         {
-            "type": "ConfusionMatrixWithExamples",
+            "type": "ConfusionMatrix",
             "value": {
                 "confusion_matrix": {
                     "49": {"49": {"count": 1, "examples": []}}
@@ -1212,7 +1212,7 @@ def test_confusion_matrix_with_examples_using_torch_metrics_example(
             },
         },
         {
-            "type": "ConfusionMatrixWithExamples",
+            "type": "ConfusionMatrix",
             "value": {
                 "confusion_matrix": {},
                 "unmatched_predictions": {"0": {"count": 1, "examples": []}},
@@ -1264,7 +1264,7 @@ def test_confusion_matrix_with_examples_fp_unmatched_prediction_edge_case(
     actual_metrics = [m.to_dict() for m in actual_metrics]
     expected_metrics = [
         {
-            "type": "ConfusionMatrixWithExamples",
+            "type": "ConfusionMatrix",
             "value": {
                 "confusion_matrix": {
                     "v1": {
@@ -1309,7 +1309,7 @@ def test_confusion_matrix_with_examples_fp_unmatched_prediction_edge_case(
             },
         },
         {
-            "type": "ConfusionMatrixWithExamples",
+            "type": "ConfusionMatrix",
             "value": {
                 "confusion_matrix": {},
                 "unmatched_predictions": {},
@@ -1383,7 +1383,7 @@ def test_confusion_matrix_with_examples_ranked_pair_ordering(
         actual_metrics = [m.to_dict() for m in actual_metrics]
         expected_metrics = [
             {
-                "type": "ConfusionMatrixWithExamples",
+                "type": "ConfusionMatrix",
                 "value": {
                     "confusion_matrix": {
                         "label1": {
