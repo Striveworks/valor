@@ -329,6 +329,6 @@ class DataLoader(CachedLoader):
             rows_per_file=10_000,
         )
 
-    def finalize(self) -> Evaluator:  # type: ignore - switching evaluator
+    def finalize(self) -> Evaluator:  # type: ignore - switching type
         _ = super().finalize()
         return Evaluator()
