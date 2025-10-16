@@ -1,11 +1,8 @@
 import json
-from collections import defaultdict
-from dataclasses import asdict
 from pathlib import Path
 
 import numpy as np
 import pyarrow as pa
-import pyarrow.compute as pc
 from numpy.typing import NDArray
 from tqdm import tqdm
 
@@ -22,11 +19,7 @@ from valor_lite.object_detection.computation import (
     compute_bitmask_iou,
     compute_polygon_iou,
 )
-from valor_lite.object_detection.evaluator import (
-    Evaluator,
-    EvaluatorInfo,
-    Filter,
-)
+from valor_lite.object_detection.evaluator import Evaluator, Filter
 
 
 class Loader:

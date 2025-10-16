@@ -90,7 +90,7 @@ class Evaluator:
             self._index_to_label,
             self._number_of_groundtruths_per_label,
             self._info,
-        ) = self._retrieve_meta(labels_override)
+        ) = self._generate_meta(labels_override)
 
         with open(self._metadata_path, "r") as f:
             types = json.load(f)
@@ -142,7 +142,7 @@ class Evaluator:
     def info(self) -> EvaluatorInfo:
         return self._info
 
-    def _retrieve_meta(self, labels_override: dict[int, str] | None):
+    def _generate_meta(self, labels_override: dict[int, str] | None):
         gt_counts_per_lbl = defaultdict(int)
         labels = labels_override if labels_override else {}
         info = EvaluatorInfo()
@@ -347,6 +347,18 @@ class Evaluator:
             tbl = fragment.to_table(columns=columns)
             yield np.column_stack(
                 [tbl.column(i).to_numpy() for i in range(tbl.num_columns)]
+            )
+
+    @staticmethod
+    def iterate_pairs_with_table(
+        dataset: ds.Dataset,
+        columns: list[str] | None = None,
+    ):
+        for fragment in dataset.get_fragments():
+            tbl = fragment.to_table()
+            columns = columns if columns else tbl.columns
+            yield tbl, np.column_stack(
+                [tbl[col].to_numpy() for col in columns]
             )
 
     def compute_precision_recall(
@@ -561,15 +573,8 @@ class Evaluator:
         elif not score_thresholds:
             raise ValueError("At least one score threshold must be passed.")
 
-        pairs = None
-        mask_tp = None
-        mask_fp = None
-        mask_fn = None
-        index_to_datum_id = {}
-        index_to_groundtruth_id = {}
-        index_to_prediction_id = {}
-
-        for batch_pairs in self.iterate_pairs(
+        metrics = []
+        for tbl, pairs in self.iterate_pairs_with_table(
             dataset=self._dataset,
             columns=[
                 "datum_id",
@@ -581,73 +586,52 @@ class Evaluator:
                 "score",
             ],
         ):
-            if batch_pairs.size == 0:
+            if pairs.size == 0:
                 continue
 
-            # extract UIDs
-            index_to_datum_id.update(
-                create_mapping(tbl, batch_pairs, 0, "datum_id", "datum_uid")
+            index_to_datum_id = {}
+            index_to_groundtruth_id = {}
+            index_to_prediction_id = {}
+
+            # extract external identifiers
+            index_to_datum_id = create_mapping(
+                tbl, pairs, 0, "datum_id", "datum_uid"
             )
-            index_to_groundtruth_id.update(
-                create_mapping(tbl, batch_pairs, 1, "gt_id", "gt_uid")
+            index_to_groundtruth_id = create_mapping(
+                tbl, pairs, 1, "gt_id", "gt_uid"
             )
-            index_to_prediction_id.update(
-                create_mapping(tbl, batch_pairs, 2, "pd_id", "pd_uid")
+            index_to_prediction_id = create_mapping(
+                tbl, pairs, 2, "pd_id", "pd_uid"
             )
 
             (
-                batch_mask_tp,
-                batch_mask_fp_fn_misclf,
-                batch_mask_fp_unmatched,
-                batch_mask_fn_unmatched,
+                mask_tp,
+                mask_fp_fn_misclf,
+                mask_fp_unmatched,
+                mask_fn_unmatched,
             ) = compute_pair_classifications(
-                detailed_pairs=batch_pairs,
+                detailed_pairs=pairs,
                 iou_thresholds=np.array(iou_thresholds),
                 score_thresholds=np.array(score_thresholds),
             )
 
-            batch_mask_fn = batch_mask_fp_fn_misclf | batch_mask_fn_unmatched
-            batch_mask_fp = batch_mask_fp_fn_misclf | batch_mask_fp_unmatched
+            mask_fn = mask_fp_fn_misclf | mask_fn_unmatched
+            mask_fp = mask_fp_fn_misclf | mask_fp_unmatched
 
-            # TODO - batch this computation
-            pairs = (
-                np.concatenate([pairs, batch_pairs]) if pairs else batch_pairs
+            batch_examples = unpack_examples(
+                detailed_pairs=pairs,
+                mask_tp=mask_tp,
+                mask_fp=mask_fp,
+                mask_fn=mask_fn,
+                index_to_datum_id=index_to_datum_id,
+                index_to_groundtruth_id=index_to_groundtruth_id,
+                index_to_prediction_id=index_to_prediction_id,
+                iou_thresholds=iou_thresholds,
+                score_thresholds=score_thresholds,
             )
-            mask_tp = (
-                np.concatenate([mask_tp, batch_mask_tp])
-                if mask_tp
-                else batch_mask_tp
-            )
-            mask_fp = (
-                np.concatenate([mask_fp, batch_mask_fp])
-                if mask_fp
-                else batch_mask_fp
-            )
-            mask_fn = (
-                np.concatenate([mask_fn, batch_mask_fn])
-                if mask_fn
-                else batch_mask_fn
-            )
+            metrics.extend(batch_examples)
 
-        if (
-            pairs is None
-            or mask_tp is None
-            or mask_fp is None
-            or mask_fn is None
-        ):
-            raise Exception
-
-        return unpack_examples(
-            detailed_pairs=pairs,
-            mask_tp=mask_tp,
-            mask_fp=mask_fp,
-            mask_fn=mask_fn,
-            index_to_datum_id=index_to_datum_id,
-            index_to_groundtruth_id=index_to_groundtruth_id,
-            index_to_prediction_id=index_to_prediction_id,
-            iou_thresholds=iou_thresholds,
-            score_thresholds=score_thresholds,
-        )
+        return metrics
 
     def evaluate(
         self,

@@ -304,12 +304,18 @@ def unpack_confusion_matrix(
             ugt_dict = {}
             upd_dict = {}
             for idx, label in index_to_label.items():
-                ugt_dict[label] = int(unmatched_groundtruths[iou_idx, score_idx, idx])
-                upd_dict[label] = int(unmatched_predictions[iou_idx, score_idx, idx])
+                ugt_dict[label] = int(
+                    unmatched_groundtruths[iou_idx, score_idx, idx]
+                )
+                upd_dict[label] = int(
+                    unmatched_predictions[iou_idx, score_idx, idx]
+                )
                 for pidx, plabel in index_to_label.items():
                     if label not in cm_dict:
                         cm_dict[label] = {}
-                    cm_dict[label][plabel] = int(confusion_matrices[iou_idx, score_idx, idx, pidx])
+                    cm_dict[label][plabel] = int(
+                        confusion_matrices[iou_idx, score_idx, idx, pidx]
+                    )
             metrics.append(
                 Metric.confusion_matrix(
                     confusion_matrix=cm_dict,
@@ -334,13 +340,14 @@ def unpack_examples(
     index_to_prediction_id: dict[int, str],
 ) -> list[Metric]:
     metrics = []
+    ids = detailed_pairs[:, :5].astype(np.int64)
     unique_datums = np.unique(detailed_pairs[:, 0].astype(np.int64))
     for datum_index in unique_datums:
         mask_datum = detailed_pairs[:, 0] == datum_index
         mask_datum_tp = mask_tp & mask_datum
         mask_datum_fp = mask_fp & mask_datum
         mask_datum_fn = mask_fn & mask_datum
-        
+
         datum_id = index_to_datum_id[datum_index]
         for iou_idx, iou_thresh in enumerate(iou_thresholds):
             for score_idx, score_thresh in enumerate(score_thresholds):
@@ -362,14 +369,8 @@ def unpack_examples(
                     )
                     for row in unique_tp
                 ]
-                fp = [
-                    index_to_prediction_id[row[1]]
-                    for row in unique_fp
-                ]
-                fn = [
-                    index_to_prediction_id[row[1]]
-                    for row in unique_fn
-                ]
+                fp = [index_to_prediction_id[row[1]] for row in unique_fp]
+                fn = [index_to_groundtruth_id[row[1]] for row in unique_fn]
                 metrics.append(
                     Metric.examples(
                         datum_id=datum_id,

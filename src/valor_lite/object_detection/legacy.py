@@ -70,7 +70,8 @@ class Evaluator:
             number_of_predictions=self._evaluator.info.number_of_prediction_annotations,
         )
 
-    def _generate_detailed_pairs(self, filter_expr=None):
+    @property
+    def _detailed_pairs(self) -> np.ndarray:
         return np.concatenate(
             [
                 pairs
@@ -90,17 +91,14 @@ class Evaluator:
         )
 
     @property
-    def _detailed_pairs(self) -> np.ndarray:
-        return self._generate_detailed_pairs()
-
-    def _generate_label_metadata(self, detailed_pairs: np.ndarray):
+    def _label_metadata(self) -> np.ndarray:
         label_metadata = np.zeros(
             (len(self._evaluator._index_to_label), 2), dtype=np.int32
         )
 
         # groundtruth labels
         unique_ann = np.unique(
-            detailed_pairs[:, (0, 1, 3)].astype(np.int64), axis=0
+            self._detailed_pairs[:, (0, 1, 3)].astype(np.int64), axis=0
         )
         unique_labels, label_counts = np.unique(
             unique_ann[:, 2], return_counts=True
@@ -111,7 +109,7 @@ class Evaluator:
 
         # prediction labels
         unique_ann = np.unique(
-            detailed_pairs[:, (0, 2, 4)].astype(np.int64), axis=0
+            self._detailed_pairs[:, (0, 2, 4)].astype(np.int64), axis=0
         )
         unique_labels, label_counts = np.unique(
             unique_ann[:, 2], return_counts=True
@@ -121,10 +119,6 @@ class Evaluator:
         label_metadata[unique_labels, 1] = label_counts
 
         return label_metadata
-
-    @property
-    def _label_metadata(self) -> np.ndarray:
-        return self._generate_label_metadata(self._detailed_pairs)
 
     def filter(
         self, filter_: Filter
@@ -153,8 +147,8 @@ class Evaluator:
                 name="filtered",
                 filter_expr=filter_,
             )
-            detailed_pairs = evaluator._generate_detailed_pairs(filter_)
-            label_metadata = evaluator._generate_label_metadata(detailed_pairs)
+            detailed_pairs = evaluator._detailed_pairs
+            label_metadata = evaluator._label_metadata
             return detailed_pairs, detailed_pairs, label_metadata
 
     def create_filter(
