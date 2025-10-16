@@ -150,145 +150,6 @@ def unpack_precision_recall_into_metric_lists(
     return metrics
 
 
-def _create_empty_confusion_matrix(index_to_labels: dict[int, str]):
-    unmatched_ground_truths = dict()
-    unmatched_predictions = dict()
-    confusion_matrix = dict()
-    for label in index_to_labels.values():
-        unmatched_ground_truths[label] = {"count": 0, "examples": []}
-        unmatched_predictions[label] = {"count": 0, "examples": []}
-        confusion_matrix[label] = {}
-        for plabel in index_to_labels.values():
-            confusion_matrix[label][plabel] = {"count": 0, "examples": []}
-    return (
-        confusion_matrix,
-        unmatched_predictions,
-        unmatched_ground_truths,
-    )
-
-
-def _unpack_confusion_matrix_legacy(
-    ids: NDArray[np.int32],
-    mask_matched: NDArray[np.bool_],
-    mask_fp_unmatched: NDArray[np.bool_],
-    mask_fn_unmatched: NDArray[np.bool_],
-    index_to_datum_id: dict[int, str],
-    index_to_groundtruth_id: dict[int, str],
-    index_to_prediction_id: dict[int, str],
-    index_to_label: dict[int, str],
-    iou_threhsold: float,
-    score_threshold: float,
-):
-    (
-        confusion_matrix,
-        unmatched_predictions,
-        unmatched_ground_truths,
-    ) = _create_empty_confusion_matrix(index_to_label)
-
-    unique_matches = np.unique(
-        ids[np.ix_(mask_matched, (0, 1, 2, 3, 4))], axis=0  # type: ignore - numpy ix_ typing
-    )
-    unique_unmatched_predictions = np.unique(
-        ids[np.ix_(mask_fp_unmatched, (0, 2, 4))], axis=0  # type: ignore - numpy ix_ typing
-    )
-    unique_unmatched_groundtruths = np.unique(
-        ids[np.ix_(mask_fn_unmatched, (0, 1, 3))], axis=0  # type: ignore - numpy ix_ typing
-    )
-
-    n_matched = unique_matches.shape[0]
-    n_unmatched_predictions = unique_unmatched_predictions.shape[0]
-    n_unmatched_groundtruths = unique_unmatched_groundtruths.shape[0]
-    n_max = max(n_matched, n_unmatched_groundtruths, n_unmatched_predictions)
-
-    for idx in range(n_max):
-        if idx < n_unmatched_groundtruths:
-            label = index_to_label[unique_unmatched_groundtruths[idx, 2]]
-            unmatched_ground_truths[label]["count"] += 1
-            unmatched_ground_truths[label]["examples"].append(
-                {
-                    "datum_id": index_to_datum_id[
-                        unique_unmatched_groundtruths[idx, 0]
-                    ],
-                    "ground_truth_id": index_to_groundtruth_id[
-                        unique_unmatched_groundtruths[idx, 1]
-                    ],
-                }
-            )
-        if idx < n_unmatched_predictions:
-            label_id = unique_unmatched_predictions[idx, 2]
-            label = index_to_label[label_id]
-            unmatched_predictions[label]["count"] += 1
-            unmatched_predictions[label]["examples"].append(
-                {
-                    "datum_id": index_to_datum_id[
-                        unique_unmatched_predictions[idx, 0]
-                    ],
-                    "prediction_id": index_to_prediction_id[
-                        unique_unmatched_predictions[idx, 1]
-                    ],
-                }
-            )
-        if idx < n_matched:
-            glabel = index_to_label[unique_matches[idx, 3]]
-            plabel = index_to_label[unique_matches[idx, 4]]
-            confusion_matrix[glabel][plabel]["count"] += 1
-            confusion_matrix[glabel][plabel]["examples"].append(
-                {
-                    "datum_id": index_to_datum_id[unique_matches[idx, 0]],
-                    "ground_truth_id": index_to_groundtruth_id[
-                        unique_matches[idx, 1]
-                    ],
-                    "prediction_id": index_to_prediction_id[
-                        unique_matches[idx, 2]
-                    ],
-                }
-            )
-
-    return Metric.confusion_matrix(
-        confusion_matrix=confusion_matrix,
-        unmatched_ground_truths=unmatched_ground_truths,
-        unmatched_predictions=unmatched_predictions,
-        iou_threshold=iou_threhsold,
-        score_threshold=score_threshold,
-    )
-
-
-def unpack_confusion_matrix_into_metric_list_legacy(
-    detailed_pairs: NDArray[np.float64],
-    mask_tp: NDArray[np.bool_],
-    mask_fp_fn_misclf: NDArray[np.bool_],
-    mask_fp_unmatched: NDArray[np.bool_],
-    mask_fn_unmatched: NDArray[np.bool_],
-    iou_thresholds: list[float],
-    score_thresholds: list[float],
-    index_to_datum_id: dict[int, str],
-    index_to_groundtruth_id: dict[int, str],
-    index_to_prediction_id: dict[int, str],
-    index_to_label: dict[int, str],
-) -> list[Metric]:
-
-    ids = detailed_pairs[:, :5].astype(np.int32)
-
-    mask_matched = mask_tp | mask_fp_fn_misclf
-
-    return [
-        _unpack_confusion_matrix_legacy(
-            ids=ids,
-            mask_matched=mask_matched[iou_idx, score_idx],
-            mask_fp_unmatched=mask_fp_unmatched[iou_idx, score_idx],
-            mask_fn_unmatched=mask_fn_unmatched[iou_idx, score_idx],
-            index_to_datum_id=index_to_datum_id,
-            index_to_groundtruth_id=index_to_groundtruth_id,
-            index_to_prediction_id=index_to_prediction_id,
-            index_to_label=index_to_label,
-            iou_threhsold=iou_threshold,
-            score_threshold=score_threshold,
-        )
-        for iou_idx, iou_threshold in enumerate(iou_thresholds)
-        for score_idx, score_threshold in enumerate(score_thresholds)
-    ]
-
-
 def unpack_confusion_matrix(
     confusion_matrices: NDArray[np.uint64],
     unmatched_groundtruths: NDArray[np.uint64],
@@ -397,3 +258,139 @@ def unpack_examples(
                     )
                 )
     return metrics
+
+
+def create_empty_confusion_matrix_with_examples(
+    iou_threhsold: float,
+    score_threshold: float,
+    index_to_label: dict[int, str],
+) -> Metric:
+    unmatched_groundtruths = dict()
+    unmatched_predictions = dict()
+    confusion_matrix = dict()
+    for label in index_to_label.values():
+        unmatched_groundtruths[label] = {"count": 0, "examples": []}
+        unmatched_predictions[label] = {"count": 0, "examples": []}
+        confusion_matrix[label] = {}
+        for plabel in index_to_label.values():
+            confusion_matrix[label][plabel] = {"count": 0, "examples": []}
+
+    return Metric.confusion_matrix_with_examples(
+        confusion_matrix=confusion_matrix,
+        unmatched_ground_truths=unmatched_groundtruths,
+        unmatched_predictions=unmatched_predictions,
+        iou_threshold=iou_threhsold,
+        score_threshold=score_threshold,
+    )
+
+
+def _unpack_confusion_matrix_with_examples(
+    metric: Metric,
+    ids: NDArray[np.int32],
+    mask_matched: NDArray[np.bool_],
+    mask_fp_unmatched: NDArray[np.bool_],
+    mask_fn_unmatched: NDArray[np.bool_],
+    index_to_datum_id: dict[int, str],
+    index_to_groundtruth_id: dict[int, str],
+    index_to_prediction_id: dict[int, str],
+    index_to_label: dict[int, str],
+):
+    if not isinstance(metric.value, dict):
+        raise TypeError("expected metric to contain a dictionary value")
+
+    unique_matches = np.unique(
+        ids[np.ix_(mask_matched, (0, 1, 2, 3, 4))], axis=0  # type: ignore - numpy ix_ typing
+    )
+    unique_unmatched_predictions = np.unique(
+        ids[np.ix_(mask_fp_unmatched, (0, 2, 4))], axis=0  # type: ignore - numpy ix_ typing
+    )
+    unique_unmatched_groundtruths = np.unique(
+        ids[np.ix_(mask_fn_unmatched, (0, 1, 3))], axis=0  # type: ignore - numpy ix_ typing
+    )
+
+    n_matched = unique_matches.shape[0]
+    n_unmatched_predictions = unique_unmatched_predictions.shape[0]
+    n_unmatched_groundtruths = unique_unmatched_groundtruths.shape[0]
+    n_max = max(n_matched, n_unmatched_groundtruths, n_unmatched_predictions)
+
+    for idx in range(n_max):
+        if idx < n_unmatched_groundtruths:
+            label = index_to_label[unique_unmatched_groundtruths[idx, 2]]
+            metric.value["unmatched_ground_truths"][label]["count"] += 1
+            metric.value["unmatched_ground_truths"][label]["examples"].append(
+                {
+                    "datum_id": index_to_datum_id[
+                        unique_unmatched_groundtruths[idx, 0]
+                    ],
+                    "ground_truth_id": index_to_groundtruth_id[
+                        unique_unmatched_groundtruths[idx, 1]
+                    ],
+                }
+            )
+        if idx < n_unmatched_predictions:
+            label_id = unique_unmatched_predictions[idx, 2]
+            label = index_to_label[label_id]
+            metric.value["unmatched_predictions"][label]["count"] += 1
+            metric.value["unmatched_predictions"][label]["examples"].append(
+                {
+                    "datum_id": index_to_datum_id[
+                        unique_unmatched_predictions[idx, 0]
+                    ],
+                    "prediction_id": index_to_prediction_id[
+                        unique_unmatched_predictions[idx, 1]
+                    ],
+                }
+            )
+        if idx < n_matched:
+            glabel = index_to_label[unique_matches[idx, 3]]
+            plabel = index_to_label[unique_matches[idx, 4]]
+            metric.value["confusion_matrix"][glabel][plabel]["count"] += 1
+            metric.value["confusion_matrix"][glabel][plabel][
+                "examples"
+            ].append(
+                {
+                    "datum_id": index_to_datum_id[unique_matches[idx, 0]],
+                    "ground_truth_id": index_to_groundtruth_id[
+                        unique_matches[idx, 1]
+                    ],
+                    "prediction_id": index_to_prediction_id[
+                        unique_matches[idx, 2]
+                    ],
+                }
+            )
+
+    return metric
+
+
+def unpack_confusion_matrix_with_examples(
+    metrics: dict[int, dict[int, Metric]],
+    detailed_pairs: NDArray[np.float64],
+    mask_tp: NDArray[np.bool_],
+    mask_fp_fn_misclf: NDArray[np.bool_],
+    mask_fp_unmatched: NDArray[np.bool_],
+    mask_fn_unmatched: NDArray[np.bool_],
+    index_to_datum_id: dict[int, str],
+    index_to_groundtruth_id: dict[int, str],
+    index_to_prediction_id: dict[int, str],
+    index_to_label: dict[int, str],
+) -> list[Metric]:
+
+    ids = detailed_pairs[:, :5].astype(np.int32)
+
+    mask_matched = mask_tp | mask_fp_fn_misclf
+
+    return [
+        _unpack_confusion_matrix_with_examples(
+            metric=metric,
+            ids=ids,
+            mask_matched=mask_matched[iou_idx, score_idx],
+            mask_fp_unmatched=mask_fp_unmatched[iou_idx, score_idx],
+            mask_fn_unmatched=mask_fn_unmatched[iou_idx, score_idx],
+            index_to_datum_id=index_to_datum_id,
+            index_to_groundtruth_id=index_to_groundtruth_id,
+            index_to_prediction_id=index_to_prediction_id,
+            index_to_label=index_to_label,
+        )
+        for iou_idx, inner in metrics.items()
+        for score_idx, metric in inner.items()
+    ]

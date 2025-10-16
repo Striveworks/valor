@@ -1,145 +1,4 @@
-import numpy as np
-
-from valor_lite.object_detection import DataLoader, Detection, Evaluator
-from valor_lite.object_detection.computation import (
-    PairClassification,
-    compute_confusion_matrix,
-)
-
-
-def test_confusion_matrix_no_data():
-    evaluator = Evaluator()
-    cm = evaluator.compute_confusion_matrix(
-        iou_thresholds=[0.5],
-        score_thresholds=[0.5],
-    )
-    assert isinstance(cm, list)
-    assert len(cm) == 0
-
-
-def test_compute_confusion_matrix():
-
-    sorted_pairs = np.array(
-        [
-            # dt, gt, pd, gl, pl
-            [0.0, 0.0, 1.0, 0.0, 0.0, 0.98, 0.9],
-            [1.0, 1.0, 2.0, 1.0, 0.0, 0.55, 0.9],
-            [2.0, -1.0, 4.0, -1.0, 0, 0.0, 0.65],
-            [3.0, 4, 5.0, 0.0, 0.0, 1.0, 0.1],
-            [1.0, 2.0, 3.0, 0.0, 0.0, 0.55, 0.1],
-            [4.0, 5.0, -1.0, 0.0, -1.0, 0.0, -1.0],
-        ]
-    )
-
-    iou_thresholds = np.array([0.5])
-    score_thresholds = np.array([score / 100.0 for score in range(1, 101)])
-
-    results = compute_confusion_matrix(
-        detailed_pairs=sorted_pairs,
-        iou_thresholds=iou_thresholds,
-        score_thresholds=score_thresholds,
-    )
-    assert results.shape == (1, 100, 6)
-
-    """
-    @ iou=0.5, score < 0.1
-    3x tp
-    1x fp misclassification
-    1x fp unmatched prediction
-    0x fn misclassification
-    1x fn unmatched ground truth
-    """
-    indices = slice(10)
-    np.testing.assert_allclose(
-        np.unique(results[0, indices, :], axis=0),
-        np.array(
-            [
-                [
-                    PairClassification.TP,
-                    PairClassification.FP_FN_MISCLF,
-                    PairClassification.FP_UNMATCHED,
-                    PairClassification.TP,
-                    PairClassification.TP,
-                    PairClassification.FN_UNMATCHED,
-                ]
-            ]
-        ),
-    )
-
-    """
-    @ iou=0.5, 0.1 <= score < 0.65
-    1x tp
-    1x fp misclassification
-    1x fp unmatched prediction
-    1x fn misclassification
-    3x fn unmatched ground truth
-    """
-    indices = slice(10, 65)
-    np.testing.assert_allclose(
-        np.unique(results[0, indices, :], axis=0),
-        np.array(
-            [
-                [
-                    PairClassification.TP,
-                    PairClassification.FP_FN_MISCLF,
-                    PairClassification.FP_UNMATCHED,
-                    PairClassification.FN_UNMATCHED,
-                    PairClassification.FN_UNMATCHED,
-                    PairClassification.FN_UNMATCHED,
-                ]
-            ]
-        ),
-    )
-
-    """
-    @ iou=0.5, 0.65 <= score < 0.9
-    1x tp
-    1x fp misclassification
-    0x fp unmatched prediction
-    1x fn misclassification
-    3x fn unmatched ground truth
-    """
-    indices = slice(65, 90)
-    np.testing.assert_allclose(
-        np.unique(results[0, indices, :], axis=0),
-        np.array(
-            [
-                [
-                    PairClassification.TP.value,
-                    PairClassification.FP_FN_MISCLF.value,
-                    0,
-                    PairClassification.FN_UNMATCHED.value,
-                    PairClassification.FN_UNMATCHED.value,
-                    PairClassification.FN_UNMATCHED.value,
-                ]
-            ]
-        ),
-    )
-
-    """
-    @ iou=0.5, score>=0.9
-    0x tp
-    0x fp misclassification
-    0x fp unmatched prediction
-    0x fn misclassification
-    4x fn unmatched ground truth
-    """
-    indices = slice(90, None)
-    np.testing.assert_allclose(
-        np.unique(results[0, indices, :], axis=0),
-        np.array(
-            [
-                [
-                    PairClassification.FN_UNMATCHED.value,
-                    PairClassification.FN_UNMATCHED.value,
-                    0,
-                    PairClassification.FN_UNMATCHED.value,
-                    PairClassification.FN_UNMATCHED.value,
-                    PairClassification.FN_UNMATCHED.value,
-                ]
-            ]
-        ),
-    )
+from valor_lite.object_detection import DataLoader, Detection
 
 
 def _filter_out_zero_counts(cm: dict, hl: dict, mp: dict):
@@ -162,7 +21,7 @@ def _filter_out_zero_counts(cm: dict, hl: dict, mp: dict):
             mp.pop(gt_label)
 
 
-def test_confusion_matrix(
+def test_confusion_matrix_with_examples(
     detections_for_detailed_counting: list[Detection],
     rect1: tuple[float, float, float, float],
     rect2: tuple[float, float, float, float],
@@ -187,7 +46,7 @@ def test_confusion_matrix(
     actual_metrics = [m.to_dict() for m in actual_metrics]
     expected_metrics = [
         {
-            "type": "ConfusionMatrix",
+            "type": "ConfusionMatrixWithExamples",
             "value": {
                 "confusion_matrix": {
                     "v1": {
@@ -268,7 +127,7 @@ def test_confusion_matrix(
             },
         },
         {
-            "type": "ConfusionMatrix",
+            "type": "ConfusionMatrixWithExamples",
             "value": {
                 "confusion_matrix": {
                     "v1": {
@@ -340,7 +199,7 @@ def test_confusion_matrix(
             },
         },
         {
-            "type": "ConfusionMatrix",
+            "type": "ConfusionMatrixWithExamples",
             "value": {
                 "confusion_matrix": {
                     "v1": {
@@ -403,7 +262,7 @@ def test_confusion_matrix(
             },
         },
         {
-            "type": "ConfusionMatrix",
+            "type": "ConfusionMatrixWithExamples",
             "value": {
                 "confusion_matrix": {
                     "v1": {
@@ -466,7 +325,7 @@ def test_confusion_matrix(
             },
         },
         {
-            "type": "ConfusionMatrix",
+            "type": "ConfusionMatrixWithExamples",
             "value": {
                 "confusion_matrix": {},
                 "unmatched_predictions": {},
@@ -515,7 +374,7 @@ def test_confusion_matrix(
             },
         },
         {
-            "type": "ConfusionMatrix",
+            "type": "ConfusionMatrixWithExamples",
             "value": {
                 "confusion_matrix": {},
                 "unmatched_predictions": {},
@@ -583,7 +442,7 @@ def test_confusion_matrix(
     actual_metrics = [m.to_dict() for m in actual_metrics]
     expected_metrics = [
         {
-            "type": "ConfusionMatrix",
+            "type": "ConfusionMatrixWithExamples",
             "value": {
                 "confusion_matrix": {
                     "v1": {
@@ -658,7 +517,7 @@ def test_confusion_matrix(
             },
         },
         {
-            "type": "ConfusionMatrix",
+            "type": "ConfusionMatrixWithExamples",
             "value": {
                 "confusion_matrix": {
                     "v1": {
@@ -724,7 +583,7 @@ def test_confusion_matrix(
             },
         },
         {
-            "type": "ConfusionMatrix",
+            "type": "ConfusionMatrixWithExamples",
             "value": {
                 "confusion_matrix": {
                     "v1": {
@@ -787,7 +646,7 @@ def test_confusion_matrix(
             },
         },
         {
-            "type": "ConfusionMatrix",
+            "type": "ConfusionMatrixWithExamples",
             "value": {
                 "confusion_matrix": {
                     "v1": {
@@ -850,7 +709,7 @@ def test_confusion_matrix(
             },
         },
         {
-            "type": "ConfusionMatrix",
+            "type": "ConfusionMatrixWithExamples",
             "value": {
                 "confusion_matrix": {},
                 "unmatched_predictions": {},
@@ -899,7 +758,7 @@ def test_confusion_matrix(
             },
         },
         {
-            "type": "ConfusionMatrix",
+            "type": "ConfusionMatrixWithExamples",
             "value": {
                 "confusion_matrix": {},
                 "unmatched_predictions": {},
@@ -986,7 +845,7 @@ def _filter_out_examples_and_zero_counts(cm: dict, hl: dict, mp: dict):
             mp[gt_label]["examples"] = list()
 
 
-def test_confusion_matrix_using_torch_metrics_example(
+def test_confusion_matrix_with_examples_using_torch_metrics_example(
     torchmetrics_detections: list[Detection],
 ):
     """
@@ -1012,7 +871,7 @@ def test_confusion_matrix_using_torch_metrics_example(
     actual_metrics = [m.to_dict() for m in actual_metrics]
     expected_metrics = [
         {
-            "type": "ConfusionMatrix",
+            "type": "ConfusionMatrixWithExamples",
             "value": {
                 "confusion_matrix": {
                     "4": {"4": {"count": 2, "examples": []}},
@@ -1035,7 +894,7 @@ def test_confusion_matrix_using_torch_metrics_example(
             },
         },
         {
-            "type": "ConfusionMatrix",
+            "type": "ConfusionMatrixWithExamples",
             "value": {
                 "confusion_matrix": {
                     "4": {"4": {"count": 1, "examples": []}},
@@ -1059,7 +918,7 @@ def test_confusion_matrix_using_torch_metrics_example(
             },
         },
         {
-            "type": "ConfusionMatrix",
+            "type": "ConfusionMatrixWithExamples",
             "value": {
                 "confusion_matrix": {
                     "4": {"4": {"count": 1, "examples": []}},
@@ -1082,7 +941,7 @@ def test_confusion_matrix_using_torch_metrics_example(
             },
         },
         {
-            "type": "ConfusionMatrix",
+            "type": "ConfusionMatrixWithExamples",
             "value": {
                 "confusion_matrix": {
                     "2": {"2": {"count": 1, "examples": []}},
@@ -1104,7 +963,7 @@ def test_confusion_matrix_using_torch_metrics_example(
             },
         },
         {
-            "type": "ConfusionMatrix",
+            "type": "ConfusionMatrixWithExamples",
             "value": {
                 "confusion_matrix": {
                     "0": {"0": {"count": 2, "examples": []}},
@@ -1125,7 +984,7 @@ def test_confusion_matrix_using_torch_metrics_example(
             },
         },
         {
-            "type": "ConfusionMatrix",
+            "type": "ConfusionMatrixWithExamples",
             "value": {
                 "confusion_matrix": {
                     "0": {"0": {"count": 2, "examples": []}},
@@ -1146,7 +1005,7 @@ def test_confusion_matrix_using_torch_metrics_example(
             },
         },
         {
-            "type": "ConfusionMatrix",
+            "type": "ConfusionMatrixWithExamples",
             "value": {
                 "confusion_matrix": {
                     "0": {"0": {"count": 1, "examples": []}},
@@ -1167,7 +1026,7 @@ def test_confusion_matrix_using_torch_metrics_example(
             },
         },
         {
-            "type": "ConfusionMatrix",
+            "type": "ConfusionMatrixWithExamples",
             "value": {
                 "confusion_matrix": {"0": {"0": {"count": 1, "examples": []}}},
                 "unmatched_predictions": {},
@@ -1185,7 +1044,7 @@ def test_confusion_matrix_using_torch_metrics_example(
             },
         },
         {
-            "type": "ConfusionMatrix",
+            "type": "ConfusionMatrixWithExamples",
             "value": {
                 "confusion_matrix": {
                     "2": {"2": {"count": 1, "examples": []}},
@@ -1213,7 +1072,7 @@ def test_confusion_matrix_using_torch_metrics_example(
             },
         },
         {
-            "type": "ConfusionMatrix",
+            "type": "ConfusionMatrixWithExamples",
             "value": {
                 "confusion_matrix": {
                     "2": {"2": {"count": 1, "examples": []}},
@@ -1241,7 +1100,7 @@ def test_confusion_matrix_using_torch_metrics_example(
             },
         },
         {
-            "type": "ConfusionMatrix",
+            "type": "ConfusionMatrixWithExamples",
             "value": {
                 "confusion_matrix": {
                     "2": {"2": {"count": 1, "examples": []}},
@@ -1266,7 +1125,7 @@ def test_confusion_matrix_using_torch_metrics_example(
             },
         },
         {
-            "type": "ConfusionMatrix",
+            "type": "ConfusionMatrixWithExamples",
             "value": {
                 "confusion_matrix": {
                     "2": {"2": {"count": 1, "examples": []}},
@@ -1290,7 +1149,7 @@ def test_confusion_matrix_using_torch_metrics_example(
             },
         },
         {
-            "type": "ConfusionMatrix",
+            "type": "ConfusionMatrixWithExamples",
             "value": {
                 "confusion_matrix": {
                     "49": {"49": {"count": 1, "examples": []}}
@@ -1313,7 +1172,7 @@ def test_confusion_matrix_using_torch_metrics_example(
             },
         },
         {
-            "type": "ConfusionMatrix",
+            "type": "ConfusionMatrixWithExamples",
             "value": {
                 "confusion_matrix": {
                     "49": {"49": {"count": 1, "examples": []}}
@@ -1333,7 +1192,7 @@ def test_confusion_matrix_using_torch_metrics_example(
             },
         },
         {
-            "type": "ConfusionMatrix",
+            "type": "ConfusionMatrixWithExamples",
             "value": {
                 "confusion_matrix": {
                     "49": {"49": {"count": 1, "examples": []}}
@@ -1353,7 +1212,7 @@ def test_confusion_matrix_using_torch_metrics_example(
             },
         },
         {
-            "type": "ConfusionMatrix",
+            "type": "ConfusionMatrixWithExamples",
             "value": {
                 "confusion_matrix": {},
                 "unmatched_predictions": {"0": {"count": 1, "examples": []}},
@@ -1382,7 +1241,7 @@ def test_confusion_matrix_using_torch_metrics_example(
         assert m in actual_metrics
 
 
-def test_confusion_matrix_fp_unmatched_prediction_edge_case(
+def test_confusion_matrix_with_examples_fp_unmatched_prediction_edge_case(
     detections_fp_unmatched_prediction_edge_case: list[Detection],
 ):
 
@@ -1405,7 +1264,7 @@ def test_confusion_matrix_fp_unmatched_prediction_edge_case(
     actual_metrics = [m.to_dict() for m in actual_metrics]
     expected_metrics = [
         {
-            "type": "ConfusionMatrix",
+            "type": "ConfusionMatrixWithExamples",
             "value": {
                 "confusion_matrix": {
                     "v1": {
@@ -1450,7 +1309,7 @@ def test_confusion_matrix_fp_unmatched_prediction_edge_case(
             },
         },
         {
-            "type": "ConfusionMatrix",
+            "type": "ConfusionMatrixWithExamples",
             "value": {
                 "confusion_matrix": {},
                 "unmatched_predictions": {},
@@ -1487,7 +1346,7 @@ def test_confusion_matrix_fp_unmatched_prediction_edge_case(
         assert m in actual_metrics
 
 
-def test_confusion_matrix_ranked_pair_ordering(
+def test_confusion_matrix_with_examples_ranked_pair_ordering(
     detection_ranked_pair_ordering: Detection,
     detection_ranked_pair_ordering_with_bitmasks: Detection,
     detection_ranked_pair_ordering_with_polygons: Detection,
@@ -1524,7 +1383,7 @@ def test_confusion_matrix_ranked_pair_ordering(
         actual_metrics = [m.to_dict() for m in actual_metrics]
         expected_metrics = [
             {
-                "type": "ConfusionMatrix",
+                "type": "ConfusionMatrixWithExamples",
                 "value": {
                     "confusion_matrix": {
                         "label1": {

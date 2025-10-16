@@ -29,7 +29,7 @@ def test_examples(
         {
             "type": "Examples",
             "value": {
-                "datum_uid": "uid1",
+                "datum_id": "uid1",
                 "true_positives": [("uid_1_gt_0", "uid_1_pd_0")],
                 "false_positives": ["uid_1_pd_1", "uid_1_pd_2"],
                 "false_negatives": ["uid_1_gt_1", "uid_1_gt_2"],
@@ -39,7 +39,7 @@ def test_examples(
         {
             "type": "Examples",
             "value": {
-                "datum_uid": "uid1",
+                "datum_id": "uid1",
                 "true_positives": [("uid_1_gt_0", "uid_1_pd_0")],
                 "false_positives": ["uid_1_pd_1"],
                 "false_negatives": ["uid_1_gt_1", "uid_1_gt_2"],
@@ -52,7 +52,7 @@ def test_examples(
         {
             "type": "Examples",
             "value": {
-                "datum_uid": "uid1",
+                "datum_id": "uid1",
                 "true_positives": [("uid_1_gt_0", "uid_1_pd_0")],
                 "false_positives": [],
                 "false_negatives": ["uid_1_gt_1", "uid_1_gt_2"],
@@ -62,7 +62,7 @@ def test_examples(
         {
             "type": "Examples",
             "value": {
-                "datum_uid": "uid1",
+                "datum_id": "uid1",
                 "true_positives": [("uid_1_gt_0", "uid_1_pd_0")],
                 "false_positives": [],
                 "false_negatives": ["uid_1_gt_1", "uid_1_gt_2"],
@@ -72,7 +72,7 @@ def test_examples(
         {
             "type": "Examples",
             "value": {
-                "datum_uid": "uid1",
+                "datum_id": "uid1",
                 "true_positives": [],
                 "false_positives": [],
                 "false_negatives": ["uid_1_gt_0", "uid_1_gt_1", "uid_1_gt_2"],
@@ -82,7 +82,7 @@ def test_examples(
         {
             "type": "Examples",
             "value": {
-                "datum_uid": "uid1",
+                "datum_id": "uid1",
                 "true_positives": [],
                 "false_positives": [],
                 "false_negatives": ["uid_1_gt_0", "uid_1_gt_1", "uid_1_gt_2"],
@@ -92,7 +92,7 @@ def test_examples(
         {
             "type": "Examples",
             "value": {
-                "datum_uid": "uid2",
+                "datum_id": "uid2",
                 "true_positives": [],
                 "false_positives": ["uid_2_pd_0"],
                 "false_negatives": ["uid_2_gt_0"],
@@ -102,7 +102,7 @@ def test_examples(
         {
             "type": "Examples",
             "value": {
-                "datum_uid": "uid2",
+                "datum_id": "uid2",
                 "true_positives": [],
                 "false_positives": ["uid_2_pd_0"],
                 "false_negatives": ["uid_2_gt_0"],
@@ -112,7 +112,7 @@ def test_examples(
         {
             "type": "Examples",
             "value": {
-                "datum_uid": "uid2",
+                "datum_id": "uid2",
                 "true_positives": [],
                 "false_positives": ["uid_2_pd_0"],
                 "false_negatives": ["uid_2_gt_0"],
@@ -122,7 +122,7 @@ def test_examples(
         {
             "type": "Examples",
             "value": {
-                "datum_uid": "uid2",
+                "datum_id": "uid2",
                 "true_positives": [],
                 "false_positives": ["uid_2_pd_0"],
                 "false_negatives": ["uid_2_gt_0"],
@@ -132,7 +132,7 @@ def test_examples(
         {
             "type": "Examples",
             "value": {
-                "datum_uid": "uid2",
+                "datum_id": "uid2",
                 "true_positives": [],
                 "false_positives": [],
                 "false_negatives": ["uid_2_gt_0"],
@@ -142,7 +142,7 @@ def test_examples(
         {
             "type": "Examples",
             "value": {
-                "datum_uid": "uid2",
+                "datum_id": "uid2",
                 "true_positives": [],
                 "false_positives": [],
                 "false_negatives": ["uid_2_gt_0"],
@@ -153,6 +153,9 @@ def test_examples(
 
     assert len(actual_metrics) == len(expected_metrics)
     for m in actual_metrics:
+        import json
+
+        print(json.dumps(m, indent=4))
         assert m in expected_metrics
     for m in expected_metrics:
         assert m in actual_metrics
@@ -168,7 +171,7 @@ def test_examples(
         {
             "type": "Examples",
             "value": {
-                "datum_uid": "uid1",
+                "datum_id": "uid1",
                 "true_positives": [("uid_1_gt_0", "uid_1_pd_0")],
                 "false_positives": ["uid_1_pd_1", "uid_1_pd_2"],
                 "false_negatives": ["uid_1_gt_1", "uid_1_gt_2"],
@@ -178,7 +181,7 @@ def test_examples(
         {
             "type": "Examples",
             "value": {
-                "datum_uid": "uid1",
+                "datum_id": "uid1",
                 "true_positives": [("uid_1_gt_0", "uid_1_pd_0")],
                 "false_positives": ["uid_1_pd_1"],
                 "false_negatives": ["uid_1_gt_1", "uid_1_gt_2"],
@@ -188,7 +191,7 @@ def test_examples(
         {
             "type": "Examples",
             "value": {
-                "datum_uid": "uid1",
+                "datum_id": "uid1",
                 "true_positives": [("uid_1_gt_0", "uid_1_pd_0")],
                 "false_positives": [],
                 "false_negatives": ["uid_1_gt_1", "uid_1_gt_2"],
@@ -198,7 +201,7 @@ def test_examples(
         {
             "type": "Examples",
             "value": {
-                "datum_uid": "uid1",
+                "datum_id": "uid1",
                 "true_positives": [("uid_1_gt_0", "uid_1_pd_0")],
                 "false_positives": [],
                 "false_negatives": ["uid_1_gt_1", "uid_1_gt_2"],
@@ -208,7 +211,7 @@ def test_examples(
         {
             "type": "Examples",
             "value": {
-                "datum_uid": "uid1",
+                "datum_id": "uid1",
                 "true_positives": [],
                 "false_positives": [],
                 "false_negatives": ["uid_1_gt_0", "uid_1_gt_1", "uid_1_gt_2"],
@@ -218,7 +221,7 @@ def test_examples(
         {
             "type": "Examples",
             "value": {
-                "datum_uid": "uid1",
+                "datum_id": "uid1",
                 "true_positives": [],
                 "false_positives": [],
                 "false_negatives": ["uid_1_gt_0", "uid_1_gt_1", "uid_1_gt_2"],
@@ -228,7 +231,7 @@ def test_examples(
         {
             "type": "Examples",
             "value": {
-                "datum_uid": "uid2",
+                "datum_id": "uid2",
                 "true_positives": [],
                 "false_positives": ["uid_2_pd_0"],
                 "false_negatives": ["uid_2_gt_0"],
@@ -238,7 +241,7 @@ def test_examples(
         {
             "type": "Examples",
             "value": {
-                "datum_uid": "uid2",
+                "datum_id": "uid2",
                 "true_positives": [],
                 "false_positives": ["uid_2_pd_0"],
                 "false_negatives": ["uid_2_gt_0"],
@@ -248,7 +251,7 @@ def test_examples(
         {
             "type": "Examples",
             "value": {
-                "datum_uid": "uid2",
+                "datum_id": "uid2",
                 "true_positives": [],
                 "false_positives": ["uid_2_pd_0"],
                 "false_negatives": ["uid_2_gt_0"],
@@ -258,7 +261,7 @@ def test_examples(
         {
             "type": "Examples",
             "value": {
-                "datum_uid": "uid2",
+                "datum_id": "uid2",
                 "true_positives": [],
                 "false_positives": ["uid_2_pd_0"],
                 "false_negatives": ["uid_2_gt_0"],
@@ -268,7 +271,7 @@ def test_examples(
         {
             "type": "Examples",
             "value": {
-                "datum_uid": "uid2",
+                "datum_id": "uid2",
                 "true_positives": [],
                 "false_positives": [],
                 "false_negatives": ["uid_2_gt_0"],
@@ -278,7 +281,7 @@ def test_examples(
         {
             "type": "Examples",
             "value": {
-                "datum_uid": "uid2",
+                "datum_id": "uid2",
                 "true_positives": [],
                 "false_positives": [],
                 "false_negatives": ["uid_2_gt_0"],
@@ -322,7 +325,7 @@ def test_examples_using_torch_metrics_example(
         {
             "type": "Examples",
             "value": {
-                "datum_uid": "0",
+                "datum_id": "0",
                 "true_positives": [("uid_0_gt_0", "uid_0_pd_0")],
                 "false_positives": [],
                 "false_negatives": [],
@@ -332,7 +335,7 @@ def test_examples_using_torch_metrics_example(
         {
             "type": "Examples",
             "value": {
-                "datum_uid": "0",
+                "datum_id": "0",
                 "true_positives": [],
                 "false_positives": ["uid_0_pd_0"],
                 "false_negatives": ["uid_0_gt_0"],
@@ -343,7 +346,7 @@ def test_examples_using_torch_metrics_example(
             {
                 "type": "Examples",
                 "value": {
-                    "datum_uid": "0",
+                    "datum_id": "0",
                     "true_positives": [],
                     "false_positives": [],
                     "false_negatives": ["uid_0_gt_0"],
@@ -361,7 +364,7 @@ def test_examples_using_torch_metrics_example(
             {
                 "type": "Examples",
                 "value": {
-                    "datum_uid": "1",
+                    "datum_id": "1",
                     "true_positives": [("uid_1_gt_1", "uid_1_pd_1")],
                     "false_positives": ["uid_1_pd_0"],
                     "false_negatives": ["uid_1_gt_0"],
@@ -378,7 +381,7 @@ def test_examples_using_torch_metrics_example(
             {
                 "type": "Examples",
                 "value": {
-                    "datum_uid": "1",
+                    "datum_id": "1",
                     "true_positives": [("uid_1_gt_1", "uid_1_pd_1")],
                     "false_positives": [],
                     "false_negatives": ["uid_1_gt_0"],
@@ -395,7 +398,7 @@ def test_examples_using_torch_metrics_example(
             {
                 "type": "Examples",
                 "value": {
-                    "datum_uid": "1",
+                    "datum_id": "1",
                     "true_positives": [],
                     "false_positives": [],
                     "false_negatives": ["uid_1_gt_0", "uid_1_gt_1"],
@@ -413,7 +416,7 @@ def test_examples_using_torch_metrics_example(
             {
                 "type": "Examples",
                 "value": {
-                    "datum_uid": "2",
+                    "datum_id": "2",
                     "true_positives": [
                         ("uid_2_gt_0", "uid_2_pd_0"),
                         ("uid_2_gt_1", "uid_2_pd_1"),
@@ -436,7 +439,7 @@ def test_examples_using_torch_metrics_example(
         {
             "type": "Examples",
             "value": {
-                "datum_uid": "2",
+                "datum_id": "2",
                 "true_positives": [
                     ("uid_2_gt_0", "uid_2_pd_0"),
                     ("uid_2_gt_2", "uid_2_pd_2"),
@@ -452,7 +455,7 @@ def test_examples_using_torch_metrics_example(
         {
             "type": "Examples",
             "value": {
-                "datum_uid": "2",
+                "datum_id": "2",
                 "true_positives": [
                     ("uid_2_gt_3", "uid_2_pd_3"),
                     ("uid_2_gt_5", "uid_2_pd_5"),
@@ -472,7 +475,7 @@ def test_examples_using_torch_metrics_example(
             {
                 "type": "Examples",
                 "value": {
-                    "datum_uid": "2",
+                    "datum_id": "2",
                     "true_positives": [
                         ("uid_2_gt_5", "uid_2_pd_5"),
                         ("uid_2_gt_6", "uid_2_pd_6"),
@@ -497,7 +500,7 @@ def test_examples_using_torch_metrics_example(
             {
                 "type": "Examples",
                 "value": {
-                    "datum_uid": "2",
+                    "datum_id": "2",
                     "true_positives": [("uid_2_gt_6", "uid_2_pd_6")],
                     "false_positives": [],
                     "false_negatives": [
@@ -520,7 +523,7 @@ def test_examples_using_torch_metrics_example(
             {
                 "type": "Examples",
                 "value": {
-                    "datum_uid": "2",
+                    "datum_id": "2",
                     "true_positives": [("uid_2_gt_4", "uid_2_pd_4")],
                     "false_positives": [
                         "uid_2_pd_0",
@@ -549,7 +552,7 @@ def test_examples_using_torch_metrics_example(
         {
             "type": "Examples",
             "value": {
-                "datum_uid": "2",
+                "datum_id": "2",
                 "true_positives": [],
                 "false_positives": [
                     "uid_2_pd_0",
@@ -573,7 +576,7 @@ def test_examples_using_torch_metrics_example(
         {
             "type": "Examples",
             "value": {
-                "datum_uid": "2",
+                "datum_id": "2",
                 "true_positives": [],
                 "false_positives": ["uid_2_pd_3", "uid_2_pd_5", "uid_2_pd_6"],
                 "false_negatives": [
@@ -592,7 +595,7 @@ def test_examples_using_torch_metrics_example(
             {
                 "type": "Examples",
                 "value": {
-                    "datum_uid": "2",
+                    "datum_id": "2",
                     "true_positives": [],
                     "false_positives": ["uid_2_pd_5", "uid_2_pd_6"],
                     "false_negatives": [
@@ -616,7 +619,7 @@ def test_examples_using_torch_metrics_example(
             {
                 "type": "Examples",
                 "value": {
-                    "datum_uid": "2",
+                    "datum_id": "2",
                     "true_positives": [],
                     "false_positives": ["uid_2_pd_6"],
                     "false_negatives": [
@@ -640,7 +643,7 @@ def test_examples_using_torch_metrics_example(
         {
             "type": "Examples",
             "value": {
-                "datum_uid": "3",
+                "datum_id": "3",
                 "true_positives": [
                     ("uid_3_gt_0", "uid_3_pd_0"),
                     ("uid_3_gt_2", "uid_3_pd_2"),
@@ -659,7 +662,7 @@ def test_examples_using_torch_metrics_example(
         {
             "type": "Examples",
             "value": {
-                "datum_uid": "3",
+                "datum_id": "3",
                 "true_positives": [
                     ("uid_3_gt_0", "uid_3_pd_0"),
                     ("uid_3_gt_2", "uid_3_pd_2"),
@@ -681,7 +684,7 @@ def test_examples_using_torch_metrics_example(
         {
             "type": "Examples",
             "value": {
-                "datum_uid": "3",
+                "datum_id": "3",
                 "true_positives": [
                     ("uid_3_gt_0", "uid_3_pd_0"),
                     ("uid_3_gt_2", "uid_3_pd_2"),
@@ -703,7 +706,7 @@ def test_examples_using_torch_metrics_example(
         {
             "type": "Examples",
             "value": {
-                "datum_uid": "3",
+                "datum_id": "3",
                 "true_positives": [
                     ("uid_3_gt_2", "uid_3_pd_2"),
                     ("uid_3_gt_4", "uid_3_pd_4"),
@@ -725,7 +728,7 @@ def test_examples_using_torch_metrics_example(
         {
             "type": "Examples",
             "value": {
-                "datum_uid": "3",
+                "datum_id": "3",
                 "true_positives": [
                     ("uid_3_gt_2", "uid_3_pd_2"),
                     ("uid_3_gt_4", "uid_3_pd_4"),
@@ -748,7 +751,7 @@ def test_examples_using_torch_metrics_example(
             {
                 "type": "Examples",
                 "value": {
-                    "datum_uid": "3",
+                    "datum_id": "3",
                     "true_positives": [("uid_3_gt_4", "uid_3_pd_4")],
                     "false_positives": [],
                     "false_negatives": [
@@ -773,7 +776,7 @@ def test_examples_using_torch_metrics_example(
         {
             "type": "Examples",
             "value": {
-                "datum_uid": "3",
+                "datum_id": "3",
                 "true_positives": [],
                 "false_positives": [],
                 "false_negatives": [
@@ -794,7 +797,7 @@ def test_examples_using_torch_metrics_example(
         {
             "type": "Examples",
             "value": {
-                "datum_uid": "3",
+                "datum_id": "3",
                 "true_positives": [
                     ("uid_3_gt_0", "uid_3_pd_0"),
                     ("uid_3_gt_4", "uid_3_pd_4"),
@@ -824,7 +827,7 @@ def test_examples_using_torch_metrics_example(
         {
             "type": "Examples",
             "value": {
-                "datum_uid": "3",
+                "datum_id": "3",
                 "true_positives": [
                     ("uid_3_gt_0", "uid_3_pd_0"),
                     ("uid_3_gt_4", "uid_3_pd_4"),
@@ -851,7 +854,7 @@ def test_examples_using_torch_metrics_example(
         {
             "type": "Examples",
             "value": {
-                "datum_uid": "3",
+                "datum_id": "3",
                 "true_positives": [
                     ("uid_3_gt_0", "uid_3_pd_0"),
                     ("uid_3_gt_4", "uid_3_pd_4"),
@@ -873,7 +876,7 @@ def test_examples_using_torch_metrics_example(
         {
             "type": "Examples",
             "value": {
-                "datum_uid": "3",
+                "datum_id": "3",
                 "true_positives": [("uid_3_gt_4", "uid_3_pd_4")],
                 "false_positives": ["uid_3_pd_2", "uid_3_pd_6"],
                 "false_negatives": [
@@ -893,7 +896,7 @@ def test_examples_using_torch_metrics_example(
         {
             "type": "Examples",
             "value": {
-                "datum_uid": "3",
+                "datum_id": "3",
                 "true_positives": [("uid_3_gt_4", "uid_3_pd_4")],
                 "false_positives": ["uid_3_pd_2"],
                 "false_negatives": [
@@ -913,7 +916,7 @@ def test_examples_using_torch_metrics_example(
         {
             "type": "Examples",
             "value": {
-                "datum_uid": "3",
+                "datum_id": "3",
                 "true_positives": [("uid_3_gt_4", "uid_3_pd_4")],
                 "false_positives": [],
                 "false_negatives": [
@@ -933,7 +936,7 @@ def test_examples_using_torch_metrics_example(
         {
             "type": "Examples",
             "value": {
-                "datum_uid": "3",
+                "datum_id": "3",
                 "true_positives": [("uid_3_gt_4", "uid_3_pd_4")],
                 "false_positives": [],
                 "false_negatives": [
@@ -953,7 +956,7 @@ def test_examples_using_torch_metrics_example(
         {
             "type": "Examples",
             "value": {
-                "datum_uid": "3",
+                "datum_id": "3",
                 "true_positives": [],
                 "false_positives": [],
                 "false_negatives": [
@@ -1001,7 +1004,7 @@ def test_examples_fp_unmatched_prediction_edge_case(
         {
             "type": "Examples",
             "value": {
-                "datum_uid": "uid1",
+                "datum_id": "uid1",
                 "true_positives": [("uid1_gt0", "uid1_pd0")],
                 "false_positives": [],
                 "false_negatives": [],
@@ -1014,7 +1017,7 @@ def test_examples_fp_unmatched_prediction_edge_case(
         {
             "type": "Examples",
             "value": {
-                "datum_uid": "uid2",
+                "datum_id": "uid2",
                 "true_positives": [],
                 "false_positives": ["uid2_pd0"],
                 "false_negatives": ["uid2_gt0"],
@@ -1027,7 +1030,7 @@ def test_examples_fp_unmatched_prediction_edge_case(
         {
             "type": "Examples",
             "value": {
-                "datum_uid": "uid1",
+                "datum_id": "uid1",
                 "true_positives": [],
                 "false_positives": [],
                 "false_negatives": ["uid1_gt0"],
@@ -1040,7 +1043,7 @@ def test_examples_fp_unmatched_prediction_edge_case(
         {
             "type": "Examples",
             "value": {
-                "datum_uid": "uid2",
+                "datum_id": "uid2",
                 "true_positives": [],
                 "false_positives": [],
                 "false_negatives": ["uid2_gt0"],
@@ -1095,7 +1098,7 @@ def test_examples_ranked_pair_ordering(
             {
                 "type": "Examples",
                 "value": {
-                    "datum_uid": "uid1",
+                    "datum_id": "uid1",
                     "true_positives": [],
                     "false_positives": ["pd_0", "pd_1", "pd_2", "pd_3"],
                     "false_negatives": ["gt_0", "gt_1", "gt_2"],

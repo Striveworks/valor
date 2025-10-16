@@ -4,9 +4,15 @@ import pytest
 from valor_lite.object_detection import (
     DataLoader,
     Detection,
+    Evaluator,
     Metric,
     MetricType,
 )
+
+
+def test_evaluator_no_data():
+    with pytest.raises(FileNotFoundError):
+        Evaluator("some_nonexistent_cache")
 
 
 def test_metadata_using_torch_metrics_example(

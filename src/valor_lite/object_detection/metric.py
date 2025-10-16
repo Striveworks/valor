@@ -823,7 +823,7 @@ class Metric(BaseMetric):
             A dictionary where each key is a prediction label value with no corresponding ground truth
             (subset of false positives). The value is a dictionary containing either a `count` or a list of
             `examples`. Each example includes annotation and datum identifers.
-        unmatched_ground_truths : dict
+        unmatched_groundtruths : dict
             A dictionary where each key is a ground truth label value for which the model failed to predict
             (subset of false negatives). The value is a dictionary containing either a `count` or a list of `examples`.
             Each example includes annotation and datum identifers.

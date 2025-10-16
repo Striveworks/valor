@@ -7,16 +7,10 @@ import pyarrow.dataset as ds
 from numpy.typing import NDArray
 
 from valor_lite.exceptions import EmptyFilterError
-from valor_lite.object_detection.computation import (
-    compute_pair_classifications,
-)
 from valor_lite.object_detection.evaluator import Evaluator as CachedEvaluator
 from valor_lite.object_detection.evaluator import Filter
 from valor_lite.object_detection.loader import Loader as CachedLoader
 from valor_lite.object_detection.metric import Metric, MetricType
-from valor_lite.object_detection.utilities import (
-    unpack_confusion_matrix_into_metric_list_legacy,
-)
 
 """
 Usage
@@ -55,8 +49,8 @@ class Evaluator:
     Legacy Object Detection Evaluator
     """
 
-    def __init__(self):
-        self._evaluator = CachedEvaluator()
+    def __init__(self, name: str = "default"):
+        self._evaluator = CachedEvaluator(name=name)
 
     @property
     def metadata(self) -> Metadata:
@@ -272,40 +266,20 @@ class Evaluator:
         list[Metric]
             List of confusion matrices per threshold pair.
         """
-        if not iou_thresholds:
-            raise ValueError("At least one IOU threshold must be passed.")
-        elif not score_thresholds:
-            raise ValueError("At least one score threshold must be passed.")
-
-        return []
-        (
-            mask_tp,
-            mask_fp_fn_misclf,
-            mask_fp_unmatched,
-            mask_fn_unmatched,
-        ) = compute_pair_classifications(
-            detailed_pairs=detailed_pairs,
-            iou_thresholds=np.array(iou_thresholds),
-            score_thresholds=np.array(score_thresholds),
-        )
-        return unpack_confusion_matrix_into_metric_list_legacy(
-            detailed_pairs=detailed_pairs,
-            mask_tp=mask_tp,
-            mask_fp_fn_misclf=mask_fp_fn_misclf,
-            mask_fp_unmatched=mask_fp_unmatched,
-            mask_fn_unmatched=mask_fn_unmatched,
+        if filter_ is not None:
+            with tempfile.TemporaryDirectory() as tmpdir:
+                evaluator = self._evaluator.filter(
+                    directory=tmpdir,
+                    name="filtered",
+                    filter_expr=filter_,
+                )
+                return evaluator.compute_confusion_matrix_with_examples(
+                    iou_thresholds=iou_thresholds,
+                    score_thresholds=score_thresholds,
+                )
+        return self._evaluator.compute_confusion_matrix_with_examples(
             iou_thresholds=iou_thresholds,
             score_thresholds=score_thresholds,
-            index_to_datum_id={
-                i: v for i, v in enumerate(self.index_to_datum_id)
-            },
-            index_to_groundtruth_id={
-                i: v for i, v in enumerate(self.index_to_groundtruth_id)
-            },
-            index_to_prediction_id={
-                i: v for i, v in enumerate(self.index_to_prediction_id)
-            },
-            index_to_label={i: v for i, v in enumerate(self.index_to_label)},
         )
 
     def evaluate(
@@ -355,6 +329,6 @@ class DataLoader(CachedLoader):
             rows_per_file=10_000,
         )
 
-    def finalize(self) -> Evaluator:
+    def finalize(self) -> Evaluator:  # type: ignore - switching evaluator
         _ = super().finalize()
         return Evaluator()

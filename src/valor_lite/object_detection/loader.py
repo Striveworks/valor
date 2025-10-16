@@ -393,8 +393,6 @@ class Loader:
             n_pairs = pairs.shape[0]
             gt_ids = pairs[:, (0, 1)].astype(np.int64)
             pd_ids = pairs[:, (0, 2)].astype(np.int64)
-            gt_lb_ids = pairs[:, 3].astype(np.int64)
-            pd_lb_ids = pairs[:, 4].astype(np.int64)
 
             mask_valid_gt = np.zeros(n_pairs, dtype=np.bool_)
             mask_valid_pd = np.zeros(n_pairs, dtype=np.bool_)
@@ -415,24 +413,12 @@ class Loader:
                 for pd in np.unique(pd_pairs, axis=0):
                     mask_valid_pd |= (pd_ids == pd).all(axis=1)
 
-            if filter_expr.labels is not None:
-                lb_tbl = tbl.filter(filter_expr.labels)
-                lb_pairs = np.column_stack(
-                    [
-                        lb_tbl[col].to_numpy()
-                        for col in ("gt_label_id", "pd_label_id")
-                    ]
-                ).astype(np.int64)
-                for lb in np.unique(lb_pairs):
-                    mask_valid_gt |= gt_lb_ids == lb
-                    mask_valid_pd |= pd_lb_ids == lb
-
             mask_valid = mask_valid_gt | mask_valid_pd
             mask_valid_gt &= mask_valid
             mask_valid_pd &= mask_valid
 
-            pairs[np.ix_(~mask_valid_gt, (1, 3))] = -1.0
-            pairs[np.ix_(~mask_valid_pd, (2, 4, 6))] = -1.0
+            pairs[np.ix_(~mask_valid_gt, (1, 3))] = -1.0  # type: ignore - numpy ix_
+            pairs[np.ix_(~mask_valid_pd, (2, 4, 6))] = -1.0  # type: ignore - numpy ix_
             pairs[~mask_valid_pd | ~mask_valid_gt, 5] = 0.0
 
             for idx, col in enumerate(columns):

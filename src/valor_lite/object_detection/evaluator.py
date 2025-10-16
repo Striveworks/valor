@@ -23,8 +23,10 @@ from valor_lite.object_detection.computation import (
 )
 from valor_lite.object_detection.metric import Metric, MetricType
 from valor_lite.object_detection.utilities import (
+    create_empty_confusion_matrix_with_examples,
     create_mapping,
     unpack_confusion_matrix,
+    unpack_confusion_matrix_with_examples,
     unpack_examples,
     unpack_precision_recall_into_metric_lists,
 )
@@ -66,7 +68,7 @@ class Evaluator:
         self._ranked_path = self._path / "ranked"
         self._metadata_path = self._path / "metadata.json"
 
-        # read from file
+        # link cache
         self._dataset = ds.dataset(self._detailed_path, format="parquet")
 
         # build evaluator meta
@@ -76,6 +78,7 @@ class Evaluator:
             self._info,
         ) = self.generate_meta(self._dataset, labels_override)
 
+        # read config
         with open(self._metadata_path, "r") as f:
             types = json.load(f)
             self._info.datum_metadata_types = types["datum"]
@@ -619,6 +622,102 @@ class Evaluator:
             metrics.extend(batch_examples)
 
         return metrics
+
+    def compute_confusion_matrix_with_examples(
+        self,
+        iou_thresholds: list[float],
+        score_thresholds: list[float],
+    ) -> list[Metric]:
+        """
+        Computes confusion matrix with examples at various thresholds.
+
+        This function can use a lot of memory with larger or high density datasets. Please use it with filters.
+
+        Parameters
+        ----------
+        iou_thresholds : list[float]
+            A list of IOU thresholds to compute metrics over.
+        score_thresholds : list[float]
+            A list of score thresholds to compute metrics over.
+        filter_ : Filter, optional
+            A collection of filter parameters and masks.
+
+        Returns
+        -------
+        list[Metric]
+            List of confusion matrices per threshold pair.
+        """
+        if not iou_thresholds:
+            raise ValueError("At least one IOU threshold must be passed.")
+        elif not score_thresholds:
+            raise ValueError("At least one score threshold must be passed.")
+
+        metrics = {
+            iou_idx: {
+                score_idx: create_empty_confusion_matrix_with_examples(
+                    iou_threhsold=iou_thresh,
+                    score_threshold=score_thresh,
+                    index_to_label=self._index_to_label,
+                )
+                for score_idx, score_thresh in enumerate(score_thresholds)
+            }
+            for iou_idx, iou_thresh in enumerate(iou_thresholds)
+        }
+        for tbl, pairs in self.iterate_pairs_with_table(
+            dataset=self._dataset,
+            columns=[
+                "datum_id",
+                "gt_id",
+                "pd_id",
+                "gt_label_id",
+                "pd_label_id",
+                "iou",
+                "score",
+            ],
+        ):
+            if pairs.size == 0:
+                continue
+
+            index_to_datum_id = {}
+            index_to_groundtruth_id = {}
+            index_to_prediction_id = {}
+
+            # extract external identifiers
+            index_to_datum_id = create_mapping(
+                tbl, pairs, 0, "datum_id", "datum_uid"
+            )
+            index_to_groundtruth_id = create_mapping(
+                tbl, pairs, 1, "gt_id", "gt_uid"
+            )
+            index_to_prediction_id = create_mapping(
+                tbl, pairs, 2, "pd_id", "pd_uid"
+            )
+
+            (
+                mask_tp,
+                mask_fp_fn_misclf,
+                mask_fp_unmatched,
+                mask_fn_unmatched,
+            ) = compute_pair_classifications(
+                detailed_pairs=pairs,
+                iou_thresholds=np.array(iou_thresholds),
+                score_thresholds=np.array(score_thresholds),
+            )
+
+            unpack_confusion_matrix_with_examples(
+                metrics=metrics,
+                detailed_pairs=pairs,
+                mask_tp=mask_tp,
+                mask_fp_fn_misclf=mask_fp_fn_misclf,
+                mask_fp_unmatched=mask_fp_unmatched,
+                mask_fn_unmatched=mask_fn_unmatched,
+                index_to_datum_id=index_to_datum_id,
+                index_to_groundtruth_id=index_to_groundtruth_id,
+                index_to_prediction_id=index_to_prediction_id,
+                index_to_label=self._index_to_label,
+            )
+
+        return [m for inner in metrics.values() for m in inner.values()]
 
     def evaluate(
         self,
