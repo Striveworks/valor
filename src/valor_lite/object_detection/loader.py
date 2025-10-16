@@ -453,7 +453,7 @@ class Loader:
             name=loader._name,
             labels_override=evaluator._index_to_label,
         )
-        evaluator.create_ranked_cache(where=loader._ranked_path)
+        evaluator.rank(where=loader._ranked_path)
         return evaluator
 
     def finalize(self):
@@ -473,5 +473,5 @@ class Loader:
             directory=self._directory,
             name=self._name,
         )
-        evaluator.create_ranked_cache(where=self._ranked_path)
+        evaluator.rank(where=self._ranked_path)
         return evaluator

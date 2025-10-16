@@ -10,7 +10,6 @@ import pyarrow as pa
 import pyarrow.compute as pc
 import pyarrow.dataset as ds
 import pyarrow.parquet as pq
-from numpy.typing import NDArray
 
 from valor_lite.cache import CacheReader, CacheWriter, DataType
 from valor_lite.object_detection.computation import (
@@ -24,25 +23,11 @@ from valor_lite.object_detection.computation import (
 )
 from valor_lite.object_detection.metric import Metric, MetricType
 from valor_lite.object_detection.utilities import (
+    create_mapping,
     unpack_confusion_matrix,
     unpack_examples,
     unpack_precision_recall_into_metric_lists,
 )
-
-
-def create_mapping(
-    tbl: pa.Table,
-    pairs: NDArray[np.float64],
-    index: int,
-    id_col: str,
-    uid_col: str,
-) -> dict[int, str]:
-    col = pairs[:, index].astype(np.int64)
-    values, indices = np.unique(col, return_index=True)
-    indices = indices[values >= 0]
-    return {
-        tbl[id_col][idx].as_py(): tbl[uid_col][idx].as_py() for idx in indices
-    }
 
 
 @dataclass
@@ -65,7 +50,6 @@ class Filter:
     datums: pc.Expression | None = None
     groundtruths: pc.Expression | None = None
     predictions: pc.Expression | None = None
-    labels: pc.Expression | None = None
 
 
 class Evaluator:
@@ -90,7 +74,7 @@ class Evaluator:
             self._index_to_label,
             self._number_of_groundtruths_per_label,
             self._info,
-        ) = self._generate_meta(labels_override)
+        ) = self.generate_meta(self._dataset, labels_override)
 
         with open(self._metadata_path, "r") as f:
             types = json.load(f)
@@ -135,19 +119,22 @@ class Evaluator:
         return self._dataset
 
     @property
-    def ranked(self):
+    def ranked(self) -> ds.Dataset:
         return ds.dataset(self._ranked_path, format="parquet")
 
     @property
     def info(self) -> EvaluatorInfo:
         return self._info
 
-    def _generate_meta(self, labels_override: dict[int, str] | None):
+    @staticmethod
+    def generate_meta(
+        dataset: ds.Dataset, labels_override: dict[int, str] | None
+    ):
         gt_counts_per_lbl = defaultdict(int)
         labels = labels_override if labels_override else {}
         info = EvaluatorInfo()
 
-        for fragment in self.detailed.get_fragments():
+        for fragment in dataset.get_fragments():
             tbl = fragment.to_table()
             columns = (
                 "datum_id",
@@ -217,6 +204,29 @@ class Evaluator:
 
         return labels, number_of_groundtruths_per_label, info
 
+    @staticmethod
+    def iterate_pairs(
+        dataset: ds.Dataset,
+        columns: list[str] | None = None,
+    ):
+        for fragment in dataset.get_fragments():
+            tbl = fragment.to_table(columns=columns)
+            yield np.column_stack(
+                [tbl.column(i).to_numpy() for i in range(tbl.num_columns)]
+            )
+
+    @staticmethod
+    def iterate_pairs_with_table(
+        dataset: ds.Dataset,
+        columns: list[str] | None = None,
+    ):
+        for fragment in dataset.get_fragments():
+            tbl = fragment.to_table()
+            columns = columns if columns else tbl.columns
+            yield tbl, np.column_stack(
+                [tbl[col].to_numpy() for col in columns]
+            )
+
     def filter(
         self,
         filter_expr: Filter,
@@ -234,7 +244,7 @@ class Evaluator:
             filter_expr=filter_expr,
         )
 
-    def create_ranked_cache(
+    def rank(
         self,
         where: str | Path,
         rows_per_file: int | None = None,
@@ -337,29 +347,6 @@ class Evaluator:
                             heapq.heappush(
                                 heap, generate_heap_item(batches, batch_idx, 0)
                             )
-
-    @staticmethod
-    def iterate_pairs(
-        dataset: ds.Dataset,
-        columns: list[str] | None = None,
-    ):
-        for fragment in dataset.get_fragments():
-            tbl = fragment.to_table(columns=columns)
-            yield np.column_stack(
-                [tbl.column(i).to_numpy() for i in range(tbl.num_columns)]
-            )
-
-    @staticmethod
-    def iterate_pairs_with_table(
-        dataset: ds.Dataset,
-        columns: list[str] | None = None,
-    ):
-        for fragment in dataset.get_fragments():
-            tbl = fragment.to_table()
-            columns = columns if columns else tbl.columns
-            yield tbl, np.column_stack(
-                [tbl[col].to_numpy() for col in columns]
-            )
 
     def compute_precision_recall(
         self,

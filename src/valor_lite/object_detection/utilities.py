@@ -1,9 +1,9 @@
 from collections import defaultdict
 
 import numpy as np
+import pyarrow as pa
 from numpy.typing import NDArray
 
-from valor_lite.object_detection.computation import PairClassification
 from valor_lite.object_detection.metric import Metric, MetricType
 
 
@@ -326,6 +326,21 @@ def unpack_confusion_matrix(
                 )
             )
     return metrics
+
+
+def create_mapping(
+    tbl: pa.Table,
+    pairs: NDArray[np.float64],
+    index: int,
+    id_col: str,
+    uid_col: str,
+) -> dict[int, str]:
+    col = pairs[:, index].astype(np.int64)
+    values, indices = np.unique(col, return_index=True)
+    indices = indices[values >= 0]
+    return {
+        tbl[id_col][idx].as_py(): tbl[uid_col][idx].as_py() for idx in indices
+    }
 
 
 def unpack_examples(

@@ -174,54 +174,7 @@ def compute_polygon_iou(
     return ious
 
 
-def compute_label_metadata(
-    ids: NDArray[np.int32],
-    n_labels: int,
-) -> NDArray[np.uint32]:
-    """
-    Computes label metadata returning a count of annotations per label.
-
-    Parameters
-    ----------
-    detailed_pairs : NDArray[np.int32]
-        Detailed annotation pairings with shape (N, 7).
-            Index 0 - Datum Index
-            Index 1 - GroundTruth Index
-            Index 2 - Prediction Index
-            Index 3 - GroundTruth Label Index
-            Index 4 - Prediction Label Index
-    n_labels : int
-        The total number of unique labels.
-
-    Returns
-    -------
-    NDArray[np.int32]
-        The label metadata array with shape (n_labels, 2).
-            Index 0 - Ground truth label count
-            Index 1 - Prediction label count
-    """
-    label_metadata = np.zeros((n_labels, 2), dtype=np.uint32)
-
-    ground_truth_pairs = ids[:, (0, 1, 3)]
-    ground_truth_pairs = ground_truth_pairs[ground_truth_pairs[:, 1] >= 0]
-    unique_pairs = np.unique(ground_truth_pairs, axis=0)
-    label_indices, unique_counts = np.unique(
-        unique_pairs[:, 2], return_counts=True
-    )
-    label_metadata[label_indices.astype(np.int32), 0] = unique_counts
-
-    prediction_pairs = ids[:, (0, 2, 4)]
-    prediction_pairs = prediction_pairs[prediction_pairs[:, 1] >= 0]
-    unique_pairs = np.unique(prediction_pairs, axis=0)
-    label_indices, unique_counts = np.unique(
-        unique_pairs[:, 2], return_counts=True
-    )
-    label_metadata[label_indices.astype(np.int32), 1] = unique_counts
-
-    return label_metadata
-
-
-def rank_pairs_returning_indices(sorted_pairs: NDArray[np.float64]):
+def rank_pairs(sorted_pairs: NDArray[np.float64]):
     """
     Prunes and ranks prediction pairs.
 
@@ -327,7 +280,7 @@ def rank_table(tbl: pa.Table, number_of_labels: int) -> pa.Table:
     pairs = np.column_stack(
         [sorted_tbl[col].to_numpy() for col in numeric_columns]
     )
-    pairs, indices = rank_pairs_returning_indices(pairs)
+    pairs, indices = rank_pairs(pairs)
     ranked_tbl = sorted_tbl.take(indices)
     lower_iou_bound, winning_predictions = calculate_ranking_boundaries(
         pairs, number_of_labels=number_of_labels
@@ -342,57 +295,6 @@ def rank_table(tbl: pa.Table, number_of_labels: int) -> pa.Table:
     )
     ranked_tbl = ranked_tbl.sort_by(sorting_args)
     return ranked_tbl
-
-
-def rank_pairs(
-    detailed_pairs: NDArray[np.float64],
-) -> NDArray[np.float64]:
-    """
-    Highly optimized pair ranking for computing precision and recall based metrics.
-
-    Only ground truths and predictions that provide unique information are kept. The unkept
-    pairs are represented via the label metadata array.
-
-    Parameters
-    ----------
-    detailed_pairs : NDArray[np.float64]
-        Detailed annotation pairs with shape (n_pairs, 7).
-            Index 0 - Datum Index
-            Index 1 - GroundTruth Index
-            Index 2 - Prediction Index
-            Index 3 - GroundTruth Label Index
-            Index 4 - Prediction Label Index
-            Index 5 - IOU
-            Index 6 - Score
-
-    Returns
-    -------
-    NDArray[np.float64]
-        Array of ranked pairs for precision-recall metric computation.
-    """
-    # remove unmatched ground truths
-    pairs = detailed_pairs[detailed_pairs[:, 2] >= 0.0]
-
-    # find best fits for prediction
-    mask_label_match = np.isclose(pairs[:, 3], pairs[:, 4])
-    matched_predictions = np.unique(pairs[mask_label_match, 2])
-    mask_unmatched_predictions = ~np.isin(pairs[:, 2], matched_predictions)
-    pairs = pairs[mask_label_match | mask_unmatched_predictions]
-
-    # only keep the highest ranked pair
-    _, indices = np.unique(pairs[:, [0, 2, 4]], axis=0, return_index=True)
-    pairs = pairs[indices]
-
-    # np.unique orders its results by value, we need to sort the indices to maintain the results of the lexsort
-    indices = np.lexsort(
-        (
-            -pairs[:, 5],  # iou
-            -pairs[:, 6],  # score
-        )
-    )
-    pairs = pairs[indices]
-
-    return pairs
 
 
 def compute_counts(
