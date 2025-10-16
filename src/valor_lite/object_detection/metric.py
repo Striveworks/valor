@@ -18,6 +18,7 @@ class MetricType(str, Enum):
     ARAveragedOverScores = "ARAveragedOverScores"
     mARAveragedOverScores = "mARAveragedOverScores"
     PrecisionRecallCurve = "PrecisionRecallCurve"
+    ConfusionMatrixWithExamples = "ConfusionMatrixWithExamples"
     ConfusionMatrix = "ConfusionMatrix"
     Examples = "Examples"
 
@@ -571,7 +572,7 @@ class Metric(BaseMetric):
         iou_threshold: float,
     ):
         """
-        Confusion matrix for object detection tasks.
+        Confusion matrix for object detection task.
 
         This class encapsulates detailed information about the model's performance, including correct
         predictions, misclassifications, unmatched_predictions (subset of false positives), and unmatched ground truths
@@ -601,8 +602,8 @@ class Metric(BaseMetric):
         Parameters
         ----------
         confusion_matrix : dict
-            A nested dictionary containing integer counts of occurences where the first key is the ground truth label value 
-            and the second key is the prediction label value. 
+            A nested dictionary containing integer counts of occurences where the first key is the ground truth label value
+            and the second key is the prediction label value.
         unmatched_predictions : dict
             A dictionary where each key is a prediction label value with no corresponding ground truth
             (subset of false positives). The value is a dictionary containing counts.
@@ -641,10 +642,63 @@ class Metric(BaseMetric):
         score_threshold: float,
         iou_threshold: float,
     ):
+        """
+        Per-datum examples for object detection tasks.
+
+        This metric is per-datum and contains lists of annotation identifiers that categorize them
+        as true-positive, false-positive or false-negative. This is intended to be used with an
+        external database where the identifiers can be used for retrieval.
+
+        Examples Format:
+        {
+            "type": "Examples",
+            "value": {
+                "datum_id": "some string ID",
+                "true_positives": [
+                    ["groundtruth0", "prediction0"],
+                    ["groundtruth123", "prediction11"],
+                    ...
+                ],
+                "false_positives": [
+                    "prediction25",
+                    "prediction92",
+                    ...
+                ]
+                "false_negatives": [
+                    "groundtruth32",
+                    "groundtruth24",
+                    ...
+                ]
+            },
+            "parameters": {
+                "score_threshold": 0.5,
+                "iou_threshold": 0.5,
+            }
+        }
+
+        Parameters
+        ----------
+        datum_id : str
+            A string identifier representing a datum.
+        true_positives : list[tuple[str, str]]
+            A list of string identifier pairs representing true positive ground truth and prediction combinations.
+        false_positives : list[str]
+            A list of string identifiers representing false positive predictions.
+        false_negatives : list[str]
+            A list of string identifiers representing false negative ground truths.
+        score_threshold : float
+            The confidence score threshold used to filter predictions.
+        iou_threshold : float
+            The Intersection over Union (IOU) threshold used to determine true positives.
+
+        Returns
+        -------
+        Metric
+        """
         return cls(
             type=MetricType.Examples.value,
             value={
-                "datum_uid": datum_id,
+                "datum_id": datum_id,
                 "true_positives": true_positives,
                 "false_positives": false_positives,
                 "false_negatives": false_negatives,
@@ -654,4 +708,143 @@ class Metric(BaseMetric):
                 "iou_threshold": iou_threshold,
             },
         )
-    
+
+    @classmethod
+    def confusion_matrix_with_examples(
+        cls,
+        confusion_matrix: dict[
+            str,  # ground truth label value
+            dict[
+                str,  # prediction label value
+                dict[
+                    str,  # either `count` or `examples`
+                    int
+                    | list[
+                        dict[
+                            str,  # either `datum_id`, `ground_truth_id`, `prediction_id`
+                            str,  # string identifier
+                        ]
+                    ],
+                ],
+            ],
+        ],
+        unmatched_predictions: dict[
+            str,  # prediction label value
+            dict[
+                str,  # either `count` or `examples`
+                int
+                | list[
+                    dict[
+                        str,  # either `datum_id` or `prediction_id``
+                        str,  # string identifier
+                    ]
+                ],
+            ],
+        ],
+        unmatched_ground_truths: dict[
+            str,  # ground truth label value
+            dict[
+                str,  # either `count` or `examples`
+                int
+                | list[
+                    dict[
+                        str,  # either `datum_id` or `ground_truth_id`
+                        str,  # string identifier
+                    ]
+                ],
+            ],
+        ],
+        score_threshold: float,
+        iou_threshold: float,
+    ):
+        """
+        Confusion matrix with examples for object detection tasks.
+
+        This class encapsulates detailed information about the model's performance, including correct
+        predictions, misclassifications, unmatched_predictions (subset of false positives), and unmatched ground truths
+        (subset of false negatives). It provides counts and examples for each category to facilitate in-depth analysis.
+
+        Confusion Matrix Format:
+        {
+            <ground truth label>: {
+                <prediction label>: {
+                    'count': int,
+                    'examples': [
+                        {
+                            'datum_id': str,
+                            'groundtruth_id': str,
+                            'prediction_id': str
+                        },
+                        ...
+                    ],
+                },
+                ...
+            },
+            ...
+        }
+
+        Unmatched Predictions Format:
+        {
+            <prediction label>: {
+                'count': int,
+                'examples': [
+                    {
+                        'datum_id': str,
+                        'prediction_id': str
+                    },
+                    ...
+                ],
+            },
+            ...
+        }
+
+        Unmatched Ground Truths Format:
+        {
+            <ground truth label>: {
+                'count': int,
+                'examples': [
+                    {
+                        'datum_id': str,
+                        'groundtruth_id': str
+                    },
+                    ...
+                ],
+            },
+            ...
+        }
+
+        Parameters
+        ----------
+        confusion_matrix : dict
+            A nested dictionary where the first key is the ground truth label value, the second key
+            is the prediction label value, and the innermost dictionary contains either a `count`
+            or a list of `examples`. Each example includes annotation and datum identifers.
+        unmatched_predictions : dict
+            A dictionary where each key is a prediction label value with no corresponding ground truth
+            (subset of false positives). The value is a dictionary containing either a `count` or a list of
+            `examples`. Each example includes annotation and datum identifers.
+        unmatched_ground_truths : dict
+            A dictionary where each key is a ground truth label value for which the model failed to predict
+            (subset of false negatives). The value is a dictionary containing either a `count` or a list of `examples`.
+            Each example includes annotation and datum identifers.
+        score_threshold : float
+            The confidence score threshold used to filter predictions.
+        iou_threshold : float
+            The Intersection over Union (IOU) threshold used to determine true positives.
+
+        Returns
+        -------
+        Metric
+        """
+        return cls(
+            type=MetricType.ConfusionMatrixWithExamples.value,
+            value={
+                "confusion_matrix": confusion_matrix,
+                "unmatched_predictions": unmatched_predictions,
+                "unmatched_ground_truths": unmatched_ground_truths,
+            },
+            parameters={
+                "score_threshold": score_threshold,
+                "iou_threshold": iou_threshold,
+            },
+        )
