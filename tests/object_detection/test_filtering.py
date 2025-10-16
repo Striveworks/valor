@@ -9,8 +9,6 @@ from valor_lite.object_detection import (
     BoundingBox,
     DataLoader,
     Detection,
-    Filter,
-    Metadata,
     MetricType,
 )
 
@@ -60,6 +58,7 @@ def _generate_random_detections(
             ymin,
             ymax,
             [choice(labels)],
+            metadata=None,
             **kw,
         )
 

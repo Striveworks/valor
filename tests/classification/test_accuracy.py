@@ -194,7 +194,7 @@ def test_accuracy_with_tabular_example(
     loader = DataLoader()
     loader.add_data(classifications_tabular_example)
     evaluator = loader.finalize()
-    
+
     assert evaluator.metadata.to_dict() == {
         "number_of_datums": 10,
         "number_of_ground_truths": 10,

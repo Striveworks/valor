@@ -153,9 +153,6 @@ def test_examples(
 
     assert len(actual_metrics) == len(expected_metrics)
     for m in actual_metrics:
-        import json
-
-        print(json.dumps(m, indent=4))
         assert m in expected_metrics
     for m in expected_metrics:
         assert m in actual_metrics

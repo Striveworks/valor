@@ -380,8 +380,6 @@ class Evaluator:
         n_scores = len(score_thresholds)
         n_labels = len(self._index_to_label)
 
-        print(self._number_of_groundtruths_per_label)
-
         counts = np.zeros((n_ious, n_scores, 3, n_labels), dtype=np.uint64)
         pr_curve = np.zeros((n_ious, n_labels, 101, 2), dtype=np.float64)
         running_counts = np.ones((n_ious, n_labels, 2), dtype=np.uint64)
