@@ -17,7 +17,7 @@ class DataType(StrEnum):
     STRING = "string"
     TIMESTAMP = "timestamp"
 
-    def to_type(self):
+    def to_py(self):
         match self:
             case DataType.INTEGER:
                 return int
@@ -37,7 +37,7 @@ class DataType(StrEnum):
             case DataType.STRING:
                 return pa.string()
             case DataType.TIMESTAMP:
-                return pa.timestamp()
+                return pa.timestamp("us")
 
 
 class CacheReader:

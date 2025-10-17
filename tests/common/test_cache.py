@@ -1,10 +1,25 @@
 import tempfile
+from datetime import datetime
 from pathlib import Path
 
 import numpy as np
 import pyarrow as pa
 
-from valor_lite.cache import CacheWriter
+from valor_lite.cache import CacheWriter, DataType
+
+
+def test_datatype_casting_to_arrow():
+    assert DataType.FLOAT.to_arrow() == pa.float64()
+    assert DataType.INTEGER.to_arrow() == pa.int64()
+    assert DataType.STRING.to_arrow() == pa.string()
+    assert DataType.TIMESTAMP.to_arrow() == pa.timestamp("us")
+
+
+def test_datatype_casting_to_python():
+    assert DataType.FLOAT.to_py() is float
+    assert DataType.INTEGER.to_py() is int
+    assert DataType.STRING.to_py() is str
+    assert DataType.TIMESTAMP.to_py() is datetime
 
 
 def test_cache_write_batch():
