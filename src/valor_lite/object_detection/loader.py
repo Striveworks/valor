@@ -440,7 +440,13 @@ class Loader:
         evaluator.rank(where=loader._ranked_path)
         return evaluator
 
-    def finalize(self):
+    def finalize(
+        self,
+        rows_per_file: int | None = None,
+        compression: str | None = None,
+        write_batch_size: int | None = None,
+        read_batch_size: int = 1000,
+    ):
         """
         Performs data finalization and some preprocessing steps.
 
@@ -457,5 +463,11 @@ class Loader:
             directory=self._directory,
             name=self._name,
         )
-        evaluator.rank(where=self._ranked_path)
+        evaluator.rank(
+            where=self._ranked_path,
+            rows_per_file=rows_per_file,
+            compression=compression,
+            write_batch_size=write_batch_size,
+            read_batch_size=read_batch_size,
+        )
         return evaluator

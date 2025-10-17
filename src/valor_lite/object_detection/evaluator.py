@@ -179,37 +179,39 @@ class Evaluator:
             info.number_of_datums += int(datum_ids.size)
 
             # count unique groundtruths
-            gt_ids = ids[:, (0, 1)]
-            gt_ids = gt_ids[gt_ids[:, 1] >= 0]
-            gt_ids = np.unique(gt_ids, axis=0)
+            gt_ids = ids[:, 1]
+            gt_ids = np.unique(gt_ids[gt_ids >= 0])
             info.number_of_groundtruth_annotations += int(gt_ids.shape[0])
 
             # count unique predictions
-            pd_ids = ids[:, (0, 2)]
-            pd_ids = pd_ids[pd_ids[:, 1] >= 0]
-            pd_ids = np.unique(pd_ids, axis=0)
+            pd_ids = ids[:, 2]
+            pd_ids = np.unique(pd_ids[pd_ids >= 0])
             info.number_of_prediction_annotations += int(pd_ids.shape[0])
 
             # get gt labels
-            gt_label_ids, gt_indices = np.unique(ids[:, 3], return_index=True)
+            gt_label_ids = ids[:, 3]
+            gt_label_ids, gt_indices = np.unique(
+                gt_label_ids[gt_label_ids >= 0], return_index=True
+            )
             gt_labels = tbl["gt_label"].take(gt_indices).to_pylist()
             gt_labels = dict(zip(gt_label_ids.astype(int).tolist(), gt_labels))
             labels.update(gt_labels)
 
             # get pd labels
-            pd_label_ids, pd_indices = np.unique(ids[:, 4], return_index=True)
+            pd_label_ids = ids[:, 4]
+            pd_label_ids, pd_indices = np.unique(
+                pd_label_ids[pd_label_ids >= 0], return_index=True
+            )
             pd_labels = tbl["pd_label"].take(pd_indices).to_pylist()
             pd_labels = dict(zip(pd_label_ids.astype(int).tolist(), pd_labels))
             labels.update(pd_labels)
 
             # count gts per label
-            gts = ids[:, (0, 1, 3)].astype(np.int64)
-            unique_ann = np.unique(gts, axis=0)
+            gts = ids[:, (1, 3)].astype(np.int64)
+            unique_ann = np.unique(gts[gts[:, 0] >= 0], axis=0)
             unique_labels, label_counts = np.unique(
-                unique_ann[:, 2], return_counts=True
+                unique_ann[:, 1], return_counts=True
             )
-            label_counts = label_counts[unique_labels >= 0]
-            unique_labels = unique_labels[unique_labels >= 0]
             for label_id, count in zip(unique_labels, label_counts):
                 gt_counts_per_lbl[int(label_id)] += int(count)
 
