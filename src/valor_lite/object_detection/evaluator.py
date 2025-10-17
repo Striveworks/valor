@@ -10,6 +10,7 @@ import pyarrow as pa
 import pyarrow.compute as pc
 import pyarrow.dataset as ds
 import pyarrow.parquet as pq
+from numpy.typing import NDArray
 
 from valor_lite.cache import CacheReader, CacheWriter, DataType
 from valor_lite.object_detection.computation import (
@@ -131,8 +132,28 @@ class Evaluator:
 
     @staticmethod
     def generate_meta(
-        dataset: ds.Dataset, labels_override: dict[int, str] | None
-    ):
+        dataset: ds.Dataset,
+        labels_override: dict[int, str] | None,
+    ) -> tuple[dict[int, str], NDArray[np.uint64], EvaluatorInfo,]:
+        """
+        Generate cache statistics.
+
+        Parameters
+        ----------
+        dataset : Dataset
+            Valor cache.
+        labels_override : dict[int, str], optional
+            Optional labels override. Use when operating over filtered data.
+
+        Returns
+        -------
+        labels : dict[int, str]
+            Mapping of label ID's to label values.
+        number_of_groundtruths_per_label : NDArray[np.uint64]
+            Array of size (n_labels,) containing ground truth counts.
+        info : EvaluatorInfo
+            Evaluator cache details.
+        """
         gt_counts_per_lbl = defaultdict(int)
         labels = labels_override if labels_override else {}
         info = EvaluatorInfo()
@@ -236,6 +257,23 @@ class Evaluator:
         name: str | None = None,
         directory: str | Path | None = None,
     ) -> "Evaluator":
+        """
+        Filter evaluator cache.
+
+        Parameters
+        ----------
+        filter_expr : Filter
+            An object containing filter expressions.
+        name : str, optional
+            Filtered cache name.
+        directory : str | Path, optional
+            The directory to store the filtered cache.
+
+        Returns
+        -------
+        Evaluator
+            A new evaluator object containing the filtered cache.
+        """
         name = name if name else "filtered"
         directory = directory if directory else self._directory
         from valor_lite.object_detection.loader import Loader
@@ -255,6 +293,23 @@ class Evaluator:
         write_batch_size: int | None = None,
         read_batch_size: int = 1_000,
     ):
+        """
+        Create a ranked pair cache.
+
+        Parameters
+        ----------
+        where : str | Path
+            Where to store the ranked cache.
+        rows_per_file : int, optional
+            Sets the maximum number of rows per file. Defaults to value from detailed cache.
+        compression : str, optional
+            Sets the compression method. Defaults to value from detailed cache.
+        write_batch_size : int, optional
+            Sets the batch size for writing. Defaults to value from detailed cache.
+        read_batch_size : int, default=1_000
+            Sets the batch size for reading. Defaults to 1_000.
+        """
+
         n_labels = len(self._index_to_label)
         detailed_cache = CacheReader(self._detailed_path)
 
@@ -456,8 +511,6 @@ class Evaluator:
             A list of IOU thresholds to compute metrics over.
         score_thresholds : list[float]
             A list of score thresholds to compute metrics over.
-        filter_ : Filter, optional
-            A collection of filter parameters and masks.
 
         Returns
         -------
@@ -548,8 +601,6 @@ class Evaluator:
             A list of IOU thresholds to compute metrics over.
         score_thresholds : list[float]
             A list of score thresholds to compute metrics over.
-        filter_ : Filter, optional
-            A collection of filter parameters and masks.
 
         Returns
         -------
@@ -637,8 +688,6 @@ class Evaluator:
             A list of IOU thresholds to compute metrics over.
         score_thresholds : list[float]
             A list of score thresholds to compute metrics over.
-        filter_ : Filter, optional
-            A collection of filter parameters and masks.
 
         Returns
         -------
@@ -716,18 +765,3 @@ class Evaluator:
             )
 
         return [m for inner in metrics.values() for m in inner.values()]
-
-    def evaluate(
-        self,
-        iou_thresholds: list[float] = [0.1, 0.5, 0.75],
-        score_thresholds: list[float] = [0.5, 0.75, 0.9],
-    ) -> dict[MetricType, list[Metric]]:
-        metrics = self.compute_precision_recall(
-            iou_thresholds=iou_thresholds,
-            score_thresholds=score_thresholds,
-        )
-        metrics[MetricType.ConfusionMatrix] = self.compute_confusion_matrix(
-            iou_thresholds=iou_thresholds,
-            score_thresholds=score_thresholds,
-        )
-        return metrics
