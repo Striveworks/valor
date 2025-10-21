@@ -134,7 +134,7 @@ class Evaluator:
     def generate_meta(
         dataset: ds.Dataset,
         labels_override: dict[int, str] | None,
-    ) -> tuple[dict[int, str], NDArray[np.uint64], EvaluatorInfo,]:
+    ) -> tuple[dict[int, str], NDArray[np.uint64], EvaluatorInfo]:
         """
         Generate cache statistics.
 
@@ -191,19 +191,21 @@ class Evaluator:
             # get gt labels
             gt_label_ids = ids[:, 3]
             gt_label_ids, gt_indices = np.unique(
-                gt_label_ids[gt_label_ids >= 0], return_index=True
+                gt_label_ids, return_index=True
             )
             gt_labels = tbl["gt_label"].take(gt_indices).to_pylist()
             gt_labels = dict(zip(gt_label_ids.astype(int).tolist(), gt_labels))
+            gt_labels.pop(-1, None)
             labels.update(gt_labels)
 
             # get pd labels
             pd_label_ids = ids[:, 4]
             pd_label_ids, pd_indices = np.unique(
-                pd_label_ids[pd_label_ids >= 0], return_index=True
+                pd_label_ids, return_index=True
             )
             pd_labels = tbl["pd_label"].take(pd_indices).to_pylist()
             pd_labels = dict(zip(pd_label_ids.astype(int).tolist(), pd_labels))
+            pd_labels.pop(-1, None)
             labels.update(pd_labels)
 
             # count gts per label
