@@ -44,9 +44,6 @@ class EvaluatorInfo:
     groundtruth_metadata_types: dict[str, DataType] | None = None
     prediction_metadata_types: dict[str, DataType] | None = None
 
-    def __getitem__(self, key: str):
-        return getattr(self, key)
-
 
 @dataclass
 class Filter:

@@ -36,10 +36,10 @@ def test_confusion_matrix(
     loader.add_bounding_boxes(detections_for_detailed_counting)
     evaluator = loader.finalize()
 
-    assert evaluator.info["number_of_datums"] == 2
-    assert evaluator.info["number_of_labels"] == 6
-    assert evaluator.info["number_of_groundtruth_annotations"] == 4
-    assert evaluator.info["number_of_prediction_annotations"] == 4
+    assert evaluator.info.number_of_datums == 2
+    assert evaluator.info.number_of_labels == 6
+    assert evaluator.info.number_of_groundtruth_annotations == 4
+    assert evaluator.info.number_of_prediction_annotations == 4
 
     actual_metrics = evaluator.compute_confusion_matrix(
         iou_thresholds=[0.5],
@@ -343,10 +343,10 @@ def test_confusion_matrix_using_torch_metrics_example(
     loader.add_bounding_boxes(torchmetrics_detections)
     evaluator = loader.finalize()
 
-    assert evaluator.info["number_of_datums"] == 4
-    assert evaluator.info["number_of_labels"] == 6
-    assert evaluator.info["number_of_groundtruth_annotations"] == 20
-    assert evaluator.info["number_of_prediction_annotations"] == 19
+    assert evaluator.info.number_of_datums == 4
+    assert evaluator.info.number_of_labels == 6
+    assert evaluator.info.number_of_groundtruth_annotations == 20
+    assert evaluator.info.number_of_prediction_annotations == 19
 
     actual_metrics = evaluator.compute_confusion_matrix(
         iou_thresholds=[0.5, 0.9],
@@ -728,10 +728,10 @@ def test_confusion_matrix_fp_unmatched_prediction_edge_case(
     loader.add_bounding_boxes(detections_fp_unmatched_prediction_edge_case)
     evaluator = loader.finalize()
 
-    assert evaluator.info["number_of_datums"] == 2
-    assert evaluator.info["number_of_labels"] == 1
-    assert evaluator.info["number_of_groundtruth_annotations"] == 2
-    assert evaluator.info["number_of_prediction_annotations"] == 2
+    assert evaluator.info.number_of_datums == 2
+    assert evaluator.info.number_of_labels == 1
+    assert evaluator.info.number_of_groundtruth_annotations == 2
+    assert evaluator.info.number_of_prediction_annotations == 2
 
     actual_metrics = evaluator.compute_confusion_matrix(
         iou_thresholds=[0.5],
@@ -800,11 +800,11 @@ def test_confusion_matrix_ranked_pair_ordering(
 
         evaluator = loader.finalize()
 
-        assert evaluator.info["number_of_datums"] == 1
-        assert evaluator.info["number_of_groundtruth_annotations"] == 3
-        assert evaluator.info["number_of_labels"] == 4
-        assert evaluator.info["number_of_prediction_annotations"] == 4
-        assert evaluator.info["number_of_rows"] == 12
+        assert evaluator.info.number_of_datums == 1
+        assert evaluator.info.number_of_groundtruth_annotations == 3
+        assert evaluator.info.number_of_labels == 4
+        assert evaluator.info.number_of_prediction_annotations == 4
+        assert evaluator.info.number_of_rows == 12
 
         actual_metrics = evaluator.compute_confusion_matrix(
             iou_thresholds=[0.5],
