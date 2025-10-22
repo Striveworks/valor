@@ -181,6 +181,9 @@ def basic_detections(
                     ymin=rect1[2],
                     ymax=rect1[3],
                     labels=["v1"],
+                    metadata={
+                        "gt_rect": "rect1",
+                    },
                 ),
                 BoundingBox(
                     uid=str(uuid4()),
@@ -189,6 +192,9 @@ def basic_detections(
                     ymin=rect3[2],
                     ymax=rect3[3],
                     labels=["v2"],
+                    metadata={
+                        "gt_rect": "rect3",
+                    },
                 ),
             ],
             predictions=[
@@ -200,6 +206,9 @@ def basic_detections(
                     ymax=rect1[3],
                     labels=["v1"],
                     scores=[0.3],
+                    metadata={
+                        "pd_rect": "rect1",
+                    },
                 ),
             ],
         ),
@@ -213,6 +222,9 @@ def basic_detections(
                     ymin=rect2[2],
                     ymax=rect2[3],
                     labels=["v1"],
+                    metadata={
+                        "gt_rect": "rect2",
+                    },
                 ),
             ],
             predictions=[
@@ -224,6 +236,9 @@ def basic_detections(
                     ymax=rect2[3],
                     labels=["v2"],
                     scores=[0.98],
+                    metadata={
+                        "pd_rect": "rect2",
+                    },
                 ),
             ],
         ),

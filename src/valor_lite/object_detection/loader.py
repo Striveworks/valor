@@ -390,24 +390,27 @@ class Loader:
             gt_ids = pairs[:, (0, 1)].astype(np.int64)
             pd_ids = pairs[:, (0, 2)].astype(np.int64)
 
-            mask_valid_gt = np.zeros(n_pairs, dtype=np.bool_)
-            mask_valid_pd = np.zeros(n_pairs, dtype=np.bool_)
-
             if filter_expr.groundtruths is not None:
+                mask_valid_gt = np.zeros(n_pairs, dtype=np.bool_)
                 gt_tbl = tbl.filter(filter_expr.groundtruths)
                 gt_pairs = np.column_stack(
                     [gt_tbl[col].to_numpy() for col in ("datum_id", "gt_id")]
                 ).astype(np.int64)
                 for gt in np.unique(gt_pairs, axis=0):
                     mask_valid_gt |= (gt_ids == gt).all(axis=1)
+            else:
+                mask_valid_gt = np.ones(n_pairs, dtype=np.bool_)
 
             if filter_expr.predictions is not None:
+                mask_valid_pd = np.zeros(n_pairs, dtype=np.bool_)
                 pd_tbl = tbl.filter(filter_expr.predictions)
                 pd_pairs = np.column_stack(
                     [pd_tbl[col].to_numpy() for col in ("datum_id", "pd_id")]
                 ).astype(np.int64)
                 for pd in np.unique(pd_pairs, axis=0):
                     mask_valid_pd |= (pd_ids == pd).all(axis=1)
+            else:
+                mask_valid_pd = np.ones(n_pairs, dtype=np.bool_)
 
             mask_valid = mask_valid_gt | mask_valid_pd
             mask_valid_gt &= mask_valid

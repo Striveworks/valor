@@ -1,5 +1,6 @@
 import tempfile
 from dataclasses import asdict, dataclass
+from pathlib import Path
 
 import numpy as np
 import pyarrow.compute as pc
@@ -44,13 +45,10 @@ class Metadata:
         return asdict(self)
 
 
-class Evaluator:
+class Evaluator(CachedEvaluator):
     """
     Legacy Object Detection Evaluator
     """
-
-    def __init__(self, name: str = "default"):
-        self._evaluator = CachedEvaluator(name=name)
 
     @property
     def metadata(self) -> Metadata:
@@ -58,10 +56,10 @@ class Evaluator:
         Evaluation metadata.
         """
         return Metadata(
-            number_of_datums=self._evaluator.info.number_of_datums,
-            number_of_labels=self._evaluator.info.number_of_labels,
-            number_of_ground_truths=self._evaluator.info.number_of_groundtruth_annotations,
-            number_of_predictions=self._evaluator.info.number_of_prediction_annotations,
+            number_of_datums=self.info.number_of_datums,
+            number_of_labels=self.info.number_of_labels,
+            number_of_ground_truths=self.info.number_of_groundtruth_annotations,
+            number_of_predictions=self.info.number_of_prediction_annotations,
         )
 
     @property
@@ -69,8 +67,8 @@ class Evaluator:
         return np.concatenate(
             [
                 pairs
-                for pairs in self._evaluator.iterate_pairs(
-                    self._evaluator._dataset,
+                for pairs in self.iterate_pairs(
+                    self._dataset,
                     columns=[
                         "datum_id",
                         "gt_id",
@@ -87,7 +85,7 @@ class Evaluator:
     @property
     def _label_metadata(self) -> np.ndarray:
         label_metadata = np.zeros(
-            (len(self._evaluator._index_to_label), 2), dtype=np.int32
+            (len(self._index_to_label), 2), dtype=np.int32
         )
 
         # groundtruth labels
@@ -114,9 +112,10 @@ class Evaluator:
 
         return label_metadata
 
-    def filter(
-        self, filter_: Filter
-    ) -> tuple[NDArray[np.float64], NDArray[np.float64], NDArray[np.int32],]:
+    def filter(  # type: ignore - legacy function override does not match
+        self,
+        filter_: Filter,
+    ) -> tuple[NDArray[np.float64], NDArray[np.float64], NDArray[np.int32]]:
         """
         Performs filtering over the internal cache.
 
@@ -135,11 +134,16 @@ class Evaluator:
             Label metadata.
         """
         with tempfile.TemporaryDirectory() as tmpdir:
-            evaluator = Evaluator()
-            evaluator._evaluator = self._evaluator.filter(
+            name = "filtered"
+            _evaluator = super().filter(
                 directory=tmpdir,
-                name="filtered",
+                name=name,
                 filter_expr=filter_,
+            )
+            evaluator = Evaluator(
+                name=name,
+                directory=tmpdir,
+                labels_override=_evaluator._index_to_label,
             )
             detailed_pairs = evaluator._detailed_pairs
             label_metadata = evaluator._label_metadata
@@ -229,7 +233,7 @@ class Evaluator:
         """
         if filter_ is not None:
             with tempfile.TemporaryDirectory() as tmpdir:
-                evaluator = self._evaluator.filter(
+                evaluator = super().filter(
                     directory=tmpdir,
                     name="filtered",
                     filter_expr=filter_,
@@ -238,7 +242,7 @@ class Evaluator:
                     iou_thresholds=iou_thresholds,
                     score_thresholds=score_thresholds,
                 )
-        return self._evaluator.compute_precision_recall(
+        return super().compute_precision_recall(
             iou_thresholds=iou_thresholds,
             score_thresholds=score_thresholds,
         )
@@ -268,7 +272,7 @@ class Evaluator:
         """
         if filter_ is not None:
             with tempfile.TemporaryDirectory() as tmpdir:
-                evaluator = self._evaluator.filter(
+                evaluator = super().filter(
                     directory=tmpdir,
                     name="filtered",
                     filter_expr=filter_,
@@ -278,7 +282,7 @@ class Evaluator:
                     score_thresholds=score_thresholds,
                 )
         else:
-            metrics = self._evaluator.compute_confusion_matrix_with_examples(
+            metrics = super().compute_confusion_matrix_with_examples(
                 iou_thresholds=iou_thresholds,
                 score_thresholds=score_thresholds,
             )
@@ -328,12 +332,29 @@ class DataLoader(CachedLoader):
     Legacy Object Detection DataLoader
     """
 
-    def __init__(self):
-        super().__init__(
-            batch_size=1_000,
-            rows_per_file=10_000,
+    def finalize(self) -> Evaluator:  # type: ignore - switching type
+        evaluator = super().finalize()
+        return Evaluator(
+            name=evaluator._name,
+            directory=evaluator._directory,
         )
 
-    def finalize(self) -> Evaluator:  # type: ignore - switching type
-        _ = super().finalize()
-        return Evaluator()
+    @classmethod
+    def filter(
+        cls,
+        directory: str | Path,
+        name: str,
+        evaluator: CachedEvaluator,
+        filter_expr: Filter,
+    ) -> Evaluator:
+        evaluator = super().filter(
+            directory=directory,
+            name=name,
+            evaluator=evaluator,
+            filter_expr=filter_expr,
+        )
+        return Evaluator(
+            directory=evaluator._directory,
+            name=evaluator._name,
+            labels_override=evaluator._index_to_label,
+        )

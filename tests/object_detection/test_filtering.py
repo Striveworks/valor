@@ -2,8 +2,10 @@ from copy import deepcopy
 from uuid import uuid4
 
 import numpy as np
+import pyarrow.compute as pc
 import pytest
 
+from valor_lite.cache import DataType
 from valor_lite.exceptions import EmptyCacheError, EmptyFilterError
 from valor_lite.object_detection import (
     BoundingBox,
@@ -11,6 +13,7 @@ from valor_lite.object_detection import (
     Detection,
     MetricType,
 )
+from valor_lite.object_detection.evaluator import Filter
 
 
 @pytest.fixture
@@ -584,6 +587,113 @@ def test_filtering_four_detections_by_indices(
             "type": "AP",
             "value": 0.0,
             "parameters": {"iou_threshold": 0.5, "label": "v2"},
+        },
+    ]
+    for m in actual_metrics:
+        assert m in expected_metrics
+    for m in expected_metrics:
+        assert m in actual_metrics
+
+
+def test_filtering_four_detections_by_annotation_metadata(
+    four_detections: list[Detection],
+):
+    """
+    Basic object detection test that combines the labels of basic_detections_first_class and basic_detections_second_class.
+
+    groundtruths
+        datum uid1
+            box 1 - label v1 - tp
+            box 3 - label v2 - fn unmatched ground truths
+        datum uid2
+            box 2 - label v1 - fn misclassification
+        datum uid3
+            box 1 - label v1 - tp
+            box 3 - label v2 - fn unmatched ground truths
+        datum uid4
+            box 2 - label v1 - fn misclassification
+
+    predictions
+        datum uid1
+            box 1 - label v1 - score 0.3 - tp
+        datum uid2
+            box 2 - label v2 - score 0.98 - fp misclassification
+        datum uid3
+            box 1 - label v1 - score 0.3 - tp
+        datum uid4
+            box 2 - label v2 - score 0.98 - fp misclassification
+    """
+
+    loader = DataLoader(
+        groundtruth_metadata_types={
+            "gt_rect": DataType.STRING,
+        },
+        prediction_metadata_types={
+            "pd_rect": DataType.STRING,
+        },
+    )
+    loader.add_bounding_boxes(four_detections)
+    evaluator = loader.finalize()
+
+    # remove all FN groundtruths
+    filter_ = Filter(
+        groundtruths=pc.field("gt_rect") == "rect1",
+    )
+    metrics = evaluator.evaluate(
+        iou_thresholds=[0.5], score_thresholds=[0.1], filter_=filter_
+    )
+    actual_metrics = [m.to_dict() for m in metrics[MetricType.Counts]]
+    expected_metrics = [
+        {
+            "type": "Counts",
+            "value": {"tp": 2, "fp": 0, "fn": 0},
+            "parameters": {
+                "iou_threshold": 0.5,
+                "score_threshold": 0.1,
+                "label": "v1",
+            },
+        },
+        {
+            "type": "Counts",
+            "value": {"tp": 0, "fp": 2, "fn": 0},
+            "parameters": {
+                "iou_threshold": 0.5,
+                "score_threshold": 0.1,
+                "label": "v2",
+            },
+        },
+    ]
+    for m in actual_metrics:
+        assert m in expected_metrics
+    for m in expected_metrics:
+        assert m in actual_metrics
+
+    # remove TP ground truths
+    filter_ = Filter(
+        groundtruths=pc.field("gt_rect") != "rect1",
+    )
+    metrics = evaluator.evaluate(
+        iou_thresholds=[0.5], score_thresholds=[0.1], filter_=filter_
+    )
+    actual_metrics = [m.to_dict() for m in metrics[MetricType.Counts]]
+    expected_metrics = [
+        {
+            "type": "Counts",
+            "value": {"tp": 0, "fp": 2, "fn": 2},
+            "parameters": {
+                "iou_threshold": 0.5,
+                "score_threshold": 0.1,
+                "label": "v1",
+            },
+        },
+        {
+            "type": "Counts",
+            "value": {"tp": 0, "fp": 2, "fn": 2},
+            "parameters": {
+                "iou_threshold": 0.5,
+                "score_threshold": 0.1,
+                "label": "v2",
+            },
         },
     ]
     for m in actual_metrics:

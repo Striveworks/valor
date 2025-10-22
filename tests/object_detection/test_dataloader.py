@@ -76,7 +76,7 @@ def test_iou_computation():
     loader.add_bounding_boxes([detection])
     evaluator = loader.finalize()
 
-    tbl = evaluator._evaluator._dataset.to_table()
+    tbl = evaluator._dataset.to_table()
     assert tbl.shape == (7, 12)
 
     # show that three unique IOUs exist
