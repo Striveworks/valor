@@ -111,7 +111,6 @@ def test_label_mismatch():
         ]
     )
     evaluator = loader.finalize()
-    print(evaluator._confusion_matrix)
     assert np.all(
         evaluator._confusion_matrix
         == np.array(
@@ -160,7 +159,6 @@ def test_empty_groundtruths():
         ]
     )
     evaluator = loader.finalize()
-    print(evaluator._confusion_matrix)
     assert np.all(
         evaluator._confusion_matrix
         == np.array(
@@ -208,7 +206,6 @@ def test_empty_predictions():
         ]
     )
     evaluator = loader.finalize()
-    print(evaluator._confusion_matrix)
     assert np.all(
         evaluator._confusion_matrix
         == np.array(

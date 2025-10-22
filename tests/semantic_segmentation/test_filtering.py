@@ -21,7 +21,6 @@ def test_filtering(segmentations_from_boxes: list[Segmentation]):
     filter_ = evaluator.create_filter(datums=["uid1"])
     filtered_evaluator = evaluator.filter(filter_)
     confusion_matrix = filtered_evaluator._confusion_matrix
-    print(confusion_matrix)
     assert np.all(
         confusion_matrix
         == np.array(
