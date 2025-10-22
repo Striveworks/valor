@@ -1,8 +1,13 @@
-class EmptyCacheError(Exception):
+class EmptyEvaluatorError(Exception):
     def __init__(self):
         super().__init__(
             "evaluator cannot be finalized as it contains no data"
         )
+
+
+class EmptyCacheError(Exception):
+    def __init__(self):
+        super().__init__("cache contains no data")
 
 
 class EmptyFilterError(Exception):
