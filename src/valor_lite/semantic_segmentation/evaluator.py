@@ -1,28 +1,14 @@
 import json
-from collections import defaultdict
-from dataclasses import asdict, dataclass
+from dataclasses import dataclass
 from pathlib import Path
 
 import numpy as np
+import pyarrow.compute as pc
+import pyarrow.dataset as ds
 from numpy.typing import NDArray
-from pyarrow import pa
-from pyarrow.compute import pc
-from pyarrow.dataset import ds
-from tqdm import tqdm
 
-from valor_lite.cache import (
-    CacheReader,
-    DataType,
-    convert_type_mapping_to_schema,
-)
-from valor_lite.exceptions import EmptyCacheError, EmptyFilterError
-from valor_lite.semantic_segmentation.annotation import Segmentation
-from valor_lite.semantic_segmentation.computation import (
-    compute_intermediates,
-    compute_label_metadata,
-    compute_metrics,
-    filter_cache,
-)
+from valor_lite.cache import DataType
+from valor_lite.semantic_segmentation.computation import compute_metrics
 from valor_lite.semantic_segmentation.metric import Metric, MetricType
 from valor_lite.semantic_segmentation.utilities import (
     unpack_precision_recall_iou_into_metric_lists,
@@ -31,12 +17,12 @@ from valor_lite.semantic_segmentation.utilities import (
 
 @dataclass
 class EvaluatorInfo:
+    number_of_rows: int = 0
     number_of_datums: int = 0
     number_of_labels: int = 0
     number_of_pixels: int = 0
     number_of_groundtruth_pixels: int = 0
     number_of_prediction_pixels: int = 0
-    number_of_rows: int = 0
     datum_metadata_types: dict[str, DataType] | None = None
     groundtruth_metadata_types: dict[str, DataType] | None = None
     prediction_metadata_types: dict[str, DataType] | None = None
@@ -68,7 +54,7 @@ class Evaluator:
         # build evaluator meta
         (
             self._index_to_label,
-            self._number_of_groundtruths_per_label,
+            self._confusion_matrix,
             self._info,
         ) = self.generate_meta(self._dataset, labels_override)
 
@@ -111,12 +97,11 @@ class Evaluator:
         -------
         labels : dict[int, str]
             Mapping of label ID's to label values.
-        number_of_groundtruths_per_label : NDArray[np.uint64]
-            Array of size (n_labels,) containing ground truth counts.
+        confusion_matrix : NDArray[np.uint64]
+            Array of size (n_labels + 1, n_labels + 1) containing pair counts.
         info : EvaluatorInfo
             Evaluator cache details.
         """
-        gt_counts_per_lbl = defaultdict(int)
         labels = labels_override if labels_override else {}
         info = EvaluatorInfo()
 
@@ -126,7 +111,7 @@ class Evaluator:
                 "datum_id",
                 "gt_label_id",
                 "pd_label_id",
-                "counts",
+                "count",
             )
             ids = np.column_stack(
                 [tbl[col].to_numpy() for col in columns]
@@ -159,20 +144,8 @@ class Evaluator:
             pd_labels.pop(-1, None)
             labels.update(pd_labels)
 
-            # count gts per label
-            gts = ids[:, 1].astype(np.int64)
-            unique_ann = np.unique(gts[gts[:, 0] >= 0], axis=0)
-            unique_labels, label_counts = np.unique(
-                unique_ann[:, 1], return_counts=True
-            )
-            for label_id, count in zip(unique_labels, label_counts):
-                gt_counts_per_lbl[int(label_id)] += int(count)
-
         # post-process
         labels.pop(-1, None)
-
-        # complete info object
-        info.number_of_labels = len(labels)
 
         # create confusion matrix
         n_labels = len(labels)
@@ -187,8 +160,11 @@ class Evaluator:
             ids = np.column_stack(
                 [tbl[col].to_numpy() for col in columns]
             ).astype(np.int64)
-            counts = tbl["counts"].to_numpy()
+            counts = tbl["count"].to_numpy()
 
+            mask_null_gts = ids[:, 1] == -1
+            mask_null_pds = ids[:, 2] == -1
+            matrix[0, 0] = counts[mask_null_gts & mask_null_pds].sum()
             for idx in range(n_labels):
                 mask_gts = ids[:, 1] == idx
                 for pidx in range(n_labels):
@@ -197,35 +173,18 @@ class Evaluator:
                         mask_gts & mask_pds
                     ].sum()
 
-                mask_unmatched_gts = mask_gts & (ids[:, 2] == -1)
+                mask_unmatched_gts = mask_gts & mask_null_pds
                 matrix[idx + 1, 0] = counts[mask_unmatched_gts].sum()
-                mask_unmatched_pds = (ids[:, 1] == -1) & (ids[:, 2] == idx)
-                matrix[0, idx + 1] = counts[mask_unmatched_pds]
+                mask_unmatched_pds = mask_null_gts & (ids[:, 2] == idx)
+                matrix[0, idx + 1] = counts[mask_unmatched_pds].sum()
+
+        # complete info object
+        info.number_of_labels = len(labels)
+        info.number_of_pixels = matrix.sum()
+        info.number_of_groundtruth_pixels = matrix[1:, :].sum()
+        info.number_of_prediction_pixels = matrix[:, 1:].sum()
 
         return labels, matrix, info
-
-    @staticmethod
-    def iterate_pairs(
-        dataset: ds.Dataset,
-        columns: list[str] | None = None,
-    ):
-        for fragment in dataset.get_fragments():
-            tbl = fragment.to_table(columns=columns)
-            yield np.column_stack(
-                [tbl.column(i).to_numpy() for i in range(tbl.num_columns)]
-            )
-
-    @staticmethod
-    def iterate_pairs_with_table(
-        dataset: ds.Dataset,
-        columns: list[str] | None = None,
-    ):
-        for fragment in dataset.get_fragments():
-            tbl = fragment.to_table()
-            columns = columns if columns else tbl.columns
-            yield tbl, np.column_stack(
-                [tbl[col].to_numpy() for col in columns]
-            )
 
     def filter(
         self,
@@ -260,3 +219,29 @@ class Evaluator:
             evaluator=self,
             filter_expr=filter_expr,
         )
+
+    def compute_precision_recall_iou(self) -> dict[MetricType, list]:
+        """
+        Performs an evaluation and returns metrics.
+
+        Returns
+        -------
+        dict[MetricType, list]
+            A dictionary mapping MetricType enumerations to lists of computed metrics.
+        """
+        results = compute_metrics(counts=self._confusion_matrix)
+        return unpack_precision_recall_iou_into_metric_lists(
+            results=results,
+            index_to_label=self._index_to_label,
+        )
+
+    def evaluate(self) -> dict[MetricType, list[Metric]]:
+        """
+        Computes all available metrics.
+
+        Returns
+        -------
+        dict[MetricType, list[Metric]]
+            Lists of metrics organized by metric type.
+        """
+        return self.compute_precision_recall_iou()

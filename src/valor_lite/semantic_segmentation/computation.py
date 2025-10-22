@@ -109,7 +109,7 @@ def compute_intermediates(
 
 
 def compute_metrics(
-    confusion_matrices: NDArray[np.int64],
+    counts: NDArray[np.uint64],
 ) -> tuple[
     NDArray[np.float64],
     NDArray[np.float64],
@@ -126,8 +126,8 @@ def compute_metrics(
 
     Parameters
     ----------
-    confusion_matrices : NDArray[np.int64]
-        A 3-D array containing confusion matrices for each datum with shape (n_datums, n_labels + 1, n_labels + 1).
+    counts : NDArray[np.int64]
+        A 2-D confusion matrix with shape (n_labels + 1, n_labels + 1).
     label_metadata : NDArray[np.int64]
         A 2-D array containing label metadata with shape (n_labels, 2).
             Index 0: Ground Truth Label Count
@@ -150,15 +150,10 @@ def compute_metrics(
     NDArray[np.float64]
         Unmatched ground truth ratios.
     """
-    n_labels = confusion_matrices.shape[-1] - 1
-    n_pixels = confusion_matrices.sum()
-    label_metadata = np.zeros((n_labels, 2), dtype=np.int64)
-    label_metadata[:, 0] = confusion_matrices[:, 1:, :].sum(axis=(0, 2))
-    label_metadata[:, 1] = confusion_matrices[:, :, 1:].sum(axis=(0, 1))
-    gt_counts = label_metadata[:, 0]
-    pd_counts = label_metadata[:, 1]
-
-    counts = confusion_matrices.sum(axis=0)
+    n_labels = counts.shape[0] - 1
+    n_pixels = counts.sum()
+    gt_counts = counts[1:, :].sum(axis=1)
+    pd_counts = counts[:, 1:].sum(axis=0)
 
     # compute iou, unmatched_ground_truth and unmatched predictions
     intersection_ = counts[1:, 1:]

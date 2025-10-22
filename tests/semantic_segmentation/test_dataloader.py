@@ -1,3 +1,4 @@
+import numpy as np
 import pytest
 
 from valor_lite.exceptions import EmptyCacheError
@@ -10,18 +11,15 @@ def test_no_data():
         loader.finalize()
 
 
-def test_datum_already_exists():
-
+def test_empty_input():
     loader = DataLoader()
-    with pytest.raises(ValueError) as e:
-        loader.add_data(
-            segmentations=[
-                Segmentation(
-                    uid="0", groundtruths=[], predictions=[], shape=(10, 10)
-                ),
-                Segmentation(
-                    uid="0", groundtruths=[], predictions=[], shape=(10, 10)
-                ),
-            ]
-        )
-    assert "already exists" in str(e)
+    loader.add_data(
+        segmentations=[
+            Segmentation(
+                uid="0", groundtruths=[], predictions=[], shape=(10, 10)
+            ),
+        ]
+    )
+    evaluator = loader.finalize()
+    assert evaluator._confusion_matrix.shape == (1, 1)
+    assert (evaluator._confusion_matrix == np.array([100])).all()

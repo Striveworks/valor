@@ -1,14 +1,11 @@
 from collections import defaultdict
 
-import numpy as np
-from numpy.typing import NDArray
-
 from valor_lite.semantic_segmentation.metric import Metric, MetricType
 
 
 def unpack_precision_recall_iou_into_metric_lists(
     results: tuple,
-    index_to_label: list[str],
+    index_to_label: dict[int, str],
 ) -> dict[MetricType, list[Metric]]:
 
     n_labels = len(index_to_label)
@@ -62,34 +59,29 @@ def unpack_precision_recall_iou_into_metric_lists(
         )
     ]
 
-    for label_idx, label in enumerate(index_to_label):
-
-        kwargs = {
-            "label": label,
-        }
-
+    for label_idx, label in index_to_label.items():
         metrics[MetricType.Precision].append(
             Metric.precision(
                 value=float(precision[label_idx]),
-                **kwargs,
+                label=label,
             )
         )
         metrics[MetricType.Recall].append(
             Metric.recall(
                 value=float(recall[label_idx]),
-                **kwargs,
+                label=label,
             )
         )
         metrics[MetricType.F1].append(
             Metric.f1_score(
                 value=float(f1_score[label_idx]),
-                **kwargs,
+                label=label,
             )
         )
         metrics[MetricType.IOU].append(
             Metric.iou(
                 value=float(ious[label_idx, label_idx]),
-                **kwargs,
+                label=label,
             )
         )
 

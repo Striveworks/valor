@@ -84,4 +84,5 @@ def test_fuzz_segmentations_with_filtering():
         except EmptyFilterError:
             pass
         else:
-            evaluator.evaluate(filter_=filter_)
+            filtered_evaluator = evaluator.filter(filter_)
+            filtered_evaluator.evaluate()

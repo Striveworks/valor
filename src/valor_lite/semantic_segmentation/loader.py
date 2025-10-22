@@ -39,9 +39,6 @@ class Loader:
         self._labels: dict[str, int] = {}
         self._index_to_label: dict[int, str] = {}
         self._datum_count = 0
-        self._groundtruth_pixel_count = 0
-        self._prediction_pixel_count = 0
-        self._total_pixel_count = 0
 
         with open(self._metadata_path, "w") as f:
             types = {
@@ -247,18 +244,28 @@ class Loader:
                         },
                     ]
                 )
+            rows.append(
+                {
+                    # datum
+                    "datum_uid": segmentation.uid,
+                    "datum_id": self._datum_count,
+                    **datum_metadata,
+                    # groundtruth
+                    "gt_label": None,
+                    "gt_label_id": -1,
+                    # prediction
+                    "pd_label": None,
+                    "pd_label_id": -1,
+                    # pair
+                    "count": counts[0, 0],
+                }
+            )
             self._cache.write_rows(rows)
 
             # update datum cache
             self._datum_count += 1
 
-    def finalize(
-        self,
-        rows_per_file: int | None = None,
-        compression: str | None = None,
-        write_batch_size: int | None = None,
-        read_batch_size: int = 1000,
-    ):
+    def finalize(self):
         """
         Performs data finalization and some preprocessing steps.
 
@@ -271,18 +278,10 @@ class Loader:
         if self._cache.dataset.count_rows() == 0:
             raise EmptyCacheError()
 
-        evaluator = Evaluator(
+        return Evaluator(
             directory=self._directory,
             name=self._name,
         )
-        evaluator.rank(
-            where=self._ranked_path,
-            rows_per_file=rows_per_file,
-            compression=compression,
-            write_batch_size=write_batch_size,
-            read_batch_size=read_batch_size,
-        )
-        return evaluator
 
     @classmethod
     def filter(
@@ -302,17 +301,13 @@ class Loader:
             groundtruth_metadata_types=evaluator.info.groundtruth_metadata_types,
             prediction_metadata_types=evaluator.info.prediction_metadata_types,
         )
-        for fragment in evaluator.detailed.get_fragments():
+        for fragment in evaluator.dataset.get_fragments():
             tbl = fragment.to_table(filter=filter_expr.datums)
 
             columns = (
                 "datum_id",
-                "gt_id",
-                "pd_id",
                 "gt_label_id",
                 "pd_label_id",
-                "iou",
-                "score",
             )
             pairs = np.column_stack([tbl[col].to_numpy() for col in columns])
 
@@ -320,41 +315,46 @@ class Loader:
             gt_ids = pairs[:, (0, 1)].astype(np.int64)
             pd_ids = pairs[:, (0, 2)].astype(np.int64)
 
-            mask_valid_gt = np.zeros(n_pairs, dtype=np.bool_)
-            mask_valid_pd = np.zeros(n_pairs, dtype=np.bool_)
-
             if filter_expr.groundtruths is not None:
+                mask_valid_gt = np.zeros(n_pairs, dtype=np.bool_)
                 gt_tbl = tbl.filter(filter_expr.groundtruths)
                 gt_pairs = np.column_stack(
-                    [gt_tbl[col].to_numpy() for col in ("datum_id", "gt_id")]
+                    [
+                        gt_tbl[col].to_numpy()
+                        for col in ("datum_id", "gt_label_id")
+                    ]
                 ).astype(np.int64)
                 for gt in np.unique(gt_pairs, axis=0):
                     mask_valid_gt |= (gt_ids == gt).all(axis=1)
+            else:
+                mask_valid_gt = np.ones(n_pairs, dtype=np.bool_)
 
             if filter_expr.predictions is not None:
+                mask_valid_pd = np.zeros(n_pairs, dtype=np.bool_)
                 pd_tbl = tbl.filter(filter_expr.predictions)
                 pd_pairs = np.column_stack(
-                    [pd_tbl[col].to_numpy() for col in ("datum_id", "pd_id")]
+                    [
+                        pd_tbl[col].to_numpy()
+                        for col in ("datum_id", "pd_label_id")
+                    ]
                 ).astype(np.int64)
                 for pd in np.unique(pd_pairs, axis=0):
                     mask_valid_pd |= (pd_ids == pd).all(axis=1)
+            else:
+                mask_valid_pd = np.ones(n_pairs, dtype=np.bool_)
 
             mask_valid = mask_valid_gt | mask_valid_pd
             mask_valid_gt &= mask_valid
             mask_valid_pd &= mask_valid
 
-            pairs[np.ix_(~mask_valid_gt, (1, 3))] = -1.0  # type: ignore - numpy ix_
-            pairs[np.ix_(~mask_valid_pd, (2, 4, 6))] = -1.0  # type: ignore - numpy ix_
-            pairs[~mask_valid_pd | ~mask_valid_gt, 5] = 0.0
+            pairs[~mask_valid_gt, 1] = -1
+            pairs[~mask_valid_pd, 2] = -1
 
             for idx, col in enumerate(columns):
                 tbl = tbl.set_column(
                     tbl.schema.names.index(col), col, pa.array(pairs[:, idx])
                 )
-
-            mask_invalid = ~mask_valid | (pairs[:, (1, 2)] < 0).all(axis=1)
-            filtered_tbl = tbl.filter(pa.array(~mask_invalid))
-            loader._cache.write_table(filtered_tbl)
+            loader._cache.write_table(tbl)
 
         loader._cache.flush()
         if loader._cache.dataset.count_rows() == 0:
@@ -365,5 +365,4 @@ class Loader:
             name=loader._name,
             labels_override=evaluator._index_to_label,
         )
-        evaluator.rank(where=loader._ranked_path)
         return evaluator
