@@ -82,13 +82,13 @@ def filter_cache(
     return confusion_matrices, label_metadata
 
 
-def compute_intermediate_confusion_matrices(
+def compute_intermediates(
     groundtruths: NDArray[np.bool_],
     predictions: NDArray[np.bool_],
     groundtruth_labels: NDArray[np.int64],
     prediction_labels: NDArray[np.int64],
     n_labels: int,
-) -> NDArray[np.int64]:
+) -> NDArray[np.uint64]:
     """
     Computes an intermediate confusion matrix containing label counts.
 
@@ -107,7 +107,7 @@ def compute_intermediate_confusion_matrices(
 
     Returns
     -------
-    NDArray[np.int64]
+    NDArray[np.uint64]
         A 2-D confusion matrix with shape (n_labels + 1, n_labels + 1).
     """
 
@@ -125,7 +125,7 @@ def compute_intermediate_confusion_matrices(
     intersected_groundtruth_counts = intersection_counts.sum(axis=1)
     intersected_prediction_counts = intersection_counts.sum(axis=0)
 
-    confusion_matrix = np.zeros((n_labels + 1, n_labels + 1), dtype=np.int64)
+    confusion_matrix = np.zeros((n_labels + 1, n_labels + 1), dtype=np.uint64)
     confusion_matrix[0, 0] = background_counts
     confusion_matrix[
         np.ix_(groundtruth_labels + 1, prediction_labels + 1)
@@ -136,7 +136,6 @@ def compute_intermediate_confusion_matrices(
     confusion_matrix[groundtruth_labels + 1, 0] = (
         groundtruth_counts - intersected_groundtruth_counts
     )
-
     return confusion_matrix
 
 

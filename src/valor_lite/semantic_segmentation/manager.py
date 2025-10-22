@@ -4,10 +4,10 @@ import numpy as np
 from numpy.typing import NDArray
 from tqdm import tqdm
 
-from valor_lite.exceptions import EmptyEvaluatorError, EmptyFilterError
+from valor_lite.exceptions import EmptyCacheError, EmptyFilterError
 from valor_lite.semantic_segmentation.annotation import Segmentation
 from valor_lite.semantic_segmentation.computation import (
-    compute_intermediate_confusion_matrices,
+    compute_intermediates,
     compute_label_metadata,
     compute_metrics,
     filter_cache,
@@ -406,7 +406,7 @@ class DataLoader:
                 )
 
             self.matrices.append(
-                compute_intermediate_confusion_matrices(
+                compute_intermediates(
                     groundtruths=combined_groundtruths,
                     predictions=combined_predictions,
                     groundtruth_labels=groundtruth_labels,
@@ -426,7 +426,7 @@ class DataLoader:
         """
 
         if len(self.matrices) == 0:
-            raise EmptyEvaluatorError()
+            raise EmptyCacheError()
 
         n_labels = len(self._evaluator.index_to_label)
         n_datums = len(self._evaluator.index_to_datum_id)

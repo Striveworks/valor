@@ -1,4 +1,4 @@
-class EmptyEvaluatorError(Exception):
+class EmptyCacheError(Exception):
     def __init__(self):
         super().__init__(
             "evaluator cannot be finalized as it contains no data"
