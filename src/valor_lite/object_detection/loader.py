@@ -6,7 +6,11 @@ import pyarrow as pa
 from numpy.typing import NDArray
 from tqdm import tqdm
 
-from valor_lite.cache import CacheWriter, DataType
+from valor_lite.cache import (
+    CacheWriter,
+    DataType,
+    convert_type_mapping_to_schema,
+)
 from valor_lite.exceptions import EmptyCacheError
 from valor_lite.object_detection.annotation import (
     Bitmask,
@@ -56,20 +60,14 @@ class Loader:
             }
             json.dump(types, f, indent=2)
 
-        datum_metadata_schema = (
-            [(k, v.to_arrow()) for k, v in datum_metadata_types.items()]
-            if datum_metadata_types
-            else []
+        datum_metadata_schema = convert_type_mapping_to_schema(
+            datum_metadata_types
         )
-        groundtruth_metadata_schema = (
-            [(k, v.to_arrow()) for k, v in groundtruth_metadata_types.items()]
-            if groundtruth_metadata_types
-            else []
+        groundtruth_metadata_schema = convert_type_mapping_to_schema(
+            groundtruth_metadata_types
         )
-        prediction_metadata_schema = (
-            [(k, v.to_arrow()) for k, v in prediction_metadata_types.items()]
-            if prediction_metadata_types
-            else []
+        prediction_metadata_schema = convert_type_mapping_to_schema(
+            prediction_metadata_types
         )
 
         self._null_gt_metadata = {
