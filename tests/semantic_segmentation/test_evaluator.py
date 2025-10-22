@@ -21,15 +21,10 @@ def test_metadata_using_large_random_segmentations(
         evaluator.metadata.number_of_pixels == 3 * 2000 * 2000
     )  # 3x (2000,2000) bitmasks
 
-    metadata = evaluator.metadata.to_dict()
-    # pop randomly changing values
-    metadata.pop("number_of_ground_truths")
-    metadata.pop("number_of_predictions")
-    assert metadata == {
-        "number_of_datums": 3,
-        "number_of_labels": 9,
-        "number_of_pixels": 12000000,
-    }
+    # check static values
+    assert evaluator._info.number_of_datums == 3
+    assert evaluator._info.number_of_labels == 9
+    assert evaluator._info.number_of_pixels == 12000000
 
 
 def _flatten_metrics(m) -> list:
