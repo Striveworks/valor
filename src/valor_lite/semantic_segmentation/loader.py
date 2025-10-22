@@ -6,14 +6,15 @@ import pyarrow as pa
 from numpy.typing import NDArray
 from tqdm import tqdm
 
-from valor_lite.cache import CacheWriter, DataType
-from valor_lite.exceptions import EmptyEvaluatorError
-from valor_lite.semantic_segmentation.annotation import (
-    Bitmask,
-    Segmentation,
+from valor_lite.cache import (
+    CacheWriter,
+    DataType,
+    convert_type_mapping_to_schema,
 )
+from valor_lite.exceptions import EmptyEvaluatorError
+from valor_lite.semantic_segmentation.annotation import Bitmask, Segmentation
 from valor_lite.semantic_segmentation.computation import (
-    compute_intermediate_confusion_matrices
+    compute_intermediate_confusion_matrices,
 )
 from valor_lite.semantic_segmentation.evaluator import Evaluator, Filter
 
@@ -53,21 +54,9 @@ class Loader:
             }
             json.dump(types, f, indent=2)
 
-        datum_metadata_schema = (
-            [(k, v.to_arrow()) for k, v in datum_metadata_types.items()]
-            if datum_metadata_types
-            else []
-        )
-        groundtruth_metadata_schema = (
-            [(k, v.to_arrow()) for k, v in groundtruth_metadata_types.items()]
-            if groundtruth_metadata_types
-            else []
-        )
-        prediction_metadata_schema = (
-            [(k, v.to_arrow()) for k, v in prediction_metadata_types.items()]
-            if prediction_metadata_types
-            else []
-        )
+        datum_metadata_schema = convert_type_mapping_to_schema(datum_metadata_types)
+        groundtruth_metadata_schema = convert_type_mapping_to_schema(groundtruth_metadata_types)
+        prediction_metadata_schema = convert_type_mapping_to_schema(prediction_metadata_types)
 
         self._null_gt_metadata = {
             s[0]: None for s in groundtruth_metadata_schema
@@ -82,20 +71,15 @@ class Loader:
                 ("datum_id", pa.int64()),
                 *datum_metadata_schema,
                 # groundtruth
-                ("gt_uid", pa.string()),
-                ("gt_id", pa.int64()),
                 ("gt_label", pa.string()),
                 ("gt_label_id", pa.int64()),
                 *groundtruth_metadata_schema,
                 # prediction
-                ("pd_uid", pa.string()),
-                ("pd_id", pa.int64()),
                 ("pd_label", pa.string()),
                 ("pd_label_id", pa.int64()),
-                ("score", pa.float64()),
                 *prediction_metadata_schema,
                 # pair
-                ("iou", pa.float64()),
+                ("count", pa.uint64()),
             ]
         )
         self._cache = CacheWriter(
@@ -112,11 +96,11 @@ class Loader:
             idx = len(self._labels)
             self._labels[value] = idx
         return idx
-    
+
     def _write(
         self,
         datum_id: str,
-        confusion_matrix: NDArray[np.int64],        
+        confusion_matrix: NDArray[np.int64],
     ):
         pass
 
@@ -140,7 +124,7 @@ class Loader:
         for segmentation in tqdm(segmentations, disable=disable_tqdm):
             # update datum cache
             self._datum_count += 1
-            self._groundtruth_count += 
+            self._groundtruth_count +=
 
             groundtruth_labels = -1 * np.ones(
                 len(segmentation.groundtruths), dtype=np.int64
@@ -223,7 +207,7 @@ class Loader:
             read_batch_size=read_batch_size,
         )
         return evaluator
-    
+
     @classmethod
     def filter(
         cls,

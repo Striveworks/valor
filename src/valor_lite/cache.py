@@ -8,6 +8,7 @@ from typing import Any
 import numpy as np
 import pyarrow as pa
 import pyarrow.dataset as ds
+import pyarrow.lib as pl
 import pyarrow.parquet as pq
 
 
@@ -38,6 +39,27 @@ class DataType(StrEnum):
                 return pa.string()
             case DataType.TIMESTAMP:
                 return pa.timestamp("us")
+
+
+def convert_type_mapping_to_schema(
+    type_mapping: dict[str, DataType] | None
+) -> list[tuple[str, pl.DataType]]:
+    """
+    Convert type mapping to a pyarrow schema input.
+
+    Parameters
+    ----------
+    type_mapping : dict[str, DataType] | None
+        A map from string key to datatype. Treats input of `None` as empty mapping.
+
+    Returns
+    -------
+    list[tuple[str, pyarrow.lib.DataType]]
+        A list of field name, field type pairs that can be used as input to pyarrow.schema.
+    """
+    if not type_mapping:
+        return []
+    return [(k, v.to_arrow()) for k, v in type_mapping.items()]
 
 
 class CacheReader:
