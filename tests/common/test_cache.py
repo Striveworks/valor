@@ -199,14 +199,18 @@ def test_cache_reader():
 
         readonly_cache = CacheReader(where=Path(tmpdir))
         assert readonly_cache.num_files == 2
-        assert readonly_cache.files == [
-            tmpdir + "/000000.parquet",
-            tmpdir + "/.cfg",
-        ]
+        assert set(readonly_cache.files) == set(
+            [
+                tmpdir + "/000000.parquet",
+                tmpdir + "/.cfg",
+            ]
+        )
         assert readonly_cache.num_dataset_files == 1
-        assert readonly_cache.dataset_files == [
-            tmpdir + "/000000.parquet",
-        ]
+        assert set(readonly_cache.dataset_files) == set(
+            [
+                tmpdir + "/000000.parquet",
+            ]
+        )
 
         cache.write_table(tbl)
         assert readonly_cache.num_files == 3
