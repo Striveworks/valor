@@ -15,8 +15,6 @@ def test_metadata_using_large_random_segmentations(
     manager.add_data(large_random_segmentations)
     evaluator = manager.finalize()
 
-    assert evaluator.ignored_prediction_labels == []
-    assert evaluator.missing_prediction_labels == []
     assert evaluator.metadata.number_of_datums == 3
     assert evaluator.metadata.number_of_labels == 9
     assert (
@@ -127,16 +125,6 @@ def test_label_mismatch():
             ]
         )
     )
-    assert np.all(
-        evaluator._label_metadata
-        == np.array(
-            [
-                [2, 0],
-                [0, 1],
-                [0, 1],
-            ]
-        )
-    )
 
 
 def test_empty_groundtruths():
@@ -185,15 +173,6 @@ def test_empty_groundtruths():
             ]
         )
     )
-    assert np.all(
-        evaluator._label_metadata
-        == np.array(
-            [
-                [0, 1],
-                [0, 1],
-            ]
-        )
-    )
 
 
 def test_empty_predictions():
@@ -239,15 +218,6 @@ def test_empty_predictions():
                     [1, 0, 0],
                     [1, 0, 0],
                 ]
-            ]
-        )
-    )
-    assert np.all(
-        evaluator._label_metadata
-        == np.array(
-            [
-                [1, 0],
-                [1, 0],
             ]
         )
     )

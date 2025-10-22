@@ -8,7 +8,6 @@ from valor_lite.semantic_segmentation.metric import Metric, MetricType
 
 def unpack_precision_recall_iou_into_metric_lists(
     results: tuple,
-    label_metadata: NDArray[np.int64],
     index_to_label: list[str],
 ) -> dict[MetricType, list[Metric]]:
 
@@ -39,24 +38,20 @@ def unpack_precision_recall_iou_into_metric_lists(
                         "iou": float(ious[gt_label_idx, pd_label_idx])
                     }
                     for pd_label_idx in range(n_labels)
-                    if label_metadata[pd_label_idx, 0] > 0
                 }
                 for gt_label_idx in range(n_labels)
-                if label_metadata[gt_label_idx, 0] > 0
             },
             unmatched_predictions={
                 index_to_label[pd_label_idx]: {
                     "ratio": float(unmatched_prediction_ratios[pd_label_idx])
                 }
                 for pd_label_idx in range(n_labels)
-                if label_metadata[pd_label_idx, 0] > 0
             },
             unmatched_ground_truths={
                 index_to_label[gt_label_idx]: {
                     "ratio": float(unmatched_ground_truth_ratios[gt_label_idx])
                 }
                 for gt_label_idx in range(n_labels)
-                if label_metadata[gt_label_idx, 0] > 0
             },
         )
     ]
@@ -72,10 +67,6 @@ def unpack_precision_recall_iou_into_metric_lists(
         kwargs = {
             "label": label,
         }
-
-        # if no groundtruths exists for a label, skip it.
-        if label_metadata[label_idx, 0] == 0:
-            continue
 
         metrics[MetricType.Precision].append(
             Metric.precision(

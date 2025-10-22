@@ -1,16 +1,20 @@
-from dataclasses import asdict, dataclass
-
 import json
+from collections import defaultdict
+from dataclasses import asdict, dataclass
+from pathlib import Path
+
 import numpy as np
 from numpy.typing import NDArray
-from tqdm import tqdm
-from pathlib import Path
-from collections import defaultdict
-
 from pyarrow import pa
 from pyarrow.compute import pc
 from pyarrow.dataset import ds
+from tqdm import tqdm
 
+from valor_lite.cache import (
+    CacheReader,
+    DataType,
+    convert_type_mapping_to_schema,
+)
 from valor_lite.exceptions import EmptyCacheError, EmptyFilterError
 from valor_lite.semantic_segmentation.annotation import Segmentation
 from valor_lite.semantic_segmentation.computation import (
@@ -23,15 +27,15 @@ from valor_lite.semantic_segmentation.metric import Metric, MetricType
 from valor_lite.semantic_segmentation.utilities import (
     unpack_precision_recall_iou_into_metric_lists,
 )
-from valor_lite.cache import CacheReader, DataType, convert_type_mapping_to_schema
 
 
 @dataclass
 class EvaluatorInfo:
     number_of_datums: int = 0
-    number_of_groundtruth_annotations: int = 0
-    number_of_prediction_annotations: int = 0
     number_of_labels: int = 0
+    number_of_pixels: int = 0
+    number_of_groundtruth_pixels: int = 0
+    number_of_prediction_pixels: int = 0
     number_of_rows: int = 0
     datum_metadata_types: dict[str, DataType] | None = None
     groundtruth_metadata_types: dict[str, DataType] | None = None
@@ -120,10 +124,9 @@ class Evaluator:
             tbl = fragment.to_table()
             columns = (
                 "datum_id",
-                "gt_id",
-                "pd_id",
                 "gt_label_id",
                 "pd_label_id",
+                "counts",
             )
             ids = np.column_stack(
                 [tbl[col].to_numpy() for col in columns]
@@ -136,18 +139,8 @@ class Evaluator:
             datum_ids = np.unique(ids[:, 0])
             info.number_of_datums += int(datum_ids.size)
 
-            # count unique groundtruths
-            gt_ids = ids[:, 1]
-            gt_ids = np.unique(gt_ids[gt_ids >= 0])
-            info.number_of_groundtruth_annotations += int(gt_ids.shape[0])
-
-            # count unique predictions
-            pd_ids = ids[:, 2]
-            pd_ids = np.unique(pd_ids[pd_ids >= 0])
-            info.number_of_prediction_annotations += int(pd_ids.shape[0])
-
             # get gt labels
-            gt_label_ids = ids[:, 3]
+            gt_label_ids = ids[:, 1]
             gt_label_ids, gt_indices = np.unique(
                 gt_label_ids, return_index=True
             )
@@ -157,9 +150,9 @@ class Evaluator:
             labels.update(gt_labels)
 
             # get pd labels
-            pd_label_ids = ids[:, 4]
-            pd_label_ids, pd_indices = np.unique(
-                pd_label_ids, return_index=True
+            pd_label_ids = ids[:, 2]
+            pd_label_ids, pd_indices, pd_counts = np.unique(
+                pd_label_ids, return_index=True, return_counts=True
             )
             pd_labels = tbl["pd_label"].take(pd_indices).to_pylist()
             pd_labels = dict(zip(pd_label_ids.astype(int).tolist(), pd_labels))
@@ -167,7 +160,7 @@ class Evaluator:
             labels.update(pd_labels)
 
             # count gts per label
-            gts = ids[:, (1, 3)].astype(np.int64)
+            gts = ids[:, 1].astype(np.int64)
             unique_ann = np.unique(gts[gts[:, 0] >= 0], axis=0)
             unique_labels, label_counts = np.unique(
                 unique_ann[:, 1], return_counts=True
@@ -181,14 +174,35 @@ class Evaluator:
         # complete info object
         info.number_of_labels = len(labels)
 
-        # convert gt counts to numpy
-        number_of_groundtruths_per_label = np.zeros(
-            len(labels), dtype=np.uint64
-        )
-        for k, v in gt_counts_per_lbl.items():
-            number_of_groundtruths_per_label[int(k)] = v
+        # create confusion matrix
+        n_labels = len(labels)
+        matrix = np.zeros((n_labels + 1, n_labels + 1), dtype=np.uint64)
+        for fragment in dataset.get_fragments():
+            tbl = fragment.to_table()
+            columns = (
+                "datum_id",
+                "gt_label_id",
+                "pd_label_id",
+            )
+            ids = np.column_stack(
+                [tbl[col].to_numpy() for col in columns]
+            ).astype(np.int64)
+            counts = tbl["counts"].to_numpy()
 
-        return labels, number_of_groundtruths_per_label, info
+            for idx in range(n_labels):
+                mask_gts = ids[:, 1] == idx
+                for pidx in range(n_labels):
+                    mask_pds = ids[:, 2] == pidx
+                    matrix[idx + 1, pidx + 1] = counts[
+                        mask_gts & mask_pds
+                    ].sum()
+
+                mask_unmatched_gts = mask_gts & (ids[:, 2] == -1)
+                matrix[idx + 1, 0] = counts[mask_unmatched_gts].sum()
+                mask_unmatched_pds = (ids[:, 1] == -1) & (ids[:, 2] == idx)
+                matrix[0, idx + 1] = counts[mask_unmatched_pds]
+
+        return labels, matrix, info
 
     @staticmethod
     def iterate_pairs(
@@ -241,8 +255,8 @@ class Evaluator:
         from valor_lite.semantic_segmentation.loader import Loader
 
         return Loader.filter(
-            directory=directory,
             name=name,
+            directory=directory,
             evaluator=self,
             filter_expr=filter_expr,
         )

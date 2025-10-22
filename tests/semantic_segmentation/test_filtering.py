@@ -24,16 +24,11 @@ def test_filtering(segmentations_from_boxes: list[Segmentation]):
         "number_of_pixels": 540000,
     }
 
-    assert evaluator.ignored_prediction_labels == []
-    assert evaluator.missing_prediction_labels == []
     assert evaluator.metadata.number_of_datums == 2
-    assert (
-        evaluator._label_metadata == np.array([[10000, 10000], [15000, 5000]])
-    ).all()
 
     # test datum filtering
     filter_ = evaluator.create_filter(datums=["uid1"])
-    confusion_matrices, label_metadata = evaluator.filter(filter_)
+    confusion_matrices = evaluator.filter(filter_)
     assert np.all(
         confusion_matrices
         == np.array(
@@ -46,10 +41,9 @@ def test_filtering(segmentations_from_boxes: list[Segmentation]):
             ]
         )
     )
-    assert np.all(label_metadata == np.array([[10000, 10000], [0, 0]]))
 
     filter_ = evaluator.create_filter(datums=["uid2"])
-    confusion_matrices, label_metadata = evaluator.filter(filter_)
+    confusion_matrices = evaluator.filter(filter_)
     assert np.all(
         confusion_matrices
         == np.array(
@@ -62,11 +56,10 @@ def test_filtering(segmentations_from_boxes: list[Segmentation]):
             ]
         )
     )
-    assert (label_metadata == np.array([[0, 0], [15000, 5000]])).all()
 
     # test label filtering
     filter_ = evaluator.create_filter(labels=["v1"])
-    confusion_matrices, label_metadata = evaluator.filter(filter_)
+    confusion_matrices = evaluator.filter(filter_)
     assert np.all(
         confusion_matrices
         == np.array(
@@ -84,10 +77,9 @@ def test_filtering(segmentations_from_boxes: list[Segmentation]):
             ]
         )
     )
-    assert (label_metadata == np.array([[10000, 10000], [0, 0]])).all()
 
     filter_ = evaluator.create_filter(labels=["v2"])
-    confusion_matrices, label_metadata = evaluator.filter(filter_)
+    confusion_matrices = evaluator.filter(filter_)
     assert np.all(
         confusion_matrices
         == np.array(
@@ -105,11 +97,10 @@ def test_filtering(segmentations_from_boxes: list[Segmentation]):
             ]
         )
     )
-    assert (label_metadata == np.array([[0, 0], [15000, 5000]])).all()
 
     # test joint filtering
     filter_ = evaluator.create_filter(datums=["uid1"], labels=["v1"])
-    confusion_matrices, label_metadata = evaluator.filter(filter_)
+    confusion_matrices = evaluator.filter(filter_)
     assert np.all(
         confusion_matrices
         == np.array(
@@ -122,10 +113,9 @@ def test_filtering(segmentations_from_boxes: list[Segmentation]):
             ]
         )
     )
-    assert (label_metadata == np.array([[10000, 10000], [0, 0]])).all()
 
     filter_ = evaluator.create_filter(datums=["uid1"], labels=["v2"])
-    confusion_matrices, label_metadata = evaluator.filter(filter_)
+    confusion_matrices = evaluator.filter(filter_)
     assert np.all(
         confusion_matrices
         == np.array(
@@ -138,7 +128,6 @@ def test_filtering(segmentations_from_boxes: list[Segmentation]):
             ]
         )
     )
-    assert (label_metadata == np.array([[0, 0], [0, 0]])).all()
 
     # test filter all
     with pytest.raises(EmptyFilterError):

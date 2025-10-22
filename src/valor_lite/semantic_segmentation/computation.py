@@ -2,39 +2,12 @@ import numpy as np
 from numpy.typing import NDArray
 
 
-def compute_label_metadata(
-    confusion_matrices: NDArray[np.int64],
-    n_labels: int,
-) -> NDArray[np.int64]:
-    """
-    Computes label metadata returning a count of annotations per label.
-
-    Parameters
-    ----------
-    confusion_matrices : NDArray[np.int64]
-        Confusion matrices per datum with shape (n_datums, n_labels + 1, n_labels + 1).
-    n_labels : int
-        The total number of unique labels.
-
-    Returns
-    -------
-    NDArray[np.int64]
-        The label metadata array with shape (n_labels, 2).
-            Index 0 - Ground truth label count
-            Index 1 - Prediction label count
-    """
-    label_metadata = np.zeros((n_labels, 2), dtype=np.int64)
-    label_metadata[:, 0] = confusion_matrices[:, 1:, :].sum(axis=(0, 2))
-    label_metadata[:, 1] = confusion_matrices[:, :, 1:].sum(axis=(0, 1))
-    return label_metadata
-
-
 def filter_cache(
     confusion_matrices: NDArray[np.int64],
     datum_mask: NDArray[np.bool_],
     label_mask: NDArray[np.bool_],
     number_of_labels: int,
-) -> tuple[NDArray[np.int64], NDArray[np.int64]]:
+) -> tuple[NDArray[np.int64]]:
     """
     Performs the filter operation over the internal cache.
 
@@ -75,11 +48,7 @@ def filter_cache(
 
     confusion_matrices = confusion_matrices[datum_mask]
 
-    label_metadata = compute_label_metadata(
-        confusion_matrices=confusion_matrices,
-        n_labels=number_of_labels,
-    )
-    return confusion_matrices, label_metadata
+    return confusion_matrices
 
 
 def compute_intermediates(
@@ -141,7 +110,6 @@ def compute_intermediates(
 
 def compute_metrics(
     confusion_matrices: NDArray[np.int64],
-    label_metadata: NDArray[np.int64],
     n_pixels: int,
 ) -> tuple[
     NDArray[np.float64],
@@ -183,7 +151,10 @@ def compute_metrics(
     NDArray[np.float64]
         Unmatched ground truth ratios.
     """
-    n_labels = label_metadata.shape[0]
+    n_labels = confusion_matrices.shape[-1] - 1
+    label_metadata = np.zeros((n_labels, 2), dtype=np.int64)
+    label_metadata[:, 0] = confusion_matrices[:, 1:, :].sum(axis=(0, 2))
+    label_metadata[:, 1] = confusion_matrices[:, :, 1:].sum(axis=(0, 1))
     gt_counts = label_metadata[:, 0]
     pd_counts = label_metadata[:, 1]
 

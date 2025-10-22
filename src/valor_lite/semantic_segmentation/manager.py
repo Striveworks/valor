@@ -8,7 +8,6 @@ from valor_lite.exceptions import EmptyCacheError, EmptyFilterError
 from valor_lite.semantic_segmentation.annotation import Segmentation
 from valor_lite.semantic_segmentation.computation import (
     compute_intermediates,
-    compute_label_metadata,
     compute_metrics,
     filter_cache,
 )
@@ -103,28 +102,6 @@ class Evaluator:
     def metadata(self) -> Metadata:
         return self._metadata
 
-    @property
-    def ignored_prediction_labels(self) -> list[str]:
-        """
-        Prediction labels that are not present in the ground truth set.
-        """
-        glabels = set(np.where(self._label_metadata[:, 0] > 0)[0])
-        plabels = set(np.where(self._label_metadata[:, 1] > 0)[0])
-        return [
-            self.index_to_label[label_id] for label_id in (plabels - glabels)
-        ]
-
-    @property
-    def missing_prediction_labels(self) -> list[str]:
-        """
-        Ground truth labels that are not present in the prediction set.
-        """
-        glabels = set(np.where(self._label_metadata[:, 0] > 0)[0])
-        plabels = set(np.where(self._label_metadata[:, 1] > 0)[0])
-        return [
-            self.index_to_label[label_id] for label_id in (glabels - plabels)
-        ]
-
     def create_filter(
         self,
         datums: list[str] | NDArray[np.int64] | None = None,
@@ -208,7 +185,7 @@ class Evaluator:
             ).any(axis=1)
             label_mask[~mask_valid_labels] = True
 
-        filtered_confusion_matrices, _ = filter_cache(
+        filtered_confusion_matrices = filter_cache(
             confusion_matrices=self._confusion_matrices.copy(),
             datum_mask=datum_mask,
             label_mask=label_mask,
@@ -223,9 +200,7 @@ class Evaluator:
             ),
         )
 
-    def filter(
-        self, filter_: Filter
-    ) -> tuple[NDArray[np.int64], NDArray[np.int64]]:
+    def filter(self, filter_: Filter) -> tuple[NDArray[np.int64]]:
         """
         Performs the filter operation over the internal cache.
 
@@ -260,7 +235,7 @@ class Evaluator:
             A dictionary mapping MetricType enumerations to lists of computed metrics.
         """
         if filter_ is not None:
-            confusion_matrices, label_metadata = self.filter(filter_)
+            confusion_matrices = self.filter(filter_)
             n_pixels = filter_.metadata.number_of_pixels
         else:
             confusion_matrices = self._confusion_matrices
@@ -269,12 +244,10 @@ class Evaluator:
 
         results = compute_metrics(
             confusion_matrices=confusion_matrices,
-            label_metadata=label_metadata,
             n_pixels=n_pixels,
         )
         return unpack_precision_recall_iou_into_metric_lists(
             results=results,
-            label_metadata=label_metadata,
             index_to_label=self.index_to_label,
         )
 
@@ -436,10 +409,6 @@ class DataLoader:
         for idx, matrix in enumerate(self.matrices):
             h, w = matrix.shape
             self._evaluator._confusion_matrices[idx, :h, :w] = matrix
-        self._evaluator._label_metadata = compute_label_metadata(
-            confusion_matrices=self._evaluator._confusion_matrices,
-            n_labels=n_labels,
-        )
         self._evaluator._metadata = Metadata.create(
             confusion_matrices=self._evaluator._confusion_matrices,
         )
