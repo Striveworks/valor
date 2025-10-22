@@ -1,5 +1,6 @@
 import glob
 import json
+import os
 from datetime import datetime
 from enum import StrEnum
 from pathlib import Path
@@ -75,7 +76,12 @@ class CacheReader:
 
     @property
     def files(self) -> list[str]:
-        return glob.glob(f"{self._dir}/*")
+        files = []
+        for entry in os.listdir(self._dir):
+            full_path = os.path.join(self._dir, entry)
+            if os.path.isfile(full_path):
+                files.append(full_path)
+        return files
 
     @property
     def num_files(self) -> int:
