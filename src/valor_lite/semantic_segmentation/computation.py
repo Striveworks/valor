@@ -2,55 +2,6 @@ import numpy as np
 from numpy.typing import NDArray
 
 
-def filter_cache(
-    confusion_matrices: NDArray[np.int64],
-    datum_mask: NDArray[np.bool_],
-    label_mask: NDArray[np.bool_],
-    number_of_labels: int,
-) -> NDArray[np.int64]:
-    """
-    Performs the filter operation over the internal cache.
-
-    Parameters
-    ----------
-    confusion_matrices : NDArray[int64]
-        The internal evaluator cache.
-    datum_mask : NDArray[bool]
-        A mask that filters out datums.
-    datum_mask : NDArray[bool]
-        A mask that filters out labels.
-
-    Returns
-    -------
-    NDArray[int64]
-        Filtered confusion matrices.
-    NDArray[int64]
-        Filtered label metadata.
-    """
-    if label_mask.any():
-        # add filtered labels to background
-        null_predictions = confusion_matrices[:, label_mask, :].sum(
-            axis=(1, 2)
-        )
-        null_groundtruths = confusion_matrices[:, :, label_mask].sum(
-            axis=(1, 2)
-        )
-        null_intersection = (
-            confusion_matrices[:, label_mask, label_mask]
-            .reshape(confusion_matrices.shape[0], -1)
-            .sum(axis=1)
-        )
-        confusion_matrices[:, 0, 0] += (
-            null_groundtruths + null_predictions - null_intersection
-        )
-        confusion_matrices[:, label_mask, :] = 0
-        confusion_matrices[:, :, label_mask] = 0
-
-    confusion_matrices = confusion_matrices[datum_mask]
-
-    return confusion_matrices
-
-
 def compute_intermediates(
     groundtruths: NDArray[np.bool_],
     predictions: NDArray[np.bool_],

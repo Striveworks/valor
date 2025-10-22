@@ -1,4 +1,4 @@
-from dataclasses import asdict, dataclass
+from dataclasses import dataclass
 from pathlib import Path
 
 import numpy as np
@@ -41,24 +41,6 @@ class Metadata:
     number_of_datums: int = 0
     number_of_ground_truths: int = 0
     number_of_predictions: int = 0
-
-    @classmethod
-    def create(
-        cls,
-        confusion_matrices: NDArray[np.int64],
-    ):
-        if confusion_matrices.size == 0:
-            return cls()
-        return cls(
-            number_of_labels=confusion_matrices.shape[1] - 1,
-            number_of_pixels=confusion_matrices.sum(),
-            number_of_datums=confusion_matrices.shape[0],
-            number_of_ground_truths=confusion_matrices[:, 1:, :].sum(),
-            number_of_predictions=confusion_matrices[:, :, 1:].sum(),
-        )
-
-    def to_dict(self) -> dict[str, int | bool]:
-        return asdict(self)
 
 
 class Evaluator(CachedEvaluator):
