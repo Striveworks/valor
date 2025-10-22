@@ -18,6 +18,10 @@ def _generate_boolean_mask(
     return Bitmask(
         mask=mask,
         label=label,
+        metadata={
+            "gt_xmin": xmin,
+            "pd_xmin": xmin,
+        },
     )
 
 

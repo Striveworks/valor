@@ -60,7 +60,7 @@ def convert_type_mapping_to_schema(
     """
     if not type_mapping:
         return []
-    return [(k, v.to_arrow()) for k, v in type_mapping.items()]
+    return [(k, DataType(v).to_arrow()) for k, v in type_mapping.items()]
 
 
 class CacheReader:
