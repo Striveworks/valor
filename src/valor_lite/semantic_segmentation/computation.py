@@ -7,7 +7,7 @@ def filter_cache(
     datum_mask: NDArray[np.bool_],
     label_mask: NDArray[np.bool_],
     number_of_labels: int,
-) -> tuple[NDArray[np.int64]]:
+) -> NDArray[np.int64]:
     """
     Performs the filter operation over the internal cache.
 
@@ -110,7 +110,6 @@ def compute_intermediates(
 
 def compute_metrics(
     confusion_matrices: NDArray[np.int64],
-    n_pixels: int,
 ) -> tuple[
     NDArray[np.float64],
     NDArray[np.float64],
@@ -152,6 +151,7 @@ def compute_metrics(
         Unmatched ground truth ratios.
     """
     n_labels = confusion_matrices.shape[-1] - 1
+    n_pixels = confusion_matrices.sum()
     label_metadata = np.zeros((n_labels, 2), dtype=np.int64)
     label_metadata[:, 0] = confusion_matrices[:, 1:, :].sum(axis=(0, 2))
     label_metadata[:, 1] = confusion_matrices[:, :, 1:].sum(axis=(0, 1))

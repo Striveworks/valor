@@ -200,7 +200,7 @@ class Evaluator:
             ),
         )
 
-    def filter(self, filter_: Filter) -> tuple[NDArray[np.int64]]:
+    def filter(self, filter_: Filter) -> NDArray[np.int64]:
         """
         Performs the filter operation over the internal cache.
 
@@ -236,15 +236,11 @@ class Evaluator:
         """
         if filter_ is not None:
             confusion_matrices = self.filter(filter_)
-            n_pixels = filter_.metadata.number_of_pixels
         else:
             confusion_matrices = self._confusion_matrices
-            label_metadata = self._label_metadata
-            n_pixels = self.metadata.number_of_pixels
 
         results = compute_metrics(
             confusion_matrices=confusion_matrices,
-            n_pixels=n_pixels,
         )
         return unpack_precision_recall_iou_into_metric_lists(
             results=results,
