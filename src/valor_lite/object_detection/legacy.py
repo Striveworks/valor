@@ -147,7 +147,11 @@ class Evaluator(CachedEvaluator):
             )
             detailed_pairs = evaluator._detailed_pairs
             label_metadata = evaluator._label_metadata
-            return detailed_pairs, detailed_pairs, label_metadata
+            return (
+                detailed_pairs,
+                np.empty_like(detailed_pairs),
+                label_metadata,
+            )
 
     def create_filter(
         self,
