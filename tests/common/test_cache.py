@@ -89,7 +89,7 @@ def test_cache_write_rows():
     batch_size = 10
     rows_per_file = 100
     with tempfile.TemporaryDirectory() as tmpdir:
-        cache = CacheWriter(
+        with CacheWriter(
             where=Path(tmpdir),
             schema=pa.schema(
                 [
@@ -100,33 +100,43 @@ def test_cache_write_rows():
             ),
             batch_size=batch_size,
             rows_per_file=rows_per_file,
-        )
-        for i in range(1000):
-            cache.write_rows(
-                [
-                    {
-                        "some_int": i,
-                        "some_float": np.float64(i),
-                        "some_str": f"str{i}",
-                    }
+        ) as cache:
+            cache.write_rows([])
+            for i in range(1000):
+                cache.write_rows(
+                    [
+                        {
+                            "some_int": i,
+                            "some_float": np.float64(i),
+                            "some_str": f"str{i}",
+                        }
+                    ]
+                )
+                buffer_size = len(cache._buffer)
+                cache.write_rows([])
+                assert len(cache._buffer) == buffer_size
+            cache.flush()
+            assert cache.num_files == 11
+            for idx, fragment in enumerate(cache.dataset.get_fragments()):
+                tbl = fragment.to_table()
+                assert tbl["some_int"].to_pylist() == [
+                    i
+                    for i in range(
+                        idx * rows_per_file, (idx + 1) * rows_per_file
+                    )
                 ]
-            )
-        cache.flush()
-        assert cache.num_files == 11
-        for idx, fragment in enumerate(cache.dataset.get_fragments()):
-            tbl = fragment.to_table()
-            assert tbl["some_int"].to_pylist() == [
-                i
-                for i in range(idx * rows_per_file, (idx + 1) * rows_per_file)
-            ]
-            assert tbl["some_float"].to_pylist() == [
-                i
-                for i in range(idx * rows_per_file, (idx + 1) * rows_per_file)
-            ]
-            assert tbl["some_str"].to_pylist() == [
-                f"str{i}"
-                for i in range(idx * rows_per_file, (idx + 1) * rows_per_file)
-            ]
+                assert tbl["some_float"].to_pylist() == [
+                    i
+                    for i in range(
+                        idx * rows_per_file, (idx + 1) * rows_per_file
+                    )
+                ]
+                assert tbl["some_str"].to_pylist() == [
+                    f"str{i}"
+                    for i in range(
+                        idx * rows_per_file, (idx + 1) * rows_per_file
+                    )
+                ]
 
 
 def test_cache_write_table():
@@ -173,15 +183,16 @@ def test_cache_reader():
     batch_size = 10
     rows_per_file = 100
     with tempfile.TemporaryDirectory() as tmpdir:
+        schema = pa.schema(
+            [
+                ("some_int", pa.int64()),
+                ("some_float", pa.float64()),
+                ("some_str", pa.string()),
+            ]
+        )
         cache = CacheWriter(
             where=Path(tmpdir),
-            schema=pa.schema(
-                [
-                    ("some_int", pa.int64()),
-                    ("some_float", pa.float64()),
-                    ("some_str", pa.string()),
-                ]
-            ),
+            schema=schema,
             batch_size=batch_size,
             rows_per_file=rows_per_file,
         )
@@ -225,3 +236,4 @@ def test_cache_reader():
             ]
 
         assert readonly_cache.dataset.count_rows() == 202
+        assert readonly_cache.schema == schema
