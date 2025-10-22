@@ -350,8 +350,6 @@ class Loader:
             pairs[~mask_valid_gt, 1] = -1
             pairs[~mask_valid_pd, 2] = -1
 
-            print(pairs)
-
             for idx, col in enumerate(columns):
                 tbl = tbl.set_column(
                     tbl.schema.names.index(col), col, pa.array(pairs[:, idx])
