@@ -155,7 +155,7 @@ class Evaluator:
         # post-process
         labels.pop(-1, None)
 
-        # create confusion matrix
+        # count ground truth and prediction label occurences
         n_labels = len(labels)
         label_counts = np.zeros((n_labels, 2), dtype=np.uint64)
         for fragment in dataset.get_fragments():
@@ -176,8 +176,12 @@ class Evaluator:
             unique_pd_labels, pd_label_counts = np.unique(
                 unique_pds[:, 1], return_counts=True
             )
-            label_counts[unique_gt_labels, 0] = gt_label_counts
-            label_counts[unique_pd_labels, 1] = pd_label_counts
+            label_counts[unique_gt_labels, 0] += gt_label_counts.astype(
+                np.uint64
+            )
+            label_counts[unique_pd_labels, 1] += pd_label_counts.astype(
+                np.uint64
+            )
 
         # complete info object
         info.number_of_labels = len(labels)
@@ -335,7 +339,9 @@ class Evaluator:
                         )
                     )
                     scores_buffer.append(row_table["score"].to_numpy())
-                    winners_buffer.append(row_table["winner"].to_numpy())
+                    winners_buffer.append(
+                        row_table["winner"].to_numpy(zero_copy_only=False)
+                    )
                     if len(ids_buffer) >= rows_per_chunk:
                         ids = np.concatenate(ids_buffer, axis=0)
                         scores = np.concatenate(scores_buffer, axis=0)

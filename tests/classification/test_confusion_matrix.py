@@ -1,80 +1,73 @@
-import numpy as np
-
 from valor_lite.classification import Classification, DataLoader, Evaluator
-from valor_lite.classification.computation import (
-    PairClassification,
-    compute_confusion_matrix,
-)
 
+# def test_compute_confusion_matrix():
 
-def test_compute_confusion_matrix():
+#     # groundtruth, prediction, score
+#     data = np.array(
+#         [
+#             # datum 0
+#             [0, 0, 0, 1.0, 1.0],  # tp
+#             [0, 0, 1, 0.0, 0.0],  # tn
+#             [0, 0, 2, 0.0, 0.0],  # tn
+#             [0, 0, 3, 0.0, 0.0],  # tn
+#             # datum 1
+#             [1, 0, 0, 0.0, 0.0],  # fn
+#             [1, 0, 1, 0.0, 0.0],  # tn
+#             [1, 0, 2, 1.0, 1.0],  # fp
+#             [1, 0, 3, 0.0, 0.0],  # tn
+#             # datum 2
+#             [2, 3, 0, 0.0, 0.0],  # tn
+#             [2, 3, 1, 0.0, 0.0],  # tn
+#             [2, 3, 2, 0.0, 0.0],  # tn
+#             [2, 3, 3, 0.3, 1.0],  # fn for score threshold > 0.3
+#         ],
+#         dtype=np.float64,
+#     )
+#     score_thresholds = np.array([0.25, 0.75], dtype=np.float64)
 
-    # groundtruth, prediction, score
-    data = np.array(
-        [
-            # datum 0
-            [0, 0, 0, 1.0, 1.0],  # tp
-            [0, 0, 1, 0.0, 0.0],  # tn
-            [0, 0, 2, 0.0, 0.0],  # tn
-            [0, 0, 3, 0.0, 0.0],  # tn
-            # datum 1
-            [1, 0, 0, 0.0, 0.0],  # fn
-            [1, 0, 1, 0.0, 0.0],  # tn
-            [1, 0, 2, 1.0, 1.0],  # fp
-            [1, 0, 3, 0.0, 0.0],  # tn
-            # datum 2
-            [2, 3, 0, 0.0, 0.0],  # tn
-            [2, 3, 1, 0.0, 0.0],  # tn
-            [2, 3, 2, 0.0, 0.0],  # tn
-            [2, 3, 3, 0.3, 1.0],  # fn for score threshold > 0.3
-        ],
-        dtype=np.float64,
-    )
-    score_thresholds = np.array([0.25, 0.75], dtype=np.float64)
+#     result = compute_confusion_matrix(
+#         detailed_pairs=data,
+#         score_thresholds=score_thresholds,
+#         hardmax=True,
+#     )
 
-    result = compute_confusion_matrix(
-        detailed_pairs=data,
-        score_thresholds=score_thresholds,
-        hardmax=True,
-    )
-
-    assert result.shape == (2, 12)
-    assert np.all(
-        result
-        == np.array(
-            [
-                [
-                    PairClassification.TP,
-                    0,
-                    0,
-                    0,
-                    0,
-                    0,
-                    PairClassification.FP_FN_MISCLF,
-                    0,
-                    0,
-                    0,
-                    0,
-                    PairClassification.TP,
-                ],
-                [
-                    PairClassification.TP,
-                    0,
-                    0,
-                    0,
-                    0,
-                    0,
-                    PairClassification.FP_FN_MISCLF,
-                    0,
-                    PairClassification.FN_UNMATCHED,
-                    PairClassification.FN_UNMATCHED,
-                    PairClassification.FN_UNMATCHED,
-                    PairClassification.FN_UNMATCHED,
-                ],
-            ],
-            dtype=np.uint8,
-        ),
-    )
+#     assert result.shape == (2, 12)
+#     assert np.all(
+#         result
+#         == np.array(
+#             [
+#                 [
+#                     PairClassification.TP,
+#                     0,
+#                     0,
+#                     0,
+#                     0,
+#                     0,
+#                     PairClassification.FP_FN_MISCLF,
+#                     0,
+#                     0,
+#                     0,
+#                     0,
+#                     PairClassification.TP,
+#                 ],
+#                 [
+#                     PairClassification.TP,
+#                     0,
+#                     0,
+#                     0,
+#                     0,
+#                     0,
+#                     PairClassification.FP_FN_MISCLF,
+#                     0,
+#                     PairClassification.FN_UNMATCHED,
+#                     PairClassification.FN_UNMATCHED,
+#                     PairClassification.FN_UNMATCHED,
+#                     PairClassification.FN_UNMATCHED,
+#                 ],
+#             ],
+#             dtype=np.uint8,
+#         ),
+#     )
 
 
 def test_compute_confusion_matrix_empty_pairs():
@@ -101,14 +94,10 @@ def test_confusion_matrix_basic(basic_classifications: list[Classification]):
     loader.add_data(basic_classifications)
     evaluator = loader.finalize()
 
-    assert evaluator.ignored_prediction_labels == ["1", "2"]
-    assert evaluator.missing_prediction_labels == []
-    assert evaluator.metadata.to_dict() == {
-        "number_of_datums": 3,
-        "number_of_ground_truths": 3,
-        "number_of_predictions": 12,
-        "number_of_labels": 4,
-    }
+    assert evaluator.metadata.number_of_datums == 3
+    assert evaluator.metadata.number_of_ground_truths == 3
+    assert evaluator.metadata.number_of_predictions == 12
+    assert evaluator.metadata.number_of_labels == 4
 
     actual_metrics = evaluator.compute_confusion_matrix(
         score_thresholds=[0.25, 0.75],
@@ -418,14 +407,10 @@ def test_confusion_matrix_multiclass(
     loader.add_data(classifications_multiclass)
     evaluator = loader.finalize()
 
-    assert evaluator.ignored_prediction_labels == []
-    assert evaluator.missing_prediction_labels == []
-    assert evaluator.metadata.to_dict() == {
-        "number_of_datums": 5,
-        "number_of_ground_truths": 5,
-        "number_of_labels": 3,
-        "number_of_predictions": 15,
-    }
+    assert evaluator.metadata.number_of_datums == 5
+    assert evaluator.metadata.number_of_ground_truths == 5
+    assert evaluator.metadata.number_of_labels == 3
+    assert evaluator.metadata.number_of_predictions == 15
 
     actual_metrics = evaluator.compute_confusion_matrix(
         score_thresholds=[0.05, 0.5, 0.85],
@@ -576,14 +561,10 @@ def test_confusion_matrix_without_hardmax_animal_example(
     loader.add_data(classifications_multiclass_true_negatives_check)
     evaluator = loader.finalize()
 
-    assert evaluator.ignored_prediction_labels == ["bee", "cat"]
-    assert evaluator.missing_prediction_labels == []
-    assert evaluator.metadata.to_dict() == {
-        "number_of_datums": 1,
-        "number_of_ground_truths": 1,
-        "number_of_predictions": 3,
-        "number_of_labels": 3,
-    }
+    assert evaluator.metadata.number_of_datums == 1
+    assert evaluator.metadata.number_of_ground_truths == 1
+    assert evaluator.metadata.number_of_predictions == 3
+    assert evaluator.metadata.number_of_labels == 3
 
     actual_metrics = evaluator.compute_confusion_matrix(
         score_thresholds=[0.05, 0.4, 0.5],

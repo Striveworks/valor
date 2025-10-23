@@ -1,4 +1,3 @@
-import heapq
 import json
 from pathlib import Path
 
@@ -22,8 +21,8 @@ class Loader:
         self,
         name: str = "default",
         directory: str | Path = ".valor",
-        batch_size: int = 1_000,
-        rows_per_file: int = 10_000,
+        batch_size: int = 1,  # 1_000,
+        rows_per_file: int = 1,  # 10_000,
         compression: str = "snappy",
         datum_metadata_types: dict[str, DataType] | None = None,
     ):
