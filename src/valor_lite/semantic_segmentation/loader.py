@@ -262,7 +262,7 @@ class Loader:
             )
             self._cache.write_rows(rows)
 
-            # update datum cache
+            # update datum count
             self._datum_count += 1
 
     def finalize(self):
