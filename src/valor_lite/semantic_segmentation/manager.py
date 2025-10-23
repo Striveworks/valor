@@ -1,3 +1,4 @@
+import tempfile
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -12,6 +13,7 @@ from valor_lite.semantic_segmentation.evaluator import (
 )
 from valor_lite.semantic_segmentation.evaluator import Filter
 from valor_lite.semantic_segmentation.loader import Loader as CachedLoader
+from valor_lite.semantic_segmentation.metric import Metric, MetricType
 
 """
 Usage
@@ -45,7 +47,7 @@ class Metadata:
 
 class Evaluator(CachedEvaluator):
     """
-    Segmentation Evaluator
+    Legacy Segmentation Evaluator
     """
 
     @property
@@ -95,10 +97,36 @@ class Evaluator(CachedEvaluator):
             predictions=None,
         )
 
+    def compute_precision_recall_iou(
+        self, filter_: Filter | None = None
+    ) -> dict[MetricType, list[Metric]]:
+        if filter_ is not None:
+            with tempfile.TemporaryDirectory() as tmpdir:
+                filtered_evaluator = super().filter(
+                    directory=tmpdir,
+                    name="filtered",
+                    filter_expr=filter_,
+                )
+                return filtered_evaluator.compute_precision_recall_iou()
+        return super().compute_precision_recall_iou()
+
+    def evaluate(
+        self, filter_: Filter | None = None
+    ) -> dict[MetricType, list[Metric]]:
+        """
+        Computes all available metrics.
+
+        Returns
+        -------
+        dict[MetricType, list[Metric]]
+            Lists of metrics organized by metric type.
+        """
+        return self.compute_precision_recall_iou(filter_=filter_)
+
 
 class DataLoader(CachedLoader):
     """
-    Segmentation DataLoader.
+    Legacy Segmentation DataLoader.
     """
 
     def finalize(self):
