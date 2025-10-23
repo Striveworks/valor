@@ -8,29 +8,17 @@ from valor_lite.classification.metric import Metric, MetricType
 
 
 def unpack_precision_recall_rocauc_into_metric_lists(
-    results: tuple[
-        NDArray[np.int32],
-        NDArray[np.float64],
-        NDArray[np.float64],
-        NDArray[np.float64],
-        NDArray[np.float64],
-        NDArray[np.float64],
-        float,
-    ],
+    counts: NDArray[np.uint64],
+    precision: NDArray[np.float64],
+    recall: NDArray[np.float64],
+    accuracy: NDArray[np.float64],
+    f1_score: NDArray[np.float64],
+    rocauc: NDArray[np.float64],
+    mean_rocauc: float,
     score_thresholds: list[float],
     hardmax: bool,
-    label_metadata: NDArray[np.int32],
-    index_to_label: list[str],
+    index_to_label: dict[int, str],
 ) -> dict[MetricType, list[Metric]]:
-    (
-        counts,
-        precision,
-        recall,
-        accuracy,
-        f1_score,
-        rocauc,
-        mean_rocauc,
-    ) = results
 
     metrics = defaultdict(list)
 
@@ -39,8 +27,7 @@ def unpack_precision_recall_rocauc_into_metric_lists(
             value=float(rocauc[label_idx]),
             label=label,
         )
-        for label_idx, label in enumerate(index_to_label)
-        if label_metadata[label_idx, 0] > 0
+        for label_idx, label in index_to_label.items()
     ]
 
     metrics[MetricType.mROCAUC] = [
@@ -58,7 +45,7 @@ def unpack_precision_recall_rocauc_into_metric_lists(
         for score_idx, score_threshold in enumerate(score_thresholds)
     ]
 
-    for label_idx, label in enumerate(index_to_label):
+    for label_idx, label in index_to_label.items():
         for score_idx, score_threshold in enumerate(score_thresholds):
 
             kwargs = {
@@ -76,10 +63,6 @@ def unpack_precision_recall_rocauc_into_metric_lists(
                     **kwargs,
                 )
             )
-
-            # if no groundtruths exists for a label, skip it.
-            if label_metadata[label_idx, 0] == 0:
-                continue
 
             metrics[MetricType.Precision].append(
                 Metric.precision(
@@ -102,7 +85,45 @@ def unpack_precision_recall_rocauc_into_metric_lists(
     return metrics
 
 
-def _create_empty_confusion_matrix(index_to_labels: list[str]):
+def unpack_confusion_matrix(
+    confusion_matrices: NDArray[np.uint64],
+    unmatched_groundtruths: NDArray[np.uint64],
+    index_to_label: dict[int, str],
+    iou_thresholds: list[float],
+    score_thresholds: list[float],
+) -> list[Metric]:
+    metrics = []
+    for iou_idx, iou_thresh in enumerate(iou_thresholds):
+        for score_idx, score_thresh in enumerate(score_thresholds):
+            cm_dict = {}
+            ugt_dict = {}
+            upd_dict = {}
+            for idx, label in index_to_label.items():
+                ugt_dict[label] = int(
+                    unmatched_groundtruths[iou_idx, score_idx, idx]
+                )
+                upd_dict[label] = int(
+                    unmatched_predictions[iou_idx, score_idx, idx]
+                )
+                for pidx, plabel in index_to_label.items():
+                    if label not in cm_dict:
+                        cm_dict[label] = {}
+                    cm_dict[label][plabel] = int(
+                        confusion_matrices[iou_idx, score_idx, idx, pidx]
+                    )
+            metrics.append(
+                Metric.confusion_matrix(
+                    confusion_matrix=cm_dict,
+                    unmatched_ground_truths=ugt_dict,
+                    unmatched_predictions=upd_dict,
+                    iou_threshold=iou_thresh,
+                    score_threshold=score_thresh,
+                )
+            )
+    return metrics
+
+
+def _create_empty_confusion_matrix_with_examples(index_to_labels: list[str]):
     unmatched_ground_truths = dict()
     confusion_matrix = dict()
     for label in index_to_labels:
@@ -116,7 +137,7 @@ def _create_empty_confusion_matrix(index_to_labels: list[str]):
     )
 
 
-def _unpack_confusion_matrix(
+def _unpack_confusion_matrix_with_examples(
     ids: NDArray[np.int32],
     scores: NDArray[np.float64],
     mask_matched: NDArray[np.bool_],
@@ -128,7 +149,7 @@ def _unpack_confusion_matrix(
     (
         confusion_matrix,
         unmatched_ground_truths,
-    ) = _create_empty_confusion_matrix(index_to_label)
+    ) = _create_empty_confusion_matrix_with_examples(index_to_label)
 
     unique_matches, unique_match_indices = np.unique(
         ids[np.ix_(mask_matched, (0, 1, 2))],  # type: ignore - numpy ix_ typing
@@ -177,7 +198,7 @@ def _unpack_confusion_matrix(
     )
 
 
-def unpack_confusion_matrix_into_metric_list(
+def unpack_confusion_matrix_with_examples(
     result: NDArray[np.uint8],
     detailed_pairs: NDArray[np.float64],
     score_thresholds: list[float],
@@ -198,7 +219,7 @@ def unpack_confusion_matrix_into_metric_list(
     )
 
     return [
-        _unpack_confusion_matrix(
+        _unpack_confusion_matrix_with_examples(
             ids=ids,
             scores=detailed_pairs[:, 3],
             mask_matched=mask_matched[score_idx, :],

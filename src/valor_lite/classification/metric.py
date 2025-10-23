@@ -13,6 +13,8 @@ class MetricType(Enum):
     Accuracy = "Accuracy"
     F1 = "F1"
     ConfusionMatrix = "ConfusionMatrix"
+    Examples = "Examples"
+    ConfusionMatrixWithExamples = "ConfusionMatrixWithExamples"
 
 
 @dataclass
@@ -305,6 +307,139 @@ class Metric(BaseMetric):
     @classmethod
     def confusion_matrix(
         cls,
+        confusion_matrix: dict[str, dict[str, int]],
+        unmatched_ground_truths: dict[str, int],
+        score_threshold: float,
+        hardmax: bool,
+    ):
+        """
+        Confusion matrix for object detection task.
+
+        This class encapsulates detailed information about the model's performance, including correct
+        predictions, misclassifications and unmatched ground truths (subset of false negatives).
+
+        Confusion Matrix Format:
+        {
+            <ground truth label>: {
+                <prediction label>: 129
+                ...
+            },
+            ...
+        }
+
+        Unmatched Ground Truths Format:
+        {
+            <ground truth label>: 7
+            ...
+        }
+
+        Parameters
+        ----------
+        confusion_matrix : dict
+            A nested dictionary containing integer counts of occurences where the first key is the ground truth label value
+            and the second key is the prediction label value.
+        unmatched_ground_truths : dict
+            A dictionary where each key is a ground truth label value for which the model failed to predict
+            (subset of false negatives). The value is a dictionary containing counts.
+        score_threshold : float
+            The confidence score threshold used to filter predictions.
+        hardmax : bool
+            Indicates whether hardmax thresholding was used.
+
+        Returns
+        -------
+        Metric
+        """
+        return cls(
+            type=MetricType.ConfusionMatrix.value,
+            value={
+                "confusion_matrix": confusion_matrix,
+                "unmatched_ground_truths": unmatched_ground_truths,
+            },
+            parameters={
+                "score_threshold": score_threshold,
+                "hardmax": hardmax,
+            },
+        )
+
+    @classmethod
+    def examples(
+        cls,
+        datum_id: str,
+        true_positives: list[tuple[str, str]],
+        false_positives: list[str],
+        false_negatives: list[str],
+        score_threshold: float,
+        hardmax: bool,
+    ):
+        """
+        Per-datum examples for object detection tasks.
+
+        This metric is per-datum and contains lists of annotation identifiers that categorize them
+        as true-positive, false-positive or false-negative. This is intended to be used with an
+        external database where the identifiers can be used for retrieval.
+
+        Examples Format:
+        {
+            "type": "Examples",
+            "value": {
+                "datum_id": "some string ID",
+                "true_positives": [
+                    "label A",
+                ],
+                "false_positives": [
+                    "label 25",
+                    "label 92",
+                    ...
+                ]
+                "false_negatives": [
+                    "groundtruth32",
+                    "groundtruth24",
+                    ...
+                ]
+            },
+            "parameters": {
+                "score_threshold": 0.5,
+                "hardmax": False,
+            }
+        }
+
+        Parameters
+        ----------
+        datum_id : str
+            A string identifier representing a datum.
+        true_positives : list[tuple[str, str]]
+            A list of string identifier pairs representing true positive ground truth and prediction combinations.
+        false_positives : list[str]
+            A list of string identifiers representing false positive predictions.
+        false_negatives : list[str]
+            A list of string identifiers representing false negative ground truths.
+        score_threshold : float
+            The confidence score threshold used to filter predictions.
+        hardmax : bool
+            Indicates whether hardmax thresholding was used.
+
+        Returns
+        -------
+        Metric
+        """
+        return cls(
+            type=MetricType.Examples.value,
+            value={
+                "datum_id": datum_id,
+                "true_positives": true_positives,
+                "false_positives": false_positives,
+                "false_negatives": false_negatives,
+            },
+            parameters={
+                "score_threshold": score_threshold,
+                "hardmax": hardmax,
+            },
+        )
+
+    @classmethod
+    def confusion_matrix_with_examples(
+        cls,
         confusion_matrix: dict[
             str,  # ground truth label value
             dict[
@@ -329,9 +464,10 @@ class Metric(BaseMetric):
             ],
         ],
         score_threshold: float,
+        hardmax: bool,
     ):
         """
-        The confusion matrix and related metrics for the classification task.
+        The confusion matrix with examples for the classification task.
 
         This class encapsulates detailed information about the model's performance, including correct
         predictions, misclassifications and unmatched ground truths (subset of false negatives).
@@ -379,20 +515,21 @@ class Metric(BaseMetric):
             A dictionary where each key is a ground truth label value for which the model failed to predict
             (false negatives). The value is a dictionary containing either a `count` or a list of `examples`.
             Each example includes the datum UID.
-        score_threshold : float
-            The confidence score threshold used to filter predictions.
+        hardmax : bool
+            Indicates whether hardmax thresholding was used.
 
         Returns
         -------
         Metric
         """
         return cls(
-            type=MetricType.ConfusionMatrix.value,
+            type=MetricType.ConfusionMatrixWithExamples.value,
             value={
                 "confusion_matrix": confusion_matrix,
                 "unmatched_ground_truths": unmatched_ground_truths,
             },
             parameters={
                 "score_threshold": score_threshold,
+                "hardmax": hardmax,
             },
         )

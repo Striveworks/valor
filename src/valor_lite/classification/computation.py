@@ -110,21 +110,57 @@ def filter_cache(
 
 
 def compute_rocauc(
+    ids: NDArray[np.int64],
     scores: NDArray[np.float64],
     gt_count_per_label: NDArray[np.uint64],
     pd_count_per_label: NDArray[np.uint64],
     n_datums: int,
     n_labels: int,
-    mask_matching_labels: NDArray[np.bool_],
-    pd_labels: NDArray[np.int32],
-) -> tuple[NDArray[np.float64], float]:
+    prev_cumulative_fp: NDArray[np.uint64],
+    prev_cumulative_tp: NDArray[np.uint64],
+) -> tuple[NDArray[np.float64], NDArray[np.uint64], NDArray[np.uint64]]:
     """
-    Compute ROCAUC and mean ROCAUC.
+    Compute ROCAUC.
+
+    Parameters
+    ----------
+    ids : NDArray[np.int64]
+        A sorted array of classification pairs with shape (n_pairs, 3).
+            Index 0 - Datum Index
+            Index 1 - GroundTruth Label Index
+            Index 2 - Prediction Label Index
+    scores : NDArray[np.float64]
+        A sorted array of classification scores with shape (n_pairs,).
+    gt_count_per_label : NDArray[np.uint64]
+        The number of ground truth occurences per label.
+    pd_count_per_label : NDArray[np.uint64]
+        The number of prediction occurences per label.
+    n_datums : int
+        The number of datums being operated over.
+    n_labels : int
+        The total number of unqiue labels.
+    prev_cumulative_fp : NDArray[np.uint64]
+        Previous cumulative FP sum. Used in chunked computations.
+    prev_cumulative_tp : NDArray[np.uint64]
+        Previous cumulative TP sum. Used in chunked computations.
+
+    Returns
+    -------
+    NDArray[np.float64]
+        ROCAUC.
+    NDArray[np.uint64]
+        Final cumulative sum for FP's. Used as intermediate in chunking operations.
+    NDArray[np.uint64]
+        Final cumulative sum for TP's. Used as intermediate in chunking operations.
     """
+    gt_labels = ids[:, 1]
+    pd_labels = ids[:, 2]
+    mask_matching_labels = np.isclose(gt_labels, pd_labels)
+
     positive_count = gt_count_per_label
     negative_count = pd_count_per_label - gt_count_per_label
 
-    true_positives = np.zeros((n_labels, n_datums), dtype=np.int32)
+    true_positives = np.zeros((n_labels, n_datums), dtype=np.uint64)
     false_positives = np.zeros_like(true_positives)
     tp_scores = np.zeros_like(true_positives, dtype=np.float64)
 
@@ -137,21 +173,21 @@ def compute_rocauc(
         false_positives[label_idx] = ~mask_matching_labels[mask_pds]
         tp_scores[label_idx] = scores[mask_pds]
 
-    cumulative_fp = np.cumsum(false_positives, axis=1)
-    cumulative_tp = np.cumsum(true_positives, axis=1)
+    cumulative_fp = np.cumsum(false_positives, axis=1) + prev_cumulative_fp
+    cumulative_tp = np.cumsum(true_positives, axis=1) + prev_cumulative_tp
 
     fpr = np.zeros_like(true_positives, dtype=np.float64)
     np.divide(
         cumulative_fp,
         negative_count[:, np.newaxis],
-        where=negative_count[:, np.newaxis] > 1e-9,
+        where=negative_count[:, np.newaxis] > 0,
         out=fpr,
     )
     tpr = np.zeros_like(true_positives, dtype=np.float64)
     np.divide(
         cumulative_tp,
         positive_count[:, np.newaxis],
-        where=positive_count[:, np.newaxis] > 1e-9,
+        where=positive_count[:, np.newaxis] > 0,
         out=tpr,
     )
 
@@ -166,81 +202,56 @@ def compute_rocauc(
     # compute rocauc
     rocauc = npc.trapezoid(x=fpr, y=tpr, axis=1)
 
-    # compute mean rocauc
-    mean_rocauc = rocauc.mean()
-
-    return rocauc, mean_rocauc  # type: ignore[reportReturnType]
+    return rocauc, cumulative_fp[-1], cumulative_tp[-1]
 
 
-def compute_precision_recall(
-    pairs: NDArray[np.float64],
-    label_metadata: NDArray[np.int32],
+def compute_counts(
+    ids: NDArray[np.uint64],
+    scores: NDArray[np.float64],
+    winners: NDArray[np.bool_],
     score_thresholds: NDArray[np.float64],
     hardmax: bool,
-    n_datums: int,
-) -> tuple[
-    NDArray[np.int32],
-    NDArray[np.float64],
-    NDArray[np.float64],
-    NDArray[np.float64],
-    NDArray[np.float64],
-    NDArray[np.float64],
-    float,
-]:
+    n_labels: int,
+) -> NDArray[np.uint64]:
     """
     Computes classification metrics.
 
     Parameters
     ----------
-    pairs : NDArray[np.float64]
-        A sorted array of classification pairs with shape (n_pairs, 5).
+    ids : NDArray[np.int64]
+        A sorted array of classification pairs with shape (n_pairs, 3).
             Index 0 - Datum Index
             Index 1 - GroundTruth Label Index
             Index 2 - Prediction Label Index
-            Index 3 - Score
-            Index 4 - Hard-Max Score
-    label_metadata : NDArray[np.int32]
-        An array containing metadata related to labels with shape (n_labels, 2).
-            Index 0 - GroundTruth Label Count
-            Index 1 - Prediction Label Count
+    scores : NDArray[np.float64]
+        A sorted array of classification scores with shape (n_pairs,).
+    winner : NDArray[np.bool_]
+        Marks predictions with highest score over a datum.
     score_thresholds : NDArray[np.float64]
         A 1-D array contains score thresholds to compute metrics over.
     hardmax : bool
         Option to only allow a single positive prediction.
-    n_datums : int
-        The number of datums being operated over.
+    n_labels : int
+        The total number of unqiue labels.
 
     Returns
     -------
     NDArray[np.int32]
         TP, FP, FN, TN counts.
-    NDArray[np.float64]
-        Precision.
-    NDArray[np.float64]
-        Recall.
-    NDArray[np.float64]
-        Accuracy
-    NDArray[np.float64]
-        F1 Score
-    NDArray[np.float64]
-        ROCAUC.
-    float
-        mROCAUC.
     """
 
-    n_labels = label_metadata.shape[0]
     n_scores = score_thresholds.shape[0]
+    gt_labels = ids[:, 1]
+    pd_labels = ids[:, 2]
 
-    pd_labels = pairs[:, 2].astype(int)
-
-    mask_matching_labels = np.isclose(pairs[:, 1], pairs[:, 2])
-    mask_score_nonzero = ~np.isclose(pairs[:, 3], 0.0)
-    mask_hardmax = pairs[:, 4] > 0.5
+    mask_matching_labels = np.isclose(gt_labels, pd_labels)
+    mask_score_nonzero = ~np.isclose(scores, 0.0)
+    mask_hardmax = winners > 0.5
 
     # calculate metrics at various score thresholds
-    counts = np.zeros((n_scores, n_labels, 4), dtype=np.int32)
+    counts = np.zeros((n_scores, n_labels, 4), dtype=np.uint64)
     for score_idx in range(n_scores):
-        mask_score_threshold = pairs[:, 3] >= score_thresholds[score_idx]
+        mask_score_threshold = scores >= score_thresholds[score_idx]
         mask_score = mask_score_nonzero & mask_score_threshold
 
         if hardmax:
@@ -251,8 +262,8 @@ def compute_precision_recall(
         mask_fn = (mask_matching_labels & ~mask_score) | mask_fp
         mask_tn = ~mask_matching_labels & ~mask_score
 
-        fn = np.unique(pairs[mask_fn][:, [0, 1]].astype(int), axis=0)
-        tn = np.unique(pairs[mask_tn][:, [0, 2]].astype(int), axis=0)
+        fn = np.unique(ids[mask_fn][:, [0, 1]].astype(int), axis=0)
+        tn = np.unique(ids[mask_tn][:, [0, 2]].astype(int), axis=0)
 
         counts[score_idx, :, 0] = np.bincount(
             pd_labels[mask_tp], minlength=n_labels
@@ -263,29 +274,36 @@ def compute_precision_recall(
         counts[score_idx, :, 2] = np.bincount(fn[:, 1], minlength=n_labels)
         counts[score_idx, :, 3] = np.bincount(tn[:, 1], minlength=n_labels)
 
+    return counts
+
+
+def compute_precision(counts: NDArray[np.uint64]) -> NDArray[np.float64]:
+    n_scores, n_labels, _ = counts.shape
+    precision = np.zeros((n_scores, n_labels), dtype=np.float64)
+    np.divide(
+        counts[:, :, 0],
+        (counts[:, :, 0] + counts[:, :, 1]),
+        where=(counts[:, :, 0] + counts[:, :, 1]) > 0,
+        out=precision,
+    )
+    return precision
+
+
+def compute_recall(counts: NDArray[np.uint64]) -> NDArray[np.float64]:
+    n_scores, n_labels, _ = counts.shape
     recall = np.zeros((n_scores, n_labels), dtype=np.float64)
     np.divide(
         counts[:, :, 0],
         (counts[:, :, 0] + counts[:, :, 2]),
-        where=(counts[:, :, 0] + counts[:, :, 2]) > 1e-9,
+        where=(counts[:, :, 0] + counts[:, :, 2]) > 0,
         out=recall,
     )
+    return recall
 
-    precision = np.zeros_like(recall)
-    np.divide(
-        counts[:, :, 0],
-        (counts[:, :, 0] + counts[:, :, 1]),
-        where=(counts[:, :, 0] + counts[:, :, 1]) > 1e-9,
-        out=precision,
-    )
 
-    accuracy = np.zeros(n_scores, dtype=np.float64)
-    np.divide(
-        counts[:, :, 0].sum(axis=1),
-        float(n_datums),
-        out=accuracy,
-    )
-
+def compute_f1_score(
+    precision: NDArray[np.float64], recall: NDArray[np.float64]
+) -> NDArray[np.float64]:
     f1_score = np.zeros_like(recall)
     np.divide(
         (2 * precision * recall),
@@ -293,16 +311,22 @@ def compute_precision_recall(
         where=(precision + recall) > 1e-9,
         out=f1_score,
     )
+    return f1_score
 
-    return (
-        counts,
-        precision,
-        recall,
-        accuracy,
-        f1_score,
-        rocauc,
-        mean_rocauc,
+
+def compute_accuracy(
+    counts: NDArray[np.uint64], n_datums: int
+) -> NDArray[np.float64]:
+    n_scores, _, _ = counts.shape
+    accuracy = np.zeros(n_scores, dtype=np.float64)
+    if n_datums == 0:
+        return accuracy
+    np.divide(
+        counts[:, :, 0].sum(axis=1),
+        n_datums,
+        out=accuracy,
     )
+    return accuracy
 
 
 class PairClassification(IntFlag):
@@ -311,11 +335,13 @@ class PairClassification(IntFlag):
     FN_UNMATCHED = auto()
 
 
-def compute_confusion_matrix(
-    pairs: NDArray[np.float64],
+def compute_pair_classifications(
+    ids: NDArray[np.int64],
+    scores: NDArray[np.float64],
+    winners: NDArray[np.bool_],
     score_thresholds: NDArray[np.float64],
     hardmax: bool,
-) -> NDArray[np.uint8]:
+) -> tuple[NDArray[np.bool_], NDArray[np.bool_], NDArray[np.bool_]]:
     """
     Compute detailed confusion matrix.
 
@@ -338,23 +364,24 @@ def compute_confusion_matrix(
     NDArray[uint8]
         Row-wise classification of pairs.
     """
-    n_pairs = pairs.shape[0]
+    n_pairs = ids.shape[0]
     n_scores = score_thresholds.shape[0]
+
+    gt_labels = ids[:, 1]
+    pd_labels = ids[:, 2]
+    groundtruths = ids[:, [0, 1]]
 
     pair_classifications = np.zeros(
         (n_scores, n_pairs),
         dtype=np.uint8,
     )
 
-    mask_label_match = np.isclose(pairs[:, 1], pairs[:, 2])
-    mask_score = pairs[:, 3] > 1e-9
-
-    groundtruths = pairs[:, [0, 1]].astype(int)
-
+    mask_label_match = np.isclose(gt_labels, pd_labels)
+    mask_score = scores > 1e-9
     for score_idx in range(n_scores):
-        mask_score &= pairs[:, 3] >= score_thresholds[score_idx]
+        mask_score &= scores >= score_thresholds[score_idx]
         if hardmax:
-            mask_score &= pairs[:, 4] > 0.5
+            mask_score &= winners
 
         mask_true_positives = mask_label_match & mask_score
         mask_misclassifications = ~mask_label_match & mask_score
@@ -378,4 +405,61 @@ def compute_confusion_matrix(
             score_idx, mask_unmatched_groundtruths
         ] |= np.uint8(PairClassification.FN_UNMATCHED)
 
-    return pair_classifications
+    mask_tp = np.bitwise_and(pair_classifications, PairClassification.TP) > 0
+    mask_fp_fn_misclf = (
+        np.bitwise_and(pair_classifications, PairClassification.FP_FN_MISCLF)
+        > 0
+    )
+    mask_fn_unmatched = (
+        np.bitwise_and(pair_classifications, PairClassification.FN_UNMATCHED)
+        > 0
+    )
+
+    return (
+        mask_tp,
+        mask_fp_fn_misclf,
+        mask_fn_unmatched,
+    )
+
+
+def compute_confusion_matrix(
+    ids: NDArray[np.uint64],
+    mask_tp: NDArray[np.bool_],
+    mask_fp_fn_misclf: NDArray[np.bool_],
+    mask_fn_unmatched: NDArray[np.bool_],
+    score_thresholds: NDArray[np.float64],
+    n_labels: int,
+):
+    n_scores = score_thresholds.size
+
+    # initialize arrays
+    confusion_matrices = np.zeros(
+        (n_scores, n_labels, n_labels), dtype=np.uint64
+    )
+    unmatched_groundtruths = np.zeros((n_scores, n_labels), dtype=np.uint64)
+
+    mask_matched = mask_tp | mask_fp_fn_misclf
+    for score_idx in range(n_scores):
+        # matched annotations
+        unique_pairs = np.unique(
+            ids[np.ix_(mask_matched[score_idx], (0, 1, 2))],  # type: ignore - numpy ix_ typing
+            axis=0,
+        )
+        unique_labels, unique_label_counts = np.unique(
+            unique_pairs[:, (1, 2)], axis=0, return_counts=True
+        )
+        confusion_matrices[
+            score_idx, unique_labels[:, 0], unique_labels[:, 1]
+        ] = unique_label_counts
+
+        # unmatched groundtruths
+        unique_pairs = np.unique(
+            ids[np.ix_(mask_fn_unmatched[iou_idx, score_idx], (0, 1))],  # type: ignore - numpy ix_ typing
+            axis=0,
+        )
+        unique_labels, unique_label_counts = np.unique(
+            unique_pairs[:, 2], return_counts=True
+        )
+        unmatched_groundtruths[score_idx, unique_labels] = unique_label_counts
+
+    return confusion_matrices, unmatched_groundtruths

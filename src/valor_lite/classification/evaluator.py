@@ -11,8 +11,13 @@ from numpy.typing import NDArray
 
 from valor_lite.cache import CacheReader, DataType
 from valor_lite.classification.computation import (
+    compute_accuracy,
     compute_confusion_matrix,
-    compute_precision_recall,
+    compute_counts,
+    compute_f1_score,
+    compute_pair_classifications,
+    compute_precision,
+    compute_recall,
     compute_rocauc,
 )
 from valor_lite.classification.metric import Metric, MetricType
@@ -56,7 +61,7 @@ class Evaluator:
         # build evaluator meta
         (
             self._index_to_label,
-            self._counts_per_label,
+            self._label_counts,
             self._info,
         ) = self.generate_meta(self._dataset, labels_override)
 
@@ -77,6 +82,21 @@ class Evaluator:
     @property
     def info(self) -> EvaluatorInfo:
         return self._info
+
+    def iterate_fragments(self):
+        columns = [
+            "datum_id",
+            "gt_label_id",
+            "pd_label_id",
+            "score",
+            "winner",
+        ]
+        for fragment in self.dataset.get_fragments():
+            tbl = fragment.to_table(columns=columns)
+            ids = np.column_stack([tbl[col].to_numpy() for col in columns[:3]])
+            scores = tbl["score"].to_numpy()
+            winners = tbl["winner"].to_numpy()
+            yield ids, scores, winners
 
     def iterate_sorted_chunks(
         self,
@@ -269,21 +289,17 @@ class Evaluator:
         label_counts = np.zeros((n_labels, 2), dtype=np.uint64)
         for fragment in dataset.get_fragments():
             tbl = fragment.to_table()
-            columns = (
-                "datum_id",
-                "gt_label_id",
-                "pd_label_id",
-            )
-            ids = np.column_stack(
-                [tbl[col].to_numpy() for col in columns]
-            ).astype(np.int64)
-
-            pass
+            gts = tbl["gt_label_id"].to_numpy()
+            pds = tbl["pd_label_id"].to_numpy()
+            unique_gts, gt_counts = np.unique(gts, return_counts=True)
+            unique_pds, pd_counts = np.unique(pds, return_counts=True)
+            label_counts[unique_gts, 0] = gt_counts
+            label_counts[unique_pds, 1] = pd_counts
 
         # complete info object
         info.number_of_labels = len(labels)
 
-        return labels, matrix, info
+        return labels, label_counts, info
 
     def filter(
         self,
@@ -346,44 +362,65 @@ class Evaluator:
         dict[MetricType, list]
             A dictionary mapping MetricType enumerations to lists of computed metrics.
         """
-        cumulative_fp = 0
-        cumulative_tp = 0
+        n_scores = len(score_thresholds)
+        n_datums = self.info.number_of_datums
+        n_labels = self.info.number_of_labels
+
+        # intermediates
+        cumulative_fp = np.zeros((n_labels, 1), dtype=np.uint64)
+        cumulative_tp = np.zeros((n_labels, 1), dtype=np.uint64)
+        rocauc = np.zeros(n_labels, dtype=np.float64)
+        counts = np.zeros((n_scores, n_labels, 4), dtype=np.uint64)
 
         for ids, scores, winners in self.iterate_sorted_chunks(
             rows_per_chunk=rows_per_chunk,
             read_batch_size=read_batch_size,
         ):
-            # calculate ROCAUC
-            rocauc, mean_rocauc = compute_rocauc(
+            batch_rocauc, cumulative_fp, cumulative_tp = compute_rocauc(
+                ids=ids,
                 scores=scores,
-                gt_count_per_label=label_metadata[:, 0],
-                pd_count_per_label=label_metadata[:, 1],
-                n_datums=n_datums,
-                n_labels=n_labels,
-                mask_matching_labels=mask_matching_labels,
-                pd_labels=pd_labels,
+                gt_count_per_label=self._label_counts[:, 0],
+                pd_count_per_label=self._label_counts[:, 1],
+                n_datums=self.info.number_of_datums,
+                n_labels=self.info.number_of_labels,
+                prev_cumulative_fp=cumulative_fp,
+                prev_cumulative_tp=cumulative_tp,
             )
+            rocauc += batch_rocauc
 
-            results = compute_precision_recall_rocauc(
-                pairs=detailed_pairs,
-                label_metadata=label_metadata,
+            batch_counts = compute_counts(
+                ids=ids,
+                scores=scores,
+                winners=winners,
                 score_thresholds=np.array(score_thresholds),
                 hardmax=hardmax,
-                n_datums=n_datums,
+                n_labels=n_labels,
             )
+            counts += batch_counts
+
+        precision = compute_precision(counts)
+        recall = compute_recall(counts)
+        f1_score = compute_f1_score(precision, recall)
+        accuracy = compute_accuracy(counts, n_datums=n_datums)
+        mean_rocauc = rocauc.mean()
+
         return unpack_precision_recall_rocauc_into_metric_lists(
-            results=results,
+            counts=counts,
+            precision=precision,
+            recall=recall,
+            accuracy=accuracy,
+            f1_score=f1_score,
+            rocauc=rocauc,
+            mean_rocauc=mean_rocauc,
             score_thresholds=score_thresholds,
             hardmax=hardmax,
-            label_metadata=label_metadata,
-            index_to_label=self.index_to_label,
+            index_to_label=self._index_to_label,
         )
 
     def compute_confusion_matrix(
         self,
         score_thresholds: list[float] = [0.0],
         hardmax: bool = True,
-        filter_: Filter | None = None,
     ) -> list[Metric]:
         """
         Computes a detailed confusion matrix..
@@ -402,20 +439,38 @@ class Evaluator:
         list[Metric]
             A list of confusion matrices.
         """
-        # apply filters
-        if filter_ is not None:
-            detailed_pairs, _ = self.filter(filter_=filter_)
-        else:
-            detailed_pairs = self._detailed_pairs
-
-        if detailed_pairs.size == 0:
-            return list()
-
-        result = compute_confusion_matrix(
-            detailed_pairs=detailed_pairs,
-            score_thresholds=np.array(score_thresholds),
-            hardmax=hardmax,
+        n_scores = len(score_thresholds)
+        n_labels = len(self._index_to_label)
+        confusion_matrix = np.zeros(
+            (n_scores, n_labels, n_labels), dtype=np.uint64
         )
+        unmatched_groundtruths = np.zeros(
+            (n_scores, n_labels), dtype=np.uint64
+        )
+        for ids, scores, winners in self.iterate_fragments():
+            (
+                mask_tp,
+                mask_fp_fn_misclf,
+                mask_fn_unmatched,
+            ) = compute_pair_classifications(
+                ids=ids,
+                scores=scores,
+                winners=winners,
+                score_thresholds=np.array(score_thresholds),
+                hardmax=hardmax,
+            )
+
+            batch_cm, batch_ugt = compute_confusion_matrix(
+                ids=ids,
+                mask_tp=mask_tp,
+                mask_fp_fn_misclf=mask_fp_fn_misclf,
+                mask_fn_unmatched=mask_fn_unmatched,
+                score_thresholds=np.array(score_thresholds),
+                n_labels=n_labels,
+            )
+            confusion_matrix += batch_cm
+            unmatched_groundtruths += batch_ugt
+
         return unpack_confusion_matrix_into_metric_list(
             detailed_pairs=detailed_pairs,
             result=result,
@@ -423,6 +478,12 @@ class Evaluator:
             index_to_datum_id=self.index_to_datum_id,
             index_to_label=self.index_to_label,
         )
+
+    def compute_examples(self) -> list[Metric]:
+        return []
+
+    def compute_confusion_matrix_with_examples(self) -> list[Metric]:
+        return []
 
     def evaluate(
         self,
