@@ -2,7 +2,6 @@ import numpy as np
 
 from valor_lite.classification import Classification, DataLoader, MetricType
 from valor_lite.classification.computation import compute_rocauc
-from valor_lite.exceptions import EmptyCacheError
 
 # def test_compute_rocauc_animals():
 #     """

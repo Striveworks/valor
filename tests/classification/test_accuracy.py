@@ -1,7 +1,8 @@
 import numpy as np
 
 from valor_lite.classification import Classification, DataLoader, MetricType
-from valor_lite.classification.computation import compute_accuracy
+
+# from valor_lite.classification.computation import compute_accuracy
 
 # def test_accuracy_computation():
 

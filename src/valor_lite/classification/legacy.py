@@ -1,17 +1,16 @@
 import tempfile
-from dataclasses import asdict, dataclass
+from dataclasses import dataclass
 from pathlib import Path
 
 import numpy as np
 import pyarrow.compute as pc
 from numpy.typing import NDArray
 
-from valor_lite.classification.annotation import Classification
 from valor_lite.classification.evaluator import Evaluator as CachedEvaluator
 from valor_lite.classification.evaluator import Filter
 from valor_lite.classification.loader import Loader as CachedLoader
 from valor_lite.classification.metric import Metric, MetricType
-from valor_lite.exceptions import EmptyEvaluatorError, EmptyFilterError
+from valor_lite.exceptions import EmptyFilterError
 
 """
 Usage

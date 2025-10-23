@@ -1,5 +1,3 @@
-import numpy as np
-
 from valor_lite.classification import Classification, DataLoader, MetricType
 from valor_lite.classification.computation import compute_f1_score
 

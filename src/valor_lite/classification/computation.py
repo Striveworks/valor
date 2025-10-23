@@ -347,17 +347,19 @@ def compute_pair_classifications(
 
     Parameters
     ----------
-    pairs : NDArray[np.float64]
-        A 2-D sorted array summarizing the IOU calculations of one or more pairs with shape (n_pairs, 5).
+    ids : NDArray[np.int64]
+        A sorted array of classification pairs with shape (n_pairs, 3).
             Index 0 - Datum Index
             Index 1 - GroundTruth Label Index
             Index 2 - Prediction Label Index
-            Index 3 - Score
-            Index 4 - Hard Max Score
-    iou_thresholds : NDArray[np.float64]
-        A 1-D array containing IOU thresholds.
+    scores : NDArray[np.float64]
+        A sorted array of classification scores with shape (n_pairs,).
+    winner : NDArray[np.bool_]
+        Marks predictions with highest score over a datum.
     score_thresholds : NDArray[np.float64]
         A 1-D array containing score thresholds.
+    hardmax : bool
+        Option to only allow a single positive prediction.
 
     Returns
     -------
@@ -454,7 +456,7 @@ def compute_confusion_matrix(
 
         # unmatched groundtruths
         unique_pairs = np.unique(
-            ids[np.ix_(mask_fn_unmatched[iou_idx, score_idx], (0, 1))],  # type: ignore - numpy ix_ typing
+            ids[np.ix_(mask_fn_unmatched[score_idx], (0, 1))],  # type: ignore - numpy ix_ typing
             axis=0,
         )
         unique_labels, unique_label_counts = np.unique(
