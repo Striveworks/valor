@@ -118,6 +118,13 @@ class CacheReader:
     def compression(self) -> str:
         return self._compression
 
+    def __enter__(self):
+        """Context manager entry."""
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        pass
+
 
 class CacheWriter(CacheReader):
     def __init__(

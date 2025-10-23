@@ -8,7 +8,7 @@ from valor_lite.classification.annotation import Classification
 from valor_lite.classification.computation import (
     compute_confusion_matrix,
     compute_label_metadata,
-    compute_precision_recall_rocauc,
+    compute_precision_recall,
     filter_cache,
 )
 from valor_lite.classification.metric import Metric, MetricType
@@ -295,8 +295,8 @@ class Evaluator:
             label_metadata = self._label_metadata
             n_datums = self.metadata.number_of_datums
 
-        results = compute_precision_recall_rocauc(
-            detailed_pairs=detailed_pairs,
+        results = compute_precision_recall(
+            pairs=detailed_pairs,
             label_metadata=label_metadata,
             score_thresholds=np.array(score_thresholds),
             hardmax=hardmax,
