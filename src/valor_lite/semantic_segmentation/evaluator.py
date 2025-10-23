@@ -111,7 +111,6 @@ class Evaluator:
                 "datum_id",
                 "gt_label_id",
                 "pd_label_id",
-                "count",
             )
             ids = np.column_stack(
                 [tbl[col].to_numpy() for col in columns]
@@ -136,8 +135,8 @@ class Evaluator:
 
             # get pd labels
             pd_label_ids = ids[:, 2]
-            pd_label_ids, pd_indices, pd_counts = np.unique(
-                pd_label_ids, return_index=True, return_counts=True
+            pd_label_ids, pd_indices = np.unique(
+                pd_label_ids, return_index=True
             )
             pd_labels = tbl["pd_label"].take(pd_indices).to_pylist()
             pd_labels = dict(zip(pd_label_ids.astype(int).tolist(), pd_labels))
