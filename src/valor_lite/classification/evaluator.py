@@ -22,7 +22,11 @@ from valor_lite.classification.computation import (
 )
 from valor_lite.classification.metric import Metric, MetricType
 from valor_lite.classification.utilities import (
-    unpack_confusion_matrix_into_metric_list,
+    create_empty_confusion_matrix_with_examples,
+    create_mapping,
+    unpack_confusion_matrix,
+    unpack_confusion_matrix_with_examples,
+    unpack_examples,
     unpack_precision_recall_rocauc_into_metric_lists,
 )
 
@@ -52,7 +56,7 @@ class Evaluator:
         self._directory = Path(directory)
         self._name = name
         self._path = self._directory / name
-        self._cache_path = self._path / "counts"
+        self._cache_path = self._path / "cache"
         self._metadata_path = self._path / "metadata.json"
 
         # link cache
@@ -83,6 +87,137 @@ class Evaluator:
     def info(self) -> EvaluatorInfo:
         return self._info
 
+    @staticmethod
+    def generate_meta(
+        dataset: ds.Dataset,
+        labels_override: dict[int, str] | None,
+    ) -> tuple[dict[int, str], NDArray[np.uint64], EvaluatorInfo]:
+        """
+        Generate cache statistics.
+
+        Parameters
+        ----------
+        dataset : Dataset
+            Valor cache.
+        labels_override : dict[int, str], optional
+            Optional labels override. Use when operating over filtered data.
+
+        Returns
+        -------
+        labels : dict[int, str]
+            Mapping of label ID's to label values.
+        label_counts : NDArray[np.uint64]
+            Array of size (n_labels, 2) containing counts of ground truths and predictions per label.
+        info : EvaluatorInfo
+            Evaluator cache details.
+        """
+        labels = labels_override if labels_override else {}
+        info = EvaluatorInfo()
+
+        for fragment in dataset.get_fragments():
+            tbl = fragment.to_table()
+            columns = (
+                "datum_id",
+                "gt_label_id",
+                "pd_label_id",
+            )
+            ids = np.column_stack(
+                [tbl[col].to_numpy() for col in columns]
+            ).astype(np.int64)
+
+            # count number of rows
+            info.number_of_rows += int(tbl.shape[0])
+
+            # count unique datums
+            datum_ids = np.unique(ids[:, 0])
+            info.number_of_datums += int(datum_ids.size)
+
+            # get gt labels
+            gt_label_ids = ids[:, 1]
+            gt_label_ids, gt_indices = np.unique(
+                gt_label_ids, return_index=True
+            )
+            gt_labels = tbl["gt_label"].take(gt_indices).to_pylist()
+            gt_labels = dict(zip(gt_label_ids.astype(int).tolist(), gt_labels))
+            gt_labels.pop(-1, None)
+            labels.update(gt_labels)
+
+            # get pd labels
+            pd_label_ids = ids[:, 2]
+            pd_label_ids, pd_indices = np.unique(
+                pd_label_ids, return_index=True
+            )
+            pd_labels = tbl["pd_label"].take(pd_indices).to_pylist()
+            pd_labels = dict(zip(pd_label_ids.astype(int).tolist(), pd_labels))
+            pd_labels.pop(-1, None)
+            labels.update(pd_labels)
+
+        # post-process
+        labels.pop(-1, None)
+
+        # create confusion matrix
+        n_labels = len(labels)
+        label_counts = np.zeros((n_labels, 2), dtype=np.uint64)
+        for fragment in dataset.get_fragments():
+            tbl = fragment.to_table()
+            columns = (
+                "datum_id",
+                "gt_label_id",
+                "pd_label_id",
+            )
+            ids = np.column_stack(
+                [tbl[col].to_numpy() for col in columns]
+            ).astype(np.int64)
+            unique_gts = np.unique(ids[:, (0, 1)], axis=0)
+            unique_pds = np.unique(ids[:, (0, 2)], axis=0)
+            unique_gt_labels, gt_label_counts = np.unique(
+                unique_gts[:, 1], return_counts=True
+            )
+            unique_pd_labels, pd_label_counts = np.unique(
+                unique_pds[:, 1], return_counts=True
+            )
+            label_counts[unique_gt_labels, 0] = gt_label_counts
+            label_counts[unique_pd_labels, 1] = pd_label_counts
+
+        # complete info object
+        info.number_of_labels = len(labels)
+
+        return labels, label_counts, info
+
+    def filter(
+        self,
+        filter_expr: Filter,
+        name: str | None = None,
+        directory: str | Path | None = None,
+    ) -> "Evaluator":
+        """
+        Filter evaluator cache.
+
+        Parameters
+        ----------
+        filter_expr : Filter
+            An object containing filter expressions.
+        name : str, optional
+            Filtered cache name.
+        directory : str | Path, optional
+            The directory to store the filtered cache.
+
+        Returns
+        -------
+        Evaluator
+            A new evaluator object containing the filtered cache.
+        """
+        name = name if name else "filtered"
+        directory = directory if directory else self._directory
+        from valor_lite.classification.loader import Loader
+
+        return Loader.filter(
+            name=name,
+            directory=directory,
+            evaluator=self,
+            filter_expr=filter_expr,
+        )
+
     def iterate_fragments(self):
         columns = [
             "datum_id",
@@ -97,6 +232,21 @@ class Evaluator:
             scores = tbl["score"].to_numpy()
             winners = tbl["winner"].to_numpy()
             yield ids, scores, winners
+
+    def iterate_fragments_with_table(self):
+        columns = [
+            "datum_id",
+            "gt_label_id",
+            "pd_label_id",
+            "score",
+            "winner",
+        ]
+        for fragment in self.dataset.get_fragments():
+            tbl = fragment.to_table()
+            ids = np.column_stack([tbl[col].to_numpy() for col in columns[:3]])
+            scores = tbl["score"].to_numpy()
+            winners = tbl["winner"].to_numpy()
+            yield tbl, ids, scores, winners
 
     def iterate_sorted_chunks(
         self,
@@ -216,125 +366,6 @@ class Evaluator:
                     winners = np.concatenate(winners_buffer, axis=0)
                     yield ids, scores, winners
 
-    @staticmethod
-    def generate_meta(
-        dataset: ds.Dataset,
-        labels_override: dict[int, str] | None,
-    ) -> tuple[dict[int, str], NDArray[np.uint64], EvaluatorInfo]:
-        """
-        Generate cache statistics.
-
-        Parameters
-        ----------
-        dataset : Dataset
-            Valor cache.
-        labels_override : dict[int, str], optional
-            Optional labels override. Use when operating over filtered data.
-
-        Returns
-        -------
-        labels : dict[int, str]
-            Mapping of label ID's to label values.
-        label_counts : NDArray[np.uint64]
-            Array of size (n_labels, 2) containing counts of ground truths and predictions per label.
-        info : EvaluatorInfo
-            Evaluator cache details.
-        """
-        labels = labels_override if labels_override else {}
-        info = EvaluatorInfo()
-
-        for fragment in dataset.get_fragments():
-            tbl = fragment.to_table()
-            columns = (
-                "datum_id",
-                "gt_label_id",
-                "pd_label_id",
-            )
-            ids = np.column_stack(
-                [tbl[col].to_numpy() for col in columns]
-            ).astype(np.int64)
-
-            # count number of rows
-            info.number_of_rows += int(tbl.shape[0])
-
-            # count unique datums
-            datum_ids = np.unique(ids[:, 0])
-            info.number_of_datums += int(datum_ids.size)
-
-            # get gt labels
-            gt_label_ids = ids[:, 1]
-            gt_label_ids, gt_indices = np.unique(
-                gt_label_ids, return_index=True
-            )
-            gt_labels = tbl["gt_label"].take(gt_indices).to_pylist()
-            gt_labels = dict(zip(gt_label_ids.astype(int).tolist(), gt_labels))
-            gt_labels.pop(-1, None)
-            labels.update(gt_labels)
-
-            # get pd labels
-            pd_label_ids = ids[:, 2]
-            pd_label_ids, pd_indices = np.unique(
-                pd_label_ids, return_index=True
-            )
-            pd_labels = tbl["pd_label"].take(pd_indices).to_pylist()
-            pd_labels = dict(zip(pd_label_ids.astype(int).tolist(), pd_labels))
-            pd_labels.pop(-1, None)
-            labels.update(pd_labels)
-
-        # post-process
-        labels.pop(-1, None)
-
-        # create confusion matrix
-        n_labels = len(labels)
-        label_counts = np.zeros((n_labels, 2), dtype=np.uint64)
-        for fragment in dataset.get_fragments():
-            tbl = fragment.to_table()
-            gts = tbl["gt_label_id"].to_numpy()
-            pds = tbl["pd_label_id"].to_numpy()
-            unique_gts, gt_counts = np.unique(gts, return_counts=True)
-            unique_pds, pd_counts = np.unique(pds, return_counts=True)
-            label_counts[unique_gts, 0] = gt_counts
-            label_counts[unique_pds, 1] = pd_counts
-
-        # complete info object
-        info.number_of_labels = len(labels)
-
-        return labels, label_counts, info
-
-    def filter(
-        self,
-        filter_expr: Filter,
-        name: str | None = None,
-        directory: str | Path | None = None,
-    ) -> "Evaluator":
-        """
-        Filter evaluator cache.
-
-        Parameters
-        ----------
-        filter_expr : Filter
-            An object containing filter expressions.
-        name : str, optional
-            Filtered cache name.
-        directory : str | Path, optional
-            The directory to store the filtered cache.
-
-        Returns
-        -------
-        Evaluator
-            A new evaluator object containing the filtered cache.
-        """
-        name = name if name else "filtered"
-        directory = directory if directory else self._directory
-        from valor_lite.classification.loader import Loader
-
-        return Loader.filter(
-            name=name,
-            directory=directory,
-            evaluator=self,
-            filter_expr=filter_expr,
-        )
-
     def compute_precision_recall_rocauc(
         self,
         score_thresholds: list[float] = [0.0],
@@ -362,6 +393,9 @@ class Evaluator:
         dict[MetricType, list]
             A dictionary mapping MetricType enumerations to lists of computed metrics.
         """
+        if not score_thresholds:
+            raise ValueError("At least one score threshold must be passed.")
+
         n_scores = len(score_thresholds)
         n_datums = self.info.number_of_datums
         n_labels = self.info.number_of_labels
@@ -423,7 +457,7 @@ class Evaluator:
         hardmax: bool = True,
     ) -> list[Metric]:
         """
-        Computes a detailed confusion matrix..
+        Compute a confusion matrix.
 
         Parameters
         ----------
@@ -431,17 +465,18 @@ class Evaluator:
             A list of score thresholds to compute metrics over.
         hardmax : bool
             Toggles whether a hardmax is applied to predictions.
-        filter_ : Filter, optional
-            Applies a filter to the internal cache.
 
         Returns
         -------
         list[Metric]
             A list of confusion matrices.
         """
+        if not score_thresholds:
+            raise ValueError("At least one score threshold must be passed.")
+
         n_scores = len(score_thresholds)
         n_labels = len(self._index_to_label)
-        confusion_matrix = np.zeros(
+        confusion_matrices = np.zeros(
             (n_scores, n_labels, n_labels), dtype=np.uint64
         )
         unmatched_groundtruths = np.zeros(
@@ -468,31 +503,26 @@ class Evaluator:
                 score_thresholds=np.array(score_thresholds),
                 n_labels=n_labels,
             )
-            confusion_matrix += batch_cm
+            confusion_matrices += batch_cm
             unmatched_groundtruths += batch_ugt
 
-        return unpack_confusion_matrix_into_metric_list(
-            detailed_pairs=detailed_pairs,
-            result=result,
+        return unpack_confusion_matrix(
+            confusion_matrices=confusion_matrices,
+            unmatched_groundtruths=unmatched_groundtruths,
+            index_to_label=self._index_to_label,
             score_thresholds=score_thresholds,
-            index_to_datum_id=self.index_to_datum_id,
-            index_to_label=self.index_to_label,
+            hardmax=hardmax,
         )
 
-    def compute_examples(self) -> list[Metric]:
-        return []
-
-    def compute_confusion_matrix_with_examples(self) -> list[Metric]:
-        return []
-
-    def evaluate(
+    def compute_examples(
         self,
         score_thresholds: list[float] = [0.0],
         hardmax: bool = True,
-        filter_: Filter | None = None,
-    ) -> dict[MetricType, list[Metric]]:
+    ) -> list[Metric]:
         """
-        Computes a detailed confusion matrix..
+        Compute examples per datum.
+
+        Note: This function should be used with filtering to reduce response size.
 
         Parameters
         ----------
@@ -500,22 +530,122 @@ class Evaluator:
             A list of score thresholds to compute metrics over.
         hardmax : bool
             Toggles whether a hardmax is applied to predictions.
-        filter_ : Filter, optional
-            Applies a filter to the internal cache.
 
         Returns
         -------
-        dict[MetricType, list[Metric]]
-            Lists of metrics organized by metric type.
+        list[Metric]
+            A list of confusion matrices.
         """
-        metrics = self.compute_precision_recall_rocauc(
-            score_thresholds=score_thresholds,
-            hardmax=hardmax,
-            filter_=filter_,
-        )
-        metrics[MetricType.ConfusionMatrix] = self.compute_confusion_matrix(
-            score_thresholds=score_thresholds,
-            hardmax=hardmax,
-            filter_=filter_,
-        )
+        if not score_thresholds:
+            raise ValueError("At least one score threshold must be passed.")
+
+        metrics = []
+        for tbl, ids, scores, winners in self.iterate_fragments_with_table():
+            if ids.size == 0:
+                continue
+
+            # extract external identifiers
+            index_to_datum_id = create_mapping(
+                tbl, ids, 0, "datum_id", "datum_uid"
+            )
+
+            (
+                mask_tp,
+                mask_fp_fn_misclf,
+                mask_fn_unmatched,
+            ) = compute_pair_classifications(
+                ids=ids,
+                scores=scores,
+                winners=winners,
+                score_thresholds=np.array(score_thresholds),
+                hardmax=hardmax,
+            )
+
+            mask_fn = mask_fp_fn_misclf | mask_fn_unmatched
+            mask_fp = mask_fp_fn_misclf
+
+            batch_examples = unpack_examples(
+                ids=ids,
+                mask_tp=mask_tp,
+                mask_fp=mask_fp,
+                mask_fn=mask_fn,
+                index_to_datum_id=index_to_datum_id,
+                score_thresholds=score_thresholds,
+                hardmax=hardmax,
+                index_to_label=self._index_to_label,
+            )
+            metrics.extend(batch_examples)
+
         return metrics
+
+    def compute_confusion_matrix_with_examples(
+        self,
+        score_thresholds: list[float] = [0.0],
+        hardmax: bool = True,
+    ) -> list[Metric]:
+        """
+        Compute confusion matrix with examples.
+
+        Note: This function should be used with filtering to reduce response size.
+
+        Parameters
+        ----------
+        metrics : dict[int, Metric]
+            Mapping of score threshold index to cached metric.
+        score_thresholds : list[float]
+            A list of score thresholds to compute metrics over.
+        hardmax : bool
+            Toggles whether a hardmax is applied to predictions.
+
+        Returns
+        -------
+        list[Metric]
+            A list of confusion matrices.
+        """
+        if not score_thresholds:
+            raise ValueError("At least one score threshold must be passed.")
+
+        metrics = {
+            score_idx: create_empty_confusion_matrix_with_examples(
+                score_threshold=score_thresh,
+                hardmax=hardmax,
+                index_to_label=self._index_to_label,
+            )
+            for score_idx, score_thresh in enumerate(score_thresholds)
+        }
+        for tbl, ids, scores, winners in self.iterate_fragments_with_table():
+            if ids.size == 0:
+                continue
+
+            # extract external identifiers
+            index_to_datum_id = create_mapping(
+                tbl, ids, 0, "datum_id", "datum_uid"
+            )
+
+            (
+                mask_tp,
+                mask_fp_fn_misclf,
+                mask_fn_unmatched,
+            ) = compute_pair_classifications(
+                ids=ids,
+                scores=scores,
+                winners=winners,
+                score_thresholds=np.array(score_thresholds),
+                hardmax=hardmax,
+            )
+
+            mask_matched = mask_tp | mask_fp_fn_misclf
+            mask_unmatched_fn = mask_fn_unmatched
+
+            unpack_confusion_matrix_with_examples(
+                metrics=metrics,
+                ids=ids,
+                scores=scores,
+                winners=winners,
+                mask_matched=mask_matched,
+                mask_unmatched_fn=mask_unmatched_fn,
+                index_to_datum_id=index_to_datum_id,
+                index_to_label=self._index_to_label,
+            )
+
+        return list(metrics.values())

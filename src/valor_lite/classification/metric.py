@@ -366,7 +366,7 @@ class Metric(BaseMetric):
     def examples(
         cls,
         datum_id: str,
-        true_positives: list[tuple[str, str]],
+        true_positives: list[str],
         false_positives: list[str],
         false_negatives: list[str],
         score_threshold: float,
@@ -408,8 +408,8 @@ class Metric(BaseMetric):
         ----------
         datum_id : str
             A string identifier representing a datum.
-        true_positives : list[tuple[str, str]]
-            A list of string identifier pairs representing true positive ground truth and prediction combinations.
+        true_positives : list[str]
+            A list of string identifier representing true positive labels.
         false_positives : list[str]
             A list of string identifiers representing false positive predictions.
         false_negatives : list[str]

@@ -105,7 +105,6 @@ class Loader:
 
         disable_tqdm = not show_progress
         for classification in tqdm(classifications, disable=disable_tqdm):
-
             if len(classification.predictions) == 0:
                 raise ValueError(
                     "Classifications must contain at least one prediction."
@@ -119,24 +118,28 @@ class Loader:
             # write to cache
             rows = list()
             gidx = self._add_label(classification.groundtruth)
-            max_score_idx = np.argmax(np.array(classification.scores]))
-            for idx, (plabel, score) in enumerate(zip(classification.predictions, classification.scores)):
+            max_score_idx = np.argmax(np.array(classification.scores))
+            for idx, (plabel, score) in enumerate(
+                zip(classification.predictions, classification.scores)
+            ):
                 pidx = self._add_label(plabel)
-                rows.append({
-                    # datum
-                    "datum_uid": classification.uid,
-                    "datum_id": self._datum_count,
-                    **datum_metadata,
-                    # groundtruth
-                    "gt_label": classification.groundtruth,
-                    "gt_label_id": gidx,
-                    # prediction
-                    "pd_label": plabel,
-                    "pd_label_id": pidx,
-                    # pair
-                    "score": float(score),
-                    "winner": max_score_idx == idx,
-                })
+                rows.append(
+                    {
+                        # datum
+                        "datum_uid": classification.uid,
+                        "datum_id": self._datum_count,
+                        **datum_metadata,
+                        # groundtruth
+                        "gt_label": classification.groundtruth,
+                        "gt_label_id": gidx,
+                        # prediction
+                        "pd_label": plabel,
+                        "pd_label_id": pidx,
+                        # pair
+                        "score": float(score),
+                        "winner": max_score_idx == idx,
+                    }
+                )
             self._cache.write_rows(rows)
 
             # update datum count
@@ -160,11 +163,15 @@ class Loader:
             pf = pq.ParquetFile(path)
             tbl = pf.read()
             sorted_tbl = tbl.sort_by(
-                ("score", "descending"),
-                ("pd_label_id", "ascending"),
-                ("gt_label_id", "ascending"),
+                [
+                    ("score", "descending"),
+                    ("pd_label_id", "ascending"),
+                    ("gt_label_id", "ascending"),
+                ]
             )
-            pq.write_table(sorted_tbl, path, compression=self._cache.compression)
+            pq.write_table(
+                sorted_tbl, path, compression=self._cache.compression
+            )
 
         return Evaluator(
             directory=self._directory,

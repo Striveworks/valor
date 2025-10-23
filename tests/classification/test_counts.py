@@ -1,11 +1,7 @@
 import numpy as np
 
-from valor_lite.classification import (
-    Classification,
-    DataLoader,
-    MetricType,
-    compute_precision_recall_rocauc,
-)
+from valor_lite.classification import Classification, DataLoader, MetricType
+from valor_lite.classification.computation import compute_counts
 
 
 def test_counts_computation():
@@ -32,24 +28,14 @@ def test_counts_computation():
         dtype=np.float64,
     )
 
-    # groundtruth count, prediction count, label key
-    label_metadata = np.array(
-        [
-            [2, 1, 0],
-            [0, 2, 0],
-            [1, 0, 0],
-            [1, 1, 0],
-        ],
-        dtype=np.int32,
-    )
-
     score_thresholds = np.array([0.25, 0.75], dtype=np.float64)
 
-    (counts, _, _, _, _, _, _) = compute_precision_recall_rocauc(
-        detailed_pairs=data,
-        label_metadata=label_metadata,
+    counts = compute_counts(
+        ids=data[:, (0, 1, 2)].astype(np.int64),
+        scores=data[:, 3],
+        winners=data[:, 4] > 0.5,
         score_thresholds=score_thresholds,
-        n_datums=3,
+        n_labels=4,
         hardmax=False,
     )
 
@@ -110,14 +96,10 @@ def test_counts_basic(basic_classifications: list[Classification]):
     loader.add_data(basic_classifications)
     evaluator = loader.finalize()
 
-    assert evaluator.ignored_prediction_labels == ["1", "2"]
-    assert evaluator.missing_prediction_labels == []
-    assert evaluator.metadata.to_dict() == {
-        "number_of_datums": 3,
-        "number_of_ground_truths": 3,
-        "number_of_predictions": 12,
-        "number_of_labels": 4,
-    }
+    assert evaluator.metadata.number_of_datums == 3
+    assert evaluator.metadata.number_of_ground_truths == 3
+    assert evaluator.metadata.number_of_predictions == 12
+    assert evaluator.metadata.number_of_labels == 4
 
     metrics = evaluator.evaluate(
         score_thresholds=[0.25, 0.75],
@@ -658,14 +640,11 @@ def test_counts_with_image_example(
     loader.add_data(classifications_image_example)
     evaluator = loader.finalize()
 
-    assert evaluator.ignored_prediction_labels == ["v1", "v8", "v5"]
-    assert evaluator.missing_prediction_labels == []
-    assert evaluator.metadata.to_dict() == {
-        "number_of_datums": 2,
-        "number_of_ground_truths": 2,
-        "number_of_predictions": 4,
-        "number_of_labels": 4,
-    }
+    assert evaluator.metadata.number_of_datums == 2
+    assert evaluator.metadata.number_of_ground_truths == 2
+    assert evaluator.metadata.number_of_predictions == 4
+    assert evaluator.metadata.number_of_labels == 4
+
     metrics = evaluator.evaluate()
 
     actual_metrics = [m.to_dict() for m in metrics[MetricType.Counts]]
@@ -740,14 +719,10 @@ def test_counts_with_tabular_example(
     loader.add_data(classifications_tabular_example)
     evaluator = loader.finalize()
 
-    assert evaluator.ignored_prediction_labels == []
-    assert evaluator.missing_prediction_labels == []
-    assert evaluator.metadata.to_dict() == {
-        "number_of_datums": 10,
-        "number_of_ground_truths": 10,
-        "number_of_predictions": 30,
-        "number_of_labels": 3,
-    }
+    assert evaluator.metadata.number_of_datums == 10
+    assert evaluator.metadata.number_of_ground_truths == 10
+    assert evaluator.metadata.number_of_predictions == 30
+    assert evaluator.metadata.number_of_labels == 3
 
     metrics = evaluator.evaluate()
 
@@ -809,14 +784,10 @@ def test_counts_multiclass(
     loader.add_data(classifications_multiclass)
     evaluator = loader.finalize()
 
-    assert evaluator.ignored_prediction_labels == []
-    assert evaluator.missing_prediction_labels == []
-    assert evaluator.metadata.to_dict() == {
-        "number_of_datums": 5,
-        "number_of_ground_truths": 5,
-        "number_of_labels": 3,
-        "number_of_predictions": 15,
-    }
+    assert evaluator.metadata.number_of_datums == 5
+    assert evaluator.metadata.number_of_ground_truths == 5
+    assert evaluator.metadata.number_of_labels == 3
+    assert evaluator.metadata.number_of_predictions == 15
 
     metrics = evaluator.evaluate(
         score_thresholds=[0.05, 0.1, 0.3, 0.85],
@@ -1010,14 +981,11 @@ def test_counts_true_negatives_check_animals(
     loader.add_data(classifications_multiclass_true_negatives_check)
     evaluator = loader.finalize()
 
-    assert evaluator.ignored_prediction_labels == ["bee", "cat"]
-    assert evaluator.missing_prediction_labels == []
-    assert evaluator.metadata.to_dict() == {
-        "number_of_datums": 1,
-        "number_of_ground_truths": 1,
-        "number_of_predictions": 3,
-        "number_of_labels": 3,
-    }
+    assert evaluator.metadata.number_of_datums == 1
+    assert evaluator.metadata.number_of_ground_truths == 1
+    assert evaluator.metadata.number_of_predictions == 3
+    assert evaluator.metadata.number_of_labels == 3
+
     metrics = evaluator.evaluate(
         score_thresholds=[0.05, 0.15, 0.95],
     )
@@ -1168,14 +1136,10 @@ def test_counts_zero_count_check(
     loader.add_data(classifications_multiclass_zero_count)
     evaluator = loader.finalize()
 
-    assert evaluator.ignored_prediction_labels == ["bee", "cat"]
-    assert evaluator.missing_prediction_labels == []
-    assert evaluator.metadata.to_dict() == {
-        "number_of_datums": 1,
-        "number_of_ground_truths": 1,
-        "number_of_labels": 3,
-        "number_of_predictions": 3,
-    }
+    assert evaluator.metadata.number_of_datums == 1
+    assert evaluator.metadata.number_of_ground_truths == 1
+    assert evaluator.metadata.number_of_labels == 3
+    assert evaluator.metadata.number_of_predictions == 3
 
     metrics = evaluator.evaluate(
         score_thresholds=[0.05, 0.2, 0.95],

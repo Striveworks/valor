@@ -10,21 +10,10 @@ def test_metadata_using_classification_example(
     manager.add_data(classifications_animal_example)
     evaluator = manager.finalize()
 
-    assert evaluator.ignored_prediction_labels == []
-    assert evaluator.missing_prediction_labels == []
     assert evaluator.metadata.number_of_datums == 6
     assert evaluator.metadata.number_of_labels == 3
     assert evaluator.metadata.number_of_ground_truths == 6
     assert evaluator.metadata.number_of_predictions == 3 * 6
-
-    assert evaluator.ignored_prediction_labels == []
-    assert evaluator.missing_prediction_labels == []
-    assert evaluator.metadata.to_dict() == {
-        "number_of_datums": 6,
-        "number_of_ground_truths": 6,
-        "number_of_predictions": 3 * 6,
-        "number_of_labels": 3,
-    }
 
 
 def _flatten_metrics(m) -> list:

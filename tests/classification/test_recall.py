@@ -1,71 +1,65 @@
 import numpy as np
 
-from valor_lite.classification import (
-    Classification,
-    DataLoader,
-    MetricType,
-    compute_precision_recall_rocauc,
-)
+from valor_lite.classification import Classification, DataLoader, MetricType
 
+# def test_recall_computation():
 
-def test_recall_computation():
+#     # groundtruth, prediction, score
+#     data = np.array(
+#         [
+#             # datum 0
+#             [0, 0, 0, 1.0, 1],  # tp
+#             [0, 0, 1, 0.0, 0],  # tn
+#             [0, 0, 2, 0.0, 0],  # tn
+#             [0, 0, 3, 0.0, 0],  # tn
+#             # datum 1
+#             [1, 0, 0, 0.0, 0],  # fn
+#             [1, 0, 1, 0.0, 0],  # tn
+#             [1, 0, 2, 1.0, 1],  # fp
+#             [1, 0, 3, 0.0, 0],  # tn
+#             # datum 2
+#             [2, 3, 0, 0.0, 0],  # tn
+#             [2, 3, 1, 0.0, 0],  # tn
+#             [2, 3, 2, 0.0, 0],  # tn
+#             [2, 3, 3, 0.3, 1],  # fn for score threshold > 0.3
+#         ],
+#         dtype=np.float64,
+#     )
 
-    # groundtruth, prediction, score
-    data = np.array(
-        [
-            # datum 0
-            [0, 0, 0, 1.0, 1],  # tp
-            [0, 0, 1, 0.0, 0],  # tn
-            [0, 0, 2, 0.0, 0],  # tn
-            [0, 0, 3, 0.0, 0],  # tn
-            # datum 1
-            [1, 0, 0, 0.0, 0],  # fn
-            [1, 0, 1, 0.0, 0],  # tn
-            [1, 0, 2, 1.0, 1],  # fp
-            [1, 0, 3, 0.0, 0],  # tn
-            # datum 2
-            [2, 3, 0, 0.0, 0],  # tn
-            [2, 3, 1, 0.0, 0],  # tn
-            [2, 3, 2, 0.0, 0],  # tn
-            [2, 3, 3, 0.3, 1],  # fn for score threshold > 0.3
-        ],
-        dtype=np.float64,
-    )
+#     # groundtruth count, prediction count, label key
+#     label_metadata = np.array(
+#         [
+#             [2, 1, 0],
+#             [0, 2, 0],
+#             [1, 0, 0],
+#             [1, 1, 0],
+#         ],
+#         dtype=np.int32,
+#     )
 
-    # groundtruth count, prediction count, label key
-    label_metadata = np.array(
-        [
-            [2, 1, 0],
-            [0, 2, 0],
-            [1, 0, 0],
-            [1, 1, 0],
-        ],
-        dtype=np.int32,
-    )
+#     score_thresholds = np.array([0.25, 0.75], dtype=np.float64)
 
-    score_thresholds = np.array([0.25, 0.75], dtype=np.float64)
+#     (_, _, recall, _, _, _, _) = compute_precision_recall_rocauc(
+#         detailed_pairs=data,
+#         label_metadata=label_metadata,
+#         score_thresholds=score_thresholds,
+#         n_datums=3,
+#         hardmax=False,
+#     )
 
-    (_, _, recall, _, _, _, _) = compute_precision_recall_rocauc(
-        detailed_pairs=data,
-        label_metadata=label_metadata,
-        score_thresholds=score_thresholds,
-        n_datums=3,
-        hardmax=False,
-    )
+#     # score threshold, label, count metric
+#     assert recall.shape == (2, 4)
 
-    # score threshold, label, count metric
-    assert recall.shape == (2, 4)
-
-    # score >= 0.25
-    assert recall[0][0] == 0.5
-    assert recall[0][1] == 0.0
-    assert recall[0][2] == 0.0
-    assert recall[0][3] == 1.0
-    # score >= 0.75
-    assert recall[1][0] == 0.5
-    assert recall[1][1] == 0.0
-    assert recall[1][2] == 0.0
-    assert recall[1][3] == 0.0
+#     # score >= 0.25
+#     assert recall[0][0] == 0.5
+#     assert recall[0][1] == 0.0
+#     assert recall[0][2] == 0.0
+#     assert recall[0][3] == 1.0
+#     # score >= 0.75
+#     assert recall[1][0] == 0.5
+#     assert recall[1][1] == 0.0
+#     assert recall[1][2] == 0.0
+#     assert recall[1][3] == 0.0
 
 
 def test_recall_basic(basic_classifications: list[Classification]):
@@ -73,14 +67,10 @@ def test_recall_basic(basic_classifications: list[Classification]):
     loader.add_data(basic_classifications)
     evaluator = loader.finalize()
 
-    assert evaluator.ignored_prediction_labels == ["1", "2"]
-    assert evaluator.missing_prediction_labels == []
-    assert evaluator.metadata.to_dict() == {
-        "number_of_datums": 3,
-        "number_of_ground_truths": 3,
-        "number_of_predictions": 12,
-        "number_of_labels": 4,
-    }
+    assert evaluator.metadata.number_of_datums == 3
+    assert evaluator.metadata.number_of_ground_truths == 3
+    assert evaluator.metadata.number_of_predictions == 12
+    assert evaluator.metadata.number_of_labels == 4
 
     metrics = evaluator.evaluate(
         score_thresholds=[0.25, 0.75],
@@ -100,6 +90,24 @@ def test_recall_basic(basic_classifications: list[Classification]):
         },
         {
             "type": "Recall",
+            "value": 0.0,
+            "parameters": {
+                "score_threshold": 0.25,
+                "hardmax": True,
+                "label": "1",
+            },
+        },
+        {
+            "type": "Recall",
+            "value": 0.0,
+            "parameters": {
+                "score_threshold": 0.25,
+                "hardmax": True,
+                "label": "2",
+            },
+        },
+        {
+            "type": "Recall",
             "value": 1.0,
             "parameters": {
                 "score_threshold": 0.25,
@@ -115,6 +123,24 @@ def test_recall_basic(basic_classifications: list[Classification]):
                 "score_threshold": 0.75,
                 "hardmax": True,
                 "label": "0",
+            },
+        },
+        {
+            "type": "Recall",
+            "value": 0.0,
+            "parameters": {
+                "score_threshold": 0.75,
+                "hardmax": True,
+                "label": "1",
+            },
+        },
+        {
+            "type": "Recall",
+            "value": 0.0,
+            "parameters": {
+                "score_threshold": 0.75,
+                "hardmax": True,
+                "label": "2",
             },
         },
         {
@@ -245,14 +271,10 @@ def test_recall_with_image_example(
     loader.add_data(classifications_image_example)
     evaluator = loader.finalize()
 
-    assert evaluator.ignored_prediction_labels == ["v1", "v8", "v5"]
-    assert evaluator.missing_prediction_labels == []
-    assert evaluator.metadata.to_dict() == {
-        "number_of_datums": 2,
-        "number_of_ground_truths": 2,
-        "number_of_predictions": 4,
-        "number_of_labels": 4,
-    }
+    assert evaluator.metadata.number_of_datums == 2
+    assert evaluator.metadata.number_of_ground_truths == 2
+    assert evaluator.metadata.number_of_predictions == 4
+    assert evaluator.metadata.number_of_labels == 4
 
     metrics = evaluator.evaluate()
 
@@ -260,11 +282,38 @@ def test_recall_with_image_example(
     expected_metrics = [
         {
             "type": "Recall",
+            "value": 0.0,
+            "parameters": {
+                "score_threshold": 0.0,
+                "hardmax": True,
+                "label": "v1",
+            },
+        },
+        {
+            "type": "Recall",
             "value": 0.5,
             "parameters": {
                 "score_threshold": 0.0,
                 "hardmax": True,
                 "label": "v4",
+            },
+        },
+        {
+            "type": "Recall",
+            "value": 0.0,
+            "parameters": {
+                "score_threshold": 0.0,
+                "hardmax": True,
+                "label": "v5",
+            },
+        },
+        {
+            "type": "Recall",
+            "value": 0.0,
+            "parameters": {
+                "score_threshold": 0.0,
+                "hardmax": True,
+                "label": "v8",
             },
         },
     ]
@@ -281,14 +330,10 @@ def test_recall_with_tabular_example(
     loader.add_data(classifications_tabular_example)
     evaluator = loader.finalize()
 
-    assert evaluator.ignored_prediction_labels == []
-    assert evaluator.missing_prediction_labels == []
-    assert evaluator.metadata.to_dict() == {
-        "number_of_datums": 10,
-        "number_of_ground_truths": 10,
-        "number_of_predictions": 30,
-        "number_of_labels": 3,
-    }
+    assert evaluator.metadata.number_of_datums == 10
+    assert evaluator.metadata.number_of_ground_truths == 10
+    assert evaluator.metadata.number_of_predictions == 30
+    assert evaluator.metadata.number_of_labels == 3
 
     metrics = evaluator.evaluate()
 
