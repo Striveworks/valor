@@ -576,7 +576,7 @@ class Metric(BaseMetric):
 
         This class encapsulates detailed information about the model's performance, including correct
         predictions, misclassifications, unmatched_predictions (subset of false positives), and unmatched ground truths
-        (subset of false negatives). It provides counts and examples for each category to facilitate in-depth analysis.
+        (subset of false negatives).
 
         Confusion Matrix Format:
         {
