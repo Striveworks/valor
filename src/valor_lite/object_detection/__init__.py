@@ -1,5 +1,6 @@
 from .annotation import Bitmask, BoundingBox, Detection, Polygon
-from .legacy import DataLoader, Evaluator, Filter, Metadata
+from .evaluator import DataType, Filter
+from .legacy import DataLoader, Evaluator, Metadata
 from .metric import Metric, MetricType
 
 __all__ = [
@@ -12,5 +13,6 @@ __all__ = [
     "DataLoader",
     "Evaluator",
     "Filter",
+    "DataType",
     "Metadata",
 ]
