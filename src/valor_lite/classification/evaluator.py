@@ -215,8 +215,8 @@ class Evaluator:
         -------
         labels : dict[int, str]
             Mapping of label ID's to label values.
-        confusion_matrix : NDArray[np.uint64]
-            Array of size (n_labels + 1, n_labels + 1) containing pair counts.
+        label_counts : NDArray[np.uint64]
+            Array of size (n_labels, 2) containing counts of ground truths and predictions per label.
         info : EvaluatorInfo
             Evaluator cache details.
         """
@@ -266,7 +266,7 @@ class Evaluator:
 
         # create confusion matrix
         n_labels = len(labels)
-        matrix = np.zeros((n_labels + 1, n_labels + 1), dtype=np.uint64)
+        label_counts = np.zeros((n_labels, 2), dtype=np.uint64)
         for fragment in dataset.get_fragments():
             tbl = fragment.to_table()
             columns = (
@@ -277,29 +277,11 @@ class Evaluator:
             ids = np.column_stack(
                 [tbl[col].to_numpy() for col in columns]
             ).astype(np.int64)
-            counts = tbl["count"].to_numpy()
 
-            mask_null_gts = ids[:, 1] == -1
-            mask_null_pds = ids[:, 2] == -1
-            matrix[0, 0] = counts[mask_null_gts & mask_null_pds].sum()
-            for idx in range(n_labels):
-                mask_gts = ids[:, 1] == idx
-                for pidx in range(n_labels):
-                    mask_pds = ids[:, 2] == pidx
-                    matrix[idx + 1, pidx + 1] = counts[
-                        mask_gts & mask_pds
-                    ].sum()
-
-                mask_unmatched_gts = mask_gts & mask_null_pds
-                matrix[idx + 1, 0] = counts[mask_unmatched_gts].sum()
-                mask_unmatched_pds = mask_null_gts & (ids[:, 2] == idx)
-                matrix[0, idx + 1] = counts[mask_unmatched_pds].sum()
+            pass
 
         # complete info object
         info.number_of_labels = len(labels)
-        info.number_of_pixels = matrix.sum()
-        info.number_of_groundtruth_pixels = matrix[1:, :].sum()
-        info.number_of_prediction_pixels = matrix[:, 1:].sum()
 
         return labels, matrix, info
 
