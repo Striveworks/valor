@@ -4,7 +4,6 @@ import numpy as np
 import pyarrow as pa
 from numpy.typing import NDArray
 
-from valor_lite.classification.computation import PairClassification
 from valor_lite.classification.metric import Metric, MetricType
 
 
@@ -237,7 +236,6 @@ def _unpack_confusion_matrix_with_examples(
                 {
                     "datum_id": index_to_datum_id[unique_matches[idx, 0]],
                     "score": float(scores[unique_match_indices[idx]]),
-                    "hardmax": float(winners[unique_match_indices[idx]]),
                 }
             )
         if idx < n_unmatched_groundtruths:

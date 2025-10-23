@@ -1,4 +1,4 @@
-from valor_lite.classification import Classification, DataLoader, Evaluator
+from valor_lite.classification import Classification, DataLoader
 
 # def test_compute_confusion_matrix():
 
@@ -70,12 +70,6 @@ from valor_lite.classification import Classification, DataLoader, Evaluator
 #     )
 
 
-def test_compute_confusion_matrix_empty_pairs():
-    evaluator = Evaluator()
-    metrics = evaluator.compute_confusion_matrix()
-    assert metrics == []
-
-
 def _filter_elements_with_zero_count(cm: dict, mp: dict):
     labels = list(mp.keys())
 
@@ -135,6 +129,7 @@ def test_confusion_matrix_basic(basic_classifications: list[Classification]):
             },
             "parameters": {
                 "score_threshold": 0.25,
+                "hardmax": True,
             },
         },
         {
@@ -158,6 +153,7 @@ def test_confusion_matrix_basic(basic_classifications: list[Classification]):
             },
             "parameters": {
                 "score_threshold": 0.75,
+                "hardmax": True,
             },
         },
     ]
@@ -229,6 +225,7 @@ def test_confusion_matrix_unit(
             },
             "parameters": {
                 "score_threshold": 0.5,
+                "hardmax": True,
             },
         },
     ]
@@ -308,6 +305,7 @@ def test_confusion_matrix_with_animal_example(
             },
             "parameters": {
                 "score_threshold": 0.5,
+                "hardmax": True,
             },
         },
     ]
@@ -387,6 +385,7 @@ def test_confusion_matrix_with_color_example(
             },
             "parameters": {
                 "score_threshold": 0.5,
+                "hardmax": True,
             },
         },
     ]
@@ -437,7 +436,7 @@ def test_confusion_matrix_multiclass(
                             "examples": [
                                 {
                                     "datum_id": "uid2",
-                                    "score": 0.4076893257212283,
+                                    "score": 0.4026564387187136,
                                 }
                             ],
                         },
@@ -473,6 +472,7 @@ def test_confusion_matrix_multiclass(
             },
             "parameters": {
                 "score_threshold": 0.05,
+                "hardmax": True,
             },
         },
         {
@@ -515,6 +515,7 @@ def test_confusion_matrix_multiclass(
             },
             "parameters": {
                 "score_threshold": 0.5,
+                "hardmax": True,
             },
         },
         {
@@ -541,6 +542,7 @@ def test_confusion_matrix_multiclass(
             },
             "parameters": {
                 "score_threshold": 0.85,
+                "hardmax": True,
             },
         },
     ]
@@ -611,6 +613,7 @@ def test_confusion_matrix_without_hardmax_animal_example(
             },
             "parameters": {
                 "score_threshold": 0.05,
+                "hardmax": False,
             },
         },
         {
@@ -633,6 +636,7 @@ def test_confusion_matrix_without_hardmax_animal_example(
             },
             "parameters": {
                 "score_threshold": 0.4,
+                "hardmax": False,
             },
         },
         {
@@ -652,6 +656,7 @@ def test_confusion_matrix_without_hardmax_animal_example(
             },
             "parameters": {
                 "score_threshold": 0.5,
+                "hardmax": False,
             },
         },
     ]
