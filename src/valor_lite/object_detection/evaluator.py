@@ -1,6 +1,4 @@
-import heapq
 import json
-import tempfile
 from collections import defaultdict
 from dataclasses import dataclass
 from pathlib import Path
@@ -9,10 +7,9 @@ import numpy as np
 import pyarrow as pa
 import pyarrow.compute as pc
 import pyarrow.dataset as ds
-import pyarrow.parquet as pq
 from numpy.typing import NDArray
 
-from valor_lite.cache import CacheReader, CacheWriter, DataType
+from valor_lite.cache import CacheReader, DataType
 from valor_lite.object_detection.computation import (
     compute_average_precision,
     compute_average_recall,
@@ -20,7 +17,6 @@ from valor_lite.object_detection.computation import (
     compute_counts,
     compute_pair_classifications,
     compute_precision_recall_f1,
-    rank_table,
 )
 from valor_lite.object_detection.format import PathFormatter
 from valor_lite.object_detection.metric import Metric, MetricType
@@ -72,163 +68,21 @@ class Evaluator(PathFormatter):
             number_of_groundtruths_per_label
         )
 
-    @classmethod
-    def create(
-        cls,
-        path: str | Path,
-        batch_size: int = 1_000,
-        index_to_label_override: dict[int, str] | None = None,
-    ):
-        """
-        Create a ranked pair cache.
+    @property
+    def path(self) -> Path:
+        return self._path
 
-        Parameters
-        ----------
-        path : str | Path
-            Where to store the evaluator cache.
-        batch_size : int, default=1_000
-            Sets the batch size for reading. Defaults to 1_000.
-        """
-        detailed_cache = CacheReader(cls._generate_detailed_cache_path(path))
+    @property
+    def detailed(self) -> CacheReader:
+        return self._detailed_cache
 
-        # build evaluator meta
-        (
-            index_to_label,
-            number_of_groundtruths_per_label,
-            info,
-        ) = cls.generate_meta(detailed_cache.dataset, index_to_label_override)
+    @property
+    def ranked(self) -> CacheReader:
+        return self._ranked_cache
 
-        # read config
-        metadata_path = cls._generate_metadata_path(path)
-        with open(metadata_path, "r") as f:
-            types = json.load(f)
-            info.datum_metadata_types = types["datum_metadata_types"]
-            info.groundtruth_metadata_types = types[
-                "groundtruth_metadata_types"
-            ]
-            info.prediction_metadata_types = types["prediction_metadata_types"]
-
-        # create ranked cache schema
-        annotation_metadata_keys = {
-            *(
-                set(info.groundtruth_metadata_types.keys())
-                if info.groundtruth_metadata_types
-                else {}
-            ),
-            *(
-                set(info.prediction_metadata_types.keys())
-                if info.prediction_metadata_types
-                else {}
-            ),
-        }
-        pruned_schema = pa.schema(
-            [
-                field
-                for field in detailed_cache.schema
-                if field.name not in annotation_metadata_keys
-            ]
-        )
-        ranked_schema = pruned_schema.append(
-            pa.field("iou_prev", pa.float64())
-        )
-        ranked_schema = ranked_schema.append(
-            pa.field("high_score", pa.bool_())
-        )
-
-        n_labels = len(index_to_label)
-
-        with CacheWriter.create(
-            path=cls._generate_ranked_cache_path(path),
-            schema=ranked_schema,
-            batch_size=detailed_cache.batch_size,
-            rows_per_file=detailed_cache.rows_per_file,
-            compression=detailed_cache.compression,
-        ) as ranked_cache:
-            if detailed_cache.num_dataset_files == 1:
-                pf = pq.ParquetFile(detailed_cache.dataset_files[0])
-                tbl = pf.read()
-                ranked_tbl = rank_table(tbl, n_labels)
-                ranked_cache.write_table(ranked_tbl)
-            else:
-                pruned_detailed_columns = [
-                    field.name for field in pruned_schema
-                ]
-                with tempfile.TemporaryDirectory() as tmpdir:
-
-                    # rank individual files
-                    tmpfiles = []
-                    for idx, fragment in enumerate(
-                        detailed_cache.dataset.get_fragments()
-                    ):
-                        fragment_path = Path(tmpdir) / f"{idx:06d}.parquet"
-                        tbl = fragment.to_table(
-                            columns=pruned_detailed_columns
-                        )
-                        ranked_tbl = rank_table(tbl, n_labels)
-                        pq.write_table(ranked_tbl, fragment_path)
-                        tmpfiles.append(fragment_path)
-
-                    def generate_heap_item(batches, batch_idx, row_idx):
-                        score = batches[batch_idx]["score"][row_idx].as_py()
-                        iou = batches[batch_idx]["iou"][row_idx].as_py()
-                        return (
-                            -score,
-                            -iou,
-                            batch_idx,
-                            row_idx,
-                        )
-
-                    # merge sorted rows
-                    heap = []
-                    batch_iterators = []
-                    batches = []
-                    for batch_idx, batch_path in enumerate(tmpfiles):
-                        pf = pq.ParquetFile(batch_path)
-                        batch_iter = pf.iter_batches(batch_size=batch_size)
-                        batch_iterators.append(batch_iter)
-                        batches.append(next(batch_iterators[batch_idx], None))
-                        if (
-                            batches[batch_idx] is not None
-                            and len(batches[batch_idx]) > 0
-                        ):
-                            heapq.heappush(
-                                heap, generate_heap_item(batches, batch_idx, 0)
-                            )
-
-                    while heap:
-                        _, _, batch_idx, row_idx = heapq.heappop(heap)
-                        row_table = batches[batch_idx].slice(row_idx, 1)
-                        ranked_cache.write_batch(row_table)
-                        row_idx += 1
-                        if row_idx < len(batches[batch_idx]):
-                            heapq.heappush(
-                                heap,
-                                generate_heap_item(
-                                    batches, batch_idx, row_idx
-                                ),
-                            )
-                        else:
-                            batches[batch_idx] = next(
-                                batch_iterators[batch_idx], None
-                            )
-                            if (
-                                batches[batch_idx] is not None
-                                and len(batches[batch_idx]) > 0
-                            ):
-                                heapq.heappush(
-                                    heap,
-                                    generate_heap_item(batches, batch_idx, 0),
-                                )
-
-        ranked_cache = CacheReader(cls._generate_ranked_cache_path(path))
-        return cls(
-            path=path,
-            detailed_cache=detailed_cache,
-            ranked_cache=ranked_cache,
-            info=info,
-            index_to_label=index_to_label,
-            number_of_groundtruths_per_label=number_of_groundtruths_per_label,
-        )
+    @property
+    def info(self) -> EvaluatorInfo:
+        return self._info
 
     @classmethod
     def load(
@@ -265,21 +119,101 @@ class Evaluator(PathFormatter):
             number_of_groundtruths_per_label=number_of_groundtruths_per_label,
         )
 
-    @property
-    def path(self) -> Path:
-        return self._path
+    def filter(
+        self,
+        path: str | Path,
+        filter_expr: Filter,
+        batch_size: int = 1_000,
+    ) -> "Evaluator":
+        """
+        Filter evaluator cache.
 
-    @property
-    def detailed(self) -> CacheReader:
-        return self._detailed_cache
+        Parameters
+        ----------
+        path : str | Path
+            Where to store the filtered cache.
+        filter_expr : Filter
+            An object containing filter expressions.
+        batch_size : int
+            The maximum number of rows read into memory per file.
 
-    @property
-    def ranked(self) -> CacheReader:
-        return self._ranked_cache
+        Returns
+        -------
+        Evaluator
+            A new evaluator object containing the filtered cache.
+        """
+        from valor_lite.object_detection.loader import Loader
 
-    @property
-    def info(self) -> EvaluatorInfo:
-        return self._info
+        loader = Loader.create(
+            path=path,
+            batch_size=self.detailed.batch_size,
+            rows_per_file=self.detailed.rows_per_file,
+            compression=self.detailed.compression,
+            datum_metadata_types=self.info.datum_metadata_types,
+            groundtruth_metadata_types=self.info.groundtruth_metadata_types,
+            prediction_metadata_types=self.info.prediction_metadata_types,
+        )
+        for fragment in self.detailed.dataset.get_fragments():
+            tbl = fragment.to_table(filter=filter_expr.datums)
+
+            columns = (
+                "datum_id",
+                "gt_id",
+                "pd_id",
+                "gt_label_id",
+                "pd_label_id",
+                "iou",
+                "score",
+            )
+            pairs = np.column_stack([tbl[col].to_numpy() for col in columns])
+
+            n_pairs = pairs.shape[0]
+            gt_ids = pairs[:, (0, 1)].astype(np.int64)
+            pd_ids = pairs[:, (0, 2)].astype(np.int64)
+
+            if filter_expr.groundtruths is not None:
+                mask_valid_gt = np.zeros(n_pairs, dtype=np.bool_)
+                gt_tbl = tbl.filter(filter_expr.groundtruths)
+                gt_pairs = np.column_stack(
+                    [gt_tbl[col].to_numpy() for col in ("datum_id", "gt_id")]
+                ).astype(np.int64)
+                for gt in np.unique(gt_pairs, axis=0):
+                    mask_valid_gt |= (gt_ids == gt).all(axis=1)
+            else:
+                mask_valid_gt = np.ones(n_pairs, dtype=np.bool_)
+
+            if filter_expr.predictions is not None:
+                mask_valid_pd = np.zeros(n_pairs, dtype=np.bool_)
+                pd_tbl = tbl.filter(filter_expr.predictions)
+                pd_pairs = np.column_stack(
+                    [pd_tbl[col].to_numpy() for col in ("datum_id", "pd_id")]
+                ).astype(np.int64)
+                for pd in np.unique(pd_pairs, axis=0):
+                    mask_valid_pd |= (pd_ids == pd).all(axis=1)
+            else:
+                mask_valid_pd = np.ones(n_pairs, dtype=np.bool_)
+
+            mask_valid = mask_valid_gt | mask_valid_pd
+            mask_valid_gt &= mask_valid
+            mask_valid_pd &= mask_valid
+
+            pairs[np.ix_(~mask_valid_gt, (1, 3))] = -1.0  # type: ignore - numpy ix_
+            pairs[np.ix_(~mask_valid_pd, (2, 4, 6))] = -1.0  # type: ignore - numpy ix_
+            pairs[~mask_valid_pd | ~mask_valid_gt, 5] = 0.0
+
+            for idx, col in enumerate(columns):
+                tbl = tbl.set_column(
+                    tbl.schema.names.index(col), col, pa.array(pairs[:, idx])
+                )
+
+            mask_invalid = ~mask_valid | (pairs[:, (1, 2)] < 0).all(axis=1)
+            filtered_tbl = tbl.filter(pa.array(~mask_invalid))
+            loader._cache.write_table(filtered_tbl)
+
+        return loader.finalize(
+            batch_size=batch_size,
+            index_to_label_override=self._index_to_label,
+        )
 
     @staticmethod
     def generate_meta(
@@ -405,34 +339,6 @@ class Evaluator(PathFormatter):
             yield tbl, np.column_stack(
                 [tbl[col].to_numpy() for col in columns]
             )
-
-    def filter(
-        self,
-        path: str | Path,
-        filter_expr: Filter,
-    ) -> "Evaluator":
-        """
-        Filter evaluator cache.
-
-        Parameters
-        ----------
-        path : str | Path
-            Where to store the filtered cache.
-        filter_expr : Filter
-            An object containing filter expressions.
-
-        Returns
-        -------
-        Evaluator
-            A new evaluator object containing the filtered cache.
-        """
-        from valor_lite.object_detection.loader import Loader
-
-        return Loader.filter(
-            path=path,
-            evaluator=self,
-            filter_expr=filter_expr,
-        )
 
     def compute_precision_recall(
         self,
