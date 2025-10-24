@@ -64,7 +64,7 @@ def test_fuzz_segmentations(tmp_path: Path):
 def test_fuzz_segmentations_with_filtering(tmp_path: Path):
 
     quantities = [4, 10]
-    for i in range(100):
+    for _ in range(100):
 
         n_segmentations = choice(quantities)
         size_ = choice(quantities)
@@ -74,7 +74,7 @@ def test_fuzz_segmentations_with_filtering(tmp_path: Path):
             n_segmentations, size_=size_, n_labels=n_labels
         )
 
-        loader = DataLoader.create(tmp_path / f"original_{i}")
+        loader = DataLoader.create(tmp_path / "all", delete_if_exists=True)
         loader.add_data(segmentations)
         evaluator = loader.finalize()
 
@@ -86,6 +86,7 @@ def test_fuzz_segmentations_with_filtering(tmp_path: Path):
             pass
         else:
             filtered_evaluator = evaluator.filter(
-                tmp_path / f"filtered_{i}", filter_
+                tmp_path / "filtered", filter_
             )
             filtered_evaluator.evaluate()
+            filtered_evaluator.delete()
