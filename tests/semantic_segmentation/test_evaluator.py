@@ -231,3 +231,23 @@ def test_empty_predictions(tmp_path: Path):
             ]
         )
     )
+
+
+def test_loader_deletion(
+    tmp_path: Path, basic_segmentations: list[Segmentation]
+):
+    loader = DataLoader.create(tmp_path)
+    loader.add_data(basic_segmentations)
+    evaluator = loader.finalize()
+    assert tmp_path == evaluator.path
+
+    # check only detailed cache exists
+    assert tmp_path.exists()
+    assert evaluator._generate_cache_path(tmp_path).exists()
+    assert evaluator._generate_metadata_path(tmp_path).exists()
+
+    # verify deletion
+    evaluator.delete()
+    assert not tmp_path.exists()
+    assert not evaluator._generate_cache_path(tmp_path).exists()
+    assert not evaluator._generate_metadata_path(tmp_path).exists()
