@@ -1,7 +1,10 @@
+from pathlib import Path
+
 from valor_lite.object_detection import DataLoader, Detection, MetricType
 
 
 def test_ar_metrics_first_class(
+    tmp_path: Path,
     basic_detections_first_class: list[Detection],
     basic_rotated_detections_first_class: list[Detection],
 ):
@@ -20,11 +23,15 @@ def test_ar_metrics_first_class(
         datum uid2
            none
     """
-    for input_, method in [
-        (basic_detections_first_class, DataLoader.add_bounding_boxes),
-        (basic_rotated_detections_first_class, DataLoader.add_polygons),
+    for desc, input_, method in [
+        ("bbox", basic_detections_first_class, DataLoader.add_bounding_boxes),
+        (
+            "poly",
+            basic_rotated_detections_first_class,
+            DataLoader.add_polygons,
+        ),
     ]:
-        loader = DataLoader()
+        loader = DataLoader.create(f"{tmp_path}_{desc}")
         method(loader, input_)
         evaluator = loader.finalize()
 
@@ -114,6 +121,7 @@ def test_ar_metrics_first_class(
 
 
 def test_ar_metrics_second_class(
+    tmp_path: Path,
     basic_detections_second_class: list[Detection],
     basic_rotated_detections_second_class: list[Detection],
 ):
@@ -131,11 +139,15 @@ def test_ar_metrics_second_class(
         datum uid2
             box 2 - label v2 - score 0.98 - fp
     """
-    for input_, method in [
-        (basic_detections_second_class, DataLoader.add_bounding_boxes),
-        (basic_rotated_detections_second_class, DataLoader.add_polygons),
+    for desc, input_, method in [
+        ("bbox", basic_detections_second_class, DataLoader.add_bounding_boxes),
+        (
+            "poly",
+            basic_rotated_detections_second_class,
+            DataLoader.add_polygons,
+        ),
     ]:
-        loader = DataLoader()
+        loader = DataLoader.create(f"{tmp_path}_{desc}")
         method(loader, input_)
         evaluator = loader.finalize()
 
@@ -225,6 +237,7 @@ def test_ar_metrics_second_class(
 
 
 def test_ar_using_torch_metrics_example(
+    tmp_path: Path,
     torchmetrics_detections: list[Detection],
 ):
     """
@@ -232,7 +245,7 @@ def test_ar_using_torch_metrics_example(
     https://github.com/Lightning-AI/metrics/blob/107dbfd5fb158b7ae6d76281df44bd94c836bfce/tests/unittests/detection/test_map.py#L231
     """
 
-    loader = DataLoader()
+    loader = DataLoader.create(tmp_path)
     loader.add_bounding_boxes(torchmetrics_detections)
     evaluator = loader.finalize()
 
@@ -415,10 +428,11 @@ def test_ar_using_torch_metrics_example(
 
 
 def test_ar_true_positive_deassignment(
+    tmp_path: Path,
     detections_tp_deassignment_edge_case: list[Detection],
 ):
 
-    loader = DataLoader()
+    loader = DataLoader.create(tmp_path)
     loader.add_bounding_boxes(detections_tp_deassignment_edge_case)
     evaluator = loader.finalize()
 
@@ -454,23 +468,30 @@ def test_ar_true_positive_deassignment(
 
 
 def test_ar_ranked_pair_ordering(
+    tmp_path: Path,
     detection_ranked_pair_ordering: Detection,
     detection_ranked_pair_ordering_with_bitmasks: Detection,
     detection_ranked_pair_ordering_with_polygons: Detection,
 ):
 
-    for input_, method in [
-        (detection_ranked_pair_ordering, DataLoader.add_bounding_boxes),
+    for desc, input_, method in [
         (
+            "bbox",
+            detection_ranked_pair_ordering,
+            DataLoader.add_bounding_boxes,
+        ),
+        (
+            "poly",
             detection_ranked_pair_ordering_with_bitmasks,
             DataLoader.add_bitmasks,
         ),
         (
+            "bitmask",
             detection_ranked_pair_ordering_with_polygons,
             DataLoader.add_polygons,
         ),
     ]:
-        loader = DataLoader()
+        loader = DataLoader.create(f"{tmp_path}_{desc}")
         method(loader, detections=[input_])
         evaluator = loader.finalize()
 

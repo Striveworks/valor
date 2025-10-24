@@ -1,7 +1,10 @@
+from pathlib import Path
+
 from valor_lite.object_detection import DataLoader, Detection, MetricType
 
 
 def test_recall_metrics_first_class(
+    tmp_path: Path,
     basic_detections_first_class: list[Detection],
     basic_rotated_detections_first_class: list[Detection],
 ):
@@ -20,11 +23,15 @@ def test_recall_metrics_first_class(
         datum uid2
            none
     """
-    for input_, method in [
-        (basic_detections_first_class, DataLoader.add_bounding_boxes),
-        (basic_rotated_detections_first_class, DataLoader.add_polygons),
+    for desc, input_, method in [
+        ("bbox", basic_detections_first_class, DataLoader.add_bounding_boxes),
+        (
+            "poly",
+            basic_rotated_detections_first_class,
+            DataLoader.add_polygons,
+        ),
     ]:
-        loader = DataLoader()
+        loader = DataLoader.create(f"{tmp_path}_{desc}")
         method(loader, input_)
         evaluator = loader.finalize()
 
@@ -85,6 +92,7 @@ def test_recall_metrics_first_class(
 
 
 def test_recall_metrics_second_class(
+    tmp_path: Path,
     basic_detections_second_class: list[Detection],
     basic_rotated_detections_second_class: list[Detection],
 ):
@@ -102,11 +110,15 @@ def test_recall_metrics_second_class(
         datum uid2
             box 2 - label v2 - score 0.98 - fp
     """
-    for input_, method in [
-        (basic_detections_second_class, DataLoader.add_bounding_boxes),
-        (basic_rotated_detections_second_class, DataLoader.add_polygons),
+    for desc, input_, method in [
+        ("bbox", basic_detections_second_class, DataLoader.add_bounding_boxes),
+        (
+            "poly",
+            basic_rotated_detections_second_class,
+            DataLoader.add_polygons,
+        ),
     ]:
-        loader = DataLoader()
+        loader = DataLoader.create(f"{tmp_path}_{desc}")
         method(loader, input_)
         evaluator = loader.finalize()
 
@@ -167,6 +179,7 @@ def test_recall_metrics_second_class(
 
 
 def test_recall_false_negatives_single_datum_baseline(
+    tmp_path: Path,
     false_negatives_single_datum_baseline_detections: list[Detection],
 ):
     """This is the baseline for the below test. In this case there are two predictions and
@@ -174,7 +187,7 @@ def test_recall_false_negatives_single_datum_baseline(
     so there is not a penalty for the false negative so the AP is 1
     """
 
-    loader = DataLoader()
+    loader = DataLoader.create(tmp_path)
     loader.add_bounding_boxes(false_negatives_single_datum_baseline_detections)
     evaluator = loader.finalize()
 
@@ -211,6 +224,7 @@ def test_recall_false_negatives_single_datum_baseline(
 
 
 def test_recall_false_negatives_single_datum(
+    tmp_path: Path,
     false_negatives_single_datum_detections: list[Detection],
 ):
     """Tests where high confidence false negative was not being penalized. The
@@ -218,7 +232,7 @@ def test_recall_false_negatives_single_datum(
     does not sufficiently overlap the groundtruth and so is penalized and we get an AP of 0.5
     """
 
-    loader = DataLoader()
+    loader = DataLoader.create(tmp_path)
     loader.add_bounding_boxes(false_negatives_single_datum_detections)
     evaluator = loader.finalize()
     metrics = evaluator.evaluate(
@@ -245,6 +259,7 @@ def test_recall_false_negatives_single_datum(
 
 
 def test_recall_false_negatives_two_datums_one_empty_low_confidence_of_fp(
+    tmp_path: Path,
     false_negatives_two_datums_one_empty_low_confidence_of_fp_detections: list[
         Detection
     ],
@@ -258,7 +273,7 @@ def test_recall_false_negatives_two_datums_one_empty_low_confidence_of_fp(
 
     """
 
-    loader = DataLoader()
+    loader = DataLoader.create(tmp_path)
     loader.add_bounding_boxes(
         false_negatives_two_datums_one_empty_low_confidence_of_fp_detections
     )
@@ -287,6 +302,7 @@ def test_recall_false_negatives_two_datums_one_empty_low_confidence_of_fp(
 
 
 def test_recall_false_negatives_two_datums_one_empty_high_confidence_of_fp(
+    tmp_path: Path,
     false_negatives_two_datums_one_empty_high_confidence_of_fp_detections: list[
         Detection
     ],
@@ -299,7 +315,7 @@ def test_recall_false_negatives_two_datums_one_empty_high_confidence_of_fp(
     In this case, the AP should be 0.5 since the false positive has higher confidence than the true positive
     """
 
-    loader = DataLoader()
+    loader = DataLoader.create(tmp_path)
     loader.add_bounding_boxes(
         false_negatives_two_datums_one_empty_high_confidence_of_fp_detections
     )
@@ -328,6 +344,7 @@ def test_recall_false_negatives_two_datums_one_empty_high_confidence_of_fp(
 
 
 def test_recall_false_negatives_two_datums_one_only_with_different_class_low_confidence_of_fp(
+    tmp_path: Path,
     false_negatives_two_datums_one_only_with_different_class_low_confidence_of_fp_detections: list[
         Detection
     ],
@@ -340,7 +357,7 @@ def test_recall_false_negatives_two_datums_one_only_with_different_class_low_con
     In this case, the AP for class `"value"` should be 1 since the false positive has lower confidence than the true positive.
     AP for class `"other value"` should be 0 since there is no prediction for the `"other value"` groundtruth
     """
-    loader = DataLoader()
+    loader = DataLoader.create(tmp_path)
     loader.add_bounding_boxes(
         false_negatives_two_datums_one_only_with_different_class_low_confidence_of_fp_detections
     )
@@ -378,6 +395,7 @@ def test_recall_false_negatives_two_datums_one_only_with_different_class_low_con
 
 
 def test_recall_false_negatives_two_datums_one_only_with_different_class_high_confidence_of_fp(
+    tmp_path: Path,
     false_negatives_two_images_one_only_with_different_class_high_confidence_of_fp_detections: list[
         Detection
     ],
@@ -390,7 +408,7 @@ def test_recall_false_negatives_two_datums_one_only_with_different_class_high_co
     In this case, the AP for class `"value"` should be 0.5 since the false positive has higher confidence than the true positive.
     AP for class `"other value"` should be 0 since there is no prediction for the `"other value"` groundtruth
     """
-    loader = DataLoader()
+    loader = DataLoader.create(tmp_path)
     loader.add_bounding_boxes(
         false_negatives_two_images_one_only_with_different_class_high_confidence_of_fp_detections
     )

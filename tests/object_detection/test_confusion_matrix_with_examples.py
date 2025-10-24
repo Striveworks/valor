@@ -1,3 +1,5 @@
+from pathlib import Path
+
 from valor_lite.object_detection import DataLoader, Detection
 
 
@@ -22,6 +24,7 @@ def _filter_out_zero_counts(cm: dict, hl: dict, mp: dict):
 
 
 def test_confusion_matrix_with_examples(
+    tmp_path: Path,
     detections_for_detailed_counting: list[Detection],
     rect1: tuple[float, float, float, float],
     rect2: tuple[float, float, float, float],
@@ -29,7 +32,7 @@ def test_confusion_matrix_with_examples(
     rect4: tuple[float, float, float, float],
     rect5: tuple[float, float, float, float],
 ):
-    loader = DataLoader()
+    loader = DataLoader.create(tmp_path)
     loader.add_bounding_boxes(detections_for_detailed_counting)
     evaluator = loader.finalize()
 
@@ -846,13 +849,14 @@ def _filter_out_examples_and_zero_counts(cm: dict, hl: dict, mp: dict):
 
 
 def test_confusion_matrix_with_examples_using_torch_metrics_example(
+    tmp_path: Path,
     torchmetrics_detections: list[Detection],
 ):
     """
     cf with torch metrics/pycocotools results listed here:
     https://github.com/Lightning-AI/metrics/blob/107dbfd5fb158b7ae6d76281df44bd94c836bfce/tests/unittests/detection/test_map.py#L231
     """
-    loader = DataLoader()
+    loader = DataLoader.create(tmp_path)
     loader.add_bounding_boxes(torchmetrics_detections)
     evaluator = loader.finalize()
 
@@ -1242,10 +1246,11 @@ def test_confusion_matrix_with_examples_using_torch_metrics_example(
 
 
 def test_confusion_matrix_with_examples_fp_unmatched_prediction_edge_case(
+    tmp_path: Path,
     detections_fp_unmatched_prediction_edge_case: list[Detection],
 ):
 
-    loader = DataLoader()
+    loader = DataLoader.create(tmp_path)
     loader.add_bounding_boxes(detections_fp_unmatched_prediction_edge_case)
     evaluator = loader.finalize()
 
@@ -1347,23 +1352,30 @@ def test_confusion_matrix_with_examples_fp_unmatched_prediction_edge_case(
 
 
 def test_confusion_matrix_with_examples_ranked_pair_ordering(
+    tmp_path: Path,
     detection_ranked_pair_ordering: Detection,
     detection_ranked_pair_ordering_with_bitmasks: Detection,
     detection_ranked_pair_ordering_with_polygons: Detection,
 ):
 
-    for input_, method in [
-        (detection_ranked_pair_ordering, DataLoader.add_bounding_boxes),
+    for desc, input_, method in [
         (
+            "bbox",
+            detection_ranked_pair_ordering,
+            DataLoader.add_bounding_boxes,
+        ),
+        (
+            "poly",
             detection_ranked_pair_ordering_with_bitmasks,
             DataLoader.add_bitmasks,
         ),
         (
+            "bitmask",
             detection_ranked_pair_ordering_with_polygons,
             DataLoader.add_polygons,
         ),
     ]:
-        loader = DataLoader()
+        loader = DataLoader.create(f"{tmp_path}_{desc}")
         method(loader, detections=[input_])
 
         evaluator = loader.finalize()

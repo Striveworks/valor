@@ -24,13 +24,42 @@ from valor_lite.object_detection.computation import (
     compute_polygon_iou,
 )
 from valor_lite.object_detection.evaluator import Evaluator, Filter
+from valor_lite.object_detection.format import PathFormatter
 
 
-class Loader:
+class Loader(PathFormatter):
     def __init__(
         self,
-        directory: str | Path = ".valor",
-        name: str = "default",
+        path: str | Path,
+        writer: CacheWriter,
+        datum_metadata_types: dict[str, DataType] | None = None,
+        groundtruth_metadata_types: dict[str, DataType] | None = None,
+        prediction_metadata_types: dict[str, DataType] | None = None,
+    ):
+        self._path = Path(path)
+        self._cache = writer
+        self._datum_metadata_types = datum_metadata_types
+        self._groundtruth_metadata_types = groundtruth_metadata_types
+        self._prediction_metadata_types = prediction_metadata_types
+
+        # validate path
+        if not self._path.exists():
+            raise FileNotFoundError(f"Directory does not exist: {self._path}")
+        elif not self._path.is_dir():
+            raise NotADirectoryError(
+                f"Path exists but is not a directory: {self._path}"
+            )
+
+        # internal state
+        self._labels = {}
+        self._datum_count = 0
+        self._groundtruth_count = 0
+        self._prediction_count = 0
+
+    @classmethod
+    def create(
+        cls,
+        path: str | Path,
         batch_size: int = 10_000,
         rows_per_file: int = 100_000,
         compression: str = "snappy",
@@ -38,28 +67,6 @@ class Loader:
         groundtruth_metadata_types: dict[str, DataType] | None = None,
         prediction_metadata_types: dict[str, DataType] | None = None,
     ):
-        self._directory = Path(directory)
-        self._name = name
-
-        self._path = self._directory / self._name
-        self._path.mkdir(parents=True, exist_ok=True)
-        self._detailed_path = self._path / "detailed"
-        self._ranked_path = self._path / "ranked"
-        self._metadata_path = self._path / "metadata.json"
-
-        self._labels = {}
-        self._datum_count = 0
-        self._groundtruth_count = 0
-        self._prediction_count = 0
-
-        with open(self._metadata_path, "w") as f:
-            types = {
-                "datum": datum_metadata_types,
-                "groundtruth": groundtruth_metadata_types,
-                "prediction": prediction_metadata_types,
-            }
-            json.dump(types, f, indent=2)
-
         datum_metadata_schema = convert_type_mapping_to_schema(
             datum_metadata_types
         )
@@ -69,14 +76,6 @@ class Loader:
         prediction_metadata_schema = convert_type_mapping_to_schema(
             prediction_metadata_types
         )
-
-        self._null_gt_metadata = {
-            s[0]: None for s in groundtruth_metadata_schema
-        }
-        self._null_pd_metadata = {
-            s[0]: None for s in prediction_metadata_schema
-        }
-
         schema = pa.schema(
             [
                 ("datum_uid", pa.string()),
@@ -99,13 +98,54 @@ class Loader:
                 ("iou", pa.float64()),
             ]
         )
-        self._cache = CacheWriter(
-            where=self._detailed_path,
+
+        # create cache
+        cache = CacheWriter.create(
+            path=cls._generate_detailed_cache_path(path),
             schema=schema,
             batch_size=batch_size,
             rows_per_file=rows_per_file,
             compression=compression,
         )
+
+        # write metadata
+        metadata_path = cls._generate_metadata_path(path)
+        with open(metadata_path, "w") as f:
+            types = {
+                "datum_metadata_types": datum_metadata_types,
+                "groundtruth_metadata_types": groundtruth_metadata_types,
+                "prediction_metadata_types": prediction_metadata_types,
+            }
+            json.dump(types, f, indent=2)
+
+        return cls(
+            path=path,
+            writer=cache,
+            datum_metadata_types=datum_metadata_types,
+            groundtruth_metadata_types=groundtruth_metadata_types,
+            prediction_metadata_types=prediction_metadata_types,
+        )
+
+    @classmethod
+    def load(cls, path: str | Path):
+        # load metadata specification
+        metadata_path = cls._generate_metadata_path(path)
+        with open(metadata_path, "r") as f:
+            metadata_types = json.load(f)
+
+        # load cache
+        cache_path = cls._generate_detailed_cache_path(path)
+        cache = CacheWriter.load(cache_path)
+
+        return cls(
+            path=path,
+            writer=cache,
+            **metadata_types,
+        )
+
+    @property
+    def path(self) -> Path:
+        return self._path
 
     def _add_label(self, value: str) -> int:
         idx = self._labels.get(value, None)
@@ -162,7 +202,6 @@ class Loader:
                                 "pd_label": None,
                                 "pd_label_id": -1,
                                 "score": -1,
-                                **self._null_pd_metadata,
                                 "iou": 0.0,
                             }
                         )
@@ -180,7 +219,6 @@ class Loader:
                                         "gt_id": -1,
                                         "gt_label": None,
                                         "gt_label_id": -1,
-                                        **self._null_gt_metadata,
                                         "pd_uid": pann.uid,
                                         "pd_id": pann_id,
                                         "pd_label": plabel,
@@ -234,7 +272,6 @@ class Loader:
                                 "gt_id": -1,
                                 "gt_label": None,
                                 "gt_label_id": -1,
-                                **self._null_gt_metadata,
                                 "pd_uid": pann.uid,
                                 "pd_id": pann_id,
                                 "pd_label": plabel,
@@ -357,22 +394,20 @@ class Loader:
     @classmethod
     def filter(
         cls,
-        directory: str | Path,
-        name: str,
+        path: str | Path,
         evaluator: Evaluator,
         filter_expr: Filter,
     ) -> Evaluator:
-        loader = cls(
-            directory=directory,
-            name=name,
-            batch_size=evaluator._detailed_batch_size,
-            rows_per_file=evaluator._detailed_rows_per_file,
-            compression=evaluator._detailed_compression,
+        loader = cls.create(
+            path=path,
+            batch_size=evaluator.detailed.batch_size,
+            rows_per_file=evaluator.detailed.rows_per_file,
+            compression=evaluator.detailed.compression,
             datum_metadata_types=evaluator.info.datum_metadata_types,
             groundtruth_metadata_types=evaluator.info.groundtruth_metadata_types,
             prediction_metadata_types=evaluator.info.prediction_metadata_types,
         )
-        for fragment in evaluator.detailed.get_fragments():
+        for fragment in evaluator.detailed.dataset.get_fragments():
             tbl = fragment.to_table(filter=filter_expr.datums)
 
             columns = (
@@ -433,20 +468,14 @@ class Loader:
         if loader._cache.dataset.count_rows() == 0:
             raise EmptyCacheError()
 
-        evaluator = Evaluator(
-            directory=loader._directory,
-            name=loader._name,
-            labels_override=evaluator._index_to_label,
+        return Evaluator.create(
+            path=loader.path,
+            index_to_label_override=evaluator._index_to_label,
         )
-        evaluator.rank(where=loader._ranked_path)
-        return evaluator
 
     def finalize(
         self,
-        rows_per_file: int | None = None,
-        compression: str | None = None,
-        write_batch_size: int | None = None,
-        read_batch_size: int = 1000,
+        batch_size: int = 1000,
     ):
         """
         Performs data finalization and some preprocessing steps.
@@ -460,15 +489,7 @@ class Loader:
         if self._cache.dataset.count_rows() == 0:
             raise EmptyCacheError()
 
-        evaluator = Evaluator(
-            directory=self._directory,
-            name=self._name,
+        return Evaluator.create(
+            path=self.path,
+            batch_size=batch_size,
         )
-        evaluator.rank(
-            where=self._ranked_path,
-            rows_per_file=rows_per_file,
-            compression=compression,
-            write_batch_size=write_batch_size,
-            read_batch_size=read_batch_size,
-        )
-        return evaluator

@@ -1,3 +1,4 @@
+from pathlib import Path
 from random import choice, uniform
 from uuid import uuid4
 
@@ -33,13 +34,13 @@ def _generate_random_detections(
     ]
 
 
-def test_fuzz_detections():
+def test_fuzz_detections(tmp_path: Path):
 
     few_labels = "abc"
     many_labels = "abcdefghijklmnopqrstuvwxyz123456789"
     quantities = [1, 5, 10]
 
-    for _ in range(100):
+    for i in range(100):
 
         labels = choice([few_labels, many_labels])
         n_detections = choice(quantities)
@@ -47,7 +48,7 @@ def test_fuzz_detections():
 
         detections = _generate_random_detections(n_detections, n_boxes, labels)
 
-        loader = DataLoader()
+        loader = DataLoader.create(f"{tmp_path}_{i}")
         loader.add_bounding_boxes(detections)
         evaluator = loader.finalize()
         evaluator.evaluate(
@@ -56,13 +57,13 @@ def test_fuzz_detections():
         )
 
 
-def test_fuzz_detections_with_filtering():
+def test_fuzz_detections_with_filtering(tmp_path: Path):
 
     few_labels = "abcd"
     many_labels = "abcdefghijklmnopqrstuvwxyz123456789"
     quantities = [4, 10]
 
-    for _ in range(100):
+    for i in range(100):
 
         labels = choice([few_labels, many_labels])
         n_detections = choice(quantities)
@@ -70,7 +71,7 @@ def test_fuzz_detections_with_filtering():
 
         detections = _generate_random_detections(n_detections, n_boxes, labels)
 
-        loader = DataLoader()
+        loader = DataLoader.create(f"{tmp_path}_{i}")
         loader.add_bounding_boxes(detections)
         evaluator = loader.finalize()
 
@@ -84,9 +85,9 @@ def test_fuzz_detections_with_filtering():
         )
 
 
-def test_fuzz_confusion_matrix():
+def test_fuzz_confusion_matrix(tmp_path: Path):
     dets = _generate_random_detections(1000, 30, "abcde")
-    loader = DataLoader()
+    loader = DataLoader.create(tmp_path)
     loader.add_bounding_boxes(dets)
     evaluator = loader.finalize()
     assert evaluator.metadata.to_dict() == {

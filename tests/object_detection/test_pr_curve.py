@@ -1,14 +1,17 @@
+from pathlib import Path
+
 from valor_lite.object_detection import DataLoader, Detection, MetricType
 
 
 def test_pr_curve_using_torch_metrics_example(
+    tmp_path: Path,
     torchmetrics_detections: list[Detection],
 ):
     """
     cf with torch metrics/pycocotools results listed here:
     https://github.com/Lightning-AI/metrics/blob/107dbfd5fb158b7ae6d76281df44bd94c836bfce/tests/unittests/detection/test_map.py#L231
     """
-    loader = DataLoader()
+    loader = DataLoader.create(tmp_path)
     loader.add_bounding_boxes(torchmetrics_detections)
     evaluator = loader.finalize()
 

@@ -1,3 +1,5 @@
+from pathlib import Path
+
 import numpy as np
 import pytest
 
@@ -10,19 +12,20 @@ from valor_lite.object_detection import (
 )
 
 
-def test_evaluator_no_data():
+def test_evaluator_no_data(tmp_path: Path):
     with pytest.raises(FileNotFoundError):
-        Evaluator("some_nonexistent_cache")
+        Evaluator.load(tmp_path)
 
 
 def test_metadata_using_torch_metrics_example(
+    tmp_path: Path,
     torchmetrics_detections: list[Detection],
 ):
     """
     cf with torch metrics/pycocotools results listed here:
     https://github.com/Lightning-AI/metrics/blob/107dbfd5fb158b7ae6d76281df44bd94c836bfce/tests/unittests/detection/test_map.py#L231
     """
-    loader = DataLoader()
+    loader = DataLoader.create(tmp_path)
     loader.add_bounding_boxes(torchmetrics_detections)
     evaluator = loader.finalize()
 
@@ -39,8 +42,8 @@ def test_metadata_using_torch_metrics_example(
     }
 
 
-def test_no_thresholds(detection_ranked_pair_ordering):
-    loader = DataLoader()
+def test_no_thresholds(tmp_path: Path, detection_ranked_pair_ordering):
+    loader = DataLoader.create(tmp_path)
     loader.add_bounding_boxes([detection_ranked_pair_ordering])
     evaluator = loader.finalize()
 
@@ -74,9 +77,9 @@ def test_no_thresholds(detection_ranked_pair_ordering):
         )
 
 
-def test_no_groundtruths(detections_no_groundtruths):
+def test_no_groundtruths(tmp_path: Path, detections_no_groundtruths):
 
-    loader = DataLoader()
+    loader = DataLoader.create(tmp_path)
     loader.add_bounding_boxes(detections_no_groundtruths)
     evaluator = loader.finalize()
 
@@ -104,9 +107,9 @@ def test_no_groundtruths(detections_no_groundtruths):
         assert m in actual_metrics
 
 
-def test_no_predictions(detections_no_predictions):
+def test_no_predictions(tmp_path: Path, detections_no_predictions):
 
-    loader = DataLoader()
+    loader = DataLoader.create(tmp_path)
     loader.add_bounding_boxes(detections_no_predictions)
     evaluator = loader.finalize()
 
@@ -161,8 +164,10 @@ def _flatten_metrics(m) -> list:
         return [m]
 
 
-def test_output_types_dont_contain_numpy(basic_detections: list[Detection]):
-    manager = DataLoader()
+def test_output_types_dont_contain_numpy(
+    tmp_path: Path, basic_detections: list[Detection]
+):
+    manager = DataLoader.create(tmp_path)
     manager.add_bounding_boxes(basic_detections)
     evaluator = manager.finalize()
 

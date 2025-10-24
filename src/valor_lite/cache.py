@@ -63,22 +63,15 @@ def convert_type_mapping_to_schema(
     return [(k, DataType(v).to_arrow()) for k, v in type_mapping.items()]
 
 
-class CacheReader:
-    def __init__(self, where: str | Path):
-        self._dir = Path(where)
-        self._cfg = self._dir / ".cfg"
-
-        with open(self._cfg, "r") as f:
-            cfg = json.load(f)
-            self._batch_size = cfg.get("batch_size")
-            self._rows_per_file = cfg.get("rows_per_file")
-            self._compression = cfg.get("compression")
+class CacheFiles:
+    def __init__(self, path: str | Path):
+        self._path = Path(path)
 
     @property
     def files(self) -> list[str]:
         files = []
-        for entry in os.listdir(self._dir):
-            full_path = os.path.join(self._dir, entry)
+        for entry in os.listdir(self._path):
+            full_path = os.path.join(self._path, entry)
             if os.path.isfile(full_path):
                 files.append(full_path)
         return files
@@ -89,93 +82,141 @@ class CacheReader:
 
     @property
     def dataset_files(self) -> list[str]:
-        return glob.glob(f"{self._dir}/*.parquet")
+        return glob.glob(f"{self._path}/*.parquet")
 
     @property
     def num_dataset_files(self) -> int:
         return len(self.dataset_files)
 
-    @property
-    def dataset(self):
-        return ds.dataset(
-            self._dir,
-            format="parquet",
-        )
+    @staticmethod
+    def _generate_config_path(path: str | Path) -> Path:
+        return Path(path) / ".cfg"
+
+    @staticmethod
+    def _get_dataset_from_path(path: str | Path) -> ds.Dataset:
+        return ds.dataset(path, format="parquet")
+
+
+class CacheReader(CacheFiles):
+    def __init__(self, path: str | Path):
+        self._path = Path(path)
+        self._cfg = None
+        self._dataset = None
+
+        # validate path
+        if not self._path.exists():
+            raise FileNotFoundError(f"Directory does not exist: {self._path}")
+        elif not self._path.is_dir():
+            raise NotADirectoryError(
+                f"Path exists but is not a directory: {self._path}"
+            )
 
     @property
-    def schema(self):
+    def dataset(self) -> ds.Dataset:
+        if not self._dataset:
+            self._dataset = ds.dataset(
+                self._path,
+                format="parquet",
+            )
+        return self._dataset
+
+    @property
+    def schema(self) -> pa.Schema:
         return self.dataset.schema
 
     @property
+    def config(self) -> dict:
+        if self._cfg is None:
+            cfg_path = self._generate_config_path(self._path)
+            with open(cfg_path, "r") as f:
+                self._cfg = json.load(f)
+        return self._cfg
+
+    def _read_config(self, key: str):
+        if value := self.config.get(key, None):
+            return value
+        raise KeyError(
+            f"'{key}' is not defined within {self._generate_config_path(self._path)}"
+        )
+
+    @property
     def batch_size(self) -> int:
-        return self._batch_size
+        return int(self._read_config("batch_size"))
 
     @property
     def rows_per_file(self) -> int:
-        return self._rows_per_file
+        return int(self._read_config("rows_per_file"))
 
     @property
     def compression(self) -> str:
-        return self._compression
+        return str(self._read_config("compression"))
 
 
-class CacheWriter(CacheReader):
+class CacheWriter(CacheFiles):
     def __init__(
         self,
-        where: str | Path,
+        path: str | Path,
         schema: pa.Schema,
-        batch_size: int = 1000,
-        rows_per_file: int = 10000,
-        compression: str = "snappy",
-        delete_if_exists: bool = True,
+        batch_size: int,
+        rows_per_file: int,
+        compression: str,
     ):
-        self._dir = Path(where)
-        self._cfg = self._dir / ".cfg"
-
+        self._path = Path(path)
         self._schema = schema
         self._batch_size = batch_size
         self._rows_per_file = rows_per_file
         self._compression = compression
 
-        if delete_if_exists:
-            self.delete_files()
-        self._dir.mkdir(parents=True, exist_ok=True)
+        # validate path
+        if not self._path.exists():
+            raise FileNotFoundError(f"Directory does not exist: {self._path}")
+        elif not self._path.is_dir():
+            raise NotADirectoryError(
+                f"Path exists but is not a directory: {self._path}"
+            )
 
-        # Internal state
+        # internal state
         self._writer = None
         self._buffer = []
         self._count = 0
 
-        with open(self._cfg, "w") as f:
-            info = dict(
+    @classmethod
+    def create(
+        cls,
+        path: str | Path,
+        schema: pa.Schema,
+        batch_size: int = 1000,
+        rows_per_file: int = 10000,
+        compression: str = "snappy",
+    ):
+        Path(path).mkdir(parents=True, exist_ok=False)
+        cfg_path = cls._generate_config_path(path)
+        with open(cfg_path, "w") as f:
+            cfg = dict(
                 batch_size=batch_size,
                 rows_per_file=rows_per_file,
                 compression=compression,
             )
-            json.dump(info, f, indent=2)
-
-    @property
-    def schema(self):
-        return self._schema
-
-    @property
-    def dataset(self):
-        return ds.dataset(
-            self._dir,
-            format="parquet",
-            schema=self.schema,
+            json.dump(cfg, f, indent=2)
+        return cls(
+            path=path,
+            schema=schema,
+            batch_size=batch_size,
+            rows_per_file=rows_per_file,
+            compression=compression,
         )
 
-    def delete_files(self):
-        for file in self.dataset_files:
-            Path(file).unlink()
-
-    @property
-    def next_index(self):
-        files = self.dataset_files
-        if not files:
-            return 0
-        return max([int(Path(f).stem) for f in files]) + 1
+    @classmethod
+    def load(cls, path: str | Path):
+        cfg_path = cls._generate_config_path(path)
+        dataset = cls._get_dataset_from_path(path)
+        with open(cfg_path, "r") as f:
+            cfg = json.load(f)
+        return cls(
+            path=path,
+            schema=dataset.schema,
+            **cfg,
+        )
 
     def write_rows(
         self,
@@ -245,8 +286,17 @@ class CacheWriter(CacheReader):
         self._count = 0
         self._close_writer()
 
+    def delete(self):
+        for file in self.files:
+            Path(file).unlink()
+
     def _next_filename(self) -> Path:
-        return self._dir / f"{self.next_index:06d}.parquet"
+        files = self.dataset_files
+        if not files:
+            next_index = 0
+        else:
+            next_index = max([int(Path(f).stem) for f in files]) + 1
+        return self._path / f"{next_index:06d}.parquet"
 
     def _get_or_create_writer(self) -> pq.ParquetWriter:
         """Open a new parquet file for writing."""
@@ -272,3 +322,27 @@ class CacheWriter(CacheReader):
     def __exit__(self, exc_type, exc_val, exc_tb):
         """Context manager exit - ensures data is flushed."""
         self.flush()
+
+    @property
+    def schema(self) -> pa.Schema:
+        return self._schema
+
+    @property
+    def dataset(self) -> ds.Dataset:
+        return ds.dataset(
+            self._path,
+            format="parquet",
+            schema=self.schema,
+        )
+
+    @property
+    def batch_size(self) -> int:
+        return self._batch_size
+
+    @property
+    def rows_per_file(self) -> int:
+        return self._rows_per_file
+
+    @property
+    def compression(self) -> str:
+        return self._compression

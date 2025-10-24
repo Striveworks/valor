@@ -1,4 +1,5 @@
 from copy import deepcopy
+from pathlib import Path
 from uuid import uuid4
 
 import numpy as np
@@ -75,7 +76,9 @@ def _generate_random_detections(
     ]
 
 
-def test_filtering_one_detection(one_detection: list[Detection]):
+def test_filtering_one_detection(
+    tmp_path: Path, one_detection: list[Detection]
+):
     """
     Basic object detection test that combines the labels of basic_detections_first_class and basic_detections_second_class.
 
@@ -89,7 +92,7 @@ def test_filtering_one_detection(one_detection: list[Detection]):
             box 1 - label v1 - score 0.3 - tp
     """
 
-    loader = DataLoader()
+    loader = DataLoader.create(tmp_path)
     loader.add_bounding_boxes(one_detection)
     evaluator = loader.finalize()
 
@@ -163,7 +166,9 @@ def test_filtering_one_detection(one_detection: list[Detection]):
         assert m in actual_metrics
 
 
-def test_filtering_two_detections(two_detections: list[Detection]):
+def test_filtering_two_detections(
+    tmp_path: Path, two_detections: list[Detection]
+):
     """
     Basic object detection test that combines the labels of basic_detections_first_class and basic_detections_second_class.
 
@@ -181,7 +186,7 @@ def test_filtering_two_detections(two_detections: list[Detection]):
             box 2 - label v2 - score 0.98 - fp misclassification
     """
 
-    loader = DataLoader()
+    loader = DataLoader.create(tmp_path)
     loader.add_bounding_boxes(two_detections)
     evaluator = loader.finalize()
 
@@ -255,7 +260,9 @@ def test_filtering_two_detections(two_detections: list[Detection]):
         assert m in actual_metrics
 
 
-def test_filtering_four_detections(four_detections: list[Detection]):
+def test_filtering_four_detections(
+    tmp_path: Path, four_detections: list[Detection]
+):
     """
     Basic object detection test that combines the labels of basic_detections_first_class and basic_detections_second_class.
 
@@ -282,7 +289,7 @@ def test_filtering_four_detections(four_detections: list[Detection]):
             box 2 - label v2 - score 0.98 - fp misclassification
     """
 
-    loader = DataLoader()
+    loader = DataLoader.create(tmp_path)
     loader.add_bounding_boxes(four_detections)
     evaluator = loader.finalize()
 
@@ -356,7 +363,9 @@ def test_filtering_four_detections(four_detections: list[Detection]):
         assert m in actual_metrics
 
 
-def test_filtering_all_detections(four_detections: list[Detection]):
+def test_filtering_all_detections(
+    tmp_path: Path, four_detections: list[Detection]
+):
     """
     Basic object detection test that combines the labels of basic_detections_first_class and basic_detections_second_class.
 
@@ -383,7 +392,7 @@ def test_filtering_all_detections(four_detections: list[Detection]):
             box 2 - label v2 - score 0.98 - fp misclassification
     """
 
-    loader = DataLoader()
+    loader = DataLoader.create(tmp_path)
     loader.add_bounding_boxes(four_detections)
     evaluator = loader.finalize()
 
@@ -485,8 +494,8 @@ def test_filtering_all_detections(four_detections: list[Detection]):
         assert m in actual_metrics
 
 
-def test_filtering_random_detections():
-    loader = DataLoader()
+def test_filtering_random_detections(tmp_path: Path):
+    loader = DataLoader.create(tmp_path)
     loader.add_bounding_boxes(_generate_random_detections(13, 4, "abc"))
     evaluator = loader.finalize()
     filter_ = evaluator.create_filter(datums=["uid1"])
@@ -494,6 +503,7 @@ def test_filtering_random_detections():
 
 
 def test_filtering_four_detections_by_indices(
+    tmp_path: Path,
     four_detections: list[Detection],
 ):
     """
@@ -522,7 +532,7 @@ def test_filtering_four_detections_by_indices(
             box 2 - label v2 - score 0.98 - fp misclassification
     """
 
-    loader = DataLoader()
+    loader = DataLoader.create(tmp_path)
     loader.add_bounding_boxes(four_detections)
     evaluator = loader.finalize()
 
@@ -596,6 +606,7 @@ def test_filtering_four_detections_by_indices(
 
 
 def test_filtering_four_detections_by_annotation_metadata(
+    tmp_path: Path,
     four_detections: list[Detection],
 ):
     """
@@ -624,7 +635,8 @@ def test_filtering_four_detections_by_annotation_metadata(
             box 2 - label v2 - score 0.98 - fp misclassification
     """
 
-    loader = DataLoader(
+    loader = DataLoader.create(
+        tmp_path,
         groundtruth_metadata_types={
             "gt_rect": DataType.STRING,
         },

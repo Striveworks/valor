@@ -1,3 +1,4 @@
+from pathlib import Path
 from uuid import uuid4
 
 import numpy as np
@@ -14,13 +15,13 @@ from valor_lite.object_detection import (
 )
 
 
-def test_no_data():
-    loader = DataLoader()
+def test_no_data(tmp_path: Path):
+    loader = DataLoader.create(tmp_path)
     with pytest.raises(EmptyCacheError):
         loader.finalize()
 
 
-def test_iou_computation():
+def test_iou_computation(tmp_path: Path):
 
     detection = Detection(
         uid="uid",
@@ -72,11 +73,11 @@ def test_iou_computation():
         ],
     )
 
-    loader = DataLoader()
+    loader = DataLoader.create(tmp_path)
     loader.add_bounding_boxes([detection])
     evaluator = loader.finalize()
 
-    tbl = evaluator._dataset.to_table()
+    tbl = evaluator.detailed.dataset.to_table()
     assert tbl.shape == (7, 12)
 
     # show that three unique IOUs exist
@@ -87,6 +88,7 @@ def test_iou_computation():
 
 
 def test_mixed_annotations(
+    tmp_path: Path,
     rect1: tuple[float, float, float, float],
     rect1_rotated_5_degrees_around_origin: tuple[float, float, float, float],
 ):
@@ -161,7 +163,7 @@ def test_mixed_annotations(
         ),
     ]
 
-    loader = DataLoader()
+    loader = DataLoader.create(tmp_path)
 
     for detection in mixed_detections:
         with pytest.raises(AttributeError) as e:

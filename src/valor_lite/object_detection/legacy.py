@@ -68,7 +68,7 @@ class Evaluator(CachedEvaluator):
             [
                 pairs
                 for pairs in self.iterate_pairs(
-                    self._dataset,
+                    self.detailed.dataset,
                     columns=[
                         "datum_id",
                         "gt_id",
@@ -134,16 +134,13 @@ class Evaluator(CachedEvaluator):
             Label metadata.
         """
         with tempfile.TemporaryDirectory() as tmpdir:
-            name = "filtered"
             _evaluator = super().filter(
-                directory=tmpdir,
-                name=name,
+                path=tmpdir,
                 filter_expr=filter_,
             )
-            evaluator = Evaluator(
-                name=name,
-                directory=tmpdir,
-                labels_override=_evaluator._index_to_label,
+            evaluator = Evaluator.load(
+                path=tmpdir,
+                index_to_label_override=_evaluator._index_to_label,
             )
             detailed_pairs = evaluator._detailed_pairs
             label_metadata = evaluator._label_metadata
@@ -238,8 +235,7 @@ class Evaluator(CachedEvaluator):
         if filter_ is not None:
             with tempfile.TemporaryDirectory() as tmpdir:
                 evaluator = super().filter(
-                    directory=tmpdir,
-                    name="filtered",
+                    path=tmpdir,
                     filter_expr=filter_,
                 )
                 return evaluator.compute_precision_recall(
@@ -277,8 +273,7 @@ class Evaluator(CachedEvaluator):
         if filter_ is not None:
             with tempfile.TemporaryDirectory() as tmpdir:
                 evaluator = super().filter(
-                    directory=tmpdir,
-                    name="filtered",
+                    path=tmpdir,
                     filter_expr=filter_,
                 )
                 metrics = evaluator.compute_confusion_matrix_with_examples(
@@ -338,27 +333,21 @@ class DataLoader(CachedLoader):
 
     def finalize(self) -> Evaluator:  # type: ignore - switching type
         evaluator = super().finalize()
-        return Evaluator(
-            name=evaluator._name,
-            directory=evaluator._directory,
-        )
+        return Evaluator.load(evaluator.path)
 
     @classmethod
     def filter(
         cls,
-        directory: str | Path,
-        name: str,
+        path: str | Path,
         evaluator: CachedEvaluator,
         filter_expr: Filter,
     ) -> Evaluator:
         evaluator = super().filter(
-            directory=directory,
-            name=name,
+            path=path,
             evaluator=evaluator,
             filter_expr=filter_expr,
         )
-        return Evaluator(
-            directory=evaluator._directory,
-            name=evaluator._name,
-            labels_override=evaluator._index_to_label,
+        return Evaluator.load(
+            path=path,
+            index_to_label_override=evaluator._index_to_label,
         )
