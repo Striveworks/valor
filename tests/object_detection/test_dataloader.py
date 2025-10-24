@@ -1,3 +1,4 @@
+import json
 from pathlib import Path
 from uuid import uuid4
 
@@ -19,6 +20,19 @@ def test_no_data(tmp_path: Path):
     loader = DataLoader.create(tmp_path)
     with pytest.raises(EmptyCacheError):
         loader.finalize()
+
+
+def test_evaluator_file_not_found(tmp_path: Path):
+    with pytest.raises(FileNotFoundError):
+        DataLoader.load(tmp_path)
+
+
+def test_evaluator_not_a_directory(tmp_path: Path):
+    filepath = tmp_path / "file"
+    with open(filepath, "w") as f:
+        json.dump({}, f, indent=2)
+    with pytest.raises(NotADirectoryError):
+        DataLoader.load(filepath)
 
 
 def test_iou_computation(tmp_path: Path):

@@ -1,3 +1,4 @@
+import json
 from pathlib import Path
 
 import numpy as np
@@ -12,9 +13,17 @@ from valor_lite.object_detection import (
 )
 
 
-def test_evaluator_no_data(tmp_path: Path):
+def test_evaluator_file_not_found(tmp_path: Path):
     with pytest.raises(FileNotFoundError):
         Evaluator.load(tmp_path)
+
+
+def test_evaluator_not_a_directory(tmp_path: Path):
+    filepath = tmp_path / "file"
+    with open(filepath, "w") as f:
+        json.dump({}, f, indent=2)
+    with pytest.raises(NotADirectoryError):
+        Evaluator.load(filepath)
 
 
 def test_evaluator_valid_thresholds(tmp_path: Path):
