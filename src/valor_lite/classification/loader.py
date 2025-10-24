@@ -115,7 +115,7 @@ class Loader:
             )
 
             # write to cache
-            rows = list()
+            rows = []
             gidx = self._add_label(classification.groundtruth)
             max_score_idx = np.argmax(np.array(classification.scores))
             for idx, (plabel, score) in enumerate(
