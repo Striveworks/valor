@@ -14,8 +14,9 @@ from valor_lite.object_detection import (
 
 
 def test_evaluator_file_not_found(tmp_path: Path):
+    path = tmp_path / "does_not_exist"
     with pytest.raises(FileNotFoundError):
-        Evaluator.load(tmp_path)
+        Evaluator.load(path)
 
 
 def test_evaluator_not_a_directory(tmp_path: Path):
