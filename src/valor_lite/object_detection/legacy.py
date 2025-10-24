@@ -1,6 +1,5 @@
 import tempfile
 from dataclasses import asdict, dataclass
-from pathlib import Path
 
 import numpy as np
 import pyarrow.compute as pc
@@ -334,20 +333,3 @@ class DataLoader(CachedLoader):
     def finalize(self) -> Evaluator:  # type: ignore - switching type
         evaluator = super().finalize()
         return Evaluator.load(evaluator.path)
-
-    @classmethod
-    def filter(
-        cls,
-        path: str | Path,
-        evaluator: CachedEvaluator,
-        filter_expr: Filter,
-    ) -> Evaluator:
-        evaluator = super().filter(
-            path=path,
-            evaluator=evaluator,
-            filter_expr=filter_expr,
-        )
-        return Evaluator.load(
-            path=path,
-            index_to_label_override=evaluator._index_to_label,
-        )

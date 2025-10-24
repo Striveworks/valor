@@ -75,7 +75,12 @@ class Loader(PathFormatter):
         datum_metadata_types: dict[str, DataType] | None = None,
         groundtruth_metadata_types: dict[str, DataType] | None = None,
         prediction_metadata_types: dict[str, DataType] | None = None,
+        delete_if_exists: bool = False,
     ):
+        path = Path(path)
+        if delete_if_exists:
+            cls.delete(path)
+
         datum_metadata_schema = convert_type_mapping_to_schema(
             datum_metadata_types
         )
@@ -151,6 +156,18 @@ class Loader(PathFormatter):
             writer=cache,
             **metadata_types,
         )
+
+    @classmethod
+    def delete(cls, path: str | Path):
+        path = Path(path)
+        if not path.exists():
+            return
+        CacheWriter.delete(cls._generate_detailed_cache_path(path))
+        CacheWriter.delete(cls._generate_ranked_cache_path(path))
+        metadata_path = cls._generate_metadata_path(path)
+        if metadata_path.exists() and metadata_path.is_file():
+            metadata_path.unlink()
+        path.rmdir()
 
     def _add_label(self, value: str) -> int:
         idx = self._labels.get(value, None)
@@ -415,7 +432,7 @@ class Loader(PathFormatter):
         if self._cache.dataset.count_rows() == 0:
             raise EmptyCacheError()
 
-        detailed_cache = CacheReader(
+        detailed_cache = CacheReader.load(
             self._generate_detailed_cache_path(self.path)
         )
 
@@ -550,7 +567,9 @@ class Loader(PathFormatter):
                                     generate_heap_item(batches, batch_idx, 0),
                                 )
 
-        ranked_cache = CacheReader(self._generate_ranked_cache_path(self.path))
+        ranked_cache = CacheReader.load(
+            self._generate_ranked_cache_path(self.path)
+        )
         return Evaluator(
             path=self.path,
             detailed_cache=detailed_cache,

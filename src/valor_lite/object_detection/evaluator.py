@@ -68,30 +68,16 @@ class Evaluator(PathFormatter):
             number_of_groundtruths_per_label
         )
 
-    @property
-    def path(self) -> Path:
-        return self._path
-
-    @property
-    def detailed(self) -> CacheReader:
-        return self._detailed_cache
-
-    @property
-    def ranked(self) -> CacheReader:
-        return self._ranked_cache
-
-    @property
-    def info(self) -> EvaluatorInfo:
-        return self._info
-
     @classmethod
     def load(
         cls,
         path: str | Path,
         index_to_label_override: dict[int, str] | None = None,
     ):
-        detailed_cache = CacheReader(cls._generate_detailed_cache_path(path))
-        ranked_cache = CacheReader(cls._generate_ranked_cache_path(path))
+        detailed_cache = CacheReader.load(
+            cls._generate_detailed_cache_path(path)
+        )
+        ranked_cache = CacheReader.load(cls._generate_ranked_cache_path(path))
 
         # build evaluator meta
         (
@@ -214,6 +200,30 @@ class Evaluator(PathFormatter):
             batch_size=batch_size,
             index_to_label_override=self._index_to_label,
         )
+
+    def delete(self):
+        """
+        Delete evaluator cache.
+        """
+        from valor_lite.object_detection.loader import Loader
+
+        Loader.delete(self.path)
+
+    @property
+    def path(self) -> Path:
+        return self._path
+
+    @property
+    def detailed(self) -> CacheReader:
+        return self._detailed_cache
+
+    @property
+    def ranked(self) -> CacheReader:
+        return self._ranked_cache
+
+    @property
+    def info(self) -> EvaluatorInfo:
+        return self._info
 
     @staticmethod
     def generate_meta(

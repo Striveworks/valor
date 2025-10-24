@@ -179,3 +179,27 @@ def test_output_types_dont_contain_numpy(
     for value in values:
         if isinstance(value, (np.generic, np.ndarray)):
             raise TypeError(f"Value `{value}` has type `{type(value)}`.")
+
+
+def test_evaluator_deletion(
+    tmp_path: Path,
+    false_negatives_single_datum_detections: list[Detection],
+):
+    # create evaluator
+    loader = DataLoader.create(tmp_path)
+    loader.add_bounding_boxes(false_negatives_single_datum_detections)
+    evaluator = loader.finalize()
+    assert tmp_path == evaluator.path
+
+    # check both caches exist
+    assert tmp_path.exists()
+    assert evaluator._generate_detailed_cache_path(tmp_path).exists()
+    assert evaluator._generate_ranked_cache_path(tmp_path).exists()
+    assert evaluator._generate_metadata_path(tmp_path).exists()
+
+    # verify deletion
+    evaluator.delete()
+    assert not tmp_path.exists()
+    assert not evaluator._generate_detailed_cache_path(tmp_path).exists()
+    assert not evaluator._generate_ranked_cache_path(tmp_path).exists()
+    assert not evaluator._generate_metadata_path(tmp_path).exists()

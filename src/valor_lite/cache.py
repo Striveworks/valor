@@ -68,12 +68,23 @@ class CacheFiles:
         self._path = Path(path)
 
     @property
-    def files(self) -> list[str]:
+    def path(self) -> Path:
+        return self._path
+
+    @property
+    def files(self) -> list[Path]:
+        if not self.path.exists():
+            return []
+        elif not self.path.is_dir():
+            raise NotADirectoryError(
+                f"Path exists but is not a directory: {self._path}"
+            )
+
         files = []
         for entry in os.listdir(self._path):
             full_path = os.path.join(self._path, entry)
             if os.path.isfile(full_path):
-                files.append(full_path)
+                files.append(Path(full_path))
         return files
 
     @property
@@ -81,8 +92,17 @@ class CacheFiles:
         return len(self.files)
 
     @property
-    def dataset_files(self) -> list[str]:
-        return glob.glob(f"{self._path}/*.parquet")
+    def dataset_files(self) -> list[Path]:
+        if not self.path.exists():
+            return []
+        elif not self.path.is_dir():
+            raise NotADirectoryError(
+                f"Path exists but is not a directory: {self._path}"
+            )
+
+        return [
+            Path(filepath) for filepath in glob.glob(f"{self._path}/*.parquet")
+        ]
 
     @property
     def num_dataset_files(self) -> int:
@@ -92,16 +112,19 @@ class CacheFiles:
     def _generate_config_path(path: str | Path) -> Path:
         return Path(path) / ".cfg"
 
-    @staticmethod
-    def _get_dataset_from_path(path: str | Path) -> ds.Dataset:
-        return ds.dataset(path, format="parquet")
-
 
 class CacheReader(CacheFiles):
-    def __init__(self, path: str | Path):
+    def __init__(
+        self,
+        path: str | Path,
+        batch_size: int,
+        rows_per_file: int,
+        compression: str,
+    ):
         self._path = Path(path)
-        self._cfg = None
-        self._dataset = None
+        self._batch_size = batch_size
+        self._rows_per_file = rows_per_file
+        self._compression = compression
 
         # validate path
         if not self._path.exists():
@@ -111,45 +134,48 @@ class CacheReader(CacheFiles):
                 f"Path exists but is not a directory: {self._path}"
             )
 
+    @classmethod
+    def load(cls, path: str | Path):
+        def _retrieve(config: dict, key: str):
+            if value := config.get(key, None):
+                return value
+            raise KeyError(
+                f"'{key}' is not defined within {cls._generate_config_path(path)}"
+            )
+
+        cfg_path = cls._generate_config_path(path)
+        with open(cfg_path, "r") as f:
+            cfg = json.load(f)
+            batch_size = _retrieve(cfg, "batch_size")
+            rows_per_file = _retrieve(cfg, "rows_per_file")
+            compression = _retrieve(cfg, "compression")
+
+        return cls(
+            path=path,
+            batch_size=batch_size,
+            rows_per_file=rows_per_file,
+            compression=compression,
+        )
+
     @property
     def dataset(self) -> ds.Dataset:
-        if not self._dataset:
-            self._dataset = ds.dataset(
-                self._path,
-                format="parquet",
-            )
-        return self._dataset
+        return ds.dataset(self._path, format="parquet")
 
     @property
     def schema(self) -> pa.Schema:
         return self.dataset.schema
 
     @property
-    def config(self) -> dict:
-        if self._cfg is None:
-            cfg_path = self._generate_config_path(self._path)
-            with open(cfg_path, "r") as f:
-                self._cfg = json.load(f)
-        return self._cfg
-
-    def _read_config(self, key: str):
-        if value := self.config.get(key, None):
-            return value
-        raise KeyError(
-            f"'{key}' is not defined within {self._generate_config_path(self._path)}"
-        )
-
-    @property
     def batch_size(self) -> int:
-        return int(self._read_config("batch_size"))
+        return self._batch_size
 
     @property
     def rows_per_file(self) -> int:
-        return int(self._read_config("rows_per_file"))
+        return self._rows_per_file
 
     @property
     def compression(self) -> str:
-        return str(self._read_config("compression"))
+        return self._compression
 
 
 class CacheWriter(CacheFiles):
@@ -209,7 +235,7 @@ class CacheWriter(CacheFiles):
     @classmethod
     def load(cls, path: str | Path):
         cfg_path = cls._generate_config_path(path)
-        dataset = cls._get_dataset_from_path(path)
+        dataset = ds.dataset(path, format="parquet")
         with open(cfg_path, "r") as f:
             cfg = json.load(f)
         return cls(
@@ -217,6 +243,23 @@ class CacheWriter(CacheFiles):
             schema=dataset.schema,
             **cfg,
         )
+
+    @classmethod
+    def delete(cls, path: str | Path):
+        path = Path(path)
+        if not path.exists():
+            return
+        cache = cls.load(path)
+        # delete config file
+        cfg_path = cls._generate_config_path(path)
+        if cfg_path.exists() and cfg_path.is_file():
+            cfg_path.unlink()
+        # delete parquet files
+        for file in cache.dataset_files:
+            if file.exists() and file.is_file() and file.suffix == ".parquet":
+                file.unlink()
+        # delete empty cache directory
+        path.rmdir()
 
     def write_rows(
         self,
@@ -285,10 +328,6 @@ class CacheWriter(CacheFiles):
         self._buffer = []
         self._count = 0
         self._close_writer()
-
-    def delete(self):
-        for file in self.files:
-            Path(file).unlink()
 
     def _next_filename(self) -> Path:
         files = self.dataset_files

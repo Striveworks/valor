@@ -177,3 +177,44 @@ def test_mixed_annotations(
         with pytest.raises(AttributeError) as e:
             loader.add_bitmasks([detection])
         assert "no attribute 'mask'" in str(e)
+
+
+def test_loader_deletion(
+    tmp_path: Path,
+    false_negatives_single_datum_detections: list[Detection],
+):
+    loader = DataLoader.create(tmp_path)
+    loader.add_bounding_boxes(false_negatives_single_datum_detections)
+    assert tmp_path == loader.path
+
+    # check only detailed cache exists
+    assert tmp_path.exists()
+    assert loader._generate_detailed_cache_path(tmp_path).exists()
+    assert not loader._generate_ranked_cache_path(tmp_path).exists()
+    assert loader._generate_metadata_path(tmp_path).exists()
+
+    # verify deletion
+    DataLoader.delete(tmp_path)
+    assert not tmp_path.exists()
+    assert not loader._generate_detailed_cache_path(tmp_path).exists()
+    assert not loader._generate_ranked_cache_path(tmp_path).exists()
+    assert not loader._generate_metadata_path(tmp_path).exists()
+
+    # create finalized caches
+    loader = DataLoader.create(tmp_path)
+    loader.add_bounding_boxes(false_negatives_single_datum_detections)
+    _ = loader.finalize()
+    assert tmp_path == loader.path
+
+    # check both caches exist
+    assert tmp_path.exists()
+    assert loader._generate_detailed_cache_path(tmp_path).exists()
+    assert loader._generate_ranked_cache_path(tmp_path).exists()
+    assert loader._generate_metadata_path(tmp_path).exists()
+
+    # verify deletion
+    DataLoader.delete(tmp_path)
+    assert not tmp_path.exists()
+    assert not loader._generate_detailed_cache_path(tmp_path).exists()
+    assert not loader._generate_ranked_cache_path(tmp_path).exists()
+    assert not loader._generate_metadata_path(tmp_path).exists()
