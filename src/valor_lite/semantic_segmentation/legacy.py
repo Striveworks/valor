@@ -1,6 +1,5 @@
 import tempfile
 from dataclasses import dataclass
-from pathlib import Path
 
 import numpy as np
 import pyarrow.compute as pc
@@ -103,8 +102,7 @@ class Evaluator(CachedEvaluator):
         if filter_ is not None:
             with tempfile.TemporaryDirectory() as tmpdir:
                 filtered_evaluator = super().filter(
-                    directory=tmpdir,
-                    name="filtered",
+                    path=tmpdir,
                     filter_expr=filter_,
                 )
                 return filtered_evaluator.compute_precision_recall_iou()
@@ -129,29 +127,17 @@ class DataLoader(CachedLoader):
     Legacy Segmentation DataLoader.
     """
 
-    def finalize(self):
-        evaluator = super().finalize()
-        return Evaluator(
-            name=evaluator._name,
-            directory=evaluator._directory,
-        )
-
-    @classmethod
-    def filter(
-        cls,
-        directory: str | Path,
-        name: str,
-        evaluator: CachedEvaluator,
-        filter_expr: Filter,
+    def finalize(
+        self,
+        index_to_label_override: dict[int, str] | None = None,
     ) -> Evaluator:
-        evaluator = super().filter(
-            directory=directory,
-            name=name,
-            evaluator=evaluator,
-            filter_expr=filter_expr,
+        evaluator = super().finalize(
+            index_to_label_override=index_to_label_override
         )
         return Evaluator(
-            directory=evaluator._directory,
-            name=evaluator._name,
-            labels_override=evaluator._index_to_label,
+            path=evaluator.path,
+            cache=evaluator.cache,
+            info=evaluator.info,
+            index_to_label=evaluator._index_to_label,
+            confusion_matrix=evaluator._confusion_matrix,
         )

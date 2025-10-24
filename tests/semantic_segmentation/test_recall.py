@@ -1,3 +1,5 @@
+from pathlib import Path
+
 from valor_lite.semantic_segmentation import (
     DataLoader,
     MetricType,
@@ -5,8 +7,10 @@ from valor_lite.semantic_segmentation import (
 )
 
 
-def test_recall_basic_segmentations(basic_segmentations: list[Segmentation]):
-    loader = DataLoader()
+def test_recall_basic_segmentations(
+    tmp_path: Path, basic_segmentations: list[Segmentation]
+):
+    loader = DataLoader.create(tmp_path)
     loader.add_data(basic_segmentations)
     evaluator = loader.finalize()
 
@@ -32,9 +36,10 @@ def test_recall_basic_segmentations(basic_segmentations: list[Segmentation]):
 
 
 def test_recall_segmentations_from_boxes(
+    tmp_path: Path,
     segmentations_from_boxes: list[Segmentation],
 ):
-    loader = DataLoader()
+    loader = DataLoader.create(tmp_path)
     loader.add_data(segmentations_from_boxes)
     evaluator = loader.finalize()
 

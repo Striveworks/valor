@@ -1,3 +1,5 @@
+from pathlib import Path
+
 import numpy as np
 
 from valor_lite.semantic_segmentation import (
@@ -9,9 +11,10 @@ from valor_lite.semantic_segmentation import (
 
 
 def test_confusion_matrix_basic_segmentations(
+    tmp_path: Path,
     basic_segmentations: list[Segmentation],
 ):
-    loader = DataLoader()
+    loader = DataLoader.create(tmp_path)
     loader.add_data(basic_segmentations)
     evaluator = loader.finalize()
 
@@ -45,9 +48,10 @@ def test_confusion_matrix_basic_segmentations(
 
 
 def test_confusion_matrix_segmentations_from_boxes(
+    tmp_path: Path,
     segmentations_from_boxes: list[Segmentation],
 ):
-    loader = DataLoader()
+    loader = DataLoader.create(tmp_path)
     loader.add_data(segmentations_from_boxes)
     evaluator = loader.finalize()
 
@@ -94,7 +98,7 @@ def test_confusion_matrix_segmentations_from_boxes(
         assert m in actual_metrics
 
 
-def test_confusion_matrix_intermediate_counting():
+def test_confusion_matrix_intermediate_counting(tmp_path: Path):
 
     segmentation = Segmentation(
         uid="uid1",
@@ -137,7 +141,7 @@ def test_confusion_matrix_intermediate_counting():
         shape=(2, 2),
     )
 
-    loader = DataLoader()
+    loader = DataLoader.create(tmp_path)
     loader.add_data([segmentation])
     evaluator = loader.finalize()
     assert evaluator._confusion_matrix.shape == (5, 5)

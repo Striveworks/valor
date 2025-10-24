@@ -1,19 +1,38 @@
+import json
+from pathlib import Path
+
 import numpy as np
+import pytest
 
 from valor_lite.semantic_segmentation import (
     Bitmask,
     DataLoader,
+    Evaluator,
     Metric,
     Segmentation,
 )
 
 
+def test_evaluator_file_not_found(tmp_path: Path):
+    with pytest.raises(FileNotFoundError):
+        Evaluator.load(tmp_path)
+
+
+def test_evaluator_not_a_directory(tmp_path: Path):
+    filepath = tmp_path / "file"
+    with open(filepath, "w") as f:
+        json.dump({}, f, indent=2)
+    with pytest.raises(NotADirectoryError):
+        Evaluator.load(filepath)
+
+
 def test_metadata_using_large_random_segmentations(
+    tmp_path: Path,
     large_random_segmentations: list[Segmentation],
 ):
-    manager = DataLoader()
-    manager.add_data(large_random_segmentations)
-    evaluator = manager.finalize()
+    loader = DataLoader.create(tmp_path)
+    loader.add_data(large_random_segmentations)
+    evaluator = loader.finalize()
 
     assert evaluator.metadata.number_of_datums == 3
     assert evaluator.metadata.number_of_labels == 9
@@ -49,11 +68,12 @@ def _flatten_metrics(m) -> list:
 
 
 def test_output_types_dont_contain_numpy(
+    tmp_path: Path,
     segmentations_from_boxes: list[Segmentation],
 ):
-    manager = DataLoader()
-    manager.add_data(segmentations_from_boxes)
-    evaluator = manager.finalize()
+    loader = DataLoader.create(tmp_path)
+    loader.add_data(segmentations_from_boxes)
+    evaluator = loader.finalize()
 
     metrics = evaluator.evaluate()
 
@@ -63,9 +83,9 @@ def test_output_types_dont_contain_numpy(
             raise TypeError(value)
 
 
-def test_label_mismatch():
+def test_label_mismatch(tmp_path: Path):
 
-    loader = DataLoader()
+    loader = DataLoader.create(tmp_path)
     loader.add_data(
         segmentations=[
             Segmentation(
@@ -121,9 +141,9 @@ def test_label_mismatch():
     )
 
 
-def test_empty_groundtruths():
+def test_empty_groundtruths(tmp_path: Path):
 
-    loader = DataLoader()
+    loader = DataLoader.create(tmp_path)
     loader.add_data(
         segmentations=[
             Segmentation(
@@ -168,9 +188,9 @@ def test_empty_groundtruths():
     )
 
 
-def test_empty_predictions():
+def test_empty_predictions(tmp_path: Path):
 
-    loader = DataLoader()
+    loader = DataLoader.create(tmp_path)
     loader.add_data(
         segmentations=[
             Segmentation(

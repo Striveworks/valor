@@ -186,7 +186,7 @@ class Evaluator(PathFormatter):
         if loader._cache.dataset.count_rows() == 0:
             raise EmptyCacheError()
 
-        return loader.finalize()
+        return loader.finalize(index_to_label_override=self._index_to_label)
 
     def delete(self):
         """

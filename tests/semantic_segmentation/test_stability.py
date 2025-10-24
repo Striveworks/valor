@@ -1,3 +1,4 @@
+from pathlib import Path
 from random import choice
 
 import numpy as np
@@ -39,12 +40,12 @@ def _generate_random_segmentations(
     ]
 
 
-def test_fuzz_segmentations():
+def test_fuzz_segmentations(tmp_path: Path):
 
     quantities = [1, 5, 10]
     sizes = [10, 100]
 
-    for _ in range(100):
+    for i in range(100):
 
         n_segmentations = choice(quantities)
         size_ = choice(sizes)
@@ -54,16 +55,16 @@ def test_fuzz_segmentations():
             n_segmentations, size_=size_, n_labels=n_labels
         )
 
-        loader = DataLoader()
+        loader = DataLoader.create(tmp_path / str(i))
         loader.add_data(segmentations)
         evaluator = loader.finalize()
         evaluator.evaluate()
 
 
-def test_fuzz_segmentations_with_filtering():
+def test_fuzz_segmentations_with_filtering(tmp_path: Path):
 
     quantities = [4, 10]
-    for _ in range(100):
+    for i in range(100):
 
         n_segmentations = choice(quantities)
         size_ = choice(quantities)
@@ -73,7 +74,7 @@ def test_fuzz_segmentations_with_filtering():
             n_segmentations, size_=size_, n_labels=n_labels
         )
 
-        loader = DataLoader()
+        loader = DataLoader.create(tmp_path / f"original_{i}")
         loader.add_data(segmentations)
         evaluator = loader.finalize()
 
@@ -84,5 +85,7 @@ def test_fuzz_segmentations_with_filtering():
         except EmptyFilterError:
             pass
         else:
-            filtered_evaluator = evaluator.filter(filter_)
+            filtered_evaluator = evaluator.filter(
+                tmp_path / f"filtered_{i}", filter_
+            )
             filtered_evaluator.evaluate()

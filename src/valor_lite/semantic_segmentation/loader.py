@@ -6,7 +6,6 @@ import pyarrow as pa
 from tqdm import tqdm
 
 from valor_lite.cache import (
-    CacheReader,
     CacheWriter,
     DataType,
     convert_type_mapping_to_schema,
@@ -14,7 +13,7 @@ from valor_lite.cache import (
 from valor_lite.exceptions import EmptyCacheError
 from valor_lite.semantic_segmentation.annotation import Segmentation
 from valor_lite.semantic_segmentation.computation import compute_intermediates
-from valor_lite.semantic_segmentation.evaluator import Evaluator, Filter
+from valor_lite.semantic_segmentation.evaluator import Evaluator
 from valor_lite.semantic_segmentation.format import PathFormatter
 
 
@@ -325,9 +324,17 @@ class Loader(PathFormatter):
             # update datum count
             self._datum_count += 1
 
-    def finalize(self):
+    def finalize(
+        self,
+        index_to_label_override: dict[int, str] | None = None,
+    ):
         """
         Performs data finalization and some preprocessing steps.
+
+        Parameters
+        ----------
+        index_to_label_override : dict[int, str], optional
+            Pre-configures label mapping. Used when operating over filtered subsets.
 
         Returns
         -------
@@ -338,4 +345,6 @@ class Loader(PathFormatter):
         if self._cache.dataset.count_rows() == 0:
             raise EmptyCacheError()
 
-        return Evaluator(self.path)
+        return Evaluator.load(
+            self.path, index_to_label_override=index_to_label_override
+        )

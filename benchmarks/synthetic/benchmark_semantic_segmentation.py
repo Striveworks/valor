@@ -8,7 +8,8 @@ from pathlib import Path
 import numpy as np
 from tqdm import tqdm
 
-from valor_lite.semantic_segmentation import Bitmask, DataLoader, Segmentation
+from valor_lite.semantic_segmentation import Bitmask, Segmentation
+from valor_lite.semantic_segmentation.loader import Loader
 
 
 def format_bytes(bytes_count, decimal_places=2):
@@ -180,7 +181,11 @@ def benchmark(
 
     for _ in range(repeat):
 
-        loader = DataLoader()
+        loader = Loader.create(
+            ".valor/benchmark_semseg",
+            batch_size=1_000,
+            rows_per_file=10_000,
+        )
 
         for i in tqdm(range(number_of_images)):
             data, elapsed, peak = profile(generate_segmentation)(
