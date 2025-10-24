@@ -63,24 +63,27 @@ def convert_type_mapping_to_schema(
     return [(k, DataType(v).to_arrow()) for k, v in type_mapping.items()]
 
 
-class CacheReader:
-    def __init__(self, where: str | Path):
-        self._dir = Path(where)
-        self._cfg = self._dir / ".cfg"
-
-        with open(self._cfg, "r") as f:
-            cfg = json.load(f)
-            self._batch_size = cfg.get("batch_size")
-            self._rows_per_file = cfg.get("rows_per_file")
-            self._compression = cfg.get("compression")
+class CacheFiles:
+    def __init__(self, path: str | Path):
+        self._path = Path(path)
+        if self.path.exists() and not self.path.is_dir():
+            raise NotADirectoryError(
+                f"Path exists but is not a directory: {self._path}"
+            )
 
     @property
-    def files(self) -> list[str]:
+    def path(self) -> Path:
+        return self._path
+
+    @property
+    def files(self) -> list[Path]:
+        if not self.path.exists():
+            return []
         files = []
-        for entry in os.listdir(self._dir):
-            full_path = os.path.join(self._dir, entry)
+        for entry in os.listdir(self._path):
+            full_path = os.path.join(self._path, entry)
             if os.path.isfile(full_path):
-                files.append(full_path)
+                files.append(Path(full_path))
         return files
 
     @property
@@ -88,22 +91,74 @@ class CacheReader:
         return len(self.files)
 
     @property
-    def dataset_files(self) -> list[str]:
-        return glob.glob(f"{self._dir}/*.parquet")
+    def dataset_files(self) -> list[Path]:
+        if not self.path.exists():
+            return []
+        return [
+            Path(filepath) for filepath in glob.glob(f"{self._path}/*.parquet")
+        ]
 
     @property
     def num_dataset_files(self) -> int:
         return len(self.dataset_files)
 
-    @property
-    def dataset(self):
-        return ds.dataset(
-            self._dir,
-            format="parquet",
+    @staticmethod
+    def _generate_config_path(path: str | Path) -> Path:
+        return Path(path) / ".cfg"
+
+
+class CacheReader(CacheFiles):
+    def __init__(
+        self,
+        path: str | Path,
+        batch_size: int,
+        rows_per_file: int,
+        compression: str,
+    ):
+        self._path = Path(path)
+        self._batch_size = batch_size
+        self._rows_per_file = rows_per_file
+        self._compression = compression
+
+    @classmethod
+    def load(cls, path: str | Path):
+        path = Path(path)
+
+        # validate path
+        if not path.exists():
+            raise FileNotFoundError(f"Directory does not exist: {path}")
+        elif not path.is_dir():
+            raise NotADirectoryError(
+                f"Path exists but is not a directory: {path}"
+            )
+
+        def _retrieve(config: dict, key: str):
+            if value := config.get(key, None):
+                return value
+            raise KeyError(
+                f"'{key}' is not defined within {cls._generate_config_path(path)}"
+            )
+
+        cfg_path = cls._generate_config_path(path)
+        with open(cfg_path, "r") as f:
+            cfg = json.load(f)
+            batch_size = _retrieve(cfg, "batch_size")
+            rows_per_file = _retrieve(cfg, "rows_per_file")
+            compression = _retrieve(cfg, "compression")
+
+        return cls(
+            path=path,
+            batch_size=batch_size,
+            rows_per_file=rows_per_file,
+            compression=compression,
         )
 
     @property
-    def schema(self):
+    def dataset(self) -> ds.Dataset:
+        return ds.dataset(self._path, format="parquet")
+
+    @property
+    def schema(self) -> pa.Schema:
         return self.dataset.schema
 
     @property
@@ -118,71 +173,90 @@ class CacheReader:
     def compression(self) -> str:
         return self._compression
 
-    def __enter__(self):
-        """Context manager entry."""
-        return self
 
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        pass
-
-
-class CacheWriter(CacheReader):
+class CacheWriter(CacheFiles):
     def __init__(
         self,
-        where: str | Path,
+        path: str | Path,
         schema: pa.Schema,
-        batch_size: int = 1000,
-        rows_per_file: int = 10000,
-        compression: str = "snappy",
-        delete_if_exists: bool = True,
+        batch_size: int,
+        rows_per_file: int,
+        compression: str,
     ):
-        self._dir = Path(where)
-        self._cfg = self._dir / ".cfg"
-
+        self._path = Path(path)
         self._schema = schema
         self._batch_size = batch_size
         self._rows_per_file = rows_per_file
         self._compression = compression
 
-        if delete_if_exists:
-            self.delete_files()
-        self._dir.mkdir(parents=True, exist_ok=True)
-
-        # Internal state
+        # internal state
         self._writer = None
         self._buffer = []
         self._count = 0
 
-        with open(self._cfg, "w") as f:
-            info = dict(
+    @classmethod
+    def create(
+        cls,
+        path: str | Path,
+        schema: pa.Schema,
+        batch_size: int = 1000,
+        rows_per_file: int = 10000,
+        compression: str = "snappy",
+    ):
+        Path(path).mkdir(parents=True, exist_ok=False)
+        cfg_path = cls._generate_config_path(path)
+        with open(cfg_path, "w") as f:
+            cfg = dict(
                 batch_size=batch_size,
                 rows_per_file=rows_per_file,
                 compression=compression,
             )
-            json.dump(info, f, indent=2)
-
-    @property
-    def schema(self):
-        return self._schema
-
-    @property
-    def dataset(self):
-        return ds.dataset(
-            self._dir,
-            format="parquet",
-            schema=self.schema,
+            json.dump(cfg, f, indent=2)
+        return cls(
+            path=path,
+            schema=schema,
+            batch_size=batch_size,
+            rows_per_file=rows_per_file,
+            compression=compression,
         )
 
-    def delete_files(self):
-        for file in self.dataset_files:
-            Path(file).unlink()
+    @classmethod
+    def load(cls, path: str | Path):
+        path = Path(path)
+        # validate path
+        if not path.exists():
+            raise FileNotFoundError(f"Directory does not exist: {path}")
+        elif not path.is_dir():
+            raise NotADirectoryError(
+                f"Path exists but is not a directory: {path}"
+            )
 
-    @property
-    def next_index(self):
-        files = self.dataset_files
-        if not files:
-            return 0
-        return max([int(Path(f).stem) for f in files]) + 1
+        cfg_path = cls._generate_config_path(path)
+        dataset = ds.dataset(path, format="parquet")
+        with open(cfg_path, "r") as f:
+            cfg = json.load(f)
+        return cls(
+            path=path,
+            schema=dataset.schema,
+            **cfg,
+        )
+
+    @classmethod
+    def delete(cls, path: str | Path):
+        path = Path(path)
+        if not path.exists():
+            return
+        cache = cls.load(path)
+        # delete config file
+        cfg_path = cls._generate_config_path(path)
+        if cfg_path.exists() and cfg_path.is_file():
+            cfg_path.unlink()
+        # delete parquet files
+        for file in cache.dataset_files:
+            if file.exists() and file.is_file() and file.suffix == ".parquet":
+                file.unlink()
+        # delete empty cache directory
+        path.rmdir()
 
     def write_rows(
         self,
@@ -253,7 +327,12 @@ class CacheWriter(CacheReader):
         self._close_writer()
 
     def _next_filename(self) -> Path:
-        return self._dir / f"{self.next_index:06d}.parquet"
+        files = self.dataset_files
+        if not files:
+            next_index = 0
+        else:
+            next_index = max([int(Path(f).stem) for f in files]) + 1
+        return self._path / f"{next_index:06d}.parquet"
 
     def _get_or_create_writer(self) -> pq.ParquetWriter:
         """Open a new parquet file for writing."""
@@ -279,3 +358,27 @@ class CacheWriter(CacheReader):
     def __exit__(self, exc_type, exc_val, exc_tb):
         """Context manager exit - ensures data is flushed."""
         self.flush()
+
+    @property
+    def schema(self) -> pa.Schema:
+        return self._schema
+
+    @property
+    def dataset(self) -> ds.Dataset:
+        return ds.dataset(
+            self._path,
+            format="parquet",
+            schema=self.schema,
+        )
+
+    @property
+    def batch_size(self) -> int:
+        return self._batch_size
+
+    @property
+    def rows_per_file(self) -> int:
+        return self._rows_per_file
+
+    @property
+    def compression(self) -> str:
+        return self._compression
