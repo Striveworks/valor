@@ -17,6 +17,29 @@ def test_evaluator_no_data(tmp_path: Path):
         Evaluator.load(tmp_path)
 
 
+def test_evaluator_valid_thresholds(tmp_path: Path):
+    eval = Evaluator(
+        path=tmp_path,
+        detailed_cache=None,  # type: ignore - testing
+        ranked_cache=None,  # type: ignore - testing
+        info=None,  # type: ignore - testing
+        index_to_label={},
+        number_of_groundtruths_per_label=np.ones(1, dtype=np.uint64),
+    )
+    for fn in [
+        eval.compute_precision_recall,
+        eval.compute_examples,
+        eval.compute_confusion_matrix,
+        eval.compute_confusion_matrix_with_examples,
+    ]:
+        with pytest.raises(ValueError) as e:
+            fn(iou_thresholds=[], score_thresholds=[0.5])
+        assert "IOU" in str(e)
+        with pytest.raises(ValueError) as e:
+            fn(iou_thresholds=[0.5], score_thresholds=[])
+        assert "score" in str(e)
+
+
 def test_metadata_using_torch_metrics_example(
     tmp_path: Path,
     torchmetrics_detections: list[Detection],
