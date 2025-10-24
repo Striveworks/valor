@@ -187,14 +187,6 @@ class CacheWriter(CacheFiles):
         self._rows_per_file = rows_per_file
         self._compression = compression
 
-        # validate path
-        if not self._path.exists():
-            raise FileNotFoundError(f"Directory does not exist: {self._path}")
-        elif not self._path.is_dir():
-            raise NotADirectoryError(
-                f"Path exists but is not a directory: {self._path}"
-            )
-
         # internal state
         self._writer = None
         self._buffer = []
@@ -228,6 +220,15 @@ class CacheWriter(CacheFiles):
 
     @classmethod
     def load(cls, path: str | Path):
+        path = Path(path)
+        # validate path
+        if not path.exists():
+            raise FileNotFoundError(f"Directory does not exist: {path}")
+        elif not path.is_dir():
+            raise NotADirectoryError(
+                f"Path exists but is not a directory: {path}"
+            )
+
         cfg_path = cls._generate_config_path(path)
         dataset = ds.dataset(path, format="parquet")
         with open(cfg_path, "r") as f:
