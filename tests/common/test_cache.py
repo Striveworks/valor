@@ -364,3 +364,6 @@ def test_cache_delete(tmp_path: Path):
 
         CacheWriter.delete(tmp_path / "cache")
         assert cache.files == []
+
+        # test edge case
+        CacheWriter.delete(tmp_path / "cache")
