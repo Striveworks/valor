@@ -66,6 +66,10 @@ def convert_type_mapping_to_schema(
 class CacheFiles:
     def __init__(self, path: str | Path):
         self._path = Path(path)
+        if self.path.exists() and not self.path.is_dir():
+            raise NotADirectoryError(
+                f"Path exists but is not a directory: {self._path}"
+            )
 
     @property
     def path(self) -> Path:
@@ -75,11 +79,6 @@ class CacheFiles:
     def files(self) -> list[Path]:
         if not self.path.exists():
             return []
-        elif not self.path.is_dir():
-            raise NotADirectoryError(
-                f"Path exists but is not a directory: {self._path}"
-            )
-
         files = []
         for entry in os.listdir(self._path):
             full_path = os.path.join(self._path, entry)
@@ -95,11 +94,6 @@ class CacheFiles:
     def dataset_files(self) -> list[Path]:
         if not self.path.exists():
             return []
-        elif not self.path.is_dir():
-            raise NotADirectoryError(
-                f"Path exists but is not a directory: {self._path}"
-            )
-
         return [
             Path(filepath) for filepath in glob.glob(f"{self._path}/*.parquet")
         ]

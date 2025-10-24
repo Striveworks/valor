@@ -3,8 +3,10 @@ from pathlib import Path
 
 import numpy as np
 import pyarrow as pa
+import pytest
 
 from valor_lite.cache import (
+    CacheFiles,
     CacheReader,
     CacheWriter,
     DataType,
@@ -40,6 +42,36 @@ def test_convert_type_mapping_to_schema():
 
     assert convert_type_mapping_to_schema({}) == []
     assert convert_type_mapping_to_schema(None) == []
+
+
+def test_cache_files_empty(tmp_path: Path):
+    cf = CacheFiles(tmp_path)
+    assert cf.path == tmp_path
+    assert cf.files == []
+    assert cf.num_files == 0
+    assert cf.dataset_files == []
+    assert cf.num_dataset_files == 0
+    assert cf._generate_config_path(tmp_path) == tmp_path / ".cfg"
+
+
+def test_cache_files_not_a_directory(tmp_path: Path):
+    filepath = tmp_path / "not_a_directory"
+    with open(filepath, "w") as f:
+        f.write("hello world")
+
+    with pytest.raises(NotADirectoryError):
+        CacheFiles(filepath)
+
+
+def test_cache_files_does_not_exist(tmp_path: Path):
+    path = tmp_path / "does_not_exist"
+    cf = CacheFiles(path)
+    assert cf.path == path
+    assert cf.files == []
+    assert cf.num_files == 0
+    assert cf.dataset_files == []
+    assert cf.num_dataset_files == 0
+    assert cf._generate_config_path(path) == path / ".cfg"
 
 
 def test_cache_write_batch(tmp_path: Path):
