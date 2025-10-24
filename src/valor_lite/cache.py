@@ -120,16 +120,18 @@ class CacheReader(CacheFiles):
         self._rows_per_file = rows_per_file
         self._compression = compression
 
-        # validate path
-        if not self._path.exists():
-            raise FileNotFoundError(f"Directory does not exist: {self._path}")
-        elif not self._path.is_dir():
-            raise NotADirectoryError(
-                f"Path exists but is not a directory: {self._path}"
-            )
-
     @classmethod
     def load(cls, path: str | Path):
+        path = Path(path)
+
+        # validate path
+        if not path.exists():
+            raise FileNotFoundError(f"Directory does not exist: {path}")
+        elif not path.is_dir():
+            raise NotADirectoryError(
+                f"Path exists but is not a directory: {path}"
+            )
+
         def _retrieve(config: dict, key: str):
             if value := config.get(key, None):
                 return value
