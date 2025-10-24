@@ -109,32 +109,6 @@ class Loader(PathFormatter):
         )
 
     @classmethod
-    def load(cls, path: str | Path):
-        # validate path
-        path = Path(path)
-        if not path.exists():
-            raise FileNotFoundError(f"Directory does not exist: {path}")
-        elif not path.is_dir():
-            raise NotADirectoryError(
-                f"Path exists but is not a directory: {path}"
-            )
-
-        # load metadata specification
-        metadata_path = cls._generate_metadata_path(path)
-        with open(metadata_path, "r") as f:
-            metadata_types = json.load(f)
-
-        # load cache
-        cache_path = cls._generate_cache_path(path)
-        cache = CacheWriter.load(cache_path)
-
-        return cls(
-            path=path,
-            writer=cache,
-            **metadata_types,
-        )
-
-    @classmethod
     def delete(cls, path: str | Path):
         path = Path(path)
         if not path.exists():
