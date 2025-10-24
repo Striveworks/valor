@@ -74,6 +74,15 @@ class Evaluator(PathFormatter):
         path: str | Path,
         index_to_label_override: dict[int, str] | None = None,
     ):
+        # validate path
+        path = Path(path)
+        if not path.exists():
+            raise FileNotFoundError(f"Directory does not exist: {path}")
+        elif not path.is_dir():
+            raise NotADirectoryError(
+                f"Path exists but is not a directory: {path}"
+            )
+
         detailed_cache = CacheReader.load(
             cls._generate_detailed_cache_path(path)
         )
