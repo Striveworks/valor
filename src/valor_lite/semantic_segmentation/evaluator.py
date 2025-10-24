@@ -208,16 +208,81 @@ class Evaluator:
         Evaluator
             A new evaluator object containing the filtered cache.
         """
-        name = name if name else "filtered"
-        directory = directory if directory else self._directory
-        from valor_lite.semantic_segmentation.loader import Loader
-
-        return Loader.filter(
-            name=name,
+        loader = cls(
             directory=directory,
-            evaluator=self,
-            filter_expr=filter_expr,
+            name=name,
+            batch_size=evaluator._detailed_batch_size,
+            rows_per_file=evaluator._detailed_rows_per_file,
+            compression=evaluator._detailed_compression,
+            datum_metadata_types=evaluator.info.datum_metadata_types,
+            groundtruth_metadata_types=evaluator.info.groundtruth_metadata_types,
+            prediction_metadata_types=evaluator.info.prediction_metadata_types,
         )
+        for fragment in evaluator.dataset.get_fragments():
+            tbl = fragment.to_table(filter=filter_expr.datums)
+
+            columns = (
+                "datum_id",
+                "gt_label_id",
+                "pd_label_id",
+            )
+            pairs = np.column_stack([tbl[col].to_numpy() for col in columns])
+
+            n_pairs = pairs.shape[0]
+            gt_ids = pairs[:, (0, 1)].astype(np.int64)
+            pd_ids = pairs[:, (0, 2)].astype(np.int64)
+
+            if filter_expr.groundtruths is not None:
+                mask_valid_gt = np.zeros(n_pairs, dtype=np.bool_)
+                gt_tbl = tbl.filter(filter_expr.groundtruths)
+                gt_pairs = np.column_stack(
+                    [
+                        gt_tbl[col].to_numpy()
+                        for col in ("datum_id", "gt_label_id")
+                    ]
+                ).astype(np.int64)
+                for gt in np.unique(gt_pairs, axis=0):
+                    mask_valid_gt |= (gt_ids == gt).all(axis=1)
+            else:
+                mask_valid_gt = np.ones(n_pairs, dtype=np.bool_)
+
+            if filter_expr.predictions is not None:
+                mask_valid_pd = np.zeros(n_pairs, dtype=np.bool_)
+                pd_tbl = tbl.filter(filter_expr.predictions)
+                pd_pairs = np.column_stack(
+                    [
+                        pd_tbl[col].to_numpy()
+                        for col in ("datum_id", "pd_label_id")
+                    ]
+                ).astype(np.int64)
+                for pd in np.unique(pd_pairs, axis=0):
+                    mask_valid_pd |= (pd_ids == pd).all(axis=1)
+            else:
+                mask_valid_pd = np.ones(n_pairs, dtype=np.bool_)
+
+            mask_valid = mask_valid_gt | mask_valid_pd
+            mask_valid_gt &= mask_valid
+            mask_valid_pd &= mask_valid
+
+            pairs[~mask_valid_gt, 1] = -1
+            pairs[~mask_valid_pd, 2] = -1
+
+            for idx, col in enumerate(columns):
+                tbl = tbl.set_column(
+                    tbl.schema.names.index(col), col, pa.array(pairs[:, idx])
+                )
+            loader._cache.write_table(tbl)
+
+        loader._cache.flush()
+        if loader._cache.dataset.count_rows() == 0:
+            raise EmptyCacheError()
+
+        evaluator = Evaluator(
+            directory=loader._directory,
+            name=loader._name,
+            labels_override=evaluator._index_to_label,
+        )
+        return evaluator
 
     def compute_precision_recall_iou(self) -> dict[MetricType, list]:
         """

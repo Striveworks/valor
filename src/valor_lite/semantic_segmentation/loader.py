@@ -6,6 +6,7 @@ import pyarrow as pa
 from tqdm import tqdm
 
 from valor_lite.cache import (
+    CacheReader,
     CacheWriter,
     DataType,
     convert_type_mapping_to_schema,
@@ -14,40 +15,46 @@ from valor_lite.exceptions import EmptyCacheError
 from valor_lite.semantic_segmentation.annotation import Segmentation
 from valor_lite.semantic_segmentation.computation import compute_intermediates
 from valor_lite.semantic_segmentation.evaluator import Evaluator, Filter
+from valor_lite.semantic_segmentation.format import PathFormatter
 
 
-class Loader:
+class Loader(PathFormatter):
     def __init__(
         self,
-        directory: str | Path = ".valor",
-        name: str = "default",
-        batch_size: int = 1_000,
-        rows_per_file: int = 10_000,
-        compression: str = "snappy",
+        path: str | Path,
+        writer: CacheWriter,
         datum_metadata_types: dict[str, DataType] | None = None,
         groundtruth_metadata_types: dict[str, DataType] | None = None,
         prediction_metadata_types: dict[str, DataType] | None = None,
     ):
-        self._directory = Path(directory)
-        self._name = name
+        self._path = Path(path)
+        self._cache = writer
+        self._datum_metadata_types = datum_metadata_types
+        self._groundtruth_metadata_types = groundtruth_metadata_types
+        self._prediction_metadata_types = prediction_metadata_types
 
-        self._path = self._directory / self._name
-        self._path.mkdir(parents=True, exist_ok=True)
-        self._cache_path = self._path / "counts"
-        self._metadata_path = self._path / "metadata.json"
-
+        # internal state
         self._labels: dict[str, int] = {}
         self._index_to_label: dict[int, str] = {}
         self._datum_count = 0
 
-        with open(self._metadata_path, "w") as f:
-            types = {
-                "datum": datum_metadata_types,
-                "groundtruth": groundtruth_metadata_types,
-                "prediction": prediction_metadata_types,
-            }
-            json.dump(types, f, indent=2)
+    @classmethod
+    def create(
+        cls,
+        path: str | Path,
+        batch_size: int = 10_000,
+        rows_per_file: int = 100_000,
+        compression: str = "snappy",
+        datum_metadata_types: dict[str, DataType] | None = None,
+        groundtruth_metadata_types: dict[str, DataType] | None = None,
+        prediction_metadata_types: dict[str, DataType] | None = None,
+        delete_if_exists: bool = False,
+    ):
+        path = Path(path)
+        if delete_if_exists:
+            cls.delete(path)
 
+        # define arrow schema
         datum_metadata_schema = convert_type_mapping_to_schema(
             datum_metadata_types
         )
@@ -57,14 +64,6 @@ class Loader:
         prediction_metadata_schema = convert_type_mapping_to_schema(
             prediction_metadata_types
         )
-
-        self._null_gt_metadata = {
-            s[0]: None for s in groundtruth_metadata_schema
-        }
-        self._null_pd_metadata = {
-            s[0]: None for s in prediction_metadata_schema
-        }
-
         schema = pa.schema(
             [
                 ("datum_uid", pa.string()),
@@ -82,13 +81,74 @@ class Loader:
                 ("count", pa.uint64()),
             ]
         )
-        self._cache = CacheWriter(
-            where=self._cache_path,
+
+        # create cache
+        cache = CacheWriter.create(
+            path=cls._generate_cache_path(path),
             schema=schema,
             batch_size=batch_size,
             rows_per_file=rows_per_file,
             compression=compression,
         )
+
+        # write metadata
+        metadata_path = cls._generate_metadata_path(path)
+        with open(metadata_path, "w") as f:
+            types = {
+                "datum_metadata_types": datum_metadata_types,
+                "groundtruth_metadata_types": groundtruth_metadata_types,
+                "prediction_metadata_types": prediction_metadata_types,
+            }
+            json.dump(types, f, indent=2)
+
+        return cls(
+            path=path,
+            writer=cache,
+            datum_metadata_types=datum_metadata_types,
+            groundtruth_metadata_types=groundtruth_metadata_types,
+            prediction_metadata_types=prediction_metadata_types,
+        )
+
+    @classmethod
+    def load(cls, path: str | Path):
+        # validate path
+        path = Path(path)
+        if not path.exists():
+            raise FileNotFoundError(f"Directory does not exist: {path}")
+        elif not path.is_dir():
+            raise NotADirectoryError(
+                f"Path exists but is not a directory: {path}"
+            )
+
+        # load metadata specification
+        metadata_path = cls._generate_metadata_path(path)
+        with open(metadata_path, "r") as f:
+            metadata_types = json.load(f)
+
+        # load cache
+        cache_path = cls._generate_cache_path(path)
+        cache = CacheWriter.load(cache_path)
+
+        return cls(
+            path=path,
+            writer=cache,
+            **metadata_types,
+        )
+
+    @classmethod
+    def delete(cls, path: str | Path):
+        path = Path(path)
+        if not path.exists():
+            return
+        CacheWriter.delete(cls._generate_cache_path(path))
+        metadata_path = cls._generate_metadata_path(path)
+        if metadata_path.exists() and metadata_path.is_file():
+            metadata_path.unlink()
+        path.rmdir()
+
+    @property
+    def path(self) -> Path:
+        return self._path
 
     def _add_label(self, value: str) -> int:
         idx = self._labels.get(value, None)
@@ -278,91 +338,4 @@ class Loader:
         if self._cache.dataset.count_rows() == 0:
             raise EmptyCacheError()
 
-        return Evaluator(
-            directory=self._directory,
-            name=self._name,
-        )
-
-    @classmethod
-    def filter(
-        cls,
-        directory: str | Path,
-        name: str,
-        evaluator: Evaluator,
-        filter_expr: Filter,
-    ) -> Evaluator:
-        loader = cls(
-            directory=directory,
-            name=name,
-            batch_size=evaluator._detailed_batch_size,
-            rows_per_file=evaluator._detailed_rows_per_file,
-            compression=evaluator._detailed_compression,
-            datum_metadata_types=evaluator.info.datum_metadata_types,
-            groundtruth_metadata_types=evaluator.info.groundtruth_metadata_types,
-            prediction_metadata_types=evaluator.info.prediction_metadata_types,
-        )
-        for fragment in evaluator.dataset.get_fragments():
-            tbl = fragment.to_table(filter=filter_expr.datums)
-
-            columns = (
-                "datum_id",
-                "gt_label_id",
-                "pd_label_id",
-            )
-            pairs = np.column_stack([tbl[col].to_numpy() for col in columns])
-
-            n_pairs = pairs.shape[0]
-            gt_ids = pairs[:, (0, 1)].astype(np.int64)
-            pd_ids = pairs[:, (0, 2)].astype(np.int64)
-
-            if filter_expr.groundtruths is not None:
-                mask_valid_gt = np.zeros(n_pairs, dtype=np.bool_)
-                gt_tbl = tbl.filter(filter_expr.groundtruths)
-                gt_pairs = np.column_stack(
-                    [
-                        gt_tbl[col].to_numpy()
-                        for col in ("datum_id", "gt_label_id")
-                    ]
-                ).astype(np.int64)
-                for gt in np.unique(gt_pairs, axis=0):
-                    mask_valid_gt |= (gt_ids == gt).all(axis=1)
-            else:
-                mask_valid_gt = np.ones(n_pairs, dtype=np.bool_)
-
-            if filter_expr.predictions is not None:
-                mask_valid_pd = np.zeros(n_pairs, dtype=np.bool_)
-                pd_tbl = tbl.filter(filter_expr.predictions)
-                pd_pairs = np.column_stack(
-                    [
-                        pd_tbl[col].to_numpy()
-                        for col in ("datum_id", "pd_label_id")
-                    ]
-                ).astype(np.int64)
-                for pd in np.unique(pd_pairs, axis=0):
-                    mask_valid_pd |= (pd_ids == pd).all(axis=1)
-            else:
-                mask_valid_pd = np.ones(n_pairs, dtype=np.bool_)
-
-            mask_valid = mask_valid_gt | mask_valid_pd
-            mask_valid_gt &= mask_valid
-            mask_valid_pd &= mask_valid
-
-            pairs[~mask_valid_gt, 1] = -1
-            pairs[~mask_valid_pd, 2] = -1
-
-            for idx, col in enumerate(columns):
-                tbl = tbl.set_column(
-                    tbl.schema.names.index(col), col, pa.array(pairs[:, idx])
-                )
-            loader._cache.write_table(tbl)
-
-        loader._cache.flush()
-        if loader._cache.dataset.count_rows() == 0:
-            raise EmptyCacheError()
-
-        evaluator = Evaluator(
-            directory=loader._directory,
-            name=loader._name,
-            labels_override=evaluator._index_to_label,
-        )
-        return evaluator
+        return Evaluator(self.path)
