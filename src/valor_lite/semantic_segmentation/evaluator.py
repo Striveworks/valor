@@ -62,6 +62,7 @@ class Evaluator(PathFormatter):
         # validate path
         path = Path(path)
         if not path.exists():
+            print("here")
             raise FileNotFoundError(f"Directory does not exist: {path}")
         elif not path.is_dir():
             raise NotADirectoryError(

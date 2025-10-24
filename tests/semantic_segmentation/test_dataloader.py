@@ -15,8 +15,9 @@ def test_no_data(tmp_path: Path):
 
 
 def test_loader_file_not_found(tmp_path: Path):
+    path = tmp_path / "does_not_exist"
     with pytest.raises(FileNotFoundError):
-        DataLoader.load(tmp_path)
+        DataLoader.load(path)
 
 
 def test_loader_not_a_directory(tmp_path: Path):
