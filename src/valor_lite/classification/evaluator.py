@@ -73,7 +73,7 @@ class Evaluator(PathFormatter):
         index_to_label_override: dict[int, str] | None = None,
     ):
         """
-        Load from an existing cache.
+        Load from an existing classification cache.
 
         Parameters
         ----------
@@ -123,7 +123,7 @@ class Evaluator(PathFormatter):
         filter_expr: Filter,
     ) -> Evaluator:
         """
-        Filter evaluator cache.
+        Filter classification cache.
 
         Parameters
         ----------
@@ -210,6 +210,14 @@ class Evaluator(PathFormatter):
             path=loader.path,
             index_to_label_override=self._index_to_label,
         )
+
+    def delete(self):
+        """
+        Delete classification cache.
+        """
+        from valor_lite.classification.loader import Loader
+
+        Loader.delete(self.path)
 
     @property
     def path(self) -> Path:

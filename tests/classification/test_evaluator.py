@@ -1,8 +1,48 @@
+import json
 from pathlib import Path
 
 import numpy as np
+import pytest
 
-from valor_lite.classification import Classification, DataLoader, Metric
+from valor_lite.classification import (
+    Classification,
+    DataLoader,
+    Evaluator,
+    Metric,
+)
+
+
+def test_evaluator_file_not_found(tmp_path: Path):
+    path = tmp_path / "does_not_exist"
+    with pytest.raises(FileNotFoundError):
+        Evaluator.load(path)
+
+
+def test_evaluator_not_a_directory(tmp_path: Path):
+    filepath = tmp_path / "file"
+    with open(filepath, "w") as f:
+        json.dump({}, f, indent=2)
+    with pytest.raises(NotADirectoryError):
+        Evaluator.load(filepath)
+
+
+def test_evaluator_valid_thresholds(tmp_path: Path):
+    eval = Evaluator(
+        path=tmp_path,
+        reader=None,  # type: ignore - testing
+        info=None,  # type: ignore - testing
+        index_to_label={},
+        label_counts=np.ones(1, dtype=np.uint64),
+    )
+    for fn in [
+        eval.compute_precision_recall_rocauc,
+        eval.compute_examples,
+        eval.compute_confusion_matrix,
+        eval.compute_confusion_matrix_with_examples,
+    ]:
+        with pytest.raises(ValueError) as e:
+            fn(score_thresholds=[])
+        assert "score" in str(e)
 
 
 def test_metadata_using_classification_example(
@@ -55,3 +95,23 @@ def test_output_types_dont_contain_numpy(
     for value in values:
         if isinstance(value, (np.generic, np.ndarray, Metric)):
             raise TypeError(value)
+
+
+def test_evaluator_deletion(
+    tmp_path: Path, basic_classifications: list[Classification]
+):
+    loader = DataLoader.create(tmp_path)
+    loader.add_data(basic_classifications)
+    evaluator = loader.finalize()
+    assert tmp_path == evaluator.path
+
+    # check both caches exist
+    assert tmp_path.exists()
+    assert evaluator._generate_cache_path(tmp_path).exists()
+    assert evaluator._generate_metadata_path(tmp_path).exists()
+
+    # verify deletion
+    evaluator.delete()
+    assert not tmp_path.exists()
+    assert not evaluator._generate_cache_path(tmp_path).exists()
+    assert not evaluator._generate_metadata_path(tmp_path).exists()
