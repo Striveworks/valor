@@ -3,9 +3,15 @@ from pathlib import Path
 from random import choice, uniform
 
 import numpy as np
+import pyarrow.compute as pc
 import pytest
 
-from valor_lite.classification import Classification, DataLoader, MetricType
+from valor_lite.classification import (
+    Classification,
+    DataLoader,
+    Filter,
+    MetricType,
+)
 from valor_lite.exceptions import EmptyFilterError
 
 
@@ -353,6 +359,164 @@ def test_filtering_six_classifications_by_indices(
                 "tp": 1,
                 "fp": 0,
                 "fn": 0,
+                "tn": 0,
+            },
+            "parameters": {
+                "score_threshold": 0.5,
+                "hardmax": False,
+                "label": "0",
+            },
+        },
+        {
+            "type": "Counts",
+            "value": {
+                "tp": 0,
+                "fp": 0,
+                "fn": 0,
+                "tn": 1,
+            },
+            "parameters": {
+                "score_threshold": 0.5,
+                "hardmax": False,
+                "label": "1",
+            },
+        },
+        {
+            "type": "Counts",
+            "value": {
+                "tp": 0,
+                "fp": 0,
+                "fn": 0,
+                "tn": 1,
+            },
+            "parameters": {
+                "score_threshold": 0.5,
+                "hardmax": False,
+                "label": "2",
+            },
+        },
+        {
+            "type": "Counts",
+            "value": {
+                "tp": 0,
+                "fp": 0,
+                "fn": 0,
+                "tn": 1,
+            },
+            "parameters": {
+                "score_threshold": 0.5,
+                "hardmax": False,
+                "label": "3",
+            },
+        },
+    ]
+    for m in actual_metrics:
+        assert m in expected_metrics
+    for m in expected_metrics:
+        assert m in actual_metrics
+
+
+def test_filtering_six_classifications_by_annotation(
+    tmp_path: Path,
+    six_classifications: list[Classification],
+):
+
+    loader = DataLoader.create(tmp_path)
+    loader.add_data(six_classifications)
+    evaluator = loader.finalize()
+
+    # test groundtruth filter
+    filter_ = Filter(
+        datums=pc.field("datum_uid") == "uid0",
+        groundtruths=pc.field("gt_label") != "0",
+    )
+    metrics = evaluator.evaluate(
+        score_thresholds=[0.5],
+        hardmax=False,
+        filter_=filter_,
+    )
+    actual_metrics = [m.to_dict() for m in metrics[MetricType.Counts]]
+    expected_metrics = [
+        {
+            "type": "Counts",
+            "value": {
+                "tp": 0,
+                "fp": 1,
+                "fn": 0,
+                "tn": 0,
+            },
+            "parameters": {
+                "score_threshold": 0.5,
+                "hardmax": False,
+                "label": "0",
+            },
+        },
+        {
+            "type": "Counts",
+            "value": {
+                "tp": 0,
+                "fp": 0,
+                "fn": 0,
+                "tn": 1,
+            },
+            "parameters": {
+                "score_threshold": 0.5,
+                "hardmax": False,
+                "label": "1",
+            },
+        },
+        {
+            "type": "Counts",
+            "value": {
+                "tp": 0,
+                "fp": 0,
+                "fn": 0,
+                "tn": 1,
+            },
+            "parameters": {
+                "score_threshold": 0.5,
+                "hardmax": False,
+                "label": "2",
+            },
+        },
+        {
+            "type": "Counts",
+            "value": {
+                "tp": 0,
+                "fp": 0,
+                "fn": 0,
+                "tn": 1,
+            },
+            "parameters": {
+                "score_threshold": 0.5,
+                "hardmax": False,
+                "label": "3",
+            },
+        },
+    ]
+    for m in actual_metrics:
+        assert m in expected_metrics
+    for m in expected_metrics:
+        assert m in actual_metrics
+
+    # test prediction filter
+    filter_ = Filter(
+        datums=pc.field("datum_uid") == "uid0",
+        predictions=pc.field("pd_label") != "0",
+    )
+    metrics = evaluator.evaluate(
+        score_thresholds=[0.5],
+        hardmax=False,
+        filter_=filter_,
+    )
+    actual_metrics = [m.to_dict() for m in metrics[MetricType.Counts]]
+    expected_metrics = [
+        {
+            "type": "Counts",
+            "value": {
+                "tp": 0,
+                "fp": 0,
+                "fn": 1,
                 "tn": 0,
             },
             "parameters": {

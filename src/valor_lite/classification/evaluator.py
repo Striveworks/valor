@@ -161,8 +161,10 @@ class Evaluator(PathFormatter):
             pd_ids = pairs[:, (0, 2)].astype(np.int64)
 
             if filter_expr.groundtruths is not None:
+                print(filter_expr.groundtruths)
                 mask_valid_gt = np.zeros(n_pairs, dtype=np.bool_)
                 gt_tbl = tbl.filter(filter_expr.groundtruths)
+                print(gt_tbl)
                 gt_pairs = np.column_stack(
                     [
                         gt_tbl[col].to_numpy()
@@ -173,6 +175,9 @@ class Evaluator(PathFormatter):
                     mask_valid_gt |= (gt_ids == gt).all(axis=1)
             else:
                 mask_valid_gt = np.ones(n_pairs, dtype=np.bool_)
+
+            print(gt_ids)
+            print(mask_valid_gt)
 
             if filter_expr.predictions is not None:
                 mask_valid_pd = np.zeros(n_pairs, dtype=np.bool_)

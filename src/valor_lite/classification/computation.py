@@ -140,17 +140,21 @@ def compute_counts(
     NDArray[np.int32]
         TP, FP, FN, TN counts.
     """
-
     n_scores = score_thresholds.shape[0]
+    counts = np.zeros((n_scores, n_labels, 4), dtype=np.uint64)
+    if ids.size == 0:
+        return counts
+
     gt_labels = ids[:, 1]
     pd_labels = ids[:, 2]
 
     mask_matching_labels = np.isclose(gt_labels, pd_labels)
     mask_score_nonzero = ~np.isclose(scores, 0.0)
     mask_hardmax = winners > 0.5
+    mask_valid_gts = gt_labels >= 0
+    mask_valid_pds = pd_labels >= 0
 
     # calculate metrics at various score thresholds
-    counts = np.zeros((n_scores, n_labels, 4), dtype=np.uint64)
     for score_idx in range(n_scores):
         mask_score_threshold = scores >= score_thresholds[score_idx]
         mask_score = mask_score_nonzero & mask_score_threshold
@@ -162,6 +166,9 @@ def compute_counts(
         mask_fp = ~mask_matching_labels & mask_score
         mask_fn = (mask_matching_labels & ~mask_score) | mask_fp
         mask_tn = ~mask_matching_labels & ~mask_score
+
+        mask_fn &= mask_valid_gts
+        mask_fp &= mask_valid_pds
 
         fn = np.unique(ids[mask_fn][:, [0, 1]].astype(int), axis=0)
         tn = np.unique(ids[mask_tn][:, [0, 2]].astype(int), axis=0)

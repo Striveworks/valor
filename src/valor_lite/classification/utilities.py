@@ -219,21 +219,36 @@ def _unpack_confusion_matrix_with_examples(
     if not isinstance(metric.value, dict):
         raise TypeError("expected metric to contain a dictionary value")
 
-    unique_matches, unique_match_indices = np.unique(
-        ids[np.ix_(mask_matched, (0, 1, 2))],  # type: ignore - numpy ix_ typing
-        axis=0,
-        return_index=True,
-    )
-    scores = scores[mask_matched][unique_match_indices]
-    unique_unmatched_groundtruths = np.unique(
-        ids[np.ix_(mask_unmatched_fn, (0, 1))],  # type: ignore - numpy ix_ typing
-        axis=0,
-    )
+    mask_valid_gts = ids[:, 1] >= 0
+    mask_valid_pds = ids[:, 2] >= 0
 
-    n_matched = unique_matches.shape[0]
-    n_unmatched_groundtruths = unique_unmatched_groundtruths.shape[0]
+    valid_matches = ids[mask_valid_gts & mask_valid_pds]
+    valid_gts = ids[mask_valid_gts]
+
+    n_matched = 0
+    unique_matches = np.empty((1, 3))
+    if valid_matches.size > 0:
+        unique_matches, unique_match_indices = np.unique(
+            valid_matches[np.ix_(mask_matched, (0, 1, 2))],  # type: ignore - numpy ix_ typing
+            axis=0,
+            return_index=True,
+        )
+        scores = scores[mask_matched][unique_match_indices]
+        n_matched = unique_matches.shape[0]
+
+    n_unmatched_groundtruths = 0
+    unique_unmatched_groundtruths = np.empty((1, 2))
+    if valid_gts.size > 0:
+        unique_unmatched_groundtruths = np.unique(
+            valid_gts[np.ix_(mask_unmatched_fn, (0, 1))],  # type: ignore - numpy ix_ typing
+            axis=0,
+        )
+        unique_unmatched_groundtruths = unique_unmatched_groundtruths[
+            unique_unmatched_groundtruths[:, 1] >= 0
+        ]
+        n_unmatched_groundtruths = unique_unmatched_groundtruths.shape[0]
+
     n_max = max(n_matched, n_unmatched_groundtruths)
-
     for idx in range(n_max):
         if idx < n_matched:
             datum_id = index_to_datum_id[unique_matches[idx, 0]]
