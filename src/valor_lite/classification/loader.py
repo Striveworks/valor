@@ -41,12 +41,30 @@ class Loader(PathFormatter):
     def create(
         cls,
         path: str | Path,
-        batch_size: int = 1,
-        rows_per_file: int = 1,
+        batch_size: int = 10_000,
+        rows_per_file: int = 100_000,
         compression: str = "snappy",
         datum_metadata_types: dict[str, DataType] | None = None,
         delete_if_exists: bool = False,
     ):
+        """
+        Create a data loader.
+
+        Parameters
+        ----------
+        path : str | Path
+            Where to store file-based cache.
+        batch_size : int, default=10_000
+            Sets the batch size for writing to file.
+        rows_per_file : int, default=100_000
+            Sets the maximum number of rows per file. This may be exceeded as files are datum aligned.
+        compression : str, default="snappy"
+            Sets the pyarrow compression method.
+        datum_metadata_types : dict[str, DataType], optional
+            Optionally sets metadata description for use in filtering.
+        delete_if_exists : bool, default=False
+            Option to delete if cache already exists.
+        """
         path = Path(path)
         if delete_if_exists:
             cls.delete(path)
@@ -100,6 +118,14 @@ class Loader(PathFormatter):
 
     @classmethod
     def delete(cls, path: str | Path):
+        """
+        Delete a classification cache.
+
+        Parameters
+        ----------
+        path : str | Path
+            Location of the existing cache.
+        """
         path = Path(path)
         if not path.exists():
             return

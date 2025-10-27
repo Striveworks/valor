@@ -72,6 +72,17 @@ class Evaluator(PathFormatter):
         path: str | Path,
         index_to_label_override: dict[int, str] | None = None,
     ):
+        """
+        Load from an existing cache.
+
+        Parameters
+        ----------
+        path : str | Path
+            Path to the existing cache.
+        index_to_label_override : dict[int, str], optional
+            Option to preset index to label dictionary. Used when loading from filtered caches.
+        """
+
         # validate path
         path = Path(path)
         if not path.exists():
