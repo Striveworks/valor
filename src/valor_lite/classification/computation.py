@@ -57,53 +57,64 @@ def compute_rocauc(
     positive_count = gt_count_per_label
     negative_count = pd_count_per_label - gt_count_per_label
 
-    true_positives = np.zeros((n_labels, n_datums), dtype=np.uint64)
-    false_positives = np.zeros_like(true_positives)
-    tp_scores = np.zeros_like(true_positives, dtype=np.float64)
+    rocauc = np.zeros(n_labels, dtype=np.float64)
+    last_cumulative_fp = prev_cumulative_fp.copy()
+    last_cumulative_tp = prev_cumulative_tp.copy()
 
-    if mask_matching_labels.sum():
-        for label_idx in range(n_labels):
-            if pd_count_per_label[label_idx] == 0:
-                continue
-            mask_pds = pd_labels == label_idx
-            true_positives[label_idx] = mask_matching_labels[mask_pds]
-            false_positives[label_idx] = ~mask_matching_labels[mask_pds]
-            tp_scores[label_idx] = scores[mask_pds]
+    for label_idx in range(n_labels):
+        print()
+        print("LABEL", label_idx)
+        mask_pds = pd_labels == label_idx
+        n_masked_pds = mask_pds.sum()
+        if pd_count_per_label[label_idx] == 0 or n_masked_pds == 0:
+            continue
 
-    cumulative_fp = np.cumsum(
-        false_positives, axis=1
-    ) + prev_cumulative_fp.reshape(-1, 1)
-    cumulative_tp = np.cumsum(
-        true_positives, axis=1
-    ) + prev_cumulative_tp.reshape(-1, 1)
+        print(n_masked_pds)
+        true_positives = np.zeros(n_masked_pds, dtype=np.uint64)
+        false_positives = np.zeros_like(true_positives)
+        tp_scores = np.zeros_like(true_positives, dtype=np.float64)
 
-    fpr = np.zeros_like(true_positives, dtype=np.float64)
-    np.divide(
-        cumulative_fp,
-        negative_count[:, np.newaxis],
-        where=negative_count[:, np.newaxis] > 0,
-        out=fpr,
-    )
-    tpr = np.zeros_like(true_positives, dtype=np.float64)
-    np.divide(
-        cumulative_tp,
-        positive_count[:, np.newaxis],
-        where=positive_count[:, np.newaxis] > 0,
-        out=tpr,
-    )
+        true_positives = mask_matching_labels[mask_pds]
+        false_positives = ~mask_matching_labels[mask_pds]
+        tp_scores = scores[mask_pds]
 
-    # sort by -tpr, -score
-    indices = np.lexsort((-tpr, -tp_scores), axis=1)
-    fpr = np.take_along_axis(fpr, indices, axis=1)
-    tpr = np.take_along_axis(tpr, indices, axis=1)
+        cumulative_fp = (
+            np.cumsum(false_positives) + prev_cumulative_fp[label_idx]
+        )
+        cumulative_tp = (
+            np.cumsum(true_positives) + prev_cumulative_tp[label_idx]
+        )
 
-    # running max of tpr
-    np.maximum.accumulate(tpr, axis=1, out=tpr)
+        last_cumulative_fp[label_idx] = cumulative_fp[-1]
+        last_cumulative_tp[label_idx] = cumulative_tp[-1]
 
-    # compute rocauc
-    rocauc = npc.trapezoid(x=fpr, y=tpr, axis=1)
+        fpr = np.zeros_like(true_positives, dtype=np.float64)
+        np.divide(
+            cumulative_fp,
+            negative_count[label_idx],
+            where=negative_count[label_idx] > 0,
+            out=fpr,
+        )
+        tpr = np.zeros_like(true_positives, dtype=np.float64)
+        np.divide(
+            cumulative_tp,
+            positive_count[label_idx],
+            where=positive_count[label_idx] > 0,
+            out=tpr,
+        )
 
-    return rocauc, cumulative_fp[:, -1], cumulative_tp[:, -1]
+        # sort by -tpr, -score
+        indices = np.lexsort((-tpr, -tp_scores))
+        fpr = fpr[indices]
+        tpr = tpr[indices]
+
+        # running max of tpr
+        np.maximum.accumulate(tpr, out=tpr)
+
+        # compute rocauc
+        rocauc[label_idx] = npc.trapezoid(x=fpr, y=tpr, axis=0)
+
+    return rocauc, last_cumulative_fp, last_cumulative_tp
 
 
 def compute_counts(
