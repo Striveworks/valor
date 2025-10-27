@@ -111,7 +111,7 @@ def compute_counts(
     n_labels: int,
 ) -> NDArray[np.uint64]:
     """
-    Computes classification metrics.
+    Computes counts of TP, FP and FN's per label.
 
     Parameters
     ----------
@@ -175,6 +175,9 @@ def compute_counts(
 
 
 def compute_precision(counts: NDArray[np.uint64]) -> NDArray[np.float64]:
+    """
+    Compute precision metric using result of compute_counts.
+    """
     n_scores, n_labels, _ = counts.shape
     precision = np.zeros((n_scores, n_labels), dtype=np.float64)
     np.divide(
@@ -187,6 +190,9 @@ def compute_precision(counts: NDArray[np.uint64]) -> NDArray[np.float64]:
 
 
 def compute_recall(counts: NDArray[np.uint64]) -> NDArray[np.float64]:
+    """
+    Compute recall metric using result of compute_counts.
+    """
     n_scores, n_labels, _ = counts.shape
     recall = np.zeros((n_scores, n_labels), dtype=np.float64)
     np.divide(
@@ -201,6 +207,9 @@ def compute_recall(counts: NDArray[np.uint64]) -> NDArray[np.float64]:
 def compute_f1_score(
     precision: NDArray[np.float64], recall: NDArray[np.float64]
 ) -> NDArray[np.float64]:
+    """
+    Compute f1 metric using result of compute_precision and compute_recall.
+    """
     f1_score = np.zeros_like(recall)
     np.divide(
         (2 * precision * recall),
@@ -214,6 +223,9 @@ def compute_f1_score(
 def compute_accuracy(
     counts: NDArray[np.uint64], n_datums: int
 ) -> NDArray[np.float64]:
+    """
+    Compute accuracy metric using result of compute_counts.
+    """
     n_scores, _, _ = counts.shape
     accuracy = np.zeros(n_scores, dtype=np.float64)
     if n_datums == 0:
@@ -240,7 +252,7 @@ def compute_pair_classifications(
     hardmax: bool,
 ) -> tuple[NDArray[np.bool_], NDArray[np.bool_], NDArray[np.bool_]]:
     """
-    Compute detailed confusion matrix.
+    Classifiy ID pairs as TP, FP or FN.
 
     Parameters
     ----------
@@ -333,6 +345,9 @@ def compute_confusion_matrix(
     score_thresholds: NDArray[np.float64],
     n_labels: int,
 ):
+    """
+    Compute confusion matrix using output of compute_pair_classifications.
+    """
     n_scores = score_thresholds.size
 
     # initialize arrays
