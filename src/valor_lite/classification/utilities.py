@@ -162,8 +162,16 @@ def unpack_examples(
             )
 
             tp = [index_to_label[row[1]] for row in unique_tp]
-            fp = [index_to_label[row[1]] for row in unique_fp]
-            fn = [index_to_label[row[1]] for row in unique_fn]
+            fp = [
+                index_to_label[row[1]]
+                for row in unique_fp
+                if index_to_label[row[1]] not in tp
+            ]
+            fn = [
+                index_to_label[row[1]]
+                for row in unique_fn
+                if index_to_label[row[1]] not in tp
+            ]
             metrics.append(
                 Metric.examples(
                     datum_id=datum_id,
