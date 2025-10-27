@@ -1,4 +1,5 @@
 from dataclasses import replace
+from pathlib import Path
 from random import choice, uniform
 
 import numpy as np
@@ -62,12 +63,13 @@ def generate_random_classifications(
 
 
 def test_filtering_one_classification(
+    tmp_path: Path,
     one_classification: list[Classification],
 ):
 
-    manager = DataLoader()
-    manager.add_data(one_classification)
-    evaluator = manager.finalize()
+    loader = DataLoader.create(tmp_path)
+    loader.add_data(one_classification)
+    evaluator = loader.finalize()
 
     # test evaluation
     filter_ = evaluator.create_filter(datums=["uid0"])
@@ -142,12 +144,13 @@ def test_filtering_one_classification(
 
 
 def test_filtering_three_classifications(
+    tmp_path: Path,
     three_classifications: list[Classification],
 ):
 
-    manager = DataLoader()
-    manager.add_data(three_classifications)
-    evaluator = manager.finalize()
+    loader = DataLoader.create(tmp_path)
+    loader.add_data(three_classifications)
+    evaluator = loader.finalize()
 
     # test evaluation
     filter_ = evaluator.create_filter(datums=["uid0"])
@@ -222,12 +225,13 @@ def test_filtering_three_classifications(
 
 
 def test_filtering_six_classifications(
+    tmp_path: Path,
     six_classifications: list[Classification],
 ):
 
-    manager = DataLoader()
-    manager.add_data(six_classifications)
-    evaluator = manager.finalize()
+    loader = DataLoader.create(tmp_path)
+    loader.add_data(six_classifications)
+    evaluator = loader.finalize()
 
     # test evaluation
     filter_ = evaluator.create_filter(datums=["uid0"])
@@ -301,8 +305,8 @@ def test_filtering_six_classifications(
         assert m in actual_metrics
 
 
-def test_filtering_random_classifications():
-    loader = DataLoader()
+def test_filtering_random_classifications(tmp_path: Path):
+    loader = DataLoader.create(tmp_path)
     loader.add_data(generate_random_classifications(13, 2, 10))
     evaluator = loader.finalize()
     filter_ = evaluator.create_filter(datums=["uid0"])
@@ -313,8 +317,10 @@ def test_filtering_random_classifications():
     )
 
 
-def test_filtering_empty(six_classifications: list[Classification]):
-    loader = DataLoader()
+def test_filtering_empty(
+    tmp_path: Path, six_classifications: list[Classification]
+):
+    loader = DataLoader.create(tmp_path)
     loader.add_data(six_classifications)
     evaluator = loader.finalize()
     assert evaluator.info.number_of_rows == 24
@@ -324,12 +330,13 @@ def test_filtering_empty(six_classifications: list[Classification]):
 
 
 def test_filtering_six_classifications_by_indices(
+    tmp_path: Path,
     six_classifications: list[Classification],
 ):
 
-    manager = DataLoader()
-    manager.add_data(six_classifications)
-    evaluator = manager.finalize()
+    loader = DataLoader.create(tmp_path)
+    loader.add_data(six_classifications)
+    evaluator = loader.finalize()
 
     # test evaluation
     filter_ = evaluator.create_filter(datums=np.array([0]))

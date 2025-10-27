@@ -1,73 +1,6 @@
+from pathlib import Path
+
 from valor_lite.classification import Classification, DataLoader
-
-# def test_compute_confusion_matrix():
-
-#     # groundtruth, prediction, score
-#     data = np.array(
-#         [
-#             # datum 0
-#             [0, 0, 0, 1.0, 1.0],  # tp
-#             [0, 0, 1, 0.0, 0.0],  # tn
-#             [0, 0, 2, 0.0, 0.0],  # tn
-#             [0, 0, 3, 0.0, 0.0],  # tn
-#             # datum 1
-#             [1, 0, 0, 0.0, 0.0],  # fn
-#             [1, 0, 1, 0.0, 0.0],  # tn
-#             [1, 0, 2, 1.0, 1.0],  # fp
-#             [1, 0, 3, 0.0, 0.0],  # tn
-#             # datum 2
-#             [2, 3, 0, 0.0, 0.0],  # tn
-#             [2, 3, 1, 0.0, 0.0],  # tn
-#             [2, 3, 2, 0.0, 0.0],  # tn
-#             [2, 3, 3, 0.3, 1.0],  # fn for score threshold > 0.3
-#         ],
-#         dtype=np.float64,
-#     )
-#     score_thresholds = np.array([0.25, 0.75], dtype=np.float64)
-
-#     result = compute_confusion_matrix(
-#         detailed_pairs=data,
-#         score_thresholds=score_thresholds,
-#         hardmax=True,
-#     )
-
-#     assert result.shape == (2, 12)
-#     assert np.all(
-#         result
-#         == np.array(
-#             [
-#                 [
-#                     PairClassification.TP,
-#                     0,
-#                     0,
-#                     0,
-#                     0,
-#                     0,
-#                     PairClassification.FP_FN_MISCLF,
-#                     0,
-#                     0,
-#                     0,
-#                     0,
-#                     PairClassification.TP,
-#                 ],
-#                 [
-#                     PairClassification.TP,
-#                     0,
-#                     0,
-#                     0,
-#                     0,
-#                     0,
-#                     PairClassification.FP_FN_MISCLF,
-#                     0,
-#                     PairClassification.FN_UNMATCHED,
-#                     PairClassification.FN_UNMATCHED,
-#                     PairClassification.FN_UNMATCHED,
-#                     PairClassification.FN_UNMATCHED,
-#                 ],
-#             ],
-#             dtype=np.uint8,
-#         ),
-#     )
 
 
 def _filter_elements_with_zero_count(cm: dict, mp: dict):
@@ -83,8 +16,10 @@ def _filter_elements_with_zero_count(cm: dict, mp: dict):
             cm.pop(gt_label)
 
 
-def test_confusion_matrix_basic(basic_classifications: list[Classification]):
-    loader = DataLoader()
+def test_confusion_matrix_basic(
+    tmp_path: Path, basic_classifications: list[Classification]
+):
+    loader = DataLoader.create(tmp_path)
     loader.add_data(basic_classifications)
     evaluator = loader.finalize()
 
@@ -168,10 +103,11 @@ def test_confusion_matrix_basic(basic_classifications: list[Classification]):
 
 
 def test_confusion_matrix_unit(
+    tmp_path: Path,
     classifications_from_api_unit_tests: list[Classification],
 ):
 
-    loader = DataLoader()
+    loader = DataLoader.create(tmp_path)
     loader.add_data(classifications_from_api_unit_tests)
     evaluator = loader.finalize()
 
@@ -240,10 +176,11 @@ def test_confusion_matrix_unit(
 
 
 def test_confusion_matrix_with_animal_example(
+    tmp_path: Path,
     classifications_animal_example: list[Classification],
 ):
 
-    loader = DataLoader()
+    loader = DataLoader.create(tmp_path)
     loader.add_data(classifications_animal_example)
     evaluator = loader.finalize()
 
@@ -320,10 +257,11 @@ def test_confusion_matrix_with_animal_example(
 
 
 def test_confusion_matrix_with_color_example(
+    tmp_path: Path,
     classifications_color_example: list[Classification],
 ):
 
-    loader = DataLoader()
+    loader = DataLoader.create(tmp_path)
     loader.add_data(classifications_color_example)
     evaluator = loader.finalize()
 
@@ -400,9 +338,10 @@ def test_confusion_matrix_with_color_example(
 
 
 def test_confusion_matrix_multiclass(
+    tmp_path: Path,
     classifications_multiclass: list[Classification],
 ):
-    loader = DataLoader()
+    loader = DataLoader.create(tmp_path)
     loader.add_data(classifications_multiclass)
     evaluator = loader.finalize()
 
@@ -557,9 +496,10 @@ def test_confusion_matrix_multiclass(
 
 
 def test_confusion_matrix_without_hardmax_animal_example(
+    tmp_path: Path,
     classifications_multiclass_true_negatives_check: list[Classification],
 ):
-    loader = DataLoader()
+    loader = DataLoader.create(tmp_path)
     loader.add_data(classifications_multiclass_true_negatives_check)
     evaluator = loader.finalize()
 

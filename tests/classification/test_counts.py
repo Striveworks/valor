@@ -1,98 +1,12 @@
-import numpy as np
+from pathlib import Path
 
 from valor_lite.classification import Classification, DataLoader, MetricType
-from valor_lite.classification.computation import compute_counts
 
 
-def test_counts_computation():
-
-    # groundtruth, prediction, score
-    data = np.array(
-        [
-            # datum 0
-            [0, 0, 0, 1.0, 1],  # tp
-            [0, 0, 1, 0.0, 0],  # tn
-            [0, 0, 2, 0.0, 0],  # tn
-            [0, 0, 3, 0.0, 0],  # tn
-            # datum 1
-            [1, 0, 0, 0.0, 0],  # fn
-            [1, 0, 1, 0.0, 0],  # tn
-            [1, 0, 2, 1.0, 1],  # fp
-            [1, 0, 3, 0.0, 0],  # tn
-            # datum 2
-            [2, 3, 0, 0.0, 0],  # tn
-            [2, 3, 1, 0.0, 0],  # tn
-            [2, 3, 2, 0.0, 0],  # tn
-            [2, 3, 3, 0.3, 1],  # fn for score threshold > 0.3
-        ],
-        dtype=np.float64,
-    )
-
-    score_thresholds = np.array([0.25, 0.75], dtype=np.float64)
-
-    counts = compute_counts(
-        ids=data[:, (0, 1, 2)].astype(np.int64),
-        scores=data[:, 3],
-        winners=data[:, 4] > 0.5,
-        score_thresholds=score_thresholds,
-        n_labels=4,
-        hardmax=False,
-    )
-
-    # score threshold, label, count metric
-    assert counts.shape == (2, 4, 4)
-
-    # label 0
-    # score >= 0.25
-    assert counts[0][0][0] == 1  # tp
-    assert counts[0][0][1] == 0  # fp
-    assert counts[0][0][2] == 1  # fn
-    assert counts[0][0][3] == 1  # tn
-    # score >= 0.75
-    assert counts[1][0][0] == 1  # tp
-    assert counts[1][0][1] == 0  # fp
-    assert counts[1][0][2] == 1  # fn
-    assert counts[1][0][3] == 1  # tn
-
-    # label 1
-    # score >= 0.25
-    assert counts[0][1][0] == 0  # tp
-    assert counts[0][1][1] == 0  # fp
-    assert counts[0][1][2] == 0  # fn
-    assert counts[0][1][3] == 3  # tn
-    # score >= 0.75
-    assert counts[1][1][0] == 0  # tp
-    assert counts[1][1][1] == 0  # fp
-    assert counts[1][1][2] == 0  # fn
-    assert counts[1][1][3] == 3  # tn
-
-    # label 2
-    # score >= 0.25
-    assert counts[0][2][0] == 0  # tp
-    assert counts[0][2][1] == 1  # fp
-    assert counts[0][2][2] == 0  # fn
-    assert counts[0][2][3] == 2  # tn
-    # score >= 0.75
-    assert counts[1][2][0] == 0  # tp
-    assert counts[1][2][1] == 1  # fp
-    assert counts[1][2][2] == 0  # fn
-    assert counts[1][2][3] == 2  # tn
-
-    # label 3
-    # score >= 0.25
-    assert counts[0][3][0] == 1  # tp
-    assert counts[0][3][1] == 0  # fp
-    assert counts[0][3][2] == 0  # fn
-    assert counts[0][3][3] == 2  # tn
-    # score >= 0.75
-    assert counts[1][3][0] == 0  # tp
-    assert counts[1][3][1] == 0  # fp
-    assert counts[1][3][2] == 1  # fn
-    assert counts[1][3][3] == 2  # tn
-
-
-def test_counts_basic(basic_classifications: list[Classification]):
-    loader = DataLoader()
+def test_counts_basic(
+    tmp_path: Path, basic_classifications: list[Classification]
+):
+    loader = DataLoader.create(tmp_path)
     loader.add_data(basic_classifications)
     evaluator = loader.finalize()
 
@@ -229,10 +143,11 @@ def test_counts_basic(basic_classifications: list[Classification]):
 
 
 def test_counts_unit(
+    tmp_path: Path,
     classifications_from_api_unit_tests: list[Classification],
 ):
 
-    loader = DataLoader()
+    loader = DataLoader.create(tmp_path)
     loader.add_data(classifications_from_api_unit_tests)
     evaluator = loader.finalize()
 
@@ -292,10 +207,11 @@ def test_counts_unit(
 
 
 def test_counts_with_animal_example(
+    tmp_path: Path,
     classifications_animal_example: list[Classification],
 ):
 
-    loader = DataLoader()
+    loader = DataLoader.create(tmp_path)
     loader.add_data(classifications_animal_example)
     evaluator = loader.finalize()
 
@@ -442,10 +358,11 @@ def test_counts_with_animal_example(
 
 
 def test_counts_with_color_example(
+    tmp_path: Path,
     classifications_color_example: list[Classification],
 ):
 
-    loader = DataLoader()
+    loader = DataLoader.create(tmp_path)
     loader.add_data(classifications_color_example)
     evaluator = loader.finalize()
 
@@ -634,9 +551,10 @@ def test_counts_with_color_example(
 
 
 def test_counts_with_image_example(
+    tmp_path: Path,
     classifications_image_example: list[Classification],
 ):
-    loader = DataLoader()
+    loader = DataLoader.create(tmp_path)
     loader.add_data(classifications_image_example)
     evaluator = loader.finalize()
 
@@ -713,9 +631,10 @@ def test_counts_with_image_example(
 
 
 def test_counts_with_tabular_example(
+    tmp_path: Path,
     classifications_tabular_example: list[Classification],
 ):
-    loader = DataLoader()
+    loader = DataLoader.create(tmp_path)
     loader.add_data(classifications_tabular_example)
     evaluator = loader.finalize()
 
@@ -778,9 +697,10 @@ def test_counts_with_tabular_example(
 
 
 def test_counts_multiclass(
+    tmp_path: Path,
     classifications_multiclass: list[Classification],
 ):
-    loader = DataLoader()
+    loader = DataLoader.create(tmp_path)
     loader.add_data(classifications_multiclass)
     evaluator = loader.finalize()
 
@@ -975,9 +895,10 @@ def test_counts_multiclass(
 
 
 def test_counts_true_negatives_check_animals(
+    tmp_path: Path,
     classifications_multiclass_true_negatives_check: list[Classification],
 ):
-    loader = DataLoader()
+    loader = DataLoader.create(tmp_path)
     loader.add_data(classifications_multiclass_true_negatives_check)
     evaluator = loader.finalize()
 
@@ -1129,10 +1050,11 @@ def test_counts_true_negatives_check_animals(
 
 
 def test_counts_zero_count_check(
+    tmp_path: Path,
     classifications_multiclass_zero_count: list[Classification],
 ):
 
-    loader = DataLoader()
+    loader = DataLoader.create(tmp_path)
     loader.add_data(classifications_multiclass_zero_count)
     evaluator = loader.finalize()
 

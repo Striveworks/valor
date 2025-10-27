@@ -195,8 +195,9 @@ class Loader(PathFormatter):
             sorted_tbl = tbl.sort_by(
                 [
                     ("score", "descending"),
-                    ("pd_label_id", "ascending"),
+                    ("datum_id", "ascending"),
                     ("gt_label_id", "ascending"),
+                    ("pd_label_id", "ascending"),
                 ]
             )
             pq.write_table(

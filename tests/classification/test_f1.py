@@ -1,68 +1,12 @@
+from pathlib import Path
+
 from valor_lite.classification import Classification, DataLoader, MetricType
-from valor_lite.classification.computation import compute_f1_score
-
-# def test_f1_score_computation():
-
-#     # groundtruth, prediction, score
-#     data = np.array(
-#         [
-#             # datum 0
-#             [0, 0, 0, 1.0, 1],  # tp
-#             [0, 0, 1, 0.0, 0],  # tn
-#             [0, 0, 2, 0.0, 0],  # tn
-#             [0, 0, 3, 0.0, 0],  # tn
-#             # datum 1
-#             [1, 0, 0, 0.0, 0],  # fn
-#             [1, 0, 1, 0.0, 0],  # tn
-#             [1, 0, 2, 1.0, 1],  # fp
-#             [1, 0, 3, 0.0, 0],  # tn
-#             # datum 2
-#             [2, 3, 0, 0.0, 0],  # tn
-#             [2, 3, 1, 0.0, 0],  # tn
-#             [2, 3, 2, 0.0, 0],  # tn
-#             [2, 3, 3, 0.3, 1],  # fn for score threshold > 0.3
-#         ],
-#         dtype=np.float64,
-#     )
-
-#     # groundtruth count, prediction count, label key
-#     label_metadata = np.array(
-#         [
-#             [2, 1, 0],
-#             [0, 2, 0],
-#             [1, 0, 0],
-#             [1, 1, 0],
-#         ],
-#         dtype=np.int32,
-#     )
-
-#     score_thresholds = np.array([0.25, 0.75], dtype=np.float64)
-
-#     (_, _, _, _, f1_score, _, _) = compute_precision_recall_rocauc(
-#         detailed_pairs=data,
-#         label_metadata=label_metadata,
-#         score_thresholds=score_thresholds,
-#         n_datums=3,
-#         hardmax=False,
-#     )
-
-#     # score threshold, label, count metric
-#     assert f1_score.shape == (2, 4)
-
-#     # score >= 0.25
-#     assert f1_score[0][0] == 2 / 3
-#     assert f1_score[0][1] == 0.0
-#     assert f1_score[0][2] == 0.0
-#     assert f1_score[0][3] == 1.0
-#     # score >= 0.75
-#     assert f1_score[1][0] == 2 / 3
-#     assert f1_score[1][1] == 0.0
-#     assert f1_score[1][2] == 0.0
-#     assert f1_score[1][3] == 0.0
 
 
-def test_f1_score_basic(basic_classifications: list[Classification]):
-    loader = DataLoader()
+def test_f1_score_basic(
+    tmp_path: Path, basic_classifications: list[Classification]
+):
+    loader = DataLoader.create(tmp_path)
     loader.add_data(basic_classifications)
     evaluator = loader.finalize()
 
@@ -159,10 +103,11 @@ def test_f1_score_basic(basic_classifications: list[Classification]):
 
 
 def test_f1_score_with_animal_example(
+    tmp_path: Path,
     classifications_animal_example: list[Classification],
 ):
 
-    loader = DataLoader()
+    loader = DataLoader.create(tmp_path)
     loader.add_data(classifications_animal_example)
     evaluator = loader.finalize()
 
@@ -236,10 +181,11 @@ def test_f1_score_with_animal_example(
 
 
 def test_f1_score_with_color_example(
+    tmp_path: Path,
     classifications_color_example: list[Classification],
 ):
 
-    loader = DataLoader()
+    loader = DataLoader.create(tmp_path)
     loader.add_data(classifications_color_example)
     evaluator = loader.finalize()
 
@@ -331,9 +277,10 @@ def test_f1_score_with_color_example(
 
 
 def test_f1_score_with_image_example(
+    tmp_path: Path,
     classifications_image_example: list[Classification],
 ):
-    loader = DataLoader()
+    loader = DataLoader.create(tmp_path)
     loader.add_data(classifications_image_example)
     evaluator = loader.finalize()
 
@@ -390,9 +337,10 @@ def test_f1_score_with_image_example(
 
 
 def test_f1_score_with_tabular_example(
+    tmp_path: Path,
     classifications_tabular_example: list[Classification],
 ):
-    loader = DataLoader()
+    loader = DataLoader.create(tmp_path)
     loader.add_data(classifications_tabular_example)
     evaluator = loader.finalize()
 

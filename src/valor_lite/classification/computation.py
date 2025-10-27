@@ -1,112 +1,9 @@
-from enum import IntFlag, auto
+from enum import IntFlag
 
 import numpy as np
 from numpy.typing import NDArray
 
 import valor_lite.classification.numpy_compatibility as npc
-
-
-def compute_label_metadata(
-    ids: NDArray[np.int32],
-    n_labels: int,
-) -> NDArray[np.int32]:
-    """
-    Computes label metadata returning a count of annotations per label.
-
-    Parameters
-    ----------
-    pairs : NDArray[np.int32]
-        Detailed annotation pairings with shape (n_pairs, 3).
-            Index 0 - Datum Index
-            Index 1 - GroundTruth Label Index
-            Index 2 - Prediction Label Index
-    n_labels : int
-        The total number of unique labels.
-
-    Returns
-    -------
-    NDArray[np.int32]
-        The label metadata array with shape (n_labels, 2).
-            Index 0 - Ground truth label count
-            Index 1 - Prediction label count
-    """
-    label_metadata = np.zeros((n_labels, 2), dtype=np.int32)
-    ground_truth_pairs = ids[:, (0, 1)]
-    ground_truth_pairs = ground_truth_pairs[ground_truth_pairs[:, 1] >= 0]
-    unique_pairs = np.unique(ground_truth_pairs, axis=0)
-    label_indices, unique_counts = np.unique(
-        unique_pairs[:, 1], return_counts=True
-    )
-    label_metadata[label_indices.astype(np.int32), 0] = unique_counts
-
-    prediction_pairs = ids[:, (0, 2)]
-    prediction_pairs = prediction_pairs[prediction_pairs[:, 1] >= 0]
-    unique_pairs = np.unique(prediction_pairs, axis=0)
-    label_indices, unique_counts = np.unique(
-        unique_pairs[:, 1], return_counts=True
-    )
-    label_metadata[label_indices.astype(np.int32), 1] = unique_counts
-
-    return label_metadata
-
-
-def filter_cache(
-    pairs: NDArray[np.float64],
-    datum_mask: NDArray[np.bool_],
-    valid_label_indices: NDArray[np.int32] | None,
-    n_labels: int,
-) -> tuple[NDArray[np.float64], NDArray[np.int32]]:
-    # filter by datum
-    pairs = pairs[datum_mask].copy()
-
-    n_rows = pairs.shape[0]
-    mask_invalid_groundtruths = np.zeros(n_rows, dtype=np.bool_)
-    mask_invalid_predictions = np.zeros_like(mask_invalid_groundtruths)
-
-    # filter labels
-    if valid_label_indices is not None:
-        mask_invalid_groundtruths[
-            ~np.isin(pairs[:, 1], valid_label_indices)
-        ] = True
-        mask_invalid_predictions[
-            ~np.isin(pairs[:, 2], valid_label_indices)
-        ] = True
-
-    # filter cache
-    if mask_invalid_groundtruths.any():
-        invalid_groundtruth_indices = np.where(mask_invalid_groundtruths)[0]
-        pairs[invalid_groundtruth_indices[:, None], 1] = np.array([[-1.0]])
-
-    if mask_invalid_predictions.any():
-        invalid_prediction_indices = np.where(mask_invalid_predictions)[0]
-        pairs[invalid_prediction_indices[:, None], (2, 3, 4)] = np.array(
-            [[-1.0, -1.0, -1.0]]
-        )
-
-    # filter null pairs
-    mask_null_pairs = np.all(
-        np.isclose(
-            pairs[:, 1:5],
-            np.array([-1.0, -1.0, -1.0, -1.0]),
-        ),
-        axis=1,
-    )
-    pairs = pairs[~mask_null_pairs]
-
-    pairs = np.unique(pairs, axis=0)
-    indices = np.lexsort(
-        (
-            pairs[:, 1],  # ground truth
-            pairs[:, 2],  # prediction
-            -pairs[:, 3],  # score
-        )
-    )
-    pairs = pairs[indices]
-    label_metadata = compute_label_metadata(
-        ids=pairs[:, :3].astype(np.int32),
-        n_labels=n_labels,
-    )
-    return pairs, label_metadata
 
 
 def compute_rocauc(
@@ -202,11 +99,11 @@ def compute_rocauc(
     # compute rocauc
     rocauc = npc.trapezoid(x=fpr, y=tpr, axis=1)
 
-    return rocauc, cumulative_fp[-1], cumulative_tp[-1]
+    return rocauc, cumulative_fp[:, -1], cumulative_tp[:, -1]
 
 
 def compute_counts(
-    ids: NDArray[np.uint64],
+    ids: NDArray[np.int64],
     scores: NDArray[np.float64],
     winners: NDArray[np.bool_],
     score_thresholds: NDArray[np.float64],
@@ -330,9 +227,9 @@ def compute_accuracy(
 
 
 class PairClassification(IntFlag):
-    TP = auto()
-    FP_FN_MISCLF = auto()
-    FN_UNMATCHED = auto()
+    TP = 1 << 0
+    FP_FN_MISCLF = 1 << 1
+    FN_UNMATCHED = 1 << 2
 
 
 def compute_pair_classifications(
@@ -363,8 +260,12 @@ def compute_pair_classifications(
 
     Returns
     -------
-    NDArray[uint8]
-        Row-wise classification of pairs.
+    NDArray[bool]
+        True-positive mask.
+    NDArray[bool]
+        Misclassification FP, FN mask.
+    NDArray[bool]
+        Unmatched FN mask.
     """
     n_pairs = ids.shape[0]
     n_scores = score_thresholds.shape[0]
@@ -425,7 +326,7 @@ def compute_pair_classifications(
 
 
 def compute_confusion_matrix(
-    ids: NDArray[np.uint64],
+    ids: NDArray[np.int64],
     mask_tp: NDArray[np.bool_],
     mask_fp_fn_misclf: NDArray[np.bool_],
     mask_fn_unmatched: NDArray[np.bool_],
@@ -460,7 +361,7 @@ def compute_confusion_matrix(
             axis=0,
         )
         unique_labels, unique_label_counts = np.unique(
-            unique_pairs[:, 2], return_counts=True
+            unique_pairs[:, 1], return_counts=True
         )
         unmatched_groundtruths[score_idx, unique_labels] = unique_label_counts
 

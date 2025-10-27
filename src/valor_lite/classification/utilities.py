@@ -216,6 +216,7 @@ def _unpack_confusion_matrix_with_examples(
         axis=0,
         return_index=True,
     )
+    scores = scores[mask_matched][unique_match_indices]
     unique_unmatched_groundtruths = np.unique(
         ids[np.ix_(mask_unmatched_fn, (0, 1))],  # type: ignore - numpy ix_ typing
         axis=0,
@@ -227,26 +228,27 @@ def _unpack_confusion_matrix_with_examples(
 
     for idx in range(n_max):
         if idx < n_matched:
+            datum_id = index_to_datum_id[unique_matches[idx, 0]]
             glabel = index_to_label[unique_matches[idx, 1]]
             plabel = index_to_label[unique_matches[idx, 2]]
+            score = float(scores[idx])
+
             metric.value["confusion_matrix"][glabel][plabel]["count"] += 1
             metric.value["confusion_matrix"][glabel][plabel][
                 "examples"
             ].append(
                 {
-                    "datum_id": index_to_datum_id[unique_matches[idx, 0]],
-                    "score": float(scores[unique_match_indices[idx]]),
+                    "datum_id": datum_id,
+                    "score": score,
                 }
             )
         if idx < n_unmatched_groundtruths:
+            datum_id = index_to_datum_id[unique_unmatched_groundtruths[idx, 0]]
             label = index_to_label[unique_unmatched_groundtruths[idx, 1]]
+
             metric.value["unmatched_ground_truths"][label]["count"] += 1
             metric.value["unmatched_ground_truths"][label]["examples"].append(
-                {
-                    "datum_id": index_to_datum_id[
-                        unique_unmatched_groundtruths[idx, 0]
-                    ],
-                }
+                {"datum_id": datum_id}
             )
 
     return metric

@@ -1,6 +1,5 @@
 import tempfile
 from dataclasses import dataclass
-from pathlib import Path
 
 import numpy as np
 import pyarrow.compute as pc
@@ -85,7 +84,7 @@ class Evaluator(CachedEvaluator):
             predictions=None,
         )
 
-    def compute_precision_recall_rocauc(
+    def compute_precision_recall_rocauc(  # type: ignore[reportIncompatibleMethodOverride]
         self,
         score_thresholds: list[float] = [0.0],
         hardmax: bool = True,
@@ -111,8 +110,7 @@ class Evaluator(CachedEvaluator):
         if filter_ is not None:
             with tempfile.TemporaryDirectory() as tmpdir:
                 evaluator = super().filter(
-                    directory=tmpdir,
-                    name="filtered",
+                    path=tmpdir,
                     filter_expr=filter_,
                 )
                 return evaluator.compute_precision_recall_rocauc(
@@ -150,8 +148,7 @@ class Evaluator(CachedEvaluator):
         if filter_ is not None:
             with tempfile.TemporaryDirectory() as tmpdir:
                 evaluator = super().filter(
-                    directory=tmpdir,
-                    name="filtered",
+                    path=tmpdir,
                     filter_expr=filter_,
                 )
                 metrics = evaluator.compute_confusion_matrix_with_examples(
@@ -212,26 +209,9 @@ class DataLoader(CachedLoader):
     def finalize(self) -> Evaluator:  # type: ignore - switching type
         evaluator = super().finalize()
         return Evaluator(
-            name=evaluator._name,
-            directory=evaluator._directory,
-        )
-
-    @classmethod
-    def filter(
-        cls,
-        directory: str | Path,
-        name: str,
-        evaluator: CachedEvaluator,
-        filter_expr: Filter,
-    ) -> Evaluator:
-        evaluator = super().filter(
-            directory=directory,
-            name=name,
-            evaluator=evaluator,
-            filter_expr=filter_expr,
-        )
-        return Evaluator(
-            directory=evaluator._directory,
-            name=evaluator._name,
-            labels_override=evaluator._index_to_label,
+            path=evaluator.path,
+            reader=evaluator.cache,
+            info=evaluator.info,
+            label_counts=evaluator._label_counts,
+            index_to_label=evaluator._index_to_label,
         )

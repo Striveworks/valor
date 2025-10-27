@@ -1,3 +1,4 @@
+from pathlib import Path
 from random import choice, uniform
 
 from valor_lite.classification import Classification, DataLoader
@@ -20,7 +21,7 @@ def generate_random_classifications(
     ]
 
 
-def test_fuzz_classifications():
+def test_fuzz_classifications(tmp_path: Path):
 
     quantities = [1, 5, 10]
     for _ in range(100):
@@ -33,7 +34,7 @@ def test_fuzz_classifications():
             n_classifications, n_categories=n_categories, n_labels=n_labels
         )
 
-        loader = DataLoader()
+        loader = DataLoader.create(tmp_path, delete_if_exists=True)
         loader.add_data(classifications)
         evaluator = loader.finalize()
         evaluator.evaluate(
@@ -41,7 +42,7 @@ def test_fuzz_classifications():
         )
 
 
-def test_fuzz_classifications_with_filtering():
+def test_fuzz_classifications_with_filtering(tmp_path: Path):
 
     quantities = [4, 10]
     for _ in range(100):
@@ -54,7 +55,7 @@ def test_fuzz_classifications_with_filtering():
             n_classifications, n_categories=n_categories, n_labels=n_labels
         )
 
-        loader = DataLoader()
+        loader = DataLoader.create(tmp_path, delete_if_exists=True)
         loader.add_data(classifications)
         evaluator = loader.finalize()
 
