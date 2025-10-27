@@ -61,17 +61,21 @@ def compute_rocauc(
     false_positives = np.zeros_like(true_positives)
     tp_scores = np.zeros_like(true_positives, dtype=np.float64)
 
-    for label_idx in range(n_labels):
-        if pd_count_per_label[label_idx] == 0:
-            continue
+    if mask_matching_labels.sum():
+        for label_idx in range(n_labels):
+            if pd_count_per_label[label_idx] == 0:
+                continue
+            mask_pds = pd_labels == label_idx
+            true_positives[label_idx] = mask_matching_labels[mask_pds]
+            false_positives[label_idx] = ~mask_matching_labels[mask_pds]
+            tp_scores[label_idx] = scores[mask_pds]
 
-        mask_pds = pd_labels == label_idx
-        true_positives[label_idx] = mask_matching_labels[mask_pds]
-        false_positives[label_idx] = ~mask_matching_labels[mask_pds]
-        tp_scores[label_idx] = scores[mask_pds]
-
-    cumulative_fp = np.cumsum(false_positives, axis=1) + prev_cumulative_fp
-    cumulative_tp = np.cumsum(true_positives, axis=1) + prev_cumulative_tp
+    cumulative_fp = np.cumsum(
+        false_positives, axis=1
+    ) + prev_cumulative_fp.reshape(-1, 1)
+    cumulative_tp = np.cumsum(
+        true_positives, axis=1
+    ) + prev_cumulative_tp.reshape(-1, 1)
 
     fpr = np.zeros_like(true_positives, dtype=np.float64)
     np.divide(

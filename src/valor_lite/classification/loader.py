@@ -41,8 +41,8 @@ class Loader(PathFormatter):
     def create(
         cls,
         path: str | Path,
-        batch_size: int = 10_000,
-        rows_per_file: int = 100_000,
+        batch_size: int = 1,
+        rows_per_file: int = 1,
         compression: str = "snappy",
         datum_metadata_types: dict[str, DataType] | None = None,
         delete_if_exists: bool = False,

@@ -186,7 +186,9 @@ def run_benchmarking_analysis(
     for limit in limits_to_test:
 
         # === Base Evaluation ===
-        loader = DataLoader()
+        loader = DataLoader.create(
+            ".valor/benchmark_classification", delete_if_exists=True
+        )
 
         # ingest + preprocess
         (ingest_time, preprocessing_time,) = ingest(

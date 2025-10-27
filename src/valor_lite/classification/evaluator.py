@@ -293,16 +293,20 @@ class Evaluator(PathFormatter):
             ids = np.column_stack(
                 [tbl[col].to_numpy() for col in columns]
             ).astype(np.int64)
+
+            # count unique gt labels
             unique_gts = np.unique(ids[:, (0, 1)], axis=0)
-            unique_pds = np.unique(ids[:, (0, 2)], axis=0)
             unique_gt_labels, gt_label_counts = np.unique(
                 unique_gts[:, 1], return_counts=True
             )
-            unique_pd_labels, pd_label_counts = np.unique(
-                unique_pds[:, 1], return_counts=True
-            )
             label_counts[unique_gt_labels, 0] += gt_label_counts.astype(
                 np.uint64
+            )
+
+            # count unique pd labels
+            unique_pds = np.unique(ids[:, (0, 2)], axis=0)
+            unique_pd_labels, pd_label_counts = np.unique(
+                unique_pds[:, 1], return_counts=True
             )
             label_counts[unique_pd_labels, 1] += pd_label_counts.astype(
                 np.uint64
