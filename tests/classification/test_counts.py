@@ -6,7 +6,7 @@ from valor_lite.classification import Classification, DataLoader, MetricType
 def test_counts_basic(
     tmp_path: Path, basic_classifications: list[Classification]
 ):
-    loader = DataLoader.create(tmp_path)
+    loader = DataLoader.create(tmp_path, batch_size=1, rows_per_file=1)
     loader.add_data(basic_classifications)
     evaluator = loader.finalize()
 
@@ -147,7 +147,7 @@ def test_counts_unit(
     classifications_from_api_unit_tests: list[Classification],
 ):
 
-    loader = DataLoader.create(tmp_path)
+    loader = DataLoader.create(tmp_path, batch_size=1, rows_per_file=1)
     loader.add_data(classifications_from_api_unit_tests)
     evaluator = loader.finalize()
 
@@ -211,7 +211,7 @@ def test_counts_with_animal_example(
     classifications_animal_example: list[Classification],
 ):
 
-    loader = DataLoader.create(tmp_path)
+    loader = DataLoader.create(tmp_path, batch_size=1, rows_per_file=1)
     loader.add_data(classifications_animal_example)
     evaluator = loader.finalize()
 
@@ -362,7 +362,7 @@ def test_counts_with_color_example(
     classifications_color_example: list[Classification],
 ):
 
-    loader = DataLoader.create(tmp_path)
+    loader = DataLoader.create(tmp_path, batch_size=1, rows_per_file=1)
     loader.add_data(classifications_color_example)
     evaluator = loader.finalize()
 
@@ -554,7 +554,7 @@ def test_counts_with_image_example(
     tmp_path: Path,
     classifications_image_example: list[Classification],
 ):
-    loader = DataLoader.create(tmp_path)
+    loader = DataLoader.create(tmp_path, batch_size=1, rows_per_file=1)
     loader.add_data(classifications_image_example)
     evaluator = loader.finalize()
 
@@ -634,7 +634,7 @@ def test_counts_with_tabular_example(
     tmp_path: Path,
     classifications_tabular_example: list[Classification],
 ):
-    loader = DataLoader.create(tmp_path)
+    loader = DataLoader.create(tmp_path, batch_size=1, rows_per_file=1)
     loader.add_data(classifications_tabular_example)
     evaluator = loader.finalize()
 
@@ -700,7 +700,7 @@ def test_counts_multiclass(
     tmp_path: Path,
     classifications_multiclass: list[Classification],
 ):
-    loader = DataLoader.create(tmp_path)
+    loader = DataLoader.create(tmp_path, batch_size=1, rows_per_file=1)
     loader.add_data(classifications_multiclass)
     evaluator = loader.finalize()
 
@@ -898,7 +898,7 @@ def test_counts_true_negatives_check_animals(
     tmp_path: Path,
     classifications_multiclass_true_negatives_check: list[Classification],
 ):
-    loader = DataLoader.create(tmp_path)
+    loader = DataLoader.create(tmp_path, batch_size=1, rows_per_file=1)
     loader.add_data(classifications_multiclass_true_negatives_check)
     evaluator = loader.finalize()
 
@@ -1054,7 +1054,7 @@ def test_counts_zero_count_check(
     classifications_multiclass_zero_count: list[Classification],
 ):
 
-    loader = DataLoader.create(tmp_path)
+    loader = DataLoader.create(tmp_path, batch_size=1, rows_per_file=1)
     loader.add_data(classifications_multiclass_zero_count)
     evaluator = loader.finalize()
 
