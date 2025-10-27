@@ -23,6 +23,7 @@ jobs:
         run: |
           pip install -e "./src/[dev]"
           COVERAGE_FILE=.coverage.classification python -m coverage run --include "src/valor_lite/*" -m pytest -v tests/classification/
+          COVERAGE_FILE=.coverage.common python -m coverage run --include "src/valor_lite/*" -m pytest -v tests/common/
           python -m coverage combine
           python -m coverage report -m
           python -m coverage json
@@ -51,7 +52,6 @@ jobs:
         run: |
           pip install -e "./src/[dev]"
           COVERAGE_FILE=.coverage.segmentation python -m coverage run --include "src/valor_lite/*" -m pytest -v tests/semantic_segmentation/
-          COVERAGE_FILE=.coverage.common python -m coverage run --include "src/valor_lite/*" -m pytest -v tests/common/
           python -m coverage combine
           python -m coverage report -m
           python -m coverage json
