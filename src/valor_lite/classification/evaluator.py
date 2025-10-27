@@ -1,9 +1,12 @@
+from __future__ import annotations
+
 import heapq
 import json
 from dataclasses import dataclass
 from pathlib import Path
 
 import numpy as np
+import pyarrow as pa
 import pyarrow.compute as pc
 import pyarrow.dataset as ds
 import pyarrow.parquet as pq
@@ -20,6 +23,7 @@ from valor_lite.classification.computation import (
     compute_recall,
     compute_rocauc,
 )
+from valor_lite.classification.format import PathFormatter
 from valor_lite.classification.metric import Metric, MetricType
 from valor_lite.classification.utilities import (
     create_empty_confusion_matrix_with_examples,
@@ -29,6 +33,7 @@ from valor_lite.classification.utilities import (
     unpack_examples,
     unpack_precision_recall_rocauc_into_metric_lists,
 )
+from valor_lite.exceptions import EmptyCacheError
 
 
 @dataclass
@@ -46,42 +51,162 @@ class Filter:
     predictions: pc.Expression | None = None
 
 
-class Evaluator:
+class Evaluator(PathFormatter):
     def __init__(
         self,
-        name: str = "default",
-        directory: str | Path = ".valor",
-        labels_override: dict[int, str] | None = None,
+        path: str | Path,
+        reader: CacheReader,
+        info: EvaluatorInfo,
+        label_counts: NDArray[np.uint64],
+        index_to_label: dict[int, str],
     ):
-        self._directory = Path(directory)
-        self._name = name
-        self._path = self._directory / name
-        self._cache_path = self._path / "cache"
-        self._metadata_path = self._path / "metadata.json"
+        self._path = Path(path)
+        self._cache = reader
+        self._info = info
+        self._label_counts = label_counts
+        self._index_to_label = index_to_label
 
-        # link cache
-        self._dataset = ds.dataset(self._cache_path, format="parquet")
+    @classmethod
+    def load(
+        cls,
+        path: str | Path,
+        index_to_label_override: dict[int, str] | None = None,
+    ):
+        # validate path
+        path = Path(path)
+        if not path.exists():
+            raise FileNotFoundError(f"Directory does not exist: {path}")
+        elif not path.is_dir():
+            raise NotADirectoryError(
+                f"Path exists but is not a directory: {path}"
+            )
+
+        # load cache
+        cache_path = cls._generate_cache_path(path)
+        cache = CacheReader.load(cache_path)
 
         # build evaluator meta
         (
-            self._index_to_label,
-            self._label_counts,
-            self._info,
-        ) = self.generate_meta(self._dataset, labels_override)
+            index_to_label,
+            label_counts,
+            info,
+        ) = cls.generate_meta(cache.dataset, index_to_label_override)
 
         # read config
-        with open(self._metadata_path, "r") as f:
+        metadata_path = cls._generate_metadata_path(path)
+        with open(metadata_path, "r") as f:
             types = json.load(f)
-            self._info.datum_metadata_types = types["datum"]
-        with open(self._cache_path / ".cfg", "r") as f:
-            cfg = json.load(f)
-            self._detailed_batch_size = cfg["batch_size"]
-            self._detailed_rows_per_file = cfg["rows_per_file"]
-            self._detailed_compression = cfg["compression"]
+            info.datum_metadata_types = types["datum"]
+
+        return cls(
+            path=path,
+            reader=cache,
+            info=info,
+            label_counts=label_counts,
+            index_to_label=index_to_label,
+        )
+
+    def filter(
+        self,
+        path: str | Path,
+        filter_expr: Filter,
+    ) -> Evaluator:
+        """
+        Filter evaluator cache.
+
+        Parameters
+        ----------
+        path : str | Path
+            Where to write the filtered cache.
+        filter_expr : Filter
+            A collection of filter expressions.
+
+        Returns
+        -------
+        Evaluator
+            A new evaluator object containing the filtered cache.
+        """
+        from valor_lite.classification.loader import Loader
+
+        loader = Loader.create(
+            path=path,
+            batch_size=self.cache.batch_size,
+            rows_per_file=self.cache.rows_per_file,
+            compression=self.cache.compression,
+            datum_metadata_types=self.info.datum_metadata_types,
+        )
+        for fragment in self.cache.dataset.get_fragments():
+            tbl = fragment.to_table(filter=filter_expr.datums)
+
+            columns = (
+                "datum_id",
+                "gt_label_id",
+                "pd_label_id",
+            )
+            pairs = np.column_stack([tbl[col].to_numpy() for col in columns])
+
+            n_pairs = pairs.shape[0]
+            gt_ids = pairs[:, (0, 1)].astype(np.int64)
+            pd_ids = pairs[:, (0, 2)].astype(np.int64)
+
+            if filter_expr.groundtruths is not None:
+                mask_valid_gt = np.zeros(n_pairs, dtype=np.bool_)
+                gt_tbl = tbl.filter(filter_expr.groundtruths)
+                gt_pairs = np.column_stack(
+                    [
+                        gt_tbl[col].to_numpy()
+                        for col in ("datum_id", "gt_label_id")
+                    ]
+                ).astype(np.int64)
+                for gt in np.unique(gt_pairs, axis=0):
+                    mask_valid_gt |= (gt_ids == gt).all(axis=1)
+            else:
+                mask_valid_gt = np.ones(n_pairs, dtype=np.bool_)
+
+            if filter_expr.predictions is not None:
+                mask_valid_pd = np.zeros(n_pairs, dtype=np.bool_)
+                pd_tbl = tbl.filter(filter_expr.predictions)
+                pd_pairs = np.column_stack(
+                    [
+                        pd_tbl[col].to_numpy()
+                        for col in ("datum_id", "pd_label_id")
+                    ]
+                ).astype(np.int64)
+                for pd in np.unique(pd_pairs, axis=0):
+                    mask_valid_pd |= (pd_ids == pd).all(axis=1)
+            else:
+                mask_valid_pd = np.ones(n_pairs, dtype=np.bool_)
+
+            mask_valid = mask_valid_gt | mask_valid_pd
+            mask_valid_gt &= mask_valid
+            mask_valid_pd &= mask_valid
+
+            pairs[~mask_valid_gt, 1] = -1
+            pairs[~mask_valid_pd, 2] = -1
+
+            for idx, col in enumerate(columns):
+                tbl = tbl.set_column(
+                    tbl.schema.names.index(col), col, pa.array(pairs[:, idx])
+                )
+            # TODO (c.zaloom) - improve write strategy, filtered data could be small
+            loader._cache.write_table(tbl)
+
+        loader._cache.flush()
+        if loader._cache.dataset.count_rows() == 0:
+            raise EmptyCacheError()
+
+        return Evaluator.load(
+            path=loader.path,
+            index_to_label_override=self._index_to_label,
+        )
 
     @property
-    def dataset(self) -> ds.Dataset:
-        return self._dataset
+    def path(self) -> Path:
+        return self._path
+
+    @property
+    def cache(self) -> CacheReader:
+        return self._cache
 
     @property
     def info(self) -> EvaluatorInfo:
@@ -188,40 +313,6 @@ class Evaluator:
 
         return labels, label_counts, info
 
-    def filter(
-        self,
-        filter_expr: Filter,
-        name: str | None = None,
-        directory: str | Path | None = None,
-    ) -> "Evaluator":
-        """
-        Filter evaluator cache.
-
-        Parameters
-        ----------
-        filter_expr : Filter
-            An object containing filter expressions.
-        name : str, optional
-            Filtered cache name.
-        directory : str | Path, optional
-            The directory to store the filtered cache.
-
-        Returns
-        -------
-        Evaluator
-            A new evaluator object containing the filtered cache.
-        """
-        name = name if name else "filtered"
-        directory = directory if directory else self._directory
-        from valor_lite.classification.loader import Loader
-
-        return Loader.filter(
-            name=name,
-            directory=directory,
-            evaluator=self,
-            filter_expr=filter_expr,
-        )
-
     def iterate_fragments(self):
         columns = [
             "datum_id",
@@ -230,7 +321,7 @@ class Evaluator:
             "score",
             "winner",
         ]
-        for fragment in self.dataset.get_fragments():
+        for fragment in self.cache.dataset.get_fragments():
             tbl = fragment.to_table(columns=columns)
             ids = np.column_stack([tbl[col].to_numpy() for col in columns[:3]])
             scores = tbl["score"].to_numpy()
@@ -245,7 +336,7 @@ class Evaluator:
             "score",
             "winner",
         ]
-        for fragment in self.dataset.get_fragments():
+        for fragment in self.cache.dataset.get_fragments():
             tbl = fragment.to_table()
             ids = np.column_stack([tbl[col].to_numpy() for col in columns[:3]])
             scores = tbl["score"].to_numpy()
@@ -277,47 +368,83 @@ class Evaluator:
             "gt_label_id",
             "pd_label_id",
         ]
-        with CacheReader(self._cache_path) as cache:
-            if cache.num_dataset_files == 1:
-                pf = pq.ParquetFile(cache.dataset_files[0])
-                tbl = pf.read()
-                ids = np.column_stack(
-                    [tbl[col].to_numpy() for col in id_columns]
+        if self.cache.num_dataset_files == 1:
+            pf = pq.ParquetFile(self.cache.dataset_files[0])
+            tbl = pf.read()
+            ids = np.column_stack([tbl[col].to_numpy() for col in id_columns])
+            scores = tbl["score"].to_numpy()
+            winners = tbl["winner"].to_numpy()
+
+            n_pairs = ids.shape[0]
+            n_chunks = n_pairs // rows_per_chunk
+            for i in range(n_chunks):
+                lb = i * rows_per_chunk
+                ub = i * (rows_per_chunk + 1)
+                yield ids[lb:ub], scores[lb:ub], winners[lb:ub]
+            lb = n_chunks * rows_per_chunk
+            yield ids[lb:], scores[lb:], winners[lb:]
+        else:
+
+            def generate_heap_item(batches, batch_idx, row_idx):
+                score = batches[batch_idx]["score"][row_idx].as_py()
+                gidx = batches[batch_idx]["gt_label_id"][row_idx].as_py()
+                pidx = batches[batch_idx]["pd_label_id"][row_idx].as_py()
+                return (
+                    -score,
+                    pidx,
+                    gidx,
+                    batch_idx,
+                    row_idx,
                 )
-                scores = tbl["score"].to_numpy()
-                winners = tbl["winner"].to_numpy()
 
-                n_pairs = ids.shape[0]
-                n_chunks = n_pairs // rows_per_chunk
-                for i in range(n_chunks):
-                    lb = i * rows_per_chunk
-                    ub = i * (rows_per_chunk + 1)
-                    yield ids[lb:ub], scores[lb:ub], winners[lb:ub]
-                lb = n_chunks * rows_per_chunk
-                yield ids[lb:], scores[lb:], winners[lb:]
-            else:
-
-                def generate_heap_item(batches, batch_idx, row_idx):
-                    score = batches[batch_idx]["score"][row_idx].as_py()
-                    gidx = batches[batch_idx]["gt_label_id"][row_idx].as_py()
-                    pidx = batches[batch_idx]["pd_label_id"][row_idx].as_py()
-                    return (
-                        -score,
-                        pidx,
-                        gidx,
-                        batch_idx,
-                        row_idx,
+            # merge sorted rows
+            heap = []
+            batch_iterators = []
+            batches = []
+            for batch_idx, path in enumerate(self.cache.dataset_files):
+                pf = pq.ParquetFile(path)
+                batch_iter = pf.iter_batches(batch_size=read_batch_size)
+                batch_iterators.append(batch_iter)
+                batches.append(next(batch_iterators[batch_idx], None))
+                if (
+                    batches[batch_idx] is not None
+                    and len(batches[batch_idx]) > 0
+                ):
+                    heapq.heappush(
+                        heap, generate_heap_item(batches, batch_idx, 0)
                     )
 
-                # merge sorted rows
-                heap = []
-                batch_iterators = []
-                batches = []
-                for batch_idx, path in enumerate(cache.dataset_files):
-                    pf = pq.ParquetFile(path)
-                    batch_iter = pf.iter_batches(batch_size=read_batch_size)
-                    batch_iterators.append(batch_iter)
-                    batches.append(next(batch_iterators[batch_idx], None))
+            ids_buffer = []
+            scores_buffer = []
+            winners_buffer = []
+            while heap:
+                _, _, _, batch_idx, row_idx = heapq.heappop(heap)
+                row_table = batches[batch_idx].slice(row_idx, 1)
+
+                ids_buffer.append(
+                    np.column_stack(
+                        [row_table[col].to_numpy() for col in id_columns]
+                    )
+                )
+                scores_buffer.append(row_table["score"].to_numpy())
+                winners_buffer.append(
+                    row_table["winner"].to_numpy(zero_copy_only=False)
+                )
+                if len(ids_buffer) >= rows_per_chunk:
+                    ids = np.concatenate(ids_buffer, axis=0)
+                    scores = np.concatenate(scores_buffer, axis=0)
+                    winners = np.concatenate(winners_buffer, axis=0)
+                    yield ids, scores, winners
+                    ids_buffer, scores_buffer, winners_buffer = [], [], []
+
+                row_idx += 1
+                if row_idx < len(batches[batch_idx]):
+                    heapq.heappush(
+                        heap,
+                        generate_heap_item(batches, batch_idx, row_idx),
+                    )
+                else:
+                    batches[batch_idx] = next(batch_iterators[batch_idx], None)
                     if (
                         batches[batch_idx] is not None
                         and len(batches[batch_idx]) > 0
@@ -325,52 +452,11 @@ class Evaluator:
                         heapq.heappush(
                             heap, generate_heap_item(batches, batch_idx, 0)
                         )
-
-                ids_buffer = []
-                scores_buffer = []
-                winners_buffer = []
-                while heap:
-                    _, _, _, batch_idx, row_idx = heapq.heappop(heap)
-                    row_table = batches[batch_idx].slice(row_idx, 1)
-
-                    ids_buffer.append(
-                        np.column_stack(
-                            [row_table[col].to_numpy() for col in id_columns]
-                        )
-                    )
-                    scores_buffer.append(row_table["score"].to_numpy())
-                    winners_buffer.append(
-                        row_table["winner"].to_numpy(zero_copy_only=False)
-                    )
-                    if len(ids_buffer) >= rows_per_chunk:
-                        ids = np.concatenate(ids_buffer, axis=0)
-                        scores = np.concatenate(scores_buffer, axis=0)
-                        winners = np.concatenate(winners_buffer, axis=0)
-                        yield ids, scores, winners
-                        ids_buffer, scores_buffer, winners_buffer = [], [], []
-
-                    row_idx += 1
-                    if row_idx < len(batches[batch_idx]):
-                        heapq.heappush(
-                            heap,
-                            generate_heap_item(batches, batch_idx, row_idx),
-                        )
-                    else:
-                        batches[batch_idx] = next(
-                            batch_iterators[batch_idx], None
-                        )
-                        if (
-                            batches[batch_idx] is not None
-                            and len(batches[batch_idx]) > 0
-                        ):
-                            heapq.heappush(
-                                heap, generate_heap_item(batches, batch_idx, 0)
-                            )
-                if len(ids_buffer) > 0:
-                    ids = np.concatenate(ids_buffer, axis=0)
-                    scores = np.concatenate(scores_buffer, axis=0)
-                    winners = np.concatenate(winners_buffer, axis=0)
-                    yield ids, scores, winners
+            if len(ids_buffer) > 0:
+                ids = np.concatenate(ids_buffer, axis=0)
+                scores = np.concatenate(scores_buffer, axis=0)
+                winners = np.concatenate(winners_buffer, axis=0)
+                yield ids, scores, winners
 
     def compute_precision_recall_rocauc(
         self,
