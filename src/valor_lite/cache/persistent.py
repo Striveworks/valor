@@ -1,77 +1,22 @@
+import base64
 import glob
 import json
 import os
-from datetime import datetime
-from enum import StrEnum
 from pathlib import Path
 from typing import Any
 
 import numpy as np
 import pyarrow as pa
 import pyarrow.dataset as ds
-import pyarrow.lib as pl
 import pyarrow.parquet as pq
 
 
-class DataType(StrEnum):
-    INTEGER = "int"
-    FLOAT = "float"
-    STRING = "string"
-    TIMESTAMP = "timestamp"
-
-    def to_py(self):
-        """Get python type."""
-        match self:
-            case DataType.INTEGER:
-                return int
-            case DataType.FLOAT:
-                return float
-            case DataType.STRING:
-                return str
-            case DataType.TIMESTAMP:
-                return datetime
-
-    def to_arrow(self):
-        """Get arrow type."""
-        match self:
-            case DataType.INTEGER:
-                return pa.int64()
-            case DataType.FLOAT:
-                return pa.float64()
-            case DataType.STRING:
-                return pa.string()
-            case DataType.TIMESTAMP:
-                return pa.timestamp("us")
-
-
-def convert_type_mapping_to_schema(
-    type_mapping: dict[str, DataType] | None
-) -> list[tuple[str, pl.DataType]]:
-    """
-    Convert type mapping to a pyarrow schema input.
-
-    Parameters
-    ----------
-    type_mapping : dict[str, DataType] | None
-        A map from string key to datatype. Treats input of `None` as empty mapping.
-
-    Returns
-    -------
-    list[tuple[str, pyarrow.lib.DataType]]
-        A list of field name, field type pairs that can be used as input to pyarrow.schema.
-    """
-    if not type_mapping:
-        return []
-    return [(k, DataType(v).to_arrow()) for k, v in type_mapping.items()]
-
-
-class CacheFiles:
+class PersistentCache:
     def __init__(self, path: str | Path):
         self._path = Path(path)
 
     @property
     def path(self) -> Path:
-        """Cache directory path."""
         return self._path
 
     @staticmethod
@@ -91,6 +36,16 @@ class CacheFiles:
         """
         return Path(path) / ".cfg"
 
+    @staticmethod
+    def _encode_schema(schema: pa.Schema) -> str:
+        schema_bytes = schema.serialize()
+        return base64.b64encode(schema_bytes).decode("utf-8")
+
+    @staticmethod
+    def _decode_schema(encoded_schema: str) -> pa.Schema:
+        schema_bytes = base64.b64decode(encoded_schema)
+        return pa.ipc.read_schema(pa.BufferReader(schema_bytes))
+
     def get_files(self) -> list[Path]:
         """
         Retrieve all files.
@@ -100,7 +55,7 @@ class CacheFiles:
         list[Path]
             A list of paths to files in the cache.
         """
-        if not self.path.exists():
+        if not self._path.exists():
             return []
         files = []
         for entry in os.listdir(self._path):
@@ -118,94 +73,14 @@ class CacheFiles:
         list[Path]
             A list of paths to dataset files in the cache.
         """
-        if not self.path.exists():
+        if not self._path.exists():
             return []
         return [
             Path(filepath) for filepath in glob.glob(f"{self._path}/*.parquet")
         ]
 
 
-class CacheReader(CacheFiles):
-    def __init__(
-        self,
-        path: str | Path,
-        batch_size: int,
-        rows_per_file: int,
-        compression: str,
-    ):
-        self._path = Path(path)
-        self._batch_size = batch_size
-        self._rows_per_file = rows_per_file
-        self._compression = compression
-
-    @classmethod
-    def load(cls, path: str | Path):
-        """
-        Load cache from disk.
-
-        Parameters
-        ----------
-        path : str | Path
-            Where the cache is stored.
-        """
-
-        # validate path
-        path = Path(path)
-        if not path.exists():
-            raise FileNotFoundError(f"Directory does not exist: {path}")
-        elif not path.is_dir():
-            raise NotADirectoryError(
-                f"Path exists but is not a directory: {path}"
-            )
-
-        def _retrieve(config: dict, key: str):
-            if value := config.get(key, None):
-                return value
-            raise KeyError(
-                f"'{key}' is not defined within {cls._generate_config_path(path)}"
-            )
-
-        cfg_path = cls._generate_config_path(path)
-        with open(cfg_path, "r") as f:
-            cfg = json.load(f)
-            batch_size = _retrieve(cfg, "batch_size")
-            rows_per_file = _retrieve(cfg, "rows_per_file")
-            compression = _retrieve(cfg, "compression")
-
-        return cls(
-            path=path,
-            batch_size=batch_size,
-            rows_per_file=rows_per_file,
-            compression=compression,
-        )
-
-    @property
-    def dataset(self) -> ds.Dataset:
-        """Cache dataset."""
-        return ds.dataset(self._path, format="parquet")
-
-    @property
-    def schema(self) -> pa.Schema:
-        """Cache schema."""
-        return self.dataset.schema
-
-    @property
-    def batch_size(self) -> int:
-        """Batch size for writes."""
-        return self._batch_size
-
-    @property
-    def rows_per_file(self) -> int:
-        """Target number of rows per file."""
-        return self._rows_per_file
-
-    @property
-    def compression(self) -> str:
-        """File compression method."""
-        return self._compression
-
-
-class CacheWriter(CacheFiles):
+class PersistentCacheWriter(PersistentCache):
     def __init__(
         self,
         path: str | Path,
@@ -230,12 +105,12 @@ class CacheWriter(CacheFiles):
         cls,
         path: str | Path,
         schema: pa.Schema,
-        batch_size: int = 1_000,
-        rows_per_file: int = 10_000,
+        batch_size: int,
+        rows_per_file: int,
         compression: str = "snappy",
     ):
         """
-        Create a cache.
+        Create a cache on disk.
 
         Parameters
         ----------
@@ -251,103 +126,49 @@ class CacheWriter(CacheFiles):
             Compression method to use when storing on disk.
         """
         Path(path).mkdir(parents=True, exist_ok=False)
+
+        # write configuration file
         cfg_path = cls._generate_config_path(path)
         with open(cfg_path, "w") as f:
             cfg = dict(
                 batch_size=batch_size,
                 rows_per_file=rows_per_file,
                 compression=compression,
+                schema=cls._encode_schema(schema),
             )
             json.dump(cfg, f, indent=2)
+
         return cls(
-            path=path,
             schema=schema,
+            path=path,
             batch_size=batch_size,
             rows_per_file=rows_per_file,
             compression=compression,
         )
 
-    @classmethod
-    def load(cls, path: str | Path):
+    def delete(self):
         """
-        Load cache from disk.
+        Delete the cache.
 
         Parameters
         ----------
         path : str | Path
             Where the cache is stored.
         """
-        path = Path(path)
-        if not path.exists():
-            raise FileNotFoundError(f"Directory does not exist: {path}")
-        elif not path.is_dir():
-            raise NotADirectoryError(
-                f"Path exists but is not a directory: {path}"
-            )
-
-        cfg_path = cls._generate_config_path(path)
-        dataset = ds.dataset(path, format="parquet")
-        with open(cfg_path, "r") as f:
-            cfg = json.load(f)
-        return cls(
-            path=path,
-            schema=dataset.schema,
-            **cfg,
-        )
-
-    @classmethod
-    def delete(cls, path: str | Path):
-        """
-        Delete a cache from disk.
-
-        Parameters
-        ----------
-        path : str | Path
-            Where the cache is stored.
-        """
-        path = Path(path)
-        if not path.exists():
+        if not self._path.exists():
             return
-        cache = cls.load(path)
+        # clear buffer
+        self.flush()
         # delete config file
-        cfg_path = cls._generate_config_path(path)
+        cfg_path = self._generate_config_path(self._path)
         if cfg_path.exists() and cfg_path.is_file():
             cfg_path.unlink()
-        # delete parquet files
-        for file in cache.get_dataset_files():
+        # delete dataset files
+        for file in self.get_dataset_files():
             if file.exists() and file.is_file() and file.suffix == ".parquet":
                 file.unlink()
         # delete empty cache directory
-        path.rmdir()
-
-    @property
-    def dataset(self) -> ds.Dataset:
-        """Cache dataset."""
-        return ds.dataset(
-            self._path,
-            format="parquet",
-            schema=self.schema,
-        )
-
-    @property
-    def schema(self) -> pa.Schema:
-        """Cache schema."""
-        return self._schema
-
-    @property
-    def batch_size(self) -> int:
-        """Batch size for writes."""
-        return self._batch_size
-
-    @property
-    def rows_per_file(self) -> int:
-        """Target number of rows per file."""
-        return self._rows_per_file
-
-    @property
-    def compression(self) -> str:
-        """File compression method."""
-        return self._compression
+        self._path.rmdir()
 
     def write_rows(
         self,
@@ -363,7 +184,7 @@ class CacheWriter(CacheFiles):
         """
         if not rows:
             return
-        batch = pa.RecordBatch.from_pylist(rows, schema=self.schema)
+        batch = pa.RecordBatch.from_pylist(rows, schema=self._schema)
         self.write_batch(batch)
 
     def write_batch(
@@ -386,7 +207,7 @@ class CacheWriter(CacheFiles):
             size += sum([b.num_rows for b in self._buffer])
 
         # check size
-        if size < self.batch_size and self._count < self.rows_per_file:
+        if size < self._batch_size and self._count < self._rows_per_file:
             self._buffer.append(batch)
             return
 
@@ -394,10 +215,10 @@ class CacheWriter(CacheFiles):
             self._buffer.append(batch)
             combined_arrays = [
                 pa.concat_arrays([b.column(name) for b in self._buffer])
-                for name in self.schema.names
+                for name in self._schema.names
             ]
             batch = pa.RecordBatch.from_arrays(
-                combined_arrays, schema=self.schema
+                combined_arrays, schema=self._schema
             )
             self._buffer = []
 
@@ -407,7 +228,7 @@ class CacheWriter(CacheFiles):
 
         # check file size
         self._count += size
-        if self._count >= self.rows_per_file:
+        if self._count >= self._rows_per_file:
             self.flush()
 
     def write_table(
@@ -430,10 +251,10 @@ class CacheWriter(CacheFiles):
         if self._buffer:
             combined_arrays = [
                 pa.concat_arrays([b.column(name) for b in self._buffer])
-                for name in self.schema.names
+                for name in self._schema.names
             ]
             batch = pa.RecordBatch.from_arrays(
-                combined_arrays, schema=self.schema
+                combined_arrays, schema=self._schema
             )
             self._buffer = []
             writer = self._get_or_create_writer()
@@ -457,8 +278,8 @@ class CacheWriter(CacheFiles):
             return self._writer
         self._writer = pq.ParquetWriter(
             where=self._generate_next_filename(),
-            schema=self.schema,
-            compression=self.compression,
+            schema=self._schema,
+            compression=self._compression,
         )
         return self._writer
 
@@ -475,3 +296,70 @@ class CacheWriter(CacheFiles):
     def __exit__(self, exc_type, exc_val, exc_tb):
         """Context manager exit - ensures data is flushed."""
         self.flush()
+
+
+class PersistentCacheReader(PersistentCache):
+    def __init__(
+        self,
+        path: str | Path,
+        schema: pa.Schema,
+    ):
+        self._schema = schema
+        self._path = Path(path)
+
+    @classmethod
+    def load(cls, path: str | Path | PersistentCache):
+        """
+        Load cache from disk.
+
+        Parameters
+        ----------
+        path : str | Path
+            Where the cache is stored.
+        """
+        if isinstance(path, PersistentCache):
+            path = path.path
+        path = Path(path)
+        if not path.exists():
+            raise FileNotFoundError(f"Directory does not exist: {path}")
+        elif not path.is_dir():
+            raise NotADirectoryError(
+                f"Path exists but is not a directory: {path}"
+            )
+
+        def _retrieve(config: dict, key: str):
+            if value := config.get(key, None):
+                return value
+            raise KeyError(
+                f"'{key}' is not defined within {cls._generate_config_path(path)}"
+            )
+
+        # read configuration file
+        cfg_path = cls._generate_config_path(path)
+        with open(cfg_path, "r") as f:
+            cfg = json.load(f)
+            schema = cls._decode_schema(_retrieve(cfg, "schema"))
+
+        return cls(
+            schema=schema,
+            path=path,
+        )
+
+    def count_rows(self) -> int:
+        """Count the number of rows in the cache."""
+        dataset = ds.dataset(
+            source=self._path,
+            schema=self._schema,
+            format="parquet",
+        )
+        return dataset.count_rows()
+
+    def iterate_tables(self):
+        """Iterate over tables within the cache."""
+        dataset = ds.dataset(
+            source=self._path,
+            schema=self._schema,
+            format="parquet",
+        )
+        for fragment in dataset.get_fragments():
+            yield fragment.to_table()
