@@ -1,105 +1,123 @@
 import heapq
 
 import numpy as np
+import pyarrow as pa
 import pyarrow.parquet as pq
+from pathlib import Path
 
 from valor_lite.cache import CacheReader, CacheWriter
 
 
-def iterate_sorted_pairs(
-    reader: CacheReader,
+def create_rocauc_intermediates(
+    source: str | Path,
+    sink: str | Path,
+    n_labels: int,
     rows_per_chunk: int,
     read_batch_size: int,
+    write_batch_size: int,
+    rows_per_file: int,
+    compression: str = "snappy",
 ):
-    id_columns = [
-        "datum_id",
-        "gt_label_id",
-        "pd_label_id",
-    ]
-    if reader.num_dataset_files == 1:
-        pf = pq.ParquetFile(reader.dataset_files[0])
-        tbl = pf.read()
-        ids = np.column_stack([tbl[col].to_numpy() for col in id_columns])
-        scores = tbl["score"].to_numpy()
-        winners = tbl["winner"].to_numpy()
+    schema = pa.schema([
+        ("label", pa.string()),
+        ("cumulative_tp", pa.uint64()),
+        ("cumulative_fp", pa.uint64()),
+        ("score", pa.float64()),
+    ])
+    cumulative_tp = np.zeros(n_labels, dtype=np.uint64)
+    cumulative_fp = np.zeros(n_labels, dtype=np.uint64)
+    reader = CacheReader.load(source)
+    with CacheWriter(
+        path=sink,
+        schema=schema,
+        batch_size=write_batch_size,
+        rows_per_file=rows_per_file,
+        compression=compression,
+    ) as writer:
+        
+        id_columns = [
+            "datum_id",
+            "gt_label_id",
+            "pd_label_id",
+        ]
+        if reader.num_dataset_files == 1:
+            pf = pq.ParquetFile(reader.dataset_files[0])
+            tbl = pf.read()
+            writer.write_table(tbl)
+        else:
 
-        n_pairs = ids.shape[0]
-        n_chunks = n_pairs // rows_per_chunk
-        for i in range(n_chunks):
-            lb = i * rows_per_chunk
-            ub = i * (rows_per_chunk + 1)
-            yield ids[lb:ub], scores[lb:ub], winners[lb:ub]
-        lb = n_chunks * rows_per_chunk
-        yield ids[lb:], scores[lb:], winners[lb:]
-    else:
-
-        def generate_heap_item(batches, batch_idx, row_idx):
-            score = batches[batch_idx]["score"][row_idx].as_py()
-            gidx = batches[batch_idx]["gt_label_id"][row_idx].as_py()
-            pidx = batches[batch_idx]["pd_label_id"][row_idx].as_py()
-            return (
-                -score,
-                pidx,
-                gidx,
-                batch_idx,
-                row_idx,
-            )
-
-        # merge sorted rows
-        heap = []
-        batch_iterators = []
-        batches = []
-        for batch_idx, path in enumerate(reader.dataset_files):
-            pf = pq.ParquetFile(path)
-            batch_iter = pf.iter_batches(batch_size=read_batch_size)
-            batch_iterators.append(batch_iter)
-            batches.append(next(batch_iterators[batch_idx], None))
-            if batches[batch_idx] is not None and len(batches[batch_idx]) > 0:
-                heapq.heappush(heap, generate_heap_item(batches, batch_idx, 0))
-
-        ids_buffer = []
-        scores_buffer = []
-        winners_buffer = []
-        while heap:
-            _, _, _, batch_idx, row_idx = heapq.heappop(heap)
-            row_table = batches[batch_idx].slice(row_idx, 1)
-
-            ids_buffer.append(
-                np.column_stack(
-                    [row_table[col].to_numpy() for col in id_columns]
+            def generate_heap_item(batches, batch_idx, row_idx):
+                score = batches[batch_idx]["score"][row_idx].as_py()
+                gidx = batches[batch_idx]["gt_label_id"][row_idx].as_py()
+                pidx = batches[batch_idx]["pd_label_id"][row_idx].as_py()
+                return (
+                    -score,
+                    pidx,
+                    gidx,
+                    batch_idx,
+                    row_idx,
                 )
-            )
-            scores_buffer.append(row_table["score"].to_numpy())
-            winners_buffer.append(
-                row_table["winner"].to_numpy(zero_copy_only=False)
-            )
-            if len(ids_buffer) >= rows_per_chunk:
+
+            # merge sorted rows
+            heap = []
+            batch_iterators = []
+            batches = []
+            for batch_idx, path in enumerate(reader.dataset_files):
+                pf = pq.ParquetFile(path)
+                batch_iter = pf.iter_batches(batch_size=read_batch_size)
+                batch_iterators.append(batch_iter)
+                batches.append(next(batch_iterators[batch_idx], None))
+                if batches[batch_idx] is not None and len(batches[batch_idx]) > 0:
+                    heapq.heappush(heap, generate_heap_item(batches, batch_idx, 0))
+
+            ids_buffer = []
+            scores_buffer = []
+            winners_buffer = []
+            while heap:
+                _, _, _, batch_idx, row_idx = heapq.heappop(heap)
+                row_table = batches[batch_idx].slice(row_idx, 1)
+                writer.write_rows([
+                    {
+                        "label": row_table["pd_label_id"]
+                    }
+                ])
+
+                ids_buffer.append(
+                    np.column_stack(
+                        [row_table[col].to_numpy() for col in id_columns]
+                    )
+                )
+                scores_buffer.append(row_table["score"].to_numpy())
+                winners_buffer.append(
+                    row_table["winner"].to_numpy(zero_copy_only=False)
+                )
+                if len(ids_buffer) >= rows_per_chunk:
+                    ids = np.concatenate(ids_buffer, axis=0)
+                    scores = np.concatenate(scores_buffer, axis=0)
+                    winners = np.concatenate(winners_buffer, axis=0)
+                    yield ids, scores, winners
+                    ids_buffer, scores_buffer, winners_buffer = [], [], []
+
+                row_idx += 1
+                if row_idx < len(batches[batch_idx]):
+                    heapq.heappush(
+                        heap,
+                        generate_heap_item(batches, batch_idx, row_idx),
+                    )
+                else:
+                    batches[batch_idx] = next(batch_iterators[batch_idx], None)
+                    if (
+                        batches[batch_idx] is not None
+                        and len(batches[batch_idx]) > 0
+                    ):
+                        heapq.heappush(
+                            heap, generate_heap_item(batches, batch_idx, 0)
+                        )
+            if len(ids_buffer) > 0:
                 ids = np.concatenate(ids_buffer, axis=0)
                 scores = np.concatenate(scores_buffer, axis=0)
                 winners = np.concatenate(winners_buffer, axis=0)
                 yield ids, scores, winners
-                ids_buffer, scores_buffer, winners_buffer = [], [], []
-
-            row_idx += 1
-            if row_idx < len(batches[batch_idx]):
-                heapq.heappush(
-                    heap,
-                    generate_heap_item(batches, batch_idx, row_idx),
-                )
-            else:
-                batches[batch_idx] = next(batch_iterators[batch_idx], None)
-                if (
-                    batches[batch_idx] is not None
-                    and len(batches[batch_idx]) > 0
-                ):
-                    heapq.heappush(
-                        heap, generate_heap_item(batches, batch_idx, 0)
-                    )
-        if len(ids_buffer) > 0:
-            ids = np.concatenate(ids_buffer, axis=0)
-            scores = np.concatenate(scores_buffer, axis=0)
-            winners = np.concatenate(winners_buffer, axis=0)
-            yield ids, scores, winners
 
 
 def compute_rocauc(
