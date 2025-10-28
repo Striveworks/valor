@@ -66,10 +66,6 @@ def convert_type_mapping_to_schema(
 class CacheFiles:
     def __init__(self, path: str | Path):
         self._path = Path(path)
-        if self.path.exists() and not self.path.is_dir():
-            raise NotADirectoryError(
-                f"Path exists but is not a directory: {self._path}"
-            )
 
     @property
     def path(self) -> Path:
