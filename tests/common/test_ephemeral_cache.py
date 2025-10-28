@@ -1,10 +1,7 @@
 import numpy as np
 import pyarrow as pa
 
-from valor_lite.cache.ephemeral import (
-    EphemeralCacheReader,
-    EphemeralCacheWriter,
-)
+from valor_lite.cache.ephemeral import MemoryCacheReader, MemoryCacheWriter
 
 
 def test_cache_reader():
@@ -16,7 +13,7 @@ def test_cache_reader():
             ("some_str", pa.string()),
         ]
     )
-    with EphemeralCacheWriter.create(
+    with MemoryCacheWriter.create(
         schema=schema,
         batch_size=batch_size,
     ) as writer:
@@ -33,7 +30,7 @@ def test_cache_reader():
         writer.write_table(tbl)
         assert writer.count_rows() == 101
 
-    reader = EphemeralCacheReader.load(writer)
+    reader = MemoryCacheReader.load(writer)
     assert reader.count_rows() == 101
     for tbl in reader.iterate_tables():
         assert tbl["some_int"].to_pylist() == [i for i in range(101)]
@@ -45,7 +42,7 @@ def test_cache_reader():
 
 def test_cache_write_batch():
     batch_size = 10
-    with EphemeralCacheWriter.create(
+    with MemoryCacheWriter.create(
         schema=pa.schema(
             [
                 ("some_int", pa.int64()),
@@ -64,7 +61,7 @@ def test_cache_write_batch():
                 }
             )
 
-    reader = EphemeralCacheReader(writer)
+    reader = MemoryCacheReader(writer)
     assert reader.count_rows() == 1000
     for tbl in reader.iterate_tables():
         assert tbl["some_int"].to_pylist() == [i for i in range(1000)]
@@ -74,7 +71,7 @@ def test_cache_write_batch():
 
 def test_cache_write_rows():
     batch_size = 10
-    with EphemeralCacheWriter.create(
+    with MemoryCacheWriter.create(
         schema=pa.schema(
             [
                 ("some_int", pa.int64()),
@@ -99,7 +96,7 @@ def test_cache_write_rows():
             writer.write_rows([])
             assert len(writer._buffer) == buffer_size
 
-    reader = EphemeralCacheReader.load(writer)
+    reader = MemoryCacheReader.load(writer)
     assert reader.count_rows() == 1000
     for tbl in reader.iterate_tables():
         assert tbl["some_int"].to_pylist() == [i for i in range(1000)]
@@ -109,7 +106,7 @@ def test_cache_write_rows():
 
 def test_cache_write_table():
     batch_size = 10
-    with EphemeralCacheWriter.create(
+    with MemoryCacheWriter.create(
         schema=pa.schema(
             [
                 ("some_int", pa.int64()),
@@ -137,7 +134,7 @@ def test_cache_write_table():
         writer.write_table(tbl)
         assert writer.count_rows() == 202
 
-        reader = EphemeralCacheReader.load(writer)
+        reader = MemoryCacheReader.load(writer)
 
     for tbl in reader.iterate_tables():
         assert tbl["some_int"].to_pylist() == [i for i in range(101)] + [
@@ -153,7 +150,7 @@ def test_cache_write_table():
 
 def test_cache_delete():
     batch_size = 10
-    with EphemeralCacheWriter.create(
+    with MemoryCacheWriter.create(
         schema=pa.schema(
             [
                 ("some_int", pa.int64()),
@@ -183,7 +180,7 @@ def test_cache_delete():
 
         writer.flush()
 
-        reader = EphemeralCacheReader.load(writer)
+        reader = MemoryCacheReader.load(writer)
         for tbl in reader.iterate_tables():
             assert tbl["some_int"].to_pylist() == [i for i in range(101)] + [
                 i for i in range(101)

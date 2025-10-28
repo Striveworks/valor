@@ -11,7 +11,7 @@ import pyarrow.dataset as ds
 import pyarrow.parquet as pq
 
 
-class PersistentCache:
+class FileCache:
     def __init__(self, path: str | Path):
         self._path = Path(path)
 
@@ -80,7 +80,7 @@ class PersistentCache:
         ]
 
 
-class PersistentCacheWriter(PersistentCache):
+class FileCacheWriter(FileCache):
     def __init__(
         self,
         path: str | Path,
@@ -298,7 +298,7 @@ class PersistentCacheWriter(PersistentCache):
         self.flush()
 
 
-class PersistentCacheReader(PersistentCache):
+class FileCacheReader(FileCache):
     def __init__(
         self,
         path: str | Path,
@@ -308,7 +308,7 @@ class PersistentCacheReader(PersistentCache):
         self._path = Path(path)
 
     @classmethod
-    def load(cls, path: str | Path | PersistentCache):
+    def load(cls, path: str | Path | FileCache):
         """
         Load cache from disk.
 
@@ -317,7 +317,7 @@ class PersistentCacheReader(PersistentCache):
         path : str | Path
             Where the cache is stored.
         """
-        if isinstance(path, PersistentCache):
+        if isinstance(path, FileCache):
             path = path.path
         path = Path(path)
         if not path.exists():

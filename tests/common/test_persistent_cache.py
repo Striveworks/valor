@@ -6,14 +6,14 @@ import pyarrow as pa
 import pytest
 
 from valor_lite.cache.persistent import (
-    PersistentCache,
-    PersistentCacheReader,
-    PersistentCacheWriter,
+    FileCache,
+    FileCacheReader,
+    FileCacheWriter,
 )
 
 
 def test_cache_files_empty(tmp_path: Path):
-    cache = PersistentCache(tmp_path)
+    cache = FileCache(tmp_path)
     assert cache._path == tmp_path
     assert cache.get_files() == []
     assert cache.get_dataset_files() == []
@@ -22,7 +22,7 @@ def test_cache_files_empty(tmp_path: Path):
 
 def test_cache_files_does_not_exist(tmp_path: Path):
     path = tmp_path / "does_not_exist"
-    cache = PersistentCache(path)
+    cache = FileCache(path)
     assert cache._path == path
     assert cache.get_files() == []
     assert cache.get_dataset_files() == []
@@ -39,7 +39,7 @@ def test_cache_reader(tmp_path: Path):
             ("some_str", pa.string()),
         ]
     )
-    with PersistentCacheWriter.create(
+    with FileCacheWriter.create(
         path=tmp_path / "cache",
         schema=schema,
         batch_size=batch_size,
@@ -57,7 +57,7 @@ def test_cache_reader(tmp_path: Path):
         )
 
         writer.write_table(tbl)
-        reader = PersistentCacheReader.load(tmp_path / "cache")
+        reader = FileCacheReader.load(tmp_path / "cache")
         assert set(reader.get_files()) == set(
             [
                 tmp_path / "cache" / "000000.parquet",
@@ -99,7 +99,7 @@ def test_cache_reader(tmp_path: Path):
 def test_cache_reader_does_not_exist(tmp_path: Path):
     path = tmp_path / "does_not_exist"
     with pytest.raises(FileNotFoundError):
-        PersistentCacheReader.load(path)
+        FileCacheReader.load(path)
 
 
 def test_cache_reader_not_a_directory(tmp_path: Path):
@@ -108,7 +108,7 @@ def test_cache_reader_not_a_directory(tmp_path: Path):
         f.write("hello world")
 
     with pytest.raises(NotADirectoryError):
-        PersistentCacheReader.load(filepath)
+        FileCacheReader.load(filepath)
 
 
 def test_cache_reader_config_error(tmp_path: Path):
@@ -122,13 +122,13 @@ def test_cache_reader_config_error(tmp_path: Path):
         ]
     )
     path = tmp_path / "cache"
-    with PersistentCacheWriter.create(
+    with FileCacheWriter.create(
         path=path,
         schema=schema,
         batch_size=batch_size,
         rows_per_file=rows_per_file,
     ) as writer:
-        reader = PersistentCacheReader.load(writer.path)
+        reader = FileCacheReader.load(writer.path)
         assert reader.path == path
         assert len(reader.get_files()) == 1
         assert reader.get_files() == [path / ".cfg"]
@@ -141,13 +141,13 @@ def test_cache_reader_config_error(tmp_path: Path):
             json.dump({}, f, indent=2)
 
         with pytest.raises(KeyError):
-            PersistentCacheReader.load(writer.path)
+            FileCacheReader.load(writer.path)
 
 
 def test_cache_write_batch(tmp_path: Path):
     batch_size = 10
     rows_per_file = 100
-    with PersistentCacheWriter.create(
+    with FileCacheWriter.create(
         path=tmp_path / "cache",
         schema=pa.schema(
             [
@@ -170,7 +170,7 @@ def test_cache_write_batch(tmp_path: Path):
         writer.flush()
         assert len(writer.get_files()) == 11
 
-        reader = PersistentCacheReader.load(writer.path)
+        reader = FileCacheReader.load(writer.path)
         assert reader.count_rows() == 1000
         for idx, tbl in enumerate(reader.iterate_tables()):
             assert tbl["some_int"].to_pylist() == [
@@ -190,7 +190,7 @@ def test_cache_write_batch(tmp_path: Path):
 def test_cache_write_rows(tmp_path: Path):
     batch_size = 10
     rows_per_file = 100
-    with PersistentCacheWriter.create(
+    with FileCacheWriter.create(
         path=tmp_path / "cache",
         schema=pa.schema(
             [
@@ -219,7 +219,7 @@ def test_cache_write_rows(tmp_path: Path):
         writer.flush()
         assert len(writer.get_files()) == 11
 
-        reader = PersistentCacheReader.load(writer.path)
+        reader = FileCacheReader.load(writer.path)
         assert reader.count_rows() == 1000
         for idx, tbl in enumerate(reader.iterate_tables()):
             assert tbl["some_int"].to_pylist() == [
@@ -239,7 +239,7 @@ def test_cache_write_rows(tmp_path: Path):
 def test_cache_write_table(tmp_path: Path):
     batch_size = 10
     rows_per_file = 100
-    with PersistentCacheWriter.create(
+    with FileCacheWriter.create(
         path=tmp_path / "cache",
         schema=pa.schema(
             [
@@ -267,7 +267,7 @@ def test_cache_write_table(tmp_path: Path):
         assert len(writer.get_files()) == 3
         writer.flush()
 
-        reader = PersistentCacheReader.load(writer.path)
+        reader = FileCacheReader.load(writer.path)
         assert reader.count_rows() == 202
         for tbl in reader.iterate_tables():
             assert tbl["some_int"].to_pylist() == [i for i in range(101)]
@@ -280,7 +280,7 @@ def test_cache_write_table(tmp_path: Path):
 def test_cache_delete(tmp_path: Path):
     batch_size = 10
     rows_per_file = 100
-    with PersistentCacheWriter.create(
+    with FileCacheWriter.create(
         path=tmp_path / "cache",
         schema=pa.schema(
             [
@@ -308,7 +308,7 @@ def test_cache_delete(tmp_path: Path):
         assert len(writer.get_files()) == 3
         writer.flush()
 
-        reader = PersistentCacheReader.load(path=writer.path)
+        reader = FileCacheReader.load(path=writer.path)
         assert reader.count_rows() == 202
         for tbl in reader.iterate_tables():
             assert tbl["some_int"].to_pylist() == [i for i in range(101)]

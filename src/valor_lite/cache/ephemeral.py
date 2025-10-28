@@ -4,7 +4,7 @@ import numpy as np
 import pyarrow as pa
 
 
-class EphemeralCache:
+class MemoryCache:
     def __init__(self, table: pa.Table):
         self._table = table
 
@@ -13,7 +13,7 @@ class EphemeralCache:
         return self._table.num_rows
 
 
-class EphemeralCacheWriter(EphemeralCache):
+class MemoryCacheWriter(MemoryCache):
     def __init__(
         self,
         table: pa.Table,
@@ -147,22 +147,22 @@ class EphemeralCacheWriter(EphemeralCache):
         self.flush()
 
 
-class EphemeralCacheReader:
+class MemoryCacheReader:
     def __init__(
         self,
-        cache: EphemeralCacheWriter,
+        cache: MemoryCacheWriter,
     ):
         self._cache = cache
         self._schema = self._cache._schema
 
     @classmethod
-    def load(cls, cache: EphemeralCacheWriter):
+    def load(cls, cache: MemoryCacheWriter):
         """
         Load cache from table.
 
         Parameters
         ----------
-        cache : EphemeralCacheWriter
+        cache : MemoryCacheWriter
             A cache writer containing the ephemeral cache.
         """
         return cls(cache=cache)
