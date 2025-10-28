@@ -5,6 +5,11 @@ class EmptyEvaluatorError(Exception):
         )
 
 
+class EmptyCacheError(Exception):
+    def __init__(self):
+        super().__init__("cache contains no data")
+
+
 class EmptyFilterError(Exception):
     def __init__(self, message: str):
         super().__init__(message)
