@@ -9,12 +9,10 @@ import valor_lite.classification.numpy_compatibility as npc
 def compute_rocauc(
     ids: NDArray[np.int64],
     scores: NDArray[np.float64],
+    rocauc: NDArray[np.float64],
     gt_count_per_label: NDArray[np.uint64],
     pd_count_per_label: NDArray[np.uint64],
-    n_datums: int,
     n_labels: int,
-    prev_cumulative_fp: NDArray[np.uint64],
-    prev_cumulative_tp: NDArray[np.uint64],
 ) -> tuple[NDArray[np.float64], NDArray[np.uint64], NDArray[np.uint64]]:
     """
     Compute ROCAUC.
@@ -36,10 +34,6 @@ def compute_rocauc(
         The number of datums being operated over.
     n_labels : int
         The total number of unqiue labels.
-    prev_cumulative_fp : NDArray[np.uint64]
-        Previous cumulative FP sum. Used in chunked computations.
-    prev_cumulative_tp : NDArray[np.uint64]
-        Previous cumulative TP sum. Used in chunked computations.
 
     Returns
     -------
@@ -57,19 +51,12 @@ def compute_rocauc(
     positive_count = gt_count_per_label
     negative_count = pd_count_per_label - gt_count_per_label
 
-    rocauc = np.zeros(n_labels, dtype=np.float64)
-    last_cumulative_fp = prev_cumulative_fp.copy()
-    last_cumulative_tp = prev_cumulative_tp.copy()
-
     for label_idx in range(n_labels):
-        print()
-        print("LABEL", label_idx)
         mask_pds = pd_labels == label_idx
         n_masked_pds = mask_pds.sum()
         if pd_count_per_label[label_idx] == 0 or n_masked_pds == 0:
             continue
 
-        print(n_masked_pds)
         true_positives = np.zeros(n_masked_pds, dtype=np.uint64)
         false_positives = np.zeros_like(true_positives)
         tp_scores = np.zeros_like(true_positives, dtype=np.float64)
@@ -78,15 +65,8 @@ def compute_rocauc(
         false_positives = ~mask_matching_labels[mask_pds]
         tp_scores = scores[mask_pds]
 
-        cumulative_fp = (
-            np.cumsum(false_positives) + prev_cumulative_fp[label_idx]
-        )
-        cumulative_tp = (
-            np.cumsum(true_positives) + prev_cumulative_tp[label_idx]
-        )
-
-        last_cumulative_fp[label_idx] = cumulative_fp[-1]
-        last_cumulative_tp[label_idx] = cumulative_tp[-1]
+        cumulative_fp = np.cumsum(false_positives)
+        cumulative_tp = np.cumsum(true_positives)
 
         fpr = np.zeros_like(true_positives, dtype=np.float64)
         np.divide(
@@ -114,7 +94,7 @@ def compute_rocauc(
         # compute rocauc
         rocauc[label_idx] = npc.trapezoid(x=fpr, y=tpr, axis=0)
 
-    return rocauc, last_cumulative_fp, last_cumulative_tp
+    return rocauc, None, None
 
 
 def compute_counts(

@@ -87,6 +87,7 @@ class Loader(PathFormatter):
                 # pair
                 ("score", pa.float64()),
                 ("winner", pa.bool_()),
+                ("match", pa.bool_()),
             ]
         )
 
@@ -194,6 +195,7 @@ class Loader(PathFormatter):
                         # pair
                         "score": float(score),
                         "winner": max_score_idx == idx,
+                        "match": (gidx == pidx) and pidx >= 0,
                     }
                 )
             self._cache.write_rows(rows)

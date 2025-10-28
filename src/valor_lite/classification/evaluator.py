@@ -31,7 +31,8 @@ from valor_lite.classification.utilities import (
     unpack_confusion_matrix,
     unpack_confusion_matrix_with_examples,
     unpack_examples,
-    unpack_precision_recall_rocauc_into_metric_lists,
+    unpack_precision_recall,
+    unpack_rocauc,
 )
 from valor_lite.exceptions import EmptyCacheError
 
@@ -486,7 +487,77 @@ class Evaluator(PathFormatter):
                 winners = np.concatenate(winners_buffer, axis=0)
                 yield ids, scores, winners
 
-    def compute_precision_recall_rocauc(
+    def compute_rocauc(
+        self,
+        *_,
+        rows_per_chunk: int = 10_000,
+        read_batch_size: int = 1_000,
+    ) -> dict[MetricType, list[Metric]]:
+        """
+        Compute ROCAUC.
+
+        Parameters
+        ----------
+        rows_per_chunk : int, default=10_000
+            The number of sorted rows to return in each chunk.
+        read_batch_size : int, default=1_000
+            The maximum number of rows to load in-memory per file.
+
+        Returns
+        -------
+        dict[MetricType, list[Metric]]
+            A dictionary mapping MetricType enumerations to lists of computed metrics.
+        """
+        n_labels = self.info.number_of_labels
+
+        rocauc = np.zeros(n_labels, dtype=np.float64)
+        cumulative_fp = np.zeros(n_labels, dtype=np.uint64)
+        cumulative_tp = np.zeros(n_labels, dtype=np.uint64)
+
+        tpr = np.zeros(n_labels, dtype=np.float64)
+        fpr = np.zeros(n_labels, dtype=np.float64)
+
+        positive_count = self._label_counts[:, 0]
+        negative_count = self._label_counts[:, 1] - self._label_counts[:, 0]
+
+        for ids, scores, _ in self.iterate_sorted_chunks(
+            rows_per_chunk=rows_per_chunk,
+            read_batch_size=read_batch_size,
+        ):
+            for id_row, score in zip(ids, scores):
+                glabel = id_row[1]
+                plabel = id_row[2]
+                if glabel < 0 or plabel < 0:
+                    continue
+                elif glabel == plabel:
+                    cumulative_tp[plabel] += 1
+                    tpr_new = cumulative_tp[plabel] / positive_count[plabel]
+                    tpr[plabel]
+                else:
+                    cumulative_fp[plabel] += 1
+
+            batch_rocauc, cumulative_fp, cumulative_tp = compute_rocauc(
+                ids=ids,
+                scores=scores,
+                rocauc=rocauc,
+                cumulative_fp=cumulative_fp,
+                cumulative_tp=cumulative_tp,
+                gt_count_per_label=self._label_counts[:, 0],
+                pd_count_per_label=self._label_counts[:, 1],
+                n_datums=self.info.number_of_datums,
+                n_labels=self.info.number_of_labels,
+            )
+            rocauc += batch_rocauc
+
+        mean_rocauc = rocauc.mean()
+
+        return unpack_rocauc(
+            rocauc=rocauc,
+            mean_rocauc=mean_rocauc,
+            index_to_label=self._index_to_label,
+        )
+
+    def compute_precision_recall(
         self,
         score_thresholds: list[float] = [0.0],
         hardmax: bool = True,
@@ -521,27 +592,12 @@ class Evaluator(PathFormatter):
         n_labels = self.info.number_of_labels
 
         # intermediates
-        cumulative_fp = np.zeros((n_labels, 1), dtype=np.uint64)
-        cumulative_tp = np.zeros((n_labels, 1), dtype=np.uint64)
-        rocauc = np.zeros(n_labels, dtype=np.float64)
         counts = np.zeros((n_scores, n_labels, 4), dtype=np.uint64)
 
         for ids, scores, winners in self.iterate_sorted_chunks(
             rows_per_chunk=rows_per_chunk,
             read_batch_size=read_batch_size,
         ):
-            batch_rocauc, cumulative_fp, cumulative_tp = compute_rocauc(
-                ids=ids,
-                scores=scores,
-                gt_count_per_label=self._label_counts[:, 0],
-                pd_count_per_label=self._label_counts[:, 1],
-                n_datums=self.info.number_of_datums,
-                n_labels=self.info.number_of_labels,
-                prev_cumulative_fp=cumulative_fp,
-                prev_cumulative_tp=cumulative_tp,
-            )
-            rocauc += batch_rocauc
-
             batch_counts = compute_counts(
                 ids=ids,
                 scores=scores,
@@ -556,16 +612,13 @@ class Evaluator(PathFormatter):
         recall = compute_recall(counts)
         f1_score = compute_f1_score(precision, recall)
         accuracy = compute_accuracy(counts, n_datums=n_datums)
-        mean_rocauc = rocauc.mean()
 
-        return unpack_precision_recall_rocauc_into_metric_lists(
+        return unpack_precision_recall(
             counts=counts,
             precision=precision,
             recall=recall,
             accuracy=accuracy,
             f1_score=f1_score,
-            rocauc=rocauc,
-            mean_rocauc=mean_rocauc,
             score_thresholds=score_thresholds,
             hardmax=hardmax,
             index_to_label=self._index_to_label,

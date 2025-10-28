@@ -53,7 +53,10 @@ def test_fuzz_classifications(tmp_path: Path):
         )
         loader.add_data(classifications)
         evaluator = loader.finalize()
-        evaluator.compute_precision_recall_rocauc(
+        evaluator.compute_rocauc(
+            read_batch_size=100,
+        )
+        evaluator.compute_precision_recall(
             score_thresholds=score_thresholds,
             read_batch_size=100,
         )

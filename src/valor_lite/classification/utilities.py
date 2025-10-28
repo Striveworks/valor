@@ -7,34 +7,18 @@ from numpy.typing import NDArray
 from valor_lite.classification.metric import Metric, MetricType
 
 
-def unpack_precision_recall_rocauc_into_metric_lists(
+def unpack_precision_recall(
     counts: NDArray[np.uint64],
     precision: NDArray[np.float64],
     recall: NDArray[np.float64],
     accuracy: NDArray[np.float64],
     f1_score: NDArray[np.float64],
-    rocauc: NDArray[np.float64],
-    mean_rocauc: float,
     score_thresholds: list[float],
     hardmax: bool,
     index_to_label: dict[int, str],
 ) -> dict[MetricType, list[Metric]]:
 
     metrics = defaultdict(list)
-
-    metrics[MetricType.ROCAUC] = [
-        Metric.roc_auc(
-            value=float(rocauc[label_idx]),
-            label=label,
-        )
-        for label_idx, label in index_to_label.items()
-    ]
-
-    metrics[MetricType.mROCAUC] = [
-        Metric.mean_roc_auc(
-            value=float(mean_rocauc),
-        )
-    ]
 
     metrics[MetricType.Accuracy] = [
         Metric.accuracy(
@@ -47,7 +31,6 @@ def unpack_precision_recall_rocauc_into_metric_lists(
 
     for label_idx, label in index_to_label.items():
         for score_idx, score_threshold in enumerate(score_thresholds):
-
             kwargs = {
                 "label": label,
                 "hardmax": hardmax,
@@ -82,6 +65,27 @@ def unpack_precision_recall_rocauc_into_metric_lists(
                     **kwargs,
                 )
             )
+    return metrics
+
+
+def unpack_rocauc(
+    rocauc: NDArray[np.float64],
+    mean_rocauc: float,
+    index_to_label: dict[int, str],
+) -> dict[MetricType, list[Metric]]:
+    metrics = {}
+    metrics[MetricType.ROCAUC] = [
+        Metric.roc_auc(
+            value=float(rocauc[label_idx]),
+            label=label,
+        )
+        for label_idx, label in index_to_label.items()
+    ]
+    metrics[MetricType.mROCAUC] = [
+        Metric.mean_roc_auc(
+            value=float(mean_rocauc),
+        )
+    ]
     return metrics
 
 

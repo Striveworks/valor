@@ -13,9 +13,7 @@ def test_rocauc_with_animal_example(
     loader.add_data(classifications_animal_example)
     evaluator = loader.finalize()
 
-    metrics = evaluator.compute_precision_recall_rocauc(
-        read_batch_size=2, rows_per_chunk=2
-    )
+    metrics = evaluator.compute_rocauc(read_batch_size=2, rows_per_chunk=2)
 
     # test ROCAUC
     actual_metrics = [m.to_dict() for m in metrics[MetricType.ROCAUC]]
@@ -67,7 +65,7 @@ def test_rocauc_with_color_example(
     loader.add_data(classifications_color_example)
     evaluator = loader.finalize()
 
-    metrics = evaluator.compute_precision_recall_rocauc(
+    metrics = evaluator.compute_rocauc(
         hardmax=False, read_batch_size=2, rows_per_chunk=2
     )
 
@@ -128,9 +126,7 @@ def test_rocauc_with_image_example(
     loader.finalize()
     evaluator = loader.finalize()
 
-    metrics = evaluator.compute_precision_recall_rocauc(
-        read_batch_size=2, rows_per_chunk=2
-    )
+    metrics = evaluator.compute_rocauc(read_batch_size=2, rows_per_chunk=2)
 
     actual_metrics = [m.to_dict() for m in metrics[MetricType.ROCAUC]]
     expected_metrics = [
@@ -179,9 +175,7 @@ def test_rocauc_with_tabular_example(
     loader.finalize()
     evaluator = loader.finalize()
 
-    metrics = evaluator.compute_precision_recall_rocauc(
-        read_batch_size=2, rows_per_chunk=2
-    )
+    metrics = evaluator.compute_rocauc(read_batch_size=2, rows_per_chunk=2)
 
     actual_metrics = [m.to_dict() for m in metrics[MetricType.ROCAUC]]
     expected_metrics = [

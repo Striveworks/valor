@@ -84,7 +84,7 @@ class Evaluator(CachedEvaluator):
             predictions=None,
         )
 
-    def compute_precision_recall_rocauc(  # type: ignore[reportIncompatibleMethodOverride]
+    def compute_precision_recall_rocauc(
         self,
         score_thresholds: list[float] = [0.0],
         hardmax: bool = True,
@@ -113,14 +113,18 @@ class Evaluator(CachedEvaluator):
                     path=tmpdir,
                     filter_expr=filter_,
                 )
-                return evaluator.compute_precision_recall_rocauc(
+                metrics = evaluator.compute_precision_recall(
                     score_thresholds=score_thresholds,
                     hardmax=hardmax,
                 )
-        return super().compute_precision_recall_rocauc(
+                metrics.update(evaluator.compute_rocauc())
+                return metrics
+        metrics = super().compute_precision_recall(
             score_thresholds=score_thresholds,
             hardmax=hardmax,
         )
+        metrics.update(super().compute_rocauc())
+        return metrics
 
     def compute_confusion_matrix(
         self,
