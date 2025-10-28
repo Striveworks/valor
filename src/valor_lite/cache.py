@@ -225,35 +225,6 @@ class CacheWriter(CacheFiles):
         self._buffer = []
         self._count = 0
 
-    @property
-    def schema(self) -> pa.Schema:
-        """Cache schema."""
-        return self._schema
-
-    @property
-    def dataset(self) -> ds.Dataset:
-        """Cache dataset."""
-        return ds.dataset(
-            self._path,
-            format="parquet",
-            schema=self.schema,
-        )
-
-    @property
-    def batch_size(self) -> int:
-        """Batch size for writes."""
-        return self._batch_size
-
-    @property
-    def rows_per_file(self) -> int:
-        """Target number of rows per file."""
-        return self._rows_per_file
-
-    @property
-    def compression(self) -> str:
-        """File compression method."""
-        return self._compression
-
     @classmethod
     def create(
         cls,
@@ -348,6 +319,35 @@ class CacheWriter(CacheFiles):
                 file.unlink()
         # delete empty cache directory
         path.rmdir()
+
+    @property
+    def dataset(self) -> ds.Dataset:
+        """Cache dataset."""
+        return ds.dataset(
+            self._path,
+            format="parquet",
+            schema=self.schema,
+        )
+
+    @property
+    def schema(self) -> pa.Schema:
+        """Cache schema."""
+        return self._schema
+
+    @property
+    def batch_size(self) -> int:
+        """Batch size for writes."""
+        return self._batch_size
+
+    @property
+    def rows_per_file(self) -> int:
+        """Target number of rows per file."""
+        return self._rows_per_file
+
+    @property
+    def compression(self) -> str:
+        """File compression method."""
+        return self._compression
 
     def write_rows(
         self,
