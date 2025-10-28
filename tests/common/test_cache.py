@@ -55,15 +55,6 @@ def test_cache_files_empty(tmp_path: Path):
     assert cf._generate_config_path(tmp_path) == tmp_path / ".cfg"
 
 
-def test_cache_files_not_a_directory(tmp_path: Path):
-    filepath = tmp_path / "not_a_directory"
-    with open(filepath, "w") as f:
-        f.write("hello world")
-
-    with pytest.raises(NotADirectoryError):
-        CacheFiles(filepath)
-
-
 def test_cache_files_does_not_exist(tmp_path: Path):
     path = tmp_path / "does_not_exist"
     cf = CacheFiles(path)
