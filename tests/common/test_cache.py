@@ -48,10 +48,8 @@ def test_convert_type_mapping_to_schema():
 def test_cache_files_empty(tmp_path: Path):
     cf = CacheFiles(tmp_path)
     assert cf.path == tmp_path
-    assert cf.files == []
-    assert cf.num_files == 0
-    assert cf.dataset_files == []
-    assert cf.num_dataset_files == 0
+    assert cf.get_files() == []
+    assert cf.get_dataset_files() == []
     assert cf._generate_config_path(tmp_path) == tmp_path / ".cfg"
 
 
@@ -59,10 +57,8 @@ def test_cache_files_does_not_exist(tmp_path: Path):
     path = tmp_path / "does_not_exist"
     cf = CacheFiles(path)
     assert cf.path == path
-    assert cf.files == []
-    assert cf.num_files == 0
-    assert cf.dataset_files == []
-    assert cf.num_dataset_files == 0
+    assert cf.get_files() == []
+    assert cf.get_dataset_files() == []
     assert cf._generate_config_path(path) == path / ".cfg"
 
 
@@ -92,26 +88,35 @@ def test_cache_reader(tmp_path: Path):
                 for i in range(101)
             ]
         )
-        cache.write_table(tbl)
 
+        cache.write_table(tbl)
         readonly_cache = CacheReader.load(tmp_path / "cache")
-        assert readonly_cache.num_files == 2
-        assert set(readonly_cache.files) == set(
+        assert set(readonly_cache.get_files()) == set(
             [
                 tmp_path / "cache" / "000000.parquet",
                 tmp_path / "cache" / ".cfg",
             ]
         )
-        assert readonly_cache.num_dataset_files == 1
-        assert set(readonly_cache.dataset_files) == set(
+        assert set(readonly_cache.get_dataset_files()) == set(
             [
                 tmp_path / "cache" / "000000.parquet",
             ]
         )
 
         cache.write_table(tbl)
-        assert readonly_cache.num_files == 3
-        assert readonly_cache.num_dataset_files == 2
+        assert set(readonly_cache.get_files()) == set(
+            [
+                tmp_path / "cache" / "000000.parquet",
+                tmp_path / "cache" / "000001.parquet",
+                tmp_path / "cache" / ".cfg",
+            ]
+        )
+        assert set(readonly_cache.get_dataset_files()) == set(
+            [
+                tmp_path / "cache" / "000000.parquet",
+                tmp_path / "cache" / "000001.parquet",
+            ]
+        )
 
         for _, fragment in enumerate(readonly_cache.dataset.get_fragments()):
             tbl = fragment.to_table()
@@ -159,13 +164,13 @@ def test_cache_reader_config_error(tmp_path: Path):
     ) as writer:
         reader = CacheReader.load(writer.path)
         assert reader.path == path
-        assert reader.num_files == 1
-        assert reader.files == [path / ".cfg"]
-        assert reader.num_dataset_files == 0
-        assert reader.dataset_files == []
+        assert len(reader.get_files()) == 1
+        assert reader.get_files() == [path / ".cfg"]
+        assert len(reader.get_dataset_files()) == 0
+        assert reader.get_dataset_files() == []
 
         # overwrite config file with empty JSON
-        config_file = reader.files[0]
+        config_file = reader.get_files()[0]
         with open(config_file, "w") as f:
             json.dump({}, f, indent=2)
 
@@ -212,7 +217,7 @@ def test_cache_write_batch(tmp_path: Path):
                 }
             )
         cache.flush()
-        assert cache.num_files == 11
+        assert len(cache.get_files()) == 11
         for idx, fragment in enumerate(cache.dataset.get_fragments()):
             tbl = fragment.to_table()
             assert tbl["some_int"].to_pylist() == [
@@ -259,7 +264,7 @@ def test_cache_write_rows(tmp_path: Path):
             cache.write_rows([])
             assert len(cache._buffer) == buffer_size
         cache.flush()
-        assert cache.num_files == 11
+        assert len(cache.get_files()) == 11
         for idx, fragment in enumerate(cache.dataset.get_fragments()):
             tbl = fragment.to_table()
             assert tbl["some_int"].to_pylist() == [
@@ -302,9 +307,9 @@ def test_cache_write_table(tmp_path: Path):
             ]
         )
         cache.write_table(tbl)
-        assert cache.num_files == 2
+        assert len(cache.get_files()) == 2
         cache.write_table(tbl)
-        assert cache.num_files == 3
+        assert len(cache.get_files()) == 3
         cache.flush()
         for _, fragment in enumerate(cache.dataset.get_fragments()):
             tbl = fragment.to_table()
@@ -341,9 +346,9 @@ def test_cache_delete(tmp_path: Path):
             ]
         )
         cache.write_table(tbl)
-        assert cache.num_files == 2
+        assert len(cache.get_files()) == 2
         cache.write_table(tbl)
-        assert cache.num_files == 3
+        assert len(cache.get_files()) == 3
         cache.flush()
         for _, fragment in enumerate(cache.dataset.get_fragments()):
             tbl = fragment.to_table()
@@ -354,7 +359,7 @@ def test_cache_delete(tmp_path: Path):
             ]
 
         CacheWriter.delete(tmp_path / "cache")
-        assert cache.files == []
+        assert cache.get_files() == []
 
         # test edge case
         CacheWriter.delete(tmp_path / "cache")
