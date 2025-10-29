@@ -1,7 +1,7 @@
 import numpy as np
 import pyarrow as pa
 
-from valor_lite.cache.ephemeral import MemoryCacheReader, MemoryCacheWriter
+from valor_lite.common.ephemeral import MemoryCacheReader, MemoryCacheWriter
 
 
 def test_cache_reader():

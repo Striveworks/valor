@@ -5,7 +5,7 @@ import numpy as np
 import pyarrow as pa
 import pytest
 
-from valor_lite.cache.persistent import (
+from valor_lite.common.persistent import (
     FileCache,
     FileCacheReader,
     FileCacheWriter,

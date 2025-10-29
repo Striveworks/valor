@@ -2,7 +2,7 @@ from datetime import datetime
 
 import pyarrow as pa
 
-from valor_lite.cache.datatype import DataType, convert_type_mapping_to_schema
+from valor_lite.common.datatype import DataType, convert_type_mapping_to_schema
 
 
 def test_datatype_casting_to_arrow():
