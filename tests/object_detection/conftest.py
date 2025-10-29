@@ -12,6 +12,7 @@ from valor_lite.object_detection import (
     Evaluator,
     Loader,
     Polygon,
+    DataType,
 )
 
 
@@ -22,17 +23,37 @@ from valor_lite.object_detection import (
         ("memory", 10_000, 0),
         ("memory", 1, 0),
     ],
+    ids=[
+        "persistent_large_chunks",
+        "persistent_small_chunks",
+        "in-memory_large_chunks",
+        "in-memory_small_chunks",
+    ]
 )
 def loader(request, tmp_path: Path):
     file_type, batch_size, rows_per_file = request.param
     match file_type:
         case "memory":
-            return Loader.in_memory(batch_size=batch_size)
+            return Loader.in_memory(
+                batch_size=batch_size,
+                groundtruth_metadata_types={
+                    "gt_rect": DataType.STRING,
+                },
+                prediction_metadata_types={
+                    "pd_rect": DataType.STRING,
+                },
+            )
         case "persistent":
             return Loader.persistent(
                 path=tmp_path / "cache",
                 batch_size=batch_size,
                 rows_per_file=rows_per_file,
+                groundtruth_metadata_types={
+                    "gt_rect": DataType.STRING,
+                },
+                prediction_metadata_types={
+                    "pd_rect": DataType.STRING,
+                },
             )
 
 

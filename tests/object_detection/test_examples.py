@@ -1,22 +1,10 @@
-from pathlib import Path
-
-from valor_lite.object_detection import Detection
-from valor_lite.object_detection.loader import Loader
+from valor_lite.object_detection import Evaluator
 
 
 def test_examples(
-    tmp_path: Path,
-    detections_for_detailed_counting: list[Detection],
-    rect1: tuple[float, float, float, float],
-    rect2: tuple[float, float, float, float],
-    rect3: tuple[float, float, float, float],
-    rect4: tuple[float, float, float, float],
-    rect5: tuple[float, float, float, float],
+    detections_for_detailed_counting: Evaluator
 ):
-    loader = Loader.create(tmp_path)
-    loader.add_bounding_boxes(detections_for_detailed_counting)
-    evaluator = loader.finalize()
-
+    evaluator = detections_for_detailed_counting
     assert evaluator.info.number_of_datums == 2
     assert evaluator.info.number_of_labels == 6
     assert evaluator.info.number_of_groundtruth_annotations == 4
@@ -297,17 +285,13 @@ def test_examples(
 
 
 def test_examples_using_torch_metrics_example(
-    tmp_path: Path,
-    torchmetrics_detections: list[Detection],
+    torchmetrics_detections: Evaluator
 ):
     """
     cf with torch metrics/pycocotools results listed here:
     https://github.com/Lightning-AI/metrics/blob/107dbfd5fb158b7ae6d76281df44bd94c836bfce/tests/unittests/detection/test_map.py#L231
     """
-    loader = Loader.create(tmp_path)
-    loader.add_bounding_boxes(torchmetrics_detections)
-    evaluator = loader.finalize()
-
+    evaluator = torchmetrics_detections
     assert evaluator.info.number_of_datums == 4
     assert evaluator.info.number_of_labels == 6
     assert evaluator.info.number_of_groundtruth_annotations == 20
@@ -983,14 +967,10 @@ def test_examples_using_torch_metrics_example(
 
 
 def test_examples_fp_unmatched_prediction_edge_case(
-    tmp_path: Path,
-    detections_fp_unmatched_prediction_edge_case: list[Detection],
+    detections_fp_unmatched_prediction_edge_case: Evaluator
 ):
 
-    loader = Loader.create(tmp_path)
-    loader.add_bounding_boxes(detections_fp_unmatched_prediction_edge_case)
-    evaluator = loader.finalize()
-
+    evaluator = detections_fp_unmatched_prediction_edge_case
     assert evaluator.info.number_of_datums == 2
     assert evaluator.info.number_of_labels == 1
     assert evaluator.info.number_of_groundtruth_annotations == 2
@@ -1063,58 +1043,38 @@ def test_examples_fp_unmatched_prediction_edge_case(
 
 
 def test_examples_ranked_pair_ordering(
-    tmp_path: Path,
-    detection_ranked_pair_ordering: Detection,
-    detection_ranked_pair_ordering_with_bitmasks: Detection,
-    detection_ranked_pair_ordering_with_polygons: Detection,
+    detection_ranked_pair_ordering: Evaluator
 ):
 
-    for desc, input_, method in [
-        ("bbox", detection_ranked_pair_ordering, Loader.add_bounding_boxes),
-        (
-            "poly",
-            detection_ranked_pair_ordering_with_bitmasks,
-            Loader.add_bitmasks,
-        ),
-        (
-            "bitmask",
-            detection_ranked_pair_ordering_with_polygons,
-            Loader.add_polygons,
-        ),
-    ]:
-        loader = Loader.create(f"{tmp_path}_{desc}")
-        method(loader, detections=[input_])
+    evaluator = detection_ranked_pair_ordering
+    assert evaluator.info.number_of_datums == 1
+    assert evaluator.info.number_of_groundtruth_annotations == 3
+    assert evaluator.info.number_of_labels == 4
+    assert evaluator.info.number_of_prediction_annotations == 4
+    assert evaluator.info.number_of_rows == 12
 
-        evaluator = loader.finalize()
+    actual_metrics = evaluator.compute_examples(
+        iou_thresholds=[0.5],
+        score_thresholds=[0.0],
+    )
 
-        assert evaluator.info.number_of_datums == 1
-        assert evaluator.info.number_of_groundtruth_annotations == 3
-        assert evaluator.info.number_of_labels == 4
-        assert evaluator.info.number_of_prediction_annotations == 4
-        assert evaluator.info.number_of_rows == 12
-
-        actual_metrics = evaluator.compute_examples(
-            iou_thresholds=[0.5],
-            score_thresholds=[0.0],
-        )
-
-        actual_metrics = [m.to_dict() for m in actual_metrics]
-        expected_metrics = [
-            {
-                "type": "Examples",
-                "value": {
-                    "datum_id": "uid1",
-                    "true_positives": [],
-                    "false_positives": ["pd_0", "pd_1", "pd_2", "pd_3"],
-                    "false_negatives": ["gt_0", "gt_1", "gt_2"],
-                },
-                "parameters": {
-                    "score_threshold": 0.0,
-                    "iou_threshold": 0.5,
-                },
+    actual_metrics = [m.to_dict() for m in actual_metrics]
+    expected_metrics = [
+        {
+            "type": "Examples",
+            "value": {
+                "datum_id": "uid1",
+                "true_positives": [],
+                "false_positives": ["pd_0", "pd_1", "pd_2", "pd_3"],
+                "false_negatives": ["gt_0", "gt_1", "gt_2"],
             },
-        ]
-        for m in actual_metrics:
-            assert m in expected_metrics
-        for m in expected_metrics:
-            assert m in actual_metrics
+            "parameters": {
+                "score_threshold": 0.0,
+                "iou_threshold": 0.5,
+            },
+        },
+    ]
+    for m in actual_metrics:
+        assert m in expected_metrics
+    for m in expected_metrics:
+        assert m in actual_metrics

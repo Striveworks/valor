@@ -119,21 +119,21 @@ class Evaluator(PathFormatter):
 
     def filter(
         self,
-        path: str | Path,
         filter_expr: Filter,
         batch_size: int = 1_000,
+        path: str | Path | None = None
     ) -> "Evaluator":
         """
         Filter evaluator cache.
 
         Parameters
         ----------
-        path : str | Path
-            Where to store the filtered cache.
         filter_expr : Filter
             An object containing filter expressions.
         batch_size : int
             The maximum number of rows read into memory per file.
+        path : str | Path
+            Where to store the filtered cache if storing on disk.
 
         Returns
         -------
@@ -142,18 +142,27 @@ class Evaluator(PathFormatter):
         """
         from valor_lite.object_detection.loader import Loader
 
-        loader = Loader.create(
-            path=path,
-            batch_size=self.detailed.batch_size,
-            rows_per_file=self.detailed.rows_per_file,
-            compression=self.detailed.compression,
-            datum_metadata_types=self.info.datum_metadata_types,
-            groundtruth_metadata_types=self.info.groundtruth_metadata_types,
-            prediction_metadata_types=self.info.prediction_metadata_types,
-        )
-        for fragment in self.detailed.dataset.get_fragments():
-            tbl = fragment.to_table(filter=filter_expr.datums)
-
+        if isinstance(self.detailed_reader, FileCacheReader):
+            if not path:
+                raise ValueError("expected path to be defined for file-based loader")
+            loader = Loader.persistent(
+                path=path,
+                batch_size=self.detailed_reader.batch_size,
+                rows_per_file=self.detailed_reader.rows_per_file,
+                compression=self.detailed_reader.compression,
+                datum_metadata_types=self.info.datum_metadata_types,
+                groundtruth_metadata_types=self.info.groundtruth_metadata_types,
+                prediction_metadata_types=self.info.prediction_metadata_types,
+            )
+        else:
+            loader = Loader.in_memory(
+                batch_size=self.detailed_reader.batch_size,
+                datum_metadata_types=self.info.datum_metadata_types,
+                groundtruth_metadata_types=self.info.groundtruth_metadata_types,
+                prediction_metadata_types=self.info.prediction_metadata_types,
+            )
+        
+        for tbl in self._detailed_reader.iterate_tables(filter=filter_expr.datums):
             columns = (
                 "datum_id",
                 "gt_id",
@@ -200,13 +209,18 @@ class Evaluator(PathFormatter):
             pairs[~mask_valid_pd | ~mask_valid_gt, 5] = 0.0
 
             for idx, col in enumerate(columns):
+                column = pairs[:, idx]
+                if col not in {"iou", "score"}:
+                    column = column.astype(np.int64)
+
+                col_idx = tbl.schema.names.index(col)
                 tbl = tbl.set_column(
-                    tbl.schema.names.index(col), col, pa.array(pairs[:, idx])
+                    col_idx, tbl.schema[col_idx], pa.array(column)
                 )
 
             mask_invalid = ~mask_valid | (pairs[:, (1, 2)] < 0).all(axis=1)
             filtered_tbl = tbl.filter(pa.array(~mask_invalid))
-            loader._cache.write_table(filtered_tbl)
+            loader._detailed_writer.write_table(filtered_tbl)
 
         return loader.finalize(
             batch_size=batch_size,

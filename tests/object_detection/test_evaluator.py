@@ -5,12 +5,13 @@ import numpy as np
 import pytest
 
 from valor_lite.object_detection import (
-    DataLoader,
+    Loader,
     Detection,
     Evaluator,
     Metric,
     MetricType,
 )
+from valor_lite.common.persistent import FileCacheReader
 
 
 def test_evaluator_file_not_found(tmp_path: Path):
@@ -30,8 +31,8 @@ def test_evaluator_not_a_directory(tmp_path: Path):
 def test_evaluator_valid_thresholds(tmp_path: Path):
     eval = Evaluator(
         path=tmp_path,
-        detailed_cache=None,  # type: ignore - testing
-        ranked_cache=None,  # type: ignore - testing
+        detailed_reader=None,  # type: ignore - testing
+        ranked_reader=None,  # type: ignore - testing
         info=None,  # type: ignore - testing
         index_to_label={},
         number_of_groundtruths_per_label=np.ones(1, dtype=np.uint64),
@@ -50,37 +51,24 @@ def test_evaluator_valid_thresholds(tmp_path: Path):
         assert "score" in str(e)
 
 
-def test_metadata_using_torch_metrics_example(
-    tmp_path: Path,
-    torchmetrics_detections: list[Detection],
+def test_info_using_torch_metrics_example(
+    torchmetrics_detections: Evaluator
 ):
     """
     cf with torch metrics/pycocotools results listed here:
     https://github.com/Lightning-AI/metrics/blob/107dbfd5fb158b7ae6d76281df44bd94c836bfce/tests/unittests/detection/test_map.py#L231
     """
-    loader = DataLoader.create(tmp_path)
-    loader.add_bounding_boxes(torchmetrics_detections)
-    evaluator = loader.finalize()
+    evaluator = torchmetrics_detections
 
-    assert evaluator.metadata.number_of_datums == 4
-    assert evaluator.metadata.number_of_labels == 6
-    assert evaluator.metadata.number_of_ground_truths == 20
-    assert evaluator.metadata.number_of_predictions == 19
-
-    assert evaluator.metadata.to_dict() == {
-        "number_of_datums": 4,
-        "number_of_labels": 6,
-        "number_of_ground_truths": 20,
-        "number_of_predictions": 19,
-    }
+    assert evaluator.info.number_of_datums == 4
+    assert evaluator.info.number_of_labels == 6
+    assert evaluator.info.number_of_groundtruth_annotations == 20
+    assert evaluator.info.number_of_prediction_annotations == 19
 
 
-def test_no_thresholds(tmp_path: Path, detection_ranked_pair_ordering):
-    loader = DataLoader.create(tmp_path)
-    loader.add_bounding_boxes([detection_ranked_pair_ordering])
-    evaluator = loader.finalize()
-
-    evaluator.evaluate(
+def test_no_thresholds(detection_ranked_pair_ordering: Evaluator):
+    evaluator = detection_ranked_pair_ordering
+    evaluator.compute_precision_recall(
         iou_thresholds=[0.5],
         score_thresholds=[0.5],
     )
@@ -110,18 +98,14 @@ def test_no_thresholds(tmp_path: Path, detection_ranked_pair_ordering):
         )
 
 
-def test_no_groundtruths(tmp_path: Path, detections_no_groundtruths):
+def test_no_groundtruths(detections_no_groundtruths: Evaluator):
+    evaluator = detections_no_groundtruths
+    assert evaluator.info.number_of_datums == 2
+    assert evaluator.info.number_of_labels == 1
+    assert evaluator.info.number_of_groundtruth_annotations == 0
+    assert evaluator.info.number_of_prediction_annotations == 2
 
-    loader = DataLoader.create(tmp_path)
-    loader.add_bounding_boxes(detections_no_groundtruths)
-    evaluator = loader.finalize()
-
-    assert evaluator.metadata.number_of_datums == 2
-    assert evaluator.metadata.number_of_labels == 1
-    assert evaluator.metadata.number_of_ground_truths == 0
-    assert evaluator.metadata.number_of_predictions == 2
-
-    metrics = evaluator.evaluate(
+    metrics = evaluator.compute_precision_recall(
         iou_thresholds=[0.5],
         score_thresholds=[0.5],
     )
@@ -140,18 +124,14 @@ def test_no_groundtruths(tmp_path: Path, detections_no_groundtruths):
         assert m in actual_metrics
 
 
-def test_no_predictions(tmp_path: Path, detections_no_predictions):
+def test_no_predictions(detections_no_predictions: Evaluator):
+    evaluator = detections_no_predictions
+    assert evaluator.info.number_of_datums == 2
+    assert evaluator.info.number_of_labels == 1
+    assert evaluator.info.number_of_groundtruth_annotations == 2
+    assert evaluator.info.number_of_prediction_annotations == 0
 
-    loader = DataLoader.create(tmp_path)
-    loader.add_bounding_boxes(detections_no_predictions)
-    evaluator = loader.finalize()
-
-    assert evaluator.metadata.number_of_datums == 2
-    assert evaluator.metadata.number_of_labels == 1
-    assert evaluator.metadata.number_of_ground_truths == 2
-    assert evaluator.metadata.number_of_predictions == 0
-
-    metrics = evaluator.evaluate(
+    metrics = evaluator.compute_precision_recall(
         iou_thresholds=[0.5],
         score_thresholds=[0.5],
     )
@@ -198,13 +178,12 @@ def _flatten_metrics(m) -> list:
 
 
 def test_output_types_dont_contain_numpy(
-    tmp_path: Path, basic_detections: list[Detection]
+    basic_detections: Evaluator
 ):
-    manager = DataLoader.create(tmp_path)
-    manager.add_bounding_boxes(basic_detections)
-    evaluator = manager.finalize()
+    evaluator = basic_detections
 
-    metrics = evaluator.evaluate(
+    metrics = evaluator.compute_precision_recall(
+        iou_thresholds=[0.5],
         score_thresholds=[0.25, 0.75],
     )
 
@@ -215,24 +194,24 @@ def test_output_types_dont_contain_numpy(
 
 
 def test_evaluator_deletion(
-    tmp_path: Path,
-    false_negatives_single_datum_detections: list[Detection],
+    false_negatives_single_datum_detections: Evaluator
 ):
     # create evaluator
-    loader = DataLoader.create(tmp_path)
-    loader.add_bounding_boxes(false_negatives_single_datum_detections)
-    evaluator = loader.finalize()
-    assert tmp_path == evaluator.path
+    evaluator = false_negatives_single_datum_detections
+    
+    if isinstance(evaluator.detailed_reader, FileCacheReader):
+        path = evaluator._path
+        assert path
 
-    # check both caches exist
-    assert tmp_path.exists()
-    assert evaluator._generate_detailed_cache_path(tmp_path).exists()
-    assert evaluator._generate_ranked_cache_path(tmp_path).exists()
-    assert evaluator._generate_metadata_path(tmp_path).exists()
+        # check both caches exist
+        assert path.exists()
+        assert evaluator._generate_detailed_cache_path(path).exists()
+        assert evaluator._generate_ranked_cache_path(path).exists()
+        assert evaluator._generate_metadata_path(path).exists()
 
-    # verify deletion
-    evaluator.delete()
-    assert not tmp_path.exists()
-    assert not evaluator._generate_detailed_cache_path(tmp_path).exists()
-    assert not evaluator._generate_ranked_cache_path(tmp_path).exists()
-    assert not evaluator._generate_metadata_path(tmp_path).exists()
+        # verify deletion
+        evaluator.delete()
+        assert not path.exists()
+        assert not evaluator._generate_detailed_cache_path(path).exists()
+        assert not evaluator._generate_ranked_cache_path(path).exists()
+        assert not evaluator._generate_metadata_path(path).exists()

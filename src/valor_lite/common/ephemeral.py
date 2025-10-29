@@ -2,6 +2,7 @@ from typing import Any
 
 import numpy as np
 import pyarrow as pa
+import pyarrow.compute as pc
 
 
 class MemoryCache:
@@ -21,12 +22,22 @@ class MemoryCacheReader(MemoryCache):
     def __init__(
         self,
         table: pa.Table,
+        batch_size: int,
     ):
         self._table = table
         self._schema = self._table.schema
+        self._batch_size = batch_size
+
+    @property
+    def schema(self) -> pa.Schema:
+        return self._schema
+    
+    @property
+    def batch_size(self) -> int:
+        return self._batch_size
 
     @classmethod
-    def load(cls, table: pa.Table):
+    def load(cls, table: pa.Table, batch_size: int):
         """
         Load cache from table.
 
@@ -35,14 +46,20 @@ class MemoryCacheReader(MemoryCache):
         cache : MemoryCacheWriter
             A cache writer containing the ephemeral cache.
         """
-        return cls(table=table)
+        return cls(table=table, batch_size=batch_size)
 
-    def iterate_tables(self, columns: list[str] | None = None):
+    def iterate_tables(
+        self, 
+        columns: list[str] | None = None,
+        filter: pc.Expression | None = None,
+    ):
         """Iterate over tables within the cache."""
-        if columns:
-            yield self._table.select(columns=columns)
-        else:
-            yield self._table
+        table = self._table
+        if filter is not None:
+            table = table.filter(filter)
+        if columns is not None:
+            table = table.select(columns)
+        yield table
 
 
 class MemoryCacheWriter(MemoryCache):
@@ -173,4 +190,4 @@ class MemoryCacheWriter(MemoryCache):
 
     def to_reader(self) -> MemoryCacheReader:
         """Get cache reader."""
-        return MemoryCacheReader.load(self._table)
+        return MemoryCacheReader.load(self._table, batch_size=self._batch_size)

@@ -9,19 +9,18 @@ from valor_lite.exceptions import EmptyCacheError
 from valor_lite.object_detection import (
     Bitmask,
     BoundingBox,
-    DataLoader,
+    Loader,
     Detection,
     Polygon,
 )
 
 
-def test_no_data(tmp_path: Path):
-    loader = DataLoader.create(tmp_path)
+def test_no_data(loader: Loader):
     with pytest.raises(EmptyCacheError):
         loader.finalize()
 
 
-def test_iou_computation(tmp_path: Path):
+def test_iou_computation(loader: Loader):
 
     detection = Detection(
         uid="uid",
@@ -73,22 +72,21 @@ def test_iou_computation(tmp_path: Path):
         ],
     )
 
-    loader = DataLoader.create(tmp_path)
     loader.add_bounding_boxes([detection])
     evaluator = loader.finalize()
 
-    tbl = evaluator.detailed.dataset.to_table()
-    assert tbl.shape == (7, 12)
+    assert evaluator.detailed_reader.count_rows() == 7
 
     # show that three unique IOUs exist
-    unique_ious = np.unique(tbl["iou"].to_numpy())
-    assert np.isclose(
-        unique_ious, np.array([0.0, 0.12755102, 0.68067227])
-    ).all()
+    for tbl in evaluator.detailed_reader.iterate_tables():
+        unique_ious = np.unique(tbl["iou"].to_numpy())
+        assert np.isclose(
+            unique_ious, np.array([0.0, 0.12755102, 0.68067227])
+        ).all()
 
 
 def test_mixed_annotations(
-    tmp_path: Path,
+    loader: Loader,
     rect1: tuple[float, float, float, float],
     rect1_rotated_5_degrees_around_origin: tuple[float, float, float, float],
 ):
@@ -162,9 +160,6 @@ def test_mixed_annotations(
             ],
         ),
     ]
-
-    loader = DataLoader.create(tmp_path)
-
     for detection in mixed_detections:
         with pytest.raises(AttributeError) as e:
             loader.add_bounding_boxes([detection])
@@ -179,32 +174,74 @@ def test_mixed_annotations(
         assert "no attribute 'mask'" in str(e)
 
 
-def test_loader_deletion(
+def test_persistent_loader_deletion(
     tmp_path: Path,
-    false_negatives_single_datum_detections: list[Detection],
+    rect1: tuple[float, float, float, float],
+    rect2: tuple[float, float, float, float],
 ):
-    loader = DataLoader.create(tmp_path)
-    loader.add_bounding_boxes(false_negatives_single_datum_detections)
-    assert tmp_path == loader.path
+    detections = [
+        Detection(
+            uid="uid1",
+            groundtruths=[
+                BoundingBox(
+                    uid=str(uuid4()),
+                    xmin=rect1[0],
+                    xmax=rect1[1],
+                    ymin=rect1[2],
+                    ymax=rect1[3],
+                    labels=["v1"],
+                ),
+            ],
+            predictions=[
+                BoundingBox(
+                    uid=str(uuid4()),
+                    xmin=rect1[0],
+                    xmax=rect1[1],
+                    ymin=rect1[2],
+                    ymax=rect1[3],
+                    labels=["v1"],
+                    scores=[0.3],
+                ),
+            ],
+        ),
+        Detection(
+            uid="uid2",
+            groundtruths=[
+                BoundingBox(
+                    uid=str(uuid4()),
+                    xmin=rect2[0],
+                    xmax=rect2[1],
+                    ymin=rect2[2],
+                    ymax=rect2[3],
+                    labels=["v1"],
+                ),
+            ],
+            predictions=[],
+        ),
+    ]
+
+    loader = Loader.persistent(tmp_path)
+    loader.add_bounding_boxes(detections)
+    assert tmp_path == loader._path
 
     # check only detailed cache exists
     assert tmp_path.exists()
     assert loader._generate_detailed_cache_path(tmp_path).exists()
-    assert not loader._generate_ranked_cache_path(tmp_path).exists()
+    assert loader._generate_ranked_cache_path(tmp_path).exists()
     assert loader._generate_metadata_path(tmp_path).exists()
 
     # verify deletion
-    DataLoader.delete(tmp_path)
+    Loader.delete(tmp_path)
     assert not tmp_path.exists()
     assert not loader._generate_detailed_cache_path(tmp_path).exists()
     assert not loader._generate_ranked_cache_path(tmp_path).exists()
     assert not loader._generate_metadata_path(tmp_path).exists()
 
     # create finalized caches
-    loader = DataLoader.create(tmp_path)
-    loader.add_bounding_boxes(false_negatives_single_datum_detections)
+    loader = Loader.persistent(tmp_path)
+    loader.add_bounding_boxes(detections)
     _ = loader.finalize()
-    assert tmp_path == loader.path
+    assert tmp_path == loader._path
 
     # check both caches exist
     assert tmp_path.exists()
@@ -213,7 +250,7 @@ def test_loader_deletion(
     assert loader._generate_metadata_path(tmp_path).exists()
 
     # verify deletion
-    DataLoader.delete(tmp_path)
+    Loader.delete(tmp_path)
     assert not tmp_path.exists()
     assert not loader._generate_detailed_cache_path(tmp_path).exists()
     assert not loader._generate_ranked_cache_path(tmp_path).exists()

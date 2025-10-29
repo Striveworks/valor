@@ -1,6 +1,4 @@
-from pathlib import Path
-
-from valor_lite.object_detection import DataLoader, Detection
+from valor_lite.object_detection import Evaluator, Detection
 
 
 def _filter_out_zero_counts(cm: dict, hl: dict, mp: dict):
@@ -24,24 +22,15 @@ def _filter_out_zero_counts(cm: dict, hl: dict, mp: dict):
 
 
 def test_confusion_matrix_with_examples(
-    tmp_path: Path,
-    detections_for_detailed_counting: list[Detection],
-    rect1: tuple[float, float, float, float],
-    rect2: tuple[float, float, float, float],
-    rect3: tuple[float, float, float, float],
-    rect4: tuple[float, float, float, float],
-    rect5: tuple[float, float, float, float],
+    detections_for_detailed_counting: Evaluator
 ):
-    loader = DataLoader.create(tmp_path)
-    loader.add_bounding_boxes(detections_for_detailed_counting)
-    evaluator = loader.finalize()
+    evaluator = detections_for_detailed_counting
+    assert evaluator.info.number_of_datums == 2
+    assert evaluator.info.number_of_labels == 6
+    assert evaluator.info.number_of_groundtruth_annotations == 4
+    assert evaluator.info.number_of_prediction_annotations == 4
 
-    assert evaluator.metadata.number_of_datums == 2
-    assert evaluator.metadata.number_of_labels == 6
-    assert evaluator.metadata.number_of_ground_truths == 4
-    assert evaluator.metadata.number_of_predictions == 4
-
-    actual_metrics = evaluator.compute_confusion_matrix(
+    actual_metrics = evaluator.compute_confusion_matrix_with_examples(
         iou_thresholds=[0.5],
         score_thresholds=[0.05, 0.3, 0.35, 0.45, 0.55, 0.95],
     )
@@ -49,7 +38,7 @@ def test_confusion_matrix_with_examples(
     actual_metrics = [m.to_dict() for m in actual_metrics]
     expected_metrics = [
         {
-            "type": "ConfusionMatrix",
+            "type": "ConfusionMatrixWithExamples",
             "value": {
                 "confusion_matrix": {
                     "v1": {
@@ -130,7 +119,7 @@ def test_confusion_matrix_with_examples(
             },
         },
         {
-            "type": "ConfusionMatrix",
+            "type": "ConfusionMatrixWithExamples",
             "value": {
                 "confusion_matrix": {
                     "v1": {
@@ -202,7 +191,7 @@ def test_confusion_matrix_with_examples(
             },
         },
         {
-            "type": "ConfusionMatrix",
+            "type": "ConfusionMatrixWithExamples",
             "value": {
                 "confusion_matrix": {
                     "v1": {
@@ -265,7 +254,7 @@ def test_confusion_matrix_with_examples(
             },
         },
         {
-            "type": "ConfusionMatrix",
+            "type": "ConfusionMatrixWithExamples",
             "value": {
                 "confusion_matrix": {
                     "v1": {
@@ -328,7 +317,7 @@ def test_confusion_matrix_with_examples(
             },
         },
         {
-            "type": "ConfusionMatrix",
+            "type": "ConfusionMatrixWithExamples",
             "value": {
                 "confusion_matrix": {},
                 "unmatched_predictions": {},
@@ -377,7 +366,7 @@ def test_confusion_matrix_with_examples(
             },
         },
         {
-            "type": "ConfusionMatrix",
+            "type": "ConfusionMatrixWithExamples",
             "value": {
                 "confusion_matrix": {},
                 "unmatched_predictions": {},
@@ -437,7 +426,7 @@ def test_confusion_matrix_with_examples(
         assert m in actual_metrics
 
     # test at lower IOU threshold
-    actual_metrics = evaluator.compute_confusion_matrix(
+    actual_metrics = evaluator.compute_confusion_matrix_with_examples(
         iou_thresholds=[0.45],
         score_thresholds=[0.05, 0.3, 0.35, 0.45, 0.55, 0.95],
     )
@@ -445,7 +434,7 @@ def test_confusion_matrix_with_examples(
     actual_metrics = [m.to_dict() for m in actual_metrics]
     expected_metrics = [
         {
-            "type": "ConfusionMatrix",
+            "type": "ConfusionMatrixWithExamples",
             "value": {
                 "confusion_matrix": {
                     "v1": {
@@ -520,7 +509,7 @@ def test_confusion_matrix_with_examples(
             },
         },
         {
-            "type": "ConfusionMatrix",
+            "type": "ConfusionMatrixWithExamples",
             "value": {
                 "confusion_matrix": {
                     "v1": {
@@ -586,7 +575,7 @@ def test_confusion_matrix_with_examples(
             },
         },
         {
-            "type": "ConfusionMatrix",
+            "type": "ConfusionMatrixWithExamples",
             "value": {
                 "confusion_matrix": {
                     "v1": {
@@ -649,7 +638,7 @@ def test_confusion_matrix_with_examples(
             },
         },
         {
-            "type": "ConfusionMatrix",
+            "type": "ConfusionMatrixWithExamples",
             "value": {
                 "confusion_matrix": {
                     "v1": {
@@ -712,7 +701,7 @@ def test_confusion_matrix_with_examples(
             },
         },
         {
-            "type": "ConfusionMatrix",
+            "type": "ConfusionMatrixWithExamples",
             "value": {
                 "confusion_matrix": {},
                 "unmatched_predictions": {},
@@ -761,7 +750,7 @@ def test_confusion_matrix_with_examples(
             },
         },
         {
-            "type": "ConfusionMatrix",
+            "type": "ConfusionMatrixWithExamples",
             "value": {
                 "confusion_matrix": {},
                 "unmatched_predictions": {},
@@ -849,23 +838,19 @@ def _filter_out_examples_and_zero_counts(cm: dict, hl: dict, mp: dict):
 
 
 def test_confusion_matrix_with_examples_using_torch_metrics_example(
-    tmp_path: Path,
-    torchmetrics_detections: list[Detection],
+    torchmetrics_detections: Evaluator
 ):
     """
     cf with torch metrics/pycocotools results listed here:
     https://github.com/Lightning-AI/metrics/blob/107dbfd5fb158b7ae6d76281df44bd94c836bfce/tests/unittests/detection/test_map.py#L231
     """
-    loader = DataLoader.create(tmp_path)
-    loader.add_bounding_boxes(torchmetrics_detections)
-    evaluator = loader.finalize()
+    evaluator = torchmetrics_detections
+    assert evaluator.info.number_of_datums == 4
+    assert evaluator.info.number_of_labels == 6
+    assert evaluator.info.number_of_groundtruth_annotations == 20
+    assert evaluator.info.number_of_prediction_annotations == 19
 
-    assert evaluator.metadata.number_of_datums == 4
-    assert evaluator.metadata.number_of_labels == 6
-    assert evaluator.metadata.number_of_ground_truths == 20
-    assert evaluator.metadata.number_of_predictions == 19
-
-    actual_metrics = evaluator.compute_confusion_matrix(
+    actual_metrics = evaluator.compute_confusion_matrix_with_examples(
         iou_thresholds=[0.5, 0.9],
         score_thresholds=[0.05, 0.25, 0.35, 0.55, 0.75, 0.8, 0.85, 0.95],
     )
@@ -875,7 +860,7 @@ def test_confusion_matrix_with_examples_using_torch_metrics_example(
     actual_metrics = [m.to_dict() for m in actual_metrics]
     expected_metrics = [
         {
-            "type": "ConfusionMatrix",
+            "type": "ConfusionMatrixWithExamples",
             "value": {
                 "confusion_matrix": {
                     "4": {"4": {"count": 2, "examples": []}},
@@ -898,7 +883,7 @@ def test_confusion_matrix_with_examples_using_torch_metrics_example(
             },
         },
         {
-            "type": "ConfusionMatrix",
+            "type": "ConfusionMatrixWithExamples",
             "value": {
                 "confusion_matrix": {
                     "4": {"4": {"count": 1, "examples": []}},
@@ -922,7 +907,7 @@ def test_confusion_matrix_with_examples_using_torch_metrics_example(
             },
         },
         {
-            "type": "ConfusionMatrix",
+            "type": "ConfusionMatrixWithExamples",
             "value": {
                 "confusion_matrix": {
                     "4": {"4": {"count": 1, "examples": []}},
@@ -945,7 +930,7 @@ def test_confusion_matrix_with_examples_using_torch_metrics_example(
             },
         },
         {
-            "type": "ConfusionMatrix",
+            "type": "ConfusionMatrixWithExamples",
             "value": {
                 "confusion_matrix": {
                     "2": {"2": {"count": 1, "examples": []}},
@@ -967,7 +952,7 @@ def test_confusion_matrix_with_examples_using_torch_metrics_example(
             },
         },
         {
-            "type": "ConfusionMatrix",
+            "type": "ConfusionMatrixWithExamples",
             "value": {
                 "confusion_matrix": {
                     "0": {"0": {"count": 2, "examples": []}},
@@ -988,7 +973,7 @@ def test_confusion_matrix_with_examples_using_torch_metrics_example(
             },
         },
         {
-            "type": "ConfusionMatrix",
+            "type": "ConfusionMatrixWithExamples",
             "value": {
                 "confusion_matrix": {
                     "0": {"0": {"count": 2, "examples": []}},
@@ -1009,7 +994,7 @@ def test_confusion_matrix_with_examples_using_torch_metrics_example(
             },
         },
         {
-            "type": "ConfusionMatrix",
+            "type": "ConfusionMatrixWithExamples",
             "value": {
                 "confusion_matrix": {
                     "0": {"0": {"count": 1, "examples": []}},
@@ -1030,7 +1015,7 @@ def test_confusion_matrix_with_examples_using_torch_metrics_example(
             },
         },
         {
-            "type": "ConfusionMatrix",
+            "type": "ConfusionMatrixWithExamples",
             "value": {
                 "confusion_matrix": {"0": {"0": {"count": 1, "examples": []}}},
                 "unmatched_predictions": {},
@@ -1048,7 +1033,7 @@ def test_confusion_matrix_with_examples_using_torch_metrics_example(
             },
         },
         {
-            "type": "ConfusionMatrix",
+            "type": "ConfusionMatrixWithExamples",
             "value": {
                 "confusion_matrix": {
                     "2": {"2": {"count": 1, "examples": []}},
@@ -1076,7 +1061,7 @@ def test_confusion_matrix_with_examples_using_torch_metrics_example(
             },
         },
         {
-            "type": "ConfusionMatrix",
+            "type": "ConfusionMatrixWithExamples",
             "value": {
                 "confusion_matrix": {
                     "2": {"2": {"count": 1, "examples": []}},
@@ -1104,7 +1089,7 @@ def test_confusion_matrix_with_examples_using_torch_metrics_example(
             },
         },
         {
-            "type": "ConfusionMatrix",
+            "type": "ConfusionMatrixWithExamples",
             "value": {
                 "confusion_matrix": {
                     "2": {"2": {"count": 1, "examples": []}},
@@ -1129,7 +1114,7 @@ def test_confusion_matrix_with_examples_using_torch_metrics_example(
             },
         },
         {
-            "type": "ConfusionMatrix",
+            "type": "ConfusionMatrixWithExamples",
             "value": {
                 "confusion_matrix": {
                     "2": {"2": {"count": 1, "examples": []}},
@@ -1153,7 +1138,7 @@ def test_confusion_matrix_with_examples_using_torch_metrics_example(
             },
         },
         {
-            "type": "ConfusionMatrix",
+            "type": "ConfusionMatrixWithExamples",
             "value": {
                 "confusion_matrix": {
                     "49": {"49": {"count": 1, "examples": []}}
@@ -1176,7 +1161,7 @@ def test_confusion_matrix_with_examples_using_torch_metrics_example(
             },
         },
         {
-            "type": "ConfusionMatrix",
+            "type": "ConfusionMatrixWithExamples",
             "value": {
                 "confusion_matrix": {
                     "49": {"49": {"count": 1, "examples": []}}
@@ -1196,7 +1181,7 @@ def test_confusion_matrix_with_examples_using_torch_metrics_example(
             },
         },
         {
-            "type": "ConfusionMatrix",
+            "type": "ConfusionMatrixWithExamples",
             "value": {
                 "confusion_matrix": {
                     "49": {"49": {"count": 1, "examples": []}}
@@ -1216,7 +1201,7 @@ def test_confusion_matrix_with_examples_using_torch_metrics_example(
             },
         },
         {
-            "type": "ConfusionMatrix",
+            "type": "ConfusionMatrixWithExamples",
             "value": {
                 "confusion_matrix": {},
                 "unmatched_predictions": {"0": {"count": 1, "examples": []}},
@@ -1246,20 +1231,15 @@ def test_confusion_matrix_with_examples_using_torch_metrics_example(
 
 
 def test_confusion_matrix_with_examples_fp_unmatched_prediction_edge_case(
-    tmp_path: Path,
-    detections_fp_unmatched_prediction_edge_case: list[Detection],
+    detections_fp_unmatched_prediction_edge_case: Evaluator
 ):
+    evaluator = detections_fp_unmatched_prediction_edge_case
+    assert evaluator.info.number_of_datums == 2
+    assert evaluator.info.number_of_labels == 1
+    assert evaluator.info.number_of_groundtruth_annotations == 2
+    assert evaluator.info.number_of_prediction_annotations == 2
 
-    loader = DataLoader.create(tmp_path)
-    loader.add_bounding_boxes(detections_fp_unmatched_prediction_edge_case)
-    evaluator = loader.finalize()
-
-    assert evaluator.metadata.number_of_datums == 2
-    assert evaluator.metadata.number_of_labels == 1
-    assert evaluator.metadata.number_of_ground_truths == 2
-    assert evaluator.metadata.number_of_predictions == 2
-
-    actual_metrics = evaluator.compute_confusion_matrix(
+    actual_metrics = evaluator.compute_confusion_matrix_with_examples(
         iou_thresholds=[0.5],
         score_thresholds=[0.5, 0.85],
     )
@@ -1269,7 +1249,7 @@ def test_confusion_matrix_with_examples_fp_unmatched_prediction_edge_case(
     actual_metrics = [m.to_dict() for m in actual_metrics]
     expected_metrics = [
         {
-            "type": "ConfusionMatrix",
+            "type": "ConfusionMatrixWithExamples",
             "value": {
                 "confusion_matrix": {
                     "v1": {
@@ -1314,7 +1294,7 @@ def test_confusion_matrix_with_examples_fp_unmatched_prediction_edge_case(
             },
         },
         {
-            "type": "ConfusionMatrix",
+            "type": "ConfusionMatrixWithExamples",
             "value": {
                 "confusion_matrix": {},
                 "unmatched_predictions": {},
@@ -1352,112 +1332,85 @@ def test_confusion_matrix_with_examples_fp_unmatched_prediction_edge_case(
 
 
 def test_confusion_matrix_with_examples_ranked_pair_ordering(
-    tmp_path: Path,
-    detection_ranked_pair_ordering: Detection,
-    detection_ranked_pair_ordering_with_bitmasks: Detection,
-    detection_ranked_pair_ordering_with_polygons: Detection,
+    detection_ranked_pair_ordering: Evaluator
 ):
+    evaluator = detection_ranked_pair_ordering
+    assert evaluator.info.number_of_datums == 1
+    assert evaluator.info.number_of_labels == 4
+    assert evaluator.info.number_of_groundtruth_annotations == 3
+    assert evaluator.info.number_of_prediction_annotations == 4
 
-    for desc, input_, method in [
-        (
-            "bbox",
-            detection_ranked_pair_ordering,
-            DataLoader.add_bounding_boxes,
-        ),
-        (
-            "poly",
-            detection_ranked_pair_ordering_with_bitmasks,
-            DataLoader.add_bitmasks,
-        ),
-        (
-            "bitmask",
-            detection_ranked_pair_ordering_with_polygons,
-            DataLoader.add_polygons,
-        ),
-    ]:
-        loader = DataLoader.create(f"{tmp_path}_{desc}")
-        method(loader, detections=[input_])
+    actual_metrics = evaluator.compute_confusion_matrix_with_examples(
+        iou_thresholds=[0.5],
+        score_thresholds=[0.0],
+    )
 
-        evaluator = loader.finalize()
-
-        assert evaluator.metadata.to_dict() == {
-            "number_of_datums": 1,
-            "number_of_ground_truths": 3,
-            "number_of_labels": 4,
-            "number_of_predictions": 4,
-        }
-
-        actual_metrics = evaluator.compute_confusion_matrix(
-            iou_thresholds=[0.5],
-            score_thresholds=[0.0],
-        )
-
-        actual_metrics = [m.to_dict() for m in actual_metrics]
-        expected_metrics = [
-            {
-                "type": "ConfusionMatrix",
-                "value": {
-                    "confusion_matrix": {
-                        "label1": {
-                            "label2": {
-                                "count": 1,
-                                "examples": [
-                                    {
-                                        "datum_id": "uid1",
-                                        "ground_truth_id": "gt_0",
-                                        "prediction_id": "pd_1",
-                                    }
-                                ],
-                            }
-                        },
+    actual_metrics = [m.to_dict() for m in actual_metrics]
+    expected_metrics = [
+        {
+            "type": "ConfusionMatrixWithExamples",
+            "value": {
+                "confusion_matrix": {
+                    "label1": {
                         "label2": {
-                            "label1": {
-                                "count": 1,
-                                "examples": [
-                                    {
-                                        "datum_id": "uid1",
-                                        "ground_truth_id": "gt_1",
-                                        "prediction_id": "pd_0",
-                                    }
-                                ],
-                            }
-                        },
-                    },
-                    "unmatched_predictions": {
-                        "label3": {
                             "count": 1,
                             "examples": [
-                                {"datum_id": "uid1", "prediction_id": "pd_2"}
+                                {
+                                    "datum_id": "uid1",
+                                    "ground_truth_id": "gt_0",
+                                    "prediction_id": "pd_1",
+                                }
                             ],
-                        },
-                        "label4": {
-                            "count": 1,
-                            "examples": [
-                                {"datum_id": "uid1", "prediction_id": "pd_3"}
-                            ],
-                        },
+                        }
                     },
-                    "unmatched_ground_truths": {
-                        "label3": {
+                    "label2": {
+                        "label1": {
                             "count": 1,
                             "examples": [
-                                {"datum_id": "uid1", "ground_truth_id": "gt_2"}
+                                {
+                                    "datum_id": "uid1",
+                                    "ground_truth_id": "gt_1",
+                                    "prediction_id": "pd_0",
+                                }
                             ],
                         }
                     },
                 },
-                "parameters": {
-                    "score_threshold": 0.0,
-                    "iou_threshold": 0.5,
+                "unmatched_predictions": {
+                    "label3": {
+                        "count": 1,
+                        "examples": [
+                            {"datum_id": "uid1", "prediction_id": "pd_2"}
+                        ],
+                    },
+                    "label4": {
+                        "count": 1,
+                        "examples": [
+                            {"datum_id": "uid1", "prediction_id": "pd_3"}
+                        ],
+                    },
+                },
+                "unmatched_ground_truths": {
+                    "label3": {
+                        "count": 1,
+                        "examples": [
+                            {"datum_id": "uid1", "ground_truth_id": "gt_2"}
+                        ],
+                    }
                 },
             },
-        ]
-        for m in actual_metrics:
-            _filter_out_zero_counts(
-                m["value"]["confusion_matrix"],
-                m["value"]["unmatched_predictions"],
-                m["value"]["unmatched_ground_truths"],
-            )
-            assert m in expected_metrics
-        for m in expected_metrics:
-            assert m in actual_metrics
+            "parameters": {
+                "score_threshold": 0.0,
+                "iou_threshold": 0.5,
+            },
+        },
+    ]
+    for m in actual_metrics:
+        _filter_out_zero_counts(
+            m["value"]["confusion_matrix"],
+            m["value"]["unmatched_predictions"],
+            m["value"]["unmatched_ground_truths"],
+        )
+        assert m in expected_metrics
+    for m in expected_metrics:
+        assert m in actual_metrics

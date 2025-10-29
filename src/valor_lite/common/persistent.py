@@ -7,6 +7,7 @@ from typing import Any
 
 import numpy as np
 import pyarrow as pa
+import pyarrow.compute as pc
 import pyarrow.dataset as ds
 import pyarrow.parquet as pq
 
@@ -97,9 +98,31 @@ class FileCacheReader(FileCache):
         self,
         path: str | Path,
         schema: pa.Schema,
+        batch_size: int,
+        rows_per_file: int,
+        compression: str,
     ):
         self._schema = schema
         self._path = Path(path)
+        self._batch_size = batch_size
+        self._rows_per_file = rows_per_file
+        self._compression = compression
+
+    @property
+    def schema(self) -> pa.Schema:
+        return self._schema
+    
+    @property
+    def batch_size(self) -> int:
+        return self._batch_size
+    
+    @property
+    def rows_per_file(self) -> int:
+        return self._rows_per_file
+    
+    @property
+    def compression(self) -> str:
+        return self._compression
 
     @classmethod
     def load(cls, path: str | Path | FileCache):
@@ -132,21 +155,31 @@ class FileCacheReader(FileCache):
         cfg_path = cls._generate_config_path(path)
         with open(cfg_path, "r") as f:
             cfg = json.load(f)
+            batch_size = _retrieve(cfg, "batch_size")
+            rows_per_file = _retrieve(cfg, "rows_per_file")
+            compression = _retrieve(cfg, "compression")
             schema = cls._decode_schema(_retrieve(cfg, "schema"))
 
         return cls(
             schema=schema,
             path=path,
+            batch_size=batch_size,
+            rows_per_file=rows_per_file,
+            compression=compression,
         )
 
-    def iterate_tables(self, columns: list[str] | None = None):
+    def iterate_tables(
+        self, 
+        columns: list[str] | None = None,
+        filter: pc.Expression | None = None,
+    ):
         """Iterate over tables within the cache."""
         dataset = ds.dataset(
             source=self._path,
             schema=self._schema,
             format="parquet",
         )
-        for fragment in dataset.get_fragments():
+        for fragment in dataset.get_fragments(filter=filter):
             yield fragment.to_table(columns=columns)
 
     def iterate_fragments(self):
