@@ -286,12 +286,12 @@ def rank_table(tbl: pa.Table, number_of_labels: int) -> pa.Table:
         pairs, number_of_labels=number_of_labels
     )
     ranked_tbl = ranked_tbl.append_column(
-        pa.field("iou_prev", pa.float64()),
-        pa.array(lower_iou_bound, type=pa.float64()),
-    )
-    ranked_tbl = ranked_tbl.append_column(
         pa.field("high_score", pa.bool_()),
         pa.array(winning_predictions, type=pa.bool_()),
+    )
+    ranked_tbl = ranked_tbl.append_column(
+        pa.field("iou_prev", pa.float64()),
+        pa.array(lower_iou_bound, type=pa.float64()),
     )
     ranked_tbl = ranked_tbl.sort_by(sorting_args)
     return ranked_tbl

@@ -1,20 +1,15 @@
 import heapq
 import json
-import tempfile
 from pathlib import Path
 
 import numpy as np
 import pyarrow as pa
-import pyarrow.parquet as pq
 from numpy.typing import NDArray
 from tqdm import tqdm
 
-from valor_lite.cache import (
-    CacheReader,
-    CacheWriter,
-    DataType,
-    convert_type_mapping_to_schema,
-)
+from valor_lite.common.datatype import DataType, convert_type_mapping_to_schema
+from valor_lite.common.ephemeral import MemoryCacheReader, MemoryCacheWriter
+from valor_lite.common.persistent import FileCacheWriter
 from valor_lite.exceptions import EmptyCacheError
 from valor_lite.object_detection.annotation import (
     Bitmask,
@@ -35,14 +30,16 @@ from valor_lite.object_detection.format import PathFormatter
 class Loader(PathFormatter):
     def __init__(
         self,
-        path: str | Path,
-        writer: CacheWriter,
+        detailed_writer: MemoryCacheWriter | FileCacheWriter,
+        ranked_writer: MemoryCacheWriter | FileCacheWriter,
         datum_metadata_types: dict[str, DataType] | None = None,
         groundtruth_metadata_types: dict[str, DataType] | None = None,
         prediction_metadata_types: dict[str, DataType] | None = None,
+        path: str | Path | None = None,
     ):
-        self._path = Path(path)
-        self._cache = writer
+        self._path = Path(path) if path else None
+        self._detailed_writer = detailed_writer
+        self._ranked_writer = ranked_writer
         self._datum_metadata_types = datum_metadata_types
         self._groundtruth_metadata_types = groundtruth_metadata_types
         self._prediction_metadata_types = prediction_metadata_types
@@ -53,12 +50,50 @@ class Loader(PathFormatter):
         self._groundtruth_count = 0
         self._prediction_count = 0
 
-    @property
-    def path(self) -> Path:
-        return self._path
+    @classmethod
+    def in_memory(
+        cls,
+        batch_size: int = 10_000,
+        datum_metadata_types: dict[str, DataType] | None = None,
+        groundtruth_metadata_types: dict[str, DataType] | None = None,
+        prediction_metadata_types: dict[str, DataType] | None = None,
+    ):
+        datum_metadata_fields = convert_type_mapping_to_schema(
+            datum_metadata_types
+        )
+        groundtruth_metadata_fields = convert_type_mapping_to_schema(
+            groundtruth_metadata_types
+        )
+        prediction_metadata_fields = convert_type_mapping_to_schema(
+            prediction_metadata_types
+        )
+
+        # create cache
+        detailed_writer = MemoryCacheWriter.create(
+            schema=cls.detailed_schema(
+                datum_metadata_fields=datum_metadata_fields,
+                groundtruth_metadata_fields=groundtruth_metadata_fields,
+                prediction_metadata_fields=prediction_metadata_fields,
+            ),
+            batch_size=batch_size,
+        )
+        ranked_writer = MemoryCacheWriter.create(
+            schema=cls.ranked_schema(
+                datum_metadata_fields=datum_metadata_fields,
+            ),
+            batch_size=batch_size,
+        )
+
+        return cls(
+            detailed_writer=detailed_writer,
+            ranked_writer=ranked_writer,
+            datum_metadata_types=datum_metadata_types,
+            groundtruth_metadata_types=groundtruth_metadata_types,
+            prediction_metadata_types=prediction_metadata_types,
+        )
 
     @classmethod
-    def create(
+    def persistent(
         cls,
         path: str | Path,
         batch_size: int = 10_000,
@@ -70,45 +105,36 @@ class Loader(PathFormatter):
         delete_if_exists: bool = False,
     ):
         path = Path(path)
-        if delete_if_exists:
+        if delete_if_exists and path.exists():
             cls.delete(path)
 
-        datum_metadata_schema = convert_type_mapping_to_schema(
+        datum_metadata_fields = convert_type_mapping_to_schema(
             datum_metadata_types
         )
-        groundtruth_metadata_schema = convert_type_mapping_to_schema(
+        groundtruth_metadata_fields = convert_type_mapping_to_schema(
             groundtruth_metadata_types
         )
-        prediction_metadata_schema = convert_type_mapping_to_schema(
+        prediction_metadata_fields = convert_type_mapping_to_schema(
             prediction_metadata_types
         )
-        schema = pa.schema(
-            [
-                ("datum_uid", pa.string()),
-                ("datum_id", pa.int64()),
-                *datum_metadata_schema,
-                # groundtruth
-                ("gt_uid", pa.string()),
-                ("gt_id", pa.int64()),
-                ("gt_label", pa.string()),
-                ("gt_label_id", pa.int64()),
-                *groundtruth_metadata_schema,
-                # prediction
-                ("pd_uid", pa.string()),
-                ("pd_id", pa.int64()),
-                ("pd_label", pa.string()),
-                ("pd_label_id", pa.int64()),
-                ("score", pa.float64()),
-                *prediction_metadata_schema,
-                # pair
-                ("iou", pa.float64()),
-            ]
-        )
 
-        # create cache
-        cache = CacheWriter.create(
+        # create caches
+        detailed_writer = FileCacheWriter.create(
             path=cls._generate_detailed_cache_path(path),
-            schema=schema,
+            schema=cls.detailed_schema(
+                datum_metadata_fields=datum_metadata_fields,
+                groundtruth_metadata_fields=groundtruth_metadata_fields,
+                prediction_metadata_fields=prediction_metadata_fields,
+            ),
+            batch_size=batch_size,
+            rows_per_file=rows_per_file,
+            compression=compression,
+        )
+        ranked_writer = FileCacheWriter.create(
+            path=cls._generate_ranked_cache_path(path),
+            schema=cls.ranked_schema(
+                datum_metadata_fields=datum_metadata_fields,
+            ),
             batch_size=batch_size,
             rows_per_file=rows_per_file,
             compression=compression,
@@ -125,24 +151,87 @@ class Loader(PathFormatter):
             json.dump(types, f, indent=2)
 
         return cls(
-            path=path,
-            writer=cache,
+            detailed_writer=detailed_writer,
+            ranked_writer=ranked_writer,
             datum_metadata_types=datum_metadata_types,
             groundtruth_metadata_types=groundtruth_metadata_types,
             prediction_metadata_types=prediction_metadata_types,
+            path=path,
         )
 
     @classmethod
     def delete(cls, path: str | Path):
+        """
+        Delete file-based cache.
+
+        Parameters
+        ----------
+        path : str | Path
+            Where the file-based cache is located.
+        """
         path = Path(path)
         if not path.exists():
             return
-        CacheWriter.delete(cls._generate_detailed_cache_path(path))
-        CacheWriter.delete(cls._generate_ranked_cache_path(path))
+        detailed_path = cls._generate_detailed_cache_path(path)
+        ranked_path = cls._generate_ranked_cache_path(path)
         metadata_path = cls._generate_metadata_path(path)
+        FileCacheWriter.delete(detailed_path)
+        FileCacheWriter.delete(ranked_path)
         if metadata_path.exists() and metadata_path.is_file():
             metadata_path.unlink()
         path.rmdir()
+
+    @staticmethod
+    def detailed_schema(
+        datum_metadata_fields: list[tuple[str, pa.DataType]],
+        groundtruth_metadata_fields: list[tuple[str, pa.DataType]],
+        prediction_metadata_fields: list[tuple[str, pa.DataType]],
+    ) -> pa.Schema:
+        return pa.schema(
+            [
+                ("datum_uid", pa.string()),
+                ("datum_id", pa.int64()),
+                *datum_metadata_fields,
+                # groundtruth
+                ("gt_uid", pa.string()),
+                ("gt_id", pa.int64()),
+                ("gt_label", pa.string()),
+                ("gt_label_id", pa.int64()),
+                *groundtruth_metadata_fields,
+                # prediction
+                ("pd_uid", pa.string()),
+                ("pd_id", pa.int64()),
+                ("pd_label", pa.string()),
+                ("pd_label_id", pa.int64()),
+                ("score", pa.float64()),
+                *prediction_metadata_fields,
+                # pair
+                ("iou", pa.float64()),
+            ]
+        )
+
+    @staticmethod
+    def ranked_schema(
+        datum_metadata_fields: list[tuple[str, pa.DataType]],
+    ) -> pa.Schema:
+        return pa.schema(
+            [
+                ("datum_uid", pa.string()),
+                ("datum_id", pa.int64()),
+                *datum_metadata_fields,
+                # groundtruth
+                ("gt_id", pa.int64()),
+                ("gt_label_id", pa.int64()),
+                # prediction
+                ("pd_id", pa.int64()),
+                ("pd_label_id", pa.int64()),
+                ("score", pa.float64()),
+                # pair
+                ("iou", pa.float64()),
+                ("high_score", pa.bool_()),
+                ("iou_prev", pa.float64()),
+            ]
+        )
 
     def _add_label(self, value: str) -> int:
         idx = self._labels.get(value, None)
@@ -286,7 +375,7 @@ class Loader(PathFormatter):
             self._prediction_count += len(detection.predictions)
 
             pairs = sorted(pairs, key=lambda x: (-x["score"], -x["iou"]))
-            self._cache.write_rows(pairs)
+            self._detailed_writer.write_rows(pairs)
 
     def add_bounding_boxes(
         self,
@@ -388,6 +477,99 @@ class Loader(PathFormatter):
             show_progress=show_progress,
         )
 
+    def rank(
+        self,
+        n_labels: int,
+        batch_size: int = 1_000,
+    ):
+        detailed_reader = self._detailed_writer.to_reader()
+        subset_columns = [
+            field.name
+            for field in self._ranked_writer._schema
+            if field.name not in {"high_score", "iou_prev"}
+        ]
+        if (
+            isinstance(detailed_reader, MemoryCacheReader)
+            or detailed_reader.count_tables() == 1
+        ):
+            for tbl in detailed_reader.iterate_tables(columns=subset_columns):
+                ranked_tbl = rank_table(tbl, n_labels)
+                self._ranked_writer.write_table(ranked_tbl)
+        elif isinstance(self._ranked_writer, FileCacheWriter):
+            if not self._path:
+                raise ValueError(
+                    "missing path definition in file-based loader"
+                )
+            path = self._generate_temporary_cache_path(self._path)
+            with FileCacheWriter.create(
+                path=path,
+                schema=self._ranked_writer._schema,
+                batch_size=self._ranked_writer._batch_size,
+                rows_per_file=self._ranked_writer._rows_per_file,
+                compression=self._ranked_writer._compression,
+                delete_if_exists=True,
+            ) as tmp_writer:
+
+                # rank individual files
+                for tbl in detailed_reader.iterate_tables(
+                    columns=subset_columns
+                ):
+                    ranked_tbl = rank_table(tbl, n_labels)
+                    tmp_writer.write_table(ranked_tbl)
+
+            tmp_reader = tmp_writer.to_reader()
+
+            def generate_heap_item(batches, batch_idx, row_idx) -> tuple:
+                score = batches[batch_idx]["score"][row_idx].as_py()
+                iou = batches[batch_idx]["iou"][row_idx].as_py()
+                return (
+                    -score,
+                    -iou,
+                    batch_idx,
+                    row_idx,
+                )
+
+            # merge sorted rows
+            heap = []
+            batch_iterators = []
+            batches = []
+            for batch_idx, batch_fragment in enumerate(
+                tmp_reader.iterate_fragments()
+            ):
+                batch_iter = batch_fragment.to_batches(batch_size=batch_size)
+                batch_iterators.append(batch_iter)
+                batches.append(next(batch_iterators[batch_idx], None))
+                if (
+                    batches[batch_idx] is not None
+                    and len(batches[batch_idx]) > 0
+                ):
+                    heapq.heappush(
+                        heap, generate_heap_item(batches, batch_idx, 0)
+                    )
+
+            while heap:
+                _, _, batch_idx, row_idx = heapq.heappop(heap)
+                row_table = batches[batch_idx].slice(row_idx, 1)
+                self._ranked_writer.write_batch(row_table)
+                row_idx += 1
+                if row_idx < len(batches[batch_idx]):
+                    heapq.heappush(
+                        heap,
+                        generate_heap_item(batches, batch_idx, row_idx),
+                    )
+                else:
+                    batches[batch_idx] = next(batch_iterators[batch_idx], None)
+                    if (
+                        batches[batch_idx] is not None
+                        and len(batches[batch_idx]) > 0
+                    ):
+                        heapq.heappush(
+                            heap,
+                            generate_heap_item(batches, batch_idx, 0),
+                        )
+
+            FileCacheWriter.delete(path)
+
     def finalize(
         self,
         batch_size: int = 1_000,
@@ -403,153 +585,32 @@ class Loader(PathFormatter):
         index_to_label_override : dict[int, str], optional
             Pre-configures label mapping. Used when operating over filtered subsets.
         """
-        self._cache.flush()
-        if self._cache.dataset.count_rows() == 0:
+        self._detailed_writer.flush()
+        if self._detailed_writer.count_rows() == 0:
             raise EmptyCacheError()
 
-        detailed_cache = CacheReader.load(
-            self._generate_detailed_cache_path(self.path)
-        )
+        detailed_reader = self._detailed_writer.to_reader()
 
         # build evaluator meta
         (
             index_to_label,
             number_of_groundtruths_per_label,
             info,
-        ) = Evaluator.generate_meta(
-            detailed_cache.dataset, index_to_label_override
-        )
-
-        # read config
-        metadata_path = self._generate_metadata_path(self.path)
-        with open(metadata_path, "r") as f:
-            types = json.load(f)
-            info.datum_metadata_types = types["datum_metadata_types"]
-            info.groundtruth_metadata_types = types[
-                "groundtruth_metadata_types"
-            ]
-            info.prediction_metadata_types = types["prediction_metadata_types"]
-
-        # create ranked cache schema
-        annotation_metadata_keys = {
-            *(
-                set(info.groundtruth_metadata_types.keys())
-                if info.groundtruth_metadata_types
-                else {}
-            ),
-            *(
-                set(info.prediction_metadata_types.keys())
-                if info.prediction_metadata_types
-                else {}
-            ),
-        }
-        pruned_schema = pa.schema(
-            [
-                field
-                for field in detailed_cache.schema
-                if field.name not in annotation_metadata_keys
-            ]
-        )
-        ranked_schema = pruned_schema.append(
-            pa.field("iou_prev", pa.float64())
-        )
-        ranked_schema = ranked_schema.append(
-            pa.field("high_score", pa.bool_())
-        )
+        ) = Evaluator.generate_meta(detailed_reader, index_to_label_override)
+        info.datum_metadata_types = self._datum_metadata_types
+        info.groundtruth_metadata_types = self._groundtruth_metadata_types
+        info.prediction_metadata_types = self._prediction_metadata_types
 
         n_labels = len(index_to_label)
 
-        with CacheWriter.create(
-            path=self._generate_ranked_cache_path(self.path),
-            schema=ranked_schema,
-            batch_size=detailed_cache.batch_size,
-            rows_per_file=detailed_cache.rows_per_file,
-            compression=detailed_cache.compression,
-        ) as ranked_cache:
-            if detailed_cache.num_dataset_files == 1:
-                pf = pq.ParquetFile(detailed_cache.dataset_files[0])
-                tbl = pf.read()
-                ranked_tbl = rank_table(tbl, n_labels)
-                ranked_cache.write_table(ranked_tbl)
-            else:
-                pruned_detailed_columns = [
-                    field.name for field in pruned_schema
-                ]
-                with tempfile.TemporaryDirectory() as tmpdir:
+        self.rank(n_labels=n_labels, batch_size=batch_size)
 
-                    # rank individual files
-                    tmpfiles = []
-                    for idx, fragment in enumerate(
-                        detailed_cache.dataset.get_fragments()
-                    ):
-                        fragment_path = Path(tmpdir) / f"{idx:06d}.parquet"
-                        tbl = fragment.to_table(
-                            columns=pruned_detailed_columns
-                        )
-                        ranked_tbl = rank_table(tbl, n_labels)
-                        pq.write_table(ranked_tbl, fragment_path)
-                        tmpfiles.append(fragment_path)
-
-                    def generate_heap_item(batches, batch_idx, row_idx):
-                        score = batches[batch_idx]["score"][row_idx].as_py()
-                        iou = batches[batch_idx]["iou"][row_idx].as_py()
-                        return (
-                            -score,
-                            -iou,
-                            batch_idx,
-                            row_idx,
-                        )
-
-                    # merge sorted rows
-                    heap = []
-                    batch_iterators = []
-                    batches = []
-                    for batch_idx, batch_path in enumerate(tmpfiles):
-                        pf = pq.ParquetFile(batch_path)
-                        batch_iter = pf.iter_batches(batch_size=batch_size)
-                        batch_iterators.append(batch_iter)
-                        batches.append(next(batch_iterators[batch_idx], None))
-                        if (
-                            batches[batch_idx] is not None
-                            and len(batches[batch_idx]) > 0
-                        ):
-                            heapq.heappush(
-                                heap, generate_heap_item(batches, batch_idx, 0)
-                            )
-
-                    while heap:
-                        _, _, batch_idx, row_idx = heapq.heappop(heap)
-                        row_table = batches[batch_idx].slice(row_idx, 1)
-                        ranked_cache.write_batch(row_table)
-                        row_idx += 1
-                        if row_idx < len(batches[batch_idx]):
-                            heapq.heappush(
-                                heap,
-                                generate_heap_item(
-                                    batches, batch_idx, row_idx
-                                ),
-                            )
-                        else:
-                            batches[batch_idx] = next(
-                                batch_iterators[batch_idx], None
-                            )
-                            if (
-                                batches[batch_idx] is not None
-                                and len(batches[batch_idx]) > 0
-                            ):
-                                heapq.heappush(
-                                    heap,
-                                    generate_heap_item(batches, batch_idx, 0),
-                                )
-
-        ranked_cache = CacheReader.load(
-            self._generate_ranked_cache_path(self.path)
-        )
+        ranked_reader = self._ranked_writer.to_reader()
         return Evaluator(
-            path=self.path,
-            detailed_cache=detailed_cache,
-            ranked_cache=ranked_cache,
+            detailed_reader=detailed_reader,
+            ranked_reader=ranked_reader,
             info=info,
             index_to_label=index_to_label,
             number_of_groundtruths_per_label=number_of_groundtruths_per_label,
+            path=self._path,
         )

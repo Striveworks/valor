@@ -6,7 +6,7 @@ import numpy as np
 import pyarrow.compute as pc
 import pytest
 
-from valor_lite.cache import DataType
+from valor_lite.common.datatype import DataType
 from valor_lite.exceptions import EmptyCacheError, EmptyFilterError
 from valor_lite.object_detection import (
     BoundingBox,

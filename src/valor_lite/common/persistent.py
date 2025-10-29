@@ -46,6 +46,18 @@ class FileCache:
         schema_bytes = base64.b64decode(encoded_schema)
         return pa.ipc.read_schema(pa.BufferReader(schema_bytes))
 
+    def count_rows(self) -> int:
+        """Count the number of rows in the cache."""
+        dataset = ds.dataset(
+            source=self._path,
+            format="parquet",
+        )
+        return dataset.count_rows()
+
+    def count_tables(self) -> int:
+        """Count the number of files in the cache."""
+        return len(self.get_dataset_files())
+
     def get_files(self) -> list[Path]:
         """
         Retrieve all files.
@@ -80,6 +92,74 @@ class FileCache:
         ]
 
 
+class FileCacheReader(FileCache):
+    def __init__(
+        self,
+        path: str | Path,
+        schema: pa.Schema,
+    ):
+        self._schema = schema
+        self._path = Path(path)
+
+    @classmethod
+    def load(cls, path: str | Path | FileCache):
+        """
+        Load cache from disk.
+
+        Parameters
+        ----------
+        path : str | Path
+            Where the cache is stored.
+        """
+        if isinstance(path, FileCache):
+            path = path.path
+        path = Path(path)
+        if not path.exists():
+            raise FileNotFoundError(f"Directory does not exist: {path}")
+        elif not path.is_dir():
+            raise NotADirectoryError(
+                f"Path exists but is not a directory: {path}"
+            )
+
+        def _retrieve(config: dict, key: str):
+            if value := config.get(key, None):
+                return value
+            raise KeyError(
+                f"'{key}' is not defined within {cls._generate_config_path(path)}"
+            )
+
+        # read configuration file
+        cfg_path = cls._generate_config_path(path)
+        with open(cfg_path, "r") as f:
+            cfg = json.load(f)
+            schema = cls._decode_schema(_retrieve(cfg, "schema"))
+
+        return cls(
+            schema=schema,
+            path=path,
+        )
+
+    def iterate_tables(self, columns: list[str] | None = None):
+        """Iterate over tables within the cache."""
+        dataset = ds.dataset(
+            source=self._path,
+            schema=self._schema,
+            format="parquet",
+        )
+        for fragment in dataset.get_fragments():
+            yield fragment.to_table(columns=columns)
+
+    def iterate_fragments(self):
+        """Iterate over fragments within the file-based cache."""
+        dataset = ds.dataset(
+            source=self._path,
+            schema=self._schema,
+            format="parquet",
+        )
+        for fragment in dataset.get_fragments():
+            yield fragment
+
+
 class FileCacheWriter(FileCache):
     def __init__(
         self,
@@ -108,6 +188,7 @@ class FileCacheWriter(FileCache):
         batch_size: int,
         rows_per_file: int,
         compression: str = "snappy",
+        delete_if_exists: bool = False,
     ):
         """
         Create a cache on disk.
@@ -124,7 +205,12 @@ class FileCacheWriter(FileCache):
             Target number of rows to store per file.
         compression : str, default="snappy"
             Compression method to use when storing on disk.
+        delete_if_exists : bool, default=False
+            Delete the cache if it already exists.
         """
+        path = Path(path)
+        if delete_if_exists and path.exists():
+            cls.delete(path)
         Path(path).mkdir(parents=True, exist_ok=False)
 
         # write configuration file
@@ -146,29 +232,33 @@ class FileCacheWriter(FileCache):
             compression=compression,
         )
 
-    def delete(self):
+    @classmethod
+    def delete(cls, path: str | Path):
         """
-        Delete the cache.
+        Delete a cache at path.
 
         Parameters
         ----------
         path : str | Path
             Where the cache is stored.
         """
-        if not self._path.exists():
+        path = Path(path)
+        if not path.exists():
             return
-        # clear buffer
-        self.flush()
-        # delete config file
-        cfg_path = self._generate_config_path(self._path)
-        if cfg_path.exists() and cfg_path.is_file():
-            cfg_path.unlink()
+
         # delete dataset files
-        for file in self.get_dataset_files():
+        reader = FileCacheReader.load(path)
+        for file in reader.get_dataset_files():
             if file.exists() and file.is_file() and file.suffix == ".parquet":
                 file.unlink()
+
+        # delete config file
+        cfg_path = cls._generate_config_path(path)
+        if cfg_path.exists() and cfg_path.is_file():
+            cfg_path.unlink()
+
         # delete empty cache directory
-        self._path.rmdir()
+        path.rmdir()
 
     def write_rows(
         self,
@@ -297,69 +387,6 @@ class FileCacheWriter(FileCache):
         """Context manager exit - ensures data is flushed."""
         self.flush()
 
-
-class FileCacheReader(FileCache):
-    def __init__(
-        self,
-        path: str | Path,
-        schema: pa.Schema,
-    ):
-        self._schema = schema
-        self._path = Path(path)
-
-    @classmethod
-    def load(cls, path: str | Path | FileCache):
-        """
-        Load cache from disk.
-
-        Parameters
-        ----------
-        path : str | Path
-            Where the cache is stored.
-        """
-        if isinstance(path, FileCache):
-            path = path.path
-        path = Path(path)
-        if not path.exists():
-            raise FileNotFoundError(f"Directory does not exist: {path}")
-        elif not path.is_dir():
-            raise NotADirectoryError(
-                f"Path exists but is not a directory: {path}"
-            )
-
-        def _retrieve(config: dict, key: str):
-            if value := config.get(key, None):
-                return value
-            raise KeyError(
-                f"'{key}' is not defined within {cls._generate_config_path(path)}"
-            )
-
-        # read configuration file
-        cfg_path = cls._generate_config_path(path)
-        with open(cfg_path, "r") as f:
-            cfg = json.load(f)
-            schema = cls._decode_schema(_retrieve(cfg, "schema"))
-
-        return cls(
-            schema=schema,
-            path=path,
-        )
-
-    def count_rows(self) -> int:
-        """Count the number of rows in the cache."""
-        dataset = ds.dataset(
-            source=self._path,
-            schema=self._schema,
-            format="parquet",
-        )
-        return dataset.count_rows()
-
-    def iterate_tables(self):
-        """Iterate over tables within the cache."""
-        dataset = ds.dataset(
-            source=self._path,
-            schema=self._schema,
-            format="parquet",
-        )
-        for fragment in dataset.get_fragments():
-            yield fragment.to_table()
+    def to_reader(self) -> FileCacheReader:
+        """Get cache reader."""
+        return FileCacheReader.load(path=self.path)

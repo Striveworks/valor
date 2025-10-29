@@ -6,10 +6,11 @@ from pathlib import Path
 import numpy as np
 import pyarrow as pa
 import pyarrow.compute as pc
-import pyarrow.dataset as ds
 from numpy.typing import NDArray
 
-from valor_lite.cache import CacheReader, DataType
+from valor_lite.common.datatype import DataType
+from valor_lite.common.ephemeral import MemoryCacheReader
+from valor_lite.common.persistent import FileCacheReader
 from valor_lite.object_detection.computation import (
     compute_average_precision,
     compute_average_recall,
@@ -52,16 +53,16 @@ class Filter:
 class Evaluator(PathFormatter):
     def __init__(
         self,
-        path: str | Path,
-        detailed_cache: CacheReader,
-        ranked_cache: CacheReader,
+        detailed_reader: MemoryCacheReader | FileCacheReader,
+        ranked_reader: MemoryCacheReader | FileCacheReader,
         info: EvaluatorInfo,
         index_to_label: dict[int, str],
         number_of_groundtruths_per_label: NDArray[np.uint64],
+        path: str | Path | None = None,
     ):
-        self._path = Path(path)
-        self._detailed_cache = detailed_cache
-        self._ranked_cache = ranked_cache
+        self._path = Path(path) if path else None
+        self._detailed_reader = detailed_reader
+        self._ranked_reader = ranked_reader
         self._info = info
         self._index_to_label = index_to_label
         self._number_of_groundtruths_per_label = (
@@ -83,17 +84,19 @@ class Evaluator(PathFormatter):
                 f"Path exists but is not a directory: {path}"
             )
 
-        detailed_cache = CacheReader.load(
+        detailed_reader = FileCacheReader.load(
             cls._generate_detailed_cache_path(path)
         )
-        ranked_cache = CacheReader.load(cls._generate_ranked_cache_path(path))
+        ranked_reader = FileCacheReader.load(
+            cls._generate_ranked_cache_path(path)
+        )
 
         # build evaluator meta
         (
             index_to_label,
             number_of_groundtruths_per_label,
             info,
-        ) = cls.generate_meta(detailed_cache.dataset, index_to_label_override)
+        ) = cls.generate_meta(detailed_reader, index_to_label_override)
 
         # read config
         metadata_path = cls._generate_metadata_path(path)
@@ -107,8 +110,8 @@ class Evaluator(PathFormatter):
 
         return cls(
             path=path,
-            detailed_cache=detailed_cache,
-            ranked_cache=ranked_cache,
+            detailed_reader=detailed_reader,
+            ranked_reader=ranked_reader,
             info=info,
             index_to_label=index_to_label,
             number_of_groundtruths_per_label=number_of_groundtruths_per_label,
@@ -214,21 +217,18 @@ class Evaluator(PathFormatter):
         """
         Delete evaluator cache.
         """
-        from valor_lite.object_detection.loader import Loader
+        if self._path and self._path.exists():
+            from valor_lite.object_detection.loader import Loader
 
-        Loader.delete(self.path)
-
-    @property
-    def path(self) -> Path:
-        return self._path
+            Loader.delete(self._path)
 
     @property
-    def detailed(self) -> CacheReader:
-        return self._detailed_cache
+    def detailed_reader(self) -> MemoryCacheReader | FileCacheReader:
+        return self._detailed_reader
 
     @property
-    def ranked(self) -> CacheReader:
-        return self._ranked_cache
+    def ranked_reader(self) -> MemoryCacheReader | FileCacheReader:
+        return self._ranked_reader
 
     @property
     def info(self) -> EvaluatorInfo:
@@ -236,7 +236,7 @@ class Evaluator(PathFormatter):
 
     @staticmethod
     def generate_meta(
-        dataset: ds.Dataset,
+        reader: MemoryCacheReader | FileCacheReader,
         labels_override: dict[int, str] | None = None,
     ) -> tuple[dict[int, str], NDArray[np.uint64], EvaluatorInfo]:
         """
@@ -262,8 +262,7 @@ class Evaluator(PathFormatter):
         labels = labels_override if labels_override else {}
         info = EvaluatorInfo()
 
-        for fragment in dataset.get_fragments():
-            tbl = fragment.to_table()
+        for tbl in reader.iterate_tables():
             columns = (
                 "datum_id",
                 "gt_id",
@@ -338,22 +337,20 @@ class Evaluator(PathFormatter):
 
     @staticmethod
     def iterate_pairs(
-        dataset: ds.Dataset,
+        reader: MemoryCacheReader | FileCacheReader,
         columns: list[str] | None = None,
     ):
-        for fragment in dataset.get_fragments():
-            tbl = fragment.to_table(columns=columns)
+        for tbl in reader.iterate_tables(columns=columns):
             yield np.column_stack(
                 [tbl.column(i).to_numpy() for i in range(tbl.num_columns)]
             )
 
     @staticmethod
     def iterate_pairs_with_table(
-        dataset: ds.Dataset,
+        reader: MemoryCacheReader | FileCacheReader,
         columns: list[str] | None = None,
     ):
-        for fragment in dataset.get_fragments():
-            tbl = fragment.to_table()
+        for tbl in reader.iterate_tables():
             columns = columns if columns else tbl.columns
             yield tbl, np.column_stack(
                 [tbl[col].to_numpy() for col in columns]
@@ -392,7 +389,7 @@ class Evaluator(PathFormatter):
         pr_curve = np.zeros((n_ious, n_labels, 101, 2), dtype=np.float64)
         running_counts = np.ones((n_ious, n_labels, 2), dtype=np.uint64)
         for pairs in self.iterate_pairs(
-            dataset=self.ranked.dataset,
+            reader=self.ranked_reader,
             columns=[
                 "datum_id",
                 "gt_id",
@@ -487,7 +484,7 @@ class Evaluator(PathFormatter):
         )
         unmatched_predictions = np.zeros_like(unmatched_groundtruths)
         for pairs in self.iterate_pairs(
-            dataset=self.detailed.dataset,
+            reader=self.detailed_reader,
             columns=[
                 "datum_id",
                 "gt_id",
@@ -567,7 +564,7 @@ class Evaluator(PathFormatter):
 
         metrics = []
         for tbl, pairs in self.iterate_pairs_with_table(
-            dataset=self.detailed.dataset,
+            reader=self.detailed_reader,
             columns=[
                 "datum_id",
                 "gt_id",
@@ -664,7 +661,7 @@ class Evaluator(PathFormatter):
             for iou_idx, iou_thresh in enumerate(iou_thresholds)
         }
         for tbl, pairs in self.iterate_pairs_with_table(
-            dataset=self.detailed.dataset,
+            reader=self.detailed_reader,
             columns=[
                 "datum_id",
                 "gt_id",

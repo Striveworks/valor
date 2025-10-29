@@ -1,3 +1,4 @@
+from pathlib import Path
 from uuid import uuid4
 
 import numpy as np
@@ -8,8 +9,31 @@ from valor_lite.object_detection import (
     Bitmask,
     BoundingBox,
     Detection,
+    Evaluator,
+    Loader,
     Polygon,
 )
+
+
+@pytest.fixture(
+    params=[
+        ("persistent", 10_000, 100_000),
+        ("persistent", 1, 1),
+        ("memory", 10_000, 0),
+        ("memory", 1, 0),
+    ],
+)
+def loader(request, tmp_path: Path):
+    file_type, batch_size, rows_per_file = request.param
+    match file_type:
+        case "memory":
+            return Loader.in_memory(batch_size=batch_size)
+        case "persistent":
+            return Loader.persistent(
+                path=tmp_path / "cache",
+                batch_size=batch_size,
+                rows_per_file=rows_per_file,
+            )
 
 
 @pytest.fixture
@@ -78,99 +102,186 @@ def rect3_rotated_5_degrees_around_origin() -> list[tuple[float, float]]:
     ]
 
 
-@pytest.fixture
+@pytest.fixture(params=["bbox", "poly"])
 def basic_detections_first_class(
+    request,
+    loader: Loader,
     rect1: tuple[float, float, float, float],
     rect2: tuple[float, float, float, float],
-) -> list[Detection]:
-    return [
-        Detection(
-            uid="uid1",
-            groundtruths=[
-                BoundingBox(
-                    uid=str(uuid4()),
-                    xmin=rect1[0],
-                    xmax=rect1[1],
-                    ymin=rect1[2],
-                    ymax=rect1[3],
-                    labels=["v1"],
-                ),
-            ],
-            predictions=[
-                BoundingBox(
-                    uid=str(uuid4()),
-                    xmin=rect1[0],
-                    xmax=rect1[1],
-                    ymin=rect1[2],
-                    ymax=rect1[3],
-                    labels=["v1"],
-                    scores=[0.3],
-                ),
-            ],
-        ),
-        Detection(
-            uid="uid2",
-            groundtruths=[
-                BoundingBox(
-                    uid=str(uuid4()),
-                    xmin=rect2[0],
-                    xmax=rect2[1],
-                    ymin=rect2[2],
-                    ymax=rect2[3],
-                    labels=["v1"],
-                ),
-            ],
-            predictions=[],
-        ),
-    ]
+    rect1_rotated_5_degrees_around_origin: tuple[float, float, float, float],
+    rect2_rotated_5_degrees_around_origin: tuple[float, float, float, float],
+) -> Evaluator:
+    if request.param == "poly":
+        detections = [
+            Detection(
+                uid="uid1",
+                groundtruths=[
+                    Polygon(
+                        uid=str(uuid4()),
+                        shape=ShapelyPolygon(
+                            rect1_rotated_5_degrees_around_origin
+                        ),
+                        labels=["v1"],
+                    ),
+                ],
+                predictions=[
+                    Polygon(
+                        uid=str(uuid4()),
+                        shape=ShapelyPolygon(
+                            rect1_rotated_5_degrees_around_origin
+                        ),
+                        labels=["v1"],
+                        scores=[0.3],
+                    ),
+                ],
+            ),
+            Detection(
+                uid="uid2",
+                groundtruths=[
+                    Polygon(
+                        uid=str(uuid4()),
+                        shape=ShapelyPolygon(
+                            rect2_rotated_5_degrees_around_origin
+                        ),
+                        labels=["v1"],
+                    ),
+                ],
+                predictions=[],
+            ),
+        ]
+        loader.add_polygons(detections)
+        return loader.finalize()
+    else:
+        detections = [
+            Detection(
+                uid="uid1",
+                groundtruths=[
+                    BoundingBox(
+                        uid=str(uuid4()),
+                        xmin=rect1[0],
+                        xmax=rect1[1],
+                        ymin=rect1[2],
+                        ymax=rect1[3],
+                        labels=["v1"],
+                    ),
+                ],
+                predictions=[
+                    BoundingBox(
+                        uid=str(uuid4()),
+                        xmin=rect1[0],
+                        xmax=rect1[1],
+                        ymin=rect1[2],
+                        ymax=rect1[3],
+                        labels=["v1"],
+                        scores=[0.3],
+                    ),
+                ],
+            ),
+            Detection(
+                uid="uid2",
+                groundtruths=[
+                    BoundingBox(
+                        uid=str(uuid4()),
+                        xmin=rect2[0],
+                        xmax=rect2[1],
+                        ymin=rect2[2],
+                        ymax=rect2[3],
+                        labels=["v1"],
+                    ),
+                ],
+                predictions=[],
+            ),
+        ]
+        loader.add_bounding_boxes(detections)
+        return loader.finalize()
 
 
-@pytest.fixture
+@pytest.fixture(params=["bbox", "poly"])
 def basic_detections_second_class(
+    request,
+    loader: Loader,
     rect2: tuple[float, float, float, float],
     rect3: tuple[float, float, float, float],
-) -> list[Detection]:
-    return [
-        Detection(
-            uid="uid1",
-            groundtruths=[
-                BoundingBox(
-                    uid=str(uuid4()),
-                    xmin=rect3[0],
-                    xmax=rect3[1],
-                    ymin=rect3[2],
-                    ymax=rect3[3],
-                    labels=["v2"],
-                ),
-            ],
-            predictions=[],
-        ),
-        Detection(
-            uid="uid2",
-            groundtruths=[],
-            predictions=[
-                BoundingBox(
-                    uid=str(uuid4()),
-                    xmin=rect2[0],
-                    xmax=rect2[1],
-                    ymin=rect2[2],
-                    ymax=rect2[3],
-                    labels=["v2"],
-                    scores=[0.98],
-                ),
-            ],
-        ),
-    ]
+    rect2_rotated_5_degrees_around_origin: tuple[float, float, float, float],
+    rect3_rotated_5_degrees_around_origin: tuple[float, float, float, float],
+) -> Evaluator:
+    if request.param == "poly":
+        detections = [
+            Detection(
+                uid="uid1",
+                groundtruths=[
+                    Polygon(
+                        uid=str(uuid4()),
+                        shape=ShapelyPolygon(
+                            rect3_rotated_5_degrees_around_origin
+                        ),
+                        labels=["v2"],
+                    ),
+                ],
+                predictions=[],
+            ),
+            Detection(
+                uid="uid2",
+                groundtruths=[],
+                predictions=[
+                    Polygon(
+                        uid=str(uuid4()),
+                        shape=ShapelyPolygon(
+                            rect2_rotated_5_degrees_around_origin
+                        ),
+                        labels=["v2"],
+                        scores=[0.98],
+                    ),
+                ],
+            ),
+        ]
+        loader.add_polygons(detections)
+        return loader.finalize()
+    else:
+        detections = [
+            Detection(
+                uid="uid1",
+                groundtruths=[
+                    BoundingBox(
+                        uid=str(uuid4()),
+                        xmin=rect3[0],
+                        xmax=rect3[1],
+                        ymin=rect3[2],
+                        ymax=rect3[3],
+                        labels=["v2"],
+                    ),
+                ],
+                predictions=[],
+            ),
+            Detection(
+                uid="uid2",
+                groundtruths=[],
+                predictions=[
+                    BoundingBox(
+                        uid=str(uuid4()),
+                        xmin=rect2[0],
+                        xmax=rect2[1],
+                        ymin=rect2[2],
+                        ymax=rect2[3],
+                        labels=["v2"],
+                        scores=[0.98],
+                    ),
+                ],
+            ),
+        ]
+        loader.add_bounding_boxes(detections)
+        return loader.finalize()
 
 
 @pytest.fixture
 def basic_detections(
+    loader: Loader,
     rect1: tuple[float, float, float, float],
     rect2: tuple[float, float, float, float],
     rect3: tuple[float, float, float, float],
-) -> list[Detection]:
+) -> Evaluator:
     """Combines the labels from basic_detections_first_class and basic_detections_second_class."""
-    return [
+    detections = [
         Detection(
             uid="uid1",
             groundtruths=[
@@ -243,90 +354,12 @@ def basic_detections(
             ],
         ),
     ]
+    loader.add_bounding_boxes(detections)
+    return loader.finalize()
 
 
 @pytest.fixture
-def basic_rotated_detections_first_class(
-    rect1_rotated_5_degrees_around_origin: tuple[float, float, float, float],
-    rect2_rotated_5_degrees_around_origin: tuple[float, float, float, float],
-) -> list[Detection]:
-    return [
-        Detection(
-            uid="uid1",
-            groundtruths=[
-                Polygon(
-                    uid=str(uuid4()),
-                    shape=ShapelyPolygon(
-                        rect1_rotated_5_degrees_around_origin
-                    ),
-                    labels=["v1"],
-                ),
-            ],
-            predictions=[
-                Polygon(
-                    uid=str(uuid4()),
-                    shape=ShapelyPolygon(
-                        rect1_rotated_5_degrees_around_origin
-                    ),
-                    labels=["v1"],
-                    scores=[0.3],
-                ),
-            ],
-        ),
-        Detection(
-            uid="uid2",
-            groundtruths=[
-                Polygon(
-                    uid=str(uuid4()),
-                    shape=ShapelyPolygon(
-                        rect2_rotated_5_degrees_around_origin
-                    ),
-                    labels=["v1"],
-                ),
-            ],
-            predictions=[],
-        ),
-    ]
-
-
-@pytest.fixture
-def basic_rotated_detections_second_class(
-    rect2_rotated_5_degrees_around_origin: tuple[float, float, float, float],
-    rect3_rotated_5_degrees_around_origin: tuple[float, float, float, float],
-) -> list[Detection]:
-    return [
-        Detection(
-            uid="uid1",
-            groundtruths=[
-                Polygon(
-                    uid=str(uuid4()),
-                    shape=ShapelyPolygon(
-                        rect3_rotated_5_degrees_around_origin
-                    ),
-                    labels=["v2"],
-                ),
-            ],
-            predictions=[],
-        ),
-        Detection(
-            uid="uid2",
-            groundtruths=[],
-            predictions=[
-                Polygon(
-                    uid=str(uuid4()),
-                    shape=ShapelyPolygon(
-                        rect2_rotated_5_degrees_around_origin
-                    ),
-                    labels=["v2"],
-                    scores=[0.98],
-                ),
-            ],
-        ),
-    ]
-
-
-@pytest.fixture
-def torchmetrics_detections() -> list[Detection]:
+def torchmetrics_detections(loader: Loader) -> Evaluator:
     """Creates a model called "test_model" with some predicted
     detections on the dataset "test_dataset". These predictions are taken
     from a torchmetrics unit test (see test_metrics.py)
@@ -436,8 +469,7 @@ def torchmetrics_detections() -> list[Detection]:
             "labels": ["49", "49", "49", "49", "49", "49", "49", "49", "49"],
         },
     ]
-
-    return [
+    detections = [
         Detection(
             uid=str(idx),
             groundtruths=[
@@ -470,11 +502,15 @@ def torchmetrics_detections() -> list[Detection]:
         )
         for idx, (gt, pd) in enumerate(zip(groundtruths, predictions))
     ]
+    loader.add_bounding_boxes(detections)
+    return loader.finalize()
 
 
 @pytest.fixture
-def false_negatives_single_datum_baseline_detections() -> list[Detection]:
-    return [
+def false_negatives_single_datum_baseline_detections(
+    loader: Loader,
+) -> Evaluator:
+    detections = [
         Detection(
             uid="uid1",
             groundtruths=[
@@ -509,11 +545,13 @@ def false_negatives_single_datum_baseline_detections() -> list[Detection]:
             ],
         )
     ]
+    loader.add_bounding_boxes(detections)
+    return loader.finalize()
 
 
 @pytest.fixture
-def false_negatives_single_datum_detections() -> list[Detection]:
-    return [
+def false_negatives_single_datum_detections(loader: Loader) -> Evaluator:
+    detections = [
         Detection(
             uid="uid1",
             groundtruths=[
@@ -548,14 +586,15 @@ def false_negatives_single_datum_detections() -> list[Detection]:
             ],
         )
     ]
+    loader.add_bounding_boxes(detections)
+    return loader.finalize()
 
 
 @pytest.fixture
-def false_negatives_two_datums_one_empty_low_confidence_of_fp_detections() -> (
-    list[Detection]
-):
-
-    return [
+def false_negatives_two_datums_one_empty_low_confidence_of_fp_detections(
+    loader: Loader,
+) -> Evaluator:
+    detections = [
         Detection(
             uid="uid1",
             groundtruths=[
@@ -596,14 +635,15 @@ def false_negatives_two_datums_one_empty_low_confidence_of_fp_detections() -> (
             ],
         ),
     ]
+    loader.add_bounding_boxes(detections)
+    return loader.finalize()
 
 
 @pytest.fixture
-def false_negatives_two_datums_one_empty_high_confidence_of_fp_detections() -> (
-    list[Detection]
-):
-
-    return [
+def false_negatives_two_datums_one_empty_high_confidence_of_fp_detections(
+    loader: Loader,
+) -> Evaluator:
+    detections = [
         Detection(
             uid="uid1",
             groundtruths=[
@@ -644,14 +684,15 @@ def false_negatives_two_datums_one_empty_high_confidence_of_fp_detections() -> (
             ],
         ),
     ]
+    loader.add_bounding_boxes(detections)
+    return loader.finalize()
 
 
 @pytest.fixture
-def false_negatives_two_datums_one_only_with_different_class_low_confidence_of_fp_detections() -> (
-    list[Detection]
-):
-
-    return [
+def false_negatives_two_datums_one_only_with_different_class_low_confidence_of_fp_detections(
+    loader: Loader,
+) -> Evaluator:
+    detections = [
         Detection(
             uid="uid1",
             groundtruths=[
@@ -701,14 +742,15 @@ def false_negatives_two_datums_one_only_with_different_class_low_confidence_of_f
             ],
         ),
     ]
+    loader.add_bounding_boxes(detections)
+    return loader.finalize()
 
 
 @pytest.fixture
-def false_negatives_two_images_one_only_with_different_class_high_confidence_of_fp_detections() -> (
-    list[Detection]
-):
-
-    return [
+def false_negatives_two_images_one_only_with_different_class_high_confidence_of_fp_detections(
+    loader: Loader,
+) -> Evaluator:
+    detections = [
         Detection(
             uid="uid1",
             groundtruths=[
@@ -758,11 +800,13 @@ def false_negatives_two_images_one_only_with_different_class_high_confidence_of_
             ],
         ),
     ]
+    loader.add_bounding_boxes(detections)
+    return loader.finalize()
 
 
 @pytest.fixture
-def detections_fp_unmatched_prediction_edge_case() -> list[Detection]:
-    return [
+def detections_fp_unmatched_prediction_edge_case(loader: Loader) -> Evaluator:
+    detections = [
         Detection(
             uid="uid1",
             groundtruths=[
@@ -812,11 +856,13 @@ def detections_fp_unmatched_prediction_edge_case() -> list[Detection]:
             ],
         ),
     ]
+    loader.add_bounding_boxes(detections)
+    return loader.finalize()
 
 
 @pytest.fixture
-def detections_tp_deassignment_edge_case() -> list[Detection]:
-    return [
+def detections_tp_deassignment_edge_case(loader: Loader) -> Evaluator:
+    detections = [
         Detection(
             uid="uid0",
             groundtruths=[
@@ -877,191 +923,204 @@ def detections_tp_deassignment_edge_case() -> list[Detection]:
             ],
         ),
     ]
+    loader.add_bounding_boxes(detections)
+    return loader.finalize()
 
 
-@pytest.fixture
-def detection_ranked_pair_ordering() -> Detection:
-
-    gts = {
-        "boxes": [
-            (2, 10, 2, 10),
-            (2, 10, 2, 10),
-            (2, 10, 2, 10),
-        ],
-        "label_values": ["label1", "label2", "label3"],
-    }
-
-    # labels 1 and 2 have IOU==1, labels 3 and 4 have IOU==0
-    preds = {
-        "boxes": [
-            (2, 10, 2, 10),
-            (2, 10, 2, 10),
-            (0, 1, 0, 1),
-            (0, 1, 0, 1),
-        ],
-        "label_values": ["label1", "label2", "label3", "label4"],
-        "scores": [
-            0.3,
-            0.93,
-            0.92,
-            0.94,
-        ],
-    }
-
-    groundtruths = [
-        BoundingBox(
-            uid=f"gt_{idx}",
-            xmin=xmin,
-            xmax=xmax,
-            ymin=ymin,
-            ymax=ymax,
-            labels=[label_value],
-        )
-        for idx, ((xmin, xmax, ymin, ymax), label_value) in enumerate(
-            zip(gts["boxes"], gts["label_values"])
-        )
-    ]
-
-    predictions = [
-        BoundingBox(
-            uid=f"pd_{idx}",
-            xmin=xmin,
-            xmax=xmax,
-            ymin=ymin,
-            ymax=ymax,
-            labels=[label_value],
-            scores=[score],
-        )
-        for idx, ((xmin, xmax, ymin, ymax), label_value, score) in enumerate(
-            zip(preds["boxes"], preds["label_values"], preds["scores"])
-        )
-    ]
-
-    return Detection(
-        uid="uid1", groundtruths=groundtruths, predictions=predictions
-    )
-
-
-@pytest.fixture
-def detection_ranked_pair_ordering_with_bitmasks() -> Detection:
-
-    bitmask1 = np.zeros((100, 50), dtype=np.bool_)
-    bitmask1[79, 31] = True
-
-    bitmask2 = np.zeros((100, 50), dtype=np.bool_)
-    bitmask2[80:, 32:] = True
-
-    gts = {
-        "bitmasks": [
-            bitmask1,
-            bitmask1,
-            bitmask1,
-        ],
-        "label_values": ["label1", "label2", "label3"],
-    }
-
-    # labels 1 and 2 have IOU==1, labels 3 and 4 have IOU==0
-    preds = {
-        "bitmasks": [bitmask1, bitmask1, bitmask2, bitmask2],
-        "label_values": ["label1", "label2", "label3", "label4"],
-        "scores": [
-            0.3,
-            0.93,
-            0.92,
-            0.94,
-        ],
-    }
-
-    groundtruths = [
-        Bitmask(
-            uid=f"gt_{idx}",
-            mask=mask,
-            labels=[label_value],
-        )
-        for idx, (mask, label_value) in enumerate(
-            zip(gts["bitmasks"], gts["label_values"])
-        )
-    ]
-
-    predictions = [
-        Bitmask(
-            uid=f"pd_{idx}",
-            mask=mask,
-            labels=[label_value],
-            scores=[score],
-        )
-        for idx, (mask, label_value, score) in enumerate(
-            zip(preds["bitmasks"], preds["label_values"], preds["scores"])
-        )
-    ]
-
-    return Detection(
-        uid="uid1", groundtruths=groundtruths, predictions=predictions
-    )
-
-
-@pytest.fixture
-def detection_ranked_pair_ordering_with_polygons(
+@pytest.fixture(params=["bbox", "poly", "bitmask"])
+def detection_ranked_pair_ordering(
+    request,
+    loader: Loader,
     rect1_rotated_5_degrees_around_origin: list[tuple[float, float]],
     rect3_rotated_5_degrees_around_origin: list[tuple[float, float]],
-) -> Detection:
-    gts = {
-        "polygons": [
-            rect1_rotated_5_degrees_around_origin,
-            rect1_rotated_5_degrees_around_origin,
-            rect1_rotated_5_degrees_around_origin,
-        ],
-        "label_values": ["label1", "label2", "label3"],
-    }
+) -> Evaluator:
+    if request.param == "bitmask":
+        bitmask1 = np.zeros((100, 50), dtype=np.bool_)
+        bitmask1[79, 31] = True
 
-    # labels 1 and 2 have IOU==1, labels 3 and 4 have IOU==0
-    preds = {
-        "polygons": [
-            rect1_rotated_5_degrees_around_origin,
-            rect1_rotated_5_degrees_around_origin,
-            rect3_rotated_5_degrees_around_origin,
-            rect3_rotated_5_degrees_around_origin,
-        ],
-        "label_values": ["label1", "label2", "label3", "label4"],
-        "scores": [
-            0.3,
-            0.93,
-            0.92,
-            0.94,
-        ],
-    }
+        bitmask2 = np.zeros((100, 50), dtype=np.bool_)
+        bitmask2[80:, 32:] = True
 
-    groundtruths = [
-        Polygon(
-            uid=f"gt_{idx}",
-            shape=ShapelyPolygon(polygon),
-            labels=[label_value],
-        )
-        for idx, (polygon, label_value) in enumerate(
-            zip(gts["polygons"], gts["label_values"])
-        )
-    ]
+        gts = {
+            "bitmasks": [
+                bitmask1,
+                bitmask1,
+                bitmask1,
+            ],
+            "label_values": ["label1", "label2", "label3"],
+        }
 
-    predictions = [
-        Polygon(
-            uid=f"pd_{idx}",
-            shape=ShapelyPolygon(polygon),
-            labels=[label_value],
-            scores=[score],
-        )
-        for idx, (polygon, label_value, score) in enumerate(
-            zip(preds["polygons"], preds["label_values"], preds["scores"])
-        )
-    ]
+        # labels 1 and 2 have IOU==1, labels 3 and 4 have IOU==0
+        preds = {
+            "bitmasks": [bitmask1, bitmask1, bitmask2, bitmask2],
+            "label_values": ["label1", "label2", "label3", "label4"],
+            "scores": [
+                0.3,
+                0.93,
+                0.92,
+                0.94,
+            ],
+        }
 
-    return Detection(
-        uid="uid1", groundtruths=groundtruths, predictions=predictions
-    )
+        groundtruths = [
+            Bitmask(
+                uid=f"gt_{idx}",
+                mask=mask,
+                labels=[label_value],
+            )
+            for idx, (mask, label_value) in enumerate(
+                zip(gts["bitmasks"], gts["label_values"])
+            )
+        ]
+
+        predictions = [
+            Bitmask(
+                uid=f"pd_{idx}",
+                mask=mask,
+                labels=[label_value],
+                scores=[score],
+            )
+            for idx, (mask, label_value, score) in enumerate(
+                zip(preds["bitmasks"], preds["label_values"], preds["scores"])
+            )
+        ]
+
+        detections = [
+            Detection(
+                uid="uid1", groundtruths=groundtruths, predictions=predictions
+            )
+        ]
+        loader.add_bitmasks(detections)
+        return loader.finalize()
+    elif request.param == "poly":
+        gts = {
+            "polygons": [
+                rect1_rotated_5_degrees_around_origin,
+                rect1_rotated_5_degrees_around_origin,
+                rect1_rotated_5_degrees_around_origin,
+            ],
+            "label_values": ["label1", "label2", "label3"],
+        }
+
+        # labels 1 and 2 have IOU==1, labels 3 and 4 have IOU==0
+        preds = {
+            "polygons": [
+                rect1_rotated_5_degrees_around_origin,
+                rect1_rotated_5_degrees_around_origin,
+                rect3_rotated_5_degrees_around_origin,
+                rect3_rotated_5_degrees_around_origin,
+            ],
+            "label_values": ["label1", "label2", "label3", "label4"],
+            "scores": [
+                0.3,
+                0.93,
+                0.92,
+                0.94,
+            ],
+        }
+
+        groundtruths = [
+            Polygon(
+                uid=f"gt_{idx}",
+                shape=ShapelyPolygon(polygon),
+                labels=[label_value],
+            )
+            for idx, (polygon, label_value) in enumerate(
+                zip(gts["polygons"], gts["label_values"])
+            )
+        ]
+
+        predictions = [
+            Polygon(
+                uid=f"pd_{idx}",
+                shape=ShapelyPolygon(polygon),
+                labels=[label_value],
+                scores=[score],
+            )
+            for idx, (polygon, label_value, score) in enumerate(
+                zip(preds["polygons"], preds["label_values"], preds["scores"])
+            )
+        ]
+
+        detections = [
+            Detection(
+                uid="uid1", groundtruths=groundtruths, predictions=predictions
+            )
+        ]
+        loader.add_polygons(detections)
+        return loader.finalize()
+    else:
+        gts = {
+            "boxes": [
+                (2, 10, 2, 10),
+                (2, 10, 2, 10),
+                (2, 10, 2, 10),
+            ],
+            "label_values": ["label1", "label2", "label3"],
+        }
+
+        # labels 1 and 2 have IOU==1, labels 3 and 4 have IOU==0
+        preds = {
+            "boxes": [
+                (2, 10, 2, 10),
+                (2, 10, 2, 10),
+                (0, 1, 0, 1),
+                (0, 1, 0, 1),
+            ],
+            "label_values": ["label1", "label2", "label3", "label4"],
+            "scores": [
+                0.3,
+                0.93,
+                0.92,
+                0.94,
+            ],
+        }
+
+        groundtruths = [
+            BoundingBox(
+                uid=f"gt_{idx}",
+                xmin=xmin,
+                xmax=xmax,
+                ymin=ymin,
+                ymax=ymax,
+                labels=[label_value],
+            )
+            for idx, ((xmin, xmax, ymin, ymax), label_value) in enumerate(
+                zip(gts["boxes"], gts["label_values"])
+            )
+        ]
+
+        predictions = [
+            BoundingBox(
+                uid=f"pd_{idx}",
+                xmin=xmin,
+                xmax=xmax,
+                ymin=ymin,
+                ymax=ymax,
+                labels=[label_value],
+                scores=[score],
+            )
+            for idx, (
+                (xmin, xmax, ymin, ymax),
+                label_value,
+                score,
+            ) in enumerate(
+                zip(preds["boxes"], preds["label_values"], preds["scores"])
+            )
+        ]
+
+        detections = [
+            Detection(
+                uid="uid1", groundtruths=groundtruths, predictions=predictions
+            )
+        ]
+        loader.add_bounding_boxes(detections)
+        return loader.finalize()
 
 
 @pytest.fixture
-def detections_no_groundtruths() -> list[Detection]:
-    return [
+def detections_no_groundtruths(loader: Loader) -> Evaluator:
+    detections = [
         Detection(
             uid="uid0",
             groundtruths=[],
@@ -1093,11 +1152,13 @@ def detections_no_groundtruths() -> list[Detection]:
             ],
         ),
     ]
+    loader.add_bounding_boxes(detections)
+    return loader.finalize()
 
 
 @pytest.fixture
-def detections_no_predictions() -> list[Detection]:
-    return [
+def detections_no_predictions(loader: Loader) -> Evaluator:
+    detections = [
         Detection(
             uid="uid1",
             groundtruths=[
@@ -1127,18 +1188,20 @@ def detections_no_predictions() -> list[Detection]:
             predictions=[],
         ),
     ]
+    loader.add_bounding_boxes(detections)
+    return loader.finalize()
 
 
 @pytest.fixture
 def detections_for_detailed_counting(
+    loader: Loader,
     rect1: tuple[float, float, float, float],
     rect2: tuple[float, float, float, float],
     rect3: tuple[float, float, float, float],
     rect4: tuple[float, float, float, float],
     rect5: tuple[float, float, float, float],
-) -> list[Detection]:
-
-    return [
+) -> Evaluator:
+    detections = [
         Detection(
             uid="uid1",
             groundtruths=[
@@ -1222,10 +1285,12 @@ def detections_for_detailed_counting(
             ],
         ),
     ]
+    loader.add_bounding_boxes(detections)
+    return loader.finalize()
 
 
 @pytest.fixture
-def detections_model_single_class_spam_fp() -> list[Detection]:
+def detections_model_single_class_spam_fp(loader: Loader) -> Evaluator:
     gt_box = BoundingBox(
         uid=str(uuid4()), xmin=0, xmax=5, ymin=0, ymax=5, labels=["dog"]
     )
@@ -1252,4 +1317,5 @@ def detections_model_single_class_spam_fp() -> list[Detection]:
         groundtruths=[gt_box],
         predictions=[tp_box] + [fp_box for _ in range(10)],
     )
-    return [detection]
+    loader.add_bounding_boxes([detection])
+    return loader.finalize()
