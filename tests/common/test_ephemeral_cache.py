@@ -40,7 +40,7 @@ def test_cache_reader():
     assert reader._schema == schema
 
 
-def test_cache_write_batch():
+def test_cache_write_columns():
     batch_size = 10
     with MemoryCacheWriter.create(
         schema=pa.schema(
@@ -53,7 +53,7 @@ def test_cache_write_batch():
         batch_size=batch_size,
     ) as writer:
         for i in range(1000):
-            writer.write_batch(
+            writer.write_columns(
                 {
                     "some_int": [i],
                     "some_float": np.array([i], dtype=np.float64),

@@ -70,13 +70,13 @@ class MemoryCacheWriter(MemoryCache):
         batch_size: int,
     ):
         """
-        Create a cache.
+        Create an in-memory cache.
 
         Parameters
         ----------
         schema : pa.Schema
             Cache schema.
-        batch_size : int, default=1_000
+        batch_size : int
             Target batch size when writing chunks.
         """
         return cls(
@@ -101,22 +101,36 @@ class MemoryCacheWriter(MemoryCache):
         batch = pa.RecordBatch.from_pylist(rows, schema=self._schema)
         self.write_batch(batch)
 
+    def write_columns(
+        self,
+        columns: dict[str, list | np.ndarray | pa.Array],
+    ):
+        """
+        Write columnar data to cache.
+
+        Parameters
+        ----------
+        columns : dict[str, list | np.ndarray | pa.Array]
+            A mapping of columnar field names to list of values.
+        """
+        if not columns:
+            return
+        batch = pa.RecordBatch.from_pydict(columns)
+        self.write_batch(batch)
+
     def write_batch(
         self,
-        batch: pa.RecordBatch | dict[str, list | np.ndarray | pa.Array],
+        batch: pa.RecordBatch,
     ):
         """
         Write a batch to cache.
 
         Parameters
         ----------
-        batch : pa.RecordBatch | dict[str, list | np.ndarray | pa.Array]
+        batch : pa.RecordBatch
             A batch of columnar data.
         """
-        if isinstance(batch, dict):
-            batch = pa.RecordBatch.from_pydict(batch)
-
-        size = batch.num_rows  # type: ignore - pyarrow typing
+        size = batch.num_rows
         if self._buffer:
             size += sum([b.num_rows for b in self._buffer])
 

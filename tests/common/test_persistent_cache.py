@@ -144,7 +144,7 @@ def test_cache_reader_config_error(tmp_path: Path):
             FileCacheReader.load(writer.path)
 
 
-def test_cache_write_batch(tmp_path: Path):
+def test_cache_write_columns(tmp_path: Path):
     batch_size = 10
     rows_per_file = 100
     with FileCacheWriter.create(
@@ -160,7 +160,7 @@ def test_cache_write_batch(tmp_path: Path):
         rows_per_file=rows_per_file,
     ) as writer:
         for i in range(1000):
-            writer.write_batch(
+            writer.write_columns(
                 {
                     "some_int": [i],
                     "some_float": np.array([i], dtype=np.float64),
