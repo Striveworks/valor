@@ -8,9 +8,7 @@ import pyarrow as pa
 import pyarrow.compute as pc
 from numpy.typing import NDArray
 
-from valor_lite.common.datatype import DataType
-from valor_lite.common.ephemeral import MemoryCacheReader
-from valor_lite.common.persistent import FileCacheReader
+from valor_lite.cache import DataType, FileCacheReader, MemoryCacheReader
 from valor_lite.object_detection.computation import (
     compute_average_precision,
     compute_average_recall,

@@ -4,7 +4,7 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from valor_lite.common.persistent import FileCacheReader
+from valor_lite.cache.persistent import FileCacheReader
 from valor_lite.object_detection import Evaluator, Metric, MetricType
 
 

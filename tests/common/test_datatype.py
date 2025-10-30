@@ -2,7 +2,7 @@ from datetime import datetime
 
 import pyarrow as pa
 
-from valor_lite.common.datatype import DataType, convert_type_mapping_to_schema
+from valor_lite.cache.datatype import DataType, convert_type_mapping_to_fields
 
 
 def test_datatype_casting_to_arrow():
@@ -19,8 +19,8 @@ def test_datatype_casting_to_python():
     assert DataType.TIMESTAMP.to_py() is datetime
 
 
-def test_convert_type_mapping_to_schema():
-    x = convert_type_mapping_to_schema(
+def test_convert_type_mapping_to_fields():
+    x = convert_type_mapping_to_fields(
         {
             "a": DataType.FLOAT,
             "b": DataType.STRING,
@@ -31,5 +31,5 @@ def test_convert_type_mapping_to_schema():
         ("b", pa.string()),
     ]
 
-    assert convert_type_mapping_to_schema({}) == []
-    assert convert_type_mapping_to_schema(None) == []
+    assert convert_type_mapping_to_fields({}) == []
+    assert convert_type_mapping_to_fields(None) == []

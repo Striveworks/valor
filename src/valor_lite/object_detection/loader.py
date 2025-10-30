@@ -1,4 +1,3 @@
-import heapq
 import json
 from pathlib import Path
 
@@ -7,9 +6,13 @@ import pyarrow as pa
 from numpy.typing import NDArray
 from tqdm import tqdm
 
-from valor_lite.common.datatype import DataType, convert_type_mapping_to_schema
-from valor_lite.common.ephemeral import MemoryCacheReader, MemoryCacheWriter
-from valor_lite.common.persistent import FileCacheWriter
+from valor_lite.cache import (
+    DataType,
+    FileCacheWriter,
+    MemoryCacheWriter,
+    convert_type_mapping_to_fields,
+    heapsort,
+)
 from valor_lite.exceptions import EmptyCacheError
 from valor_lite.object_detection.annotation import (
     Bitmask,
@@ -58,13 +61,13 @@ class Loader(PathFormatter):
         groundtruth_metadata_types: dict[str, DataType] | None = None,
         prediction_metadata_types: dict[str, DataType] | None = None,
     ):
-        datum_metadata_fields = convert_type_mapping_to_schema(
+        datum_metadata_fields = convert_type_mapping_to_fields(
             datum_metadata_types
         )
-        groundtruth_metadata_fields = convert_type_mapping_to_schema(
+        groundtruth_metadata_fields = convert_type_mapping_to_fields(
             groundtruth_metadata_types
         )
-        prediction_metadata_fields = convert_type_mapping_to_schema(
+        prediction_metadata_fields = convert_type_mapping_to_fields(
             prediction_metadata_types
         )
 
@@ -108,13 +111,13 @@ class Loader(PathFormatter):
         if delete_if_exists and path.exists():
             cls.delete(path)
 
-        datum_metadata_fields = convert_type_mapping_to_schema(
+        datum_metadata_fields = convert_type_mapping_to_fields(
             datum_metadata_types
         )
-        groundtruth_metadata_fields = convert_type_mapping_to_schema(
+        groundtruth_metadata_fields = convert_type_mapping_to_fields(
             groundtruth_metadata_types
         )
-        prediction_metadata_fields = convert_type_mapping_to_schema(
+        prediction_metadata_fields = convert_type_mapping_to_fields(
             prediction_metadata_types
         )
 
@@ -488,88 +491,47 @@ class Loader(PathFormatter):
             for field in self._ranked_writer.schema
             if field.name not in {"high_score", "iou_prev"}
         ]
-        if (
-            isinstance(detailed_reader, MemoryCacheReader)
-            or detailed_reader.count_tables() == 1
-        ):
-            for tbl in detailed_reader.iterate_tables(columns=subset_columns):
-                ranked_tbl = rank_table(tbl, n_labels)
-                self._ranked_writer.write_table(ranked_tbl)
-        elif isinstance(self._ranked_writer, FileCacheWriter):
+        if isinstance(self._ranked_writer, FileCacheWriter):
             if not self._path:
                 raise ValueError(
                     "missing path definition in file-based loader"
                 )
             path = self._generate_temporary_cache_path(self._path)
-            with FileCacheWriter.create(
+            tmp_sink = FileCacheWriter.create(
                 path=path,
-                schema=self._ranked_writer._schema,
+                schema=self._ranked_writer.schema,
                 batch_size=self._ranked_writer._batch_size,
                 rows_per_file=self._ranked_writer._rows_per_file,
                 compression=self._ranked_writer._compression,
                 delete_if_exists=True,
-            ) as tmp_writer:
+            )
+        else:
+            tmp_sink = MemoryCacheWriter.create(
+                schema=self._ranked_writer.schema,
+                batch_size=self._ranked_writer._batch_size,
+            )
 
-                # rank individual files
-                for tbl in detailed_reader.iterate_tables(
-                    columns=subset_columns
-                ):
-                    ranked_tbl = rank_table(tbl, n_labels)
-                    tmp_writer.write_table(ranked_tbl)
+        # rank individual files
+        for tbl in detailed_reader.iterate_tables(columns=subset_columns):
+            ranked_tbl = rank_table(tbl, n_labels)
+            tmp_sink.write_table(ranked_tbl)
+        tmp_source = tmp_sink.to_reader()
 
-            tmp_reader = tmp_writer.to_reader()
+        # sort ranked pairs across all chunks
+        heapsort(
+            source=tmp_source,
+            sink=self._ranked_writer,
+            batch_size=batch_size,
+            sorting=[
+                ("score", "descending"),
+                ("iou", "descending"),
+            ],
+        )
 
-            def generate_heap_item(batches, batch_idx, row_idx) -> tuple:
-                score = batches[batch_idx]["score"][row_idx].as_py()
-                iou = batches[batch_idx]["iou"][row_idx].as_py()
-                return (
-                    -score,
-                    -iou,
-                    batch_idx,
-                    row_idx,
-                )
-
-            # merge sorted rows
-            heap = []
-            batch_iterators = []
-            batches = []
-            for batch_idx, batch_fragment in enumerate(
-                tmp_reader.iterate_fragments()
-            ):
-                batch_iter = batch_fragment.to_batches(batch_size=batch_size)
-                batch_iterators.append(batch_iter)
-                batches.append(next(batch_iterators[batch_idx], None))
-                if (
-                    batches[batch_idx] is not None
-                    and len(batches[batch_idx]) > 0
-                ):
-                    heapq.heappush(
-                        heap, generate_heap_item(batches, batch_idx, 0)
-                    )
-
-            while heap:
-                _, _, batch_idx, row_idx = heapq.heappop(heap)
-                row_table = batches[batch_idx].slice(row_idx, 1)
-                self._ranked_writer.write_batch(row_table)
-                row_idx += 1
-                if row_idx < len(batches[batch_idx]):
-                    heapq.heappush(
-                        heap,
-                        generate_heap_item(batches, batch_idx, row_idx),
-                    )
-                else:
-                    batches[batch_idx] = next(batch_iterators[batch_idx], None)
-                    if (
-                        batches[batch_idx] is not None
-                        and len(batches[batch_idx]) > 0
-                    ):
-                        heapq.heappush(
-                            heap,
-                            generate_heap_item(batches, batch_idx, 0),
-                        )
-
-            FileCacheWriter.delete(path)
+        # clean up
         self._ranked_writer.flush()
+        if isinstance(tmp_sink, FileCacheWriter):
+            FileCacheWriter.delete(tmp_sink.path)
 
     def finalize(
         self,

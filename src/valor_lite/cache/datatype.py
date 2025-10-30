@@ -36,7 +36,7 @@ class DataType(StrEnum):
                 return pa.timestamp("us")
 
 
-def convert_type_mapping_to_schema(
+def convert_type_mapping_to_fields(
     type_mapping: dict[str, DataType] | None
 ) -> list[tuple[str, pl.DataType]]:
     """
