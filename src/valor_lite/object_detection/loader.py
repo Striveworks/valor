@@ -569,6 +569,7 @@ class Loader(PathFormatter):
                         )
 
             FileCacheWriter.delete(path)
+        self._ranked_writer.flush()
 
     def finalize(
         self,

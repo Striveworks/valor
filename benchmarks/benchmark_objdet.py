@@ -299,7 +299,7 @@ def run_benchmarking_analysis(
 
             # === Base Evaluation ===
             loader = Loader.persistent(
-                ".valor/objdet_benchmark",
+                ".valor/benchmark_objdet",
                 batch_size=1_000,
                 rows_per_file=10_000,
                 delete_if_exists=True,
