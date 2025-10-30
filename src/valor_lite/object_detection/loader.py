@@ -2,7 +2,6 @@ import json
 from pathlib import Path
 
 import numpy as np
-import pyarrow as pa
 from numpy.typing import NDArray
 from tqdm import tqdm
 
@@ -27,10 +26,10 @@ from valor_lite.object_detection.computation import (
     rank_table,
 )
 from valor_lite.object_detection.evaluator import Evaluator
-from valor_lite.object_detection.format import PathFormatter
+from valor_lite.object_detection.shared import Base
 
 
-class Loader(PathFormatter):
+class Loader(Base):
     def __init__(
         self,
         detailed_writer: MemoryCacheWriter | FileCacheWriter,
@@ -73,7 +72,7 @@ class Loader(PathFormatter):
 
         # create cache
         detailed_writer = MemoryCacheWriter.create(
-            schema=cls.detailed_schema(
+            schema=cls._generate_detailed_schema(
                 datum_metadata_fields=datum_metadata_fields,
                 groundtruth_metadata_fields=groundtruth_metadata_fields,
                 prediction_metadata_fields=prediction_metadata_fields,
@@ -81,7 +80,7 @@ class Loader(PathFormatter):
             batch_size=batch_size,
         )
         ranked_writer = MemoryCacheWriter.create(
-            schema=cls.ranked_schema(
+            schema=cls._generate_ranked_schema(
                 datum_metadata_fields=datum_metadata_fields,
             ),
             batch_size=batch_size,
@@ -109,7 +108,7 @@ class Loader(PathFormatter):
     ):
         path = Path(path)
         if delete_if_exists and path.exists():
-            cls.delete(path)
+            cls.delete_at_path(path)
 
         datum_metadata_fields = convert_type_mapping_to_fields(
             datum_metadata_types
@@ -124,7 +123,7 @@ class Loader(PathFormatter):
         # create caches
         detailed_writer = FileCacheWriter.create(
             path=cls._generate_detailed_cache_path(path),
-            schema=cls.detailed_schema(
+            schema=cls._generate_detailed_schema(
                 datum_metadata_fields=datum_metadata_fields,
                 groundtruth_metadata_fields=groundtruth_metadata_fields,
                 prediction_metadata_fields=prediction_metadata_fields,
@@ -135,7 +134,7 @@ class Loader(PathFormatter):
         )
         ranked_writer = FileCacheWriter.create(
             path=cls._generate_ranked_cache_path(path),
-            schema=cls.ranked_schema(
+            schema=cls._generate_ranked_schema(
                 datum_metadata_fields=datum_metadata_fields,
             ),
             batch_size=batch_size,
@@ -160,80 +159,6 @@ class Loader(PathFormatter):
             groundtruth_metadata_types=groundtruth_metadata_types,
             prediction_metadata_types=prediction_metadata_types,
             path=path,
-        )
-
-    @classmethod
-    def delete(cls, path: str | Path):
-        """
-        Delete file-based cache.
-
-        Parameters
-        ----------
-        path : str | Path
-            Where the file-based cache is located.
-        """
-        path = Path(path)
-        if not path.exists():
-            return
-        detailed_path = cls._generate_detailed_cache_path(path)
-        ranked_path = cls._generate_ranked_cache_path(path)
-        metadata_path = cls._generate_metadata_path(path)
-        FileCacheWriter.delete(detailed_path)
-        FileCacheWriter.delete(ranked_path)
-        if metadata_path.exists() and metadata_path.is_file():
-            metadata_path.unlink()
-        path.rmdir()
-
-    @staticmethod
-    def detailed_schema(
-        datum_metadata_fields: list[tuple[str, pa.DataType]],
-        groundtruth_metadata_fields: list[tuple[str, pa.DataType]],
-        prediction_metadata_fields: list[tuple[str, pa.DataType]],
-    ) -> pa.Schema:
-        return pa.schema(
-            [
-                ("datum_uid", pa.string()),
-                ("datum_id", pa.int64()),
-                *datum_metadata_fields,
-                # groundtruth
-                ("gt_uid", pa.string()),
-                ("gt_id", pa.int64()),
-                ("gt_label", pa.string()),
-                ("gt_label_id", pa.int64()),
-                *groundtruth_metadata_fields,
-                # prediction
-                ("pd_uid", pa.string()),
-                ("pd_id", pa.int64()),
-                ("pd_label", pa.string()),
-                ("pd_label_id", pa.int64()),
-                ("score", pa.float64()),
-                *prediction_metadata_fields,
-                # pair
-                ("iou", pa.float64()),
-            ]
-        )
-
-    @staticmethod
-    def ranked_schema(
-        datum_metadata_fields: list[tuple[str, pa.DataType]],
-    ) -> pa.Schema:
-        return pa.schema(
-            [
-                ("datum_uid", pa.string()),
-                ("datum_id", pa.int64()),
-                *datum_metadata_fields,
-                # groundtruth
-                ("gt_id", pa.int64()),
-                ("gt_label_id", pa.int64()),
-                # prediction
-                ("pd_id", pa.int64()),
-                ("pd_label_id", pa.int64()),
-                ("score", pa.float64()),
-                # pair
-                ("iou", pa.float64()),
-                ("high_score", pa.bool_()),
-                ("iou_prev", pa.float64()),
-            ]
         )
 
     def _add_label(self, value: str) -> int:
@@ -480,7 +405,7 @@ class Loader(PathFormatter):
             show_progress=show_progress,
         )
 
-    def rank(
+    def _rank(
         self,
         n_labels: int,
         batch_size: int = 1_000,
@@ -559,14 +484,16 @@ class Loader(PathFormatter):
             index_to_label,
             number_of_groundtruths_per_label,
             info,
-        ) = Evaluator.generate_meta(detailed_reader, index_to_label_override)
+        ) = self.generate_meta(detailed_reader, index_to_label_override)
         info.datum_metadata_types = self._datum_metadata_types
         info.groundtruth_metadata_types = self._groundtruth_metadata_types
         info.prediction_metadata_types = self._prediction_metadata_types
 
-        n_labels = len(index_to_label)
-
-        self.rank(n_labels=n_labels, batch_size=batch_size)
+        # populate ranked cache
+        self._rank(
+            n_labels=len(index_to_label),
+            batch_size=batch_size,
+        )
 
         ranked_reader = self._ranked_writer.to_reader()
         return Evaluator(
@@ -577,3 +504,8 @@ class Loader(PathFormatter):
             number_of_groundtruths_per_label=number_of_groundtruths_per_label,
             path=self._path,
         )
+
+    def delete(self):
+        """Delete any cached files."""
+        if self._path and self._path.exists():
+            self.delete_at_path(self._path)

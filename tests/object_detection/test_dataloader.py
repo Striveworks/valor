@@ -75,10 +75,10 @@ def test_iou_computation(loader: Loader):
     loader.add_bounding_boxes([detection])
     evaluator = loader.finalize()
 
-    assert evaluator.detailed_reader.count_rows() == 7
+    assert evaluator._detailed_reader.count_rows() == 7
 
     # show that three unique IOUs exist
-    for tbl in evaluator.detailed_reader.iterate_tables():
+    for tbl in evaluator._detailed_reader.iterate_tables():
         unique_ious = np.unique(tbl["iou"].to_numpy())
         assert np.isclose(
             unique_ious, np.array([0.0, 0.12755102, 0.68067227])
@@ -231,7 +231,7 @@ def test_persistent_loader_deletion(
     assert loader._generate_metadata_path(tmp_path).exists()
 
     # verify deletion
-    Loader.delete(tmp_path)
+    loader.delete()
     assert not tmp_path.exists()
     assert not loader._generate_detailed_cache_path(tmp_path).exists()
     assert not loader._generate_ranked_cache_path(tmp_path).exists()
@@ -250,7 +250,7 @@ def test_persistent_loader_deletion(
     assert loader._generate_metadata_path(tmp_path).exists()
 
     # verify deletion
-    Loader.delete(tmp_path)
+    loader.delete()
     assert not tmp_path.exists()
     assert not loader._generate_detailed_cache_path(tmp_path).exists()
     assert not loader._generate_ranked_cache_path(tmp_path).exists()

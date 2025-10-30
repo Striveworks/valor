@@ -189,7 +189,7 @@ def test_evaluator_deletion(
     # create evaluator
     evaluator = false_negatives_single_datum_detections
 
-    if isinstance(evaluator.detailed_reader, FileCacheReader):
+    if isinstance(evaluator._detailed_reader, FileCacheReader):
         path = evaluator._path
         assert path
 

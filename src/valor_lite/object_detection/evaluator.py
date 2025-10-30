@@ -1,5 +1,4 @@
 import json
-from collections import defaultdict
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -8,7 +7,7 @@ import pyarrow as pa
 import pyarrow.compute as pc
 from numpy.typing import NDArray
 
-from valor_lite.cache import DataType, FileCacheReader, MemoryCacheReader
+from valor_lite.cache import FileCacheReader, MemoryCacheReader
 from valor_lite.object_detection.computation import (
     compute_average_precision,
     compute_average_recall,
@@ -17,8 +16,8 @@ from valor_lite.object_detection.computation import (
     compute_pair_classifications,
     compute_precision_recall_f1,
 )
-from valor_lite.object_detection.format import PathFormatter
 from valor_lite.object_detection.metric import Metric, MetricType
+from valor_lite.object_detection.shared import Base, EvaluatorInfo
 from valor_lite.object_detection.utilities import (
     create_empty_confusion_matrix_with_examples,
     create_mapping,
@@ -30,25 +29,13 @@ from valor_lite.object_detection.utilities import (
 
 
 @dataclass
-class EvaluatorInfo:
-    number_of_datums: int = 0
-    number_of_groundtruth_annotations: int = 0
-    number_of_prediction_annotations: int = 0
-    number_of_labels: int = 0
-    number_of_rows: int = 0
-    datum_metadata_types: dict[str, DataType] | None = None
-    groundtruth_metadata_types: dict[str, DataType] | None = None
-    prediction_metadata_types: dict[str, DataType] | None = None
-
-
-@dataclass
 class Filter:
     datums: pc.Expression | None = None
     groundtruths: pc.Expression | None = None
     predictions: pc.Expression | None = None
 
 
-class Evaluator(PathFormatter):
+class Evaluator(Base):
     def __init__(
         self,
         detailed_reader: MemoryCacheReader | FileCacheReader,
@@ -66,6 +53,10 @@ class Evaluator(PathFormatter):
         self._number_of_groundtruths_per_label = (
             number_of_groundtruths_per_label
         )
+
+    @property
+    def info(self) -> EvaluatorInfo:
+        return self._info
 
     @classmethod
     def load(
@@ -140,23 +131,23 @@ class Evaluator(PathFormatter):
         """
         from valor_lite.object_detection.loader import Loader
 
-        if isinstance(self.detailed_reader, FileCacheReader):
+        if isinstance(self._detailed_reader, FileCacheReader):
             if not path:
                 raise ValueError(
                     "expected path to be defined for file-based loader"
                 )
             loader = Loader.persistent(
                 path=path,
-                batch_size=self.detailed_reader.batch_size,
-                rows_per_file=self.detailed_reader.rows_per_file,
-                compression=self.detailed_reader.compression,
+                batch_size=self._detailed_reader.batch_size,
+                rows_per_file=self._detailed_reader.rows_per_file,
+                compression=self._detailed_reader.compression,
                 datum_metadata_types=self.info.datum_metadata_types,
                 groundtruth_metadata_types=self.info.groundtruth_metadata_types,
                 prediction_metadata_types=self.info.prediction_metadata_types,
             )
         else:
             loader = Loader.in_memory(
-                batch_size=self.detailed_reader.batch_size,
+                batch_size=self._detailed_reader.batch_size,
                 datum_metadata_types=self.info.datum_metadata_types,
                 groundtruth_metadata_types=self.info.groundtruth_metadata_types,
                 prediction_metadata_types=self.info.prediction_metadata_types,
@@ -229,149 +220,6 @@ class Evaluator(PathFormatter):
             index_to_label_override=self._index_to_label,
         )
 
-    def delete(self):
-        """
-        Delete evaluator cache.
-        """
-        if self._path and self._path.exists():
-            from valor_lite.object_detection.loader import Loader
-
-            Loader.delete(self._path)
-
-    @property
-    def detailed_reader(self) -> MemoryCacheReader | FileCacheReader:
-        return self._detailed_reader
-
-    @property
-    def ranked_reader(self) -> MemoryCacheReader | FileCacheReader:
-        return self._ranked_reader
-
-    @property
-    def info(self) -> EvaluatorInfo:
-        return self._info
-
-    @staticmethod
-    def generate_meta(
-        reader: MemoryCacheReader | FileCacheReader,
-        labels_override: dict[int, str] | None = None,
-    ) -> tuple[dict[int, str], NDArray[np.uint64], EvaluatorInfo]:
-        """
-        Generate cache statistics.
-
-        Parameters
-        ----------
-        dataset : Dataset
-            Valor cache.
-        labels_override : dict[int, str], optional
-            Optional labels override. Use when operating over filtered data.
-
-        Returns
-        -------
-        labels : dict[int, str]
-            Mapping of label ID's to label values.
-        number_of_groundtruths_per_label : NDArray[np.uint64]
-            Array of size (n_labels,) containing ground truth counts.
-        info : EvaluatorInfo
-            Evaluator cache details.
-        """
-        gt_counts_per_lbl = defaultdict(int)
-        labels = labels_override if labels_override else {}
-        info = EvaluatorInfo()
-
-        for tbl in reader.iterate_tables():
-            columns = (
-                "datum_id",
-                "gt_id",
-                "pd_id",
-                "gt_label_id",
-                "pd_label_id",
-            )
-            ids = np.column_stack(
-                [tbl[col].to_numpy() for col in columns]
-            ).astype(np.int64)
-
-            # count number of rows
-            info.number_of_rows += int(tbl.shape[0])
-
-            # count unique datums
-            datum_ids = np.unique(ids[:, 0])
-            info.number_of_datums += int(datum_ids.size)
-
-            # count unique groundtruths
-            gt_ids = ids[:, 1]
-            gt_ids = np.unique(gt_ids[gt_ids >= 0])
-            info.number_of_groundtruth_annotations += int(gt_ids.shape[0])
-
-            # count unique predictions
-            pd_ids = ids[:, 2]
-            pd_ids = np.unique(pd_ids[pd_ids >= 0])
-            info.number_of_prediction_annotations += int(pd_ids.shape[0])
-
-            # get gt labels
-            gt_label_ids = ids[:, 3]
-            gt_label_ids, gt_indices = np.unique(
-                gt_label_ids, return_index=True
-            )
-            gt_labels = tbl["gt_label"].take(gt_indices).to_pylist()
-            gt_labels = dict(zip(gt_label_ids.astype(int).tolist(), gt_labels))
-            gt_labels.pop(-1, None)
-            labels.update(gt_labels)
-
-            # get pd labels
-            pd_label_ids = ids[:, 4]
-            pd_label_ids, pd_indices = np.unique(
-                pd_label_ids, return_index=True
-            )
-            pd_labels = tbl["pd_label"].take(pd_indices).to_pylist()
-            pd_labels = dict(zip(pd_label_ids.astype(int).tolist(), pd_labels))
-            pd_labels.pop(-1, None)
-            labels.update(pd_labels)
-
-            # count gts per label
-            gts = ids[:, (1, 3)].astype(np.int64)
-            unique_ann = np.unique(gts[gts[:, 0] >= 0], axis=0)
-            unique_labels, label_counts = np.unique(
-                unique_ann[:, 1], return_counts=True
-            )
-            for label_id, count in zip(unique_labels, label_counts):
-                gt_counts_per_lbl[int(label_id)] += int(count)
-
-        # post-process
-        labels.pop(-1, None)
-
-        # complete info object
-        info.number_of_labels = len(labels)
-
-        # convert gt counts to numpy
-        number_of_groundtruths_per_label = np.zeros(
-            len(labels), dtype=np.uint64
-        )
-        for k, v in gt_counts_per_lbl.items():
-            number_of_groundtruths_per_label[int(k)] = v
-
-        return labels, number_of_groundtruths_per_label, info
-
-    @staticmethod
-    def iterate_pairs(
-        reader: MemoryCacheReader | FileCacheReader,
-        columns: list[str] | None = None,
-    ):
-        for tbl in reader.iterate_tables(columns=columns):
-            yield np.column_stack(
-                [tbl.column(i).to_numpy() for i in range(tbl.num_columns)]
-            )
-
-    @staticmethod
-    def iterate_pairs_with_table(
-        reader: MemoryCacheReader | FileCacheReader,
-        columns: list[str] | None = None,
-    ):
-        for tbl in reader.iterate_tables():
-            columns = columns if columns else tbl.columns
-            yield tbl, np.column_stack(
-                [tbl[col].to_numpy() for col in columns]
-            )
-
     def compute_precision_recall(
         self,
         iou_thresholds: list[float],
@@ -404,8 +252,7 @@ class Evaluator(PathFormatter):
         counts = np.zeros((n_ious, n_scores, 3, n_labels), dtype=np.uint64)
         pr_curve = np.zeros((n_ious, n_labels, 101, 2), dtype=np.float64)
         running_counts = np.ones((n_ious, n_labels, 2), dtype=np.uint64)
-        for pairs in self.iterate_pairs(
-            reader=self.ranked_reader,
+        for pairs in self._ranked_reader.iterate_pairs(
             columns=[
                 "datum_id",
                 "gt_id",
@@ -499,8 +346,7 @@ class Evaluator(PathFormatter):
             (n_ious, n_scores, n_labels), dtype=np.uint64
         )
         unmatched_predictions = np.zeros_like(unmatched_groundtruths)
-        for pairs in self.iterate_pairs(
-            reader=self.detailed_reader,
+        for pairs in self._detailed_reader.iterate_pairs(
             columns=[
                 "datum_id",
                 "gt_id",
@@ -579,8 +425,7 @@ class Evaluator(PathFormatter):
             raise ValueError("At least one score threshold must be passed.")
 
         metrics = []
-        for tbl, pairs in self.iterate_pairs_with_table(
-            reader=self.detailed_reader,
+        for tbl, pairs in self._detailed_reader.iterate_pairs_with_table(
             columns=[
                 "datum_id",
                 "gt_id",
@@ -676,8 +521,7 @@ class Evaluator(PathFormatter):
             }
             for iou_idx, iou_thresh in enumerate(iou_thresholds)
         }
-        for tbl, pairs in self.iterate_pairs_with_table(
-            reader=self.detailed_reader,
+        for tbl, pairs in self._detailed_reader.iterate_pairs_with_table(
             columns=[
                 "datum_id",
                 "gt_id",
@@ -731,3 +575,8 @@ class Evaluator(PathFormatter):
             )
 
         return [m for inner in metrics.values() for m in inner.values()]
+
+    def delete(self):
+        """Delete any cached files."""
+        if self._path and self._path.exists():
+            self.delete_at_path(self._path)

@@ -3,7 +3,7 @@ import glob
 import json
 import os
 from pathlib import Path
-from typing import Any
+from typing import Any, Generator
 
 import numpy as np
 import pyarrow as pa
@@ -157,8 +157,21 @@ class FileCacheReader(FileCache):
         self,
         columns: list[str] | None = None,
         filter: pc.Expression | None = None,
-    ):
-        """Iterate over tables within the cache."""
+    ) -> Generator[pa.Table, None, None]:
+        """
+        Iterate over tables within the cache.
+
+        Parameters
+        ----------
+        columns : list[str], optional
+            Optionally select columns to be returned.
+        filter : pyarrow.compute.Expression, optional
+            Optionally filter table before returning.
+
+        Yields
+        ------
+        pa.Table
+        """
         dataset = ds.dataset(
             source=self._path,
             schema=self._schema,
@@ -167,8 +180,62 @@ class FileCacheReader(FileCache):
         for fragment in dataset.get_fragments():
             yield fragment.to_table(columns=columns, filter=filter)
 
-    def iterate_fragments(self):
-        """Iterate over fragments within the file-based cache."""
+    def iterate_pairs(
+        self,
+        columns: list[str] | None = None,
+    ) -> Generator[np.ndarray, None, None]:
+        """
+        Iterate over chunks within the cache returning arrays.
+
+        Parameters
+        ----------
+        columns : list[str], optional
+            Optionally select columns to be returned.
+
+        Yields
+        ------
+        np.ndarray
+        """
+        for tbl in self.iterate_tables(columns=columns):
+            yield np.column_stack(
+                [tbl.column(i).to_numpy() for i in range(tbl.num_columns)]
+            )
+
+    def iterate_pairs_with_table(
+        self,
+        columns: list[str] | None = None,
+    ) -> Generator[tuple[pa.Table, np.ndarray], None, None]:
+        """
+        Iterate over chunks within the cache returning both tables and arrays.
+
+        Parameters
+        ----------
+        columns : list[str], optional
+            Optionally select columns to be returned.
+
+        Yields
+        ------
+        tuple[pa.Table, np.ndarray]
+        """
+        for tbl in self.iterate_tables():
+            columns = columns if columns else tbl.columns
+            yield tbl, np.column_stack(
+                [tbl[col].to_numpy() for col in columns]
+            )
+
+    def iterate_fragments(self) -> Generator[ds.Fragment, None, None]:
+        """
+        Iterate over fragments within the file-based cache.
+
+        Parameters
+        ----------
+        columns : list[str], optional
+            Optionally select columns to be returned.
+
+        Yields
+        ------
+        tuple[pa.Table, np.ndarray]
+        """
         dataset = ds.dataset(
             source=self._path,
             schema=self._schema,
