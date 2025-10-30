@@ -2,18 +2,15 @@ from copy import deepcopy
 from pathlib import Path
 from uuid import uuid4
 
-import numpy as np
 import pyarrow.compute as pc
 import pytest
 
-from valor_lite.common.datatype import DataType
-from valor_lite.exceptions import EmptyFilterError
 from valor_lite.object_detection import (
     BoundingBox,
-    Loader,
     Detection,
-    MetricType,
     Filter,
+    Loader,
+    MetricType,
 )
 
 
@@ -178,9 +175,13 @@ def test_filtering_one_detection(
 
     # test evaluation
     filter_ = Filter(datums=pc.field("datum_uid") == "uid1")
-    filtered_evaluator = evaluator.filter(filter_expr=filter_, path=tmp_path / "filtered")
-    metrics = filtered_evaluator.compute_precision_recall(iou_thresholds=[0.5], score_thresholds=[0.5])
-    
+    filtered_evaluator = evaluator.filter(
+        filter_expr=filter_, path=tmp_path / "filtered"
+    )
+    metrics = filtered_evaluator.compute_precision_recall(
+        iou_thresholds=[0.5], score_thresholds=[0.5]
+    )
+
     actual_metrics = [m.to_dict() for m in metrics[MetricType.AP]]
     expected_metrics = [
         {
@@ -230,11 +231,14 @@ def test_filtering_two_detections(
     loader.add_bounding_boxes(two_detections)
     evaluator = loader.finalize()
 
-
     # test evaluation
     filter_ = Filter(datums=pc.field("datum_uid") == "uid1")
-    filtered_evaluator = evaluator.filter(filter_expr=filter_, path=tmp_path / "filtered")
-    metrics = filtered_evaluator.compute_precision_recall(iou_thresholds=[0.5], score_thresholds=[0.5])
+    filtered_evaluator = evaluator.filter(
+        filter_expr=filter_, path=tmp_path / "filtered"
+    )
+    metrics = filtered_evaluator.compute_precision_recall(
+        iou_thresholds=[0.5], score_thresholds=[0.5]
+    )
 
     actual_metrics = [m.to_dict() for m in metrics[MetricType.AP]]
     expected_metrics = [
@@ -290,8 +294,12 @@ def test_filtering_four_detections(
 
     # test evaluation
     filter_ = Filter(datums=pc.field("datum_uid") == "uid1")
-    filtered_evaluator = evaluator.filter(filter_expr=filter_, path=tmp_path / "filtered")
-    metrics = filtered_evaluator.compute_precision_recall(iou_thresholds=[0.5], score_thresholds=[0.5])
+    filtered_evaluator = evaluator.filter(
+        filter_expr=filter_, path=tmp_path / "filtered"
+    )
+    metrics = filtered_evaluator.compute_precision_recall(
+        iou_thresholds=[0.5], score_thresholds=[0.5]
+    )
 
     actual_metrics = [m.to_dict() for m in metrics[MetricType.AP]]
     expected_metrics = [
@@ -347,9 +355,13 @@ def test_filtering_all_detections(
 
     # test evaluation
     filter_ = Filter(predictions=pc.field("pd_uid") == "uid1_pd_0")
-    filtered_evaluator = evaluator.filter(filter_expr=filter_, path=tmp_path / "filtered")
-    metrics = filtered_evaluator.compute_precision_recall(iou_thresholds=[0.5], score_thresholds=[0.5])
-    
+    filtered_evaluator = evaluator.filter(
+        filter_expr=filter_, path=tmp_path / "filtered"
+    )
+    metrics = filtered_evaluator.compute_precision_recall(
+        iou_thresholds=[0.5], score_thresholds=[0.5]
+    )
+
     evaluator.compute_confusion_matrix(
         iou_thresholds=[0.5],
         score_thresholds=[0.5],
@@ -381,8 +393,12 @@ def test_filtering_random_detections(
     loader.add_bounding_boxes(_generate_random_detections(13, 4, "abc"))
     evaluator = loader.finalize()
     filter_ = Filter(predictions=pc.field("pd_uid") == "uid1_pd_0")
-    filtered_evaluator = evaluator.filter(filter_expr=filter_, path=tmp_path / "filtered")
-    filtered_evaluator.compute_precision_recall(iou_thresholds=[0.5], score_thresholds=[0.5])
+    filtered_evaluator = evaluator.filter(
+        filter_expr=filter_, path=tmp_path / "filtered"
+    )
+    filtered_evaluator.compute_precision_recall(
+        iou_thresholds=[0.5], score_thresholds=[0.5]
+    )
 
 
 def test_filtering_four_detections_by_indices(
@@ -420,14 +436,18 @@ def test_filtering_four_detections_by_indices(
 
     # test evaluation
     filter_ = Filter(datums=pc.field("datum_id") == 0)
-    filtered_evaluator = evaluator.filter(filter_expr=filter_, path=tmp_path / "filtered")
-    metrics = filtered_evaluator.compute_precision_recall(iou_thresholds=[0.5], score_thresholds=[0.5])
+    filtered_evaluator = evaluator.filter(
+        filter_expr=filter_, path=tmp_path / "filtered"
+    )
+    metrics = filtered_evaluator.compute_precision_recall(
+        iou_thresholds=[0.5], score_thresholds=[0.5]
+    )
 
     actual_metrics = [m.to_dict() for m in metrics[MetricType.AP]]
     expected_metrics = [
         {
             "type": "AP",
-            "value": 0.504950495049505,
+            "value": 1.0,
             "parameters": {"iou_threshold": 0.5, "label": "v1"},
         },
         {

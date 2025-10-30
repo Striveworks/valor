@@ -22,28 +22,18 @@ class FileCache:
 
     @staticmethod
     def _generate_config_path(path: str | Path) -> Path:
-        """
-        Generate cache configuration path.
-
-        Parameters
-        ----------
-        path : str | Path
-            Where the cache is stored.
-
-        Returns
-        -------
-        Path
-            Configuration filepath.
-        """
+        """Generate cache configuration path."""
         return Path(path) / ".cfg"
 
     @staticmethod
     def _encode_schema(schema: pa.Schema) -> str:
+        """Encode schema to b64 string."""
         schema_bytes = schema.serialize()
         return base64.b64encode(schema_bytes).decode("utf-8")
 
     @staticmethod
     def _decode_schema(encoded_schema: str) -> pa.Schema:
+        """Decode schema from b64 string."""
         schema_bytes = base64.b64decode(encoded_schema)
         return pa.ipc.read_schema(pa.BufferReader(schema_bytes))
 
@@ -102,8 +92,8 @@ class FileCacheReader(FileCache):
         rows_per_file: int,
         compression: str,
     ):
+        super().__init__(path)
         self._schema = schema
-        self._path = Path(path)
         self._batch_size = batch_size
         self._rows_per_file = rows_per_file
         self._compression = compression
@@ -111,15 +101,15 @@ class FileCacheReader(FileCache):
     @property
     def schema(self) -> pa.Schema:
         return self._schema
-    
+
     @property
     def batch_size(self) -> int:
         return self._batch_size
-    
+
     @property
     def rows_per_file(self) -> int:
         return self._rows_per_file
-    
+
     @property
     def compression(self) -> str:
         return self._compression
@@ -169,7 +159,7 @@ class FileCacheReader(FileCache):
         )
 
     def iterate_tables(
-        self, 
+        self,
         columns: list[str] | None = None,
         filter: pc.Expression | None = None,
     ):
@@ -179,8 +169,8 @@ class FileCacheReader(FileCache):
             schema=self._schema,
             format="parquet",
         )
-        for fragment in dataset.get_fragments(filter=filter):
-            yield fragment.to_table(columns=columns)
+        for fragment in dataset.get_fragments():
+            yield fragment.to_table(columns=columns, filter=filter)
 
     def iterate_fragments(self):
         """Iterate over fragments within the file-based cache."""
@@ -202,7 +192,7 @@ class FileCacheWriter(FileCache):
         rows_per_file: int,
         compression: str,
     ):
-        self._path = Path(path)
+        super().__init__(path)
         self._schema = schema
         self._batch_size = batch_size
         self._rows_per_file = rows_per_file
@@ -224,7 +214,7 @@ class FileCacheWriter(FileCache):
         delete_if_exists: bool = False,
     ):
         """
-        Create a cache on disk.
+        Create an on-disk cache.
 
         Parameters
         ----------
@@ -232,9 +222,9 @@ class FileCacheWriter(FileCache):
             Where to write the cache.
         schema : pa.Schema
             Cache schema.
-        batch_size : int, default=1_000
+        batch_size : int
             Target batch size when writing chunks.
-        rows_per_file : int, default=10_000
+        rows_per_file : int
             Target number of rows to store per file.
         compression : str, default="snappy"
             Compression method to use when storing on disk.
@@ -310,22 +300,36 @@ class FileCacheWriter(FileCache):
         batch = pa.RecordBatch.from_pylist(rows, schema=self._schema)
         self.write_batch(batch)
 
+    def write_columns(
+        self,
+        columns: dict[str, list | np.ndarray | pa.Array],
+    ):
+        """
+        Write columnar data to cache.
+
+        Parameters
+        ----------
+        columns : dict[str, list | np.ndarray | pa.Array]
+            A mapping of columnar field names to list of values.
+        """
+        if not columns:
+            return
+        batch = pa.RecordBatch.from_pydict(columns)
+        self.write_batch(batch)
+
     def write_batch(
         self,
-        batch: pa.RecordBatch | dict[str, list | np.ndarray | pa.Array],
+        batch: pa.RecordBatch,
     ):
         """
         Write a batch to cache.
 
         Parameters
         ----------
-        batch : pa.RecordBatch | dict[str, list | np.ndarray | pa.Array]
+        batch : pa.RecordBatch
             A batch of columnar data.
         """
-        if isinstance(batch, dict):
-            batch = pa.RecordBatch.from_pydict(batch)
-
-        size = batch.num_rows  # type: ignore - pyarrow typing
+        size = batch.num_rows
         if self._buffer:
             size += sum([b.num_rows for b in self._buffer])
 
@@ -379,7 +383,6 @@ class FileCacheWriter(FileCache):
             batch = pa.RecordBatch.from_arrays(
                 combined_arrays, schema=self._schema
             )
-            self._buffer = []
             writer = self._get_or_create_writer()
             writer.write_batch(batch)
         self._buffer = []
