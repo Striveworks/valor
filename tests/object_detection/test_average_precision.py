@@ -218,6 +218,37 @@ def test_ap_metrics_second_class(basic_detections_second_class: Evaluator):
         assert m in actual_metrics
 
 
+def test_ap_basic_detections(basic_detections: Evaluator):
+    evaluator = basic_detections
+    metrics = evaluator.compute_precision_recall(
+        iou_thresholds=[0.5],
+        score_thresholds=[0.5],
+    )
+    actual_metrics = [m.to_dict() for m in metrics[MetricType.AP]]
+    expected_metrics = [
+        {
+            "type": "AP",
+            "value": 0.504950495049505,
+            "parameters": {
+                "iou_threshold": 0.5,
+                "label": "v1",
+            },
+        },
+        {
+            "type": "AP",
+            "value": 0.0,
+            "parameters": {
+                "iou_threshold": 0.5,
+                "label": "v2",
+            },
+        },
+    ]
+    for m in actual_metrics:
+        assert m in expected_metrics
+    for m in expected_metrics:
+        assert m in actual_metrics
+
+
 def test_ap_using_torch_metrics_example(torchmetrics_detections: Evaluator):
     """
     cf with torch metrics/pycocotools results listed here:
