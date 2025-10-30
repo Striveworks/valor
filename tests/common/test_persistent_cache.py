@@ -13,7 +13,13 @@ from valor_lite.common.persistent import (
 
 
 def test_cache_files_empty(tmp_path: Path):
-    cache = FileCache(tmp_path)
+    cache = FileCache(
+        tmp_path,
+        schema=None,  # type: ignore - testing
+        batch_size=None,  # type: ignore - testing
+        rows_per_file=None,  # type: ignore - testing
+        compression=None,  # type: ignore - testing
+    )
     assert cache._path == tmp_path
     assert cache.get_files() == []
     assert cache.get_dataset_files() == []
@@ -22,7 +28,13 @@ def test_cache_files_empty(tmp_path: Path):
 
 def test_cache_files_does_not_exist(tmp_path: Path):
     path = tmp_path / "does_not_exist"
-    cache = FileCache(path)
+    cache = FileCache(
+        path,
+        schema=None,  # type: ignore - testing
+        batch_size=None,  # type: ignore - testing
+        rows_per_file=None,  # type: ignore - testing
+        compression=None,  # type: ignore - testing
+    )
     assert cache._path == path
     assert cache.get_files() == []
     assert cache.get_dataset_files() == []
@@ -93,6 +105,7 @@ def test_cache_reader(tmp_path: Path):
             ]
 
         assert reader.count_rows() == 202
+        assert reader.count_tables() == 2
         assert reader._schema == schema
 
 
@@ -172,6 +185,7 @@ def test_cache_write_columns(tmp_path: Path):
 
         reader = FileCacheReader.load(writer.path)
         assert reader.count_rows() == 1000
+        assert reader.count_tables() == 10
         for idx, tbl in enumerate(reader.iterate_tables()):
             assert tbl["some_int"].to_pylist() == [
                 i
@@ -221,6 +235,7 @@ def test_cache_write_rows(tmp_path: Path):
 
         reader = FileCacheReader.load(writer.path)
         assert reader.count_rows() == 1000
+        assert reader.count_tables() == 10
         for idx, tbl in enumerate(reader.iterate_tables()):
             assert tbl["some_int"].to_pylist() == [
                 i
@@ -269,6 +284,7 @@ def test_cache_write_table(tmp_path: Path):
 
         reader = FileCacheReader.load(writer.path)
         assert reader.count_rows() == 202
+        assert reader.count_tables() == 2
         for tbl in reader.iterate_tables():
             assert tbl["some_int"].to_pylist() == [i for i in range(101)]
             assert tbl["some_float"].to_pylist() == [i for i in range(101)]
@@ -311,6 +327,7 @@ def test_cache_delete(tmp_path: Path):
 
         reader = FileCacheReader.load(path=writer.path)
         assert reader.count_rows() == 202
+        assert reader.count_tables() == 2
         for tbl in reader.iterate_tables():
             assert tbl["some_int"].to_pylist() == [i for i in range(101)]
             assert tbl["some_float"].to_pylist() == [i for i in range(101)]

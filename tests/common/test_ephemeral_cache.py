@@ -29,15 +29,18 @@ def test_cache_reader():
         )
         writer.write_table(tbl)
         assert writer.count_rows() == 101
+        assert writer.count_tables() == 1
 
     reader = writer.to_reader()
     assert reader.count_rows() == 101
+    assert reader.count_tables() == 1
     for tbl in reader.iterate_tables():
         assert tbl["some_int"].to_pylist() == [i for i in range(101)]
         assert tbl["some_float"].to_pylist() == [i for i in range(101)]
         assert tbl["some_str"].to_pylist() == [f"str{i}" for i in range(101)]
     assert reader.count_rows() == 101
-    assert reader._schema == schema
+    assert reader.count_tables() == 1
+    assert reader.schema == schema
 
 
 def test_cache_write_columns():
@@ -63,6 +66,7 @@ def test_cache_write_columns():
 
     reader = writer.to_reader()
     assert reader.count_rows() == 1000
+    assert reader.count_tables() == 1
     for tbl in reader.iterate_tables():
         assert tbl["some_int"].to_pylist() == [i for i in range(1000)]
         assert tbl["some_float"].to_pylist() == [i for i in range(1000)]
@@ -98,6 +102,7 @@ def test_cache_write_rows():
 
     reader = writer.to_reader()
     assert reader.count_rows() == 1000
+    assert reader.count_tables() == 1
     for tbl in reader.iterate_tables():
         assert tbl["some_int"].to_pylist() == [i for i in range(1000)]
         assert tbl["some_float"].to_pylist() == [i for i in range(1000)]
@@ -127,12 +132,15 @@ def test_cache_write_table():
             ]
         )
         assert writer.count_rows() == 0
+        assert writer.count_tables() == 1
 
         writer.write_table(tbl)
         assert writer.count_rows() == 101
+        assert writer.count_tables() == 1
 
         writer.write_table(tbl)
         assert writer.count_rows() == 202
+        assert writer.count_tables() == 1
 
         reader = writer.to_reader()
 

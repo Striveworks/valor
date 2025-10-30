@@ -6,8 +6,21 @@ import pyarrow.compute as pc
 
 
 class MemoryCache:
-    def __init__(self, table: pa.Table):
+    def __init__(
+        self,
+        table: pa.Table,
+        batch_size: int,
+    ):
         self._table = table
+        self._batch_size = batch_size
+
+    @property
+    def schema(self) -> pa.Schema:
+        return self._table.schema
+
+    @property
+    def batch_size(self) -> int:
+        return self._batch_size
 
     def count_tables(self) -> int:
         """Count the number of tables in the cache."""
@@ -19,23 +32,6 @@ class MemoryCache:
 
 
 class MemoryCacheReader(MemoryCache):
-    def __init__(
-        self,
-        table: pa.Table,
-        batch_size: int,
-    ):
-        super().__init__(table)
-        self._schema = self._table.schema
-        self._batch_size = batch_size
-
-    @property
-    def schema(self) -> pa.Schema:
-        return self._schema
-
-    @property
-    def batch_size(self) -> int:
-        return self._batch_size
-
     def iterate_tables(
         self,
         columns: list[str] | None = None,
@@ -56,9 +52,10 @@ class MemoryCacheWriter(MemoryCache):
         table: pa.Table,
         batch_size: int,
     ):
-        super().__init__(table)
-        self._schema = table.schema
-        self._batch_size = batch_size
+        super().__init__(
+            table=table,
+            batch_size=batch_size,
+        )
 
         # internal state
         self._buffer = []
@@ -98,7 +95,7 @@ class MemoryCacheWriter(MemoryCache):
         """
         if not rows:
             return
-        batch = pa.RecordBatch.from_pylist(rows, schema=self._schema)
+        batch = pa.RecordBatch.from_pylist(rows, schema=self.schema)
         self.write_batch(batch)
 
     def write_columns(
@@ -143,10 +140,10 @@ class MemoryCacheWriter(MemoryCache):
             self._buffer.append(batch)
             combined_arrays = [
                 pa.concat_arrays([b.column(name) for b in self._buffer])
-                for name in self._schema.names
+                for name in self.schema.names
             ]
             batch = pa.RecordBatch.from_arrays(
-                combined_arrays, schema=self._schema
+                combined_arrays, schema=self.schema
             )
             self._buffer = []
 
@@ -172,10 +169,10 @@ class MemoryCacheWriter(MemoryCache):
         if self._buffer:
             combined_arrays = [
                 pa.concat_arrays([b.column(name) for b in self._buffer])
-                for name in self._schema.names
+                for name in self.schema.names
             ]
             batch = pa.RecordBatch.from_arrays(
-                combined_arrays, schema=self._schema
+                combined_arrays, schema=self.schema
             )
             self._table = pa.concat_tables(
                 [self._table, pa.Table.from_batches([batch])]
