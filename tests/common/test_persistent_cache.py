@@ -298,6 +298,33 @@ def test_cache_delete(tmp_path: Path):
     batch_size = 10
     rows_per_file = 100
     path = tmp_path / "cache"
+
+    FileCacheWriter.create(
+        path=path,
+        schema=pa.schema(
+            [
+                ("some_int", pa.int64()),
+                ("some_float", pa.float64()),
+                ("some_str", pa.string()),
+            ]
+        ),
+        batch_size=batch_size,
+        rows_per_file=rows_per_file,
+    )
+    with pytest.raises(FileExistsError):
+        FileCacheWriter.create(
+            path=path,
+            schema=pa.schema(
+                [
+                    ("some_int", pa.int64()),
+                    ("some_float", pa.float64()),
+                    ("some_str", pa.string()),
+                ]
+            ),
+            batch_size=batch_size,
+            rows_per_file=rows_per_file,
+        )
+
     with FileCacheWriter.create(
         path=path,
         schema=pa.schema(
@@ -309,6 +336,7 @@ def test_cache_delete(tmp_path: Path):
         ),
         batch_size=batch_size,
         rows_per_file=rows_per_file,
+        delete_if_exists=True,
     ) as writer:
         tbl = pa.Table.from_pylist(
             [

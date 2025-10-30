@@ -112,7 +112,7 @@ class FileCache:
 
 class FileCacheReader(FileCache):
     @classmethod
-    def load(cls, path: str | Path | FileCache):
+    def load(cls, path: str | Path):
         """
         Load cache from disk.
 
@@ -121,8 +121,6 @@ class FileCacheReader(FileCache):
         path : str | Path
             Where the cache is stored.
         """
-        if isinstance(path, FileCache):
-            path = path.path
         path = Path(path)
         if not path.exists():
             raise FileNotFoundError(f"Directory does not exist: {path}")
