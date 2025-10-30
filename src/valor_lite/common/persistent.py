@@ -169,8 +169,8 @@ class FileCacheReader(FileCache):
             schema=self._schema,
             format="parquet",
         )
-        for fragment in dataset.get_fragments(filter=filter):
-            yield fragment.to_table(columns=columns)
+        for fragment in dataset.get_fragments():
+            yield fragment.to_table(columns=columns, filter=filter)
 
     def iterate_fragments(self):
         """Iterate over fragments within the file-based cache."""
@@ -425,4 +425,5 @@ class FileCacheWriter(FileCache):
 
     def to_reader(self) -> FileCacheReader:
         """Get cache reader."""
+        self.flush()
         return FileCacheReader.load(path=self.path)

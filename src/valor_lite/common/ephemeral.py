@@ -192,6 +192,7 @@ class MemoryCacheWriter(MemoryCache):
 
     def to_reader(self) -> MemoryCacheReader:
         """Get cache reader."""
+        self.flush()
         return MemoryCacheReader(
             table=self._table, batch_size=self._batch_size
         )
