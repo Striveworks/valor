@@ -485,7 +485,7 @@ class Loader(PathFormatter):
         detailed_reader = self._detailed_writer.to_reader()
         subset_columns = [
             field.name
-            for field in self._ranked_writer._schema
+            for field in self._ranked_writer.schema
             if field.name not in {"high_score", "iou_prev"}
         ]
         if (

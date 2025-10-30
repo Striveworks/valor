@@ -40,7 +40,7 @@ class FileCache:
         return self._batch_size
 
     @property
-    def rows_per_files(self) -> int:
+    def rows_per_file(self) -> int:
         return self._rows_per_file
 
     @property
