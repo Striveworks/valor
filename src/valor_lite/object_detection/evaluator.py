@@ -85,7 +85,7 @@ class Evaluator(Base):
             index_to_label,
             number_of_groundtruths_per_label,
             info,
-        ) = cls.generate_meta(detailed_reader, index_to_label_override)
+        ) = cls._generate_meta(detailed_reader, index_to_label_override)
 
         # read config
         metadata_path = cls._generate_metadata_path(path)

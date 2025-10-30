@@ -96,7 +96,7 @@ class Base:
         )
 
     @staticmethod
-    def generate_meta(
+    def _generate_meta(
         reader: MemoryCacheReader | FileCacheReader,
         labels_override: dict[int, str] | None = None,
     ) -> tuple[dict[int, str], NDArray[np.uint64], EvaluatorInfo]:

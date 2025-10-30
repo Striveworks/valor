@@ -60,6 +60,20 @@ class Loader(Base):
         groundtruth_metadata_types: dict[str, DataType] | None = None,
         prediction_metadata_types: dict[str, DataType] | None = None,
     ):
+        """
+        Create an in-memory evaluator cache.
+
+        Parameters
+        ----------
+        batch_size : int, default=10_000
+            The target number of rows to buffer before writing to the cache. Defaults to 10_000.
+        datum_metadata_types : dict[str, DataType], optional
+            Optional datum metadata field definition.
+        groundtruth_metadata_types : dict[str, DataType], optional
+            Optional ground truth annotation metadata field definition.
+        prediction_metadata_types : dict[str, DataType], optional
+            Optional prediction metadata field definition.
+        """
         datum_metadata_fields = convert_type_mapping_to_fields(
             datum_metadata_types
         )
@@ -106,6 +120,28 @@ class Loader(Base):
         prediction_metadata_types: dict[str, DataType] | None = None,
         delete_if_exists: bool = False,
     ):
+        """
+        Create a persistent file-based evaluator cache.
+
+        Parameters
+        ----------
+        path : str | Path
+            Where to store the file-based cache.
+        batch_size : int, default=10_000
+            The target number of rows to buffer before writing to the cache. Defaults to 10_000.
+        rows_per_file : int, default=100_000
+            The target number of rows to store per cache file. Defaults to 100_000.
+        compression : str, default="snappy"
+            The compression methods used when writing cache files.
+        datum_metadata_types : dict[str, DataType], optional
+            Optional datum metadata field definition.
+        groundtruth_metadata_types : dict[str, DataType], optional
+            Optional ground truth annotation metadata field definition.
+        prediction_metadata_types : dict[str, DataType], optional
+            Optional prediction metadata field definition.
+        delete_if_exists : bool, default=False
+            Option to delete any pre-exisiting cache at the given path.
+        """
         path = Path(path)
         if delete_if_exists and path.exists():
             cls.delete_at_path(path)
@@ -162,6 +198,7 @@ class Loader(Base):
         )
 
     def _add_label(self, value: str) -> int:
+        """Add a label to the index mapping."""
         idx = self._labels.get(value, None)
         if idx is None:
             idx = len(self._labels)
@@ -174,18 +211,7 @@ class Loader(Base):
         detection_ious: list[NDArray[np.float64]],
         show_progress: bool = False,
     ):
-        """
-        Adds detections to the cache.
-
-        Parameters
-        ----------
-        detections : list[Detection]
-            A list of Detection objects.
-        detection_ious : list[NDArray[np.float64]]
-            A list of arrays containing IOUs per detection.
-        show_progress : bool, default=False
-            Toggle for tqdm progress bar.
-        """
+        """Adds detections to the cache."""
         disable_tqdm = not show_progress
         for detection, ious in tqdm(
             zip(detections, detection_ious), disable=disable_tqdm
@@ -410,6 +436,7 @@ class Loader(Base):
         n_labels: int,
         batch_size: int = 1_000,
     ):
+        """Perform pair ranking over the detailed cache."""
         detailed_reader = self._detailed_writer.to_reader()
         subset_columns = [
             field.name
@@ -484,7 +511,7 @@ class Loader(Base):
             index_to_label,
             number_of_groundtruths_per_label,
             info,
-        ) = self.generate_meta(detailed_reader, index_to_label_override)
+        ) = self._generate_meta(detailed_reader, index_to_label_override)
         info.datum_metadata_types = self._datum_metadata_types
         info.groundtruth_metadata_types = self._groundtruth_metadata_types
         info.prediction_metadata_types = self._prediction_metadata_types
