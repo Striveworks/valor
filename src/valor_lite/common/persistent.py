@@ -13,12 +13,39 @@ import pyarrow.parquet as pq
 
 
 class FileCache:
-    def __init__(self, path: str | Path):
+    def __init__(
+        self,
+        path: str | Path,
+        schema: pa.Schema,
+        batch_size: int,
+        rows_per_file: int,
+        compression: str,
+    ):
         self._path = Path(path)
+        self._schema = schema
+        self._batch_size = batch_size
+        self._rows_per_file = rows_per_file
+        self._compression = compression
 
     @property
     def path(self) -> Path:
         return self._path
+
+    @property
+    def schema(self) -> pa.Schema:
+        return self._schema
+
+    @property
+    def batch_size(self) -> int:
+        return self._batch_size
+
+    @property
+    def rows_per_file(self) -> int:
+        return self._rows_per_file
+
+    @property
+    def compression(self) -> str:
+        return self._compression
 
     @staticmethod
     def _generate_config_path(path: str | Path) -> Path:
@@ -84,38 +111,8 @@ class FileCache:
 
 
 class FileCacheReader(FileCache):
-    def __init__(
-        self,
-        path: str | Path,
-        schema: pa.Schema,
-        batch_size: int,
-        rows_per_file: int,
-        compression: str,
-    ):
-        super().__init__(path)
-        self._schema = schema
-        self._batch_size = batch_size
-        self._rows_per_file = rows_per_file
-        self._compression = compression
-
-    @property
-    def schema(self) -> pa.Schema:
-        return self._schema
-
-    @property
-    def batch_size(self) -> int:
-        return self._batch_size
-
-    @property
-    def rows_per_file(self) -> int:
-        return self._rows_per_file
-
-    @property
-    def compression(self) -> str:
-        return self._compression
-
     @classmethod
-    def load(cls, path: str | Path | FileCache):
+    def load(cls, path: str | Path):
         """
         Load cache from disk.
 
@@ -124,8 +121,6 @@ class FileCacheReader(FileCache):
         path : str | Path
             Where the cache is stored.
         """
-        if isinstance(path, FileCache):
-            path = path.path
         path = Path(path)
         if not path.exists():
             raise FileNotFoundError(f"Directory does not exist: {path}")
@@ -192,11 +187,13 @@ class FileCacheWriter(FileCache):
         rows_per_file: int,
         compression: str,
     ):
-        super().__init__(path)
-        self._schema = schema
-        self._batch_size = batch_size
-        self._rows_per_file = rows_per_file
-        self._compression = compression
+        super().__init__(
+            path=path,
+            schema=schema,
+            batch_size=batch_size,
+            rows_per_file=rows_per_file,
+            compression=compression,
+        )
 
         # internal state
         self._writer = None
