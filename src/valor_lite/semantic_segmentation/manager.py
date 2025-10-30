@@ -4,7 +4,7 @@ import numpy as np
 from numpy.typing import NDArray
 from tqdm import tqdm
 
-from valor_lite.exceptions import EmptyCacheError, EmptyFilterError
+from valor_lite.exceptions import EmptyEvaluatorError, EmptyFilterError
 from valor_lite.semantic_segmentation.annotation import Segmentation
 from valor_lite.semantic_segmentation.computation import (
     compute_intermediate_confusion_matrices,
@@ -426,7 +426,7 @@ class DataLoader:
         """
 
         if len(self.matrices) == 0:
-            raise EmptyCacheError()
+            raise EmptyEvaluatorError()
 
         n_labels = len(self._evaluator.index_to_label)
         n_datums = len(self._evaluator.index_to_datum_id)

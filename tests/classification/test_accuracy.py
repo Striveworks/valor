@@ -67,6 +67,8 @@ def test_accuracy_basic(basic_classifications: list[Classification]):
     loader.add_data(basic_classifications)
     evaluator = loader.finalize()
 
+    assert evaluator.ignored_prediction_labels == ["1", "2"]
+    assert evaluator.missing_prediction_labels == []
     assert evaluator.metadata.to_dict() == {
         "number_of_datums": 3,
         "number_of_ground_truths": 3,
@@ -162,6 +164,8 @@ def test_accuracy_with_image_example(
     loader.add_data(classifications_image_example)
     evaluator = loader.finalize()
 
+    assert evaluator.ignored_prediction_labels == ["v1", "v8", "v5"]
+    assert evaluator.missing_prediction_labels == []
     assert evaluator.metadata.to_dict() == {
         "number_of_datums": 2,
         "number_of_ground_truths": 2,
@@ -195,6 +199,8 @@ def test_accuracy_with_tabular_example(
     loader.add_data(classifications_tabular_example)
     evaluator = loader.finalize()
 
+    assert evaluator.ignored_prediction_labels == []
+    assert evaluator.missing_prediction_labels == []
     assert evaluator.metadata.to_dict() == {
         "number_of_datums": 10,
         "number_of_ground_truths": 10,

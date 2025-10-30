@@ -16,7 +16,7 @@ from valor_lite.classification.utilities import (
     unpack_confusion_matrix_into_metric_list,
     unpack_precision_recall_rocauc_into_metric_lists,
 )
-from valor_lite.exceptions import EmptyCacheError, EmptyFilterError
+from valor_lite.exceptions import EmptyEvaluatorError, EmptyFilterError
 
 """
 Usage
@@ -515,7 +515,7 @@ class Evaluator:
             A ready-to-use evaluator object.
         """
         if self._detailed_pairs.size == 0:
-            raise EmptyCacheError()
+            raise EmptyEvaluatorError()
 
         self._label_metadata = compute_label_metadata(
             ids=self._detailed_pairs[:, :3].astype(np.int32),
