@@ -63,6 +63,7 @@ def test_cache_write_columns():
                     "some_str": pa.array([f"str{i}"]),
                 }
             )
+        writer.write_columns({})
 
     reader = writer.to_reader()
     assert reader.count_rows() == 1000

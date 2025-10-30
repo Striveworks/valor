@@ -180,6 +180,7 @@ def test_cache_write_columns(tmp_path: Path):
                     "some_str": pa.array([f"str{i}"]),
                 }
             )
+        writer.write_columns({})
         writer.flush()
         assert len(writer.get_files()) == 11
 
