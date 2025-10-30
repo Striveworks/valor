@@ -280,8 +280,9 @@ def test_cache_write_table(tmp_path: Path):
 def test_cache_delete(tmp_path: Path):
     batch_size = 10
     rows_per_file = 100
+    path = tmp_path / "cache"
     with FileCacheWriter.create(
-        path=tmp_path / "cache",
+        path=path,
         schema=pa.schema(
             [
                 ("some_int", pa.int64()),
@@ -317,8 +318,8 @@ def test_cache_delete(tmp_path: Path):
                 f"str{i}" for i in range(101)
             ]
 
-        writer.delete()
+        FileCacheWriter.delete(path)
         assert reader.get_files() == []
 
         # test edge case
-        writer.delete()
+        FileCacheWriter.delete(path)

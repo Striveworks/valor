@@ -2,15 +2,52 @@ from typing import Any
 
 import numpy as np
 import pyarrow as pa
+import pyarrow.compute as pc
 
 
 class MemoryCache:
     def __init__(self, table: pa.Table):
         self._table = table
 
+    def count_tables(self) -> int:
+        """Count the number of tables in the cache."""
+        return 1
+
     def count_rows(self) -> int:
         """Count the number of rows in the cache."""
         return self._table.num_rows
+
+
+class MemoryCacheReader(MemoryCache):
+    def __init__(
+        self,
+        table: pa.Table,
+        batch_size: int,
+    ):
+        super().__init__(table)
+        self._schema = self._table.schema
+        self._batch_size = batch_size
+
+    @property
+    def schema(self) -> pa.Schema:
+        return self._schema
+
+    @property
+    def batch_size(self) -> int:
+        return self._batch_size
+
+    def iterate_tables(
+        self,
+        columns: list[str] | None = None,
+        filter: pc.Expression | None = None,
+    ):
+        """Iterate over tables within the cache."""
+        table = self._table
+        if filter is not None:
+            table = table.filter(filter)
+        if columns is not None:
+            table = table.select(columns)
+        yield table
 
 
 class MemoryCacheWriter(MemoryCache):
@@ -19,7 +56,7 @@ class MemoryCacheWriter(MemoryCache):
         table: pa.Table,
         batch_size: int,
     ):
-        self._table = table
+        super().__init__(table)
         self._schema = table.schema
         self._batch_size = batch_size
 
@@ -46,13 +83,6 @@ class MemoryCacheWriter(MemoryCache):
             table=schema.empty_table(),
             batch_size=batch_size,
         )
-
-    def delete(self):
-        """
-        Delete any existing cache data.
-        """
-        self._buffer = []
-        self._table = self._table.schema.empty_table()
 
     def write_rows(
         self,
@@ -146,31 +176,8 @@ class MemoryCacheWriter(MemoryCache):
         """Context manager exit - ensures data is flushed."""
         self.flush()
 
-
-class MemoryCacheReader:
-    def __init__(
-        self,
-        cache: MemoryCacheWriter,
-    ):
-        self._cache = cache
-        self._schema = self._cache._schema
-
-    @classmethod
-    def load(cls, cache: MemoryCacheWriter):
-        """
-        Load cache from table.
-
-        Parameters
-        ----------
-        cache : MemoryCacheWriter
-            A cache writer containing the ephemeral cache.
-        """
-        return cls(cache=cache)
-
-    def iterate_tables(self):
-        """Iterate over tables within the cache."""
-        yield self._cache._table
-
-    def count_rows(self) -> int:
-        """Count the number of rows in the cache."""
-        return self._cache.count_rows()
+    def to_reader(self) -> MemoryCacheReader:
+        """Get cache reader."""
+        return MemoryCacheReader(
+            table=self._table, batch_size=self._batch_size
+        )

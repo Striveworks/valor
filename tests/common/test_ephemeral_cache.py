@@ -1,7 +1,7 @@
 import numpy as np
 import pyarrow as pa
 
-from valor_lite.common.ephemeral import MemoryCacheReader, MemoryCacheWriter
+from valor_lite.common.ephemeral import MemoryCacheWriter
 
 
 def test_cache_reader():
@@ -30,7 +30,7 @@ def test_cache_reader():
         writer.write_table(tbl)
         assert writer.count_rows() == 101
 
-    reader = MemoryCacheReader.load(writer)
+    reader = writer.to_reader()
     assert reader.count_rows() == 101
     for tbl in reader.iterate_tables():
         assert tbl["some_int"].to_pylist() == [i for i in range(101)]
@@ -61,7 +61,7 @@ def test_cache_write_batch():
                 }
             )
 
-    reader = MemoryCacheReader(writer)
+    reader = writer.to_reader()
     assert reader.count_rows() == 1000
     for tbl in reader.iterate_tables():
         assert tbl["some_int"].to_pylist() == [i for i in range(1000)]
@@ -96,7 +96,7 @@ def test_cache_write_rows():
             writer.write_rows([])
             assert len(writer._buffer) == buffer_size
 
-    reader = MemoryCacheReader.load(writer)
+    reader = writer.to_reader()
     assert reader.count_rows() == 1000
     for tbl in reader.iterate_tables():
         assert tbl["some_int"].to_pylist() == [i for i in range(1000)]
@@ -134,7 +134,7 @@ def test_cache_write_table():
         writer.write_table(tbl)
         assert writer.count_rows() == 202
 
-        reader = MemoryCacheReader.load(writer)
+        reader = writer.to_reader()
 
     for tbl in reader.iterate_tables():
         assert tbl["some_int"].to_pylist() == [i for i in range(101)] + [
@@ -146,54 +146,3 @@ def test_cache_write_table():
         assert tbl["some_str"].to_pylist() == [
             f"str{i}" for i in range(101)
         ] + [f"str{i}" for i in range(101)]
-
-
-def test_cache_delete():
-    batch_size = 10
-    with MemoryCacheWriter.create(
-        schema=pa.schema(
-            [
-                ("some_int", pa.int64()),
-                ("some_float", pa.float64()),
-                ("some_str", pa.string()),
-            ]
-        ),
-        batch_size=batch_size,
-    ) as writer:
-        tbl = pa.Table.from_pylist(
-            [
-                {
-                    "some_int": i,
-                    "some_float": np.float64(i),
-                    "some_str": f"str{i}",
-                }
-                for i in range(101)
-            ]
-        )
-        assert writer.count_rows() == 0
-
-        writer.write_table(tbl)
-        assert writer.count_rows() == 101
-
-        writer.write_table(tbl)
-        assert writer.count_rows() == 202
-
-        writer.flush()
-
-        reader = MemoryCacheReader.load(writer)
-        for tbl in reader.iterate_tables():
-            assert tbl["some_int"].to_pylist() == [i for i in range(101)] + [
-                i for i in range(101)
-            ]
-            assert tbl["some_float"].to_pylist() == [i for i in range(101)] + [
-                i for i in range(101)
-            ]
-            assert tbl["some_str"].to_pylist() == [
-                f"str{i}" for i in range(101)
-            ] + [f"str{i}" for i in range(101)]
-
-        writer.delete()
-        assert reader.count_rows() == 0
-
-        # test edge case
-        writer.delete()
