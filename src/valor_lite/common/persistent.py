@@ -425,4 +425,5 @@ class FileCacheWriter(FileCache):
 
     def to_reader(self) -> FileCacheReader:
         """Get cache reader."""
+        self.flush()
         return FileCacheReader.load(path=self.path)
