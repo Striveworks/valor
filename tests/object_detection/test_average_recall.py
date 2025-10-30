@@ -1,9 +1,7 @@
 from valor_lite.object_detection import Evaluator, MetricType
 
 
-def test_ar_metrics_first_class(
-    basic_detections_first_class: Evaluator
-):
+def test_ar_metrics_first_class(basic_detections_first_class: Evaluator):
     """
     Basic object detection test.
 
@@ -106,9 +104,7 @@ def test_ar_metrics_first_class(
         assert m in actual_metrics
 
 
-def test_ar_metrics_second_class(
-    basic_detections_second_class: Evaluator
-):
+def test_ar_metrics_second_class(basic_detections_second_class: Evaluator):
     """
     Basic object detection test.
 
@@ -209,9 +205,7 @@ def test_ar_metrics_second_class(
         assert m in actual_metrics
 
 
-def test_ar_using_torch_metrics_example(
-    torchmetrics_detections: Evaluator
-):
+def test_ar_using_torch_metrics_example(torchmetrics_detections: Evaluator):
     """
     cf with torch metrics/pycocotools results listed here:
     https://github.com/Lightning-AI/metrics/blob/107dbfd5fb158b7ae6d76281df44bd94c836bfce/tests/unittests/detection/test_map.py#L231
@@ -397,7 +391,7 @@ def test_ar_using_torch_metrics_example(
 
 
 def test_ar_true_positive_deassignment(
-    detections_tp_deassignment_edge_case: Evaluator
+    detections_tp_deassignment_edge_case: Evaluator,
 ):
     evaluator = detections_tp_deassignment_edge_case
     assert evaluator.info.number_of_datums == 1
@@ -431,9 +425,7 @@ def test_ar_true_positive_deassignment(
         assert m in actual_metrics
 
 
-def test_ar_ranked_pair_ordering(
-    detection_ranked_pair_ordering: Evaluator
-):
+def test_ar_ranked_pair_ordering(detection_ranked_pair_ordering: Evaluator):
     evaluator = detection_ranked_pair_ordering
     assert evaluator.info.number_of_datums == 1
     assert evaluator.info.number_of_labels == 4

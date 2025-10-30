@@ -2,7 +2,7 @@ from valor_lite.object_detection import Evaluator, MetricType
 
 
 def test_precision_metrics_first_class(
-    basic_detections_first_class: Evaluator
+    basic_detections_first_class: Evaluator,
 ):
     """
     Basic object detection test.
@@ -79,7 +79,7 @@ def test_precision_metrics_first_class(
 
 
 def test_precision_metrics_second_class(
-    basic_detections_second_class: Evaluator
+    basic_detections_second_class: Evaluator,
 ):
     """
     Basic object detection test.
@@ -154,7 +154,7 @@ def test_precision_metrics_second_class(
 
 
 def test_precision_false_negatives_single_datum_baseline(
-    false_negatives_single_datum_baseline_detections: Evaluator
+    false_negatives_single_datum_baseline_detections: Evaluator,
 ):
     """This is the baseline for the below test. In this case there are two predictions and
     one groundtruth, but the highest confident prediction overlaps sufficiently with the groundtruth
@@ -196,7 +196,7 @@ def test_precision_false_negatives_single_datum_baseline(
 
 
 def test_precision_false_negatives_single_datum(
-    false_negatives_single_datum_detections: Evaluator
+    false_negatives_single_datum_detections: Evaluator,
 ):
     """Tests where high confidence false negative was not being penalized. The
     difference between this test and the above is that here the prediction with higher confidence
@@ -228,7 +228,7 @@ def test_precision_false_negatives_single_datum(
 
 
 def test_precision_false_negatives_two_datums_one_empty_low_confidence_of_fp(
-    false_negatives_two_datums_one_empty_low_confidence_of_fp_detections: Evaluator
+    false_negatives_two_datums_one_empty_low_confidence_of_fp_detections: Evaluator,
 ):
     """In this test we have
         1. An image with a matching groundtruth and prediction (same class and high IOU)
@@ -239,7 +239,9 @@ def test_precision_false_negatives_two_datums_one_empty_low_confidence_of_fp(
 
     """
 
-    evaluator = false_negatives_two_datums_one_empty_low_confidence_of_fp_detections
+    evaluator = (
+        false_negatives_two_datums_one_empty_low_confidence_of_fp_detections
+    )
     metrics = evaluator.compute_precision_recall(
         iou_thresholds=[0.5],
         score_thresholds=[0.0],
@@ -264,7 +266,7 @@ def test_precision_false_negatives_two_datums_one_empty_low_confidence_of_fp(
 
 
 def test_precision_false_negatives_two_datums_one_empty_high_confidence_of_fp(
-    false_negatives_two_datums_one_empty_high_confidence_of_fp_detections: Evaluator
+    false_negatives_two_datums_one_empty_high_confidence_of_fp_detections: Evaluator,
 ):
     """In this test we have
         1. An image with a matching groundtruth and prediction (same class and high IOU)
@@ -273,7 +275,9 @@ def test_precision_false_negatives_two_datums_one_empty_high_confidence_of_fp(
 
     In this case, the AP should be 0.5 since the false positive has higher confidence than the true positive
     """
-    evaluator = false_negatives_two_datums_one_empty_high_confidence_of_fp_detections
+    evaluator = (
+        false_negatives_two_datums_one_empty_high_confidence_of_fp_detections
+    )
     metrics = evaluator.compute_precision_recall(
         iou_thresholds=[0.5],
         score_thresholds=[0.0],
@@ -298,7 +302,7 @@ def test_precision_false_negatives_two_datums_one_empty_high_confidence_of_fp(
 
 
 def test_precision_false_negatives_two_datums_one_only_with_different_class_low_confidence_of_fp(
-    false_negatives_two_datums_one_only_with_different_class_low_confidence_of_fp_detections: Evaluator
+    false_negatives_two_datums_one_only_with_different_class_low_confidence_of_fp_detections: Evaluator,
 ):
     """In this test we have
         1. An image with a matching groundtruth and prediction (same class, `"value"`, and high IOU)
@@ -342,7 +346,7 @@ def test_precision_false_negatives_two_datums_one_only_with_different_class_low_
 
 
 def test_precision_false_negatives_two_datums_one_only_with_different_class_high_confidence_of_fp(
-    false_negatives_two_images_one_only_with_different_class_high_confidence_of_fp_detections: Evaluator
+    false_negatives_two_images_one_only_with_different_class_high_confidence_of_fp_detections: Evaluator,
 ):
     """In this test we have
         1. An image with a matching groundtruth and prediction (same class, `"value"`, and high IOU)
@@ -386,10 +390,12 @@ def test_precision_false_negatives_two_datums_one_only_with_different_class_high
 
 
 def test_precision_model_one_class_spam_fp(
-    detections_model_single_class_spam_fp: Evaluator
+    detections_model_single_class_spam_fp: Evaluator,
 ):
     evaluator = detections_model_single_class_spam_fp
-    metrics = evaluator.compute_precision_recall(score_thresholds=[0.5], iou_thresholds=[0.5])
+    metrics = evaluator.compute_precision_recall(
+        score_thresholds=[0.5], iou_thresholds=[0.5]
+    )
     actual_metrics = [m.to_dict() for m in metrics[MetricType.Precision]]
     expected_metrics = [
         {

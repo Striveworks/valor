@@ -121,7 +121,7 @@ class Evaluator(PathFormatter):
         self,
         filter_expr: Filter,
         batch_size: int = 1_000,
-        path: str | Path | None = None
+        path: str | Path | None = None,
     ) -> "Evaluator":
         """
         Filter evaluator cache.
@@ -144,7 +144,9 @@ class Evaluator(PathFormatter):
 
         if isinstance(self.detailed_reader, FileCacheReader):
             if not path:
-                raise ValueError("expected path to be defined for file-based loader")
+                raise ValueError(
+                    "expected path to be defined for file-based loader"
+                )
             loader = Loader.persistent(
                 path=path,
                 batch_size=self.detailed_reader.batch_size,
@@ -161,8 +163,10 @@ class Evaluator(PathFormatter):
                 groundtruth_metadata_types=self.info.groundtruth_metadata_types,
                 prediction_metadata_types=self.info.prediction_metadata_types,
             )
-        
-        for tbl in self._detailed_reader.iterate_tables(filter=filter_expr.datums):
+
+        for tbl in self._detailed_reader.iterate_tables(
+            filter=filter_expr.datums
+        ):
             columns = (
                 "datum_id",
                 "gt_id",

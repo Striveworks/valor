@@ -1,9 +1,7 @@
 from valor_lite.object_detection import Evaluator
 
 
-def test_examples(
-    detections_for_detailed_counting: Evaluator
-):
+def test_examples(detections_for_detailed_counting: Evaluator):
     evaluator = detections_for_detailed_counting
     assert evaluator.info.number_of_datums == 2
     assert evaluator.info.number_of_labels == 6
@@ -285,7 +283,7 @@ def test_examples(
 
 
 def test_examples_using_torch_metrics_example(
-    torchmetrics_detections: Evaluator
+    torchmetrics_detections: Evaluator,
 ):
     """
     cf with torch metrics/pycocotools results listed here:
@@ -967,7 +965,7 @@ def test_examples_using_torch_metrics_example(
 
 
 def test_examples_fp_unmatched_prediction_edge_case(
-    detections_fp_unmatched_prediction_edge_case: Evaluator
+    detections_fp_unmatched_prediction_edge_case: Evaluator,
 ):
 
     evaluator = detections_fp_unmatched_prediction_edge_case
@@ -1043,7 +1041,7 @@ def test_examples_fp_unmatched_prediction_edge_case(
 
 
 def test_examples_ranked_pair_ordering(
-    detection_ranked_pair_ordering: Evaluator
+    detection_ranked_pair_ordering: Evaluator,
 ):
 
     evaluator = detection_ranked_pair_ordering

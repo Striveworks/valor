@@ -1,4 +1,4 @@
-from valor_lite.object_detection import Evaluator, Detection
+from valor_lite.object_detection import Evaluator
 
 
 def _filter_out_zero_counts(cm: dict, hl: dict, mp: dict):
@@ -22,7 +22,7 @@ def _filter_out_zero_counts(cm: dict, hl: dict, mp: dict):
 
 
 def test_confusion_matrix_with_examples(
-    detections_for_detailed_counting: Evaluator
+    detections_for_detailed_counting: Evaluator,
 ):
     evaluator = detections_for_detailed_counting
     assert evaluator.info.number_of_datums == 2
@@ -838,7 +838,7 @@ def _filter_out_examples_and_zero_counts(cm: dict, hl: dict, mp: dict):
 
 
 def test_confusion_matrix_with_examples_using_torch_metrics_example(
-    torchmetrics_detections: Evaluator
+    torchmetrics_detections: Evaluator,
 ):
     """
     cf with torch metrics/pycocotools results listed here:
@@ -1231,7 +1231,7 @@ def test_confusion_matrix_with_examples_using_torch_metrics_example(
 
 
 def test_confusion_matrix_with_examples_fp_unmatched_prediction_edge_case(
-    detections_fp_unmatched_prediction_edge_case: Evaluator
+    detections_fp_unmatched_prediction_edge_case: Evaluator,
 ):
     evaluator = detections_fp_unmatched_prediction_edge_case
     assert evaluator.info.number_of_datums == 2
@@ -1332,7 +1332,7 @@ def test_confusion_matrix_with_examples_fp_unmatched_prediction_edge_case(
 
 
 def test_confusion_matrix_with_examples_ranked_pair_ordering(
-    detection_ranked_pair_ordering: Evaluator
+    detection_ranked_pair_ordering: Evaluator,
 ):
     evaluator = detection_ranked_pair_ordering
     assert evaluator.info.number_of_datums == 1

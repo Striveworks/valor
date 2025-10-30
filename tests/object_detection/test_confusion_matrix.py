@@ -23,9 +23,7 @@ def _filter_out_zero_counts(
             unmatched_predictions.pop(pd_label)
 
 
-def test_confusion_matrix(
-    detections_for_detailed_counting: Evaluator
-):
+def test_confusion_matrix(detections_for_detailed_counting: Evaluator):
     evaluator = detections_for_detailed_counting
     assert evaluator.info.number_of_datums == 2
     assert evaluator.info.number_of_labels == 6
@@ -324,7 +322,7 @@ def test_confusion_matrix(
 
 
 def test_confusion_matrix_using_torch_metrics_example(
-    torchmetrics_detections: Evaluator
+    torchmetrics_detections: Evaluator,
 ):
     """
     cf with torch metrics/pycocotools results listed here:
@@ -709,7 +707,7 @@ def test_confusion_matrix_using_torch_metrics_example(
 
 
 def test_confusion_matrix_fp_unmatched_prediction_edge_case(
-    detections_fp_unmatched_prediction_edge_case: Evaluator
+    detections_fp_unmatched_prediction_edge_case: Evaluator,
 ):
     evaluator = detections_fp_unmatched_prediction_edge_case
     assert evaluator.info.number_of_datums == 2
@@ -763,7 +761,7 @@ def test_confusion_matrix_fp_unmatched_prediction_edge_case(
 
 
 def test_confusion_matrix_ranked_pair_ordering(
-    detection_ranked_pair_ordering: Evaluator
+    detection_ranked_pair_ordering: Evaluator,
 ):
 
     evaluator = detection_ranked_pair_ordering

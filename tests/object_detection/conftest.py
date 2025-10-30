@@ -8,11 +8,11 @@ from shapely.geometry import Polygon as ShapelyPolygon
 from valor_lite.object_detection import (
     Bitmask,
     BoundingBox,
+    DataType,
     Detection,
     Evaluator,
     Loader,
     Polygon,
-    DataType,
 )
 
 
@@ -28,7 +28,7 @@ from valor_lite.object_detection import (
         "persistent_small_chunks",
         "in-memory_large_chunks",
         "in-memory_small_chunks",
-    ]
+    ],
 )
 def loader(request, tmp_path: Path):
     file_type, batch_size, rows_per_file = request.param

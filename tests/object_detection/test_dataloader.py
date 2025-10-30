@@ -9,8 +9,8 @@ from valor_lite.exceptions import EmptyCacheError
 from valor_lite.object_detection import (
     Bitmask,
     BoundingBox,
-    Loader,
     Detection,
+    Loader,
     Polygon,
 )
 

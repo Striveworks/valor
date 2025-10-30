@@ -2,7 +2,7 @@ from valor_lite.object_detection import Evaluator, MetricType
 
 
 def test_pr_curve_using_torch_metrics_example(
-    torchmetrics_detections: Evaluator
+    torchmetrics_detections: Evaluator,
 ):
     """
     cf with torch metrics/pycocotools results listed here:

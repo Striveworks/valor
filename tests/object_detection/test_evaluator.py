@@ -4,14 +4,8 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from valor_lite.object_detection import (
-    Loader,
-    Detection,
-    Evaluator,
-    Metric,
-    MetricType,
-)
 from valor_lite.common.persistent import FileCacheReader
+from valor_lite.object_detection import Evaluator, Metric, MetricType
 
 
 def test_evaluator_file_not_found(tmp_path: Path):
@@ -51,9 +45,7 @@ def test_evaluator_valid_thresholds(tmp_path: Path):
         assert "score" in str(e)
 
 
-def test_info_using_torch_metrics_example(
-    torchmetrics_detections: Evaluator
-):
+def test_info_using_torch_metrics_example(torchmetrics_detections: Evaluator):
     """
     cf with torch metrics/pycocotools results listed here:
     https://github.com/Lightning-AI/metrics/blob/107dbfd5fb158b7ae6d76281df44bd94c836bfce/tests/unittests/detection/test_map.py#L231
@@ -177,9 +169,7 @@ def _flatten_metrics(m) -> list:
         return [m]
 
 
-def test_output_types_dont_contain_numpy(
-    basic_detections: Evaluator
-):
+def test_output_types_dont_contain_numpy(basic_detections: Evaluator):
     evaluator = basic_detections
 
     metrics = evaluator.compute_precision_recall(
@@ -194,11 +184,11 @@ def test_output_types_dont_contain_numpy(
 
 
 def test_evaluator_deletion(
-    false_negatives_single_datum_detections: Evaluator
+    false_negatives_single_datum_detections: Evaluator,
 ):
     # create evaluator
     evaluator = false_negatives_single_datum_detections
-    
+
     if isinstance(evaluator.detailed_reader, FileCacheReader):
         path = evaluator._path
         assert path

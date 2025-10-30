@@ -298,7 +298,7 @@ def run_benchmarking_analysis(
             pd_filename = prediction_caches[pd_type]
 
             # === Base Evaluation ===
-            loader = Loader.create(
+            loader = Loader.persistent(
                 ".valor/objdet_benchmark",
                 batch_size=1_000,
                 rows_per_file=10_000,
