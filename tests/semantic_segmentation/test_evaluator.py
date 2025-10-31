@@ -6,8 +6,8 @@ import pytest
 
 from valor_lite.semantic_segmentation import (
     Bitmask,
-    DataLoader,
     Evaluator,
+    Loader,
     Metric,
     Segmentation,
 )
@@ -27,21 +27,13 @@ def test_evaluator_not_a_directory(tmp_path: Path):
         Evaluator.load(filepath)
 
 
-def test_metadata_using_large_random_segmentations(
-    tmp_path: Path,
+def test_info_using_large_random_segmentations(
+    loader: Loader,
     large_random_segmentations: list[Segmentation],
 ):
-    loader = DataLoader.create(tmp_path)
     loader.add_data(large_random_segmentations)
     evaluator = loader.finalize()
 
-    assert evaluator.metadata.number_of_datums == 3
-    assert evaluator.metadata.number_of_labels == 9
-    assert (
-        evaluator.metadata.number_of_pixels == 3 * 2000 * 2000
-    )  # 3x (2000,2000) bitmasks
-
-    # check static values
     assert evaluator._info.number_of_datums == 3
     assert evaluator._info.number_of_labels == 9
     assert evaluator._info.number_of_pixels == 12000000
@@ -69,14 +61,13 @@ def _flatten_metrics(m) -> list:
 
 
 def test_output_types_dont_contain_numpy(
-    tmp_path: Path,
+    loader: Loader,
     segmentations_from_boxes: list[Segmentation],
 ):
-    loader = DataLoader.create(tmp_path)
     loader.add_data(segmentations_from_boxes)
     evaluator = loader.finalize()
 
-    metrics = evaluator.evaluate()
+    metrics = evaluator.compute_precision_recall_iou()
 
     values = _flatten_metrics(metrics)
     for value in values:
@@ -84,9 +75,7 @@ def test_output_types_dont_contain_numpy(
             raise TypeError(value)
 
 
-def test_label_mismatch(tmp_path: Path):
-
-    loader = DataLoader.create(tmp_path)
+def test_label_mismatch(loader: Loader):
     loader.add_data(
         segmentations=[
             Segmentation(
@@ -142,9 +131,7 @@ def test_label_mismatch(tmp_path: Path):
     )
 
 
-def test_empty_groundtruths(tmp_path: Path):
-
-    loader = DataLoader.create(tmp_path)
+def test_empty_groundtruths(loader: Loader):
     loader.add_data(
         segmentations=[
             Segmentation(
@@ -189,9 +176,7 @@ def test_empty_groundtruths(tmp_path: Path):
     )
 
 
-def test_empty_predictions(tmp_path: Path):
-
-    loader = DataLoader.create(tmp_path)
+def test_empty_predictions(loader: Loader):
     loader.add_data(
         segmentations=[
             Segmentation(
@@ -235,12 +220,13 @@ def test_empty_predictions(tmp_path: Path):
 
 
 def test_loader_deletion(
-    tmp_path: Path, basic_segmentations: list[Segmentation]
+    tmp_path: Path,
+    basic_segmentations: list[Segmentation],
 ):
-    loader = DataLoader.create(tmp_path)
+    loader = Loader.persistent(tmp_path)
     loader.add_data(basic_segmentations)
     evaluator = loader.finalize()
-    assert tmp_path == evaluator.path
+    assert tmp_path == evaluator._path
 
     # check only detailed cache exists
     assert tmp_path.exists()

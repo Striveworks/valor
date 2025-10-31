@@ -1,21 +1,14 @@
-from pathlib import Path
-
-from valor_lite.semantic_segmentation import (
-    DataLoader,
-    MetricType,
-    Segmentation,
-)
+from valor_lite.semantic_segmentation import Loader, MetricType, Segmentation
 
 
 def test_precision_basic_segmentations(
-    tmp_path: Path,
+    loader: Loader,
     basic_segmentations: list[Segmentation],
 ):
-    loader = DataLoader.create(tmp_path)
     loader.add_data(basic_segmentations)
     evaluator = loader.finalize()
 
-    metrics = evaluator.evaluate()
+    metrics = evaluator.compute_precision_recall_iou()
 
     actual_metrics = [m.to_dict() for m in metrics[MetricType.Precision]]
     expected_metrics = [
@@ -37,14 +30,13 @@ def test_precision_basic_segmentations(
 
 
 def test_precision_segmentations_from_boxes(
-    tmp_path: Path,
+    loader: Loader,
     segmentations_from_boxes: list[Segmentation],
 ):
-    loader = DataLoader.create(tmp_path)
     loader.add_data(segmentations_from_boxes)
     evaluator = loader.finalize()
 
-    metrics = evaluator.evaluate()
+    metrics = evaluator.compute_precision_recall_iou()
 
     actual_metrics = [m.to_dict() for m in metrics[MetricType.Precision]]
     expected_metrics = [

@@ -1,7 +1,5 @@
-from pathlib import Path
-
 from valor_lite.semantic_segmentation import (
-    DataLoader,
+    Loader,
     Metric,
     MetricType,
     Segmentation,
@@ -9,13 +7,13 @@ from valor_lite.semantic_segmentation import (
 
 
 def test_accuracy_basic_segmentations(
-    tmp_path: Path, basic_segmentations: list[Segmentation]
+    loader: Loader,
+    basic_segmentations: list[Segmentation],
 ):
-    loader = DataLoader.create(tmp_path)
     loader.add_data(basic_segmentations)
     evaluator = loader.finalize()
 
-    metrics = evaluator.evaluate()
+    metrics = evaluator.compute_precision_recall_iou()
 
     actual_metrics = [m.to_dict() for m in metrics[MetricType.Accuracy]]
     expected_metrics = [
@@ -32,14 +30,13 @@ def test_accuracy_basic_segmentations(
 
 
 def test_accuracy_segmentations_from_boxes(
-    tmp_path: Path,
+    loader: Loader,
     segmentations_from_boxes: list[Segmentation],
 ):
-    loader = DataLoader.create(tmp_path)
     loader.add_data(segmentations_from_boxes)
     evaluator = loader.finalize()
 
-    metrics = evaluator.evaluate()
+    metrics = evaluator.compute_precision_recall_iou()
 
     actual_metrics = [m.to_dict() for m in metrics[MetricType.Accuracy]]
     expected_metrics = [
@@ -56,14 +53,13 @@ def test_accuracy_segmentations_from_boxes(
 
 
 def test_accuracy_large_random_segmentations(
-    tmp_path: Path,
+    loader: Loader,
     large_random_segmentations: list[Segmentation],
 ):
-    loader = DataLoader.create(tmp_path)
     loader.add_data(large_random_segmentations)
     evaluator = loader.finalize()
 
-    metrics = evaluator.evaluate()[MetricType.Accuracy]
+    metrics = evaluator.compute_precision_recall_iou()[MetricType.Accuracy]
 
     assert len(metrics) == 1
     assert isinstance(metrics[0], Metric)

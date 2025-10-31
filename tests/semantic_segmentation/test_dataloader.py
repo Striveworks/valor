@@ -4,17 +4,15 @@ import numpy as np
 import pytest
 
 from valor_lite.exceptions import EmptyCacheError
-from valor_lite.semantic_segmentation import DataLoader, Segmentation
+from valor_lite.semantic_segmentation import Loader, Segmentation
 
 
-def test_no_data(tmp_path: Path):
-    loader = DataLoader.create(tmp_path)
+def test_no_data(loader: Loader):
     with pytest.raises(EmptyCacheError):
         loader.finalize()
 
 
-def test_empty_input(tmp_path: Path):
-    loader = DataLoader.create(tmp_path)
+def test_empty_input(loader: Loader):
     loader.add_data(
         segmentations=[
             Segmentation(
@@ -28,11 +26,12 @@ def test_empty_input(tmp_path: Path):
 
 
 def test_loader_deletion(
-    tmp_path: Path, basic_segmentations: list[Segmentation]
+    tmp_path: Path,
+    basic_segmentations: list[Segmentation],
 ):
-    loader = DataLoader.create(tmp_path)
+    loader = Loader.persistent(tmp_path)
     loader.add_data(basic_segmentations)
-    assert tmp_path == loader.path
+    assert tmp_path == loader._path
 
     # check only detailed cache exists
     assert tmp_path.exists()
@@ -40,7 +39,7 @@ def test_loader_deletion(
     assert loader._generate_metadata_path(tmp_path).exists()
 
     # verify deletion
-    DataLoader.delete(tmp_path)
+    loader.delete()
     assert not tmp_path.exists()
     assert not loader._generate_cache_path(tmp_path).exists()
     assert not loader._generate_metadata_path(tmp_path).exists()

@@ -2,36 +2,31 @@ import json
 from pathlib import Path
 
 import numpy as np
-import pyarrow as pa
+from pyarrow import DataType
 from tqdm import tqdm
 
-from valor_lite.cache import (
-    DataType,
-    FileCacheWriter,
-    MemoryCacheWriter,
-    convert_type_mapping_to_fields,
-)
+from valor_lite.cache import FileCacheWriter, MemoryCacheWriter
 from valor_lite.exceptions import EmptyCacheError
 from valor_lite.semantic_segmentation.annotation import Segmentation
 from valor_lite.semantic_segmentation.computation import compute_intermediates
 from valor_lite.semantic_segmentation.evaluator import Evaluator
-from valor_lite.semantic_segmentation.format import PathFormatter
+from valor_lite.semantic_segmentation.shared import Base
 
 
-class Loader(PathFormatter):
+class Loader(Base):
     def __init__(
         self,
         writer: MemoryCacheWriter | FileCacheWriter,
-        datum_metadata_types: dict[str, DataType] | None = None,
-        groundtruth_metadata_types: dict[str, DataType] | None = None,
-        prediction_metadata_types: dict[str, DataType] | None = None,
+        datum_metadata_fields: list[tuple[str, DataType]] | None = None,
+        groundtruth_metadata_fields: list[tuple[str, DataType]] | None = None,
+        prediction_metadata_fields: list[tuple[str, DataType]] | None = None,
         path: str | Path | None = None,
     ):
         self._path = Path(path) if path else None
         self._writer = writer
-        self._datum_metadata_types = datum_metadata_types
-        self._groundtruth_metadata_types = groundtruth_metadata_types
-        self._prediction_metadata_types = prediction_metadata_types
+        self._datum_metadata_fields = datum_metadata_fields
+        self._groundtruth_metadata_fields = groundtruth_metadata_fields
+        self._prediction_metadata_fields = prediction_metadata_fields
 
         # internal state
         self._labels: dict[str, int] = {}
@@ -39,53 +34,67 @@ class Loader(PathFormatter):
         self._datum_count = 0
 
     @classmethod
-    def create(
+    def in_memory(
+        cls,
+        batch_size: int = 10_000,
+        datum_metadata_fields: list[tuple[str, DataType]] | None = None,
+        groundtruth_metadata_fields: list[tuple[str, DataType]] | None = None,
+        prediction_metadata_fields: list[tuple[str, DataType]] | None = None,
+    ):
+        """
+        Create an in-memory evaluator cache.
+
+        Parameters
+        ----------
+        batch_size : int, default=10_000
+            The target number of rows to buffer before writing to the cache. Defaults to 10_000.
+        datum_metadata_fields : list[tuple[str, DataType]], optional
+            Optional datum metadata field definition.
+        groundtruth_metadata_fields : list[tuple[str, DataType]], optional
+            Optional ground truth annotation metadata field definition.
+        prediction_metadata_fields : list[tuple[str, DataType]], optional
+            Optional prediction metadata field definition.
+        """
+        # create cache
+        writer = MemoryCacheWriter.create(
+            schema=cls._generate_schema(
+                datum_metadata_fields=datum_metadata_fields,
+                groundtruth_metadata_fields=groundtruth_metadata_fields,
+                prediction_metadata_fields=prediction_metadata_fields,
+            ),
+            batch_size=batch_size,
+        )
+        return cls(
+            writer=writer,
+            datum_metadata_fields=datum_metadata_fields,
+            groundtruth_metadata_fields=groundtruth_metadata_fields,
+            prediction_metadata_fields=prediction_metadata_fields,
+        )
+
+    @classmethod
+    def persistent(
         cls,
         path: str | Path,
         batch_size: int = 10_000,
         rows_per_file: int = 100_000,
         compression: str = "snappy",
-        datum_metadata_types: dict[str, DataType] | None = None,
-        groundtruth_metadata_types: dict[str, DataType] | None = None,
-        prediction_metadata_types: dict[str, DataType] | None = None,
+        datum_metadata_fields: list[tuple[str, DataType]] | None = None,
+        groundtruth_metadata_fields: list[tuple[str, DataType]] | None = None,
+        prediction_metadata_fields: list[tuple[str, DataType]] | None = None,
         delete_if_exists: bool = False,
     ):
         path = Path(path)
         if delete_if_exists:
-            cls.delete(path)
-
-        # define arrow schema
-        datum_metadata_fields = convert_type_mapping_to_fields(
-            datum_metadata_types
-        )
-        groundtruth_metadata_fields = convert_type_mapping_to_fields(
-            groundtruth_metadata_types
-        )
-        prediction_metadata_fields = convert_type_mapping_to_fields(
-            prediction_metadata_types
-        )
-        schema = pa.schema(
-            [
-                ("datum_uid", pa.string()),
-                ("datum_id", pa.int64()),
-                *datum_metadata_fields,
-                # groundtruth
-                ("gt_label", pa.string()),
-                ("gt_label_id", pa.int64()),
-                *groundtruth_metadata_fields,
-                # prediction
-                ("pd_label", pa.string()),
-                ("pd_label_id", pa.int64()),
-                *prediction_metadata_fields,
-                # pair
-                ("count", pa.uint64()),
-            ]
-        )
+            cls.delete_at_path(path)
 
         # create cache
-        cache = CacheWriter.create(
+        cache = FileCacheWriter.create(
             path=cls._generate_cache_path(path),
-            schema=schema,
+            schema=cls._generate_schema(
+                datum_metadata_fields=datum_metadata_fields,
+                groundtruth_metadata_fields=groundtruth_metadata_fields,
+                prediction_metadata_fields=prediction_metadata_fields,
+            ),
             batch_size=batch_size,
             rows_per_file=rows_per_file,
             compression=compression,
@@ -94,35 +103,20 @@ class Loader(PathFormatter):
         # write metadata
         metadata_path = cls._generate_metadata_path(path)
         with open(metadata_path, "w") as f:
-            types = {
-                "datum_metadata_types": datum_metadata_types,
-                "groundtruth_metadata_types": groundtruth_metadata_types,
-                "prediction_metadata_types": prediction_metadata_types,
-            }
-            json.dump(types, f, indent=2)
+            encoded_types = cls._encode_metadata_fields(
+                datum_metadata_fields=datum_metadata_fields,
+                groundtruth_metadata_fields=groundtruth_metadata_fields,
+                prediction_metadata_fields=prediction_metadata_fields,
+            )
+            json.dump(encoded_types, f, indent=2)
 
         return cls(
             path=path,
             writer=cache,
-            datum_metadata_types=datum_metadata_types,
-            groundtruth_metadata_types=groundtruth_metadata_types,
-            prediction_metadata_types=prediction_metadata_types,
+            datum_metadata_fields=datum_metadata_fields,
+            groundtruth_metadata_fields=groundtruth_metadata_fields,
+            prediction_metadata_fields=prediction_metadata_fields,
         )
-
-    @classmethod
-    def delete(cls, path: str | Path):
-        path = Path(path)
-        if not path.exists():
-            return
-        CacheWriter.delete(cls._generate_cache_path(path))
-        metadata_path = cls._generate_metadata_path(path)
-        if metadata_path.exists() and metadata_path.is_file():
-            metadata_path.unlink()
-        path.rmdir()
-
-    @property
-    def path(self) -> Path:
-        return self._path
 
     def _add_label(self, value: str) -> int:
         idx = self._labels.get(value, None)
@@ -317,9 +311,30 @@ class Loader(PathFormatter):
             A ready-to-use evaluator object.
         """
         self._writer.flush()
-        if self._writer.dataset.count_rows() == 0:
+        if self._writer.count_rows() == 0:
             raise EmptyCacheError()
 
-        return Evaluator.load(
-            self.path, index_to_label_override=index_to_label_override
+        reader = self._writer.to_reader()
+
+        # build evaluator meta
+        (
+            index_to_label,
+            confusion_matrix,
+            info,
+        ) = self._generate_meta(reader, index_to_label_override)
+        info.datum_metadata_fields = self._datum_metadata_fields
+        info.groundtruth_metadata_fields = self._groundtruth_metadata_fields
+        info.prediction_metadata_fields = self._prediction_metadata_fields
+
+        return Evaluator(
+            reader=reader,
+            info=info,
+            index_to_label=index_to_label,
+            confusion_matrix=confusion_matrix,
+            path=self._path,
         )
+
+    def delete(self):
+        """Delete any cached files."""
+        if self._path and self._path.exists():
+            self.delete_at_path(self._path)

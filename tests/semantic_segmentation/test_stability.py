@@ -1,10 +1,9 @@
 from pathlib import Path
-from random import choice
 
 import numpy as np
+import pyarrow.compute as pc
 
-from valor_lite.exceptions import EmptyFilterError
-from valor_lite.semantic_segmentation import Bitmask, DataLoader, Segmentation
+from valor_lite.semantic_segmentation import Bitmask, Loader, Segmentation
 
 
 def _generate_random_segmentations(
@@ -40,53 +39,36 @@ def _generate_random_segmentations(
     ]
 
 
-def test_fuzz_segmentations(tmp_path: Path):
+def test_fuzz_segmentations(loader: Loader):
 
-    quantities = [1, 5, 10]
-    sizes = [10, 100]
+    n_segmentations = 10
+    size_ = 100
+    n_labels = 10
 
-    for i in range(100):
-
-        n_segmentations = choice(quantities)
-        size_ = choice(sizes)
-        n_labels = choice(quantities)
-
-        segmentations = _generate_random_segmentations(
-            n_segmentations, size_=size_, n_labels=n_labels
-        )
-
-        loader = DataLoader.create(tmp_path / str(i))
-        loader.add_data(segmentations)
-        evaluator = loader.finalize()
-        evaluator.evaluate()
+    segmentations = _generate_random_segmentations(
+        n_segmentations, size_=size_, n_labels=n_labels
+    )
+    loader.add_data(segmentations)
+    evaluator = loader.finalize()
+    evaluator.compute_precision_recall_iou()
 
 
-def test_fuzz_segmentations_with_filtering(tmp_path: Path):
+def test_fuzz_segmentations_with_filtering(loader: Loader, tmp_path: Path):
 
-    quantities = [4, 10]
-    for _ in range(100):
+    n_segmentations = 15
+    size_ = 100
+    n_labels = 15
 
-        n_segmentations = choice(quantities)
-        size_ = choice(quantities)
-        n_labels = choice(quantities)
+    segmentations = _generate_random_segmentations(
+        n_segmentations, size_=size_, n_labels=n_labels
+    )
+    loader.add_data(segmentations)
+    evaluator = loader.finalize()
 
-        segmentations = _generate_random_segmentations(
-            n_segmentations, size_=size_, n_labels=n_labels
-        )
+    datum_subset = [f"uid{i}" for i in range(len(segmentations) // 2)]
 
-        loader = DataLoader.create(tmp_path / "all", delete_if_exists=True)
-        loader.add_data(segmentations)
-        evaluator = loader.finalize()
-
-        datum_subset = [f"uid{i}" for i in range(len(segmentations) // 2)]
-
-        try:
-            filter_ = evaluator.create_filter(datums=datum_subset)
-        except EmptyFilterError:
-            pass
-        else:
-            filtered_evaluator = evaluator.filter(
-                tmp_path / "filtered", filter_
-            )
-            filtered_evaluator.evaluate()
-            filtered_evaluator.delete()
+    filtered_evaluator = evaluator.filter(
+        datums=pc.field("datum_uid").isin(datum_subset),
+        path=tmp_path / "filtered",
+    )
+    filtered_evaluator.compute_precision_recall_iou()

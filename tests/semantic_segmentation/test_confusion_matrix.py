@@ -1,24 +1,21 @@
-from pathlib import Path
-
 import numpy as np
 
 from valor_lite.semantic_segmentation import (
     Bitmask,
-    DataLoader,
+    Loader,
     MetricType,
     Segmentation,
 )
 
 
 def test_confusion_matrix_basic_segmentations(
-    tmp_path: Path,
+    loader: Loader,
     basic_segmentations: list[Segmentation],
 ):
-    loader = DataLoader.create(tmp_path)
     loader.add_data(basic_segmentations)
     evaluator = loader.finalize()
 
-    metrics = evaluator.evaluate()
+    metrics = evaluator.compute_precision_recall_iou()
 
     actual_metrics = [m.to_dict() for m in metrics[MetricType.ConfusionMatrix]]
     expected_metrics = [
@@ -48,14 +45,13 @@ def test_confusion_matrix_basic_segmentations(
 
 
 def test_confusion_matrix_segmentations_from_boxes(
-    tmp_path: Path,
+    loader: Loader,
     segmentations_from_boxes: list[Segmentation],
 ):
-    loader = DataLoader.create(tmp_path)
     loader.add_data(segmentations_from_boxes)
     evaluator = loader.finalize()
 
-    metrics = evaluator.evaluate()
+    metrics = evaluator.compute_precision_recall_iou()
 
     actual_metrics = [m.to_dict() for m in metrics[MetricType.ConfusionMatrix]]
     expected_metrics = [
@@ -98,7 +94,7 @@ def test_confusion_matrix_segmentations_from_boxes(
         assert m in actual_metrics
 
 
-def test_confusion_matrix_intermediate_counting(tmp_path: Path):
+def test_confusion_matrix_intermediate_counting(loader: Loader):
 
     segmentation = Segmentation(
         uid="uid1",
@@ -141,7 +137,6 @@ def test_confusion_matrix_intermediate_counting(tmp_path: Path):
         shape=(2, 2),
     )
 
-    loader = DataLoader.create(tmp_path)
     loader.add_data([segmentation])
     evaluator = loader.finalize()
     assert evaluator._confusion_matrix.shape == (5, 5)
