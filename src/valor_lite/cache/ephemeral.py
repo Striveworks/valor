@@ -1,4 +1,4 @@
-from typing import Any
+from typing import Any, Generator
 
 import numpy as np
 import pyarrow as pa
@@ -36,14 +36,70 @@ class MemoryCacheReader(MemoryCache):
         self,
         columns: list[str] | None = None,
         filter: pc.Expression | None = None,
-    ):
-        """Iterate over tables within the cache."""
+    ) -> Generator[pa.Table, None, None]:
+        """
+        Iterate over tables within the cache.
+
+        Parameters
+        ----------
+        columns : list[str], optional
+            Optionally select columns to be returned.
+        filter : pyarrow.compute.Expression, optional
+            Optionally filter table before returning.
+
+        Yields
+        ------
+        pa.Table
+        """
         table = self._table
         if filter is not None:
             table = table.filter(filter)
         if columns is not None:
             table = table.select(columns)
         yield table
+
+    def iterate_pairs(
+        self,
+        columns: list[str] | None = None,
+    ) -> Generator[np.ndarray, None, None]:
+        """
+        Iterate over chunks within the cache returning arrays.
+
+        Parameters
+        ----------
+        columns : list[str], optional
+            Optionally select columns to be returned.
+
+        Yields
+        ------
+        np.ndarray
+        """
+        for tbl in self.iterate_tables(columns=columns):
+            yield np.column_stack(
+                [tbl.column(i).to_numpy() for i in range(tbl.num_columns)]
+            )
+
+    def iterate_pairs_with_table(
+        self,
+        columns: list[str] | None = None,
+    ) -> Generator[tuple[pa.Table, np.ndarray], None, None]:
+        """
+        Iterate over chunks within the cache returning both tables and arrays.
+
+        Parameters
+        ----------
+        columns : list[str], optional
+            Optionally select columns to be returned.
+
+        Yields
+        ------
+        tuple[pa.Table, np.ndarray]
+        """
+        for tbl in self.iterate_tables():
+            columns = columns if columns else tbl.columns
+            yield tbl, np.column_stack(
+                [tbl[col].to_numpy() for col in columns]
+            )
 
 
 class MemoryCacheWriter(MemoryCache):
