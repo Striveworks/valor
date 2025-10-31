@@ -235,6 +235,21 @@ class MemoryCacheWriter(MemoryCache):
             )
             self._buffer = []
 
+    def sort_by(
+        self,
+        sorting: list[tuple[str, str]],
+    ):
+        """
+        Sort cache in-place.
+
+        Parameters
+        ----------
+        sorting : list[tuple[str, str]]
+            Sorting arguments in PyArrow format (e.g. [('a', 'ascending'), ('b', 'descending')]).
+        """
+        self.flush()
+        self._table = self._table.sort_by(sorting)
+
     def __enter__(self):
         """Context manager entry."""
         return self

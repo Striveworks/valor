@@ -9,6 +9,12 @@ def test_empty_evaluator_exc():
     assert "no data" in str(e)
 
 
+def test_empty_cache_exc():
+    with pytest.raises(exc.EmptyCacheError) as e:
+        raise exc.EmptyCacheError()
+    assert "no data" in str(e)
+
+
 def test_empty_cache_error_exc():
     with pytest.raises(exc.EmptyCacheError) as e:
         raise exc.EmptyCacheError()
