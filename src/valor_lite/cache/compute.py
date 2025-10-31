@@ -99,6 +99,7 @@ def sort(
         Maximum number of rows allowed to be read into memory per cache file.
     sorting : list[tuple[str, str]]
         Sorting arguments in PyArrow format (e.g. [('a', 'ascending'), ('b', 'descending')]).
+        Note that only numeric fields are supported.
     columns : list[tuple[str, str]], optional
         Option to only read a subset of columns.
     table_sort_override : Callable[[pa.table], pa.table], optional
