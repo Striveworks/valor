@@ -248,8 +248,8 @@ class Evaluator(Base):
         counts = np.zeros((n_ious, n_scores, 3, n_labels), dtype=np.uint64)
         pr_curve = np.zeros((n_ious, n_labels, 101, 2), dtype=np.float64)
         running_counts = np.ones((n_ious, n_labels, 2), dtype=np.uint64)
-        for pairs in self._ranked_reader.iterate_pairs(
-            columns=[
+        for pairs in self._ranked_reader.iterate_arrays(
+            numeric_columns=[
                 "datum_id",
                 "gt_id",
                 "pd_id",
@@ -342,8 +342,8 @@ class Evaluator(Base):
             (n_ious, n_scores, n_labels), dtype=np.uint64
         )
         unmatched_predictions = np.zeros_like(unmatched_groundtruths)
-        for pairs in self._detailed_reader.iterate_pairs(
-            columns=[
+        for pairs in self._detailed_reader.iterate_arrays(
+            numeric_columns=[
                 "datum_id",
                 "gt_id",
                 "pd_id",
@@ -421,16 +421,23 @@ class Evaluator(Base):
             raise ValueError("At least one score threshold must be passed.")
 
         metrics = []
-        for tbl, pairs in self._detailed_reader.iterate_pairs_with_table(
-            columns=[
-                "datum_id",
-                "gt_id",
-                "pd_id",
-                "gt_label_id",
-                "pd_label_id",
-                "iou",
-                "score",
-            ],
+        tbl_columns = [
+            "datum_uid",
+            "gt_uid",
+            "pd_uid",
+        ]
+        numeric_columns = [
+            "datum_id",
+            "gt_id",
+            "pd_id",
+            "gt_label_id",
+            "pd_label_id",
+            "iou",
+            "score",
+        ]
+        for tbl, pairs in self._detailed_reader.iterate_tables_with_arrays(
+            columns=tbl_columns + numeric_columns,
+            numeric_columns=numeric_columns,
         ):
             if pairs.size == 0:
                 continue
@@ -517,16 +524,23 @@ class Evaluator(Base):
             }
             for iou_idx, iou_thresh in enumerate(iou_thresholds)
         }
-        for tbl, pairs in self._detailed_reader.iterate_pairs_with_table(
-            columns=[
-                "datum_id",
-                "gt_id",
-                "pd_id",
-                "gt_label_id",
-                "pd_label_id",
-                "iou",
-                "score",
-            ],
+        tbl_columns = [
+            "datum_uid",
+            "gt_uid",
+            "pd_uid",
+        ]
+        numeric_columns = [
+            "datum_id",
+            "gt_id",
+            "pd_id",
+            "gt_label_id",
+            "pd_label_id",
+            "iou",
+            "score",
+        ]
+        for tbl, pairs in self._detailed_reader.iterate_tables_with_arrays(
+            columns=tbl_columns + numeric_columns,
+            numeric_columns=numeric_columns,
         ):
             if pairs.size == 0:
                 continue

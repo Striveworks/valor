@@ -59,30 +59,35 @@ class MemoryCacheReader(MemoryCache):
             table = table.select(columns)
         yield table
 
-    def iterate_pairs(
+    def iterate_arrays(
         self,
-        columns: list[str] | None = None,
+        numeric_columns: list[str] | None = None,
+        filter: pc.Expression | None = None,
     ) -> Iterator[np.ndarray]:
         """
         Iterate over chunks within the cache returning arrays.
 
         Parameters
         ----------
-        columns : list[str], optional
-            Optionally select columns to be returned.
+        numeric_columns : list[str], optional
+            Optionally select numeric columns to be returned within an array.
+        filter : pyarrow.compute.Expression, optional
+            Optionally filter table before returning.
 
         Returns
         -------
         Iterator[np.ndarray]
         """
-        for tbl in self.iterate_tables(columns=columns):
+        for tbl in self.iterate_tables(columns=numeric_columns, filter=filter):
             yield np.column_stack(
                 [tbl.column(i).to_numpy() for i in range(tbl.num_columns)]
             )
 
-    def iterate_pairs_with_table(
+    def iterate_tables_with_arrays(
         self,
         columns: list[str] | None = None,
+        filter: pc.Expression | None = None,
+        numeric_columns: list[str] | None = None,
     ) -> Iterator[tuple[pa.Table, np.ndarray]]:
         """
         Iterate over chunks within the cache returning both tables and arrays.
@@ -91,13 +96,21 @@ class MemoryCacheReader(MemoryCache):
         ----------
         columns : list[str], optional
             Optionally select columns to be returned.
+        filter : pyarrow.compute.Expression, optional
+            Optionally filter table before returning.
+        numeric_columns : list[str], optional
+            Optionally select numeric columns to be returned within an array.
 
         Returns
         -------
         Iterator[tuple[pa.Table, np.ndarray]]
+
         """
-        for tbl in self.iterate_tables():
-            columns = columns if columns else tbl.columns
+        for tbl in self.iterate_tables(
+            columns=columns,
+            filter=filter,
+        ):
+            columns = numeric_columns if numeric_columns else tbl.columns
             yield tbl, np.column_stack(
                 [tbl[col].to_numpy() for col in columns]
             )
