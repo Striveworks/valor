@@ -6,9 +6,10 @@ import pyarrow as pa
 from tqdm import tqdm
 
 from valor_lite.cache import (
-    CacheWriter,
     DataType,
-    convert_type_mapping_to_schema,
+    FileCacheWriter,
+    MemoryCacheWriter,
+    convert_type_mapping_to_fields,
 )
 from valor_lite.exceptions import EmptyCacheError
 from valor_lite.semantic_segmentation.annotation import Segmentation
@@ -20,14 +21,14 @@ from valor_lite.semantic_segmentation.format import PathFormatter
 class Loader(PathFormatter):
     def __init__(
         self,
-        path: str | Path,
-        writer: CacheWriter,
+        writer: MemoryCacheWriter | FileCacheWriter,
         datum_metadata_types: dict[str, DataType] | None = None,
         groundtruth_metadata_types: dict[str, DataType] | None = None,
         prediction_metadata_types: dict[str, DataType] | None = None,
+        path: str | Path | None = None,
     ):
-        self._path = Path(path)
-        self._cache = writer
+        self._path = Path(path) if path else None
+        self._writer = writer
         self._datum_metadata_types = datum_metadata_types
         self._groundtruth_metadata_types = groundtruth_metadata_types
         self._prediction_metadata_types = prediction_metadata_types
@@ -54,28 +55,28 @@ class Loader(PathFormatter):
             cls.delete(path)
 
         # define arrow schema
-        datum_metadata_schema = convert_type_mapping_to_schema(
+        datum_metadata_fields = convert_type_mapping_to_fields(
             datum_metadata_types
         )
-        groundtruth_metadata_schema = convert_type_mapping_to_schema(
+        groundtruth_metadata_fields = convert_type_mapping_to_fields(
             groundtruth_metadata_types
         )
-        prediction_metadata_schema = convert_type_mapping_to_schema(
+        prediction_metadata_fields = convert_type_mapping_to_fields(
             prediction_metadata_types
         )
         schema = pa.schema(
             [
                 ("datum_uid", pa.string()),
                 ("datum_id", pa.int64()),
-                *datum_metadata_schema,
+                *datum_metadata_fields,
                 # groundtruth
                 ("gt_label", pa.string()),
                 ("gt_label_id", pa.int64()),
-                *groundtruth_metadata_schema,
+                *groundtruth_metadata_fields,
                 # prediction
                 ("pd_label", pa.string()),
                 ("pd_label_id", pa.int64()),
-                *prediction_metadata_schema,
+                *prediction_metadata_fields,
                 # pair
                 ("count", pa.uint64()),
             ]
@@ -293,7 +294,7 @@ class Loader(PathFormatter):
                     "count": counts[0, 0],
                 }
             )
-            self._cache.write_rows(rows)
+            self._writer.write_rows(rows)
 
             # update datum count
             self._datum_count += 1
@@ -315,8 +316,8 @@ class Loader(PathFormatter):
         Evaluator
             A ready-to-use evaluator object.
         """
-        self._cache.flush()
-        if self._cache.dataset.count_rows() == 0:
+        self._writer.flush()
+        if self._writer.dataset.count_rows() == 0:
             raise EmptyCacheError()
 
         return Evaluator.load(
