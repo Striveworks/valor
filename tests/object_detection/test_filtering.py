@@ -8,7 +8,6 @@ import pytest
 from valor_lite.object_detection import (
     BoundingBox,
     Detection,
-    Filter,
     Loader,
     MetricType,
 )
@@ -174,9 +173,9 @@ def test_filtering_one_detection(
     evaluator = loader.finalize()
 
     # test evaluation
-    filter_ = Filter(datums=pc.field("datum_uid") == "uid1")
     filtered_evaluator = evaluator.filter(
-        filter_expr=filter_, path=tmp_path / "filtered"
+        datums=pc.field("datum_uid") == "uid1",
+        path=tmp_path / "filtered",
     )
     metrics = filtered_evaluator.compute_precision_recall(
         iou_thresholds=[0.5], score_thresholds=[0.5]
@@ -232,9 +231,9 @@ def test_filtering_two_detections(
     evaluator = loader.finalize()
 
     # test evaluation
-    filter_ = Filter(datums=pc.field("datum_uid") == "uid1")
     filtered_evaluator = evaluator.filter(
-        filter_expr=filter_, path=tmp_path / "filtered"
+        datums=pc.field("datum_uid") == "uid1",
+        path=tmp_path / "filtered",
     )
     metrics = filtered_evaluator.compute_precision_recall(
         iou_thresholds=[0.5], score_thresholds=[0.5]
@@ -293,9 +292,9 @@ def test_filtering_four_detections(
     evaluator = loader.finalize()
 
     # test evaluation
-    filter_ = Filter(datums=pc.field("datum_uid") == "uid1")
     filtered_evaluator = evaluator.filter(
-        filter_expr=filter_, path=tmp_path / "filtered"
+        datums=pc.field("datum_uid") == "uid1",
+        path=tmp_path / "filtered",
     )
     metrics = filtered_evaluator.compute_precision_recall(
         iou_thresholds=[0.5], score_thresholds=[0.5]
@@ -354,9 +353,9 @@ def test_filtering_all_detections(
     evaluator = loader.finalize()
 
     # test evaluation
-    filter_ = Filter(predictions=pc.field("pd_uid") == "uid1_pd_0")
     filtered_evaluator = evaluator.filter(
-        filter_expr=filter_, path=tmp_path / "filtered"
+        predictions=pc.field("pd_uid") == "uid1_pd_0",
+        path=tmp_path / "filtered",
     )
     metrics = filtered_evaluator.compute_precision_recall(
         iou_thresholds=[0.5], score_thresholds=[0.5]
@@ -392,9 +391,10 @@ def test_filtering_random_detections(
 ):
     loader.add_bounding_boxes(_generate_random_detections(13, 4, "abc"))
     evaluator = loader.finalize()
-    filter_ = Filter(predictions=pc.field("pd_uid") == "uid1_pd_0")
+
     filtered_evaluator = evaluator.filter(
-        filter_expr=filter_, path=tmp_path / "filtered"
+        predictions=pc.field("pd_uid") == "uid1_pd_0",
+        path=tmp_path / "filtered",
     )
     filtered_evaluator.compute_precision_recall(
         iou_thresholds=[0.5], score_thresholds=[0.5]
@@ -435,9 +435,9 @@ def test_filtering_four_detections_by_indices(
     evaluator = loader.finalize()
 
     # test evaluation
-    filter_ = Filter(datums=pc.field("datum_id") == 0)
     filtered_evaluator = evaluator.filter(
-        filter_expr=filter_, path=tmp_path / "filtered"
+        datums=pc.field("datum_id") == 0,
+        path=tmp_path / "filtered",
     )
     metrics = filtered_evaluator.compute_precision_recall(
         iou_thresholds=[0.5], score_thresholds=[0.5]
@@ -497,10 +497,10 @@ def test_filtering_four_detections_by_annotation_metadata(
     evaluator = loader.finalize()
 
     # remove all FN groundtruths
-    filter_ = Filter(
+    filtered_evaluator = evaluator.filter(
         groundtruths=pc.field("gt_rect") == "rect1",
+        path=tmp_path / "filtered1",
     )
-    filtered_evaluator = evaluator.filter(filter_, path=tmp_path / "filtered1")
     metrics = filtered_evaluator.compute_precision_recall(
         iou_thresholds=[0.5], score_thresholds=[0.1]
     )
@@ -531,10 +531,10 @@ def test_filtering_four_detections_by_annotation_metadata(
         assert m in actual_metrics
 
     # remove TP ground truths
-    filter_ = Filter(
+    filtered_evaluator = evaluator.filter(
         groundtruths=pc.field("gt_rect") != "rect1",
+        path=tmp_path / "filtered2",
     )
-    filtered_evaluator = evaluator.filter(filter_, path=tmp_path / "filtered2")
     metrics = filtered_evaluator.compute_precision_recall(
         iou_thresholds=[0.5], score_thresholds=[0.1]
     )

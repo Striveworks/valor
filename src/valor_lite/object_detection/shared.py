@@ -5,9 +5,9 @@ from pathlib import Path
 import numpy as np
 import pyarrow as pa
 from numpy.typing import NDArray
+from pyarrow import DataType
 
 from valor_lite.cache import (
-    DataType,
     FileCacheReader,
     FileCacheWriter,
     MemoryCacheReader,
@@ -21,9 +21,9 @@ class EvaluatorInfo:
     number_of_prediction_annotations: int = 0
     number_of_labels: int = 0
     number_of_rows: int = 0
-    datum_metadata_types: dict[str, DataType] | None = None
-    groundtruth_metadata_types: dict[str, DataType] | None = None
-    prediction_metadata_types: dict[str, DataType] | None = None
+    datum_metadata_fields: list[tuple[str, DataType]] | None = None
+    groundtruth_metadata_fields: list[tuple[str, DataType]] | None = None
+    prediction_metadata_fields: list[tuple[str, DataType]] | None = None
 
 
 class Base:
@@ -45,10 +45,19 @@ class Base:
 
     @staticmethod
     def _generate_detailed_schema(
-        datum_metadata_fields: list[tuple[str, pa.DataType]],
-        groundtruth_metadata_fields: list[tuple[str, pa.DataType]],
-        prediction_metadata_fields: list[tuple[str, pa.DataType]],
+        datum_metadata_fields: list[tuple[str, DataType]] | None,
+        groundtruth_metadata_fields: list[tuple[str, DataType]] | None,
+        prediction_metadata_fields: list[tuple[str, DataType]] | None,
     ) -> pa.Schema:
+        datum_metadata_fields = (
+            datum_metadata_fields if datum_metadata_fields else []
+        )
+        groundtruth_metadata_fields = (
+            groundtruth_metadata_fields if groundtruth_metadata_fields else []
+        )
+        prediction_metadata_fields = (
+            prediction_metadata_fields if prediction_metadata_fields else []
+        )
         return pa.schema(
             [
                 ("datum_uid", pa.string()),
@@ -74,8 +83,11 @@ class Base:
 
     @staticmethod
     def _generate_ranked_schema(
-        datum_metadata_fields: list[tuple[str, pa.DataType]],
+        datum_metadata_fields: list[tuple[str, DataType]] | None,
     ) -> pa.Schema:
+        datum_metadata_fields = (
+            datum_metadata_fields if datum_metadata_fields else []
+        )
         return pa.schema(
             [
                 ("datum_uid", pa.string()),
@@ -93,6 +105,50 @@ class Base:
                 ("high_score", pa.bool_()),
                 ("iou_prev", pa.float64()),
             ]
+        )
+
+    @staticmethod
+    def _encode_metadata_fields(
+        datum_metadata_fields: list[tuple[str, DataType]] | None,
+        groundtruth_metadata_fields: list[tuple[str, DataType]] | None,
+        prediction_metadata_fields: list[tuple[str, DataType]] | None,
+    ) -> dict[str, dict[str, str]]:
+        datum_metadata_fields = (
+            datum_metadata_fields if datum_metadata_fields else []
+        )
+        groundtruth_metadata_fields = (
+            groundtruth_metadata_fields if groundtruth_metadata_fields else []
+        )
+        prediction_metadata_fields = (
+            prediction_metadata_fields if prediction_metadata_fields else []
+        )
+        return {
+            "datum": {k: str(v) for k, v in datum_metadata_fields},
+            "groundtruth": {k: str(v) for k, v in groundtruth_metadata_fields},
+            "prediction": {k: str(v) for k, v in prediction_metadata_fields},
+        }
+
+    @staticmethod
+    def _decode_metadata_fields(
+        encoded_metadata_fields: dict[str, dict[str, str]]
+    ) -> tuple[
+        list[tuple[str, DataType]],
+        list[tuple[str, DataType]],
+        list[tuple[str, DataType]],
+    ]:
+        datum_metadata_fields = [
+            (k, v) for k, v in encoded_metadata_fields["datum"].items()
+        ]
+        groundtruth_metadata_fields = [
+            (k, v) for k, v in encoded_metadata_fields["groundtruth"].items()
+        ]
+        prediction_metadata_fields = [
+            (k, v) for k, v in encoded_metadata_fields["prediction"].items()
+        ]
+        return (
+            datum_metadata_fields,
+            groundtruth_metadata_fields,
+            prediction_metadata_fields,
         )
 
     @staticmethod

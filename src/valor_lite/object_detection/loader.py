@@ -3,15 +3,10 @@ from pathlib import Path
 
 import numpy as np
 from numpy.typing import NDArray
+from pyarrow import DataType
 from tqdm import tqdm
 
-from valor_lite.cache import (
-    DataType,
-    FileCacheWriter,
-    MemoryCacheWriter,
-    convert_type_mapping_to_fields,
-    heapsort,
-)
+from valor_lite.cache import FileCacheWriter, MemoryCacheWriter, heapsort
 from valor_lite.exceptions import EmptyCacheError
 from valor_lite.object_detection.annotation import (
     Bitmask,
@@ -34,17 +29,17 @@ class Loader(Base):
         self,
         detailed_writer: MemoryCacheWriter | FileCacheWriter,
         ranked_writer: MemoryCacheWriter | FileCacheWriter,
-        datum_metadata_types: dict[str, DataType] | None = None,
-        groundtruth_metadata_types: dict[str, DataType] | None = None,
-        prediction_metadata_types: dict[str, DataType] | None = None,
+        datum_metadata_fields: list[tuple[str, DataType]] | None = None,
+        groundtruth_metadata_fields: list[tuple[str, DataType]] | None = None,
+        prediction_metadata_fields: list[tuple[str, DataType]] | None = None,
         path: str | Path | None = None,
     ):
         self._path = Path(path) if path else None
         self._detailed_writer = detailed_writer
         self._ranked_writer = ranked_writer
-        self._datum_metadata_types = datum_metadata_types
-        self._groundtruth_metadata_types = groundtruth_metadata_types
-        self._prediction_metadata_types = prediction_metadata_types
+        self._datum_metadata_fields = datum_metadata_fields
+        self._groundtruth_metadata_fields = groundtruth_metadata_fields
+        self._prediction_metadata_fields = prediction_metadata_fields
 
         # internal state
         self._labels = {}
@@ -56,9 +51,9 @@ class Loader(Base):
     def in_memory(
         cls,
         batch_size: int = 10_000,
-        datum_metadata_types: dict[str, DataType] | None = None,
-        groundtruth_metadata_types: dict[str, DataType] | None = None,
-        prediction_metadata_types: dict[str, DataType] | None = None,
+        datum_metadata_fields: list[tuple[str, DataType]] | None = None,
+        groundtruth_metadata_fields: list[tuple[str, DataType]] | None = None,
+        prediction_metadata_fields: list[tuple[str, DataType]] | None = None,
     ):
         """
         Create an in-memory evaluator cache.
@@ -67,23 +62,13 @@ class Loader(Base):
         ----------
         batch_size : int, default=10_000
             The target number of rows to buffer before writing to the cache. Defaults to 10_000.
-        datum_metadata_types : dict[str, DataType], optional
+        datum_metadata_fields : list[tuple[str, DataType]], optional
             Optional datum metadata field definition.
-        groundtruth_metadata_types : dict[str, DataType], optional
+        groundtruth_metadata_fields : list[tuple[str, DataType]], optional
             Optional ground truth annotation metadata field definition.
-        prediction_metadata_types : dict[str, DataType], optional
+        prediction_metadata_fields : list[tuple[str, DataType]], optional
             Optional prediction metadata field definition.
         """
-        datum_metadata_fields = convert_type_mapping_to_fields(
-            datum_metadata_types
-        )
-        groundtruth_metadata_fields = convert_type_mapping_to_fields(
-            groundtruth_metadata_types
-        )
-        prediction_metadata_fields = convert_type_mapping_to_fields(
-            prediction_metadata_types
-        )
-
         # create cache
         detailed_writer = MemoryCacheWriter.create(
             schema=cls._generate_detailed_schema(
@@ -103,9 +88,9 @@ class Loader(Base):
         return cls(
             detailed_writer=detailed_writer,
             ranked_writer=ranked_writer,
-            datum_metadata_types=datum_metadata_types,
-            groundtruth_metadata_types=groundtruth_metadata_types,
-            prediction_metadata_types=prediction_metadata_types,
+            datum_metadata_fields=datum_metadata_fields,
+            groundtruth_metadata_fields=groundtruth_metadata_fields,
+            prediction_metadata_fields=prediction_metadata_fields,
         )
 
     @classmethod
@@ -115,9 +100,9 @@ class Loader(Base):
         batch_size: int = 10_000,
         rows_per_file: int = 100_000,
         compression: str = "snappy",
-        datum_metadata_types: dict[str, DataType] | None = None,
-        groundtruth_metadata_types: dict[str, DataType] | None = None,
-        prediction_metadata_types: dict[str, DataType] | None = None,
+        datum_metadata_fields: list[tuple[str, DataType]] | None = None,
+        groundtruth_metadata_fields: list[tuple[str, DataType]] | None = None,
+        prediction_metadata_fields: list[tuple[str, DataType]] | None = None,
         delete_if_exists: bool = False,
     ):
         """
@@ -133,11 +118,11 @@ class Loader(Base):
             The target number of rows to store per cache file. Defaults to 100_000.
         compression : str, default="snappy"
             The compression methods used when writing cache files.
-        datum_metadata_types : dict[str, DataType], optional
+        datum_metadata_fields : list[tuple[str, DataType]], optional
             Optional datum metadata field definition.
-        groundtruth_metadata_types : dict[str, DataType], optional
+        groundtruth_metadata_fields : list[tuple[str, DataType]], optional
             Optional ground truth annotation metadata field definition.
-        prediction_metadata_types : dict[str, DataType], optional
+        prediction_metadata_fields : list[tuple[str, DataType]], optional
             Optional prediction metadata field definition.
         delete_if_exists : bool, default=False
             Option to delete any pre-exisiting cache at the given path.
@@ -145,16 +130,6 @@ class Loader(Base):
         path = Path(path)
         if delete_if_exists and path.exists():
             cls.delete_at_path(path)
-
-        datum_metadata_fields = convert_type_mapping_to_fields(
-            datum_metadata_types
-        )
-        groundtruth_metadata_fields = convert_type_mapping_to_fields(
-            groundtruth_metadata_types
-        )
-        prediction_metadata_fields = convert_type_mapping_to_fields(
-            prediction_metadata_types
-        )
 
         # create caches
         detailed_writer = FileCacheWriter.create(
@@ -181,19 +156,19 @@ class Loader(Base):
         # write metadata
         metadata_path = cls._generate_metadata_path(path)
         with open(metadata_path, "w") as f:
-            types = {
-                "datum_metadata_types": datum_metadata_types,
-                "groundtruth_metadata_types": groundtruth_metadata_types,
-                "prediction_metadata_types": prediction_metadata_types,
-            }
-            json.dump(types, f, indent=2)
+            encoded_types = cls._encode_metadata_fields(
+                datum_metadata_fields=datum_metadata_fields,
+                groundtruth_metadata_fields=groundtruth_metadata_fields,
+                prediction_metadata_fields=prediction_metadata_fields,
+            )
+            json.dump(encoded_types, f, indent=2)
 
         return cls(
             detailed_writer=detailed_writer,
             ranked_writer=ranked_writer,
-            datum_metadata_types=datum_metadata_types,
-            groundtruth_metadata_types=groundtruth_metadata_types,
-            prediction_metadata_types=prediction_metadata_types,
+            datum_metadata_fields=datum_metadata_fields,
+            groundtruth_metadata_fields=groundtruth_metadata_fields,
+            prediction_metadata_fields=prediction_metadata_fields,
             path=path,
         )
 
@@ -512,9 +487,9 @@ class Loader(Base):
             number_of_groundtruths_per_label,
             info,
         ) = self._generate_meta(detailed_reader, index_to_label_override)
-        info.datum_metadata_types = self._datum_metadata_types
-        info.groundtruth_metadata_types = self._groundtruth_metadata_types
-        info.prediction_metadata_types = self._prediction_metadata_types
+        info.datum_metadata_fields = self._datum_metadata_fields
+        info.groundtruth_metadata_fields = self._groundtruth_metadata_fields
+        info.prediction_metadata_fields = self._prediction_metadata_fields
 
         # populate ranked cache
         self._rank(

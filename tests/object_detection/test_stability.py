@@ -4,7 +4,7 @@ from uuid import uuid4
 
 import pyarrow.compute as pc
 
-from valor_lite.object_detection import BoundingBox, Detection, Filter, Loader
+from valor_lite.object_detection import BoundingBox, Detection, Loader
 
 
 def _generate_random_detections(
@@ -70,7 +70,7 @@ def test_fuzz_detections_with_filtering(loader: Loader, tmp_path: Path):
 
     datum_subset = [f"uid{i}" for i in range(len(detections) // 2)]
     filtered_evaluator = evaluator.filter(
-        filter_expr=Filter(datums=pc.field("datum_uid").isin(datum_subset)),
+        datums=pc.field("datum_uid").isin(datum_subset),
         path=tmp_path / "filtered",
     )
     filtered_evaluator.compute_precision_recall(

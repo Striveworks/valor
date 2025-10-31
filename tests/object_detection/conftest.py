@@ -2,13 +2,13 @@ from pathlib import Path
 from uuid import uuid4
 
 import numpy as np
+import pyarrow as pa
 import pytest
 from shapely.geometry import Polygon as ShapelyPolygon
 
 from valor_lite.object_detection import (
     Bitmask,
     BoundingBox,
-    DataType,
     Detection,
     Evaluator,
     Loader,
@@ -36,24 +36,24 @@ def loader(request, tmp_path: Path):
         case "memory":
             return Loader.in_memory(
                 batch_size=batch_size,
-                groundtruth_metadata_types={
-                    "gt_rect": DataType.STRING,
-                },
-                prediction_metadata_types={
-                    "pd_rect": DataType.STRING,
-                },
+                groundtruth_metadata_fields=[
+                    ("gt_rect", "string"),
+                ],
+                prediction_metadata_fields=[
+                    ("pd_rect", pa.string()),
+                ],
             )
         case "persistent":
             return Loader.persistent(
                 path=tmp_path / "cache",
                 batch_size=batch_size,
                 rows_per_file=rows_per_file,
-                groundtruth_metadata_types={
-                    "gt_rect": DataType.STRING,
-                },
-                prediction_metadata_types={
-                    "pd_rect": DataType.STRING,
-                },
+                groundtruth_metadata_fields=[
+                    ("gt_rect", "string"),
+                ],
+                prediction_metadata_fields=[
+                    ("pd_rect", pa.string()),
+                ],
             )
 
 

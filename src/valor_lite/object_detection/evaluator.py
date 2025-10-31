@@ -1,5 +1,4 @@
 import json
-from dataclasses import dataclass
 from pathlib import Path
 
 import numpy as np
@@ -26,13 +25,6 @@ from valor_lite.object_detection.utilities import (
     unpack_examples,
     unpack_precision_recall_into_metric_lists,
 )
-
-
-@dataclass
-class Filter:
-    datums: pc.Expression | None = None
-    groundtruths: pc.Expression | None = None
-    predictions: pc.Expression | None = None
 
 
 class Evaluator(Base):
@@ -90,12 +82,12 @@ class Evaluator(Base):
         # read config
         metadata_path = cls._generate_metadata_path(path)
         with open(metadata_path, "r") as f:
-            types = json.load(f)
-            info.datum_metadata_types = types["datum_metadata_types"]
-            info.groundtruth_metadata_types = types[
-                "groundtruth_metadata_types"
-            ]
-            info.prediction_metadata_types = types["prediction_metadata_types"]
+            encoded_metadata_types = json.load(f)
+            (
+                info.datum_metadata_fields,
+                info.groundtruth_metadata_fields,
+                info.prediction_metadata_fields,
+            ) = cls._decode_metadata_fields(encoded_metadata_types)
 
         return cls(
             path=path,
@@ -108,7 +100,9 @@ class Evaluator(Base):
 
     def filter(
         self,
-        filter_expr: Filter,
+        datums: pc.Expression | None = None,
+        groundtruths: pc.Expression | None = None,
+        predictions: pc.Expression | None = None,
         batch_size: int = 1_000,
         path: str | Path | None = None,
     ) -> "Evaluator":
@@ -117,8 +111,12 @@ class Evaluator(Base):
 
         Parameters
         ----------
-        filter_expr : Filter
-            An object containing filter expressions.
+        datums : pc.Expression | None = None
+            A filter expression used to filter datums.
+        groundtruths : pc.Expression | None = None
+            A filter expression used to filter ground truth annotations.
+        predictions : pc.Expression | None = None
+            A filter expression used to filter predictions.
         batch_size : int
             The maximum number of rows read into memory per file.
         path : str | Path
@@ -141,21 +139,19 @@ class Evaluator(Base):
                 batch_size=self._detailed_reader.batch_size,
                 rows_per_file=self._detailed_reader.rows_per_file,
                 compression=self._detailed_reader.compression,
-                datum_metadata_types=self.info.datum_metadata_types,
-                groundtruth_metadata_types=self.info.groundtruth_metadata_types,
-                prediction_metadata_types=self.info.prediction_metadata_types,
+                datum_metadata_fields=self.info.datum_metadata_fields,
+                groundtruth_metadata_fields=self.info.groundtruth_metadata_fields,
+                prediction_metadata_fields=self.info.prediction_metadata_fields,
             )
         else:
             loader = Loader.in_memory(
                 batch_size=self._detailed_reader.batch_size,
-                datum_metadata_types=self.info.datum_metadata_types,
-                groundtruth_metadata_types=self.info.groundtruth_metadata_types,
-                prediction_metadata_types=self.info.prediction_metadata_types,
+                datum_metadata_fields=self.info.datum_metadata_fields,
+                groundtruth_metadata_fields=self.info.groundtruth_metadata_fields,
+                prediction_metadata_fields=self.info.prediction_metadata_fields,
             )
 
-        for tbl in self._detailed_reader.iterate_tables(
-            filter=filter_expr.datums
-        ):
+        for tbl in self._detailed_reader.iterate_tables(filter=datums):
             columns = (
                 "datum_id",
                 "gt_id",
@@ -171,9 +167,9 @@ class Evaluator(Base):
             gt_ids = pairs[:, (0, 1)].astype(np.int64)
             pd_ids = pairs[:, (0, 2)].astype(np.int64)
 
-            if filter_expr.groundtruths is not None:
+            if groundtruths is not None:
                 mask_valid_gt = np.zeros(n_pairs, dtype=np.bool_)
-                gt_tbl = tbl.filter(filter_expr.groundtruths)
+                gt_tbl = tbl.filter(groundtruths)
                 gt_pairs = np.column_stack(
                     [gt_tbl[col].to_numpy() for col in ("datum_id", "gt_id")]
                 ).astype(np.int64)
@@ -182,9 +178,9 @@ class Evaluator(Base):
             else:
                 mask_valid_gt = np.ones(n_pairs, dtype=np.bool_)
 
-            if filter_expr.predictions is not None:
+            if predictions is not None:
                 mask_valid_pd = np.zeros(n_pairs, dtype=np.bool_)
-                pd_tbl = tbl.filter(filter_expr.predictions)
+                pd_tbl = tbl.filter(predictions)
                 pd_pairs = np.column_stack(
                     [pd_tbl[col].to_numpy() for col in ("datum_id", "pd_id")]
                 ).astype(np.int64)
