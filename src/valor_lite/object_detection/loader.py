@@ -6,7 +6,8 @@ from numpy.typing import NDArray
 from pyarrow import DataType
 from tqdm import tqdm
 
-from valor_lite.cache import FileCacheWriter, MemoryCacheWriter, heapsort
+from valor_lite import cache
+from valor_lite.cache import FileCacheWriter, MemoryCacheWriter
 from valor_lite.exceptions import EmptyCacheError
 from valor_lite.object_detection.annotation import (
     Bitmask,
@@ -412,53 +413,26 @@ class Loader(Base):
         batch_size: int = 1_000,
     ):
         """Perform pair ranking over the detailed cache."""
+
         detailed_reader = self._detailed_writer.to_reader()
-        subset_columns = [
-            field.name
-            for field in self._ranked_writer.schema
-            if field.name not in {"high_score", "iou_prev"}
-        ]
-        if isinstance(self._ranked_writer, FileCacheWriter):
-            if not self._path:
-                raise ValueError(
-                    "missing path definition in file-based loader"
-                )
-            path = self._generate_temporary_cache_path(self._path)
-            tmp_sink = FileCacheWriter.create(
-                path=path,
-                schema=self._ranked_writer.schema,
-                batch_size=self._ranked_writer._batch_size,
-                rows_per_file=self._ranked_writer._rows_per_file,
-                compression=self._ranked_writer._compression,
-                delete_if_exists=True,
-            )
-        else:
-            tmp_sink = MemoryCacheWriter.create(
-                schema=self._ranked_writer.schema,
-                batch_size=self._ranked_writer._batch_size,
-            )
-
-        # rank individual files
-        for tbl in detailed_reader.iterate_tables(columns=subset_columns):
-            ranked_tbl = rank_table(tbl, n_labels)
-            tmp_sink.write_table(ranked_tbl)
-        tmp_source = tmp_sink.to_reader()
-
-        # sort ranked pairs across all chunks
-        heapsort(
-            source=tmp_source,
+        cache.sort(
+            source=detailed_reader,
             sink=self._ranked_writer,
             batch_size=batch_size,
             sorting=[
                 ("score", "descending"),
                 ("iou", "descending"),
             ],
+            columns=[
+                field.name
+                for field in self._ranked_writer.schema
+                if field.name not in {"high_score", "iou_prev"}
+            ],
+            table_sort_override=lambda tbl: rank_table(
+                tbl, number_of_labels=n_labels
+            ),
         )
-
-        # clean up
         self._ranked_writer.flush()
-        if isinstance(tmp_sink, FileCacheWriter):
-            FileCacheWriter.delete(tmp_sink.path)
 
     def finalize(
         self,

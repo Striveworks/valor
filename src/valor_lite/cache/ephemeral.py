@@ -1,4 +1,5 @@
-from typing import Any, Generator
+from collections.abc import Iterator
+from typing import Any
 
 import numpy as np
 import pyarrow as pa
@@ -36,7 +37,7 @@ class MemoryCacheReader(MemoryCache):
         self,
         columns: list[str] | None = None,
         filter: pc.Expression | None = None,
-    ) -> Generator[pa.Table, None, None]:
+    ) -> Iterator[pa.Table]:
         """
         Iterate over tables within the cache.
 
@@ -47,9 +48,9 @@ class MemoryCacheReader(MemoryCache):
         filter : pyarrow.compute.Expression, optional
             Optionally filter table before returning.
 
-        Yields
-        ------
-        pa.Table
+        Returns
+        -------
+        Iterator[pa.Table]
         """
         table = self._table
         if filter is not None:
@@ -61,7 +62,7 @@ class MemoryCacheReader(MemoryCache):
     def iterate_pairs(
         self,
         columns: list[str] | None = None,
-    ) -> Generator[np.ndarray, None, None]:
+    ) -> Iterator[np.ndarray]:
         """
         Iterate over chunks within the cache returning arrays.
 
@@ -70,9 +71,9 @@ class MemoryCacheReader(MemoryCache):
         columns : list[str], optional
             Optionally select columns to be returned.
 
-        Yields
-        ------
-        np.ndarray
+        Returns
+        -------
+        Iterator[np.ndarray]
         """
         for tbl in self.iterate_tables(columns=columns):
             yield np.column_stack(
@@ -82,7 +83,7 @@ class MemoryCacheReader(MemoryCache):
     def iterate_pairs_with_table(
         self,
         columns: list[str] | None = None,
-    ) -> Generator[tuple[pa.Table, np.ndarray], None, None]:
+    ) -> Iterator[tuple[pa.Table, np.ndarray]]:
         """
         Iterate over chunks within the cache returning both tables and arrays.
 
@@ -91,15 +92,32 @@ class MemoryCacheReader(MemoryCache):
         columns : list[str], optional
             Optionally select columns to be returned.
 
-        Yields
-        ------
-        tuple[pa.Table, np.ndarray]
+        Returns
+        -------
+        Iterator[tuple[pa.Table, np.ndarray]]
         """
         for tbl in self.iterate_tables():
             columns = columns if columns else tbl.columns
             yield tbl, np.column_stack(
                 [tbl[col].to_numpy() for col in columns]
             )
+
+    def iterate_fragments(
+        self, batch_size: int
+    ) -> Iterator[Iterator[pa.RecordBatch]]:
+        """
+        Iterate over fragment batch iterators within the file-based cache.
+
+        Parameters
+        ----------
+        batch_size : int
+            Maximum number of rows allowed to be read into memory per cache file.
+
+        Yields
+        ------
+        Iterator[Iterator[pa.RecordBatch]]
+        """
+        yield iter(self._table.to_batches(max_chunksize=batch_size))
 
 
 class MemoryCacheWriter(MemoryCache):

@@ -4,7 +4,7 @@ from pathlib import Path
 import pyarrow as pa
 import pytest
 
-from valor_lite.cache import FileCacheWriter, MemoryCacheWriter, heapsort
+from valor_lite.cache import FileCacheWriter, MemoryCacheWriter, sort
 
 
 @pytest.fixture(
@@ -81,7 +81,7 @@ def writer2(request, tmp_path: Path):
             )
 
 
-def test_cache_compute_heapsort(
+def test_cache_compute_sort(
     writer1: MemoryCacheWriter | FileCacheWriter,
     writer2: MemoryCacheWriter | FileCacheWriter,
 ):
@@ -105,13 +105,9 @@ def test_cache_compute_heapsort(
         )
     writer1.flush()
 
-    # if multi-file cache, sort locally first
-    if writer1.count_tables() > 1:
-        writer1.sort_by(sorting_args)
-
     # sort cache 1, write into cache 2
     reader1 = writer1.to_reader()
-    heapsort(
+    sort(
         source=reader1,
         sink=writer2,
         batch_size=10,

@@ -2,8 +2,9 @@ import base64
 import glob
 import json
 import os
+from collections.abc import Iterator
 from pathlib import Path
-from typing import Any, Generator
+from typing import Any
 
 import numpy as np
 import pyarrow as pa
@@ -157,7 +158,7 @@ class FileCacheReader(FileCache):
         self,
         columns: list[str] | None = None,
         filter: pc.Expression | None = None,
-    ) -> Generator[pa.Table, None, None]:
+    ) -> Iterator[pa.Table]:
         """
         Iterate over tables within the cache.
 
@@ -168,9 +169,9 @@ class FileCacheReader(FileCache):
         filter : pyarrow.compute.Expression, optional
             Optionally filter table before returning.
 
-        Yields
-        ------
-        pa.Table
+        Returns
+        -------
+        Iterator[pa.Table]
         """
         dataset = ds.dataset(
             source=self._path,
@@ -183,7 +184,7 @@ class FileCacheReader(FileCache):
     def iterate_pairs(
         self,
         columns: list[str] | None = None,
-    ) -> Generator[np.ndarray, None, None]:
+    ) -> Iterator[np.ndarray]:
         """
         Iterate over chunks within the cache returning arrays.
 
@@ -192,9 +193,9 @@ class FileCacheReader(FileCache):
         columns : list[str], optional
             Optionally select columns to be returned.
 
-        Yields
-        ------
-        np.ndarray
+        Returns
+        -------
+        Iterator[np.ndarray]
         """
         for tbl in self.iterate_tables(columns=columns):
             yield np.column_stack(
@@ -204,7 +205,7 @@ class FileCacheReader(FileCache):
     def iterate_pairs_with_table(
         self,
         columns: list[str] | None = None,
-    ) -> Generator[tuple[pa.Table, np.ndarray], None, None]:
+    ) -> Iterator[tuple[pa.Table, np.ndarray]]:
         """
         Iterate over chunks within the cache returning both tables and arrays.
 
@@ -213,9 +214,10 @@ class FileCacheReader(FileCache):
         columns : list[str], optional
             Optionally select columns to be returned.
 
-        Yields
-        ------
-        tuple[pa.Table, np.ndarray]
+        Returns
+        -------
+        Iterator[tuple[pa.Table, np.ndarray]]
+
         """
         for tbl in self.iterate_tables():
             columns = columns if columns else tbl.columns
@@ -223,18 +225,20 @@ class FileCacheReader(FileCache):
                 [tbl[col].to_numpy() for col in columns]
             )
 
-    def iterate_fragments(self) -> Generator[ds.Fragment, None, None]:
+    def iterate_fragments(
+        self, batch_size: int
+    ) -> Iterator[Iterator[pa.RecordBatch]]:
         """
-        Iterate over fragments within the file-based cache.
+        Iterate over fragment batch iterators within the file-based cache.
 
         Parameters
         ----------
-        columns : list[str], optional
-            Optionally select columns to be returned.
+        batch_size : int
+            Maximum number of rows allowed to be read into memory per cache file.
 
-        Yields
-        ------
-        tuple[pa.Table, np.ndarray]
+        Returns
+        -------
+        Iterator[Iterator[pa.RecordBatch]]
         """
         dataset = ds.dataset(
             source=self._path,
@@ -242,7 +246,7 @@ class FileCacheReader(FileCache):
             format="parquet",
         )
         for fragment in dataset.get_fragments():
-            yield fragment
+            yield fragment.to_batches(batch_size=batch_size)
 
 
 class FileCacheWriter(FileCache):
