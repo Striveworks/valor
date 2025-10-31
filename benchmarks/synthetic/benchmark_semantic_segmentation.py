@@ -181,7 +181,7 @@ def benchmark(
 
     for _ in range(repeat):
 
-        loader = Loader.create(
+        loader = Loader.persistent(
             ".valor/benchmark_semseg",
             batch_size=1_000,
             rows_per_file=10_000,
