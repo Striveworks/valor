@@ -1,4 +1,4 @@
-from .compute import heapsort
+from .compute import sort
 from .ephemeral import MemoryCacheReader, MemoryCacheWriter
 from .persistent import FileCacheReader, FileCacheWriter
 
@@ -7,5 +7,5 @@ __all__ = [
     "FileCacheWriter",
     "MemoryCacheReader",
     "MemoryCacheWriter",
-    "heapsort",
+    "sort",
 ]
