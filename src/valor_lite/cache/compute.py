@@ -17,7 +17,7 @@ def heapsort(
 
     Parameters
     ----------
-    source : FileCacheReader
+    source : MemoryCacheReader | FileCacheReader
         A read-only cache. If file-based, each file must be locally sorted.
     sink : MemoryCacheWriter | FileCacheWriter
         The cache where sorted data will be written.
