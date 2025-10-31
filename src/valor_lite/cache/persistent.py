@@ -453,6 +453,26 @@ class FileCacheWriter(FileCache):
         self._count = 0
         self._close_writer()
 
+    def sort_by(
+        self,
+        sorting: list[tuple[str, str]],
+    ):
+        """
+        Sort cache files locally and in-place.
+
+        Parameters
+        ----------
+        sorting : list[tuple[str, str]]
+            Sorting arguments in PyArrow format (e.g. [('a', 'ascending'), ('b', 'descending')]).
+        """
+        self.flush()
+        for file in self.get_dataset_files():
+            pf = pq.ParquetFile(file)
+            tbl = pf.read()
+            pf.close()
+            sorted_tbl = tbl.sort_by(sorting)
+            pq.write_table(sorted_tbl, file)
+
     def _generate_next_filename(self) -> Path:
         """Generates next dataset filepath."""
         files = self.get_dataset_files()
