@@ -315,7 +315,7 @@ def run_benchmarking_analysis(
             )  # type: ignore - time_it wrapper
 
             finalization_time, evaluator = time_it(loader.finalize)(
-                batch_size=10_000
+                batch_size=1_000
             )
 
             if ingest_time > ingestion_timeout and ingestion_timeout != -1:
