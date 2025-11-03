@@ -118,7 +118,7 @@ def test_cache_compute_sort(
     reader2 = writer2.to_reader()
     print(reader2.count_rows(), reader2.count_tables())
     prev_pair = None
-    for pairs in reader2.iterate_pairs():
+    for pairs in reader2.iterate_arrays():
         for pair in pairs:
             if prev_pair is not None:
                 assert pair[1] >= prev_pair[1]
