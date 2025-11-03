@@ -75,7 +75,7 @@ def _merge(
                     create_sort_key(batches, batch_idx, 0),
                 )
 
-        sink.flush()
+    sink.flush()
 
 
 def sort(
