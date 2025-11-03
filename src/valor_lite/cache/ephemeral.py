@@ -119,12 +119,14 @@ class MemoryCacheReader(MemoryCache):
         self, batch_size: int
     ) -> Iterator[Iterator[pa.RecordBatch]]:
         """
-        Iterate over fragment batch iterators within the file-based cache.
+        Yield a table batch iterator.
+
+        This is intended to emulate file-based access patterns.
 
         Parameters
         ----------
         batch_size : int
-            Maximum number of rows allowed to be read into memory per cache file.
+            Maximum number of rows allowed to be read per batch.
 
         Yields
         ------
