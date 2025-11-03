@@ -116,9 +116,42 @@ def test_cache_compute_sort(
 
     # validate sorted cache 2
     reader2 = writer2.to_reader()
-    print(reader2.count_rows(), reader2.count_tables())
     prev_pair = None
     for pairs in reader2.iterate_arrays():
+        for pair in pairs:
+            if prev_pair is not None:
+                assert pair[1] >= prev_pair[1]
+                if pair[1] == prev_pair[1]:
+                    assert pair[0] < prev_pair[0]
+            prev_pair = pair
+
+
+def test_cache_sort_by(writer1: MemoryCacheWriter | FileCacheWriter):
+
+    n_samples = 201
+    sorting_args = [
+        ("col1", "ascending"),
+        ("col0", "descending"),
+    ]
+
+    # ingest to cache 1
+    from tqdm import tqdm
+
+    for i in tqdm(range(n_samples)):
+        writer1.write_rows(
+            [
+                {
+                    "col0": float(i),
+                    "col1": random.randint(0, 100),
+                }
+            ]
+        )
+    writer1.flush()
+    writer1.sort_by(sorting_args)
+
+    reader1 = writer1.to_reader()
+    for pairs in reader1.iterate_arrays():
+        prev_pair = None
         for pair in pairs:
             if prev_pair is not None:
                 assert pair[1] >= prev_pair[1]
