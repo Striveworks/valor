@@ -1,6 +1,43 @@
+from pathlib import Path
+
 import pytest
 
-from valor_lite.classification import Classification
+from valor_lite.classification import Classification, Loader
+
+
+@pytest.fixture(
+    params=[
+        ("persistent", 10_000, 100_000),
+        ("persistent", 1, 1),
+        ("memory", 10_000, 0),
+        ("memory", 1, 0),
+    ],
+    ids=[
+        "persistent_large_chunks",
+        "persistent_small_chunks",
+        "in-memory_large_chunks",
+        "in-memory_small_chunks",
+    ],
+)
+def loader(request, tmp_path: Path):
+    file_type, batch_size, rows_per_file = request.param
+    match file_type:
+        case "memory":
+            return Loader.in_memory(
+                batch_size=batch_size,
+                datum_metadata_fields=[
+                    ("test", "double"),
+                ],
+            )
+        case "persistent":
+            return Loader.persistent(
+                path=tmp_path / "cache",
+                batch_size=batch_size,
+                rows_per_file=rows_per_file,
+                datum_metadata_fields=[
+                    ("test", "double"),
+                ],
+            )
 
 
 @pytest.fixture

@@ -1,17 +1,13 @@
 from __future__ import annotations
 
-import heapq
 import json
 from pathlib import Path
 
 import numpy as np
 import pyarrow as pa
 import pyarrow.compute as pc
-import pyarrow.dataset as ds
-import pyarrow.parquet as pq
 from numpy.typing import NDArray
 
-from valor_lite.cache.compute import sort
 from valor_lite.cache.ephemeral import MemoryCacheReader
 from valor_lite.cache.persistent import FileCacheReader
 from valor_lite.classification.computation import (
@@ -35,7 +31,6 @@ from valor_lite.classification.utilities import (
     unpack_precision_recall,
     unpack_rocauc,
 )
-from valor_lite.exceptions import EmptyCacheError
 
 
 class Evaluator(Base):
@@ -87,7 +82,9 @@ class Evaluator(Base):
 
         # load cache
         reader = FileCacheReader.load(cls._generate_cache_path(path))
-        sorted_reader = FileCacheReader.load(cls._generate_sorted_cache_path(path))
+        sorted_reader = FileCacheReader.load(
+            cls._generate_sorted_cache_path(path)
+        )
 
         # build evaluator meta
         (
@@ -227,41 +224,45 @@ class Evaluator(Base):
             "pd_label_id",
             "score",
             "winner",
+            "match",
         ]
         for tbl in reader.iterate_tables(columns=columns):
-            ids = np.column_stack([
-                tbl[col].to_numpy() for col in [
-                    "datum_id",
-                    "gt_label_id",
-                    "pd_label_id",
+            ids = np.column_stack(
+                [
+                    tbl[col].to_numpy()
+                    for col in [
+                        "datum_id",
+                        "gt_label_id",
+                        "pd_label_id",
+                    ]
                 ]
-            ])
+            )
             scores = tbl["score"].to_numpy()
             winners = tbl["winner"].to_numpy()
             matches = tbl["match"].to_numpy()
-            yield ids, scores, matches, winners
+            yield ids, scores, winners, matches
 
     @staticmethod
-    def iterate_values_with_tables(reader: MemoryCacheReader | FileCacheReader):
+    def iterate_values_with_tables(
+        reader: MemoryCacheReader | FileCacheReader,
+    ):
         for tbl in reader.iterate_tables():
-            ids = np.column_stack([
-                tbl[col].to_numpy() for col in [
-                    "datum_id",
-                    "gt_label_id",
-                    "pd_label_id",
+            ids = np.column_stack(
+                [
+                    tbl[col].to_numpy()
+                    for col in [
+                        "datum_id",
+                        "gt_label_id",
+                        "pd_label_id",
+                    ]
                 ]
-            ])
+            )
             scores = tbl["score"].to_numpy()
             winners = tbl["winner"].to_numpy()
             matches = tbl["match"].to_numpy()
             yield ids, scores, winners, matches, tbl
 
-    def compute_rocauc(
-        self,
-        *_,
-        rows_per_chunk: int = 10_000,
-        read_batch_size: int = 1_000,
-    ) -> dict[MetricType, list[Metric]]:
+    def compute_rocauc(self) -> dict[MetricType, list[Metric]]:
         """
         Compute ROCAUC.
 
@@ -289,7 +290,9 @@ class Evaluator(Base):
         positive_count = self._label_counts[:, 0]
         negative_count = self._label_counts[:, 1] - self._label_counts[:, 0]
 
-        for ids, scores, winners, matches in self.iterate_values(self._sorted_reader):
+        for ids, scores, winners, matches in self.iterate_values(
+            self._sorted_reader
+        ):
             for id_row, score in zip(ids, scores):
                 glabel = id_row[1]
                 plabel = id_row[2]
@@ -327,9 +330,6 @@ class Evaluator(Base):
         self,
         score_thresholds: list[float] = [0.0],
         hardmax: bool = True,
-        *_,
-        rows_per_chunk: int = 10_000,
-        read_batch_size: int = 1_000,
     ) -> dict[MetricType, list]:
         """
         Performs an evaluation and returns metrics.
@@ -360,7 +360,7 @@ class Evaluator(Base):
         # intermediates
         counts = np.zeros((n_scores, n_labels, 4), dtype=np.uint64)
 
-        for ids, scores, winners, matches in self.iterate_values(self._sorted_reader):
+        for ids, scores, winners, _ in self.iterate_values(self._reader):
             batch_counts = compute_counts(
                 ids=ids,
                 scores=scores,
@@ -418,7 +418,9 @@ class Evaluator(Base):
         unmatched_groundtruths = np.zeros(
             (n_scores, n_labels), dtype=np.uint64
         )
-        for ids, scores, winners, matches in self.iterate_values(reader=self._reader):
+        for ids, scores, winners, matches in self.iterate_values(
+            reader=self._reader
+        ):
             (
                 mask_tp,
                 mask_fp_fn_misclf,
@@ -476,7 +478,13 @@ class Evaluator(Base):
             raise ValueError("At least one score threshold must be passed.")
 
         metrics = []
-        for ids, scores, winners, matches, tbl in self.iterate_values_with_tables(reader=self._reader):
+        for (
+            ids,
+            scores,
+            winners,
+            matches,
+            tbl,
+        ) in self.iterate_values_with_tables(reader=self._reader):
             if ids.size == 0:
                 continue
 
@@ -549,7 +557,13 @@ class Evaluator(Base):
             )
             for score_idx, score_thresh in enumerate(score_thresholds)
         }
-        for ids, scores, winners, matches, tbl in self.iterate_values_with_tables(reader=self._reader):
+        for (
+            ids,
+            scores,
+            winners,
+            matches,
+            tbl,
+        ) in self.iterate_values_with_tables(reader=self._reader):
             if ids.size == 0:
                 continue
 

@@ -4,12 +4,7 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from valor_lite.classification import (
-    Classification,
-    DataLoader,
-    Evaluator,
-    Metric,
-)
+from valor_lite.classification import Classification, Evaluator, Loader, Metric
 
 
 def test_evaluator_file_not_found(tmp_path: Path):
@@ -35,7 +30,8 @@ def test_evaluator_valid_thresholds(tmp_path: Path):
         label_counts=np.ones(1, dtype=np.uint64),
     )
     for fn in [
-        eval.compute_precision_recall_rocauc,
+        eval.compute_rocauc,
+        eval.compute_precision_recall,
         eval.compute_examples,
         eval.compute_confusion_matrix,
         eval.compute_confusion_matrix_with_examples,
@@ -45,18 +41,17 @@ def test_evaluator_valid_thresholds(tmp_path: Path):
         assert "score" in str(e)
 
 
-def test_metadata_using_classification_example(
+def test_info_using_classification_example(
     tmp_path: Path,
     classifications_animal_example: list[Classification],
 ):
-    loader = DataLoader.create(tmp_path)
+    loader = Loader.persistent(tmp_path)
     loader.add_data(classifications_animal_example)
     evaluator = loader.finalize()
 
-    assert evaluator.metadata.number_of_datums == 6
-    assert evaluator.metadata.number_of_labels == 3
-    assert evaluator.metadata.number_of_ground_truths == 6
-    assert evaluator.metadata.number_of_predictions == 3 * 6
+    assert evaluator.info.number_of_datums == 6
+    assert evaluator.info.number_of_labels == 3
+    assert evaluator.info.number_of_rows == 3 * 6
 
 
 def _flatten_metrics(m) -> list:
@@ -84,11 +79,11 @@ def test_output_types_dont_contain_numpy(
     tmp_path: Path,
     basic_classifications: list[Classification],
 ):
-    loader = DataLoader.create(tmp_path)
+    loader = Loader.persistent(tmp_path)
     loader.add_data(basic_classifications)
     evaluator = loader.finalize()
 
-    metrics = evaluator.evaluate(
+    metrics = evaluator.compute_precision_recall(
         score_thresholds=[0.25, 0.75],
     )
     values = _flatten_metrics(metrics)
@@ -100,10 +95,10 @@ def test_output_types_dont_contain_numpy(
 def test_evaluator_deletion(
     tmp_path: Path, basic_classifications: list[Classification]
 ):
-    loader = DataLoader.create(tmp_path)
+    loader = Loader.persistent(tmp_path)
     loader.add_data(basic_classifications)
     evaluator = loader.finalize()
-    assert tmp_path == evaluator.path
+    assert tmp_path == evaluator._path
 
     # check both caches exist
     assert tmp_path.exists()

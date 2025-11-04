@@ -1,19 +1,16 @@
-from pathlib import Path
-
 from valor_lite.classification import Classification, MetricType
 from valor_lite.classification.loader import Loader
 
 
 def test_rocauc_with_animal_example(
-    tmp_path: Path,
+    loader: Loader,
     classifications_animal_example: list[Classification],
 ):
 
-    loader = Loader.create(tmp_path, batch_size=1, rows_per_file=1)
     loader.add_data(classifications_animal_example)
     evaluator = loader.finalize()
 
-    metrics = evaluator.compute_rocauc(read_batch_size=2, rows_per_chunk=2)
+    metrics = evaluator.compute_rocauc()
 
     # test ROCAUC
     actual_metrics = [m.to_dict() for m in metrics[MetricType.ROCAUC]]
@@ -57,17 +54,14 @@ def test_rocauc_with_animal_example(
 
 
 def test_rocauc_with_color_example(
-    tmp_path: Path,
+    loader: Loader,
     classifications_color_example: list[Classification],
 ):
 
-    loader = Loader.create(tmp_path, batch_size=1, rows_per_file=1)
     loader.add_data(classifications_color_example)
     evaluator = loader.finalize()
 
-    metrics = evaluator.compute_rocauc(
-        hardmax=False, read_batch_size=2, rows_per_chunk=2
-    )
+    metrics = evaluator.compute_rocauc()
 
     # test ROCAUC
     actual_metrics = [m.to_dict() for m in metrics[MetricType.ROCAUC]]
@@ -118,15 +112,14 @@ def test_rocauc_with_color_example(
 
 
 def test_rocauc_with_image_example(
-    tmp_path: Path,
+    loader: Loader,
     classifications_image_example: list[Classification],
 ):
-    loader = Loader.create(tmp_path, batch_size=1, rows_per_file=1)
     loader.add_data(classifications_image_example)
     loader.finalize()
     evaluator = loader.finalize()
 
-    metrics = evaluator.compute_rocauc(read_batch_size=2, rows_per_chunk=2)
+    metrics = evaluator.compute_rocauc()
 
     actual_metrics = [m.to_dict() for m in metrics[MetricType.ROCAUC]]
     expected_metrics = [
@@ -167,15 +160,14 @@ def test_rocauc_with_image_example(
 
 
 def test_rocauc_with_tabular_example(
-    tmp_path: Path,
+    loader: Loader,
     classifications_tabular_example: list[Classification],
 ):
-    loader = Loader.create(tmp_path, batch_size=1, rows_per_file=1)
     loader.add_data(classifications_tabular_example)
     loader.finalize()
     evaluator = loader.finalize()
 
-    metrics = evaluator.compute_rocauc(read_batch_size=2, rows_per_chunk=2)
+    metrics = evaluator.compute_rocauc()
 
     actual_metrics = [m.to_dict() for m in metrics[MetricType.ROCAUC]]
     expected_metrics = [

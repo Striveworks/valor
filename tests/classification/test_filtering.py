@@ -6,13 +6,7 @@ import numpy as np
 import pyarrow.compute as pc
 import pytest
 
-from valor_lite.classification import (
-    Classification,
-    DataLoader,
-    Filter,
-    MetricType,
-)
-from valor_lite.exceptions import EmptyFilterError
+from valor_lite.classification import Classification, Loader, MetricType
 
 
 @pytest.fixture
@@ -73,16 +67,15 @@ def test_filtering_one_classification(
     one_classification: list[Classification],
 ):
 
-    loader = DataLoader.create(tmp_path)
+    loader = Loader.persistent(tmp_path)
     loader.add_data(one_classification)
     evaluator = loader.finalize()
 
     # test evaluation
-    filter_ = evaluator.create_filter(datums=["uid0"])
-    metrics = evaluator.evaluate(
+    filtered_evaluator = evaluator.filter(datums=["uid0"])
+    metrics = filtered_evaluator.compute_precision_recall(
         score_thresholds=[0.5],
         hardmax=False,
-        filter_=filter_,
     )
     actual_metrics = [m.to_dict() for m in metrics[MetricType.Counts]]
     expected_metrics = [
@@ -154,16 +147,15 @@ def test_filtering_three_classifications(
     three_classifications: list[Classification],
 ):
 
-    loader = DataLoader.create(tmp_path)
+    loader = Loader.persistent(tmp_path)
     loader.add_data(three_classifications)
     evaluator = loader.finalize()
 
     # test evaluation
-    filter_ = evaluator.create_filter(datums=["uid0"])
-    metrics = evaluator.evaluate(
+    filtered_evaluator = evaluator.filter(datums=["uid0"])
+    metrics = filtered_evaluator.compute_precision_recall(
         score_thresholds=[0.5],
         hardmax=False,
-        filter_=filter_,
     )
     actual_metrics = [m.to_dict() for m in metrics[MetricType.Counts]]
     expected_metrics = [
@@ -235,16 +227,15 @@ def test_filtering_six_classifications(
     six_classifications: list[Classification],
 ):
 
-    loader = DataLoader.create(tmp_path)
+    loader = Loader.persistent(tmp_path)
     loader.add_data(six_classifications)
     evaluator = loader.finalize()
 
     # test evaluation
-    filter_ = evaluator.create_filter(datums=["uid0"])
-    metrics = evaluator.evaluate(
+    filtered_evaluator = evaluator.filter(datums=["uid0"])
+    metrics = filtered_evaluator.compute_precision_recall(
         score_thresholds=[0.5],
         hardmax=False,
-        filter_=filter_,
     )
     actual_metrics = [m.to_dict() for m in metrics[MetricType.Counts]]
     expected_metrics = [
@@ -312,27 +303,14 @@ def test_filtering_six_classifications(
 
 
 def test_filtering_random_classifications(tmp_path: Path):
-    loader = DataLoader.create(tmp_path)
+    loader = Loader.persistent(tmp_path)
     loader.add_data(generate_random_classifications(13, 2, 10))
     evaluator = loader.finalize()
-    filter_ = evaluator.create_filter(datums=["uid0"])
-    evaluator.evaluate(
+    filtered_evaluator = evaluator.filter(datums=["uid0"])
+    filtered_evaluator.compute_precision_recall(
         score_thresholds=[0.5],
         hardmax=False,
-        filter_=filter_,
     )
-
-
-def test_filtering_empty(
-    tmp_path: Path, six_classifications: list[Classification]
-):
-    loader = DataLoader.create(tmp_path)
-    loader.add_data(six_classifications)
-    evaluator = loader.finalize()
-    assert evaluator.info.number_of_rows == 24
-
-    with pytest.raises(EmptyFilterError):
-        evaluator.create_filter(datums=[])
 
 
 def test_filtering_six_classifications_by_indices(
@@ -340,16 +318,15 @@ def test_filtering_six_classifications_by_indices(
     six_classifications: list[Classification],
 ):
 
-    loader = DataLoader.create(tmp_path)
+    loader = Loader.persistent(tmp_path)
     loader.add_data(six_classifications)
     evaluator = loader.finalize()
 
     # test evaluation
-    filter_ = evaluator.create_filter(datums=np.array([0]))
-    metrics = evaluator.evaluate(
+    filtered_evaluator = evaluator.filter(datums=np.array([0]))
+    metrics = filtered_evaluator.compute_precision_recall(
         score_thresholds=[0.5],
         hardmax=False,
-        filter_=filter_,
     )
     actual_metrics = [m.to_dict() for m in metrics[MetricType.Counts]]
     expected_metrics = [
@@ -421,19 +398,18 @@ def test_filtering_six_classifications_by_annotation(
     six_classifications: list[Classification],
 ):
 
-    loader = DataLoader.create(tmp_path)
+    loader = Loader.persistent(tmp_path)
     loader.add_data(six_classifications)
     evaluator = loader.finalize()
 
     # test groundtruth filter
-    filter_ = Filter(
+    filtered_evaluator = evaluator.filter(
         datums=pc.field("datum_uid") == "uid0",
         groundtruths=pc.field("gt_label") != "0",
     )
-    metrics = evaluator.evaluate(
+    metrics = filtered_evaluator.compute_precision_recall(
         score_thresholds=[0.5],
         hardmax=False,
-        filter_=filter_,
     )
     actual_metrics = [m.to_dict() for m in metrics[MetricType.Counts]]
     expected_metrics = [
@@ -500,14 +476,13 @@ def test_filtering_six_classifications_by_annotation(
         assert m in actual_metrics
 
     # test prediction filter
-    filter_ = Filter(
+    filtered_evaluator = evaluator.filter(
         datums=pc.field("datum_uid") == "uid0",
         predictions=pc.field("pd_label") != "0",
     )
-    metrics = evaluator.evaluate(
+    metrics = filtered_evaluator.compute_precision_recall(
         score_thresholds=[0.5],
         hardmax=False,
-        filter_=filter_,
     )
     actual_metrics = [m.to_dict() for m in metrics[MetricType.Counts]]
     expected_metrics = [

@@ -1,5 +1,3 @@
-from pathlib import Path
-
 from valor_lite.classification import Classification
 from valor_lite.classification.loader import Loader
 
@@ -18,9 +16,9 @@ def _filter_elements_with_zero_count(cm: dict, mp: dict):
 
 
 def test_confusion_matrix_basic(
-    tmp_path: Path, basic_classifications: list[Classification]
+    loader: Loader,
+    basic_classifications: list[Classification],
 ):
-    loader = Loader.create(tmp_path)
     loader.add_data(basic_classifications)
     evaluator = loader.finalize()
 
@@ -82,11 +80,10 @@ def test_confusion_matrix_basic(
 
 
 def test_confusion_matrix_unit(
-    tmp_path: Path,
+    loader: Loader,
     classifications_from_api_unit_tests: list[Classification],
 ):
 
-    loader = Loader.create(tmp_path)
     loader.add_data(classifications_from_api_unit_tests)
     evaluator = loader.finalize()
 
@@ -131,11 +128,10 @@ def test_confusion_matrix_unit(
 
 
 def test_confusion_matrix_with_animal_example(
-    tmp_path: Path,
+    loader: Loader,
     classifications_animal_example: list[Classification],
 ):
 
-    loader = Loader.create(tmp_path)
     loader.add_data(classifications_animal_example)
     evaluator = loader.finalize()
 
@@ -182,11 +178,10 @@ def test_confusion_matrix_with_animal_example(
 
 
 def test_confusion_matrix_with_color_example(
-    tmp_path: Path,
+    loader: Loader,
     classifications_color_example: list[Classification],
 ):
 
-    loader = Loader.create(tmp_path)
     loader.add_data(classifications_color_example)
     evaluator = loader.finalize()
 
@@ -233,10 +228,9 @@ def test_confusion_matrix_with_color_example(
 
 
 def test_confusion_matrix_multiclass(
-    tmp_path: Path,
+    loader: Loader,
     classifications_multiclass: list[Classification],
 ):
-    loader = Loader.create(tmp_path)
     loader.add_data(classifications_multiclass)
     evaluator = loader.finalize()
 
@@ -319,10 +313,9 @@ def test_confusion_matrix_multiclass(
 
 
 def test_confusion_matrix_without_hardmax_animal_example(
-    tmp_path: Path,
+    loader: Loader,
     classifications_multiclass_true_negatives_check: list[Classification],
 ):
-    loader = Loader.create(tmp_path)
     loader.add_data(classifications_multiclass_true_negatives_check)
     evaluator = loader.finalize()
 

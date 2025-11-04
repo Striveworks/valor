@@ -1,6 +1,4 @@
-from pathlib import Path
-
-from valor_lite.classification import Classification, DataLoader
+from valor_lite.classification import Classification, Loader
 
 
 def _filter_elements_with_zero_count(cm: dict, mp: dict):
@@ -17,25 +15,24 @@ def _filter_elements_with_zero_count(cm: dict, mp: dict):
 
 
 def test_confusion_matrix_with_examples_basic(
-    tmp_path: Path, basic_classifications: list[Classification]
+    loader: Loader,
+    basic_classifications: list[Classification],
 ):
-    loader = DataLoader.create(tmp_path)
     loader.add_data(basic_classifications)
     evaluator = loader.finalize()
 
-    assert evaluator.metadata.number_of_datums == 3
-    assert evaluator.metadata.number_of_ground_truths == 3
-    assert evaluator.metadata.number_of_predictions == 12
-    assert evaluator.metadata.number_of_labels == 4
+    assert evaluator.info.number_of_datums == 3
+    assert evaluator.info.number_of_labels == 4
+    assert evaluator.info.number_of_rows == 12
 
-    actual_metrics = evaluator.compute_confusion_matrix(
+    actual_metrics = evaluator.compute_confusion_matrix_with_examples(
         score_thresholds=[0.25, 0.75],
     )
 
     actual_metrics = [m.to_dict() for m in actual_metrics]
     expected_metrics = [
         {
-            "type": "ConfusionMatrix",
+            "type": "ConfusionMatrixWithExamples",
             "value": {
                 "confusion_matrix": {
                     "0": {
@@ -68,7 +65,7 @@ def test_confusion_matrix_with_examples_basic(
             },
         },
         {
-            "type": "ConfusionMatrix",
+            "type": "ConfusionMatrixWithExamples",
             "value": {
                 "confusion_matrix": {
                     "0": {
@@ -103,22 +100,21 @@ def test_confusion_matrix_with_examples_basic(
 
 
 def test_confusion_matrix_with_examples_unit(
-    tmp_path: Path,
+    loader: Loader,
     classifications_from_api_unit_tests: list[Classification],
 ):
 
-    loader = DataLoader.create(tmp_path)
     loader.add_data(classifications_from_api_unit_tests)
     evaluator = loader.finalize()
 
-    actual_metrics = evaluator.compute_confusion_matrix(
+    actual_metrics = evaluator.compute_confusion_matrix_with_examples(
         score_thresholds=[0.5],
     )
 
     actual_metrics = [m.to_dict() for m in actual_metrics]
     expected_metrics = [
         {
-            "type": "ConfusionMatrix",
+            "type": "ConfusionMatrixWithExamples",
             "value": {
                 "confusion_matrix": {
                     "0": {
@@ -176,22 +172,21 @@ def test_confusion_matrix_with_examples_unit(
 
 
 def test_confusion_matrix_with_examples_with_animal_example(
-    tmp_path: Path,
+    loader: Loader,
     classifications_animal_example: list[Classification],
 ):
 
-    loader = DataLoader.create(tmp_path)
     loader.add_data(classifications_animal_example)
     evaluator = loader.finalize()
 
-    actual_metrics = evaluator.compute_confusion_matrix(
+    actual_metrics = evaluator.compute_confusion_matrix_with_examples(
         score_thresholds=[0.5],
     )
 
     actual_metrics = [m.to_dict() for m in actual_metrics]
     expected_metrics = [
         {
-            "type": "ConfusionMatrix",
+            "type": "ConfusionMatrixWithExamples",
             "value": {
                 "confusion_matrix": {
                     "bird": {
@@ -257,20 +252,21 @@ def test_confusion_matrix_with_examples_with_animal_example(
 
 
 def test_confusion_matrix_with_examples_with_color_example(
-    tmp_path: Path,
+    loader: Loader,
     classifications_color_example: list[Classification],
 ):
 
-    loader = DataLoader.create(tmp_path)
     loader.add_data(classifications_color_example)
     evaluator = loader.finalize()
 
-    actual_metrics = evaluator.compute_confusion_matrix(score_thresholds=[0.5])
+    actual_metrics = evaluator.compute_confusion_matrix_with_examples(
+        score_thresholds=[0.5]
+    )
 
     actual_metrics = [m.to_dict() for m in actual_metrics]
     expected_metrics = [
         {
-            "type": "ConfusionMatrix",
+            "type": "ConfusionMatrixWithExamples",
             "value": {
                 "confusion_matrix": {
                     "white": {
@@ -338,26 +334,24 @@ def test_confusion_matrix_with_examples_with_color_example(
 
 
 def test_confusion_matrix_with_examples_multiclass(
-    tmp_path: Path,
+    loader: Loader,
     classifications_multiclass: list[Classification],
 ):
-    loader = DataLoader.create(tmp_path)
     loader.add_data(classifications_multiclass)
     evaluator = loader.finalize()
 
-    assert evaluator.metadata.number_of_datums == 5
-    assert evaluator.metadata.number_of_ground_truths == 5
-    assert evaluator.metadata.number_of_labels == 3
-    assert evaluator.metadata.number_of_predictions == 15
+    assert evaluator.info.number_of_datums == 5
+    assert evaluator.info.number_of_labels == 3
+    assert evaluator.info.number_of_rows == 15
 
-    actual_metrics = evaluator.compute_confusion_matrix(
+    actual_metrics = evaluator.compute_confusion_matrix_with_examples(
         score_thresholds=[0.05, 0.5, 0.85],
     )
 
     actual_metrics = [m.to_dict() for m in actual_metrics]
     expected_metrics = [
         {
-            "type": "ConfusionMatrix",
+            "type": "ConfusionMatrixWithExamples",
             "value": {
                 "confusion_matrix": {
                     "cat": {
@@ -415,7 +409,7 @@ def test_confusion_matrix_with_examples_multiclass(
             },
         },
         {
-            "type": "ConfusionMatrix",
+            "type": "ConfusionMatrixWithExamples",
             "value": {
                 "confusion_matrix": {
                     "dog": {
@@ -458,7 +452,7 @@ def test_confusion_matrix_with_examples_multiclass(
             },
         },
         {
-            "type": "ConfusionMatrix",
+            "type": "ConfusionMatrixWithExamples",
             "value": {
                 "confusion_matrix": {},
                 "unmatched_ground_truths": {
@@ -496,19 +490,17 @@ def test_confusion_matrix_with_examples_multiclass(
 
 
 def test_confusion_matrix_with_examples_without_hardmax_animal_example(
-    tmp_path: Path,
+    loader: Loader,
     classifications_multiclass_true_negatives_check: list[Classification],
 ):
-    loader = DataLoader.create(tmp_path)
     loader.add_data(classifications_multiclass_true_negatives_check)
     evaluator = loader.finalize()
 
-    assert evaluator.metadata.number_of_datums == 1
-    assert evaluator.metadata.number_of_ground_truths == 1
-    assert evaluator.metadata.number_of_predictions == 3
-    assert evaluator.metadata.number_of_labels == 3
+    assert evaluator.info.number_of_datums == 1
+    assert evaluator.info.number_of_labels == 3
+    assert evaluator.info.number_of_rows == 3
 
-    actual_metrics = evaluator.compute_confusion_matrix(
+    actual_metrics = evaluator.compute_confusion_matrix_with_examples(
         score_thresholds=[0.05, 0.4, 0.5],
         hardmax=False,
     )
@@ -516,7 +508,7 @@ def test_confusion_matrix_with_examples_without_hardmax_animal_example(
     actual_metrics = [m.to_dict() for m in actual_metrics]
     expected_metrics = [
         {
-            "type": "ConfusionMatrix",
+            "type": "ConfusionMatrixWithExamples",
             "value": {
                 "confusion_matrix": {
                     "ant": {
@@ -557,7 +549,7 @@ def test_confusion_matrix_with_examples_without_hardmax_animal_example(
             },
         },
         {
-            "type": "ConfusionMatrix",
+            "type": "ConfusionMatrixWithExamples",
             "value": {
                 "confusion_matrix": {
                     "ant": {
@@ -580,7 +572,7 @@ def test_confusion_matrix_with_examples_without_hardmax_animal_example(
             },
         },
         {
-            "type": "ConfusionMatrix",
+            "type": "ConfusionMatrixWithExamples",
             "value": {
                 "confusion_matrix": {},
                 "unmatched_ground_truths": {

@@ -1,15 +1,13 @@
 import json
 from pathlib import Path
-from tqdm import tqdm
 
 import numpy as np
-import pyarrow as pa
-import pyarrow.parquet as pq
 from pyarrow import DataType
+from tqdm import tqdm
 
 from valor_lite.cache.compute import sort
-from valor_lite.cache.persistent import FileCacheWriter
 from valor_lite.cache.ephemeral import MemoryCacheWriter
+from valor_lite.cache.persistent import FileCacheWriter
 from valor_lite.classification.annotation import Classification
 from valor_lite.classification.evaluator import Evaluator
 from valor_lite.classification.shared import Base
@@ -116,7 +114,7 @@ class Loader(Base):
         # write metadatata config
         metadata_path = cls._generate_metadata_path(path)
         with open(metadata_path, "w") as f:
-            encoded_types =cls._encode_metadata_fields(datum_metadata_fields)
+            encoded_types = cls._encode_metadata_fields(datum_metadata_fields)
             json.dump(encoded_types, f, indent=2)
 
         return cls(
@@ -196,7 +194,7 @@ class Loader(Base):
     def finalize(
         self,
         batch_size: int = 1_000,
-        index_to_label_override: dict[int, str] | None = None
+        index_to_label_override: dict[int, str] | None = None,
     ):
         """
         Performs data finalization and some preprocessing steps.
@@ -217,42 +215,42 @@ class Loader(Base):
         if self._writer.count_rows() == 0:
             raise EmptyCacheError()
 
-        # sort in-place and locally        
-        self._writer.sort_by([
-            ("score", "descending"),
-            ("datum_id", "ascending"),
-            ("gt_label_id", "ascending"),
-            ("pd_label_id", "ascending"),
-        ])
+        # sort in-place and locally
+        self._writer.sort_by(
+            [
+                ("score", "descending"),
+                ("datum_id", "ascending"),
+                ("gt_label_id", "ascending"),
+                ("pd_label_id", "ascending"),
+            ]
+        )
 
         # post-process into sorted writer
-        reader=self._writer.to_reader()
+        reader = self._writer.to_reader()
         sort(
             source=reader,
-            sink=self._sorted_writer,            
+            sink=self._sorted_writer,
             batch_size=batch_size,
             sorting=[
                 ("score", "descending"),
-                ("pidx", "ascending"),
-                ("gidx", "ascending"),
+                ("pd_label_id", "ascending"),
+                ("gt_label_id", "ascending"),
             ],
             columns=[
                 "datum_id",
                 "gt_label_id",
                 "pd_label_id",
-                "scores",
-                "winners",
+                "score",
+                "winner",
                 "match",
             ],
         )
         sorted_reader = self._sorted_writer.to_reader()
 
         # generate evaluator meta
-        (
-            index_to_label,
-            label_counts,
-            info,
-        ) = self.generate_meta(reader=reader, index_to_label_override=index_to_label_override)
+        (index_to_label, label_counts, info,) = self.generate_meta(
+            reader=reader, index_to_label_override=index_to_label_override
+        )
 
         return Evaluator(
             reader=reader,

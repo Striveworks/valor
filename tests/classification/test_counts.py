@@ -1,21 +1,17 @@
-from pathlib import Path
-
-from valor_lite.classification import Classification, DataLoader, MetricType
+from valor_lite.classification import Classification, Loader, MetricType
 
 
 def test_counts_basic(
-    tmp_path: Path, basic_classifications: list[Classification]
+    loader: Loader, basic_classifications: list[Classification]
 ):
-    loader = DataLoader.create(tmp_path, batch_size=1, rows_per_file=1)
     loader.add_data(basic_classifications)
     evaluator = loader.finalize()
 
-    assert evaluator.metadata.number_of_datums == 3
-    assert evaluator.metadata.number_of_ground_truths == 3
-    assert evaluator.metadata.number_of_predictions == 12
-    assert evaluator.metadata.number_of_labels == 4
+    assert evaluator.info.number_of_datums == 3
+    assert evaluator.info.number_of_labels == 4
+    assert evaluator.info.number_of_rows == 12
 
-    metrics = evaluator.evaluate(
+    metrics = evaluator.compute_precision_recall(
         score_thresholds=[0.25, 0.75],
     )
 
@@ -143,15 +139,14 @@ def test_counts_basic(
 
 
 def test_counts_unit(
-    tmp_path: Path,
+    loader: Loader,
     classifications_from_api_unit_tests: list[Classification],
 ):
 
-    loader = DataLoader.create(tmp_path, batch_size=1, rows_per_file=1)
     loader.add_data(classifications_from_api_unit_tests)
     evaluator = loader.finalize()
 
-    metrics = evaluator.evaluate(
+    metrics = evaluator.compute_precision_recall(
         score_thresholds=[0.5],
     )
 
@@ -207,15 +202,14 @@ def test_counts_unit(
 
 
 def test_counts_with_animal_example(
-    tmp_path: Path,
+    loader: Loader,
     classifications_animal_example: list[Classification],
 ):
 
-    loader = DataLoader.create(tmp_path, batch_size=1, rows_per_file=1)
     loader.add_data(classifications_animal_example)
     evaluator = loader.finalize()
 
-    metrics = evaluator.evaluate(
+    metrics = evaluator.compute_precision_recall(
         score_thresholds=[0.05, 0.5, 0.95],
     )
 
@@ -358,15 +352,14 @@ def test_counts_with_animal_example(
 
 
 def test_counts_with_color_example(
-    tmp_path: Path,
+    loader: Loader,
     classifications_color_example: list[Classification],
 ):
 
-    loader = DataLoader.create(tmp_path, batch_size=1, rows_per_file=1)
     loader.add_data(classifications_color_example)
     evaluator = loader.finalize()
 
-    metrics = evaluator.evaluate(
+    metrics = evaluator.compute_precision_recall(
         score_thresholds=[0.05, 0.5, 0.95],
     )
 
@@ -551,19 +544,17 @@ def test_counts_with_color_example(
 
 
 def test_counts_with_image_example(
-    tmp_path: Path,
+    loader: Loader,
     classifications_image_example: list[Classification],
 ):
-    loader = DataLoader.create(tmp_path, batch_size=1, rows_per_file=1)
     loader.add_data(classifications_image_example)
     evaluator = loader.finalize()
 
-    assert evaluator.metadata.number_of_datums == 2
-    assert evaluator.metadata.number_of_ground_truths == 2
-    assert evaluator.metadata.number_of_predictions == 4
-    assert evaluator.metadata.number_of_labels == 4
+    assert evaluator.info.number_of_datums == 2
+    assert evaluator.info.number_of_labels == 4
+    assert evaluator.info.number_of_rows == 4
 
-    metrics = evaluator.evaluate()
+    metrics = evaluator.compute_precision_recall()
 
     actual_metrics = [m.to_dict() for m in metrics[MetricType.Counts]]
     expected_metrics = [
@@ -631,19 +622,17 @@ def test_counts_with_image_example(
 
 
 def test_counts_with_tabular_example(
-    tmp_path: Path,
+    loader: Loader,
     classifications_tabular_example: list[Classification],
 ):
-    loader = DataLoader.create(tmp_path, batch_size=1, rows_per_file=1)
     loader.add_data(classifications_tabular_example)
     evaluator = loader.finalize()
 
-    assert evaluator.metadata.number_of_datums == 10
-    assert evaluator.metadata.number_of_ground_truths == 10
-    assert evaluator.metadata.number_of_predictions == 30
-    assert evaluator.metadata.number_of_labels == 3
+    assert evaluator.info.number_of_datums == 10
+    assert evaluator.info.number_of_labels == 3
+    assert evaluator.info.number_of_rows == 30
 
-    metrics = evaluator.evaluate()
+    metrics = evaluator.compute_precision_recall()
 
     actual_metrics = [m.to_dict() for m in metrics[MetricType.Counts]]
     expected_metrics = [
@@ -697,19 +686,17 @@ def test_counts_with_tabular_example(
 
 
 def test_counts_multiclass(
-    tmp_path: Path,
+    loader: Loader,
     classifications_multiclass: list[Classification],
 ):
-    loader = DataLoader.create(tmp_path, batch_size=1, rows_per_file=1)
     loader.add_data(classifications_multiclass)
     evaluator = loader.finalize()
 
-    assert evaluator.metadata.number_of_datums == 5
-    assert evaluator.metadata.number_of_ground_truths == 5
-    assert evaluator.metadata.number_of_labels == 3
-    assert evaluator.metadata.number_of_predictions == 15
+    assert evaluator.info.number_of_datums == 5
+    assert evaluator.info.number_of_labels == 3
+    assert evaluator.info.number_of_rows == 15
 
-    metrics = evaluator.evaluate(
+    metrics = evaluator.compute_precision_recall(
         score_thresholds=[0.05, 0.1, 0.3, 0.85],
     )
 
@@ -895,19 +882,17 @@ def test_counts_multiclass(
 
 
 def test_counts_true_negatives_check_animals(
-    tmp_path: Path,
+    loader: Loader,
     classifications_multiclass_true_negatives_check: list[Classification],
 ):
-    loader = DataLoader.create(tmp_path, batch_size=1, rows_per_file=1)
     loader.add_data(classifications_multiclass_true_negatives_check)
     evaluator = loader.finalize()
 
-    assert evaluator.metadata.number_of_datums == 1
-    assert evaluator.metadata.number_of_ground_truths == 1
-    assert evaluator.metadata.number_of_predictions == 3
-    assert evaluator.metadata.number_of_labels == 3
+    assert evaluator.info.number_of_datums == 1
+    assert evaluator.info.number_of_labels == 3
+    assert evaluator.info.number_of_rows == 3
 
-    metrics = evaluator.evaluate(
+    metrics = evaluator.compute_precision_recall(
         score_thresholds=[0.05, 0.15, 0.95],
     )
 
@@ -1050,20 +1035,18 @@ def test_counts_true_negatives_check_animals(
 
 
 def test_counts_zero_count_check(
-    tmp_path: Path,
+    loader: Loader,
     classifications_multiclass_zero_count: list[Classification],
 ):
 
-    loader = DataLoader.create(tmp_path, batch_size=1, rows_per_file=1)
     loader.add_data(classifications_multiclass_zero_count)
     evaluator = loader.finalize()
 
-    assert evaluator.metadata.number_of_datums == 1
-    assert evaluator.metadata.number_of_ground_truths == 1
-    assert evaluator.metadata.number_of_labels == 3
-    assert evaluator.metadata.number_of_predictions == 3
+    assert evaluator.info.number_of_datums == 1
+    assert evaluator.info.number_of_labels == 3
+    assert evaluator.info.number_of_rows == 3
 
-    metrics = evaluator.evaluate(
+    metrics = evaluator.compute_precision_recall(
         score_thresholds=[0.05, 0.2, 0.95],
     )
 
