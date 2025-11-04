@@ -238,6 +238,11 @@ def test_evaluator_loading(
     assert evaluator.info.number_of_groundtruth_pixels == 3
     assert evaluator.info.number_of_prediction_pixels == 3
 
+    # test filtering file-based cache with no path
+    with pytest.raises(ValueError) as e:
+        evaluator.filter()
+    assert "expected path" in str(e)
+
 
 def test_evaluator_deletion(
     tmp_path: Path,
