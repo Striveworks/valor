@@ -2,6 +2,7 @@ import base64
 import glob
 import json
 import os
+from collections.abc import Iterator
 from pathlib import Path
 from typing import Any
 
@@ -157,8 +158,21 @@ class FileCacheReader(FileCache):
         self,
         columns: list[str] | None = None,
         filter: pc.Expression | None = None,
-    ):
-        """Iterate over tables within the cache."""
+    ) -> Iterator[pa.Table]:
+        """
+        Iterate over tables within the cache.
+
+        Parameters
+        ----------
+        columns : list[str], optional
+            Optionally select columns to be returned.
+        filter : pyarrow.compute.Expression, optional
+            Optionally filter table before returning.
+
+        Returns
+        -------
+        Iterator[pa.Table]
+        """
         dataset = ds.dataset(
             source=self._path,
             schema=self._schema,
@@ -167,15 +181,90 @@ class FileCacheReader(FileCache):
         for fragment in dataset.get_fragments():
             yield fragment.to_table(columns=columns, filter=filter)
 
-    def iterate_fragments(self):
-        """Iterate over fragments within the file-based cache."""
+    def iterate_arrays(
+        self,
+        numeric_columns: list[str] | None = None,
+        filter: pc.Expression | None = None,
+    ) -> Iterator[np.ndarray]:
+        """
+        Iterate over chunks within the cache returning arrays.
+
+        Parameters
+        ----------
+        numeric_columns : list[str], optional
+            Optionally select numeric columns to be returned within an array.
+        filter : pyarrow.compute.Expression, optional
+            Optionally filter table before returning.
+
+        Returns
+        -------
+        Iterator[np.ndarray]
+        """
+        for tbl in self.iterate_tables(
+            columns=numeric_columns,
+            filter=filter,
+        ):
+            yield np.column_stack(
+                [tbl.column(i).to_numpy() for i in range(tbl.num_columns)]
+            )
+
+    def iterate_tables_with_arrays(
+        self,
+        columns: list[str] | None = None,
+        filter: pc.Expression | None = None,
+        numeric_columns: list[str] | None = None,
+    ) -> Iterator[tuple[pa.Table, np.ndarray]]:
+        """
+        Iterate over chunks within the cache returning both tables and arrays.
+
+        Parameters
+        ----------
+        columns : list[str], optional
+            Optionally select columns to be returned.
+        filter : pyarrow.compute.Expression, optional
+            Optionally filter table before returning.
+        numeric_columns : list[str], optional
+            Optionally select numeric columns to be returned within an array.
+
+        Returns
+        -------
+        Iterator[tuple[pa.Table, np.ndarray]]
+
+        """
+        _columns = set(columns) if columns else set()
+        _numeric_columns = set(numeric_columns) if numeric_columns else set()
+        columns = list(_columns.union(_numeric_columns))
+        for tbl in self.iterate_tables(
+            columns=columns,
+            filter=filter,
+        ):
+            table_columns = numeric_columns if numeric_columns else tbl.columns
+            yield tbl, np.column_stack(
+                [tbl[col].to_numpy() for col in table_columns]
+            )
+
+    def iterate_fragments(
+        self, batch_size: int
+    ) -> Iterator[Iterator[pa.RecordBatch]]:
+        """
+        Iterate over fragment batch iterators within the file-based cache.
+
+        Parameters
+        ----------
+        batch_size : int
+            Maximum number of rows allowed to be read into memory per cache file.
+
+        Returns
+        -------
+        Iterator[Iterator[pa.RecordBatch]]
+        """
         dataset = ds.dataset(
             source=self._path,
             schema=self._schema,
             format="parquet",
         )
         for fragment in dataset.get_fragments():
-            yield fragment
+            yield fragment.to_batches(batch_size=batch_size)
 
 
 class FileCacheWriter(FileCache):
@@ -385,6 +474,26 @@ class FileCacheWriter(FileCache):
         self._buffer = []
         self._count = 0
         self._close_writer()
+
+    def sort_by(
+        self,
+        sorting: list[tuple[str, str]],
+    ):
+        """
+        Sort cache files locally and in-place.
+
+        Parameters
+        ----------
+        sorting : list[tuple[str, str]]
+            Sorting arguments in PyArrow format (e.g. [('a', 'ascending'), ('b', 'descending')]).
+        """
+        self.flush()
+        for file in self.get_dataset_files():
+            pf = pq.ParquetFile(file)
+            tbl = pf.read()
+            pf.close()
+            sorted_tbl = tbl.sort_by(sorting)
+            pq.write_table(sorted_tbl, file)
 
     def _generate_next_filename(self) -> Path:
         """Generates next dataset filepath."""
