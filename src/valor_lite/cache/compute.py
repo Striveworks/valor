@@ -100,7 +100,7 @@ def sort(
     sorting : list[tuple[str, str]]
         Sorting arguments in PyArrow format (e.g. [('a', 'ascending'), ('b', 'descending')]).
         Note that only numeric fields are supported.
-    columns : list[tuple[str, str]], optional
+    columns : list[str], optional
         Option to only read a subset of columns.
     table_sort_override : Callable[[pa.Table], pa.Table], optional
         Option to override sort function for singular cache fragments.
