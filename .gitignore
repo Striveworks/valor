@@ -30,4 +30,9 @@ site/*
 *.png
 *.jpg
 *.parquet
+<<<<<<< HEAD
 *.valor
+=======
+
+.valor/*
+>>>>>>> origin/main

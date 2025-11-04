@@ -106,25 +106,30 @@ class MemoryCacheReader(MemoryCache):
         Iterator[tuple[pa.Table, np.ndarray]]
 
         """
+        _columns = set(columns) if columns else set()
+        _numeric_columns = set(numeric_columns) if numeric_columns else set()
+        columns = list(_columns.union(_numeric_columns))
         for tbl in self.iterate_tables(
             columns=columns,
             filter=filter,
         ):
-            columns = numeric_columns if numeric_columns else tbl.columns
+            table_columns = numeric_columns if numeric_columns else tbl.columns
             yield tbl, np.column_stack(
-                [tbl[col].to_numpy() for col in columns]
+                [tbl[col].to_numpy() for col in table_columns]
             )
 
     def iterate_fragments(
         self, batch_size: int
     ) -> Iterator[Iterator[pa.RecordBatch]]:
         """
-        Iterate over fragment batch iterators within the file-based cache.
+        Yield a table batch iterator.
+
+        This is intended to emulate file-based access patterns.
 
         Parameters
         ----------
         batch_size : int
-            Maximum number of rows allowed to be read into memory per cache file.
+            Maximum number of rows allowed to be read per batch.
 
         Yields
         ------

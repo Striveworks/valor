@@ -16,7 +16,7 @@ def _merge(
     batch_size: int,
     sorting: list[tuple[str, str]],
     columns: list[str] | None = None,
-    table_sort_override: Callable[[pa.table], pa.table] | None = None,
+    table_sort_override: Callable[[pa.Table], pa.Table] | None = None,
 ):
     """Merge locally sorted cache fragments."""
     for tbl in source.iterate_tables(columns=columns):
@@ -75,7 +75,7 @@ def _merge(
                     create_sort_key(batches, batch_idx, 0),
                 )
 
-        sink.flush()
+    sink.flush()
 
 
 def sort(
@@ -84,7 +84,7 @@ def sort(
     batch_size: int,
     sorting: list[tuple[str, str]],
     columns: list[str] | None = None,
-    table_sort_override: Callable[[pa.table], pa.table] | None = None,
+    table_sort_override: Callable[[pa.Table], pa.Table] | None = None,
 ):
     """
     Sort data into new cache.
@@ -100,9 +100,9 @@ def sort(
     sorting : list[tuple[str, str]]
         Sorting arguments in PyArrow format (e.g. [('a', 'ascending'), ('b', 'descending')]).
         Note that only numeric fields are supported.
-    columns : list[tuple[str, str]], optional
+    columns : list[str], optional
         Option to only read a subset of columns.
-    table_sort_override : Callable[[pa.table], pa.table], optional
+    table_sort_override : Callable[[pa.Table], pa.Table], optional
         Option to override sort function for singular cache fragments.
     """
 

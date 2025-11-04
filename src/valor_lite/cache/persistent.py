@@ -231,13 +231,16 @@ class FileCacheReader(FileCache):
         Iterator[tuple[pa.Table, np.ndarray]]
 
         """
+        _columns = set(columns) if columns else set()
+        _numeric_columns = set(numeric_columns) if numeric_columns else set()
+        columns = list(_columns.union(_numeric_columns))
         for tbl in self.iterate_tables(
             columns=columns,
             filter=filter,
         ):
-            columns = numeric_columns if numeric_columns else tbl.columns
+            table_columns = numeric_columns if numeric_columns else tbl.columns
             yield tbl, np.column_stack(
-                [tbl[col].to_numpy() for col in columns]
+                [tbl[col].to_numpy() for col in table_columns]
             )
 
     def iterate_fragments(
