@@ -13,11 +13,11 @@ from valor_lite.cache import (
 )
 from valor_lite.classification.annotation import Classification
 from valor_lite.classification.evaluator import Evaluator
-from valor_lite.classification.format import PathFormatter
+from valor_lite.classification.shared import Base
 from valor_lite.exceptions import EmptyCacheError
 
 
-class Loader(PathFormatter):
+class Loader(Base):
     def __init__(
         self,
         path: str | Path,
