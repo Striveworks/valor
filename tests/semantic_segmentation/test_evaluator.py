@@ -219,7 +219,27 @@ def test_empty_predictions(loader: Loader):
     )
 
 
-def test_loader_deletion(
+def test_evaluator_loading(
+    tmp_path: Path,
+    basic_segmentations: list[Segmentation],
+):
+    loader = Loader.persistent(tmp_path)
+    loader.add_data(basic_segmentations)
+    _ = loader.finalize()
+    # load from cache
+    evaluator = Evaluator.load(tmp_path)
+
+    assert tmp_path == loader._path
+    assert evaluator._path == loader._path
+
+    assert evaluator.info.number_of_datums == 1
+    assert evaluator.info.number_of_labels == 2
+    assert evaluator.info.number_of_pixels == 4
+    assert evaluator.info.number_of_groundtruth_pixels == 3
+    assert evaluator.info.number_of_prediction_pixels == 3
+
+
+def test_evaluator_deletion(
     tmp_path: Path,
     basic_segmentations: list[Segmentation],
 ):
@@ -227,6 +247,12 @@ def test_loader_deletion(
     loader.add_data(basic_segmentations)
     evaluator = loader.finalize()
     assert tmp_path == evaluator._path
+
+    assert evaluator.info.number_of_datums == 1
+    assert evaluator.info.number_of_labels == 2
+    assert evaluator.info.number_of_pixels == 4
+    assert evaluator.info.number_of_groundtruth_pixels == 3
+    assert evaluator.info.number_of_prediction_pixels == 3
 
     # check only detailed cache exists
     assert tmp_path.exists()
