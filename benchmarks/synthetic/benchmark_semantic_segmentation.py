@@ -185,6 +185,7 @@ def benchmark(
             ".valor/benchmark_semseg",
             batch_size=1_000,
             rows_per_file=10_000,
+            delete_if_exists=True,
         )
 
         for i in tqdm(range(number_of_images)):
@@ -205,7 +206,7 @@ def benchmark(
         elapsed_finalization += elapsed
         peak_finalization = max(peak_finalization, peak)
 
-        _, elapsed, peak = profile(evaluator.evaluate)()
+        _, elapsed, peak = profile(evaluator.compute_precision_recall_iou)()
         elapsed_evaluation += elapsed
         peak_evaluation = max(peak_evaluation, peak)
 
