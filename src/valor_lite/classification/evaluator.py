@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import heapq
 import json
-from dataclasses import dataclass
 from pathlib import Path
 
 import numpy as np
@@ -12,6 +11,7 @@ import pyarrow.dataset as ds
 import pyarrow.parquet as pq
 from numpy.typing import NDArray
 
+from valor_lite.cache.compute import sort
 from valor_lite.cache.ephemeral import MemoryCacheReader
 from valor_lite.cache.persistent import FileCacheReader
 from valor_lite.classification.computation import (
@@ -42,6 +42,7 @@ class Evaluator(Base):
     def __init__(
         self,
         reader: MemoryCacheReader | FileCacheReader,
+        sorted_reader: MemoryCacheReader | FileCacheReader,
         info: EvaluatorInfo,
         label_counts: NDArray[np.uint64],
         index_to_label: dict[int, str],
@@ -49,6 +50,7 @@ class Evaluator(Base):
     ):
         self._path = Path(path) if path else None
         self._reader = reader
+        self._sorted_reader = sorted_reader
         self._info = info
         self._label_counts = label_counts
         self._index_to_label = index_to_label
@@ -85,6 +87,7 @@ class Evaluator(Base):
 
         # load cache
         reader = FileCacheReader.load(cls._generate_cache_path(path))
+        sorted_reader = FileCacheReader.load(cls._generate_sorted_cache_path(path))
 
         # build evaluator meta
         (
@@ -96,12 +99,12 @@ class Evaluator(Base):
         # read config
         metadata_path = cls._generate_metadata_path(path)
         with open(metadata_path, "r") as f:
-            types = json.load(f)
-            info.datum_metadata_types = types["datum"]
+            info.datum_metadata_fields = json.load(f)
 
         return cls(
             path=path,
             reader=reader,
+            sorted_reader=sorted_reader,
             info=info,
             label_counts=label_counts,
             index_to_label=index_to_label,
@@ -109,18 +112,24 @@ class Evaluator(Base):
 
     def filter(
         self,
-        path: str | Path,
-        filter_expr: Filter,
+        datums: pc.Expression | None = None,
+        groundtruths: pc.Expression | None = None,
+        predictions: pc.Expression | None = None,
+        path: str | Path | None = None,
     ) -> Evaluator:
         """
-        Filter classification cache.
+        Filter evaluator cache.
 
         Parameters
         ----------
-        path : str | Path
-            Where to write the filtered cache.
-        filter_expr : Filter
-            A collection of filter expressions.
+        datums : pc.Expression | None = None
+            A filter expression used to filter datums.
+        groundtruths : pc.Expression | None = None
+            A filter expression used to filter ground truth annotations.
+        predictions : pc.Expression | None = None
+            A filter expression used to filter predictions.
+        path : str | Path, optional
+            Where to store the filtered cache if storing on disk.
 
         Returns
         -------
@@ -129,16 +138,25 @@ class Evaluator(Base):
         """
         from valor_lite.classification.loader import Loader
 
-        loader = Loader.create(
-            path=path,
-            batch_size=self.cache.batch_size,
-            rows_per_file=self.cache.rows_per_file,
-            compression=self.cache.compression,
-            datum_metadata_types=self.info.datum_metadata_types,
-        )
-        for fragment in self.cache.dataset.get_fragments():
-            tbl = fragment.to_table(filter=filter_expr.datums)
+        if isinstance(self._reader, FileCacheReader):
+            if not path:
+                raise ValueError(
+                    "expected path to be defined for file-based loader"
+                )
+            loader = Loader.persistent(
+                path=path,
+                batch_size=self._reader.batch_size,
+                rows_per_file=self._reader.rows_per_file,
+                compression=self._reader.compression,
+                datum_metadata_fields=self.info.datum_metadata_fields,
+            )
+        else:
+            loader = Loader.in_memory(
+                batch_size=self._reader.batch_size,
+                datum_metadata_fields=self.info.datum_metadata_fields,
+            )
 
+        for tbl in self._reader.iterate_tables(filter=datums):
             columns = (
                 "datum_id",
                 "gt_label_id",
@@ -150,11 +168,9 @@ class Evaluator(Base):
             gt_ids = pairs[:, (0, 1)].astype(np.int64)
             pd_ids = pairs[:, (0, 2)].astype(np.int64)
 
-            if filter_expr.groundtruths is not None:
-                print(filter_expr.groundtruths)
+            if groundtruths is not None:
                 mask_valid_gt = np.zeros(n_pairs, dtype=np.bool_)
-                gt_tbl = tbl.filter(filter_expr.groundtruths)
-                print(gt_tbl)
+                gt_tbl = tbl.filter(groundtruths)
                 gt_pairs = np.column_stack(
                     [
                         gt_tbl[col].to_numpy()
@@ -166,12 +182,9 @@ class Evaluator(Base):
             else:
                 mask_valid_gt = np.ones(n_pairs, dtype=np.bool_)
 
-            print(gt_ids)
-            print(mask_valid_gt)
-
-            if filter_expr.predictions is not None:
+            if predictions is not None:
                 mask_valid_pd = np.zeros(n_pairs, dtype=np.bool_)
-                pd_tbl = tbl.filter(filter_expr.predictions)
+                pd_tbl = tbl.filter(predictions)
                 pd_pairs = np.column_stack(
                     [
                         pd_tbl[col].to_numpy()
@@ -195,26 +208,19 @@ class Evaluator(Base):
                     tbl.schema.names.index(col), col, pa.array(pairs[:, idx])
                 )
             # TODO (c.zaloom) - improve write strategy, filtered data could be small
-            loader._cache.write_table(tbl)
+            loader._writer.write_table(tbl)
 
-        loader._cache.flush()
-        if loader._cache.dataset.count_rows() == 0:
-            raise EmptyCacheError()
-
-        return Evaluator.load(
-            path=loader.path,
-            index_to_label_override=self._index_to_label,
-        )
+        return loader.finalize(index_to_label_override=self._index_to_label)
 
     def delete(self):
         """
         Delete classification cache.
         """
-        from valor_lite.classification.loader import Loader
+        if self._path and self._path.exists():
+            self.delete_at_path(self._path)
 
-        Loader.delete(self.path)
-
-    def iterate_fragments(self):
+    @staticmethod
+    def iterate_values(reader: MemoryCacheReader | FileCacheReader):
         columns = [
             "datum_id",
             "gt_label_id",
@@ -222,142 +228,33 @@ class Evaluator(Base):
             "score",
             "winner",
         ]
-        for fragment in self.cache.dataset.get_fragments():
-            tbl = fragment.to_table(columns=columns)
-            ids = np.column_stack([tbl[col].to_numpy() for col in columns[:3]])
+        for tbl in reader.iterate_tables(columns=columns):
+            ids = np.column_stack([
+                tbl[col].to_numpy() for col in [
+                    "datum_id",
+                    "gt_label_id",
+                    "pd_label_id",
+                ]
+            ])
             scores = tbl["score"].to_numpy()
             winners = tbl["winner"].to_numpy()
-            yield ids, scores, winners
+            matches = tbl["match"].to_numpy()
+            yield ids, scores, matches, winners
 
-    def iterate_fragments_with_table(self):
-        columns = [
-            "datum_id",
-            "gt_label_id",
-            "pd_label_id",
-            "score",
-            "winner",
-        ]
-        for fragment in self.cache.dataset.get_fragments():
-            tbl = fragment.to_table()
-            ids = np.column_stack([tbl[col].to_numpy() for col in columns[:3]])
+    @staticmethod
+    def iterate_values_with_tables(reader: MemoryCacheReader | FileCacheReader):
+        for tbl in reader.iterate_tables():
+            ids = np.column_stack([
+                tbl[col].to_numpy() for col in [
+                    "datum_id",
+                    "gt_label_id",
+                    "pd_label_id",
+                ]
+            ])
             scores = tbl["score"].to_numpy()
             winners = tbl["winner"].to_numpy()
-            yield tbl, ids, scores, winners
-
-    def iterate_sorted_chunks(
-        self,
-        rows_per_chunk: int,
-        read_batch_size: int,
-    ):
-        """
-        Iterate through sorted pairs in chunks.
-
-        Parameters
-        ----------
-        rows_per_chunk : int
-            The number of sorted rows to return in each chunk.
-        read_batch_size : int
-            The maximum number of rows to load in-memory per file.
-
-        Yields
-        ------
-        NDArray[float64]
-            The next chunk of pairs in a sequence sorted by descending score.
-        """
-        id_columns = [
-            "datum_id",
-            "gt_label_id",
-            "pd_label_id",
-        ]
-        if self.cache.num_dataset_files == 1:
-            pf = pq.ParquetFile(self.cache.dataset_files[0])
-            tbl = pf.read()
-            ids = np.column_stack([tbl[col].to_numpy() for col in id_columns])
-            scores = tbl["score"].to_numpy()
-            winners = tbl["winner"].to_numpy()
-
-            n_pairs = ids.shape[0]
-            n_chunks = n_pairs // rows_per_chunk
-            for i in range(n_chunks):
-                lb = i * rows_per_chunk
-                ub = i * (rows_per_chunk + 1)
-                yield ids[lb:ub], scores[lb:ub], winners[lb:ub]
-            lb = n_chunks * rows_per_chunk
-            yield ids[lb:], scores[lb:], winners[lb:]
-        else:
-
-            def generate_heap_item(batches, batch_idx, row_idx):
-                score = batches[batch_idx]["score"][row_idx].as_py()
-                gidx = batches[batch_idx]["gt_label_id"][row_idx].as_py()
-                pidx = batches[batch_idx]["pd_label_id"][row_idx].as_py()
-                return (
-                    -score,
-                    pidx,
-                    gidx,
-                    batch_idx,
-                    row_idx,
-                )
-
-            # merge sorted rows
-            heap = []
-            batch_iterators = []
-            batches = []
-            for batch_idx, path in enumerate(self.cache.dataset_files):
-                pf = pq.ParquetFile(path)
-                batch_iter = pf.iter_batches(batch_size=read_batch_size)
-                batch_iterators.append(batch_iter)
-                batches.append(next(batch_iterators[batch_idx], None))
-                if (
-                    batches[batch_idx] is not None
-                    and len(batches[batch_idx]) > 0
-                ):
-                    heapq.heappush(
-                        heap, generate_heap_item(batches, batch_idx, 0)
-                    )
-
-            ids_buffer = []
-            scores_buffer = []
-            winners_buffer = []
-            while heap:
-                _, _, _, batch_idx, row_idx = heapq.heappop(heap)
-                row_table = batches[batch_idx].slice(row_idx, 1)
-
-                ids_buffer.append(
-                    np.column_stack(
-                        [row_table[col].to_numpy() for col in id_columns]
-                    )
-                )
-                scores_buffer.append(row_table["score"].to_numpy())
-                winners_buffer.append(
-                    row_table["winner"].to_numpy(zero_copy_only=False)
-                )
-                if len(ids_buffer) >= rows_per_chunk:
-                    ids = np.concatenate(ids_buffer, axis=0)
-                    scores = np.concatenate(scores_buffer, axis=0)
-                    winners = np.concatenate(winners_buffer, axis=0)
-                    yield ids, scores, winners
-                    ids_buffer, scores_buffer, winners_buffer = [], [], []
-
-                row_idx += 1
-                if row_idx < len(batches[batch_idx]):
-                    heapq.heappush(
-                        heap,
-                        generate_heap_item(batches, batch_idx, row_idx),
-                    )
-                else:
-                    batches[batch_idx] = next(batch_iterators[batch_idx], None)
-                    if (
-                        batches[batch_idx] is not None
-                        and len(batches[batch_idx]) > 0
-                    ):
-                        heapq.heappush(
-                            heap, generate_heap_item(batches, batch_idx, 0)
-                        )
-            if len(ids_buffer) > 0:
-                ids = np.concatenate(ids_buffer, axis=0)
-                scores = np.concatenate(scores_buffer, axis=0)
-                winners = np.concatenate(winners_buffer, axis=0)
-                yield ids, scores, winners
+            matches = tbl["match"].to_numpy()
+            yield ids, scores, winners, matches, tbl
 
     def compute_rocauc(
         self,
@@ -392,10 +289,7 @@ class Evaluator(Base):
         positive_count = self._label_counts[:, 0]
         negative_count = self._label_counts[:, 1] - self._label_counts[:, 0]
 
-        for ids, scores, _ in self.iterate_sorted_chunks(
-            rows_per_chunk=rows_per_chunk,
-            read_batch_size=read_batch_size,
-        ):
+        for ids, scores, winners, matches in self.iterate_values(self._sorted_reader):
             for id_row, score in zip(ids, scores):
                 glabel = id_row[1]
                 plabel = id_row[2]
@@ -466,10 +360,7 @@ class Evaluator(Base):
         # intermediates
         counts = np.zeros((n_scores, n_labels, 4), dtype=np.uint64)
 
-        for ids, scores, winners in self.iterate_sorted_chunks(
-            rows_per_chunk=rows_per_chunk,
-            read_batch_size=read_batch_size,
-        ):
+        for ids, scores, winners, matches in self.iterate_values(self._sorted_reader):
             batch_counts = compute_counts(
                 ids=ids,
                 scores=scores,
@@ -527,7 +418,7 @@ class Evaluator(Base):
         unmatched_groundtruths = np.zeros(
             (n_scores, n_labels), dtype=np.uint64
         )
-        for ids, scores, winners in self.iterate_fragments():
+        for ids, scores, winners, matches in self.iterate_values(reader=self._reader):
             (
                 mask_tp,
                 mask_fp_fn_misclf,
@@ -585,7 +476,7 @@ class Evaluator(Base):
             raise ValueError("At least one score threshold must be passed.")
 
         metrics = []
-        for tbl, ids, scores, winners in self.iterate_fragments_with_table():
+        for ids, scores, winners, matches, tbl in self.iterate_values_with_tables(reader=self._reader):
             if ids.size == 0:
                 continue
 
@@ -658,7 +549,7 @@ class Evaluator(Base):
             )
             for score_idx, score_thresh in enumerate(score_thresholds)
         }
-        for tbl, ids, scores, winners in self.iterate_fragments_with_table():
+        for ids, scores, winners, matches, tbl in self.iterate_values_with_tables(reader=self._reader):
             if ids.size == 0:
                 continue
 

@@ -3,10 +3,11 @@ from pathlib import Path
 
 import numpy as np
 from numpy.typing import NDArray
+import pyarrow as pa
 from pyarrow import DataType
 
 from valor_lite.cache.ephemeral import MemoryCacheReader
-from valor_lite.cache.persistent import FileCacheReader
+from valor_lite.cache.persistent import FileCacheReader, FileCacheWriter
 
 
 @dataclass
@@ -14,22 +15,84 @@ class EvaluatorInfo:
     number_of_rows: int = 0
     number_of_datums: int = 0
     number_of_labels: int = 0
-    datum_metadata_types: dict[str, DataType] | None = None
+    datum_metadata_fields: list[tuple[str, str]] | None = None
 
 
 class Base:
     @staticmethod
     def _generate_cache_path(path: str | Path) -> Path:
         return Path(path) / "cache"
+    
+    @staticmethod
+    def _generate_sorted_cache_path(path: str | Path) -> Path:
+        return Path(path) / "sorted"
 
     @staticmethod
     def _generate_metadata_path(path: str | Path) -> Path:
         return Path(path) / "metadata.json"
+    
+    @staticmethod
+    def _generate_schema(
+        datum_metadata_fields: list[tuple[str, DataType]] | None
+    ) -> pa.Schema:
+        datum_metadata_fields = (
+            datum_metadata_fields if datum_metadata_fields else []
+        )
+        return pa.schema(
+            [
+                ("datum_uid", pa.string()),
+                ("datum_id", pa.int64()),
+                *datum_metadata_fields,
+                # groundtruth
+                ("gt_label", pa.string()),
+                ("gt_label_id", pa.int64()),
+                # prediction
+                ("pd_label", pa.string()),
+                ("pd_label_id", pa.int64()),
+                # pair
+                ("score", pa.float64()),
+                ("winner", pa.bool_()),
+                ("match", pa.bool_()),
+            ]
+        )
+    
+    @staticmethod
+    def _generate_sorted_schema() -> pa.Schema:
+        return pa.schema(
+            [
+                ("datum_id", pa.int64()),
+                # groundtruth
+                ("gt_label_id", pa.int64()),
+                # prediction
+                ("pd_label_id", pa.int64()),
+                # pair
+                ("score", pa.float64()),
+                ("winner", pa.bool_()),
+                ("match", pa.bool_()),
+            ]
+        )
+    
+    @staticmethod
+    def _encode_metadata_fields(
+        datum_metadata_fields: list[tuple[str, DataType]] | None
+    ) -> dict[str, str]:
+        datum_metadata_fields = (
+            datum_metadata_fields if datum_metadata_fields else []
+        )
+        return {k: str(v) for k, v in datum_metadata_fields}
+
+    @staticmethod
+    def _decode_metadata_fields(
+        encoded_metadata_fields: dict[str, str]
+    ) -> list[tuple[str, DataType]]:
+        return [
+            (k, v) for k, v in encoded_metadata_fields.items()
+        ]
 
     @staticmethod
     def generate_meta(
         reader: MemoryCacheReader | FileCacheReader,
-        labels_override: dict[int, str] | None,
+        index_to_label_override: dict[int, str] | None,
     ) -> tuple[dict[int, str], NDArray[np.uint64], EvaluatorInfo]:
         """
         Generate cache statistics.
@@ -38,7 +101,7 @@ class Base:
         ----------
         dataset : Dataset
             Valor cache.
-        labels_override : dict[int, str], optional
+        index_to_label_override : dict[int, str], optional
             Optional labels override. Use when operating over filtered data.
 
         Returns
@@ -50,7 +113,7 @@ class Base:
         info : EvaluatorInfo
             Evaluator cache details.
         """
-        labels = labels_override if labels_override else {}
+        labels = index_to_label_override if index_to_label_override else {}
         info = EvaluatorInfo()
 
         for tbl in reader.iterate_tables():
@@ -128,3 +191,25 @@ class Base:
         info.number_of_labels = len(labels)
 
         return labels, label_counts, info
+
+    @classmethod
+    def delete_at_path(cls, path: str | Path):
+        """
+        Delete file-based cache at the given path.
+
+        Parameters
+        ----------
+        path : str | Path
+            Where the file-based cache is located.
+        """
+        path = Path(path)
+        if not path.exists():
+            return
+        cache_path = cls._generate_cache_path(path)
+        sorted_cache_path = cls._generate_sorted_cache_path(path)
+        metadata_path = cls._generate_metadata_path(path)
+        FileCacheWriter.delete(cache_path)
+        FileCacheWriter.delete(sorted_cache_path)
+        if metadata_path.exists() and metadata_path.is_file():
+            metadata_path.unlink()
+        path.rmdir()

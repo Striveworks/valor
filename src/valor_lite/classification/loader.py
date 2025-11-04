@@ -1,16 +1,15 @@
 import json
 from pathlib import Path
+from tqdm import tqdm
 
 import numpy as np
 import pyarrow as pa
 import pyarrow.parquet as pq
-from tqdm import tqdm
+from pyarrow import DataType
 
-from valor_lite.cache import (
-    CacheWriter,
-    DataType,
-    convert_type_mapping_to_schema,
-)
+from valor_lite.cache.compute import sort
+from valor_lite.cache.persistent import FileCacheWriter
+from valor_lite.cache.ephemeral import MemoryCacheWriter
 from valor_lite.classification.annotation import Classification
 from valor_lite.classification.evaluator import Evaluator
 from valor_lite.classification.shared import Base
@@ -20,35 +19,64 @@ from valor_lite.exceptions import EmptyCacheError
 class Loader(Base):
     def __init__(
         self,
-        path: str | Path,
-        writer: CacheWriter,
-        datum_metadata_types: dict[str, DataType] | None = None,
+        writer: MemoryCacheWriter | FileCacheWriter,
+        sorted_writer: MemoryCacheWriter | FileCacheWriter,
+        datum_metadata_fields: list[tuple[str, DataType]] | None = None,
+        path: str | Path | None = None,
     ):
-        self._path = Path(path)
-        self._cache = writer
-        self._datum_metadata_types = datum_metadata_types
+        self._path = Path(path) if path else None
+        self._writer = writer
+        self._sorted_writer = sorted_writer
+        self._datum_metadata_fields = datum_metadata_fields
 
         # internal state
         self._labels: dict[str, int] = {}
         self._index_to_label: dict[int, str] = {}
         self._datum_count = 0
 
-    @property
-    def path(self) -> Path:
-        return self._path
+    @classmethod
+    def in_memory(
+        cls,
+        batch_size: int = 10_000,
+        datum_metadata_fields: list[tuple[str, DataType]] | None = None,
+    ):
+        """
+        Create an in-memory evaluator cache.
+
+        Parameters
+        ----------
+        batch_size : int, default=10_000
+            The target number of rows to buffer before writing to the cache. Defaults to 10_000.
+        datum_metadata_fields : list[tuple[str, DataType]], optional
+            Optional datum metadata field definition.
+        """
+        writer = MemoryCacheWriter.create(
+            schema=cls._generate_schema(datum_metadata_fields),
+            batch_size=batch_size,
+        )
+        sorted_writer = MemoryCacheWriter.create(
+            schema=cls._generate_sorted_schema(),
+            batch_size=batch_size,
+        )
+        return cls(
+            writer=writer,
+            sorted_writer=sorted_writer,
+            datum_metadata_fields=datum_metadata_fields,
+            path=None,
+        )
 
     @classmethod
-    def create(
+    def persistent(
         cls,
         path: str | Path,
         batch_size: int = 10_000,
         rows_per_file: int = 100_000,
         compression: str = "snappy",
-        datum_metadata_types: dict[str, DataType] | None = None,
+        datum_metadata_fields: list[tuple[str, DataType]] | None = None,
         delete_if_exists: bool = False,
     ):
         """
-        Create a data loader.
+        Create a persistent file-based evaluator cache.
 
         Parameters
         ----------
@@ -60,42 +88,26 @@ class Loader(Base):
             Sets the maximum number of rows per file. This may be exceeded as files are datum aligned.
         compression : str, default="snappy"
             Sets the pyarrow compression method.
-        datum_metadata_types : dict[str, DataType], optional
+        datum_metadata_fields : list[tuple[str, DataType]], optional
             Optionally sets metadata description for use in filtering.
         delete_if_exists : bool, default=False
             Option to delete if cache already exists.
         """
         path = Path(path)
         if delete_if_exists:
-            cls.delete(path)
-
-        # create cache schema
-        datum_metadata_schema = convert_type_mapping_to_schema(
-            datum_metadata_types
-        )
-        schema = pa.schema(
-            [
-                ("datum_uid", pa.string()),
-                ("datum_id", pa.int64()),
-                *datum_metadata_schema,
-                # groundtruth
-                ("gt_label", pa.string()),
-                ("gt_label_id", pa.int64()),
-                # prediction
-                ("pd_label", pa.string()),
-                ("pd_label_id", pa.int64()),
-                # pair
-                ("score", pa.float64()),
-                ("winner", pa.bool_()),
-                ("match", pa.bool_()),
-            ]
-        )
+            cls.delete_at_path(path)
 
         # create cache
-        cache_path = cls._generate_cache_path(path)
-        cache = CacheWriter.create(
-            path=cache_path,
-            schema=schema,
+        writer = FileCacheWriter.create(
+            path=cls._generate_cache_path(path),
+            schema=cls._generate_schema(datum_metadata_fields),
+            batch_size=batch_size,
+            rows_per_file=rows_per_file,
+            compression=compression,
+        )
+        sorted_writer = FileCacheWriter.create(
+            path=cls._generate_sorted_cache_path(path),
+            schema=cls._generate_sorted_schema(),
             batch_size=batch_size,
             rows_per_file=rows_per_file,
             compression=compression,
@@ -104,37 +116,15 @@ class Loader(Base):
         # write metadatata config
         metadata_path = cls._generate_metadata_path(path)
         with open(metadata_path, "w") as f:
-            types = {
-                "datum": datum_metadata_types,
-                "groundtruth": None,
-                "prediction": None,
-            }
-            json.dump(types, f, indent=2)
+            encoded_types =cls._encode_metadata_fields(datum_metadata_fields)
+            json.dump(encoded_types, f, indent=2)
 
         return cls(
             path=path,
-            writer=cache,
-            datum_metadata_types=datum_metadata_types,
+            writer=writer,
+            sorted_writer=sorted_writer,
+            datum_metadata_fields=datum_metadata_fields,
         )
-
-    @classmethod
-    def delete(cls, path: str | Path):
-        """
-        Delete a classification cache.
-
-        Parameters
-        ----------
-        path : str | Path
-            Location of the existing cache.
-        """
-        path = Path(path)
-        if not path.exists():
-            return
-        CacheWriter.delete(cls._generate_cache_path(path))
-        metadata_path = cls._generate_metadata_path(path)
-        if metadata_path.exists() and metadata_path.is_file():
-            metadata_path.unlink()
-        path.rmdir()
 
     def _add_label(self, value: str) -> int:
         idx = self._labels.get(value, None)
@@ -198,37 +188,84 @@ class Loader(Base):
                         "match": (gidx == pidx) and pidx >= 0,
                     }
                 )
-            self._cache.write_rows(rows)
+            self._writer.write_rows(rows)
 
             # update datum count
             self._datum_count += 1
 
-    def finalize(self):
+    def finalize(
+        self,
+        batch_size: int = 1_000,
+        index_to_label_override: dict[int, str] | None = None
+    ):
         """
         Performs data finalization and some preprocessing steps.
+
+        Parameters
+        ----------
+        batch_size : int, default=1_000
+            Sets the maximum number of elements read into memory per-file when performing merge sort.
+        index_to_label_override : dict[int, str], optional
+            Pre-configures label mapping. Used when operating over filtered subsets.
 
         Returns
         -------
         Evaluator
             A ready-to-use evaluator object.
         """
-        self._cache.flush()
-        if self._cache.dataset.count_rows() == 0:
+        self._writer.flush()
+        if self._writer.count_rows() == 0:
             raise EmptyCacheError()
 
-        # sort files individually
-        for path in self._cache.dataset_files:
-            pf = pq.ParquetFile(path)
-            tbl = pf.read()
-            sorted_tbl = tbl.sort_by(
-                [
-                    ("score", "descending"),
-                    ("datum_id", "ascending"),
-                    ("gt_label_id", "ascending"),
-                    ("pd_label_id", "ascending"),
-                ]
-            )
-            pq.write_table(
-                sorted_tbl, path, compression=self._cache.compression
-            )
-        return Evaluator.load(self.path)
+        # sort in-place and locally        
+        self._writer.sort_by([
+            ("score", "descending"),
+            ("datum_id", "ascending"),
+            ("gt_label_id", "ascending"),
+            ("pd_label_id", "ascending"),
+        ])
+
+        # post-process into sorted writer
+        reader=self._writer.to_reader()
+        sort(
+            source=reader,
+            sink=self._sorted_writer,            
+            batch_size=batch_size,
+            sorting=[
+                ("score", "descending"),
+                ("pidx", "ascending"),
+                ("gidx", "ascending"),
+            ],
+            columns=[
+                "datum_id",
+                "gt_label_id",
+                "pd_label_id",
+                "scores",
+                "winners",
+                "match",
+            ],
+        )
+        sorted_reader = self._sorted_writer.to_reader()
+
+        # generate evaluator meta
+        (
+            index_to_label,
+            label_counts,
+            info,
+        ) = self.generate_meta(reader=reader, index_to_label_override=index_to_label_override)
+
+        return Evaluator(
+            reader=reader,
+            sorted_reader=sorted_reader,
+            info=info,
+            label_counts=label_counts,
+            index_to_label=index_to_label,
+            path=self._path,
+        )
+
+    def delete(self):
+        """
+        Delete the classification evaluator cache.
+        """
+        if self._path and self._path.exists():
+            self.delete_at_path(self._path)

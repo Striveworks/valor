@@ -1,15 +1,14 @@
 from .annotation import Classification
-from .evaluator import DataType, Filter
-from .legacy import DataLoader, Evaluator, Metadata
+from .evaluator import Evaluator
+from .loader import Loader
+from .shared import EvaluatorInfo
 from .metric import Metric, MetricType
 
 __all__ = [
     "Classification",
     "MetricType",
-    "DataLoader",
+    "Loader",
     "Evaluator",
     "Metric",
-    "Metadata",
-    "Filter",
-    "DataType",
+    "EvaluatorInfo",
 ]
