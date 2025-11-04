@@ -92,9 +92,7 @@ def test_cache_compute_sort(
     ]
 
     # ingest to cache 1
-    from tqdm import tqdm
-
-    for i in tqdm(range(n_samples)):
+    for i in range(n_samples):
         writer1.write_rows(
             [
                 {
@@ -135,9 +133,7 @@ def test_cache_sort_by(writer1: MemoryCacheWriter | FileCacheWriter):
     ]
 
     # ingest to cache 1
-    from tqdm import tqdm
-
-    for i in tqdm(range(n_samples)):
+    for i in range(n_samples):
         writer1.write_rows(
             [
                 {

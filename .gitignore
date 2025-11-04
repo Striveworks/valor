@@ -30,4 +30,5 @@ site/*
 *.png
 *.jpg
 *.parquet
-*.valor
+
+.valor/*
