@@ -83,6 +83,28 @@ class Loader(Base):
         prediction_metadata_fields: list[tuple[str, DataType]] | None = None,
         delete_if_exists: bool = False,
     ):
+        """
+        Create a persistent file-based evaluator cache.
+
+        Parameters
+        ----------
+        path : str | Path
+            Where to store the file-based cache.
+        batch_size : int, default=10_000
+            The target number of rows to buffer before writing to the cache. Defaults to 10_000.
+        rows_per_file : int, default=100_000
+            The target number of rows to store per cache file. Defaults to 100_000.
+        compression : str, default="snappy"
+            The compression methods used when writing cache files.
+        datum_metadata_fields : list[tuple[str, DataType]], optional
+            Optional datum metadata field definition.
+        groundtruth_metadata_fields : list[tuple[str, DataType]], optional
+            Optional ground truth annotation metadata field definition.
+        prediction_metadata_fields : list[tuple[str, DataType]], optional
+            Optional prediction metadata field definition.
+        delete_if_exists : bool, default=False
+            Option to delete any pre-exisiting cache at the given path.
+        """
         path = Path(path)
         if delete_if_exists:
             cls.delete_at_path(path)
