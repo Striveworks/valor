@@ -96,6 +96,8 @@ def test_rocauc_with_color_example(
         },
     ]
     for m in actual_metrics:
+        import json
+        print(json.dumps(m, indent=2))
         assert m in expected_metrics
     for m in expected_metrics:
         assert m in actual_metrics
@@ -116,7 +118,6 @@ def test_rocauc_with_image_example(
     classifications_image_example: list[Classification],
 ):
     loader.add_data(classifications_image_example)
-    loader.finalize()
     evaluator = loader.finalize()
 
     metrics = evaluator.compute_rocauc()
@@ -164,7 +165,6 @@ def test_rocauc_with_tabular_example(
     classifications_tabular_example: list[Classification],
 ):
     loader.add_data(classifications_tabular_example)
-    loader.finalize()
     evaluator = loader.finalize()
 
     metrics = evaluator.compute_rocauc()

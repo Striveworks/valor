@@ -63,11 +63,10 @@ def generate_random_classifications(
 
 
 def test_filtering_one_classification(
-    tmp_path: Path,
+    loader: Loader,
     one_classification: list[Classification],
 ):
 
-    loader = Loader.persistent(tmp_path)
     loader.add_data(one_classification)
     evaluator = loader.finalize()
 
@@ -143,11 +142,10 @@ def test_filtering_one_classification(
 
 
 def test_filtering_three_classifications(
-    tmp_path: Path,
+    loader: Loader,
     three_classifications: list[Classification],
 ):
 
-    loader = Loader.persistent(tmp_path)
     loader.add_data(three_classifications)
     evaluator = loader.finalize()
 
@@ -223,11 +221,10 @@ def test_filtering_three_classifications(
 
 
 def test_filtering_six_classifications(
-    tmp_path: Path,
+    loader: Loader,
     six_classifications: list[Classification],
 ):
 
-    loader = Loader.persistent(tmp_path)
     loader.add_data(six_classifications)
     evaluator = loader.finalize()
 
@@ -302,8 +299,7 @@ def test_filtering_six_classifications(
         assert m in actual_metrics
 
 
-def test_filtering_random_classifications(tmp_path: Path):
-    loader = Loader.persistent(tmp_path)
+def test_filtering_random_classifications(loader: Loader):
     loader.add_data(generate_random_classifications(13, 2, 10))
     evaluator = loader.finalize()
     filtered_evaluator = evaluator.filter(datums=["uid0"])
@@ -314,11 +310,10 @@ def test_filtering_random_classifications(tmp_path: Path):
 
 
 def test_filtering_six_classifications_by_indices(
-    tmp_path: Path,
+    loader: Loader,
     six_classifications: list[Classification],
 ):
 
-    loader = Loader.persistent(tmp_path)
     loader.add_data(six_classifications)
     evaluator = loader.finalize()
 
@@ -394,11 +389,10 @@ def test_filtering_six_classifications_by_indices(
 
 
 def test_filtering_six_classifications_by_annotation(
-    tmp_path: Path,
+    loader: Loader,
     six_classifications: list[Classification],
 ):
 
-    loader = Loader.persistent(tmp_path)
     loader.add_data(six_classifications)
     evaluator = loader.finalize()
 

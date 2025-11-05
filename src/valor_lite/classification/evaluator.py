@@ -37,7 +37,7 @@ class Evaluator(Base):
     def __init__(
         self,
         reader: MemoryCacheReader | FileCacheReader,
-        sorted_reader: MemoryCacheReader | FileCacheReader,
+        rocauc_reader: MemoryCacheReader | FileCacheReader,
         info: EvaluatorInfo,
         label_counts: NDArray[np.uint64],
         index_to_label: dict[int, str],
@@ -45,7 +45,7 @@ class Evaluator(Base):
     ):
         self._path = Path(path) if path else None
         self._reader = reader
-        self._sorted_reader = sorted_reader
+        self._rocauc_reader = rocauc_reader
         self._info = info
         self._label_counts = label_counts
         self._index_to_label = index_to_label
@@ -82,8 +82,8 @@ class Evaluator(Base):
 
         # load cache
         reader = FileCacheReader.load(cls._generate_cache_path(path))
-        sorted_reader = FileCacheReader.load(
-            cls._generate_sorted_cache_path(path)
+        rocauc_reader = FileCacheReader.load(
+            cls._generate_rocauc_cache_path(path)
         )
 
         # build evaluator meta
@@ -101,7 +101,7 @@ class Evaluator(Base):
         return cls(
             path=path,
             reader=reader,
-            sorted_reader=sorted_reader,
+            rocauc_reader=rocauc_reader,
             info=info,
             label_counts=label_counts,
             index_to_label=index_to_label,
@@ -216,8 +216,7 @@ class Evaluator(Base):
         if self._path and self._path.exists():
             self.delete_at_path(self._path)
 
-    @staticmethod
-    def iterate_values(reader: MemoryCacheReader | FileCacheReader):
+    def iterate_values(self):
         columns = [
             "datum_id",
             "gt_label_id",
@@ -226,7 +225,7 @@ class Evaluator(Base):
             "winner",
             "match",
         ]
-        for tbl in reader.iterate_tables(columns=columns):
+        for tbl in self._reader.iterate_tables(columns=columns):
             ids = np.column_stack(
                 [
                     tbl[col].to_numpy()
@@ -242,11 +241,8 @@ class Evaluator(Base):
             matches = tbl["match"].to_numpy()
             yield ids, scores, winners, matches
 
-    @staticmethod
-    def iterate_values_with_tables(
-        reader: MemoryCacheReader | FileCacheReader,
-    ):
-        for tbl in reader.iterate_tables():
+    def iterate_values_with_tables(self):
+        for tbl in self._reader.iterate_tables():
             ids = np.column_stack(
                 [
                     tbl[col].to_numpy()
@@ -266,13 +262,6 @@ class Evaluator(Base):
         """
         Compute ROCAUC.
 
-        Parameters
-        ----------
-        rows_per_chunk : int, default=10_000
-            The number of sorted rows to return in each chunk.
-        read_batch_size : int, default=1_000
-            The maximum number of rows to load in-memory per file.
-
         Returns
         -------
         dict[MetricType, list[Metric]]
@@ -281,42 +270,42 @@ class Evaluator(Base):
         n_labels = self.info.number_of_labels
 
         rocauc = np.zeros(n_labels, dtype=np.float64)
-        cumulative_fp = np.zeros(n_labels, dtype=np.uint64)
-        cumulative_tp = np.zeros(n_labels, dtype=np.uint64)
+        accumulated_fp = np.zeros(n_labels, dtype=np.uint64)
+        accumulated_tp = np.zeros(n_labels, dtype=np.uint64)
 
-        tpr = np.zeros(n_labels, dtype=np.float64)
-        fpr = np.zeros(n_labels, dtype=np.float64)
+        prev_tpr = np.ones(n_labels, dtype=np.float64) * -1
+        prev_fpr = np.ones(n_labels, dtype=np.float64) * -1
 
-        positive_count = self._label_counts[:, 0]
-        negative_count = self._label_counts[:, 1] - self._label_counts[:, 0]
-
-        for ids, scores, winners, matches in self.iterate_values(
-            self._sorted_reader
-        ):
-            for id_row, score in zip(ids, scores):
-                glabel = id_row[1]
-                plabel = id_row[2]
-                if glabel < 0 or plabel < 0:
-                    continue
-                elif glabel == plabel:
-                    cumulative_tp[plabel] += 1
-                    tpr_new = cumulative_tp[plabel] / positive_count[plabel]
-                    tpr[plabel]
-                else:
-                    cumulative_fp[plabel] += 1
-
-            batch_rocauc, cumulative_fp, cumulative_tp = compute_rocauc(
-                ids=ids,
-                scores=scores,
+        for loopid, array in enumerate(self._rocauc_reader.iterate_arrays(
+            numeric_columns=[
+                "pd_label_id",
+                "score",
+                "match",
+            ]
+        )):
+            # for id_row, score in zip(ids, scores):
+            #     glabel = id_row[1]
+            #     plabel = id_row[2]
+            #     if glabel < 0 or plabel < 0:
+            #         continue
+            #     elif glabel == plabel:
+            #         cumulative_tp[plabel] += 1
+            #         tpr_new = cumulative_tp[plabel] / positive_count[plabel]
+            #         tpr[plabel]
+            #     else:
+            #         cumulative_fp[plabel] += 1
+            print("loop", loopid)
+            rocauc, accumulated_fp, accumulated_tp, prev_fpr, prev_tpr = compute_rocauc(
                 rocauc=rocauc,
-                cumulative_fp=cumulative_fp,
-                cumulative_tp=cumulative_tp,
+                array=array,
                 gt_count_per_label=self._label_counts[:, 0],
                 pd_count_per_label=self._label_counts[:, 1],
-                n_datums=self.info.number_of_datums,
                 n_labels=self.info.number_of_labels,
+                accumulated_fp=accumulated_fp,
+                accumulated_tp=accumulated_tp,
+                prev_fpr=prev_fpr,
+                prev_tpr=prev_tpr,
             )
-            rocauc += batch_rocauc
 
         mean_rocauc = rocauc.mean()
 

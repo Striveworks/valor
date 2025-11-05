@@ -373,24 +373,18 @@ def test_compute_rocauc_animals():
     indices = np.lexsort([data[:, 2], data[:, 1], data[:, 0], -data[:, 3]])
     data = data[indices]
 
-    n_datums = 6
     n_labels = 3
 
     # compute ROCAUC and mROCAUC
+    rocauc = np.zeros(n_labels, dtype=np.float64)
     rocauc, prev_fp, prev_tp = compute_rocauc(
+        rocauc=rocauc,
         ids=data[:, (0, 1, 2)].astype(np.int64),
         scores=data[:, 3],
         gt_count_per_label=np.array([3, 1, 2], dtype=np.uint64),
         pd_count_per_label=np.array([6, 6, 6], dtype=np.uint64),
-        n_datums=n_datums,
         n_labels=n_labels,
-        prev_cumulative_fp=np.zeros((n_labels, 1), dtype=np.uint64),
-        prev_cumulative_tp=np.zeros((n_labels, 1), dtype=np.uint64),
     )
-
-    # test intermediates
-    assert (prev_fp == np.array([3, 5, 4])).all()
-    assert (prev_tp == np.array([3, 1, 2])).all()
 
     # test ROCAUC
     assert rocauc[0] == 0.7777777777777778  # (animal, bird)
@@ -483,20 +477,15 @@ def test_compute_rocauc_colors():
     n_labels = 4
 
     # compute ROCAUC and mROCAUC
+    rocauc = np.zeros(n_labels, dtype=np.float64)
     rocauc, prev_fp, prev_tp = compute_rocauc(
+        rocauc=rocauc,
         ids=data[:, (0, 1, 2)].astype(np.int64),
         scores=data[:, 3],
         gt_count_per_label=np.array([1, 1, 2, 2], dtype=np.uint64),
         pd_count_per_label=np.array([6, 6, 6, 6], dtype=np.uint64),
-        n_datums=n_datums,
         n_labels=n_labels,
-        prev_cumulative_fp=np.zeros((n_labels, 1), dtype=np.uint64),
-        prev_cumulative_tp=np.zeros((n_labels, 1), dtype=np.uint64),
     )
-
-    # test intermediates
-    assert (prev_fp == np.array([5, 5, 4, 4])).all()
-    assert (prev_tp == np.array([1, 1, 2, 2])).all()
 
     # test ROCAUC
     assert rocauc[0] == 0.09999999999999998  # (color, black)

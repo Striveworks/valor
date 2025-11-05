@@ -24,7 +24,7 @@ class Loader(Base):
     ):
         self._path = Path(path) if path else None
         self._writer = writer
-        self._sorted_writer = sorted_writer
+        self._rocauc_writer = sorted_writer
         self._datum_metadata_fields = datum_metadata_fields
 
         # internal state
@@ -53,7 +53,7 @@ class Loader(Base):
             batch_size=batch_size,
         )
         sorted_writer = MemoryCacheWriter.create(
-            schema=cls._generate_sorted_schema(),
+            schema=cls._generate_rocauc_schema(),
             batch_size=batch_size,
         )
         return cls(
@@ -104,8 +104,8 @@ class Loader(Base):
             compression=compression,
         )
         sorted_writer = FileCacheWriter.create(
-            path=cls._generate_sorted_cache_path(path),
-            schema=cls._generate_sorted_schema(),
+            path=cls._generate_rocauc_cache_path(path),
+            schema=cls._generate_rocauc_schema(),
             batch_size=batch_size,
             rows_per_file=rows_per_file,
             compression=compression,
@@ -214,6 +214,8 @@ class Loader(Base):
         self._writer.flush()
         if self._writer.count_rows() == 0:
             raise EmptyCacheError()
+        elif self._rocauc_writer.count_rows() > 0:
+            raise RuntimeError("data already finalized")
 
         # sort in-place and locally
         self._writer.sort_by(
@@ -229,23 +231,20 @@ class Loader(Base):
         reader = self._writer.to_reader()
         sort(
             source=reader,
-            sink=self._sorted_writer,
+            sink=self._rocauc_writer,
             batch_size=batch_size,
             sorting=[
                 ("score", "descending"),
+                ("match", "descending"),
                 ("pd_label_id", "ascending"),
-                ("gt_label_id", "ascending"),
             ],
             columns=[
-                "datum_id",
-                "gt_label_id",
                 "pd_label_id",
                 "score",
-                "winner",
                 "match",
             ],
         )
-        sorted_reader = self._sorted_writer.to_reader()
+        rocauc_reader = self._rocauc_writer.to_reader()
 
         # generate evaluator meta
         (index_to_label, label_counts, info,) = self.generate_meta(
@@ -254,7 +253,7 @@ class Loader(Base):
 
         return Evaluator(
             reader=reader,
-            sorted_reader=sorted_reader,
+            rocauc_reader=rocauc_reader,
             info=info,
             label_counts=label_counts,
             index_to_label=index_to_label,

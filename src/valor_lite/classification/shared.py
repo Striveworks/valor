@@ -24,8 +24,8 @@ class Base:
         return Path(path) / "cache"
     
     @staticmethod
-    def _generate_sorted_cache_path(path: str | Path) -> Path:
-        return Path(path) / "sorted"
+    def _generate_rocauc_cache_path(path: str | Path) -> Path:
+        return Path(path) / "rocauc"
 
     @staticmethod
     def _generate_metadata_path(path: str | Path) -> Path:
@@ -57,17 +57,13 @@ class Base:
         )
     
     @staticmethod
-    def _generate_sorted_schema() -> pa.Schema:
+    def _generate_rocauc_schema() -> pa.Schema:
         return pa.schema(
             [
-                ("datum_id", pa.int64()),
-                # groundtruth
-                ("gt_label_id", pa.int64()),
                 # prediction
                 ("pd_label_id", pa.int64()),
                 # pair
                 ("score", pa.float64()),
-                ("winner", pa.bool_()),
                 ("match", pa.bool_()),
             ]
         )
@@ -206,7 +202,7 @@ class Base:
         if not path.exists():
             return
         cache_path = cls._generate_cache_path(path)
-        sorted_cache_path = cls._generate_sorted_cache_path(path)
+        sorted_cache_path = cls._generate_rocauc_cache_path(path)
         metadata_path = cls._generate_metadata_path(path)
         FileCacheWriter.delete(cache_path)
         FileCacheWriter.delete(sorted_cache_path)

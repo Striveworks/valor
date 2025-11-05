@@ -107,7 +107,6 @@ def sort(
     table_sort_override : Callable[[pa.Table], pa.Table], optional
         Option to override sort function for singular cache fragments.
     """
-
     if source.count_tables() == 1:
         for tbl in source.iterate_tables(columns=columns):
             if table_sort_override is not None:

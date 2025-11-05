@@ -7,12 +7,15 @@ import valor_lite.classification.numpy_compatibility as npc
 
 
 def compute_rocauc(
-    ids: NDArray[np.int64],
-    scores: NDArray[np.float64],
     rocauc: NDArray[np.float64],
+    array: NDArray[np.float64],
     gt_count_per_label: NDArray[np.uint64],
     pd_count_per_label: NDArray[np.uint64],
     n_labels: int,
+    accumulated_tp: NDArray[np.uint64],
+    accumulated_fp: NDArray[np.uint64],
+    prev_fpr: NDArray[np.float64],
+    prev_tpr: NDArray[np.float64],
 ) -> tuple[NDArray[np.float64], NDArray[np.uint64], NDArray[np.uint64]]:
     """
     Compute ROCAUC.
@@ -44,9 +47,9 @@ def compute_rocauc(
     NDArray[np.uint64]
         Final cumulative sum for TP's. Used as intermediate in chunking operations.
     """
-    gt_labels = ids[:, 1]
-    pd_labels = ids[:, 2]
-    mask_matching_labels = np.isclose(gt_labels, pd_labels)
+    pd_labels = array[:, 0].astype(np.int64)
+    scores = array[:, 1]
+    mask_matching_labels = array[:, 2] > 0.5
 
     positive_count = gt_count_per_label
     negative_count = pd_count_per_label - gt_count_per_label
@@ -57,25 +60,24 @@ def compute_rocauc(
         if pd_count_per_label[label_idx] == 0 or n_masked_pds == 0:
             continue
 
-        true_positives = np.zeros(n_masked_pds, dtype=np.uint64)
-        false_positives = np.zeros_like(true_positives)
-        tp_scores = np.zeros_like(true_positives, dtype=np.float64)
-
         true_positives = mask_matching_labels[mask_pds]
         false_positives = ~mask_matching_labels[mask_pds]
         tp_scores = scores[mask_pds]
 
-        cumulative_fp = np.cumsum(false_positives)
-        cumulative_tp = np.cumsum(true_positives)
+        cumulative_fp = np.cumsum(false_positives) + accumulated_fp[label_idx]
+        cumulative_tp = np.cumsum(true_positives) + accumulated_tp[label_idx]
 
-        fpr = np.zeros_like(true_positives, dtype=np.float64)
+        accumulated_fp[label_idx] = cumulative_fp[-1]
+        accumulated_tp[label_idx] = cumulative_tp[-1]
+
+        fpr = np.zeros(n_masked_pds, dtype=np.float64)
         np.divide(
             cumulative_fp,
             negative_count[label_idx],
             where=negative_count[label_idx] > 0,
             out=fpr,
         )
-        tpr = np.zeros_like(true_positives, dtype=np.float64)
+        tpr = np.zeros(n_masked_pds, dtype=np.float64)
         np.divide(
             cumulative_tp,
             positive_count[label_idx],
@@ -83,18 +85,67 @@ def compute_rocauc(
             out=tpr,
         )
 
+        if prev_fpr[label_idx] > -0.5 and prev_tpr[label_idx] > -0.5:
+            fpr = np.concatenate([prev_fpr[label_idx:label_idx+1], fpr])
+            tpr = np.concatenate([prev_tpr[label_idx:label_idx+1], tpr])
+
         # sort by -tpr, -score
         indices = np.lexsort((-tpr, -tp_scores))
         fpr = fpr[indices]
         tpr = tpr[indices]
 
+        sfpr = fpr.copy()
+        stpr = tpr.copy()
+
         # running max of tpr
         np.maximum.accumulate(tpr, out=tpr)
 
-        # compute rocauc
-        rocauc[label_idx] = npc.trapezoid(x=fpr, y=tpr, axis=0)
 
-    return rocauc, None, None
+        prev_fpr[label_idx] = fpr[-1]
+        prev_tpr[label_idx] = tpr[-1]
+
+        # compute rocauc
+        rocauc[label_idx] += npc.trapezoid(x=fpr, y=tpr, axis=0)
+
+        print()
+        print(label_idx, rocauc[label_idx])
+        print("====")
+        print(
+            f"{'FP':4}",
+            f"{'TP':4}",
+            f"{'CFP':4}",
+            f"{'CTP':4}",
+            f"{'FPR':4}",
+            f"{'TPR':4}",
+            f"{'SFPR':4}",
+            f"{'STPR':4}",
+            f"{'SCO':4}",
+        )
+        for f, t, af, at, fr, tr, sf, st, s in zip(
+            false_positives,
+            true_positives,
+            cumulative_fp,
+            cumulative_tp,
+            fpr, 
+            tpr, 
+            sfpr,
+            stpr,
+            tp_scores,
+        ):
+            print(
+                f"{f:.2f}", 
+                f"{t:.2f}",
+                f"{af:.2f}", 
+                f"{at:.2f}", 
+                f"{fr:.2f}", 
+                f"{tr:.2f}", 
+                f"{sf:.2f}", 
+                f"{st:.2f}", 
+                f"{s:.2f}",
+            )
+            
+
+    return rocauc, accumulated_fp, accumulated_tp, prev_fpr, prev_tpr
 
 
 def compute_counts(
