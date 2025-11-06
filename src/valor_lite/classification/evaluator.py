@@ -294,8 +294,7 @@ class Evaluator(Base):
             #         tpr[plabel]
             #     else:
             #         cumulative_fp[plabel] += 1
-            print("loop", loopid)
-            rocauc, accumulated_fp, accumulated_tp, prev_fpr, prev_tpr = compute_rocauc(
+            rocauc, accumulated_fp, accumulated_tp = compute_rocauc(
                 rocauc=rocauc,
                 array=array,
                 gt_count_per_label=self._label_counts[:, 0],
@@ -303,8 +302,6 @@ class Evaluator(Base):
                 n_labels=self.info.number_of_labels,
                 accumulated_fp=accumulated_fp,
                 accumulated_tp=accumulated_tp,
-                prev_fpr=prev_fpr,
-                prev_tpr=prev_tpr,
             )
 
         mean_rocauc = rocauc.mean()

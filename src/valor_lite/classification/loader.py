@@ -1,6 +1,7 @@
 import json
 from pathlib import Path
 
+import pyarrow as pa
 import numpy as np
 from pyarrow import DataType
 from tqdm import tqdm
@@ -229,14 +230,24 @@ class Loader(Base):
 
         # post-process into sorted writer
         reader = self._writer.to_reader()
+
+        n_labels = len(self._index_to_label)
+
+        def accumulate(batch: pa.RecordBatch, prev: np.ndarray | None) -> pa.RecordBatch:
+            pd_label_id = batch["pd_label_id"].as_py()
+            matched = batch["match"][0].as_py()
+            if prev is None:
+                prev = np.zeros(n_labels, dtype=np.uint64)
+                return None, ()
+
         sort(
             source=reader,
             sink=self._rocauc_writer,
             batch_size=batch_size,
             sorting=[
                 ("score", "descending"),
-                ("match", "descending"),
-                ("pd_label_id", "ascending"),
+                # ("match", "descending"),
+                # ("pd_label_id", "ascending"),
             ],
             columns=[
                 "pd_label_id",

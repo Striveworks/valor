@@ -60,8 +60,10 @@ def test_rocauc_with_color_example(
 
     loader.add_data(classifications_color_example)
     evaluator = loader.finalize()
+    print(evaluator._index_to_label)
 
     metrics = evaluator.compute_rocauc()
+
 
     # test ROCAUC
     actual_metrics = [m.to_dict() for m in metrics[MetricType.ROCAUC]]

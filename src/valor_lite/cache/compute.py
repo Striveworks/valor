@@ -1,7 +1,7 @@
 import heapq
 import tempfile
 from pathlib import Path
-from typing import Callable
+from typing import Callable, Any
 
 import pyarrow as pa
 
@@ -16,12 +16,13 @@ def _merge(
     batch_size: int,
     sorting: list[tuple[str, str]],
     columns: list[str] | None = None,
-    table_sort_override: Callable[[pa.Table], pa.Table] | None = None,
+    sort_override: Callable[[pa.Table], pa.Table] | None = None,
+    merge_override: Callable[[pa.RecordBatch, Any], tuple[pa.RecordBatch | None, Any]] | None = None,
 ):
     """Merge locally sorted cache fragments."""
     for tbl in source.iterate_tables(columns=columns):
-        if table_sort_override is not None:
-            sorted_tbl = table_sort_override(tbl)
+        if sort_override is not None:
+            sorted_tbl = sort_override(tbl)
         else:
             sorted_tbl = tbl.sort_by(sorting)
         intermediate_sink.write_table(sorted_tbl)
@@ -57,12 +58,18 @@ def _merge(
         if batches[batch_idx] is not None and len(batches[batch_idx]) > 0:
             heapq.heappush(heap, create_sort_key(batches, batch_idx, 0))
 
+    prev_state = None
     while heap:
         row = heapq.heappop(heap)
         batch_idx = row[-2]
         row_idx = row[-1]
         row_table = batches[batch_idx].slice(row_idx, 1)
-        sink.write_batch(row_table)
+        if merge_override is not None:
+            batch = merge_override(row_table, prev_state)
+            if batch is not None:
+                sink.write_batch(row_table)    
+        else:
+            sink.write_batch(row_table)
         row_idx += 1
         if row_idx < len(batches[batch_idx]):
             heapq.heappush(
