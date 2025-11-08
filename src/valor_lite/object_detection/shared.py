@@ -21,255 +21,179 @@ class EvaluatorInfo:
     number_of_prediction_annotations: int = 0
     number_of_labels: int = 0
     number_of_rows: int = 0
-    datum_metadata_fields: list[tuple[str, DataType]] | None = None
+    metadata_fields: list[tuple[str, DataType]] | None = None
     groundtruth_metadata_fields: list[tuple[str, DataType]] | None = None
     prediction_metadata_fields: list[tuple[str, DataType]] | None = None
 
 
-class Base:
-    @staticmethod
-    def _generate_detailed_cache_path(path: str | Path) -> Path:
-        return Path(path) / "detailed"
+def generate_detailed_cache_path(path: str | Path) -> Path:
+    return Path(path) / "detailed"
 
-    @staticmethod
-    def _generate_ranked_cache_path(path: str | Path) -> Path:
-        return Path(path) / "ranked"
 
-    @staticmethod
-    def _generate_temporary_cache_path(path: str | Path) -> Path:
-        return Path(path) / "tmp"
+def generate_ranked_cache_path(path: str | Path) -> Path:
+    return Path(path) / "ranked"
 
-    @staticmethod
-    def _generate_metadata_path(path: str | Path) -> Path:
-        return Path(path) / "metadata.json"
 
-    @staticmethod
-    def _generate_detailed_schema(
-        datum_metadata_fields: list[tuple[str, DataType]] | None,
-        groundtruth_metadata_fields: list[tuple[str, DataType]] | None,
-        prediction_metadata_fields: list[tuple[str, DataType]] | None,
-    ) -> pa.Schema:
-        datum_metadata_fields = (
-            datum_metadata_fields if datum_metadata_fields else []
-        )
-        groundtruth_metadata_fields = (
-            groundtruth_metadata_fields if groundtruth_metadata_fields else []
-        )
-        prediction_metadata_fields = (
-            prediction_metadata_fields if prediction_metadata_fields else []
-        )
-        return pa.schema(
-            [
-                ("datum_uid", pa.string()),
-                ("datum_id", pa.int64()),
-                *datum_metadata_fields,
-                # groundtruth
-                ("gt_uid", pa.string()),
-                ("gt_id", pa.int64()),
-                ("gt_label", pa.string()),
-                ("gt_label_id", pa.int64()),
-                *groundtruth_metadata_fields,
-                # prediction
-                ("pd_uid", pa.string()),
-                ("pd_id", pa.int64()),
-                ("pd_label", pa.string()),
-                ("pd_label_id", pa.int64()),
-                ("score", pa.float64()),
-                *prediction_metadata_fields,
-                # pair
-                ("iou", pa.float64()),
-            ]
-        )
+def generate_temporary_cache_path(path: str | Path) -> Path:
+    return Path(path) / "tmp"
 
-    @staticmethod
-    def _generate_ranked_schema(
-        datum_metadata_fields: list[tuple[str, DataType]] | None,
-    ) -> pa.Schema:
-        datum_metadata_fields = (
-            datum_metadata_fields if datum_metadata_fields else []
-        )
-        return pa.schema(
-            [
-                ("datum_uid", pa.string()),
-                ("datum_id", pa.int64()),
-                *datum_metadata_fields,
-                # groundtruth
-                ("gt_id", pa.int64()),
-                ("gt_label_id", pa.int64()),
-                # prediction
-                ("pd_id", pa.int64()),
-                ("pd_label_id", pa.int64()),
-                ("score", pa.float64()),
-                # pair
-                ("iou", pa.float64()),
-                ("high_score", pa.bool_()),
-                ("iou_prev", pa.float64()),
-            ]
-        )
 
-    @staticmethod
-    def _encode_metadata_fields(
-        datum_metadata_fields: list[tuple[str, DataType]] | None,
-        groundtruth_metadata_fields: list[tuple[str, DataType]] | None,
-        prediction_metadata_fields: list[tuple[str, DataType]] | None,
-    ) -> dict[str, dict[str, str]]:
-        datum_metadata_fields = (
-            datum_metadata_fields if datum_metadata_fields else []
-        )
-        groundtruth_metadata_fields = (
-            groundtruth_metadata_fields if groundtruth_metadata_fields else []
-        )
-        prediction_metadata_fields = (
-            prediction_metadata_fields if prediction_metadata_fields else []
-        )
-        return {
-            "datum": {k: str(v) for k, v in datum_metadata_fields},
-            "groundtruth": {k: str(v) for k, v in groundtruth_metadata_fields},
-            "prediction": {k: str(v) for k, v in prediction_metadata_fields},
-        }
+def generate_metadata_path(path: str | Path) -> Path:
+    return Path(path) / "metadata.json"
 
-    @staticmethod
-    def _decode_metadata_fields(
-        encoded_metadata_fields: dict[str, dict[str, str]]
-    ) -> tuple[
-        list[tuple[str, DataType]],
-        list[tuple[str, DataType]],
-        list[tuple[str, DataType]],
-    ]:
-        datum_metadata_fields = [
-            (k, v) for k, v in encoded_metadata_fields["datum"].items()
+
+def generate_detailed_schema(
+    metadata_fields: list[tuple[str, DataType]] | None
+) -> pa.Schema:
+    metadata_fields = metadata_fields if metadata_fields else []
+    return pa.schema(
+        [
+            ("datum_uid", pa.string()),
+            ("datum_id", pa.int64()),
+            # groundtruth
+            ("gt_uid", pa.string()),
+            ("gt_id", pa.int64()),
+            ("gt_label", pa.string()),
+            ("gt_label_id", pa.int64()),
+            # prediction
+            ("pd_uid", pa.string()),
+            ("pd_id", pa.int64()),
+            ("pd_label", pa.string()),
+            ("pd_label_id", pa.int64()),
+            ("score", pa.float64()),
+            # pair
+            ("iou", pa.float64()),
         ]
-        groundtruth_metadata_fields = [
-            (k, v) for k, v in encoded_metadata_fields["groundtruth"].items()
+    )
+
+
+def generate_ranked_schema(
+    metadata_fields: list[tuple[str, DataType]] | None,
+) -> pa.Schema:
+    metadata_fields = metadata_fields if metadata_fields else []
+    return pa.schema(
+        [
+            ("datum_uid", pa.string()),
+            ("datum_id", pa.int64()),
+            *metadata_fields,
+            # groundtruth
+            ("gt_id", pa.int64()),
+            ("gt_label_id", pa.int64()),
+            # prediction
+            ("pd_id", pa.int64()),
+            ("pd_label_id", pa.int64()),
+            ("score", pa.float64()),
+            # pair
+            ("iou", pa.float64()),
+            ("high_score", pa.bool_()),
+            ("iou_prev", pa.float64()),
         ]
-        prediction_metadata_fields = [
-            (k, v) for k, v in encoded_metadata_fields["prediction"].items()
-        ]
-        return (
-            datum_metadata_fields,
-            groundtruth_metadata_fields,
-            prediction_metadata_fields,
+    )
+
+
+def encode_metadata_fields(
+    metadata_fields: list[tuple[str, DataType]] | None
+) -> dict[str, str]:
+    metadata_fields = metadata_fields if metadata_fields else []
+    return {k: str(v) for k, v in metadata_fields}
+
+
+def decode_metadata_fields(
+    encoded_metadata_fields: dict[str, str]
+) -> list[tuple[str, DataType]]:
+    return [(k, v) for k, v in encoded_metadata_fields.items()]
+
+
+def generate_meta(
+    reader: MemoryCacheReader | FileCacheReader,
+    labels_override: dict[int, str] | None = None,
+) -> tuple[dict[int, str], NDArray[np.uint64], EvaluatorInfo]:
+    """
+    Generate cache statistics.
+
+    Parameters
+    ----------
+    dataset : Dataset
+        Valor cache.
+    labels_override : dict[int, str], optional
+        Optional labels override. Use when operating over filtered data.
+
+    Returns
+    -------
+    labels : dict[int, str]
+        Mapping of label ID's to label values.
+    number_of_groundtruths_per_label : NDArray[np.uint64]
+        Array of size (n_labels,) containing ground truth counts.
+    info : EvaluatorInfo
+        Evaluator cache details.
+    """
+    gt_counts_per_lbl = defaultdict(int)
+    labels = labels_override if labels_override else {}
+    info = EvaluatorInfo()
+
+    for tbl in reader.iterate_tables():
+        columns = (
+            "datum_id",
+            "gt_id",
+            "pd_id",
+            "gt_label_id",
+            "pd_label_id",
+        )
+        ids = np.column_stack([tbl[col].to_numpy() for col in columns]).astype(
+            np.int64
         )
 
-    @staticmethod
-    def _generate_meta(
-        reader: MemoryCacheReader | FileCacheReader,
-        labels_override: dict[int, str] | None = None,
-    ) -> tuple[dict[int, str], NDArray[np.uint64], EvaluatorInfo]:
-        """
-        Generate cache statistics.
+        # count number of rows
+        info.number_of_rows += int(tbl.shape[0])
 
-        Parameters
-        ----------
-        dataset : Dataset
-            Valor cache.
-        labels_override : dict[int, str], optional
-            Optional labels override. Use when operating over filtered data.
+        # count unique datums
+        datum_ids = np.unique(ids[:, 0])
+        info.number_of_datums += int(datum_ids.size)
 
-        Returns
-        -------
-        labels : dict[int, str]
-            Mapping of label ID's to label values.
-        number_of_groundtruths_per_label : NDArray[np.uint64]
-            Array of size (n_labels,) containing ground truth counts.
-        info : EvaluatorInfo
-            Evaluator cache details.
-        """
-        gt_counts_per_lbl = defaultdict(int)
-        labels = labels_override if labels_override else {}
-        info = EvaluatorInfo()
+        # count unique groundtruths
+        gt_ids = ids[:, 1]
+        gt_ids = np.unique(gt_ids[gt_ids >= 0])
+        info.number_of_groundtruth_annotations += int(gt_ids.shape[0])
 
-        for tbl in reader.iterate_tables():
-            columns = (
-                "datum_id",
-                "gt_id",
-                "pd_id",
-                "gt_label_id",
-                "pd_label_id",
-            )
-            ids = np.column_stack(
-                [tbl[col].to_numpy() for col in columns]
-            ).astype(np.int64)
+        # count unique predictions
+        pd_ids = ids[:, 2]
+        pd_ids = np.unique(pd_ids[pd_ids >= 0])
+        info.number_of_prediction_annotations += int(pd_ids.shape[0])
 
-            # count number of rows
-            info.number_of_rows += int(tbl.shape[0])
+        # get gt labels
+        gt_label_ids = ids[:, 3]
+        gt_label_ids, gt_indices = np.unique(gt_label_ids, return_index=True)
+        gt_labels = tbl["gt_label"].take(gt_indices).to_pylist()
+        gt_labels = dict(zip(gt_label_ids.astype(int).tolist(), gt_labels))
+        gt_labels.pop(-1, None)
+        labels.update(gt_labels)
 
-            # count unique datums
-            datum_ids = np.unique(ids[:, 0])
-            info.number_of_datums += int(datum_ids.size)
+        # get pd labels
+        pd_label_ids = ids[:, 4]
+        pd_label_ids, pd_indices = np.unique(pd_label_ids, return_index=True)
+        pd_labels = tbl["pd_label"].take(pd_indices).to_pylist()
+        pd_labels = dict(zip(pd_label_ids.astype(int).tolist(), pd_labels))
+        pd_labels.pop(-1, None)
+        labels.update(pd_labels)
 
-            # count unique groundtruths
-            gt_ids = ids[:, 1]
-            gt_ids = np.unique(gt_ids[gt_ids >= 0])
-            info.number_of_groundtruth_annotations += int(gt_ids.shape[0])
-
-            # count unique predictions
-            pd_ids = ids[:, 2]
-            pd_ids = np.unique(pd_ids[pd_ids >= 0])
-            info.number_of_prediction_annotations += int(pd_ids.shape[0])
-
-            # get gt labels
-            gt_label_ids = ids[:, 3]
-            gt_label_ids, gt_indices = np.unique(
-                gt_label_ids, return_index=True
-            )
-            gt_labels = tbl["gt_label"].take(gt_indices).to_pylist()
-            gt_labels = dict(zip(gt_label_ids.astype(int).tolist(), gt_labels))
-            gt_labels.pop(-1, None)
-            labels.update(gt_labels)
-
-            # get pd labels
-            pd_label_ids = ids[:, 4]
-            pd_label_ids, pd_indices = np.unique(
-                pd_label_ids, return_index=True
-            )
-            pd_labels = tbl["pd_label"].take(pd_indices).to_pylist()
-            pd_labels = dict(zip(pd_label_ids.astype(int).tolist(), pd_labels))
-            pd_labels.pop(-1, None)
-            labels.update(pd_labels)
-
-            # count gts per label
-            gts = ids[:, (1, 3)].astype(np.int64)
-            unique_ann = np.unique(gts[gts[:, 0] >= 0], axis=0)
-            unique_labels, label_counts = np.unique(
-                unique_ann[:, 1], return_counts=True
-            )
-            for label_id, count in zip(unique_labels, label_counts):
-                gt_counts_per_lbl[int(label_id)] += int(count)
-
-        # post-process
-        labels.pop(-1, None)
-
-        # complete info object
-        info.number_of_labels = len(labels)
-
-        # convert gt counts to numpy
-        number_of_groundtruths_per_label = np.zeros(
-            len(labels), dtype=np.uint64
+        # count gts per label
+        gts = ids[:, (1, 3)].astype(np.int64)
+        unique_ann = np.unique(gts[gts[:, 0] >= 0], axis=0)
+        unique_labels, label_counts = np.unique(
+            unique_ann[:, 1], return_counts=True
         )
-        for k, v in gt_counts_per_lbl.items():
-            number_of_groundtruths_per_label[int(k)] = v
+        for label_id, count in zip(unique_labels, label_counts):
+            gt_counts_per_lbl[int(label_id)] += int(count)
 
-        return labels, number_of_groundtruths_per_label, info
+    # post-process
+    labels.pop(-1, None)
 
-    @classmethod
-    def delete_at_path(cls, path: str | Path):
-        """
-        Delete file-based cache at the given path.
+    # complete info object
+    info.number_of_labels = len(labels)
 
-        Parameters
-        ----------
-        path : str | Path
-            Where the file-based cache is located.
-        """
-        path = Path(path)
-        if not path.exists():
-            return
-        detailed_path = cls._generate_detailed_cache_path(path)
-        ranked_path = cls._generate_ranked_cache_path(path)
-        metadata_path = cls._generate_metadata_path(path)
-        FileCacheWriter.delete(detailed_path)
-        FileCacheWriter.delete(ranked_path)
-        if metadata_path.exists() and metadata_path.is_file():
-            metadata_path.unlink()
-        path.rmdir()
+    # convert gt counts to numpy
+    number_of_groundtruths_per_label = np.zeros(len(labels), dtype=np.uint64)
+    for k, v in gt_counts_per_lbl.items():
+        number_of_groundtruths_per_label[int(k)] = v
+
+    return labels, number_of_groundtruths_per_label, info
