@@ -38,11 +38,6 @@ class Builder:
         self._writer = writer
         self._metadata_fields = metadata_fields
 
-        # internal state
-        self._labels: dict[str, int] = {}
-        self._index_to_label: dict[int, str] = {}
-        self._datum_count = 0
-
     @classmethod
     def in_memory(
         cls,
@@ -57,7 +52,7 @@ class Builder:
         batch_size : int, default=10_000
             The target number of rows to buffer before writing to the cache. Defaults to 10_000.
         metadata_fields : list[tuple[str, DataType]], optional
-            Optional user-defined metadata field
+            Optional metadata field definitions.
         """
         # create cache
         writer = MemoryCacheWriter.create(
@@ -92,7 +87,7 @@ class Builder:
         compression : str, default="snappy"
             The compression methods used when writing cache files.
         metadata_fields : list[tuple[str, DataType]], optional
-            Optional user-defined metadata field
+            Optional metadata field definitions.
         """
         path = Path(path)
 

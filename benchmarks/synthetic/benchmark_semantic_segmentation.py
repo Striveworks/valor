@@ -1,5 +1,6 @@
 import json
 import os
+import shutil
 import time
 import tracemalloc
 from datetime import datetime
@@ -181,11 +182,13 @@ def benchmark(
 
     for _ in range(repeat):
 
+        path = Path(".valor/benchmark_semseg")
+        if path.exists():
+            shutil.rmtree(path)
         loader = Loader.persistent(
-            ".valor/benchmark_semseg",
+            path=path,
             batch_size=1_000,
             rows_per_file=10_000,
-            delete_if_exists=True,
         )
 
         for i in tqdm(range(number_of_images)):
