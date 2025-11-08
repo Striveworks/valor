@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from operator import index
 from pathlib import Path
 
 import numpy as np
@@ -8,8 +9,14 @@ import pyarrow as pa
 import pyarrow.compute as pc
 from numpy.typing import NDArray
 
-from valor_lite.cache.ephemeral import MemoryCacheReader
-from valor_lite.cache.persistent import FileCacheReader
+from valor_lite.exceptions import EmptyCacheError
+from valor_lite.cache import compute
+from valor_lite.cache import (
+    MemoryCacheReader,
+    MemoryCacheWriter,
+    FileCacheReader,
+    FileCacheWriter,
+)
 from valor_lite.classification.computation import (
     compute_accuracy,
     compute_confusion_matrix,
@@ -21,7 +28,17 @@ from valor_lite.classification.computation import (
     compute_rocauc,
 )
 from valor_lite.classification.metric import Metric, MetricType
-from valor_lite.classification.shared import Base, EvaluatorInfo
+from valor_lite.classification.shared import (
+    EvaluatorInfo,
+    generate_cache_path,
+    generate_meta,
+    generate_metadata_path,
+    generate_rocauc_cache_path,
+    generate_rocauc_schema,
+    generate_schema,
+    encode_metadata_fields,
+    decode_metadata_fields,
+)
 from valor_lite.classification.utilities import (
     create_empty_confusion_matrix_with_examples,
     create_mapping,
@@ -33,7 +50,183 @@ from valor_lite.classification.utilities import (
 )
 
 
-class Evaluator(Base):
+class Builder:
+    def __init__(
+        self,
+        writer: MemoryCacheWriter | FileCacheWriter,
+        sorted_writer: MemoryCacheWriter | FileCacheWriter,
+        metadata_fields: list[tuple[str, pa.DataType]] | None = None,
+    ):
+        self._writer = writer
+        self._rocauc_writer = sorted_writer
+        self._metadata_fields = metadata_fields
+
+    @classmethod
+    def in_memory(
+        cls,
+        batch_size: int = 10_000,
+        metadata_fields: list[tuple[str, pa.DataType]] | None = None,
+    ):
+        """
+        Create an in-memory evaluator cache.
+
+        Parameters
+        ----------
+        batch_size : int, default=10_000
+            The target number of rows to buffer before writing to the cache. Defaults to 10_000.
+        metadata_fields : list[tuple[str, pa.DataType]], optional
+            Optional metadata field definitions.
+        """
+        writer = MemoryCacheWriter.create(
+            schema=generate_schema(metadata_fields),
+            batch_size=batch_size,
+        )
+        sorted_writer = MemoryCacheWriter.create(
+            schema=generate_rocauc_schema(),
+            batch_size=batch_size,
+        )
+        return cls(
+            writer=writer,
+            sorted_writer=sorted_writer,
+            metadata_fields=metadata_fields,
+        )
+
+    @classmethod
+    def persistent(
+        cls,
+        path: str | Path,
+        batch_size: int = 10_000,
+        rows_per_file: int = 100_000,
+        compression: str = "snappy",
+        metadata_fields: list[tuple[str, pa.DataType]] | None = None,
+    ):
+        """
+        Create a persistent file-based evaluator cache.
+
+        Parameters
+        ----------
+        path : str | Path
+            Where to store file-based cache.
+        batch_size : int, default=10_000
+            Sets the batch size for writing to file.
+        rows_per_file : int, default=100_000
+            Sets the maximum number of rows per file. This may be exceeded as files are datum aligned.
+        compression : str, default="snappy"
+            Sets the pyarrow compression method.
+        metadata_fields : list[tuple[str, pa.DataType]], optional
+            Optionally sets metadata description for use in filtering.
+        """
+        path = Path(path)
+
+        # create cache
+        writer = FileCacheWriter.create(
+            path=generate_cache_path(path),
+            schema=generate_schema(metadata_fields),
+            batch_size=batch_size,
+            rows_per_file=rows_per_file,
+            compression=compression,
+        )
+        sorted_writer = FileCacheWriter.create(
+            path=generate_rocauc_cache_path(path),
+            schema=generate_rocauc_schema(),
+            batch_size=batch_size,
+            rows_per_file=rows_per_file,
+            compression=compression,
+        )
+
+        # write metadatata config
+        metadata_path = generate_metadata_path(path)
+        with open(metadata_path, "w") as f:
+            encoded_types = encode_metadata_fields(metadata_fields)
+            json.dump(encoded_types, f, indent=2)
+
+        return cls(
+            writer=writer,
+            sorted_writer=sorted_writer,
+            metadata_fields=metadata_fields,
+        )
+
+    def finalize(
+        self,
+        batch_size: int = 1_000,
+        index_to_label_override: dict[int, str] | None = None,
+    ):
+        """
+        Performs data finalization and some preprocessing steps.
+
+        Parameters
+        ----------
+        batch_size : int, default=1_000
+            Sets the maximum number of elements read into memory per-file when performing merge sort.
+        index_to_label_override : dict[int, str], optional
+            Pre-configures label mapping. Used when operating over filtered subsets.
+
+        Returns
+        -------
+        Evaluator
+            A ready-to-use evaluator object.
+        """
+        self._writer.flush()
+        if self._writer.count_rows() == 0:
+            raise EmptyCacheError()
+        elif self._rocauc_writer.count_rows() > 0:
+            raise RuntimeError("data already finalized")
+
+        # sort in-place and locally
+        self._writer.sort_by(
+            [
+                ("score", "descending"),
+                ("datum_id", "ascending"),
+                ("gt_label_id", "ascending"),
+                ("pd_label_id", "ascending"),
+            ]
+        )
+
+        # post-process into sorted writer
+        reader = self._writer.to_reader()
+
+        # generate evaluator meta
+        (
+            index_to_label, 
+            label_counts, 
+            info,
+        ) = generate_meta(reader=reader, index_to_label_override=index_to_label_override)
+        n_labels = len(index_to_label)
+
+        # def accumulate(batch: pa.RecordBatch, prev: np.ndarray | None) -> pa.RecordBatch:
+        #     pd_label_id = batch["pd_label_id"].as_py()
+        #     matched = batch["match"][0].as_py()
+        #     if prev is None:
+        #         prev = np.zeros(n_labels, dtype=np.uint64)
+        #         return None, ()
+
+        compute.sort(
+            source=reader,
+            sink=self._rocauc_writer,
+            batch_size=batch_size,
+            sorting=[
+                ("score", "descending"),
+                # ("match", "descending"),
+                # ("pd_label_id", "ascending"),
+            ],
+            columns=[
+                "pd_label_id",
+                "score",
+                "match",
+            ],
+        )
+        rocauc_reader = self._rocauc_writer.to_reader()
+
+        return Evaluator(
+            reader=reader,
+            rocauc_reader=rocauc_reader,
+            info=info,
+            label_counts=label_counts,
+            index_to_label=index_to_label,
+        )
+
+
+class Evaluator:
     def __init__(
         self,
         reader: MemoryCacheReader | FileCacheReader,
@@ -41,9 +234,7 @@ class Evaluator(Base):
         info: EvaluatorInfo,
         label_counts: NDArray[np.uint64],
         index_to_label: dict[int, str],
-        path: str | Path | None,
     ):
-        self._path = Path(path) if path else None
         self._reader = reader
         self._rocauc_reader = rocauc_reader
         self._info = info
@@ -81,9 +272,9 @@ class Evaluator(Base):
             )
 
         # load cache
-        reader = FileCacheReader.load(cls._generate_cache_path(path))
+        reader = FileCacheReader.load(generate_cache_path(path))
         rocauc_reader = FileCacheReader.load(
-            cls._generate_rocauc_cache_path(path)
+            generate_rocauc_cache_path(path)
         )
 
         # build evaluator meta
@@ -91,15 +282,14 @@ class Evaluator(Base):
             index_to_label,
             label_counts,
             info,
-        ) = cls.generate_meta(reader, index_to_label_override)
+        ) = generate_meta(reader, index_to_label_override)
 
         # read config
-        metadata_path = cls._generate_metadata_path(path)
+        metadata_path = generate_metadata_path(path)
         with open(metadata_path, "r") as f:
-            info.datum_metadata_fields = json.load(f)
+            info.metadata_fields = json.load(f)
 
         return cls(
-            path=path,
             reader=reader,
             rocauc_reader=rocauc_reader,
             info=info,
@@ -145,12 +335,12 @@ class Evaluator(Base):
                 batch_size=self._reader.batch_size,
                 rows_per_file=self._reader.rows_per_file,
                 compression=self._reader.compression,
-                datum_metadata_fields=self.info.datum_metadata_fields,
+                metadata_fields=self.info.metadata_fields,
             )
         else:
             loader = Loader.in_memory(
                 batch_size=self._reader.batch_size,
-                datum_metadata_fields=self.info.datum_metadata_fields,
+                metadata_fields=self.info.metadata_fields,
             )
 
         for tbl in self._reader.iterate_tables(filter=datums):
@@ -208,13 +398,6 @@ class Evaluator(Base):
             loader._writer.write_table(tbl)
 
         return loader.finalize(index_to_label_override=self._index_to_label)
-
-    def delete(self):
-        """
-        Delete classification cache.
-        """
-        if self._path and self._path.exists():
-            self.delete_at_path(self._path)
 
     def iterate_values(self):
         columns = [
@@ -346,7 +529,7 @@ class Evaluator(Base):
         # intermediates
         counts = np.zeros((n_scores, n_labels, 4), dtype=np.uint64)
 
-        for ids, scores, winners, _ in self.iterate_values(self._reader):
+        for ids, scores, winners, _ in self.iterate_values():
             batch_counts = compute_counts(
                 ids=ids,
                 scores=scores,
@@ -404,9 +587,7 @@ class Evaluator(Base):
         unmatched_groundtruths = np.zeros(
             (n_scores, n_labels), dtype=np.uint64
         )
-        for ids, scores, winners, matches in self.iterate_values(
-            reader=self._reader
-        ):
+        for ids, scores, winners, matches in self.iterate_values():
             (
                 mask_tp,
                 mask_fp_fn_misclf,
@@ -470,7 +651,7 @@ class Evaluator(Base):
             winners,
             matches,
             tbl,
-        ) in self.iterate_values_with_tables(reader=self._reader):
+        ) in self.iterate_values_with_tables():
             if ids.size == 0:
                 continue
 
@@ -549,7 +730,7 @@ class Evaluator(Base):
             winners,
             matches,
             tbl,
-        ) in self.iterate_values_with_tables(reader=self._reader):
+        ) in self.iterate_values_with_tables():
             if ids.size == 0:
                 continue
 

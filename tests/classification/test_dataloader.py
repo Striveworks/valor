@@ -2,8 +2,9 @@ from pathlib import Path
 
 import pytest
 
-from valor_lite.classification import Classification, Loader
 from valor_lite.exceptions import EmptyCacheError
+from valor_lite.classification import Classification, Loader
+from valor_lite.classification.shared import generate_cache_path, generate_metadata_path
 
 
 def test_loader_no_data(tmp_path: Path):
@@ -34,15 +35,8 @@ def test_evaluator_deletion(
 ):
     loader = Loader.persistent(tmp_path)
     loader.add_data(basic_classifications)
-    assert tmp_path == loader._path
 
     # check both caches exist
     assert tmp_path.exists()
-    assert loader._generate_cache_path(tmp_path).exists()
-    assert loader._generate_metadata_path(tmp_path).exists()
-
-    # verify deletion
-    loader.delete(loader._path)
-    assert not tmp_path.exists()
-    assert not loader._generate_cache_path(tmp_path).exists()
-    assert not loader._generate_metadata_path(tmp_path).exists()
+    assert generate_cache_path(tmp_path).exists()
+    assert generate_metadata_path(tmp_path).exists()

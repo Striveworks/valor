@@ -25,7 +25,7 @@ def loader(request, tmp_path: Path):
         case "memory":
             return Loader.in_memory(
                 batch_size=batch_size,
-                datum_metadata_fields=[
+                metadata_fields=[
                     ("test", "double"),
                 ],
             )
@@ -34,7 +34,7 @@ def loader(request, tmp_path: Path):
                 path=tmp_path / "cache",
                 batch_size=batch_size,
                 rows_per_file=rows_per_file,
-                datum_metadata_fields=[
+                metadata_fields=[
                     ("test", "double"),
                 ],
             )
