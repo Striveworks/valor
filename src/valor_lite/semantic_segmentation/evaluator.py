@@ -6,25 +6,163 @@ import pyarrow as pa
 import pyarrow.compute as pc
 from numpy.typing import NDArray
 
-from valor_lite.cache import FileCacheReader, MemoryCacheReader
+from valor_lite.cache import (
+    FileCacheReader,
+    FileCacheWriter,
+    MemoryCacheReader,
+    MemoryCacheWriter,
+)
+from valor_lite.exceptions import EmptyCacheError
 from valor_lite.semantic_segmentation.computation import compute_metrics
 from valor_lite.semantic_segmentation.metric import MetricType
-from valor_lite.semantic_segmentation.shared import Base, EvaluatorInfo
+from valor_lite.semantic_segmentation.shared import (
+    EvaluatorInfo,
+    decode_metadata_fields,
+    encode_metadata_fields,
+    generate_cache_path,
+    generate_meta,
+    generate_metadata_path,
+    generate_schema,
+)
 from valor_lite.semantic_segmentation.utilities import (
     unpack_precision_recall_iou_into_metric_lists,
 )
 
 
-class Evaluator(Base):
+class Builder:
+    def __init__(
+        self,
+        writer: MemoryCacheWriter | FileCacheWriter,
+        metadata_fields: list[tuple[str, str | pa.DataType]] | None = None,
+    ):
+        self._writer = writer
+        self._metadata_fields = metadata_fields
+
+        # internal state
+        self._labels: dict[str, int] = {}
+        self._index_to_label: dict[int, str] = {}
+        self._datum_count = 0
+
+    @classmethod
+    def in_memory(
+        cls,
+        batch_size: int = 10_000,
+        metadata_fields: list[tuple[str, str | pa.DataType]] | None = None,
+    ):
+        """
+        Create an in-memory evaluator cache.
+
+        Parameters
+        ----------
+        batch_size : int, default=10_000
+            The target number of rows to buffer before writing to the cache. Defaults to 10_000.
+        metadata_fields : list[tuple[str, DataType]], optional
+            Optional user-defined metadata field
+        """
+        # create cache
+        writer = MemoryCacheWriter.create(
+            schema=generate_schema(metadata_fields),
+            batch_size=batch_size,
+        )
+        return cls(
+            writer=writer,
+            metadata_fields=metadata_fields,
+        )
+
+    @classmethod
+    def persistent(
+        cls,
+        path: str | Path,
+        batch_size: int = 10_000,
+        rows_per_file: int = 100_000,
+        compression: str = "snappy",
+        metadata_fields: list[tuple[str, str | pa.DataType]] | None = None,
+    ):
+        """
+        Create a persistent file-based evaluator cache.
+
+        Parameters
+        ----------
+        path : str | Path
+            Where to store the file-based cache.
+        batch_size : int, default=10_000
+            The target number of rows to buffer before writing to the cache. Defaults to 10_000.
+        rows_per_file : int, default=100_000
+            The target number of rows to store per cache file. Defaults to 100_000.
+        compression : str, default="snappy"
+            The compression methods used when writing cache files.
+        metadata_fields : list[tuple[str, DataType]], optional
+            Optional user-defined metadata field
+        """
+        path = Path(path)
+
+        # create cache
+        writer = FileCacheWriter.create(
+            path=generate_cache_path(path),
+            schema=generate_schema(metadata_fields),
+            batch_size=batch_size,
+            rows_per_file=rows_per_file,
+            compression=compression,
+        )
+
+        # write metadata
+        metadata_path = generate_metadata_path(path)
+        with open(metadata_path, "w") as f:
+            encoded_types = encode_metadata_fields(metadata_fields)
+            json.dump(encoded_types, f, indent=2)
+
+        return cls(
+            writer=writer,
+            metadata_fields=metadata_fields,
+        )
+
+    def finalize(
+        self,
+        index_to_label_override: dict[int, str] | None = None,
+    ):
+        """
+        Performs data finalization and some preprocessing steps.
+
+        Parameters
+        ----------
+        index_to_label_override : dict[int, str], optional
+            Pre-configures label mapping. Used when operating over filtered subsets.
+
+        Returns
+        -------
+        Evaluator
+            A ready-to-use evaluator object.
+        """
+        self._writer.flush()
+        if self._writer.count_rows() == 0:
+            raise EmptyCacheError()
+
+        reader = self._writer.to_reader()
+
+        # build evaluator meta
+        (
+            index_to_label,
+            confusion_matrix,
+            info,
+        ) = generate_meta(reader, index_to_label_override)
+        info.metadata_fields = self._metadata_fields
+
+        return Evaluator(
+            reader=reader,
+            info=info,
+            index_to_label=index_to_label,
+            confusion_matrix=confusion_matrix,
+        )
+
+
+class Evaluator:
     def __init__(
         self,
         reader: MemoryCacheReader | FileCacheReader,
         info: EvaluatorInfo,
         index_to_label: dict[int, str],
         confusion_matrix: NDArray[np.uint64],
-        path: str | Path | None = None,
     ):
-        self._path = Path(path) if path else None
         self._reader = reader
         self._info = info
         self._index_to_label = index_to_label
@@ -60,31 +198,26 @@ class Evaluator(Base):
             )
 
         # load cache
-        reader = FileCacheReader.load(cls._generate_cache_path(path))
+        reader = FileCacheReader.load(generate_cache_path(path))
 
         # build evaluator meta
         (
             index_to_label,
             confusion_matrix,
             info,
-        ) = cls._generate_meta(reader, index_to_label_override)
+        ) = generate_meta(reader, index_to_label_override)
 
         # read config
-        metadata_path = cls._generate_metadata_path(path)
+        metadata_path = generate_metadata_path(path)
         with open(metadata_path, "r") as f:
             metadata_types = json.load(f)
-            (
-                info.datum_metadata_fields,
-                info.groundtruth_metadata_fields,
-                info.prediction_metadata_fields,
-            ) = cls._decode_metadata_fields(metadata_types)
+            info.metadata_fields = decode_metadata_fields(metadata_types)
 
         return cls(
             reader=reader,
             info=info,
             index_to_label=index_to_label,
             confusion_matrix=confusion_matrix,
-            path=path,
         )
 
     def filter(
@@ -105,7 +238,7 @@ class Evaluator(Base):
             A filter expression used to filter ground truth annotations.
         predictions : pc.Expression | None = None
             A filter expression used to filter predictions.
-        path : str | Path
+        path : str | Path, optional
             Where to store the filtered cache if storing on disk.
 
         Returns
@@ -113,28 +246,22 @@ class Evaluator(Base):
         Evaluator
             A new evaluator object containing the filtered cache.
         """
-        from valor_lite.semantic_segmentation.loader import Loader
-
         if isinstance(self._reader, FileCacheReader):
             if not path:
                 raise ValueError(
-                    "expected path to be defined for file-based loader"
+                    "expected path to be defined for file-based cache"
                 )
-            loader = Loader.persistent(
+            builder = Builder.persistent(
                 path=path,
                 batch_size=self._reader.batch_size,
                 rows_per_file=self._reader.rows_per_file,
                 compression=self._reader.compression,
-                datum_metadata_fields=self.info.datum_metadata_fields,
-                groundtruth_metadata_fields=self.info.groundtruth_metadata_fields,
-                prediction_metadata_fields=self.info.prediction_metadata_fields,
+                metadata_fields=self.info.metadata_fields,
             )
         else:
-            loader = Loader.in_memory(
+            builder = Builder.in_memory(
                 batch_size=self._reader.batch_size,
-                datum_metadata_fields=self.info.datum_metadata_fields,
-                groundtruth_metadata_fields=self.info.groundtruth_metadata_fields,
-                prediction_metadata_fields=self.info.prediction_metadata_fields,
+                metadata_fields=self.info.metadata_fields,
             )
 
         for tbl in self._reader.iterate_tables(filter=datums):
@@ -188,9 +315,9 @@ class Evaluator(Base):
                 tbl = tbl.set_column(
                     tbl.schema.names.index(col), col, pa.array(pairs[:, idx])
                 )
-            loader._writer.write_table(tbl)
+            builder._writer.write_table(tbl)
 
-        return loader.finalize(index_to_label_override=self._index_to_label)
+        return builder.finalize(index_to_label_override=self._index_to_label)
 
     def compute_precision_recall_iou(self) -> dict[MetricType, list]:
         """
@@ -206,8 +333,3 @@ class Evaluator(Base):
             results=results,
             index_to_label=self._index_to_label,
         )
-
-    def delete(self):
-        """Delete any cached files."""
-        if self._path and self._path.exists():
-            self.delete_at_path(self._path)

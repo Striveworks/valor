@@ -27,10 +27,8 @@ def loader(request, tmp_path: Path):
         case "memory":
             return Loader.in_memory(
                 batch_size=batch_size,
-                groundtruth_metadata_fields=[
+                metadata_fields=[
                     ("gt_xmin", "float64"),
-                ],
-                prediction_metadata_fields=[
                     ("pd_xmin", pa.float64()),
                 ],
             )
@@ -39,10 +37,8 @@ def loader(request, tmp_path: Path):
                 path=tmp_path / "cache",
                 batch_size=batch_size,
                 rows_per_file=rows_per_file,
-                groundtruth_metadata_fields=[
+                metadata_fields=[
                     ("gt_xmin", "float64"),
-                ],
-                prediction_metadata_fields=[
                     ("pd_xmin", pa.float64()),
                 ],
             )

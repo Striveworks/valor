@@ -68,7 +68,7 @@ def test_fuzz_segmentations_with_filtering(loader: Loader, tmp_path: Path):
     datum_subset = [f"uid{i}" for i in range(len(segmentations) // 2)]
 
     filtered_evaluator = evaluator.filter(
+        path=tmp_path,
         datums=pc.field("datum_uid").isin(datum_subset),
-        path=tmp_path / "filtered",
     )
     filtered_evaluator.compute_precision_recall_iou()
