@@ -1,5 +1,6 @@
 import json
 import os
+import shutil
 from dataclasses import dataclass
 from datetime import datetime
 from enum import Enum
@@ -298,11 +299,13 @@ def run_benchmarking_analysis(
             pd_filename = prediction_caches[pd_type]
 
             # === Base Evaluation ===
+            path = Path(".valor/benchmark_objdet")
+            if path.exists():
+                shutil.rmtree(path)
             loader = Loader.persistent(
-                ".valor/benchmark_objdet",
+                path=path,
                 batch_size=1_000,
                 rows_per_file=10_000,
-                delete_if_exists=True,
             )
 
             # ingest + preprocess
