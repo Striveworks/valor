@@ -5,13 +5,8 @@ from pathlib import Path
 import numpy as np
 import pyarrow as pa
 from numpy.typing import NDArray
-from pyarrow import DataType
 
-from valor_lite.cache import (
-    FileCacheReader,
-    FileCacheWriter,
-    MemoryCacheReader,
-)
+from valor_lite.cache import FileCacheReader, MemoryCacheReader
 
 
 @dataclass
@@ -21,9 +16,7 @@ class EvaluatorInfo:
     number_of_prediction_annotations: int = 0
     number_of_labels: int = 0
     number_of_rows: int = 0
-    metadata_fields: list[tuple[str, DataType]] | None = None
-    groundtruth_metadata_fields: list[tuple[str, DataType]] | None = None
-    prediction_metadata_fields: list[tuple[str, DataType]] | None = None
+    metadata_fields: list[tuple[str, pa.DataType]] | None = None
 
 
 def generate_detailed_cache_path(path: str | Path) -> Path:
@@ -43,56 +36,59 @@ def generate_metadata_path(path: str | Path) -> Path:
 
 
 def generate_detailed_schema(
-    metadata_fields: list[tuple[str, DataType]] | None
+    metadata_fields: list[tuple[str, pa.DataType]] | None
 ) -> pa.Schema:
     metadata_fields = metadata_fields if metadata_fields else []
-    return pa.schema(
-        [
-            ("datum_uid", pa.string()),
-            ("datum_id", pa.int64()),
-            # groundtruth
-            ("gt_uid", pa.string()),
-            ("gt_id", pa.int64()),
-            ("gt_label", pa.string()),
-            ("gt_label_id", pa.int64()),
-            # prediction
-            ("pd_uid", pa.string()),
-            ("pd_id", pa.int64()),
-            ("pd_label", pa.string()),
-            ("pd_label_id", pa.int64()),
-            ("score", pa.float64()),
-            # pair
-            ("iou", pa.float64()),
-        ]
-    )
+    reserved_fields = [
+        ("datum_uid", pa.string()),
+        ("datum_id", pa.int64()),
+        # groundtruth
+        ("gt_uid", pa.string()),
+        ("gt_id", pa.int64()),
+        ("gt_label", pa.string()),
+        ("gt_label_id", pa.int64()),
+        # prediction
+        ("pd_uid", pa.string()),
+        ("pd_id", pa.int64()),
+        ("pd_label", pa.string()),
+        ("pd_label_id", pa.int64()),
+        ("score", pa.float64()),
+        # pair
+        ("iou", pa.float64()),
+    ]
+
+    # validate
+    reserved_field_names = {f[0] for f in reserved_fields}
+    metadata_field_names = {f[0] for f in metadata_fields}
+    if conflicting := reserved_field_names & metadata_field_names:
+        raise ValueError(
+            f"metadata fields {conflicting} conflict with reserved fields"
+        )
+
+    return pa.schema(reserved_fields + metadata_fields)
 
 
-def generate_ranked_schema(
-    metadata_fields: list[tuple[str, DataType]] | None,
-) -> pa.Schema:
-    metadata_fields = metadata_fields if metadata_fields else []
-    return pa.schema(
-        [
-            ("datum_uid", pa.string()),
-            ("datum_id", pa.int64()),
-            *metadata_fields,
-            # groundtruth
-            ("gt_id", pa.int64()),
-            ("gt_label_id", pa.int64()),
-            # prediction
-            ("pd_id", pa.int64()),
-            ("pd_label_id", pa.int64()),
-            ("score", pa.float64()),
-            # pair
-            ("iou", pa.float64()),
-            ("high_score", pa.bool_()),
-            ("iou_prev", pa.float64()),
-        ]
-    )
+def generate_ranked_schema() -> pa.Schema:
+    reserved_fields = [
+        ("datum_uid", pa.string()),
+        ("datum_id", pa.int64()),
+        # groundtruth
+        ("gt_id", pa.int64()),
+        ("gt_label_id", pa.int64()),
+        # prediction
+        ("pd_id", pa.int64()),
+        ("pd_label_id", pa.int64()),
+        ("score", pa.float64()),
+        # pair
+        ("iou", pa.float64()),
+        ("high_score", pa.bool_()),
+        ("iou_prev", pa.float64()),
+    ]
+    return pa.schema(reserved_fields)
 
 
 def encode_metadata_fields(
-    metadata_fields: list[tuple[str, DataType]] | None
+    metadata_fields: list[tuple[str, pa.DataType]] | None
 ) -> dict[str, str]:
     metadata_fields = metadata_fields if metadata_fields else []
     return {k: str(v) for k, v in metadata_fields}
@@ -100,7 +96,7 @@ def encode_metadata_fields(
 
 def decode_metadata_fields(
     encoded_metadata_fields: dict[str, str]
-) -> list[tuple[str, DataType]]:
+) -> list[tuple[str, pa.DataType]]:
     return [(k, v) for k, v in encoded_metadata_fields.items()]
 
 

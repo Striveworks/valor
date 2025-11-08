@@ -4,7 +4,6 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from valor_lite.cache.persistent import FileCacheReader
 from valor_lite.object_detection import Evaluator, Metric, MetricType
 
 
@@ -24,7 +23,6 @@ def test_evaluator_not_a_directory(tmp_path: Path):
 
 def test_evaluator_valid_thresholds(tmp_path: Path):
     eval = Evaluator(
-        path=tmp_path,
         detailed_reader=None,  # type: ignore - testing
         ranked_reader=None,  # type: ignore - testing
         info=None,  # type: ignore - testing
@@ -181,27 +179,3 @@ def test_output_types_dont_contain_numpy(basic_detections: Evaluator):
     for value in values:
         if isinstance(value, (np.generic, np.ndarray)):
             raise TypeError(f"Value `{value}` has type `{type(value)}`.")
-
-
-def test_evaluator_deletion(
-    false_negatives_single_datum_detections: Evaluator,
-):
-    # create evaluator
-    evaluator = false_negatives_single_datum_detections
-
-    if isinstance(evaluator._detailed_reader, FileCacheReader):
-        path = evaluator._path
-        assert path
-
-        # check both caches exist
-        assert path.exists()
-        assert evaluator._generate_detailed_cache_path(path).exists()
-        assert evaluator._generate_ranked_cache_path(path).exists()
-        assert evaluator._generate_metadata_path(path).exists()
-
-        # verify deletion
-        evaluator.delete()
-        assert not path.exists()
-        assert not evaluator._generate_detailed_cache_path(path).exists()
-        assert not evaluator._generate_ranked_cache_path(path).exists()
-        assert not evaluator._generate_metadata_path(path).exists()

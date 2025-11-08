@@ -81,8 +81,6 @@ def test_fuzz_detections_with_filtering(loader: Loader, tmp_path: Path):
         iou_thresholds=[0.25, 0.75],
         score_thresholds=[0.25, 0.75],
     )
-    filtered_evaluator.delete()
-    evaluator.delete()
 
 
 def test_fuzz_confusion_matrix(loader: Loader):
