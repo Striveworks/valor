@@ -1,7 +1,7 @@
 from dataclasses import replace
+from pathlib import Path
 from random import choice, uniform
 
-import numpy as np
 import pyarrow.compute as pc
 import pytest
 
@@ -63,6 +63,7 @@ def generate_random_classifications(
 
 def test_filtering_one_classification(
     loader: Loader,
+    tmp_path: Path,
     one_classification: list[Classification],
 ):
 
@@ -70,7 +71,9 @@ def test_filtering_one_classification(
     evaluator = loader.finalize()
 
     # test evaluation
-    filtered_evaluator = evaluator.filter(datums=["uid0"])
+    filtered_evaluator = evaluator.filter(
+        datums=pc.field("datum_uid") == "uid0", path=tmp_path / "filter"
+    )
     metrics = filtered_evaluator.compute_precision_recall(
         score_thresholds=[0.5],
         hardmax=False,
@@ -143,13 +146,16 @@ def test_filtering_one_classification(
 def test_filtering_three_classifications(
     loader: Loader,
     three_classifications: list[Classification],
+    tmp_path: Path,
 ):
 
     loader.add_data(three_classifications)
     evaluator = loader.finalize()
 
     # test evaluation
-    filtered_evaluator = evaluator.filter(datums=["uid0"])
+    filtered_evaluator = evaluator.filter(
+        datums=pc.field("datum_uid") == "uid0", path=tmp_path / "filter"
+    )
     metrics = filtered_evaluator.compute_precision_recall(
         score_thresholds=[0.5],
         hardmax=False,
@@ -222,13 +228,16 @@ def test_filtering_three_classifications(
 def test_filtering_six_classifications(
     loader: Loader,
     six_classifications: list[Classification],
+    tmp_path: Path,
 ):
 
     loader.add_data(six_classifications)
     evaluator = loader.finalize()
 
     # test evaluation
-    filtered_evaluator = evaluator.filter(datums=["uid0"])
+    filtered_evaluator = evaluator.filter(
+        datums=pc.field("datum_uid") == "uid0", path=tmp_path / "filter"
+    )
     metrics = filtered_evaluator.compute_precision_recall(
         score_thresholds=[0.5],
         hardmax=False,
@@ -298,10 +307,12 @@ def test_filtering_six_classifications(
         assert m in actual_metrics
 
 
-def test_filtering_random_classifications(loader: Loader):
+def test_filtering_random_classifications(loader: Loader, tmp_path: Path):
     loader.add_data(generate_random_classifications(13, 2, 10))
     evaluator = loader.finalize()
-    filtered_evaluator = evaluator.filter(datums=["uid0"])
+    filtered_evaluator = evaluator.filter(
+        datums=pc.field("datum_uid") == "uid0", path=tmp_path / "filter"
+    )
     filtered_evaluator.compute_precision_recall(
         score_thresholds=[0.5],
         hardmax=False,
@@ -311,13 +322,16 @@ def test_filtering_random_classifications(loader: Loader):
 def test_filtering_six_classifications_by_indices(
     loader: Loader,
     six_classifications: list[Classification],
+    tmp_path: Path,
 ):
 
     loader.add_data(six_classifications)
     evaluator = loader.finalize()
 
     # test evaluation
-    filtered_evaluator = evaluator.filter(datums=np.array([0]))
+    filtered_evaluator = evaluator.filter(
+        datums=pc.field("datum_id") == 0, path=tmp_path / "filter"
+    )
     metrics = filtered_evaluator.compute_precision_recall(
         score_thresholds=[0.5],
         hardmax=False,
@@ -390,6 +404,7 @@ def test_filtering_six_classifications_by_indices(
 def test_filtering_six_classifications_by_annotation(
     loader: Loader,
     six_classifications: list[Classification],
+    tmp_path: Path,
 ):
 
     loader.add_data(six_classifications)
@@ -399,6 +414,7 @@ def test_filtering_six_classifications_by_annotation(
     filtered_evaluator = evaluator.filter(
         datums=pc.field("datum_uid") == "uid0",
         groundtruths=pc.field("gt_label") != "0",
+        path=tmp_path / "groundtruth_filter",
     )
     metrics = filtered_evaluator.compute_precision_recall(
         score_thresholds=[0.5],
@@ -472,6 +488,7 @@ def test_filtering_six_classifications_by_annotation(
     filtered_evaluator = evaluator.filter(
         datums=pc.field("datum_uid") == "uid0",
         predictions=pc.field("pd_label") != "0",
+        path=tmp_path / "prediction_filter",
     )
     metrics = filtered_evaluator.compute_precision_recall(
         score_thresholds=[0.5],

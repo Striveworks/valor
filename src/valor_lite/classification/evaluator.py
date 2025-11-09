@@ -300,6 +300,7 @@ class Builder:
         (index_to_label, label_counts, info,) = generate_meta(
             reader=reader, index_to_label_override=index_to_label_override
         )
+        info.metadata_fields = self._metadata_fields
 
         self._create_rocauc_intermediate(
             reader=reader,

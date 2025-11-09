@@ -27,15 +27,15 @@ def test_evaluator_not_a_directory(tmp_path: Path):
         Evaluator.load(filepath)
 
 
-def test_evaluator_valid_thresholds(tmp_path: Path):
+def test_evaluator_valid_thresholds():
     eval = Evaluator(
         reader=None,  # type: ignore - testing
+        roc_curve_reader=None,  # type: ignore - testing
         info=None,  # type: ignore - testing
         index_to_label={},
         label_counts=np.ones(1, dtype=np.uint64),
     )
     for fn in [
-        eval.compute_rocauc,
         eval.compute_precision_recall,
         eval.compute_examples,
         eval.compute_confusion_matrix,
@@ -47,16 +47,16 @@ def test_evaluator_valid_thresholds(tmp_path: Path):
 
 
 def test_info_using_classification_example(
-    tmp_path: Path,
+    loader: Loader,
     classifications_animal_example: list[Classification],
 ):
-    loader = Loader.persistent(tmp_path)
     loader.add_data(classifications_animal_example)
     evaluator = loader.finalize()
 
     assert evaluator.info.number_of_datums == 6
     assert evaluator.info.number_of_labels == 3
     assert evaluator.info.number_of_rows == 3 * 6
+    assert evaluator.info.metadata_fields == [("test", "double")]
 
 
 def _flatten_metrics(m) -> list:
@@ -81,10 +81,9 @@ def _flatten_metrics(m) -> list:
 
 
 def test_output_types_dont_contain_numpy(
-    tmp_path: Path,
+    loader: Loader,
     basic_classifications: list[Classification],
 ):
-    loader = Loader.persistent(tmp_path)
     loader.add_data(basic_classifications)
     evaluator = loader.finalize()
 
