@@ -2,9 +2,12 @@ from pathlib import Path
 
 import pytest
 
-from valor_lite.exceptions import EmptyCacheError
 from valor_lite.classification import Classification, Loader
-from valor_lite.classification.shared import generate_cache_path, generate_metadata_path
+from valor_lite.classification.shared import (
+    generate_cache_path,
+    generate_metadata_path,
+)
+from valor_lite.exceptions import EmptyCacheError
 
 
 def test_loader_no_data(tmp_path: Path):

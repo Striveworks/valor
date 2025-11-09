@@ -5,6 +5,12 @@ import numpy as np
 import pytest
 
 from valor_lite.classification import Classification, Evaluator, Loader, Metric
+from valor_lite.classification.shared import (
+    generate_cache_path,
+    generate_intermediate_cache_path,
+    generate_metadata_path,
+    generate_roc_curve_cache_path,
+)
 
 
 def test_evaluator_file_not_found(tmp_path: Path):
@@ -23,7 +29,6 @@ def test_evaluator_not_a_directory(tmp_path: Path):
 
 def test_evaluator_valid_thresholds(tmp_path: Path):
     eval = Evaluator(
-        path=tmp_path,
         reader=None,  # type: ignore - testing
         info=None,  # type: ignore - testing
         index_to_label={},
@@ -92,21 +97,16 @@ def test_output_types_dont_contain_numpy(
             raise TypeError(value)
 
 
-def test_evaluator_deletion(
+def test_evaluator_exists_on_disk(
     tmp_path: Path, basic_classifications: list[Classification]
 ):
     loader = Loader.persistent(tmp_path)
     loader.add_data(basic_classifications)
-    evaluator = loader.finalize()
-    assert tmp_path == evaluator._path
+    _ = loader.finalize()
 
     # check both caches exist
     assert tmp_path.exists()
-    assert evaluator._generate_cache_path(tmp_path).exists()
-    assert evaluator._generate_metadata_path(tmp_path).exists()
-
-    # verify deletion
-    evaluator.delete()
-    assert not tmp_path.exists()
-    assert not evaluator._generate_cache_path(tmp_path).exists()
-    assert not evaluator._generate_metadata_path(tmp_path).exists()
+    assert generate_cache_path(tmp_path).exists()
+    assert generate_intermediate_cache_path(tmp_path).exists()
+    assert generate_roc_curve_cache_path(tmp_path).exists()
+    assert generate_metadata_path(tmp_path).exists()
