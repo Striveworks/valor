@@ -1,7 +1,5 @@
-from pathlib import Path
-
-import pyarrow as pa
 import numpy as np
+import pyarrow as pa
 from tqdm import tqdm
 
 from valor_lite.cache.ephemeral import MemoryCacheWriter
@@ -14,12 +12,14 @@ class Loader(Builder):
     def __init__(
         self,
         writer: MemoryCacheWriter | FileCacheWriter,
-        sorted_writer: MemoryCacheWriter | FileCacheWriter,
+        roc_curve_writer: MemoryCacheWriter | FileCacheWriter,
+        intermediate_writer: MemoryCacheWriter | FileCacheWriter,
         metadata_fields: list[tuple[str, pa.DataType]] | None = None,
     ):
         super().__init__(
             writer=writer,
-            sorted_writer=sorted_writer,
+            roc_curve_writer=roc_curve_writer,
+            intermediate_writer=intermediate_writer,
             metadata_fields=metadata_fields,
         )
 
@@ -27,7 +27,7 @@ class Loader(Builder):
         self._labels: dict[str, int] = {}
         self._index_to_label: dict[int, str] = {}
         self._datum_count = 0
-    
+
     def _add_label(self, value: str) -> int:
         idx = self._labels.get(value, None)
         if idx is None:

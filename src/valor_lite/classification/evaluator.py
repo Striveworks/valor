@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import json
-from operator import index
 from pathlib import Path
 
 import numpy as np
@@ -9,13 +8,12 @@ import pyarrow as pa
 import pyarrow.compute as pc
 from numpy.typing import NDArray
 
-from valor_lite.exceptions import EmptyCacheError
-from valor_lite.cache import compute
 from valor_lite.cache import (
-    MemoryCacheReader,
-    MemoryCacheWriter,
     FileCacheReader,
     FileCacheWriter,
+    MemoryCacheReader,
+    MemoryCacheWriter,
+    compute,
 )
 from valor_lite.classification.computation import (
     compute_accuracy,
@@ -30,14 +28,16 @@ from valor_lite.classification.computation import (
 from valor_lite.classification.metric import Metric, MetricType
 from valor_lite.classification.shared import (
     EvaluatorInfo,
+    decode_metadata_fields,
+    encode_metadata_fields,
     generate_cache_path,
+    generate_intermediate_cache_path,
+    generate_intermediate_schema,
     generate_meta,
     generate_metadata_path,
-    generate_rocauc_cache_path,
-    generate_rocauc_schema,
+    generate_roc_curve_cache_path,
+    generate_roc_curve_schema,
     generate_schema,
-    encode_metadata_fields,
-    decode_metadata_fields,
 )
 from valor_lite.classification.utilities import (
     create_empty_confusion_matrix_with_examples,
@@ -48,17 +48,20 @@ from valor_lite.classification.utilities import (
     unpack_precision_recall,
     unpack_rocauc,
 )
+from valor_lite.exceptions import EmptyCacheError
 
 
 class Builder:
     def __init__(
         self,
         writer: MemoryCacheWriter | FileCacheWriter,
-        sorted_writer: MemoryCacheWriter | FileCacheWriter,
+        roc_curve_writer: MemoryCacheWriter | FileCacheWriter,
+        intermediate_writer: MemoryCacheWriter | FileCacheWriter,
         metadata_fields: list[tuple[str, pa.DataType]] | None = None,
     ):
         self._writer = writer
-        self._rocauc_writer = sorted_writer
+        self._roc_curve_writer = roc_curve_writer
+        self._intermediate_writer = intermediate_writer
         self._metadata_fields = metadata_fields
 
     @classmethod
@@ -81,13 +84,18 @@ class Builder:
             schema=generate_schema(metadata_fields),
             batch_size=batch_size,
         )
-        sorted_writer = MemoryCacheWriter.create(
-            schema=generate_rocauc_schema(),
+        intermediate_writer = MemoryCacheWriter.create(
+            schema=generate_intermediate_schema(),
+            batch_size=batch_size,
+        )
+        roc_curve_writer = MemoryCacheWriter.create(
+            schema=generate_roc_curve_schema(),
             batch_size=batch_size,
         )
         return cls(
             writer=writer,
-            sorted_writer=sorted_writer,
+            roc_curve_writer=roc_curve_writer,
+            intermediate_writer=intermediate_writer,
             metadata_fields=metadata_fields,
         )
 
@@ -126,9 +134,16 @@ class Builder:
             rows_per_file=rows_per_file,
             compression=compression,
         )
-        sorted_writer = FileCacheWriter.create(
-            path=generate_rocauc_cache_path(path),
-            schema=generate_rocauc_schema(),
+        intermediate_writer = FileCacheWriter.create(
+            path=generate_intermediate_cache_path(path),
+            schema=generate_intermediate_schema(),
+            batch_size=batch_size,
+            rows_per_file=rows_per_file,
+            compression=compression,
+        )
+        roc_curve_writer = FileCacheWriter.create(
+            path=generate_roc_curve_cache_path(path),
+            schema=generate_roc_curve_schema(),
             batch_size=batch_size,
             rows_per_file=rows_per_file,
             compression=compression,
@@ -142,9 +157,105 @@ class Builder:
 
         return cls(
             writer=writer,
-            sorted_writer=sorted_writer,
+            roc_curve_writer=roc_curve_writer,
+            intermediate_writer=intermediate_writer,
             metadata_fields=metadata_fields,
         )
+
+    def _create_rocauc_intermediate(
+        self,
+        reader: MemoryCacheReader | FileCacheReader,
+        batch_size: int,
+        index_to_label: dict[int, str],
+    ):
+        n_labels = len(index_to_label)
+        compute.sort(
+            source=reader,
+            sink=self._intermediate_writer,
+            batch_size=batch_size,
+            sorting=[
+                ("score", "descending"),
+                # ("pd_label_id", "ascending"),
+                ("match", "ascending"),
+            ],
+            columns=[
+                "pd_label_id",
+                "score",
+                "match",
+            ],
+        )
+        intermediate = self._intermediate_writer.to_reader()
+
+        running_max_fp = np.zeros(n_labels, dtype=np.uint64)
+        running_max_tp = np.zeros(n_labels, dtype=np.uint64)
+        running_max_scores = np.zeros(n_labels, dtype=np.float64)
+
+        last_pair = np.zeros((n_labels, 2), dtype=np.uint64)
+        for tbl in intermediate.iterate_tables():
+            pd_label_ids = tbl["pd_label_id"].to_numpy()
+            tps = tbl["match"].to_numpy()
+            scores = tbl["score"].to_numpy()
+            fps = ~tps
+
+            for idx in index_to_label.keys():
+                mask = pd_label_ids == idx
+                if mask.sum() == 0:
+                    continue
+
+                cumulative_fp = np.r_[
+                    running_max_fp[idx],
+                    np.cumsum(fps[mask]) + running_max_fp[idx],
+                ]
+                cumulative_tp = np.r_[
+                    running_max_tp[idx],
+                    np.cumsum(tps[mask]) + running_max_tp[idx],
+                ]
+                pd_scores = np.r_[running_max_scores[idx], scores[mask]]
+
+                indices = (
+                    np.where(
+                        np.diff(np.r_[running_max_scores[idx], pd_scores])
+                    )[0]
+                    - 1
+                )
+
+                running_max_fp[idx] = cumulative_fp[-1]
+                running_max_tp[idx] = cumulative_tp[-1]
+                running_max_scores[idx] = pd_scores[-1]
+
+                for fp, tp in zip(
+                    cumulative_fp[indices],
+                    cumulative_tp[indices],
+                ):
+                    last_pair[idx, 0] = fp
+                    last_pair[idx, 1] = tp
+                    self._roc_curve_writer.write_rows(
+                        [
+                            {
+                                "pd_label_id": idx,
+                                "cumulative_fp": fp,
+                                "cumulative_tp": tp,
+                            }
+                        ]
+                    )
+
+        # ensure any remaining values are ingested
+        for idx in range(n_labels):
+            last_fp = last_pair[idx, 0]
+            last_tp = last_pair[idx, 1]
+            if (
+                last_fp != running_max_fp[idx]
+                or last_tp != running_max_tp[idx]
+            ):
+                self._roc_curve_writer.write_rows(
+                    [
+                        {
+                            "pd_label_id": idx,
+                            "cumulative_fp": running_max_fp[idx],
+                            "cumulative_tp": running_max_tp[idx],
+                        }
+                    ]
+                )
 
     def finalize(
         self,
@@ -169,7 +280,7 @@ class Builder:
         self._writer.flush()
         if self._writer.count_rows() == 0:
             raise EmptyCacheError()
-        elif self._rocauc_writer.count_rows() > 0:
+        elif self._roc_curve_writer.count_rows() > 0:
             raise RuntimeError("data already finalized")
 
         # sort in-place and locally
@@ -186,40 +297,20 @@ class Builder:
         reader = self._writer.to_reader()
 
         # generate evaluator meta
-        (
-            index_to_label, 
-            label_counts, 
-            info,
-        ) = generate_meta(reader=reader, index_to_label_override=index_to_label_override)
-        n_labels = len(index_to_label)
-
-        # def accumulate(batch: pa.RecordBatch, prev: np.ndarray | None) -> pa.RecordBatch:
-        #     pd_label_id = batch["pd_label_id"].as_py()
-        #     matched = batch["match"][0].as_py()
-        #     if prev is None:
-        #         prev = np.zeros(n_labels, dtype=np.uint64)
-        #         return None, ()
-
-        compute.sort(
-            source=reader,
-            sink=self._rocauc_writer,
-            batch_size=batch_size,
-            sorting=[
-                ("score", "descending"),
-                # ("match", "descending"),
-                # ("pd_label_id", "ascending"),
-            ],
-            columns=[
-                "pd_label_id",
-                "score",
-                "match",
-            ],
+        (index_to_label, label_counts, info,) = generate_meta(
+            reader=reader, index_to_label_override=index_to_label_override
         )
-        rocauc_reader = self._rocauc_writer.to_reader()
+
+        self._create_rocauc_intermediate(
+            reader=reader,
+            batch_size=batch_size,
+            index_to_label=index_to_label,
+        )
+        roc_curve_reader = self._roc_curve_writer.to_reader()
 
         return Evaluator(
             reader=reader,
-            rocauc_reader=rocauc_reader,
+            roc_curve_reader=roc_curve_reader,
             info=info,
             label_counts=label_counts,
             index_to_label=index_to_label,
@@ -230,13 +321,13 @@ class Evaluator:
     def __init__(
         self,
         reader: MemoryCacheReader | FileCacheReader,
-        rocauc_reader: MemoryCacheReader | FileCacheReader,
+        roc_curve_reader: MemoryCacheReader | FileCacheReader,
         info: EvaluatorInfo,
         label_counts: NDArray[np.uint64],
         index_to_label: dict[int, str],
     ):
         self._reader = reader
-        self._rocauc_reader = rocauc_reader
+        self._roc_curve_reader = roc_curve_reader
         self._info = info
         self._label_counts = label_counts
         self._index_to_label = index_to_label
@@ -273,8 +364,8 @@ class Evaluator:
 
         # load cache
         reader = FileCacheReader.load(generate_cache_path(path))
-        rocauc_reader = FileCacheReader.load(
-            generate_rocauc_cache_path(path)
+        roc_curve_reader = FileCacheReader.load(
+            generate_roc_curve_cache_path(path)
         )
 
         # build evaluator meta
@@ -287,11 +378,12 @@ class Evaluator:
         # read config
         metadata_path = generate_metadata_path(path)
         with open(metadata_path, "r") as f:
-            info.metadata_fields = json.load(f)
+            encoded_types = json.load(f)
+            info.metadata_fields = decode_metadata_fields(encoded_types)
 
         return cls(
             reader=reader,
-            rocauc_reader=rocauc_reader,
+            roc_curve_reader=roc_curve_reader,
             info=info,
             label_counts=label_counts,
             index_to_label=index_to_label,
@@ -453,38 +545,22 @@ class Evaluator:
         n_labels = self.info.number_of_labels
 
         rocauc = np.zeros(n_labels, dtype=np.float64)
-        accumulated_fp = np.zeros(n_labels, dtype=np.uint64)
-        accumulated_tp = np.zeros(n_labels, dtype=np.uint64)
 
-        prev_tpr = np.ones(n_labels, dtype=np.float64) * -1
-        prev_fpr = np.ones(n_labels, dtype=np.float64) * -1
-
-        for loopid, array in enumerate(self._rocauc_reader.iterate_arrays(
+        prev = np.zeros((n_labels, 2), dtype=np.uint64)
+        for array in self._roc_curve_reader.iterate_arrays(
             numeric_columns=[
                 "pd_label_id",
-                "score",
-                "match",
+                "cumulative_fp",
+                "cumulative_tp",
             ]
-        )):
-            # for id_row, score in zip(ids, scores):
-            #     glabel = id_row[1]
-            #     plabel = id_row[2]
-            #     if glabel < 0 or plabel < 0:
-            #         continue
-            #     elif glabel == plabel:
-            #         cumulative_tp[plabel] += 1
-            #         tpr_new = cumulative_tp[plabel] / positive_count[plabel]
-            #         tpr[plabel]
-            #     else:
-            #         cumulative_fp[plabel] += 1
-            rocauc, accumulated_fp, accumulated_tp = compute_rocauc(
+        ):
+            rocauc, prev = compute_rocauc(
                 rocauc=rocauc,
                 array=array,
                 gt_count_per_label=self._label_counts[:, 0],
                 pd_count_per_label=self._label_counts[:, 1],
                 n_labels=self.info.number_of_labels,
-                accumulated_fp=accumulated_fp,
-                accumulated_tp=accumulated_tp,
+                prev=prev,
             )
 
         mean_rocauc = rocauc.mean()

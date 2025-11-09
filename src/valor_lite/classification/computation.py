@@ -12,121 +12,82 @@ def compute_rocauc(
     gt_count_per_label: NDArray[np.uint64],
     pd_count_per_label: NDArray[np.uint64],
     n_labels: int,
-    accumulated_tp: NDArray[np.uint64],
-    accumulated_fp: NDArray[np.uint64],
-) -> tuple[NDArray[np.float64], NDArray[np.uint64], NDArray[np.uint64]]:
+    prev: NDArray[np.uint64],
+) -> tuple[NDArray[np.float64], NDArray[np.uint64]]:
     """
     Compute ROCAUC.
 
     Parameters
     ----------
-    ids : NDArray[np.int64]
-        A sorted array of classification pairs with shape (n_pairs, 3).
-            Index 0 - Datum Index
-            Index 1 - GroundTruth Label Index
-            Index 2 - Prediction Label Index
-    scores : NDArray[np.float64]
-        A sorted array of classification scores with shape (n_pairs,).
+    rocauc : NDArray[np.float64]
+        The running ROCAUC.
+    array : NDArray[np.float64]
+        An sorted array of ROCAUC intermediate values with shape (n_pairs, 3).
+            Index 0 - Prediction Label Index
+            Index 1 - Cumulative FP
+            Index 2 - Cumulative TP
     gt_count_per_label : NDArray[np.uint64]
         The number of ground truth occurences per label.
     pd_count_per_label : NDArray[np.uint64]
         The number of prediction occurences per label.
-    n_datums : int
-        The number of datums being operated over.
     n_labels : int
         The total number of unqiue labels.
+    prev : NDArray[np.uint64]
+        The previous cumulative sum for FP's and TP's. Used as intermediate in chunking operations.
 
     Returns
     -------
     NDArray[np.float64]
         ROCAUC.
     NDArray[np.uint64]
-        Final cumulative sum for FP's. Used as intermediate in chunking operations.
+        The previous cumulative sum for FP's. Used as intermediate in chunking operations.
     NDArray[np.uint64]
-        Final cumulative sum for TP's. Used as intermediate in chunking operations.
+        The previous cumulative sum for TP's. Used as intermediate in chunking operations.
     """
-    pd_labels = array[:, 0].astype(np.int64)
-    scores = array[:, 1]
-    mask_matching_labels = array[:, 2] > 0.5
+    pd_labels = array[:, 0]
+    cumulative_fp = array[:, 1]
+    cumulative_tp = array[:, 2]
 
     positive_count = gt_count_per_label
     negative_count = pd_count_per_label - gt_count_per_label
 
-    print()
     for label_idx in range(n_labels):
         mask_pds = pd_labels == label_idx
         n_masked_pds = mask_pds.sum()
         if pd_count_per_label[label_idx] == 0 or n_masked_pds == 0:
             continue
 
-        true_positives = mask_matching_labels[mask_pds]
-        tp_scores = scores[mask_pds]
+        fps = cumulative_fp[mask_pds]
+        tps = cumulative_tp[mask_pds]
+        if prev[label_idx, 0] > 0 or prev[label_idx, 1] > 0:
+            fps = np.r_[prev[label_idx, 0], fps]
+            tps = np.r_[prev[label_idx, 1], tps]
 
-        distinct_score_indices = np.where(np.diff(tp_scores))[0]
-        indices = np.r_[distinct_score_indices, n_masked_pds - 1]
-        cumulative_tp = np.cumsum(true_positives, dtype=np.uint64)[indices]
-        cumulative_fp = indices + 1 - cumulative_tp
+        prev[label_idx, 0] = fps[-1]
+        prev[label_idx, 1] = tps[-1]
 
-        cumulative_tp += accumulated_tp[label_idx]
-        cumulative_fp += accumulated_fp[label_idx]
+        if fps.size == 1:
+            continue
 
-        cumulative_tp = np.concatenate([accumulated_tp[label_idx:label_idx+1], cumulative_tp])
-        cumulative_fp = np.concatenate([accumulated_fp[label_idx:label_idx+1], cumulative_fp])
-
-        accumulated_tp[label_idx] = cumulative_tp[-1]
-        accumulated_fp[label_idx] = cumulative_fp[-1]
-
-        fpr = np.zeros_like(cumulative_fp, dtype=np.float64)
+        fpr = np.zeros_like(fps, dtype=np.float64)
         np.divide(
-            cumulative_fp,
+            fps,
             negative_count[label_idx],
             where=negative_count[label_idx] > 0,
             out=fpr,
         )
-        tpr = np.zeros_like(cumulative_tp, dtype=np.float64)
+        tpr = np.zeros_like(tps, dtype=np.float64)
         np.divide(
-            cumulative_tp,
+            tps,
             positive_count[label_idx],
             where=positive_count[label_idx] > 0,
             out=tpr,
         )
 
-        # # sort by -tpr, -score
-        # indices = np.lexsort((-tpr, -tp_scores))
-        # fpr = fpr[indices]
-        # tpr = tpr[indices]
-
-        # running max of tpr
-        np.maximum.accumulate(tpr, out=tpr)
-
         # compute rocauc
         rocauc[label_idx] += npc.trapezoid(x=fpr, y=tpr, axis=0)
 
-        if label_idx == 3:
-            print(rocauc[label_idx])
-            print(
-                f"{'CFP':4}",
-                f"{'CTP':4}",
-                f"{'FPR':4}",
-                f"{'TPR':4}",
-                # f"{'SCO':4}",
-            )
-            for af, at, fr, tr in zip(
-                cumulative_fp,
-                cumulative_tp,
-                fpr, 
-                tpr, 
-                # tp_scores,
-            ):
-                print(
-                    f"{af:.2f}", 
-                    f"{at:.2f}", 
-                    f"{fr:.2f}", 
-                    f"{tr:.2f}", 
-                    # f"{s:.2f}",
-                )
-            
-    return rocauc, accumulated_fp, accumulated_tp
+    return rocauc, prev
 
 
 def compute_counts(
