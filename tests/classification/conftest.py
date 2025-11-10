@@ -8,7 +8,7 @@ from valor_lite.classification import Classification, Loader
 @pytest.fixture(
     params=[
         ("persistent", 10_000, 100_000),
-        ("persistent", 2, 2),
+        ("persistent", 1, 1),
         ("memory", 10_000, 0),
         ("memory", 1, 0),
     ],

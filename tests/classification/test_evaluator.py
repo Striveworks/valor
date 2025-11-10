@@ -109,3 +109,18 @@ def test_evaluator_exists_on_disk(
     assert generate_intermediate_cache_path(tmp_path).exists()
     assert generate_roc_curve_cache_path(tmp_path).exists()
     assert generate_metadata_path(tmp_path).exists()
+
+
+def test_evaluator_loading(
+    tmp_path: Path,
+    basic_classifications: list[Classification],
+):
+    loader = Loader.persistent(tmp_path)
+    loader.add_data(basic_classifications)
+    _ = loader.finalize()
+    # load from cache
+    evaluator = Evaluator.load(tmp_path)
+
+    assert evaluator.info.number_of_datums == 3
+    assert evaluator.info.number_of_labels == 4
+    assert evaluator.info.number_of_rows == 12
