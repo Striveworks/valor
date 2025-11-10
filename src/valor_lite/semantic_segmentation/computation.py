@@ -19,9 +19,9 @@ def compute_intermediates(
     predictions : NDArray[np.bool_]
         A 2-D array containing flattened bitmasks for each label.
     groundtruth_labels : NDArray[np.int64]
-        A 1-D array containing label indices.
-    groundtruth_labels : NDArray[np.int64]
-        A 1-D array containing label indices.
+        A 1-D array containing ground truth label indices.
+    prediction_labels : NDArray[np.int64]
+        A 1-D array containing prediction label indices.
     n_labels : int
         The number of unique labels.
 
