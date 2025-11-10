@@ -73,16 +73,10 @@ def compute_metrics(
     """
     Computes semantic segmentation metrics.
 
-    Takes data with shape (3, N).
-
     Parameters
     ----------
-    counts : NDArray[np.int64]
+    counts : NDArray[np.uint64]
         A 2-D confusion matrix with shape (n_labels + 1, n_labels + 1).
-    label_metadata : NDArray[np.int64]
-        A 2-D array containing label metadata with shape (n_labels, 2).
-            Index 0: Ground Truth Label Count
-            Index 1: Prediction Label Count
 
     Returns
     -------
