@@ -1,5 +1,5 @@
 import numpy as np
-from pyarrow import DataType
+import pyarrow as pa
 from tqdm import tqdm
 
 from valor_lite.cache import FileCacheWriter, MemoryCacheWriter
@@ -12,7 +12,7 @@ class Loader(Builder):
     def __init__(
         self,
         writer: MemoryCacheWriter | FileCacheWriter,
-        metadata_fields: list[tuple[str, DataType]] | None = None,
+        metadata_fields: list[tuple[str, str | pa.DataType]] | None = None,
     ):
         super().__init__(
             writer=writer,

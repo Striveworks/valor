@@ -51,7 +51,7 @@ class Builder:
         ----------
         batch_size : int, default=10_000
             The target number of rows to buffer before writing to the cache. Defaults to 10_000.
-        metadata_fields : list[tuple[str, DataType]], optional
+        metadata_fields : list[tuple[str, str | pa.DataType]], optional
             Optional metadata field definitions.
         """
         # create cache
@@ -86,7 +86,7 @@ class Builder:
             The target number of rows to store per cache file. Defaults to 100_000.
         compression : str, default="snappy"
             The compression methods used when writing cache files.
-        metadata_fields : list[tuple[str, DataType]], optional
+        metadata_fields : list[tuple[str, str | pa.DataType]], optional
             Optional metadata field definitions.
         """
         path = Path(path)
