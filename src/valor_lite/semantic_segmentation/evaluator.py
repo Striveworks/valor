@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import json
 from pathlib import Path
 
@@ -221,7 +223,7 @@ class Evaluator:
         groundtruths: pc.Expression | None = None,
         predictions: pc.Expression | None = None,
         path: str | Path | None = None,
-    ) -> "Evaluator":
+    ) -> Evaluator:
         """
         Filter evaluator cache.
 
