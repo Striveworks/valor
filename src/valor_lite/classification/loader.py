@@ -74,19 +74,20 @@ class Loader(Builder):
                 pidx = self._add_label(plabel)
                 rows.append(
                     {
+                        # metadata
+                        **datum_metadata,
                         # datum
                         "datum_uid": classification.uid,
                         "datum_id": self._datum_count,
-                        **datum_metadata,
                         # groundtruth
                         "gt_label": classification.groundtruth,
                         "gt_label_id": gidx,
                         # prediction
                         "pd_label": plabel,
                         "pd_label_id": pidx,
+                        "pd_score": float(score),
+                        "pd_winner": max_score_idx == idx,
                         # pair
-                        "score": float(score),
-                        "winner": max_score_idx == idx,
                         "match": (gidx == pidx) and pidx >= 0,
                     }
                 )

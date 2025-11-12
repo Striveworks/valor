@@ -45,9 +45,9 @@ def generate_schema(
         # prediction
         ("pd_label", pa.string()),
         ("pd_label_id", pa.int64()),
+        ("pd_score", pa.float64()),
+        ("pd_winner", pa.bool_()),
         # pair
-        ("score", pa.float64()),
-        ("winner", pa.bool_()),
         ("match", pa.bool_()),
     ]
 
@@ -65,7 +65,7 @@ def generate_intermediate_schema() -> pa.Schema:
     return pa.schema(
         [
             ("pd_label_id", pa.int64()),
-            ("score", pa.float64()),
+            ("pd_score", pa.float64()),
             ("match", pa.bool_()),
         ]
     )

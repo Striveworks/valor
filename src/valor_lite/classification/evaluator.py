@@ -174,13 +174,13 @@ class Builder:
             sink=self._intermediate_writer,
             batch_size=batch_size,
             sorting=[
-                ("score", "descending"),
+                ("pd_score", "descending"),
                 # ("pd_label_id", "ascending"),
                 ("match", "ascending"),
             ],
             columns=[
                 "pd_label_id",
-                "score",
+                "pd_score",
                 "match",
             ],
         )
@@ -194,7 +194,7 @@ class Builder:
         for tbl in intermediate.iterate_tables():
             pd_label_ids = tbl["pd_label_id"].to_numpy()
             tps = tbl["match"].to_numpy()
-            scores = tbl["score"].to_numpy()
+            scores = tbl["pd_score"].to_numpy()
             fps = ~tps
 
             for idx in index_to_label.keys():
@@ -286,7 +286,7 @@ class Builder:
         # sort in-place and locally
         self._writer.sort_by(
             [
-                ("score", "descending"),
+                ("pd_score", "descending"),
                 ("datum_id", "ascending"),
                 ("gt_label_id", "ascending"),
                 ("pd_label_id", "ascending"),
@@ -497,8 +497,8 @@ class Evaluator:
             "datum_id",
             "gt_label_id",
             "pd_label_id",
-            "score",
-            "winner",
+            "pd_score",
+            "pd_winner",
             "match",
         ]
         for tbl in self._reader.iterate_tables(columns=columns):
@@ -512,8 +512,8 @@ class Evaluator:
                     ]
                 ]
             )
-            scores = tbl["score"].to_numpy()
-            winners = tbl["winner"].to_numpy()
+            scores = tbl["pd_score"].to_numpy()
+            winners = tbl["pd_winner"].to_numpy()
             matches = tbl["match"].to_numpy()
             yield ids, scores, winners, matches
 
@@ -529,8 +529,8 @@ class Evaluator:
                     ]
                 ]
             )
-            scores = tbl["score"].to_numpy()
-            winners = tbl["winner"].to_numpy()
+            scores = tbl["pd_score"].to_numpy()
+            winners = tbl["pd_winner"].to_numpy()
             matches = tbl["match"].to_numpy()
             yield ids, scores, winners, matches, tbl
 
