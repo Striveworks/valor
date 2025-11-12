@@ -1,37 +1,42 @@
+import json
+from pathlib import Path
+
 import numpy as np
+import pytest
 
 from valor_lite.semantic_segmentation import (
     Bitmask,
-    DataLoader,
+    Evaluator,
+    Loader,
     Metric,
     Segmentation,
 )
 
 
-def test_metadata_using_large_random_segmentations(
+def test_evaluator_file_not_found(tmp_path: Path):
+    path = tmp_path / "does_not_exist"
+    with pytest.raises(FileNotFoundError):
+        Evaluator.load(path)
+
+
+def test_evaluator_not_a_directory(tmp_path: Path):
+    filepath = tmp_path / "file"
+    with open(filepath, "w") as f:
+        json.dump({}, f, indent=2)
+    with pytest.raises(NotADirectoryError):
+        Evaluator.load(filepath)
+
+
+def test_info_using_large_random_segmentations(
+    loader: Loader,
     large_random_segmentations: list[Segmentation],
 ):
-    manager = DataLoader()
-    manager.add_data(large_random_segmentations)
-    evaluator = manager.finalize()
+    loader.add_data(large_random_segmentations)
+    evaluator = loader.finalize()
 
-    assert evaluator.ignored_prediction_labels == []
-    assert evaluator.missing_prediction_labels == []
-    assert evaluator.metadata.number_of_datums == 3
-    assert evaluator.metadata.number_of_labels == 9
-    assert (
-        evaluator.metadata.number_of_pixels == 3 * 2000 * 2000
-    )  # 3x (2000,2000) bitmasks
-
-    metadata = evaluator.metadata.to_dict()
-    # pop randomly changing values
-    metadata.pop("number_of_ground_truths")
-    metadata.pop("number_of_predictions")
-    assert metadata == {
-        "number_of_datums": 3,
-        "number_of_labels": 9,
-        "number_of_pixels": 12000000,
-    }
+    assert evaluator._info.number_of_datums == 3
+    assert evaluator._info.number_of_labels == 9
+    assert evaluator._info.number_of_pixels == 12000000
 
 
 def _flatten_metrics(m) -> list:
@@ -56,13 +61,13 @@ def _flatten_metrics(m) -> list:
 
 
 def test_output_types_dont_contain_numpy(
+    loader: Loader,
     segmentations_from_boxes: list[Segmentation],
 ):
-    manager = DataLoader()
-    manager.add_data(segmentations_from_boxes)
-    evaluator = manager.finalize()
+    loader.add_data(segmentations_from_boxes)
+    evaluator = loader.finalize()
 
-    metrics = evaluator.evaluate()
+    metrics = evaluator.compute_precision_recall_iou()
 
     values = _flatten_metrics(metrics)
     for value in values:
@@ -70,9 +75,7 @@ def test_output_types_dont_contain_numpy(
             raise TypeError(value)
 
 
-def test_label_mismatch():
-
-    loader = DataLoader()
+def test_label_mismatch(loader: Loader):
     loader.add_data(
         segmentations=[
             Segmentation(
@@ -114,7 +117,7 @@ def test_label_mismatch():
     )
     evaluator = loader.finalize()
     assert np.all(
-        evaluator._confusion_matrices
+        evaluator._confusion_matrix
         == np.array(
             [
                 [
@@ -126,21 +129,9 @@ def test_label_mismatch():
             ]
         )
     )
-    assert np.all(
-        evaluator._label_metadata
-        == np.array(
-            [
-                [2, 0],
-                [0, 1],
-                [0, 1],
-            ]
-        )
-    )
 
 
-def test_empty_groundtruths():
-
-    loader = DataLoader()
+def test_empty_groundtruths(loader: Loader):
     loader.add_data(
         segmentations=[
             Segmentation(
@@ -172,7 +163,7 @@ def test_empty_groundtruths():
     )
     evaluator = loader.finalize()
     assert np.all(
-        evaluator._confusion_matrices
+        evaluator._confusion_matrix
         == np.array(
             [
                 [
@@ -183,20 +174,9 @@ def test_empty_groundtruths():
             ]
         )
     )
-    assert np.all(
-        evaluator._label_metadata
-        == np.array(
-            [
-                [0, 1],
-                [0, 1],
-            ]
-        )
-    )
 
 
-def test_empty_predictions():
-
-    loader = DataLoader()
+def test_empty_predictions(loader: Loader):
     loader.add_data(
         segmentations=[
             Segmentation(
@@ -228,23 +208,29 @@ def test_empty_predictions():
     )
     evaluator = loader.finalize()
     assert np.all(
-        evaluator._confusion_matrices
+        evaluator._confusion_matrix
         == np.array(
             [
-                [
-                    [2, 0, 0],
-                    [1, 0, 0],
-                    [1, 0, 0],
-                ]
+                [2, 0, 0],
+                [1, 0, 0],
+                [1, 0, 0],
             ]
         )
     )
-    assert np.all(
-        evaluator._label_metadata
-        == np.array(
-            [
-                [1, 0],
-                [1, 0],
-            ]
-        )
-    )
+
+
+def test_evaluator_loading(
+    tmp_path: Path,
+    basic_segmentations: list[Segmentation],
+):
+    loader = Loader.persistent(tmp_path)
+    loader.add_data(basic_segmentations)
+    _ = loader.finalize()
+    # load from cache
+    evaluator = Evaluator.load(tmp_path)
+
+    assert evaluator.info.number_of_datums == 1
+    assert evaluator.info.number_of_labels == 2
+    assert evaluator.info.number_of_pixels == 4
+    assert evaluator.info.number_of_groundtruth_pixels == 3
+    assert evaluator.info.number_of_prediction_pixels == 3

@@ -1,14 +1,15 @@
 from .annotation import Bitmask, Segmentation
-from .manager import DataLoader, Evaluator, Filter, Metadata
+from .evaluator import Builder, Evaluator, EvaluatorInfo
+from .loader import Loader
 from .metric import Metric, MetricType
 
 __all__ = [
-    "DataLoader",
+    "Builder",
+    "Loader",
     "Evaluator",
     "Segmentation",
     "Bitmask",
     "Metric",
     "MetricType",
-    "Filter",
-    "Metadata",
+    "EvaluatorInfo",
 ]
