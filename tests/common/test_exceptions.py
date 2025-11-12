@@ -15,6 +15,12 @@ def test_empty_cache_error_exc():
     assert "no data" in str(e)
 
 
+def test_empty_filter_error_exc():
+    with pytest.raises(exc.EmptyFilterError) as e:
+        raise exc.EmptyFilterError("custom message")
+    assert "custom message" in str(e)
+
+
 def test_cache_error_exc():
     with pytest.raises(exc.InternalCacheError) as e:
         raise exc.InternalCacheError("custom message")

@@ -1,17 +1,19 @@
 from valor_lite.semantic_segmentation import (
-    DataLoader,
+    Loader,
     Metric,
     MetricType,
     Segmentation,
 )
 
 
-def test_accuracy_basic_segmentations(basic_segmentations: list[Segmentation]):
-    loader = DataLoader()
+def test_accuracy_basic_segmentations(
+    loader: Loader,
+    basic_segmentations: list[Segmentation],
+):
     loader.add_data(basic_segmentations)
     evaluator = loader.finalize()
 
-    metrics = evaluator.evaluate()
+    metrics = evaluator.compute_precision_recall_iou()
 
     actual_metrics = [m.to_dict() for m in metrics[MetricType.Accuracy]]
     expected_metrics = [
@@ -28,13 +30,13 @@ def test_accuracy_basic_segmentations(basic_segmentations: list[Segmentation]):
 
 
 def test_accuracy_segmentations_from_boxes(
+    loader: Loader,
     segmentations_from_boxes: list[Segmentation],
 ):
-    loader = DataLoader()
     loader.add_data(segmentations_from_boxes)
     evaluator = loader.finalize()
 
-    metrics = evaluator.evaluate()
+    metrics = evaluator.compute_precision_recall_iou()
 
     actual_metrics = [m.to_dict() for m in metrics[MetricType.Accuracy]]
     expected_metrics = [
@@ -51,13 +53,13 @@ def test_accuracy_segmentations_from_boxes(
 
 
 def test_accuracy_large_random_segmentations(
+    loader: Loader,
     large_random_segmentations: list[Segmentation],
 ):
-    loader = DataLoader()
     loader.add_data(large_random_segmentations)
     evaluator = loader.finalize()
 
-    metrics = evaluator.evaluate()[MetricType.Accuracy]
+    metrics = evaluator.compute_precision_recall_iou()[MetricType.Accuracy]
 
     assert len(metrics) == 1
     assert isinstance(metrics[0], Metric)
