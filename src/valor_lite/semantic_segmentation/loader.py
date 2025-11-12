@@ -127,18 +127,19 @@ class Loader(Builder):
                         plabel = self._index_to_label[pidx]
                         rows.append(
                             {
+                                # metadata
+                                **datum_metadata,
+                                **gt_metadata.get(idx, {}),
+                                **pd_metadata.get(pidx, {}),
                                 # datum
                                 "datum_uid": segmentation.uid,
                                 "datum_id": self._datum_count,
-                                **datum_metadata,
                                 # groundtruth
                                 "gt_label": label,
                                 "gt_label_id": idx,
-                                **gt_metadata.get(idx, {}),
                                 # prediction
                                 "pd_label": plabel,
                                 "pd_label_id": pidx,
-                                **pd_metadata.get(pidx, {}),
                                 # pair
                                 "count": counts[idx + 1, pidx + 1],
                             }
@@ -147,14 +148,15 @@ class Loader(Builder):
                 rows.extend(
                     [
                         {
+                            # metadata
+                            **datum_metadata,
+                            **gt_metadata.get(idx, {}),
                             # datum
                             "datum_uid": segmentation.uid,
                             "datum_id": self._datum_count,
-                            **datum_metadata,
                             # groundtruth
                             "gt_label": label,
                             "gt_label_id": idx,
-                            **gt_metadata.get(idx, {}),
                             # prediction
                             "pd_label": None,
                             "pd_label_id": -1,
@@ -162,17 +164,19 @@ class Loader(Builder):
                             "count": counts[idx + 1, 0],
                         },
                         {
+                            # metadata
+                            **datum_metadata,
+                            **gt_metadata.get(idx, {}),
+                            **pd_metadata.get(idx, {}),
                             # datum
                             "datum_uid": segmentation.uid,
                             "datum_id": self._datum_count,
-                            **datum_metadata,
                             # groundtruth
                             "gt_label": None,
                             "gt_label_id": -1,
                             # prediction
                             "pd_label": label,
                             "pd_label_id": idx,
-                            **pd_metadata.get(idx, {}),
                             # pair
                             "count": counts[0, idx + 1],
                         },
@@ -180,10 +184,11 @@ class Loader(Builder):
                 )
             rows.append(
                 {
+                    # metadata
+                    **datum_metadata,
                     # datum
                     "datum_uid": segmentation.uid,
                     "datum_id": self._datum_count,
-                    **datum_metadata,
                     # groundtruth
                     "gt_label": None,
                     "gt_label_id": -1,
