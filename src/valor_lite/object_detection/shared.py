@@ -52,7 +52,7 @@ def generate_detailed_schema(
         ("pd_id", pa.int64()),
         ("pd_label", pa.string()),
         ("pd_label_id", pa.int64()),
-        ("score", pa.float64()),
+        ("pd_score", pa.float64()),
         # pair
         ("iou", pa.float64()),
     ]
@@ -78,7 +78,7 @@ def generate_ranked_schema() -> pa.Schema:
         # prediction
         ("pd_id", pa.int64()),
         ("pd_label_id", pa.int64()),
-        ("score", pa.float64()),
+        ("pd_score", pa.float64()),
         # pair
         ("iou", pa.float64()),
         ("high_score", pa.bool_()),

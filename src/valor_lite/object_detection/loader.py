@@ -69,19 +69,24 @@ class Loader(Builder):
                     if (ious[:, gidx] < 1e-9).all():
                         pairs.append(
                             {
+                                # metadata
+                                **datum_metadata,
+                                **gann_metadata,
+                                # datum
                                 "datum_uid": detection.uid,
                                 "datum_id": datum_idx,
-                                **datum_metadata,
+                                # groundtruth
                                 "gt_uid": gann.uid,
                                 "gt_id": gt_id,
                                 "gt_label": glabel,
                                 "gt_label_id": glabel_idx,
-                                **gann_metadata,
+                                # prediction
                                 "pd_uid": None,
                                 "pd_id": -1,
                                 "pd_label": None,
                                 "pd_label_id": -1,
-                                "score": -1,
+                                "pd_score": -1,
+                                # pair
                                 "iou": 0.0,
                             }
                         )
@@ -92,19 +97,24 @@ class Loader(Builder):
                             pairs.extend(
                                 [
                                     {
+                                        # metadata
+                                        **datum_metadata,
+                                        **pann_metadata,
+                                        # datum
                                         "datum_uid": detection.uid,
                                         "datum_id": datum_idx,
-                                        **datum_metadata,
+                                        # groundtruth
                                         "gt_uid": None,
                                         "gt_id": -1,
                                         "gt_label": None,
                                         "gt_label_id": -1,
+                                        # prediction
                                         "pd_uid": pann.uid,
                                         "pd_id": pann_id,
                                         "pd_label": plabel,
                                         "pd_label_id": self._add_label(plabel),
-                                        "score": float(pscore),
-                                        **pann_metadata,
+                                        "pd_score": float(pscore),
+                                        # pair
                                         "iou": 0.0,
                                     }
                                     for plabel, pscore in zip(
@@ -116,20 +126,25 @@ class Loader(Builder):
                             pairs.extend(
                                 [
                                     {
+                                        # metadata
+                                        **datum_metadata,
+                                        **gann_metadata,
+                                        **pann_metadata,
+                                        # datum
                                         "datum_uid": detection.uid,
                                         "datum_id": datum_idx,
-                                        **datum_metadata,
+                                        # groundtruth
                                         "gt_uid": gann.uid,
                                         "gt_id": gt_id,
                                         "gt_label": glabel,
                                         "gt_label_id": self._add_label(glabel),
-                                        **gann_metadata,
+                                        # prediction
                                         "pd_uid": pann.uid,
                                         "pd_id": pann_id,
                                         "pd_label": plabel,
                                         "pd_label_id": self._add_label(plabel),
-                                        "score": float(pscore),
-                                        **pann_metadata,
+                                        "pd_score": float(pscore),
+                                        # pair
                                         "iou": float(ious[pidx, gidx]),
                                     }
                                     for glabel in gann.labels
@@ -145,19 +160,24 @@ class Loader(Builder):
                     pairs.extend(
                         [
                             {
+                                # metadata
+                                **datum_metadata,
+                                **pann_metadata,
+                                # datum
                                 "datum_uid": detection.uid,
                                 "datum_id": datum_idx,
-                                **datum_metadata,
+                                # groundtruth
                                 "gt_uid": None,
                                 "gt_id": -1,
                                 "gt_label": None,
                                 "gt_label_id": -1,
+                                # prediction
                                 "pd_uid": pann.uid,
                                 "pd_id": pann_id,
                                 "pd_label": plabel,
                                 "pd_label_id": self._add_label(plabel),
-                                "score": float(pscore),
-                                **pann_metadata,
+                                "pd_score": float(pscore),
+                                # pair
                                 "iou": 0.0,
                             }
                             for plabel, pscore in zip(pann.labels, pann.scores)
@@ -168,7 +188,7 @@ class Loader(Builder):
             self._groundtruth_count += len(detection.groundtruths)
             self._prediction_count += len(detection.predictions)
 
-            pairs = sorted(pairs, key=lambda x: (-x["score"], -x["iou"]))
+            pairs = sorted(pairs, key=lambda x: (-x["pd_score"], -x["iou"]))
             self._detailed_writer.write_rows(pairs)
 
     def add_bounding_boxes(

@@ -156,7 +156,7 @@ class Builder:
             sink=self._ranked_writer,
             batch_size=batch_size,
             sorting=[
-                ("score", "descending"),
+                ("pd_score", "descending"),
                 ("iou", "descending"),
             ],
             columns=[
@@ -336,7 +336,7 @@ class Evaluator:
                 "gt_label_id",
                 "pd_label_id",
                 "iou",
-                "score",
+                "pd_score",
             )
             pairs = np.column_stack([tbl[col].to_numpy() for col in columns])
 
@@ -376,7 +376,7 @@ class Evaluator:
 
             for idx, col in enumerate(columns):
                 column = pairs[:, idx]
-                if col not in {"iou", "score"}:
+                if col not in {"iou", "pd_score"}:
                     column = column.astype(np.int64)
 
                 col_idx = tbl.schema.names.index(col)
@@ -433,7 +433,7 @@ class Evaluator:
                 "gt_label_id",
                 "pd_label_id",
                 "iou",
-                "score",
+                "pd_score",
                 "iou_prev",
                 "high_score",
             ],
@@ -527,7 +527,7 @@ class Evaluator:
                 "gt_label_id",
                 "pd_label_id",
                 "iou",
-                "score",
+                "pd_score",
             ],
         ):
             if pairs.size == 0:
@@ -610,7 +610,7 @@ class Evaluator:
             "gt_label_id",
             "pd_label_id",
             "iou",
-            "score",
+            "pd_score",
         ]
         for tbl, pairs in self._detailed_reader.iterate_tables_with_arrays(
             columns=tbl_columns + numeric_columns,
@@ -713,7 +713,7 @@ class Evaluator:
             "gt_label_id",
             "pd_label_id",
             "iou",
-            "score",
+            "pd_score",
         ]
         for tbl, pairs in self._detailed_reader.iterate_tables_with_arrays(
             columns=tbl_columns + numeric_columns,

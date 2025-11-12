@@ -270,10 +270,10 @@ def rank_table(tbl: pa.Table, number_of_labels: int) -> pa.Table:
         "gt_label_id",
         "pd_label_id",
         "iou",
-        "score",
+        "pd_score",
     ]
     sorting_args = [
-        ("score", "descending"),
+        ("pd_score", "descending"),
         ("iou", "descending"),
     ]
     sorted_tbl = tbl.sort_by(sorting_args)
