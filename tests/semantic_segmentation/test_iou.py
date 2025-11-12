@@ -1,16 +1,14 @@
-from valor_lite.semantic_segmentation import (
-    DataLoader,
-    MetricType,
-    Segmentation,
-)
+from valor_lite.semantic_segmentation import Loader, MetricType, Segmentation
 
 
-def test_iou_basic_segmentations(basic_segmentations: list[Segmentation]):
-    loader = DataLoader()
+def test_iou_basic_segmentations(
+    loader: Loader,
+    basic_segmentations: list[Segmentation],
+):
     loader.add_data(basic_segmentations)
     evaluator = loader.finalize()
 
-    metrics = evaluator.evaluate()
+    metrics = evaluator.compute_precision_recall_iou()
 
     actual_metrics = [m.to_dict() for m in metrics[MetricType.IOU]]
     expected_metrics = [
@@ -45,13 +43,13 @@ def test_iou_basic_segmentations(basic_segmentations: list[Segmentation]):
 
 
 def test_iou_segmentations_from_boxes(
+    loader: Loader,
     segmentations_from_boxes: list[Segmentation],
 ):
-    loader = DataLoader()
     loader.add_data(segmentations_from_boxes)
     evaluator = loader.finalize()
 
-    metrics = evaluator.evaluate()
+    metrics = evaluator.compute_precision_recall_iou()
 
     actual_metrics = [m.to_dict() for m in metrics[MetricType.IOU]]
     expected_metrics = [

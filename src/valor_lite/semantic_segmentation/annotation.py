@@ -1,5 +1,6 @@
 import warnings
 from dataclasses import dataclass, field
+from typing import Any
 
 import numpy as np
 from numpy.typing import NDArray
@@ -16,6 +17,8 @@ class Bitmask:
         A NumPy array of boolean values representing the mask.
     label : str
         The semantic label associated with the mask.
+    metadata : dict[str, Any], optional
+        A dictionary containing any metadata to be used within filtering operations.
 
     Examples
     --------
@@ -26,6 +29,7 @@ class Bitmask:
 
     mask: NDArray[np.bool_]
     label: str
+    metadata: dict[str, Any] | None = None
 
     def __post_init__(self):
         if self.mask.dtype != np.bool_:
@@ -51,6 +55,8 @@ class Segmentation:
         The shape of the segmentation masks. This is set automatically after initialization.
     size : int, optional
         The total number of pixels in the masks. This is set automatically after initialization.
+    metadata : dict[str, Any], optional
+        A dictionary containing any metadata to be used within filtering operations.
 
     Examples
     --------
@@ -71,6 +77,7 @@ class Segmentation:
     predictions: list[Bitmask]
     shape: tuple[int, ...]
     size: int = field(default=0)
+    metadata: dict[str, Any] | None = None
 
     def __post_init__(self):
 

@@ -1,7 +1,47 @@
+from pathlib import Path
+
 import numpy as np
+import pyarrow as pa
 import pytest
 
-from valor_lite.semantic_segmentation import Bitmask, Segmentation
+from valor_lite.semantic_segmentation import Bitmask, Loader, Segmentation
+
+
+@pytest.fixture(
+    params=[
+        ("persistent", 10_000, 100_000),
+        ("persistent", 1, 1),
+        ("memory", 10_000, 0),
+        ("memory", 1, 0),
+    ],
+    ids=[
+        "persistent_large_chunks",
+        "persistent_small_chunks",
+        "in-memory_large_chunks",
+        "in-memory_small_chunks",
+    ],
+)
+def loader(request, tmp_path: Path):
+    file_type, batch_size, rows_per_file = request.param
+    match file_type:
+        case "memory":
+            return Loader.in_memory(
+                batch_size=batch_size,
+                metadata_fields=[
+                    ("gt_xmin", "float64"),
+                    ("pd_xmin", pa.float64()),
+                ],
+            )
+        case "persistent":
+            return Loader.persistent(
+                path=tmp_path / "cache",
+                batch_size=batch_size,
+                rows_per_file=rows_per_file,
+                metadata_fields=[
+                    ("gt_xmin", "float64"),
+                    ("pd_xmin", pa.float64()),
+                ],
+            )
 
 
 def _generate_boolean_mask(
@@ -18,6 +58,10 @@ def _generate_boolean_mask(
     return Bitmask(
         mask=mask,
         label=label,
+        metadata={
+            "gt_xmin": xmin,
+            "pd_xmin": xmin,
+        },
     )
 
 
