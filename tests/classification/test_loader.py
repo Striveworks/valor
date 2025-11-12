@@ -43,3 +43,44 @@ def test_evaluator_deletion(
     assert tmp_path.exists()
     assert generate_cache_path(tmp_path).exists()
     assert generate_metadata_path(tmp_path).exists()
+
+
+def test_add_data_metadata_handling(loader: Loader):
+    loader.add_data(
+        classifications=[
+            Classification(
+                uid="0",
+                metadata={"datum_uid": "a"},
+                groundtruth="dog",
+                predictions=["dog"],
+                scores=[1.0],
+            ),
+            Classification(
+                uid="1",
+                metadata={"datum_uid": "b"},
+                groundtruth="dog",
+                predictions=["dog"],
+                scores=[1.0],
+            ),
+        ]
+    )
+    loader._writer.flush()
+    reader = loader._writer.to_reader()
+
+    datum_uids = set()
+    for tbl in reader.iterate_tables():
+        assert set(tbl.column_names) == {
+            "datum_id",
+            "datum_uid",
+            "gt_label",
+            "gt_label_id",
+            "match",
+            "pd_label",
+            "pd_label_id",
+            "pd_score",
+            "pd_winner",
+            "test",
+        }
+        for uid in tbl["datum_uid"].to_pylist():
+            datum_uids.add(uid)
+    assert datum_uids == {"0", "1"}
