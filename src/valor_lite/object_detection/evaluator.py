@@ -376,8 +376,9 @@ class Evaluator:
             mask_valid_gt &= mask_valid
             mask_valid_pd &= mask_valid
 
-            pairs[np.ix_(~mask_valid_gt, (1, 3))] = -1.0  # type: ignore - numpy ix_
-            pairs[np.ix_(~mask_valid_pd, (2, 4, 6))] = -1.0  # type: ignore - numpy ix_
+            # np.ix_ officially supports boolean masks, but type stubs are overly restrictive
+            pairs[np.ix_(~mask_valid_gt, (1, 3))] = -1.0  # type: ignore[reportArgumentType]
+            pairs[np.ix_(~mask_valid_pd, (2, 4, 6))] = -1.0  # type: ignore[reportArgumentType]
             pairs[~mask_valid_pd | ~mask_valid_gt, 5] = 0.0
 
             for idx, col in enumerate(columns):
