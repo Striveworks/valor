@@ -57,7 +57,7 @@ class Builder:
         writer: MemoryCacheWriter | FileCacheWriter,
         roc_curve_writer: MemoryCacheWriter | FileCacheWriter,
         intermediate_writer: MemoryCacheWriter | FileCacheWriter,
-        metadata_fields: list[tuple[str, pa.DataType]] | None = None,
+        metadata_fields: list[tuple[str, str | pa.DataType]] | None = None,
     ):
         self._writer = writer
         self._roc_curve_writer = roc_curve_writer
@@ -68,7 +68,7 @@ class Builder:
     def in_memory(
         cls,
         batch_size: int = 10_000,
-        metadata_fields: list[tuple[str, pa.DataType]] | None = None,
+        metadata_fields: list[tuple[str, str | pa.DataType]] | None = None,
     ):
         """
         Create an in-memory evaluator cache.
@@ -77,7 +77,7 @@ class Builder:
         ----------
         batch_size : int, default=10_000
             The target number of rows to buffer before writing to the cache. Defaults to 10_000.
-        metadata_fields : list[tuple[str, pa.DataType]], optional
+        metadata_fields : list[tuple[str, str | pa.DataType]], optional
             Optional metadata field definitions.
         """
         writer = MemoryCacheWriter.create(
@@ -106,7 +106,7 @@ class Builder:
         batch_size: int = 10_000,
         rows_per_file: int = 100_000,
         compression: str = "snappy",
-        metadata_fields: list[tuple[str, pa.DataType]] | None = None,
+        metadata_fields: list[tuple[str, str | pa.DataType]] | None = None,
     ):
         """
         Create a persistent file-based evaluator cache.
@@ -121,7 +121,7 @@ class Builder:
             Sets the maximum number of rows per file. This may be exceeded as files are datum aligned.
         compression : str, default="snappy"
             Sets the pyarrow compression method.
-        metadata_fields : list[tuple[str, pa.DataType]], optional
+        metadata_fields : list[tuple[str, str | pa.DataType]], optional
             Optionally sets metadata description for use in filtering.
         """
         path = Path(path)

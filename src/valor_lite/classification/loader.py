@@ -14,7 +14,7 @@ class Loader(Builder):
         writer: MemoryCacheWriter | FileCacheWriter,
         roc_curve_writer: MemoryCacheWriter | FileCacheWriter,
         intermediate_writer: MemoryCacheWriter | FileCacheWriter,
-        metadata_fields: list[tuple[str, pa.DataType]] | None = None,
+        metadata_fields: list[tuple[str, str | pa.DataType]] | None = None,
     ):
         super().__init__(
             writer=writer,
