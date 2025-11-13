@@ -11,6 +11,7 @@ from valor_lite.object_detection.annotation import (
     Polygon,
 )
 from valor_lite.object_detection.computation import (
+    EPSILON,
     compute_bbox_iou,
     compute_bitmask_iou,
     compute_polygon_iou,
@@ -23,7 +24,7 @@ class Loader(Builder):
         self,
         detailed_writer: MemoryCacheWriter | FileCacheWriter,
         ranked_writer: MemoryCacheWriter | FileCacheWriter,
-        metadata_fields: list[tuple[str, pa.DataType]] | None = None,
+        metadata_fields: list[tuple[str, str | pa.DataType]] | None = None,
     ):
         super().__init__(
             detailed_writer=detailed_writer,
@@ -66,7 +67,7 @@ class Loader(Builder):
                     glabel = gann.labels[0]
                     glabel_idx = self._add_label(gann.labels[0])
                     gann_metadata = gann.metadata if gann.metadata else {}
-                    if (ious[:, gidx] < 1e-9).all():
+                    if (ious[:, gidx] < EPSILON).all():
                         pairs.append(
                             {
                                 # metadata
@@ -93,7 +94,7 @@ class Loader(Builder):
                     for pidx, pann in enumerate(detection.predictions):
                         pann_id = self._prediction_count + pidx
                         pann_metadata = pann.metadata if pann.metadata else {}
-                        if (ious[pidx, :] < 1e-9).all():
+                        if (ious[pidx, :] < EPSILON).all():
                             pairs.extend(
                                 [
                                     {
@@ -122,7 +123,7 @@ class Loader(Builder):
                                     )
                                 ]
                             )
-                        if ious[pidx, gidx] >= 1e-9:
+                        if ious[pidx, gidx] >= EPSILON:
                             pairs.extend(
                                 [
                                     {
@@ -188,7 +189,6 @@ class Loader(Builder):
             self._groundtruth_count += len(detection.groundtruths)
             self._prediction_count += len(detection.predictions)
 
-            pairs = sorted(pairs, key=lambda x: (-x["pd_score"], -x["iou"]))
             self._detailed_writer.write_rows(pairs)
 
     def add_bounding_boxes(

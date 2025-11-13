@@ -16,7 +16,7 @@ class EvaluatorInfo:
     number_of_prediction_annotations: int = 0
     number_of_labels: int = 0
     number_of_rows: int = 0
-    metadata_fields: list[tuple[str, pa.DataType]] | None = None
+    metadata_fields: list[tuple[str, str | pa.DataType]] | None = None
 
 
 def generate_detailed_cache_path(path: str | Path) -> Path:
@@ -36,7 +36,7 @@ def generate_metadata_path(path: str | Path) -> Path:
 
 
 def generate_detailed_schema(
-    metadata_fields: list[tuple[str, pa.DataType]] | None
+    metadata_fields: list[tuple[str, str | pa.DataType]] | None
 ) -> pa.Schema:
     metadata_fields = metadata_fields if metadata_fields else []
     reserved_fields = [
@@ -88,7 +88,7 @@ def generate_ranked_schema() -> pa.Schema:
 
 
 def encode_metadata_fields(
-    metadata_fields: list[tuple[str, pa.DataType]] | None
+    metadata_fields: list[tuple[str, str | pa.DataType]] | None
 ) -> dict[str, str]:
     metadata_fields = metadata_fields if metadata_fields else []
     return {k: str(v) for k, v in metadata_fields}
@@ -96,7 +96,7 @@ def encode_metadata_fields(
 
 def decode_metadata_fields(
     encoded_metadata_fields: dict[str, str]
-) -> list[tuple[str, pa.DataType]]:
+) -> list[tuple[str, str]]:
     return [(k, v) for k, v in encoded_metadata_fields.items()]
 
 

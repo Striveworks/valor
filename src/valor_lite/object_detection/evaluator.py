@@ -50,7 +50,7 @@ class Builder:
         self,
         detailed_writer: MemoryCacheWriter | FileCacheWriter,
         ranked_writer: MemoryCacheWriter | FileCacheWriter,
-        metadata_fields: list[tuple[str, pa.DataType]] | None = None,
+        metadata_fields: list[tuple[str, str | pa.DataType]] | None = None,
     ):
         self._detailed_writer = detailed_writer
         self._ranked_writer = ranked_writer
@@ -60,7 +60,7 @@ class Builder:
     def in_memory(
         cls,
         batch_size: int = 10_000,
-        metadata_fields: list[tuple[str, pa.DataType]] | None = None,
+        metadata_fields: list[tuple[str, str | pa.DataType]] | None = None,
     ):
         """
         Create an in-memory evaluator cache.
@@ -69,7 +69,7 @@ class Builder:
         ----------
         batch_size : int, default=10_000
             The target number of rows to buffer before writing to the cache. Defaults to 10_000.
-        metadata_fields : list[tuple[str, pa.DataType]], optional
+        metadata_fields : list[tuple[str, str | pa.DataType]], optional
             Optional datum metadata field definitions.
         """
         # create cache
@@ -95,7 +95,7 @@ class Builder:
         batch_size: int = 10_000,
         rows_per_file: int = 100_000,
         compression: str = "snappy",
-        metadata_fields: list[tuple[str, pa.DataType]] | None = None,
+        metadata_fields: list[tuple[str, str | pa.DataType]] | None = None,
     ):
         """
         Create a persistent file-based evaluator cache.
@@ -110,7 +110,7 @@ class Builder:
             The target number of rows to store per cache file. Defaults to 100_000.
         compression : str, default="snappy"
             The compression methods used when writing cache files.
-        metadata_fields : list[tuple[str, pa.DataType]], optional
+        metadata_fields : list[tuple[str, str | pa.DataType]], optional
             Optional metadata field definitions.
         """
         path = Path(path)
@@ -189,6 +189,12 @@ class Builder:
         if self._detailed_writer.count_rows() == 0:
             raise EmptyCacheError()
 
+        self._detailed_writer.sort_by(
+            [
+                ("pd_score", "descending"),
+                ("iou", "descending"),
+            ]
+        )
         detailed_reader = self._detailed_writer.to_reader()
 
         # build evaluator meta

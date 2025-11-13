@@ -5,6 +5,8 @@ import pyarrow as pa
 import shapely
 from numpy.typing import NDArray
 
+EPSILON = 1e-9
+
 
 def compute_bbox_iou(data: NDArray[np.float64]) -> NDArray[np.float64]:
     """
@@ -71,7 +73,7 @@ def compute_bbox_iou(data: NDArray[np.float64]) -> NDArray[np.float64]:
     np.divide(
         intersection_area,
         union_area,
-        where=union_area >= 1e-9,
+        where=union_area >= EPSILON,
         out=ious,
     )
     return ious
@@ -118,7 +120,7 @@ def compute_bitmask_iou(data: NDArray[np.bool_]) -> NDArray[np.float64]:
     np.divide(
         intersection_,
         union_,
-        where=union_ >= 1e-9,
+        where=union_ >= EPSILON,
         out=ious,
     )
     return ious
@@ -168,7 +170,7 @@ def compute_polygon_iou(
     np.divide(
         intersection_areas,
         union_areas,
-        where=union_areas >= 1e-9,
+        where=union_areas >= EPSILON,
         out=ious,
     )
     return ious
@@ -368,7 +370,7 @@ def compute_counts(
     running_tp_count = np.zeros_like(running_total_count)
     running_gt_count = number_of_groundtruths_per_label[pd_labels]
 
-    mask_score_nonzero = scores > 1e-9
+    mask_score_nonzero = scores > EPSILON
     mask_gt_exists = gt_ids >= 0.0
     mask_labels_match = np.isclose(gt_labels, pd_labels)
 
@@ -513,7 +515,7 @@ def compute_precision_recall_f1(
     np.divide(
         2 * np.multiply(p, r),
         (p + r),
-        where=(p + r) > 1e-9,
+        where=(p + r) > EPSILON,
         out=prec_rec_f1[:, :, 2, :],
     )
     return prec_rec_f1
@@ -691,8 +693,8 @@ def compute_pair_classifications(
     mask_gt_exists = gt_ids > -0.5
     mask_pd_exists = pd_ids > -0.5
     mask_label_match = np.isclose(gt_labels, pd_labels)
-    mask_score_nonzero = scores > 1e-9
-    mask_iou_nonzero = ious > 1e-9
+    mask_score_nonzero = scores > EPSILON
+    mask_iou_nonzero = ious > EPSILON
 
     mask_gt_pd_exists = mask_gt_exists & mask_pd_exists
     mask_gt_pd_match = mask_gt_pd_exists & mask_label_match
