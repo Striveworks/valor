@@ -376,9 +376,11 @@ class Evaluator:
             mask_valid_gt &= mask_valid
             mask_valid_pd &= mask_valid
 
-            # np.ix_ officially supports boolean masks, but type stubs are overly restrictive
+            # filter out invalid gt_id, gt_label_id by setting to -1.0
             pairs[np.ix_(~mask_valid_gt, (1, 3))] = -1.0  # type: ignore[reportArgumentType]
+            # filter out invalid pd_id, pd_label_id, pd_score by setting to -1.0
             pairs[np.ix_(~mask_valid_pd, (2, 4, 6))] = -1.0  # type: ignore[reportArgumentType]
+            # filter out invalid iou by setting to 0.0
             pairs[~mask_valid_pd | ~mask_valid_gt, 5] = 0.0
 
             for idx, col in enumerate(columns):
