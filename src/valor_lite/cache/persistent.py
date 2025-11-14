@@ -420,19 +420,13 @@ class FileCacheWriter(FileCache):
             size += sum([b.num_rows for b in self._buffer])
 
         # check size
-        if size < self._batch_size and self._count < self._rows_per_file:
+        if size < self.batch_size and self._count < self.rows_per_file:
             self._buffer.append(batch)
             return
 
         if self._buffer:
             self._buffer.append(batch)
-            combined_arrays = [
-                pa.concat_arrays([b.column(name) for b in self._buffer])
-                for name in self._schema.names
-            ]
-            batch = pa.RecordBatch.from_arrays(
-                combined_arrays, schema=self._schema
-            )
+            batch = pa.concat_batches(self._buffer)
             self._buffer = []
 
         # write batch
@@ -441,7 +435,7 @@ class FileCacheWriter(FileCache):
 
         # check file size
         self._count += size
-        if self._count >= self._rows_per_file:
+        if self._count >= self.rows_per_file:
             self.flush()
 
     def write_table(
