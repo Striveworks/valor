@@ -1,5 +1,6 @@
 import json
 import os
+import shutil
 from dataclasses import dataclass
 from datetime import datetime
 from enum import Enum
@@ -9,7 +10,8 @@ from time import time
 import requests
 from tqdm import tqdm
 
-from valor_lite.object_detection import BoundingBox, DataLoader, Detection
+from valor_lite.object_detection import BoundingBox, Detection
+from valor_lite.object_detection.loader import Loader
 
 
 def _get_bbox_extrema(
@@ -156,7 +158,7 @@ def write_results_to_file(write_path: Path, results: list[dict]):
 
 @time_it
 def ingest(
-    manager: DataLoader,
+    loader: Loader,
     gt_path: Path,
     pd_path: Path,
     limit: int,
@@ -184,12 +186,12 @@ def ingest(
                 elif len(detections) < chunk_size or chunk_size == -1:
                     continue
 
-                timer, _ = time_it(manager.add_bounding_boxes)(detections)
+                timer, _ = time_it(loader.add_bounding_boxes)(detections)
                 accumulated_time += timer
                 detections = []
 
             if detections:
-                timer, _ = time_it(manager.add_bounding_boxes)(detections)
+                timer, _ = time_it(loader.add_bounding_boxes)(detections)
                 accumulated_time += timer
 
     return accumulated_time
@@ -297,18 +299,27 @@ def run_benchmarking_analysis(
             pd_filename = prediction_caches[pd_type]
 
             # === Base Evaluation ===
-            manager = DataLoader()
+            path = Path(".valor/benchmark_objdet")
+            if path.exists():
+                shutil.rmtree(path)
+            loader = Loader.persistent(
+                path=path,
+                batch_size=1_000,
+                rows_per_file=10_000,
+            )
 
             # ingest + preprocess
             (ingest_time, preprocessing_time,) = ingest(
-                manager=manager,
+                loader=loader,
                 gt_path=current_directory / Path(gt_filename),
                 pd_path=current_directory / Path(pd_filename),
                 limit=limit,
                 chunk_size=chunk_size,
             )  # type: ignore - time_it wrapper
 
-            finalization_time, evaluator = time_it(manager.finalize)()
+            finalization_time, evaluator = time_it(loader.finalize)(
+                batch_size=1_000
+            )
 
             if ingest_time > ingestion_timeout and ingestion_timeout != -1:
                 raise TimeoutError(
@@ -322,7 +333,7 @@ def run_benchmarking_analysis(
             )
             if eval_time > evaluation_timeout and evaluation_timeout != -1:
                 raise TimeoutError(
-                    f"Base evaluation timed out with {evaluator.metadata.number_of_datums} datums."
+                    f"Base evaluation timed out with {evaluator.info.number_of_datums} datums."
                 )
 
             # evaluate - base metrics + detailed
@@ -337,16 +348,16 @@ def run_benchmarking_analysis(
                 and evaluation_timeout != -1
             ):
                 raise TimeoutError(
-                    f"Detailed evaluation timed out with {evaluator.metadata.number_of_datums} datums."
+                    f"Detailed evaluation timed out with {evaluator.info.number_of_datums} datums."
                 )
 
             results.append(
                 Benchmark(
                     limit=limit,
-                    n_datums=evaluator.metadata.number_of_datums,
-                    n_groundtruths=evaluator.metadata.number_of_ground_truths,
-                    n_predictions=evaluator.metadata.number_of_predictions,
-                    n_labels=evaluator.metadata.number_of_labels,
+                    n_datums=evaluator.info.number_of_datums,
+                    n_groundtruths=evaluator.info.number_of_groundtruth_annotations,
+                    n_predictions=evaluator.info.number_of_prediction_annotations,
+                    n_labels=evaluator.info.number_of_labels,
                     gt_type=gt_type,
                     pd_type=pd_type,
                     chunk_size=chunk_size,

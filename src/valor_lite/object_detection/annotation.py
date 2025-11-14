@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from typing import Generic, TypeVar
+from typing import Any, Generic, TypeVar
 
 import numpy as np
 from numpy.typing import NDArray
@@ -27,6 +27,8 @@ class BoundingBox:
         List of labels associated with the bounding box.
     scores : list of float, optional
         Confidence scores corresponding to each label. Defaults to an empty list.
+    metadata : dict[str, Any], optional
+        A dictionary containing any metadata to be used within filtering operations.
 
     Examples
     --------
@@ -50,6 +52,7 @@ class BoundingBox:
     ymax: float
     labels: list[str]
     scores: list[float] = field(default_factory=list)
+    metadata: dict[str, Any] | None = None
 
     def __post_init__(self):
         if len(self.scores) == 0 and len(self.labels) != 1:
@@ -89,6 +92,8 @@ class Polygon:
         List of labels associated with the polygon.
     scores : list of float, optional
         Confidence scores corresponding to each label. Defaults to an empty list.
+    metadata : dict[str, Any], optional
+        A dictionary containing any metadata to be used within filtering operations.
 
     Examples
     --------
@@ -109,6 +114,7 @@ class Polygon:
     shape: ShapelyPolygon
     labels: list[str]
     scores: list[float] = field(default_factory=list)
+    metadata: dict[str, Any] | None = None
 
     def __post_init__(self):
         if not isinstance(self.shape, ShapelyPolygon):
@@ -141,6 +147,8 @@ class Bitmask:
         List of labels associated with the mask.
     scores : list of float, optional
         Confidence scores corresponding to each label. Defaults to an empty list.
+    metadata : dict[str, Any], optional
+        A dictionary containing any metadata to be used within filtering operations.
 
     Examples
     --------
@@ -161,6 +169,7 @@ class Bitmask:
     mask: NDArray[np.bool_]
     labels: list[str]
     scores: list[float] = field(default_factory=list)
+    metadata: dict[str, Any] | None = None
 
     def __post_init__(self):
 
@@ -200,6 +209,8 @@ class Detection(Generic[AnnotationType]):
         List of ground truth annotations.
     predictions : list[BoundingBox] | list[Polygon] | list[Bitmask]
         List of predicted annotations.
+    metadata : dict[str, Any], optional
+        A dictionary containing any metadata to be used within filtering operations.
 
     Examples
     --------
@@ -217,6 +228,7 @@ class Detection(Generic[AnnotationType]):
     uid: str
     groundtruths: list[AnnotationType]
     predictions: list[AnnotationType]
+    metadata: dict[str, Any] | None = None
 
     def __post_init__(self):
         for prediction in self.predictions:

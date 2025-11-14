@@ -4,23 +4,22 @@ import numpy as np
 import pytest
 from shapely.geometry import Polygon as ShapelyPolygon
 
-from valor_lite.exceptions import EmptyEvaluatorError, InternalCacheError
+from valor_lite.exceptions import EmptyCacheError
 from valor_lite.object_detection import (
     Bitmask,
     BoundingBox,
-    DataLoader,
     Detection,
+    Loader,
     Polygon,
 )
 
 
-def test_no_data():
-    loader = DataLoader()
-    with pytest.raises(EmptyEvaluatorError):
+def test_no_data(loader: Loader):
+    with pytest.raises(EmptyCacheError):
         loader.finalize()
 
 
-def test_iou_computation():
+def test_iou_computation(loader: Loader):
 
     detection = Detection(
         uid="uid",
@@ -72,20 +71,21 @@ def test_iou_computation():
         ],
     )
 
-    loader = DataLoader()
     loader.add_bounding_boxes([detection])
     evaluator = loader.finalize()
 
-    assert evaluator._detailed_pairs.shape == (7, 7)
+    assert evaluator._detailed_reader.count_rows() == 7
 
     # show that three unique IOUs exist
-    unique_ious = np.unique(evaluator._detailed_pairs[:, 5])
-    assert np.isclose(
-        unique_ious, np.array([0.0, 0.12755102, 0.68067227])
-    ).all()
+    for tbl in evaluator._detailed_reader.iterate_tables():
+        unique_ious = np.unique(tbl["iou"].to_numpy())
+        assert np.isclose(
+            unique_ious, np.array([0.0, 0.12755102, 0.68067227])
+        ).all()
 
 
 def test_mixed_annotations(
+    loader: Loader,
     rect1: tuple[float, float, float, float],
     rect1_rotated_5_degrees_around_origin: tuple[float, float, float, float],
 ):
@@ -159,9 +159,6 @@ def test_mixed_annotations(
             ],
         ),
     ]
-
-    loader = DataLoader()
-
     for detection in mixed_detections:
         with pytest.raises(AttributeError) as e:
             loader.add_bounding_boxes([detection])
@@ -176,30 +173,86 @@ def test_mixed_annotations(
         assert "no attribute 'mask'" in str(e)
 
 
-def test_corrupted_cache():
+def test_add_data_metadata_handling(loader: Loader):
+    loader.add_bounding_boxes(
+        detections=[
+            Detection(
+                uid="0",
+                metadata={"datum_uid": "a"},
+                groundtruths=[
+                    BoundingBox(
+                        uid="0",
+                        xmin=0,
+                        xmax=10,
+                        ymin=0,
+                        ymax=10,
+                        labels=["dog"],
+                        metadata={"datum_uid": "b"},
+                    )
+                ],
+                predictions=[
+                    BoundingBox(
+                        uid="0",
+                        xmin=0,
+                        xmax=10,
+                        ymin=0,
+                        ymax=10,
+                        labels=["dog"],
+                        scores=[1.0],
+                        metadata={"datum_uid": "c"},
+                    )
+                ],
+            ),
+            Detection(
+                uid="1",
+                metadata={"datum_uid": "a"},
+                groundtruths=[
+                    BoundingBox(
+                        uid="0",
+                        xmin=0,
+                        xmax=10,
+                        ymin=0,
+                        ymax=10,
+                        labels=["dog"],
+                        metadata={"datum_uid": "b"},
+                    )
+                ],
+                predictions=[
+                    BoundingBox(
+                        uid="0",
+                        xmin=0,
+                        xmax=10,
+                        ymin=0,
+                        ymax=10,
+                        labels=["dog"],
+                        scores=[1.0],
+                        metadata={"datum_uid": "c"},
+                    )
+                ],
+            ),
+        ]
+    )
+    loader._detailed_writer.flush()
+    reader = loader._detailed_writer.to_reader()
 
-    loader = DataLoader()
-
-    # test datum cache size mismatch
-    loader._evaluator.datum_id_to_index = {"x": 0}
-    loader._evaluator.index_to_datum_id = []
-    with pytest.raises(InternalCacheError):
-        loader._add_datum(datum_id="a")
-
-    # test ground truth annotation cache size mismatch
-    loader._evaluator.groundtruth_id_to_index = {"x": 0}
-    loader._evaluator.index_to_groundtruth_id = []
-    with pytest.raises(InternalCacheError):
-        loader._add_groundtruth(annotation_id="a")
-
-    # test ground truth annotation cache size mismatch
-    loader._evaluator.prediction_id_to_index = {"x": 0}
-    loader._evaluator.index_to_prediction_id = []
-    with pytest.raises(InternalCacheError):
-        loader._add_prediction(annotation_id="a")
-
-    # test ground truth annotation cache size mismatch
-    loader._evaluator.label_to_index = {"x": 0}
-    loader._evaluator.index_to_label = []
-    with pytest.raises(InternalCacheError):
-        loader._add_label(label="a")
+    datum_uids = set()
+    for tbl in reader.iterate_tables():
+        assert set(tbl.column_names) == {
+            "datum_id",
+            "datum_uid",
+            "gt_id",
+            "gt_label",
+            "gt_label_id",
+            "gt_rect",
+            "gt_uid",
+            "iou",
+            "pd_id",
+            "pd_label",
+            "pd_label_id",
+            "pd_rect",
+            "pd_score",
+            "pd_uid",
+        }
+        for uid in tbl["datum_uid"].to_pylist():
+            datum_uids.add(uid)
+    assert datum_uids == {"0", "1"}

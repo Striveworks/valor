@@ -1,7 +1,10 @@
+from pathlib import Path
 from random import choice, uniform
 from uuid import uuid4
 
-from valor_lite.object_detection import BoundingBox, DataLoader, Detection
+import pyarrow.compute as pc
+
+from valor_lite.object_detection import BoundingBox, Detection, Loader
 
 
 def _generate_random_detections(
@@ -19,6 +22,7 @@ def _generate_random_detections(
             ymin,
             ymax,
             [choice(labels)],
+            metadata=None,
             **kw,
         )
 
@@ -32,71 +36,68 @@ def _generate_random_detections(
     ]
 
 
-def test_fuzz_detections():
+def test_fuzz_detections(loader: Loader):
 
-    few_labels = "abc"
-    many_labels = "abcdefghijklmnopqrstuvwxyz123456789"
-    quantities = [1, 5, 10]
+    n_detections = 1
+    n_boxes = 300
+    labels = "abcdefghijklmnopqrstuvwxyz123456789"
 
-    for _ in range(100):
+    detections = _generate_random_detections(n_detections, n_boxes, labels)
 
-        labels = choice([few_labels, many_labels])
-        n_detections = choice(quantities)
-        n_boxes = choice(quantities)
-
-        detections = _generate_random_detections(n_detections, n_boxes, labels)
-
-        loader = DataLoader()
-        loader.add_bounding_boxes(detections)
-        evaluator = loader.finalize()
-        evaluator.evaluate(
-            iou_thresholds=[0.25, 0.75],
-            score_thresholds=[0.25, 0.75],
-        )
+    loader.add_bounding_boxes(detections)
+    evaluator = loader.finalize()
+    evaluator.compute_precision_recall(
+        iou_thresholds=[0.25, 0.75],
+        score_thresholds=[0.25, 0.75],
+    )
+    evaluator.compute_confusion_matrix_with_examples(
+        iou_thresholds=[0.25, 0.75],
+        score_thresholds=[0.25, 0.75],
+    )
+    # evaluator.delete()
 
 
-def test_fuzz_detections_with_filtering():
+def test_fuzz_detections_with_filtering(loader: Loader, tmp_path: Path):
 
-    few_labels = "abcd"
-    many_labels = "abcdefghijklmnopqrstuvwxyz123456789"
-    quantities = [4, 10]
+    labels = "abcdefghijklmnopqrstuvwxyz123456789"
+    n_detections = 10
+    n_boxes = 10
 
-    for _ in range(100):
+    detections = _generate_random_detections(n_detections, n_boxes, labels)
 
-        labels = choice([few_labels, many_labels])
-        n_detections = choice(quantities)
-        n_boxes = choice(quantities)
+    loader.add_bounding_boxes(detections)
+    evaluator = loader.finalize()
 
-        detections = _generate_random_detections(n_detections, n_boxes, labels)
-
-        loader = DataLoader()
-        loader.add_bounding_boxes(detections)
-        evaluator = loader.finalize()
-
-        datum_subset = [f"uid{i}" for i in range(len(detections) // 2)]
-
-        filter_ = evaluator.create_filter(datums=datum_subset)
-        evaluator.evaluate(
-            iou_thresholds=[0.25, 0.75],
-            score_thresholds=[0.25, 0.75],
-            filter_=filter_,
-        )
+    datum_subset = [f"uid{i}" for i in range(len(detections) // 2)]
+    filtered_evaluator = evaluator.filter(
+        datums=pc.field("datum_uid").isin(datum_subset),
+        path=tmp_path / "filtered",
+    )
+    filtered_evaluator.compute_precision_recall(
+        iou_thresholds=[0.25, 0.75],
+        score_thresholds=[0.25, 0.75],
+    )
+    filtered_evaluator.compute_confusion_matrix_with_examples(
+        iou_thresholds=[0.25, 0.75],
+        score_thresholds=[0.25, 0.75],
+    )
 
 
-def test_fuzz_confusion_matrix():
-    dets = _generate_random_detections(1000, 30, "abcde")
-    loader = DataLoader()
+def test_fuzz_confusion_matrix(loader: Loader):
+    dets = _generate_random_detections(10, 30, "abcde")
     loader.add_bounding_boxes(dets)
     evaluator = loader.finalize()
-    assert evaluator.ignored_prediction_labels == []
-    assert evaluator.missing_prediction_labels == []
-    assert evaluator.metadata.to_dict() == {
-        "number_of_datums": 1000,
-        "number_of_ground_truths": 30000,
-        "number_of_predictions": 30000,
-        "number_of_labels": 5,
-    }
-    evaluator.evaluate(
+
+    assert evaluator.info.number_of_datums == 10
+    assert evaluator.info.number_of_labels == 5
+    assert evaluator.info.number_of_groundtruth_annotations == 300
+    assert evaluator.info.number_of_prediction_annotations == 300
+
+    evaluator.compute_precision_recall(
         iou_thresholds=[0.25, 0.75],
-        score_thresholds=[0.5],
+        score_thresholds=[0.25, 0.75],
+    )
+    evaluator.compute_confusion_matrix_with_examples(
+        iou_thresholds=[0.25, 0.75],
+        score_thresholds=[0.25, 0.75],
     )

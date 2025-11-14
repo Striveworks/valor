@@ -1,42 +1,24 @@
 from collections import defaultdict
 
 import numpy as np
+import pyarrow as pa
 from numpy.typing import NDArray
 
-from valor_lite.object_detection.computation import PairClassification
 from valor_lite.object_detection.metric import Metric, MetricType
 
 
 def unpack_precision_recall_into_metric_lists(
-    results: tuple[
-        tuple[
-            NDArray[np.float64],
-            NDArray[np.float64],
-        ],
-        tuple[
-            NDArray[np.float64],
-            NDArray[np.float64],
-        ],
-        NDArray[np.float64],
-        NDArray[np.float64],
-    ],
+    counts: NDArray[np.uint64],
+    precision_recall_f1: NDArray[np.float64],
+    average_precision: NDArray[np.float64],
+    mean_average_precision: NDArray[np.float64],
+    average_recall: NDArray[np.float64],
+    mean_average_recall: NDArray[np.float64],
+    pr_curve: NDArray[np.float64],
     iou_thresholds: list[float],
     score_thresholds: list[float],
-    index_to_label: list[str],
+    index_to_label: dict[int, str],
 ):
-    (
-        (
-            average_precision,
-            mean_average_precision,
-        ),
-        (
-            average_recall,
-            mean_average_recall,
-        ),
-        precision_recall,
-        pr_curves,
-    ) = results
-
     metrics = defaultdict(list)
 
     metrics[MetricType.AP] = [
@@ -46,7 +28,7 @@ def unpack_precision_recall_into_metric_lists(
             label=label,
         )
         for iou_idx, iou_threshold in enumerate(iou_thresholds)
-        for label_idx, label in enumerate(index_to_label)
+        for label_idx, label in index_to_label.items()
     ]
 
     metrics[MetricType.mAP] = [
@@ -64,7 +46,7 @@ def unpack_precision_recall_into_metric_lists(
             iou_thresholds=iou_thresholds,
             label=label,
         )
-        for label_idx, label in enumerate(index_to_label)
+        for label_idx, label in index_to_label.items()
     ]
 
     # TODO - (c.zaloom) will be removed in the future
@@ -83,7 +65,7 @@ def unpack_precision_recall_into_metric_lists(
             label=label,
         )
         for score_idx, score_threshold in enumerate(score_thresholds)
-        for label_idx, label in enumerate(index_to_label)
+        for label_idx, label in index_to_label.items()
     ]
 
     metrics[MetricType.mAR] = [
@@ -103,7 +85,7 @@ def unpack_precision_recall_into_metric_lists(
             iou_thresholds=iou_thresholds,
             label=label,
         )
-        for label_idx, label in enumerate(index_to_label)
+        for label_idx, label in index_to_label.items()
     ]
 
     # TODO - (c.zaloom) will be removed in the future
@@ -117,20 +99,20 @@ def unpack_precision_recall_into_metric_lists(
 
     metrics[MetricType.PrecisionRecallCurve] = [
         Metric.precision_recall_curve(
-            precisions=pr_curves[iou_idx, label_idx, :, 0].tolist(),  # type: ignore[reportArgumentType]
-            scores=pr_curves[iou_idx, label_idx, :, 1].tolist(),  # type: ignore[reportArgumentType]
+            precisions=pr_curve[iou_idx, label_idx, :, 0].tolist(),
+            scores=pr_curve[iou_idx, label_idx, :, 1].tolist(),
             iou_threshold=iou_threshold,
             label=label,
         )
         for iou_idx, iou_threshold in enumerate(iou_thresholds)
-        for label_idx, label in enumerate(index_to_label)
+        for label_idx, label in index_to_label.items()
     ]
 
-    for label_idx, label in enumerate(index_to_label):
+    for label_idx, label in index_to_label.items():
         for score_idx, score_threshold in enumerate(score_thresholds):
             for iou_idx, iou_threshold in enumerate(iou_thresholds):
 
-                row = precision_recall[iou_idx, score_idx, label_idx, :]
+                row = counts[iou_idx, score_idx, :, label_idx]
                 kwargs = {
                     "label": label,
                     "iou_threshold": iou_threshold,
@@ -145,21 +127,22 @@ def unpack_precision_recall_into_metric_lists(
                     )
                 )
 
+                row = precision_recall_f1[iou_idx, score_idx, :, label_idx]
                 metrics[MetricType.Precision].append(
                     Metric.precision(
-                        value=float(row[3]),
+                        value=float(row[0]),
                         **kwargs,
                     )
                 )
                 metrics[MetricType.Recall].append(
                     Metric.recall(
-                        value=float(row[4]),
+                        value=float(row[1]),
                         **kwargs,
                     )
                 )
                 metrics[MetricType.F1].append(
                     Metric.f1_score(
-                        value=float(row[5]),
+                        value=float(row[2]),
                         **kwargs,
                     )
                 )
@@ -167,40 +150,153 @@ def unpack_precision_recall_into_metric_lists(
     return metrics
 
 
-def _create_empty_confusion_matrix(index_to_labels: list[str]):
-    unmatched_ground_truths = dict()
+def unpack_confusion_matrix(
+    confusion_matrices: NDArray[np.uint64],
+    unmatched_groundtruths: NDArray[np.uint64],
+    unmatched_predictions: NDArray[np.uint64],
+    index_to_label: dict[int, str],
+    iou_thresholds: list[float],
+    score_thresholds: list[float],
+) -> list[Metric]:
+    metrics = []
+    for iou_idx, iou_thresh in enumerate(iou_thresholds):
+        for score_idx, score_thresh in enumerate(score_thresholds):
+            cm_dict = {}
+            ugt_dict = {}
+            upd_dict = {}
+            for idx, label in index_to_label.items():
+                ugt_dict[label] = int(
+                    unmatched_groundtruths[iou_idx, score_idx, idx]
+                )
+                upd_dict[label] = int(
+                    unmatched_predictions[iou_idx, score_idx, idx]
+                )
+                for pidx, plabel in index_to_label.items():
+                    if label not in cm_dict:
+                        cm_dict[label] = {}
+                    cm_dict[label][plabel] = int(
+                        confusion_matrices[iou_idx, score_idx, idx, pidx]
+                    )
+            metrics.append(
+                Metric.confusion_matrix(
+                    confusion_matrix=cm_dict,
+                    unmatched_ground_truths=ugt_dict,
+                    unmatched_predictions=upd_dict,
+                    iou_threshold=iou_thresh,
+                    score_threshold=score_thresh,
+                )
+            )
+    return metrics
+
+
+def create_mapping(
+    tbl: pa.Table,
+    pairs: NDArray[np.float64],
+    index: int,
+    id_col: str,
+    uid_col: str,
+) -> dict[int, str]:
+    col = pairs[:, index].astype(np.int64)
+    values, indices = np.unique(col, return_index=True)
+    indices = indices[values >= 0]
+    return {
+        tbl[id_col][idx].as_py(): tbl[uid_col][idx].as_py() for idx in indices
+    }
+
+
+def unpack_examples(
+    detailed_pairs: NDArray[np.float64],
+    mask_tp: NDArray[np.bool_],
+    mask_fn: NDArray[np.bool_],
+    mask_fp: NDArray[np.bool_],
+    iou_thresholds: list[float],
+    score_thresholds: list[float],
+    index_to_datum_id: dict[int, str],
+    index_to_groundtruth_id: dict[int, str],
+    index_to_prediction_id: dict[int, str],
+) -> list[Metric]:
+    metrics = []
+    ids = detailed_pairs[:, :5].astype(np.int64)
+    unique_datums = np.unique(detailed_pairs[:, 0].astype(np.int64))
+    for datum_index in unique_datums:
+        mask_datum = detailed_pairs[:, 0] == datum_index
+        mask_datum_tp = mask_tp & mask_datum
+        mask_datum_fp = mask_fp & mask_datum
+        mask_datum_fn = mask_fn & mask_datum
+
+        datum_id = index_to_datum_id[datum_index]
+        for iou_idx, iou_thresh in enumerate(iou_thresholds):
+            for score_idx, score_thresh in enumerate(score_thresholds):
+
+                unique_tp = np.unique(
+                    ids[np.ix_(mask_datum_tp[iou_idx, score_idx], (0, 1, 2, 3, 4))], axis=0  # type: ignore - numpy ix_ typing
+                )
+                unique_fp = np.unique(
+                    ids[np.ix_(mask_datum_fp[iou_idx, score_idx], (0, 2, 4))], axis=0  # type: ignore - numpy ix_ typing
+                )
+                unique_fn = np.unique(
+                    ids[np.ix_(mask_datum_fn[iou_idx, score_idx], (0, 1, 3))], axis=0  # type: ignore - numpy ix_ typing
+                )
+
+                tp = [
+                    (
+                        index_to_groundtruth_id[row[1]],
+                        index_to_prediction_id[row[2]],
+                    )
+                    for row in unique_tp
+                ]
+                fp = [index_to_prediction_id[row[1]] for row in unique_fp]
+                fn = [index_to_groundtruth_id[row[1]] for row in unique_fn]
+                metrics.append(
+                    Metric.examples(
+                        datum_id=datum_id,
+                        true_positives=tp,
+                        false_negatives=fn,
+                        false_positives=fp,
+                        iou_threshold=iou_thresh,
+                        score_threshold=score_thresh,
+                    )
+                )
+    return metrics
+
+
+def create_empty_confusion_matrix_with_examples(
+    iou_threhsold: float,
+    score_threshold: float,
+    index_to_label: dict[int, str],
+) -> Metric:
+    unmatched_groundtruths = dict()
     unmatched_predictions = dict()
     confusion_matrix = dict()
-    for label in index_to_labels:
-        unmatched_ground_truths[label] = {"count": 0, "examples": []}
+    for label in index_to_label.values():
+        unmatched_groundtruths[label] = {"count": 0, "examples": []}
         unmatched_predictions[label] = {"count": 0, "examples": []}
         confusion_matrix[label] = {}
-        for plabel in index_to_labels:
+        for plabel in index_to_label.values():
             confusion_matrix[label][plabel] = {"count": 0, "examples": []}
-    return (
-        confusion_matrix,
-        unmatched_predictions,
-        unmatched_ground_truths,
+
+    return Metric.confusion_matrix_with_examples(
+        confusion_matrix=confusion_matrix,
+        unmatched_ground_truths=unmatched_groundtruths,
+        unmatched_predictions=unmatched_predictions,
+        iou_threshold=iou_threhsold,
+        score_threshold=score_threshold,
     )
 
 
-def _unpack_confusion_matrix(
+def _unpack_confusion_matrix_with_examples(
+    metric: Metric,
     ids: NDArray[np.int32],
     mask_matched: NDArray[np.bool_],
     mask_fp_unmatched: NDArray[np.bool_],
     mask_fn_unmatched: NDArray[np.bool_],
-    index_to_datum_id: list[str],
-    index_to_groundtruth_id: list[str],
-    index_to_prediction_id: list[str],
-    index_to_label: list[str],
-    iou_threhsold: float,
-    score_threshold: float,
+    index_to_datum_id: dict[int, str],
+    index_to_groundtruth_id: dict[int, str],
+    index_to_prediction_id: dict[int, str],
+    index_to_label: dict[int, str],
 ):
-    (
-        confusion_matrix,
-        unmatched_predictions,
-        unmatched_ground_truths,
-    ) = _create_empty_confusion_matrix(index_to_label)
+    if not isinstance(metric.value, dict):
+        raise TypeError("expected metric to contain a dictionary value")
 
     unique_matches = np.unique(
         ids[np.ix_(mask_matched, (0, 1, 2, 3, 4))], axis=0  # type: ignore - numpy ix_ typing
@@ -220,8 +316,8 @@ def _unpack_confusion_matrix(
     for idx in range(n_max):
         if idx < n_unmatched_groundtruths:
             label = index_to_label[unique_unmatched_groundtruths[idx, 2]]
-            unmatched_ground_truths[label]["count"] += 1
-            unmatched_ground_truths[label]["examples"].append(
+            metric.value["unmatched_ground_truths"][label]["count"] += 1
+            metric.value["unmatched_ground_truths"][label]["examples"].append(
                 {
                     "datum_id": index_to_datum_id[
                         unique_unmatched_groundtruths[idx, 0]
@@ -232,9 +328,10 @@ def _unpack_confusion_matrix(
                 }
             )
         if idx < n_unmatched_predictions:
-            label = index_to_label[unique_unmatched_predictions[idx, 2]]
-            unmatched_predictions[label]["count"] += 1
-            unmatched_predictions[label]["examples"].append(
+            label_id = unique_unmatched_predictions[idx, 2]
+            label = index_to_label[label_id]
+            metric.value["unmatched_predictions"][label]["count"] += 1
+            metric.value["unmatched_predictions"][label]["examples"].append(
                 {
                     "datum_id": index_to_datum_id[
                         unique_unmatched_predictions[idx, 0]
@@ -247,8 +344,10 @@ def _unpack_confusion_matrix(
         if idx < n_matched:
             glabel = index_to_label[unique_matches[idx, 3]]
             plabel = index_to_label[unique_matches[idx, 4]]
-            confusion_matrix[glabel][plabel]["count"] += 1
-            confusion_matrix[glabel][plabel]["examples"].append(
+            metric.value["confusion_matrix"][glabel][plabel]["count"] += 1
+            metric.value["confusion_matrix"][glabel][plabel][
+                "examples"
+            ].append(
                 {
                     "datum_id": index_to_datum_id[unique_matches[idx, 0]],
                     "ground_truth_id": index_to_groundtruth_id[
@@ -260,43 +359,29 @@ def _unpack_confusion_matrix(
                 }
             )
 
-    return Metric.confusion_matrix(
-        confusion_matrix=confusion_matrix,
-        unmatched_ground_truths=unmatched_ground_truths,
-        unmatched_predictions=unmatched_predictions,
-        iou_threshold=iou_threhsold,
-        score_threshold=score_threshold,
-    )
+    return metric
 
 
-def unpack_confusion_matrix_into_metric_list(
-    results: NDArray[np.uint8],
+def unpack_confusion_matrix_with_examples(
+    metrics: dict[int, dict[int, Metric]],
     detailed_pairs: NDArray[np.float64],
-    iou_thresholds: list[float],
-    score_thresholds: list[float],
-    index_to_datum_id: list[str],
-    index_to_groundtruth_id: list[str],
-    index_to_prediction_id: list[str],
-    index_to_label: list[str],
+    mask_tp: NDArray[np.bool_],
+    mask_fp_fn_misclf: NDArray[np.bool_],
+    mask_fp_unmatched: NDArray[np.bool_],
+    mask_fn_unmatched: NDArray[np.bool_],
+    index_to_datum_id: dict[int, str],
+    index_to_groundtruth_id: dict[int, str],
+    index_to_prediction_id: dict[int, str],
+    index_to_label: dict[int, str],
 ) -> list[Metric]:
 
     ids = detailed_pairs[:, :5].astype(np.int32)
 
-    mask_matched = (
-        np.bitwise_and(
-            results, PairClassification.TP | PairClassification.FP_FN_MISCLF
-        )
-        > 0
-    )
-    mask_fp_unmatched = (
-        np.bitwise_and(results, PairClassification.FP_UNMATCHED) > 0
-    )
-    mask_fn_unmatched = (
-        np.bitwise_and(results, PairClassification.FN_UNMATCHED) > 0
-    )
+    mask_matched = mask_tp | mask_fp_fn_misclf
 
     return [
-        _unpack_confusion_matrix(
+        _unpack_confusion_matrix_with_examples(
+            metric=metric,
             ids=ids,
             mask_matched=mask_matched[iou_idx, score_idx],
             mask_fp_unmatched=mask_fp_unmatched[iou_idx, score_idx],
@@ -305,10 +390,7 @@ def unpack_confusion_matrix_into_metric_list(
             index_to_groundtruth_id=index_to_groundtruth_id,
             index_to_prediction_id=index_to_prediction_id,
             index_to_label=index_to_label,
-            iou_threhsold=iou_threshold,
-            score_threshold=score_threshold,
         )
-        for iou_idx, iou_threshold in enumerate(iou_thresholds)
-        for score_idx, score_threshold in enumerate(score_thresholds)
-        if (results[iou_idx, score_idx] != -1).any()
+        for iou_idx, inner in metrics.items()
+        for score_idx, metric in inner.items()
     ]
