@@ -58,7 +58,9 @@ def _merge(
             heapq.heappush(heap, create_sort_key(batches, batch_idx, 0))
 
     while heap:
-        _, _, batch_idx, row_idx = heapq.heappop(heap)
+        row = heapq.heappop(heap)
+        batch_idx = row[-2]
+        row_idx = row[-1]
         row_table = batches[batch_idx].slice(row_idx, 1)
         sink.write_batch(row_table)
         row_idx += 1

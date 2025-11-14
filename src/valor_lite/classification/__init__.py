@@ -1,19 +1,14 @@
 from .annotation import Classification
-from .computation import (
-    compute_confusion_matrix,
-    compute_precision_recall_rocauc,
-)
-from .manager import DataLoader, Evaluator, Filter, Metadata
+from .evaluator import Evaluator
+from .loader import Loader
 from .metric import Metric, MetricType
+from .shared import EvaluatorInfo
 
 __all__ = [
     "Classification",
-    "compute_precision_recall_rocauc",
-    "compute_confusion_matrix",
     "MetricType",
-    "DataLoader",
+    "Loader",
     "Evaluator",
     "Metric",
-    "Metadata",
-    "Filter",
+    "EvaluatorInfo",
 ]
