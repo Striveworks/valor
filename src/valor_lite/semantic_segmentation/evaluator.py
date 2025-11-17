@@ -139,7 +139,6 @@ class Builder:
         # build evaluator meta
         (
             index_to_label,
-            confusion_matrix,
             info,
         ) = generate_meta(reader, index_to_label_override)
         info.metadata_fields = self._metadata_fields
@@ -148,7 +147,6 @@ class Builder:
             reader=reader,
             info=info,
             index_to_label=index_to_label,
-            confusion_matrix=confusion_matrix,
         )
 
 
@@ -158,12 +156,10 @@ class Evaluator:
         reader: MemoryCacheReader | FileCacheReader,
         info: EvaluatorInfo,
         index_to_label: dict[int, str],
-        confusion_matrix: NDArray[np.uint64],
     ):
         self._reader = reader
         self._info = info
         self._index_to_label = index_to_label
-        self._confusion_matrix = confusion_matrix
 
     @property
     def info(self) -> EvaluatorInfo:
@@ -200,7 +196,6 @@ class Evaluator:
         # build evaluator meta
         (
             index_to_label,
-            confusion_matrix,
             info,
         ) = generate_meta(reader, index_to_label_override)
 
@@ -214,7 +209,6 @@ class Evaluator:
             reader=reader,
             info=info,
             index_to_label=index_to_label,
-            confusion_matrix=confusion_matrix,
         )
 
     def filter(
@@ -316,16 +310,80 @@ class Evaluator:
 
         return builder.finalize(index_to_label_override=self._index_to_label)
 
-    def compute_precision_recall_iou(self) -> dict[MetricType, list]:
+    def _compute_confusion_matrix_intermediate(
+        self, datums: pc.Expression | None = None
+    ) -> NDArray[np.uint64]:
         """
         Performs an evaluation and returns metrics.
+
+        Parameters
+        ----------
+        datums : pyarrow.compute.Expression, optional
+            Option to filter datums by an expression.
 
         Returns
         -------
         dict[MetricType, list]
             A dictionary mapping MetricType enumerations to lists of computed metrics.
         """
-        results = compute_metrics(counts=self._confusion_matrix)
+        n_labels = len(self._index_to_label)
+        confusion_matrix = np.zeros(
+            (n_labels + 1, n_labels + 1), dtype=np.uint64
+        )
+        for tbl in self._reader.iterate_tables(filter=datums):
+            columns = (
+                "datum_id",
+                "gt_label_id",
+                "pd_label_id",
+            )
+            ids = np.column_stack(
+                [tbl[col].to_numpy() for col in columns]
+            ).astype(np.int64)
+            counts = tbl["count"].to_numpy()
+
+            mask_null_gts = ids[:, 1] == -1
+            mask_null_pds = ids[:, 2] == -1
+            confusion_matrix[0, 0] += counts[
+                mask_null_gts & mask_null_pds
+            ].sum()
+            for idx in range(n_labels):
+                mask_gts = ids[:, 1] == idx
+                for pidx in range(n_labels):
+                    mask_pds = ids[:, 2] == pidx
+                    confusion_matrix[idx + 1, pidx + 1] += counts[
+                        mask_gts & mask_pds
+                    ].sum()
+
+                mask_unmatched_gts = mask_gts & mask_null_pds
+                confusion_matrix[idx + 1, 0] += counts[
+                    mask_unmatched_gts
+                ].sum()
+                mask_unmatched_pds = mask_null_gts & (ids[:, 2] == idx)
+                confusion_matrix[0, idx + 1] += counts[
+                    mask_unmatched_pds
+                ].sum()
+        return confusion_matrix
+
+    def compute_precision_recall_iou(
+        self, datums: pc.Expression | None = None
+    ) -> dict[MetricType, list]:
+        """
+        Performs an evaluation and returns metrics.
+
+        Parameters
+        ----------
+        datums : pyarrow.compute.Expression, optional
+            Option to filter datums by an expression.
+
+        Returns
+        -------
+        dict[MetricType, list]
+            A dictionary mapping MetricType enumerations to lists of computed metrics.
+        """
+        confusion_matrix = self._compute_confusion_matrix_intermediate(
+            datums=datums
+        )
+        results = compute_metrics(confusion_matrix=confusion_matrix)
         return unpack_precision_recall_iou_into_metric_lists(
             results=results,
             index_to_label=self._index_to_label,

@@ -116,8 +116,9 @@ def test_label_mismatch(loader: Loader):
         ]
     )
     evaluator = loader.finalize()
+    confusion_matrix = evaluator._compute_confusion_matrix_intermediate()
     assert np.all(
-        evaluator._confusion_matrix
+        confusion_matrix
         == np.array(
             [
                 [
@@ -162,8 +163,9 @@ def test_empty_groundtruths(loader: Loader):
         ]
     )
     evaluator = loader.finalize()
+    confusion_matrix = evaluator._compute_confusion_matrix_intermediate()
     assert np.all(
-        evaluator._confusion_matrix
+        confusion_matrix
         == np.array(
             [
                 [
@@ -207,8 +209,9 @@ def test_empty_predictions(loader: Loader):
         ]
     )
     evaluator = loader.finalize()
+    confusion_matrix = evaluator._compute_confusion_matrix_intermediate()
     assert np.all(
-        evaluator._confusion_matrix
+        confusion_matrix
         == np.array(
             [
                 [2, 0, 0],

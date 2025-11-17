@@ -406,6 +406,7 @@ class Evaluator:
         self,
         iou_thresholds: list[float],
         score_thresholds: list[float],
+        datums: pc.Expression | None = None,
     ) -> dict[MetricType, list[Metric]]:
         """
         Computes all metrics except for ConfusionMatrix
@@ -416,6 +417,8 @@ class Evaluator:
             A list of IOU thresholds to compute metrics over.
         score_thresholds : list[float]
             A list of score thresholds to compute metrics over.
+        datums : pyarrow.compute.Expression, optional
+            Option to filter datums by an expression.
 
         Returns
         -------
@@ -446,6 +449,7 @@ class Evaluator:
                 "iou_prev",
                 "high_score",
             ],
+            filter=datums,
         ):
             if pairs.size == 0:
                 continue
@@ -496,6 +500,7 @@ class Evaluator:
         self,
         iou_thresholds: list[float],
         score_thresholds: list[float],
+        datums: pc.Expression | None = None,
     ) -> list[Metric]:
         """
         Computes confusion matrices at various thresholds.
@@ -506,6 +511,8 @@ class Evaluator:
             A list of IOU thresholds to compute metrics over.
         score_thresholds : list[float]
             A list of score thresholds to compute metrics over.
+        datums : pyarrow.compute.Expression, optional
+            Option to filter datums by an expression.
 
         Returns
         -------
@@ -538,6 +545,7 @@ class Evaluator:
                 "iou",
                 "pd_score",
             ],
+            filter=datums,
         ):
             if pairs.size == 0:
                 continue
@@ -583,6 +591,7 @@ class Evaluator:
         self,
         iou_thresholds: list[float],
         score_thresholds: list[float],
+        datums: pc.Expression | None = None,
     ) -> list[Metric]:
         """
         Computes examples at various thresholds.
@@ -595,6 +604,8 @@ class Evaluator:
             A list of IOU thresholds to compute metrics over.
         score_thresholds : list[float]
             A list of score thresholds to compute metrics over.
+        datums : pyarrow.compute.Expression, optional
+            Option to filter datums by an expression.
 
         Returns
         -------
@@ -624,6 +635,7 @@ class Evaluator:
         for tbl, pairs in self._detailed_reader.iterate_tables_with_arrays(
             columns=tbl_columns + numeric_columns,
             numeric_columns=numeric_columns,
+            filter=datums,
         ):
             if pairs.size == 0:
                 continue
@@ -676,6 +688,7 @@ class Evaluator:
         self,
         iou_thresholds: list[float],
         score_thresholds: list[float],
+        datums: pc.Expression | None = None,
     ) -> list[Metric]:
         """
         Computes confusion matrix with examples at various thresholds.
@@ -688,6 +701,8 @@ class Evaluator:
             A list of IOU thresholds to compute metrics over.
         score_thresholds : list[float]
             A list of score thresholds to compute metrics over.
+        datums : pyarrow.compute.Expression, optional
+            Option to filter datums by an expression.
 
         Returns
         -------
@@ -727,6 +742,7 @@ class Evaluator:
         for tbl, pairs in self._detailed_reader.iterate_tables_with_arrays(
             columns=tbl_columns + numeric_columns,
             numeric_columns=numeric_columns,
+            filter=datums,
         ):
             if pairs.size == 0:
                 continue

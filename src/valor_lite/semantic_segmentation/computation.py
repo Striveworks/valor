@@ -60,7 +60,7 @@ def compute_intermediates(
 
 
 def compute_metrics(
-    counts: NDArray[np.uint64],
+    confusion_matrix: NDArray[np.uint64],
 ) -> tuple[
     NDArray[np.float64],
     NDArray[np.float64],
@@ -95,13 +95,13 @@ def compute_metrics(
     NDArray[np.float64]
         Unmatched ground truth ratios.
     """
-    n_labels = counts.shape[0] - 1
-    n_pixels = counts.sum()
-    gt_counts = counts[1:, :].sum(axis=1)
-    pd_counts = counts[:, 1:].sum(axis=0)
+    n_labels = confusion_matrix.shape[0] - 1
+    n_pixels = confusion_matrix.sum()
+    gt_counts = confusion_matrix[1:, :].sum(axis=1)
+    pd_counts = confusion_matrix[:, 1:].sum(axis=0)
 
     # compute iou, unmatched_ground_truth and unmatched predictions
-    intersection_ = counts[1:, 1:]
+    intersection_ = confusion_matrix[1:, 1:]
     union_ = (
         gt_counts[:, np.newaxis] + pd_counts[np.newaxis, :] - intersection_
     )
@@ -116,7 +116,7 @@ def compute_metrics(
 
     unmatched_prediction_ratio = np.zeros((n_labels), dtype=np.float64)
     np.divide(
-        counts[0, 1:],
+        confusion_matrix[0, 1:],
         pd_counts,
         where=pd_counts > 1e-9,
         out=unmatched_prediction_ratio,
@@ -124,14 +124,14 @@ def compute_metrics(
 
     unmatched_ground_truth_ratio = np.zeros((n_labels), dtype=np.float64)
     np.divide(
-        counts[1:, 0],
+        confusion_matrix[1:, 0],
         gt_counts,
         where=gt_counts > 1e-9,
         out=unmatched_ground_truth_ratio,
     )
 
     # compute precision, recall, f1
-    tp_counts = counts.diagonal()[1:]
+    tp_counts = confusion_matrix.diagonal()[1:]
 
     precision = np.zeros(n_labels, dtype=np.float64)
     np.divide(tp_counts, pd_counts, where=pd_counts > 1e-9, out=precision)
@@ -148,8 +148,8 @@ def compute_metrics(
     )
 
     # compute accuracy
-    tp_count = counts[1:, 1:].diagonal().sum()
-    background_count = counts[0, 0]
+    tp_count = confusion_matrix[1:, 1:].diagonal().sum()
+    background_count = confusion_matrix[0, 0]
     accuracy = (
         (tp_count + background_count) / n_pixels if n_pixels > 0 else 0.0
     )

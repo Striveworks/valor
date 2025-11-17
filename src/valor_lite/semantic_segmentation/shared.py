@@ -3,7 +3,6 @@ from pathlib import Path
 
 import numpy as np
 import pyarrow as pa
-from numpy.typing import NDArray
 
 from valor_lite.cache import FileCacheReader, MemoryCacheReader
 
@@ -82,7 +81,7 @@ def decode_metadata_fields(
 def generate_meta(
     reader: MemoryCacheReader | FileCacheReader,
     labels_override: dict[int, str] | None,
-) -> tuple[dict[int, str], NDArray[np.uint64], EvaluatorInfo]:
+) -> tuple[dict[int, str], EvaluatorInfo]:
     """
     Generate cache statistics.
 
@@ -97,8 +96,6 @@ def generate_meta(
     -------
     labels : dict[int, str]
         Mapping of label ID's to label values.
-    confusion_matrix : NDArray[np.uint64]
-        Array of size (n_labels + 1, n_labels + 1) containing pair counts.
     info : EvaluatorInfo
         Evaluator cache details.
     """
@@ -141,9 +138,12 @@ def generate_meta(
     # post-process
     labels.pop(-1, None)
 
-    # create confusion matrix
-    n_labels = len(labels)
-    matrix = np.zeros((n_labels + 1, n_labels + 1), dtype=np.uint64)
+    # complete info object
+    info.number_of_labels = len(labels)
+    info.number_of_pixels = 0
+    info.number_of_groundtruth_pixels = 0
+    info.number_of_prediction_pixels = 0
+
     for tbl in reader.iterate_tables():
         columns = (
             "datum_id",
@@ -153,26 +153,17 @@ def generate_meta(
         ids = np.column_stack([tbl[col].to_numpy() for col in columns]).astype(
             np.int64
         )
-        counts = tbl["count"].to_numpy()
+        counts = tbl["count"].to_numpy().astype(np.uint64)
 
-        mask_null_gts = ids[:, 1] == -1
-        mask_null_pds = ids[:, 2] == -1
-        matrix[0, 0] += counts[mask_null_gts & mask_null_pds].sum()
-        for idx in range(n_labels):
-            mask_gts = ids[:, 1] == idx
-            for pidx in range(n_labels):
-                mask_pds = ids[:, 2] == pidx
-                matrix[idx + 1, pidx + 1] += counts[mask_gts & mask_pds].sum()
+        # total count
+        info.number_of_pixels += int(counts.sum())
 
-            mask_unmatched_gts = mask_gts & mask_null_pds
-            matrix[idx + 1, 0] += counts[mask_unmatched_gts].sum()
-            mask_unmatched_pds = mask_null_gts & (ids[:, 2] == idx)
-            matrix[0, idx + 1] += counts[mask_unmatched_pds].sum()
+        # gt pixel count
+        indices = np.where(ids[:, 1] > -0.5)[0]
+        info.number_of_groundtruth_pixels += int(counts[indices].sum())
 
-    # complete info object
-    info.number_of_labels = len(labels)
-    info.number_of_pixels = matrix.sum()
-    info.number_of_groundtruth_pixels = matrix[1:, :].sum()
-    info.number_of_prediction_pixels = matrix[:, 1:].sum()
+        # pd pixel count
+        indices = np.where(ids[:, 2] > -0.5)[0]
+        info.number_of_prediction_pixels += int(counts[indices].sum())
 
-    return labels, matrix, info
+    return labels, info

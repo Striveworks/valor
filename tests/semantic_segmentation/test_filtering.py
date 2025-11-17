@@ -27,7 +27,9 @@ def test_filtering_by_datum(
         datums=pc.field("datum_uid") == "uid1",
         path=tmp_path / "filtered1",
     )
-    confusion_matrix = filtered_evaluator._confusion_matrix
+    confusion_matrix = (
+        filtered_evaluator._compute_confusion_matrix_intermediate()
+    )
     assert np.all(
         confusion_matrix
         == np.array(
@@ -43,7 +45,9 @@ def test_filtering_by_datum(
         datums=pc.field("datum_uid") == "uid2",
         path=tmp_path / "filtered2",
     )
-    confusion_matrix = filtered_evaluator._confusion_matrix
+    confusion_matrix = (
+        filtered_evaluator._compute_confusion_matrix_intermediate()
+    )
     assert np.all(
         confusion_matrix
         == np.array(
@@ -83,7 +87,9 @@ def test_filtering_by_annotation_info(
         groundtruths=pc.field("gt_xmin") < 100,
         path=tmp_path / "gt_filter_1",
     )
-    confusion_matrix = filtered_evaluator._confusion_matrix
+    confusion_matrix = (
+        filtered_evaluator._compute_confusion_matrix_intermediate()
+    )
     assert np.all(
         confusion_matrix
         == np.array(
@@ -100,7 +106,9 @@ def test_filtering_by_annotation_info(
         groundtruths=pc.field("gt_xmin") > 100,
         path=tmp_path / "gt_filter_2",
     )
-    confusion_matrix = filtered_evaluator._confusion_matrix
+    confusion_matrix = (
+        filtered_evaluator._compute_confusion_matrix_intermediate()
+    )
     assert np.all(
         confusion_matrix
         == np.array(
@@ -118,7 +126,9 @@ def test_filtering_by_annotation_info(
         predictions=pc.field("pd_xmin") < 100,
         path=tmp_path / "pd_filter_1",
     )
-    confusion_matrix = filtered_evaluator._confusion_matrix
+    confusion_matrix = (
+        filtered_evaluator._compute_confusion_matrix_intermediate()
+    )
     assert np.all(
         confusion_matrix
         == np.array(
@@ -135,7 +145,9 @@ def test_filtering_by_annotation_info(
         predictions=pc.field("pd_xmin") > 100,
         path=tmp_path / "pd_filter_2",
     )
-    confusion_matrix = filtered_evaluator._confusion_matrix
+    confusion_matrix = (
+        filtered_evaluator._compute_confusion_matrix_intermediate()
+    )
     assert np.all(
         confusion_matrix
         == np.array(
@@ -154,7 +166,9 @@ def test_filtering_by_annotation_info(
         predictions=pc.field("pd_xmin") > 1000,
         path=tmp_path / "joint_filter",
     )
-    confusion_matrix = filtered_evaluator._confusion_matrix
+    confusion_matrix = (
+        filtered_evaluator._compute_confusion_matrix_intermediate()
+    )
     assert np.all(
         confusion_matrix
         == np.array(

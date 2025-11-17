@@ -19,8 +19,10 @@ def test_empty_input(loader: Loader):
         ]
     )
     evaluator = loader.finalize()
-    assert evaluator._confusion_matrix.shape == (1, 1)
-    assert (evaluator._confusion_matrix == np.array([100])).all()
+    assert evaluator.info.number_of_datums == 1
+    assert evaluator.info.number_of_pixels == 100
+    assert evaluator.info.number_of_groundtruth_pixels == 0
+    assert evaluator.info.number_of_prediction_pixels == 0
 
 
 def test_add_data_metadata_handling(loader: Loader):
