@@ -21,8 +21,9 @@ from valor_lite.semantic_segmentation.shared import (
     EvaluatorInfo,
     decode_metadata_fields,
     encode_metadata_fields,
+    extract_counts,
+    extract_labels,
     generate_cache_path,
-    generate_meta,
     generate_metadata_path,
     generate_schema,
 )
@@ -136,17 +137,16 @@ class Builder:
 
         reader = self._writer.to_reader()
 
-        # build evaluator meta
-        (
-            index_to_label,
-            info,
-        ) = generate_meta(reader, index_to_label_override)
-        info.metadata_fields = self._metadata_fields
+        # extract labels
+        index_to_label = extract_labels(
+            reader=reader,
+            index_to_label_override=index_to_label_override,
+        )
 
         return Evaluator(
             reader=reader,
-            info=info,
             index_to_label=index_to_label,
+            metadata_fields=self._metadata_fields,
         )
 
 
@@ -154,16 +154,39 @@ class Evaluator:
     def __init__(
         self,
         reader: MemoryCacheReader | FileCacheReader,
-        info: EvaluatorInfo,
         index_to_label: dict[int, str],
+        metadata_fields: list[tuple[str, str | pa.DataType]] | None = None,
     ):
         self._reader = reader
-        self._info = info
         self._index_to_label = index_to_label
+        self._metadata_fields = metadata_fields
 
     @property
     def info(self) -> EvaluatorInfo:
-        return self._info
+        return self.get_info()
+
+    def get_info(
+        self,
+        datums: pc.Expression | None = None,
+        groundtruths: pc.Expression | None = None,
+        predictions: pc.Expression | None = None,
+    ) -> EvaluatorInfo:
+        info = EvaluatorInfo()
+        info.number_of_rows = self._reader.count_rows()
+        info.number_of_labels = len(self._index_to_label)
+        info.metadata_fields = self._metadata_fields
+        (
+            info.number_of_datums,
+            info.number_of_pixels,
+            info.number_of_groundtruth_pixels,
+            info.number_of_prediction_pixels,
+        ) = extract_counts(
+            reader=self._reader,
+            datums=datums,
+            groundtruths=groundtruths,
+            predictions=predictions,
+        )
+        return info
 
     @classmethod
     def load(
@@ -193,22 +216,23 @@ class Evaluator:
         # load cache
         reader = FileCacheReader.load(generate_cache_path(path))
 
-        # build evaluator meta
-        (
-            index_to_label,
-            info,
-        ) = generate_meta(reader, index_to_label_override)
+        # extract labels
+        index_to_label = extract_labels(
+            reader=reader,
+            index_to_label_override=index_to_label_override,
+        )
 
         # read config
         metadata_path = generate_metadata_path(path)
+        metadata_fields = None
         with open(metadata_path, "r") as f:
             metadata_types = json.load(f)
-            info.metadata_fields = decode_metadata_fields(metadata_types)
+            metadata_fields = decode_metadata_fields(metadata_types)
 
         return cls(
             reader=reader,
-            info=info,
             index_to_label=index_to_label,
+            metadata_fields=metadata_fields,
         )
 
     def filter(

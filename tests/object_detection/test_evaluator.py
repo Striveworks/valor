@@ -25,9 +25,7 @@ def test_evaluator_valid_thresholds(tmp_path: Path):
     eval = Evaluator(
         detailed_reader=None,  # type: ignore - testing
         ranked_reader=None,  # type: ignore - testing
-        info=None,  # type: ignore - testing
         index_to_label={},
-        number_of_groundtruths_per_label=np.ones(1, dtype=np.uint64),
     )
     for fn in [
         eval.compute_precision_recall,

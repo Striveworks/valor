@@ -6,7 +6,6 @@ from pathlib import Path
 import numpy as np
 import pyarrow as pa
 import pyarrow.compute as pc
-from numpy.typing import NDArray
 
 from valor_lite.cache import (
     FileCacheReader,
@@ -30,10 +29,12 @@ from valor_lite.classification.shared import (
     EvaluatorInfo,
     decode_metadata_fields,
     encode_metadata_fields,
+    extract_counts,
+    extract_groundtruth_count_per_label,
+    extract_labels,
     generate_cache_path,
     generate_intermediate_cache_path,
     generate_intermediate_schema,
-    generate_meta,
     generate_metadata_path,
     generate_roc_curve_cache_path,
     generate_roc_curve_schema,
@@ -296,11 +297,11 @@ class Builder:
         # post-process into sorted writer
         reader = self._writer.to_reader()
 
-        # generate evaluator meta
-        (index_to_label, label_counts, info,) = generate_meta(
-            reader=reader, index_to_label_override=index_to_label_override
+        # extract labels
+        index_to_label = extract_labels(
+            reader=reader,
+            index_to_label_override=index_to_label_override,
         )
-        info.metadata_fields = self._metadata_fields
 
         self._create_rocauc_intermediate(
             reader=reader,
@@ -312,9 +313,8 @@ class Builder:
         return Evaluator(
             reader=reader,
             roc_curve_reader=roc_curve_reader,
-            info=info,
-            label_counts=label_counts,
             index_to_label=index_to_label,
+            metadata_fields=self._metadata_fields,
         )
 
 
@@ -323,19 +323,31 @@ class Evaluator:
         self,
         reader: MemoryCacheReader | FileCacheReader,
         roc_curve_reader: MemoryCacheReader | FileCacheReader,
-        info: EvaluatorInfo,
-        label_counts: NDArray[np.uint64],
         index_to_label: dict[int, str],
+        metadata_fields: list[tuple[str, str | pa.DataType]] | None = None,
     ):
         self._reader = reader
         self._roc_curve_reader = roc_curve_reader
-        self._info = info
-        self._label_counts = label_counts
         self._index_to_label = index_to_label
+        self._metadata_fields = metadata_fields
 
     @property
     def info(self) -> EvaluatorInfo:
-        return self._info
+        return self.get_info()
+
+    def get_info(
+        self,
+        datums: pc.Expression | None = None,
+    ) -> EvaluatorInfo:
+        info = EvaluatorInfo()
+        info.metadata_fields = self._metadata_fields
+        info.number_of_rows = self._reader.count_rows()
+        info.number_of_labels = len(self._index_to_label)
+        info.number_of_datums = extract_counts(
+            reader=self._reader,
+            datums=datums,
+        )
+        return info
 
     @classmethod
     def load(
@@ -369,25 +381,24 @@ class Evaluator:
             generate_roc_curve_cache_path(path)
         )
 
-        # build evaluator meta
-        (
-            index_to_label,
-            label_counts,
-            info,
-        ) = generate_meta(reader, index_to_label_override)
+        # extract labels
+        index_to_label = extract_labels(
+            reader=reader,
+            index_to_label_override=index_to_label_override,
+        )
 
         # read config
         metadata_path = generate_metadata_path(path)
+        metadata_fields = None
         with open(metadata_path, "r") as f:
             encoded_types = json.load(f)
-            info.metadata_fields = decode_metadata_fields(encoded_types)
+            metadata_fields = decode_metadata_fields(encoded_types)
 
         return cls(
             reader=reader,
             roc_curve_reader=roc_curve_reader,
-            info=info,
-            label_counts=label_counts,
             index_to_label=index_to_label,
+            metadata_fields=metadata_fields,
         )
 
     def filter(
@@ -553,6 +564,11 @@ class Evaluator:
         n_labels = self.info.number_of_labels
 
         rocauc = np.zeros(n_labels, dtype=np.float64)
+        label_counts = extract_groundtruth_count_per_label(
+            reader=self._reader,
+            number_of_labels=len(self._index_to_label),
+            datums=datums,
+        )
 
         prev = np.zeros((n_labels, 2), dtype=np.uint64)
         for array in self._roc_curve_reader.iterate_arrays(
@@ -566,8 +582,8 @@ class Evaluator:
             rocauc, prev = compute_rocauc(
                 rocauc=rocauc,
                 array=array,
-                gt_count_per_label=self._label_counts[:, 0],
-                pd_count_per_label=self._label_counts[:, 1],
+                gt_count_per_label=label_counts[:, 0],
+                pd_count_per_label=label_counts[:, 1],
                 n_labels=self.info.number_of_labels,
                 prev=prev,
             )

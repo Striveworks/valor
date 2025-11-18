@@ -34,9 +34,9 @@ def test_info_using_large_random_segmentations(
     loader.add_data(large_random_segmentations)
     evaluator = loader.finalize()
 
-    assert evaluator._info.number_of_datums == 3
-    assert evaluator._info.number_of_labels == 9
-    assert evaluator._info.number_of_pixels == 12000000
+    assert evaluator.info.number_of_datums == 3
+    assert evaluator.info.number_of_labels == 9
+    assert evaluator.info.number_of_pixels == 12000000
 
 
 def _flatten_metrics(m) -> list:

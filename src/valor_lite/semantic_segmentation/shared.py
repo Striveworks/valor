@@ -3,6 +3,7 @@ from pathlib import Path
 
 import numpy as np
 import pyarrow as pa
+import pyarrow.compute as pc
 
 from valor_lite.cache import FileCacheReader, MemoryCacheReader
 
@@ -78,92 +79,71 @@ def decode_metadata_fields(
     return [(k, v) for k, v in encoded_metadata_fields.items()]
 
 
-def generate_meta(
+def extract_labels(
     reader: MemoryCacheReader | FileCacheReader,
-    labels_override: dict[int, str] | None,
-) -> tuple[dict[int, str], EvaluatorInfo]:
-    """
-    Generate cache statistics.
+    index_to_label_override: dict[int, str] | None = None,
+) -> dict[int, str]:
+    if index_to_label_override is not None:
+        return index_to_label_override
 
-    Parameters
-    ----------
-    reader : MemoryCacheReader | FileCacheReader
-        Valor cache reader.
-    labels_override : dict[int, str], optional
-        Optional labels override. Use when operating over filtered data.
-
-    Returns
-    -------
-    labels : dict[int, str]
-        Mapping of label ID's to label values.
-    info : EvaluatorInfo
-        Evaluator cache details.
-    """
-    labels = labels_override if labels_override else {}
-    info = EvaluatorInfo()
-
-    for tbl in reader.iterate_tables():
-        columns = (
-            "datum_id",
+    index_to_label = {}
+    for tbl in reader.iterate_tables(
+        columns=[
             "gt_label_id",
+            "gt_label",
             "pd_label_id",
-        )
-        ids = np.column_stack([tbl[col].to_numpy() for col in columns]).astype(
-            np.int64
-        )
-
-        # count number of rows
-        info.number_of_rows += int(tbl.shape[0])
-
-        # count unique datums
-        datum_ids = np.unique(ids[:, 0])
-        info.number_of_datums += int(datum_ids.size)
+            "pd_label",
+        ]
+    ):
 
         # get gt labels
-        gt_label_ids = ids[:, 1]
+        gt_label_ids = tbl["gt_label_id"].to_numpy()
         gt_label_ids, gt_indices = np.unique(gt_label_ids, return_index=True)
         gt_labels = tbl["gt_label"].take(gt_indices).to_pylist()
         gt_labels = dict(zip(gt_label_ids.astype(int).tolist(), gt_labels))
         gt_labels.pop(-1, None)
-        labels.update(gt_labels)
+        index_to_label.update(gt_labels)
 
         # get pd labels
-        pd_label_ids = ids[:, 2]
+        pd_label_ids = tbl["pd_label_id"].to_numpy()
         pd_label_ids, pd_indices = np.unique(pd_label_ids, return_index=True)
         pd_labels = tbl["pd_label"].take(pd_indices).to_pylist()
         pd_labels = dict(zip(pd_label_ids.astype(int).tolist(), pd_labels))
         pd_labels.pop(-1, None)
-        labels.update(pd_labels)
+        index_to_label.update(pd_labels)
 
-    # post-process
-    labels.pop(-1, None)
+    return index_to_label
 
-    # complete info object
-    info.number_of_labels = len(labels)
-    info.number_of_pixels = 0
-    info.number_of_groundtruth_pixels = 0
-    info.number_of_prediction_pixels = 0
 
-    for tbl in reader.iterate_tables():
-        columns = (
-            "datum_id",
-            "gt_label_id",
-            "pd_label_id",
-        )
-        ids = np.column_stack([tbl[col].to_numpy() for col in columns]).astype(
-            np.int64
-        )
-        counts = tbl["count"].to_numpy().astype(np.uint64)
+def extract_counts(
+    reader: MemoryCacheReader | FileCacheReader,
+    datums: pc.Expression | None = None,
+    groundtruths: pc.Expression | None = None,
+    predictions: pc.Expression | None = None,
+):
+    n_dts, n_total, n_gts, n_pds = 0, 0, 0, 0
+    for tbl in reader.iterate_tables(filter=datums):
 
-        # total count
-        info.number_of_pixels += int(counts.sum())
+        # count datums
+        n_dts += int(np.unique(tbl["datum_id"].to_numpy()).shape[0])
 
-        # gt pixel count
-        indices = np.where(ids[:, 1] > -0.5)[0]
-        info.number_of_groundtruth_pixels += int(counts[indices].sum())
+        # count pixels
+        n_total += int(tbl["count"].to_numpy().sum())
 
-        # pd pixel count
-        indices = np.where(ids[:, 2] > -0.5)[0]
-        info.number_of_prediction_pixels += int(counts[indices].sum())
+        # count groundtruth pixels
+        gt_tbl = tbl
+        gt_expr = pc.field("gt_label_id") >= 0
+        if groundtruths is not None:
+            gt_expr &= groundtruths
+        gt_tbl = tbl.filter(gt_expr)
+        n_gts += int(gt_tbl["count"].to_numpy().sum())
 
-    return labels, info
+        # count prediction pixels
+        pd_tbl = tbl
+        pd_expr = pc.field("pd_label_id") >= 0
+        if predictions is not None:
+            pd_expr &= predictions
+        pd_tbl = tbl.filter(pd_expr)
+        n_pds += int(pd_tbl["count"].to_numpy().sum())
+
+    return n_dts, n_total, n_gts, n_pds

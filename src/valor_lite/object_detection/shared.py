@@ -1,9 +1,9 @@
-from collections import defaultdict
 from dataclasses import dataclass
 from pathlib import Path
 
 import numpy as np
 import pyarrow as pa
+import pyarrow.compute as pc
 from numpy.typing import NDArray
 
 from valor_lite.cache import FileCacheReader, MemoryCacheReader
@@ -100,80 +100,90 @@ def decode_metadata_fields(
     return [(k, v) for k, v in encoded_metadata_fields.items()]
 
 
-def generate_meta(
+def extract_labels(
     reader: MemoryCacheReader | FileCacheReader,
-    labels_override: dict[int, str] | None = None,
-) -> tuple[dict[int, str], NDArray[np.uint64], EvaluatorInfo]:
-    """
-    Generate cache statistics.
+    index_to_label_override: dict[int, str] | None = None,
+) -> dict[int, str]:
+    if index_to_label_override is not None:
+        return index_to_label_override
 
-    Parameters
-    ----------
-    dataset : Dataset
-        Valor cache.
-    labels_override : dict[int, str], optional
-        Optional labels override. Use when operating over filtered data.
-
-    Returns
-    -------
-    labels : dict[int, str]
-        Mapping of label ID's to label values.
-    number_of_groundtruths_per_label : NDArray[np.uint64]
-        Array of size (n_labels,) containing ground truth counts.
-    info : EvaluatorInfo
-        Evaluator cache details.
-    """
-    gt_counts_per_lbl = defaultdict(int)
-    labels = labels_override if labels_override else {}
-    info = EvaluatorInfo()
-
-    for tbl in reader.iterate_tables():
-        columns = (
-            "datum_id",
-            "gt_id",
-            "pd_id",
+    index_to_label = {}
+    for tbl in reader.iterate_tables(
+        columns=[
             "gt_label_id",
+            "gt_label",
             "pd_label_id",
-        )
-        ids = np.column_stack([tbl[col].to_numpy() for col in columns]).astype(
-            np.int64
-        )
-
-        # count number of rows
-        info.number_of_rows += int(tbl.shape[0])
-
-        # count unique datums
-        datum_ids = np.unique(ids[:, 0])
-        info.number_of_datums += int(datum_ids.size)
-
-        # count unique groundtruths
-        gt_ids = ids[:, 1]
-        gt_ids = np.unique(gt_ids[gt_ids >= 0])
-        info.number_of_groundtruth_annotations += int(gt_ids.shape[0])
-
-        # count unique predictions
-        pd_ids = ids[:, 2]
-        pd_ids = np.unique(pd_ids[pd_ids >= 0])
-        info.number_of_prediction_annotations += int(pd_ids.shape[0])
+            "pd_label",
+        ]
+    ):
 
         # get gt labels
-        gt_label_ids = ids[:, 3]
+        gt_label_ids = tbl["gt_label_id"].to_numpy()
         gt_label_ids, gt_indices = np.unique(gt_label_ids, return_index=True)
         gt_labels = tbl["gt_label"].take(gt_indices).to_pylist()
         gt_labels = dict(zip(gt_label_ids.astype(int).tolist(), gt_labels))
         gt_labels.pop(-1, None)
-        labels.update(gt_labels)
+        index_to_label.update(gt_labels)
 
         # get pd labels
-        pd_label_ids = ids[:, 4]
+        pd_label_ids = tbl["pd_label_id"].to_numpy()
         pd_label_ids, pd_indices = np.unique(pd_label_ids, return_index=True)
         pd_labels = tbl["pd_label"].take(pd_indices).to_pylist()
         pd_labels = dict(zip(pd_label_ids.astype(int).tolist(), pd_labels))
         pd_labels.pop(-1, None)
-        labels.update(pd_labels)
+        index_to_label.update(pd_labels)
 
+    return index_to_label
+
+
+def extract_counts(
+    reader: MemoryCacheReader | FileCacheReader,
+    datums: pc.Expression | None = None,
+    groundtruths: pc.Expression | None = None,
+    predictions: pc.Expression | None = None,
+):
+    n_dts, n_gts, n_pds = 0, 0, 0
+    for tbl in reader.iterate_tables(filter=datums):
+        # count datums
+        n_dts += int(np.unique(tbl["datum_id"].to_numpy()).shape[0])
+
+        # count groundtruths
+        if groundtruths is not None:
+            gts = tbl.filter(groundtruths)["gt_id"].to_numpy()
+        else:
+            gts = tbl["gt_id"].to_numpy()
+        n_gts += int(np.unique(gts[gts >= 0]).shape[0])
+
+        # count predictions
+        if predictions is not None:
+            pds = tbl.filter(predictions)["pd_id"].to_numpy()
+        else:
+            pds = tbl["pd_id"].to_numpy()
+        n_pds += int(np.unique(pds[pds >= 0]).shape[0])
+
+    return n_dts, n_gts, n_pds
+
+
+def extract_groundtruth_count_per_label(
+    reader: MemoryCacheReader | FileCacheReader,
+    number_of_labels: int,
+    datums: pc.Expression | None = None,
+    groundtruths: pc.Expression | None = None,
+) -> NDArray[np.uint64]:
+    expr = None
+    if datums is not None and groundtruths is not None:
+        expr = datums & groundtruths
+    elif datums is not None:
+        expr = datums
+    elif groundtruths is not None:
+        expr = groundtruths
+
+    gt_counts_per_lbl = np.zeros(number_of_labels, dtype=np.uint64)
+    for gts in reader.iterate_arrays(
+        numeric_columns=["gt_id", "gt_label_id"],
+        filter=expr,
+    ):
         # count gts per label
-        gts = ids[:, (1, 3)].astype(np.int64)
         unique_ann = np.unique(gts[gts[:, 0] >= 0], axis=0)
         unique_labels, label_counts = np.unique(
             unique_ann[:, 1], return_counts=True
@@ -181,15 +191,4 @@ def generate_meta(
         for label_id, count in zip(unique_labels, label_counts):
             gt_counts_per_lbl[int(label_id)] += int(count)
 
-    # post-process
-    labels.pop(-1, None)
-
-    # complete info object
-    info.number_of_labels = len(labels)
-
-    # convert gt counts to numpy
-    number_of_groundtruths_per_label = np.zeros(len(labels), dtype=np.uint64)
-    for k, v in gt_counts_per_lbl.items():
-        number_of_groundtruths_per_label[int(k)] = v
-
-    return labels, number_of_groundtruths_per_label, info
+    return gt_counts_per_lbl

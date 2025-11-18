@@ -31,9 +31,7 @@ def test_evaluator_valid_thresholds():
     eval = Evaluator(
         reader=None,  # type: ignore - testing
         roc_curve_reader=None,  # type: ignore - testing
-        info=None,  # type: ignore - testing
         index_to_label={},
-        label_counts=np.ones(1, dtype=np.uint64),
     )
     for fn in [
         eval.compute_precision_recall,
