@@ -156,13 +156,19 @@ def unpack_examples(
         for score_idx, score_thresh in enumerate(score_thresholds):
 
             unique_tp = np.unique(
-                ids[np.ix_(mask_datum_tp[score_idx], (0, 1, 2))], axis=0  # type: ignore - numpy ix_ typing
+                # extract true-positive (datum_id, gt_id, pd_id) pairs
+                ids[np.ix_(mask_datum_tp[score_idx], (0, 1, 2))],
+                axis=0,
             )
             unique_fp = np.unique(
-                ids[np.ix_(mask_datum_fp[score_idx], (0, 2))], axis=0  # type: ignore - numpy ix_ typing
+                # extract false-positive (datum_id, pd_id) pairs
+                ids[np.ix_(mask_datum_fp[score_idx], (0, 2))],
+                axis=0,
             )
             unique_fn = np.unique(
-                ids[np.ix_(mask_datum_fn[score_idx], (0, 1))], axis=0  # type: ignore - numpy ix_ typing
+                # extract false-negative (datum_id, gt_id)
+                ids[np.ix_(mask_datum_fn[score_idx], (0, 1))],
+                axis=0,
             )
 
             tp = [index_to_label[row[1]] for row in unique_tp]
@@ -233,7 +239,8 @@ def _unpack_confusion_matrix_with_examples(
     unique_matches = np.empty((1, 3))
     if valid_matches.size > 0:
         unique_matches, unique_match_indices = np.unique(
-            valid_matches[np.ix_(mask_matched, (0, 1, 2))],  # type: ignore - numpy ix_ typing
+            # extract matched (datum_id, gt_id, pd_id) pairs
+            valid_matches[np.ix_(mask_matched, (0, 1, 2))],  # type: ignore[reportArgumentType]
             axis=0,
             return_index=True,
         )
@@ -244,7 +251,8 @@ def _unpack_confusion_matrix_with_examples(
     unique_unmatched_groundtruths = np.empty((1, 2))
     if valid_gts.size > 0:
         unique_unmatched_groundtruths = np.unique(
-            valid_gts[np.ix_(mask_unmatched_fn, (0, 1))],  # type: ignore - numpy ix_ typing
+            # extract unmatched false-negative (datum_id, gt_id) pairs
+            valid_gts[np.ix_(mask_unmatched_fn, (0, 1))],  # type: ignore[reportArgumentType]
             axis=0,
         )
         unique_unmatched_groundtruths = unique_unmatched_groundtruths[
