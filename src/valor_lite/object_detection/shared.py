@@ -168,20 +168,11 @@ def extract_groundtruth_count_per_label(
     reader: MemoryCacheReader | FileCacheReader,
     number_of_labels: int,
     datums: pc.Expression | None = None,
-    groundtruths: pc.Expression | None = None,
 ) -> NDArray[np.uint64]:
-    expr = None
-    if datums is not None and groundtruths is not None:
-        expr = datums & groundtruths
-    elif datums is not None:
-        expr = datums
-    elif groundtruths is not None:
-        expr = groundtruths
-
     gt_counts_per_lbl = np.zeros(number_of_labels, dtype=np.uint64)
     for gts in reader.iterate_arrays(
         numeric_columns=["gt_id", "gt_label_id"],
-        filter=expr,
+        filter=datums,
     ):
         # count gts per label
         unique_ann = np.unique(gts[gts[:, 0] >= 0], axis=0)
