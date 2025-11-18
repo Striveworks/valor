@@ -23,6 +23,21 @@ def test_filtering_by_datum(
     assert evaluator.info.number_of_pixels == 540000
 
     # test datum filtering
+    confusion_matrix = evaluator._compute_confusion_matrix_intermediate(
+        datums=pc.field("datum_uid") == "uid1",
+    )
+    assert np.all(
+        confusion_matrix
+        == np.array(
+            [
+                [255000, 5000, 0],
+                [5000, 5000, 0],
+                [0, 0, 0],
+            ],
+        )
+    )
+
+    # test filter cache and evaluate
     filtered_evaluator = evaluator.filter(
         datums=pc.field("datum_uid") == "uid1",
         path=tmp_path / "filtered1",
@@ -37,7 +52,7 @@ def test_filtering_by_datum(
                 [255000, 5000, 0],
                 [5000, 5000, 0],
                 [0, 0, 0],
-            ]
+            ],
         )
     )
 
