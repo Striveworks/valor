@@ -557,3 +557,82 @@ def test_filtering_six_classifications_by_annotation(
         assert m in expected_metrics
     for m in expected_metrics:
         assert m in actual_metrics
+
+
+def test_filtering_six_classifications_inline(
+    loader: Loader,
+    six_classifications: list[Classification],
+):
+
+    loader.add_data(six_classifications)
+    evaluator = loader.finalize()
+
+    # test evaluation
+    metrics = evaluator.compute_precision_recall(
+        score_thresholds=[0.5],
+        hardmax=False,
+        datums=pc.field("datum_uid") == "uid0",
+    )
+    actual_metrics = [m.to_dict() for m in metrics[MetricType.Counts]]
+    expected_metrics = [
+        {
+            "type": "Counts",
+            "value": {
+                "tp": 1,
+                "fp": 0,
+                "fn": 0,
+                "tn": 0,
+            },
+            "parameters": {
+                "score_threshold": 0.5,
+                "hardmax": False,
+                "label": "0",
+            },
+        },
+        {
+            "type": "Counts",
+            "value": {
+                "tp": 0,
+                "fp": 0,
+                "fn": 0,
+                "tn": 1,
+            },
+            "parameters": {
+                "score_threshold": 0.5,
+                "hardmax": False,
+                "label": "1",
+            },
+        },
+        {
+            "type": "Counts",
+            "value": {
+                "tp": 0,
+                "fp": 0,
+                "fn": 0,
+                "tn": 1,
+            },
+            "parameters": {
+                "score_threshold": 0.5,
+                "hardmax": False,
+                "label": "2",
+            },
+        },
+        {
+            "type": "Counts",
+            "value": {
+                "tp": 0,
+                "fp": 0,
+                "fn": 0,
+                "tn": 1,
+            },
+            "parameters": {
+                "score_threshold": 0.5,
+                "hardmax": False,
+                "label": "3",
+            },
+        },
+    ]
+    for m in actual_metrics:
+        assert m in expected_metrics
+    for m in expected_metrics:
+        assert m in actual_metrics
