@@ -55,10 +55,13 @@ def _merge(
         batch_iterators.append(batch_iter)
         batches.append(next(batch_iterators[batch_idx], None))
         if batches[batch_idx] is not None and len(batches[batch_idx]) > 0:
-            heapq.heappush(heap, create_sort_key(batches, batch_idx, 0))
+            heap.append(create_sort_key(batches, batch_idx, 0))
+    heapq.heapify(heap)
 
     while heap:
-        _, _, batch_idx, row_idx = heapq.heappop(heap)
+        row = heapq.heappop(heap)
+        batch_idx = row[-2]
+        row_idx = row[-1]
         row_table = batches[batch_idx].slice(row_idx, 1)
         sink.write_batch(row_table)
         row_idx += 1

@@ -1,88 +1,17 @@
-import numpy as np
-
-from valor_lite.classification import (
-    Classification,
-    DataLoader,
-    MetricType,
-    compute_precision_recall_rocauc,
-)
+from valor_lite.classification import Classification, Loader, MetricType
 
 
-def test_f1_score_computation():
-
-    # groundtruth, prediction, score
-    data = np.array(
-        [
-            # datum 0
-            [0, 0, 0, 1.0, 1],  # tp
-            [0, 0, 1, 0.0, 0],  # tn
-            [0, 0, 2, 0.0, 0],  # tn
-            [0, 0, 3, 0.0, 0],  # tn
-            # datum 1
-            [1, 0, 0, 0.0, 0],  # fn
-            [1, 0, 1, 0.0, 0],  # tn
-            [1, 0, 2, 1.0, 1],  # fp
-            [1, 0, 3, 0.0, 0],  # tn
-            # datum 2
-            [2, 3, 0, 0.0, 0],  # tn
-            [2, 3, 1, 0.0, 0],  # tn
-            [2, 3, 2, 0.0, 0],  # tn
-            [2, 3, 3, 0.3, 1],  # fn for score threshold > 0.3
-        ],
-        dtype=np.float64,
-    )
-
-    # groundtruth count, prediction count, label key
-    label_metadata = np.array(
-        [
-            [2, 1, 0],
-            [0, 2, 0],
-            [1, 0, 0],
-            [1, 1, 0],
-        ],
-        dtype=np.int32,
-    )
-
-    score_thresholds = np.array([0.25, 0.75], dtype=np.float64)
-
-    (_, _, _, _, f1_score, _, _) = compute_precision_recall_rocauc(
-        detailed_pairs=data,
-        label_metadata=label_metadata,
-        score_thresholds=score_thresholds,
-        n_datums=3,
-        hardmax=False,
-    )
-
-    # score threshold, label, count metric
-    assert f1_score.shape == (2, 4)
-
-    # score >= 0.25
-    assert f1_score[0][0] == 2 / 3
-    assert f1_score[0][1] == 0.0
-    assert f1_score[0][2] == 0.0
-    assert f1_score[0][3] == 1.0
-    # score >= 0.75
-    assert f1_score[1][0] == 2 / 3
-    assert f1_score[1][1] == 0.0
-    assert f1_score[1][2] == 0.0
-    assert f1_score[1][3] == 0.0
-
-
-def test_f1_score_basic(basic_classifications: list[Classification]):
-    loader = DataLoader()
+def test_f1_score_basic(
+    loader: Loader, basic_classifications: list[Classification]
+):
     loader.add_data(basic_classifications)
     evaluator = loader.finalize()
 
-    assert evaluator.ignored_prediction_labels == ["1", "2"]
-    assert evaluator.missing_prediction_labels == []
-    assert evaluator.metadata.to_dict() == {
-        "number_of_datums": 3,
-        "number_of_ground_truths": 3,
-        "number_of_predictions": 12,
-        "number_of_labels": 4,
-    }
+    assert evaluator.info.number_of_datums == 3
+    assert evaluator.info.number_of_labels == 4
+    assert evaluator.info.number_of_rows == 12
 
-    metrics = evaluator.evaluate(
+    metrics = evaluator.compute_precision_recall(
         score_thresholds=[0.25, 0.75],
     )
 
@@ -96,6 +25,24 @@ def test_f1_score_basic(basic_classifications: list[Classification]):
                 "score_threshold": 0.25,
                 "hardmax": True,
                 "label": "0",
+            },
+        },
+        {
+            "type": "F1",
+            "value": 0,
+            "parameters": {
+                "score_threshold": 0.25,
+                "hardmax": True,
+                "label": "1",
+            },
+        },
+        {
+            "type": "F1",
+            "value": 0,
+            "parameters": {
+                "score_threshold": 0.25,
+                "hardmax": True,
+                "label": "2",
             },
         },
         {
@@ -119,6 +66,24 @@ def test_f1_score_basic(basic_classifications: list[Classification]):
         },
         {
             "type": "F1",
+            "value": 0,
+            "parameters": {
+                "score_threshold": 0.75,
+                "hardmax": True,
+                "label": "1",
+            },
+        },
+        {
+            "type": "F1",
+            "value": 0,
+            "parameters": {
+                "score_threshold": 0.75,
+                "hardmax": True,
+                "label": "2",
+            },
+        },
+        {
+            "type": "F1",
             "value": 0.0,
             "parameters": {
                 "score_threshold": 0.75,
@@ -134,14 +99,14 @@ def test_f1_score_basic(basic_classifications: list[Classification]):
 
 
 def test_f1_score_with_animal_example(
+    loader: Loader,
     classifications_animal_example: list[Classification],
 ):
 
-    loader = DataLoader()
     loader.add_data(classifications_animal_example)
     evaluator = loader.finalize()
 
-    metrics = evaluator.evaluate(
+    metrics = evaluator.compute_precision_recall(
         score_thresholds=[0.0, 0.5],
     )
 
@@ -211,14 +176,14 @@ def test_f1_score_with_animal_example(
 
 
 def test_f1_score_with_color_example(
+    loader: Loader,
     classifications_color_example: list[Classification],
 ):
 
-    loader = DataLoader()
     loader.add_data(classifications_color_example)
     evaluator = loader.finalize()
 
-    metrics = evaluator.evaluate(
+    metrics = evaluator.compute_precision_recall(
         score_thresholds=[0.0, 0.5],
     )
 
@@ -306,25 +271,29 @@ def test_f1_score_with_color_example(
 
 
 def test_f1_score_with_image_example(
+    loader: Loader,
     classifications_image_example: list[Classification],
 ):
-    loader = DataLoader()
     loader.add_data(classifications_image_example)
     evaluator = loader.finalize()
 
-    assert evaluator.ignored_prediction_labels == ["v1", "v8", "v5"]
-    assert evaluator.missing_prediction_labels == []
-    assert evaluator.metadata.to_dict() == {
-        "number_of_datums": 2,
-        "number_of_ground_truths": 2,
-        "number_of_predictions": 4,
-        "number_of_labels": 4,
-    }
+    assert evaluator.info.number_of_datums == 2
+    assert evaluator.info.number_of_labels == 4
+    assert evaluator.info.number_of_rows == 4
 
-    metrics = evaluator.evaluate()
+    metrics = evaluator.compute_precision_recall()
 
     actual_metrics = [m.to_dict() for m in metrics[MetricType.F1]]
     expected_metrics = [
+        {
+            "type": "F1",
+            "value": 0,
+            "parameters": {
+                "score_threshold": 0.0,
+                "hardmax": True,
+                "label": "v1",
+            },
+        },
         {
             "type": "F1",
             "value": 2 / 3,
@@ -332,6 +301,24 @@ def test_f1_score_with_image_example(
                 "score_threshold": 0.0,
                 "hardmax": True,
                 "label": "v4",
+            },
+        },
+        {
+            "type": "F1",
+            "value": 0,
+            "parameters": {
+                "score_threshold": 0.0,
+                "hardmax": True,
+                "label": "v5",
+            },
+        },
+        {
+            "type": "F1",
+            "value": 0,
+            "parameters": {
+                "score_threshold": 0.0,
+                "hardmax": True,
+                "label": "v8",
             },
         },
     ]
@@ -342,22 +329,17 @@ def test_f1_score_with_image_example(
 
 
 def test_f1_score_with_tabular_example(
+    loader: Loader,
     classifications_tabular_example: list[Classification],
 ):
-    loader = DataLoader()
     loader.add_data(classifications_tabular_example)
     evaluator = loader.finalize()
 
-    assert evaluator.ignored_prediction_labels == []
-    assert evaluator.missing_prediction_labels == []
-    assert evaluator.metadata.to_dict() == {
-        "number_of_datums": 10,
-        "number_of_ground_truths": 10,
-        "number_of_predictions": 30,
-        "number_of_labels": 3,
-    }
+    assert evaluator.info.number_of_datums == 10
+    assert evaluator.info.number_of_labels == 3
+    assert evaluator.info.number_of_rows == 30
 
-    metrics = evaluator.evaluate()
+    metrics = evaluator.compute_precision_recall()
 
     actual_metrics = [m.to_dict() for m in metrics[MetricType.F1]]
     expected_metrics = [

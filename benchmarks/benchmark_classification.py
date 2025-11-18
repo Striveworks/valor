@@ -1,5 +1,6 @@
 import json
 import os
+import shutil
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
@@ -8,7 +9,7 @@ from time import time
 import requests
 from tqdm import tqdm
 
-from valor_lite.classification import Classification, DataLoader
+from valor_lite.classification import Classification, Loader
 
 
 def _convert_valor_dicts_into_Classification(gt_dict: dict, pd_dict: dict):
@@ -89,7 +90,7 @@ def write_results_to_file(write_path: Path, results: list[dict]):
 
 @time_it
 def ingest(
-    loader: DataLoader,
+    loader: Loader,
     gt_path: Path,
     pd_path: Path,
     limit: int,
@@ -130,8 +131,7 @@ def ingest(
 class Benchmark:
     limit: int
     n_datums: int
-    n_groundtruths: int
-    n_predictions: int
+    n_rows: int
     n_labels: int
     chunk_size: int
     ingestion: float
@@ -144,8 +144,7 @@ class Benchmark:
         return {
             "limit": self.limit,
             "n_datums": self.n_datums,
-            "n_groundtruths": self.n_groundtruths,
-            "n_predictions": self.n_predictions,
+            "n_rows": self.n_rows,
             "n_labels": self.n_labels,
             "chunk_size": self.chunk_size,
             "ingestion": {
@@ -186,7 +185,15 @@ def run_benchmarking_analysis(
     for limit in limits_to_test:
 
         # === Base Evaluation ===
-        loader = DataLoader()
+        path = Path(".valor/benchmark_classification")
+        if path.exists():
+            shutil.rmtree(path)
+        loader = Loader.persistent(
+            path=path,
+            batch_size=1_000,
+            rows_per_file=10_000,
+            compression="snappy",
+        )
 
         # ingest + preprocess
         (ingest_time, preprocessing_time,) = ingest(
@@ -205,25 +212,26 @@ def run_benchmarking_analysis(
             )
 
         # evaluate
-        eval_time, _ = time_it(evaluator.compute_precision_recall_rocauc)()
+        eval_time, _ = time_it(evaluator.compute_precision_recall)()
         if eval_time > evaluation_timeout and evaluation_timeout != -1:
             raise TimeoutError(
-                f"Base evaluation timed out with {evaluator.metadata.number_of_datums} datums."
+                f"Base evaluation timed out with {evaluator.info.number_of_datums} datums."
             )
 
-        examples_time, _ = time_it(evaluator.compute_confusion_matrix)()
+        examples_time, _ = time_it(
+            evaluator.compute_confusion_matrix_with_examples
+        )()
         if examples_time > evaluation_timeout and evaluation_timeout != -1:
             raise TimeoutError(
-                f"Base evaluation timed out with {evaluator.metadata.number_of_datums} datums."
+                f"Base evaluation timed out with {evaluator.info.number_of_datums} datums."
             )
 
         results.append(
             Benchmark(
                 limit=limit,
-                n_datums=evaluator.metadata.number_of_datums,
-                n_groundtruths=evaluator.metadata.number_of_ground_truths,
-                n_predictions=evaluator.metadata.number_of_predictions,
-                n_labels=evaluator.metadata.number_of_labels,
+                n_datums=evaluator.info.number_of_datums,
+                n_rows=evaluator.info.number_of_rows,
+                n_labels=evaluator.info.number_of_labels,
                 chunk_size=chunk_size,
                 ingestion=ingest_time,
                 preprocessing=preprocessing_time,
