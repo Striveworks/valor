@@ -492,7 +492,7 @@ class Evaluator:
 
         return loader.finalize(index_to_label_override=self._index_to_label)
 
-    def iterate_values(self):
+    def iterate_values(self, datums: pc.Expression | None = None):
         columns = [
             "datum_id",
             "gt_label_id",
@@ -501,7 +501,7 @@ class Evaluator:
             "pd_winner",
             "match",
         ]
-        for tbl in self._reader.iterate_tables(columns=columns):
+        for tbl in self._reader.iterate_tables(columns=columns, filter=datums):
             ids = np.column_stack(
                 [
                     tbl[col].to_numpy()
@@ -517,8 +517,8 @@ class Evaluator:
             matches = tbl["match"].to_numpy()
             yield ids, scores, winners, matches
 
-    def iterate_values_with_tables(self):
-        for tbl in self._reader.iterate_tables():
+    def iterate_values_with_tables(self, datums: pc.Expression | None = None):
+        for tbl in self._reader.iterate_tables(filter=datums):
             ids = np.column_stack(
                 [
                     tbl[col].to_numpy()
@@ -534,9 +534,16 @@ class Evaluator:
             matches = tbl["match"].to_numpy()
             yield ids, scores, winners, matches, tbl
 
-    def compute_rocauc(self) -> dict[MetricType, list[Metric]]:
+    def compute_rocauc(
+        self, datums: pc.Expression | None = None
+    ) -> dict[MetricType, list[Metric]]:
         """
         Compute ROCAUC.
+
+        Parameters
+        ----------
+        datums : pyarrow.compute.Expression, optional
+            Option to filter datums by an expression.
 
         Returns
         -------
@@ -553,7 +560,8 @@ class Evaluator:
                 "pd_label_id",
                 "cumulative_fp",
                 "cumulative_tp",
-            ]
+            ],
+            filter=datums,
         ):
             rocauc, prev = compute_rocauc(
                 rocauc=rocauc,
@@ -576,6 +584,7 @@ class Evaluator:
         self,
         score_thresholds: list[float] = [0.0],
         hardmax: bool = True,
+        datums: pc.Expression | None = None,
     ) -> dict[MetricType, list]:
         """
         Performs an evaluation and returns metrics.
@@ -586,10 +595,8 @@ class Evaluator:
             A list of score thresholds to compute metrics over.
         hardmax : bool
             Toggles whether a hardmax is applied to predictions.
-        rows_per_chunk : int, default=10_000
-            The number of sorted rows to return in each chunk.
-        read_batch_size : int, default=1_000
-            The maximum number of rows to load in-memory per file.
+        datums : pyarrow.compute.Expression, optional
+            Option to filter datums by an expression.
 
         Returns
         -------
@@ -606,7 +613,7 @@ class Evaluator:
         # intermediates
         counts = np.zeros((n_scores, n_labels, 4), dtype=np.uint64)
 
-        for ids, scores, winners, _ in self.iterate_values():
+        for ids, scores, winners, _ in self.iterate_values(datums=datums):
             batch_counts = compute_counts(
                 ids=ids,
                 scores=scores,
@@ -637,6 +644,7 @@ class Evaluator:
         self,
         score_thresholds: list[float] = [0.0],
         hardmax: bool = True,
+        datums: pc.Expression | None = None,
     ) -> list[Metric]:
         """
         Compute a confusion matrix.
@@ -647,6 +655,8 @@ class Evaluator:
             A list of score thresholds to compute metrics over.
         hardmax : bool
             Toggles whether a hardmax is applied to predictions.
+        datums : pyarrow.compute.Expression, optional
+            Option to filter datums by an expression.
 
         Returns
         -------
@@ -664,7 +674,9 @@ class Evaluator:
         unmatched_groundtruths = np.zeros(
             (n_scores, n_labels), dtype=np.uint64
         )
-        for ids, scores, winners, matches in self.iterate_values():
+        for ids, scores, winners, matches in self.iterate_values(
+            datums=datums
+        ):
             (
                 mask_tp,
                 mask_fp_fn_misclf,
@@ -700,6 +712,7 @@ class Evaluator:
         self,
         score_thresholds: list[float] = [0.0],
         hardmax: bool = True,
+        datums: pc.Expression | None = None,
     ) -> list[Metric]:
         """
         Compute examples per datum.
@@ -712,6 +725,8 @@ class Evaluator:
             A list of score thresholds to compute metrics over.
         hardmax : bool
             Toggles whether a hardmax is applied to predictions.
+        datums : pyarrow.compute.Expression, optional
+            Option to filter datums by an expression.
 
         Returns
         -------
@@ -726,9 +741,9 @@ class Evaluator:
             ids,
             scores,
             winners,
-            matches,
+            _,
             tbl,
-        ) in self.iterate_values_with_tables():
+        ) in self.iterate_values_with_tables(datums=datums):
             if ids.size == 0:
                 continue
 
@@ -770,6 +785,7 @@ class Evaluator:
         self,
         score_thresholds: list[float] = [0.0],
         hardmax: bool = True,
+        datums: pc.Expression | None = None,
     ) -> list[Metric]:
         """
         Compute confusion matrix with examples.
@@ -784,6 +800,8 @@ class Evaluator:
             A list of score thresholds to compute metrics over.
         hardmax : bool
             Toggles whether a hardmax is applied to predictions.
+        datums : pyarrow.compute.Expression, optional
+            Option to filter datums by an expression.
 
         Returns
         -------
@@ -805,9 +823,9 @@ class Evaluator:
             ids,
             scores,
             winners,
-            matches,
+            _,
             tbl,
-        ) in self.iterate_values_with_tables():
+        ) in self.iterate_values_with_tables(datums=datums):
             if ids.size == 0:
                 continue
 
