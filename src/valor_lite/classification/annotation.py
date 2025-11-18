@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from typing import Any
 
 
 @dataclass
@@ -16,6 +17,8 @@ class Classification:
         List of predicted labels.
     scores : list of float
         Confidence scores corresponding to each predicted label.
+    metadata : dict[str, Any], optional
+        A dictionary containing any metadata to be used within filtering operations.
 
     Examples
     --------
@@ -31,6 +34,7 @@ class Classification:
     groundtruth: str
     predictions: list[str]
     scores: list[float]
+    metadata: dict[str, Any] | None = None
 
     def __post_init__(self):
         if not isinstance(self.groundtruth, str):
