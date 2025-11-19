@@ -21,8 +21,9 @@ from valor_lite.semantic_segmentation.shared import (
     EvaluatorInfo,
     decode_metadata_fields,
     encode_metadata_fields,
+    extract_counts,
+    extract_labels,
     generate_cache_path,
-    generate_meta,
     generate_metadata_path,
     generate_schema,
 )
@@ -136,19 +137,16 @@ class Builder:
 
         reader = self._writer.to_reader()
 
-        # build evaluator meta
-        (
-            index_to_label,
-            confusion_matrix,
-            info,
-        ) = generate_meta(reader, index_to_label_override)
-        info.metadata_fields = self._metadata_fields
+        # extract labels
+        index_to_label = extract_labels(
+            reader=reader,
+            index_to_label_override=index_to_label_override,
+        )
 
         return Evaluator(
             reader=reader,
-            info=info,
             index_to_label=index_to_label,
-            confusion_matrix=confusion_matrix,
+            metadata_fields=self._metadata_fields,
         )
 
 
@@ -156,18 +154,39 @@ class Evaluator:
     def __init__(
         self,
         reader: MemoryCacheReader | FileCacheReader,
-        info: EvaluatorInfo,
         index_to_label: dict[int, str],
-        confusion_matrix: NDArray[np.uint64],
+        metadata_fields: list[tuple[str, str | pa.DataType]] | None = None,
     ):
         self._reader = reader
-        self._info = info
         self._index_to_label = index_to_label
-        self._confusion_matrix = confusion_matrix
+        self._metadata_fields = metadata_fields
 
     @property
     def info(self) -> EvaluatorInfo:
-        return self._info
+        return self.get_info()
+
+    def get_info(
+        self,
+        datums: pc.Expression | None = None,
+        groundtruths: pc.Expression | None = None,
+        predictions: pc.Expression | None = None,
+    ) -> EvaluatorInfo:
+        info = EvaluatorInfo()
+        info.number_of_rows = self._reader.count_rows()
+        info.number_of_labels = len(self._index_to_label)
+        info.metadata_fields = self._metadata_fields
+        (
+            info.number_of_datums,
+            info.number_of_pixels,
+            info.number_of_groundtruth_pixels,
+            info.number_of_prediction_pixels,
+        ) = extract_counts(
+            reader=self._reader,
+            datums=datums,
+            groundtruths=groundtruths,
+            predictions=predictions,
+        )
+        return info
 
     @classmethod
     def load(
@@ -197,24 +216,23 @@ class Evaluator:
         # load cache
         reader = FileCacheReader.load(generate_cache_path(path))
 
-        # build evaluator meta
-        (
-            index_to_label,
-            confusion_matrix,
-            info,
-        ) = generate_meta(reader, index_to_label_override)
+        # extract labels
+        index_to_label = extract_labels(
+            reader=reader,
+            index_to_label_override=index_to_label_override,
+        )
 
         # read config
         metadata_path = generate_metadata_path(path)
+        metadata_fields = None
         with open(metadata_path, "r") as f:
             metadata_types = json.load(f)
-            info.metadata_fields = decode_metadata_fields(metadata_types)
+            metadata_fields = decode_metadata_fields(metadata_types)
 
         return cls(
             reader=reader,
-            info=info,
             index_to_label=index_to_label,
-            confusion_matrix=confusion_matrix,
+            metadata_fields=metadata_fields,
         )
 
     def filter(
@@ -316,16 +334,80 @@ class Evaluator:
 
         return builder.finalize(index_to_label_override=self._index_to_label)
 
-    def compute_precision_recall_iou(self) -> dict[MetricType, list]:
+    def _compute_confusion_matrix_intermediate(
+        self, datums: pc.Expression | None = None
+    ) -> NDArray[np.uint64]:
         """
         Performs an evaluation and returns metrics.
+
+        Parameters
+        ----------
+        datums : pyarrow.compute.Expression, optional
+            Option to filter datums by an expression.
 
         Returns
         -------
         dict[MetricType, list]
             A dictionary mapping MetricType enumerations to lists of computed metrics.
         """
-        results = compute_metrics(counts=self._confusion_matrix)
+        n_labels = len(self._index_to_label)
+        confusion_matrix = np.zeros(
+            (n_labels + 1, n_labels + 1), dtype=np.uint64
+        )
+        for tbl in self._reader.iterate_tables(filter=datums):
+            columns = (
+                "datum_id",
+                "gt_label_id",
+                "pd_label_id",
+            )
+            ids = np.column_stack(
+                [tbl[col].to_numpy() for col in columns]
+            ).astype(np.int64)
+            counts = tbl["count"].to_numpy()
+
+            mask_null_gts = ids[:, 1] == -1
+            mask_null_pds = ids[:, 2] == -1
+            confusion_matrix[0, 0] += counts[
+                mask_null_gts & mask_null_pds
+            ].sum()
+            for idx in range(n_labels):
+                mask_gts = ids[:, 1] == idx
+                for pidx in range(n_labels):
+                    mask_pds = ids[:, 2] == pidx
+                    confusion_matrix[idx + 1, pidx + 1] += counts[
+                        mask_gts & mask_pds
+                    ].sum()
+
+                mask_unmatched_gts = mask_gts & mask_null_pds
+                confusion_matrix[idx + 1, 0] += counts[
+                    mask_unmatched_gts
+                ].sum()
+                mask_unmatched_pds = mask_null_gts & (ids[:, 2] == idx)
+                confusion_matrix[0, idx + 1] += counts[
+                    mask_unmatched_pds
+                ].sum()
+        return confusion_matrix
+
+    def compute_precision_recall_iou(
+        self, datums: pc.Expression | None = None
+    ) -> dict[MetricType, list]:
+        """
+        Performs an evaluation and returns metrics.
+
+        Parameters
+        ----------
+        datums : pyarrow.compute.Expression, optional
+            Option to filter datums by an expression.
+
+        Returns
+        -------
+        dict[MetricType, list]
+            A dictionary mapping MetricType enumerations to lists of computed metrics.
+        """
+        confusion_matrix = self._compute_confusion_matrix_intermediate(
+            datums=datums
+        )
+        results = compute_metrics(confusion_matrix=confusion_matrix)
         return unpack_precision_recall_iou_into_metric_lists(
             results=results,
             index_to_label=self._index_to_label,

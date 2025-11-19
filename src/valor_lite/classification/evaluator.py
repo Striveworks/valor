@@ -6,7 +6,6 @@ from pathlib import Path
 import numpy as np
 import pyarrow as pa
 import pyarrow.compute as pc
-from numpy.typing import NDArray
 
 from valor_lite.cache import (
     FileCacheReader,
@@ -30,10 +29,12 @@ from valor_lite.classification.shared import (
     EvaluatorInfo,
     decode_metadata_fields,
     encode_metadata_fields,
+    extract_counts,
+    extract_groundtruth_count_per_label,
+    extract_labels,
     generate_cache_path,
     generate_intermediate_cache_path,
     generate_intermediate_schema,
-    generate_meta,
     generate_metadata_path,
     generate_roc_curve_cache_path,
     generate_roc_curve_schema,
@@ -296,11 +297,11 @@ class Builder:
         # post-process into sorted writer
         reader = self._writer.to_reader()
 
-        # generate evaluator meta
-        (index_to_label, label_counts, info,) = generate_meta(
-            reader=reader, index_to_label_override=index_to_label_override
+        # extract labels
+        index_to_label = extract_labels(
+            reader=reader,
+            index_to_label_override=index_to_label_override,
         )
-        info.metadata_fields = self._metadata_fields
 
         self._create_rocauc_intermediate(
             reader=reader,
@@ -312,9 +313,8 @@ class Builder:
         return Evaluator(
             reader=reader,
             roc_curve_reader=roc_curve_reader,
-            info=info,
-            label_counts=label_counts,
             index_to_label=index_to_label,
+            metadata_fields=self._metadata_fields,
         )
 
 
@@ -323,19 +323,31 @@ class Evaluator:
         self,
         reader: MemoryCacheReader | FileCacheReader,
         roc_curve_reader: MemoryCacheReader | FileCacheReader,
-        info: EvaluatorInfo,
-        label_counts: NDArray[np.uint64],
         index_to_label: dict[int, str],
+        metadata_fields: list[tuple[str, str | pa.DataType]] | None = None,
     ):
         self._reader = reader
         self._roc_curve_reader = roc_curve_reader
-        self._info = info
-        self._label_counts = label_counts
         self._index_to_label = index_to_label
+        self._metadata_fields = metadata_fields
 
     @property
     def info(self) -> EvaluatorInfo:
-        return self._info
+        return self.get_info()
+
+    def get_info(
+        self,
+        datums: pc.Expression | None = None,
+    ) -> EvaluatorInfo:
+        info = EvaluatorInfo()
+        info.metadata_fields = self._metadata_fields
+        info.number_of_rows = self._reader.count_rows()
+        info.number_of_labels = len(self._index_to_label)
+        info.number_of_datums = extract_counts(
+            reader=self._reader,
+            datums=datums,
+        )
+        return info
 
     @classmethod
     def load(
@@ -369,25 +381,24 @@ class Evaluator:
             generate_roc_curve_cache_path(path)
         )
 
-        # build evaluator meta
-        (
-            index_to_label,
-            label_counts,
-            info,
-        ) = generate_meta(reader, index_to_label_override)
+        # extract labels
+        index_to_label = extract_labels(
+            reader=reader,
+            index_to_label_override=index_to_label_override,
+        )
 
         # read config
         metadata_path = generate_metadata_path(path)
+        metadata_fields = None
         with open(metadata_path, "r") as f:
             encoded_types = json.load(f)
-            info.metadata_fields = decode_metadata_fields(encoded_types)
+            metadata_fields = decode_metadata_fields(encoded_types)
 
         return cls(
             reader=reader,
             roc_curve_reader=roc_curve_reader,
-            info=info,
-            label_counts=label_counts,
             index_to_label=index_to_label,
+            metadata_fields=metadata_fields,
         )
 
     def filter(
@@ -492,7 +503,7 @@ class Evaluator:
 
         return loader.finalize(index_to_label_override=self._index_to_label)
 
-    def iterate_values(self):
+    def iterate_values(self, datums: pc.Expression | None = None):
         columns = [
             "datum_id",
             "gt_label_id",
@@ -501,7 +512,7 @@ class Evaluator:
             "pd_winner",
             "match",
         ]
-        for tbl in self._reader.iterate_tables(columns=columns):
+        for tbl in self._reader.iterate_tables(columns=columns, filter=datums):
             ids = np.column_stack(
                 [
                     tbl[col].to_numpy()
@@ -517,8 +528,8 @@ class Evaluator:
             matches = tbl["match"].to_numpy()
             yield ids, scores, winners, matches
 
-    def iterate_values_with_tables(self):
-        for tbl in self._reader.iterate_tables():
+    def iterate_values_with_tables(self, datums: pc.Expression | None = None):
+        for tbl in self._reader.iterate_tables(filter=datums):
             ids = np.column_stack(
                 [
                     tbl[col].to_numpy()
@@ -534,9 +545,16 @@ class Evaluator:
             matches = tbl["match"].to_numpy()
             yield ids, scores, winners, matches, tbl
 
-    def compute_rocauc(self) -> dict[MetricType, list[Metric]]:
+    def compute_rocauc(
+        self, datums: pc.Expression | None = None
+    ) -> dict[MetricType, list[Metric]]:
         """
         Compute ROCAUC.
+
+        Parameters
+        ----------
+        datums : pyarrow.compute.Expression, optional
+            Option to filter datums by an expression.
 
         Returns
         -------
@@ -546,6 +564,11 @@ class Evaluator:
         n_labels = self.info.number_of_labels
 
         rocauc = np.zeros(n_labels, dtype=np.float64)
+        label_counts = extract_groundtruth_count_per_label(
+            reader=self._reader,
+            number_of_labels=len(self._index_to_label),
+            datums=datums,
+        )
 
         prev = np.zeros((n_labels, 2), dtype=np.uint64)
         for array in self._roc_curve_reader.iterate_arrays(
@@ -553,13 +576,14 @@ class Evaluator:
                 "pd_label_id",
                 "cumulative_fp",
                 "cumulative_tp",
-            ]
+            ],
+            filter=datums,
         ):
             rocauc, prev = compute_rocauc(
                 rocauc=rocauc,
                 array=array,
-                gt_count_per_label=self._label_counts[:, 0],
-                pd_count_per_label=self._label_counts[:, 1],
+                gt_count_per_label=label_counts[:, 0],
+                pd_count_per_label=label_counts[:, 1],
                 n_labels=self.info.number_of_labels,
                 prev=prev,
             )
@@ -576,6 +600,7 @@ class Evaluator:
         self,
         score_thresholds: list[float] = [0.0],
         hardmax: bool = True,
+        datums: pc.Expression | None = None,
     ) -> dict[MetricType, list]:
         """
         Performs an evaluation and returns metrics.
@@ -586,10 +611,8 @@ class Evaluator:
             A list of score thresholds to compute metrics over.
         hardmax : bool
             Toggles whether a hardmax is applied to predictions.
-        rows_per_chunk : int, default=10_000
-            The number of sorted rows to return in each chunk.
-        read_batch_size : int, default=1_000
-            The maximum number of rows to load in-memory per file.
+        datums : pyarrow.compute.Expression, optional
+            Option to filter datums by an expression.
 
         Returns
         -------
@@ -606,7 +629,7 @@ class Evaluator:
         # intermediates
         counts = np.zeros((n_scores, n_labels, 4), dtype=np.uint64)
 
-        for ids, scores, winners, _ in self.iterate_values():
+        for ids, scores, winners, _ in self.iterate_values(datums=datums):
             batch_counts = compute_counts(
                 ids=ids,
                 scores=scores,
@@ -637,6 +660,7 @@ class Evaluator:
         self,
         score_thresholds: list[float] = [0.0],
         hardmax: bool = True,
+        datums: pc.Expression | None = None,
     ) -> list[Metric]:
         """
         Compute a confusion matrix.
@@ -647,6 +671,8 @@ class Evaluator:
             A list of score thresholds to compute metrics over.
         hardmax : bool
             Toggles whether a hardmax is applied to predictions.
+        datums : pyarrow.compute.Expression, optional
+            Option to filter datums by an expression.
 
         Returns
         -------
@@ -664,7 +690,9 @@ class Evaluator:
         unmatched_groundtruths = np.zeros(
             (n_scores, n_labels), dtype=np.uint64
         )
-        for ids, scores, winners, matches in self.iterate_values():
+        for ids, scores, winners, matches in self.iterate_values(
+            datums=datums
+        ):
             (
                 mask_tp,
                 mask_fp_fn_misclf,
@@ -700,6 +728,7 @@ class Evaluator:
         self,
         score_thresholds: list[float] = [0.0],
         hardmax: bool = True,
+        datums: pc.Expression | None = None,
     ) -> list[Metric]:
         """
         Compute examples per datum.
@@ -712,6 +741,8 @@ class Evaluator:
             A list of score thresholds to compute metrics over.
         hardmax : bool
             Toggles whether a hardmax is applied to predictions.
+        datums : pyarrow.compute.Expression, optional
+            Option to filter datums by an expression.
 
         Returns
         -------
@@ -726,9 +757,9 @@ class Evaluator:
             ids,
             scores,
             winners,
-            matches,
+            _,
             tbl,
-        ) in self.iterate_values_with_tables():
+        ) in self.iterate_values_with_tables(datums=datums):
             if ids.size == 0:
                 continue
 
@@ -770,6 +801,7 @@ class Evaluator:
         self,
         score_thresholds: list[float] = [0.0],
         hardmax: bool = True,
+        datums: pc.Expression | None = None,
     ) -> list[Metric]:
         """
         Compute confusion matrix with examples.
@@ -784,6 +816,8 @@ class Evaluator:
             A list of score thresholds to compute metrics over.
         hardmax : bool
             Toggles whether a hardmax is applied to predictions.
+        datums : pyarrow.compute.Expression, optional
+            Option to filter datums by an expression.
 
         Returns
         -------
@@ -805,9 +839,9 @@ class Evaluator:
             ids,
             scores,
             winners,
-            matches,
+            _,
             tbl,
-        ) in self.iterate_values_with_tables():
+        ) in self.iterate_values_with_tables(datums=datums):
             if ids.size == 0:
                 continue
 

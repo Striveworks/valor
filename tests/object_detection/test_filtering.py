@@ -563,3 +563,130 @@ def test_filtering_four_detections_by_annotation_metadata(
         assert m in expected_metrics
     for m in expected_metrics:
         assert m in actual_metrics
+
+
+def test_filtering_four_detections_inline(
+    loader: Loader,
+    four_detections: list[Detection],
+):
+    """
+    Basic object detection test that combines the labels of basic_detections_first_class and basic_detections_second_class.
+
+    groundtruths
+        datum uid1
+            box 1 - label v1 - tp
+            box 3 - label v2 - fn unmatched ground truths
+        datum uid2
+            box 2 - label v1 - fn misclassification
+        datum uid3
+            box 1 - label v1 - tp
+            box 3 - label v2 - fn unmatched ground truths
+        datum uid4
+            box 2 - label v1 - fn misclassification
+
+    predictions
+        datum uid1
+            box 1 - label v1 - score 0.3 - tp
+        datum uid2
+            box 2 - label v2 - score 0.98 - fp misclassification
+        datum uid3
+            box 1 - label v1 - score 0.3 - tp
+        datum uid4
+            box 2 - label v2 - score 0.98 - fp misclassification
+    """
+    loader.add_bounding_boxes(four_detections)
+    evaluator = loader.finalize()
+
+    # test evaluation
+    metrics = evaluator.compute_precision_recall(
+        iou_thresholds=[0.5],
+        score_thresholds=[0.5],
+        datums=pc.field("datum_uid") == "uid1",
+    )
+
+    actual_metrics = [m.to_dict() for m in metrics[MetricType.AP]]
+    expected_metrics = [
+        {
+            "type": "AP",
+            "value": 1.0,
+            "parameters": {"iou_threshold": 0.5, "label": "v1"},
+        },
+        {
+            "type": "AP",
+            "value": 0.0,
+            "parameters": {"iou_threshold": 0.5, "label": "v2"},
+        },
+    ]
+    for m in actual_metrics:
+        assert m in expected_metrics
+    for m in expected_metrics:
+        assert m in actual_metrics
+
+
+def test_get_info(
+    loader: Loader,
+    four_detections: list[Detection],
+):
+    """
+    Basic object detection test that combines the labels of basic_detections_first_class and basic_detections_second_class.
+
+    groundtruths
+        datum uid1
+            box 1 - label v1 - tp
+            box 3 - label v2 - fn unmatched ground truths
+        datum uid2
+            box 2 - label v1 - fn misclassification
+        datum uid3
+            box 1 - label v1 - tp
+            box 3 - label v2 - fn unmatched ground truths
+        datum uid4
+            box 2 - label v1 - fn misclassification
+
+    predictions
+        datum uid1
+            box 1 - label v1 - score 0.3 - tp
+        datum uid2
+            box 2 - label v2 - score 0.98 - fp misclassification
+        datum uid3
+            box 1 - label v1 - score 0.3 - tp
+        datum uid4
+            box 2 - label v2 - score 0.98 - fp misclassification
+    """
+    loader.add_bounding_boxes(four_detections)
+    evaluator = loader.finalize()
+
+    # remove all FN groundtruths
+    info = evaluator.get_info(
+        groundtruths=pc.field("gt_rect") == "rect1",
+    )
+    assert info.number_of_datums == 4
+    assert info.number_of_labels == 2
+    assert info.number_of_groundtruth_annotations == 2
+    assert info.number_of_prediction_annotations == 4
+
+    # remove TP ground truths
+    info = evaluator.get_info(
+        groundtruths=pc.field("gt_rect") != "rect1",
+    )
+    assert info.number_of_datums == 4
+    assert info.number_of_labels == 2
+    assert info.number_of_groundtruth_annotations == 4
+    assert info.number_of_prediction_annotations == 4
+
+    # remove all predictions
+    info = evaluator.get_info(
+        predictions=pc.field("pd_rect") == "rect3",
+    )
+    assert info.number_of_datums == 4
+    assert info.number_of_labels == 2
+    assert info.number_of_groundtruth_annotations == 6
+    assert info.number_of_prediction_annotations == 0
+
+    # remove TP predictions
+    info = evaluator.get_info(
+        predictions=pc.field("pd_rect") != "rect1",
+    )
+    assert info.number_of_datums == 4
+    assert info.number_of_labels == 2
+    assert info.number_of_groundtruth_annotations == 6
+    assert info.number_of_prediction_annotations == 2

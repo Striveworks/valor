@@ -4,7 +4,6 @@ from pathlib import Path
 import numpy as np
 import pyarrow as pa
 import pyarrow.compute as pc
-from numpy.typing import NDArray
 
 from valor_lite.cache import (
     FileCacheReader,
@@ -28,9 +27,11 @@ from valor_lite.object_detection.shared import (
     EvaluatorInfo,
     decode_metadata_fields,
     encode_metadata_fields,
+    extract_counts,
+    extract_groundtruth_count_per_label,
+    extract_labels,
     generate_detailed_cache_path,
     generate_detailed_schema,
-    generate_meta,
     generate_metadata_path,
     generate_ranked_cache_path,
     generate_ranked_schema,
@@ -197,13 +198,11 @@ class Builder:
         )
         detailed_reader = self._detailed_writer.to_reader()
 
-        # build evaluator meta
-        (
-            index_to_label,
-            number_of_groundtruths_per_label,
-            info,
-        ) = generate_meta(detailed_reader, index_to_label_override)
-        info.metadata_fields = self._metadata_fields
+        # extract labels
+        index_to_label = extract_labels(
+            reader=detailed_reader,
+            index_to_label_override=index_to_label_override,
+        )
 
         # populate ranked cache
         self._rank(
@@ -215,9 +214,8 @@ class Builder:
         return Evaluator(
             detailed_reader=detailed_reader,
             ranked_reader=ranked_reader,
-            info=info,
             index_to_label=index_to_label,
-            number_of_groundtruths_per_label=number_of_groundtruths_per_label,
+            metadata_fields=self._metadata_fields,
         )
 
 
@@ -226,21 +224,39 @@ class Evaluator:
         self,
         detailed_reader: MemoryCacheReader | FileCacheReader,
         ranked_reader: MemoryCacheReader | FileCacheReader,
-        info: EvaluatorInfo,
         index_to_label: dict[int, str],
-        number_of_groundtruths_per_label: NDArray[np.uint64],
+        metadata_fields: list[tuple[str, str | pa.DataType]] | None = None,
     ):
         self._detailed_reader = detailed_reader
         self._ranked_reader = ranked_reader
-        self._info = info
         self._index_to_label = index_to_label
-        self._number_of_groundtruths_per_label = (
-            number_of_groundtruths_per_label
-        )
+        self._metadata_fields = metadata_fields
 
     @property
     def info(self) -> EvaluatorInfo:
-        return self._info
+        return self.get_info()
+
+    def get_info(
+        self,
+        datums: pc.Expression | None = None,
+        groundtruths: pc.Expression | None = None,
+        predictions: pc.Expression | None = None,
+    ) -> EvaluatorInfo:
+        info = EvaluatorInfo()
+        info.number_of_rows = self._detailed_reader.count_rows()
+        info.metadata_fields = self._metadata_fields
+        info.number_of_labels = len(self._index_to_label)
+        (
+            info.number_of_datums,
+            info.number_of_groundtruth_annotations,
+            info.number_of_prediction_annotations,
+        ) = extract_counts(
+            reader=self._detailed_reader,
+            datums=datums,
+            groundtruths=groundtruths,
+            predictions=predictions,
+        )
+        return info
 
     @classmethod
     def load(
@@ -262,27 +278,24 @@ class Evaluator:
         )
         ranked_reader = FileCacheReader.load(generate_ranked_cache_path(path))
 
-        # build evaluator meta
-        (
-            index_to_label,
-            number_of_groundtruths_per_label,
-            info,
-        ) = generate_meta(detailed_reader, index_to_label_override)
+        # extract labels from cache
+        index_to_label = extract_labels(
+            reader=detailed_reader,
+            index_to_label_override=index_to_label_override,
+        )
 
         # read config
         metadata_path = generate_metadata_path(path)
+        metadata_fields = None
         with open(metadata_path, "r") as f:
             encoded_metadata_types = json.load(f)
-            info.metadata_fields = decode_metadata_fields(
-                encoded_metadata_types
-            )
+            metadata_fields = decode_metadata_fields(encoded_metadata_types)
 
         return cls(
             detailed_reader=detailed_reader,
             ranked_reader=ranked_reader,
-            info=info,
             index_to_label=index_to_label,
-            number_of_groundtruths_per_label=number_of_groundtruths_per_label,
+            metadata_fields=metadata_fields,
         )
 
     def filter(
@@ -326,12 +339,12 @@ class Evaluator:
                 batch_size=self._detailed_reader.batch_size,
                 rows_per_file=self._detailed_reader.rows_per_file,
                 compression=self._detailed_reader.compression,
-                metadata_fields=self.info.metadata_fields,
+                metadata_fields=self._metadata_fields,
             )
         else:
             loader = Loader.in_memory(
                 batch_size=self._detailed_reader.batch_size,
-                metadata_fields=self.info.metadata_fields,
+                metadata_fields=self._metadata_fields,
             )
 
         for tbl in self._detailed_reader.iterate_tables(filter=datums):
@@ -406,6 +419,7 @@ class Evaluator:
         self,
         iou_thresholds: list[float],
         score_thresholds: list[float],
+        datums: pc.Expression | None = None,
     ) -> dict[MetricType, list[Metric]]:
         """
         Computes all metrics except for ConfusionMatrix
@@ -416,6 +430,8 @@ class Evaluator:
             A list of IOU thresholds to compute metrics over.
         score_thresholds : list[float]
             A list of score thresholds to compute metrics over.
+        datums : pyarrow.compute.Expression, optional
+            Option to filter datums by an expression.
 
         Returns
         -------
@@ -430,6 +446,11 @@ class Evaluator:
         n_ious = len(iou_thresholds)
         n_scores = len(score_thresholds)
         n_labels = len(self._index_to_label)
+        n_gts_per_lbl = extract_groundtruth_count_per_label(
+            reader=self._detailed_reader,
+            number_of_labels=n_labels,
+            datums=datums,
+        )
 
         counts = np.zeros((n_ious, n_scores, 3, n_labels), dtype=np.uint64)
         pr_curve = np.zeros((n_ious, n_labels, 101, 2), dtype=np.float64)
@@ -446,6 +467,7 @@ class Evaluator:
                 "iou_prev",
                 "high_score",
             ],
+            filter=datums,
         ):
             if pairs.size == 0:
                 continue
@@ -454,7 +476,7 @@ class Evaluator:
                 ranked_pairs=pairs,
                 iou_thresholds=np.array(iou_thresholds),
                 score_thresholds=np.array(score_thresholds),
-                number_of_groundtruths_per_label=self._number_of_groundtruths_per_label,
+                number_of_groundtruths_per_label=n_gts_per_lbl,
                 number_of_labels=len(self._index_to_label),
                 running_counts=running_counts,
             )
@@ -462,13 +484,11 @@ class Evaluator:
             pr_curve = np.maximum(batch_pr_curve, pr_curve)
 
         # fn count
-        counts[:, :, 2, :] = (
-            self._number_of_groundtruths_per_label - counts[:, :, 0, :]
-        )
+        counts[:, :, 2, :] = n_gts_per_lbl - counts[:, :, 0, :]
 
         precision_recall_f1 = compute_precision_recall_f1(
             counts=counts,
-            number_of_groundtruths_per_label=self._number_of_groundtruths_per_label,
+            number_of_groundtruths_per_label=n_gts_per_lbl,
         )
         (
             average_precision,
@@ -496,6 +516,7 @@ class Evaluator:
         self,
         iou_thresholds: list[float],
         score_thresholds: list[float],
+        datums: pc.Expression | None = None,
     ) -> list[Metric]:
         """
         Computes confusion matrices at various thresholds.
@@ -506,6 +527,8 @@ class Evaluator:
             A list of IOU thresholds to compute metrics over.
         score_thresholds : list[float]
             A list of score thresholds to compute metrics over.
+        datums : pyarrow.compute.Expression, optional
+            Option to filter datums by an expression.
 
         Returns
         -------
@@ -538,6 +561,7 @@ class Evaluator:
                 "iou",
                 "pd_score",
             ],
+            filter=datums,
         ):
             if pairs.size == 0:
                 continue
@@ -583,6 +607,7 @@ class Evaluator:
         self,
         iou_thresholds: list[float],
         score_thresholds: list[float],
+        datums: pc.Expression | None = None,
     ) -> list[Metric]:
         """
         Computes examples at various thresholds.
@@ -595,6 +620,8 @@ class Evaluator:
             A list of IOU thresholds to compute metrics over.
         score_thresholds : list[float]
             A list of score thresholds to compute metrics over.
+        datums : pyarrow.compute.Expression, optional
+            Option to filter datums by an expression.
 
         Returns
         -------
@@ -624,6 +651,7 @@ class Evaluator:
         for tbl, pairs in self._detailed_reader.iterate_tables_with_arrays(
             columns=tbl_columns + numeric_columns,
             numeric_columns=numeric_columns,
+            filter=datums,
         ):
             if pairs.size == 0:
                 continue
@@ -676,6 +704,7 @@ class Evaluator:
         self,
         iou_thresholds: list[float],
         score_thresholds: list[float],
+        datums: pc.Expression | None = None,
     ) -> list[Metric]:
         """
         Computes confusion matrix with examples at various thresholds.
@@ -688,6 +717,8 @@ class Evaluator:
             A list of IOU thresholds to compute metrics over.
         score_thresholds : list[float]
             A list of score thresholds to compute metrics over.
+        datums : pyarrow.compute.Expression, optional
+            Option to filter datums by an expression.
 
         Returns
         -------
@@ -727,6 +758,7 @@ class Evaluator:
         for tbl, pairs in self._detailed_reader.iterate_tables_with_arrays(
             columns=tbl_columns + numeric_columns,
             numeric_columns=numeric_columns,
+            filter=datums,
         ):
             if pairs.size == 0:
                 continue

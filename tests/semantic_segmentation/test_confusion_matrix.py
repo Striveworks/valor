@@ -139,9 +139,11 @@ def test_confusion_matrix_intermediate_counting(loader: Loader):
 
     loader.add_data([segmentation])
     evaluator = loader.finalize()
-    assert evaluator._confusion_matrix.shape == (5, 5)
+
+    confusion_matrix = evaluator._compute_confusion_matrix_intermediate()
+    assert confusion_matrix.shape == (5, 5)
     assert (
-        evaluator._confusion_matrix
+        confusion_matrix
         == np.array(
             [
                 [0, 0, 0, 0, 0],

@@ -34,9 +34,9 @@ def test_info_using_large_random_segmentations(
     loader.add_data(large_random_segmentations)
     evaluator = loader.finalize()
 
-    assert evaluator._info.number_of_datums == 3
-    assert evaluator._info.number_of_labels == 9
-    assert evaluator._info.number_of_pixels == 12000000
+    assert evaluator.info.number_of_datums == 3
+    assert evaluator.info.number_of_labels == 9
+    assert evaluator.info.number_of_pixels == 12000000
 
 
 def _flatten_metrics(m) -> list:
@@ -116,8 +116,9 @@ def test_label_mismatch(loader: Loader):
         ]
     )
     evaluator = loader.finalize()
+    confusion_matrix = evaluator._compute_confusion_matrix_intermediate()
     assert np.all(
-        evaluator._confusion_matrix
+        confusion_matrix
         == np.array(
             [
                 [
@@ -162,8 +163,9 @@ def test_empty_groundtruths(loader: Loader):
         ]
     )
     evaluator = loader.finalize()
+    confusion_matrix = evaluator._compute_confusion_matrix_intermediate()
     assert np.all(
-        evaluator._confusion_matrix
+        confusion_matrix
         == np.array(
             [
                 [
@@ -207,8 +209,9 @@ def test_empty_predictions(loader: Loader):
         ]
     )
     evaluator = loader.finalize()
+    confusion_matrix = evaluator._compute_confusion_matrix_intermediate()
     assert np.all(
-        evaluator._confusion_matrix
+        confusion_matrix
         == np.array(
             [
                 [2, 0, 0],
