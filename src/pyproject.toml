@@ -9,6 +9,7 @@ dependencies = [
     "numpy",
     "tqdm",
     "shapely",
+    "pyarrow",
 ]
 
 [project.urls]
