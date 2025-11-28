@@ -18,8 +18,8 @@ from valor_lite.object_detection import (
 
 @pytest.fixture(
     params=[
-        ("persistent", 10_000, 100_000),
-        ("persistent", 1, 1),
+        ("persistent", 100, 1_000),
+        ("persistent", 5, 5),
         ("memory", 10_000, 0),
         ("memory", 1, 0),
     ],

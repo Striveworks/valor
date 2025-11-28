@@ -454,7 +454,8 @@ class Evaluator:
 
         counts = np.zeros((n_ious, n_scores, 3, n_labels), dtype=np.uint64)
         pr_curve = np.zeros((n_ious, n_labels, 101, 2), dtype=np.float64)
-        running_counts = np.ones((n_ious, n_labels, 2), dtype=np.uint64)
+        running_counts = np.zeros((n_ious, n_labels, 2), dtype=np.uint64)
+
         for pairs in self._ranked_reader.iterate_arrays(
             numeric_columns=[
                 "datum_id",
@@ -479,9 +480,10 @@ class Evaluator:
                 number_of_groundtruths_per_label=n_gts_per_lbl,
                 number_of_labels=len(self._index_to_label),
                 running_counts=running_counts,
+                pr_curve=pr_curve,
             )
             counts += batch_counts
-            pr_curve = np.maximum(batch_pr_curve, pr_curve)
+            # pr_curve = np.maximum(batch_pr_curve, pr_curve)
 
         # fn count
         counts[:, :, 2, :] = n_gts_per_lbl - counts[:, :, 0, :]
