@@ -218,8 +218,7 @@ def rank_pairs(sorted_pairs: NDArray[np.float64]):
 
 
 def calculate_ranking_boundaries(ranked_pairs: NDArray[np.float64]):
-
-    # TODO - fix score tracking in pr curves
+    """Determine IOU boundaries for computing AP across chunks."""
     gts = ranked_pairs[:, (0, 1, 3)].astype(np.int64)
     ious = ranked_pairs[:, 5]
 
@@ -247,6 +246,7 @@ def calculate_ranking_boundaries(ranked_pairs: NDArray[np.float64]):
 
 
 def rank_table(tbl: pa.Table) -> pa.Table:
+    """Rank table for AP computation."""
     numeric_columns = [
         "datum_id",
         "gt_id",
