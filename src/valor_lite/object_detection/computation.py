@@ -176,11 +176,32 @@ def compute_polygon_iou(
     return ious
 
 
-def rank_pairs(sorted_pairs: NDArray[np.float64]):
+def rank_pairs(
+    sorted_pairs: NDArray[np.float64],
+) -> tuple[NDArray[np.float64], NDArray[np.intp]]:
     """
     Prunes and ranks prediction pairs.
 
     Should result in a single pair per prediction annotation.
+
+    Parameters
+    ----------
+    sorted_pairs : NDArray[np.float64]
+        Ranked annotation pairs.
+        Index 0 - Datum Index
+        Index 1 - GroundTruth Index
+        Index 2 - Prediction Index
+        Index 3 - GroundTruth Label Index
+        Index 4 - Prediction Label Index
+        Index 5 - IOU
+        Index 6 - Score
+
+    Returns
+    -------
+    NDArray[float64]
+        Ranked prediction pairs.
+    NDArray[intp]
+        Indices of ranked prediction pairs.
     """
 
     # remove unmatched ground truths
@@ -197,7 +218,7 @@ def rank_pairs(sorted_pairs: NDArray[np.float64]):
     pairs = pairs[mask_label_match | mask_unmatched_predictions]
     indices = indices[mask_label_match | mask_unmatched_predictions]
 
-    # only keep the highest ranked pair
+    # only keep the highest ranked prediction (datum_id, prediction_id, predicted_label_id)
     _, unique_indices = np.unique(
         pairs[:, [0, 2, 4]], axis=0, return_index=True
     )
@@ -217,8 +238,30 @@ def rank_pairs(sorted_pairs: NDArray[np.float64]):
     return pairs, indices
 
 
-def calculate_ranking_boundaries(ranked_pairs: NDArray[np.float64]):
-    """Determine IOU boundaries for computing AP across chunks."""
+def calculate_ranking_boundaries(
+    ranked_pairs: NDArray[np.float64],
+) -> NDArray[np.float64]:
+    """
+    Determine IOU boundaries for computing AP across chunks.
+
+    Parameters
+    ----------
+    ranked_pairs : NDArray[np.float64]
+        Ranked annotation pairs.
+        Index 0 - Datum Index
+        Index 1 - GroundTruth Index
+        Index 2 - Prediction Index
+        Index 3 - GroundTruth Label Index
+        Index 4 - Prediction Label Index
+        Index 5 - IOU
+        Index 6 - Score
+
+    Returns
+    -------
+    NDArray[np.float64]
+        A 1-D array containing the lower IOU boundary for classifying pairs as true-positive across chunks.
+    """
+    # groundtruths defined as (datum_id, groundtruth_id, groundtruth_label_id)
     gts = ranked_pairs[:, (0, 1, 3)].astype(np.int64)
     ious = ranked_pairs[:, 5]
 
@@ -288,32 +331,37 @@ def compute_counts(
     number_of_groundtruths_per_label: NDArray[np.uint64],
     number_of_labels: int,
     running_counts: NDArray[np.uint64],
-    pr_curve,
+    pr_curve: NDArray[np.float64],
 ) -> NDArray[np.uint64]:
     """
     Computes Object Detection metrics.
 
     Precision-recall curve and running counts are updated in-place.
 
-    Takes data with shape (N, 7):
-
-    Index 0 - Datum Index
-    Index 1 - GroundTruth Index
-    Index 2 - Prediction Index
-    Index 3 - GroundTruth Label Index
-    Index 4 - Prediction Label Index
-    Index 5 - IOU
-    Index 6 - Score
-    Index 7 - IOU Lower Boundary
-
     Parameters
     ----------
     ranked_pairs : NDArray[np.float64]
         A ranked array summarizing the IOU calculations of one or more pairs.
+        Index 0 - Datum Index
+        Index 1 - GroundTruth Index
+        Index 2 - Prediction Index
+        Index 3 - GroundTruth Label Index
+        Index 4 - Prediction Label Index
+        Index 5 - IOU
+        Index 6 - Score
+        Index 7 - IOU Lower Boundary
     iou_thresholds : NDArray[np.float64]
         A 1-D array containing IOU thresholds.
     score_thresholds : NDArray[np.float64]
         A 1-D array containing score thresholds.
+    number_of_groundtruths_per_label : NDArray[np.uint64]
+        A 1-D array containing total number of ground truths per label.
+    number_of_labels : int
+        Total number of unique labels.
+    running_counts : NDArray[np.uint64]
+        A 2-D array containing running counts of total predictions and true-positive. This array is mutated.
+    pr_curve : NDArray[np.float64]
+        A 2-D array containing 101-point binning of precision and score over a fixed recall interval. This array is mutated.
 
     Returns
     -------
