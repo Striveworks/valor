@@ -1,45 +1,27 @@
-import json
-from pathlib import Path
-
 from valor_lite.object_detection import BoundingBox, Detection, Loader
 
 
-def test_regression_coco_v0_36_6(loader: Loader):
-
-    # load detections
-    path = Path(__file__).parent / "fixtures/coco_input.json"
-    with open(path, "r") as f:
-        detections = json.load(f)
-        detections = [
-            Detection(
-                uid=d["uid"],
-                groundtruths=[BoundingBox(**gt) for gt in d["groundtruths"]],
-                predictions=[BoundingBox(**pd) for pd in d["predictions"]],
-            )
-            for d in detections
-        ]
-
-    # load expected metrics
-    path = Path(__file__).parent / "fixtures/coco_output.json"
-    with open(path, "r") as f:
-        expected_metrics = json.load(f)
-
-    loader.add_bounding_boxes(detections)
+def test_regression_coco_v0_36_6(
+    loader: Loader,
+    coco_detections_v0_36_6: list[Detection[BoundingBox]],
+    coco_metrics_v0_36_6: dict[str, list[dict]],
+):
+    """Test against Valor v0.36.6"""
+    loader.add_bounding_boxes(coco_detections_v0_36_6)
     evaluator = loader.finalize()
     metrics = evaluator.compute_precision_recall(
         iou_thresholds=[0.1],
         score_thresholds=[0.5],
     )
-
-    actual_metrics = {
+    computed_metrics = {
         k.value: [m.to_dict() for m in v] for k, v in metrics.items()
     }
 
     # verify matching keys
-    assert set(expected_metrics.keys()) == set(actual_metrics.keys())
+    assert set(coco_metrics_v0_36_6.keys()) == set(computed_metrics.keys())
 
-    for mtype in expected_metrics.keys():
-        for m in actual_metrics[mtype]:
-            assert m in expected_metrics[mtype], mtype
-        for m in expected_metrics[mtype]:
-            assert m in actual_metrics[mtype], mtype
+    for mtype in coco_metrics_v0_36_6.keys():
+        for m in computed_metrics[mtype]:
+            assert m in coco_metrics_v0_36_6[mtype], mtype
+        for m in coco_metrics_v0_36_6[mtype]:
+            assert m in computed_metrics[mtype], mtype

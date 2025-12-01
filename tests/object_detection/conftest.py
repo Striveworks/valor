@@ -1,3 +1,4 @@
+import json
 from pathlib import Path
 from uuid import uuid4
 
@@ -1336,3 +1337,33 @@ def detections_model_single_class_spam_fp(loader: Loader) -> Evaluator:
     )
     loader.add_bounding_boxes([detection])
     return loader.finalize()
+
+
+@pytest.fixture
+def fixture_path() -> Path:
+    return Path(__file__).parent / "fixtures"
+
+
+@pytest.fixture
+def coco_detections_v0_36_6(
+    fixture_path: Path,
+) -> list[Detection[BoundingBox]]:
+    path = fixture_path / "coco_input.json"
+    with open(path, "r") as f:
+        detections = json.load(f)
+        return [
+            Detection(
+                uid=d["uid"],
+                groundtruths=[BoundingBox(**gt) for gt in d["groundtruths"]],
+                predictions=[BoundingBox(**pd) for pd in d["predictions"]],
+            )
+            for d in detections
+        ]
+
+
+@pytest.fixture
+def coco_metrics_v0_36_6(fixture_path: Path) -> dict[str, list[dict]]:
+    # metrics are given back in dictionary format
+    path = fixture_path / "coco_output.json"
+    with open(path, "r") as f:
+        return json.load(f)
