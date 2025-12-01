@@ -456,7 +456,6 @@ def test_filtering_four_detections_by_indices(
             "parameters": {"iou_threshold": 0.5, "label": "v2"},
         },
     ]
-    print(actual_metrics)
     for m in actual_metrics:
         assert m in expected_metrics
     for m in expected_metrics:

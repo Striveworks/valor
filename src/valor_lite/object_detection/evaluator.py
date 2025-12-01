@@ -79,7 +79,7 @@ class Builder:
             batch_size=batch_size,
         )
         ranked_writer = MemoryCacheWriter.create(
-            schema=generate_ranked_schema(),
+            schema=generate_ranked_schema(metadata_fields),
             batch_size=batch_size,
         )
 
@@ -126,7 +126,7 @@ class Builder:
         )
         ranked_writer = FileCacheWriter.create(
             path=generate_ranked_cache_path(path),
-            schema=generate_ranked_schema(),
+            schema=generate_ranked_schema(metadata_fields),
             batch_size=batch_size,
             rows_per_file=rows_per_file,
             compression=compression,
@@ -163,11 +163,9 @@ class Builder:
             columns=[
                 field.name
                 for field in self._ranked_writer.schema
-                if field.name not in {"high_score", "iou_prev"}
+                if field.name != "iou_prev"
             ],
-            table_sort_override=lambda tbl: rank_table(
-                tbl, number_of_labels=n_labels
-            ),
+            table_sort_override=rank_table,
         )
         self._ranked_writer.flush()
 
@@ -454,7 +452,8 @@ class Evaluator:
 
         counts = np.zeros((n_ious, n_scores, 3, n_labels), dtype=np.uint64)
         pr_curve = np.zeros((n_ious, n_labels, 101, 2), dtype=np.float64)
-        running_counts = np.ones((n_ious, n_labels, 2), dtype=np.uint64)
+        running_counts = np.zeros((n_ious, n_labels, 2), dtype=np.uint64)
+
         for pairs in self._ranked_reader.iterate_arrays(
             numeric_columns=[
                 "datum_id",
@@ -465,23 +464,22 @@ class Evaluator:
                 "iou",
                 "pd_score",
                 "iou_prev",
-                "high_score",
             ],
             filter=datums,
         ):
             if pairs.size == 0:
                 continue
 
-            (batch_counts, batch_pr_curve) = compute_counts(
+            batch_counts = compute_counts(
                 ranked_pairs=pairs,
                 iou_thresholds=np.array(iou_thresholds),
                 score_thresholds=np.array(score_thresholds),
                 number_of_groundtruths_per_label=n_gts_per_lbl,
                 number_of_labels=len(self._index_to_label),
                 running_counts=running_counts,
+                pr_curve=pr_curve,
             )
             counts += batch_counts
-            pr_curve = np.maximum(batch_pr_curve, pr_curve)
 
         # fn count
         counts[:, :, 2, :] = n_gts_per_lbl - counts[:, :, 0, :]
@@ -551,6 +549,7 @@ class Evaluator:
             (n_ious, n_scores, n_labels), dtype=np.uint64
         )
         unmatched_predictions = np.zeros_like(unmatched_groundtruths)
+
         for pairs in self._detailed_reader.iterate_arrays(
             numeric_columns=[
                 "datum_id",
