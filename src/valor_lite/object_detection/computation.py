@@ -224,7 +224,7 @@ def calculate_ranking_boundaries(ranked_pairs: NDArray[np.float64]):
     ious = ranked_pairs[:, 5]
 
     iou_boundary = np.ones_like(ious) * 2  # impossible bound
-    
+
     mask_valid_gts = gts[:, 1] >= 0
     unique_gts = np.unique(gts[mask_valid_gts], axis=0)
     for gt in unique_gts:
@@ -246,7 +246,7 @@ def calculate_ranking_boundaries(ranked_pairs: NDArray[np.float64]):
     return iou_boundary
 
 
-def rank_table(tbl: pa.Table, number_of_labels: int) -> pa.Table:
+def rank_table(tbl: pa.Table) -> pa.Table:
     numeric_columns = [
         "datum_id",
         "gt_id",
@@ -424,9 +424,6 @@ def compute_counts(
             )
             running_counts[iou_idx, pd_label, 1] += tp_count
 
-            if pd_label == 1:
-                print(scores[true_positives_mask].tolist())
-
     # calculate running precision-recall points for AP
     precision = np.zeros_like(running_total_count, dtype=np.float64)
     np.divide(
@@ -450,9 +447,11 @@ def compute_counts(
             pr_curve[iou_idx, pd_labels, recall_index[iou_idx], 0],
             precision[iou_idx],
         )
-        pr_curve[iou_idx, pd_labels, recall_index[iou_idx], 1] = np.maximum(
-            pr_curve[iou_idx, pd_labels, recall_index[iou_idx], 1],
-            scores,
+        pr_curve[
+            iou_idx, pd_labels[::-1], recall_index[iou_idx][::-1], 1
+        ] = np.maximum(
+            pr_curve[iou_idx, pd_labels[::-1], recall_index[iou_idx][::-1], 1],
+            scores[::-1],
         )
 
     return counts

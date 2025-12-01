@@ -165,9 +165,7 @@ class Builder:
                 for field in self._ranked_writer.schema
                 if field.name != "iou_prev"
             ],
-            table_sort_override=lambda tbl: rank_table(
-                tbl, number_of_labels=n_labels
-            ),
+            table_sort_override=rank_table,
         )
         self._ranked_writer.flush()
 
@@ -455,8 +453,7 @@ class Evaluator:
         counts = np.zeros((n_ious, n_scores, 3, n_labels), dtype=np.uint64)
         pr_curve = np.zeros((n_ious, n_labels, 101, 2), dtype=np.float64)
         running_counts = np.zeros((n_ious, n_labels, 2), dtype=np.uint64)
-        
-        print(json.dumps(self._index_to_label, indent=2))
+
         for pairs in self._ranked_reader.iterate_arrays(
             numeric_columns=[
                 "datum_id",
