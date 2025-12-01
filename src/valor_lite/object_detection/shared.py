@@ -68,7 +68,9 @@ def generate_detailed_schema(
     return pa.schema(reserved_fields + metadata_fields)
 
 
-def generate_ranked_schema() -> pa.Schema:
+def generate_ranked_schema(
+    metadata_fields: list[tuple[str, str | pa.DataType]] | None
+) -> pa.Schema:
     reserved_fields = [
         ("datum_uid", pa.string()),
         ("datum_id", pa.int64()),
@@ -81,10 +83,19 @@ def generate_ranked_schema() -> pa.Schema:
         ("pd_score", pa.float64()),
         # pair
         ("iou", pa.float64()),
-        ("high_score", pa.bool_()),
         ("iou_prev", pa.float64()),
     ]
-    return pa.schema(reserved_fields)
+    metadata_fields = metadata_fields if metadata_fields else []
+
+    # validate
+    reserved_field_names = {f[0] for f in reserved_fields}
+    metadata_field_names = {f[0] for f in metadata_fields}
+    if conflicting := reserved_field_names & metadata_field_names:
+        raise ValueError(
+            f"metadata fields {conflicting} conflict with reserved fields"
+        )
+
+    return pa.schema(reserved_fields[:-1] + metadata_fields + reserved_fields[-1:])
 
 
 def encode_metadata_fields(

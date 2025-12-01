@@ -217,28 +217,18 @@ def rank_pairs(sorted_pairs: NDArray[np.float64]):
     return pairs, indices
 
 
-def calculate_ranking_boundaries(
-    ranked_pairs: NDArray[np.float64], number_of_labels: int
-):
+def calculate_ranking_boundaries(ranked_pairs: NDArray[np.float64]):
 
-    # TODO - remove winners, fix score tracking in pr curves
+    # TODO - fix score tracking in pr curves
     gts = ranked_pairs[:, (0, 1, 3)].astype(np.int64)
     ious = ranked_pairs[:, 5]
 
-    unique_gts, gt_counts = np.unique(
-        gts,
-        return_counts=True,
-        axis=0,
-    )
-    unique_gts = unique_gts[gt_counts > 1]  # select gts with many pairs
-    unique_gts = unique_gts[unique_gts[:, 1] >= 0]  # remove null
-
-    winning_predictions = np.ones_like(ious, dtype=np.bool_)
-    winning_predictions[gts[:, 1] < 0] = False  # null gts cannot be won
     iou_boundary = np.ones_like(ious) * 2  # impossible bound
-
+    
+    mask_valid_gts = gts[:, 1] >= 0
+    unique_gts = np.unique(gts[mask_valid_gts], axis=0)
     for gt in unique_gts:
-        mask_gt = (gts == gt).all(axis=1)  # & mask_tp
+        mask_gt = (gts == gt).all(axis=1)
         if mask_gt.sum() <= 1:
             iou_boundary[mask_gt] = 0.0
             continue
@@ -253,11 +243,7 @@ def calculate_ranking_boundaries(
         iou_boundary[indices[0]] = 0.0
         iou_boundary[indices[1:]] = ious[indices[:-1]]
 
-        # mark first element (highest score)
-        indices = np.where(mask_gt)[0][1:]
-        winning_predictions[indices] = False
-
-    return iou_boundary, winning_predictions
+    return iou_boundary
 
 
 def rank_table(tbl: pa.Table, number_of_labels: int) -> pa.Table:
@@ -286,20 +272,14 @@ def rank_table(tbl: pa.Table, number_of_labels: int) -> pa.Table:
     ranked_tbl = sorted_tbl.take(indices)
 
     # find boundaries
-    lower_iou_bound, winning_predictions = calculate_ranking_boundaries(
-        ranked_pairs, number_of_labels=number_of_labels
-    )
-    ranked_tbl = ranked_tbl.append_column(
-        pa.field("high_score", pa.bool_()),
-        pa.array(winning_predictions, type=pa.bool_()),
-    )
+    lower_iou_bound = calculate_ranking_boundaries(ranked_pairs)
     ranked_tbl = ranked_tbl.append_column(
         pa.field("iou_prev", pa.float64()),
         pa.array(lower_iou_bound, type=pa.float64()),
     )
 
     # final sort
-    return ranked_tbl  # .sort_by(sorting_args)
+    return ranked_tbl
 
 
 def compute_counts(
@@ -310,9 +290,11 @@ def compute_counts(
     number_of_labels: int,
     running_counts: NDArray[np.uint64],
     pr_curve,
-) -> tuple:
+) -> NDArray[np.uint64]:
     """
     Computes Object Detection metrics.
+
+    Precision-recall curve and running counts are updated in-place.
 
     Takes data with shape (N, 7):
 
@@ -324,7 +306,6 @@ def compute_counts(
     Index 5 - IOU
     Index 6 - Score
     Index 7 - IOU Lower Boundary
-    Index 8 - Winning Prediction
 
     Parameters
     ----------
@@ -337,14 +318,8 @@ def compute_counts(
 
     Returns
     -------
-    tuple[NDArray[np.float64], NDArray[np.float64]]
-        Average Precision results (AP, mAP).
-    tuple[NDArray[np.float64], NDArray[np.float64]]
-        Average Recall results (AR, mAR).
-    NDArray[np.float64]
-        Precision, Recall, TP, FP, FN, F1 Score.
-    NDArray[np.float64]
-        Interpolated Precision-Recall Curves.
+    NDArray[uint64]
+        Batched counts of TP, FP, FN.
     """
     n_rows = ranked_pairs.shape[0]
     n_labels = number_of_labels
@@ -353,7 +328,6 @@ def compute_counts(
 
     # initialize result arrays
     counts = np.zeros((n_ious, n_scores, 3, n_labels), dtype=np.uint64)
-    # pr_curve = np.zeros((n_ious, n_labels, 101, 2))
 
     # start computation
     ids = ranked_pairs[:, :5].astype(np.int64)
@@ -448,8 +422,10 @@ def compute_counts(
                 running_counts[iou_idx, pd_label, 1] + 1,
                 running_counts[iou_idx, pd_label, 1] + tp_count + 1,
             )
-
             running_counts[iou_idx, pd_label, 1] += tp_count
+
+            if pd_label == 1:
+                print(scores[true_positives_mask].tolist())
 
     # calculate running precision-recall points for AP
     precision = np.zeros_like(running_total_count, dtype=np.float64)
@@ -479,10 +455,7 @@ def compute_counts(
             scores,
         )
 
-    return (
-        counts,
-        pr_curve,
-    )
+    return counts
 
 
 def compute_precision_recall_f1(

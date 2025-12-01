@@ -40,7 +40,10 @@ def test_regression_coco_v0_36_6(loader: Loader):
 
     for mtype in expected_metrics.keys():
         for m in actual_metrics[mtype]:
-            print(json.dumps(m, indent=4))
             assert m in expected_metrics[mtype], mtype
+            # try:
+            # except AssertionError:
+            #     print(json.dumps(m, indent=4))
+            #     raise
         for m in expected_metrics[mtype]:
             assert m in actual_metrics[mtype], mtype
