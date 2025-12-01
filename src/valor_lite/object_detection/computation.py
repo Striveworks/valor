@@ -278,7 +278,6 @@ def rank_table(tbl: pa.Table) -> pa.Table:
         pa.array(lower_iou_bound, type=pa.float64()),
     )
 
-    # final sort
     return ranked_tbl
 
 
