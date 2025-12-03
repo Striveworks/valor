@@ -2,11 +2,7 @@
     "AP": [
         {
             "type": "AP",
-<<<<<<< HEAD
             "value": 0.21031326691670446,
-=======
-            "value": 0.2928427171075316,
->>>>>>> origin/main
             "parameters": {
                 "iou_threshold": 0.1,
                 "label": "person"
@@ -17,11 +13,7 @@
             "value": 0.0,
             "parameters": {
                 "iou_threshold": 0.1,
-<<<<<<< HEAD
                 "label": "skateboard"
-=======
-                "label": "handbag"
->>>>>>> origin/main
             }
         },
         {
@@ -29,11 +21,7 @@
             "value": 0.0,
             "parameters": {
                 "iou_threshold": 0.1,
-<<<<<<< HEAD
                 "label": "surfboard"
-=======
-                "label": "kite"
->>>>>>> origin/main
             }
         },
         {
@@ -41,11 +29,7 @@
             "value": 0.0,
             "parameters": {
                 "iou_threshold": 0.1,
-<<<<<<< HEAD
                 "label": "motorcycle"
-=======
-                "label": "train"
->>>>>>> origin/main
             }
         },
         {
@@ -53,7 +37,6 @@
             "value": 0.0,
             "parameters": {
                 "iou_threshold": 0.1,
-<<<<<<< HEAD
                 "label": "bicycle"
             }
         },
@@ -127,9 +110,6 @@
             "parameters": {
                 "iou_threshold": 0.1,
                 "label": "bottle"
-=======
-                "label": "truck"
->>>>>>> origin/main
             }
         },
         {
@@ -153,7 +133,6 @@
             "value": 0.0,
             "parameters": {
                 "iou_threshold": 0.1,
-<<<<<<< HEAD
                 "label": "suitcase"
             }
         },
@@ -178,8 +157,6 @@
             "value": 0.0,
             "parameters": {
                 "iou_threshold": 0.1,
-=======
->>>>>>> origin/main
                 "label": "book"
             }
         },
@@ -188,7 +165,6 @@
             "value": 0.0,
             "parameters": {
                 "iou_threshold": 0.1,
-<<<<<<< HEAD
                 "label": "cup"
             }
         },
@@ -205,8 +181,6 @@
             "value": 0.0,
             "parameters": {
                 "iou_threshold": 0.1,
-=======
->>>>>>> origin/main
                 "label": "remote"
             }
         },
@@ -215,7 +189,6 @@
             "value": 0.0,
             "parameters": {
                 "iou_threshold": 0.1,
-<<<<<<< HEAD
                 "label": "couch"
             }
         },
@@ -224,8 +197,6 @@
             "value": 0.0,
             "parameters": {
                 "iou_threshold": 0.1,
-=======
->>>>>>> origin/main
                 "label": "tv"
             }
         },
@@ -234,11 +205,7 @@
             "value": 0.0,
             "parameters": {
                 "iou_threshold": 0.1,
-<<<<<<< HEAD
                 "label": "wine glass"
-=======
-                "label": "clock"
->>>>>>> origin/main
             }
         },
         {
@@ -246,11 +213,7 @@
             "value": 0.0,
             "parameters": {
                 "iou_threshold": 0.1,
-<<<<<<< HEAD
                 "label": "fire hydrant"
-=======
-                "label": "suitcase"
->>>>>>> origin/main
             }
         },
         {
@@ -258,11 +221,7 @@
             "value": 0.0,
             "parameters": {
                 "iou_threshold": 0.1,
-<<<<<<< HEAD
                 "label": "baseball glove"
-=======
-                "label": "bottle"
->>>>>>> origin/main
             }
         },
         {
@@ -270,11 +229,7 @@
             "value": 0.0,
             "parameters": {
                 "iou_threshold": 0.1,
-<<<<<<< HEAD
                 "label": "vase"
-=======
-                "label": "bench"
->>>>>>> origin/main
             }
         },
         {
@@ -282,11 +237,7 @@
             "value": 0.0,
             "parameters": {
                 "iou_threshold": 0.1,
-<<<<<<< HEAD
                 "label": "dog"
-=======
-                "label": "couch"
->>>>>>> origin/main
             }
         },
         {
@@ -294,11 +245,7 @@
             "value": 0.0,
             "parameters": {
                 "iou_threshold": 0.1,
-<<<<<<< HEAD
                 "label": "potted plant"
-=======
-                "label": "car"
->>>>>>> origin/main
             }
         },
         {
@@ -306,7 +253,6 @@
             "value": 0.0,
             "parameters": {
                 "iou_threshold": 0.1,
-<<<<<<< HEAD
                 "label": "oven"
             }
         },
@@ -492,9 +438,6 @@
             "parameters": {
                 "iou_threshold": 0.1,
                 "label": "traffic light"
-=======
-                "label": "backpack"
->>>>>>> origin/main
             }
         },
         {
@@ -510,11 +453,7 @@
             "value": 0.0,
             "parameters": {
                 "iou_threshold": 0.1,
-<<<<<<< HEAD
                 "label": "kite"
-=======
-                "label": "boat"
->>>>>>> origin/main
             }
         },
         {
@@ -522,11 +461,7 @@
             "value": 0.0,
             "parameters": {
                 "iou_threshold": 0.1,
-<<<<<<< HEAD
                 "label": "scissors"
-=======
-                "label": "tennis racket"
->>>>>>> origin/main
             }
         },
         {
@@ -534,11 +469,7 @@
             "value": 0.0,
             "parameters": {
                 "iou_threshold": 0.1,
-<<<<<<< HEAD
                 "label": "spoon"
-=======
-                "label": "tie"
->>>>>>> origin/main
             }
         },
         {
@@ -546,11 +477,7 @@
             "value": 0.0,
             "parameters": {
                 "iou_threshold": 0.1,
-<<<<<<< HEAD
                 "label": "snowboard"
-=======
-                "label": "bus"
->>>>>>> origin/main
             }
         },
         {
@@ -558,11 +485,7 @@
             "value": 0.0,
             "parameters": {
                 "iou_threshold": 0.1,
-<<<<<<< HEAD
                 "label": "fork"
-=======
-                "label": "keyboard"
->>>>>>> origin/main
             }
         },
         {
@@ -570,11 +493,7 @@
             "value": 0.0,
             "parameters": {
                 "iou_threshold": 0.1,
-<<<<<<< HEAD
                 "label": "knife"
-=======
-                "label": "traffic light"
->>>>>>> origin/main
             }
         },
         {
@@ -582,11 +501,7 @@
             "value": 0.0,
             "parameters": {
                 "iou_threshold": 0.1,
-<<<<<<< HEAD
                 "label": "toothbrush"
-=======
-                "label": "dining table"
->>>>>>> origin/main
             }
         },
         {
@@ -594,46 +509,14 @@
             "value": 0.0,
             "parameters": {
                 "iou_threshold": 0.1,
-<<<<<<< HEAD
                 "label": "apple"
-=======
-                "label": "umbrella"
-            }
-        },
-        {
-            "type": "AP",
-            "value": 0.0,
-            "parameters": {
-                "iou_threshold": 0.1,
-                "label": "sports ball"
-            }
-        },
-        {
-            "type": "AP",
-            "value": 0.0,
-            "parameters": {
-                "iou_threshold": 0.1,
-                "label": "baseball bat"
-            }
-        },
-        {
-            "type": "AP",
-            "value": 0.0,
-            "parameters": {
-                "iou_threshold": 0.1,
-                "label": "baseball glove"
->>>>>>> origin/main
             }
         }
     ],
     "mAP": [
         {
             "type": "mAP",
-<<<<<<< HEAD
             "value": 0.011175996280722023,
-=======
-            "value": 0.010098024727845918,
->>>>>>> origin/main
             "parameters": {
                 "iou_threshold": 0.1
             }
@@ -642,11 +525,7 @@
     "APAveragedOverIOUs": [
         {
             "type": "APAveragedOverIOUs",
-<<<<<<< HEAD
             "value": 0.21031326691670446,
-=======
-            "value": 0.2928427171075316,
->>>>>>> origin/main
             "parameters": {
                 "iou_thresholds": [
                     0.1
@@ -661,11 +540,7 @@
                 "iou_thresholds": [
                     0.1
                 ],
-<<<<<<< HEAD
                 "label": "skateboard"
-=======
-                "label": "handbag"
->>>>>>> origin/main
             }
         },
         {
@@ -675,11 +550,7 @@
                 "iou_thresholds": [
                     0.1
                 ],
-<<<<<<< HEAD
                 "label": "surfboard"
-=======
-                "label": "kite"
->>>>>>> origin/main
             }
         },
         {
@@ -689,11 +560,7 @@
                 "iou_thresholds": [
                     0.1
                 ],
-<<<<<<< HEAD
                 "label": "motorcycle"
-=======
-                "label": "train"
->>>>>>> origin/main
             }
         },
         {
@@ -703,7 +570,6 @@
                 "iou_thresholds": [
                     0.1
                 ],
-<<<<<<< HEAD
                 "label": "bicycle"
             }
         },
@@ -795,9 +661,6 @@
                     0.1
                 ],
                 "label": "bottle"
-=======
-                "label": "truck"
->>>>>>> origin/main
             }
         },
         {
@@ -827,7 +690,6 @@
                 "iou_thresholds": [
                     0.1
                 ],
-<<<<<<< HEAD
                 "label": "suitcase"
             }
         },
@@ -858,8 +720,6 @@
                 "iou_thresholds": [
                     0.1
                 ],
-=======
->>>>>>> origin/main
                 "label": "book"
             }
         },
@@ -870,7 +730,6 @@
                 "iou_thresholds": [
                     0.1
                 ],
-<<<<<<< HEAD
                 "label": "cup"
             }
         },
@@ -891,8 +750,6 @@
                 "iou_thresholds": [
                     0.1
                 ],
-=======
->>>>>>> origin/main
                 "label": "remote"
             }
         },
@@ -903,7 +760,6 @@
                 "iou_thresholds": [
                     0.1
                 ],
-<<<<<<< HEAD
                 "label": "couch"
             }
         },
@@ -914,8 +770,6 @@
                 "iou_thresholds": [
                     0.1
                 ],
-=======
->>>>>>> origin/main
                 "label": "tv"
             }
         },
@@ -926,11 +780,7 @@
                 "iou_thresholds": [
                     0.1
                 ],
-<<<<<<< HEAD
                 "label": "wine glass"
-=======
-                "label": "clock"
->>>>>>> origin/main
             }
         },
         {
@@ -940,11 +790,7 @@
                 "iou_thresholds": [
                     0.1
                 ],
-<<<<<<< HEAD
                 "label": "fire hydrant"
-=======
-                "label": "suitcase"
->>>>>>> origin/main
             }
         },
         {
@@ -954,11 +800,7 @@
                 "iou_thresholds": [
                     0.1
                 ],
-<<<<<<< HEAD
                 "label": "baseball glove"
-=======
-                "label": "bottle"
->>>>>>> origin/main
             }
         },
         {
@@ -968,11 +810,7 @@
                 "iou_thresholds": [
                     0.1
                 ],
-<<<<<<< HEAD
                 "label": "vase"
-=======
-                "label": "bench"
->>>>>>> origin/main
             }
         },
         {
@@ -982,11 +820,7 @@
                 "iou_thresholds": [
                     0.1
                 ],
-<<<<<<< HEAD
                 "label": "dog"
-=======
-                "label": "couch"
->>>>>>> origin/main
             }
         },
         {
@@ -996,11 +830,7 @@
                 "iou_thresholds": [
                     0.1
                 ],
-<<<<<<< HEAD
                 "label": "potted plant"
-=======
-                "label": "car"
->>>>>>> origin/main
             }
         },
         {
@@ -1010,7 +840,6 @@
                 "iou_thresholds": [
                     0.1
                 ],
-<<<<<<< HEAD
                 "label": "oven"
             }
         },
@@ -1242,9 +1071,6 @@
                     0.1
                 ],
                 "label": "traffic light"
-=======
-                "label": "backpack"
->>>>>>> origin/main
             }
         },
         {
@@ -1264,11 +1090,7 @@
                 "iou_thresholds": [
                     0.1
                 ],
-<<<<<<< HEAD
                 "label": "kite"
-=======
-                "label": "boat"
->>>>>>> origin/main
             }
         },
         {
@@ -1278,11 +1100,7 @@
                 "iou_thresholds": [
                     0.1
                 ],
-<<<<<<< HEAD
                 "label": "scissors"
-=======
-                "label": "tennis racket"
->>>>>>> origin/main
             }
         },
         {
@@ -1292,11 +1110,7 @@
                 "iou_thresholds": [
                     0.1
                 ],
-<<<<<<< HEAD
                 "label": "spoon"
-=======
-                "label": "tie"
->>>>>>> origin/main
             }
         },
         {
@@ -1306,11 +1120,7 @@
                 "iou_thresholds": [
                     0.1
                 ],
-<<<<<<< HEAD
                 "label": "snowboard"
-=======
-                "label": "bus"
->>>>>>> origin/main
             }
         },
         {
@@ -1320,11 +1130,7 @@
                 "iou_thresholds": [
                     0.1
                 ],
-<<<<<<< HEAD
                 "label": "fork"
-=======
-                "label": "keyboard"
->>>>>>> origin/main
             }
         },
         {
@@ -1334,11 +1140,7 @@
                 "iou_thresholds": [
                     0.1
                 ],
-<<<<<<< HEAD
                 "label": "knife"
-=======
-                "label": "traffic light"
->>>>>>> origin/main
             }
         },
         {
@@ -1348,11 +1150,7 @@
                 "iou_thresholds": [
                     0.1
                 ],
-<<<<<<< HEAD
                 "label": "toothbrush"
-=======
-                "label": "dining table"
->>>>>>> origin/main
             }
         },
         {
@@ -1362,52 +1160,14 @@
                 "iou_thresholds": [
                     0.1
                 ],
-<<<<<<< HEAD
                 "label": "apple"
-=======
-                "label": "umbrella"
-            }
-        },
-        {
-            "type": "APAveragedOverIOUs",
-            "value": 0.0,
-            "parameters": {
-                "iou_thresholds": [
-                    0.1
-                ],
-                "label": "sports ball"
-            }
-        },
-        {
-            "type": "APAveragedOverIOUs",
-            "value": 0.0,
-            "parameters": {
-                "iou_thresholds": [
-                    0.1
-                ],
-                "label": "baseball bat"
-            }
-        },
-        {
-            "type": "APAveragedOverIOUs",
-            "value": 0.0,
-            "parameters": {
-                "iou_thresholds": [
-                    0.1
-                ],
-                "label": "baseball glove"
->>>>>>> origin/main
             }
         }
     ],
     "mAPAveragedOverIOUs": [
         {
             "type": "mAPAveragedOverIOUs",
-<<<<<<< HEAD
             "value": 0.011175996280722023,
-=======
-            "value": 0.010098024727845918,
->>>>>>> origin/main
             "parameters": {
                 "iou_thresholds": [
                     0.1
@@ -1418,11 +1178,7 @@
     "AR": [
         {
             "type": "AR",
-<<<<<<< HEAD
             "value": 0.23880597014925373,
-=======
-            "value": 0.2857142857142857,
->>>>>>> origin/main
             "parameters": {
                 "iou_thresholds": [
                     0.1
@@ -1439,11 +1195,7 @@
                     0.1
                 ],
                 "score_threshold": 0.5,
-<<<<<<< HEAD
                 "label": "skateboard"
-=======
-                "label": "handbag"
->>>>>>> origin/main
             }
         },
         {
@@ -1454,11 +1206,7 @@
                     0.1
                 ],
                 "score_threshold": 0.5,
-<<<<<<< HEAD
                 "label": "surfboard"
-=======
-                "label": "kite"
->>>>>>> origin/main
             }
         },
         {
@@ -1469,11 +1217,7 @@
                     0.1
                 ],
                 "score_threshold": 0.5,
-<<<<<<< HEAD
                 "label": "motorcycle"
-=======
-                "label": "train"
->>>>>>> origin/main
             }
         },
         {
@@ -1484,7 +1228,6 @@
                     0.1
                 ],
                 "score_threshold": 0.5,
-<<<<<<< HEAD
                 "label": "bicycle"
             }
         },
@@ -1585,9 +1328,6 @@
                 ],
                 "score_threshold": 0.5,
                 "label": "bottle"
-=======
-                "label": "truck"
->>>>>>> origin/main
             }
         },
         {
@@ -1620,7 +1360,6 @@
                     0.1
                 ],
                 "score_threshold": 0.5,
-<<<<<<< HEAD
                 "label": "suitcase"
             }
         },
@@ -1654,8 +1393,6 @@
                     0.1
                 ],
                 "score_threshold": 0.5,
-=======
->>>>>>> origin/main
                 "label": "book"
             }
         },
@@ -1667,7 +1404,6 @@
                     0.1
                 ],
                 "score_threshold": 0.5,
-<<<<<<< HEAD
                 "label": "cup"
             }
         },
@@ -1690,8 +1426,6 @@
                     0.1
                 ],
                 "score_threshold": 0.5,
-=======
->>>>>>> origin/main
                 "label": "remote"
             }
         },
@@ -1703,7 +1437,6 @@
                     0.1
                 ],
                 "score_threshold": 0.5,
-<<<<<<< HEAD
                 "label": "couch"
             }
         },
@@ -1715,8 +1448,6 @@
                     0.1
                 ],
                 "score_threshold": 0.5,
-=======
->>>>>>> origin/main
                 "label": "tv"
             }
         },
@@ -1728,11 +1459,7 @@
                     0.1
                 ],
                 "score_threshold": 0.5,
-<<<<<<< HEAD
                 "label": "wine glass"
-=======
-                "label": "clock"
->>>>>>> origin/main
             }
         },
         {
@@ -1743,11 +1470,7 @@
                     0.1
                 ],
                 "score_threshold": 0.5,
-<<<<<<< HEAD
                 "label": "fire hydrant"
-=======
-                "label": "suitcase"
->>>>>>> origin/main
             }
         },
         {
@@ -1758,11 +1481,7 @@
                     0.1
                 ],
                 "score_threshold": 0.5,
-<<<<<<< HEAD
                 "label": "baseball glove"
-=======
-                "label": "bottle"
->>>>>>> origin/main
             }
         },
         {
@@ -1773,11 +1492,7 @@
                     0.1
                 ],
                 "score_threshold": 0.5,
-<<<<<<< HEAD
                 "label": "vase"
-=======
-                "label": "bench"
->>>>>>> origin/main
             }
         },
         {
@@ -1788,11 +1503,7 @@
                     0.1
                 ],
                 "score_threshold": 0.5,
-<<<<<<< HEAD
                 "label": "dog"
-=======
-                "label": "couch"
->>>>>>> origin/main
             }
         },
         {
@@ -1803,11 +1514,7 @@
                     0.1
                 ],
                 "score_threshold": 0.5,
-<<<<<<< HEAD
                 "label": "potted plant"
-=======
-                "label": "car"
->>>>>>> origin/main
             }
         },
         {
@@ -1818,7 +1525,6 @@
                     0.1
                 ],
                 "score_threshold": 0.5,
-<<<<<<< HEAD
                 "label": "oven"
             }
         },
@@ -2073,9 +1779,6 @@
                 ],
                 "score_threshold": 0.5,
                 "label": "traffic light"
-=======
-                "label": "backpack"
->>>>>>> origin/main
             }
         },
         {
@@ -2097,11 +1800,7 @@
                     0.1
                 ],
                 "score_threshold": 0.5,
-<<<<<<< HEAD
                 "label": "kite"
-=======
-                "label": "boat"
->>>>>>> origin/main
             }
         },
         {
@@ -2112,11 +1811,7 @@
                     0.1
                 ],
                 "score_threshold": 0.5,
-<<<<<<< HEAD
                 "label": "scissors"
-=======
-                "label": "tennis racket"
->>>>>>> origin/main
             }
         },
         {
@@ -2127,11 +1822,7 @@
                     0.1
                 ],
                 "score_threshold": 0.5,
-<<<<<<< HEAD
                 "label": "spoon"
-=======
-                "label": "tie"
->>>>>>> origin/main
             }
         },
         {
@@ -2142,11 +1833,7 @@
                     0.1
                 ],
                 "score_threshold": 0.5,
-<<<<<<< HEAD
                 "label": "snowboard"
-=======
-                "label": "bus"
->>>>>>> origin/main
             }
         },
         {
@@ -2157,11 +1844,7 @@
                     0.1
                 ],
                 "score_threshold": 0.5,
-<<<<<<< HEAD
                 "label": "fork"
-=======
-                "label": "keyboard"
->>>>>>> origin/main
             }
         },
         {
@@ -2172,11 +1855,7 @@
                     0.1
                 ],
                 "score_threshold": 0.5,
-<<<<<<< HEAD
                 "label": "knife"
-=======
-                "label": "traffic light"
->>>>>>> origin/main
             }
         },
         {
@@ -2187,11 +1866,7 @@
                     0.1
                 ],
                 "score_threshold": 0.5,
-<<<<<<< HEAD
                 "label": "toothbrush"
-=======
-                "label": "dining table"
->>>>>>> origin/main
             }
         },
         {
@@ -2202,55 +1877,14 @@
                     0.1
                 ],
                 "score_threshold": 0.5,
-<<<<<<< HEAD
                 "label": "apple"
-=======
-                "label": "umbrella"
-            }
-        },
-        {
-            "type": "AR",
-            "value": 0.0,
-            "parameters": {
-                "iou_thresholds": [
-                    0.1
-                ],
-                "score_threshold": 0.5,
-                "label": "sports ball"
-            }
-        },
-        {
-            "type": "AR",
-            "value": 0.0,
-            "parameters": {
-                "iou_thresholds": [
-                    0.1
-                ],
-                "score_threshold": 0.5,
-                "label": "baseball bat"
-            }
-        },
-        {
-            "type": "AR",
-            "value": 0.0,
-            "parameters": {
-                "iou_thresholds": [
-                    0.1
-                ],
-                "score_threshold": 0.5,
-                "label": "baseball glove"
->>>>>>> origin/main
             }
         }
     ],
     "mAR": [
         {
             "type": "mAR",
-<<<<<<< HEAD
             "value": 0.01154384328358209,
-=======
-            "value": 0.009852216748768473,
->>>>>>> origin/main
             "parameters": {
                 "iou_thresholds": [
                     0.1
@@ -2262,11 +1896,7 @@
     "ARAveragedOverScores": [
         {
             "type": "ARAveragedOverScores",
-<<<<<<< HEAD
             "value": 0.23880597014925373,
-=======
-            "value": 0.2857142857142857,
->>>>>>> origin/main
             "parameters": {
                 "iou_thresholds": [
                     0.1
@@ -2287,11 +1917,7 @@
                 "score_thresholds": [
                     0.5
                 ],
-<<<<<<< HEAD
                 "label": "skateboard"
-=======
-                "label": "handbag"
->>>>>>> origin/main
             }
         },
         {
@@ -2304,11 +1930,7 @@
                 "score_thresholds": [
                     0.5
                 ],
-<<<<<<< HEAD
                 "label": "surfboard"
-=======
-                "label": "kite"
->>>>>>> origin/main
             }
         },
         {
@@ -2321,11 +1943,7 @@
                 "score_thresholds": [
                     0.5
                 ],
-<<<<<<< HEAD
                 "label": "motorcycle"
-=======
-                "label": "train"
->>>>>>> origin/main
             }
         },
         {
@@ -2338,7 +1956,6 @@
                 "score_thresholds": [
                     0.5
                 ],
-<<<<<<< HEAD
                 "label": "bicycle"
             }
         },
@@ -2457,9 +2074,6 @@
                     0.5
                 ],
                 "label": "bottle"
-=======
-                "label": "truck"
->>>>>>> origin/main
             }
         },
         {
@@ -2498,7 +2112,6 @@
                 "score_thresholds": [
                     0.5
                 ],
-<<<<<<< HEAD
                 "label": "suitcase"
             }
         },
@@ -2538,8 +2151,6 @@
                 "score_thresholds": [
                     0.5
                 ],
-=======
->>>>>>> origin/main
                 "label": "book"
             }
         },
@@ -2553,7 +2164,6 @@
                 "score_thresholds": [
                     0.5
                 ],
-<<<<<<< HEAD
                 "label": "cup"
             }
         },
@@ -2580,8 +2190,6 @@
                 "score_thresholds": [
                     0.5
                 ],
-=======
->>>>>>> origin/main
                 "label": "remote"
             }
         },
@@ -2595,7 +2203,6 @@
                 "score_thresholds": [
                     0.5
                 ],
-<<<<<<< HEAD
                 "label": "couch"
             }
         },
@@ -2609,8 +2216,6 @@
                 "score_thresholds": [
                     0.5
                 ],
-=======
->>>>>>> origin/main
                 "label": "tv"
             }
         },
@@ -2624,11 +2229,7 @@
                 "score_thresholds": [
                     0.5
                 ],
-<<<<<<< HEAD
                 "label": "wine glass"
-=======
-                "label": "clock"
->>>>>>> origin/main
             }
         },
         {
@@ -2641,11 +2242,7 @@
                 "score_thresholds": [
                     0.5
                 ],
-<<<<<<< HEAD
                 "label": "fire hydrant"
-=======
-                "label": "suitcase"
->>>>>>> origin/main
             }
         },
         {
@@ -2658,11 +2255,7 @@
                 "score_thresholds": [
                     0.5
                 ],
-<<<<<<< HEAD
                 "label": "baseball glove"
-=======
-                "label": "bottle"
->>>>>>> origin/main
             }
         },
         {
@@ -2675,11 +2268,7 @@
                 "score_thresholds": [
                     0.5
                 ],
-<<<<<<< HEAD
                 "label": "vase"
-=======
-                "label": "bench"
->>>>>>> origin/main
             }
         },
         {
@@ -2692,11 +2281,7 @@
                 "score_thresholds": [
                     0.5
                 ],
-<<<<<<< HEAD
                 "label": "dog"
-=======
-                "label": "couch"
->>>>>>> origin/main
             }
         },
         {
@@ -2709,11 +2294,7 @@
                 "score_thresholds": [
                     0.5
                 ],
-<<<<<<< HEAD
                 "label": "potted plant"
-=======
-                "label": "car"
->>>>>>> origin/main
             }
         },
         {
@@ -2726,7 +2307,6 @@
                 "score_thresholds": [
                     0.5
                 ],
-<<<<<<< HEAD
                 "label": "oven"
             }
         },
@@ -3027,9 +2607,6 @@
                     0.5
                 ],
                 "label": "traffic light"
-=======
-                "label": "backpack"
->>>>>>> origin/main
             }
         },
         {
@@ -3055,11 +2632,7 @@
                 "score_thresholds": [
                     0.5
                 ],
-<<<<<<< HEAD
                 "label": "kite"
-=======
-                "label": "boat"
->>>>>>> origin/main
             }
         },
         {
@@ -3072,11 +2645,7 @@
                 "score_thresholds": [
                     0.5
                 ],
-<<<<<<< HEAD
                 "label": "scissors"
-=======
-                "label": "tennis racket"
->>>>>>> origin/main
             }
         },
         {
@@ -3089,11 +2658,7 @@
                 "score_thresholds": [
                     0.5
                 ],
-<<<<<<< HEAD
                 "label": "spoon"
-=======
-                "label": "tie"
->>>>>>> origin/main
             }
         },
         {
@@ -3106,11 +2671,7 @@
                 "score_thresholds": [
                     0.5
                 ],
-<<<<<<< HEAD
                 "label": "snowboard"
-=======
-                "label": "bus"
->>>>>>> origin/main
             }
         },
         {
@@ -3123,11 +2684,7 @@
                 "score_thresholds": [
                     0.5
                 ],
-<<<<<<< HEAD
                 "label": "fork"
-=======
-                "label": "keyboard"
->>>>>>> origin/main
             }
         },
         {
@@ -3140,11 +2697,7 @@
                 "score_thresholds": [
                     0.5
                 ],
-<<<<<<< HEAD
                 "label": "knife"
-=======
-                "label": "traffic light"
->>>>>>> origin/main
             }
         },
         {
@@ -3157,11 +2710,7 @@
                 "score_thresholds": [
                     0.5
                 ],
-<<<<<<< HEAD
                 "label": "toothbrush"
-=======
-                "label": "dining table"
->>>>>>> origin/main
             }
         },
         {
@@ -3174,61 +2723,14 @@
                 "score_thresholds": [
                     0.5
                 ],
-<<<<<<< HEAD
                 "label": "apple"
-=======
-                "label": "umbrella"
-            }
-        },
-        {
-            "type": "ARAveragedOverScores",
-            "value": 0.0,
-            "parameters": {
-                "iou_thresholds": [
-                    0.1
-                ],
-                "score_thresholds": [
-                    0.5
-                ],
-                "label": "sports ball"
-            }
-        },
-        {
-            "type": "ARAveragedOverScores",
-            "value": 0.0,
-            "parameters": {
-                "iou_thresholds": [
-                    0.1
-                ],
-                "score_thresholds": [
-                    0.5
-                ],
-                "label": "baseball bat"
-            }
-        },
-        {
-            "type": "ARAveragedOverScores",
-            "value": 0.0,
-            "parameters": {
-                "iou_thresholds": [
-                    0.1
-                ],
-                "score_thresholds": [
-                    0.5
-                ],
-                "label": "baseball glove"
->>>>>>> origin/main
             }
         }
     ],
     "mARAveragedOverScores": [
         {
             "type": "mARAveragedOverScores",
-<<<<<<< HEAD
             "value": 0.01154384328358209,
-=======
-            "value": 0.009852216748768473,
->>>>>>> origin/main
             "parameters": {
                 "iou_thresholds": [
                     0.1
@@ -3252,7 +2754,6 @@
                     1.0,
                     1.0,
                     1.0,
-<<<<<<< HEAD
                     0.75,
                     0.7272727272727273,
                     0.7272727272727273,
@@ -3303,58 +2804,6 @@
                     0.0,
                     0.0,
                     0.0,
-=======
-                    1.0,
-                    1.0,
-                    1.0,
-                    1.0,
-                    1.0,
-                    1.0,
-                    1.0,
-                    1.0,
-                    1.0,
-                    1.0,
-                    1.0,
-                    1.0,
-                    1.0,
-                    1.0,
-                    1.0,
-                    1.0,
-                    1.0,
-                    1.0,
-                    1.0,
-                    1.0,
-                    1.0,
-                    0.01990049751243781,
-                    0.01990049751243781,
-                    0.01990049751243781,
-                    0.01990049751243781,
-                    0.01990049751243781,
-                    0.01990049751243781,
-                    0.01990049751243781,
-                    0.01990049751243781,
-                    0.01990049751243781,
-                    0.01990049751243781,
-                    0.01990049751243781,
-                    0.01990049751243781,
-                    0.01990049751243781,
-                    0.01990049751243781,
-                    0.01990049751243781,
-                    0.01990049751243781,
-                    0.01990049751243781,
-                    0.01990049751243781,
-                    0.01990049751243781,
-                    0.01990049751243781,
-                    0.01990049751243781,
-                    0.01990049751243781,
-                    0.01990049751243781,
-                    0.01990049751243781,
-                    0.01990049751243781,
-                    0.01990049751243781,
-                    0.01990049751243781,
-                    0.01990049751243781,
-                    0.01990049751243781,
->>>>>>> origin/main
                     0.0,
                     0.0,
                     0.0,
@@ -3400,7 +2849,6 @@
                     0.0
                 ],
                 "scores": [
-<<<<<<< HEAD
                     0.9263727068901062,
                     0.9263727068901062,
                     0.9065483212471008,
@@ -3459,66 +2907,6 @@
                     0.0,
                     0.0,
                     0.0,
-=======
-                    0.8584825992584229,
-                    0.8584825992584229,
-                    0.8584825992584229,
-                    0.8584825992584229,
-                    0.8584825992584229,
-                    0.8584825992584229,
-                    0.8584825992584229,
-                    0.8584825992584229,
-                    0.8584825992584229,
-                    0.8584825992584229,
-                    0.8584825992584229,
-                    0.8584825992584229,
-                    0.8584825992584229,
-                    0.8584825992584229,
-                    0.8584825992584229,
-                    0.8528145551681519,
-                    0.8528145551681519,
-                    0.8528145551681519,
-                    0.8528145551681519,
-                    0.8528145551681519,
-                    0.8528145551681519,
-                    0.8528145551681519,
-                    0.8528145551681519,
-                    0.8528145551681519,
-                    0.8528145551681519,
-                    0.8528145551681519,
-                    0.8528145551681519,
-                    0.8528145551681519,
-                    0.8528145551681519,
-                    2.1119551092851907e-05,
-                    2.1119551092851907e-05,
-                    2.1119551092851907e-05,
-                    2.1119551092851907e-05,
-                    2.1119551092851907e-05,
-                    2.1119551092851907e-05,
-                    2.1119551092851907e-05,
-                    2.1119551092851907e-05,
-                    2.1119551092851907e-05,
-                    2.1119551092851907e-05,
-                    2.1119551092851907e-05,
-                    2.1119551092851907e-05,
-                    2.1119551092851907e-05,
-                    2.1119551092851907e-05,
-                    1.7105567167163827e-05,
-                    1.7105567167163827e-05,
-                    1.7105567167163827e-05,
-                    1.7105567167163827e-05,
-                    1.7105567167163827e-05,
-                    1.7105567167163827e-05,
-                    1.7105567167163827e-05,
-                    1.7105567167163827e-05,
-                    1.7105567167163827e-05,
-                    1.7105567167163827e-05,
-                    1.7105567167163827e-05,
-                    1.7105567167163827e-05,
-                    1.7105567167163827e-05,
-                    1.7105567167163827e-05,
-                    1.7105567167163827e-05,
->>>>>>> origin/main
                     0.0,
                     0.0,
                     0.0,
@@ -3676,7 +3064,6 @@
                     0.0
                 ],
                 "scores": [
-<<<<<<< HEAD
                     0.4154994487762451,
                     0.0,
                     0.0,
@@ -7118,9 +6505,6 @@
                 ],
                 "scores": [
                     0.07390924543142319,
-=======
-                    0.16415536403656006,
->>>>>>> origin/main
                     0.0,
                     0.0,
                     0.0,
@@ -7335,7 +6719,6 @@
                     0.0
                 ],
                 "scores": [
-<<<<<<< HEAD
                     0.5301854610443115,
                     0.0,
                     0.0,
@@ -15507,9 +14890,6 @@
                 ],
                 "scores": [
                     0.0034473813138902187,
-=======
-                    0.08028870820999146,
->>>>>>> origin/main
                     0.0,
                     0.0,
                     0.0,
@@ -15724,11 +15104,7 @@
                     0.0
                 ],
                 "scores": [
-<<<<<<< HEAD
                     0.0011478076921775937,
-=======
-                    0.0483505018055439,
->>>>>>> origin/main
                     0.0,
                     0.0,
                     0.0,
@@ -15833,11 +15209,7 @@
             },
             "parameters": {
                 "iou_threshold": 0.1,
-<<<<<<< HEAD
                 "label": "scissors"
-=======
-                "label": "train"
->>>>>>> origin/main
             }
         },
         {
@@ -15947,11 +15319,7 @@
                     0.0
                 ],
                 "scores": [
-<<<<<<< HEAD
                     0.003973513375967741,
-=======
-                    0.03626423329114914,
->>>>>>> origin/main
                     0.0,
                     0.0,
                     0.0,
@@ -16056,11 +15424,7 @@
             },
             "parameters": {
                 "iou_threshold": 0.1,
-<<<<<<< HEAD
                 "label": "spoon"
-=======
-                "label": "truck"
->>>>>>> origin/main
             }
         },
         {
@@ -16170,11 +15534,7 @@
                     0.0
                 ],
                 "scores": [
-<<<<<<< HEAD
                     0.0015206366078928113,
-=======
-                    0.025899970903992653,
->>>>>>> origin/main
                     0.0,
                     0.0,
                     0.0,
@@ -16279,11 +15639,7 @@
             },
             "parameters": {
                 "iou_threshold": 0.1,
-<<<<<<< HEAD
                 "label": "snowboard"
-=======
-                "label": "chair"
->>>>>>> origin/main
             }
         },
         {
@@ -16393,11 +15749,7 @@
                     0.0
                 ],
                 "scores": [
-<<<<<<< HEAD
                     0.11544834822416306,
-=======
-                    0.018797868862748146,
->>>>>>> origin/main
                     0.0,
                     0.0,
                     0.0,
@@ -16502,11 +15854,7 @@
             },
             "parameters": {
                 "iou_threshold": 0.1,
-<<<<<<< HEAD
                 "label": "fork"
-=======
-                "label": "cell phone"
->>>>>>> origin/main
             }
         },
         {
@@ -16616,11 +15964,7 @@
                     0.0
                 ],
                 "scores": [
-<<<<<<< HEAD
                     0.06260539591312408,
-=======
-                    0.016761818900704384,
->>>>>>> origin/main
                     0.0,
                     0.0,
                     0.0,
@@ -16725,11 +16069,7 @@
             },
             "parameters": {
                 "iou_threshold": 0.1,
-<<<<<<< HEAD
                 "label": "knife"
-=======
-                "label": "book"
->>>>>>> origin/main
             }
         },
         {
@@ -16839,11 +16179,7 @@
                     0.0
                 ],
                 "scores": [
-<<<<<<< HEAD
                     0.0006715079071000218,
-=======
-                    0.013666974380612373,
->>>>>>> origin/main
                     0.0,
                     0.0,
                     0.0,
@@ -16948,11 +16284,7 @@
             },
             "parameters": {
                 "iou_threshold": 0.1,
-<<<<<<< HEAD
                 "label": "toothbrush"
-=======
-                "label": "remote"
->>>>>>> origin/main
             }
         },
         {
@@ -17062,11 +16394,7 @@
                     0.0
                 ],
                 "scores": [
-<<<<<<< HEAD
                     0.0005691238329745829,
-=======
-                    0.010199379175901413,
->>>>>>> origin/main
                     0.0,
                     0.0,
                     0.0,
@@ -17171,4096 +16499,7 @@
             },
             "parameters": {
                 "iou_threshold": 0.1,
-<<<<<<< HEAD
                 "label": "apple"
-=======
-                "label": "tv"
-            }
-        },
-        {
-            "type": "PrecisionRecallCurve",
-            "value": {
-                "precisions": [
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0
-                ],
-                "scores": [
-                    0.004860580898821354,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0
-                ]
-            },
-            "parameters": {
-                "iou_threshold": 0.1,
-                "label": "clock"
-            }
-        },
-        {
-            "type": "PrecisionRecallCurve",
-            "value": {
-                "precisions": [
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0
-                ],
-                "scores": [
-                    0.004411463625729084,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0
-                ]
-            },
-            "parameters": {
-                "iou_threshold": 0.1,
-                "label": "suitcase"
-            }
-        },
-        {
-            "type": "PrecisionRecallCurve",
-            "value": {
-                "precisions": [
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0
-                ],
-                "scores": [
-                    0.006153863854706287,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0
-                ]
-            },
-            "parameters": {
-                "iou_threshold": 0.1,
-                "label": "bottle"
-            }
-        },
-        {
-            "type": "PrecisionRecallCurve",
-            "value": {
-                "precisions": [
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0
-                ],
-                "scores": [
-                    0.003240445163100958,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0
-                ]
-            },
-            "parameters": {
-                "iou_threshold": 0.1,
-                "label": "bench"
-            }
-        },
-        {
-            "type": "PrecisionRecallCurve",
-            "value": {
-                "precisions": [
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0
-                ],
-                "scores": [
-                    0.0025157330092042685,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0
-                ]
-            },
-            "parameters": {
-                "iou_threshold": 0.1,
-                "label": "couch"
-            }
-        },
-        {
-            "type": "PrecisionRecallCurve",
-            "value": {
-                "precisions": [
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0
-                ],
-                "scores": [
-                    0.002415740629658103,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0
-                ]
-            },
-            "parameters": {
-                "iou_threshold": 0.1,
-                "label": "car"
-            }
-        },
-        {
-            "type": "PrecisionRecallCurve",
-            "value": {
-                "precisions": [
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0
-                ],
-                "scores": [
-                    0.0024044974707067013,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0
-                ]
-            },
-            "parameters": {
-                "iou_threshold": 0.1,
-                "label": "backpack"
-            }
-        },
-        {
-            "type": "PrecisionRecallCurve",
-            "value": {
-                "precisions": [
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0
-                ],
-                "scores": [
-                    0.0020345866214483976,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0
-                ]
-            },
-            "parameters": {
-                "iou_threshold": 0.1,
-                "label": "stop sign"
-            }
-        },
-        {
-            "type": "PrecisionRecallCurve",
-            "value": {
-                "precisions": [
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0
-                ],
-                "scores": [
-                    0.0019599762745201588,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0
-                ]
-            },
-            "parameters": {
-                "iou_threshold": 0.1,
-                "label": "boat"
-            }
-        },
-        {
-            "type": "PrecisionRecallCurve",
-            "value": {
-                "precisions": [
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0
-                ],
-                "scores": [
-                    0.8343356847763062,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0
-                ]
-            },
-            "parameters": {
-                "iou_threshold": 0.1,
-                "label": "tennis racket"
-            }
-        },
-        {
-            "type": "PrecisionRecallCurve",
-            "value": {
-                "precisions": [
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0
-                ],
-                "scores": [
-                    0.001340886577963829,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0
-                ]
-            },
-            "parameters": {
-                "iou_threshold": 0.1,
-                "label": "tie"
-            }
-        },
-        {
-            "type": "PrecisionRecallCurve",
-            "value": {
-                "precisions": [
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0
-                ],
-                "scores": [
-                    0.001295491005294025,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0
-                ]
-            },
-            "parameters": {
-                "iou_threshold": 0.1,
-                "label": "bus"
-            }
-        },
-        {
-            "type": "PrecisionRecallCurve",
-            "value": {
-                "precisions": [
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0
-                ],
-                "scores": [
-                    0.0006897702696733177,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0
-                ]
-            },
-            "parameters": {
-                "iou_threshold": 0.1,
-                "label": "keyboard"
-            }
-        },
-        {
-            "type": "PrecisionRecallCurve",
-            "value": {
-                "precisions": [
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0
-                ],
-                "scores": [
-                    0.0006211127620190382,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0
-                ]
-            },
-            "parameters": {
-                "iou_threshold": 0.1,
-                "label": "traffic light"
-            }
-        },
-        {
-            "type": "PrecisionRecallCurve",
-            "value": {
-                "precisions": [
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0
-                ],
-                "scores": [
-                    0.00034769068588502705,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0
-                ]
-            },
-            "parameters": {
-                "iou_threshold": 0.1,
-                "label": "dining table"
-            }
-        },
-        {
-            "type": "PrecisionRecallCurve",
-            "value": {
-                "precisions": [
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0
-                ],
-                "scores": [
-                    0.00026814057491719723,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0
-                ]
-            },
-            "parameters": {
-                "iou_threshold": 0.1,
-                "label": "umbrella"
-            }
-        },
-        {
-            "type": "PrecisionRecallCurve",
-            "value": {
-                "precisions": [
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0
-                ],
-                "scores": [
-                    0.01571614108979702,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0
-                ]
-            },
-            "parameters": {
-                "iou_threshold": 0.1,
-                "label": "sports ball"
-            }
-        },
-        {
-            "type": "PrecisionRecallCurve",
-            "value": {
-                "precisions": [
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0
-                ],
-                "scores": [
-                    0.00020869079162366688,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0
-                ]
-            },
-            "parameters": {
-                "iou_threshold": 0.1,
-                "label": "baseball bat"
-            }
-        },
-        {
-            "type": "PrecisionRecallCurve",
-            "value": {
-                "precisions": [
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0
-                ],
-                "scores": [
-                    0.005662017967551947,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0
-                ]
-            },
-            "parameters": {
-                "iou_threshold": 0.1,
-                "label": "baseball glove"
->>>>>>> origin/main
             }
         }
     ],
@@ -21268,15 +16507,9 @@
         {
             "type": "Counts",
             "value": {
-<<<<<<< HEAD
                 "tp": 16,
                 "fp": 34,
                 "fn": 51
-=======
-                "tp": 2,
-                "fp": 3,
-                "fn": 5
->>>>>>> origin/main
             },
             "parameters": {
                 "iou_threshold": 0.1,
@@ -21294,11 +16527,7 @@
             "parameters": {
                 "iou_threshold": 0.1,
                 "score_threshold": 0.5,
-<<<<<<< HEAD
                 "label": "skateboard"
-=======
-                "label": "handbag"
->>>>>>> origin/main
             }
         },
         {
@@ -21311,7 +16540,6 @@
             "parameters": {
                 "iou_threshold": 0.1,
                 "score_threshold": 0.5,
-<<<<<<< HEAD
                 "label": "surfboard"
             }
         },
@@ -21326,9 +16554,6 @@
                 "iou_threshold": 0.1,
                 "score_threshold": 0.5,
                 "label": "motorcycle"
-=======
-                "label": "kite"
->>>>>>> origin/main
             }
         },
         {
@@ -21341,11 +16566,7 @@
             "parameters": {
                 "iou_threshold": 0.1,
                 "score_threshold": 0.5,
-<<<<<<< HEAD
                 "label": "bicycle"
-=======
-                "label": "train"
->>>>>>> origin/main
             }
         },
         {
@@ -21358,11 +16579,7 @@
             "parameters": {
                 "iou_threshold": 0.1,
                 "score_threshold": 0.5,
-<<<<<<< HEAD
                 "label": "boat"
-=======
-                "label": "truck"
->>>>>>> origin/main
             }
         },
         {
@@ -21375,7 +16592,6 @@
             "parameters": {
                 "iou_threshold": 0.1,
                 "score_threshold": 0.5,
-<<<<<<< HEAD
                 "label": "skis"
             }
         },
@@ -21480,8 +16696,6 @@
             "parameters": {
                 "iou_threshold": 0.1,
                 "score_threshold": 0.5,
-=======
->>>>>>> origin/main
                 "label": "chair"
             }
         },
@@ -21508,7 +16722,6 @@
             "parameters": {
                 "iou_threshold": 0.1,
                 "score_threshold": 0.5,
-<<<<<<< HEAD
                 "label": "suitcase"
             }
         },
@@ -21548,8 +16761,6 @@
             "parameters": {
                 "iou_threshold": 0.1,
                 "score_threshold": 0.5,
-=======
->>>>>>> origin/main
                 "label": "book"
             }
         },
@@ -21557,7 +16768,6 @@
             "type": "Counts",
             "value": {
                 "tp": 0,
-<<<<<<< HEAD
                 "fp": 1,
                 "fn": 0
             },
@@ -21584,8 +16794,6 @@
             "type": "Counts",
             "value": {
                 "tp": 0,
-=======
->>>>>>> origin/main
                 "fp": 0,
                 "fn": 0
             },
@@ -21605,74 +16813,6 @@
             "parameters": {
                 "iou_threshold": 0.1,
                 "score_threshold": 0.5,
-<<<<<<< HEAD
-=======
-                "label": "tv"
-            }
-        },
-        {
-            "type": "Counts",
-            "value": {
-                "tp": 0,
-                "fp": 0,
-                "fn": 0
-            },
-            "parameters": {
-                "iou_threshold": 0.1,
-                "score_threshold": 0.5,
-                "label": "clock"
-            }
-        },
-        {
-            "type": "Counts",
-            "value": {
-                "tp": 0,
-                "fp": 0,
-                "fn": 0
-            },
-            "parameters": {
-                "iou_threshold": 0.1,
-                "score_threshold": 0.5,
-                "label": "suitcase"
-            }
-        },
-        {
-            "type": "Counts",
-            "value": {
-                "tp": 0,
-                "fp": 0,
-                "fn": 0
-            },
-            "parameters": {
-                "iou_threshold": 0.1,
-                "score_threshold": 0.5,
-                "label": "bottle"
-            }
-        },
-        {
-            "type": "Counts",
-            "value": {
-                "tp": 0,
-                "fp": 0,
-                "fn": 0
-            },
-            "parameters": {
-                "iou_threshold": 0.1,
-                "score_threshold": 0.5,
-                "label": "bench"
-            }
-        },
-        {
-            "type": "Counts",
-            "value": {
-                "tp": 0,
-                "fp": 0,
-                "fn": 0
-            },
-            "parameters": {
-                "iou_threshold": 0.1,
-                "score_threshold": 0.5,
->>>>>>> origin/main
                 "label": "couch"
             }
         },
@@ -21686,7 +16826,6 @@
             "parameters": {
                 "iou_threshold": 0.1,
                 "score_threshold": 0.5,
-<<<<<<< HEAD
                 "label": "tv"
             }
         },
@@ -21701,9 +16840,6 @@
                 "iou_threshold": 0.1,
                 "score_threshold": 0.5,
                 "label": "wine glass"
-=======
-                "label": "car"
->>>>>>> origin/main
             }
         },
         {
@@ -21716,7 +16852,6 @@
             "parameters": {
                 "iou_threshold": 0.1,
                 "score_threshold": 0.5,
-<<<<<<< HEAD
                 "label": "fire hydrant"
             }
         },
@@ -22082,9 +17217,6 @@
                 "iou_threshold": 0.1,
                 "score_threshold": 0.5,
                 "label": "traffic light"
-=======
-                "label": "backpack"
->>>>>>> origin/main
             }
         },
         {
@@ -22110,24 +17242,7 @@
             "parameters": {
                 "iou_threshold": 0.1,
                 "score_threshold": 0.5,
-<<<<<<< HEAD
                 "label": "kite"
-=======
-                "label": "boat"
-            }
-        },
-        {
-            "type": "Counts",
-            "value": {
-                "tp": 0,
-                "fp": 1,
-                "fn": 0
-            },
-            "parameters": {
-                "iou_threshold": 0.1,
-                "score_threshold": 0.5,
-                "label": "tennis racket"
->>>>>>> origin/main
             }
         },
         {
@@ -22140,11 +17255,7 @@
             "parameters": {
                 "iou_threshold": 0.1,
                 "score_threshold": 0.5,
-<<<<<<< HEAD
                 "label": "scissors"
-=======
-                "label": "tie"
->>>>>>> origin/main
             }
         },
         {
@@ -22157,11 +17268,7 @@
             "parameters": {
                 "iou_threshold": 0.1,
                 "score_threshold": 0.5,
-<<<<<<< HEAD
                 "label": "spoon"
-=======
-                "label": "bus"
->>>>>>> origin/main
             }
         },
         {
@@ -22174,11 +17281,7 @@
             "parameters": {
                 "iou_threshold": 0.1,
                 "score_threshold": 0.5,
-<<<<<<< HEAD
                 "label": "snowboard"
-=======
-                "label": "keyboard"
->>>>>>> origin/main
             }
         },
         {
@@ -22191,11 +17294,7 @@
             "parameters": {
                 "iou_threshold": 0.1,
                 "score_threshold": 0.5,
-<<<<<<< HEAD
                 "label": "fork"
-=======
-                "label": "traffic light"
->>>>>>> origin/main
             }
         },
         {
@@ -22208,11 +17307,7 @@
             "parameters": {
                 "iou_threshold": 0.1,
                 "score_threshold": 0.5,
-<<<<<<< HEAD
                 "label": "knife"
-=======
-                "label": "dining table"
->>>>>>> origin/main
             }
         },
         {
@@ -22225,11 +17320,7 @@
             "parameters": {
                 "iou_threshold": 0.1,
                 "score_threshold": 0.5,
-<<<<<<< HEAD
                 "label": "toothbrush"
-=======
-                "label": "umbrella"
->>>>>>> origin/main
             }
         },
         {
@@ -22242,48 +17333,14 @@
             "parameters": {
                 "iou_threshold": 0.1,
                 "score_threshold": 0.5,
-<<<<<<< HEAD
                 "label": "apple"
-=======
-                "label": "sports ball"
-            }
-        },
-        {
-            "type": "Counts",
-            "value": {
-                "tp": 0,
-                "fp": 0,
-                "fn": 0
-            },
-            "parameters": {
-                "iou_threshold": 0.1,
-                "score_threshold": 0.5,
-                "label": "baseball bat"
-            }
-        },
-        {
-            "type": "Counts",
-            "value": {
-                "tp": 0,
-                "fp": 0,
-                "fn": 0
-            },
-            "parameters": {
-                "iou_threshold": 0.1,
-                "score_threshold": 0.5,
-                "label": "baseball glove"
->>>>>>> origin/main
             }
         }
     ],
     "Precision": [
         {
             "type": "Precision",
-<<<<<<< HEAD
             "value": 0.32,
-=======
-            "value": 0.4,
->>>>>>> origin/main
             "parameters": {
                 "label": "person",
                 "iou_threshold": 0.1,
@@ -22294,11 +17351,7 @@
             "type": "Precision",
             "value": 0.0,
             "parameters": {
-<<<<<<< HEAD
                 "label": "skateboard",
-=======
-                "label": "handbag",
->>>>>>> origin/main
                 "iou_threshold": 0.1,
                 "score_threshold": 0.5
             }
@@ -22307,11 +17360,7 @@
             "type": "Precision",
             "value": 0.0,
             "parameters": {
-<<<<<<< HEAD
                 "label": "surfboard",
-=======
-                "label": "kite",
->>>>>>> origin/main
                 "iou_threshold": 0.1,
                 "score_threshold": 0.5
             }
@@ -22320,11 +17369,7 @@
             "type": "Precision",
             "value": 0.0,
             "parameters": {
-<<<<<<< HEAD
                 "label": "motorcycle",
-=======
-                "label": "train",
->>>>>>> origin/main
                 "iou_threshold": 0.1,
                 "score_threshold": 0.5
             }
@@ -22333,7 +17378,6 @@
             "type": "Precision",
             "value": 0.0,
             "parameters": {
-<<<<<<< HEAD
                 "label": "bicycle",
                 "iou_threshold": 0.1,
                 "score_threshold": 0.5
@@ -22416,9 +17460,6 @@
             "value": 0.0,
             "parameters": {
                 "label": "bottle",
-=======
-                "label": "truck",
->>>>>>> origin/main
                 "iou_threshold": 0.1,
                 "score_threshold": 0.5
             }
@@ -22445,7 +17486,6 @@
             "type": "Precision",
             "value": 0.0,
             "parameters": {
-<<<<<<< HEAD
                 "label": "suitcase",
                 "iou_threshold": 0.1,
                 "score_threshold": 0.5
@@ -22473,8 +17513,6 @@
             "type": "Precision",
             "value": 0.0,
             "parameters": {
-=======
->>>>>>> origin/main
                 "label": "book",
                 "iou_threshold": 0.1,
                 "score_threshold": 0.5
@@ -22484,7 +17522,6 @@
             "type": "Precision",
             "value": 0.0,
             "parameters": {
-<<<<<<< HEAD
                 "label": "cup",
                 "iou_threshold": 0.1,
                 "score_threshold": 0.5
@@ -22503,8 +17540,6 @@
             "type": "Precision",
             "value": 0.0,
             "parameters": {
-=======
->>>>>>> origin/main
                 "label": "remote",
                 "iou_threshold": 0.1,
                 "score_threshold": 0.5
@@ -22514,7 +17549,6 @@
             "type": "Precision",
             "value": 0.0,
             "parameters": {
-<<<<<<< HEAD
                 "label": "couch",
                 "iou_threshold": 0.1,
                 "score_threshold": 0.5
@@ -22524,8 +17558,6 @@
             "type": "Precision",
             "value": 0.0,
             "parameters": {
-=======
->>>>>>> origin/main
                 "label": "tv",
                 "iou_threshold": 0.1,
                 "score_threshold": 0.5
@@ -22535,11 +17567,7 @@
             "type": "Precision",
             "value": 0.0,
             "parameters": {
-<<<<<<< HEAD
                 "label": "wine glass",
-=======
-                "label": "clock",
->>>>>>> origin/main
                 "iou_threshold": 0.1,
                 "score_threshold": 0.5
             }
@@ -22548,11 +17576,7 @@
             "type": "Precision",
             "value": 0.0,
             "parameters": {
-<<<<<<< HEAD
                 "label": "fire hydrant",
-=======
-                "label": "suitcase",
->>>>>>> origin/main
                 "iou_threshold": 0.1,
                 "score_threshold": 0.5
             }
@@ -22561,11 +17585,7 @@
             "type": "Precision",
             "value": 0.0,
             "parameters": {
-<<<<<<< HEAD
                 "label": "baseball glove",
-=======
-                "label": "bottle",
->>>>>>> origin/main
                 "iou_threshold": 0.1,
                 "score_threshold": 0.5
             }
@@ -22574,11 +17594,7 @@
             "type": "Precision",
             "value": 0.0,
             "parameters": {
-<<<<<<< HEAD
                 "label": "vase",
-=======
-                "label": "bench",
->>>>>>> origin/main
                 "iou_threshold": 0.1,
                 "score_threshold": 0.5
             }
@@ -22587,11 +17603,7 @@
             "type": "Precision",
             "value": 0.0,
             "parameters": {
-<<<<<<< HEAD
                 "label": "dog",
-=======
-                "label": "couch",
->>>>>>> origin/main
                 "iou_threshold": 0.1,
                 "score_threshold": 0.5
             }
@@ -22600,11 +17612,7 @@
             "type": "Precision",
             "value": 0.0,
             "parameters": {
-<<<<<<< HEAD
                 "label": "potted plant",
-=======
-                "label": "car",
->>>>>>> origin/main
                 "iou_threshold": 0.1,
                 "score_threshold": 0.5
             }
@@ -22613,7 +17621,6 @@
             "type": "Precision",
             "value": 0.0,
             "parameters": {
-<<<<<<< HEAD
                 "label": "oven",
                 "iou_threshold": 0.1,
                 "score_threshold": 0.5
@@ -22822,9 +17829,6 @@
             "value": 0.0,
             "parameters": {
                 "label": "traffic light",
-=======
-                "label": "backpack",
->>>>>>> origin/main
                 "iou_threshold": 0.1,
                 "score_threshold": 0.5
             }
@@ -22842,11 +17846,7 @@
             "type": "Precision",
             "value": 0.0,
             "parameters": {
-<<<<<<< HEAD
                 "label": "kite",
-=======
-                "label": "boat",
->>>>>>> origin/main
                 "iou_threshold": 0.1,
                 "score_threshold": 0.5
             }
@@ -22855,11 +17855,7 @@
             "type": "Precision",
             "value": 0.0,
             "parameters": {
-<<<<<<< HEAD
                 "label": "scissors",
-=======
-                "label": "tennis racket",
->>>>>>> origin/main
                 "iou_threshold": 0.1,
                 "score_threshold": 0.5
             }
@@ -22868,11 +17864,7 @@
             "type": "Precision",
             "value": 0.0,
             "parameters": {
-<<<<<<< HEAD
                 "label": "spoon",
-=======
-                "label": "tie",
->>>>>>> origin/main
                 "iou_threshold": 0.1,
                 "score_threshold": 0.5
             }
@@ -22881,11 +17873,7 @@
             "type": "Precision",
             "value": 0.0,
             "parameters": {
-<<<<<<< HEAD
                 "label": "snowboard",
-=======
-                "label": "bus",
->>>>>>> origin/main
                 "iou_threshold": 0.1,
                 "score_threshold": 0.5
             }
@@ -22894,11 +17882,7 @@
             "type": "Precision",
             "value": 0.0,
             "parameters": {
-<<<<<<< HEAD
                 "label": "fork",
-=======
-                "label": "keyboard",
->>>>>>> origin/main
                 "iou_threshold": 0.1,
                 "score_threshold": 0.5
             }
@@ -22907,11 +17891,7 @@
             "type": "Precision",
             "value": 0.0,
             "parameters": {
-<<<<<<< HEAD
                 "label": "knife",
-=======
-                "label": "traffic light",
->>>>>>> origin/main
                 "iou_threshold": 0.1,
                 "score_threshold": 0.5
             }
@@ -22920,11 +17900,7 @@
             "type": "Precision",
             "value": 0.0,
             "parameters": {
-<<<<<<< HEAD
                 "label": "toothbrush",
-=======
-                "label": "dining table",
->>>>>>> origin/main
                 "iou_threshold": 0.1,
                 "score_threshold": 0.5
             }
@@ -22933,38 +17909,7 @@
             "type": "Precision",
             "value": 0.0,
             "parameters": {
-<<<<<<< HEAD
                 "label": "apple",
-=======
-                "label": "umbrella",
-                "iou_threshold": 0.1,
-                "score_threshold": 0.5
-            }
-        },
-        {
-            "type": "Precision",
-            "value": 0.0,
-            "parameters": {
-                "label": "sports ball",
-                "iou_threshold": 0.1,
-                "score_threshold": 0.5
-            }
-        },
-        {
-            "type": "Precision",
-            "value": 0.0,
-            "parameters": {
-                "label": "baseball bat",
-                "iou_threshold": 0.1,
-                "score_threshold": 0.5
-            }
-        },
-        {
-            "type": "Precision",
-            "value": 0.0,
-            "parameters": {
-                "label": "baseball glove",
->>>>>>> origin/main
                 "iou_threshold": 0.1,
                 "score_threshold": 0.5
             }
@@ -22973,11 +17918,7 @@
     "Recall": [
         {
             "type": "Recall",
-<<<<<<< HEAD
             "value": 0.23880597014925373,
-=======
-            "value": 0.2857142857142857,
->>>>>>> origin/main
             "parameters": {
                 "label": "person",
                 "iou_threshold": 0.1,
@@ -22988,11 +17929,7 @@
             "type": "Recall",
             "value": 0.0,
             "parameters": {
-<<<<<<< HEAD
                 "label": "skateboard",
-=======
-                "label": "handbag",
->>>>>>> origin/main
                 "iou_threshold": 0.1,
                 "score_threshold": 0.5
             }
@@ -23001,11 +17938,7 @@
             "type": "Recall",
             "value": 0.0,
             "parameters": {
-<<<<<<< HEAD
                 "label": "surfboard",
-=======
-                "label": "kite",
->>>>>>> origin/main
                 "iou_threshold": 0.1,
                 "score_threshold": 0.5
             }
@@ -23014,11 +17947,7 @@
             "type": "Recall",
             "value": 0.0,
             "parameters": {
-<<<<<<< HEAD
                 "label": "motorcycle",
-=======
-                "label": "train",
->>>>>>> origin/main
                 "iou_threshold": 0.1,
                 "score_threshold": 0.5
             }
@@ -23027,7 +17956,6 @@
             "type": "Recall",
             "value": 0.0,
             "parameters": {
-<<<<<<< HEAD
                 "label": "bicycle",
                 "iou_threshold": 0.1,
                 "score_threshold": 0.5
@@ -23110,9 +18038,6 @@
             "value": 0.0,
             "parameters": {
                 "label": "bottle",
-=======
-                "label": "truck",
->>>>>>> origin/main
                 "iou_threshold": 0.1,
                 "score_threshold": 0.5
             }
@@ -23139,7 +18064,6 @@
             "type": "Recall",
             "value": 0.0,
             "parameters": {
-<<<<<<< HEAD
                 "label": "suitcase",
                 "iou_threshold": 0.1,
                 "score_threshold": 0.5
@@ -23167,8 +18091,6 @@
             "type": "Recall",
             "value": 0.0,
             "parameters": {
-=======
->>>>>>> origin/main
                 "label": "book",
                 "iou_threshold": 0.1,
                 "score_threshold": 0.5
@@ -23178,7 +18100,6 @@
             "type": "Recall",
             "value": 0.0,
             "parameters": {
-<<<<<<< HEAD
                 "label": "cup",
                 "iou_threshold": 0.1,
                 "score_threshold": 0.5
@@ -23197,8 +18118,6 @@
             "type": "Recall",
             "value": 0.0,
             "parameters": {
-=======
->>>>>>> origin/main
                 "label": "remote",
                 "iou_threshold": 0.1,
                 "score_threshold": 0.5
@@ -23208,7 +18127,6 @@
             "type": "Recall",
             "value": 0.0,
             "parameters": {
-<<<<<<< HEAD
                 "label": "couch",
                 "iou_threshold": 0.1,
                 "score_threshold": 0.5
@@ -23218,8 +18136,6 @@
             "type": "Recall",
             "value": 0.0,
             "parameters": {
-=======
->>>>>>> origin/main
                 "label": "tv",
                 "iou_threshold": 0.1,
                 "score_threshold": 0.5
@@ -23229,11 +18145,7 @@
             "type": "Recall",
             "value": 0.0,
             "parameters": {
-<<<<<<< HEAD
                 "label": "wine glass",
-=======
-                "label": "clock",
->>>>>>> origin/main
                 "iou_threshold": 0.1,
                 "score_threshold": 0.5
             }
@@ -23242,11 +18154,7 @@
             "type": "Recall",
             "value": 0.0,
             "parameters": {
-<<<<<<< HEAD
                 "label": "fire hydrant",
-=======
-                "label": "suitcase",
->>>>>>> origin/main
                 "iou_threshold": 0.1,
                 "score_threshold": 0.5
             }
@@ -23255,11 +18163,7 @@
             "type": "Recall",
             "value": 0.0,
             "parameters": {
-<<<<<<< HEAD
                 "label": "baseball glove",
-=======
-                "label": "bottle",
->>>>>>> origin/main
                 "iou_threshold": 0.1,
                 "score_threshold": 0.5
             }
@@ -23268,11 +18172,7 @@
             "type": "Recall",
             "value": 0.0,
             "parameters": {
-<<<<<<< HEAD
                 "label": "vase",
-=======
-                "label": "bench",
->>>>>>> origin/main
                 "iou_threshold": 0.1,
                 "score_threshold": 0.5
             }
@@ -23281,11 +18181,7 @@
             "type": "Recall",
             "value": 0.0,
             "parameters": {
-<<<<<<< HEAD
                 "label": "dog",
-=======
-                "label": "couch",
->>>>>>> origin/main
                 "iou_threshold": 0.1,
                 "score_threshold": 0.5
             }
@@ -23294,11 +18190,7 @@
             "type": "Recall",
             "value": 0.0,
             "parameters": {
-<<<<<<< HEAD
                 "label": "potted plant",
-=======
-                "label": "car",
->>>>>>> origin/main
                 "iou_threshold": 0.1,
                 "score_threshold": 0.5
             }
@@ -23307,7 +18199,6 @@
             "type": "Recall",
             "value": 0.0,
             "parameters": {
-<<<<<<< HEAD
                 "label": "oven",
                 "iou_threshold": 0.1,
                 "score_threshold": 0.5
@@ -23516,9 +18407,6 @@
             "value": 0.0,
             "parameters": {
                 "label": "traffic light",
-=======
-                "label": "backpack",
->>>>>>> origin/main
                 "iou_threshold": 0.1,
                 "score_threshold": 0.5
             }
@@ -23536,11 +18424,7 @@
             "type": "Recall",
             "value": 0.0,
             "parameters": {
-<<<<<<< HEAD
                 "label": "kite",
-=======
-                "label": "boat",
->>>>>>> origin/main
                 "iou_threshold": 0.1,
                 "score_threshold": 0.5
             }
@@ -23549,11 +18433,7 @@
             "type": "Recall",
             "value": 0.0,
             "parameters": {
-<<<<<<< HEAD
                 "label": "scissors",
-=======
-                "label": "tennis racket",
->>>>>>> origin/main
                 "iou_threshold": 0.1,
                 "score_threshold": 0.5
             }
@@ -23562,11 +18442,7 @@
             "type": "Recall",
             "value": 0.0,
             "parameters": {
-<<<<<<< HEAD
                 "label": "spoon",
-=======
-                "label": "tie",
->>>>>>> origin/main
                 "iou_threshold": 0.1,
                 "score_threshold": 0.5
             }
@@ -23575,11 +18451,7 @@
             "type": "Recall",
             "value": 0.0,
             "parameters": {
-<<<<<<< HEAD
                 "label": "snowboard",
-=======
-                "label": "bus",
->>>>>>> origin/main
                 "iou_threshold": 0.1,
                 "score_threshold": 0.5
             }
@@ -23588,11 +18460,7 @@
             "type": "Recall",
             "value": 0.0,
             "parameters": {
-<<<<<<< HEAD
                 "label": "fork",
-=======
-                "label": "keyboard",
->>>>>>> origin/main
                 "iou_threshold": 0.1,
                 "score_threshold": 0.5
             }
@@ -23601,11 +18469,7 @@
             "type": "Recall",
             "value": 0.0,
             "parameters": {
-<<<<<<< HEAD
                 "label": "knife",
-=======
-                "label": "traffic light",
->>>>>>> origin/main
                 "iou_threshold": 0.1,
                 "score_threshold": 0.5
             }
@@ -23614,11 +18478,7 @@
             "type": "Recall",
             "value": 0.0,
             "parameters": {
-<<<<<<< HEAD
                 "label": "toothbrush",
-=======
-                "label": "dining table",
->>>>>>> origin/main
                 "iou_threshold": 0.1,
                 "score_threshold": 0.5
             }
@@ -23627,38 +18487,7 @@
             "type": "Recall",
             "value": 0.0,
             "parameters": {
-<<<<<<< HEAD
                 "label": "apple",
-=======
-                "label": "umbrella",
-                "iou_threshold": 0.1,
-                "score_threshold": 0.5
-            }
-        },
-        {
-            "type": "Recall",
-            "value": 0.0,
-            "parameters": {
-                "label": "sports ball",
-                "iou_threshold": 0.1,
-                "score_threshold": 0.5
-            }
-        },
-        {
-            "type": "Recall",
-            "value": 0.0,
-            "parameters": {
-                "label": "baseball bat",
-                "iou_threshold": 0.1,
-                "score_threshold": 0.5
-            }
-        },
-        {
-            "type": "Recall",
-            "value": 0.0,
-            "parameters": {
-                "label": "baseball glove",
->>>>>>> origin/main
                 "iou_threshold": 0.1,
                 "score_threshold": 0.5
             }
@@ -23667,11 +18496,7 @@
     "F1": [
         {
             "type": "F1",
-<<<<<<< HEAD
             "value": 0.27350427350427353,
-=======
-            "value": 0.3333333333333333,
->>>>>>> origin/main
             "parameters": {
                 "label": "person",
                 "iou_threshold": 0.1,
@@ -23682,11 +18507,7 @@
             "type": "F1",
             "value": 0.0,
             "parameters": {
-<<<<<<< HEAD
                 "label": "skateboard",
-=======
-                "label": "handbag",
->>>>>>> origin/main
                 "iou_threshold": 0.1,
                 "score_threshold": 0.5
             }
@@ -23695,11 +18516,7 @@
             "type": "F1",
             "value": 0.0,
             "parameters": {
-<<<<<<< HEAD
                 "label": "surfboard",
-=======
-                "label": "kite",
->>>>>>> origin/main
                 "iou_threshold": 0.1,
                 "score_threshold": 0.5
             }
@@ -23708,11 +18525,7 @@
             "type": "F1",
             "value": 0.0,
             "parameters": {
-<<<<<<< HEAD
                 "label": "motorcycle",
-=======
-                "label": "train",
->>>>>>> origin/main
                 "iou_threshold": 0.1,
                 "score_threshold": 0.5
             }
@@ -23721,7 +18534,6 @@
             "type": "F1",
             "value": 0.0,
             "parameters": {
-<<<<<<< HEAD
                 "label": "bicycle",
                 "iou_threshold": 0.1,
                 "score_threshold": 0.5
@@ -23804,9 +18616,6 @@
             "value": 0.0,
             "parameters": {
                 "label": "bottle",
-=======
-                "label": "truck",
->>>>>>> origin/main
                 "iou_threshold": 0.1,
                 "score_threshold": 0.5
             }
@@ -23833,7 +18642,6 @@
             "type": "F1",
             "value": 0.0,
             "parameters": {
-<<<<<<< HEAD
                 "label": "suitcase",
                 "iou_threshold": 0.1,
                 "score_threshold": 0.5
@@ -23861,8 +18669,6 @@
             "type": "F1",
             "value": 0.0,
             "parameters": {
-=======
->>>>>>> origin/main
                 "label": "book",
                 "iou_threshold": 0.1,
                 "score_threshold": 0.5
@@ -23872,7 +18678,6 @@
             "type": "F1",
             "value": 0.0,
             "parameters": {
-<<<<<<< HEAD
                 "label": "cup",
                 "iou_threshold": 0.1,
                 "score_threshold": 0.5
@@ -23891,8 +18696,6 @@
             "type": "F1",
             "value": 0.0,
             "parameters": {
-=======
->>>>>>> origin/main
                 "label": "remote",
                 "iou_threshold": 0.1,
                 "score_threshold": 0.5
@@ -23902,7 +18705,6 @@
             "type": "F1",
             "value": 0.0,
             "parameters": {
-<<<<<<< HEAD
                 "label": "couch",
                 "iou_threshold": 0.1,
                 "score_threshold": 0.5
@@ -23912,8 +18714,6 @@
             "type": "F1",
             "value": 0.0,
             "parameters": {
-=======
->>>>>>> origin/main
                 "label": "tv",
                 "iou_threshold": 0.1,
                 "score_threshold": 0.5
@@ -23923,11 +18723,7 @@
             "type": "F1",
             "value": 0.0,
             "parameters": {
-<<<<<<< HEAD
                 "label": "wine glass",
-=======
-                "label": "clock",
->>>>>>> origin/main
                 "iou_threshold": 0.1,
                 "score_threshold": 0.5
             }
@@ -23936,11 +18732,7 @@
             "type": "F1",
             "value": 0.0,
             "parameters": {
-<<<<<<< HEAD
                 "label": "fire hydrant",
-=======
-                "label": "suitcase",
->>>>>>> origin/main
                 "iou_threshold": 0.1,
                 "score_threshold": 0.5
             }
@@ -23949,11 +18741,7 @@
             "type": "F1",
             "value": 0.0,
             "parameters": {
-<<<<<<< HEAD
                 "label": "baseball glove",
-=======
-                "label": "bottle",
->>>>>>> origin/main
                 "iou_threshold": 0.1,
                 "score_threshold": 0.5
             }
@@ -23962,11 +18750,7 @@
             "type": "F1",
             "value": 0.0,
             "parameters": {
-<<<<<<< HEAD
                 "label": "vase",
-=======
-                "label": "bench",
->>>>>>> origin/main
                 "iou_threshold": 0.1,
                 "score_threshold": 0.5
             }
@@ -23975,11 +18759,7 @@
             "type": "F1",
             "value": 0.0,
             "parameters": {
-<<<<<<< HEAD
                 "label": "dog",
-=======
-                "label": "couch",
->>>>>>> origin/main
                 "iou_threshold": 0.1,
                 "score_threshold": 0.5
             }
@@ -23988,11 +18768,7 @@
             "type": "F1",
             "value": 0.0,
             "parameters": {
-<<<<<<< HEAD
                 "label": "potted plant",
-=======
-                "label": "car",
->>>>>>> origin/main
                 "iou_threshold": 0.1,
                 "score_threshold": 0.5
             }
@@ -24001,7 +18777,6 @@
             "type": "F1",
             "value": 0.0,
             "parameters": {
-<<<<<<< HEAD
                 "label": "oven",
                 "iou_threshold": 0.1,
                 "score_threshold": 0.5
@@ -24210,9 +18985,6 @@
             "value": 0.0,
             "parameters": {
                 "label": "traffic light",
-=======
-                "label": "backpack",
->>>>>>> origin/main
                 "iou_threshold": 0.1,
                 "score_threshold": 0.5
             }
@@ -24230,11 +19002,7 @@
             "type": "F1",
             "value": 0.0,
             "parameters": {
-<<<<<<< HEAD
                 "label": "kite",
-=======
-                "label": "boat",
->>>>>>> origin/main
                 "iou_threshold": 0.1,
                 "score_threshold": 0.5
             }
@@ -24243,11 +19011,7 @@
             "type": "F1",
             "value": 0.0,
             "parameters": {
-<<<<<<< HEAD
                 "label": "scissors",
-=======
-                "label": "tennis racket",
->>>>>>> origin/main
                 "iou_threshold": 0.1,
                 "score_threshold": 0.5
             }
@@ -24256,11 +19020,7 @@
             "type": "F1",
             "value": 0.0,
             "parameters": {
-<<<<<<< HEAD
                 "label": "spoon",
-=======
-                "label": "tie",
->>>>>>> origin/main
                 "iou_threshold": 0.1,
                 "score_threshold": 0.5
             }
@@ -24269,11 +19029,7 @@
             "type": "F1",
             "value": 0.0,
             "parameters": {
-<<<<<<< HEAD
                 "label": "snowboard",
-=======
-                "label": "bus",
->>>>>>> origin/main
                 "iou_threshold": 0.1,
                 "score_threshold": 0.5
             }
@@ -24282,11 +19038,7 @@
             "type": "F1",
             "value": 0.0,
             "parameters": {
-<<<<<<< HEAD
                 "label": "fork",
-=======
-                "label": "keyboard",
->>>>>>> origin/main
                 "iou_threshold": 0.1,
                 "score_threshold": 0.5
             }
@@ -24295,11 +19047,7 @@
             "type": "F1",
             "value": 0.0,
             "parameters": {
-<<<<<<< HEAD
                 "label": "knife",
-=======
-                "label": "traffic light",
->>>>>>> origin/main
                 "iou_threshold": 0.1,
                 "score_threshold": 0.5
             }
@@ -24308,11 +19056,7 @@
             "type": "F1",
             "value": 0.0,
             "parameters": {
-<<<<<<< HEAD
                 "label": "toothbrush",
-=======
-                "label": "dining table",
->>>>>>> origin/main
                 "iou_threshold": 0.1,
                 "score_threshold": 0.5
             }
@@ -24321,38 +19065,7 @@
             "type": "F1",
             "value": 0.0,
             "parameters": {
-<<<<<<< HEAD
                 "label": "apple",
-=======
-                "label": "umbrella",
-                "iou_threshold": 0.1,
-                "score_threshold": 0.5
-            }
-        },
-        {
-            "type": "F1",
-            "value": 0.0,
-            "parameters": {
-                "label": "sports ball",
-                "iou_threshold": 0.1,
-                "score_threshold": 0.5
-            }
-        },
-        {
-            "type": "F1",
-            "value": 0.0,
-            "parameters": {
-                "label": "baseball bat",
-                "iou_threshold": 0.1,
-                "score_threshold": 0.5
-            }
-        },
-        {
-            "type": "F1",
-            "value": 0.0,
-            "parameters": {
-                "label": "baseball glove",
->>>>>>> origin/main
                 "iou_threshold": 0.1,
                 "score_threshold": 0.5
             }
