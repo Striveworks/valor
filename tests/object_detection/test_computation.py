@@ -58,7 +58,7 @@ def test_computation_calculate_ranking_boundaries_label_mismatch_edge_case():
 def test_computation_compute_counts_ordering_edge_case():
     """
     In v0.37.2 and earlier there was a bug where the last prediction in a bin was
-    selected regardless of it being the maximum score or precison.
+    selected regardless of it having the maximum score or precison.
 
     The PR curve is binned over 101 fixed recall points. To test this we have to first
     ensure that at least two predictions will lie within the same bin. We can do this
