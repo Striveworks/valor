@@ -1345,7 +1345,7 @@ def fixture_path() -> Path:
 
 
 @pytest.fixture
-def coco_detections_v0_36_6(
+def coco_detections_v0_37_3(
     fixture_path: Path,
 ) -> list[Detection[BoundingBox]]:
     path = fixture_path / "coco_input.json"
@@ -1362,8 +1362,13 @@ def coco_detections_v0_36_6(
 
 
 @pytest.fixture
-def coco_metrics_v0_36_6(fixture_path: Path) -> dict[str, list[dict]]:
-    # metrics are given back in dictionary format
-    path = fixture_path / "coco_output.json"
-    with open(path, "r") as f:
+def coco_metrics_path_v0_37_3(fixture_path: Path) -> Path:
+    return fixture_path / "coco_output.json"
+
+
+@pytest.fixture
+def coco_metrics_v0_37_3(
+    coco_metrics_path_v0_37_3: Path,
+) -> dict[str, list[dict]]:
+    with open(coco_metrics_path_v0_37_3, "r") as f:
         return json.load(f)

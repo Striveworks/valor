@@ -261,16 +261,21 @@ def calculate_ranking_boundaries(
     NDArray[np.float64]
         A 1-D array containing the lower IOU boundary for classifying pairs as true-positive across chunks.
     """
-    # groundtruths defined as (datum_id, groundtruth_id, groundtruth_label_id)
-    gts = ranked_pairs[:, (0, 1, 3)].astype(np.int64)
+    ids = ranked_pairs[:, (0, 1, 2, 3, 4)].astype(np.int64)
+    gts = ids[:, (0, 1, 3)]
+    gt_labels = ids[:, 3]
+    pd_labels = ids[:, 4]
     ious = ranked_pairs[:, 5]
 
-    iou_boundary = np.ones_like(ious) * 2  # impossible bound
+    # set default boundary to 2.0 as it will be used to check lower boundary in range [0-1].
+    iou_boundary = np.ones_like(ious) * 2
 
+    mask_matching_labels = gt_labels == pd_labels
     mask_valid_gts = gts[:, 1] >= 0
     unique_gts = np.unique(gts[mask_valid_gts], axis=0)
     for gt in unique_gts:
         mask_gt = (gts == gt).all(axis=1)
+        mask_gt &= mask_matching_labels
         if mask_gt.sum() <= 1:
             iou_boundary[mask_gt] = 0.0
             continue
@@ -444,10 +449,6 @@ def compute_counts(
                 minlength=n_labels,
             )
 
-        # create true-positive mask score threshold
-        mask_tps = mask_tp_outer
-        true_positives_mask = mask_tps & mask_iou_prev
-
         # count running tp and total for AP
         for pd_label in unique_pd_labels:
             mask_pd_label = pd_labels == pd_label
@@ -463,7 +464,7 @@ def compute_counts(
             running_counts[iou_idx, pd_label, 0] += total_count
 
             # running true-positive count
-            mask_tp_for_counting = mask_pd_label & true_positives_mask
+            mask_tp_for_counting = mask_pd_label & mask_tp_outer
             tp_count = mask_tp_for_counting.sum()
             running_tp_count[iou_idx, mask_tp_for_counting] = np.arange(
                 running_counts[iou_idx, pd_label, 1] + 1,
@@ -488,17 +489,43 @@ def compute_counts(
     )
     recall_index = np.floor(recall * 100.0).astype(np.int32)
 
-    # bin precision-recall curve
+    # sort precision in descending order
+    precision_indices = np.argsort(-precision, axis=1)
+
+    # populate precision-recall curve
     for iou_idx in range(n_ious):
-        pr_curve[iou_idx, pd_labels, recall_index[iou_idx], 0] = np.maximum(
-            pr_curve[iou_idx, pd_labels, recall_index[iou_idx], 0],
-            precision[iou_idx],
+        labeled_recall = np.hstack(
+            [
+                pd_labels.reshape(-1, 1),
+                recall_index[iou_idx, :].reshape(-1, 1),
+            ]
         )
-        pr_curve[
-            iou_idx, pd_labels[::-1], recall_index[iou_idx][::-1], 1
-        ] = np.maximum(
-            pr_curve[iou_idx, pd_labels[::-1], recall_index[iou_idx][::-1], 1],
-            scores[::-1],
+
+        # extract maximum score per (label, recall) bin
+        # arrays are already ordered by descending score
+        lr_pairs, recall_indices = np.unique(
+            labeled_recall, return_index=True, axis=0
+        )
+        li = lr_pairs[:, 0]
+        ri = lr_pairs[:, 1]
+        pr_curve[iou_idx, li, ri, 1] = np.maximum(
+            pr_curve[iou_idx, li, ri, 1],
+            scores[recall_indices],
+        )
+
+        # extract maximum precision per (label, recall) bin
+        # reorder arrays into descending precision order
+        indices = precision_indices[iou_idx]
+        sorted_precision = precision[iou_idx, indices]
+        sorted_labeled_recall = labeled_recall[indices]
+        lr_pairs, recall_indices = np.unique(
+            sorted_labeled_recall, return_index=True, axis=0
+        )
+        li = lr_pairs[:, 0]
+        ri = lr_pairs[:, 1]
+        pr_curve[iou_idx, li, ri, 0] = np.maximum(
+            pr_curve[iou_idx, li, ri, 0],
+            sorted_precision[recall_indices],
         )
 
     return counts

@@ -144,11 +144,7 @@ class Builder:
             metadata_fields=metadata_fields,
         )
 
-    def _rank(
-        self,
-        n_labels: int,
-        batch_size: int = 1_000,
-    ):
+    def _rank(self, batch_size: int = 1_000):
         """Perform pair ranking over the detailed cache."""
 
         detailed_reader = self._detailed_writer.to_reader()
@@ -203,10 +199,7 @@ class Builder:
         )
 
         # populate ranked cache
-        self._rank(
-            n_labels=len(index_to_label),
-            batch_size=batch_size,
-        )
+        self._rank(batch_size)
 
         ranked_reader = self._ranked_writer.to_reader()
         return Evaluator(

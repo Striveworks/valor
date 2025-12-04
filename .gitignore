@@ -30,5 +30,6 @@ site/*
 *.png
 *.jpg
 *.parquet
+*.npy
 
 .valor/*
