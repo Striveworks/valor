@@ -70,7 +70,8 @@ def test_computation_compute_counts_ordering_edge_case():
     - Second prediction is the only TP
 
     In both cases we need to confirm that the TP is the prediction that populates the
-    resulting precision-recall curve.
+    resulting precision-recall curve. Highest score is decouple from precision and serves
+    to track what the highest score prediction was for each recall bin.
 
     Note that input pairs have shape (N_rows, 8)
      0: Datum ID
