@@ -10,9 +10,7 @@ def test_regression_coco_v0_37_3(
     coco_detections_v0_37_3: list[Detection[BoundingBox]],
     coco_metrics_v0_37_3: dict[str, list[dict]],
 ):
-    """Test against Valor v0.36.6"""
-
-    print(len(coco_detections_v0_37_3))
+    """Test against Valor v0.37.2"""
 
     loader.add_bounding_boxes(coco_detections_v0_37_3)
     evaluator = loader.finalize()
