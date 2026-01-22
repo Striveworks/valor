@@ -1,4 +1,4 @@
-.PHONY: install pre-commit test help
+.PHONY: install lint test help
 
 install:
 	@echo "Installing from source..."
