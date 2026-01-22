@@ -545,16 +545,12 @@ class Evaluator:
             matches = tbl["match"].to_numpy()
             yield ids, scores, winners, matches, tbl
 
-    def compute_rocauc(
-        self, datums: pc.Expression | None = None
-    ) -> dict[MetricType, list[Metric]]:
+    def compute_rocauc(self) -> dict[MetricType, list[Metric]]:
         """
         Compute ROCAUC.
 
-        Parameters
-        ----------
-        datums : pyarrow.compute.Expression, optional
-            Option to filter datums by an expression.
+        This function does not support direct filtering. To perform evaluation over a filtered
+        set you must first create a new evaluator using `Evaluator.filter`.
 
         Returns
         -------
@@ -567,7 +563,6 @@ class Evaluator:
         label_counts = extract_groundtruth_count_per_label(
             reader=self._reader,
             number_of_labels=len(self._index_to_label),
-            datums=datums,
         )
 
         prev = np.zeros((n_labels, 2), dtype=np.uint64)
@@ -577,7 +572,6 @@ class Evaluator:
                 "cumulative_fp",
                 "cumulative_tp",
             ],
-            filter=datums,
         ):
             rocauc, prev = compute_rocauc(
                 rocauc=rocauc,

@@ -4,7 +4,7 @@ install:
 	@echo "Installing from source..."
 	pip install -e src/[dev]
 
-pre-commit:
+lint:
 	@echo "Running pre-commit..."
 	pre-commit install
 	pre-commit run --all
@@ -19,6 +19,6 @@ test:
 help:
 	@echo "Available targets:"
 	@echo "  install          Install from source with developer tools."
-	@echo "  pre-commit       Run pre-commit."
+	@echo "  lint       	  Run pre-commit."
 	@echo "  test             Run tests."
 	@echo "  help             Show this help message."
