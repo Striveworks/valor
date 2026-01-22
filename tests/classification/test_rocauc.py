@@ -267,3 +267,51 @@ def test_rocauc_with_tabular_example(
         assert m in expected_metrics
     for m in expected_metrics:
         assert m in actual_metrics
+
+
+def test_rocauc_single_classification(loader: Loader):
+    data = [
+        Classification(
+            uid="uid",
+            groundtruth="dog",
+            predictions=["dog", "cat"],
+            scores=[1.0, 0.0],
+        )
+    ]
+    loader.add_data(data)
+    evaluator = loader.finalize()
+
+    metrics = evaluator.compute_rocauc()
+
+    # test ROCAUC
+    actual_metrics = [m.to_dict() for m in metrics[MetricType.ROCAUC]]
+    expected_metrics = [
+        {
+            "type": "ROCAUC",
+            "value": 0.0,
+            "parameters": {
+                "label": "dog",
+            },
+        },
+        {
+            "type": "ROCAUC",
+            "value": 0.0,
+            "parameters": {
+                "label": "cat",
+            },
+        },
+    ]
+    for m in actual_metrics:
+        assert m in expected_metrics
+    for m in expected_metrics:
+        assert m in actual_metrics
+
+    # test mROCAUC
+    actual_metrics = [m.to_dict() for m in metrics[MetricType.mROCAUC]]
+    expected_metrics = [
+        {"type": "mROCAUC", "value": 0.0, "parameters": {}},
+    ]
+    for m in actual_metrics:
+        assert m in expected_metrics
+    for m in expected_metrics:
+        assert m in actual_metrics

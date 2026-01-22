@@ -636,3 +636,49 @@ def test_filtering_six_classifications_inline(
         assert m in expected_metrics
     for m in expected_metrics:
         assert m in actual_metrics
+
+
+def test_filtering_remove_all(
+    loader: Loader,
+    six_classifications: list[Classification],
+    tmp_path: Path,
+):
+
+    loader.add_data(six_classifications)
+    evaluator = loader.finalize()
+
+    datums = pc.field("datum_uid") == "does_not_exist"
+
+    # test evaluation
+    base_metrics = evaluator.compute_precision_recall(datums=datums)
+    with pytest.raises(TypeError) as e:
+        evaluator.compute_rocauc(datums=datums)  # type: ignore - testing
+    assert "unexpected keyword" in str(e)
+    confusion = evaluator.compute_confusion_matrix(datums=datums)
+    examples = evaluator.compute_examples(datums=datums)
+
+    for k, mlist in base_metrics.items():
+        for m in mlist:
+            if k == MetricType.Counts:
+                assert isinstance(m.value, dict)
+                for v in m.value.values():
+                    assert isinstance(v, int)
+                    assert v >= 0
+            else:
+                assert isinstance(m.value, float)
+                assert m.value <= 1.0
+                assert m.value >= 0.0
+    for cm in confusion:
+        assert isinstance(cm.value, dict)
+        for row in cm.value["confusion_matrix"].values():
+            for v in row.values():
+                assert isinstance(v, int)
+                assert v >= 0
+        for v in cm.value["unmatched_ground_truths"].values():
+            assert isinstance(v, int)
+            assert v >= 0
+    for example in examples:
+        assert isinstance(example, dict)
+        for v in example.values():
+            if isinstance(v, list):
+                assert len(v) == 0
