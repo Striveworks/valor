@@ -33,7 +33,7 @@ docs = [
 ]
 test = ["pytest", "coverage", "pre-commit"]
 benchmark = ["requests"]
-dev = ["valor-lite[nlp, openai, mistral, benchmark, test, docs]"]
+dev = ["valor-lite[nlp, openai, mistral, benchmark, test, docs]", "pyarrow-stubs"]
 
 [tool.black]
 line-length = 79

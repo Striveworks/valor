@@ -1,9 +1,10 @@
 import heapq
 import tempfile
 from pathlib import Path
-from typing import Callable
+from typing import Callable, Generator
 
 import pyarrow as pa
+import pyarrow.compute as pc
 
 from valor_lite.cache.ephemeral import MemoryCacheReader, MemoryCacheWriter
 from valor_lite.cache.persistent import FileCacheReader, FileCacheWriter
@@ -152,3 +153,56 @@ def sort(
             columns=columns,
             table_sort_override=table_sort_override,
         )
+
+
+def paginate_index(
+    source: MemoryCacheReader | FileCacheReader,
+    column_key: str,
+    modifier: pc.Expression | None = None,
+    limit: int | None = None,
+    offset: int = 0,
+) -> Generator[pa.Table, None, None]:
+    """
+    Create a filter that performs a pagination operation on an index.
+
+    Note this function expects unqiue keys to be fragment-aligned and in ascending order.
+    """
+    total = source.count_rows()
+    limit = limit if limit else total
+
+    # pagination broader than data scope
+    if offset == 0 and limit >= total:
+        for tbl in source.iterate_tables(filter=modifier):
+            yield tbl
+        return
+    elif offset >= total:
+        return
+
+    curr_idx = 0
+    for tbl in source.iterate_tables(filter=modifier):
+        if tbl.num_rows == 0:
+            continue
+
+        unique_values = pc.unique(tbl[column_key]).sort()  # type: ignore[reportAttributeAccessIssue]
+        n_unique = len(unique_values)
+        prev_idx = curr_idx
+        curr_idx += n_unique
+
+        # check for page overlap
+        if curr_idx <= offset:
+            continue
+        elif prev_idx >= (offset + limit):
+            return
+
+        # apply any pagination conditions
+        condition = pc.scalar(True)
+        if prev_idx < offset and curr_idx > offset:
+            condition &= (
+                pc.field(column_key) >= unique_values[offset - prev_idx]
+            )
+        if prev_idx < (offset + limit) and curr_idx > (offset + limit):
+            condition &= (
+                pc.field(column_key) < unique_values[offset + limit - prev_idx]
+            )
+
+        yield tbl.filter(condition)
