@@ -163,7 +163,7 @@ def paginate_index(
     offset: int = 0,
 ) -> Generator[pa.Table, None, None]:
     """
-    Create a filter that performs a pagination operation on an index.
+    Iterate through a paginated cache reader.
 
     Note this function expects unqiue keys to be fragment-aligned and in ascending order.
     """
