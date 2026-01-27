@@ -283,13 +283,13 @@ def test_examples(detections_for_detailed_counting: Evaluator):
 
 
 def test_examples_using_torch_metrics_example(
-    torchmetrics_detections: Evaluator,
+    torchmetrics_evaluator: Evaluator,
 ):
     """
     cf with torch metrics/pycocotools results listed here:
     https://github.com/Lightning-AI/metrics/blob/107dbfd5fb158b7ae6d76281df44bd94c836bfce/tests/unittests/detection/test_map.py#L231
     """
-    evaluator = torchmetrics_detections
+    evaluator = torchmetrics_evaluator
     assert evaluator.info.number_of_datums == 4
     assert evaluator.info.number_of_labels == 6
     assert evaluator.info.number_of_groundtruth_annotations == 20
@@ -1071,6 +1071,317 @@ def test_examples_ranked_pair_ordering(
                 "iou_threshold": 0.5,
             },
         },
+    ]
+    for m in actual_metrics:
+        assert m in expected_metrics
+    for m in expected_metrics:
+        assert m in actual_metrics
+
+
+def test_examples_using_torch_metrics_example_paginated(
+    torchmetrics_evaluator: Evaluator,
+):
+    """
+    cf with torch metrics/pycocotools results listed here:
+    https://github.com/Lightning-AI/metrics/blob/107dbfd5fb158b7ae6d76281df44bd94c836bfce/tests/unittests/detection/test_map.py#L231
+    """
+    evaluator = torchmetrics_evaluator
+    assert evaluator.info.number_of_datums == 4
+    assert evaluator.info.number_of_labels == 6
+    assert evaluator.info.number_of_groundtruth_annotations == 20
+    assert evaluator.info.number_of_prediction_annotations == 19
+
+    iou_thresholds = [0.5, 0.9]
+    score_thresholds = [0.05, 0.25, 0.35, 0.55, 0.75, 0.8, 0.85, 0.95]
+    actual_metrics = evaluator.compute_examples(
+        iou_thresholds=iou_thresholds,
+        score_thresholds=score_thresholds,
+        offset=1,
+        limit=2,
+    )
+
+    actual_metrics = [m.to_dict() for m in actual_metrics]
+    expected_metrics = [
+        # datum 1
+        *[
+            {
+                "type": "Examples",
+                "value": {
+                    "datum_id": "1",
+                    "true_positives": [("uid_1_gt_1", "uid_1_pd_1")],
+                    "false_positives": ["uid_1_pd_0"],
+                    "false_negatives": ["uid_1_gt_0"],
+                },
+                "parameters": {
+                    "score_threshold": score_thresh,
+                    "iou_threshold": iou_thresh,
+                },
+            }
+            for iou_thresh in iou_thresholds
+            for score_thresh in score_thresholds[:2]
+        ],
+        *[
+            {
+                "type": "Examples",
+                "value": {
+                    "datum_id": "1",
+                    "true_positives": [("uid_1_gt_1", "uid_1_pd_1")],
+                    "false_positives": [],
+                    "false_negatives": ["uid_1_gt_0"],
+                },
+                "parameters": {
+                    "score_threshold": score_thresh,
+                    "iou_threshold": iou_thresh,
+                },
+            }
+            for iou_thresh in iou_thresholds
+            for score_thresh in score_thresholds[2:4]
+        ],
+        *[
+            {
+                "type": "Examples",
+                "value": {
+                    "datum_id": "1",
+                    "true_positives": [],
+                    "false_positives": [],
+                    "false_negatives": ["uid_1_gt_0", "uid_1_gt_1"],
+                },
+                "parameters": {
+                    "score_threshold": score_thresh,
+                    "iou_threshold": iou_thresh,
+                },
+            }
+            for iou_thresh in iou_thresholds
+            for score_thresh in score_thresholds[4:]
+        ],
+        # datum 2
+        *[
+            {
+                "type": "Examples",
+                "value": {
+                    "datum_id": "2",
+                    "true_positives": [
+                        ("uid_2_gt_0", "uid_2_pd_0"),
+                        ("uid_2_gt_1", "uid_2_pd_1"),
+                        ("uid_2_gt_2", "uid_2_pd_2"),
+                        ("uid_2_gt_3", "uid_2_pd_3"),
+                        ("uid_2_gt_4", "uid_2_pd_4"),
+                        ("uid_2_gt_5", "uid_2_pd_5"),
+                        ("uid_2_gt_6", "uid_2_pd_6"),
+                    ],
+                    "false_positives": [],
+                    "false_negatives": [],
+                },
+                "parameters": {
+                    "score_threshold": score_thresh,
+                    "iou_threshold": 0.5,
+                },
+            }
+            for score_thresh in score_thresholds[:2]
+        ],
+        {
+            "type": "Examples",
+            "value": {
+                "datum_id": "2",
+                "true_positives": [
+                    ("uid_2_gt_0", "uid_2_pd_0"),
+                    ("uid_2_gt_2", "uid_2_pd_2"),
+                    ("uid_2_gt_3", "uid_2_pd_3"),
+                    ("uid_2_gt_5", "uid_2_pd_5"),
+                    ("uid_2_gt_6", "uid_2_pd_6"),
+                ],
+                "false_positives": [],
+                "false_negatives": ["uid_2_gt_1", "uid_2_gt_4"],
+            },
+            "parameters": {"score_threshold": 0.35, "iou_threshold": 0.5},
+        },
+        {
+            "type": "Examples",
+            "value": {
+                "datum_id": "2",
+                "true_positives": [
+                    ("uid_2_gt_3", "uid_2_pd_3"),
+                    ("uid_2_gt_5", "uid_2_pd_5"),
+                    ("uid_2_gt_6", "uid_2_pd_6"),
+                ],
+                "false_positives": [],
+                "false_negatives": [
+                    "uid_2_gt_0",
+                    "uid_2_gt_1",
+                    "uid_2_gt_2",
+                    "uid_2_gt_4",
+                ],
+            },
+            "parameters": {"score_threshold": 0.55, "iou_threshold": 0.5},
+        },
+        *[
+            {
+                "type": "Examples",
+                "value": {
+                    "datum_id": "2",
+                    "true_positives": [
+                        ("uid_2_gt_5", "uid_2_pd_5"),
+                        ("uid_2_gt_6", "uid_2_pd_6"),
+                    ],
+                    "false_positives": [],
+                    "false_negatives": [
+                        "uid_2_gt_0",
+                        "uid_2_gt_1",
+                        "uid_2_gt_2",
+                        "uid_2_gt_3",
+                        "uid_2_gt_4",
+                    ],
+                },
+                "parameters": {
+                    "score_threshold": score_thresh,
+                    "iou_threshold": 0.5,
+                },
+            }
+            for score_thresh in score_thresholds[4:6]
+        ],
+        *[
+            {
+                "type": "Examples",
+                "value": {
+                    "datum_id": "2",
+                    "true_positives": [("uid_2_gt_6", "uid_2_pd_6")],
+                    "false_positives": [],
+                    "false_negatives": [
+                        "uid_2_gt_0",
+                        "uid_2_gt_1",
+                        "uid_2_gt_2",
+                        "uid_2_gt_3",
+                        "uid_2_gt_4",
+                        "uid_2_gt_5",
+                    ],
+                },
+                "parameters": {
+                    "score_threshold": score_thresh,
+                    "iou_threshold": 0.5,
+                },
+            }
+            for score_thresh in score_thresholds[6:]
+        ],
+        *[
+            {
+                "type": "Examples",
+                "value": {
+                    "datum_id": "2",
+                    "true_positives": [("uid_2_gt_4", "uid_2_pd_4")],
+                    "false_positives": [
+                        "uid_2_pd_0",
+                        "uid_2_pd_1",
+                        "uid_2_pd_2",
+                        "uid_2_pd_3",
+                        "uid_2_pd_5",
+                        "uid_2_pd_6",
+                    ],
+                    "false_negatives": [
+                        "uid_2_gt_0",
+                        "uid_2_gt_1",
+                        "uid_2_gt_2",
+                        "uid_2_gt_3",
+                        "uid_2_gt_5",
+                        "uid_2_gt_6",
+                    ],
+                },
+                "parameters": {
+                    "score_threshold": score_thresh,
+                    "iou_threshold": 0.9,
+                },
+            }
+            for score_thresh in score_thresholds[:2]
+        ],
+        {
+            "type": "Examples",
+            "value": {
+                "datum_id": "2",
+                "true_positives": [],
+                "false_positives": [
+                    "uid_2_pd_0",
+                    "uid_2_pd_2",
+                    "uid_2_pd_3",
+                    "uid_2_pd_5",
+                    "uid_2_pd_6",
+                ],
+                "false_negatives": [
+                    "uid_2_gt_0",
+                    "uid_2_gt_1",
+                    "uid_2_gt_2",
+                    "uid_2_gt_3",
+                    "uid_2_gt_4",
+                    "uid_2_gt_5",
+                    "uid_2_gt_6",
+                ],
+            },
+            "parameters": {"score_threshold": 0.35, "iou_threshold": 0.9},
+        },
+        {
+            "type": "Examples",
+            "value": {
+                "datum_id": "2",
+                "true_positives": [],
+                "false_positives": ["uid_2_pd_3", "uid_2_pd_5", "uid_2_pd_6"],
+                "false_negatives": [
+                    "uid_2_gt_0",
+                    "uid_2_gt_1",
+                    "uid_2_gt_2",
+                    "uid_2_gt_3",
+                    "uid_2_gt_4",
+                    "uid_2_gt_5",
+                    "uid_2_gt_6",
+                ],
+            },
+            "parameters": {"score_threshold": 0.55, "iou_threshold": 0.9},
+        },
+        *[
+            {
+                "type": "Examples",
+                "value": {
+                    "datum_id": "2",
+                    "true_positives": [],
+                    "false_positives": ["uid_2_pd_5", "uid_2_pd_6"],
+                    "false_negatives": [
+                        "uid_2_gt_0",
+                        "uid_2_gt_1",
+                        "uid_2_gt_2",
+                        "uid_2_gt_3",
+                        "uid_2_gt_4",
+                        "uid_2_gt_5",
+                        "uid_2_gt_6",
+                    ],
+                },
+                "parameters": {
+                    "score_threshold": score_thresh,
+                    "iou_threshold": 0.9,
+                },
+            }
+            for score_thresh in [0.75, 0.8]
+        ],
+        *[
+            {
+                "type": "Examples",
+                "value": {
+                    "datum_id": "2",
+                    "true_positives": [],
+                    "false_positives": ["uid_2_pd_6"],
+                    "false_negatives": [
+                        "uid_2_gt_0",
+                        "uid_2_gt_1",
+                        "uid_2_gt_2",
+                        "uid_2_gt_3",
+                        "uid_2_gt_4",
+                        "uid_2_gt_5",
+                        "uid_2_gt_6",
+                    ],
+                },
+                "parameters": {
+                    "score_threshold": score_thresh,
+                    "iou_threshold": 0.9,
+                },
+            }
+            for score_thresh in [0.85, 0.95]
+        ],
     ]
     for m in actual_metrics:
         assert m in expected_metrics

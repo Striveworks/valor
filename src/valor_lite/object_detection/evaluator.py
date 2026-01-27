@@ -430,7 +430,7 @@ class Evaluator:
             A list of IOU thresholds to compute metrics over.
         score_thresholds : list[float]
             A list of score thresholds to compute metrics over.
-        datums : pyarrow.compute.Expression, optional
+        datums : Expression, optional
             Option to filter datums by an expression.
 
         Returns
@@ -529,7 +529,7 @@ class Evaluator:
             A list of IOU thresholds to compute metrics over.
         score_thresholds : list[float]
             A list of score thresholds to compute metrics over.
-        datums : pyarrow.compute.Expression, optional
+        datums : Expression, optional
             Option to filter datums by an expression.
 
         Returns
@@ -612,6 +612,8 @@ class Evaluator:
         iou_thresholds: list[float],
         score_thresholds: list[float],
         datums: Expression | None = None,
+        limit: int | None = None,
+        offset: int = 0,
     ) -> list[Metric]:
         """
         Computes examples at various thresholds.
@@ -624,8 +626,12 @@ class Evaluator:
             A list of IOU thresholds to compute metrics over.
         score_thresholds : list[float]
             A list of score thresholds to compute metrics over.
-        datums : pyarrow.compute.Expression, optional
+        datums : Expression, optional
             Option to filter datums by an expression.
+        limit : int, optional
+            Option to set a limit to the number of returned datum examples.
+        offset : int, default=0
+            Option to offset where examples are being created in the datum index.
 
         Returns
         -------
@@ -638,11 +644,6 @@ class Evaluator:
             raise ValueError("At least one score threshold must be passed.")
 
         metrics = []
-        tbl_columns = [
-            "datum_uid",
-            "gt_uid",
-            "pd_uid",
-        ]
         numeric_columns = [
             "datum_id",
             "gt_id",
@@ -653,13 +654,19 @@ class Evaluator:
             "pd_score",
         ]
         datum_filter = datums.to_arrow() if datums is not None else None
-        for tbl, pairs in self._detailed_reader.iterate_tables_with_arrays(
-            columns=tbl_columns + numeric_columns,
-            numeric_columns=numeric_columns,
-            filter=datum_filter,
+        for tbl in compute.paginate_index(
+            source=self._detailed_reader,
+            column_key="datum_id",
+            modifier=datum_filter,
+            limit=limit,
+            offset=offset,
         ):
-            if pairs.size == 0:
+            if tbl.num_rows == 0:
                 continue
+
+            pairs = np.column_stack(
+                [tbl[col].to_numpy() for col in numeric_columns]
+            )
 
             index_to_datum_id = {}
             index_to_groundtruth_id = {}
@@ -722,7 +729,7 @@ class Evaluator:
             A list of IOU thresholds to compute metrics over.
         score_thresholds : list[float]
             A list of score thresholds to compute metrics over.
-        datums : pyarrow.compute.Expression, optional
+        datums : Expression, optional
             Option to filter datums by an expression.
 
         Returns

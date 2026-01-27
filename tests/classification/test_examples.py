@@ -681,3 +681,65 @@ def test_examples_without_hardmax_animal_example(
         assert m in expected_metrics
     for m in expected_metrics:
         assert m in actual_metrics
+
+
+def test_examples_with_color_example_paginated(
+    loader: Loader,
+    classifications_color_example: list[Classification],
+):
+
+    loader.add_data(classifications_color_example)
+    evaluator = loader.finalize()
+
+    actual_metrics = evaluator.compute_examples(
+        score_thresholds=[0.5],
+        limit=3,
+        offset=1,
+    )
+
+    actual_metrics = [m.to_dict() for m in actual_metrics]
+    expected_metrics = [
+        {
+            "type": "Examples",
+            "value": {
+                "datum_id": "uid1",
+                "true_positives": [],
+                "false_positives": ["blue"],
+                "false_negatives": ["white"],
+            },
+            "parameters": {
+                "score_threshold": 0.5,
+                "hardmax": True,
+            },
+        },
+        {
+            "type": "Examples",
+            "value": {
+                "datum_id": "uid2",
+                "true_positives": [],
+                "false_positives": [],
+                "false_negatives": ["red"],
+            },
+            "parameters": {
+                "score_threshold": 0.5,
+                "hardmax": True,
+            },
+        },
+        {
+            "type": "Examples",
+            "value": {
+                "datum_id": "uid3",
+                "true_positives": [],
+                "false_positives": ["white"],
+                "false_negatives": ["blue"],
+            },
+            "parameters": {
+                "score_threshold": 0.5,
+                "hardmax": True,
+            },
+        },
+    ]
+    for m in actual_metrics:
+        assert m in expected_metrics
+    for m in expected_metrics:
+        assert m in actual_metrics

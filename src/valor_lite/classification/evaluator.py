@@ -544,25 +544,6 @@ class Evaluator:
             matches = tbl["match"].to_numpy()
             yield ids, scores, winners, matches
 
-    def _iterate_values_with_tables(
-        self, datum_filter: pc.Expression | None = None
-    ):
-        for tbl in self._reader.iterate_tables(filter=datum_filter):
-            ids = np.column_stack(
-                [
-                    tbl[col].to_numpy()
-                    for col in [
-                        "datum_id",
-                        "gt_label_id",
-                        "pd_label_id",
-                    ]
-                ]
-            )
-            scores = tbl["pd_score"].to_numpy()
-            winners = tbl["pd_winner"].to_numpy()
-            matches = tbl["match"].to_numpy()
-            yield ids, scores, winners, matches, tbl
-
     def compute_rocauc(self) -> dict[MetricType, list[Metric]]:
         """
         Compute ROCAUC.
@@ -745,6 +726,8 @@ class Evaluator:
         score_thresholds: list[float] = [0.0],
         hardmax: bool = True,
         datums: Expression | None = None,
+        limit: int | None = None,
+        offset: int = 0,
     ) -> list[Metric]:
         """
         Compute examples per datum.
@@ -759,26 +742,43 @@ class Evaluator:
             Toggles whether a hardmax is applied to predictions.
         datums : pyarrow.compute.Expression, optional
             Option to filter datums by an expression.
+        limit : int, optional
+            Option to set a limit to the number of returned datum examples.
+        offset : int, default=0
+            Option to offset where examples are being created in the datum index.
 
         Returns
         -------
         list[Metric]
             A list of confusion matrices.
         """
-        datum_filter = datums.to_arrow() if datums is not None else None
         if not score_thresholds:
             raise ValueError("At least one score threshold must be passed.")
 
         metrics = []
-        for (
-            ids,
-            scores,
-            winners,
-            _,
-            tbl,
-        ) in self._iterate_values_with_tables(datum_filter=datum_filter):
-            if ids.size == 0:
+        datum_filter = datums.to_arrow() if datums is not None else None
+        for tbl in compute.paginate_index(
+            source=self._reader,
+            column_key="datum_id",
+            modifier=datum_filter,
+            limit=limit,
+            offset=offset,
+        ):
+            if tbl.num_rows == 0:
                 continue
+
+            ids = np.column_stack(
+                [
+                    tbl[col].to_numpy()
+                    for col in [
+                        "datum_id",
+                        "gt_label_id",
+                        "pd_label_id",
+                    ]
+                ]
+            )
+            scores = tbl["pd_score"].to_numpy()
+            winners = tbl["pd_winner"].to_numpy()
 
             # extract external identifiers
             index_to_datum_id = create_mapping(
@@ -853,15 +853,22 @@ class Evaluator:
             )
             for score_idx, score_thresh in enumerate(score_thresholds)
         }
-        for (
-            ids,
-            scores,
-            winners,
-            _,
-            tbl,
-        ) in self._iterate_values_with_tables(datum_filter=datum_filter):
-            if ids.size == 0:
+        for tbl in self._reader.iterate_tables(filter=datum_filter):
+            if tbl.num_rows == 0:
                 continue
+
+            ids = np.column_stack(
+                [
+                    tbl[col].to_numpy()
+                    for col in [
+                        "datum_id",
+                        "gt_label_id",
+                        "pd_label_id",
+                    ]
+                ]
+            )
+            scores = tbl["pd_score"].to_numpy()
+            winners = tbl["pd_winner"].to_numpy()
 
             # extract external identifiers
             index_to_datum_id = create_mapping(
