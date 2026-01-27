@@ -192,10 +192,12 @@ def test_evaluator_loading_using_torch_metrics_example(
     original_evaluator = loader.finalize()
     loaded_evaluator = Evaluator.load(path=tmp_path)
 
-    kwargs = dict(
-        score_thresholds=[0.25, 0.5, 0.75, 0.9],
-        iou_thresholds=[0.1, 0.25, 0.5, 0.75],
-    )
+    score_thresholds = [0.25, 0.5, 0.75, 0.9]
+    iou_thresholds = [0.1, 0.25, 0.5, 0.75]
     assert original_evaluator.compute_precision_recall(
-        **kwargs
-    ) == loaded_evaluator.compute_precision_recall(**kwargs)
+        score_thresholds=score_thresholds,
+        iou_thresholds=iou_thresholds,
+    ) == loaded_evaluator.compute_precision_recall(
+        score_thresholds=score_thresholds,
+        iou_thresholds=iou_thresholds,
+    )
