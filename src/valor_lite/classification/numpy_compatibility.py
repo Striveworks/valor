@@ -2,9 +2,11 @@ import numpy as np
 from numpy.typing import NDArray
 
 try:
-    _numpy_trapezoid = np.trapezoid  # numpy v2
+    # numpy v2
+    _numpy_trapezoid = np.trapezoid  # type: ignore[reportAttributeAccessIssue]
 except AttributeError:
-    _numpy_trapezoid = np.trapz  # numpy v1
+    # numpy v1
+    _numpy_trapezoid = np.trapz  # type: ignore[reportAttributeAccessIssue]
 
 
 def trapezoid(
