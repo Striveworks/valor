@@ -51,7 +51,9 @@ def _merge(
     batch_iterators = []
     batches = []
     for batch_idx, batch_iter in enumerate(
-        intermediate_source.iterate_fragments(batch_size=batch_size)
+        intermediate_source.iterate_fragment_batch_iterators(
+            batch_size=batch_size
+        )
     ):
         batch_iterators.append(batch_iter)
         batches.append(next(batch_iterators[batch_idx], None))

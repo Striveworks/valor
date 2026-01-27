@@ -154,6 +154,20 @@ class FileCacheReader(FileCache):
             compression=compression,
         )
 
+    def iterate_ordered_fragments(
+        self, filter: pc.Expression | None = None
+    ) -> Iterator[ds.Fragment]:
+        dataset = ds.dataset(
+            source=self._path,
+            schema=self._schema,
+            format="parquet",
+        )
+        fragments = list(dataset.get_fragments(filter=filter))
+        for fragment in sorted(
+            fragments, key=lambda x: int(Path(x.path).stem)
+        ):
+            yield fragment
+
     def iterate_tables(
         self,
         columns: list[str] | None = None,
@@ -173,12 +187,7 @@ class FileCacheReader(FileCache):
         -------
         Iterator[pa.Table]
         """
-        dataset = ds.dataset(
-            source=self._path,
-            schema=self._schema,
-            format="parquet",
-        )
-        for fragment in dataset.get_fragments():
+        for fragment in self.iterate_ordered_fragments(filter=filter):
             yield fragment.to_table(columns=columns, filter=filter)
 
     def iterate_arrays(
@@ -243,7 +252,7 @@ class FileCacheReader(FileCache):
                 [tbl[col].to_numpy() for col in table_columns]
             )
 
-    def iterate_fragments(
+    def iterate_fragment_batch_iterators(
         self, batch_size: int
     ) -> Iterator[Iterator[pa.RecordBatch]]:
         """
@@ -258,12 +267,7 @@ class FileCacheReader(FileCache):
         -------
         Iterator[Iterator[pa.RecordBatch]]
         """
-        dataset = ds.dataset(
-            source=self._path,
-            schema=self._schema,
-            format="parquet",
-        )
-        for fragment in dataset.get_fragments():
+        for fragment in self.iterate_ordered_fragments():
             yield fragment.to_batches(batch_size=batch_size)
 
 
