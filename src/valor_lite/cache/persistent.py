@@ -157,6 +157,9 @@ class FileCacheReader(FileCache):
     def iterate_ordered_fragments(
         self, filter: pc.Expression | None = None
     ) -> Iterator[ds.Fragment]:
+        """
+        Iterate through ordered cache fragments.
+        """
         dataset = ds.dataset(
             source=self._path,
             schema=self._schema,
