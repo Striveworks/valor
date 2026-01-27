@@ -2,8 +2,7 @@ from pathlib import Path
 from random import choice, uniform
 from uuid import uuid4
 
-import pyarrow.compute as pc
-
+from valor_lite.filtering import Field
 from valor_lite.object_detection import BoundingBox, Detection, Loader
 
 
@@ -68,9 +67,9 @@ def test_fuzz_detections_with_filtering(loader: Loader, tmp_path: Path):
     loader.add_bounding_boxes(detections)
     evaluator = loader.finalize()
 
-    datum_subset = [f"uid{i}" for i in range(len(detections) // 2)]
+    datum_subset = {f"uid{i}" for i in range(len(detections) // 2)}
     filtered_evaluator = evaluator.filter(
-        datums=pc.field("datum_uid").isin(datum_subset),
+        datums=Field("datum_uid").isin(datum_subset),
         path=tmp_path / "filtered",
     )
     filtered_evaluator.compute_precision_recall(

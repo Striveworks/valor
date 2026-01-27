@@ -7,6 +7,7 @@ import pyarrow.compute as pc
 from numpy.typing import NDArray
 
 from valor_lite.cache import FileCacheReader, MemoryCacheReader
+from valor_lite.filtering import DataType, Expression
 
 
 @dataclass
@@ -34,7 +35,9 @@ def generate_metadata_path(path: str | Path) -> Path:
 
 
 def generate_schema(
-    metadata_fields: list[tuple[str, str | pa.DataType]] | None
+    metadata_fields: list[tuple[str, DataType]]
+    | list[tuple[str, str]]
+    | None = None
 ) -> pa.Schema:
     metadata_fields = metadata_fields if metadata_fields else []
     reserved_fields = [
@@ -59,7 +62,15 @@ def generate_schema(
         raise ValueError(
             f"metadata fields {conflicting} conflict with reserved fields"
         )
-    return pa.schema(reserved_fields + metadata_fields)
+    return pa.schema(
+        reserved_fields
+        + [
+            (name, dtype.to_arrow())
+            if isinstance(dtype, DataType)
+            else (name, dtype)
+            for name, dtype in metadata_fields
+        ]
+    )
 
 
 def generate_intermediate_schema() -> pa.Schema:
@@ -83,7 +94,9 @@ def generate_roc_curve_schema() -> pa.Schema:
 
 
 def encode_metadata_fields(
-    metadata_fields: list[tuple[str, str | pa.DataType]] | None
+    metadata_fields: list[tuple[str, DataType]]
+    | list[tuple[str, str]]
+    | None = None,
 ) -> dict[str, str]:
     metadata_fields = metadata_fields if metadata_fields else []
     return {k: str(v) for k, v in metadata_fields}
@@ -133,10 +146,11 @@ def extract_labels(
 
 def extract_counts(
     reader: MemoryCacheReader | FileCacheReader,
-    datums: pc.Expression | None = None,
+    datums: Expression | None = None,
 ):
     n_dts = 0
-    for tbl in reader.iterate_tables(filter=datums):
+    datum_filter = datums.to_arrow() if datums is not None else None
+    for tbl in reader.iterate_tables(filter=datum_filter):
         n_dts += int(np.unique(tbl["datum_id"].to_numpy()).shape[0])
     return n_dts
 

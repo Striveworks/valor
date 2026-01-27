@@ -2,10 +2,10 @@ from dataclasses import replace
 from pathlib import Path
 from random import choice, uniform
 
-import pyarrow.compute as pc
 import pytest
 
 from valor_lite.classification import Classification, Loader, MetricType
+from valor_lite.filtering import Field
 
 
 @pytest.fixture
@@ -72,7 +72,7 @@ def test_filtering_one_classification(
 
     # test evaluation
     filtered_evaluator = evaluator.filter(
-        datums=pc.field("datum_uid") == "uid0", path=tmp_path / "filter"
+        datums=Field("datum_uid") == "uid0", path=tmp_path / "filter"
     )
     metrics = filtered_evaluator.compute_precision_recall(
         score_thresholds=[0.5],
@@ -154,7 +154,7 @@ def test_filtering_three_classifications(
 
     # test evaluation
     filtered_evaluator = evaluator.filter(
-        datums=pc.field("datum_uid") == "uid0", path=tmp_path / "filter"
+        datums=Field("datum_uid") == "uid0", path=tmp_path / "filter"
     )
     metrics = filtered_evaluator.compute_precision_recall(
         score_thresholds=[0.5],
@@ -236,7 +236,7 @@ def test_filtering_six_classifications(
 
     # test evaluation
     filtered_evaluator = evaluator.filter(
-        datums=pc.field("datum_uid") == "uid0", path=tmp_path / "filter"
+        datums=Field("datum_uid") == "uid0", path=tmp_path / "filter"
     )
     metrics = filtered_evaluator.compute_precision_recall(
         score_thresholds=[0.5],
@@ -311,7 +311,7 @@ def test_filtering_random_classifications(loader: Loader, tmp_path: Path):
     loader.add_data(generate_random_classifications(13, 2, 10))
     evaluator = loader.finalize()
     filtered_evaluator = evaluator.filter(
-        datums=pc.field("datum_uid") == "uid0", path=tmp_path / "filter"
+        datums=Field("datum_uid") == "uid0", path=tmp_path / "filter"
     )
     filtered_evaluator.compute_precision_recall(
         score_thresholds=[0.5],
@@ -330,7 +330,7 @@ def test_filtering_six_classifications_by_indices(
 
     # test evaluation
     filtered_evaluator = evaluator.filter(
-        datums=pc.field("datum_id") == 0, path=tmp_path / "filter"
+        datums=Field("datum_id") == 0, path=tmp_path / "filter"
     )
     metrics = filtered_evaluator.compute_precision_recall(
         score_thresholds=[0.5],
@@ -412,8 +412,8 @@ def test_filtering_six_classifications_by_annotation(
 
     # test groundtruth filter
     filtered_evaluator = evaluator.filter(
-        datums=pc.field("datum_uid") == "uid0",
-        groundtruths=pc.field("gt_label") != "0",
+        datums=Field("datum_uid") == "uid0",
+        groundtruths=Field("gt_label") != "0",
         path=tmp_path / "groundtruth_filter",
     )
     metrics = filtered_evaluator.compute_precision_recall(
@@ -486,8 +486,8 @@ def test_filtering_six_classifications_by_annotation(
 
     # test prediction filter
     filtered_evaluator = evaluator.filter(
-        datums=pc.field("datum_uid") == "uid0",
-        predictions=pc.field("pd_label") != "0",
+        datums=Field("datum_uid") == "uid0",
+        predictions=Field("pd_label") != "0",
         path=tmp_path / "prediction_filter",
     )
     metrics = filtered_evaluator.compute_precision_recall(
@@ -571,7 +571,7 @@ def test_filtering_six_classifications_inline(
     metrics = evaluator.compute_precision_recall(
         score_thresholds=[0.5],
         hardmax=False,
-        datums=pc.field("datum_uid") == "uid0",
+        datums=Field("datum_uid") == "uid0",
     )
     actual_metrics = [m.to_dict() for m in metrics[MetricType.Counts]]
     expected_metrics = [
@@ -647,7 +647,7 @@ def test_filtering_remove_all(
     loader.add_data(six_classifications)
     evaluator = loader.finalize()
 
-    datums = pc.field("datum_uid") == "does_not_exist"
+    datums = Field("datum_uid") == "does_not_exist"
 
     # test evaluation
     base_metrics = evaluator.compute_precision_recall(datums=datums)

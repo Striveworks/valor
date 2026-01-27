@@ -6,6 +6,7 @@ import pyarrow as pa
 import pyarrow.compute as pc
 
 from valor_lite.cache import FileCacheReader, MemoryCacheReader
+from valor_lite.filtering import DataType, Expression
 
 
 @dataclass
@@ -16,7 +17,7 @@ class EvaluatorInfo:
     number_of_pixels: int = 0
     number_of_groundtruth_pixels: int = 0
     number_of_prediction_pixels: int = 0
-    metadata_fields: list[tuple[str, str | pa.DataType]] | None = None
+    metadata_fields: list[tuple[str, str | DataType]] | None = None
 
 
 def generate_cache_path(path: str | Path) -> Path:
@@ -30,7 +31,7 @@ def generate_metadata_path(path: str | Path) -> Path:
 
 
 def generate_schema(
-    metadata_fields: list[tuple[str, str | pa.DataType]] | None
+    metadata_fields: list[tuple[str, str | DataType]] | None
 ) -> pa.Schema:
     """Generate PyArrow schema from metadata fields."""
 
@@ -57,15 +58,18 @@ def generate_schema(
         )
 
     return pa.schema(
-        [
-            *reserved_fields,
-            *metadata_fields,
+        reserved_fields
+        + [
+            (name, dtype.to_arrow())
+            if isinstance(dtype, DataType)
+            else (name, dtype)
+            for name, dtype in metadata_fields
         ]
     )
 
 
 def encode_metadata_fields(
-    metadata_fields: list[tuple[str, str | pa.DataType]] | None
+    metadata_fields: list[tuple[str, str | DataType]] | None
 ) -> dict[str, str]:
     """Encode metadata fields into JSON format."""
     metadata_fields = metadata_fields if metadata_fields else []
@@ -74,7 +78,7 @@ def encode_metadata_fields(
 
 def decode_metadata_fields(
     encoded_metadata_fields: dict[str, str]
-) -> list[tuple[str, str | pa.DataType]]:
+) -> list[tuple[str, str | DataType]]:
     """Decode metadata fields from JSON format."""
     return [(k, v) for k, v in encoded_metadata_fields.items()]
 
@@ -117,12 +121,13 @@ def extract_labels(
 
 def extract_counts(
     reader: MemoryCacheReader | FileCacheReader,
-    datums: pc.Expression | None = None,
-    groundtruths: pc.Expression | None = None,
-    predictions: pc.Expression | None = None,
+    datums: Expression | None = None,
+    groundtruths: Expression | None = None,
+    predictions: Expression | None = None,
 ):
     n_dts, n_total, n_gts, n_pds = 0, 0, 0, 0
-    for tbl in reader.iterate_tables(filter=datums):
+    datum_filter = datums.to_arrow() if datums is not None else None
+    for tbl in reader.iterate_tables(filter=datum_filter):
 
         # count datums
         n_dts += int(np.unique(tbl["datum_id"].to_numpy()).shape[0])
@@ -134,7 +139,7 @@ def extract_counts(
         gt_tbl = tbl
         gt_expr = pc.field("gt_label_id") >= 0
         if groundtruths is not None:
-            gt_expr &= groundtruths
+            gt_expr &= groundtruths.to_arrow()
         gt_tbl = tbl.filter(gt_expr)
         n_gts += int(gt_tbl["count"].to_numpy().sum())
 
@@ -142,7 +147,7 @@ def extract_counts(
         pd_tbl = tbl
         pd_expr = pc.field("pd_label_id") >= 0
         if predictions is not None:
-            pd_expr &= predictions
+            pd_expr &= predictions.to_arrow()
         pd_tbl = tbl.filter(pd_expr)
         n_pds += int(pd_tbl["count"].to_numpy().sum())
 

@@ -3,7 +3,6 @@ from pathlib import Path
 
 import numpy as np
 import pyarrow as pa
-import pyarrow.compute as pc
 
 from valor_lite.cache import (
     FileCacheReader,
@@ -13,6 +12,7 @@ from valor_lite.cache import (
     compute,
 )
 from valor_lite.exceptions import EmptyCacheError
+from valor_lite.filtering import DataType, Expression
 from valor_lite.object_detection.computation import (
     compute_average_precision,
     compute_average_recall,
@@ -51,7 +51,9 @@ class Builder:
         self,
         detailed_writer: MemoryCacheWriter | FileCacheWriter,
         ranked_writer: MemoryCacheWriter | FileCacheWriter,
-        metadata_fields: list[tuple[str, str | pa.DataType]] | None = None,
+        metadata_fields: list[tuple[str, DataType]]
+        | list[tuple[str, str]]
+        | None = None,
     ):
         self._detailed_writer = detailed_writer
         self._ranked_writer = ranked_writer
@@ -61,7 +63,9 @@ class Builder:
     def in_memory(
         cls,
         batch_size: int = 10_000,
-        metadata_fields: list[tuple[str, str | pa.DataType]] | None = None,
+        metadata_fields: list[tuple[str, DataType]]
+        | list[tuple[str, str]]
+        | None = None,
     ):
         """
         Create an in-memory evaluator cache.
@@ -70,7 +74,7 @@ class Builder:
         ----------
         batch_size : int, default=10_000
             The target number of rows to buffer before writing to the cache. Defaults to 10_000.
-        metadata_fields : list[tuple[str, str | pa.DataType]], optional
+        metadata_fields : list[tuple[str, str | DataType]], optional
             Optional datum metadata field definitions.
         """
         # create cache
@@ -96,7 +100,9 @@ class Builder:
         batch_size: int = 10_000,
         rows_per_file: int = 100_000,
         compression: str = "snappy",
-        metadata_fields: list[tuple[str, str | pa.DataType]] | None = None,
+        metadata_fields: list[tuple[str, DataType]]
+        | list[tuple[str, str]]
+        | None = None,
     ):
         """
         Create a persistent file-based evaluator cache.
@@ -111,7 +117,7 @@ class Builder:
             The target number of rows to store per cache file. Defaults to 100_000.
         compression : str, default="snappy"
             The compression methods used when writing cache files.
-        metadata_fields : list[tuple[str, str | pa.DataType]], optional
+        metadata_fields : list[tuple[str, str | DataType]], optional
             Optional metadata field definitions.
         """
         path = Path(path)
@@ -216,7 +222,9 @@ class Evaluator:
         detailed_reader: MemoryCacheReader | FileCacheReader,
         ranked_reader: MemoryCacheReader | FileCacheReader,
         index_to_label: dict[int, str],
-        metadata_fields: list[tuple[str, str | pa.DataType]] | None = None,
+        metadata_fields: list[tuple[str, DataType]]
+        | list[tuple[str, str]]
+        | None = None,
     ):
         self._detailed_reader = detailed_reader
         self._ranked_reader = ranked_reader
@@ -229,9 +237,9 @@ class Evaluator:
 
     def get_info(
         self,
-        datums: pc.Expression | None = None,
-        groundtruths: pc.Expression | None = None,
-        predictions: pc.Expression | None = None,
+        datums: Expression | None = None,
+        groundtruths: Expression | None = None,
+        predictions: Expression | None = None,
     ) -> EvaluatorInfo:
         info = EvaluatorInfo()
         info.number_of_rows = self._detailed_reader.count_rows()
@@ -291,9 +299,9 @@ class Evaluator:
 
     def filter(
         self,
-        datums: pc.Expression | None = None,
-        groundtruths: pc.Expression | None = None,
-        predictions: pc.Expression | None = None,
+        datums: Expression | None = None,
+        groundtruths: Expression | None = None,
+        predictions: Expression | None = None,
         batch_size: int = 1_000,
         path: str | Path | None = None,
     ) -> "Evaluator":
@@ -302,11 +310,11 @@ class Evaluator:
 
         Parameters
         ----------
-        datums : pc.Expression | None = None
+        datums : Expression | None = None
             A filter expression used to filter datums.
-        groundtruths : pc.Expression | None = None
+        groundtruths : Expression | None = None
             A filter expression used to filter ground truth annotations.
-        predictions : pc.Expression | None = None
+        predictions : Expression | None = None
             A filter expression used to filter predictions.
         batch_size : int
             The maximum number of rows read into memory per file.
@@ -338,7 +346,8 @@ class Evaluator:
                 metadata_fields=self._metadata_fields,
             )
 
-        for tbl in self._detailed_reader.iterate_tables(filter=datums):
+        datum_filter = datums.to_arrow() if datums is not None else None
+        for tbl in self._detailed_reader.iterate_tables(filter=datum_filter):
             columns = (
                 "datum_id",
                 "gt_id",
@@ -356,7 +365,7 @@ class Evaluator:
 
             if groundtruths is not None:
                 mask_valid_gt = np.zeros(n_pairs, dtype=np.bool_)
-                gt_tbl = tbl.filter(groundtruths)
+                gt_tbl = tbl.filter(groundtruths.to_arrow())
                 gt_pairs = np.column_stack(
                     [gt_tbl[col].to_numpy() for col in ("datum_id", "gt_id")]
                 ).astype(np.int64)
@@ -367,7 +376,7 @@ class Evaluator:
 
             if predictions is not None:
                 mask_valid_pd = np.zeros(n_pairs, dtype=np.bool_)
-                pd_tbl = tbl.filter(predictions)
+                pd_tbl = tbl.filter(predictions.to_arrow())
                 pd_pairs = np.column_stack(
                     [pd_tbl[col].to_numpy() for col in ("datum_id", "pd_id")]
                 ).astype(np.int64)
@@ -410,7 +419,7 @@ class Evaluator:
         self,
         iou_thresholds: list[float],
         score_thresholds: list[float],
-        datums: pc.Expression | None = None,
+        datums: Expression | None = None,
     ) -> dict[MetricType, list[Metric]]:
         """
         Computes all metrics except for ConfusionMatrix
@@ -437,10 +446,12 @@ class Evaluator:
         n_ious = len(iou_thresholds)
         n_scores = len(score_thresholds)
         n_labels = len(self._index_to_label)
+
+        datum_filter = datums.to_arrow() if datums is not None else None
         n_gts_per_lbl = extract_groundtruth_count_per_label(
             reader=self._detailed_reader,
             number_of_labels=n_labels,
-            datums=datums,
+            datums=datum_filter,
         )
 
         counts = np.zeros((n_ious, n_scores, 3, n_labels), dtype=np.uint64)
@@ -458,7 +469,7 @@ class Evaluator:
                 "pd_score",
                 "iou_prev",
             ],
-            filter=datums,
+            filter=datum_filter,
         ):
             if pairs.size == 0:
                 continue
@@ -507,7 +518,7 @@ class Evaluator:
         self,
         iou_thresholds: list[float],
         score_thresholds: list[float],
-        datums: pc.Expression | None = None,
+        datums: Expression | None = None,
     ) -> list[Metric]:
         """
         Computes confusion matrices at various thresholds.
@@ -543,6 +554,7 @@ class Evaluator:
         )
         unmatched_predictions = np.zeros_like(unmatched_groundtruths)
 
+        datum_filter = datums.to_arrow() if datums is not None else None
         for pairs in self._detailed_reader.iterate_arrays(
             numeric_columns=[
                 "datum_id",
@@ -553,7 +565,7 @@ class Evaluator:
                 "iou",
                 "pd_score",
             ],
-            filter=datums,
+            filter=datum_filter,
         ):
             if pairs.size == 0:
                 continue
@@ -599,7 +611,7 @@ class Evaluator:
         self,
         iou_thresholds: list[float],
         score_thresholds: list[float],
-        datums: pc.Expression | None = None,
+        datums: Expression | None = None,
     ) -> list[Metric]:
         """
         Computes examples at various thresholds.
@@ -640,10 +652,11 @@ class Evaluator:
             "iou",
             "pd_score",
         ]
+        datum_filter = datums.to_arrow() if datums is not None else None
         for tbl, pairs in self._detailed_reader.iterate_tables_with_arrays(
             columns=tbl_columns + numeric_columns,
             numeric_columns=numeric_columns,
-            filter=datums,
+            filter=datum_filter,
         ):
             if pairs.size == 0:
                 continue
@@ -696,7 +709,7 @@ class Evaluator:
         self,
         iou_thresholds: list[float],
         score_thresholds: list[float],
-        datums: pc.Expression | None = None,
+        datums: Expression | None = None,
     ) -> list[Metric]:
         """
         Computes confusion matrix with examples at various thresholds.
@@ -747,10 +760,11 @@ class Evaluator:
             "iou",
             "pd_score",
         ]
+        datum_filter = datums.to_arrow() if datums is not None else None
         for tbl, pairs in self._detailed_reader.iterate_tables_with_arrays(
             columns=tbl_columns + numeric_columns,
             numeric_columns=numeric_columns,
-            filter=datums,
+            filter=datum_filter,
         ):
             if pairs.size == 0:
                 continue

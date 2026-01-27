@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from enum import StrEnum
-from typing import Any
+from typing import Any, Iterable
 from zoneinfo import ZoneInfo
 
 import pyarrow as pa
@@ -167,7 +167,7 @@ class _Symbol:
         other = other._symbol if isinstance(other, _Symbol) else other
         return Expression(self._symbol <= other)
 
-    def isin(self, values: set[Any]) -> Expression:
+    def isin(self, values: Iterable[Any]) -> Expression:
         values = {v._symbol if isinstance(v, _Symbol) else v for v in values}
         return Expression(self._symbol.isin(values))
 

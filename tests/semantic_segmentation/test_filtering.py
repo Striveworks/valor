@@ -1,10 +1,10 @@
 from pathlib import Path
 
 import numpy as np
-import pyarrow.compute as pc
 import pytest
 
 from valor_lite.exceptions import EmptyCacheError
+from valor_lite.filtering import Field
 from valor_lite.semantic_segmentation import Loader, Segmentation
 
 
@@ -24,7 +24,7 @@ def test_filtering_by_datum(
 
     # test datum filtering
     confusion_matrix = evaluator._compute_confusion_matrix_intermediate(
-        datums=pc.field("datum_uid") == "uid1",
+        datums=Field("datum_uid") == "uid1",
     )
     assert np.all(
         confusion_matrix
@@ -39,7 +39,7 @@ def test_filtering_by_datum(
 
     # test filter cache and evaluate
     filtered_evaluator = evaluator.filter(
-        datums=pc.field("datum_uid") == "uid1",
+        datums=Field("datum_uid") == "uid1",
         path=tmp_path / "filtered1",
     )
     confusion_matrix = (
@@ -57,7 +57,7 @@ def test_filtering_by_datum(
     )
 
     filtered_evaluator = evaluator.filter(
-        datums=pc.field("datum_uid") == "uid2",
+        datums=Field("datum_uid") == "uid2",
         path=tmp_path / "filtered2",
     )
     confusion_matrix = (
@@ -77,7 +77,7 @@ def test_filtering_by_datum(
     # test filter all
     with pytest.raises(EmptyCacheError):
         filtered_evaluator = evaluator.filter(
-            datums=pc.field("datum_uid") == "non_existent_uid",
+            datums=Field("datum_uid") == "non_existent_uid",
             path=tmp_path / "filtered3",
         )
 
@@ -99,7 +99,7 @@ def test_filtering_by_annotation_info(
 
     # test groundtruth filtering
     filtered_evaluator = evaluator.filter(
-        groundtruths=pc.field("gt_xmin") < 100,
+        groundtruths=Field("gt_xmin") < 100,
         path=tmp_path / "gt_filter_1",
     )
     confusion_matrix = (
@@ -118,7 +118,7 @@ def test_filtering_by_annotation_info(
     assert confusion_matrix.sum() == total_pixels
 
     filtered_evaluator = evaluator.filter(
-        groundtruths=pc.field("gt_xmin") > 100,
+        groundtruths=Field("gt_xmin") > 100,
         path=tmp_path / "gt_filter_2",
     )
     confusion_matrix = (
@@ -138,7 +138,7 @@ def test_filtering_by_annotation_info(
 
     # test prediction filtering
     filtered_evaluator = evaluator.filter(
-        predictions=pc.field("pd_xmin") < 100,
+        predictions=Field("pd_xmin") < 100,
         path=tmp_path / "pd_filter_1",
     )
     confusion_matrix = (
@@ -157,7 +157,7 @@ def test_filtering_by_annotation_info(
     assert confusion_matrix.sum() == total_pixels
 
     filtered_evaluator = evaluator.filter(
-        predictions=pc.field("pd_xmin") > 100,
+        predictions=Field("pd_xmin") > 100,
         path=tmp_path / "pd_filter_2",
     )
     confusion_matrix = (
@@ -177,8 +177,8 @@ def test_filtering_by_annotation_info(
 
     # filter out all gts and pds
     filtered_evaluator = evaluator.filter(
-        groundtruths=pc.field("gt_xmin") > 1000,
-        predictions=pc.field("pd_xmin") > 1000,
+        groundtruths=Field("gt_xmin") > 1000,
+        predictions=Field("pd_xmin") > 1000,
         path=tmp_path / "joint_filter",
     )
     confusion_matrix = (

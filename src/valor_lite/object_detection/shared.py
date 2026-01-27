@@ -7,6 +7,7 @@ import pyarrow.compute as pc
 from numpy.typing import NDArray
 
 from valor_lite.cache import FileCacheReader, MemoryCacheReader
+from valor_lite.filtering import DataType, Expression
 
 
 @dataclass
@@ -16,7 +17,9 @@ class EvaluatorInfo:
     number_of_prediction_annotations: int = 0
     number_of_labels: int = 0
     number_of_rows: int = 0
-    metadata_fields: list[tuple[str, str | pa.DataType]] | None = None
+    metadata_fields: list[tuple[str, DataType]] | list[
+        tuple[str, str]
+    ] | None = None
 
 
 def generate_detailed_cache_path(path: str | Path) -> Path:
@@ -36,7 +39,7 @@ def generate_metadata_path(path: str | Path) -> Path:
 
 
 def generate_detailed_schema(
-    metadata_fields: list[tuple[str, str | pa.DataType]] | None
+    metadata_fields: list[tuple[str, DataType]] | list[tuple[str, str]] | None
 ) -> pa.Schema:
     metadata_fields = metadata_fields if metadata_fields else []
     reserved_fields = [
@@ -64,12 +67,19 @@ def generate_detailed_schema(
         raise ValueError(
             f"metadata fields {conflicting} conflict with reserved fields"
         )
-
-    return pa.schema(reserved_fields + metadata_fields)
+    return pa.schema(
+        reserved_fields
+        + [
+            (name, dtype.to_arrow())
+            if isinstance(dtype, DataType)
+            else (name, dtype)
+            for name, dtype in metadata_fields
+        ]
+    )
 
 
 def generate_ranked_schema(
-    metadata_fields: list[tuple[str, str | pa.DataType]] | None
+    metadata_fields: list[tuple[str, DataType]] | list[tuple[str, str]] | None
 ) -> pa.Schema:
     reserved_detailed_fields = [
         ("datum_uid", pa.string()),
@@ -102,14 +112,19 @@ def generate_ranked_schema(
     return pa.schema(
         [
             *reserved_detailed_fields,
-            *metadata_fields,
+            *[
+                (name, dtype.to_arrow())
+                if isinstance(dtype, DataType)
+                else (name, dtype)
+                for name, dtype in metadata_fields
+            ],
             *reserved_ranking_fields,
         ]
     )
 
 
 def encode_metadata_fields(
-    metadata_fields: list[tuple[str, str | pa.DataType]] | None
+    metadata_fields: list[tuple[str, DataType]] | list[tuple[str, str]] | None
 ) -> dict[str, str]:
     metadata_fields = metadata_fields if metadata_fields else []
     return {k: str(v) for k, v in metadata_fields}
@@ -159,25 +174,26 @@ def extract_labels(
 
 def extract_counts(
     reader: MemoryCacheReader | FileCacheReader,
-    datums: pc.Expression | None = None,
-    groundtruths: pc.Expression | None = None,
-    predictions: pc.Expression | None = None,
+    datums: Expression | None = None,
+    groundtruths: Expression | None = None,
+    predictions: Expression | None = None,
 ):
     n_dts, n_gts, n_pds = 0, 0, 0
-    for tbl in reader.iterate_tables(filter=datums):
+    datum_filter = datums.to_arrow() if datums is not None else None
+    for tbl in reader.iterate_tables(filter=datum_filter):
         # count datums
         n_dts += int(np.unique(tbl["datum_id"].to_numpy()).shape[0])
 
         # count groundtruths
         if groundtruths is not None:
-            gts = tbl.filter(groundtruths)["gt_id"].to_numpy()
+            gts = tbl.filter(groundtruths.to_arrow())["gt_id"].to_numpy()
         else:
             gts = tbl["gt_id"].to_numpy()
         n_gts += int(np.unique(gts[gts >= 0]).shape[0])
 
         # count predictions
         if predictions is not None:
-            pds = tbl.filter(predictions)["pd_id"].to_numpy()
+            pds = tbl.filter(predictions.to_arrow())["pd_id"].to_numpy()
         else:
             pds = tbl["pd_id"].to_numpy()
         n_pds += int(np.unique(pds[pds >= 0]).shape[0])

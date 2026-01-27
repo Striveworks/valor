@@ -50,6 +50,7 @@ from valor_lite.classification.utilities import (
     unpack_rocauc,
 )
 from valor_lite.exceptions import EmptyCacheError
+from valor_lite.filtering import DataType, Expression
 
 
 class Builder:
@@ -58,7 +59,9 @@ class Builder:
         writer: MemoryCacheWriter | FileCacheWriter,
         roc_curve_writer: MemoryCacheWriter | FileCacheWriter,
         intermediate_writer: MemoryCacheWriter | FileCacheWriter,
-        metadata_fields: list[tuple[str, str | pa.DataType]] | None = None,
+        metadata_fields: list[tuple[str, DataType]]
+        | list[tuple[str, str]]
+        | None = None,
     ):
         self._writer = writer
         self._roc_curve_writer = roc_curve_writer
@@ -69,7 +72,9 @@ class Builder:
     def in_memory(
         cls,
         batch_size: int = 10_000,
-        metadata_fields: list[tuple[str, str | pa.DataType]] | None = None,
+        metadata_fields: list[tuple[str, DataType]]
+        | list[tuple[str, str]]
+        | None = None,
     ):
         """
         Create an in-memory evaluator cache.
@@ -78,7 +83,7 @@ class Builder:
         ----------
         batch_size : int, default=10_000
             The target number of rows to buffer before writing to the cache. Defaults to 10_000.
-        metadata_fields : list[tuple[str, str | pa.DataType]], optional
+        metadata_fields : list[tuple[str, str | DataType]], optional
             Optional metadata field definitions.
         """
         writer = MemoryCacheWriter.create(
@@ -107,7 +112,9 @@ class Builder:
         batch_size: int = 10_000,
         rows_per_file: int = 100_000,
         compression: str = "snappy",
-        metadata_fields: list[tuple[str, str | pa.DataType]] | None = None,
+        metadata_fields: list[tuple[str, DataType]]
+        | list[tuple[str, str]]
+        | None = None,
     ):
         """
         Create a persistent file-based evaluator cache.
@@ -122,7 +129,7 @@ class Builder:
             Sets the maximum number of rows per file. This may be exceeded as files are datum aligned.
         compression : str, default="snappy"
             Sets the pyarrow compression method.
-        metadata_fields : list[tuple[str, str | pa.DataType]], optional
+        metadata_fields : list[tuple[str, str | DataType]], optional
             Optionally sets metadata description for use in filtering.
         """
         path = Path(path)
@@ -324,12 +331,18 @@ class Evaluator:
         reader: MemoryCacheReader | FileCacheReader,
         roc_curve_reader: MemoryCacheReader | FileCacheReader,
         index_to_label: dict[int, str],
-        metadata_fields: list[tuple[str, str | pa.DataType]] | None = None,
+        metadata_fields: list[tuple[str, str]]
+        | list[tuple[str, DataType]]
+        | None = None,
     ):
         self._reader = reader
         self._roc_curve_reader = roc_curve_reader
         self._index_to_label = index_to_label
-        self._metadata_fields = metadata_fields
+        self._metadata_fields = (
+            [(name, str(dtype)) for name, dtype in metadata_fields]
+            if metadata_fields
+            else None
+        )
 
     @property
     def info(self) -> EvaluatorInfo:
@@ -337,7 +350,7 @@ class Evaluator:
 
     def get_info(
         self,
-        datums: pc.Expression | None = None,
+        datums: Expression | None = None,
     ) -> EvaluatorInfo:
         info = EvaluatorInfo()
         info.metadata_fields = self._metadata_fields
@@ -403,9 +416,9 @@ class Evaluator:
 
     def filter(
         self,
-        datums: pc.Expression | None = None,
-        groundtruths: pc.Expression | None = None,
-        predictions: pc.Expression | None = None,
+        datums: Expression | None = None,
+        groundtruths: Expression | None = None,
+        predictions: Expression | None = None,
         path: str | Path | None = None,
     ) -> Evaluator:
         """
@@ -413,11 +426,11 @@ class Evaluator:
 
         Parameters
         ----------
-        datums : pc.Expression | None = None
+        datums : Expression | None = None
             A filter expression used to filter datums.
-        groundtruths : pc.Expression | None = None
+        groundtruths : Expression | None = None
             A filter expression used to filter ground truth annotations.
-        predictions : pc.Expression | None = None
+        predictions : Expression | None = None
             A filter expression used to filter predictions.
         path : str | Path, optional
             Where to store the filtered cache if storing on disk.
@@ -447,7 +460,8 @@ class Evaluator:
                 metadata_fields=self.info.metadata_fields,
             )
 
-        for tbl in self._reader.iterate_tables(filter=datums):
+        datum_filter = datums.to_arrow() if datums is not None else None
+        for tbl in self._reader.iterate_tables(filter=datum_filter):
             columns = (
                 "datum_id",
                 "gt_label_id",
@@ -461,7 +475,7 @@ class Evaluator:
 
             if groundtruths is not None:
                 mask_valid_gt = np.zeros(n_pairs, dtype=np.bool_)
-                gt_tbl = tbl.filter(groundtruths)
+                gt_tbl = tbl.filter(groundtruths.to_arrow())
                 gt_pairs = np.column_stack(
                     [
                         gt_tbl[col].to_numpy()
@@ -475,7 +489,7 @@ class Evaluator:
 
             if predictions is not None:
                 mask_valid_pd = np.zeros(n_pairs, dtype=np.bool_)
-                pd_tbl = tbl.filter(predictions)
+                pd_tbl = tbl.filter(predictions.to_arrow())
                 pd_pairs = np.column_stack(
                     [
                         pd_tbl[col].to_numpy()
@@ -503,7 +517,7 @@ class Evaluator:
 
         return loader.finalize(index_to_label_override=self._index_to_label)
 
-    def iterate_values(self, datums: pc.Expression | None = None):
+    def _iterate_values(self, datum_filter: pc.Expression | None = None):
         columns = [
             "datum_id",
             "gt_label_id",
@@ -512,7 +526,9 @@ class Evaluator:
             "pd_winner",
             "match",
         ]
-        for tbl in self._reader.iterate_tables(columns=columns, filter=datums):
+        for tbl in self._reader.iterate_tables(
+            columns=columns, filter=datum_filter
+        ):
             ids = np.column_stack(
                 [
                     tbl[col].to_numpy()
@@ -528,8 +544,10 @@ class Evaluator:
             matches = tbl["match"].to_numpy()
             yield ids, scores, winners, matches
 
-    def iterate_values_with_tables(self, datums: pc.Expression | None = None):
-        for tbl in self._reader.iterate_tables(filter=datums):
+    def _iterate_values_with_tables(
+        self, datum_filter: pc.Expression | None = None
+    ):
+        for tbl in self._reader.iterate_tables(filter=datum_filter):
             ids = np.column_stack(
                 [
                     tbl[col].to_numpy()
@@ -594,7 +612,7 @@ class Evaluator:
         self,
         score_thresholds: list[float] = [0.0],
         hardmax: bool = True,
-        datums: pc.Expression | None = None,
+        datums: Expression | None = None,
     ) -> dict[MetricType, list]:
         """
         Performs an evaluation and returns metrics.
@@ -613,6 +631,7 @@ class Evaluator:
         dict[MetricType, list]
             A dictionary mapping MetricType enumerations to lists of computed metrics.
         """
+        datum_filter = datums.to_arrow() if datums is not None else None
         if not score_thresholds:
             raise ValueError("At least one score threshold must be passed.")
 
@@ -623,7 +642,9 @@ class Evaluator:
         # intermediates
         counts = np.zeros((n_scores, n_labels, 4), dtype=np.uint64)
 
-        for ids, scores, winners, _ in self.iterate_values(datums=datums):
+        for ids, scores, winners, _ in self._iterate_values(
+            datum_filter=datum_filter
+        ):
             batch_counts = compute_counts(
                 ids=ids,
                 scores=scores,
@@ -654,7 +675,7 @@ class Evaluator:
         self,
         score_thresholds: list[float] = [0.0],
         hardmax: bool = True,
-        datums: pc.Expression | None = None,
+        datums: Expression | None = None,
     ) -> list[Metric]:
         """
         Compute a confusion matrix.
@@ -673,6 +694,7 @@ class Evaluator:
         list[Metric]
             A list of confusion matrices.
         """
+        datum_filter = datums.to_arrow() if datums is not None else None
         if not score_thresholds:
             raise ValueError("At least one score threshold must be passed.")
 
@@ -684,8 +706,8 @@ class Evaluator:
         unmatched_groundtruths = np.zeros(
             (n_scores, n_labels), dtype=np.uint64
         )
-        for ids, scores, winners, matches in self.iterate_values(
-            datums=datums
+        for ids, scores, winners, matches in self._iterate_values(
+            datum_filter=datum_filter
         ):
             (
                 mask_tp,
@@ -722,7 +744,7 @@ class Evaluator:
         self,
         score_thresholds: list[float] = [0.0],
         hardmax: bool = True,
-        datums: pc.Expression | None = None,
+        datums: Expression | None = None,
     ) -> list[Metric]:
         """
         Compute examples per datum.
@@ -743,6 +765,7 @@ class Evaluator:
         list[Metric]
             A list of confusion matrices.
         """
+        datum_filter = datums.to_arrow() if datums is not None else None
         if not score_thresholds:
             raise ValueError("At least one score threshold must be passed.")
 
@@ -753,7 +776,7 @@ class Evaluator:
             winners,
             _,
             tbl,
-        ) in self.iterate_values_with_tables(datums=datums):
+        ) in self._iterate_values_with_tables(datum_filter=datum_filter):
             if ids.size == 0:
                 continue
 
@@ -795,7 +818,7 @@ class Evaluator:
         self,
         score_thresholds: list[float] = [0.0],
         hardmax: bool = True,
-        datums: pc.Expression | None = None,
+        datums: Expression | None = None,
     ) -> list[Metric]:
         """
         Compute confusion matrix with examples.
@@ -818,6 +841,7 @@ class Evaluator:
         list[Metric]
             A list of confusion matrices.
         """
+        datum_filter = datums.to_arrow() if datums is not None else None
         if not score_thresholds:
             raise ValueError("At least one score threshold must be passed.")
 
@@ -835,7 +859,7 @@ class Evaluator:
             winners,
             _,
             tbl,
-        ) in self.iterate_values_with_tables(datums=datums):
+        ) in self._iterate_values_with_tables(datum_filter=datum_filter):
             if ids.size == 0:
                 continue
 

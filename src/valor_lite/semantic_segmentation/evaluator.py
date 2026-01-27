@@ -5,7 +5,6 @@ from pathlib import Path
 
 import numpy as np
 import pyarrow as pa
-import pyarrow.compute as pc
 from numpy.typing import NDArray
 
 from valor_lite.cache import (
@@ -15,6 +14,7 @@ from valor_lite.cache import (
     MemoryCacheWriter,
 )
 from valor_lite.exceptions import EmptyCacheError
+from valor_lite.filtering import DataType, Expression
 from valor_lite.semantic_segmentation.computation import compute_metrics
 from valor_lite.semantic_segmentation.metric import MetricType
 from valor_lite.semantic_segmentation.shared import (
@@ -36,7 +36,7 @@ class Builder:
     def __init__(
         self,
         writer: MemoryCacheWriter | FileCacheWriter,
-        metadata_fields: list[tuple[str, str | pa.DataType]] | None = None,
+        metadata_fields: list[tuple[str, str | DataType]] | None = None,
     ):
         self._writer = writer
         self._metadata_fields = metadata_fields
@@ -45,7 +45,7 @@ class Builder:
     def in_memory(
         cls,
         batch_size: int = 10_000,
-        metadata_fields: list[tuple[str, str | pa.DataType]] | None = None,
+        metadata_fields: list[tuple[str, str | DataType]] | None = None,
     ):
         """
         Create an in-memory evaluator cache.
@@ -54,7 +54,7 @@ class Builder:
         ----------
         batch_size : int, default=10_000
             The target number of rows to buffer before writing to the cache. Defaults to 10_000.
-        metadata_fields : list[tuple[str, str | pa.DataType]], optional
+        metadata_fields : list[tuple[str, str | DataType]], optional
             Optional metadata field definitions.
         """
         # create cache
@@ -74,7 +74,7 @@ class Builder:
         batch_size: int = 10_000,
         rows_per_file: int = 100_000,
         compression: str = "snappy",
-        metadata_fields: list[tuple[str, str | pa.DataType]] | None = None,
+        metadata_fields: list[tuple[str, str | DataType]] | None = None,
     ):
         """
         Create a persistent file-based evaluator cache.
@@ -89,7 +89,7 @@ class Builder:
             The target number of rows to store per cache file. Defaults to 100_000.
         compression : str, default="snappy"
             The compression methods used when writing cache files.
-        metadata_fields : list[tuple[str, str | pa.DataType]], optional
+        metadata_fields : list[tuple[str, str | DataType]], optional
             Optional metadata field definitions.
         """
         path = Path(path)
@@ -155,7 +155,7 @@ class Evaluator:
         self,
         reader: MemoryCacheReader | FileCacheReader,
         index_to_label: dict[int, str],
-        metadata_fields: list[tuple[str, str | pa.DataType]] | None = None,
+        metadata_fields: list[tuple[str, str | DataType]] | None = None,
     ):
         self._reader = reader
         self._index_to_label = index_to_label
@@ -167,9 +167,9 @@ class Evaluator:
 
     def get_info(
         self,
-        datums: pc.Expression | None = None,
-        groundtruths: pc.Expression | None = None,
-        predictions: pc.Expression | None = None,
+        datums: Expression | None = None,
+        groundtruths: Expression | None = None,
+        predictions: Expression | None = None,
     ) -> EvaluatorInfo:
         info = EvaluatorInfo()
         info.number_of_rows = self._reader.count_rows()
@@ -237,9 +237,9 @@ class Evaluator:
 
     def filter(
         self,
-        datums: pc.Expression | None = None,
-        groundtruths: pc.Expression | None = None,
-        predictions: pc.Expression | None = None,
+        datums: Expression | None = None,
+        groundtruths: Expression | None = None,
+        predictions: Expression | None = None,
         path: str | Path | None = None,
     ) -> Evaluator:
         """
@@ -247,11 +247,11 @@ class Evaluator:
 
         Parameters
         ----------
-        datums : pc.Expression | None = None
+        datums : Expression | None = None
             A filter expression used to filter datums.
-        groundtruths : pc.Expression | None = None
+        groundtruths : Expression | None = None
             A filter expression used to filter ground truth annotations.
-        predictions : pc.Expression | None = None
+        predictions : Expression | None = None
             A filter expression used to filter predictions.
         path : str | Path, optional
             Where to store the filtered cache if storing on disk.
@@ -279,7 +279,8 @@ class Evaluator:
                 metadata_fields=self.info.metadata_fields,
             )
 
-        for tbl in self._reader.iterate_tables(filter=datums):
+        datum_filter = datums.to_arrow() if datums is not None else None
+        for tbl in self._reader.iterate_tables(filter=datum_filter):
             columns = (
                 "datum_id",
                 "gt_label_id",
@@ -293,7 +294,7 @@ class Evaluator:
 
             if groundtruths is not None:
                 mask_valid_gt = np.zeros(n_pairs, dtype=np.bool_)
-                gt_tbl = tbl.filter(groundtruths)
+                gt_tbl = tbl.filter(groundtruths.to_arrow())
                 gt_pairs = np.column_stack(
                     [
                         gt_tbl[col].to_numpy()
@@ -307,7 +308,7 @@ class Evaluator:
 
             if predictions is not None:
                 mask_valid_pd = np.zeros(n_pairs, dtype=np.bool_)
-                pd_tbl = tbl.filter(predictions)
+                pd_tbl = tbl.filter(predictions.to_arrow())
                 pd_pairs = np.column_stack(
                     [
                         pd_tbl[col].to_numpy()
@@ -335,14 +336,14 @@ class Evaluator:
         return builder.finalize(index_to_label_override=self._index_to_label)
 
     def _compute_confusion_matrix_intermediate(
-        self, datums: pc.Expression | None = None
+        self, datums: Expression | None = None
     ) -> NDArray[np.uint64]:
         """
         Performs an evaluation and returns metrics.
 
         Parameters
         ----------
-        datums : pyarrow.compute.Expression, optional
+        datums : Expression, optional
             Option to filter datums by an expression.
 
         Returns
@@ -354,7 +355,8 @@ class Evaluator:
         confusion_matrix = np.zeros(
             (n_labels + 1, n_labels + 1), dtype=np.uint64
         )
-        for tbl in self._reader.iterate_tables(filter=datums):
+        datum_filter = datums.to_arrow() if datums is not None else None
+        for tbl in self._reader.iterate_tables(filter=datum_filter):
             columns = (
                 "datum_id",
                 "gt_label_id",
@@ -389,7 +391,7 @@ class Evaluator:
         return confusion_matrix
 
     def compute_precision_recall_iou(
-        self, datums: pc.Expression | None = None
+        self, datums: Expression | None = None
     ) -> dict[MetricType, list]:
         """
         Performs an evaluation and returns metrics.

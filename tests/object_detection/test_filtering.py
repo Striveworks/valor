@@ -2,9 +2,9 @@ from copy import deepcopy
 from pathlib import Path
 from uuid import uuid4
 
-import pyarrow.compute as pc
 import pytest
 
+from valor_lite.filtering import Field
 from valor_lite.object_detection import (
     BoundingBox,
     Detection,
@@ -174,7 +174,7 @@ def test_filtering_one_detection(
 
     # test evaluation
     filtered_evaluator = evaluator.filter(
-        datums=pc.field("datum_uid") == "uid1",
+        datums=Field("datum_uid") == "uid1",
         path=tmp_path / "filtered",
     )
     metrics = filtered_evaluator.compute_precision_recall(
@@ -232,7 +232,7 @@ def test_filtering_two_detections(
 
     # test evaluation
     filtered_evaluator = evaluator.filter(
-        datums=pc.field("datum_uid") == "uid1",
+        datums=Field("datum_uid") == "uid1",
         path=tmp_path / "filtered",
     )
     metrics = filtered_evaluator.compute_precision_recall(
@@ -293,7 +293,7 @@ def test_filtering_four_detections(
 
     # test evaluation
     filtered_evaluator = evaluator.filter(
-        datums=pc.field("datum_uid") == "uid1",
+        datums=Field("datum_uid") == "uid1",
         path=tmp_path / "filtered",
     )
     metrics = filtered_evaluator.compute_precision_recall(
@@ -354,7 +354,7 @@ def test_filtering_all_detections(
 
     # test evaluation
     filtered_evaluator = evaluator.filter(
-        predictions=pc.field("pd_uid") == "uid1_pd_0",
+        predictions=Field("pd_uid") == "uid1_pd_0",
         path=tmp_path / "filtered",
     )
     metrics = filtered_evaluator.compute_precision_recall(
@@ -393,7 +393,7 @@ def test_filtering_random_detections(
     evaluator = loader.finalize()
 
     filtered_evaluator = evaluator.filter(
-        predictions=pc.field("pd_uid") == "uid1_pd_0",
+        predictions=Field("pd_uid") == "uid1_pd_0",
         path=tmp_path / "filtered",
     )
     filtered_evaluator.compute_precision_recall(
@@ -436,7 +436,7 @@ def test_filtering_four_detections_by_indices(
 
     # test evaluation
     filtered_evaluator = evaluator.filter(
-        datums=pc.field("datum_id") == 0,
+        datums=Field("datum_id") == 0,
         path=tmp_path / "filtered",
     )
     metrics = filtered_evaluator.compute_precision_recall(
@@ -497,7 +497,7 @@ def test_filtering_four_detections_by_annotation_metadata(
 
     # remove all FN groundtruths
     filtered_evaluator = evaluator.filter(
-        groundtruths=pc.field("gt_rect") == "rect1",
+        groundtruths=Field("gt_rect") == "rect1",
         path=tmp_path / "filtered1",
     )
     metrics = filtered_evaluator.compute_precision_recall(
@@ -531,7 +531,7 @@ def test_filtering_four_detections_by_annotation_metadata(
 
     # remove TP ground truths
     filtered_evaluator = evaluator.filter(
-        groundtruths=pc.field("gt_rect") != "rect1",
+        groundtruths=Field("gt_rect") != "rect1",
         path=tmp_path / "filtered2",
     )
     metrics = filtered_evaluator.compute_precision_recall(
@@ -600,7 +600,7 @@ def test_filtering_four_detections_inline(
     metrics = evaluator.compute_precision_recall(
         iou_thresholds=[0.5],
         score_thresholds=[0.5],
-        datums=pc.field("datum_uid") == "uid1",
+        datums=Field("datum_uid") == "uid1",
     )
 
     actual_metrics = [m.to_dict() for m in metrics[MetricType.AP]]
@@ -656,7 +656,7 @@ def test_get_info(
 
     # remove all FN groundtruths
     info = evaluator.get_info(
-        groundtruths=pc.field("gt_rect") == "rect1",
+        groundtruths=Field("gt_rect") == "rect1",
     )
     assert info.number_of_datums == 4
     assert info.number_of_labels == 2
@@ -665,7 +665,7 @@ def test_get_info(
 
     # remove TP ground truths
     info = evaluator.get_info(
-        groundtruths=pc.field("gt_rect") != "rect1",
+        groundtruths=Field("gt_rect") != "rect1",
     )
     assert info.number_of_datums == 4
     assert info.number_of_labels == 2
@@ -674,7 +674,7 @@ def test_get_info(
 
     # remove all predictions
     info = evaluator.get_info(
-        predictions=pc.field("pd_rect") == "rect3",
+        predictions=Field("pd_rect") == "rect3",
     )
     assert info.number_of_datums == 4
     assert info.number_of_labels == 2
@@ -683,7 +683,7 @@ def test_get_info(
 
     # remove TP predictions
     info = evaluator.get_info(
-        predictions=pc.field("pd_rect") != "rect1",
+        predictions=Field("pd_rect") != "rect1",
     )
     assert info.number_of_datums == 4
     assert info.number_of_labels == 2

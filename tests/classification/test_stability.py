@@ -1,10 +1,10 @@
 from pathlib import Path
 from random import choice, uniform
 
-import pyarrow.compute as pc
 import pytest
 
 from valor_lite.classification import Classification, Loader
+from valor_lite.filtering import Field
 
 
 def generate_random_classifications(
@@ -66,10 +66,10 @@ def test_fuzz_classifications_with_filtering(loader: Loader, tmp_path: Path):
     loader.add_data(classifications)
     evaluator = loader.finalize()
 
-    datum_subset = [f"uid{i}" for i in range(len(classifications) // 2)]
+    datum_subset = {f"uid{i}" for i in range(len(classifications) // 2)}
 
     filtered_evaluator = evaluator.filter(
-        datums=pc.field("datum_uid").isin(datum_subset),
+        datums=Field("datum_uid").isin(datum_subset),
         path=tmp_path / "filter",
     )
     filtered_evaluator.compute_rocauc()

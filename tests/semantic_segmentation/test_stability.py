@@ -1,8 +1,8 @@
 from pathlib import Path
 
 import numpy as np
-import pyarrow.compute as pc
 
+from valor_lite.filtering import Field
 from valor_lite.semantic_segmentation import Bitmask, Loader, Segmentation
 
 
@@ -65,10 +65,10 @@ def test_fuzz_segmentations_with_filtering(loader: Loader, tmp_path: Path):
     loader.add_data(segmentations)
     evaluator = loader.finalize()
 
-    datum_subset = [f"uid{i}" for i in range(len(segmentations) // 2)]
+    datum_subset = {f"uid{i}" for i in range(len(segmentations) // 2)}
 
     filtered_evaluator = evaluator.filter(
         path=tmp_path,
-        datums=pc.field("datum_uid").isin(datum_subset),
+        datums=Field("datum_uid").isin(datum_subset),
     )
     filtered_evaluator.compute_precision_recall_iou()
