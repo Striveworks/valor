@@ -118,7 +118,7 @@ class MemoryCacheReader(MemoryCache):
                 [tbl[col].to_numpy() for col in table_columns]
             )
 
-    def iterate_fragments(
+    def iterate_fragment_batch_iterators(
         self, batch_size: int
     ) -> Iterator[Iterator[pa.RecordBatch]]:
         """

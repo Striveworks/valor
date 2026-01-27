@@ -377,7 +377,7 @@ def basic_detections(
 
 
 @pytest.fixture
-def torchmetrics_detections(loader: Loader) -> Evaluator:
+def torchmetrics_detections() -> list[Detection[BoundingBox]]:
     """Creates a model called "test_model" with some predicted
     detections on the dataset "test_dataset". These predictions are taken
     from a torchmetrics unit test (see test_metrics.py)
@@ -520,7 +520,14 @@ def torchmetrics_detections(loader: Loader) -> Evaluator:
         )
         for idx, (gt, pd) in enumerate(zip(groundtruths, predictions))
     ]
-    loader.add_bounding_boxes(detections)
+    return detections
+
+
+@pytest.fixture
+def torchmetrics_evaluator(
+    loader: Loader, torchmetrics_detections: list[Detection[BoundingBox]]
+) -> Evaluator:
+    loader.add_bounding_boxes(torchmetrics_detections)
     return loader.finalize()
 
 

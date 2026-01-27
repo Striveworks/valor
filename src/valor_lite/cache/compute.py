@@ -1,9 +1,10 @@
 import heapq
 import tempfile
 from pathlib import Path
-from typing import Callable
+from typing import Callable, Generator
 
 import pyarrow as pa
+import pyarrow.compute as pc
 
 from valor_lite.cache.ephemeral import MemoryCacheReader, MemoryCacheWriter
 from valor_lite.cache.persistent import FileCacheReader, FileCacheWriter
@@ -50,7 +51,9 @@ def _merge(
     batch_iterators = []
     batches = []
     for batch_idx, batch_iter in enumerate(
-        intermediate_source.iterate_fragments(batch_size=batch_size)
+        intermediate_source.iterate_fragment_batch_iterators(
+            batch_size=batch_size
+        )
     ):
         batch_iterators.append(batch_iter)
         batches.append(next(batch_iterators[batch_idx], None))
@@ -152,3 +155,57 @@ def sort(
             columns=columns,
             table_sort_override=table_sort_override,
         )
+
+
+def paginate_index(
+    source: MemoryCacheReader | FileCacheReader,
+    column_key: str,
+    modifier: pc.Expression | None = None,
+    limit: int | None = None,
+    offset: int = 0,
+) -> Generator[pa.Table, None, None]:
+    """
+    Iterate through a paginated cache reader.
+
+    Note this function expects unqiue keys to be fragment-aligned.
+    """
+    total = source.count_rows()
+    limit = limit if limit else total
+
+    # pagination broader than data scope
+    if offset == 0 and limit >= total:
+        for tbl in source.iterate_tables(filter=modifier):
+            yield tbl
+        return
+    elif offset >= total:
+        return
+
+    curr_idx = 0
+    for tbl in source.iterate_tables(filter=modifier):
+        if tbl.num_rows == 0:
+            continue
+
+        # sort the unique keys as they may be out of order
+        unique_values = pc.unique(tbl[column_key]).sort()  # type: ignore[reportAttributeAccessIssue]
+        n_unique = len(unique_values)
+        prev_idx = curr_idx
+        curr_idx += n_unique
+
+        # check for page overlap
+        if curr_idx <= offset:
+            continue
+        elif prev_idx >= (offset + limit):
+            return
+
+        # apply any pagination conditions
+        condition = pc.scalar(True)
+        if prev_idx < offset and curr_idx > offset:
+            condition &= (
+                pc.field(column_key) >= unique_values[offset - prev_idx]
+            )
+        if prev_idx < (offset + limit) and curr_idx > (offset + limit):
+            condition &= (
+                pc.field(column_key) < unique_values[offset + limit - prev_idx]
+            )
+
+        yield tbl.filter(condition)
