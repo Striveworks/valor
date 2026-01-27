@@ -283,13 +283,13 @@ def test_examples(detections_for_detailed_counting: Evaluator):
 
 
 def test_examples_using_torch_metrics_example(
-    torchmetrics_detections: Evaluator,
+    torchmetrics_evaluator: Evaluator,
 ):
     """
     cf with torch metrics/pycocotools results listed here:
     https://github.com/Lightning-AI/metrics/blob/107dbfd5fb158b7ae6d76281df44bd94c836bfce/tests/unittests/detection/test_map.py#L231
     """
-    evaluator = torchmetrics_detections
+    evaluator = torchmetrics_evaluator
     assert evaluator.info.number_of_datums == 4
     assert evaluator.info.number_of_labels == 6
     assert evaluator.info.number_of_groundtruth_annotations == 20
@@ -1079,13 +1079,13 @@ def test_examples_ranked_pair_ordering(
 
 
 def test_examples_using_torch_metrics_example_paginated(
-    torchmetrics_detections: Evaluator,
+    torchmetrics_evaluator: Evaluator,
 ):
     """
     cf with torch metrics/pycocotools results listed here:
     https://github.com/Lightning-AI/metrics/blob/107dbfd5fb158b7ae6d76281df44bd94c836bfce/tests/unittests/detection/test_map.py#L231
     """
-    evaluator = torchmetrics_detections
+    evaluator = torchmetrics_evaluator
     assert evaluator.info.number_of_datums == 4
     assert evaluator.info.number_of_labels == 6
     assert evaluator.info.number_of_groundtruth_annotations == 20

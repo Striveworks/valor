@@ -4,7 +4,14 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from valor_lite.object_detection import Evaluator, Metric, MetricType
+from valor_lite.object_detection import (
+    BoundingBox,
+    Detection,
+    Evaluator,
+    Loader,
+    Metric,
+    MetricType,
+)
 
 
 def test_evaluator_file_not_found(tmp_path: Path):
@@ -21,7 +28,7 @@ def test_evaluator_not_a_directory(tmp_path: Path):
         Evaluator.load(filepath)
 
 
-def test_evaluator_valid_thresholds(tmp_path: Path):
+def test_evaluator_valid_thresholds():
     eval = Evaluator(
         detailed_reader=None,  # type: ignore - testing
         ranked_reader=None,  # type: ignore - testing
@@ -41,17 +48,15 @@ def test_evaluator_valid_thresholds(tmp_path: Path):
         assert "score" in str(e)
 
 
-def test_info_using_torch_metrics_example(torchmetrics_detections: Evaluator):
+def test_info_using_torch_metrics_example(torchmetrics_evaluator: Evaluator):
     """
     cf with torch metrics/pycocotools results listed here:
     https://github.com/Lightning-AI/metrics/blob/107dbfd5fb158b7ae6d76281df44bd94c836bfce/tests/unittests/detection/test_map.py#L231
     """
-    evaluator = torchmetrics_detections
-
-    assert evaluator.info.number_of_datums == 4
-    assert evaluator.info.number_of_labels == 6
-    assert evaluator.info.number_of_groundtruth_annotations == 20
-    assert evaluator.info.number_of_prediction_annotations == 19
+    assert torchmetrics_evaluator.info.number_of_datums == 4
+    assert torchmetrics_evaluator.info.number_of_labels == 6
+    assert torchmetrics_evaluator.info.number_of_groundtruth_annotations == 20
+    assert torchmetrics_evaluator.info.number_of_prediction_annotations == 19
 
 
 def test_no_thresholds(detection_ranked_pair_ordering: Evaluator):
@@ -177,3 +182,20 @@ def test_output_types_dont_contain_numpy(basic_detections: Evaluator):
     for value in values:
         if isinstance(value, (np.generic, np.ndarray)):
             raise TypeError(f"Value `{value}` has type `{type(value)}`.")
+
+
+def test_evaluator_loading_using_torch_metrics_example(
+    tmp_path: Path, torchmetrics_detections: list[Detection[BoundingBox]]
+):
+    loader = Loader.persistent(path=tmp_path)
+    loader.add_bounding_boxes(torchmetrics_detections)
+    original_evaluator = loader.finalize()
+    loaded_evaluator = Evaluator.load(path=tmp_path)
+
+    kwargs = dict(
+        score_thresholds=[0.25, 0.5, 0.75, 0.9],
+        iou_thresholds=[0.1, 0.25, 0.5, 0.75],
+    )
+    assert original_evaluator.compute_precision_recall(
+        **kwargs
+    ) == loaded_evaluator.compute_precision_recall(**kwargs)

@@ -167,7 +167,7 @@ def paginate_index(
     """
     Iterate through a paginated cache reader.
 
-    Note this function expects unqiue keys to be fragment-aligned and in ascending order.
+    Note this function expects unqiue keys to be fragment-aligned.
     """
     total = source.count_rows()
     limit = limit if limit else total
@@ -185,6 +185,7 @@ def paginate_index(
         if tbl.num_rows == 0:
             continue
 
+        # sort the unique keys as they may be out of order
         unique_values = pc.unique(tbl[column_key]).sort()  # type: ignore[reportAttributeAccessIssue]
         n_unique = len(unique_values)
         prev_idx = curr_idx

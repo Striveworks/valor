@@ -249,12 +249,12 @@ def test_ap_basic_detections(basic_detections: Evaluator):
         assert m in actual_metrics
 
 
-def test_ap_using_torch_metrics_example(torchmetrics_detections: Evaluator):
+def test_ap_using_torch_metrics_example(torchmetrics_evaluator: Evaluator):
     """
     cf with torch metrics/pycocotools results listed here:
     https://github.com/Lightning-AI/metrics/blob/107dbfd5fb158b7ae6d76281df44bd94c836bfce/tests/unittests/detection/test_map.py#L231
     """
-    evaluator = torchmetrics_detections
+    evaluator = torchmetrics_evaluator
     assert evaluator.info.number_of_datums == 4
     assert evaluator.info.number_of_labels == 6
     assert evaluator.info.number_of_groundtruth_annotations == 20
