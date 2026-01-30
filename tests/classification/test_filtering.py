@@ -410,9 +410,8 @@ def test_filtering_six_classifications_by_annotation(
     loader.add_data(six_classifications)
     evaluator = loader.finalize()
 
-    # test groundtruth filter
+    # test groundtruth filter - this will completely filter out datums with ground truth label == "0"
     filtered_evaluator = evaluator.filter(
-        datums=pc.field("datum_uid") == "uid0",
         groundtruths=pc.field("gt_label") != "0",
         path=tmp_path / "groundtruth_filter",
     )
@@ -426,9 +425,9 @@ def test_filtering_six_classifications_by_annotation(
             "type": "Counts",
             "value": {
                 "tp": 0,
-                "fp": 1,
+                "fp": 0,
                 "fn": 0,
-                "tn": 0,
+                "tn": 2,
             },
             "parameters": {
                 "score_threshold": 0.5,
@@ -442,7 +441,7 @@ def test_filtering_six_classifications_by_annotation(
                 "tp": 0,
                 "fp": 0,
                 "fn": 0,
-                "tn": 1,
+                "tn": 2,
             },
             "parameters": {
                 "score_threshold": 0.5,
@@ -456,7 +455,7 @@ def test_filtering_six_classifications_by_annotation(
                 "tp": 0,
                 "fp": 0,
                 "fn": 0,
-                "tn": 1,
+                "tn": 2,
             },
             "parameters": {
                 "score_threshold": 0.5,
@@ -469,8 +468,8 @@ def test_filtering_six_classifications_by_annotation(
             "value": {
                 "tp": 0,
                 "fp": 0,
-                "fn": 0,
-                "tn": 1,
+                "fn": 2,
+                "tn": 0,
             },
             "parameters": {
                 "score_threshold": 0.5,
@@ -484,9 +483,8 @@ def test_filtering_six_classifications_by_annotation(
     for m in expected_metrics:
         assert m in actual_metrics
 
-    # test prediction filter
+    # test prediction filter - this does not filter datums since more than one pred label exists
     filtered_evaluator = evaluator.filter(
-        datums=pc.field("datum_uid") == "uid0",
         predictions=pc.field("pd_label") != "0",
         path=tmp_path / "prediction_filter",
     )
@@ -501,7 +499,7 @@ def test_filtering_six_classifications_by_annotation(
             "value": {
                 "tp": 0,
                 "fp": 0,
-                "fn": 1,
+                "fn": 2,
                 "tn": 0,
             },
             "parameters": {
@@ -516,7 +514,7 @@ def test_filtering_six_classifications_by_annotation(
                 "tp": 0,
                 "fp": 0,
                 "fn": 0,
-                "tn": 1,
+                "tn": 6,
             },
             "parameters": {
                 "score_threshold": 0.5,
@@ -528,9 +526,9 @@ def test_filtering_six_classifications_by_annotation(
             "type": "Counts",
             "value": {
                 "tp": 0,
-                "fp": 0,
+                "fp": 2,
                 "fn": 0,
-                "tn": 1,
+                "tn": 4,
             },
             "parameters": {
                 "score_threshold": 0.5,
@@ -543,8 +541,8 @@ def test_filtering_six_classifications_by_annotation(
             "value": {
                 "tp": 0,
                 "fp": 0,
-                "fn": 0,
-                "tn": 1,
+                "fn": 2,
+                "tn": 4,
             },
             "parameters": {
                 "score_threshold": 0.5,
@@ -682,3 +680,106 @@ def test_filtering_remove_all(
         for v in example.values():
             if isinstance(v, list):
                 assert len(v) == 0
+
+
+def test_filtering_labels(
+    loader: Loader,
+    classifications_animal_example: list[Classification],
+    tmp_path: Path,
+):
+    loader.add_data(classifications_animal_example)
+    evaluator = loader.finalize()
+
+    assert evaluator._index_to_label == {
+        0: "bird",
+        1: "dog",
+        2: "cat",
+    }
+    assert evaluator.compute_precision_recall()
+    assert evaluator.compute_rocauc()
+    assert evaluator.compute_confusion_matrix()
+    assert evaluator.compute_examples()
+
+    cm = evaluator.compute_confusion_matrix()
+    assert len(cm) == 1
+    assert cm[0].to_dict() == {
+        "parameters": {
+            "hardmax": True,
+            "score_threshold": 0.0,
+        },
+        "type": "ConfusionMatrix",
+        "value": {
+            "confusion_matrix": {
+                "bird": {
+                    "bird": 1,
+                    "cat": 1,
+                    "dog": 1,
+                },
+                "cat": {
+                    "bird": 0,
+                    "cat": 1,
+                    "dog": 0,
+                },
+                "dog": {
+                    "bird": 0,
+                    "cat": 2,
+                    "dog": 0,
+                },
+            },
+            "unmatched_ground_truths": {
+                "bird": 0,
+                "cat": 0,
+                "dog": 0,
+            },
+        },
+    }
+
+    filtered = evaluator.filter(
+        groundtruths=pc.field("gt_label").isin(["bird", "dog"]),
+        predictions=pc.field("pd_label").isin(["bird", "dog"]),
+        path=tmp_path / "filter",
+    )
+
+    assert filtered._index_to_label == {
+        0: "bird",
+        1: "dog",
+        2: "cat",
+    }
+    assert filtered.compute_precision_recall()
+    assert filtered.compute_rocauc()
+    assert filtered.compute_confusion_matrix()
+    assert filtered.compute_examples()
+
+    cm = filtered.compute_confusion_matrix()
+    assert len(cm) == 1
+    assert cm[0].to_dict() == {
+        "parameters": {
+            "hardmax": True,
+            "score_threshold": 0.0,
+        },
+        "type": "ConfusionMatrix",
+        "value": {
+            "confusion_matrix": {
+                "bird": {
+                    "bird": 1,
+                    "cat": 0,
+                    "dog": 1,
+                },
+                "cat": {
+                    "bird": 0,
+                    "cat": 0,
+                    "dog": 0,
+                },
+                "dog": {
+                    "bird": 0,
+                    "cat": 0,
+                    "dog": 0,
+                },
+            },
+            "unmatched_ground_truths": {
+                "bird": 1,
+                "cat": 0,
+                "dog": 2,
+            },
+        },
+    }

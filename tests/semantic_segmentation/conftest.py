@@ -111,6 +111,56 @@ def basic_segmentations() -> list[Segmentation]:
 
 
 @pytest.fixture
+def basic_segmentations_three_labels() -> list[Segmentation]:
+    gmask1 = Bitmask(
+        mask=np.array([[True, False], [False, True]]),
+        label="v1",
+    )
+    gmask2 = Bitmask(
+        mask=np.array([[False, False], [True, False]]),
+        label="v2",
+    )
+    gmask3 = Bitmask(
+        mask=np.array([[False, True], [False, False]]),
+        label="v3",
+    )
+
+    pmask1 = Bitmask(
+        mask=np.array([[True, False], [False, False]]),
+        label="v1",
+    )
+    pmask2 = Bitmask(
+        mask=np.array([[False, True], [True, False]]),
+        label="v2",
+    )
+    pmask3 = Bitmask(
+        mask=np.array([[False, False], [False, True]]),
+        label="v3",
+    )
+
+    return [
+        Segmentation(
+            uid="uid0",
+            groundtruths=[gmask1, gmask2, gmask3],
+            predictions=[pmask1, pmask2, pmask3],
+            shape=tuple(pmask1.mask.shape),
+        ),
+        Segmentation(
+            uid="uid1",
+            groundtruths=[gmask1, gmask2, gmask3],
+            predictions=[pmask1, pmask2, pmask3],
+            shape=tuple(pmask1.mask.shape),
+        ),
+        Segmentation(
+            uid="uid2",
+            groundtruths=[gmask1, gmask2, gmask3],
+            predictions=[pmask1, pmask2, pmask3],
+            shape=tuple(pmask1.mask.shape),
+        ),
+    ]
+
+
+@pytest.fixture
 def segmentations_from_boxes() -> list[Segmentation]:
 
     mask_shape = (900, 300)

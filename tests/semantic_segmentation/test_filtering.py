@@ -5,7 +5,22 @@ import pyarrow.compute as pc
 import pytest
 
 from valor_lite.exceptions import EmptyCacheError
-from valor_lite.semantic_segmentation import Loader, Segmentation
+from valor_lite.semantic_segmentation import Loader, MetricType, Segmentation
+
+
+def prune_fields_containing_zeros(data: dict | list):
+    if isinstance(data, list):
+        for element in data:
+            prune_fields_containing_zeros(element)
+    elif isinstance(data, dict):
+        for key in list(data.keys()):
+            if isinstance(data[key], dict):
+                prune_fields_containing_zeros(data[key])
+                if len(data[key]) == 0:
+                    data.pop(key)
+            elif data[key] == 0:
+                data.pop(key)
+    return data
 
 
 def test_filtering_by_datum(
@@ -195,3 +210,87 @@ def test_filtering_by_annotation_info(
         )
     )
     assert confusion_matrix.sum() == total_pixels
+
+
+def test_filtering_labels(
+    loader: Loader,
+    basic_segmentations_three_labels: list[Segmentation],
+    tmp_path: Path,
+):
+    loader.add_data(basic_segmentations_three_labels)
+    evaluator = loader.finalize()
+
+    assert evaluator._index_to_label == {
+        0: "v1",
+        1: "v2",
+        2: "v3",
+    }
+    assert evaluator.compute_precision_recall_iou()
+
+    metrics = evaluator.compute_precision_recall_iou()
+    cm = metrics.pop(MetricType.ConfusionMatrix)
+    assert len(cm) == 1
+    assert prune_fields_containing_zeros(cm[0].to_dict()) == {
+        "type": "ConfusionMatrix",
+        "value": {
+            "confusion_matrix": {
+                "v1": {
+                    "v1": {
+                        "iou": 0.5,
+                    },
+                    "v3": {
+                        "iou": 0.5,
+                    },
+                },
+                "v2": {
+                    "v2": {
+                        "iou": 0.5,
+                    },
+                },
+                "v3": {
+                    "v2": {
+                        "iou": 0.5,
+                    },
+                },
+            },
+        },
+    }
+
+    filtered = evaluator.filter(
+        groundtruths=pc.field("gt_label").isin(["v2", "v3"]),
+        predictions=pc.field("pd_label").isin(["v2", "v3"]),
+        path=tmp_path / "filter",
+    )
+
+    assert filtered._index_to_label == {
+        0: "v1",
+        1: "v2",
+        2: "v3",
+    }
+    assert filtered.compute_precision_recall_iou()
+
+    metrics = filtered.compute_precision_recall_iou()
+    cm = metrics.pop(MetricType.ConfusionMatrix)
+    assert len(cm) == 1
+    assert prune_fields_containing_zeros(cm[0].to_dict()) == {
+        "type": "ConfusionMatrix",
+        "value": {
+            "confusion_matrix": {
+                "v2": {
+                    "v2": {
+                        "iou": 0.5,
+                    },
+                },
+                "v3": {
+                    "v2": {
+                        "iou": 0.5,
+                    },
+                },
+            },
+            "unmatched_predictions": {
+                "v3": {
+                    "ratio": 1.0,
+                },
+            },
+        },
+    }
