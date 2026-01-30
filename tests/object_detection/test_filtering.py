@@ -689,3 +689,215 @@ def test_get_info(
     assert info.number_of_labels == 2
     assert info.number_of_groundtruth_annotations == 6
     assert info.number_of_prediction_annotations == 2
+
+
+def test_filtering_labels(
+    loader: Loader, torchmetrics_detections: list[Detection], tmp_path: Path
+):
+    loader.add_bounding_boxes(torchmetrics_detections)
+    evaluator = loader.finalize()
+
+    scores = [0.1]
+    ious = [0.1]
+
+    assert evaluator._index_to_label == {
+        0: "4",
+        1: "2",
+        2: "3",
+        3: "1",
+        4: "0",
+        5: "49",
+    }
+    assert evaluator.compute_precision_recall(
+        score_thresholds=scores, iou_thresholds=ious
+    )
+    assert evaluator.compute_confusion_matrix(
+        score_thresholds=scores, iou_thresholds=ious
+    )
+    assert evaluator.compute_examples(
+        score_thresholds=scores, iou_thresholds=ious
+    )
+
+    cm = evaluator.compute_confusion_matrix(
+        score_thresholds=scores, iou_thresholds=ious
+    )
+    assert len(cm) == 1
+    assert cm[0].to_dict() == {
+        "parameters": {
+            "iou_threshold": 0.1,
+            "score_threshold": 0.1,
+        },
+        "type": "ConfusionMatrix",
+        "value": {
+            "confusion_matrix": {
+                "0": {
+                    "0": 5,
+                    "1": 0,
+                    "2": 0,
+                    "3": 0,
+                    "4": 0,
+                    "49": 0,
+                },
+                "1": {
+                    "0": 0,
+                    "1": 1,
+                    "2": 0,
+                    "3": 0,
+                    "4": 0,
+                    "49": 0,
+                },
+                "2": {
+                    "0": 0,
+                    "1": 0,
+                    "2": 1,
+                    "3": 1,
+                    "4": 0,
+                    "49": 0,
+                },
+                "3": {
+                    "0": 0,
+                    "1": 0,
+                    "2": 0,
+                    "3": 0,
+                    "4": 0,
+                    "49": 0,
+                },
+                "4": {
+                    "0": 0,
+                    "1": 0,
+                    "2": 0,
+                    "3": 0,
+                    "4": 2,
+                    "49": 0,
+                },
+                "49": {
+                    "0": 0,
+                    "1": 0,
+                    "2": 0,
+                    "3": 0,
+                    "4": 0,
+                    "49": 9,
+                },
+            },
+            "unmatched_ground_truths": {
+                "0": 0,
+                "1": 0,
+                "2": 0,
+                "3": 0,
+                "4": 0,
+                "49": 1,
+            },
+            "unmatched_predictions": {
+                "0": 0,
+                "1": 0,
+                "2": 0,
+                "3": 0,
+                "4": 0,
+                "49": 0,
+            },
+        },
+    }
+
+    filtered = evaluator.filter(
+        groundtruths=pc.field("gt_label").isin(["2", "3"]),
+        predictions=pc.field("pd_label").isin(["2", "3"]),
+        path=tmp_path / "filter",
+    )
+
+    assert filtered._index_to_label == {
+        0: "4",
+        1: "2",
+        2: "3",
+        3: "1",
+        4: "0",
+        5: "49",
+    }
+    assert evaluator.compute_precision_recall(
+        score_thresholds=scores, iou_thresholds=ious
+    )
+    assert evaluator.compute_confusion_matrix(
+        score_thresholds=scores, iou_thresholds=ious
+    )
+    assert evaluator.compute_examples(
+        score_thresholds=scores, iou_thresholds=ious
+    )
+
+    cm = filtered.compute_confusion_matrix(
+        score_thresholds=scores, iou_thresholds=ious
+    )
+    assert len(cm) == 1
+    assert cm[0].to_dict() == {
+        "parameters": {
+            "iou_threshold": 0.1,
+            "score_threshold": 0.1,
+        },
+        "type": "ConfusionMatrix",
+        "value": {
+            "confusion_matrix": {
+                "0": {
+                    "0": 0,
+                    "1": 0,
+                    "2": 0,
+                    "3": 0,
+                    "4": 0,
+                    "49": 0,
+                },
+                "1": {
+                    "0": 0,
+                    "1": 0,
+                    "2": 0,
+                    "3": 0,
+                    "4": 0,
+                    "49": 0,
+                },
+                "2": {
+                    "0": 0,
+                    "1": 0,
+                    "2": 1,
+                    "3": 1,
+                    "4": 0,
+                    "49": 0,
+                },
+                "3": {
+                    "0": 0,
+                    "1": 0,
+                    "2": 0,
+                    "3": 0,
+                    "4": 0,
+                    "49": 0,
+                },
+                "4": {
+                    "0": 0,
+                    "1": 0,
+                    "2": 0,
+                    "3": 0,
+                    "4": 0,
+                    "49": 0,
+                },
+                "49": {
+                    "0": 0,
+                    "1": 0,
+                    "2": 0,
+                    "3": 0,
+                    "4": 0,
+                    "49": 0,
+                },
+            },
+            "unmatched_ground_truths": {
+                "0": 0,
+                "1": 0,
+                "2": 0,
+                "3": 0,
+                "4": 0,
+                "49": 0,
+            },
+            "unmatched_predictions": {
+                "0": 0,
+                "1": 0,
+                "2": 0,
+                "3": 0,
+                "4": 0,
+                "49": 0,
+            },
+        },
+    }
