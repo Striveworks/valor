@@ -487,19 +487,12 @@ class Evaluator:
             else:
                 mask_valid_pd = np.ones(n_pairs, dtype=np.bool_)
 
-            mask_valid = mask_valid_gt | mask_valid_pd
-            mask_valid_gt &= mask_valid
-            mask_valid_pd &= mask_valid
+            # classifications *must* have a pairing
+            mask_valid = mask_valid_gt & mask_valid_pd
+            filtered_tbl = tbl.filter(pa.array(mask_valid))
 
-            pairs[~mask_valid_gt, 1] = -1
-            pairs[~mask_valid_pd, 2] = -1
-
-            for idx, col in enumerate(columns):
-                tbl = tbl.set_column(
-                    tbl.schema.names.index(col), col, pa.array(pairs[:, idx])
-                )
             # TODO (c.zaloom) - improve write strategy, filtered data could be small
-            loader._writer.write_table(tbl)
+            loader._writer.write_table(filtered_tbl)
 
         return loader.finalize(index_to_label_override=self._index_to_label)
 
