@@ -901,3 +901,106 @@ def test_filtering_labels(
             },
         },
     }
+
+
+def test_filtering_labels_confusion_matrix(loader: Loader, tmp_path):
+    gts = ["dog", "cat", "cat", "bird", "dog", "dog"]
+    pds = [
+        ["dog", "cat", "bird"],
+        ["cat", "bird", "dog"],
+        ["dog", "cat", "bird"],
+        ["bird", "cat", "dog"],
+        ["bird", "dog", "cat"],
+        ["dog", "bird", "cat"],
+    ]
+    scores = [0.6, 0.3, 0.1]
+
+    loader.add_bounding_boxes(
+        [
+            Detection(
+                uid=f"datum{i}",
+                groundtruths=[
+                    BoundingBox(
+                        uid=f"g_{i}_0",
+                        xmin=0,
+                        xmax=10,
+                        ymin=0,
+                        ymax=10,
+                        labels=[gt],
+                    )
+                ],
+                predictions=[
+                    BoundingBox(
+                        uid=f"p_{i}_0",
+                        xmin=5,
+                        xmax=15,
+                        ymin=0,
+                        ymax=10,
+                        labels=pd,
+                        scores=scores,
+                    ),  # IOU=0.5
+                    BoundingBox(
+                        uid=f"p_{i}_1",
+                        xmin=2,
+                        xmax=12,
+                        ymin=0,
+                        ymax=10,
+                        labels=pd[1:] + pd[:1],  # rotate labels
+                        scores=scores,
+                    ),  # IOU=0.8
+                ],
+                metadata=None,
+            )
+            for i, (gt, pd) in enumerate(zip(gts, pds))
+        ]
+    )
+    evaluator = loader.finalize()
+
+    # test normal case
+    metrics = evaluator.compute_confusion_matrix(
+        iou_thresholds=[0.1], score_thresholds=[0.5]
+    )
+    assert len(metrics) == 1
+    assert metrics[0].to_dict() == {
+        "parameters": {
+            "iou_threshold": 0.1,
+            "score_threshold": 0.5,
+        },
+        "type": "ConfusionMatrix",
+        "value": {
+            "confusion_matrix": {
+                "bird": {"bird": 0, "cat": 1, "dog": 0},
+                "cat": {"bird": 1, "cat": 1, "dog": 0},
+                "dog": {"bird": 1, "cat": 1, "dog": 1},
+            },
+            "unmatched_ground_truths": {"bird": 0, "cat": 0, "dog": 0},
+            "unmatched_predictions": {"bird": 2, "cat": 1, "dog": 3},
+        },
+    }
+
+    # remove 'bird' from class labels
+    filtered_evaluator = evaluator.filter(
+        groundtruths=pc.field("gt_label").isin(["dog", "cat"]),
+        predictions=pc.field("pd_label").isin(["dog", "cat"]),
+        path=Path(tmp_path) / "filtered",
+    )
+    metrics = filtered_evaluator.compute_confusion_matrix(
+        iou_thresholds=[0.1], score_thresholds=[0.5]
+    )
+    assert len(metrics) == 1
+    assert metrics[0].to_dict() == {
+        "parameters": {
+            "iou_threshold": 0.1,
+            "score_threshold": 0.5,
+        },
+        "type": "ConfusionMatrix",
+        "value": {
+            "confusion_matrix": {
+                "bird": {"bird": 0, "cat": 0, "dog": 0},
+                "cat": {"bird": 0, "cat": 2, "dog": 0},
+                "dog": {"bird": 0, "cat": 1, "dog": 2},
+            },
+            "unmatched_ground_truths": {"bird": 0, "cat": 0, "dog": 0},
+            "unmatched_predictions": {"bird": 0, "cat": 1, "dog": 2},
+        },
+    }
