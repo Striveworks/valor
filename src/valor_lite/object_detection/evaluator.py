@@ -351,14 +351,17 @@ class Evaluator:
             pairs = np.column_stack([tbl[col].to_numpy() for col in columns])
 
             n_pairs = pairs.shape[0]
-            gt_ids = pairs[:, (0, 1)].astype(np.int64)
-            pd_ids = pairs[:, (0, 2)].astype(np.int64)
+            gt_ids = pairs[:, (0, 1, 3)].astype(np.int64)
+            pd_ids = pairs[:, (0, 2, 4)].astype(np.int64)
 
             if groundtruths is not None:
                 mask_valid_gt = np.zeros(n_pairs, dtype=np.bool_)
                 gt_tbl = tbl.filter(groundtruths)
                 gt_pairs = np.column_stack(
-                    [gt_tbl[col].to_numpy() for col in ("datum_id", "gt_id")]
+                    [
+                        gt_tbl[col].to_numpy()
+                        for col in ("datum_id", "gt_id", "gt_label_id")
+                    ]
                 ).astype(np.int64)
                 for gt in np.unique(gt_pairs, axis=0):
                     mask_valid_gt |= (gt_ids == gt).all(axis=1)
@@ -369,7 +372,10 @@ class Evaluator:
                 mask_valid_pd = np.zeros(n_pairs, dtype=np.bool_)
                 pd_tbl = tbl.filter(predictions)
                 pd_pairs = np.column_stack(
-                    [pd_tbl[col].to_numpy() for col in ("datum_id", "pd_id")]
+                    [
+                        pd_tbl[col].to_numpy()
+                        for col in ("datum_id", "pd_id", "pd_label_id")
+                    ]
                 ).astype(np.int64)
                 for pd in np.unique(pd_pairs, axis=0):
                     mask_valid_pd |= (pd_ids == pd).all(axis=1)
