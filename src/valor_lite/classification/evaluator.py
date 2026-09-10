@@ -496,6 +496,123 @@ class Evaluator:
 
         return loader.finalize(index_to_label_override=self._index_to_label)
 
+    def remap_labels(
+        self,
+        mapping: dict[str, str],
+        batch_size: int = 1_000,
+        path: str | Path | None = None,
+    ) -> Evaluator:
+        """
+        Remap labels into a new evaluator cache.
+
+        Parameters
+        ----------
+        mapping : dict[str, str]
+            Label replacements applied to both ground truths and predictions.
+            Labels absent from the mapping retain their names. Unknown source
+            labels are ignored. Replacements apply once, without chaining.
+            Predictions that map to the same label within a datum are merged
+            using their highest score, without summing scores. The cached
+            hardmax winner is preserved, including ties and filtered subsets.
+        batch_size : int, default=1_000
+            The maximum number of rows read per file during the ROC sort merge.
+        path : str | Path, optional
+            Destination for a file-based cache. Required for file-based
+            evaluators and ignored for in-memory evaluators, as with filter.
+
+        Returns
+        -------
+        Evaluator
+            A new evaluator containing remapped data and rebuilt ROC caches.
+            The source evaluator is unchanged.
+        """
+        if not isinstance(mapping, dict) or any(
+            not isinstance(source, str) or not isinstance(target, str)
+            for source, target in mapping.items()
+        ):
+            raise TypeError("mapping must be a dict[str, str]")
+
+        label_to_index: dict[str, int] = {}
+        old_indices = [-1]
+        new_indices = [-1]
+        new_labels: list[str | None] = [None]
+        for old_index, label in self._index_to_label.items():
+            new_label = mapping.get(label, label)
+            new_index = label_to_index.setdefault(
+                new_label, len(label_to_index)
+            )
+            old_indices.append(old_index)
+            new_indices.append(new_index)
+            new_labels.append(new_label)
+
+        if isinstance(self._reader, FileCacheReader):
+            if not path:
+                raise ValueError(
+                    "expected path to be defined for file-based loader"
+                )
+            builder = Builder.persistent(
+                path=path,
+                batch_size=self._reader.batch_size,
+                rows_per_file=self._reader.rows_per_file,
+                compression=self._reader.compression,
+                metadata_fields=self._metadata_fields,
+            )
+        else:
+            builder = Builder.in_memory(
+                batch_size=self._reader.batch_size,
+                metadata_fields=self._metadata_fields,
+            )
+
+        old_ids = pa.array(old_indices, type=pa.int64())
+        new_ids = pa.array(new_indices, type=pa.int64())
+        labels = pa.array(new_labels, type=pa.string())
+        merges_labels = len(label_to_index) < len(self._index_to_label)
+        for tbl in self._reader.iterate_tables():
+            for side in ("gt", "pd"):
+                id_column = f"{side}_label_id"
+                label_column = f"{side}_label"
+                indices = pc.index_in(tbl[id_column], value_set=old_ids)
+                for column, values in (
+                    (id_column, pc.take(new_ids, indices)),
+                    (label_column, pc.take(labels, indices)),
+                ):
+                    index = tbl.schema.get_field_index(column)
+                    tbl = tbl.set_column(index, tbl.schema[index], values)
+
+            if merges_labels:
+                # Complete datums are contained within each source fragment.
+                # Retain the highest score per resulting prediction label;
+                # prefer the original winner when equal scores collapse.
+                order = np.lexsort(
+                    (
+                        ~tbl["pd_winner"].to_numpy(),
+                        -tbl["pd_score"].to_numpy(),
+                    )
+                )
+                ids = np.column_stack(
+                    [
+                        tbl[col].to_numpy()
+                        for col in ("datum_id", "pd_label_id")
+                    ]
+                )
+                _, indices = np.unique(ids[order], axis=0, return_index=True)
+                tbl = tbl.take(np.sort(order[indices]))
+
+            matches = pc.and_(
+                pc.equal(tbl["gt_label_id"], tbl["pd_label_id"]),
+                pc.greater_equal(tbl["pd_label_id"], 0),
+            )
+            index = tbl.schema.get_field_index("match")
+            tbl = tbl.set_column(index, tbl.schema[index], matches)
+            builder._writer.write_table(tbl)
+
+        return builder.finalize(
+            batch_size=batch_size,
+            index_to_label_override={
+                index: label for label, index in label_to_index.items()
+            },
+        )
+
     def iterate_values(self, datums: pc.Expression | None = None):
         columns = [
             "datum_id",
