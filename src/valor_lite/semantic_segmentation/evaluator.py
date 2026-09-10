@@ -334,6 +334,102 @@ class Evaluator:
 
         return builder.finalize(index_to_label_override=self._index_to_label)
 
+    def remap_labels(
+        self,
+        mapping: dict[str, str],
+        path: str | Path | None = None,
+    ) -> Evaluator:
+        """
+        Remap labels into a new evaluator cache.
+
+        Parameters
+        ----------
+        mapping : dict[str, str]
+            Label replacements applied to both ground truths and predictions.
+            Labels absent from the mapping retain their names. Unknown source
+            labels are ignored. Replacements apply once, without chaining.
+            Multiple labels may map to the same label; their pixel counts are
+            combined during metric computation. Cache rows and their metadata
+            are preserved, including background and filtered pixels.
+        path : str | Path, optional
+            Destination for a file-based cache. Required for file-based
+            evaluators and ignored for in-memory evaluators, as with filter.
+
+        Returns
+        -------
+        Evaluator
+            A new evaluator containing remapped pixel counts. The source
+            evaluator is unchanged.
+        """
+        if not isinstance(mapping, dict) or any(
+            not isinstance(source, str) or not isinstance(target, str)
+            for source, target in mapping.items()
+        ):
+            raise TypeError("mapping must be a dict[str, str]")
+
+        label_to_index: dict[str, int] = {}
+        old_indices = [-1]
+        new_indices = [-1]
+        new_labels: list[str | None] = [None]
+        for old_index, label in self._index_to_label.items():
+            new_label = mapping.get(label, label)
+            new_index = label_to_index.setdefault(
+                new_label, len(label_to_index)
+            )
+            old_indices.append(old_index)
+            new_indices.append(new_index)
+            new_labels.append(new_label)
+
+        if isinstance(self._reader, FileCacheReader):
+            if not path:
+                raise ValueError(
+                    "expected path to be defined for file-based cache"
+                )
+            builder = Builder.persistent(
+                path=path,
+                batch_size=self._reader.batch_size,
+                rows_per_file=self._reader.rows_per_file,
+                compression=self._reader.compression,
+                metadata_fields=self._metadata_fields,
+            )
+        else:
+            builder = Builder.in_memory(
+                batch_size=self._reader.batch_size,
+                metadata_fields=self._metadata_fields,
+            )
+
+        old_ids = pa.array(old_indices, type=pa.int64())
+        new_ids = pa.array(new_indices, type=pa.int64())
+        labels = pa.array(new_labels, type=pa.string())
+        for tbl in self._reader.iterate_tables():
+            for side in ("gt", "pd"):
+                id_column = f"{side}_label_id"
+                label_column = f"{side}_label"
+                indices = pc.index_in(tbl[id_column], value_set=old_ids)
+                # Filtered pixels can retain label strings with a -1 ID.
+                # Preserve those strings without reviving the removed labels.
+                remapped_labels = pc.if_else(
+                    pc.greater_equal(tbl[id_column], 0),
+                    pc.take(labels, indices),
+                    tbl[label_column],
+                )
+                for column, values in (
+                    (id_column, pc.take(new_ids, indices)),
+                    (label_column, remapped_labels),
+                ):
+                    index = tbl.schema.get_field_index(column)
+                    tbl = tbl.set_column(index, tbl.schema[index], values)
+
+            # Keep datum-aligned fragments and annotation metadata intact.
+            # Metric computation sums counts for the resulting label pairs.
+            builder._writer.write_table(tbl)
+
+        return builder.finalize(
+            index_to_label_override={
+                index: label for label, index in label_to_index.items()
+            },
+        )
+
     def _compute_confusion_matrix_intermediate(
         self, datums: pc.Expression | None = None
     ) -> NDArray[np.uint64]:
