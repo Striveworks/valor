@@ -1,9 +1,41 @@
 import numpy as np
+import pytest
 
 from valor_lite.object_detection.computation import (
     calculate_ranking_boundaries,
     compute_counts,
 )
+
+
+@pytest.mark.parametrize("seed", range(5))
+@pytest.mark.parametrize("n_rows", [0, 1, 10_000])
+def test_ranking_boundaries_match_streaming_reference(seed, n_rows):
+    rng = np.random.default_rng(seed)
+    pairs = np.column_stack(
+        [
+            rng.integers(0, 10, n_rows),
+            rng.integers(-1, 30, n_rows),
+            np.arange(n_rows),
+            rng.integers(0, 4, n_rows),
+            rng.integers(0, 4, n_rows),
+            rng.choice([0.0, 0.1, 0.5, 0.5 + 1e-12, 0.9, 1.0], n_rows),
+            rng.integers(0, 10, n_rows) / 10,
+        ]
+    )
+    pairs = pairs[np.lexsort((-pairs[:, 5], -pairs[:, 6]))]
+    expected = np.full(n_rows, 2.0)
+    best_iou = {}
+    for index, (datum, gt, _, gt_label, pd_label, iou, _) in enumerate(pairs):
+        if gt < 0 or gt_label != pd_label:
+            continue
+        key = (datum, gt, gt_label)
+        previous = best_iou.get(key)
+        if previous is None or iou > previous:
+            expected[index] = 0.0 if previous is None else previous
+            best_iou[key] = iou
+    np.testing.assert_array_equal(
+        calculate_ranking_boundaries(pairs), expected
+    )
 
 
 def test_computation_calculate_ranking_boundaries_label_mismatch_edge_case():

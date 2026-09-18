@@ -20,67 +20,120 @@ def _merge(
     table_sort_override: Callable[[pa.Table], pa.Table] | None = None,
 ):
     """Merge locally sorted cache fragments."""
+    memory_fragments = []
     for tbl in source.iterate_tables(columns=columns):
         if table_sort_override is not None:
             sorted_tbl = table_sort_override(tbl)
         else:
             sorted_tbl = tbl.sort_by(sorting)
-        intermediate_sink.write_table(sorted_tbl)
-    intermediate_source = intermediate_sink.to_reader()
+        if isinstance(intermediate_sink, MemoryCacheWriter):
+            # Keep each sorted run separate; concatenation is not a merge.
+            memory_fragments.append(sorted_tbl)
+        else:
+            intermediate_sink.write_table(sorted_tbl)
+    if isinstance(intermediate_sink, MemoryCacheWriter):
+        fragment_iterators = (
+            iter(tbl.to_batches(max_chunksize=batch_size))
+            for tbl in memory_fragments
+        )
+    else:
+        intermediate_source = intermediate_sink.to_reader()
+        fragment_iterators = (
+            intermediate_source.iterate_fragment_batch_iterators(
+                batch_size=batch_size
+            )
+        )
 
-    # define merge key
-    def create_sort_key(
-        batches: list[pa.RecordBatch],
-        batch_idx: int,
-        row_idx: int,
-    ):
-        args = [
-            -batches[batch_idx][name][row_idx].as_py()
-            if direction == "descending"
-            else batches[batch_idx][name][row_idx].as_py()
-            for name, direction in sorting
-        ]
+    # Materialize numeric sort keys once per input batch. Python scalars retain
+    # integer precision and avoid an Arrow scalar conversion for every row.
+    sort_values = []
+
+    def create_sort_key(batch_idx: int, row_idx: int):
         return (
-            *args,
+            *(values[row_idx] for values in sort_values[batch_idx]),
             batch_idx,
             row_idx,
         )
 
-    # merge sorted rows
     heap = []
     batch_iterators = []
     batches = []
-    for batch_idx, batch_iter in enumerate(
-        intermediate_source.iterate_fragment_batch_iterators(
-            batch_size=batch_size
+    output_batches = []
+    output_offsets = {}
+    output_indices = []
+    output_size = 0
+    output_batch_size = min(sink.batch_size, 65_536)
+    if isinstance(sink, FileCacheWriter):
+        output_batch_size = min(output_batch_size, sink.rows_per_file)
+    output_batch_size = max(1, output_batch_size)
+
+    def load_batch(batch_idx: int):
+        batch = next(batch_iterators[batch_idx], None)
+        while batch is not None and batch.num_rows == 0:
+            batch = next(batch_iterators[batch_idx], None)
+        batches[batch_idx] = batch
+        output_offsets.pop(batch_idx, None)
+        if batch is None:
+            sort_values[batch_idx] = []
+            return False
+        values = [batch[name].to_pylist() for name, _ in sorting]
+        sort_values[batch_idx] = [
+            [-value for value in column]
+            if direction == "descending"
+            else column
+            for column, (_, direction) in zip(values, sorting)
+        ]
+        return True
+
+    def flush_output():
+        nonlocal output_size
+        if not output_indices:
+            return
+        # Gather in one Arrow operation, retaining all payload columns and
+        # exact heap order. Input batches stay alive until their rows are copied.
+        table = pa.Table.from_batches(output_batches).take(
+            pa.array(output_indices, type=pa.int64())
         )
-    ):
+        for batch in table.to_batches(max_chunksize=output_batch_size):
+            sink.write_batch(batch)
+        output_batches.clear()
+        output_offsets.clear()
+        output_indices.clear()
+        output_size = 0
+
+    for batch_idx, batch_iter in enumerate(fragment_iterators):
         batch_iterators.append(batch_iter)
-        batches.append(next(batch_iterators[batch_idx], None))
-        if batches[batch_idx] is not None and len(batches[batch_idx]) > 0:
-            heap.append(create_sort_key(batches, batch_idx, 0))
+        batches.append(None)
+        sort_values.append([])
+        if load_batch(batch_idx):
+            heap.append(create_sort_key(batch_idx, 0))
     heapq.heapify(heap)
 
     while heap:
         row = heapq.heappop(heap)
         batch_idx = row[-2]
         row_idx = row[-1]
-        row_table = batches[batch_idx].slice(row_idx, 1)
-        sink.write_batch(row_table)
+        if batch_idx not in output_offsets:
+            output_offsets[batch_idx] = output_size
+            output_batches.append(batches[batch_idx])
+            output_size += batches[batch_idx].num_rows
+        output_indices.append(output_offsets[batch_idx] + row_idx)
+        if len(output_indices) >= output_batch_size:
+            flush_output()
         row_idx += 1
         if row_idx < len(batches[batch_idx]):
             heapq.heappush(
                 heap,
-                create_sort_key(batches, batch_idx, row_idx),
+                create_sort_key(batch_idx, row_idx),
             )
         else:
-            batches[batch_idx] = next(batch_iterators[batch_idx], None)
-            if batches[batch_idx] is not None and len(batches[batch_idx]) > 0:
+            if load_batch(batch_idx):
                 heapq.heappush(
                     heap,
-                    create_sort_key(batches, batch_idx, 0),
+                    create_sort_key(batch_idx, 0),
                 )
 
+    flush_output()
     sink.flush()
 
 

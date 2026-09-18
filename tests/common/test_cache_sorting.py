@@ -154,3 +154,45 @@ def test_cache_sort_by(writer1: MemoryCacheWriter | FileCacheWriter):
                 if pair[1] == prev_pair[1]:
                     assert pair[0] < prev_pair[0]
             prev_pair = pair
+
+
+@pytest.mark.parametrize("output_size", [1, 7, 64])
+@pytest.mark.parametrize("input_size", [1, 5, 19])
+@pytest.mark.parametrize("in_memory", [False, True])
+def test_merge_preserves_ties_and_payload(
+    tmp_path, output_size, input_size, in_memory
+):
+    schema = pa.schema(
+        [
+            ("score", pa.float64()),
+            ("id", pa.uint64()),
+            ("payload", pa.string()),
+            ("metadata", pa.list_(pa.int64())),
+        ]
+    )
+    source = FileCacheWriter.create(tmp_path / "source", schema, 10, 100)
+    expected = []
+    # Empty fragments and ties at batch boundaries must not drop any rows.
+    for fragment, size in enumerate([0, 21, 0, 39, 17, 0]):
+        rows = [
+            {
+                "score": float(index % 3),
+                "id": 2**63 + index % 4,
+                "payload": f"{fragment}:{index}",
+                "metadata": None if index % 2 else [fragment, index],
+            }
+            for index in range(size)
+        ]
+        source.write_table(pa.Table.from_pylist(rows, schema=schema))
+        expected.extend(rows)
+    sorting = [("score", "descending"), ("id", "descending")]
+    expected = sorted(expected, key=lambda row: (-row["score"], -row["id"]))
+    if in_memory:
+        sink = MemoryCacheWriter.create(schema, output_size)
+    else:
+        sink = FileCacheWriter.create(
+            tmp_path / "sink", schema, output_size, 23
+        )
+    sort(source.to_reader(), sink, input_size, sorting)
+    actual = pa.concat_tables(list(sink.to_reader().iterate_tables()))
+    assert actual.equals(pa.Table.from_pylist(expected, schema=schema))

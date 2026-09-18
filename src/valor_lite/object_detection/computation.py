@@ -261,39 +261,47 @@ def calculate_ranking_boundaries(
     NDArray[np.float64]
         A 1-D array containing the lower IOU boundary for classifying pairs as true-positive across chunks.
     """
-    ids = ranked_pairs[:, (0, 1, 2, 3, 4)].astype(np.int64)
-    gts = ids[:, (0, 1, 3)]
-    gt_labels = ids[:, 3]
-    pd_labels = ids[:, 4]
+    ids = ranked_pairs[:, (0, 1, 3, 4)].astype(np.int64)
+    gts = ids[:, :3]
+    gt_labels = ids[:, 2]
+    pd_labels = ids[:, 3]
     ious = ranked_pairs[:, 5]
 
     # set default boundary to 2.0 as it will be used to check lower boundary in range [0-1].
     iou_boundary = np.ones_like(ious) * 2
 
-    mask_matching_labels = gt_labels == pd_labels
-    mask_valid_gts = gts[:, 1] >= 0
-    unique_gts = np.unique(gts[mask_valid_gts], axis=0)
-    for gt in unique_gts:
-        mask_gt = (gts == gt).all(axis=1)
-        mask_gt &= mask_matching_labels
-        if mask_gt.sum() <= 1:
-            iou_boundary[mask_gt] = 0.0
+    indices = np.flatnonzero((gt_labels == pd_labels) & (gts[:, 1] >= 0))
+    if indices.size == 0:
+        return iou_boundary
+
+    # Group once instead of scanning the entire fragment for every ground
+    # truth. Lexsort is stable, preserving score/IOU order within each group.
+    group_ids = gts[indices]
+    order = np.lexsort((group_ids[:, 2], group_ids[:, 1], group_ids[:, 0]))
+    indices = indices[order]
+    group_ids = group_ids[order]
+    boundaries = np.r_[
+        0,
+        np.flatnonzero((group_ids[1:] != group_ids[:-1]).any(axis=1)) + 1,
+        indices.size,
+    ]
+    for start, stop in zip(boundaries[:-1], boundaries[1:]):
+        group = indices[start:stop]
+        if group.size == 1:
+            iou_boundary[group] = 0.0
             continue
 
-        running_max = np.maximum.accumulate(ious[mask_gt])
-        mask_rmax = np.isclose(running_max, ious[mask_gt])
+        running_max = np.maximum.accumulate(ious[group])
+        mask_rmax = np.isclose(running_max, ious[group])
         mask_rmax[1:] &= running_max[1:] > running_max[:-1]
-        mask_gt[mask_gt] &= mask_rmax
-
-        indices = np.where(mask_gt)[0]
-
-        iou_boundary[indices[0]] = 0.0
-        iou_boundary[indices[1:]] = ious[indices[:-1]]
+        selected = group[mask_rmax]
+        iou_boundary[selected[0]] = 0.0
+        iou_boundary[selected[1:]] = ious[selected[:-1]]
 
     return iou_boundary
 
 
-def rank_table(tbl: pa.Table) -> pa.Table:
+def rank_table(tbl: pa.Table, already_sorted: bool = False) -> pa.Table:
     """Rank table for AP computation."""
     numeric_columns = [
         "datum_id",
@@ -310,7 +318,7 @@ def rank_table(tbl: pa.Table) -> pa.Table:
     ]
 
     # initial sort
-    sorted_tbl = tbl.sort_by(sorting_args)
+    sorted_tbl = tbl if already_sorted else tbl.sort_by(sorting_args)
     pairs = np.column_stack(
         [sorted_tbl[col].to_numpy() for col in numeric_columns]
     )

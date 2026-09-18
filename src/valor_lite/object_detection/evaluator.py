@@ -1,4 +1,5 @@
 import json
+from functools import partial
 from pathlib import Path
 
 import numpy as np
@@ -145,7 +146,7 @@ class Builder:
         )
 
     def _rank(self, batch_size: int = 1_000):
-        """Perform pair ranking over the detailed cache."""
+        """Perform pair ranking over locally sorted detailed cache fragments."""
 
         detailed_reader = self._detailed_writer.to_reader()
         compute.sort(
@@ -161,7 +162,7 @@ class Builder:
                 for field in self._ranked_writer.schema
                 if field.name != "iou_prev"
             ],
-            table_sort_override=rank_table,
+            table_sort_override=partial(rank_table, already_sorted=True),
         )
         self._ranked_writer.flush()
 
@@ -440,6 +441,12 @@ class Evaluator:
         Evaluator
             A new evaluator containing remapped detailed and rebuilt ranked
             caches. The source evaluator is unchanged.
+
+        Notes
+        -----
+        Renames that keep labels distinct reuse existing ranked pairs. Label
+        merges rebuild ranking from detailed pairs. Complete cache fragments
+        are read for remapping and ranking; batch_size only controls merge reads.
         """
         if not isinstance(mapping, dict) or any(
             not isinstance(source, str) or not isinstance(target, str)
@@ -481,33 +488,50 @@ class Evaluator:
         old_ids = pa.array(old_indices, type=pa.int64())
         new_ids = pa.array(new_indices, type=pa.int64())
         labels = pa.array(new_labels, type=pa.string())
-        for tbl in self._detailed_reader.iterate_tables():
+
+        def remap_table(tbl: pa.Table) -> pa.Table:
             for side in ("gt", "pd"):
                 id_column = f"{side}_label_id"
                 label_column = f"{side}_label"
                 indices = pc.index_in(tbl[id_column], value_set=old_ids)
-                # Filtering can leave label strings on invalid annotations.
-                # Preserve those strings and the -1 sentinel.
-                remapped_labels = pc.if_else(
-                    pc.greater_equal(tbl[id_column], 0),
-                    pc.take(labels, indices),
-                    tbl[label_column],
+                if label_column in tbl.schema.names:
+                    # Preserve stale strings on filtered annotations, whose
+                    # IDs remain -1. Ranked caches only contain label IDs.
+                    remapped_labels = pc.if_else(
+                        pc.greater_equal(tbl[id_column], 0),
+                        pc.take(labels, indices),
+                        tbl[label_column],
+                    )
+                    index = tbl.schema.get_field_index(label_column)
+                    tbl = tbl.set_column(
+                        index, tbl.schema[index], remapped_labels
+                    )
+                index = tbl.schema.get_field_index(id_column)
+                tbl = tbl.set_column(
+                    index, tbl.schema[index], pc.take(new_ids, indices)
                 )
-                for column, values in (
-                    (id_column, pc.take(new_ids, indices)),
-                    (label_column, remapped_labels),
-                ):
-                    index = tbl.schema.get_field_index(column)
-                    tbl = tbl.set_column(index, tbl.schema[index], values)
+            return tbl
 
+        for tbl in self._detailed_reader.iterate_tables():
             # Keep complete source fragments together for ranking and counts.
-            builder._detailed_writer.write_table(tbl)
+            builder._detailed_writer.write_table(remap_table(tbl))
 
-        return builder.finalize(
-            batch_size=batch_size,
-            index_to_label_override={
+        if len(label_to_index) == len(self._index_to_label):
+            # Renames preserve label equality, matches, ordering and AP
+            # boundaries. Copy the existing ranked cache with the new IDs.
+            for tbl in self._ranked_reader.iterate_tables():
+                builder._ranked_writer.write_table(remap_table(tbl))
+        else:
+            # Scores and IOUs did not change: detailed fragments remain sorted.
+            builder._rank(batch_size)
+
+        return Evaluator(
+            detailed_reader=builder._detailed_writer.to_reader(),
+            ranked_reader=builder._ranked_writer.to_reader(),
+            index_to_label={
                 index: label for label, index in label_to_index.items()
             },
+            metadata_fields=self._metadata_fields,
         )
 
     def compute_precision_recall(

@@ -4,6 +4,7 @@ __pycache__
 build
 .tox
 .coverage*
+data
 
 .venv
 .env.auth

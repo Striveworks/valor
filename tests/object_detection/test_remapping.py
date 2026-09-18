@@ -12,6 +12,7 @@ from valor_lite.object_detection import (
     Evaluator,
     Loader,
 )
+from valor_lite.object_detection.evaluator import Builder
 
 
 def _box(uid, xmin, labels, scores=None):
@@ -251,3 +252,72 @@ def test_persistent_remap_requires_new_path(tmp_path: Path):
     with pytest.raises(FileExistsError):
         source.remap_labels({"cat": "dog"}, path=source_path)
     assert _table(Evaluator.load(source_path)._detailed_reader).equals(before)
+
+
+@pytest.mark.parametrize(
+    "mapping", [{}, {"cat": "feline"}, {"cat": "dog", "dog": "cat"}]
+)
+def test_renaming_reuses_ranked_pairs(
+    loader, tmp_path, remapping_detections, monkeypatch, mapping
+):
+    loader.add_bounding_boxes(remapping_detections)
+    source = loader.finalize()
+
+    def fail_ranking(*args, **kwargs):
+        pytest.fail("A one-to-one rename should not rebuild ranked pairs")
+
+    monkeypatch.setattr(Builder, "_rank", fail_ranking)
+    remapped = source.remap_labels(mapping, path=tmp_path / "renamed")
+    columns = [
+        name
+        for name in source._ranked_reader.schema.names
+        if name not in ("gt_label_id", "pd_label_id")
+    ]
+    assert (
+        _table(remapped._ranked_reader)
+        .select(columns)
+        .equals(_table(source._ranked_reader).select(columns))
+    )
+
+
+def test_dense_remapping_matches_sorted_reference(loader, tmp_path):
+    from valor_lite.object_detection.computation import rank_table
+
+    loader.add_bounding_boxes(
+        [
+            Detection(
+                f"dense{datum}",
+                [
+                    _box(f"g{datum}_{i}", i / 10, ["cat" if i % 2 else "dog"])
+                    for i in range(20)
+                ],
+                [
+                    _box(
+                        f"p{datum}_{i}",
+                        i % 10 / 10,
+                        ["cat", "dog"],
+                        [0.9 - (i % 10) / 100, 0.5],
+                    )
+                    for i in range(384)
+                ],
+            )
+            for datum in range(2)
+        ]
+    )
+    source = loader.finalize()
+    remapped = source.remap_labels(
+        {"cat": "animal", "dog": "animal"},
+        path=tmp_path / "remapped",
+        batch_size=7,
+    )
+    columns = [
+        name
+        for name in remapped._ranked_reader.schema.names
+        if name != "iou_prev"
+    ]
+    reference = rank_table(_table(remapped._detailed_reader).select(columns))
+    actual = _table(remapped._ranked_reader)
+    # Tied rows from different fragments can interleave differently, but the
+    # selected matches and their AP boundaries must be identical.
+    sorting = [("datum_id", "ascending"), ("pd_id", "ascending")]
+    assert actual.sort_by(sorting).equals(reference.sort_by(sorting))
