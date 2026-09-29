@@ -1,3 +1,4 @@
+import json
 from pathlib import Path
 
 import numpy as np
@@ -5,13 +6,18 @@ import pyarrow as pa
 import pyarrow.compute as pc
 import pytest
 
-from valor_lite.cache import FileCacheReader
+from valor_lite.cache import (
+    FileCacheReader,
+    FileCacheWriter,
+    MemoryCacheWriter,
+)
 from valor_lite.semantic_segmentation import (
     Bitmask,
     Evaluator,
     Loader,
     Segmentation,
 )
+from valor_lite.semantic_segmentation.shared import encode_metadata_fields
 
 
 @pytest.fixture
@@ -330,3 +336,147 @@ def test_persistent_remap_requires_new_path(tmp_path: Path):
     with pytest.raises(FileExistsError):
         source.remap_labels({"cat": "dog"}, path=source_path)
     assert _table(Evaluator.load(source_path)._reader).equals(before)
+
+
+@pytest.mark.parametrize("side", ["gt", "pd"])
+def test_remap_filter_selects_whole_original_annotations(
+    loader: Loader, tmp_path: Path, side
+):
+    metadata_key = f"{side}_xmin"
+    for datum in range(2):
+        targets = [
+            Bitmask(
+                np.array([[True, True, True, False, False, False]]),
+                "cat",
+                {metadata_key: 1.0 if datum == 0 else 4.0},
+            ),
+            Bitmask(
+                np.array([[False, False, False, True, True, False]]),
+                "dog",
+                {metadata_key: 2.0},
+            ),
+        ]
+        counterparts = [
+            Bitmask(
+                np.array([[True, False, False, True, False, False]]), "bird"
+            ),
+            Bitmask(
+                np.array([[False, True, True, False, True, False]]), "sky"
+            ),
+        ]
+        loader.add_data(
+            [
+                Segmentation(
+                    str(datum),
+                    targets if side == "gt" else counterparts,
+                    counterparts if side == "gt" else targets,
+                    (1, 6),
+                )
+            ]
+        )
+    source = loader.finalize()
+    before = _table(source._reader)
+    mapping = {"cat": "animal", "dog": "animal"}
+    remapped = source.remap_labels(mapping, path=tmp_path / "remapped")
+    if isinstance(source._reader, FileCacheReader):
+        remapped = Evaluator.load(tmp_path / "remapped")
+
+    # Only one intersection row matches, but all three pixels of the
+    # original cat annotation in datum 0 must survive. Datum 1 and dog do not.
+    condition = (pc.field(metadata_key) == 1.0) & (pc.field("count") == 1)
+    arguments = {"groundtruths" if side == "gt" else "predictions": condition}
+    filtered = remapped.filter(**arguments, path=tmp_path / "after")
+    expected = source.filter(
+        **arguments, path=tmp_path / "before"
+    ).remap_labels(mapping, path=tmp_path / "expected")
+    count_field = (
+        "number_of_groundtruth_pixels"
+        if side == "gt"
+        else "number_of_prediction_pixels"
+    )
+    assert getattr(filtered.info, count_field) == 3
+    assert filtered.info.number_of_pixels == 12
+    _assert_metrics_equal(filtered, expected)
+    assert _table(source._reader).equals(before)
+    for annotation_side in ("gt", "pd"):
+        column = f"__valor_{annotation_side}_annotation_id"
+        assert _table(filtered._reader)[column].equals(before[column])
+
+    # Further label collisions and a persistent round trip retain provenance.
+    again = filtered.remap_labels({"animal": "bird"}, path=tmp_path / "again")
+    if isinstance(source._reader, FileCacheReader):
+        again = Evaluator.load(tmp_path / "again")
+    again = again.filter(**arguments, path=tmp_path / "again_filtered")
+    assert getattr(again.info, count_field) == 3
+    arguments = {
+        "groundtruths"
+        if side == "gt"
+        else "predictions": (pc.field(metadata_key) == 2.0)
+    }
+    removed = again.filter(**arguments, path=tmp_path / "removed")
+    assert getattr(removed.info, count_field) == 0
+    assert removed.info.number_of_pixels == 12
+
+
+@pytest.mark.parametrize("persistent", [False, True])
+def test_remap_and_filter_legacy_cache(tmp_path: Path, persistent):
+    loader = Loader.in_memory(metadata_fields=[("gt_xmin", "double")])
+    loader.add_data(
+        [
+            Segmentation(
+                "datum",
+                [
+                    Bitmask(
+                        np.array([[True, False, False]]),
+                        "cat",
+                        {"gt_xmin": 1.0},
+                    ),
+                    Bitmask(
+                        np.array([[False, True, False]]),
+                        "dog",
+                        {"gt_xmin": 2.0},
+                    ),
+                ],
+                [Bitmask(np.array([[True, True, False]]), "bird")],
+                (1, 3),
+            )
+        ]
+    )
+    current = loader.finalize()
+    legacy_table = _table(current._reader).drop(
+        ["__valor_gt_annotation_id", "__valor_pd_annotation_id"]
+    )
+    if persistent:
+        path = tmp_path / "legacy"
+        writer = FileCacheWriter.create(
+            path / "counts", legacy_table.schema, 1, 1
+        )
+        writer.write_table(legacy_table)
+        with open(path / "metadata.json", "w") as file:
+            json.dump(encode_metadata_fields(current._metadata_fields), file)
+        legacy = Evaluator.load(path)
+    else:
+        writer = MemoryCacheWriter.create(legacy_table.schema, 1)
+        writer.write_table(legacy_table)
+        legacy = Evaluator(
+            writer.to_reader(),
+            current._index_to_label,
+            current._metadata_fields,
+        )
+
+    _assert_metrics_equal(legacy, current)
+    condition = pc.field("gt_xmin") == 1.0
+    mapping = {"cat": "animal", "dog": "animal"}
+    expected = legacy.filter(
+        groundtruths=condition, path=tmp_path / "filtered_legacy"
+    ).remap_labels(mapping, path=tmp_path / "expected")
+    remapped = legacy.remap_labels(mapping, path=tmp_path / "remapped_legacy")
+    if persistent:
+        remapped = Evaluator.load(tmp_path / "remapped_legacy")
+    actual = remapped.filter(groundtruths=condition, path=tmp_path / "actual")
+    assert actual.info.number_of_groundtruth_pixels == 1
+    assert actual.info.number_of_pixels == 3
+    _assert_metrics_equal(actual, expected)
+    assert _table(legacy._reader).equals(legacy_table)
+    assert _table(actual._reader).schema == _table(current._reader).schema
+    assert actual.info.metadata_fields == current.info.metadata_fields

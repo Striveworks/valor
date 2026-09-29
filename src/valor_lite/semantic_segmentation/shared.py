@@ -41,9 +41,11 @@ def generate_schema(
         # groundtruth
         ("gt_label", pa.string()),
         ("gt_label_id", pa.int64()),
+        ("__valor_gt_annotation_id", pa.int64()),
         # prediction
         ("pd_label", pa.string()),
         ("pd_label_id", pa.int64()),
+        ("__valor_pd_annotation_id", pa.int64()),
         # pair
         ("count", pa.uint64()),
     ]
@@ -62,6 +64,20 @@ def generate_schema(
             *metadata_fields,
         ]
     )
+
+
+def ensure_annotation_ids(table: pa.Table) -> pa.Table:
+    """Derive original annotation identities when reading a legacy cache."""
+    for side in ("gt", "pd"):
+        column = f"__valor_{side}_annotation_id"
+        if column not in table.column_names:
+            label_column = f"{side}_label_id"
+            table = table.add_column(
+                table.schema.get_field_index(label_column) + 1,
+                pa.field(column, pa.int64()),
+                table[label_column],
+            )
+    return table
 
 
 def encode_metadata_fields(

@@ -8,15 +8,19 @@ from valor_lite.semantic_segmentation.shared import (
 )
 
 
-def test_generate_schema_conflicting():
+@pytest.mark.parametrize(
+    "reserved",
+    ["count", "__valor_gt_annotation_id", "__valor_pd_annotation_id"],
+)
+def test_generate_schema_conflicting(reserved):
     fields = [
         ("field_a", pa.string()),
         ("field_b", "string"),
-        ("count", pa.int64()),
+        (reserved, pa.int64()),
     ]
     with pytest.raises(ValueError) as e:
         generate_schema(fields)
-    assert "metadata fields {'count'}" in str(e)
+    assert f"metadata fields {{'{reserved}'}}" in str(e)
 
 
 def test_metadata_codec():

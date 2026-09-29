@@ -151,6 +151,7 @@ class MemoryCacheWriter(MemoryCache):
 
         # internal state
         self._buffer = []
+        self._buffer_rows = 0
 
     @classmethod
     def create(
@@ -219,13 +220,12 @@ class MemoryCacheWriter(MemoryCache):
         batch : pa.RecordBatch
             A batch of columnar data.
         """
-        size = batch.num_rows
-        if self._buffer:
-            size += sum([b.num_rows for b in self._buffer])
+        size = batch.num_rows + self._buffer_rows
 
         # check size
         if size < self._batch_size:
             self._buffer.append(batch)
+            self._buffer_rows = size
             return
 
         if self._buffer:
@@ -238,6 +238,7 @@ class MemoryCacheWriter(MemoryCache):
                 combined_arrays, schema=self.schema
             )
             self._buffer = []
+            self._buffer_rows = 0
 
         # write batch
         self.write_table(pa.Table.from_batches([batch]))
@@ -270,6 +271,7 @@ class MemoryCacheWriter(MemoryCache):
                 [self._table, pa.Table.from_batches([batch])]
             )
             self._buffer = []
+            self._buffer_rows = 0
 
     def sort_by(
         self,

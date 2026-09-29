@@ -1,12 +1,14 @@
 import json
 from pathlib import Path
 
+import numpy as np
 import pyarrow as pa
 import pyarrow.compute as pc
 import pytest
 
 from valor_lite.cache import FileCacheReader
 from valor_lite.classification import Classification, Evaluator, Loader
+from valor_lite.classification.evaluator import Builder
 
 
 @pytest.fixture
@@ -255,3 +257,101 @@ def test_persistent_remap_requires_new_path(tmp_path: Path):
     with pytest.raises(FileExistsError):
         source.remap_labels({"cat": "dog"}, path=source_path)
     assert _table(Evaluator.load(source_path)._reader).equals(before)
+
+
+@pytest.mark.parametrize(
+    "mapping",
+    [
+        {},
+        {"absent": "unused"},
+        {"cat": "cat"},
+        {"cat": "feline"},
+        {"cat": "dog", "dog": "cat"},
+    ],
+)
+@pytest.mark.parametrize("filtered", [False, True])
+def test_renaming_reuses_roc_cache(
+    loader, tmp_path, remapping_classifications, monkeypatch, mapping, filtered
+):
+    loader.add_data(remapping_classifications)
+    source = loader.finalize()
+    if filtered:
+        source = source.filter(
+            datums=pc.field("datum_uid") == "datum0",
+            predictions=pc.field("pd_label") != "bird",
+            path=tmp_path / "filtered",
+        )
+    before = _table(source._reader)
+    roc_before = _table(source._roc_curve_reader)
+
+    def fail_rebuilding(*args, **kwargs):
+        pytest.fail("An injective rename must reuse ROC data without sorting")
+
+    monkeypatch.setattr(Builder, "finalize", fail_rebuilding)
+    remapped = source.remap_labels(mapping, path=tmp_path / "renamed")
+    assert remapped._index_to_label == {
+        index: mapping.get(label, label)
+        for index, label in source._index_to_label.items()
+    }
+    numeric = [
+        column
+        for column in before.column_names
+        if column not in ("gt_label", "pd_label")
+    ]
+    assert (
+        _table(remapped._reader).select(numeric).equals(before.select(numeric))
+    )
+    assert _table(remapped._roc_curve_reader).equals(roc_before)
+    assert _table(source._reader).equals(before)
+    if isinstance(source._reader, FileCacheReader):
+        reloaded = Evaluator.load(
+            tmp_path / "renamed",
+            index_to_label_override=remapped._index_to_label,
+        )
+        _assert_metrics_equal(reloaded, remapped)
+
+
+@pytest.mark.parametrize("seed", range(5))
+def test_merged_predictions_match_reference_selection(loader, tmp_path, seed):
+    rng = np.random.default_rng(seed)
+    labels = ["a", "b", "c", "d", "e", "f"]
+    loader.add_data(
+        [
+            Classification(
+                str(datum),
+                labels[datum % len(labels)],
+                rng.permutation(labels).tolist(),
+                (rng.integers(4, size=len(labels)) / 3).tolist(),
+            )
+            for datum in range(30)
+        ]
+    )
+    source = loader.finalize().filter(
+        predictions=pc.field("pd_label") != "c", path=tmp_path / "filtered"
+    )
+    mapping = {
+        label: "even" if i % 2 else "odd" for i, label in enumerate(labels)
+    }
+    expected = {}
+    for row in _table(source._reader).to_pylist():
+        row["gt_label"] = mapping[row["gt_label"]]
+        row["pd_label"] = mapping[row["pd_label"]]
+        row.pop("gt_label_id")
+        row.pop("pd_label_id")
+        row["match"] = row["gt_label"] == row["pd_label"]
+        key = (row["datum_id"], row["pd_label"])
+        previous = expected.get(key)
+        if previous is None or (row["pd_score"], row["pd_winner"]) > (
+            previous["pd_score"],
+            previous["pd_winner"],
+        ):
+            expected[key] = row
+    remapped = source.remap_labels(mapping, path=tmp_path / "remapped")
+    actual = (
+        _table(remapped._reader)
+        .drop(["gt_label_id", "pd_label_id"])
+        .to_pylist()
+    )
+    assert sorted(
+        actual, key=lambda row: (row["datum_id"], row["pd_label"])
+    ) == [row for _, row in sorted(expected.items())]

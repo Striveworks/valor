@@ -1,5 +1,69 @@
+import numpy as np
+import pyarrow as pa
+import pyarrow.compute as pc
+import pytest
+
 from valor_lite.classification import Classification, MetricType
 from valor_lite.classification.loader import Loader
+
+
+def test_roc_points_match_threshold_reference(loader, tmp_path, monkeypatch):
+    labels = ["cat", "dog", "bird"]
+    rng = np.random.default_rng(19)
+    loader.add_data(
+        [
+            Classification(
+                str(datum),
+                labels[datum % 3],
+                labels,
+                (rng.integers(3, size=3) / 2).tolist(),
+            )
+            for datum in range(27)
+        ]
+    )
+
+    def fail_scalar_write(*args, **kwargs):
+        pytest.fail("ROC points should be emitted in columnar batches")
+
+    monkeypatch.setattr(
+        loader._roc_curve_writer, "write_rows", fail_scalar_write
+    )
+    source = loader.finalize(batch_size=2)
+    filtered = source.filter(
+        datums=pc.field("datum_uid").isin(["0", "3", "6", "9"]),
+        predictions=pc.field("pd_label") != "bird",
+        path=tmp_path / "filtered",
+    )
+    for evaluator in (source, filtered):
+        table = pa.concat_tables(list(evaluator._reader.iterate_tables()))
+        roc = pa.concat_tables(
+            list(evaluator._roc_curve_reader.iterate_tables())
+        )
+        assert roc.schema.field("pd_label_id").type == pa.int64()
+        assert roc.schema.field("cumulative_fp").type == pa.uint64()
+        assert roc.schema.field("cumulative_tp").type == pa.uint64()
+        for label_id in evaluator._index_to_label:
+            rows = table.filter(
+                pc.field("pd_label_id") == label_id
+            ).to_pylist()
+            expected = {(0, 0)}
+            for threshold in {row["pd_score"] for row in rows}:
+                retained = [
+                    row for row in rows if row["pd_score"] >= threshold
+                ]
+                expected.add(
+                    (
+                        sum(not row["match"] for row in retained),
+                        sum(row["match"] for row in retained),
+                    )
+                )
+            actual = {(0, 0)} | {
+                (row["cumulative_fp"], row["cumulative_tp"])
+                for row in roc.filter(
+                    pc.field("pd_label_id") == label_id
+                ).to_pylist()
+            }
+            assert actual == expected
 
 
 def test_rocauc_with_animal_example(

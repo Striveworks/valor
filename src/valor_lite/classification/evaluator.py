@@ -203,14 +203,20 @@ class Builder:
                 if mask.sum() == 0:
                     continue
 
-                cumulative_fp = np.r_[
-                    running_max_fp[idx],
-                    np.cumsum(fps[mask]) + running_max_fp[idx],
-                ]
-                cumulative_tp = np.r_[
-                    running_max_tp[idx],
-                    np.cumsum(tps[mask]) + running_max_tp[idx],
-                ]
+                cumulative_fp = np.concatenate(
+                    (
+                        running_max_fp[idx : idx + 1],
+                        np.cumsum(fps[mask], dtype=np.uint64)
+                        + running_max_fp[idx],
+                    )
+                )
+                cumulative_tp = np.concatenate(
+                    (
+                        running_max_tp[idx : idx + 1],
+                        np.cumsum(tps[mask], dtype=np.uint64)
+                        + running_max_tp[idx],
+                    )
+                )
                 pd_scores = np.r_[running_max_scores[idx], scores[mask]]
 
                 indices = (
@@ -224,39 +230,32 @@ class Builder:
                 running_max_tp[idx] = cumulative_tp[-1]
                 running_max_scores[idx] = pd_scores[-1]
 
-                for fp, tp in zip(
-                    cumulative_fp[indices],
-                    cumulative_tp[indices],
-                ):
-                    last_pair[idx, 0] = fp
-                    last_pair[idx, 1] = tp
-                    self._roc_curve_writer.write_rows(
-                        [
-                            {
-                                "pd_label_id": idx,
-                                "cumulative_fp": fp,
-                                "cumulative_tp": tp,
-                            }
-                        ]
+                if indices.size:
+                    last_pair[idx, 0] = cumulative_fp[indices[-1]]
+                    last_pair[idx, 1] = cumulative_tp[indices[-1]]
+                    self._roc_curve_writer.write_columns(
+                        {
+                            "pd_label_id": np.full(
+                                indices.size, idx, dtype=np.int64
+                            ),
+                            "cumulative_fp": cumulative_fp[indices],
+                            "cumulative_tp": cumulative_tp[indices],
+                        }
                     )
 
         # ensure any remaining values are ingested
-        for idx in range(n_labels):
-            last_fp = last_pair[idx, 0]
-            last_tp = last_pair[idx, 1]
-            if (
-                last_fp != running_max_fp[idx]
-                or last_tp != running_max_tp[idx]
-            ):
-                self._roc_curve_writer.write_rows(
-                    [
-                        {
-                            "pd_label_id": idx,
-                            "cumulative_fp": running_max_fp[idx],
-                            "cumulative_tp": running_max_tp[idx],
-                        }
-                    ]
-                )
+        remaining = np.flatnonzero(
+            (last_pair[:, 0] != running_max_fp)
+            | (last_pair[:, 1] != running_max_tp)
+        )
+        if remaining.size:
+            self._roc_curve_writer.write_columns(
+                {
+                    "pd_label_id": remaining.astype(np.int64),
+                    "cumulative_fp": running_max_fp[remaining],
+                    "cumulative_tp": running_max_tp[remaining],
+                }
+            )
 
     def finalize(
         self,
@@ -523,8 +522,9 @@ class Evaluator:
         Returns
         -------
         Evaluator
-            A new evaluator containing remapped data and rebuilt ROC caches.
-            The source evaluator is unchanged.
+            A new evaluator containing remapped data. Renames that keep labels
+            distinct reuse ROC data; label merges rebuild it. The source
+            evaluator is unchanged.
         """
         if not isinstance(mapping, dict) or any(
             not isinstance(source, str) or not isinstance(target, str)
@@ -532,14 +532,20 @@ class Evaluator:
         ):
             raise TypeError("mapping must be a dict[str, str]")
 
+        remapped_labels = {
+            index: mapping.get(label, label)
+            for index, label in self._index_to_label.items()
+        }
+        merges_labels = len(set(remapped_labels.values())) < len(
+            self._index_to_label
+        )
         label_to_index: dict[str, int] = {}
         old_indices = [-1]
         new_indices = [-1]
         new_labels: list[str | None] = [None]
-        for old_index, label in self._index_to_label.items():
-            new_label = mapping.get(label, label)
+        for old_index, new_label in remapped_labels.items():
             new_index = label_to_index.setdefault(
-                new_label, len(label_to_index)
+                new_label, len(label_to_index) if merges_labels else old_index
             )
             old_indices.append(old_index)
             new_indices.append(new_index)
@@ -566,20 +572,24 @@ class Evaluator:
         old_ids = pa.array(old_indices, type=pa.int64())
         new_ids = pa.array(new_indices, type=pa.int64())
         labels = pa.array(new_labels, type=pa.string())
-        merges_labels = len(label_to_index) < len(self._index_to_label)
         for tbl in self._reader.iterate_tables():
             for side in ("gt", "pd"):
                 id_column = f"{side}_label_id"
                 label_column = f"{side}_label"
                 indices = pc.index_in(tbl[id_column], value_set=old_ids)
-                for column, values in (
-                    (id_column, pc.take(new_ids, indices)),
-                    (label_column, pc.take(labels, indices)),
-                ):
-                    index = tbl.schema.get_field_index(column)
-                    tbl = tbl.set_column(index, tbl.schema[index], values)
+                index = tbl.schema.get_field_index(label_column)
+                tbl = tbl.set_column(
+                    index, tbl.schema.field(index), pc.take(labels, indices)
+                )
+                if merges_labels:
+                    index = tbl.schema.get_field_index(id_column)
+                    tbl = tbl.set_column(
+                        index,
+                        tbl.schema.field(index),
+                        pc.take(new_ids, indices),
+                    )
 
-            if merges_labels:
+            if merges_labels and tbl.num_rows:
                 # Complete datums are contained within each source fragment.
                 # Retain the highest score per resulting prediction label;
                 # prefer the original winner when equal scores collapse.
@@ -587,6 +597,8 @@ class Evaluator:
                     (
                         ~tbl["pd_winner"].to_numpy(),
                         -tbl["pd_score"].to_numpy(),
+                        tbl["pd_label_id"].to_numpy(),
+                        tbl["datum_id"].to_numpy(),
                     )
                 )
                 ids = np.column_stack(
@@ -595,22 +607,36 @@ class Evaluator:
                         for col in ("datum_id", "pd_label_id")
                     ]
                 )
-                _, indices = np.unique(ids[order], axis=0, return_index=True)
-                tbl = tbl.take(np.sort(order[indices]))
+                groups = ids[order]
+                first = np.r_[True, (groups[1:] != groups[:-1]).any(axis=1)]
+                tbl = tbl.take(np.sort(order[first]))
 
-            matches = pc.and_(
-                pc.equal(tbl["gt_label_id"], tbl["pd_label_id"]),
-                pc.greater_equal(tbl["pd_label_id"], 0),
-            )
-            index = tbl.schema.get_field_index("match")
-            tbl = tbl.set_column(index, tbl.schema[index], matches)
+            if merges_labels:
+                matches = pc.and_(
+                    pc.equal(tbl["gt_label_id"], tbl["pd_label_id"]),
+                    pc.greater_equal(tbl["pd_label_id"], 0),
+                )
+                index = tbl.schema.get_field_index("match")
+                tbl = tbl.set_column(index, tbl.schema.field(index), matches)
             builder._writer.write_table(tbl)
+
+        index_to_label = {
+            index: label for label, index in label_to_index.items()
+        }
+        if not merges_labels:
+            # IDs, scores, matches, winners and ordering are unchanged.
+            for tbl in self._roc_curve_reader.iterate_tables():
+                builder._roc_curve_writer.write_table(tbl)
+            return Evaluator(
+                reader=builder._writer.to_reader(),
+                roc_curve_reader=builder._roc_curve_writer.to_reader(),
+                index_to_label=index_to_label,
+                metadata_fields=self._metadata_fields,
+            )
 
         return builder.finalize(
             batch_size=batch_size,
-            index_to_label_override={
-                index: label for label, index in label_to_index.items()
-            },
+            index_to_label_override=index_to_label,
         )
 
     def iterate_values(self, datums: pc.Expression | None = None):

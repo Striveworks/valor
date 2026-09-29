@@ -21,6 +21,7 @@ from valor_lite.semantic_segmentation.shared import (
     EvaluatorInfo,
     decode_metadata_fields,
     encode_metadata_fields,
+    ensure_annotation_ids,
     extract_counts,
     extract_labels,
     generate_cache_path,
@@ -30,6 +31,28 @@ from valor_lite.semantic_segmentation.shared import (
 from valor_lite.semantic_segmentation.utilities import (
     unpack_precision_recall_iou_into_metric_lists,
 )
+
+
+def _annotation_mask(
+    table: pa.Table, expression: pc.Expression | None, side: str
+) -> NDArray[np.bool_]:
+    """Select whole original annotations, even after their labels collide."""
+    if expression is None:
+        return np.ones(table.num_rows, dtype=np.bool_)
+
+    selected = table.filter(expression & (pc.field(f"{side}_label_id") >= 0))
+    annotation_column = f"__valor_{side}_annotation_id"
+
+    def keys(tbl: pa.Table):
+        return np.rec.fromarrays(
+            [
+                tbl["datum_id"].to_numpy(),
+                tbl[annotation_column].to_numpy(),
+            ],
+            dtype=[("datum", np.int64), ("annotation", np.int64)],
+        )
+
+    return np.isin(keys(table), keys(selected))
 
 
 class Builder:
@@ -250,9 +273,11 @@ class Evaluator:
         datums : pc.Expression | None = None
             A filter expression used to filter datums.
         groundtruths : pc.Expression | None = None
-            A filter expression used to filter ground truth annotations.
+            Select whole original ground truth annotations when any of their
+            cache rows match, including after label remapping.
         predictions : pc.Expression | None = None
-            A filter expression used to filter predictions.
+            Select whole original prediction annotations when any of their
+            cache rows match, including after label remapping.
         path : str | Path, optional
             Where to store the filtered cache if storing on disk.
 
@@ -271,64 +296,27 @@ class Evaluator:
                 batch_size=self._reader.batch_size,
                 rows_per_file=self._reader.rows_per_file,
                 compression=self._reader.compression,
-                metadata_fields=self.info.metadata_fields,
+                metadata_fields=self._metadata_fields,
             )
         else:
             builder = Builder.in_memory(
                 batch_size=self._reader.batch_size,
-                metadata_fields=self.info.metadata_fields,
+                metadata_fields=self._metadata_fields,
             )
 
         for tbl in self._reader.iterate_tables(filter=datums):
-            columns = (
-                "datum_id",
-                "gt_label_id",
-                "pd_label_id",
+            tbl = ensure_annotation_ids(tbl)
+            masks = (
+                _annotation_mask(tbl, groundtruths, "gt"),
+                _annotation_mask(tbl, predictions, "pd"),
             )
-            pairs = np.column_stack([tbl[col].to_numpy() for col in columns])
-
-            n_pairs = pairs.shape[0]
-            gt_ids = pairs[:, (0, 1)].astype(np.int64)
-            pd_ids = pairs[:, (0, 2)].astype(np.int64)
-
-            if groundtruths is not None:
-                mask_valid_gt = np.zeros(n_pairs, dtype=np.bool_)
-                gt_tbl = tbl.filter(groundtruths)
-                gt_pairs = np.column_stack(
-                    [
-                        gt_tbl[col].to_numpy()
-                        for col in ("datum_id", "gt_label_id")
-                    ]
-                ).astype(np.int64)
-                for gt in np.unique(gt_pairs, axis=0):
-                    mask_valid_gt |= (gt_ids == gt).all(axis=1)
-            else:
-                mask_valid_gt = np.ones(n_pairs, dtype=np.bool_)
-
-            if predictions is not None:
-                mask_valid_pd = np.zeros(n_pairs, dtype=np.bool_)
-                pd_tbl = tbl.filter(predictions)
-                pd_pairs = np.column_stack(
-                    [
-                        pd_tbl[col].to_numpy()
-                        for col in ("datum_id", "pd_label_id")
-                    ]
-                ).astype(np.int64)
-                for pd in np.unique(pd_pairs, axis=0):
-                    mask_valid_pd |= (pd_ids == pd).all(axis=1)
-            else:
-                mask_valid_pd = np.ones(n_pairs, dtype=np.bool_)
-
-            mask_valid = mask_valid_gt | mask_valid_pd
-            mask_valid_gt &= mask_valid
-            mask_valid_pd &= mask_valid
-
-            pairs[~mask_valid_gt, 1] = -1
-            pairs[~mask_valid_pd, 2] = -1
-
-            for idx, col in enumerate(columns):
+            for side, mask in zip(("gt", "pd"), masks):
+                column = f"{side}_label_id"
+                index = tbl.schema.get_field_index(column)
                 tbl = tbl.set_column(
-                    tbl.schema.names.index(col), col, pa.array(pairs[:, idx])
+                    index,
+                    tbl.schema.field(index),
+                    pc.if_else(pa.array(mask), tbl[column], -1),
                 )
             builder._writer.write_table(tbl)
 
@@ -360,6 +348,14 @@ class Evaluator:
         Evaluator
             A new evaluator containing remapped pixel counts. The source
             evaluator is unchanged.
+
+        Notes
+        -----
+        Original annotation identities survive remapping and persistent
+        reloads, so metadata filters still select whole original annotations.
+        Legacy caches derive identities from their existing label IDs. If a
+        legacy cache already merged labels, recreate it from the unmerged
+        source to recover those original identities.
         """
         if not isinstance(mapping, dict) or any(
             not isinstance(source, str) or not isinstance(target, str)
@@ -402,6 +398,7 @@ class Evaluator:
         new_ids = pa.array(new_indices, type=pa.int64())
         labels = pa.array(new_labels, type=pa.string())
         for tbl in self._reader.iterate_tables():
+            tbl = ensure_annotation_ids(tbl)
             for side in ("gt", "pd"):
                 id_column = f"{side}_label_id"
                 label_column = f"{side}_label"
@@ -418,7 +415,9 @@ class Evaluator:
                     (label_column, remapped_labels),
                 ):
                     index = tbl.schema.get_field_index(column)
-                    tbl = tbl.set_column(index, tbl.schema[index], values)
+                    tbl = tbl.set_column(
+                        index, tbl.schema.field(index), values
+                    )
 
             # Keep datum-aligned fragments and annotation metadata intact.
             # Metric computation sums counts for the resulting label pairs.

@@ -199,6 +199,11 @@ class Loader(Builder):
                     "count": counts[0, 0],
                 }
             )
+            for row in rows:
+                for side in ("gt", "pd"):
+                    row[f"__valor_{side}_annotation_id"] = row[
+                        f"{side}_label_id"
+                    ]
             self._writer.write_rows(rows)
 
             # update datum count
