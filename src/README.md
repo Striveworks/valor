@@ -103,37 +103,18 @@ assert metrics[MetricType.Precision][0].to_dict() == {
 
 ```python
 import numpy as np
-from valor_lite.semantic_segmentation import DataLoader, Segmentation, Bitmask, MetricType
+from valor_lite.semantic_segmentation import Loader, MetricType, Segmentation
 
-segmentations = [
-    Segmentation(
-        uid="uid0",
-        groundtruths=[
-            Bitmask(
-                mask=np.random.randint(2, size=(10,10), dtype=np.bool_),
-                label="sky",
-            ),
-            Bitmask(
-                mask=np.random.randint(2, size=(10,10), dtype=np.bool_),
-                label="ground",
-            )
-        ],
-        predictions=[
-            Bitmask(
-                mask=np.random.randint(2, size=(10,10), dtype=np.bool_),
-                label="sky",
-            ),
-            Bitmask(
-                mask=np.random.randint(2, size=(10,10), dtype=np.bool_),
-                label="ground",
-            )
-        ]
-    ),
-]
+segmentation = Segmentation(
+    uid="image-1",
+    labels=["sky", "road", "car"],
+    groundtruths=np.array([[0, 1], [2, 2]], dtype=np.uint16),
+    predictions=np.array([[0, 1], [1, 2]], dtype=np.uint16),
+)
 
-loader = DataLoader()
-loader.add_data(segmentations)
+loader = Loader.in_memory()
+loader.add_data([segmentation])
 evaluator = loader.finalize()
-
+metrics = evaluator.compute_precision_recall_iou()
 print(metrics[MetricType.Precision][0])
 ```

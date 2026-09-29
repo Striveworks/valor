@@ -23,6 +23,9 @@ def test_recall_basic_segmentations(
             "parameters": {"label": "v2"},
         },
     ]
+    expected_metrics.append(
+        {"type": "Recall", "value": 0.0, "parameters": {"label": "other"}}
+    )
     for m in actual_metrics:
         assert m in expected_metrics
     for m in expected_metrics:
@@ -51,6 +54,13 @@ def test_recall_segmentations_from_boxes(
             "parameters": {"label": "v2"},
         },
     ]
+    expected_metrics.append(
+        {
+            "type": "Recall",
+            "value": 505001 / 515000,
+            "parameters": {"label": "other"},
+        }
+    )
     for m in actual_metrics:
         assert m in expected_metrics
     for m in expected_metrics:

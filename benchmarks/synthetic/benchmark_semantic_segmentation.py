@@ -9,7 +9,7 @@ from pathlib import Path
 import numpy as np
 from tqdm import tqdm
 
-from valor_lite.semantic_segmentation import Bitmask, Segmentation
+from valor_lite.semantic_segmentation import Segmentation
 from valor_lite.semantic_segmentation.loader import Loader
 
 
@@ -78,69 +78,35 @@ def generate_segmentation(
     Returns
     -------
     Segmentation
-        A generated semantic segmenatation annotation.
+        A generated semantic segmentation annotation.
     """
 
-    if number_of_unique_labels > 1:
-        common_proba = 0.4 / (number_of_unique_labels - 1)
-        min_proba = min(common_proba, 0.1)
-        labels = [str(i) for i in range(number_of_unique_labels)] + [None]
-        proba = (
-            [0.5]
-            + [common_proba for _ in range(number_of_unique_labels - 1)]
-            + [0.1]
-        )
-    elif number_of_unique_labels == 1:
-        labels = ["0", None]
-        proba = [0.9, 0.1]
-        min_proba = 0.1
-    else:
-        raise ValueError(
-            "The number of unique labels should be greater than zero."
-        )
-
-    probabilities = np.array(proba, dtype=np.float64)
-    weights = (probabilities / min_proba).astype(np.int32)
-
-    indices = np.random.choice(
-        np.arange(len(weights)),
-        size=(mask_height * 2, mask_width),
-        p=probabilities,
+    if not 1 <= number_of_unique_labels <= 65_536:
+        raise ValueError("The number of labels must be between 1 and 65,536.")
+    probabilities = np.full(
+        number_of_unique_labels,
+        0.5 / max(number_of_unique_labels - 1, 1),
     )
-
-    N = len(labels)
-
-    masks = np.arange(N)[:, None, None] == indices
-
-    gts = []
-    pds = []
-    for lidx in range(N):
-        label = labels[lidx]
-        if label is None:
-            continue
-        gts.append(
-            Bitmask(
-                mask=masks[lidx, :mask_height, :],
-                label=label,
-            )
+    probabilities[0] = 0.5 if number_of_unique_labels > 1 else 1.0
+    indices = (
+        np.random.default_rng()
+        .choice(
+            number_of_unique_labels,
+            size=(mask_height * 2, mask_width),
+            p=probabilities,
         )
-        pds.append(
-            Bitmask(
-                mask=masks[lidx, mask_height:, :],
-                label=label,
-            )
-        )
-
+        .astype(np.uint16)
+    )
     return Segmentation(
         uid=datum_uid,
-        groundtruths=gts,
-        predictions=pds,
-        shape=(mask_height, mask_width),
+        groundtruths=indices[:mask_height],
+        predictions=indices[mask_height:],
+        labels=[str(i) for i in range(number_of_unique_labels)],
     )
 
 
 def benchmark(
-    bitmask_shape: tuple[int, int],
+    label_map_shape: tuple[int, int],
     number_of_unique_labels: int,
     number_of_images: int,
     write_path: Path,
@@ -155,8 +121,8 @@ def benchmark(
 
     Parameters
     ----------
-    bitmask_shape : tuple[int, int]
-        The size (h, w) of the bitmask array.
+    label_map_shape : tuple[int, int]
+        The size (h, w) of each label map.
     number_of_unique_labels : int
         The number of unique labels used in the synthetic example.
     number_of_images : int
@@ -195,8 +161,8 @@ def benchmark(
             data, elapsed, peak = profile(generate_segmentation)(
                 datum_uid=f"uid{i}",
                 number_of_unique_labels=number_of_unique_labels,
-                mask_height=bitmask_shape[0],
-                mask_width=bitmask_shape[1],
+                mask_height=label_map_shape[0],
+                mask_width=label_map_shape[1],
             )
             elapsed_generation += elapsed
             peak_generation = max(peak_generation, peak)
@@ -233,7 +199,7 @@ def benchmark(
         },
         "params": {
             "repeated": repeat,
-            "bitmask_shape": bitmask_shape,
+            "label_map_shape": label_map_shape,
             "number_of_unique_labels": number_of_unique_labels,
             "number_of_images": number_of_images,
         },
@@ -247,7 +213,7 @@ if __name__ == "__main__":
     write_path = current_directory / Path("seg_results.json")
 
     benchmark(
-        bitmask_shape=(100, 100),
+        label_map_shape=(100, 100),
         number_of_images=10_000,
         number_of_unique_labels=10,
         memory_limit=4.0,

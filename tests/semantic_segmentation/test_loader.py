@@ -2,7 +2,7 @@ import numpy as np
 import pytest
 
 from valor_lite.exceptions import EmptyCacheError
-from valor_lite.semantic_segmentation import Bitmask, Loader, Segmentation
+from valor_lite.semantic_segmentation import Loader, MetricType, Segmentation
 
 
 def test_no_data(loader: Loader):
@@ -10,80 +10,129 @@ def test_no_data(loader: Loader):
         loader.finalize()
 
 
-def test_empty_input(loader: Loader):
+def test_zero_is_an_ordinary_class(loader: Loader):
     loader.add_data(
-        segmentations=[
+        [
             Segmentation(
-                uid="0", groundtruths=[], predictions=[], shape=(10, 10)
-            ),
+                "0",
+                np.zeros((10, 10), dtype=np.uint16),
+                np.zeros((10, 10), dtype=np.uint16),
+                ["sky"],
+            )
         ]
     )
     evaluator = loader.finalize()
     assert evaluator.info.number_of_datums == 1
     assert evaluator.info.number_of_pixels == 100
-    assert evaluator.info.number_of_groundtruth_pixels == 0
-    assert evaluator.info.number_of_prediction_pixels == 0
+    assert evaluator.info.number_of_groundtruth_pixels == 100
+    assert evaluator.info.number_of_prediction_pixels == 100
+    metrics = evaluator.compute_precision_recall_iou()
+    assert metrics[MetricType.mIOU][0].value == 1.0
+    assert metrics[MetricType.IOU][0].parameters == {"label": "sky"}
+    assert metrics[MetricType.IOU][0].value == 1.0
+
+
+def test_reordered_labels_across_batches(loader: Loader):
+    loader.add_data(
+        [
+            Segmentation(
+                "0",
+                np.array([[0, 1]]),
+                np.array([[1, 1]]),
+                ["sky", "road", "absent"],
+            )
+        ]
+    )
+    loader.add_data(
+        [
+            Segmentation(
+                "1", np.array([[1, 0]]), np.array([[0, 0]]), ["road", "sky"]
+            )
+        ]
+    )
+    evaluator = loader.finalize()
+    assert evaluator._index_to_label == {0: "sky", 1: "road", 2: "absent"}
+    np.testing.assert_array_equal(
+        evaluator._compute_confusion_matrix_intermediate(),
+        [[0, 0, 0, 0], [0, 0, 2, 0], [0, 0, 2, 0], [0, 0, 0, 0]],
+    )
+    assert (
+        evaluator.info.number_of_rows == 5
+    )  # Four pairs and one absent-class row.
+    assert (
+        evaluator.compute_precision_recall_iou()[MetricType.mIOU][0].value
+        == 1 / 6
+    )
 
 
 def test_add_data_metadata_handling(loader: Loader):
     loader.add_data(
-        segmentations=[
+        [
             Segmentation(
-                uid="0",
-                metadata={"datum_uid": "c"},
-                groundtruths=[
-                    Bitmask(
-                        mask=np.ones((10, 10), dtype=np.bool_),
-                        label="dog",
-                        metadata={"datum_uid": "b"},
-                    )
-                ],
-                predictions=[
-                    Bitmask(
-                        mask=np.ones((10, 10), dtype=np.bool_),
-                        label="dog",
-                        metadata={"datum_uid": "c"},
-                    )
-                ],
-                shape=(10, 10),
-            ),
-            Segmentation(
-                uid="1",
-                metadata={"datum_uid": "c"},
-                groundtruths=[
-                    Bitmask(
-                        mask=np.ones((10, 10), dtype=np.bool_),
-                        label="dog",
-                        metadata={"datum_uid": "b"},
-                    )
-                ],
-                predictions=[
-                    Bitmask(
-                        mask=np.ones((10, 10), dtype=np.bool_),
-                        label="dog",
-                        metadata={"datum_uid": "c"},
-                    )
-                ],
-                shape=(10, 10),
-            ),
+                uid="image",
+                groundtruths=np.array([[0, 1]]),
+                predictions=np.array([[1, 0]]),
+                labels=["sky", "road"],
+                metadata={
+                    "datum_uid": "incorrect",
+                    "count": 999,
+                    "gt_xmin": -1,
+                },
+                groundtruth_metadata={0: {"gt_xmin": 10}, 1: {"gt_xmin": 20}},
+                prediction_metadata={0: {"pd_xmin": 30}, 1: {"pd_xmin": 40}},
+            )
         ]
     )
-    loader._writer.flush()
-    reader = loader._writer.to_reader()
+    evaluator = loader.finalize()
+    rows = [
+        row
+        for table in evaluator._reader.iterate_tables()
+        for row in table.to_pylist()
+    ]
+    assert len(rows) == 2
+    assert all(
+        row["datum_uid"] == "image" and row["count"] == 1 for row in rows
+    )
+    assert [
+        (row["gt_label"], row["pd_label"], row["gt_xmin"], row["pd_xmin"])
+        for row in rows
+    ] == [("sky", "road", 10, 40), ("road", "sky", 20, 30)]
 
-    datum_uids = set()
-    for tbl in reader.iterate_tables():
-        assert set(tbl.column_names) == {
-            "datum_uid",
-            "datum_id",
-            "gt_label",
-            "gt_label_id",
-            "pd_label",
-            "pd_label_id",
-            "count",
-            "gt_xmin",
-            "pd_xmin",
-        }
-        for uid in tbl["datum_uid"].to_pylist():
-            datum_uids.add(uid)
-    assert datum_uids == {"0", "1"}
+
+def test_high_ids_and_global_vocabulary_are_not_narrowed(loader: Loader):
+    loader.add_data(
+        [
+            Segmentation(
+                "0",
+                np.array([[0, 65535]], dtype=np.uint16),
+                np.array([[65535, 0]], dtype=np.uint16),
+                [str(i) for i in range(65536)],
+            )
+        ]
+    )
+    loader.add_data(
+        [Segmentation("1", np.array([[0]]), np.array([[0]]), ["extra"])]
+    )
+    evaluator = loader.finalize()
+    assert evaluator.info.number_of_labels == 65537
+    assert evaluator.info.number_of_pixels == 3
+    rows = [
+        row
+        for table in evaluator._reader.iterate_tables()
+        for row in table.to_pylist()
+    ]
+    assert [
+        (row["gt_label_id"], row["pd_label_id"], row["count"])
+        for row in rows
+        if row["count"]
+    ] == [(0, 65535, 1), (65535, 0, 1), (65536, 65536, 1)]
+
+
+def test_pixel_counts_are_not_uint16(loader: Loader):
+    array = np.zeros((257, 257), dtype=np.uint16)
+    loader.add_data([Segmentation("image", array, array, ["sky"])])
+    evaluator = loader.finalize()
+    assert evaluator.info.number_of_pixels == 66049
+    matrix = evaluator._compute_confusion_matrix_intermediate()
+    assert matrix.dtype == np.uint64
+    assert matrix[1, 1] == 66049

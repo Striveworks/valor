@@ -23,6 +23,9 @@ def test_iou_basic_segmentations(
             "parameters": {"label": "v2"},
         },
     ]
+    expected_metrics.append(
+        {"type": "IOU", "value": 0.0, "parameters": {"label": "other"}}
+    )
     for m in actual_metrics:
         assert m in expected_metrics
     for m in expected_metrics:
@@ -32,7 +35,7 @@ def test_iou_basic_segmentations(
     expected_metrics = [
         {
             "type": "mIOU",
-            "value": 0.5,
+            "value": 1 / 3,
             "parameters": {},
         },
     ]
@@ -64,6 +67,13 @@ def test_iou_segmentations_from_boxes(
             "parameters": {"label": "v2"},
         },
     ]
+    expected_metrics.append(
+        {
+            "type": "IOU",
+            "value": 505001 / 534999,
+            "parameters": {"label": "other"},
+        }
+    )
     for m in actual_metrics:
         assert m in expected_metrics
     for m in expected_metrics:
@@ -73,7 +83,7 @@ def test_iou_segmentations_from_boxes(
     expected_metrics = [
         {
             "type": "mIOU",
-            "value": ((1 / 3) + (1 / 19999)) / 2,
+            "value": ((1 / 3) + (1 / 19999) + 505001 / 534999) / 3,
             "parameters": {},
         },
     ]

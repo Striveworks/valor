@@ -1,5 +1,4 @@
-import warnings
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Any
 
 import numpy as np
@@ -7,117 +6,106 @@ from numpy.typing import NDArray
 
 
 @dataclass
-class Bitmask:
-    """
-    Represents a binary mask with an associated semantic label.
-
-    Parameters
-    ----------
-    mask : NDArray[np.bool_]
-        A NumPy array of boolean values representing the mask.
-    label : str
-        The semantic label associated with the mask.
-    metadata : dict[str, Any], optional
-        A dictionary containing any metadata to be used within filtering operations.
-
-    Examples
-    --------
-    >>> import numpy as np
-    >>> mask = np.array([[True, False], [False, True]], dtype=np.bool_)
-    >>> bitmask = Bitmask(mask=mask, label='ocean')
-    """
-
-    mask: NDArray[np.bool_]
-    label: str
-    metadata: dict[str, Any] | None = None
-
-    def __post_init__(self):
-        if self.mask.dtype != np.bool_:
-            raise ValueError(
-                f"Bitmask recieved mask with dtype '{self.mask.dtype}'."
-            )
-
-
-@dataclass
 class Segmentation:
-    """
-    Segmentation data structure holding ground truth and prediction bitmasks for semantic segmentation tasks.
+    """Ground truth and prediction label maps for one image.
 
     Parameters
     ----------
     uid : str
         Unique identifier for the image or sample.
-    groundtruths : List[Bitmask]
-        List of ground truth bitmasks.
-    predictions : List[Bitmask]
-        List of predicted bitmasks.
-    shape : tuple of int, optional
-        The shape of the segmentation masks. This is set automatically after initialization.
-    size : int, optional
-        The total number of pixels in the masks. This is set automatically after initialization.
+    groundtruths : numpy.ndarray
+        Nonempty 2D integer array. Each pixel indexes ``labels``.
+    predictions : numpy.ndarray
+        Integer array with the same shape and label mapping as groundtruths.
+    labels : list[str]
+        Unique class names, in local index order, with at most 65,536 entries.
+        Index zero is an ordinary class with the caller-provided name.
     metadata : dict[str, Any], optional
-        A dictionary containing any metadata to be used within filtering operations.
+        Image metadata used for filtering.
+    groundtruth_metadata : dict[int, dict[str, Any]], optional
+        Ground truth class metadata, keyed by local label index.
+    prediction_metadata : dict[int, dict[str, Any]], optional
+        Prediction class metadata, keyed by local label index.
+
+    Notes
+    -----
+    Arrays are validated before conversion to uint16. Arrays already having
+    that dtype may share storage with the inputs; validation and loading never
+    modify their pixels. Every pixel has a class, including zero-valued pixels.
 
     Examples
     --------
-    >>> import numpy as np
-    >>> mask1 = np.array([[True, False], [False, True]], dtype=np.bool_)
-    >>> groundtruth = Bitmask(mask=mask1, label='object')
-    >>> mask2 = np.array([[False, True], [True, False]], dtype=np.bool_)
-    >>> prediction = Bitmask(mask=mask2, label='object')
     >>> segmentation = Segmentation(
-    ...     uid='123',
-    ...     groundtruths=[groundtruth],
-    ...     predictions=[prediction]
+    ...     uid="image-1",
+    ...     groundtruths=np.array([[0, 1], [1, 0]], dtype=np.uint16),
+    ...     predictions=np.array([[0, 1], [0, 0]], dtype=np.uint16),
+    ...     labels=["sky", "road"],
     ... )
     """
 
     uid: str
-    groundtruths: list[Bitmask]
-    predictions: list[Bitmask]
-    shape: tuple[int, ...]
-    size: int = field(default=0)
+    groundtruths: NDArray[np.integer[Any]]
+    predictions: NDArray[np.integer[Any]]
+    labels: list[str]
     metadata: dict[str, Any] | None = None
+    groundtruth_metadata: dict[int, dict[str, Any]] | None = None
+    prediction_metadata: dict[int, dict[str, Any]] | None = None
 
     def __post_init__(self):
-
-        if len(self.shape) != 2 or self.shape[0] <= 0 or self.shape[1] <= 0:
-            raise ValueError(
-                f"segmentations must be 2-dimensional and have non-zero dimensions. Recieved shape '{self.shape}'"
-            )
-        self.size = self.shape[0] * self.shape[1]
-
-        self._validate_bitmasks(self.groundtruths, "ground truth")
-        self._validate_bitmasks(self.predictions, "prediction")
-
-    def _validate_bitmasks(self, bitmasks: list[Bitmask], key: str):
-        mask_accumulation = None
-        mask_overlap_accumulation = None
-        for idx, bitmask in enumerate(bitmasks):
-            if not isinstance(bitmask, Bitmask):
-                raise ValueError(f"expected 'Bitmask', got '{bitmask}'")
-            if self.shape != bitmask.mask.shape:
-                raise ValueError(
-                    f"{key} masks for datum '{self.uid}' should have shape '{self.shape}'. Received mask with shape '{bitmask.mask.shape}'"
-                )
-
-            if mask_accumulation is None:
-                mask_accumulation = bitmask.mask.copy()
-                mask_overlap_accumulation = np.zeros_like(mask_accumulation)
-            elif np.logical_and(mask_accumulation, bitmask.mask).any():
-                mask_overlap = np.logical_and(mask_accumulation, bitmask.mask)
-                bitmasks[idx].mask[mask_overlap] = False
-                mask_overlap_accumulation = (
-                    mask_overlap_accumulation | mask_overlap
-                )
-            else:
-                mask_accumulation = mask_accumulation | bitmask.mask
-        if (
-            mask_overlap_accumulation is not None
-            and mask_overlap_accumulation.any()
+        if not isinstance(self.labels, list) or not all(
+            isinstance(label, str) for label in self.labels
         ):
-            count = mask_overlap_accumulation.sum()
-            total = mask_overlap_accumulation.size
-            warnings.warn(
-                f"{key} masks for datum '{self.uid}' had {count} / {total} pixels overlapped."
+            raise ValueError("labels must be a list of strings")
+        if not 1 <= len(self.labels) <= 65_536:
+            raise ValueError(
+                "labels must contain between 1 and 65,536 entries"
             )
+        if len(set(self.labels)) != len(self.labels):
+            raise ValueError("labels must be unique")
+
+        self.groundtruths = self._validate_map(
+            self.groundtruths, "groundtruths"
+        )
+        self.predictions = self._validate_map(self.predictions, "predictions")
+        if self.groundtruths.shape != self.predictions.shape:
+            raise ValueError(
+                "groundtruths and predictions must have the same shape"
+            )
+
+        for name, metadata in (
+            ("groundtruth_metadata", self.groundtruth_metadata),
+            ("prediction_metadata", self.prediction_metadata),
+        ):
+            if metadata is None:
+                continue
+            if not isinstance(metadata, dict) or any(
+                isinstance(idx, (bool, np.bool_))
+                or not isinstance(idx, (int, np.integer))
+                or not 0 <= idx < len(self.labels)
+                or not isinstance(value, dict)
+                for idx, value in metadata.items()
+            ):
+                raise ValueError(
+                    f"{name} must map valid label indices to dictionaries"
+                )
+
+    @property
+    def shape(self) -> tuple[int, int]:
+        return self.groundtruths.shape
+
+    @property
+    def size(self) -> int:
+        return self.groundtruths.size
+
+    def _validate_map(
+        self, array: NDArray[np.integer[Any]], name: str
+    ) -> NDArray[np.uint16]:
+        if not isinstance(array, np.ndarray) or not np.issubdtype(
+            array.dtype, np.integer
+        ):
+            raise ValueError(f"{name} must be an integer NumPy array")
+        if array.ndim != 2 or array.size == 0:
+            raise ValueError(f"{name} must be a nonempty 2D array")
+        if array.min() < 0 or array.max() >= len(self.labels):
+            raise ValueError(f"{name} values must index labels")
+        return array.astype(np.uint16, copy=False)
