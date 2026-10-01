@@ -24,39 +24,88 @@ def prune_fields_containing_zeros(data: dict | list):
 
 
 def test_filtering_by_datum(
-    loader: Loader, tmp_path: Path, segmentations_from_boxes
+    loader: Loader,
+    tmp_path: Path,
+    segmentations_from_boxes: list[Segmentation],
 ):
     loader.add_data(segmentations_from_boxes)
     evaluator = loader.finalize()
+
     assert evaluator.info.number_of_datums == 2
-    assert evaluator.info.number_of_labels == 3
+    assert evaluator.info.number_of_labels == 2
+    assert evaluator.info.number_of_groundtruth_pixels == 25000
+    assert evaluator.info.number_of_prediction_pixels == 15000
     assert evaluator.info.number_of_pixels == 540000
-    assert (
-        evaluator.info.number_of_groundtruth_pixels
-        == evaluator.info.number_of_prediction_pixels
-        == 540000
+
+    # test datum filtering
+    confusion_matrix = evaluator._compute_confusion_matrix_intermediate(
+        datums=pc.field("datum_uid") == "uid1",
     )
-    matrices = [
-        [[0, 0, 0, 0], [0, 5000, 0, 5000], [0, 0, 0, 0], [0, 5000, 0, 255000]],
-        [[0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 1, 14999], [0, 0, 4999, 250001]],
-    ]
-    for i, expected in enumerate(matrices, 1):
-        expr = pc.field("datum_uid") == f"uid{i}"
-        np.testing.assert_array_equal(
-            evaluator._compute_confusion_matrix_intermediate(datums=expr),
-            expected,
+    assert np.all(
+        confusion_matrix
+        == np.array(
+            [
+                [255000, 5000, 0],
+                [5000, 5000, 0],
+                [0, 0, 0],
+            ],
         )
-        filtered = evaluator.filter(
-            datums=expr, path=tmp_path / f"filtered{i}"
+    )
+
+    # test filter cache and evaluate
+    filtered_evaluator = evaluator.filter(
+        datums=pc.field("datum_uid") == "uid1",
+        path=tmp_path / "filtered1",
+    )
+    confusion_matrix = (
+        filtered_evaluator._compute_confusion_matrix_intermediate()
+    )
+    assert np.all(
+        confusion_matrix
+        == np.array(
+            [
+                [255000, 5000, 0],
+                [5000, 5000, 0],
+                [0, 0, 0],
+            ],
         )
-        np.testing.assert_array_equal(
-            filtered._compute_confusion_matrix_intermediate(), expected
+    )
+
+    assert filtered_evaluator.info.number_of_datums == 1
+    assert filtered_evaluator.info.number_of_pixels == 270000
+
+    filtered_evaluator = evaluator.filter(
+        datums=pc.field("datum_uid") == "uid2",
+        path=tmp_path / "filtered2",
+    )
+    confusion_matrix = (
+        filtered_evaluator._compute_confusion_matrix_intermediate()
+    )
+    assert np.all(
+        confusion_matrix
+        == np.array(
+            [
+                [250001, 0, 4999],
+                [0, 0, 0],
+                [14999, 0, 1],
+            ]
         )
-        assert filtered.info.number_of_datums == 1
-        assert filtered.info.number_of_pixels == 270000
+    )
+
+    assert filtered_evaluator.info.number_of_datums == 1
+    assert filtered_evaluator.info.number_of_pixels == 270000
+    np.testing.assert_array_equal(
+        evaluator._compute_confusion_matrix_intermediate(
+            datums=pc.field("datum_uid") == "uid2"
+        ),
+        confusion_matrix,
+    )
+
+    # test filter all
     with pytest.raises(EmptyCacheError):
-        evaluator.filter(
-            datums=pc.field("datum_uid") == "missing", path=tmp_path / "empty"
+        filtered_evaluator = evaluator.filter(
+            datums=pc.field("datum_uid") == "non_existent_uid",
+            path=tmp_path / "filtered3",
         )
 
 
@@ -265,14 +314,14 @@ def test_single_filter_retains_remaining_side(
     assert filtered.info.number_of_pixels == 4
     assert evaluator.get_info(**kwargs) == filtered.info
     assert filtered.info.number_of_groundtruth_pixels == (
-        0 if side == "groundtruths" else 4
+        0 if side == "groundtruths" else 3
     )
     assert filtered.info.number_of_prediction_pixels == (
-        0 if side == "predictions" else 4
+        0 if side == "predictions" else 3
     )
     assert (
         filtered.compute_precision_recall_iou()[MetricType.Accuracy][0].value
-        == 0
+        == 0.25
     )
 
 

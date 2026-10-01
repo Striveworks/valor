@@ -23,9 +23,6 @@ def test_f1_basic_segmentations(
             "parameters": {"label": "v2"},
         },
     ]
-    expected_metrics.append(
-        {"type": "F1", "value": 0.0, "parameters": {"label": "other"}}
-    )
     for m in actual_metrics:
         assert m in expected_metrics
     for m in expected_metrics:
@@ -54,13 +51,6 @@ def test_f1_segmentations_from_boxes(
             "parameters": {"label": "v2"},
         },
     ]
-    expected_metrics.append(
-        {
-            "type": "F1",
-            "value": 2 * 505001 / (525000 + 515000),
-            "parameters": {"label": "other"},
-        }
-    )
     for m in actual_metrics:
         assert m in expected_metrics
     for m in expected_metrics:

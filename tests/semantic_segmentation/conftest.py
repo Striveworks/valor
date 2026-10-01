@@ -49,9 +49,9 @@ def basic_segmentations() -> list[Segmentation]:
     return [
         Segmentation(
             uid="uid0",
-            groundtruths=np.array([[1, 3], [2, 1]], dtype=np.uint16),
-            predictions=np.array([[1, 2], [2, 3]], dtype=np.uint16),
-            labels=["v1", "v2", "other"],
+            groundtruths=np.array([[1, 0], [2, 1]], dtype=np.uint16),
+            predictions=np.array([[1, 2], [2, 0]], dtype=np.uint16),
+            labels=["v1", "v2"],
         )
     ]
 
@@ -72,7 +72,7 @@ def basic_segmentations_three_labels() -> list[Segmentation]:
 @pytest.fixture
 def segmentations_from_boxes() -> list[Segmentation]:
     def label_map(rect, label):
-        array = np.full((900, 300), 3, dtype=np.uint16)
+        array = np.zeros((900, 300), dtype=np.uint16)
         xmin, xmax, ymin, ymax = rect
         array[ymin:ymax, xmin:xmax] = label
         return array
@@ -86,7 +86,7 @@ def segmentations_from_boxes() -> list[Segmentation]:
             uid=f"uid{i + 1}",
             groundtruths=label_map(gt, i + 1),
             predictions=label_map(pd, i + 1),
-            labels=["v1", "v2", "other"],
+            labels=["v1", "v2"],
             groundtruth_metadata={i + 1: {"gt_xmin": gt[0]}},
             prediction_metadata={i + 1: {"pd_xmin": pd[0]}},
         )

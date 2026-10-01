@@ -69,7 +69,7 @@ def generate_segmentation(
     datum_uid : str
         The datum UID for the generated segmentation.
     number_of_unique_labels : int
-        The number of pixel indices, including background at zero.
+        The number of unique labels.
     mask_height : int
         The height of the mask in pixels.
     mask_width : int
@@ -81,32 +81,39 @@ def generate_segmentation(
         A generated semantic segmentation annotation.
     """
 
-    if not 1 <= number_of_unique_labels <= 65_536:
-        raise ValueError("The number of labels must be between 1 and 65,536.")
-    probabilities = np.full(
-        number_of_unique_labels,
-        0.5 / max(number_of_unique_labels - 1, 1),
-    )
-    probabilities[0] = 0.5 if number_of_unique_labels > 1 else 1.0
-    indices = (
-        np.random.default_rng()
-        .choice(
-            number_of_unique_labels,
-            size=(mask_height * 2, mask_width),
-            p=probabilities,
+    if number_of_unique_labels > 65_535:
+        raise ValueError("The number of unique labels must be at most 65,535.")
+    if number_of_unique_labels > 1:
+        common_proba = 0.4 / (number_of_unique_labels - 1)
+        labels = [str(i) for i in range(number_of_unique_labels)]
+        proba = [0.1, 0.5] + [
+            common_proba for _ in range(number_of_unique_labels - 1)
+        ]
+    elif number_of_unique_labels == 1:
+        labels = ["0"]
+        proba = [0.1, 0.9]
+    else:
+        raise ValueError(
+            "The number of unique labels should be greater than zero."
         )
-        .astype(np.uint16)
-    )
+
+    probabilities = np.array(proba, dtype=np.float64)
+    indices = np.random.choice(
+        np.arange(len(probabilities)),
+        size=(mask_height * 2, mask_width),
+        p=probabilities,
+    ).astype(np.uint16)
+
     return Segmentation(
         uid=datum_uid,
         groundtruths=indices[:mask_height],
         predictions=indices[mask_height:],
-        labels=[str(i) for i in range(1, number_of_unique_labels)],
+        labels=labels,
     )
 
 
 def benchmark(
-    label_map_shape: tuple[int, int],
+    bitmask_shape: tuple[int, int],
     number_of_unique_labels: int,
     number_of_images: int,
     write_path: Path,
@@ -121,7 +128,7 @@ def benchmark(
 
     Parameters
     ----------
-    label_map_shape : tuple[int, int]
+    bitmask_shape : tuple[int, int]
         The size (h, w) of each label map.
     number_of_unique_labels : int
         The number of unique labels used in the synthetic example.
@@ -161,8 +168,8 @@ def benchmark(
             data, elapsed, peak = profile(generate_segmentation)(
                 datum_uid=f"uid{i}",
                 number_of_unique_labels=number_of_unique_labels,
-                mask_height=label_map_shape[0],
-                mask_width=label_map_shape[1],
+                mask_height=bitmask_shape[0],
+                mask_width=bitmask_shape[1],
             )
             elapsed_generation += elapsed
             peak_generation = max(peak_generation, peak)
@@ -199,7 +206,7 @@ def benchmark(
         },
         "params": {
             "repeated": repeat,
-            "label_map_shape": label_map_shape,
+            "bitmask_shape": bitmask_shape,
             "number_of_unique_labels": number_of_unique_labels,
             "number_of_images": number_of_images,
         },
@@ -213,7 +220,7 @@ if __name__ == "__main__":
     write_path = current_directory / Path("seg_results.json")
 
     benchmark(
-        label_map_shape=(100, 100),
+        bitmask_shape=(100, 100),
         number_of_images=10_000,
         number_of_unique_labels=10,
         memory_limit=4.0,

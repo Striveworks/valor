@@ -1,86 +1,117 @@
 import numpy as np
-import pytest
 
 from valor_lite.semantic_segmentation import Loader, MetricType, Segmentation
 
 
 def test_confusion_matrix_basic_segmentations(
-    loader: Loader, basic_segmentations
+    loader: Loader,
+    basic_segmentations: list[Segmentation],
 ):
     loader.add_data(basic_segmentations)
     evaluator = loader.finalize()
-    result = evaluator.compute_precision_recall_iou()[
-        MetricType.ConfusionMatrix
-    ][0].value
-    assert result == {
-        "confusion_matrix": {
-            "v1": {
-                "v1": {"iou": 0.5},
-                "v2": {"iou": 0.0},
-                "other": {"iou": 0.5},
+
+    metrics = evaluator.compute_precision_recall_iou()
+
+    actual_metrics = [m.to_dict() for m in metrics[MetricType.ConfusionMatrix]]
+    expected_metrics = [
+        {
+            "type": "ConfusionMatrix",
+            "value": {
+                "confusion_matrix": {
+                    "v1": {"v1": {"iou": 0.5}, "v2": {"iou": 0.0}},
+                    "v2": {"v1": {"iou": 0.0}, "v2": {"iou": 0.5}},
+                },
+                "unmatched_predictions": {
+                    "v1": {"ratio": 0.0},
+                    "v2": {"ratio": 0.5},
+                },
+                "unmatched_ground_truths": {
+                    "v1": {"ratio": 0.5},
+                    "v2": {"ratio": 0.0},
+                },
             },
-            "v2": {
-                "v1": {"iou": 0.0},
-                "v2": {"iou": 0.5},
-                "other": {"iou": 0.0},
-            },
-            "other": {
-                "v1": {"iou": 0.0},
-                "v2": {"iou": 0.5},
-                "other": {"iou": 0.0},
-            },
+            "parameters": {},
         },
-        "unmatched_predictions": {
-            label: {"ratio": 0.0} for label in ["v1", "v2", "other"]
-        },
-        "unmatched_ground_truths": {
-            label: {"ratio": 0.0} for label in ["v1", "v2", "other"]
-        },
-    }
+    ]
+    for m in actual_metrics:
+        assert m in expected_metrics
+    for m in expected_metrics:
+        assert m in actual_metrics
 
 
 def test_confusion_matrix_segmentations_from_boxes(
-    loader: Loader, segmentations_from_boxes
+    loader: Loader,
+    segmentations_from_boxes: list[Segmentation],
 ):
     loader.add_data(segmentations_from_boxes)
-    result = (
-        loader.finalize()
-        .compute_precision_recall_iou()[MetricType.ConfusionMatrix][0]
-        .value
-    )
-    expected = [
-        [1 / 3, 0, 5000 / 530000],
-        [0, 1 / 19999, 14999 / 525001],
-        [5000 / 520000, 4999 / 515001, 505001 / 534999],
+    evaluator = loader.finalize()
+
+    metrics = evaluator.compute_precision_recall_iou()
+
+    actual_metrics = [m.to_dict() for m in metrics[MetricType.ConfusionMatrix]]
+    expected_metrics = [
+        {
+            "type": "ConfusionMatrix",
+            "value": {
+                "confusion_matrix": {
+                    "v1": {
+                        "v1": {
+                            "iou": 5000 / (10000 + 10000 - 5000)
+                        },  # 50% overlap
+                        "v2": {"iou": 0.0},
+                    },
+                    "v2": {
+                        "v1": {"iou": 0.0},
+                        "v2": {
+                            "iou": 1 / (14999 + 4999 + 1)  # overlaps 1 pixel
+                        },
+                    },
+                },
+                "unmatched_predictions": {
+                    "v1": {"ratio": 5000 / 10000},  # 50% overlap
+                    "v2": {
+                        "ratio": 4999 / 5000
+                    },  # overlaps 1 pixel out of 5000 predictions
+                },
+                "unmatched_ground_truths": {
+                    "v1": {"ratio": 5000 / 10000},
+                    "v2": {
+                        "ratio": 14999 / 15000
+                    },  # overlaps 1 pixel out of 15,000 groundtruths
+                },
+            },
+            "parameters": {},
+        },
     ]
-    for i, gt in enumerate(["v1", "v2", "other"]):
-        for j, pd in enumerate(["v1", "v2", "other"]):
-            assert result["confusion_matrix"][gt][pd]["iou"] == pytest.approx(
-                expected[i][j]
-            )
-        assert result["unmatched_predictions"][gt]["ratio"] == 0
-        assert result["unmatched_ground_truths"][gt]["ratio"] == 0
+    for m in actual_metrics:
+        assert m in expected_metrics
+    for m in expected_metrics:
+        assert m in actual_metrics
 
 
 def test_confusion_matrix_intermediate_counting(loader: Loader):
-    loader.add_data(
-        [
-            Segmentation(
-                "image",
-                np.array([[3, 4], [1, 2]]),
-                np.full((2, 2), 3),
-                ["a", "b", "c", "d"],
-            )
-        ]
+
+    segmentation = Segmentation(
+        uid="uid1",
+        groundtruths=np.array([[3, 4], [1, 2]], dtype=np.uint16),
+        predictions=np.full((2, 2), 3, dtype=np.uint16),
+        labels=["a", "b", "c", "d"],
     )
-    matrix = loader.finalize()._compute_confusion_matrix_intermediate()
-    np.testing.assert_array_equal(
-        matrix,
-        [
-            [0, 0, 0, 0, 0],
-            [0, 0, 0, 1, 0],
-            [0, 0, 0, 1, 0],
-            [0, 0, 0, 1, 0],
-            [0, 0, 0, 1, 0],
-        ],
-    )
+
+    loader.add_data([segmentation])
+    evaluator = loader.finalize()
+
+    confusion_matrix = evaluator._compute_confusion_matrix_intermediate()
+    assert confusion_matrix.shape == (5, 5)
+    assert (
+        confusion_matrix
+        == np.array(
+            [
+                [0, 0, 0, 0, 0],
+                [0, 0, 0, 1, 0],
+                [0, 0, 0, 1, 0],
+                [0, 0, 0, 1, 0],
+                [0, 0, 0, 1, 0],
+            ]
+        )
+    ).all()

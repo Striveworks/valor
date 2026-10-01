@@ -23,9 +23,6 @@ def test_precision_basic_segmentations(
             "parameters": {"label": "v2"},
         },
     ]
-    expected_metrics.append(
-        {"type": "Precision", "value": 0.0, "parameters": {"label": "other"}}
-    )
     for m in actual_metrics:
         assert m in expected_metrics
     for m in expected_metrics:
@@ -54,13 +51,6 @@ def test_precision_segmentations_from_boxes(
             "parameters": {"label": "v2"},
         },
     ]
-    expected_metrics.append(
-        {
-            "type": "Precision",
-            "value": 505001 / 525000,
-            "parameters": {"label": "other"},
-        }
-    )
     for m in actual_metrics:
         assert m in expected_metrics
     for m in expected_metrics:

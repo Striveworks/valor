@@ -18,13 +18,15 @@ from valor_lite.semantic_segmentation import (
 
 
 def test_evaluator_file_not_found(tmp_path: Path):
+    path = tmp_path / "does_not_exist"
     with pytest.raises(FileNotFoundError):
-        Evaluator.load(tmp_path / "does_not_exist")
+        Evaluator.load(path)
 
 
 def test_evaluator_not_a_directory(tmp_path: Path):
     filepath = tmp_path / "file"
-    filepath.write_text("{}")
+    with open(filepath, "w") as f:
+        json.dump({}, f, indent=2)
     with pytest.raises(NotADirectoryError):
         Evaluator.load(filepath)
 
@@ -46,25 +48,38 @@ def test_info_using_large_random_segmentations(
 
 def _flatten_metrics(m) -> list:
     if isinstance(m, dict):
-        return list(m.keys()) + [
-            v for value in m.values() for v in _flatten_metrics(value)
+        keys = list(m.keys())
+        values = [
+            inner_value
+            for value in m.values()
+            for inner_value in _flatten_metrics(value)
         ]
-    if isinstance(m, list):
-        return [v for value in m for v in _flatten_metrics(value)]
-    if isinstance(m, Metric):
+        return keys + values
+    elif isinstance(m, list):
+        return [
+            inner_value
+            for value in m
+            for inner_value in _flatten_metrics(value)
+        ]
+    elif isinstance(m, Metric):
         return _flatten_metrics(m.to_dict())
-    return [m]
+    else:
+        return [m]
 
 
 def test_output_types_dont_contain_numpy(
-    loader: Loader, segmentations_from_boxes
+    loader: Loader,
+    segmentations_from_boxes: list[Segmentation],
 ):
     loader.add_data(segmentations_from_boxes)
-    metrics = loader.finalize().compute_precision_recall_iou()
-    assert not any(
-        isinstance(value, (np.generic, np.ndarray))
-        for value in _flatten_metrics(metrics)
-    )
+    evaluator = loader.finalize()
+
+    metrics = evaluator.compute_precision_recall_iou()
+
+    values = _flatten_metrics(metrics)
+    for value in values:
+        if isinstance(value, (np.generic, np.ndarray)):
+            raise TypeError(value)
     json.dumps(
         {
             key.value: [m.to_dict() for m in values]
@@ -74,49 +89,113 @@ def test_output_types_dont_contain_numpy(
     )
 
 
-@pytest.mark.parametrize("zero_side", ["groundtruths", "predictions"])
-def test_zero_filled_side_is_background(loader: Loader, zero_side):
-    kwargs = {
-        "groundtruths": np.array([[1, 0], [0, 2]]),
-        "predictions": np.array([[1, 0], [0, 2]]),
-    }
-    kwargs[zero_side] = np.zeros((2, 2), dtype=np.uint16)
+def test_label_mismatch(loader: Loader):
     loader.add_data(
-        [
+        segmentations=[
             Segmentation(
-                "image",
-                groundtruths=kwargs["groundtruths"],
-                predictions=kwargs["predictions"],
-                labels=["sky", "road", "car"],
+                uid="uid0",
+                groundtruths=np.array([[1, 1], [0, 0]]),
+                predictions=np.array([[2, 0], [0, 3]]),
+                labels=["v1", "v2", "v3"],
             )
         ]
     )
     evaluator = loader.finalize()
-    expected = np.array(
-        [[2, 1, 1, 0], [0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0]]
+    confusion_matrix = evaluator._compute_confusion_matrix_intermediate()
+    assert np.all(
+        confusion_matrix
+        == np.array(
+            [
+                [
+                    [1, 0, 0, 1],
+                    [1, 0, 1, 0],
+                    [0, 0, 0, 0],
+                    [0, 0, 0, 0],
+                ]
+            ]
+        )
     )
-    if zero_side == "predictions":
-        expected = expected.T
-    np.testing.assert_array_equal(
-        evaluator._compute_confusion_matrix_intermediate(), expected
+
+
+def test_empty_groundtruths(loader: Loader):
+    loader.add_data(
+        segmentations=[
+            Segmentation(
+                uid="uid0",
+                groundtruths=np.zeros((2, 2), dtype=np.uint16),
+                predictions=np.array([[1, 0], [0, 2]]),
+                labels=["v2", "v3"],
+            )
+        ]
     )
-    assert evaluator.info.number_of_groundtruth_pixels == (
-        0 if zero_side == "groundtruths" else 2
+    evaluator = loader.finalize()
+    confusion_matrix = evaluator._compute_confusion_matrix_intermediate()
+    assert np.all(
+        confusion_matrix
+        == np.array(
+            [
+                [
+                    [2, 1, 1],
+                    [0, 0, 0],
+                    [0, 0, 0],
+                ]
+            ]
+        )
     )
-    assert evaluator.info.number_of_prediction_pixels == (
-        0 if zero_side == "predictions" else 2
-    )
+    assert evaluator.info.number_of_groundtruth_pixels == 0
+    assert evaluator.info.number_of_prediction_pixels == 2
     assert (
         evaluator.compute_precision_recall_iou()[MetricType.Accuracy][0].value
         == 0.5
     )
 
 
-def test_evaluator_loading(tmp_path: Path, basic_segmentations):
+def test_empty_predictions(loader: Loader):
+    loader.add_data(
+        segmentations=[
+            Segmentation(
+                uid="uid0",
+                groundtruths=np.array([[1, 0], [0, 2]]),
+                predictions=np.zeros((2, 2), dtype=np.uint16),
+                labels=["v2", "v3"],
+            )
+        ]
+    )
+    evaluator = loader.finalize()
+    confusion_matrix = evaluator._compute_confusion_matrix_intermediate()
+    assert np.all(
+        confusion_matrix
+        == np.array(
+            [
+                [2, 0, 0],
+                [1, 0, 0],
+                [1, 0, 0],
+            ]
+        )
+    )
+    assert evaluator.info.number_of_groundtruth_pixels == 2
+    assert evaluator.info.number_of_prediction_pixels == 0
+    assert (
+        evaluator.compute_precision_recall_iou()[MetricType.Accuracy][0].value
+        == 0.5
+    )
+
+
+def test_evaluator_loading(
+    tmp_path: Path,
+    basic_segmentations: list[Segmentation],
+):
     loader = Loader.persistent(tmp_path)
     loader.add_data(basic_segmentations)
     original = loader.finalize()
+    # load from cache
     evaluator = Evaluator.load(tmp_path)
+
+    assert evaluator.info.number_of_datums == 1
+    assert evaluator.info.number_of_labels == 2
+    assert evaluator.info.number_of_pixels == 4
+    assert evaluator.info.number_of_groundtruth_pixels == 3
+    assert evaluator.info.number_of_prediction_pixels == 3
     assert evaluator.info == original.info
     assert (
         evaluator.compute_precision_recall_iou()
