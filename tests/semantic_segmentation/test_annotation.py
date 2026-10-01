@@ -43,7 +43,12 @@ def test_invalid_maps(side, invalid):
     }
     kwargs[side] = invalid
     with pytest.raises(ValueError):
-        Segmentation("image", labels=["sky"], **kwargs)
+        Segmentation(
+            "image",
+            groundtruths=kwargs["groundtruths"],
+            predictions=kwargs["predictions"],
+            labels=["sky"],
+        )
 
 
 def test_shape_mismatch():

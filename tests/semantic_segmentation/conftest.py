@@ -102,7 +102,7 @@ def large_random_segmentations() -> list[Segmentation]:
             uid=f"uid{i}",
             groundtruths=rng.integers(2, size=(2000, 2000), dtype=np.uint16),
             predictions=rng.integers(2, size=(2000, 2000), dtype=np.uint16),
-            labels=[f"class-{2*i}", f"class-{2*i+1}"],
+            labels=[f"class-{2 * i}", f"class-{2 * i + 1}"],
         )
         for i in range(3)
     ]

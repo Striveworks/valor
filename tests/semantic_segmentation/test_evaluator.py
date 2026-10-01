@@ -83,7 +83,14 @@ def test_zero_filled_side_is_labelled(loader: Loader, zero_side):
     }
     kwargs[zero_side] = np.zeros((2, 2), dtype=np.uint16)
     loader.add_data(
-        [Segmentation("image", labels=["sky", "road", "car"], **kwargs)]
+        [
+            Segmentation(
+                "image",
+                groundtruths=kwargs["groundtruths"],
+                predictions=kwargs["predictions"],
+                labels=["sky", "road", "car"],
+            )
+        ]
     )
     evaluator = loader.finalize()
     expected = np.array(
