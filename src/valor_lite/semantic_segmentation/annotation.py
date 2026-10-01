@@ -91,7 +91,7 @@ class Segmentation:
 
     @property
     def shape(self) -> tuple[int, int]:
-        return self.groundtruths.shape
+        return self.groundtruths.shape[0], self.groundtruths.shape[1]
 
     @property
     def size(self) -> int:
