@@ -2,11 +2,11 @@ import json
 from pathlib import Path
 
 import numpy as np
+import pyarrow as pa
 import pyarrow.compute as pc
 import pytest
 
 from valor_lite.cache import FileCacheWriter
-from valor_lite.exceptions import EmptyCacheError
 from valor_lite.semantic_segmentation import (
     Builder,
     Evaluator,
@@ -15,7 +15,6 @@ from valor_lite.semantic_segmentation import (
     MetricType,
     Segmentation,
 )
-from valor_lite.semantic_segmentation.shared import generate_schema
 
 
 def test_evaluator_file_not_found(tmp_path: Path):
@@ -76,7 +75,7 @@ def test_output_types_dont_contain_numpy(
 
 
 @pytest.mark.parametrize("zero_side", ["groundtruths", "predictions"])
-def test_zero_filled_side_is_labelled(loader: Loader, zero_side):
+def test_zero_filled_side_is_background(loader: Loader, zero_side):
     kwargs = {
         "groundtruths": np.array([[1, 0], [0, 2]]),
         "predictions": np.array([[1, 0], [0, 2]]),
@@ -94,17 +93,22 @@ def test_zero_filled_side_is_labelled(loader: Loader, zero_side):
     )
     evaluator = loader.finalize()
     expected = np.array(
-        [[0, 0, 0, 0], [0, 2, 1, 1], [0, 0, 0, 0], [0, 0, 0, 0]]
+        [[2, 1, 1, 0], [0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0]]
     )
     if zero_side == "predictions":
         expected = expected.T
     np.testing.assert_array_equal(
         evaluator._compute_confusion_matrix_intermediate(), expected
     )
+    assert evaluator.info.number_of_groundtruth_pixels == (
+        0 if zero_side == "groundtruths" else 2
+    )
+    assert evaluator.info.number_of_prediction_pixels == (
+        0 if zero_side == "predictions" else 2
+    )
     assert (
-        evaluator.info.number_of_groundtruth_pixels
-        == evaluator.info.number_of_prediction_pixels
-        == 4
+        evaluator.compute_precision_recall_iou()[MetricType.Accuracy][0].value
+        == 0.5
     )
 
 
@@ -131,8 +135,8 @@ def test_filtered_cache_preserves_vocabulary_on_reload(
         [
             Segmentation(
                 "image",
-                np.array([[0, 1]]),
-                np.array([[0, 1]]),
+                np.array([[1, 2]]),
+                np.array([[1, 2]]),
                 ["sky", "road", "absent"],
             )
         ]
@@ -159,10 +163,31 @@ def test_filtered_cache_preserves_vocabulary_on_reload(
     )
 
 
-def test_legacy_cache_with_noncontiguous_ids(tmp_path: Path):
-    schema = generate_schema(None)
-    for name in ("gt_valid", "pd_valid"):
-        schema = schema.remove(schema.get_field_index(name))
+@pytest.mark.parametrize(
+    "metadata_type,metadata_value",
+    [(None, None), ("bool", False), ("string", "user data")],
+)
+def test_legacy_cache_with_noncontiguous_ids(
+    tmp_path: Path, metadata_type, metadata_value
+):
+    metadata_fields = (
+        [("gt_valid", metadata_type), ("pd_valid", metadata_type)]
+        if metadata_type
+        else []
+    )
+    metadata = {name: metadata_value for name, _ in metadata_fields}
+    schema = pa.schema(
+        [
+            ("datum_uid", pa.string()),
+            ("datum_id", pa.int64()),
+            ("gt_label", pa.string()),
+            ("gt_label_id", pa.int64()),
+            ("pd_label", pa.string()),
+            ("pd_label_id", pa.int64()),
+            ("count", pa.uint64()),
+            *metadata_fields,
+        ]
+    )
     writer = FileCacheWriter.create(
         path=tmp_path / "counts",
         schema=schema,
@@ -170,11 +195,12 @@ def test_legacy_cache_with_noncontiguous_ids(tmp_path: Path):
         rows_per_file=100,
         compression="snappy",
     )
-    (tmp_path / "metadata.json").write_text("{}")
-    builder = Builder(writer)
+    (tmp_path / "metadata.json").write_text(json.dumps(dict(metadata_fields)))
+    builder = Builder(writer, metadata_fields=metadata_fields)
     builder._writer.write_rows(
         [
             {
+                **metadata,
                 "datum_uid": "image",
                 "datum_id": 0,
                 "gt_label": "road",
@@ -184,6 +210,7 @@ def test_legacy_cache_with_noncontiguous_ids(tmp_path: Path):
                 "count": 2,
             },
             {
+                **metadata,
                 "datum_uid": "image",
                 "datum_id": 0,
                 "gt_label": None,
@@ -208,6 +235,9 @@ def test_legacy_cache_with_noncontiguous_ids(tmp_path: Path):
         reloaded.compute_precision_recall_iou()[MetricType.Precision][0].value
         == 2 / 3
     )
+    assert reloaded.info.number_of_pixels == 3
+    assert reloaded.info.number_of_groundtruth_pixels == 2
+    assert reloaded.info.number_of_prediction_pixels == 3
     filtered = reloaded.filter(
         groundtruths=pc.field("gt_label") == "road",
         predictions=pc.field("pd_label") == "road",
@@ -221,6 +251,9 @@ def test_legacy_cache_with_noncontiguous_ids(tmp_path: Path):
         Evaluator.load(tmp_path / "filtered").compute_precision_recall_iou()
         == filtered.compute_precision_recall_iou()
     )
+    for table in filtered._reader.iterate_tables():
+        for name, _ in metadata_fields:
+            assert table[name].to_pylist() == [metadata_value] * table.num_rows
 
 
 def test_memory_and_persistent_parity(
@@ -245,7 +278,7 @@ def test_absent_classes_are_stored_in_rows(tmp_path: Path):
     loader.add_data(
         [
             Segmentation(
-                "image", np.array([[0]]), np.array([[0]]), ["sky", "road"]
+                "image", np.array([[1]]), np.array([[1]]), ["sky", "road"]
             )
         ]
     )
@@ -274,8 +307,8 @@ def test_inline_datum_filter_matches_materialized_filter(tmp_path: Path):
     loader = Loader.in_memory()
     loader.add_data(
         [
-            Segmentation("first", np.array([[0]]), np.array([[0]]), ["sky"]),
-            Segmentation("second", np.array([[0]]), np.array([[0]]), ["road"]),
+            Segmentation("first", np.array([[1]]), np.array([[1]]), ["sky"]),
+            Segmentation("second", np.array([[1]]), np.array([[1]]), ["road"]),
         ]
     )
     evaluator = loader.finalize()
@@ -294,12 +327,12 @@ def test_inline_datum_filter_matches_materialized_filter(tmp_path: Path):
     assert missing[MetricType.mIOU][0].value == 0
 
 
-def test_one_sided_mask_and_names_survive_reload(tmp_path: Path):
+def test_one_sided_filter_drops_excluded_vocabulary_on_reload(tmp_path: Path):
     loader = Loader.persistent(tmp_path / "source")
     loader.add_data(
         [
             Segmentation(
-                "image", np.array([[0]]), np.array([[1]]), ["sky", "road"]
+                "image", np.array([[1]]), np.array([[2]]), ["sky", "road"]
             )
         ]
     )
@@ -315,16 +348,19 @@ def test_one_sided_mask_and_names_survive_reload(tmp_path: Path):
         for row in tbl.to_pylist()
     ]
     assert len(rows) == 1
-    assert rows[0]["gt_label"] == "sky" and rows[0]["gt_label_id"] == 0
+    assert rows[0]["gt_label"] is None and rows[0]["gt_label_id"] == -1
     assert rows[0]["pd_label"] == "road" and rows[0]["pd_label_id"] == 1
-    assert rows[0]["gt_valid"] is False and rows[0]["pd_valid"] is True
     assert (
         reloaded.info.number_of_pixels
         == reloaded.info.number_of_prediction_pixels
         == 1
     )
     assert reloaded.info.number_of_groundtruth_pixels == 0
-    assert reloaded._index_to_label == {0: "sky", 1: "road"}
+    assert reloaded._index_to_label == {1: "road"}
+    assert [
+        metric.parameters["label"]
+        for metric in reloaded.compute_precision_recall_iou()[MetricType.IOU]
+    ] == ["road"]
     assert (
         reloaded.compute_precision_recall_iou()
         == filtered.compute_precision_recall_iou()
@@ -338,8 +374,121 @@ def test_one_sided_mask_and_names_survive_reload(tmp_path: Path):
         refiltered.compute_precision_recall_iou()
         == reloaded.compute_precision_recall_iou()
     )
-    with pytest.raises(EmptyCacheError):
-        reloaded.filter(
-            predictions=pc.field("pd_label") == "sky", path=tmp_path / "empty"
-        )
+    background = reloaded.filter(
+        predictions=pc.field("pd_label") == "sky", path=tmp_path / "background"
+    )
+    assert background._index_to_label == {}
+    assert background.info.number_of_pixels == 1
+    assert (
+        background.compute_precision_recall_iou()[MetricType.Accuracy][0].value
+        == 1.0
+    )
     assert not (path / "labels.json").exists()
+
+
+@pytest.mark.parametrize("source", ["memory", "persistent", "loaded"])
+def test_filters_preserve_label_name_overrides(tmp_path: Path, source):
+    loader = (
+        Loader.in_memory(batch_size=1)
+        if source == "memory"
+        else Loader.persistent(
+            tmp_path / "source", batch_size=1, rows_per_file=1
+        )
+    )
+    loader.add_data(
+        [
+            Segmentation("first", np.array([[1]]), np.array([[1]]), ["sky"]),
+            Segmentation("second", np.array([[1]]), np.array([[1]]), ["road"]),
+        ]
+    )
+    overrides = {0: "excluded", 1: "renamed"}
+    evaluator = loader.finalize(index_to_label_override=overrides)
+    if source == "loaded":
+        evaluator = Evaluator.load(
+            tmp_path / "source", index_to_label_override=overrides
+        )
+    expression = pc.field("datum_uid") == "second"
+    inline_metrics = evaluator.compute_precision_recall_iou(datums=expression)
+    assert inline_metrics[MetricType.IOU] == [Metric.iou(1.0, "renamed")]
+    filtered = evaluator.filter(datums=expression, path=tmp_path / "datums")
+    assert filtered._index_to_label == {1: "renamed"}
+    assert filtered.compute_precision_recall_iou() == inline_metrics
+    filtered = evaluator.filter(
+        groundtruths=pc.field("gt_label") == "road",
+        predictions=pc.field("pd_label") == "road",
+        path=tmp_path / "annotations",
+    )
+    assert filtered._index_to_label == {1: "renamed"}
+    assert filtered.compute_precision_recall_iou() == inline_metrics
+
+
+@pytest.mark.parametrize("persistent", [False, True])
+def test_validity_names_are_user_metadata(tmp_path: Path, persistent):
+    metadata_fields = [("gt_valid", "bool"), ("pd_valid", "bool")]
+    loader = (
+        Loader.persistent(tmp_path / "source", metadata_fields=metadata_fields)
+        if persistent
+        else Loader.in_memory(metadata_fields=metadata_fields)
+    )
+    loader.add_data(
+        [
+            Segmentation(
+                "image",
+                np.array([[1]]),
+                np.array([[1]]),
+                ["cat"],
+                metadata={"gt_valid": False, "pd_valid": False},
+            )
+        ]
+    )
+    evaluator = loader.finalize()
+    assert (
+        evaluator.compute_precision_recall_iou()[MetricType.Accuracy][0].value
+        == 1.0
+    )
+    filtered = evaluator.filter(
+        groundtruths=~pc.field("gt_valid"),
+        predictions=~pc.field("pd_valid"),
+        path=tmp_path / "filtered",
+    )
+    assert filtered.info == evaluator.info
+    assert (
+        filtered.compute_precision_recall_iou()
+        == evaluator.compute_precision_recall_iou()
+    )
+    for table in filtered._reader.iterate_tables():
+        assert table["gt_valid"].to_pylist() == [False]
+        assert table["pd_valid"].to_pylist() == [False]
+
+
+def test_legacy_background_counts_survive_loading(tmp_path: Path):
+    builder = Builder.persistent(tmp_path / "source")
+    builder._writer.write_rows(
+        [
+            {
+                "datum_uid": "image",
+                "datum_id": 0,
+                "gt_label": None,
+                "gt_label_id": -1,
+                "pd_label": None,
+                "pd_label_id": -1,
+                "count": 2,
+            }
+        ]
+    )
+    builder.finalize()
+    evaluator = Evaluator.load(tmp_path / "source")
+    assert evaluator.info.number_of_pixels == 2
+    assert evaluator.info.number_of_groundtruth_pixels == 0
+    assert evaluator.info.number_of_prediction_pixels == 0
+    assert (
+        evaluator.compute_precision_recall_iou()[MetricType.Accuracy][0].value
+        == 1.0
+    )
+    filtered = evaluator.filter(
+        datums=pc.field("datum_uid") == "image", path=tmp_path / "filtered"
+    )
+    assert (
+        filtered.compute_precision_recall_iou()
+        == evaluator.compute_precision_recall_iou()
+    )

@@ -19,7 +19,6 @@ from valor_lite.semantic_segmentation.computation import compute_metrics
 from valor_lite.semantic_segmentation.metric import MetricType
 from valor_lite.semantic_segmentation.shared import (
     EvaluatorInfo,
-    annotation_validity,
     decode_metadata_fields,
     encode_metadata_fields,
     extract_counts,
@@ -258,10 +257,13 @@ class Evaluator:
         """
         Mask ground truth and prediction annotations independently.
 
-        Datum filters discard complete rows. An excluded annotation is masked
-        while the remaining side contributes a false positive or false negative.
-        Rows excluded on both sides are discarded from all counts and metrics.
-        Retained rows keep their labels and IDs, with gt_valid/pd_valid masks.
+        Datum filters discard complete rows. Excluded annotations become
+        background, using cache ID -1 and confusion-matrix index zero.
+        A remaining foreground annotation contributes a false positive or
+        false negative; a remaining background annotation matches background.
+        Rows failing both filters are discarded from all counts and metrics.
+        Only retained foreground labels remain in the vocabulary, preserving
+        their name overrides.
         Raises EmptyCacheError if no rows remain.
 
         Parameters
@@ -298,14 +300,23 @@ class Evaluator:
                 metadata_fields=self.info.metadata_fields,
             )
 
+        retained_ids = set()
         for tbl in self._reader.iterate_tables(filter=datums):
             tbl = mask_annotations(tbl, groundtruths, predictions)
             if tbl.num_rows:
+                for column in ("gt_label_id", "pd_label_id"):
+                    retained_ids.update(tbl[column].to_pylist())
                 builder._writer.write_table(
                     tbl.select(builder._writer.schema.names)
                 )
 
-        return builder.finalize()
+        return builder.finalize(
+            index_to_label_override={
+                idx: label
+                for idx, label in self._index_to_label.items()
+                if idx in retained_ids
+            }
+        )
 
     def _compute_confusion_matrix_intermediate(
         self,
@@ -315,9 +326,9 @@ class Evaluator:
         """
         Accumulate cached counts into a matrix with dense class positions.
 
-        The extra row and column accommodate missing annotations in legacy
-        caches. ``index_to_label`` optionally selects the vocabulary used for
-        a datum-filtered evaluation.
+        Row and column zero represent background, including excluded sides.
+        ``index_to_label`` optionally selects the vocabulary used for a
+        datum-filtered evaluation.
         """
         index_to_label = (
             self._index_to_label if index_to_label is None else index_to_label
@@ -328,20 +339,11 @@ class Evaluator:
         )
         label_ids = np.array(sorted(index_to_label), dtype=np.int64)
         columns = ["gt_label_id", "pd_label_id", "count"]
-        columns.extend(
-            col
-            for col in ("gt_valid", "pd_valid")
-            if col in self._reader.schema.names
-        )
         for tbl in self._reader.iterate_tables(columns=columns, filter=datums):
-            tbl = mask_annotations(tbl)
             ids = np.column_stack(
                 [tbl[col].to_numpy() for col in ("gt_label_id", "pd_label_id")]
             ).astype(np.int64)
-            # Mask only working indices; cached label IDs remain unchanged.
-            ids[~annotation_validity(tbl, "gt"), 0] = -1
-            ids[~annotation_validity(tbl, "pd"), 1] = -1
-            # Slot zero represents a masked or legacy missing annotation.
+            # Cache ID -1 maps to background in matrix slot zero.
             # Retained cache IDs may be noncontiguous after row filtering.
             valid = ids != -1
             positions = np.searchsorted(label_ids, ids[valid])
@@ -378,9 +380,12 @@ class Evaluator:
         """
         index_to_label = self._index_to_label
         if datums is not None:
-            index_to_label = dict(
-                sorted(extract_labels(self._reader, filter=datums).items())
-            )
+            retained_ids = extract_labels(self._reader, filter=datums)
+            index_to_label = {
+                idx: label
+                for idx, label in self._index_to_label.items()
+                if idx in retained_ids
+            }
         confusion_matrix = self._compute_confusion_matrix_intermediate(
             datums=datums, index_to_label=index_to_label
         )

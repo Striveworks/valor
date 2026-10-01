@@ -31,7 +31,7 @@ def test_segmentation():
         np.zeros((1, 1, 1), dtype=np.uint16),
         np.zeros((0, 1), dtype=np.uint16),
         np.array([[-1]]),
-        np.array([[1]]),
+        np.array([[2]]),
         np.array([[65536]], dtype=np.uint64),
         np.array([[2**64 - 1]], dtype=np.uint64),
     ],
@@ -63,7 +63,7 @@ def test_shape_mismatch():
 
 @pytest.mark.parametrize(
     "labels",
-    [[], ["sky", "sky"], [0], "sky", None, [str(i) for i in range(65537)]],
+    [["sky", "sky"], [0], "sky", None, [str(i) for i in range(65536)]],
 )
 def test_invalid_labels(labels):
     with pytest.raises(ValueError):
@@ -78,7 +78,7 @@ def test_invalid_labels(labels):
 def test_highest_label_id():
     array = np.array([[0, 65535]], dtype=np.uint64)
     segmentation = Segmentation(
-        "image", array, array, [str(i) for i in range(65536)]
+        "image", array, array, [str(i) for i in range(1, 65536)]
     )
     np.testing.assert_array_equal(segmentation.groundtruths, array)
     assert segmentation.groundtruths.dtype == np.uint16
@@ -88,7 +88,7 @@ def test_highest_label_id():
     "side", ["groundtruth_metadata", "prediction_metadata"]
 )
 @pytest.mark.parametrize(
-    "metadata", [{-1: {}}, {1: {}}, {"0": {}}, {True: {}}, {0: "invalid"}, []]
+    "metadata", [{-1: {}}, {2: {}}, {"0": {}}, {True: {}}, {0: "invalid"}, []]
 )
 def test_invalid_class_metadata(side, metadata):
     with pytest.raises(ValueError, match=side):
@@ -113,4 +113,12 @@ def test_read_only_noncontiguous_arrays_are_not_modified():
     evaluator = loader.finalize()
     np.testing.assert_array_equal(array, original)
     assert evaluator.info.number_of_pixels == 6
-    assert evaluator._compute_confusion_matrix_intermediate()[1, 2] == 6
+    assert evaluator._compute_confusion_matrix_intermediate()[0, 1] == 6
+
+
+def test_empty_labels_require_all_background():
+    background = np.zeros((2, 2), dtype=np.uint16)
+    segmentation = Segmentation("image", background, background, [])
+    assert segmentation.labels == []
+    with pytest.raises(ValueError, match="len\\(labels\\)"):
+        Segmentation("image", background, np.ones((2, 2), dtype=np.uint16), [])

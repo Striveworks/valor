@@ -32,28 +32,34 @@ class Loader(Builder):
         segmentations: list[Segmentation],
         show_progress: bool = False,
     ):
-        """Cache observed pixel pairs, reconciling local labels by name.
+        """Cache observed pixel pairs, reconciling foreground labels by name.
 
+        Pixel zero is background. Positive pixel i names labels[i - 1].
+        Background uses the existing cache ID -1 and matrix row/column zero.
         Declared labels with no pixels are preserved in zero-count rows.
         Their metrics are zero when they have no support, and they participate
         in mean IoU. Input arrays are never modified.
         """
         for segmentation in tqdm(segmentations, disable=not show_progress):
             local_to_global = np.array(
-                [self._add_label(label) for label in segmentation.labels],
+                [
+                    -1,
+                    *[self._add_label(label) for label in segmentation.labels],
+                ],
                 dtype=np.int64,
             )
+            local_labels = [None, *segmentation.labels]
             gt_ids, pd_ids, counts = compute_intermediates(
                 groundtruths=segmentation.groundtruths,
                 predictions=segmentation.predictions,
-                n_labels=len(segmentation.labels),
+                n_labels=len(segmentation.labels) + 1,
             )
             gt_metadata = segmentation.groundtruth_metadata or {}
             pd_metadata = segmentation.prediction_metadata or {}
             observed = set(gt_ids.tolist()) | set(pd_ids.tolist())
             absent_pairs = (
                 (idx, idx, 0)
-                for idx in range(len(segmentation.labels))
+                for idx in range(1, len(segmentation.labels) + 1)
                 if idx not in observed
             )
             rows = [
@@ -63,13 +69,11 @@ class Loader(Builder):
                     **pd_metadata.get(int(pd), {}),
                     "datum_uid": segmentation.uid,
                     "datum_id": self._datum_count,
-                    "gt_label": segmentation.labels[int(gt)],
+                    "gt_label": local_labels[int(gt)],
                     "gt_label_id": local_to_global[gt],
-                    "pd_label": segmentation.labels[int(pd)],
+                    "pd_label": local_labels[int(pd)],
                     "pd_label_id": local_to_global[pd],
                     "count": count,
-                    "gt_valid": True,
-                    "pd_valid": True,
                 }
                 for gt, pd, count in chain(
                     zip(gt_ids, pd_ids, counts), absent_pairs

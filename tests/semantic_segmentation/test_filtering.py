@@ -68,18 +68,18 @@ def test_filtering_by_annotation_metadata(
         [
             Segmentation(
                 "image",
-                np.array([[0, 1], [1, 2]]),
-                np.array([[1, 1], [2, 2]]),
+                np.array([[1, 2], [2, 3]]),
+                np.array([[2, 2], [3, 3]]),
                 ["sky", "road", "car"],
                 groundtruth_metadata={
-                    0: {"gt_xmin": 10},
-                    1: {"gt_xmin": 20},
-                    2: {"gt_xmin": 30},
+                    1: {"gt_xmin": 10},
+                    2: {"gt_xmin": 20},
+                    3: {"gt_xmin": 30},
                 },
                 prediction_metadata={
-                    0: {"pd_xmin": 40},
-                    1: {"pd_xmin": 50},
-                    2: {"pd_xmin": 60},
+                    1: {"pd_xmin": 40},
+                    2: {"pd_xmin": 50},
+                    3: {"pd_xmin": 60},
                 },
             )
         ]
@@ -94,10 +94,9 @@ def test_filtering_by_annotation_metadata(
     )
     expected = {
         "groundtruths": [
-            [0, 0, 1, 0],
-            [0, 0, 0, 0],
-            [0, 0, 1, 1],
-            [0, 0, 0, 1],
+            [0, 1, 0],
+            [0, 1, 1],
+            [0, 0, 1],
         ],
         "predictions": [
             [0, 0, 0, 0],
@@ -105,7 +104,7 @@ def test_filtering_by_annotation_metadata(
             [1, 0, 1, 0],
             [1, 0, 0, 0],
         ],
-        "both": [[0, 0, 1, 0], [0, 0, 0, 0], [1, 0, 1, 0], [1, 0, 0, 0]],
+        "both": [[0, 1, 0], [1, 1, 0], [1, 0, 0]],
     }
     np.testing.assert_array_equal(
         filtered._compute_confusion_matrix_intermediate(), expected[side]
@@ -124,18 +123,18 @@ def test_filtering_by_annotation_metadata(
         for tbl in filtered._reader.iterate_tables()
         for row in tbl.to_pylist()
     ]
-    assert [(row["gt_label_id"], row["pd_label_id"]) for row in rows] == [
-        (0, 1),
-        (1, 1),
-        (1, 2),
-        (2, 2),
-    ]
-    assert [row["gt_valid"] for row in rows] == (
-        [False, True, True, True] if side != "predictions" else [True] * 4
+    assert [row["gt_label_id"] for row in rows] == (
+        [-1, 1, 1, 2] if side != "predictions" else [0, 1, 1, 2]
     )
-    assert [row["pd_valid"] for row in rows] == (
-        [True, True, False, False] if side != "groundtruths" else [True] * 4
+    assert [row["pd_label_id"] for row in rows] == (
+        [1, 1, -1, -1] if side != "groundtruths" else [1, 1, 2, 2]
     )
+    for row in rows:
+        for prefix in ("gt", "pd"):
+            if row[f"{prefix}_label_id"] == -1:
+                assert row[f"{prefix}_label"] is None
+    assert "gt_valid" not in filtered._reader.schema.names
+    assert "pd_valid" not in filtered._reader.schema.names
 
 
 def test_filtering_all_annotations(
@@ -214,7 +213,7 @@ def test_filtering_labels(
         path=tmp_path / "filter",
     )
 
-    assert filtered._index_to_label == {0: "v1", 1: "v2", 2: "v3"}
+    assert filtered._index_to_label == {1: "v2", 2: "v3"}
     assert (
         filtered.info.number_of_pixels == 9
     )  # Three pairs per image; both-failed pairs excluded.
@@ -225,6 +224,13 @@ def test_filtering_labels(
     assert filtered.compute_precision_recall_iou()
 
     metrics = filtered.compute_precision_recall_iou()
+    assert metrics[MetricType.mIOU][0].value == 0.25
+    assert [
+        metric.parameters["label"] for metric in metrics[MetricType.IOU]
+    ] == [
+        "v2",
+        "v3",
+    ]
     cm = metrics.pop(MetricType.ConfusionMatrix)
     assert len(cm) == 1
     assert prune_fields_containing_zeros(cm[0].to_dict()) == {
@@ -276,7 +282,7 @@ def test_filtering_to_absent_class_does_not_report_perfect_accuracy(
     loader.add_data(
         [
             Segmentation(
-                "image", np.array([[0]]), np.array([[0]]), ["sky", "absent"]
+                "image", np.array([[1]]), np.array([[1]]), ["sky", "absent"]
             )
         ]
     )
@@ -293,4 +299,89 @@ def test_filtering_to_absent_class_does_not_report_perfect_accuracy(
     )
     assert (
         filtered.compute_precision_recall_iou()[MetricType.mIOU][0].value == 0
+    )
+
+
+@pytest.mark.parametrize("side", ["groundtruths", "predictions", "both"])
+def test_ignored_class_uses_background(loader: Loader, tmp_path: Path, side):
+    loader.add_data(
+        [
+            Segmentation(
+                "image",
+                np.array([[1, 2, 2, 2, 1]]),
+                np.array([[2, 1, 2, 2, 1]]),
+                ["cat", "dog"],
+            )
+        ]
+    )
+    evaluator = loader.finalize()
+    filters = {}
+    if side in ("groundtruths", "both"):
+        filters["groundtruths"] = pc.field("gt_label") != "cat"
+    if side in ("predictions", "both"):
+        filters["predictions"] = pc.field("pd_label") != "cat"
+    filtered = evaluator.filter(path=tmp_path / "filtered", **filters)
+    assert evaluator.get_info(**filters) == filtered.info
+    metrics = filtered.compute_precision_recall_iou()
+    assert filtered._index_to_label == (
+        {1: "dog"} if side == "both" else {0: "cat", 1: "dog"}
+    )
+    assert [
+        metric.parameters["label"] for metric in metrics[MetricType.IOU]
+    ] == (["dog"] if side == "both" else ["cat", "dog"])
+    assert metrics[MetricType.mIOU][0].value == (
+        0.5 if side == "both" else 0.25
+    )
+    assert metrics[MetricType.Accuracy][0].value == (
+        0.5 if side == "both" else 0.4
+    )
+    if side == "both":
+        np.testing.assert_array_equal(
+            filtered._compute_confusion_matrix_intermediate(), [[0, 1], [1, 2]]
+        )
+        assert metrics[MetricType.Precision][0].value == 2 / 3
+        assert metrics[MetricType.Recall][0].value == 2 / 3
+    # Filtering a copy does not change the source's classes or metrics.
+    assert evaluator._index_to_label == {0: "cat", 1: "dog"}
+    assert (
+        evaluator.compute_precision_recall_iou()[MetricType.Accuracy][0].value
+        == 0.6
+    )
+
+
+@pytest.mark.parametrize("side", ["groundtruths", "predictions"])
+def test_exclusions_match_background(loader: Loader, tmp_path: Path, side):
+    foreground = np.array([[1]])
+    background = np.array([[0]])
+    loader.add_data(
+        [
+            Segmentation(
+                "image",
+                foreground if side == "groundtruths" else background,
+                foreground if side == "predictions" else background,
+                ["cat"],
+            )
+        ]
+    )
+    evaluator = loader.finalize()
+    assert (
+        evaluator.compute_precision_recall_iou()[MetricType.Accuracy][0].value
+        == 0.0
+    )
+    column = "gt_label" if side == "groundtruths" else "pd_label"
+    filters = {side: pc.field(column) != "cat"}
+    filtered = evaluator.filter(path=tmp_path / "background", **filters)
+    np.testing.assert_array_equal(
+        filtered._compute_confusion_matrix_intermediate(), [[1]]
+    )
+    assert filtered._index_to_label == {}
+    assert filtered.info.number_of_pixels == 1
+    assert evaluator.get_info(**filters) == filtered.info
+    assert (
+        filtered.compute_precision_recall_iou()[MetricType.Accuracy][0].value
+        == 1.0
+    )
+    assert (
+        filtered.compute_precision_recall_iou()[MetricType.mIOU][0].value
+        == 0.0
     )

@@ -67,8 +67,8 @@ def test_confusion_matrix_intermediate_counting(loader: Loader):
         [
             Segmentation(
                 "image",
-                np.array([[2, 3], [0, 1]]),
-                np.full((2, 2), 2),
+                np.array([[3, 4], [1, 2]]),
+                np.full((2, 2), 3),
                 ["a", "b", "c", "d"],
             )
         ]

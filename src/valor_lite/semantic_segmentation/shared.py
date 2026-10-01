@@ -46,9 +46,6 @@ def generate_schema(
         ("pd_label_id", pa.int64()),
         # pair
         ("count", pa.uint64()),
-        # Whether each annotation is included after filtering. Keep its ID/name.
-        ("gt_valid", pa.bool_()),
-        ("pd_valid", pa.bool_()),
     ]
 
     # validate
@@ -120,23 +117,18 @@ def extract_labels(
     return index_to_label
 
 
-def annotation_validity(table: pa.Table, side: str) -> np.ndarray:
-    """Read a side's filter mask; legacy rows are unfiltered by default."""
-    column = f"{side}_valid"
-    if column not in table.column_names:
-        return np.ones(table.num_rows, dtype=np.bool_)
-    return table[column].fill_null(pa.scalar(True)).to_numpy().copy()
-
-
 def mask_annotations(
     table: pa.Table,
     groundtruths: pc.Expression | None = None,
     predictions: pc.Expression | None = None,
 ) -> pa.Table:
-    """Mask each side independently and discard rows excluded on both sides."""
+    """Map excluded sides to background; discard rows failing both filters."""
+    if groundtruths is None and predictions is None:
+        return table
+
     masks = []
     for side, expression in (("gt", groundtruths), ("pd", predictions)):
-        valid = annotation_validity(table, side)
+        valid = np.ones(table.num_rows, dtype=np.bool_)
         if expression is not None:
             index_name = "__row_index"
             while index_name in table.column_names:
@@ -153,14 +145,21 @@ def mask_annotations(
         masks.append(valid)
 
     for side, valid in zip(("gt", "pd"), masks):
-        column = f"{side}_valid"
-        values = pa.array(valid)
-        if column in table.column_names:
+        for column, excluded in (
+            (f"{side}_label_id", -1),
+            (f"{side}_label", None),
+        ):
+            values = pc.call_function(
+                "if_else",
+                [
+                    pa.array(valid),
+                    table[column],
+                    pa.scalar(excluded, type=table[column].type),
+                ],
+            )
             table = table.set_column(
                 table.schema.get_field_index(column), column, values
             )
-        else:
-            table = table.append_column(column, values)
     return table.filter(pa.array(masks[0] | masks[1]))
 
 
@@ -181,15 +180,11 @@ def extract_counts(
         n_total += int(tbl["count"].to_numpy().sum())
 
         # count groundtruth pixels
-        gt_tbl = tbl
-        gt_expr = (pc.field("gt_label_id") >= 0) & pc.field("gt_valid")
-        gt_tbl = tbl.filter(gt_expr)
+        gt_tbl = tbl.filter(pc.field("gt_label_id") >= 0)
         n_gts += int(gt_tbl["count"].to_numpy().sum())
 
         # count prediction pixels
-        pd_tbl = tbl
-        pd_expr = (pc.field("pd_label_id") >= 0) & pc.field("pd_valid")
-        pd_tbl = tbl.filter(pd_expr)
+        pd_tbl = tbl.filter(pc.field("pd_label_id") >= 0)
         n_pds += int(pd_tbl["count"].to_numpy().sum())
 
     return n_dts, n_total, n_gts, n_pds

@@ -49,8 +49,8 @@ def basic_segmentations() -> list[Segmentation]:
     return [
         Segmentation(
             uid="uid0",
-            groundtruths=np.array([[0, 2], [1, 0]], dtype=np.uint16),
-            predictions=np.array([[0, 1], [1, 2]], dtype=np.uint16),
+            groundtruths=np.array([[1, 3], [2, 1]], dtype=np.uint16),
+            predictions=np.array([[1, 2], [2, 3]], dtype=np.uint16),
             labels=["v1", "v2", "other"],
         )
     ]
@@ -61,8 +61,8 @@ def basic_segmentations_three_labels() -> list[Segmentation]:
     return [
         Segmentation(
             uid=f"uid{i}",
-            groundtruths=np.array([[0, 2], [1, 0]], dtype=np.uint16),
-            predictions=np.array([[0, 1], [1, 2]], dtype=np.uint16),
+            groundtruths=np.array([[1, 3], [2, 1]], dtype=np.uint16),
+            predictions=np.array([[1, 2], [2, 3]], dtype=np.uint16),
             labels=["v1", "v2", "v3"],
         )
         for i in range(3)
@@ -72,7 +72,7 @@ def basic_segmentations_three_labels() -> list[Segmentation]:
 @pytest.fixture
 def segmentations_from_boxes() -> list[Segmentation]:
     def label_map(rect, label):
-        array = np.full((900, 300), 2, dtype=np.uint16)
+        array = np.full((900, 300), 3, dtype=np.uint16)
         xmin, xmax, ymin, ymax = rect
         array[ymin:ymax, xmin:xmax] = label
         return array
@@ -84,11 +84,11 @@ def segmentations_from_boxes() -> list[Segmentation]:
     return [
         Segmentation(
             uid=f"uid{i + 1}",
-            groundtruths=label_map(gt, i),
-            predictions=label_map(pd, i),
+            groundtruths=label_map(gt, i + 1),
+            predictions=label_map(pd, i + 1),
             labels=["v1", "v2", "other"],
-            groundtruth_metadata={i: {"gt_xmin": gt[0]}},
-            prediction_metadata={i: {"pd_xmin": pd[0]}},
+            groundtruth_metadata={i + 1: {"gt_xmin": gt[0]}},
+            prediction_metadata={i + 1: {"pd_xmin": pd[0]}},
         )
         for i, (gt, pd) in enumerate(rectangles)
     ]
@@ -100,8 +100,10 @@ def large_random_segmentations() -> list[Segmentation]:
     return [
         Segmentation(
             uid=f"uid{i}",
-            groundtruths=rng.integers(2, size=(2000, 2000), dtype=np.uint16),
-            predictions=rng.integers(2, size=(2000, 2000), dtype=np.uint16),
+            groundtruths=rng.integers(
+                1, 3, size=(2000, 2000), dtype=np.uint16
+            ),
+            predictions=rng.integers(1, 3, size=(2000, 2000), dtype=np.uint16),
             labels=[f"class-{2 * i}", f"class-{2 * i + 1}"],
         )
         for i in range(3)

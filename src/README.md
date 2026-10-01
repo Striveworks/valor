@@ -101,6 +101,9 @@ assert metrics[MetricType.Precision][0].to_dict() == {
 
 ### Semantic Segmentation
 
+Pixel value 0 is background; positive value `i` refers to `labels[i - 1]`.
+Provide foreground names only. Background counts toward accuracy, not mean IoU.
+
 ```python
 import numpy as np
 from valor_lite.semantic_segmentation import Loader, MetricType, Segmentation
@@ -108,8 +111,8 @@ from valor_lite.semantic_segmentation import Loader, MetricType, Segmentation
 segmentation = Segmentation(
     uid="image-1",
     labels=["sky", "road", "car"],
-    groundtruths=np.array([[0, 1], [2, 2]], dtype=np.uint16),
-    predictions=np.array([[0, 1], [1, 2]], dtype=np.uint16),
+    groundtruths=np.array([[0, 1], [2, 3]], dtype=np.uint16),
+    predictions=np.array([[0, 1], [1, 3]], dtype=np.uint16),
 )
 
 loader = Loader.in_memory()

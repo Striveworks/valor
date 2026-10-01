@@ -20,7 +20,7 @@ def _generate_random_segmentations(
             predictions=rng.integers(
                 n_labels, size=(size_, size_), dtype=np.uint16
             ),
-            labels=[str(value) for value in range(n_labels)],
+            labels=[str(value) for value in range(1, n_labels)],
         )
         for i in range(n_segmentations)
     ]
@@ -45,7 +45,7 @@ def test_fuzz_segmentations_with_filtering(loader: Loader, tmp_path: Path):
     )
     matrix = subset._compute_confusion_matrix_intermediate()
     for (gt, pd), count in expected.items():
-        assert matrix[gt + 1, pd + 1] == count
+        assert matrix[gt, pd] == count
     assert matrix.sum() == 5 * 30 * 30
     assert subset.info.number_of_datums == 5
     subset.compute_precision_recall_iou()

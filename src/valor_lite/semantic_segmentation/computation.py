@@ -12,6 +12,7 @@ def compute_intermediates(
     """Count observed pairs in validated, equally shaped label maps.
 
     Returns local ground truth indices, prediction indices and pixel counts.
+    n_labels includes background at index zero.
     Arithmetic is promoted before encoding pairs, including label ID 65535.
     Only observed pairs are stored; no class-by-class matrix is allocated.
     """
@@ -111,13 +112,9 @@ def compute_metrics(
 
     # compute accuracy
     tp_count = confusion_matrix[1:, 1:].diagonal().sum()
-    # Preserve implicit-background accuracy for legacy caches. New input
-    # class zero is an ordinary named class, stored in the main matrix.
-    legacy_background_count = confusion_matrix[0, 0]
+    background_count = confusion_matrix[0, 0]
     accuracy = (
-        (tp_count + legacy_background_count) / n_pixels
-        if n_pixels > 0
-        else 0.0
+        (tp_count + background_count) / n_pixels if n_pixels > 0 else 0.0
     )
 
     return (

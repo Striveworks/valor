@@ -69,7 +69,7 @@ def generate_segmentation(
     datum_uid : str
         The datum UID for the generated segmentation.
     number_of_unique_labels : int
-        The number of unique labels.
+        The number of pixel indices, including background at zero.
     mask_height : int
         The height of the mask in pixels.
     mask_width : int
@@ -101,7 +101,7 @@ def generate_segmentation(
         uid=datum_uid,
         groundtruths=indices[:mask_height],
         predictions=indices[mask_height:],
-        labels=[str(i) for i in range(number_of_unique_labels)],
+        labels=[str(i) for i in range(1, number_of_unique_labels)],
     )
 
 
