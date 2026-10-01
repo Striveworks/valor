@@ -1,4 +1,4 @@
-from .annotation import Bitmask, Segmentation
+from .annotation import Segmentation
 from .evaluator import Builder, Evaluator, EvaluatorInfo
 from .loader import Loader
 from .metric import Metric, MetricType
@@ -8,7 +8,6 @@ __all__ = [
     "Loader",
     "Evaluator",
     "Segmentation",
-    "Bitmask",
     "Metric",
     "MetricType",
     "EvaluatorInfo",

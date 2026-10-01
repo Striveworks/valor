@@ -71,6 +71,9 @@ def test_filtering_by_datum(
         )
     )
 
+    assert filtered_evaluator.info.number_of_datums == 1
+    assert filtered_evaluator.info.number_of_pixels == 270000
+
     filtered_evaluator = evaluator.filter(
         datums=pc.field("datum_uid") == "uid2",
         path=tmp_path / "filtered2",
@@ -89,6 +92,15 @@ def test_filtering_by_datum(
         )
     )
 
+    assert filtered_evaluator.info.number_of_datums == 1
+    assert filtered_evaluator.info.number_of_pixels == 270000
+    np.testing.assert_array_equal(
+        evaluator._compute_confusion_matrix_intermediate(
+            datums=pc.field("datum_uid") == "uid2"
+        ),
+        confusion_matrix,
+    )
+
     # test filter all
     with pytest.raises(EmptyCacheError):
         filtered_evaluator = evaluator.filter(
@@ -97,119 +109,107 @@ def test_filtering_by_datum(
         )
 
 
-def test_filtering_by_annotation_info(
-    loader: Loader,
-    tmp_path: Path,
-    segmentations_from_boxes: list[Segmentation],
+@pytest.mark.parametrize("side", ["groundtruths", "predictions", "both"])
+def test_filtering_by_annotation_metadata(
+    loader: Loader, tmp_path: Path, side
 ):
-    loader.add_data(segmentations_from_boxes)
+    loader.add_data(
+        [
+            Segmentation(
+                "image",
+                np.array([[1, 2], [2, 3]]),
+                np.array([[2, 2], [3, 3]]),
+                ["sky", "road", "car"],
+                groundtruth_metadata={
+                    1: {"gt_xmin": 10},
+                    2: {"gt_xmin": 20},
+                    3: {"gt_xmin": 30},
+                },
+                prediction_metadata={
+                    1: {"pd_xmin": 40},
+                    2: {"pd_xmin": 50},
+                    3: {"pd_xmin": 60},
+                },
+            )
+        ]
+    )
     evaluator = loader.finalize()
-
-    total_pixels = 540_000
-    assert evaluator.info.number_of_datums == 2
-    assert evaluator.info.number_of_labels == 2
-    assert evaluator.info.number_of_groundtruth_pixels == 25000
-    assert evaluator.info.number_of_prediction_pixels == 15000
-    assert evaluator.info.number_of_pixels == total_pixels
-
-    # test groundtruth filtering
-    filtered_evaluator = evaluator.filter(
-        groundtruths=pc.field("gt_xmin") < 100,
-        path=tmp_path / "gt_filter_1",
+    gt = (
+        pc.field("gt_xmin") >= 20 if side in ("groundtruths", "both") else None
     )
-    confusion_matrix = (
-        filtered_evaluator._compute_confusion_matrix_intermediate()
+    pd = pc.field("pd_xmin") <= 50 if side in ("predictions", "both") else None
+    filtered = evaluator.filter(
+        groundtruths=gt, predictions=pd, path=tmp_path / "filtered"
     )
-    assert np.all(
-        confusion_matrix
-        == np.array(
-            [
-                [520000, 5000, 5000],
-                [5000, 5000, 0],
-                [0, 0, 0],
-            ]
+    expected = {
+        "groundtruths": [
+            [0, 1, 0],
+            [0, 1, 1],
+            [0, 0, 1],
+        ],
+        "predictions": [
+            [0, 0, 0, 0],
+            [0, 0, 1, 0],
+            [1, 0, 1, 0],
+            [1, 0, 0, 0],
+        ],
+        "both": [[0, 1, 0], [1, 1, 0], [1, 0, 0]],
+    }
+    np.testing.assert_array_equal(
+        filtered._compute_confusion_matrix_intermediate(), expected[side]
+    )
+    assert filtered.info.number_of_pixels == 4
+    assert evaluator.get_info(groundtruths=gt, predictions=pd) == filtered.info
+    accuracy = filtered.compute_precision_recall_iou()[MetricType.Accuracy][
+        0
+    ].value
+    assert (
+        accuracy
+        == {"groundtruths": 0.5, "predictions": 0.25, "both": 0.25}[side]
+    )
+    rows = [
+        row
+        for tbl in filtered._reader.iterate_tables()
+        for row in tbl.to_pylist()
+    ]
+    assert [row["gt_label_id"] for row in rows] == (
+        [-1, 1, 1, 2] if side != "predictions" else [0, 1, 1, 2]
+    )
+    assert [row["pd_label_id"] for row in rows] == (
+        [1, 1, -1, -1] if side != "groundtruths" else [1, 1, 2, 2]
+    )
+    for row in rows:
+        for prefix in ("gt", "pd"):
+            if row[f"{prefix}_label_id"] == -1:
+                assert row[f"{prefix}_label"] is None
+    assert "gt_valid" not in filtered._reader.schema.names
+    assert "pd_valid" not in filtered._reader.schema.names
+
+
+def test_filtering_all_annotations(
+    loader: Loader, tmp_path: Path, basic_segmentations
+):
+    loader.add_data(basic_segmentations)
+    evaluator = loader.finalize()
+    gt = pc.field("gt_label") == "missing"
+    pd = pc.field("pd_label") == "missing"
+    with pytest.raises(EmptyCacheError):
+        evaluator.filter(
+            groundtruths=gt, predictions=pd, path=tmp_path / "filtered"
         )
+    info = evaluator.get_info(groundtruths=gt, predictions=pd)
+    assert (
+        info.number_of_rows
+        == info.number_of_labels
+        == info.number_of_datums
+        == 0
     )
-    assert confusion_matrix.sum() == total_pixels
-
-    filtered_evaluator = evaluator.filter(
-        groundtruths=pc.field("gt_xmin") > 100,
-        path=tmp_path / "gt_filter_2",
+    assert (
+        info.number_of_groundtruth_pixels
+        == info.number_of_prediction_pixels
+        == info.number_of_pixels
+        == 0
     )
-    confusion_matrix = (
-        filtered_evaluator._compute_confusion_matrix_intermediate()
-    )
-    assert np.all(
-        confusion_matrix
-        == np.array(
-            [
-                [510001, 10000, 4999],
-                [0, 0, 0],
-                [14999, 0, 1],
-            ]
-        )
-    )
-    assert confusion_matrix.sum() == total_pixels
-
-    # test prediction filtering
-    filtered_evaluator = evaluator.filter(
-        predictions=pc.field("pd_xmin") < 100,
-        path=tmp_path / "pd_filter_1",
-    )
-    confusion_matrix = (
-        filtered_evaluator._compute_confusion_matrix_intermediate()
-    )
-    assert np.all(
-        confusion_matrix
-        == np.array(
-            [
-                [510000, 5000, 0],
-                [5000, 5000, 0],
-                [15000, 0, 0],
-            ]
-        )
-    )
-    assert confusion_matrix.sum() == total_pixels
-
-    filtered_evaluator = evaluator.filter(
-        predictions=pc.field("pd_xmin") > 100,
-        path=tmp_path / "pd_filter_2",
-    )
-    confusion_matrix = (
-        filtered_evaluator._compute_confusion_matrix_intermediate()
-    )
-    assert np.all(
-        confusion_matrix
-        == np.array(
-            [
-                [510001, 0, 4999],
-                [10000, 0, 0],
-                [14999, 0, 1],
-            ]
-        )
-    )
-    assert confusion_matrix.sum() == total_pixels
-
-    # filter out all gts and pds
-    filtered_evaluator = evaluator.filter(
-        groundtruths=pc.field("gt_xmin") > 1000,
-        predictions=pc.field("pd_xmin") > 1000,
-        path=tmp_path / "joint_filter",
-    )
-    confusion_matrix = (
-        filtered_evaluator._compute_confusion_matrix_intermediate()
-    )
-    assert np.all(
-        confusion_matrix
-        == np.array(
-            [
-                [total_pixels, 0, 0],
-                [0, 0, 0],
-                [0, 0, 0],
-            ]
-        )
-    )
-    assert confusion_matrix.sum() == total_pixels
 
 
 def test_filtering_labels(
@@ -262,14 +262,24 @@ def test_filtering_labels(
         path=tmp_path / "filter",
     )
 
-    assert filtered._index_to_label == {
-        0: "v1",
-        1: "v2",
-        2: "v3",
-    }
+    assert filtered._index_to_label == {1: "v2", 2: "v3"}
+    assert (
+        filtered.info.number_of_pixels == 9
+    )  # Three pairs per image; both-failed pairs excluded.
+    assert (
+        filtered.compute_precision_recall_iou()[MetricType.Accuracy][0].value
+        == 1 / 3
+    )
     assert filtered.compute_precision_recall_iou()
 
     metrics = filtered.compute_precision_recall_iou()
+    assert metrics[MetricType.mIOU][0].value == 0.25
+    assert [
+        metric.parameters["label"] for metric in metrics[MetricType.IOU]
+    ] == [
+        "v2",
+        "v3",
+    ]
     cm = metrics.pop(MetricType.ConfusionMatrix)
     assert len(cm) == 1
     assert prune_fields_containing_zeros(cm[0].to_dict()) == {
@@ -287,10 +297,140 @@ def test_filtering_labels(
                     },
                 },
             },
-            "unmatched_predictions": {
-                "v3": {
-                    "ratio": 1.0,
-                },
-            },
+            "unmatched_predictions": {"v3": {"ratio": 1.0}},
         },
     }
+
+
+@pytest.mark.parametrize("side", ["groundtruths", "predictions"])
+def test_single_filter_retains_remaining_side(
+    loader: Loader, tmp_path: Path, basic_segmentations, side
+):
+    loader.add_data(basic_segmentations)
+    evaluator = loader.finalize()
+    column = "gt_label" if side == "groundtruths" else "pd_label"
+    kwargs = {side: pc.field(column) == "missing"}
+    filtered = evaluator.filter(path=tmp_path / "single", **kwargs)
+    assert filtered.info.number_of_pixels == 4
+    assert evaluator.get_info(**kwargs) == filtered.info
+    assert filtered.info.number_of_groundtruth_pixels == (
+        0 if side == "groundtruths" else 3
+    )
+    assert filtered.info.number_of_prediction_pixels == (
+        0 if side == "predictions" else 3
+    )
+    assert (
+        filtered.compute_precision_recall_iou()[MetricType.Accuracy][0].value
+        == 0.25
+    )
+
+
+def test_filtering_to_absent_class_does_not_report_perfect_accuracy(
+    loader: Loader, tmp_path: Path
+):
+    loader.add_data(
+        [
+            Segmentation(
+                "image", np.array([[1]]), np.array([[1]]), ["sky", "absent"]
+            )
+        ]
+    )
+    filtered = loader.finalize().filter(
+        groundtruths=pc.field("gt_label") == "absent",
+        predictions=pc.field("pd_label") == "absent",
+        path=tmp_path / "absent",
+    )
+    assert filtered._index_to_label == {1: "absent"}
+    assert filtered.info.number_of_pixels == 0
+    assert (
+        filtered.compute_precision_recall_iou()[MetricType.Accuracy][0].value
+        == 0
+    )
+    assert (
+        filtered.compute_precision_recall_iou()[MetricType.mIOU][0].value == 0
+    )
+
+
+@pytest.mark.parametrize("side", ["groundtruths", "predictions", "both"])
+def test_ignored_class_uses_background(loader: Loader, tmp_path: Path, side):
+    loader.add_data(
+        [
+            Segmentation(
+                "image",
+                np.array([[1, 2, 2, 2, 1]]),
+                np.array([[2, 1, 2, 2, 1]]),
+                ["cat", "dog"],
+            )
+        ]
+    )
+    evaluator = loader.finalize()
+    filters = {}
+    if side in ("groundtruths", "both"):
+        filters["groundtruths"] = pc.field("gt_label") != "cat"
+    if side in ("predictions", "both"):
+        filters["predictions"] = pc.field("pd_label") != "cat"
+    filtered = evaluator.filter(path=tmp_path / "filtered", **filters)
+    assert evaluator.get_info(**filters) == filtered.info
+    metrics = filtered.compute_precision_recall_iou()
+    assert filtered._index_to_label == (
+        {1: "dog"} if side == "both" else {0: "cat", 1: "dog"}
+    )
+    assert [
+        metric.parameters["label"] for metric in metrics[MetricType.IOU]
+    ] == (["dog"] if side == "both" else ["cat", "dog"])
+    assert metrics[MetricType.mIOU][0].value == (
+        0.5 if side == "both" else 0.25
+    )
+    assert metrics[MetricType.Accuracy][0].value == (
+        0.5 if side == "both" else 0.4
+    )
+    if side == "both":
+        np.testing.assert_array_equal(
+            filtered._compute_confusion_matrix_intermediate(), [[0, 1], [1, 2]]
+        )
+        assert metrics[MetricType.Precision][0].value == 2 / 3
+        assert metrics[MetricType.Recall][0].value == 2 / 3
+    # Filtering a copy does not change the source's classes or metrics.
+    assert evaluator._index_to_label == {0: "cat", 1: "dog"}
+    assert (
+        evaluator.compute_precision_recall_iou()[MetricType.Accuracy][0].value
+        == 0.6
+    )
+
+
+@pytest.mark.parametrize("side", ["groundtruths", "predictions"])
+def test_exclusions_match_background(loader: Loader, tmp_path: Path, side):
+    foreground = np.array([[1]])
+    background = np.array([[0]])
+    loader.add_data(
+        [
+            Segmentation(
+                "image",
+                foreground if side == "groundtruths" else background,
+                foreground if side == "predictions" else background,
+                ["cat"],
+            )
+        ]
+    )
+    evaluator = loader.finalize()
+    assert (
+        evaluator.compute_precision_recall_iou()[MetricType.Accuracy][0].value
+        == 0.0
+    )
+    column = "gt_label" if side == "groundtruths" else "pd_label"
+    filters = {side: pc.field(column) != "cat"}
+    filtered = evaluator.filter(path=tmp_path / "background", **filters)
+    np.testing.assert_array_equal(
+        filtered._compute_confusion_matrix_intermediate(), [[1]]
+    )
+    assert filtered._index_to_label == {}
+    assert filtered.info.number_of_pixels == 1
+    assert evaluator.get_info(**filters) == filtered.info
+    assert (
+        filtered.compute_precision_recall_iou()[MetricType.Accuracy][0].value
+        == 1.0
+    )
+    assert (
+        filtered.compute_precision_recall_iou()[MetricType.mIOU][0].value
+        == 0.0
+    )

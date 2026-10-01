@@ -1,11 +1,6 @@
 import numpy as np
 
-from valor_lite.semantic_segmentation import (
-    Bitmask,
-    Loader,
-    MetricType,
-    Segmentation,
-)
+from valor_lite.semantic_segmentation import Loader, MetricType, Segmentation
 
 
 def test_confusion_matrix_basic_segmentations(
@@ -98,43 +93,9 @@ def test_confusion_matrix_intermediate_counting(loader: Loader):
 
     segmentation = Segmentation(
         uid="uid1",
-        groundtruths=[
-            Bitmask(
-                mask=np.array([[False, False], [True, False]]),
-                label="a",
-            ),
-            Bitmask(
-                mask=np.array([[False, False], [False, True]]),
-                label="b",
-            ),
-            Bitmask(
-                mask=np.array([[True, False], [False, False]]),
-                label="c",
-            ),
-            Bitmask(
-                mask=np.array([[False, True], [False, False]]),
-                label="d",
-            ),
-        ],
-        predictions=[
-            Bitmask(
-                mask=np.array([[False, False], [False, False]]),
-                label="a",
-            ),
-            Bitmask(
-                mask=np.array([[False, False], [False, False]]),
-                label="b",
-            ),
-            Bitmask(
-                mask=np.array([[True, True], [True, True]]),
-                label="c",
-            ),
-            Bitmask(
-                mask=np.array([[False, False], [False, False]]),
-                label="d",
-            ),
-        ],
-        shape=(2, 2),
+        groundtruths=np.array([[3, 4], [1, 2]], dtype=np.uint16),
+        predictions=np.full((2, 2), 3, dtype=np.uint16),
+        labels=["a", "b", "c", "d"],
     )
 
     loader.add_data([segmentation])
