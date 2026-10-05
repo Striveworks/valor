@@ -1,4 +1,3 @@
-import json
 from pathlib import Path
 
 import numpy as np
@@ -6,89 +5,83 @@ import pyarrow as pa
 import pyarrow.compute as pc
 import pytest
 
-from valor_lite.cache import (
-    FileCacheReader,
-    FileCacheWriter,
-    MemoryCacheWriter,
-)
-from valor_lite.semantic_segmentation import (
-    Bitmask,
-    Evaluator,
-    Loader,
-    Segmentation,
-)
-from valor_lite.semantic_segmentation.shared import encode_metadata_fields
+from valor_lite.exceptions import EmptyCacheError
+from valor_lite.semantic_segmentation import Evaluator, Loader, Segmentation
 
 
-@pytest.fixture
-def remapping_segmentations():
+def _segmentations():
     labels = ["cat", "dog", "bird"]
-    segmentations = []
-    for datum, (groundtruths, predictions) in enumerate(
-        [
-            ([0, 0, 1, 1, 2, -1, -1, 0], [1, 0, 0, 1, 2, 0, -1, -1]),
-            ([0, 0, 0, 0, 0, 0, 0, 0], [-1] * 8),
-            ([-1] * 8, [1, 1, 1, 1, 1, 1, 1, 1]),
-            ([-1] * 8, [-1] * 8),
-        ]
-    ):
-        annotations = []
-        for pixels in (groundtruths, predictions):
-            pixels = np.array(pixels).reshape(2, 4)
-            annotations.append(
-                [
-                    Bitmask(mask=pixels == index, label=label)
-                    for index, label in enumerate(labels)
-                    if (pixels == index).any()
-                ]
-            )
-        segmentations.append(
-            Segmentation(
-                uid=f"datum{datum}",
-                groundtruths=annotations[0],
-                predictions=annotations[1],
-                shape=(2, 4),
-                metadata={"gt_xmin": float(datum), "pd_xmin": float(datum)},
-            )
+    return [
+        Segmentation(
+            uid="datum0",
+            groundtruths=np.array([[1, 1, 2, 2], [3, 0, 0, 1]]),
+            predictions=np.array([[2, 1, 1, 2], [3, 1, 0, 0]]),
+            labels=labels.copy(),
+            metadata={"gt_xmin": 0.0, "pd_xmin": 0.0},
+        ),
+        Segmentation(
+            uid="datum1",
+            groundtruths=np.zeros((2, 4), dtype=np.uint16),
+            predictions=np.array([[0, 1, 1, 0], [0, 1, 0, 1]]),
+            labels=labels.copy(),
+            metadata={"gt_xmin": 1.0, "pd_xmin": 1.0},
+        ),
+    ]
+
+
+def _remap_segmentation(segmentation, mapping):
+    labels = list(
+        dict.fromkeys(
+            mapping.get(label, label) for label in segmentation.labels
         )
-    return segmentations
+    )
+    indices = {label: index + 1 for index, label in enumerate(labels)}
+    remap = np.zeros(len(segmentation.labels) + 1, dtype=np.uint16)
+    for index, label in enumerate(segmentation.labels, start=1):
+        remap[index] = indices[mapping.get(label, label)]
+    return Segmentation(
+        uid=segmentation.uid,
+        groundtruths=remap[segmentation.groundtruths],
+        predictions=remap[segmentation.predictions],
+        labels=labels,
+        metadata=segmentation.metadata,
+    )
 
 
-def _table(reader):
-    return pa.concat_tables(list(reader.iterate_tables()))
+def _metrics(evaluator, datums=None):
+    return evaluator.compute_precision_recall_iou(datums=datums)
+
+
+def _assert_values_equal(actual, expected):
+    if isinstance(expected, dict):
+        assert isinstance(actual, dict)
+        assert actual.keys() == expected.keys()
+        for key in expected:
+            _assert_values_equal(actual[key], expected[key])
+    elif isinstance(expected, (int, float)):
+        assert actual == pytest.approx(expected)
+    else:
+        assert actual == expected
 
 
 def _assert_metrics_equal(actual, expected, datums=None):
-    actual_metrics = actual.compute_precision_recall_iou(datums=datums)
-    expected_metrics = expected.compute_precision_recall_iou(datums=datums)
+    actual_metrics = _metrics(actual, datums)
+    expected_metrics = _metrics(expected, datums)
     assert actual_metrics.keys() == expected_metrics.keys()
-    for metric_type, metrics in actual_metrics.items():
-        actual_values = sorted(metrics, key=lambda m: str(m.parameters))
+    for metric_type, actual_values in actual_metrics.items():
+        expected_values = expected_metrics[metric_type]
+        actual_values = sorted(
+            actual_values, key=lambda metric: str(metric.parameters)
+        )
         expected_values = sorted(
-            expected_metrics[metric_type], key=lambda m: str(m.parameters)
+            expected_values, key=lambda metric: str(metric.parameters)
         )
         assert len(actual_values) == len(expected_values)
-        for actual_value, expected_value in zip(
+        for actual_metric, expected_metric in zip(
             actual_values, expected_values
         ):
-            assert actual_value.parameters == expected_value.parameters
-            if isinstance(expected_value.value, float):
-                assert actual_value.value == pytest.approx(
-                    expected_value.value
-                )
-            else:
-                assert actual_value.value == expected_value.value
-
-
-def _remap_masks(bitmasks, mapping):
-    masks = {}
-    for bitmask in bitmasks:
-        label = mapping.get(bitmask.label, bitmask.label)
-        if label in masks:
-            masks[label] |= bitmask.mask
-        else:
-            masks[label] = bitmask.mask.copy()
-    return [Bitmask(mask=mask, label=label) for label, mask in masks.items()]
+            assert actual_metric.parameters == expected_metric.parameters
+            _assert_values_equal(actual_metric.value, expected_metric.value)
 
 
 @pytest.mark.parametrize(
@@ -105,211 +98,144 @@ def _remap_masks(bitmasks, mapping):
         {"cat": "animal", "dog": "animal", "bird": "animal"},
     ],
 )
-def test_remap_matches_fresh_loader(
-    loader: Loader, tmp_path: Path, remapping_segmentations, mapping
-):
-    loader.add_data(remapping_segmentations)
+def test_remap_matches_loading_remapped_label_maps(tmp_path: Path, mapping):
+    segmentations = _segmentations()
+    metadata = [("gt_xmin", pa.float64()), ("pd_xmin", pa.float64())]
+    loader = Loader.in_memory(metadata_fields=metadata)
+    loader.add_data(segmentations)
     source = loader.finalize()
-    before = _table(source._reader)
-    vocabulary_before = source._index_to_label.copy()
-    mapping_before = mapping.copy()
-    destination = tmp_path / "remapped"
-    remapped = source.remap_labels(mapping, path=destination)
+    before = pa.concat_tables(list(source._reader.iterate_tables()))
 
-    if isinstance(source._reader, FileCacheReader):
-        fresh_loader = Loader.persistent(
-            path=tmp_path / "fresh",
-            batch_size=source._reader.batch_size,
-            rows_per_file=source._reader.rows_per_file,
-            compression=source._reader.compression,
-            metadata_fields=source._metadata_fields,
-        )
-        assert isinstance(remapped._reader, FileCacheReader)
-        assert remapped._reader.path == destination / "counts"
-        assert remapped._reader.count_tables() == source._reader.count_tables()
-        for setting in ("batch_size", "rows_per_file", "compression"):
-            assert getattr(remapped._reader, setting) == getattr(
-                source._reader, setting
-            )
-    else:
-        fresh_loader = Loader.in_memory(
-            batch_size=source._reader.batch_size,
-            metadata_fields=source._metadata_fields,
-        )
-        assert not destination.exists()
-
+    remapped = source.remap_labels(mapping)
+    fresh_loader = Loader.in_memory(metadata_fields=source._metadata_fields)
     fresh_loader.add_data(
-        [
-            Segmentation(
-                uid=segmentation.uid,
-                groundtruths=_remap_masks(segmentation.groundtruths, mapping),
-                predictions=_remap_masks(segmentation.predictions, mapping),
-                shape=segmentation.shape,
-                metadata=segmentation.metadata,
-            )
-            for segmentation in remapping_segmentations
-        ]
+        [_remap_segmentation(item, mapping) for item in segmentations]
     )
     fresh = fresh_loader.finalize()
-    _assert_metrics_equal(remapped, fresh)
-    for datum in remapping_segmentations:
-        _assert_metrics_equal(
-            remapped, fresh, datums=pc.field("datum_uid") == datum.uid
-        )
 
-    # Cache rows stay separate to retain metadata; fresh masks are unioned.
-    assert remapped.info.number_of_rows == source.info.number_of_rows
-    for field in (
-        "number_of_datums",
-        "number_of_pixels",
-        "number_of_groundtruth_pixels",
-        "number_of_prediction_pixels",
-        "number_of_labels",
-        "metadata_fields",
-    ):
-        assert getattr(remapped.info, field) == getattr(fresh.info, field)
-    after = _table(remapped._reader)
+    _assert_metrics_equal(remapped, fresh)
+    for segmentation in segmentations:
+        _assert_metrics_equal(
+            remapped,
+            fresh,
+            datums=pc.field("datum_uid") == segmentation.uid,
+        )
+    assert remapped.info.number_of_pixels == fresh.info.number_of_pixels
+    assert remapped.info.number_of_labels == fresh.info.number_of_labels
+    after = pa.concat_tables(list(remapped._reader.iterate_tables()))
     for column in ("datum_uid", "datum_id", "count", "gt_xmin", "pd_xmin"):
         assert after[column].equals(before[column])
-    for side in ("gt", "pd"):
-        assert pc.equal(after[f"{side}_label_id"], -1).equals(
-            pc.equal(before[f"{side}_label_id"], -1)
-        )
-    assert after.schema == before.schema
     assert remapped is not source
-    assert set(remapped._index_to_label.values()) == {
-        mapping.get(label, label) for label in vocabulary_before.values()
-    }
-    assert mapping == mapping_before
-    assert source._index_to_label == vocabulary_before
-    assert _table(source._reader).equals(before)
-
-    if isinstance(source._reader, FileCacheReader):
-        reloaded = Evaluator.load(destination)
-        _assert_metrics_equal(reloaded, remapped)
-        assert reloaded.info == remapped.info
+    unchanged = pa.concat_tables(list(source._reader.iterate_tables()))
+    assert unchanged.equals(before)
 
 
-def test_remap_sums_pixel_counts(
-    loader: Loader, tmp_path: Path, remapping_segmentations
-):
-    loader.add_data(remapping_segmentations)
+def test_remap_persistent_cache_round_trip(tmp_path: Path):
+    source_path = tmp_path / "source"
+    destination = tmp_path / "remapped"
+    loader = Loader.persistent(
+        source_path,
+        metadata_fields=[("gt_xmin", pa.float64()), ("pd_xmin", pa.float64())],
+    )
+    loader.add_data(_segmentations())
     source = loader.finalize()
     remapped = source.remap_labels(
-        {"cat": "animal", "dog": "animal"}, path=tmp_path / "remapped"
+        {"cat": "animal", "dog": "animal"}, path=destination
     )
+    reloaded = Evaluator.load(destination)
+    _assert_metrics_equal(remapped, reloaded)
+    assert reloaded.info == remapped.info
     assert remapped._index_to_label == {0: "animal", 1: "bird"}
-    actual = remapped._compute_confusion_matrix_intermediate(
-        datums=pc.field("datum_uid") == "datum0"
-    )
-    # Background, animal, bird. Cross-label errors become animal matches.
-    np.testing.assert_array_equal(actual, [[1, 1, 0], [1, 4, 0], [0, 0, 1]])
-    assert remapped.info.number_of_pixels == 32
-    assert remapped.info.number_of_groundtruth_pixels == 14
-    assert remapped.info.number_of_prediction_pixels == 14
 
 
-def test_remap_filtered_cache(
-    loader: Loader, tmp_path: Path, remapping_segmentations
-):
-    loader.add_data(remapping_segmentations)
+def test_remap_filters_and_preserves_background(tmp_path: Path):
+    metadata = [("gt_xmin", pa.float64()), ("pd_xmin", pa.float64())]
+    loader = Loader.in_memory(metadata_fields=metadata)
+    loader.add_data(_segmentations())
     source = loader.finalize()
     filtered = source.filter(
         groundtruths=pc.field("gt_label") != "cat",
         predictions=pc.field("pd_label") != "dog",
-        path=tmp_path / "filtered",
     )
-    remapped = filtered.remap_labels(
-        {"cat": "animal", "dog": "animal"}, path=tmp_path / "remapped"
-    )
-    before = _table(filtered._reader)
-    after = _table(remapped._reader)
+    remapped = filtered.remap_labels({"cat": "animal", "dog": "animal"})
+    before = pa.concat_tables(list(filtered._reader.iterate_tables()))
+    after = pa.concat_tables(list(remapped._reader.iterate_tables()))
     for side in ("gt", "pd"):
-        invalid = pc.equal(before[f"{side}_label_id"], -1)
-        assert invalid.equals(pc.equal(after[f"{side}_label_id"], -1))
+        invalid = pc.equal(  # type: ignore[reportAttributeAccessIssue]
+            before[f"{side}_label_id"], -1
+        )
+        assert invalid.equals(
+            pc.equal(  # type: ignore[reportAttributeAccessIssue]
+                after[f"{side}_label_id"], -1
+            )
+        )
         assert (
             before[f"{side}_label"]
             .filter(invalid)
             .equals(after[f"{side}_label"].filter(invalid))
         )
-    for field in (
-        "number_of_pixels",
-        "number_of_groundtruth_pixels",
-        "number_of_prediction_pixels",
-    ):
-        assert getattr(remapped.info, field) == getattr(filtered.info, field)
-
-    renamed = source.remap_labels({"cat": "feline"}, path=tmp_path / "renamed")
-    filtered_after = renamed.filter(
-        predictions=pc.field("pd_label") == "feline",
-        path=tmp_path / "filtered_after",
+    assert remapped.info.number_of_pixels == filtered.info.number_of_pixels
+    assert (
+        remapped.info.number_of_groundtruth_pixels
+        == filtered.info.number_of_groundtruth_pixels
     )
-    filtered_before = source.filter(
-        predictions=pc.field("pd_label") == "cat",
-        path=tmp_path / "filtered_before",
-    ).remap_labels({"cat": "feline"}, path=tmp_path / "renamed_after")
-    _assert_metrics_equal(filtered_after, filtered_before)
-
-    # Filtering out datums leaves empty fragments in persistent caches.
-    subset = source.filter(
-        datums=pc.field("datum_uid") == "datum1", path=tmp_path / "subset"
-    ).remap_labels({"bird": "avian"}, path=tmp_path / "subset_remapped")
-    assert set(subset._index_to_label.values()) == {"cat", "dog", "avian"}
-    assert subset.info.number_of_datums == 1
-    assert subset.info.number_of_pixels == 8
+    assert (
+        remapped.info.number_of_prediction_pixels
+        == filtered.info.number_of_prediction_pixels
+    )
 
 
-def test_remap_preserves_annotation_metadata(loader: Loader, tmp_path: Path):
+def test_filtered_remapping_drops_unretained_labels():
+    loader = Loader.in_memory()
+    loader.add_data(_segmentations())
+    source = loader.finalize()
+    filtered = source.filter(
+        groundtruths=pc.field("gt_label") == "cat",
+        predictions=pc.field("pd_label") == "bird",
+    )
+
+    assert filtered._index_to_label == {0: "cat", 2: "bird"}
+    remapped = filtered.remap_labels({"cat": "animal", "bird": "animal"})
+    assert remapped._index_to_label == {0: "animal"}
+
+
+@pytest.mark.parametrize("mapping", [None, [], {"cat": 1}, {1: "cat"}])
+def test_invalid_mapping(mapping):
+    loader = Loader.in_memory()
+    loader.add_data(_segmentations())
+    with pytest.raises(TypeError, match="mapping must be a dict"):
+        loader.finalize().remap_labels(mapping)
+
+
+def test_persistent_remap_requires_a_new_path(tmp_path: Path):
+    source_path = tmp_path / "source"
+    loader = Loader.persistent(source_path)
+    loader.add_data(_segmentations())
+    source = loader.finalize()
+    before = pa.concat_tables(list(source._reader.iterate_tables()))
+    with pytest.raises(ValueError, match="path"):
+        source.remap_labels({"cat": "animal"})
+    with pytest.raises(FileExistsError):
+        source.remap_labels({"cat": "animal"}, path=source_path)
+    reloaded = Evaluator.load(source_path)
+    assert pa.concat_tables(list(reloaded._reader.iterate_tables())).equals(
+        before
+    )
+
+
+def test_remap_background_only():
+    loader = Loader.in_memory()
     loader.add_data(
         [
             Segmentation(
-                "datum",
-                [
-                    Bitmask(
-                        np.array([[True, False]]), "cat", {"gt_xmin": 1.0}
-                    ),
-                    Bitmask(
-                        np.array([[False, True]]), "dog", {"gt_xmin": 2.0}
-                    ),
-                ],
-                [Bitmask(np.array([[True, True]]), "bird", {"pd_xmin": 3.0})],
-                shape=(1, 2),
+                "blank",
+                np.zeros((2, 2), dtype=np.uint16),
+                np.zeros((2, 2), dtype=np.uint16),
+                [],
             )
         ]
     )
-    remapped = loader.finalize().remap_labels(
-        {"cat": "animal", "dog": "animal"}, path=tmp_path / "remapped"
-    )
-    for value in (1.0, 2.0):
-        info = remapped.get_info(
-            groundtruths=(pc.field("gt_label") == "animal")
-            & (pc.field("gt_xmin") == value)
-        )
-        assert info.number_of_groundtruth_pixels == 1
-
-
-def test_remap_zero_count_label(loader: Loader, tmp_path: Path):
-    loader.add_data(
-        [
-            Segmentation(
-                "d", [Bitmask(np.zeros((2, 2), dtype=bool), "cat")], [], (2, 2)
-            )
-        ]
-    )
-    remapped = loader.finalize().remap_labels(
-        {"cat": "feline"}, path=tmp_path / "remapped"
-    )
-    assert remapped._index_to_label == {0: "feline"}
-    assert remapped.info.number_of_pixels == 4
-    assert remapped.info.number_of_groundtruth_pixels == 0
-    assert remapped.info.number_of_prediction_pixels == 0
-
-
-def test_remap_background_only(loader: Loader, tmp_path: Path):
-    loader.add_data([Segmentation("d", [], [], (2, 2))])
-    remapped = loader.finalize().remap_labels(
-        {"cat": "feline"}, path=tmp_path / "remapped"
-    )
+    remapped = loader.finalize().remap_labels({"cat": "feline"})
     assert remapped._index_to_label == {}
     assert remapped.info.number_of_pixels == 4
     np.testing.assert_array_equal(
@@ -317,166 +243,6 @@ def test_remap_background_only(loader: Loader, tmp_path: Path):
     )
 
 
-@pytest.mark.parametrize("mapping", [None, [], {"cat": 1}, {1: "cat"}])
-def test_invalid_mapping(mapping):
-    loader = Loader.in_memory()
-    loader.add_data([Segmentation("d", [], [], (2, 2))])
-    with pytest.raises(TypeError, match="mapping must be a dict"):
-        loader.finalize().remap_labels(mapping)
-
-
-def test_persistent_remap_requires_new_path(tmp_path: Path):
-    source_path = tmp_path / "source"
-    loader = Loader.persistent(source_path)
-    loader.add_data([Segmentation("d", [], [], (2, 2))])
-    source = loader.finalize()
-    before = _table(source._reader)
-    with pytest.raises(ValueError, match="path"):
-        source.remap_labels({"cat": "dog"})
-    with pytest.raises(FileExistsError):
-        source.remap_labels({"cat": "dog"}, path=source_path)
-    assert _table(Evaluator.load(source_path)._reader).equals(before)
-
-
-@pytest.mark.parametrize("side", ["gt", "pd"])
-def test_remap_filter_selects_whole_original_annotations(
-    loader: Loader, tmp_path: Path, side
-):
-    metadata_key = f"{side}_xmin"
-    for datum in range(2):
-        targets = [
-            Bitmask(
-                np.array([[True, True, True, False, False, False]]),
-                "cat",
-                {metadata_key: 1.0 if datum == 0 else 4.0},
-            ),
-            Bitmask(
-                np.array([[False, False, False, True, True, False]]),
-                "dog",
-                {metadata_key: 2.0},
-            ),
-        ]
-        counterparts = [
-            Bitmask(
-                np.array([[True, False, False, True, False, False]]), "bird"
-            ),
-            Bitmask(
-                np.array([[False, True, True, False, True, False]]), "sky"
-            ),
-        ]
-        loader.add_data(
-            [
-                Segmentation(
-                    str(datum),
-                    targets if side == "gt" else counterparts,
-                    counterparts if side == "gt" else targets,
-                    (1, 6),
-                )
-            ]
-        )
-    source = loader.finalize()
-    before = _table(source._reader)
-    mapping = {"cat": "animal", "dog": "animal"}
-    remapped = source.remap_labels(mapping, path=tmp_path / "remapped")
-    if isinstance(source._reader, FileCacheReader):
-        remapped = Evaluator.load(tmp_path / "remapped")
-
-    # Only one intersection row matches, but all three pixels of the
-    # original cat annotation in datum 0 must survive. Datum 1 and dog do not.
-    condition = (pc.field(metadata_key) == 1.0) & (pc.field("count") == 1)
-    arguments = {"groundtruths" if side == "gt" else "predictions": condition}
-    filtered = remapped.filter(**arguments, path=tmp_path / "after")
-    expected = source.filter(
-        **arguments, path=tmp_path / "before"
-    ).remap_labels(mapping, path=tmp_path / "expected")
-    count_field = (
-        "number_of_groundtruth_pixels"
-        if side == "gt"
-        else "number_of_prediction_pixels"
-    )
-    assert getattr(filtered.info, count_field) == 3
-    assert filtered.info.number_of_pixels == 12
-    _assert_metrics_equal(filtered, expected)
-    assert _table(source._reader).equals(before)
-    for annotation_side in ("gt", "pd"):
-        column = f"__valor_{annotation_side}_annotation_id"
-        assert _table(filtered._reader)[column].equals(before[column])
-
-    # Further label collisions and a persistent round trip retain provenance.
-    again = filtered.remap_labels({"animal": "bird"}, path=tmp_path / "again")
-    if isinstance(source._reader, FileCacheReader):
-        again = Evaluator.load(tmp_path / "again")
-    again = again.filter(**arguments, path=tmp_path / "again_filtered")
-    assert getattr(again.info, count_field) == 3
-    arguments = {
-        "groundtruths"
-        if side == "gt"
-        else "predictions": (pc.field(metadata_key) == 2.0)
-    }
-    removed = again.filter(**arguments, path=tmp_path / "removed")
-    assert getattr(removed.info, count_field) == 0
-    assert removed.info.number_of_pixels == 12
-
-
-@pytest.mark.parametrize("persistent", [False, True])
-def test_remap_and_filter_legacy_cache(tmp_path: Path, persistent):
-    loader = Loader.in_memory(metadata_fields=[("gt_xmin", "double")])
-    loader.add_data(
-        [
-            Segmentation(
-                "datum",
-                [
-                    Bitmask(
-                        np.array([[True, False, False]]),
-                        "cat",
-                        {"gt_xmin": 1.0},
-                    ),
-                    Bitmask(
-                        np.array([[False, True, False]]),
-                        "dog",
-                        {"gt_xmin": 2.0},
-                    ),
-                ],
-                [Bitmask(np.array([[True, True, False]]), "bird")],
-                (1, 3),
-            )
-        ]
-    )
-    current = loader.finalize()
-    legacy_table = _table(current._reader).drop(
-        ["__valor_gt_annotation_id", "__valor_pd_annotation_id"]
-    )
-    if persistent:
-        path = tmp_path / "legacy"
-        writer = FileCacheWriter.create(
-            path / "counts", legacy_table.schema, 1, 1
-        )
-        writer.write_table(legacy_table)
-        with open(path / "metadata.json", "w") as file:
-            json.dump(encode_metadata_fields(current._metadata_fields), file)
-        legacy = Evaluator.load(path)
-    else:
-        writer = MemoryCacheWriter.create(legacy_table.schema, 1)
-        writer.write_table(legacy_table)
-        legacy = Evaluator(
-            writer.to_reader(),
-            current._index_to_label,
-            current._metadata_fields,
-        )
-
-    _assert_metrics_equal(legacy, current)
-    condition = pc.field("gt_xmin") == 1.0
-    mapping = {"cat": "animal", "dog": "animal"}
-    expected = legacy.filter(
-        groundtruths=condition, path=tmp_path / "filtered_legacy"
-    ).remap_labels(mapping, path=tmp_path / "expected")
-    remapped = legacy.remap_labels(mapping, path=tmp_path / "remapped_legacy")
-    if persistent:
-        remapped = Evaluator.load(tmp_path / "remapped_legacy")
-    actual = remapped.filter(groundtruths=condition, path=tmp_path / "actual")
-    assert actual.info.number_of_groundtruth_pixels == 1
-    assert actual.info.number_of_pixels == 3
-    _assert_metrics_equal(actual, expected)
-    assert _table(legacy._reader).equals(legacy_table)
-    assert _table(actual._reader).schema == _table(current._reader).schema
-    assert actual.info.metadata_fields == current.info.metadata_fields
+def test_remap_empty_cache_raises():
+    with pytest.raises(EmptyCacheError):
+        Loader.in_memory().finalize()

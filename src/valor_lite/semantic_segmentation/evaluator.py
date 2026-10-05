@@ -335,18 +335,26 @@ class Evaluator:
             for side, mask in zip(("gt", "pd"), masks):
                 id_column = f"{side}_label_id"
                 label_column = f"{side}_label"
-                if mask.any():
-                    retained_ids.update(
-                        value for value in tbl[id_column].to_pylist()
-                        if value >= 0
+                retained_ids.update(
+                    value
+                    for value, retained in zip(
+                        tbl[id_column].to_pylist(), mask
                     )
-                for column, excluded in ((id_column, -1), (label_column, None)):
+                    if retained and value >= 0
+                )
+                for column, excluded in (
+                    (id_column, -1),
+                    (label_column, None),
+                ):
                     index = tbl.schema.get_field_index(column)
-                    values = pc.if_else(
-                        pa.array(mask), tbl[column],
+                    values = pc.if_else(  # type: ignore[reportAttributeAccessIssue]
+                        pa.array(mask),
+                        tbl[column],
                         pa.scalar(excluded, type=tbl[column].type),
                     )
-                    tbl = tbl.set_column(index, tbl.schema.field(index), values)
+                    tbl = tbl.set_column(
+                        index, tbl.schema.field(index), values
+                    )
             tbl = tbl.filter(pa.array(masks[0] | masks[1]))
             if tbl.num_rows:
                 builder._writer.write_table(
@@ -441,11 +449,15 @@ class Evaluator:
             for side in ("gt", "pd"):
                 id_column = f"{side}_label_id"
                 label_column = f"{side}_label"
-                indices = pc.index_in(tbl[id_column], value_set=old_ids)
+                indices = pc.index_in(  # type: ignore[reportAttributeAccessIssue]
+                    tbl[id_column], value_set=old_ids
+                )
                 # Filtered pixels can retain label strings with a -1 ID.
                 # Preserve those strings without reviving the removed labels.
-                remapped_labels = pc.if_else(
-                    pc.greater_equal(tbl[id_column], 0),
+                remapped_labels = pc.if_else(  # type: ignore[reportAttributeAccessIssue]
+                    pc.greater_equal(  # type: ignore[reportAttributeAccessIssue]
+                        tbl[id_column], 0
+                    ),
                     pc.take(labels, indices),
                     tbl[label_column],
                 )

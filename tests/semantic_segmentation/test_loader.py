@@ -103,6 +103,7 @@ def test_add_data_metadata_handling(loader: Loader):
         ("road", "sky"),
     ]
 
+
 def test_high_ids_and_global_vocabulary_are_not_narrowed(loader: Loader):
     loader.add_data(
         [
@@ -176,4 +177,3 @@ def test_foreground_labels_start_at_one(loader: Loader):
         metric.parameters["label"] for metric in metrics[MetricType.IOU]
     ] == ["cat", "dog"]
     assert [metric.value for metric in metrics[MetricType.IOU]] == [0.0, 0.5]
-
