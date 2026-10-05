@@ -9,7 +9,7 @@ from pathlib import Path
 import numpy as np
 from tqdm import tqdm
 
-from valor_lite.semantic_segmentation import Bitmask, Segmentation
+from valor_lite.semantic_segmentation import Segmentation
 from valor_lite.semantic_segmentation.loader import Loader
 
 
@@ -78,64 +78,37 @@ def generate_segmentation(
     Returns
     -------
     Segmentation
-        A generated semantic segmenatation annotation.
+        A generated semantic segmentation annotation.
     """
 
+    if number_of_unique_labels > 65_535:
+        raise ValueError("The number of unique labels must be at most 65,535.")
     if number_of_unique_labels > 1:
         common_proba = 0.4 / (number_of_unique_labels - 1)
-        min_proba = min(common_proba, 0.1)
-        labels = [str(i) for i in range(number_of_unique_labels)] + [None]
-        proba = (
-            [0.5]
-            + [common_proba for _ in range(number_of_unique_labels - 1)]
-            + [0.1]
-        )
+        labels = [str(i) for i in range(number_of_unique_labels)]
+        proba = [0.1, 0.5] + [
+            common_proba for _ in range(number_of_unique_labels - 1)
+        ]
     elif number_of_unique_labels == 1:
-        labels = ["0", None]
-        proba = [0.9, 0.1]
-        min_proba = 0.1
+        labels = ["0"]
+        proba = [0.1, 0.9]
     else:
         raise ValueError(
             "The number of unique labels should be greater than zero."
         )
 
     probabilities = np.array(proba, dtype=np.float64)
-    weights = (probabilities / min_proba).astype(np.int32)
-
     indices = np.random.choice(
-        np.arange(len(weights)),
+        np.arange(len(probabilities)),
         size=(mask_height * 2, mask_width),
         p=probabilities,
-    )
-
-    N = len(labels)
-
-    masks = np.arange(N)[:, None, None] == indices
-
-    gts = []
-    pds = []
-    for lidx in range(N):
-        label = labels[lidx]
-        if label is None:
-            continue
-        gts.append(
-            Bitmask(
-                mask=masks[lidx, :mask_height, :],
-                label=label,
-            )
-        )
-        pds.append(
-            Bitmask(
-                mask=masks[lidx, mask_height:, :],
-                label=label,
-            )
-        )
+    ).astype(np.uint16)
 
     return Segmentation(
         uid=datum_uid,
-        groundtruths=gts,
-        predictions=pds,
-        shape=(mask_height, mask_width),
+        groundtruths=indices[:mask_height],
+        predictions=indices[mask_height:],
+        labels=labels,
     )
 
 
@@ -156,7 +129,7 @@ def benchmark(
     Parameters
     ----------
     bitmask_shape : tuple[int, int]
-        The size (h, w) of the bitmask array.
+        The size (h, w) of each label map.
     number_of_unique_labels : int
         The number of unique labels used in the synthetic example.
     number_of_images : int

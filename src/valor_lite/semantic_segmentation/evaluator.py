@@ -26,6 +26,7 @@ from valor_lite.semantic_segmentation.shared import (
     generate_cache_path,
     generate_metadata_path,
     generate_schema,
+    mask_annotations,
 )
 from valor_lite.semantic_segmentation.utilities import (
     unpack_precision_recall_iou_into_metric_lists,
@@ -39,7 +40,7 @@ class Builder:
         metadata_fields: list[tuple[str, str | pa.DataType]] | None = None,
     ):
         self._writer = writer
-        self._metadata_fields = metadata_fields
+        self._metadata_fields = metadata_fields or None
 
     @classmethod
     def in_memory(
@@ -158,8 +159,8 @@ class Evaluator:
         metadata_fields: list[tuple[str, str | pa.DataType]] | None = None,
     ):
         self._reader = reader
-        self._index_to_label = index_to_label
-        self._metadata_fields = metadata_fields
+        self._index_to_label = dict(sorted(index_to_label.items()))
+        self._metadata_fields = metadata_fields or None
 
     @property
     def info(self) -> EvaluatorInfo:
@@ -171,9 +172,20 @@ class Evaluator:
         groundtruths: pc.Expression | None = None,
         predictions: pc.Expression | None = None,
     ) -> EvaluatorInfo:
+        """Count evaluated pixels after masking each annotation side independently."""
         info = EvaluatorInfo()
-        info.number_of_rows = self._reader.count_rows()
-        info.number_of_labels = len(self._index_to_label)
+        if datums is None and groundtruths is None and predictions is None:
+            info.number_of_rows = self._reader.count_rows()
+            info.number_of_labels = len(self._index_to_label)
+        else:
+            label_ids = set()
+            for tbl in self._reader.iterate_tables(filter=datums):
+                tbl = mask_annotations(tbl, groundtruths, predictions)
+                info.number_of_rows += tbl.num_rows
+                for col in ("gt_label_id", "pd_label_id"):
+                    label_ids.update(tbl[col].to_pylist())
+            label_ids.discard(-1)
+            info.number_of_labels = len(label_ids)
         info.metadata_fields = self._metadata_fields
         (
             info.number_of_datums,
@@ -243,7 +255,16 @@ class Evaluator:
         path: str | Path | None = None,
     ) -> Evaluator:
         """
-        Filter evaluator cache.
+        Mask ground truth and prediction annotations independently.
+
+        Datum filters discard complete rows. Excluded annotations become
+        background, using cache ID -1 and confusion-matrix index zero.
+        A remaining foreground annotation contributes a false positive or
+        false negative; a remaining background annotation matches background.
+        Rows failing both filters are discarded from all counts and metrics.
+        Only retained foreground labels remain in the vocabulary, preserving
+        their name overrides.
+        Raises EmptyCacheError if no rows remain.
 
         Parameters
         ----------
@@ -279,113 +300,66 @@ class Evaluator:
                 metadata_fields=self.info.metadata_fields,
             )
 
+        retained_ids = set()
         for tbl in self._reader.iterate_tables(filter=datums):
-            columns = (
-                "datum_id",
-                "gt_label_id",
-                "pd_label_id",
-            )
-            pairs = np.column_stack([tbl[col].to_numpy() for col in columns])
-
-            n_pairs = pairs.shape[0]
-            gt_ids = pairs[:, (0, 1)].astype(np.int64)
-            pd_ids = pairs[:, (0, 2)].astype(np.int64)
-
-            if groundtruths is not None:
-                mask_valid_gt = np.zeros(n_pairs, dtype=np.bool_)
-                gt_tbl = tbl.filter(groundtruths)
-                gt_pairs = np.column_stack(
-                    [
-                        gt_tbl[col].to_numpy()
-                        for col in ("datum_id", "gt_label_id")
-                    ]
-                ).astype(np.int64)
-                for gt in np.unique(gt_pairs, axis=0):
-                    mask_valid_gt |= (gt_ids == gt).all(axis=1)
-            else:
-                mask_valid_gt = np.ones(n_pairs, dtype=np.bool_)
-
-            if predictions is not None:
-                mask_valid_pd = np.zeros(n_pairs, dtype=np.bool_)
-                pd_tbl = tbl.filter(predictions)
-                pd_pairs = np.column_stack(
-                    [
-                        pd_tbl[col].to_numpy()
-                        for col in ("datum_id", "pd_label_id")
-                    ]
-                ).astype(np.int64)
-                for pd in np.unique(pd_pairs, axis=0):
-                    mask_valid_pd |= (pd_ids == pd).all(axis=1)
-            else:
-                mask_valid_pd = np.ones(n_pairs, dtype=np.bool_)
-
-            mask_valid = mask_valid_gt | mask_valid_pd
-            mask_valid_gt &= mask_valid
-            mask_valid_pd &= mask_valid
-
-            pairs[~mask_valid_gt, 1] = -1
-            pairs[~mask_valid_pd, 2] = -1
-
-            for idx, col in enumerate(columns):
-                tbl = tbl.set_column(
-                    tbl.schema.names.index(col), col, pa.array(pairs[:, idx])
+            tbl = mask_annotations(tbl, groundtruths, predictions)
+            if tbl.num_rows:
+                for column in ("gt_label_id", "pd_label_id"):
+                    retained_ids.update(tbl[column].to_pylist())
+                builder._writer.write_table(
+                    tbl.select(builder._writer.schema.names)
                 )
-            builder._writer.write_table(tbl)
 
-        return builder.finalize(index_to_label_override=self._index_to_label)
+        return builder.finalize(
+            index_to_label_override={
+                idx: label
+                for idx, label in self._index_to_label.items()
+                if idx in retained_ids
+            }
+        )
 
     def _compute_confusion_matrix_intermediate(
-        self, datums: pc.Expression | None = None
+        self,
+        datums: pc.Expression | None = None,
+        index_to_label: dict[int, str] | None = None,
     ) -> NDArray[np.uint64]:
         """
-        Performs an evaluation and returns metrics.
+        Accumulate cached counts into a matrix with dense class positions.
 
-        Parameters
-        ----------
-        datums : pyarrow.compute.Expression, optional
-            Option to filter datums by an expression.
-
-        Returns
-        -------
-        dict[MetricType, list]
-            A dictionary mapping MetricType enumerations to lists of computed metrics.
+        Row and column zero represent background, including excluded sides.
+        ``index_to_label`` optionally selects the vocabulary used for a
+        datum-filtered evaluation.
         """
-        n_labels = len(self._index_to_label)
+        index_to_label = (
+            self._index_to_label if index_to_label is None else index_to_label
+        )
+        n_labels = len(index_to_label)
         confusion_matrix = np.zeros(
             (n_labels + 1, n_labels + 1), dtype=np.uint64
         )
-        for tbl in self._reader.iterate_tables(filter=datums):
-            columns = (
-                "datum_id",
-                "gt_label_id",
-                "pd_label_id",
-            )
+        label_ids = np.array(sorted(index_to_label), dtype=np.int64)
+        columns = ["gt_label_id", "pd_label_id", "count"]
+        for tbl in self._reader.iterate_tables(columns=columns, filter=datums):
             ids = np.column_stack(
-                [tbl[col].to_numpy() for col in columns]
+                [tbl[col].to_numpy() for col in ("gt_label_id", "pd_label_id")]
             ).astype(np.int64)
-            counts = tbl["count"].to_numpy()
-
-            mask_null_gts = ids[:, 1] == -1
-            mask_null_pds = ids[:, 2] == -1
-            confusion_matrix[0, 0] += counts[
-                mask_null_gts & mask_null_pds
-            ].sum()
-            for idx in range(n_labels):
-                mask_gts = ids[:, 1] == idx
-                for pidx in range(n_labels):
-                    mask_pds = ids[:, 2] == pidx
-                    confusion_matrix[idx + 1, pidx + 1] += counts[
-                        mask_gts & mask_pds
-                    ].sum()
-
-                mask_unmatched_gts = mask_gts & mask_null_pds
-                confusion_matrix[idx + 1, 0] += counts[
-                    mask_unmatched_gts
-                ].sum()
-                mask_unmatched_pds = mask_null_gts & (ids[:, 2] == idx)
-                confusion_matrix[0, idx + 1] += counts[
-                    mask_unmatched_pds
-                ].sum()
+            # Cache ID -1 maps to background in matrix slot zero.
+            # Retained cache IDs may be noncontiguous after row filtering.
+            valid = ids != -1
+            positions = np.searchsorted(label_ids, ids[valid])
+            if np.any(positions >= n_labels) or np.any(
+                label_ids[positions] != ids[valid]
+            ):
+                raise ValueError(
+                    "cache contains label IDs missing from the vocabulary"
+                )
+            indices = np.zeros_like(ids)
+            indices[valid] = positions + 1
+            np.add.at(
+                confusion_matrix,
+                (indices[:, 0], indices[:, 1]),
+                tbl["count"].to_numpy(),
+            )
         return confusion_matrix
 
     def compute_precision_recall_iou(
@@ -404,11 +378,19 @@ class Evaluator:
         dict[MetricType, list]
             A dictionary mapping MetricType enumerations to lists of computed metrics.
         """
+        index_to_label = self._index_to_label
+        if datums is not None:
+            retained_ids = extract_labels(self._reader, filter=datums)
+            index_to_label = {
+                idx: label
+                for idx, label in self._index_to_label.items()
+                if idx in retained_ids
+            }
         confusion_matrix = self._compute_confusion_matrix_intermediate(
-            datums=datums
+            datums=datums, index_to_label=index_to_label
         )
         results = compute_metrics(confusion_matrix=confusion_matrix)
         return unpack_precision_recall_iou_into_metric_lists(
             results=results,
-            index_to_label=self._index_to_label,
+            index_to_label=dict(enumerate(index_to_label.values())),
         )

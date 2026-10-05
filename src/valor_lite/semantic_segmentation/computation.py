@@ -1,62 +1,25 @@
+from typing import Any
+
 import numpy as np
 from numpy.typing import NDArray
 
 
 def compute_intermediates(
-    groundtruths: NDArray[np.bool_],
-    predictions: NDArray[np.bool_],
-    groundtruth_labels: NDArray[np.int64],
-    prediction_labels: NDArray[np.int64],
+    groundtruths: NDArray[np.integer[Any]],
+    predictions: NDArray[np.integer[Any]],
     n_labels: int,
-) -> NDArray[np.uint64]:
+) -> tuple[NDArray[np.int64], NDArray[np.int64], NDArray[np.uint64]]:
+    """Count observed pairs in validated, equally shaped label maps.
+
+    Returns local ground truth indices, prediction indices and pixel counts.
+    n_labels includes background at index zero.
+    Arithmetic is promoted before encoding pairs, including label ID 65535.
+    Only observed pairs are stored; no class-by-class matrix is allocated.
     """
-    Computes an intermediate confusion matrix containing label counts.
-
-    Parameters
-    ----------
-    groundtruths : NDArray[np.bool_]
-        A 2-D array containing flattened bitmasks for each label.
-    predictions : NDArray[np.bool_]
-        A 2-D array containing flattened bitmasks for each label.
-    groundtruth_labels : NDArray[np.int64]
-        A 1-D array containing ground truth label indices.
-    prediction_labels : NDArray[np.int64]
-        A 1-D array containing prediction label indices.
-    n_labels : int
-        The number of unique labels.
-
-    Returns
-    -------
-    NDArray[np.uint64]
-        A 2-D confusion matrix with shape (n_labels + 1, n_labels + 1).
-    """
-
-    groundtruth_counts = groundtruths.sum(axis=1)
-    prediction_counts = predictions.sum(axis=1)
-
-    background_counts = np.logical_not(
-        groundtruths.any(axis=0) | predictions.any(axis=0)
-    ).sum()
-
-    intersection_counts = np.logical_and(
-        groundtruths[:, None, :],
-        predictions[None, :, :],
-    ).sum(axis=2)
-    intersected_groundtruth_counts = intersection_counts.sum(axis=1)
-    intersected_prediction_counts = intersection_counts.sum(axis=0)
-
-    confusion_matrix = np.zeros((n_labels + 1, n_labels + 1), dtype=np.uint64)
-    confusion_matrix[0, 0] = background_counts
-    confusion_matrix[
-        np.ix_(groundtruth_labels + 1, prediction_labels + 1)
-    ] = intersection_counts
-    confusion_matrix[0, prediction_labels + 1] = (
-        prediction_counts - intersected_prediction_counts
-    )
-    confusion_matrix[groundtruth_labels + 1, 0] = (
-        groundtruth_counts - intersected_groundtruth_counts
-    )
-    return confusion_matrix
+    pairs = groundtruths.ravel().astype(np.int64) * n_labels
+    pairs += predictions.ravel().astype(np.int64)
+    pairs, counts = np.unique(pairs, return_counts=True)
+    return pairs // n_labels, pairs % n_labels, counts.astype(np.uint64)
 
 
 def compute_metrics(
