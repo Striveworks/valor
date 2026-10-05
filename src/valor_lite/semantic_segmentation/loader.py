@@ -1,3 +1,5 @@
+from itertools import chain
+
 import numpy as np
 import pyarrow as pa
 from tqdm import tqdm
@@ -14,22 +16,15 @@ class Loader(Builder):
         writer: MemoryCacheWriter | FileCacheWriter,
         metadata_fields: list[tuple[str, str | pa.DataType]] | None = None,
     ):
-        super().__init__(
-            writer=writer,
-            metadata_fields=metadata_fields,
-        )
-
-        # internal state
+        super().__init__(writer=writer, metadata_fields=metadata_fields)
         self._labels: dict[str, int] = {}
-        self._index_to_label: dict[int, str] = {}
         self._datum_count = 0
 
     def _add_label(self, value: str) -> int:
-        idx = self._labels.get(value, None)
+        idx = self._labels.get(value)
         if idx is None:
             idx = len(self._labels)
             self._labels[value] = idx
-            self._index_to_label[idx] = value
         return idx
 
     def add_data(
@@ -37,174 +32,50 @@ class Loader(Builder):
         segmentations: list[Segmentation],
         show_progress: bool = False,
     ):
+        """Cache observed pixel pairs, reconciling foreground labels by name.
+
+        Pixel zero is background. Positive pixel i names labels[i - 1].
+        Background uses the existing cache ID -1 and matrix row/column zero.
+        Declared labels with no pixels are preserved in zero-count rows.
+        Their metrics are zero when they have no support, and they participate
+        in mean IoU. Input arrays are never modified.
         """
-        Adds segmentations to the cache.
-
-        Parameters
-        ----------
-        segmentations : list[Segmentation]
-            A list of Segmentation objects.
-        show_progress : bool, default=False
-            Toggle for tqdm progress bar.
-        """
-
-        disable_tqdm = not show_progress
-        for segmentation in tqdm(segmentations, disable=disable_tqdm):
-
-            groundtruth_labels = -1 * np.ones(
-                len(segmentation.groundtruths), dtype=np.int64
+        for segmentation in tqdm(segmentations, disable=not show_progress):
+            local_to_global = np.array(
+                [
+                    -1,
+                    *[self._add_label(label) for label in segmentation.labels],
+                ],
+                dtype=np.int64,
             )
-            for idx, groundtruth in enumerate(segmentation.groundtruths):
-                label_idx = self._add_label(groundtruth.label)
-                groundtruth_labels[idx] = label_idx
-
-            prediction_labels = -1 * np.ones(
-                len(segmentation.predictions), dtype=np.int64
+            local_labels = [None, *segmentation.labels]
+            gt_ids, pd_ids, counts = compute_intermediates(
+                groundtruths=segmentation.groundtruths,
+                predictions=segmentation.predictions,
+                n_labels=len(segmentation.labels) + 1,
             )
-            for idx, prediction in enumerate(segmentation.predictions):
-                label_idx = self._add_label(prediction.label)
-                prediction_labels[idx] = label_idx
-
-            if segmentation.groundtruths:
-                combined_groundtruths = np.stack(
-                    [
-                        groundtruth.mask.flatten()
-                        for groundtruth in segmentation.groundtruths
-                    ],
-                    axis=0,
-                )
-            else:
-                combined_groundtruths = np.zeros(
-                    (1, segmentation.shape[0] * segmentation.shape[1]),
-                    dtype=np.bool_,
-                )
-
-            if segmentation.predictions:
-                combined_predictions = np.stack(
-                    [
-                        prediction.mask.flatten()
-                        for prediction in segmentation.predictions
-                    ],
-                    axis=0,
-                )
-            else:
-                combined_predictions = np.zeros(
-                    (1, segmentation.shape[0] * segmentation.shape[1]),
-                    dtype=np.bool_,
-                )
-
-            n_labels = len(self._labels)
-            counts = compute_intermediates(
-                groundtruths=combined_groundtruths,
-                predictions=combined_predictions,
-                groundtruth_labels=groundtruth_labels,
-                prediction_labels=prediction_labels,
-                n_labels=n_labels,
+            observed = set(gt_ids.tolist()) | set(pd_ids.tolist())
+            absent_pairs = (
+                (idx, idx, 0)
+                for idx in range(1, len(segmentation.labels) + 1)
+                if idx not in observed
             )
-
-            # prepare metadata
-            datum_metadata = (
-                segmentation.metadata if segmentation.metadata else {}
-            )
-            gt_metadata = {
-                self._labels[gt.label]: gt.metadata
-                for gt in segmentation.groundtruths
-                if gt.metadata
-            }
-            pd_metadata = {
-                self._labels[pd.label]: pd.metadata
-                for pd in segmentation.predictions
-                if pd.metadata
-            }
-
-            # cache formatting
-            rows = []
-            for idx in range(n_labels):
-                label = self._index_to_label[idx]
-                for pidx in range(n_labels):
-                    # write non-zero intersections to cache
-                    if counts[idx + 1, pidx + 1] > 0:
-                        plabel = self._index_to_label[pidx]
-                        rows.append(
-                            {
-                                # metadata
-                                **datum_metadata,
-                                **gt_metadata.get(idx, {}),
-                                **pd_metadata.get(pidx, {}),
-                                # datum
-                                "datum_uid": segmentation.uid,
-                                "datum_id": self._datum_count,
-                                # groundtruth
-                                "gt_label": label,
-                                "gt_label_id": idx,
-                                # prediction
-                                "pd_label": plabel,
-                                "pd_label_id": pidx,
-                                # pair
-                                "count": counts[idx + 1, pidx + 1],
-                            }
-                        )
-                # write all unmatched to preserve labels
-                rows.extend(
-                    [
-                        {
-                            # metadata
-                            **datum_metadata,
-                            **gt_metadata.get(idx, {}),
-                            # datum
-                            "datum_uid": segmentation.uid,
-                            "datum_id": self._datum_count,
-                            # groundtruth
-                            "gt_label": label,
-                            "gt_label_id": idx,
-                            # prediction
-                            "pd_label": None,
-                            "pd_label_id": -1,
-                            # pair
-                            "count": counts[idx + 1, 0],
-                        },
-                        {
-                            # metadata
-                            **datum_metadata,
-                            **gt_metadata.get(idx, {}),
-                            **pd_metadata.get(idx, {}),
-                            # datum
-                            "datum_uid": segmentation.uid,
-                            "datum_id": self._datum_count,
-                            # groundtruth
-                            "gt_label": None,
-                            "gt_label_id": -1,
-                            # prediction
-                            "pd_label": label,
-                            "pd_label_id": idx,
-                            # pair
-                            "count": counts[0, idx + 1],
-                        },
-                    ]
-                )
-            rows.append(
+            rows = [
                 {
-                    # metadata
-                    **datum_metadata,
-                    # datum
+                    **(segmentation.metadata or {}),
                     "datum_uid": segmentation.uid,
                     "datum_id": self._datum_count,
-                    # groundtruth
-                    "gt_label": None,
-                    "gt_label_id": -1,
-                    # prediction
-                    "pd_label": None,
-                    "pd_label_id": -1,
-                    # pair
-                    "count": counts[0, 0],
+                    "gt_label": local_labels[int(gt)],
+                    "gt_label_id": local_to_global[gt],
+                    "__valor_gt_annotation_id": local_to_global[gt],
+                    "pd_label": local_labels[int(pd)],
+                    "pd_label_id": local_to_global[pd],
+                    "__valor_pd_annotation_id": local_to_global[pd],
+                    "count": count,
                 }
-            )
-            for row in rows:
-                for side in ("gt", "pd"):
-                    row[f"__valor_{side}_annotation_id"] = row[
-                        f"{side}_label_id"
-                    ]
+                for gt, pd, count in chain(
+                    zip(gt_ids, pd_ids, counts), absent_pairs
+                )
+            ]
             self._writer.write_rows(rows)
-
-            # update datum count
             self._datum_count += 1

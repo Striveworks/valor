@@ -55,7 +55,7 @@ def unpack_precision_recall_iou_into_metric_lists(
 
     metrics[MetricType.mIOU] = [
         Metric.mean_iou(
-            value=float(ious.diagonal().mean()),
+            value=float(ious.diagonal().mean()) if n_labels else 0.0,
         )
     ]
 

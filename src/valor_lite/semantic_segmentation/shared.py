@@ -60,8 +60,8 @@ def generate_schema(
 
     return pa.schema(
         [
-            *reserved_fields,
-            *metadata_fields,
+            pa.field(name, dtype)
+            for name, dtype in [*reserved_fields, *metadata_fields]
         ]
     )
 
@@ -98,6 +98,7 @@ def decode_metadata_fields(
 def extract_labels(
     reader: MemoryCacheReader | FileCacheReader,
     index_to_label_override: dict[int, str] | None = None,
+    filter: pc.Expression | None = None,
 ) -> dict[int, str]:
     if index_to_label_override is not None:
         return index_to_label_override
@@ -109,7 +110,8 @@ def extract_labels(
             "gt_label",
             "pd_label_id",
             "pd_label",
-        ]
+        ],
+        filter=filter,
     ):
 
         # get gt labels
@@ -131,6 +133,52 @@ def extract_labels(
     return index_to_label
 
 
+def mask_annotations(
+    table: pa.Table,
+    groundtruths: pc.Expression | None = None,
+    predictions: pc.Expression | None = None,
+) -> pa.Table:
+    """Map excluded sides to background; discard rows failing both filters."""
+    if groundtruths is None and predictions is None:
+        return table
+
+    masks = []
+    for side, expression in (("gt", groundtruths), ("pd", predictions)):
+        valid = np.ones(table.num_rows, dtype=np.bool_)
+        if expression is not None:
+            index_name = "__row_index"
+            while index_name in table.column_names:
+                index_name = "_" + index_name
+            indexed = table.append_column(
+                index_name, pa.array(np.arange(table.num_rows))
+            )
+            retained_indices = indexed.filter(expression)[
+                index_name
+            ].to_numpy()
+            selected = np.zeros(table.num_rows, dtype=np.bool_)
+            selected[retained_indices] = True
+            valid &= selected
+        masks.append(valid)
+
+    for side, valid in zip(("gt", "pd"), masks):
+        for column, excluded in (
+            (f"{side}_label_id", -1),
+            (f"{side}_label", None),
+        ):
+            values = pc.call_function(
+                "if_else",
+                [
+                    pa.array(valid),
+                    table[column],
+                    pa.scalar(excluded, type=table[column].type),
+                ],
+            )
+            table = table.set_column(
+                table.schema.get_field_index(column), column, values
+            )
+    return table.filter(pa.array(masks[0] | masks[1]))
+
+
 def extract_counts(
     reader: MemoryCacheReader | FileCacheReader,
     datums: pc.Expression | None = None,
@@ -139,6 +187,7 @@ def extract_counts(
 ):
     n_dts, n_total, n_gts, n_pds = 0, 0, 0, 0
     for tbl in reader.iterate_tables(filter=datums):
+        tbl = mask_annotations(tbl, groundtruths, predictions)
 
         # count datums
         n_dts += int(np.unique(tbl["datum_id"].to_numpy()).shape[0])
@@ -147,19 +196,11 @@ def extract_counts(
         n_total += int(tbl["count"].to_numpy().sum())
 
         # count groundtruth pixels
-        gt_tbl = tbl
-        gt_expr = pc.field("gt_label_id") >= 0
-        if groundtruths is not None:
-            gt_expr &= groundtruths
-        gt_tbl = tbl.filter(gt_expr)
+        gt_tbl = tbl.filter(pc.field("gt_label_id") >= 0)
         n_gts += int(gt_tbl["count"].to_numpy().sum())
 
         # count prediction pixels
-        pd_tbl = tbl
-        pd_expr = pc.field("pd_label_id") >= 0
-        if predictions is not None:
-            pd_expr &= predictions
-        pd_tbl = tbl.filter(pd_expr)
+        pd_tbl = tbl.filter(pc.field("pd_label_id") >= 0)
         n_pds += int(pd_tbl["count"].to_numpy().sum())
 
     return n_dts, n_total, n_gts, n_pds
