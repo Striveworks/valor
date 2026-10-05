@@ -87,8 +87,7 @@ def segmentations_from_boxes() -> list[Segmentation]:
             groundtruths=label_map(gt, i + 1),
             predictions=label_map(pd, i + 1),
             labels=["v1", "v2"],
-            groundtruth_metadata={i + 1: {"gt_xmin": gt[0]}},
-            prediction_metadata={i + 1: {"pd_xmin": pd[0]}},
+            metadata={"gt_xmin": gt[0], "pd_xmin": pd[0]},
         )
         for i, (gt, pd) in enumerate(rectangles)
     ]

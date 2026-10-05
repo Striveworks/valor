@@ -54,8 +54,6 @@ class Loader(Builder):
                 predictions=segmentation.predictions,
                 n_labels=len(segmentation.labels) + 1,
             )
-            gt_metadata = segmentation.groundtruth_metadata or {}
-            pd_metadata = segmentation.prediction_metadata or {}
             observed = set(gt_ids.tolist()) | set(pd_ids.tolist())
             absent_pairs = (
                 (idx, idx, 0)
@@ -65,8 +63,6 @@ class Loader(Builder):
             rows = [
                 {
                     **(segmentation.metadata or {}),
-                    **gt_metadata.get(int(gt), {}),
-                    **pd_metadata.get(int(pd), {}),
                     "datum_uid": segmentation.uid,
                     "datum_id": self._datum_count,
                     "gt_label": local_labels[int(gt)],

@@ -84,23 +84,6 @@ def test_highest_label_id():
     assert segmentation.groundtruths.dtype == np.uint16
 
 
-@pytest.mark.parametrize(
-    "side", ["groundtruth_metadata", "prediction_metadata"]
-)
-@pytest.mark.parametrize(
-    "metadata", [{-1: {}}, {2: {}}, {"0": {}}, {True: {}}, {0: "invalid"}, []]
-)
-def test_invalid_class_metadata(side, metadata):
-    with pytest.raises(ValueError, match=side):
-        Segmentation(
-            "image",
-            np.zeros((1, 1), dtype=int),
-            np.zeros((1, 1), dtype=int),
-            ["sky"],
-            **{side: metadata}
-        )
-
-
 def test_read_only_noncontiguous_arrays_are_not_modified():
     array = np.arange(12, dtype=np.uint16).reshape(3, 4) % 2
     original = array.copy()

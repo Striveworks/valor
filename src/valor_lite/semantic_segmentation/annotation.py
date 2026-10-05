@@ -24,10 +24,6 @@ class Segmentation:
         Background has no entry. An empty list allows only background pixels.
     metadata : dict[str, Any], optional
         Image metadata used for filtering.
-    groundtruth_metadata : dict[int, dict[str, Any]], optional
-        Ground truth class metadata, keyed by pixel value (0 for background).
-    prediction_metadata : dict[int, dict[str, Any]], optional
-        Prediction class metadata, keyed by pixel value (0 for background).
 
     Notes
     -----
@@ -51,8 +47,6 @@ class Segmentation:
     predictions: NDArray[np.integer[Any]]
     labels: list[str]
     metadata: dict[str, Any] | None = None
-    groundtruth_metadata: dict[int, dict[str, Any]] | None = None
-    prediction_metadata: dict[int, dict[str, Any]] | None = None
 
     def __post_init__(self):
         if not isinstance(self.labels, list) or not all(
@@ -72,23 +66,6 @@ class Segmentation:
             raise ValueError(
                 "groundtruths and predictions must have the same shape"
             )
-
-        for name, metadata in (
-            ("groundtruth_metadata", self.groundtruth_metadata),
-            ("prediction_metadata", self.prediction_metadata),
-        ):
-            if metadata is None:
-                continue
-            if not isinstance(metadata, dict) or any(
-                isinstance(idx, (bool, np.bool_))
-                or not isinstance(idx, (int, np.integer))
-                or not 0 <= idx <= len(self.labels)
-                or not isinstance(value, dict)
-                for idx, value in metadata.items()
-            ):
-                raise ValueError(
-                    f"{name} must map valid label indices to dictionaries"
-                )
 
     @property
     def shape(self) -> tuple[int, int]:

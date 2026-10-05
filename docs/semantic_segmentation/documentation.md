@@ -20,12 +20,10 @@ for their effect on mean IoU and for background and filtering behavior.
 
 ## Metadata and filtering
 
-Use `metadata` for image fields. `groundtruth_metadata` and `prediction_metadata`
-map pixel values to class metadata: keys 1 through `len(labels)` select foreground
-classes, and key 0 selects background. Cached metadata combines image, ground
-truth, and prediction fields in that order; later fields take precedence.
-Evaluator-reserved fields cannot be overwritten. Use separate field names for
-ground truth and prediction metadata when filtering each side independently.
+Use `metadata` for image fields. The library copies these fields to each cached
+pixel-pair row; evaluator-reserved fields cannot be overwritten. If you need
+ground-truth or prediction-specific fields, prepare them in the integration layer
+and provide them as ordinary metadata fields.
 
 Datum filters discard complete rows. Annotation filters remap excluded sides
 to background; rows failing both side filters are discarded. Excluded foreground
@@ -45,9 +43,8 @@ can be supplied to `load`.
 `Segmentation` replaces `list[Bitmask]` with arrays and requires `labels`.
 The semantic-segmentation `Bitmask` export and the `shape` and `size` constructor
 arguments are removed. Keep uncovered pixels at 0 and assign `labels[i]` to
-pixel value `i + 1`. Move mask metadata into the dictionaries keyed by that pixel
-value. Ground truth and prediction arrays are both required; an all-zero array
-represents background. The existing metric formulas are preserved.
+pixel value `i + 1`. Ground truth and prediction arrays are both required; an
+all-zero array represents background. The existing metric formulas are preserved.
 
 ## API
 

@@ -82,9 +82,8 @@ def test_add_data_metadata_handling(loader: Loader):
                     "datum_uid": "incorrect",
                     "count": 999,
                     "gt_xmin": -1,
+                    "pd_xmin": -2,
                 },
-                groundtruth_metadata={1: {"gt_xmin": 10}, 2: {"gt_xmin": 20}},
-                prediction_metadata={1: {"pd_xmin": 30}, 2: {"pd_xmin": 40}},
             )
         ]
     )
@@ -98,10 +97,11 @@ def test_add_data_metadata_handling(loader: Loader):
     assert all(
         row["datum_uid"] == "image" and row["count"] == 1 for row in rows
     )
-    assert [
-        (row["gt_label"], row["pd_label"], row["gt_xmin"], row["pd_xmin"])
-        for row in rows
-    ] == [("sky", "road", 10, 40), ("road", "sky", 20, 30)]
+    assert all(row["gt_xmin"] == -1 and row["pd_xmin"] == -2 for row in rows)
+    assert [(row["gt_label"], row["pd_label"]) for row in rows] == [
+        ("sky", "road"),
+        ("road", "sky"),
+    ]
 
 
 def test_high_ids_and_global_vocabulary_are_not_narrowed(loader: Loader):

@@ -109,10 +109,7 @@ def test_filtering_by_datum(
         )
 
 
-@pytest.mark.parametrize("side", ["groundtruths", "predictions", "both"])
-def test_filtering_by_annotation_metadata(
-    loader: Loader, tmp_path: Path, side
-):
+def test_filtering_by_metadata(loader: Loader, tmp_path: Path):
     loader.add_data(
         [
             Segmentation(
@@ -120,70 +117,20 @@ def test_filtering_by_annotation_metadata(
                 np.array([[1, 2], [2, 3]]),
                 np.array([[2, 2], [3, 3]]),
                 ["sky", "road", "car"],
-                groundtruth_metadata={
-                    1: {"gt_xmin": 10},
-                    2: {"gt_xmin": 20},
-                    3: {"gt_xmin": 30},
-                },
-                prediction_metadata={
-                    1: {"pd_xmin": 40},
-                    2: {"pd_xmin": 50},
-                    3: {"pd_xmin": 60},
-                },
+                metadata={"split": "validation"},
             )
         ]
     )
     evaluator = loader.finalize()
-    gt = (
-        pc.field("gt_xmin") >= 20 if side in ("groundtruths", "both") else None
-    )
-    pd = pc.field("pd_xmin") <= 50 if side in ("predictions", "both") else None
     filtered = evaluator.filter(
-        groundtruths=gt, predictions=pd, path=tmp_path / "filtered"
+        datums=pc.field("split") == "validation", path=tmp_path / "filtered"
     )
-    expected = {
-        "groundtruths": [
-            [0, 1, 0],
-            [0, 1, 1],
-            [0, 0, 1],
-        ],
-        "predictions": [
-            [0, 0, 0, 0],
-            [0, 0, 1, 0],
-            [1, 0, 1, 0],
-            [1, 0, 0, 0],
-        ],
-        "both": [[0, 1, 0], [1, 1, 0], [1, 0, 0]],
-    }
-    np.testing.assert_array_equal(
-        filtered._compute_confusion_matrix_intermediate(), expected[side]
-    )
+    assert filtered.info.number_of_datums == 1
     assert filtered.info.number_of_pixels == 4
-    assert evaluator.get_info(groundtruths=gt, predictions=pd) == filtered.info
-    accuracy = filtered.compute_precision_recall_iou()[MetricType.Accuracy][
-        0
-    ].value
     assert (
-        accuracy
-        == {"groundtruths": 0.5, "predictions": 0.25, "both": 0.25}[side]
+        evaluator.get_info(datums=pc.field("split") == "validation")
+        == filtered.info
     )
-    rows = [
-        row
-        for tbl in filtered._reader.iterate_tables()
-        for row in tbl.to_pylist()
-    ]
-    assert [row["gt_label_id"] for row in rows] == (
-        [-1, 1, 1, 2] if side != "predictions" else [0, 1, 1, 2]
-    )
-    assert [row["pd_label_id"] for row in rows] == (
-        [1, 1, -1, -1] if side != "groundtruths" else [1, 1, 2, 2]
-    )
-    for row in rows:
-        for prefix in ("gt", "pd"):
-            if row[f"{prefix}_label_id"] == -1:
-                assert row[f"{prefix}_label"] is None
-    assert "gt_valid" not in filtered._reader.schema.names
-    assert "pd_valid" not in filtered._reader.schema.names
 
 
 def test_filtering_all_annotations(
