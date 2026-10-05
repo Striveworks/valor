@@ -576,7 +576,9 @@ class Evaluator:
             for side in ("gt", "pd"):
                 id_column = f"{side}_label_id"
                 label_column = f"{side}_label"
-                indices = pc.index_in(tbl[id_column], value_set=old_ids)
+                indices = pc.index_in(  # type: ignore[reportAttributeAccessIssue]
+                    tbl[id_column], value_set=old_ids
+                )
                 index = tbl.schema.get_field_index(label_column)
                 tbl = tbl.set_column(
                     index, tbl.schema.field(index), pc.take(labels, indices)
@@ -612,9 +614,11 @@ class Evaluator:
                 tbl = tbl.take(np.sort(order[first]))
 
             if merges_labels:
-                matches = pc.and_(
+                matches = pc.and_(  # type: ignore[reportAttributeAccessIssue]
                     pc.equal(tbl["gt_label_id"], tbl["pd_label_id"]),
-                    pc.greater_equal(tbl["pd_label_id"], 0),
+                    pc.greater_equal(  # type: ignore[reportAttributeAccessIssue]
+                        tbl["pd_label_id"], 0
+                    ),
                 )
                 index = tbl.schema.get_field_index("match")
                 tbl = tbl.set_column(index, tbl.schema.field(index), matches)

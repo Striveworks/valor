@@ -206,8 +206,12 @@ def test_remap_and_filter(
     after = _table(remapped._detailed_reader)
     # Filtering leaves stale strings behind; remapping must not revive IDs.
     for side in ("gt", "pd"):
-        assert pc.equal(before[f"{side}_label_id"], -1).equals(
-            pc.equal(after[f"{side}_label_id"], -1)
+        assert pc.equal(  # type: ignore[reportAttributeAccessIssue]
+            before[f"{side}_label_id"], -1
+        ).equals(
+            pc.equal(  # type: ignore[reportAttributeAccessIssue]
+                after[f"{side}_label_id"], -1
+            )
         )
     assert set(remapped._index_to_label.values()) == {"feline", "dog", "bird"}
 

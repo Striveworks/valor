@@ -493,12 +493,16 @@ class Evaluator:
             for side in ("gt", "pd"):
                 id_column = f"{side}_label_id"
                 label_column = f"{side}_label"
-                indices = pc.index_in(tbl[id_column], value_set=old_ids)
+                indices = pc.index_in(  # type: ignore[reportAttributeAccessIssue]
+                    tbl[id_column], value_set=old_ids
+                )
                 if label_column in tbl.schema.names:
                     # Preserve stale strings on filtered annotations, whose
                     # IDs remain -1. Ranked caches only contain label IDs.
-                    remapped_labels = pc.if_else(
-                        pc.greater_equal(tbl[id_column], 0),
+                    remapped_labels = pc.if_else(  # type: ignore[reportAttributeAccessIssue]
+                        pc.greater_equal(  # type: ignore[reportAttributeAccessIssue]
+                            tbl[id_column], 0
+                        ),
                         pc.take(labels, indices),
                         tbl[label_column],
                     )
