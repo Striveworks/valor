@@ -117,20 +117,18 @@ def test_filtering_by_metadata(loader: Loader, tmp_path: Path):
                 np.array([[1, 2], [2, 3]]),
                 np.array([[2, 2], [3, 3]]),
                 ["sky", "road", "car"],
-                metadata={"split": "validation"},
+                metadata={"gt_xmin": 20.0, "pd_xmin": 50.0},
             )
         ]
     )
     evaluator = loader.finalize()
+    metadata_filter = pc.field("gt_xmin").isin([20.0])
     filtered = evaluator.filter(
-        datums=pc.field("split") == "validation", path=tmp_path / "filtered"
+        datums=metadata_filter, path=tmp_path / "filtered"
     )
     assert filtered.info.number_of_datums == 1
     assert filtered.info.number_of_pixels == 4
-    assert (
-        evaluator.get_info(datums=pc.field("split") == "validation")
-        == filtered.info
-    )
+    assert evaluator.get_info(datums=metadata_filter) == filtered.info
 
 
 def test_filtering_all_annotations(
