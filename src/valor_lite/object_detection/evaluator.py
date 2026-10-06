@@ -16,7 +16,7 @@ from valor_lite.exceptions import EmptyCacheError
 from valor_lite.object_detection.computation import (
     compute_average_precision,
     compute_average_recall,
-    compute_confusion_matrix,
+    compute_confusion_matrix_from_table,
     compute_counts,
     compute_pair_classifications,
     compute_precision_recall_f1,
@@ -549,9 +549,10 @@ class Evaluator:
         )
         unmatched_predictions = np.zeros_like(unmatched_groundtruths)
 
-        for pairs in self._detailed_reader.iterate_arrays(
-            numeric_columns=[
-                "datum_id",
+        iou_array = np.array(iou_thresholds)
+        score_array = np.array(score_thresholds)
+        for table in self._detailed_reader.iterate_tables(
+            columns=[
                 "gt_id",
                 "pd_id",
                 "gt_label_id",
@@ -561,32 +562,15 @@ class Evaluator:
             ],
             filter=datums,
         ):
-            if pairs.size == 0:
-                continue
-
-            (
-                batch_mask_tp,
-                batch_mask_fp_fn_misclf,
-                batch_mask_fp_unmatched,
-                batch_mask_fn_unmatched,
-            ) = compute_pair_classifications(
-                detailed_pairs=pairs,
-                iou_thresholds=np.array(iou_thresholds),
-                score_thresholds=np.array(score_thresholds),
-            )
             (
                 batch_confusion_matrices,
                 batch_unmatched_groundtruths,
                 batch_unmatched_predictions,
-            ) = compute_confusion_matrix(
-                detailed_pairs=pairs,
-                mask_tp=batch_mask_tp,
-                mask_fp_fn_misclf=batch_mask_fp_fn_misclf,
-                mask_fp_unmatched=batch_mask_fp_unmatched,
-                mask_fn_unmatched=batch_mask_fn_unmatched,
+            ) = compute_confusion_matrix_from_table(
+                table=table,
                 number_of_labels=n_labels,
-                iou_thresholds=np.array(iou_thresholds),
-                score_thresholds=np.array(score_thresholds),
+                iou_thresholds=iou_array,
+                score_thresholds=score_array,
             )
             confusion_matrices += batch_confusion_matrices
             unmatched_groundtruths += batch_unmatched_groundtruths

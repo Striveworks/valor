@@ -7,6 +7,7 @@ import pyarrow.compute as pc
 from numpy.typing import NDArray
 
 from valor_lite.cache import FileCacheReader, MemoryCacheReader
+from valor_lite.object_detection.computation import _encode_keys
 
 
 @dataclass
@@ -36,7 +37,7 @@ def generate_metadata_path(path: str | Path) -> Path:
 
 
 def generate_detailed_schema(
-    metadata_fields: list[tuple[str, str | pa.DataType]] | None
+    metadata_fields: list[tuple[str, str | pa.DataType]] | None,
 ) -> pa.Schema:
     metadata_fields = metadata_fields if metadata_fields else []
     reserved_fields = [
@@ -69,7 +70,7 @@ def generate_detailed_schema(
 
 
 def generate_ranked_schema(
-    metadata_fields: list[tuple[str, str | pa.DataType]] | None
+    metadata_fields: list[tuple[str, str | pa.DataType]] | None,
 ) -> pa.Schema:
     reserved_detailed_fields = [
         ("datum_uid", pa.string()),
@@ -109,14 +110,14 @@ def generate_ranked_schema(
 
 
 def encode_metadata_fields(
-    metadata_fields: list[tuple[str, str | pa.DataType]] | None
+    metadata_fields: list[tuple[str, str | pa.DataType]] | None,
 ) -> dict[str, str]:
     metadata_fields = metadata_fields if metadata_fields else []
     return {k: str(v) for k, v in metadata_fields}
 
 
 def decode_metadata_fields(
-    encoded_metadata_fields: dict[str, str]
+    encoded_metadata_fields: dict[str, str],
 ) -> list[tuple[str, str]]:
     return [(k, v) for k, v in encoded_metadata_fields.items()]
 
@@ -191,16 +192,29 @@ def extract_groundtruth_count_per_label(
     datums: pc.Expression | None = None,
 ) -> NDArray[np.uint64]:
     gt_counts_per_lbl = np.zeros(number_of_labels, dtype=np.uint64)
-    for gts in reader.iterate_arrays(
-        numeric_columns=["gt_id", "gt_label_id"],
-        filter=datums,
+    for table in reader.iterate_tables(
+        columns=["gt_id", "gt_label_id"], filter=datums
     ):
-        # count gts per label
-        unique_ann = np.unique(gts[gts[:, 0] >= 0], axis=0)
-        unique_labels, label_counts = np.unique(
-            unique_ann[:, 1], return_counts=True
-        )
-        for label_id, count in zip(unique_labels, label_counts):
-            gt_counts_per_lbl[int(label_id)] += int(count)
-
+        gt_ids = table["gt_id"].to_numpy()
+        labels = table["gt_label_id"].to_numpy()
+        valid = gt_ids >= 0
+        # Integer keys avoid sorting repeated two-column records. Recover
+        # labels from first occurrences so wide-ID fallback keys work too.
+        valid_ids, valid_labels = gt_ids[valid], labels[valid]
+        if len(valid_ids) == 0:
+            continue
+        if (
+            int(valid_ids.max()) * number_of_labels + int(valid_labels.max())
+            <= np.iinfo(np.int64).max
+        ):
+            keys = np.unique(valid_ids * number_of_labels + valid_labels)
+            unique_labels = keys % number_of_labels
+        else:
+            _, first = np.unique(
+                _encode_keys(valid_ids, valid_labels), return_index=True
+            )
+            unique_labels = valid_labels[first]
+        gt_counts_per_lbl += np.bincount(
+            unique_labels, minlength=number_of_labels
+        ).astype(np.uint64)
     return gt_counts_per_lbl
