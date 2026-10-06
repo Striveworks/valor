@@ -1,4 +1,5 @@
 from enum import IntFlag, auto
+from typing import Literal, Protocol, cast, overload
 
 import numpy as np
 import pyarrow as pa
@@ -873,6 +874,48 @@ def compute_confusion_matrix(
     return confusion_matrices, unmatched_groundtruths, unmatched_predictions
 
 
+class _DictionaryKeys(Protocol):
+    # Some Arrow stubs omit DictionaryArray's two public array properties.
+    indices: pa.Array
+    dictionary: pa.Array
+
+
+@overload
+def _group_keys(
+    keys: NDArray, return_inverse: Literal[False] = False
+) -> tuple[NDArray, NDArray]:
+    pass
+
+
+@overload
+def _group_keys(
+    keys: NDArray, return_inverse: Literal[True]
+) -> tuple[NDArray, NDArray, NDArray]:
+    pass
+
+
+def _group_keys(
+    keys: NDArray, return_inverse: bool = False
+) -> tuple[NDArray, NDArray] | tuple[NDArray, NDArray, NDArray]:
+    """Group integer keys by hashing, retaining each group's first row.
+
+    Integer groups follow encounter order. Structured overflow keys use
+    NumPy's sorted groups; callers must order by first row when order matters.
+    """
+    if keys.dtype.kind == "V":
+        if return_inverse:
+            return np.unique(keys, return_index=True, return_inverse=True)
+        return np.unique(keys, return_index=True)
+    encoded = cast(_DictionaryKeys, pa.array(keys).dictionary_encode())
+    codes = encoded.indices.to_numpy()
+    values = encoded.dictionary.to_numpy()
+    first = np.full(len(values), len(keys), dtype=np.int64)
+    np.minimum.at(first, codes, np.arange(len(keys)))
+    if return_inverse:
+        return values, first, codes
+    return values, first
+
+
 def compute_confusion_matrix_from_table(
     table: pa.Table,
     number_of_labels: int,
@@ -912,47 +955,53 @@ def compute_confusion_matrix_from_table(
         pair_keys = (gt_ids + 1) * pd_stride + (pd_ids + 1)
     else:
         pair_keys = _encode_keys(gt_ids, pd_ids)
-    _, first_pairs, pair_codes = np.unique(
-        pair_keys, return_index=True, return_inverse=True
-    )
+    _, first_pairs, pair_codes = _group_keys(pair_keys, return_inverse=True)
     pair_count = len(first_pairs)
 
+    # Compact codes bound flags by fragment size even with sparse or large IDs.
+    unique_gt, first_gt, gt_codes = _group_keys(
+        gt_ids[first_pairs], return_inverse=True
+    )
+    unique_pd, first_pd, pd_codes = _group_keys(
+        pd_ids[first_pairs], return_inverse=True
+    )
     # Visit each physical pair once, ordered by its first labeled row.
-    seen_gt: set[int] = set()
-    seen_pd: set[int] = set()
+    seen_gt = bytearray(len(unique_gt))
+    seen_pd = bytearray(len(unique_pd))
+    for index in np.flatnonzero(unique_gt < 0):
+        seen_gt[int(index)] = 1
+    for index in np.flatnonzero(unique_pd < 0):
+        seen_pd[int(index)] = 1
     chosen = np.zeros(pair_count, dtype=np.bool_)
-    for pair_idx in np.argsort(first_pairs):
-        row = first_pairs[pair_idx]
-        gt_id, pd_id = int(gt_ids[row]), int(pd_ids[row])
-        if gt_id < 0 or pd_id < 0 or gt_id in seen_gt or pd_id in seen_pd:
+    ordered_pairs = np.argsort(first_pairs)
+    # Convert once to avoid NumPy scalar indexing/conversion in the hot loop.
+    for pair_idx, gt_code, pd_code in zip(
+        ordered_pairs.tolist(),
+        gt_codes[ordered_pairs].tolist(),
+        pd_codes[ordered_pairs].tolist(),
+    ):
+        if seen_gt[gt_code] or seen_pd[pd_code]:
             continue
-        seen_gt.add(gt_id)
-        seen_pd.add(pd_id)
+        seen_gt[gt_code] = 1
+        seen_pd[pd_code] = 1
         chosen[pair_idx] = True
 
     matched_rows = np.flatnonzero(chosen[pair_codes])
     labeled_keys = (
-        pair_codes[matched_rows] * n_labels + gt_labels[matched_rows]
+        pair_codes[matched_rows].astype(np.int64) * n_labels
+        + gt_labels[matched_rows]
     ) * n_labels + pd_labels[matched_rows]
-    _, first = np.unique(labeled_keys, return_index=True)
+    _, first = _group_keys(labeled_keys)
     matched_rows = matched_rows[first]
 
-    # Compact annotation codes bound the flags by fragment size, even when
-    # the persistent IDs are sparse or large.
-    unique_gt, first_gt, gt_codes = np.unique(
-        gt_ids[first_pairs], return_index=True, return_inverse=True
-    )
     valid_gt_codes = np.flatnonzero(unique_gt >= 0)
     gt_rows = first_pairs[first_gt[valid_gt_codes]]
-    unique_pd, first_pd, pd_codes = np.unique(
-        pd_ids[first_pairs], return_index=True, return_inverse=True
-    )
     prediction_pairs = np.zeros(pair_count, dtype=np.bool_)
     prediction_pairs[first_pd] = True
     pd_rows = np.flatnonzero(prediction_pairs[pair_codes] & (pd_ids >= 0))
     prediction_codes = pd_codes[pair_codes[pd_rows]]
-    _, first = np.unique(
-        prediction_codes * n_labels + pd_labels[pd_rows], return_index=True
+    _, first = _group_keys(
+        prediction_codes.astype(np.int64) * n_labels + pd_labels[pd_rows]
     )
     pd_rows = pd_rows[first]
     prediction_codes = prediction_codes[first]

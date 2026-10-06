@@ -165,7 +165,14 @@ def extract_counts(
     predictions: pc.Expression | None = None,
 ):
     n_dts, n_gts, n_pds = 0, 0, 0
-    for tbl in reader.iterate_tables(filter=datums):
+    # Annotation filters may reference metadata columns. Datum filters are
+    # applied by the reader before projection, so they need no extra columns.
+    columns = (
+        ["datum_id", "gt_id", "pd_id"]
+        if groundtruths is None and predictions is None
+        else None
+    )
+    for tbl in reader.iterate_tables(columns=columns, filter=datums):
         # count datums
         n_dts += int(np.unique(tbl["datum_id"].to_numpy()).shape[0])
 
