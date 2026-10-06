@@ -196,7 +196,10 @@ def run_benchmarking_analysis(
         )
 
         # ingest + preprocess
-        (ingest_time, preprocessing_time,) = ingest(
+        (
+            ingest_time,
+            preprocessing_time,
+        ) = ingest(
             loader=loader,
             gt_path=current_directory / Path(gt_filename),
             pd_path=current_directory / Path(pd_filename),

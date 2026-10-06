@@ -30,7 +30,7 @@ def generate_metadata_path(path: str | Path) -> Path:
 
 
 def generate_schema(
-    metadata_fields: list[tuple[str, str | pa.DataType]] | None
+    metadata_fields: list[tuple[str, str | pa.DataType]] | None,
 ) -> pa.Schema:
     """Generate PyArrow schema from metadata fields."""
 
@@ -65,7 +65,7 @@ def generate_schema(
 
 
 def encode_metadata_fields(
-    metadata_fields: list[tuple[str, str | pa.DataType]] | None
+    metadata_fields: list[tuple[str, str | pa.DataType]] | None,
 ) -> dict[str, str]:
     """Encode metadata fields into JSON format."""
     metadata_fields = metadata_fields if metadata_fields else []
@@ -73,7 +73,7 @@ def encode_metadata_fields(
 
 
 def decode_metadata_fields(
-    encoded_metadata_fields: dict[str, str]
+    encoded_metadata_fields: dict[str, str],
 ) -> list[tuple[str, str | pa.DataType]]:
     """Decode metadata fields from JSON format."""
     return [(k, v) for k, v in encoded_metadata_fields.items()]

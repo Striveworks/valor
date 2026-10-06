@@ -38,6 +38,7 @@ class ClientWrapper(Protocol):
         self,
         messages: list[dict[str, str]],
     ) -> str:
+        """Return the response text for the supplied messages."""
         ...
 
 

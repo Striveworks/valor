@@ -344,9 +344,7 @@ def classifications_multiclass() -> list[Classification]:
 
 
 @pytest.fixture
-def classifications_multiclass_true_negatives_check() -> (
-    list[Classification]
-):
+def classifications_multiclass_true_negatives_check() -> list[Classification]:
     return [
         Classification(
             uid="uid1",
