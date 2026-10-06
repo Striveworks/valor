@@ -15,7 +15,7 @@ from valor_lite.cache.compute import paginate_index
 
 @pytest.fixture
 def reader(
-    create_writer: Callable[[pa.Schema], MemoryCacheWriter | FileCacheWriter]
+    create_writer: Callable[[pa.Schema], MemoryCacheWriter | FileCacheWriter],
 ) -> MemoryCacheReader | FileCacheReader:
     schema = pa.schema(
         [

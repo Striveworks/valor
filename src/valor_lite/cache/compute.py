@@ -35,9 +35,11 @@ def _merge(
         row_idx: int,
     ):
         args = [
-            -batches[batch_idx][name][row_idx].as_py()
-            if direction == "descending"
-            else batches[batch_idx][name][row_idx].as_py()
+            (
+                -batches[batch_idx][name][row_idx].as_py()
+                if direction == "descending"
+                else batches[batch_idx][name][row_idx].as_py()
+            )
             for name, direction in sorting
         ]
         return (

@@ -34,7 +34,7 @@ def generate_metadata_path(path: str | Path) -> Path:
 
 
 def generate_schema(
-    metadata_fields: list[tuple[str, str | pa.DataType]] | None
+    metadata_fields: list[tuple[str, str | pa.DataType]] | None,
 ) -> pa.Schema:
     metadata_fields = metadata_fields if metadata_fields else []
     reserved_fields = [
@@ -83,14 +83,14 @@ def generate_roc_curve_schema() -> pa.Schema:
 
 
 def encode_metadata_fields(
-    metadata_fields: list[tuple[str, str | pa.DataType]] | None
+    metadata_fields: list[tuple[str, str | pa.DataType]] | None,
 ) -> dict[str, str]:
     metadata_fields = metadata_fields if metadata_fields else []
     return {k: str(v) for k, v in metadata_fields}
 
 
 def decode_metadata_fields(
-    encoded_metadata_fields: dict[str, str]
+    encoded_metadata_fields: dict[str, str],
 ) -> list[tuple[str, str]]:
     return [(k, v) for k, v in encoded_metadata_fields.items()]
 

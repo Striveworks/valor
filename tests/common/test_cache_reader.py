@@ -11,7 +11,7 @@ from valor_lite.cache import (
 
 
 def test_cache_reader_iterate_tables_with_arrays(
-    create_writer: Callable[[pa.Schema], FileCacheWriter | MemoryCacheWriter]
+    create_writer: Callable[[pa.Schema], FileCacheWriter | MemoryCacheWriter],
 ):
     n_rows_written = 100
     schema = pa.schema(

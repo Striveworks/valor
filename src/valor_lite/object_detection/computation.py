@@ -1,4 +1,5 @@
 from enum import IntFlag, auto
+from typing import Literal, Protocol, cast, overload
 
 import numpy as np
 import pyarrow as pa
@@ -329,6 +330,33 @@ def rank_table(tbl: pa.Table) -> pa.Table:
     return ranked_tbl
 
 
+def _encode_keys(*columns: NDArray[np.int64]) -> NDArray:
+    """Encode integer tuples without collisions or integer overflow.
+
+    Small key ranges use mixed-radix integers, avoiding NumPy's slower
+    structured row sorting. Wide ranges use fixed-width records instead.
+    Only key equality is used by callers; encoded ordering is private.
+    """
+    if not len(columns[0]):
+        return np.empty(0, dtype=np.int64)
+
+    bounds = [(int(col.min()), int(col.max())) for col in columns]
+    cardinality = 1
+    for lower, upper in bounds:
+        cardinality *= upper - lower + 1
+        if cardinality > np.iinfo(np.int64).max:
+            rows = np.column_stack(columns)
+            return rows.view(
+                np.dtype((np.void, rows.dtype.itemsize * len(columns)))
+            ).ravel()
+
+    keys = columns[0] - bounds[0][0]
+    for column, (lower, upper) in zip(columns[1:], bounds[1:]):
+        keys *= upper - lower + 1
+        keys += column - lower
+    return keys
+
+
 def compute_counts(
     ranked_pairs: NDArray[np.float64],
     iou_thresholds: NDArray[np.float64],
@@ -375,157 +403,116 @@ def compute_counts(
     """
     n_rows = ranked_pairs.shape[0]
     n_labels = number_of_labels
-    n_ious = iou_thresholds.shape[0]
-    n_scores = score_thresholds.shape[0]
-
-    # initialize result arrays
+    n_ious = len(iou_thresholds)
+    n_scores = len(score_thresholds)
     counts = np.zeros((n_ious, n_scores, 3, n_labels), dtype=np.uint64)
+    if n_rows == 0:
+        return counts
 
-    # start computation
     ids = ranked_pairs[:, :5].astype(np.int64)
-    gt_ids = ids[:, 1]
-    gt_labels = ids[:, 3]
     pd_labels = ids[:, 4]
-    ious = ranked_pairs[:, 5]
     scores = ranked_pairs[:, 6]
-    prev_ious = ranked_pairs[:, 7]
-
-    unique_pd_labels, _ = np.unique(pd_labels, return_index=True)
-
-    running_total_count = np.zeros(
-        (n_ious, n_rows),
-        dtype=np.uint64,
-    )
-    running_tp_count = np.zeros_like(running_total_count)
-    running_gt_count = number_of_groundtruths_per_label[pd_labels]
-
     mask_score_nonzero = scores > EPSILON
-    mask_gt_exists = gt_ids >= 0.0
-    mask_labels_match = np.isclose(gt_labels, pd_labels)
+    mask_gt_labels_match = (ids[:, 1] >= 0) & np.isclose(ids[:, 3], pd_labels)
 
-    mask_gt_exists_labels_match = mask_gt_exists & mask_labels_match
-
-    mask_tp = mask_score_nonzero & mask_gt_exists_labels_match
-    mask_fp = mask_score_nonzero
-
-    for iou_idx in range(n_ious):
-        mask_iou_curr = ious >= iou_thresholds[iou_idx]
-        mask_iou_prev = prev_ious < iou_thresholds[iou_idx]
-        mask_iou = mask_iou_curr & mask_iou_prev
-
-        mask_tp_outer = mask_tp & mask_iou
-        mask_fp_outer = mask_fp & (
-            (~mask_gt_exists_labels_match & mask_iou) | ~mask_iou
-        )
-
-        for score_idx in range(n_scores):
-            mask_score_thresh = scores >= score_thresholds[score_idx]
-
-            mask_tp_inner = mask_tp_outer & mask_score_thresh
-            mask_fp_inner = mask_fp_outer & mask_score_thresh
-
-            # create true-positive mask score threshold
-            tp_candidates = ids[mask_tp_inner]
-            _, indices_gt_unique = np.unique(
-                tp_candidates[:, [0, 1, 3]], axis=0, return_index=True
-            )
-            mask_gt_unique = np.zeros(tp_candidates.shape[0], dtype=np.bool_)
-            mask_gt_unique[indices_gt_unique] = True
-
-            true_positives_mask = np.zeros(n_rows, dtype=np.bool_)
-            true_positives_mask[mask_tp_inner] = mask_gt_unique
-
-            mask_fp_inner |= mask_tp_inner & ~true_positives_mask
-
-            # calculate intermediates
-            counts[iou_idx, score_idx, 0, :] = np.bincount(
-                pd_labels,
-                weights=true_positives_mask,
-                minlength=n_labels,
-            )
-            # fp count
-            counts[iou_idx, score_idx, 1, :] = np.bincount(
-                pd_labels[mask_fp_inner],
-                minlength=n_labels,
-            )
-
-        # count running tp and total for AP
-        for pd_label in unique_pd_labels:
-            mask_pd_label = pd_labels == pd_label
-            total_count = mask_pd_label.sum()
-            if total_count == 0:
-                continue
-
-            # running total prediction count
-            running_total_count[iou_idx, mask_pd_label] = np.arange(
-                running_counts[iou_idx, pd_label, 0] + 1,
-                running_counts[iou_idx, pd_label, 0] + total_count + 1,
-            )
-            running_counts[iou_idx, pd_label, 0] += total_count
-
-            # running true-positive count
-            mask_tp_for_counting = mask_pd_label & mask_tp_outer
-            tp_count = mask_tp_for_counting.sum()
-            running_tp_count[iou_idx, mask_tp_for_counting] = np.arange(
-                running_counts[iou_idx, pd_label, 1] + 1,
-                running_counts[iou_idx, pd_label, 1] + tp_count + 1,
-            )
-            running_counts[iou_idx, pd_label, 1] += tp_count
-
-    # calculate running precision-recall points for AP
-    precision = np.zeros_like(running_total_count, dtype=np.float64)
-    np.divide(
-        running_tp_count,
-        running_total_count,
-        where=running_total_count > 0,
-        out=precision,
+    # Group each label once, keeping the incoming score order within groups.
+    label_order = np.argsort(pd_labels, kind="stable")
+    sorted_labels = pd_labels[label_order]
+    group_starts = np.r_[0, np.flatnonzero(np.diff(sorted_labels)) + 1]
+    group_sizes = np.diff(np.r_[group_starts, n_rows])
+    prediction_ranks = np.empty(n_rows, dtype=np.uint64)
+    prediction_ranks[label_order] = (
+        np.arange(n_rows) - np.repeat(group_starts, group_sizes) + 1
     )
-    recall = np.zeros_like(running_total_count, dtype=np.float64)
-    np.divide(
-        running_tp_count,
-        running_gt_count,
-        where=running_gt_count > 0,
-        out=recall,
+    label_totals = np.bincount(pd_labels, minlength=n_labels).astype(np.uint64)
+
+    # A row contributes to every score threshold <= its score. Histogram
+    # suffix sums compute all thresholds together, including ties and repeats.
+    score_order = np.argsort(score_thresholds, kind="stable")
+    score_bins = np.searchsorted(
+        score_thresholds[score_order], scores, side="right"
     )
-    recall_index = np.floor(recall * 100.0).astype(np.int32)
+    histogram_keys = score_bins * n_labels + pd_labels
+    gt_keys = _encode_keys(ids[:, 0], ids[:, 1], ids[:, 3])
+    groundtruth_counts = number_of_groundtruths_per_label[pd_labels]
 
-    # sort precision in descending order
-    precision_indices = np.argsort(-precision, axis=1)
-
-    # populate precision-recall curve
-    for iou_idx in range(n_ious):
-        labeled_recall = np.hstack(
-            [
-                pd_labels.reshape(-1, 1),
-                recall_index[iou_idx, :].reshape(-1, 1),
-            ]
+    for iou_idx, threshold in enumerate(iou_thresholds):
+        mask_tp_outer = (
+            mask_score_nonzero
+            & mask_gt_labels_match
+            & (ranked_pairs[:, 5] >= threshold)
+            & (ranked_pairs[:, 7] < threshold)
         )
 
-        # extract maximum score per (label, recall) bin
-        # arrays are already ordered by descending score
-        lr_pairs, recall_indices = np.unique(
-            labeled_recall, return_index=True, axis=0
-        )
-        li = lr_pairs[:, 0]
-        ri = lr_pairs[:, 1]
-        pr_curve[iou_idx, li, ri, 1] = np.maximum(
-            pr_curve[iou_idx, li, ri, 1],
-            scores[recall_indices],
-        )
+        # Ranked rows are in descending score order. The first candidate for
+        # a ground truth also remains first at every eligible score threshold.
+        candidates = np.flatnonzero(mask_tp_outer)
+        _, first = np.unique(gt_keys[candidates], return_index=True)
+        mask_tp = np.zeros(n_rows, dtype=np.bool_)
+        mask_tp[candidates[first]] = True
+        mask_fp = mask_score_nonzero & ~mask_tp
 
-        # extract maximum precision per (label, recall) bin
-        # reorder arrays into descending precision order
-        indices = precision_indices[iou_idx]
-        sorted_precision = precision[iou_idx, indices]
-        sorted_labeled_recall = labeled_recall[indices]
-        lr_pairs, recall_indices = np.unique(
-            sorted_labeled_recall, return_index=True, axis=0
+        for count_idx, mask in enumerate((mask_tp, mask_fp)):
+            histogram = np.bincount(
+                histogram_keys[mask], minlength=(n_scores + 1) * n_labels
+            ).reshape(n_scores + 1, n_labels)
+            cumulative = np.cumsum(histogram[::-1], axis=0)[::-1][1:]
+            counts[iou_idx, score_order, count_idx, :] = cumulative
+
+        running_total = (
+            prediction_ranks + running_counts[iou_idx, pd_labels, 0]
         )
-        li = lr_pairs[:, 0]
-        ri = lr_pairs[:, 1]
-        pr_curve[iou_idx, li, ri, 0] = np.maximum(
-            pr_curve[iou_idx, li, ri, 0],
-            sorted_precision[recall_indices],
+        sorted_tp = mask_tp_outer[label_order]
+        cumulative_tp = np.cumsum(sorted_tp, dtype=np.uint64)
+        group_offsets = cumulative_tp[group_starts] - sorted_tp[
+            group_starts
+        ].astype(np.uint64)
+        group_tp = cumulative_tp - np.repeat(group_offsets, group_sizes)
+        running_tp = np.zeros(n_rows, dtype=np.uint64)
+        running_tp[label_order] = group_tp
+        running_tp = np.where(
+            mask_tp_outer,
+            running_tp + running_counts[iou_idx, pd_labels, 1],
+            0,
+        )
+        running_counts[iou_idx, :, 0] += label_totals
+        running_counts[iou_idx, :, 1] += np.bincount(
+            pd_labels[mask_tp_outer], minlength=n_labels
+        ).astype(np.uint64)
+
+        precision = np.zeros(n_rows, dtype=np.float64)
+        recall = np.zeros_like(precision)
+        np.divide(
+            running_tp, running_total, out=precision, where=running_total > 0
+        )
+        np.divide(
+            running_tp,
+            groundtruth_counts,
+            out=recall,
+            where=groundtruth_counts > 0,
+        )
+        recall_index = np.floor(recall * 100).astype(np.int32)
+        recall_bins = pd_labels * 101 + recall_index
+
+        # Reduce directly into the 101 recall bins instead of sorting all
+        # rows twice to find their maximum precision and score.
+        precision_bins = np.zeros(n_labels * 101, dtype=np.float64)
+        score_values = np.zeros_like(precision_bins)
+        np.maximum.at(precision_bins, recall_bins, precision)
+        if np.isnan(scores).any():
+            # Preserve the first score in each bin when NaNs are present;
+            # a maximum would propagate NaNs from later rows in the bin.
+            first_scores = np.full(n_labels * 101, n_rows, dtype=np.int64)
+            np.minimum.at(first_scores, recall_bins, np.arange(n_rows))
+            populated = first_scores < n_rows
+            score_values[populated] = scores[first_scores[populated]]
+        else:
+            np.maximum.at(score_values, recall_bins, scores)
+        pr_curve[iou_idx, :, :, 0] = np.maximum(
+            pr_curve[iou_idx, :, :, 0], precision_bins.reshape(n_labels, 101)
+        )
+        pr_curve[iou_idx, :, :, 1] = np.maximum(
+            pr_curve[iou_idx, :, :, 1], score_values.reshape(n_labels, 101)
         )
 
     return counts
@@ -868,9 +855,9 @@ def compute_confusion_matrix(
             unique_labels, unique_label_counts = np.unique(
                 unique_pairs[:, 2], return_counts=True
             )
-            unmatched_groundtruths[
-                iou_idx, score_idx, unique_labels
-            ] = unique_label_counts
+            unmatched_groundtruths[iou_idx, score_idx, unique_labels] = (
+                unique_label_counts
+            )
 
             # unmatched predictions
             unique_pairs = np.unique(
@@ -880,8 +867,180 @@ def compute_confusion_matrix(
             unique_labels, unique_label_counts = np.unique(
                 unique_pairs[:, 2], return_counts=True
             )
-            unmatched_predictions[
-                iou_idx, score_idx, unique_labels
-            ] = unique_label_counts
+            unmatched_predictions[iou_idx, score_idx, unique_labels] = (
+                unique_label_counts
+            )
 
     return confusion_matrices, unmatched_groundtruths, unmatched_predictions
+
+
+class _DictionaryKeys(Protocol):
+    # Some Arrow stubs omit DictionaryArray's two public array properties.
+    indices: pa.Array
+    dictionary: pa.Array
+
+
+@overload
+def _group_keys(
+    keys: NDArray, return_inverse: Literal[False] = False
+) -> tuple[NDArray, NDArray]:
+    pass
+
+
+@overload
+def _group_keys(
+    keys: NDArray, return_inverse: Literal[True]
+) -> tuple[NDArray, NDArray, NDArray]:
+    pass
+
+
+def _group_keys(
+    keys: NDArray, return_inverse: bool = False
+) -> tuple[NDArray, NDArray] | tuple[NDArray, NDArray, NDArray]:
+    """Group integer keys by hashing, retaining each group's first row.
+
+    Integer groups follow encounter order. Structured overflow keys use
+    NumPy's sorted groups; callers must order by first row when order matters.
+    """
+    if keys.dtype.kind == "V":
+        if return_inverse:
+            return np.unique(keys, return_index=True, return_inverse=True)
+        return np.unique(keys, return_index=True)
+    encoded = cast(_DictionaryKeys, pa.array(keys).dictionary_encode())
+    codes = encoded.indices.to_numpy()
+    values = encoded.dictionary.to_numpy()
+    first = np.full(len(values), len(keys), dtype=np.int64)
+    np.minimum.at(first, codes, np.arange(len(keys)))
+    if return_inverse:
+        return values, first, codes
+    return values, first
+
+
+def compute_confusion_matrix_from_table(
+    table: pa.Table,
+    number_of_labels: int,
+    iou_thresholds: NDArray[np.float64],
+    score_thresholds: NDArray[np.float64],
+) -> tuple[NDArray[np.uint64], NDArray[np.uint64], NDArray[np.uint64]]:
+    """Compute counts from compact pairs instead of masks over every row.
+
+    Annotation IDs are globally unique and ground truths have one label, as
+    assigned by Loader. Each prediction label has the same score wherever
+    that annotation appears. Matching preserves the table's incoming order
+    and happens before applying thresholds, as in compute_pair_classifications.
+    """
+    n_labels = number_of_labels
+    shape = (len(iou_thresholds), len(score_thresholds))
+    matrices = np.zeros((*shape, n_labels, n_labels), dtype=np.uint64)
+    unmatched_gt = np.zeros((*shape, n_labels), dtype=np.uint64)
+    unmatched_pd = np.zeros_like(unmatched_gt)
+    if not table.num_rows:
+        return matrices, unmatched_gt, unmatched_pd
+
+    gt_ids, pd_ids, gt_labels, pd_labels, ious, scores = [
+        table[name].to_numpy()
+        for name in (
+            "gt_id",
+            "pd_id",
+            "gt_label_id",
+            "pd_label_id",
+            "iou",
+            "pd_score",
+        )
+    ]
+    # Loader uses -1 for missing annotations, so the common case can pack
+    # pairs directly. Keep the generic fallback for IDs too large to pack.
+    pd_stride = int(pd_ids.max()) + 2
+    if (int(gt_ids.max()) + 2) * pd_stride <= np.iinfo(np.int64).max:
+        pair_keys = (gt_ids + 1) * pd_stride + (pd_ids + 1)
+    else:
+        pair_keys = _encode_keys(gt_ids, pd_ids)
+    _, first_pairs, pair_codes = _group_keys(pair_keys, return_inverse=True)
+    pair_count = len(first_pairs)
+
+    # Compact codes bound flags by fragment size even with sparse or large IDs.
+    unique_gt, first_gt, gt_codes = _group_keys(
+        gt_ids[first_pairs], return_inverse=True
+    )
+    unique_pd, first_pd, pd_codes = _group_keys(
+        pd_ids[first_pairs], return_inverse=True
+    )
+    # Visit each physical pair once, ordered by its first labeled row.
+    seen_gt = bytearray(len(unique_gt))
+    seen_pd = bytearray(len(unique_pd))
+    for index in np.flatnonzero(unique_gt < 0):
+        seen_gt[int(index)] = 1
+    for index in np.flatnonzero(unique_pd < 0):
+        seen_pd[int(index)] = 1
+    chosen = np.zeros(pair_count, dtype=np.bool_)
+    ordered_pairs = np.argsort(first_pairs)
+    # Convert once to avoid NumPy scalar indexing/conversion in the hot loop.
+    for pair_idx, gt_code, pd_code in zip(
+        ordered_pairs.tolist(),
+        gt_codes[ordered_pairs].tolist(),
+        pd_codes[ordered_pairs].tolist(),
+    ):
+        if seen_gt[gt_code] or seen_pd[pd_code]:
+            continue
+        seen_gt[gt_code] = 1
+        seen_pd[pd_code] = 1
+        chosen[pair_idx] = True
+
+    matched_rows = np.flatnonzero(chosen[pair_codes])
+    labeled_keys = (
+        pair_codes[matched_rows].astype(np.int64) * n_labels
+        + gt_labels[matched_rows]
+    ) * n_labels + pd_labels[matched_rows]
+    _, first = _group_keys(labeled_keys)
+    matched_rows = matched_rows[first]
+
+    valid_gt_codes = np.flatnonzero(unique_gt >= 0)
+    gt_rows = first_pairs[first_gt[valid_gt_codes]]
+    prediction_pairs = np.zeros(pair_count, dtype=np.bool_)
+    prediction_pairs[first_pd] = True
+    pd_rows = np.flatnonzero(prediction_pairs[pair_codes] & (pd_ids >= 0))
+    prediction_codes = pd_codes[pair_codes[pd_rows]]
+    _, first = _group_keys(
+        prediction_codes.astype(np.int64) * n_labels + pd_labels[pd_rows]
+    )
+    pd_rows = pd_rows[first]
+    prediction_codes = prediction_codes[first]
+    matched_gt_codes = gt_codes[pair_codes[matched_rows]]
+    matched_pd_codes = pd_codes[pair_codes[matched_rows]]
+    matched_labels = (
+        gt_labels[matched_rows] * n_labels + pd_labels[matched_rows]
+    )
+    matched_ious = ious[matched_rows]
+    matched_scores = scores[matched_rows]
+
+    for iou_idx, iou_threshold in enumerate(iou_thresholds):
+        mask_iou = (matched_ious > EPSILON) & (matched_ious >= iou_threshold)
+        for score_idx, score_threshold in enumerate(score_thresholds):
+            eligible = (
+                mask_iou
+                & (matched_scores > EPSILON)
+                & (matched_scores >= score_threshold)
+            )
+            matrices[iou_idx, score_idx] = np.bincount(
+                matched_labels[eligible], minlength=n_labels * n_labels
+            ).reshape(n_labels, n_labels)
+
+            used_gt = np.zeros(len(unique_gt), dtype=np.bool_)
+            used_gt[matched_gt_codes[eligible]] = True
+            unmatched_gt[iou_idx, score_idx] = np.bincount(
+                gt_labels[gt_rows][~used_gt[valid_gt_codes]],
+                minlength=n_labels,
+            )
+
+            used_pd = np.zeros(len(unique_pd), dtype=np.bool_)
+            used_pd[matched_pd_codes[eligible]] = True
+            mask_unmatched_pd = (
+                (scores[pd_rows] > EPSILON)
+                & (scores[pd_rows] >= score_threshold)
+                & ~used_pd[prediction_codes]
+            )
+            unmatched_pd[iou_idx, score_idx] = np.bincount(
+                pd_labels[pd_rows][mask_unmatched_pd], minlength=n_labels
+            )
+
+    return matrices, unmatched_gt, unmatched_pd

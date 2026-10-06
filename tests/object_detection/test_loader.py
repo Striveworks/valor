@@ -19,6 +19,69 @@ def test_no_data(loader: Loader):
         loader.finalize()
 
 
+def test_unmatched_prediction_labels_emitted_once(loader: Loader):
+    detection = Detection(
+        uid="datum",
+        groundtruths=[
+            BoundingBox(
+                uid=f"gt-{i}",
+                xmin=0,
+                xmax=10,
+                ymin=0,
+                ymax=10,
+                labels=[label],
+            )
+            for i, label in enumerate(["first", "second", "third"])
+        ],
+        predictions=[
+            BoundingBox(
+                uid="unmatched",
+                xmin=20,
+                xmax=30,
+                ymin=20,
+                ymax=30,
+                labels=["prediction-a", "prediction-b"],
+                scores=[0.9, 0.2],
+                metadata={"pd_rect": "unmatched-metadata"},
+            ),
+            BoundingBox(
+                uid="matched",
+                xmin=0,
+                xmax=10,
+                ymin=0,
+                ymax=10,
+                labels=["first"],
+                scores=[0.8],
+            ),
+        ],
+    )
+    loader.add_bounding_boxes([detection])
+    evaluator = loader.finalize()
+    rows = [
+        row
+        for table in evaluator._detailed_reader.iterate_tables()
+        for row in table.to_pylist()
+    ]
+    unmatched = [row for row in rows if row["pd_uid"] == "unmatched"]
+    assert len(rows) == 5
+    assert len(unmatched) == 2
+    assert {(row["pd_label"], row["pd_score"]) for row in unmatched} == {
+        ("prediction-a", 0.9),
+        ("prediction-b", 0.2),
+    }
+    assert all(row["gt_id"] == -1 for row in unmatched)
+    assert all(row["pd_rect"] == "unmatched-metadata" for row in unmatched)
+    assert evaluator._index_to_label == {
+        0: "first",
+        1: "prediction-a",
+        2: "prediction-b",
+        3: "second",
+        4: "third",
+    }
+    assert evaluator.info.number_of_groundtruth_annotations == 3
+    assert evaluator.info.number_of_prediction_annotations == 2
+
+
 def test_iou_computation(loader: Loader):
 
     detection = Detection(

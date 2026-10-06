@@ -33,3 +33,4 @@ site/*
 *.npy
 
 .valor/*
+testdata

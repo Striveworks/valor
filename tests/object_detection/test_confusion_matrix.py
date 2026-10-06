@@ -769,7 +769,8 @@ def test_confusion_matrix_ranked_pair_ordering(
     assert evaluator.info.number_of_groundtruth_annotations == 3
     assert evaluator.info.number_of_labels == 4
     assert evaluator.info.number_of_prediction_annotations == 4
-    assert evaluator.info.number_of_rows == 12
+    # Unmatched prediction labels are emitted once per datum.
+    assert evaluator.info.number_of_rows == 8
 
     actual_metrics = evaluator.compute_confusion_matrix(
         iou_thresholds=[0.5],

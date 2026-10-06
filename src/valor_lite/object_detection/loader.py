@@ -94,7 +94,9 @@ class Loader(Builder):
                     for pidx, pann in enumerate(detection.predictions):
                         pann_id = self._prediction_count + pidx
                         pann_metadata = pann.metadata if pann.metadata else {}
-                        if (ious[pidx, :] < EPSILON).all():
+                        # Emit unmatched predictions on the first ground
+                        # truth only, preserving label allocation order.
+                        if gidx == 0 and (ious[pidx, :] < EPSILON).all():
                             pairs.extend(
                                 [
                                     {

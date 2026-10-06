@@ -294,6 +294,7 @@ class FileCacheWriter(FileCache):
         # internal state
         self._writer = None
         self._buffer = []
+        self._buffer_rows = 0
         self._count = 0
 
     @classmethod
@@ -422,19 +423,19 @@ class FileCacheWriter(FileCache):
         batch : pa.RecordBatch
             A batch of columnar data.
         """
-        size = batch.num_rows
-        if self._buffer:
-            size += sum([b.num_rows for b in self._buffer])
+        size = batch.num_rows + self._buffer_rows
 
         # check size
         if size < self.batch_size and self._count < self.rows_per_file:
             self._buffer.append(batch)
+            self._buffer_rows = size
             return
 
         if self._buffer:
             self._buffer.append(batch)
             batch = pa.concat_batches(self._buffer)
             self._buffer = []
+            self._buffer_rows = 0
 
         # write batch
         writer = self._get_or_create_writer()
@@ -473,6 +474,7 @@ class FileCacheWriter(FileCache):
             writer = self._get_or_create_writer()
             writer.write_batch(batch)
         self._buffer = []
+        self._buffer_rows = 0
         self._count = 0
         self._close_writer()
 
