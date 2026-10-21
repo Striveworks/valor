@@ -35,7 +35,22 @@ def test_info_using_large_random_segmentations(
     loader: Loader, large_random_segmentations
 ):
     loader.add_data(large_random_segmentations)
-    info = loader.finalize().info
+    evaluator = loader.finalize()
+    info = evaluator.info
+    assert evaluator.metadata_fields == [
+        name for name, _ in info.metadata_fields or []
+    ]
+    assert evaluator.reader is evaluator._reader
+    assert evaluator.reserved_fields == [
+        "datum_uid",
+        "datum_id",
+        "gt_label",
+        "gt_label_id",
+        "pd_label",
+        "pd_label_id",
+        "count",
+    ]
+    assert evaluator.reader.count_rows() == info.number_of_rows
     assert info.number_of_datums == 3
     assert info.number_of_labels == 6
     assert info.number_of_pixels == 12000000
