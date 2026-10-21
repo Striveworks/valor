@@ -2,6 +2,7 @@ import json
 from pathlib import Path
 
 import numpy as np
+import pyarrow as pa
 import pytest
 
 from valor_lite.object_detection import (
@@ -26,6 +27,81 @@ def test_evaluator_not_a_directory(tmp_path: Path):
         json.dump({}, f, indent=2)
     with pytest.raises(NotADirectoryError):
         Evaluator.load(filepath)
+
+
+@pytest.mark.parametrize("persistent", [False, True])
+def test_cache_introspection(tmp_path: Path, persistent: bool):
+    metadata_fields: list[tuple[str, str | pa.DataType]] = [
+        ("weather", pa.string()),
+        ("site", pa.int32()),
+    ]
+    if persistent:
+        loader = Loader.persistent(
+            path=tmp_path,
+            batch_size=1,
+            rows_per_file=1,
+            metadata_fields=metadata_fields,
+        )
+    else:
+        loader = Loader.in_memory(metadata_fields=metadata_fields)
+    loader.add_bounding_boxes(
+        [
+            Detection(
+                uid=f"datum-{i}",
+                metadata={"weather": weather, "site": i},
+                groundtruths=[
+                    BoundingBox(
+                        uid=f"gt-{i}-{j}",
+                        xmin=0,
+                        xmax=10,
+                        ymin=0,
+                        ymax=10,
+                        labels=["label"],
+                    )
+                    for j in range(2)
+                ],
+                predictions=[],
+            )
+            for i, weather in enumerate([None, "rain"])
+        ]
+    )
+    evaluator = loader.finalize()
+    if persistent:
+        evaluator = Evaluator.load(tmp_path)
+
+    assert evaluator.metadata_fields == ["weather", "site"]
+    assert evaluator.reader is evaluator._detailed_reader
+    assert evaluator.reader.schema.field("site").type == pa.int32()
+    assert evaluator.reserved_fields == [
+        "datum_uid",
+        "datum_id",
+        "gt_uid",
+        "gt_id",
+        "gt_label",
+        "gt_label_id",
+        "pd_uid",
+        "pd_id",
+        "pd_label",
+        "pd_label_id",
+        "pd_score",
+        "iou",
+    ]
+
+    ungrouped = list(
+        evaluator.reader.iterate_tables(columns=evaluator.metadata_fields)
+    )
+    assert len(ungrouped) == (2 if persistent else 1)
+    assert all(
+        table.column_names == ["weather", "site"] for table in ungrouped
+    )
+    assert sorted(
+        pa.concat_tables(ungrouped).to_pylist(), key=lambda row: row["site"]
+    ) == [
+        {"weather": None, "site": 0},
+        {"weather": None, "site": 0},
+        {"weather": "rain", "site": 1},
+        {"weather": "rain", "site": 1},
+    ]
 
 
 def test_evaluator_valid_thresholds():

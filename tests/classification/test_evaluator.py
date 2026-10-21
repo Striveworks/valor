@@ -55,6 +55,20 @@ def test_info_using_classification_example(
     assert evaluator.info.number_of_labels == 3
     assert evaluator.info.number_of_rows == 3 * 6
     assert evaluator.info.metadata_fields == [("test", "double")]
+    assert evaluator.metadata_fields == ["test"]
+    assert evaluator.reserved_fields == [
+        "datum_uid",
+        "datum_id",
+        "gt_label",
+        "gt_label_id",
+        "pd_label",
+        "pd_label_id",
+        "pd_score",
+        "pd_winner",
+        "match",
+    ]
+    assert evaluator.reader is evaluator._reader
+    assert evaluator.reader.count_rows() == evaluator.info.number_of_rows
 
 
 def _flatten_metrics(m) -> list:

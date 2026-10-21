@@ -166,6 +166,21 @@ class Evaluator:
     def info(self) -> EvaluatorInfo:
         return self.get_info()
 
+    @property
+    def metadata_fields(self) -> list[str]:
+        """Return configured metadata column names in schema order."""
+        return [name for name, _ in self._metadata_fields or []]
+
+    @property
+    def reserved_fields(self) -> list[str]:
+        """Return cache column names reserved by the library in schema order."""
+        return generate_schema(None).names
+
+    @property
+    def reader(self) -> MemoryCacheReader | FileCacheReader:
+        """Return the label-pair counts cache reader for introspection."""
+        return self._reader
+
     def get_info(
         self,
         datums: pc.Expression | None = None,
